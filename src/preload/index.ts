@@ -1,0 +1,35 @@
+import { contextBridge, ipcRenderer } from 'electron';
+import type {
+  AppCommand,
+  DocumentSnapshot,
+  ExternalChange,
+  MarkTexApi,
+} from '../shared/contracts';
+
+function subscribe<T>(channel: string, listener: (value: T) => void) {
+  const handler = (_event: Electron.IpcRendererEvent, value: T) => listener(value);
+  ipcRenderer.on(channel, handler);
+  return () => ipcRenderer.removeListener(channel, handler);
+}
+
+const api: MarkTexApi = {
+  getDocument: () => ipcRenderer.invoke('document:get'),
+  openDocument: () => ipcRenderer.invoke('document:open'),
+  updateText: (text, revision) =>
+    ipcRenderer.send('document:update-text', { text, revision }),
+  saveDocument: (text, revision) =>
+    ipcRenderer.invoke('document:save', { text, revision }),
+  saveDocumentAs: (text, revision) =>
+    ipcRenderer.invoke('document:save-as', { text, revision }),
+  reloadDocument: () => ipcRenderer.invoke('document:reload'),
+  renderDocument: (text, revision) =>
+    ipcRenderer.invoke('document:render', { text, revision }),
+  openLink: (href) => ipcRenderer.invoke('document:open-link', href),
+  onDocumentOpened: (listener) =>
+    subscribe<DocumentSnapshot>('document:opened', listener),
+  onExternalChange: (listener) =>
+    subscribe<ExternalChange>('document:external-change', listener),
+  onCommand: (listener) => subscribe<AppCommand>('app:command', listener),
+};
+
+contextBridge.exposeInMainWorld('marktex', api);
