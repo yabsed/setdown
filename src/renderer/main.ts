@@ -1,6 +1,13 @@
 import * as monaco from 'monaco-editor/editor/editor.main';
 import EditorWorker from 'monaco-editor/editor/editor.worker?worker';
 import type { DocumentSnapshot } from '../shared/contracts';
+import {
+  GOLDEN_TOP_RATIO,
+  clamp,
+  clampAnchor,
+  resolveEditorViewport,
+  type ViewportAnchor,
+} from '../shared/viewport-anchor';
 import './style.css';
 
 window.MonacoEnvironment = {
@@ -70,8 +77,18 @@ let currentDocument: DocumentSnapshot | null = null;
 let model: monaco.editor.ITextModel | null = null;
 let revision = 0;
 let renderToken = 0;
-let anchorLine = 1;
 let surface: 'empty' | 'viewer' | 'editor' = 'empty';
+
+/**
+ * Viewer와 Editor가 함께 보는 단 하나의 좌표. 화면 전환은 언제나 이 값을
+ * 따르며, Monaco cursor는 편집 상태일 뿐 전환의 기준점이 아니다.
+ */
+let anchor: ViewportAnchor = {
+  sourceLine: 1,
+  yRatio: GOLDEN_TOP_RATIO,
+  reason: 'empty-document',
+  confidence: 'fallback',
+};
 
 const editor = monaco.editor.create(editorHost, {
   automaticLayout: true,
@@ -93,11 +110,21 @@ const editor = monaco.editor.create(editorHost, {
   stickyScroll: { enabled: false },
 });
 
+/**
+ * 지금 두 화면이 공유하고 있는 좌표를 DOM에 적어 둔다. confidence는 시험과
+ * 디버깅을 위한 값이며, 전환을 취소하는 스위치가 아니다.
+ */
+function publishAnchor() {
+  shell.dataset.anchorLine = String(anchor.sourceLine);
+  shell.dataset.anchorReason = anchor.reason;
+  shell.dataset.anchorConfidence = anchor.confidence;
+}
+
 function setSurface(next: typeof surface) {
   surface = next;
   shell.dataset.surface = next;
   modeLabel.textContent = next === 'viewer' ? 'VIEWER' : next === 'editor' ? 'EDITOR' : '';
-  if (next === 'editor') requestAnimationFrame(() => editor.layout());
+  if (next === 'editor') window.setTimeout(() => editor.layout(), 0);
 }
 
 function updateChrome() {
@@ -128,8 +155,9 @@ function installModel(documentSnapshot: DocumentSnapshot) {
   });
 }
 
-async function render(line = anchorLine) {
+async function render(target: ViewportAnchor = anchor) {
   if (!currentDocument || !model) return;
+  const revealed = clampAnchor(target, model.getLineCount());
   const token = ++renderToken;
   const requestedRevision = revision;
   renderState.hidden = false;
@@ -140,8 +168,8 @@ async function render(line = anchorLine) {
     frame.onload = () => {
       const reveal = () => frame.contentWindow?.postMessage({
         command: 'changeTextEditorSelection',
-        line: Math.max(0, line - 1),
-        topRatio: 0.35,
+        line: Math.max(0, revealed.sourceLine - 1),
+        topRatio: revealed.yRatio,
         forced: true,
       }, '*');
       reveal();
@@ -159,28 +187,79 @@ async function render(line = anchorLine) {
 
 async function showDocument(documentSnapshot: DocumentSnapshot) {
   currentDocument = documentSnapshot;
-  anchorLine = 1;
+  anchor = {
+    sourceLine: 1,
+    yRatio: GOLDEN_TOP_RATIO,
+    reason: 'empty-document',
+    confidence: 'fallback',
+  };
+  publishAnchor();
   notice.hidden = true;
   installModel(documentSnapshot);
   updateChrome();
   setSurface('viewer');
-  await render(1);
+  await render(anchor);
 }
 
-function enterEditor(line = anchorLine) {
+/**
+ * Viewer가 준 anchor로 Editor를 연다. 전환은 이미 확정된 사실이고,
+ * anchor의 품질은 목적지만 바꾼다. confidence는 검사하지 않는다.
+ */
+function enterEditor(next: ViewportAnchor = anchor) {
   if (!model) return;
-  anchorLine = Math.min(Math.max(1, line), model.getLineCount());
+  anchor = clampAnchor(next, model.getLineCount());
+  publishAnchor();
   setSurface('editor');
-  editor.setPosition({ lineNumber: anchorLine, column: 1 });
-  editor.revealLineInCenter(anchorLine, monaco.editor.ScrollType.Smooth);
-  window.setTimeout(() => editor.focus(), 0);
+  const line = anchor.sourceLine;
+  const column = Math.min(
+    anchor.sourceColumn ?? 1,
+    model.getLineMaxColumn(line),
+  );
+  editor.setPosition({ lineNumber: line, column });
+  // 화면이 막 바뀐 참이라 layout이 아직 낡았다. 다음 tick에 자리를 잡는다.
+  window.setTimeout(() => {
+    editor.layout();
+    // 사용자가 누른 높이에 그 행을 그대로 둔다. 가운데로 보내면 클릭할
+    // 때마다 문서가 위아래로 뛴다.
+    const height = editor.getLayoutInfo().height;
+    const top = editor.getTopForLineNumber(line) - height * anchor.yRatio;
+    editor.setScrollTop(Math.max(0, top));
+    editor.focus();
+  }, 0);
+}
+
+/**
+ * Editor에서 Viewer로. 따라가야 하는 것은 cursor가 아니라 사용자가 보고
+ * 있던 화면이다.
+ */
+function editorViewportAnchor(): ViewportAnchor {
+  if (!model) return anchor;
+  const node = editor.getDomNode();
+  const yRatio = GOLDEN_TOP_RATIO;
+  let probedLine: number | null = null;
+  if (node) {
+    const rect = node.getBoundingClientRect();
+    // view zone이나 빈 영역이면 target이 없다. 그때는 첫 가시 행으로 내려간다.
+    const target = editor.getTargetAtClientPoint(
+      rect.left + editor.getLayoutInfo().contentLeft + 8,
+      rect.top + rect.height * yRatio,
+    );
+    probedLine = target?.position?.lineNumber ?? null;
+  }
+  return resolveEditorViewport({
+    probedLine,
+    firstVisibleLine: editor.getVisibleRanges()[0]?.startLineNumber ?? null,
+    lineCount: model.getLineCount(),
+    yRatio,
+  });
 }
 
 async function enterViewer() {
   if (!model) return;
-  anchorLine = editor.getPosition()?.lineNumber ?? anchorLine;
+  anchor = editorViewportAnchor();
+  publishAnchor();
   setSurface('viewer');
-  await render(anchorLine);
+  await render(anchor);
 }
 
 async function save(saveAs = false) {
@@ -212,6 +291,22 @@ document.querySelectorAll('.open-button, .empty-open').forEach((button) => {
   button.addEventListener('click', () => void openDocument());
 });
 document.querySelector('.render-error button')?.addEventListener('click', () => enterEditor());
+
+/**
+ * 화면 전환 단축키에도 같은 원칙을 적용한다. Viewer가 지금 보고 있는
+ * 높이를 물어보고, 답이 오면 `edit-at-anchor`가 Editor를 연다. 답이 오지
+ * 않아도 전환은 보장한다.
+ */
+function requestViewerAnchor() {
+  const pendingSurface = surface;
+  frame.contentWindow?.postMessage(
+    { command: 'marktex:request-anchor', topRatio: GOLDEN_TOP_RATIO },
+    '*',
+  );
+  window.setTimeout(() => {
+    if (surface === pendingSurface) enterEditor(anchor);
+  }, 120);
+}
 document.querySelector('.notice-keep')?.addEventListener('click', () => {
   notice.hidden = true;
 });
@@ -222,8 +317,19 @@ document.querySelector('.notice-reload')?.addEventListener('click', async () => 
 
 window.addEventListener('message', (event) => {
   if (event.source !== frame.contentWindow || event.data?.source !== 'crossnote') return;
-  if (event.data.type === 'edit-at-line') {
-    enterEditor(Number(event.data.line));
+  if (event.data.type === 'edit-at-anchor') {
+    const received = event.data.anchor as Partial<ViewportAnchor> | undefined;
+    // 전환은 무조건이다. anchor가 망가져 있어도 문서 처음으로 간다.
+    enterEditor({
+      sourceLine: Number(received?.sourceLine) || 1,
+      sourceColumn: Number(received?.sourceColumn) || undefined,
+      sourceEndLine: Number(received?.sourceEndLine) || undefined,
+      yRatio: Number.isFinite(Number(received?.yRatio))
+        ? clamp(Number(received?.yRatio), 0, 1)
+        : GOLDEN_TOP_RATIO,
+      reason: received?.reason ?? 'scroll-ratio',
+      confidence: received?.confidence ?? 'fallback',
+    });
     return;
   }
   if (event.data.command === 'clickTagA') {
@@ -240,7 +346,7 @@ window.marktex.onCommand((command) => {
   if (command === 'save') void save(false);
   if (command === 'save-as') void save(true);
   if (command === 'toggle-surface') {
-    if (surface === 'viewer') enterEditor(anchorLine);
+    if (surface === 'viewer') requestViewerAnchor();
     else if (surface === 'editor') void enterViewer();
   }
 });

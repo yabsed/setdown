@@ -8,7 +8,14 @@ import {
   protocol,
   shell,
 } from 'electron';
-import { promises as fs, realpathSync, statSync, watchFile, unwatchFile } from 'node:fs';
+import {
+  promises as fs,
+  readFileSync,
+  realpathSync,
+  statSync,
+  watchFile,
+  unwatchFile,
+} from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
@@ -25,6 +32,7 @@ import type {
   SaveResult,
 } from '../shared/contracts';
 import { applyTextRevision, isDirty, lineCount } from '../shared/document-state';
+import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -168,48 +176,26 @@ async function getNotebook(filePath: string): Promise<NotebookInstance> {
     },
   });
   notebook.previewScriptsEnabled = false;
+  installSourceAnchors(notebook.md as unknown as MarkdownItLike);
   notebookCache = { root, notebook };
   return notebook;
 }
 
-function previewBridgeScript(totalLines: number): string {
-  return `<script>
-(() => {
-  const initialHtml = document.body.getAttribute('data-html') || '';
-  const send = (message) => window.parent.postMessage(
-    { ...message, source: 'crossnote' }, '*'
-  );
-  window.acquireVsCodeApi = () => ({
-    postMessage(message) {
-      send(message);
-      if (message && message.command === 'webviewFinishLoading') {
-        queueMicrotask(() => window.postMessage({
-          command: 'updateHtml',
-          html: initialHtml,
-          markdown: '',
-          totalLineCount: ${totalLines},
-          sourceUri: document.querySelector('base')?.href || '',
-          sourceScheme: 'file',
-          id: '',
-          class: 'zen-mode'
-        }, '*'));
-      }
-    }
-  });
+let bridgeSourceCache: string | null = null;
 
-  const blocked = 'a, button, input, textarea, select, summary, [contenteditable="true"], .code-chunk';
-  document.addEventListener('dblclick', (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    if (!target || target.closest(blocked)) return;
-    const mapped = target.closest('[data-source-line]') ||
-      target.querySelector('[data-source-line]');
-    const line = Number(mapped?.getAttribute('data-source-line'));
-    if (!Number.isFinite(line) || line < 1) return;
-    event.preventDefault();
-    send({ type: 'edit-at-line', line });
-  }, true);
-})();
-</script>`;
+function bridgeSource(): string {
+  if (bridgeSourceCache === null) {
+    const bundle = readFileSync(path.join(__dirname, 'preview-bridge.js'), 'utf8');
+    // 인라인 <script> 안으로 들어가므로 태그 종료 시퀀스만 막는다.
+    bridgeSourceCache = bundle.replace(/<\/script/gi, '<\\/script');
+  }
+  return bridgeSourceCache;
+}
+
+function previewBridgeScript(totalLines: number, documentIsBlank: boolean): string {
+  const config = JSON.stringify({ totalLineCount: totalLines, documentIsBlank });
+  return `<script>window.__marktexPreview = ${config};</script>
+<script>${bridgeSource()}</script>`;
 }
 
 async function renderCurrent(text: string, revision: number): Promise<RenderResult> {
@@ -233,11 +219,14 @@ async function renderCurrent(text: string, revision: number): Promise<RenderResu
     config,
     vscodePreviewPanel: fakePanel,
     head: `<base href="${resourceUrl(path.join(path.dirname(currentDocument.path), path.sep))}">`,
-    scripts: previewBridgeScript(lineCount(text)),
+    scripts: previewBridgeScript(lineCount(text), text.trim().length === 0),
     styles: `<style>
       [data-source-line] { cursor: text; }
       .topbar, footer, .footer { display: none !important; }
       .markdown-preview { padding-bottom: 5rem !important; }
+      /* 수식이 나르는 source wrapper는 조판을 바꾸지 않는다. */
+      .crossnote-math-source, .crossnote-html-source { display: block; }
+      .crossnote-inline-math-source { display: inline; }
     </style>`,
   });
   const token = `${Date.now()}-${revision}-${Math.random().toString(36).slice(2)}`;

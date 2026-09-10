@@ -28,7 +28,7 @@ test('opens in Viewer, enters Monaco on double click, and returns with Escape', 
   try {
     const page = await application.firstWindow();
     page.on('console', (message) => console.log(`[renderer:${message.type()}] ${message.text()}`));
-    page.on('pageerror', (error) => console.error(`[renderer:error] ${error.message}`));
+    page.on('pageerror', (error) => console.error(`[renderer:error] ${error.stack ?? error.message}`));
     await test.step('the document opens in Viewer', async () => {
       await expect(page.locator('.shell')).toHaveAttribute('data-surface', 'viewer');
     });
