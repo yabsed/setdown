@@ -362,7 +362,7 @@ async function confirmReplaceCurrentDocument(): Promise<boolean> {
   return true;
 }
 
-async function chooseAndOpen() {
+async function chooseAndOpen(notify = true) {
   const result = await dialog.showOpenDialog(mainWindow!, {
     properties: ['openFile'],
     filters: [
@@ -372,7 +372,7 @@ async function chooseAndOpen() {
   });
   if (result.canceled || !result.filePaths[0]) return null;
   if (!(await confirmReplaceCurrentDocument())) return null;
-  return openPath(result.filePaths[0]);
+  return openPath(result.filePaths[0], notify);
 }
 
 async function confirmOverwriteIfChanged(): Promise<boolean> {
@@ -600,7 +600,10 @@ function createWindow() {
 function installIpc() {
   ipcMain.handle('document:get', () => currentDocument);
   ipcMain.handle('document:new', () => createNewDocument());
-  ipcMain.handle('document:open', () => chooseAndOpen());
+  // invoke의 반환값으로 renderer가 직접 문서를 설치하므로 opened 이벤트를
+  // 함께 보내지 않는다. 두 경로가 겹치면 showDocument가 같은 문서를 두 번
+  // 초기화하여 진행 중 Preview를 무효화한다.
+  ipcMain.handle('document:open', () => chooseAndOpen(false));
   ipcMain.on('document:update-text', (_event, { text, revision }) => {
     if (currentDocument) currentDocument = applyTextRevision(currentDocument, text, revision);
   });
@@ -618,7 +621,7 @@ function installIpc() {
   );
   ipcMain.handle('document:reload', async () => {
     if (!currentDocument || currentDocument.isUntitled) return currentDocument;
-    return openPath(currentDocument.path);
+    return openPath(currentDocument.path, false);
   });
   ipcMain.handle('document:open-link', async (_event, href: string) => {
     const decodedHref = decodeURIComponent(href);
