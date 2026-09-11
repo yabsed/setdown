@@ -18,6 +18,20 @@ button { font: inherit; }
   background: #f7f7f5;
 }
 .shell[data-tabs="false"] { grid-template-rows: 0 auto 1fr; }
+.shell.is-window-drop-target::after {
+  content: "여기에 탭 놓기";
+  position: fixed;
+  inset: 12px;
+  display: grid;
+  place-items: center;
+  color: #5d6870;
+  border: 2px dashed #8ca0ad;
+  border-radius: 12px;
+  background: rgba(226, 234, 239, .88);
+  font-size: 14px;
+  z-index: 100;
+  pointer-events: none;
+}
 
 .tab-strip {
   display: flex;
@@ -28,7 +42,7 @@ button { font: inherit; }
   -webkit-app-region: drag;
 }
 .tab-strip[hidden] { display: none; }
-.tab-list { display: flex; flex: 1; min-width: 0; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.tab-list { display: flex; flex: 1; min-width: 0; gap: 2px; overflow-x: auto; scrollbar-width: none; -webkit-app-region: no-drag; }
 .tab-list::-webkit-scrollbar { display: none; }
 .document-tab {
   display: flex;
@@ -48,6 +62,8 @@ button { font: inherit; }
 }
 .document-tab:hover { background: rgba(255, 255, 255, .55); }
 .document-tab[aria-selected="true"] { color: #292927; background: #f7f7f5; }
+.document-tab.is-dragging { opacity: .48; }
+.tab-strip.is-drop-target { background: #e4e8eb; }
 .tab-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
 .tab-dirty { margin-left: 5px; color: #d26a37; font-size: 15px; }
 .tab-close {
@@ -160,6 +176,7 @@ button { font: inherit; }
   background: white;
 }
 .preview-frame.is-active { visibility: visible; pointer-events: auto; }
+.shell.is-tab-dragging .preview-frame { pointer-events: none; }
 .viewer-hint, .editor-hint {
   position: absolute;
   right: 16px;

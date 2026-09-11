@@ -1,6 +1,10 @@
 import * as monaco from 'monaco-editor/editor/editor.main';
 import EditorWorker from 'monaco-editor/editor/editor.worker?worker';
-import type { DocumentSnapshot } from '../shared/contracts';
+import type {
+  ClaimedTabTransfer,
+  DocumentSnapshot,
+  TransferableTab,
+} from '../shared/contracts';
 import { PreviewRenderCoordinator } from '../shared/preview-render-coordinator';
 import {
   GOLDEN_TOP_RATIO,
@@ -96,6 +100,9 @@ type DocumentTab = {
 
 const tabs: DocumentTab[] = [];
 let activeTabId: string | null = null;
+let draggedTabId: string | null = null;
+let draggedTransferId: string | null = null;
+let tabDragCanceled = false;
 
 let currentDocument: DocumentSnapshot | null = null;
 let model: monaco.editor.ITextModel | null = null;
@@ -188,6 +195,34 @@ function saveActiveTabState() {
   }
 }
 
+function viewerScrollRatio(tab: DocumentTab) {
+  try {
+    const view = tab.frame.contentWindow;
+    const root = tab.frame.contentDocument?.documentElement;
+    if (!view || !root) return null;
+    const maximum = Math.max(0, root.scrollHeight - view.innerHeight);
+    return maximum > 0 ? view.scrollY / maximum : 0;
+  } catch {
+    return null;
+  }
+}
+
+function transferableTab(tab: DocumentTab): TransferableTab {
+  if (tab.id === activeTabId) saveActiveTabState();
+  return {
+    id: tab.id,
+    document: tab.document,
+    text: tab.model.getValue(),
+    revision: tab.revision,
+    surface: tab.surface,
+    anchor: tab.anchor,
+    editorViewState: tab.editorViewState,
+    viewerScrollRatio: viewerScrollRatio(tab),
+    previewUrl: tab.previewUrl,
+    previewRevision: tab.previewRevision,
+  };
+}
+
 function renderTabs() {
   tabStrip.hidden = tabs.length === 0;
   shell.dataset.tabs = tabs.length > 0 ? 'true' : 'false';
@@ -202,6 +237,8 @@ function renderTabs() {
     button.setAttribute('role', 'tab');
     button.setAttribute('aria-selected', String(tab.id === activeTabId));
     button.title = tab.document.path;
+    button.draggable = true;
+    button.dataset.tabId = tab.id;
 
     const name = document.createElement('span');
     name.className = 'tab-name';
@@ -224,6 +261,34 @@ function renderTabs() {
     });
     button.append(close);
     button.addEventListener('click', () => void activateTab(tab.id));
+    button.addEventListener('dragstart', (event) => {
+      const transferId = crypto.randomUUID();
+      draggedTabId = tab.id;
+      draggedTransferId = transferId;
+      tabDragCanceled = false;
+      button.classList.add('is-dragging');
+      shell.classList.add('is-tab-dragging');
+      event.dataTransfer?.setData('application/x-setdown-tab', transferId);
+      event.dataTransfer?.setData('text/plain', `setdown-tab:${transferId}`);
+      if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+      window.marktex.registerTabTransfer(transferId, transferableTab(tab));
+    });
+    button.addEventListener('dragend', (event) => {
+      button.classList.remove('is-dragging');
+      const transferId = draggedTransferId;
+      const shouldDetach = transferId
+        && !tabDragCanceled;
+      draggedTabId = null;
+      draggedTransferId = null;
+      tabDragCanceled = false;
+      tabStrip.classList.remove('is-drop-target');
+      shell.classList.remove('is-tab-dragging', 'is-window-drop-target');
+      if (shouldDetach) {
+        window.marktex.detachTabToWindow(transferId, event.screenX, event.screenY);
+      } else if (transferId && event.dataTransfer?.dropEffect === 'none') {
+        window.marktex.cancelTabTransfer(transferId);
+      }
+    });
     tabList.append(button);
   }
   window.marktex.updateTabState(tabs.map((tab) => ({
@@ -233,6 +298,94 @@ function renderTabs() {
     isUntitled: tab.document.isUntitled,
   })));
 }
+
+function transferIdFromDrop(event: DragEvent) {
+  const native = event.dataTransfer?.getData('application/x-setdown-tab');
+  if (native) return native;
+  const plain = event.dataTransfer?.getData('text/plain') ?? '';
+  return plain.startsWith('setdown-tab:') ? plain.slice('setdown-tab:'.length) : null;
+}
+
+function isSetdownTabDrag(event: DragEvent) {
+  const types = Array.from(event.dataTransfer?.types ?? []);
+  if (types.includes('application/x-setdown-tab') || draggedTransferId) return true;
+  return (event.dataTransfer?.getData('text/plain') ?? '').startsWith('setdown-tab:');
+}
+
+function reorderDraggedTab(event: DragEvent, tabId: string) {
+  const from = tabs.findIndex((tab) => tab.id === tabId);
+  if (from < 0) return;
+  const element = (event.target as Element | null)?.closest<HTMLElement>('.document-tab');
+  let to = tabs.length - 1;
+  if (element?.dataset.tabId) {
+    const hovered = tabs.findIndex((tab) => tab.id === element.dataset.tabId);
+    if (hovered >= 0) {
+      const rect = element.getBoundingClientRect();
+      to = hovered + (event.clientX > rect.left + rect.width / 2 ? 1 : 0);
+    }
+  }
+  const [moved] = tabs.splice(from, 1);
+  if (from < to) to -= 1;
+  tabs.splice(Math.max(0, Math.min(to, tabs.length)), 0, moved);
+  renderTabs();
+}
+
+tabStrip.addEventListener('dragover', (event) => {
+  if (!isSetdownTabDrag(event)) return;
+  event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  tabStrip.classList.add('is-drop-target');
+});
+tabStrip.addEventListener('dragleave', (event) => {
+  if (!tabStrip.contains(event.relatedTarget as Node | null)) {
+    tabStrip.classList.remove('is-drop-target');
+  }
+});
+tabStrip.addEventListener('drop', (event) => {
+  const transferId = transferIdFromDrop(event);
+  if (!transferId) return;
+  event.preventDefault();
+  event.stopPropagation();
+  tabStrip.classList.remove('is-drop-target');
+  if (draggedTabId) {
+    reorderDraggedTab(event, draggedTabId);
+    window.marktex.cancelTabTransfer(transferId);
+    draggedTabId = null;
+    draggedTransferId = null;
+    return;
+  }
+  void window.marktex.claimTabTransfer(transferId).then((transfer) => {
+    if (transfer) void installTransferredTab(transfer);
+  });
+});
+
+window.addEventListener('dragover', (event) => {
+  if ((event.target as Element | null)?.closest('.tab-strip')) return;
+  if (!isSetdownTabDrag(event)) return;
+  event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  shell.classList.add('is-window-drop-target');
+}, { capture: true });
+window.addEventListener('dragleave', (event) => {
+  if (event.relatedTarget === null) shell.classList.remove('is-window-drop-target');
+});
+window.addEventListener('drop', (event) => {
+  if ((event.target as Element | null)?.closest('.tab-strip')) return;
+  const transferId = transferIdFromDrop(event);
+  if (!transferId) return;
+  event.preventDefault();
+  event.stopPropagation();
+  shell.classList.remove('is-window-drop-target');
+  if (draggedTabId) {
+    draggedTabId = null;
+    draggedTransferId = null;
+    window.marktex.detachTabToWindow(transferId, event.screenX, event.screenY);
+    return;
+  }
+  void window.marktex.claimTabTransfer(transferId).then((transfer) => {
+    if (transfer) void installTransferredTab(transfer);
+  });
+}, { capture: true });
 
 let tabActivation = 0;
 async function activateTab(tabId: string) {
@@ -322,6 +475,37 @@ async function closeTab(tabId: string) {
   setSurface('empty');
   updateChrome();
   renderTabs();
+}
+
+async function removeTransferredTab(tabId: string) {
+  const index = tabs.findIndex((tab) => tab.id === tabId);
+  if (index < 0) return;
+  const tab = tabs[index];
+  const wasActive = tab.id === activeTabId;
+  tabs.splice(index, 1);
+  tab.frame.remove();
+  if (!wasActive) {
+    tab.model.dispose();
+    renderTabs();
+    return;
+  }
+  activeTabId = null;
+  const replacement = tabs[Math.min(index, tabs.length - 1)];
+  if (replacement) {
+    await activateTab(replacement.id);
+    tab.model.dispose();
+    return;
+  }
+  editor.setModel(null);
+  tab.model.dispose();
+  resetPreviewState();
+  currentDocument = null;
+  model = null;
+  frame = document.createElement('iframe');
+  setSurface('empty');
+  updateChrome();
+  renderTabs();
+  window.marktex.closeEmptyWindow();
 }
 
 function cycleTab(direction: -1 | 1) {
@@ -578,6 +762,63 @@ async function showDocument(
   });
   renderTabs();
   await activateTab(id);
+}
+
+async function installTransferredTab(transfer: ClaimedTabTransfer) {
+  const incoming = transfer.tab;
+  const duplicate = !incoming.document.isUntitled
+    ? tabs.find((tab) => !tab.document.isUntitled && tab.document.path === incoming.document.path)
+    : null;
+  if (duplicate) {
+    await activateTab(duplicate.id);
+    window.marktex.completeTabTransfer(transfer.transferId);
+    return;
+  }
+  const restoredDocument: DocumentSnapshot = {
+    ...incoming.document,
+    text: incoming.text,
+    revision: incoming.revision,
+  };
+  const restored: DocumentTab = {
+    id: incoming.id,
+    document: restoredDocument,
+    model: createDocumentModel(restoredDocument, incoming.id),
+    revision: incoming.revision,
+    surface: incoming.surface,
+    anchor: incoming.anchor as ViewportAnchor,
+    previewUrl: incoming.previewUrl,
+    previewRevision: incoming.previewRevision,
+    frame: createPreviewFrame(),
+    editorViewState: incoming.editorViewState as monaco.editor.ICodeEditorViewState | null,
+  };
+  let previewLoaded: Promise<void> | null = null;
+  if (
+    incoming.previewUrl?.startsWith('marktex-preview:')
+    && incoming.previewRevision === incoming.revision
+  ) {
+    previewLoaded = new Promise((resolve) => {
+      restored.frame.addEventListener('load', () => resolve(), { once: true });
+      window.setTimeout(resolve, 1500);
+    });
+    restored.frame.src = incoming.previewUrl;
+  }
+  tabs.push(restored);
+  renderTabs();
+  await activateTab(restored.id);
+  if (previewLoaded) await previewLoaded;
+  if (incoming.viewerScrollRatio !== null && restored.surface === 'viewer') {
+    try {
+      const view = restored.frame.contentWindow;
+      const root = restored.frame.contentDocument?.documentElement;
+      if (view && root) {
+        const maximum = Math.max(0, root.scrollHeight - view.innerHeight);
+        view.scrollTo(0, maximum * incoming.viewerScrollRatio);
+      }
+    } catch {
+      // Preview anchor restoration above remains the cross-origin-safe fallback.
+    }
+  }
+  window.marktex.completeTabTransfer(transfer.transferId);
 }
 
 async function reloadActiveDocument(documentSnapshot: DocumentSnapshot) {
@@ -909,6 +1150,17 @@ window.marktex.onCommand((command) => {
   }
 });
 window.marktex.onSaveBeforeClose(() => void saveAllDirtyTabs());
+window.marktex.onTabTransferIncoming((transfer) => void installTransferredTab(transfer));
+window.marktex.onTabTransferCompleted((tabId) => {
+  draggedTabId = null;
+  draggedTransferId = null;
+  tabDragCanceled = false;
+  shell.classList.remove('is-tab-dragging', 'is-window-drop-target');
+  void removeTransferredTab(tabId);
+});
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && draggedTabId) tabDragCanceled = true;
+}, { capture: true });
 
 window.marktex.getDocument().then((documentSnapshot) => {
   if (documentSnapshot) void showDocument(documentSnapshot);

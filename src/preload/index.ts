@@ -2,10 +2,12 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type {
   AppCommand,
   CloseDecision,
+  ClaimedTabTransfer,
   DocumentSnapshot,
   ExternalChange,
   MarkTexApi,
   TabStateSummary,
+  TransferableTab,
 } from '../shared/contracts';
 
 function subscribe<T>(channel: string, listener: (value: T) => void) {
@@ -22,6 +24,17 @@ const api: MarkTexApi = {
     ipcRenderer.invoke('document:activate', { document, text, revision }),
   updateTabState: (tabs: TabStateSummary[]) =>
     ipcRenderer.send('tabs:update-state', tabs),
+  registerTabTransfer: (transferId: string, tab: TransferableTab) =>
+    ipcRenderer.send('tabs:register-transfer', { transferId, tab }),
+  claimTabTransfer: (transferId: string) =>
+    ipcRenderer.invoke('tabs:claim-transfer', transferId),
+  completeTabTransfer: (transferId: string) =>
+    ipcRenderer.send('tabs:complete-transfer', transferId),
+  cancelTabTransfer: (transferId: string) =>
+    ipcRenderer.send('tabs:cancel-transfer', transferId),
+  detachTabToWindow: (transferId: string, x: number, y: number) =>
+    ipcRenderer.send('tabs:detach-to-window', { transferId, x, y }),
+  closeEmptyWindow: () => ipcRenderer.send('app:close-empty-window'),
   updateText: (text, revision) =>
     ipcRenderer.send('document:update-text', { text, revision }),
   saveDocument: (text, revision) =>
@@ -51,6 +64,10 @@ const api: MarkTexApi = {
     ipcRenderer.on('app:save-before-close', handler);
     return () => ipcRenderer.removeListener('app:save-before-close', handler);
   },
+  onTabTransferIncoming: (listener) =>
+    subscribe<ClaimedTabTransfer>('tabs:transfer-incoming', listener),
+  onTabTransferCompleted: (listener) =>
+    subscribe<string>('tabs:transfer-completed', listener),
 };
 
 contextBridge.exposeInMainWorld('marktex', api);

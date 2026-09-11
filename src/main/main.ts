@@ -36,6 +36,7 @@ import type {
   ExportPdfResult,
   PasteImageResult,
   TabStateSummary,
+  TransferableTab,
 } from '../shared/contracts';
 import { applyTextRevision, isDirty, lineCount } from '../shared/document-state';
 import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
@@ -62,11 +63,69 @@ protocol.registerSchemesAsPrivileged([
 
 let mainWindow: BrowserWindow | null = null;
 let currentDocument: DocumentSnapshot | null = null;
-let watchedPath: string | null = null;
 let activeRoot: string | null = null;
-let closeAfterConfirmation = false;
-let rendererTabs: TabStateSummary[] = [];
 let untitledSequence = 0;
+
+type WindowState = {
+  window: BrowserWindow;
+  currentDocument: DocumentSnapshot | null;
+  activeRoot: string | null;
+  watchedPath: string | null;
+  closeAfterConfirmation: boolean;
+  rendererTabs: TabStateSummary[];
+};
+
+type PendingTabTransfer = {
+  sourceWebContentsId: number;
+  tab: TransferableTab;
+  claimedByWebContentsId: number | null;
+  expiresAt: number;
+};
+
+const windowStates = new Map<number, WindowState>();
+const pendingTabTransfers = new Map<string, PendingTabTransfer>();
+let selectedState: WindowState | null = null;
+let stateQueue: Promise<unknown> = Promise.resolve();
+
+function stateForWebContentsId(id: number) {
+  return windowStates.get(id) ?? null;
+}
+
+function stateForWindow(window: BrowserWindow | null) {
+  return window ? stateForWebContentsId(window.webContents.id) : null;
+}
+
+function focusedState() {
+  return stateForWindow(BrowserWindow.getFocusedWindow())
+    ?? stateForWindow(mainWindow)
+    ?? windowStates.values().next().value
+    ?? null;
+}
+
+function selectWindowState(state: WindowState) {
+  selectedState = state;
+  mainWindow = state.window;
+  currentDocument = state.currentDocument;
+  activeRoot = state.activeRoot;
+}
+
+function persistWindowState(state: WindowState) {
+  state.currentDocument = currentDocument;
+  state.activeRoot = activeRoot;
+}
+
+function withWindowState<T>(state: WindowState, action: () => Promise<T> | T): Promise<T> {
+  const scheduled = stateQueue.then(async () => {
+    selectWindowState(state);
+    try {
+      return await action();
+    } finally {
+      persistWindowState(state);
+    }
+  });
+  stateQueue = scheduled.catch(() => undefined);
+  return scheduled;
+}
 
 type CrossnoteModule = typeof import('crossnote');
 type NotebookInstance = Awaited<ReturnType<CrossnoteModule['Notebook']['init']>>;
@@ -100,7 +159,11 @@ function canonicalPath(candidate: string): string {
 
 function assertReadablePath(candidate: string): string {
   const resolved = canonicalPath(candidate);
-  const roots = [crossnoteOut, activeRoot].filter((root): root is string => !!root);
+  const roots = [
+    crossnoteOut,
+    activeRoot,
+    ...Array.from(windowStates.values(), (state) => state.activeRoot),
+  ].filter((root): root is string => !!root);
   if (!roots.some((root) => isInside(canonicalPath(root), resolved))) {
     throw new Error('The preview attempted to read outside the document folder.');
   }
@@ -336,20 +399,26 @@ function blankDocument(): DocumentSnapshot {
 }
 
 function stopWatching() {
-  if (watchedPath) unwatchFile(watchedPath);
-  watchedPath = null;
+  const state = selectedState;
+  if (!state) return;
+  if (state.watchedPath) unwatchFile(state.watchedPath);
+  state.watchedPath = null;
 }
 
 function watchCurrentDocument() {
   stopWatching();
-  if (!currentDocument || currentDocument.isUntitled) return;
-  watchedPath = currentDocument.path;
+  const state = selectedState;
+  if (!state || !currentDocument || currentDocument.isUntitled) return;
+  state.currentDocument = currentDocument;
+  state.watchedPath = currentDocument.path;
+  const watchedPath = state.watchedPath;
   watchFile(watchedPath, { interval: 750 }, (current) => {
-    if (!currentDocument || currentDocument.path !== watchedPath) return;
+    const watchedDocument = state.currentDocument;
+    if (!watchedDocument || watchedDocument.path !== watchedPath) return;
     const next = { mtimeMs: current.mtimeMs, size: current.size };
-    if (current.nlink > 0 && !isSameDiskVersion(next, currentDocument.diskVersion)) {
-      mainWindow?.webContents.send('document:external-change', {
-        path: currentDocument.path,
+    if (current.nlink > 0 && !isSameDiskVersion(next, watchedDocument.diskVersion)) {
+      state.window.webContents.send('document:external-change', {
+        path: watchedDocument.path,
         diskVersion: next,
       });
     }
@@ -654,7 +723,7 @@ async function exportCurrentPdf(
 }
 
 function sendCommand(command: AppCommand) {
-  mainWindow?.webContents.send('app:command', command);
+  focusedState()?.window.webContents.send('app:command', command);
 }
 
 function installMenu() {
@@ -662,8 +731,12 @@ function installMenu() {
     {
       label: 'File',
       submenu: [
+        { label: 'New Window', accelerator: 'CmdOrCtrl+Shift+N', click: () => createWindow() },
         { label: 'New', accelerator: 'CmdOrCtrl+N', click: () => sendCommand('new-document') },
-        { label: 'Open…', accelerator: 'CmdOrCtrl+O', click: () => void chooseAndOpen() },
+        { label: 'Open…', accelerator: 'CmdOrCtrl+O', click: () => {
+          const state = focusedState();
+          if (state) void withWindowState(state, () => chooseAndOpen());
+        } },
         { type: 'separator' },
         { id: 'save', label: 'Save', accelerator: 'CmdOrCtrl+S', click: () => sendCommand('save') },
         { label: 'Save As…', accelerator: 'CmdOrCtrl+Shift+S', click: () => sendCommand('save-as') },
@@ -695,12 +768,14 @@ function installMenu() {
   Menu.setApplicationMenu(menu);
 }
 
-function createWindow() {
-  closeAfterConfirmation = false;
-  rendererTabs = [];
-  mainWindow = new BrowserWindow({
+function createWindow(
+  position: { x: number; y: number } | null = null,
+  initialDocument: DocumentSnapshot | null = null,
+) {
+  const createdWindow = new BrowserWindow({
     width: 1080,
     height: 820,
+    ...(position ? { x: position.x, y: position.y } : {}),
     minWidth: 520,
     minHeight: 420,
     backgroundColor: '#f7f7f5',
@@ -713,23 +788,37 @@ function createWindow() {
       sandbox: true,
     },
   });
+  const state: WindowState = {
+    window: createdWindow,
+    currentDocument: initialDocument,
+    activeRoot: initialDocument ? path.dirname(initialDocument.path) : null,
+    watchedPath: null,
+    closeAfterConfirmation: false,
+    rendererTabs: [],
+  };
+  const webContentsId = createdWindow.webContents.id;
+  windowStates.set(webContentsId, state);
+  mainWindow = createdWindow;
 
-  mainWindow.once('ready-to-show', () => mainWindow?.show());
-  mainWindow.on('close', (event) => {
-    if (closeAfterConfirmation) return;
-    const dirtyTabs = rendererTabs.filter((tab) => tab.dirty);
-    if (dirtyTabs.length === 0 && currentDocument && isDirty(currentDocument)) {
+  createdWindow.once('ready-to-show', () => createdWindow.show());
+  createdWindow.on('focus', () => {
+    mainWindow = createdWindow;
+  });
+  createdWindow.on('close', (event) => {
+    if (state.closeAfterConfirmation) return;
+    const dirtyTabs = state.rendererTabs.filter((tab) => tab.dirty);
+    if (dirtyTabs.length === 0 && state.currentDocument && isDirty(state.currentDocument)) {
       dirtyTabs.push({
-        name: currentDocument.name,
-        path: currentDocument.path,
+        name: state.currentDocument.name,
+        path: state.currentDocument.path,
         dirty: true,
-        isUntitled: currentDocument.isUntitled,
+        isUntitled: state.currentDocument.isUntitled,
       });
     }
     if (dirtyTabs.length === 0) return;
     event.preventDefault();
     const names = dirtyTabs.map((tab) => tab.name).join('\n');
-    void dialog.showMessageBox(mainWindow!, {
+    void dialog.showMessageBox(createdWindow, {
       type: 'warning',
       message: '바뀐 내용을 저장하시겠습니까?',
       detail: names,
@@ -739,33 +828,47 @@ function createWindow() {
     }).then(async ({ response }) => {
       if (response === 0) return;
       if (response === 1) {
-        await Promise.all(rendererTabs
+        await Promise.all(state.rendererTabs
           .filter((tab) => tab.isUntitled)
           .map((tab) => discardDraftBundle(
             path.join(app.getPath('userData'), 'drafts'),
             tab.path,
           )));
-        closeAfterConfirmation = true;
-        mainWindow?.close();
+        state.closeAfterConfirmation = true;
+        createdWindow.close();
         return;
       }
-      mainWindow?.webContents.send('app:save-before-close');
+      createdWindow.webContents.send('app:save-before-close');
     }).catch((error) => dialog.showErrorBox('창을 닫지 못했습니다', String(error)));
+  });
+  createdWindow.on('closed', () => {
+    if (state.watchedPath) unwatchFile(state.watchedPath);
+    windowStates.delete(webContentsId);
+    if (mainWindow === createdWindow) mainWindow = BrowserWindow.getAllWindows()[0] ?? null;
   });
 
   const devServer = process.env.VITE_DEV_SERVER_URL;
-  if (devServer) void mainWindow.loadURL(devServer);
-  else void mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+  if (devServer) void createdWindow.loadURL(devServer);
+  else void createdWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+  return createdWindow;
 }
 
 function installIpc() {
-  ipcMain.handle('document:get', () => currentDocument);
-  ipcMain.handle('document:new', () => createNewDocument());
-  ipcMain.handle('document:activate', (_event, { document, text, revision }) =>
-    activateDocument(document, text, revision),
-  );
-  ipcMain.on('tabs:update-state', (_event, tabs: TabStateSummary[]) => {
-    rendererTabs = Array.isArray(tabs)
+  ipcMain.handle('document:get', (event) => stateForWebContentsId(event.sender.id)?.currentDocument ?? null);
+  ipcMain.handle('document:new', (event) => {
+    const state = stateForWebContentsId(event.sender.id);
+    return state ? withWindowState(state, () => createNewDocument()) : null;
+  });
+  ipcMain.handle('document:activate', (event, { document, text, revision }) => {
+    const state = stateForWebContentsId(event.sender.id);
+    return state
+      ? withWindowState(state, () => activateDocument(document, text, revision))
+      : document;
+  });
+  ipcMain.on('tabs:update-state', (event, tabs: TabStateSummary[]) => {
+    const state = stateForWebContentsId(event.sender.id);
+    if (!state) return;
+    state.rendererTabs = Array.isArray(tabs)
       ? tabs.map((tab) => ({
         name: String(tab.name),
         path: String(tab.path),
@@ -774,25 +877,98 @@ function installIpc() {
       }))
       : [];
   });
+  ipcMain.on('tabs:register-transfer', (event, { transferId, tab }) => {
+    if (typeof transferId !== 'string' || !tab || typeof tab.id !== 'string') return;
+    pendingTabTransfers.set(transferId, {
+      sourceWebContentsId: event.sender.id,
+      tab: tab as TransferableTab,
+      claimedByWebContentsId: null,
+      expiresAt: Date.now() + 60_000,
+    });
+    setTimeout(() => {
+      const pending = pendingTabTransfers.get(transferId);
+      if (pending && pending.expiresAt <= Date.now()) pendingTabTransfers.delete(transferId);
+    }, 60_500);
+  });
+  ipcMain.handle('tabs:claim-transfer', (event, transferId: string) => {
+    const transfer = pendingTabTransfers.get(transferId);
+    if (!transfer || transfer.expiresAt < Date.now()) {
+      pendingTabTransfers.delete(transferId);
+      return null;
+    }
+    if (transfer.sourceWebContentsId === event.sender.id || transfer.claimedByWebContentsId !== null) {
+      return null;
+    }
+    transfer.claimedByWebContentsId = event.sender.id;
+    return { transferId, tab: transfer.tab };
+  });
+  ipcMain.on('tabs:complete-transfer', (event, transferId: string) => {
+    const transfer = pendingTabTransfers.get(transferId);
+    if (!transfer || transfer.claimedByWebContentsId !== event.sender.id) return;
+    const source = stateForWebContentsId(transfer.sourceWebContentsId)?.window;
+    source?.webContents.send('tabs:transfer-completed', transfer.tab.id);
+    pendingTabTransfers.delete(transferId);
+  });
+  ipcMain.on('tabs:cancel-transfer', (event, transferId: string) => {
+    const transfer = pendingTabTransfers.get(transferId);
+    if (transfer?.sourceWebContentsId === event.sender.id && transfer.claimedByWebContentsId === null) {
+      pendingTabTransfers.delete(transferId);
+    }
+  });
+  ipcMain.on('tabs:detach-to-window', (event, { transferId, x, y }) => {
+    const transfer = pendingTabTransfers.get(transferId);
+    if (!transfer || transfer.sourceWebContentsId !== event.sender.id || transfer.claimedByWebContentsId !== null) return;
+    const detachedWindow = createWindow({
+      x: Math.round(Number(x) - 120),
+      y: Math.round(Number(y) - 18),
+    });
+    transfer.claimedByWebContentsId = detachedWindow.webContents.id;
+    detachedWindow.webContents.once('did-finish-load', () => {
+      detachedWindow.webContents.send('tabs:transfer-incoming', {
+        transferId,
+        tab: transfer.tab,
+      });
+    });
+  });
+  ipcMain.on('app:close-empty-window', (event) => {
+    const state = stateForWebContentsId(event.sender.id);
+    if (!state || state.rendererTabs.length > 0) return;
+    state.closeAfterConfirmation = true;
+    state.window.close();
+  });
   // invoke의 반환값으로 renderer가 직접 문서를 설치하므로 opened 이벤트를
   // 함께 보내지 않는다. 두 경로가 겹치면 showDocument가 같은 문서를 두 번
   // 초기화하여 진행 중 Preview를 무효화한다.
-  ipcMain.handle('document:open', () => chooseAndOpen(false));
-  ipcMain.on('document:update-text', (_event, { text, revision }) => {
-    if (currentDocument) currentDocument = applyTextRevision(currentDocument, text, revision);
+  ipcMain.handle('document:open', (event) => {
+    const state = stateForWebContentsId(event.sender.id);
+    return state ? withWindowState(state, () => chooseAndOpen(false)) : null;
   });
-  ipcMain.handle('document:render', (_event, { text, revision, documentPath }) =>
-    renderCurrent(text, revision, documentPath),
-  );
-  ipcMain.handle('document:save', async (_event, { text, revision }): Promise<SaveResult> => {
-    return saveCurrentDocument(text, revision);
+  ipcMain.on('document:update-text', (event, { text, revision }) => {
+    const state = stateForWebContentsId(event.sender.id);
+    if (!state) return;
+    void withWindowState(state, () => {
+      if (currentDocument) currentDocument = applyTextRevision(currentDocument, text, revision);
+    });
   });
-  ipcMain.handle('document:save-as', async (_event, { text, revision }): Promise<SaveResult> => {
-    return saveDocumentAs(text, revision);
+  ipcMain.handle('document:render', (event, { text, revision, documentPath }) => {
+    const state = stateForWebContentsId(event.sender.id);
+    if (!state) throw new Error('The window no longer exists.');
+    return withWindowState(state, () => renderCurrent(text, revision, documentPath));
+  });
+  ipcMain.handle('document:save', async (event, { text, revision }): Promise<SaveResult> => {
+    const state = stateForWebContentsId(event.sender.id);
+    return state ? withWindowState(state, () => saveCurrentDocument(text, revision)) : { canceled: true };
+  });
+  ipcMain.handle('document:save-as', async (event, { text, revision }): Promise<SaveResult> => {
+    const state = stateForWebContentsId(event.sender.id);
+    return state ? withWindowState(state, () => saveDocumentAs(text, revision)) : { canceled: true };
   });
   ipcMain.handle(
     'document:save-tab',
-    async (_event, { document, text, revision }): Promise<SaveResult> => {
+    async (event, { document, text, revision }): Promise<SaveResult> => {
+      const state = stateForWebContentsId(event.sender.id);
+      if (!state) return { canceled: true };
+      return withWindowState(state, async () => {
       const wasCurrent = currentDocument?.path === document.path;
       const result = await saveDocumentSnapshot(document, text, revision);
       if (wasCurrent && !result.canceled && result.document) {
@@ -801,10 +977,13 @@ function installIpc() {
         watchCurrentDocument();
       }
       return result;
+      });
     },
   );
-  ipcMain.handle('document:confirm-close', async (_event, name: string): Promise<CloseDecision> => {
-    const { response } = await dialog.showMessageBox(mainWindow!, {
+  ipcMain.handle('document:confirm-close', async (event, name: string): Promise<CloseDecision> => {
+    const parent = stateForWebContentsId(event.sender.id)?.window;
+    if (!parent) return 'cancel';
+    const { response } = await dialog.showMessageBox(parent, {
       type: 'warning',
       message: `${name}의 변경 내용을 저장하시겠습니까?`,
       detail: '저장하지 않은 내용은 완전히 잃게 됩니다.',
@@ -821,20 +1000,33 @@ function installIpc() {
       document.path,
     );
   });
-  ipcMain.on('app:finish-window-close', (_event, saved: boolean) => {
-    if (!saved) return;
-    closeAfterConfirmation = true;
-    mainWindow?.close();
+  ipcMain.on('app:finish-window-close', (event, saved: boolean) => {
+    const state = stateForWebContentsId(event.sender.id);
+    if (!saved || !state) return;
+    state.closeAfterConfirmation = true;
+    state.window.close();
   });
-  ipcMain.handle('document:export-pdf', (_event, { text, revision, documentPath }) =>
-    exportCurrentPdf(text, revision, documentPath),
-  );
-  ipcMain.handle('document:paste-clipboard-image', () => pasteClipboardImage());
-  ipcMain.handle('document:reload', async () => {
-    if (!currentDocument || currentDocument.isUntitled) return currentDocument;
-    return openPath(currentDocument.path, false);
+  ipcMain.handle('document:export-pdf', (event, { text, revision, documentPath }) => {
+    const state = stateForWebContentsId(event.sender.id);
+    return state
+      ? withWindowState(state, () => exportCurrentPdf(text, revision, documentPath))
+      : { canceled: true };
   });
-  ipcMain.handle('document:open-link', async (_event, href: string) => {
+  ipcMain.handle('document:paste-clipboard-image', (event) => {
+    const state = stateForWebContentsId(event.sender.id);
+    return state ? withWindowState(state, () => pasteClipboardImage()) : { canceled: true };
+  });
+  ipcMain.handle('document:reload', async (event) => {
+    const state = stateForWebContentsId(event.sender.id);
+    if (!state) return null;
+    return withWindowState(state, async () => {
+      if (!currentDocument || currentDocument.isUntitled) return currentDocument;
+      return openPath(currentDocument.path, false);
+    });
+  });
+  ipcMain.handle('document:open-link', async (event, href: string) => {
+    const state = stateForWebContentsId(event.sender.id);
+    if (state) selectWindowState(state);
     const decodedHref = decodeURIComponent(href);
     const localPath = pathFromResourceUrl(decodedHref);
     if (localPath) {
@@ -870,11 +1062,12 @@ if (!hasLock) {
 } else {
   app.on('second-instance', (_event, argv) => {
     const markdownPath = markdownPathFromArgs(argv);
-    if (markdownPath) {
-      void openPath(path.resolve(markdownPath));
+    const state = focusedState();
+    if (markdownPath && state) {
+      void withWindowState(state, () => openPath(path.resolve(markdownPath)));
     }
-    mainWindow?.show();
-    mainWindow?.focus();
+    state?.window.show();
+    state?.window.focus();
   });
 
   app.whenReady().then(async () => {
@@ -901,12 +1094,17 @@ if (!hasLock) {
     installIpc();
     installMenu();
     const markdownPath = markdownPathFromArgs(process.argv);
-    if (markdownPath) await openPath(path.resolve(markdownPath), false);
-    createWindow();
+    const initialDocument = markdownPath
+      ? await readDocument(path.resolve(markdownPath))
+      : null;
+    createWindow(null, initialDocument);
   });
 
   app.on('before-quit', () => {
-    stopWatching();
+    for (const state of windowStates.values()) {
+      if (state.watchedPath) unwatchFile(state.watchedPath);
+      state.watchedPath = null;
+    }
   });
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
