@@ -64,10 +64,20 @@ button { font: inherit; }
 .notice[hidden] { display: none; }
 .notice button { margin-left: 6px; padding: 5px 10px; border: 1px solid #c8ad62; border-radius: 5px; background: #fff9e8; cursor: pointer; }
 
-.empty-state, .viewer-surface, .editor-surface { grid-row: 3; min-height: 0; }
+.empty-state, .viewer-surface, .editor-surface {
+  grid-row: 3;
+  grid-column: 1;
+  min-width: 0;
+  min-height: 0;
+}
 .shell:not([data-surface="empty"]) .empty-state,
 .shell:not([data-surface="viewer"]) .viewer-surface,
 .shell:not([data-surface="editor"]) .editor-surface { display: none; }
+.shell[data-preview-positioning="true"] .viewer-surface {
+  display: block;
+  visibility: hidden;
+}
+.shell[data-preview-positioning="true"] .editor-surface { display: block; }
 
 .empty-state {
   display: flex;

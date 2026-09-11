@@ -81,6 +81,7 @@ let surface: 'empty' | 'viewer' | 'editor' = 'empty';
 let previewGeneration = 0;
 let previewTimer: number | null = null;
 let previewError: { revision: number; message: string } | null = null;
+let previewPositionRequest = 0;
 
 const PREVIEW_DEBOUNCE_MS = 700;
 const previewCoordinator = new PreviewRenderCoordinator(renderRevision);
@@ -261,19 +262,66 @@ async function ensurePreview(targetRevision: number): Promise<boolean> {
   return ready;
 }
 
-function revealPreview(target: ViewportAnchor) {
-  if (!model) return;
+function nextAnimationFrame(): Promise<void> {
+  return new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+}
+
+function requestPreviewPosition(
+  target: ViewportAnchor,
+  targetRevision: number,
+): Promise<boolean> {
+  if (!model) return Promise.resolve(false);
   const revealed = clampAnchor(target, model.getLineCount());
-  const reveal = () => frame.contentWindow?.postMessage({
-    command: 'changeTextEditorSelection',
-    line: Math.max(0, revealed.sourceLine - 1),
-    topRatio: revealed.yRatio,
-    forced: true,
-  }, '*');
-  window.requestAnimationFrame(() => {
-    reveal();
-    window.setTimeout(reveal, 80);
+  const requestId = ++previewPositionRequest;
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      window.removeEventListener('message', handleMessage);
+      window.clearTimeout(timeout);
+    };
+    const handleMessage = (event: MessageEvent) => {
+      if (
+        event.source !== frame.contentWindow
+        || event.data?.source !== 'crossnote'
+        || event.data?.type !== 'marktex:preview-positioned'
+        || event.data?.revision !== targetRevision
+        || event.data?.requestId !== requestId
+      ) return;
+      cleanup();
+      resolve(true);
+    };
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      resolve(false);
+    }, 1000);
+    window.addEventListener('message', handleMessage);
+    frame.contentWindow?.postMessage({
+      command: 'marktex:position-preview',
+      sourceLine: revealed.sourceLine,
+      topRatio: revealed.yRatio,
+      requestId,
+    }, '*');
   });
+}
+
+async function showPositionedPreview(
+  target: ViewportAnchor,
+  targetRevision: number,
+  generation: number,
+) {
+  // Editor를 그대로 둔 채 Viewer에 실제 크기만 부여한다. 위치가 확정된 뒤
+  // 두 surface를 같은 frame에서 맞바꿔 line 1이 잠깐 보이지 않게 한다.
+  shell.dataset.previewPositioning = 'true';
+  await nextAnimationFrame();
+  await requestPreviewPosition(target, targetRevision);
+  if (
+    generation !== previewGeneration
+    || previewCoordinator.readyRevision !== targetRevision
+  ) {
+    delete shell.dataset.previewPositioning;
+    return;
+  }
+  setSurface('viewer');
+  delete shell.dataset.previewPositioning;
 }
 
 async function showDocument(documentSnapshot: DocumentSnapshot) {
@@ -292,7 +340,9 @@ async function showDocument(documentSnapshot: DocumentSnapshot) {
   updateChrome();
   setSurface('viewer');
   const ready = await ensurePreview(revision);
-  if (ready && generation === previewGeneration) revealPreview(anchor);
+  if (ready && generation === previewGeneration) {
+    await requestPreviewPosition(anchor, revision);
+  }
 }
 
 /**
@@ -353,15 +403,18 @@ async function enterViewer() {
   anchor = editorViewportAnchor();
   publishAnchor();
   cancelScheduledPreview();
-  setSurface('viewer');
   const generation = previewGeneration;
   const targetRevision = revision;
   const ready = await ensurePreview(targetRevision);
-  if (
-    ready
-    && generation === previewGeneration
-    && previewCoordinator.readyRevision === revision
-  ) revealPreview(anchor);
+  if (generation !== previewGeneration) return;
+  const availableRevision = ready
+    ? targetRevision
+    : previewCoordinator.readyRevision;
+  if (availableRevision === null) {
+    setSurface('viewer');
+    return;
+  }
+  await showPositionedPreview(anchor, availableRevision, generation);
 }
 
 async function save(saveAs = false) {
@@ -380,7 +433,7 @@ async function save(saveAs = false) {
       else if (surface === 'viewer') {
         const target = revision;
         void ensurePreview(target).then((ready) => {
-          if (ready && target === revision) revealPreview(anchor);
+          if (ready && target === revision) void requestPreviewPosition(anchor, target);
         });
       }
     }

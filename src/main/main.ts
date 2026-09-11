@@ -202,8 +202,16 @@ function bridgeSource(): string {
   return bridgeSourceCache;
 }
 
-function previewBridgeScript(totalLines: number, documentIsBlank: boolean): string {
-  const config = JSON.stringify({ totalLineCount: totalLines, documentIsBlank });
+function previewBridgeScript(
+  totalLines: number,
+  documentIsBlank: boolean,
+  revision: number,
+): string {
+  const config = JSON.stringify({
+    totalLineCount: totalLines,
+    documentIsBlank,
+    revision,
+  });
   return `<script>window.__marktexPreview = ${config};</script>
 <script>${bridgeSource()}</script>`;
 }
@@ -240,7 +248,7 @@ async function renderCurrent(
     config,
     vscodePreviewPanel: fakePanel,
     head: `<base href="${resourceUrl(path.join(path.dirname(renderPath), path.sep))}">`,
-    scripts: previewBridgeScript(lineCount(text), text.trim().length === 0),
+    scripts: previewBridgeScript(lineCount(text), text.trim().length === 0, revision),
     styles: `<style>
       [data-source-line] { cursor: text; }
       .topbar, footer, .footer { display: none !important; }

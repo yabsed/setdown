@@ -16,6 +16,7 @@ type BridgeConfig = {
   totalLineCount: number;
   documentIsBlank: boolean;
   initialHtml: string;
+  revision: number;
 };
 
 declare global {
@@ -29,6 +30,7 @@ const config: BridgeConfig = {
   totalLineCount: Math.max(1, Number(window.__marktexPreview?.totalLineCount) || 1),
   documentIsBlank: !!window.__marktexPreview?.documentIsBlank,
   initialHtml: document.body.getAttribute('data-html') || '',
+  revision: Number(window.__marktexPreview?.revision) || 0,
 };
 
 const ANCHOR_SELECTOR = '[data-source-line], [data-source-start], [data-source-lines]';
@@ -149,6 +151,40 @@ function getAtlas(): AtlasEntry[] {
 
 function invalidateAtlas() {
   atlasStale = true;
+}
+
+function positionPreview(sourceLine: number, topRatio: number) {
+  invalidateAtlas();
+  const entries = getAtlas();
+  const ratio = Math.min(1, Math.max(0, topRatio));
+  let targetTop: number;
+
+  if (entries.length > 0) {
+    const containing = entries.find((entry) =>
+      entry.line <= sourceLine && (entry.endLine ?? entry.line) >= sourceLine,
+    );
+    const nearest = containing ?? entries.reduce((best, entry) =>
+      Math.abs(entry.line - sourceLine) < Math.abs(best.line - sourceLine) ? entry : best,
+    );
+    targetTop = nearest.rect.top;
+  } else {
+    const documentHeight = Math.max(
+      document.documentElement.scrollHeight || 0,
+      window.innerHeight || 1,
+    );
+    const sourceRatio = config.totalLineCount <= 1
+      ? 0
+      : (sourceLine - 1) / (config.totalLineCount - 1);
+    targetTop = documentHeight * sourceRatio;
+  }
+
+  const maximum = Math.max(
+    0,
+    (document.documentElement.scrollHeight || 0) - (window.innerHeight || 1),
+  );
+  const scrollTop = Math.min(maximum, Math.max(0, targetTop - window.innerHeight * ratio));
+  document.documentElement.scrollTop = scrollTop;
+  document.body.scrollTop = scrollTop;
 }
 
 /** 문서 좌표로 저장한 색인을 현재 화면 좌표로 옮긴다. */
@@ -316,8 +352,49 @@ document.addEventListener(
 
 // ── host의 요청: 지금 보고 있는 화면의 anchor ────────────────────────
 window.addEventListener('message', (event) => {
-  const data = event.data as { command?: string; topRatio?: number } | null;
-  if (!data || data.command !== 'marktex:request-anchor') return;
+  const data = event.data as {
+    command?: string;
+    topRatio?: number;
+    sourceLine?: number;
+    requestId?: number;
+  } | null;
+  if (!data) return;
+  if (data.command === 'marktex:position-preview') {
+    const sourceLine = Math.min(
+      config.totalLineCount,
+      Math.max(1, Number(data.sourceLine) || 1),
+    );
+    const ratio = Number.isFinite(data.topRatio) ? Number(data.topRatio) : GOLDEN_TOP_RATIO;
+    const preview = document.querySelector(PREVIEW_SELECTOR);
+    let settleTimer: number | null = null;
+    let observer: MutationObserver | null = null;
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      if (settleTimer !== null) window.clearTimeout(settleTimer);
+      observer?.disconnect();
+      positionPreview(sourceLine, ratio);
+      window.requestAnimationFrame(() => send({
+        type: 'marktex:preview-positioned',
+        revision: config.revision,
+        requestId: data.requestId,
+      }));
+    };
+    const applyAndSettle = () => {
+      if (finished) return;
+      positionPreview(sourceLine, ratio);
+      if (settleTimer !== null) window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(finish, 180);
+    };
+    if (preview) {
+      observer = new MutationObserver(applyAndSettle);
+      observer.observe(preview, { childList: true, subtree: true });
+    }
+    applyAndSettle();
+    return;
+  }
+  if (data.command !== 'marktex:request-anchor') return;
   const ratio = Number.isFinite(data.topRatio) ? Number(data.topRatio) : GOLDEN_TOP_RATIO;
   const clientY = (window.innerHeight || 1) * ratio;
   const clientX = (window.innerWidth || 1) / 2;
