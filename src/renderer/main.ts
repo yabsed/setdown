@@ -17,23 +17,16 @@ window.MonacoEnvironment = {
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <section class="shell" data-surface="empty" data-tabs="false">
-    <header class="titlebar">
-      <button class="icon-button open-button" type="button" title="Markdown 파일 열기 (Ctrl/Cmd+O)">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H10l2 2h6.5A2.5 2.5 0 0 1 21 8.5v8A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5v-10Zm2.5-.75a.75.75 0 0 0-.75.75v10c0 .414.336.75.75.75h13a.75.75 0 0 0 .75-.75v-8a.75.75 0 0 0-.75-.75h-7.225l-2-2H5.5Z"/></svg>
-      </button>
-      <div class="document-title">
-        <img class="title-logo" src="./setdown-mark.svg" alt="" />
-        <span class="filename">Setdown</span><span class="dirty-dot" aria-label="저장되지 않은 변경">•</span>
-      </div>
-      <button class="mode-toggle" type="button" hidden>
-        <svg class="mode-icon mode-icon-edit" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.862 3.487a2.25 2.25 0 0 1 3.182 3.182L8.41 18.303a2 2 0 0 1-.878.507l-3.42 1.026 1.026-3.42a2 2 0 0 1 .507-.878L16.862 3.487Zm1.06 1.06L6.705 15.765a.5.5 0 0 0-.127.22l-.538 1.792 1.792-.538a.5.5 0 0 0 .22-.127L19.104 5.608a.75.75 0 0 0-1.182-1.06Z"/></svg>
-        <svg class="mode-icon mode-icon-view" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c4.75 0 8.27 3.13 9.66 6.35a1.62 1.62 0 0 1 0 1.3C20.27 15.87 16.75 19 12 19s-8.27-3.13-9.66-6.35a1.62 1.62 0 0 1 0-1.3C3.73 8.13 7.25 5 12 5Zm0 1.5c-4 0-7 2.63-8.28 5.45a.12.12 0 0 0 0 .1C5 14.87 8 17.5 12 17.5s7-2.63 8.28-5.45a.12.12 0 0 0 0-.1C19 9.13 16 6.5 12 6.5Zm0 2.25A3.25 3.25 0 1 1 12 15.25 3.25 3.25 0 0 1 12 8.75Zm0 1.5A1.75 1.75 0 1 0 12 13.75 1.75 1.75 0 0 0 12 10.25Z"/></svg>
-      </button>
-    </header>
-
     <nav class="tab-strip" aria-label="열린 문서" hidden>
       <div class="tab-list" role="tablist"></div>
-      <button class="new-tab-button" type="button" title="새 문서 (Ctrl/Cmd+N)" aria-label="새 문서">+</button>
+      <div class="tab-actions">
+        <button class="new-tab-button" type="button" title="새 문서 (Ctrl/Cmd+N)" aria-label="새 문서">+</button>
+        <span class="tab-action-divider" aria-hidden="true"></span>
+        <button class="mode-toggle" type="button" hidden>
+          <svg class="mode-icon mode-icon-edit" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.862 3.487a2.25 2.25 0 0 1 3.182 3.182L8.41 18.303a2 2 0 0 1-.878.507l-3.42 1.026 1.026-3.42a2 2 0 0 1 .507-.878L16.862 3.487Zm1.06 1.06L6.705 15.765a.5.5 0 0 0-.127.22l-.538 1.792 1.792-.538a.5.5 0 0 0 .22-.127L19.104 5.608a.75.75 0 0 0-1.182-1.06Z"/></svg>
+          <svg class="mode-icon mode-icon-view" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c4.75 0 8.27 3.13 9.66 6.35a1.62 1.62 0 0 1 0 1.3C20.27 15.87 16.75 19 12 19s-8.27-3.13-9.66-6.35a1.62 1.62 0 0 1 0-1.3C3.73 8.13 7.25 5 12 5Zm0 1.5c-4 0-7 2.63-8.28 5.45a.12.12 0 0 0 0 .1C5 14.87 8 17.5 12 17.5s7-2.63 8.28-5.45a.12.12 0 0 0 0-.1C19 9.13 16 6.5 12 6.5Zm0 2.25A3.25 3.25 0 1 1 12 15.25 3.25 3.25 0 0 1 12 8.75Zm0 1.5A1.75 1.75 0 1 0 12 13.75 1.75 1.75 0 0 0 12 10.25Z"/></svg>
+        </button>
+      </div>
     </nav>
 
     <div class="notice" hidden>
@@ -77,8 +70,6 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 `;
 
 const shell = document.querySelector<HTMLElement>('.shell')!;
-const filename = document.querySelector<HTMLElement>('.filename')!;
-const dirtyDot = document.querySelector<HTMLElement>('.dirty-dot')!;
 const modeToggle = document.querySelector<HTMLButtonElement>('.mode-toggle')!;
 const previewFrames = document.querySelector<HTMLElement>('.preview-frames')!;
 let frame = document.createElement('iframe');
@@ -327,14 +318,10 @@ function cycleTab(direction: -1 | 1) {
 
 function updateChrome() {
   if (!currentDocument) {
-    filename.textContent = 'Setdown';
-    dirtyDot.hidden = true;
     document.title = 'Setdown';
     return;
   }
   const dirty = revision !== currentDocument.savedRevision;
-  filename.textContent = currentDocument.name;
-  dirtyDot.hidden = !dirty;
   document.title = `${dirty ? '• ' : ''}${currentDocument.name} — Setdown`;
   const tab = activeTab();
   if (tab) {

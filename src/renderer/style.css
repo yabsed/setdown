@@ -12,17 +12,17 @@ button { font: inherit; }
 
 .shell {
   display: grid;
-  grid-template-rows: 42px 36px auto 1fr;
+  grid-template-rows: 40px auto 1fr;
   width: 100%;
   height: 100%;
   background: #f7f7f5;
 }
-.shell[data-tabs="false"] { grid-template-rows: 42px 0 auto 1fr; }
+.shell[data-tabs="false"] { grid-template-rows: 0 auto 1fr; }
 
 .tab-strip {
   display: flex;
   min-width: 0;
-  padding: 5px 8px 0;
+  padding: 6px 8px 0;
   border-bottom: 1px solid #d8d8d2;
   background: #ecece8;
   -webkit-app-region: drag;
@@ -76,45 +76,14 @@ button { font: inherit; }
   -webkit-app-region: no-drag;
 }
 .new-tab-button:hover { background: rgba(255,255,255,.7); }
-
-.titlebar {
-  display: grid;
-  grid-template-columns: 48px 1fr 68px;
-  align-items: center;
-  border-bottom: 1px solid #deded9;
-  background: rgba(250, 250, 248, 0.94);
-  -webkit-app-region: drag;
-  user-select: none;
-  z-index: 20;
-}
-
-.icon-button {
-  width: 30px;
-  height: 30px;
-  margin-left: 9px;
-  padding: 6px;
-  color: #696966;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  cursor: pointer;
-  -webkit-app-region: no-drag;
-}
-.icon-button:hover { color: #20201f; background: #ecece8; }
-.icon-button svg { width: 18px; fill: currentColor; }
-
-.document-title { display: flex; align-items: center; justify-self: center; min-width: 0; font-size: 13px; font-weight: 550; }
-.title-logo { width: 17px; height: 17px; margin-right: 7px; border-radius: 5px; }
-.filename { display: inline-block; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
-.dirty-dot { margin-left: 5px; color: #d26a37; font-size: 18px; line-height: 10px; }
+.tab-actions { display: flex; align-items: center; flex: 0 0 auto; height: 28px; margin-left: 4px; -webkit-app-region: no-drag; }
+.tab-action-divider { width: 1px; height: 17px; margin: 0 6px; background: #d2d2cc; }
 .mode-toggle {
   display: grid;
   place-items: center;
-  justify-self: end;
-  width: 30px;
-  height: 30px;
-  margin-right: 10px;
-  padding: 6px;
+  width: 28px;
+  height: 28px;
+  padding: 5px;
   color: #696966;
   border: 0;
   border-radius: 7px;
@@ -144,7 +113,7 @@ button { font: inherit; }
 .notice button { margin-left: 6px; padding: 5px 10px; border: 1px solid #c8ad62; border-radius: 5px; background: #fff9e8; cursor: pointer; }
 
 .empty-state, .viewer-surface, .editor-surface {
-  grid-row: 4;
+  grid-row: 3;
   grid-column: 1;
   min-width: 0;
   min-height: 0;
@@ -243,7 +212,6 @@ button { font: inherit; }
 .render-error button { padding: 7px 11px; border: 1px solid #bbb; border-radius: 6px; background: white; cursor: pointer; }
 
 @media (max-width: 620px) {
-  .titlebar { grid-template-columns: 42px 1fr 52px; }
-  .mode-toggle { margin-right: 7px; }
+  .tab-action-divider { margin: 0 4px; }
   .viewer-hint, .editor-hint { display: none; }
 }
