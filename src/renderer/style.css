@@ -44,7 +44,8 @@ button { font: inherit; }
 .icon-button:hover { color: #20201f; background: #ecece8; }
 .icon-button svg { width: 18px; fill: currentColor; }
 
-.document-title { justify-self: center; min-width: 0; font-size: 13px; font-weight: 550; }
+.document-title { display: flex; align-items: center; justify-self: center; min-width: 0; font-size: 13px; font-weight: 550; }
+.title-logo { width: 17px; height: 17px; margin-right: 7px; border-radius: 5px; }
 .filename { display: inline-block; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 .dirty-dot { margin-left: 5px; color: #d26a37; font-size: 18px; line-height: 10px; }
 .mode-toggle {
@@ -106,8 +107,9 @@ button { font: inherit; }
   padding: 40px;
   text-align: center;
 }
-.empty-mark { display: grid; place-items: center; width: 62px; height: 62px; margin-bottom: 24px; color: #f6f3e9; border-radius: 16px; background: #333330; font-family: Georgia, serif; font-size: 35px; }
-.empty-state h1 { margin: 0 0 10px; font-family: Georgia, "Noto Serif KR", serif; font-size: clamp(25px, 4vw, 36px); font-weight: 500; }
+.empty-mark { width: 68px; height: 68px; margin-bottom: 15px; filter: drop-shadow(0 8px 18px rgba(45, 45, 42, .14)); }
+.wordmark { margin-bottom: 24px; color: #2d2d2a; font-family: Georgia, "Noto Serif KR", serif; font-size: 18px; font-weight: 600; letter-spacing: .01em; }
+.empty-state h1 { margin: 0 0 10px; font-family: Georgia, "Noto Serif KR", serif; font-size: clamp(25px, 4vw, 36px); font-weight: 500; letter-spacing: -.02em; }
 .empty-state p { max-width: 440px; margin: 0 0 28px; color: #74746e; line-height: 1.65; }
 .primary-button { padding: 10px 17px; color: white; border: 0; border-radius: 8px; background: #333330; cursor: pointer; }
 .primary-button:hover { background: #111110; }

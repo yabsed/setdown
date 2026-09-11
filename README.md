@@ -1,6 +1,8 @@
-# MarkTex
+# Setdown
 
-한 번에 Markdown 파일 하나를 아름답게 읽고 가볍게 수정하는 데스크톱 앱입니다. 렌더링은 Crossnote(Markdown Preview Enhanced의 core), 원문 편집은 Monaco Editor(VS Code의 editor)를 사용합니다.
+> **Write plain. Read beautifully.**
+
+한 번에 Markdown 파일 하나를 아름답게 읽고 가볍게 수정하는 데스크톱 앱입니다. Setdown은 복잡한 도구를 앞세우는 대신, 평문으로 쓰고 잘 조판된 문서로 읽는 흐름에 집중합니다. 렌더링은 Crossnote(Markdown Preview Enhanced의 core), 원문 편집은 Monaco Editor(VS Code의 editor)를 사용합니다.
 
 ## 사용법
 
@@ -23,7 +25,8 @@ npm start -- ./document.md
   커서가 10행에 있어도 300행을 읽고 있었다면 Viewer는 300행 근처를 보여 줍니다.
 - 더블 클릭한 높이는 반대편 화면에서도 유지됩니다. 화면 70% 높이의 문단을 눌렀다면
   Editor에서도 그 행이 70% 높이에 놓입니다.
-- `Ctrl/Cmd+S`는 저장, `Ctrl/Cmd+O`는 파일 열기, `Ctrl/Cmd+E`는 두 화면 전환입니다.
+- `Ctrl/Cmd+N`은 새 문서, `Ctrl/Cmd+O`는 파일 열기, `Ctrl/Cmd+S`는 저장,
+  `Ctrl/Cmd+E`는 두 화면 전환, `Ctrl/Cmd+Shift+P`는 PDF 내보내기입니다.
 
 ## 개발과 검증
 
@@ -41,7 +44,7 @@ Codex 실행 환경처럼 `ELECTRON_RUN_AS_NODE=1`이 설정된 셸에서는 Ele
 env -u ELECTRON_RUN_AS_NODE npm run test:e2e
 ```
 
-Crossnote의 code chunk, 문서별 `.crossnote` script/config, HTML5 embed는 신뢰하지 않은 파일을 안전하게 여는 제품 성격에 맞춰 비활성화돼 있습니다. Viewer는 앱과 다른 `marktex-preview:` origin에서 실행되며 로컬 자산은 현재 문서 폴더와 Crossnote 배포 자산으로 제한됩니다.
+Crossnote의 code chunk, 문서별 `.crossnote` script/config, HTML5 embed는 신뢰하지 않은 파일을 안전하게 여는 제품 성격에 맞춰 비활성화돼 있습니다. Viewer는 앱과 다른 내부 `marktex-preview:` origin에서 실행되며 로컬 자산은 현재 문서 폴더와 Crossnote 배포 자산으로 제한됩니다. 이 프로토콜 이름은 기존 문서 세션과의 호환성을 위해 유지되는 내부 식별자입니다.
 
 ## 화면을 기준으로 한 위치 변환
 

@@ -35,6 +35,8 @@ import type {
 import { applyTextRevision, isDirty, lineCount } from '../shared/document-state';
 import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
 
+app.setName('Setdown');
+
 protocol.registerSchemesAsPrivileged([
   {
     scheme: 'marktex-resource',
@@ -559,7 +561,7 @@ function createWindow() {
     minHeight: 420,
     backgroundColor: '#f7f7f5',
     show: false,
-    title: 'MarkTex',
+    title: 'Setdown',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,

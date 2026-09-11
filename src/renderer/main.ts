@@ -22,7 +22,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H10l2 2h6.5A2.5 2.5 0 0 1 21 8.5v8A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5v-10Zm2.5-.75a.75.75 0 0 0-.75.75v10c0 .414.336.75.75.75h13a.75.75 0 0 0 .75-.75v-8a.75.75 0 0 0-.75-.75h-7.225l-2-2H5.5Z"/></svg>
       </button>
       <div class="document-title">
-        <span class="filename">MarkTex</span><span class="dirty-dot" aria-label="저장되지 않은 변경">•</span>
+        <img class="title-logo" src="./setdown-mark.svg" alt="" />
+        <span class="filename">Setdown</span><span class="dirty-dot" aria-label="저장되지 않은 변경">•</span>
       </div>
       <button class="mode-toggle" type="button" hidden>
         <svg class="mode-icon mode-icon-edit" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.862 3.487a2.25 2.25 0 0 1 3.182 3.182L8.41 18.303a2 2 0 0 1-.878.507l-3.42 1.026 1.026-3.42a2 2 0 0 1 .507-.878L16.862 3.487Zm1.06 1.06L6.705 15.765a.5.5 0 0 0-.127.22l-.538 1.792 1.792-.538a.5.5 0 0 0 .22-.127L19.104 5.608a.75.75 0 0 0-1.182-1.06Z"/></svg>
@@ -39,8 +40,9 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </div>
 
     <section class="empty-state">
-      <div class="empty-mark">M</div>
-      <h1>한 편의 문서에 집중하세요.</h1>
+      <img class="empty-mark" src="./setdown-mark.svg" alt="Setdown" />
+      <div class="wordmark">Setdown</div>
+      <h1>Write plain. Read beautifully.</h1>
       <p>Markdown 파일을 아름답게 읽고, 더블 클릭해 바로 고칠 수 있습니다.</p>
       <div class="empty-actions">
         <button class="primary-button empty-new" type="button">새 문서</button>
@@ -146,15 +148,15 @@ function setSurface(next: typeof surface) {
 
 function updateChrome() {
   if (!currentDocument) {
-    filename.textContent = 'MarkTex';
+    filename.textContent = 'Setdown';
     dirtyDot.hidden = true;
-    document.title = 'MarkTex';
+    document.title = 'Setdown';
     return;
   }
   const dirty = revision !== currentDocument.savedRevision;
   filename.textContent = currentDocument.name;
   dirtyDot.hidden = !dirty;
-  document.title = `${dirty ? '• ' : ''}${currentDocument.name} — MarkTex`;
+  document.title = `${dirty ? '• ' : ''}${currentDocument.name} — Setdown`;
 }
 
 function installModel(documentSnapshot: DocumentSnapshot) {
