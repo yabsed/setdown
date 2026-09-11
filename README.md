@@ -17,6 +17,19 @@ npm start
 npm start -- ./document.md
 ```
 
+### Linux/GNOME에 설치
+
+다음 명령은 Setdown을 현재 사용자 영역에 설치하고 GNOME 앱 목록에 등록합니다.
+또한 `.md` 파일의 기본 앱을 Setdown으로 지정합니다. 관리자 권한은 필요하지 않습니다.
+
+```sh
+npm run install:linux
+```
+
+설치 후 GNOME 앱 화면에서 **Setdown**을 검색하거나, 파일 관리자에서 Markdown
+파일을 더블 클릭해 열 수 있습니다. 배포 파일만 만들려면 `npm run package:linux`를
+사용합니다(`release/`에 AppImage와 deb가 생성됩니다).
+
 - Viewer의 **어느 지점이든** 더블 클릭하면 Editor가 열립니다. 빈 파일, 수식, 그림,
   raw HTML, 문서 아래 여백도 예외가 아닙니다. 원문 위치를 정확히 알 수 없으면
   가장 설득력 있는 위치를 추정하며, 전환 자체가 취소되는 일은 없습니다.

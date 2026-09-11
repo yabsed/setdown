@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Setdown
+GenericName=Markdown Reader and Editor
+Comment=Write plain. Read beautifully.
+Exec=@APP_DIR@/setdown %F
+TryExec=@APP_DIR@/setdown
+Icon=setdown
+Terminal=false
+Categories=Office;TextEditor;Utility;
+Keywords=Markdown;Editor;Viewer;Writing;
+MimeType=text/markdown;text/x-markdown;
+StartupNotify=true
+StartupWMClass=Setdown
