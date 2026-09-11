@@ -57,7 +57,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </section>
 
     <section class="viewer-surface" aria-label="렌더링된 Markdown">
-      <iframe class="preview-frame" title="Markdown 미리보기" sandbox="allow-scripts allow-same-origin"></iframe>
+      <div class="preview-frames"></div>
       <div class="render-state" hidden>
         <div class="spinner"></div><span>문서를 조판하고 있습니다…</span>
       </div>
@@ -80,7 +80,8 @@ const shell = document.querySelector<HTMLElement>('.shell')!;
 const filename = document.querySelector<HTMLElement>('.filename')!;
 const dirtyDot = document.querySelector<HTMLElement>('.dirty-dot')!;
 const modeToggle = document.querySelector<HTMLButtonElement>('.mode-toggle')!;
-const frame = document.querySelector<HTMLIFrameElement>('.preview-frame')!;
+const previewFrames = document.querySelector<HTMLElement>('.preview-frames')!;
+let frame = document.createElement('iframe');
 const editorHost = document.querySelector<HTMLElement>('.editor-host')!;
 const renderState = document.querySelector<HTMLElement>('.render-state')!;
 const renderError = document.querySelector<HTMLElement>('.render-error')!;
@@ -98,6 +99,7 @@ type DocumentTab = {
   anchor: ViewportAnchor;
   previewUrl: string | null;
   previewRevision: number | null;
+  frame: HTMLIFrameElement;
   editorViewState: monaco.editor.ICodeEditorViewState | null;
 };
 
@@ -172,6 +174,15 @@ function activeTab() {
   return tabs.find((tab) => tab.id === activeTabId) ?? null;
 }
 
+function createPreviewFrame() {
+  const created = document.createElement('iframe');
+  created.className = 'preview-frame';
+  created.title = 'Markdown 미리보기';
+  created.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+  previewFrames.append(created);
+  return created;
+}
+
 function saveActiveTabState() {
   const tab = activeTab();
   if (!tab || !currentDocument || !model) return;
@@ -237,6 +248,8 @@ async function activateTab(tabId: string) {
   if (!next) return;
   const activation = ++tabActivation;
   saveActiveTabState();
+  const previousFrame = frame;
+  previousFrame.classList.remove('is-active');
   resetPreviewState();
   previewCoordinator = new PreviewRenderCoordinator(renderRevision);
   activeTabId = next.id;
@@ -245,30 +258,27 @@ async function activateTab(tabId: string) {
   revision = next.revision;
   surface = next.surface;
   anchor = next.anchor;
+  frame = next.frame;
+  frame.classList.add('is-active');
   editor.setModel(model);
   editor.restoreViewState(next.editorViewState);
   publishAnchor();
   notice.hidden = true;
+  if (next.previewRevision === revision && frame.src.startsWith('marktex-preview:')) {
+    previewCoordinator.readyRevision = revision;
+  }
+  updateChrome();
+  setSurface(next.surface);
   await window.marktex.activateDocument(currentDocument, model.getValue(), revision);
   if (activation !== tabActivation || activeTabId !== next.id) return;
-  updateChrome();
-  renderTabs();
 
-  if (next.previewUrl && next.previewRevision === revision) {
-    try {
-      await loadPreviewFrame(next.previewUrl);
-      if (activation !== tabActivation) return;
-      previewCoordinator.readyRevision = revision;
-      setSurface(next.surface);
-      if (next.surface === 'viewer') await requestPreviewPosition(anchor, revision);
-      return;
-    } catch {
-      next.previewUrl = null;
-      next.previewRevision = null;
-    }
+  // 이 탭의 iframe은 숨겨 두었을 뿐 파괴하지 않았다. 이미 조판된 DOM과
+  // scrollTop을 그대로 노출하므로 URL 재로드나 위치 재설정이 필요 없다.
+  if (previewCoordinator.readyRevision === revision) {
+    updatePreviewUi();
+    return;
   }
 
-  setSurface(next.surface);
   const ready = await ensurePreview(revision);
   if (ready && next.surface === 'viewer' && activation === tabActivation) {
     await requestPreviewPosition(anchor, revision);
@@ -285,6 +295,7 @@ async function closeTab(tabId: string) {
   }
   const wasActive = tab.id === activeTabId;
   tabs.splice(index, 1);
+  tab.frame.remove();
   if (!wasActive) {
     tab.model.dispose();
     renderTabs();
@@ -300,8 +311,8 @@ async function closeTab(tabId: string) {
   resetPreviewState();
   currentDocument = null;
   model = null;
+  frame = document.createElement('iframe');
   editor.setModel(null);
-  frame.removeAttribute('src');
   setSurface('empty');
   updateChrome();
   renderTabs();
@@ -400,11 +411,11 @@ function updatePreviewUi() {
   if (relevantError && previewError) renderErrorText.textContent = previewError.message;
 }
 
-function loadPreviewFrame(url: string): Promise<void> {
+function loadPreviewFrame(targetFrame: HTMLIFrameElement, url: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const cleanup = () => {
-      frame.removeEventListener('load', handleLoad);
-      frame.removeEventListener('error', handleError);
+      targetFrame.removeEventListener('load', handleLoad);
+      targetFrame.removeEventListener('error', handleError);
     };
     const handleLoad = () => {
       cleanup();
@@ -414,15 +425,17 @@ function loadPreviewFrame(url: string): Promise<void> {
       cleanup();
       reject(new Error('The preview frame could not load the rendered document.'));
     };
-    frame.addEventListener('load', handleLoad, { once: true });
-    frame.addEventListener('error', handleError, { once: true });
-    frame.src = url;
+    targetFrame.addEventListener('load', handleLoad, { once: true });
+    targetFrame.addEventListener('error', handleError, { once: true });
+    targetFrame.src = url;
   });
 }
 
 async function renderRevision(targetRevision: number): Promise<boolean> {
   if (!currentDocument || !model || targetRevision !== revision) return false;
   const generation = previewGeneration;
+  const targetTabId = activeTabId;
+  const targetFrame = frame;
   const documentPath = currentDocument.path;
   const text = model.getValue();
   if (previewError?.revision === targetRevision) previewError = null;
@@ -430,13 +443,18 @@ async function renderRevision(targetRevision: number): Promise<boolean> {
     const result = await window.marktex.renderDocument(text, targetRevision, documentPath);
     if (
       generation !== previewGeneration
+      || activeTabId !== targetTabId
       || currentDocument?.path !== documentPath
       || result.revision !== targetRevision
       || revision !== targetRevision
     ) return false;
 
-    await loadPreviewFrame(result.url);
-    if (generation !== previewGeneration || currentDocument?.path !== documentPath) return false;
+    await loadPreviewFrame(targetFrame, result.url);
+    if (
+      generation !== previewGeneration
+      || activeTabId !== targetTabId
+      || currentDocument?.path !== documentPath
+    ) return false;
     const tab = activeTab();
     if (tab) {
       tab.previewUrl = result.url;
@@ -553,6 +571,7 @@ async function showDocument(
     anchor: initialAnchor,
     previewUrl: null,
     previewRevision: null,
+    frame: createPreviewFrame(),
     editorViewState: null,
   });
   renderTabs();
@@ -567,6 +586,7 @@ async function reloadActiveDocument(documentSnapshot: DocumentSnapshot) {
   tab.document = documentSnapshot;
   tab.previewUrl = null;
   tab.previewRevision = null;
+  tab.frame.removeAttribute('src');
   installModel(documentSnapshot);
   updateChrome();
   const ready = await ensurePreview(revision);
@@ -662,6 +682,7 @@ async function save(saveAs = false) {
         tab.document = result.document;
         tab.previewUrl = null;
         tab.previewRevision = null;
+        tab.frame.removeAttribute('src');
       }
       if (surface === 'editor') schedulePreview(revision);
       else if (surface === 'viewer') {
@@ -803,12 +824,18 @@ document.querySelector('.render-error button')?.addEventListener('click', () => 
  */
 function requestViewerAnchor() {
   const pendingSurface = surface;
-  frame.contentWindow?.postMessage(
+  const pendingTabId = activeTabId;
+  const pendingFrame = frame;
+  pendingFrame.contentWindow?.postMessage(
     { command: 'marktex:request-anchor', topRatio: GOLDEN_TOP_RATIO },
     '*',
   );
   window.setTimeout(() => {
-    if (surface === pendingSurface) enterEditor(anchor);
+    if (
+      activeTabId === pendingTabId
+      && frame === pendingFrame
+      && surface === pendingSurface
+    ) enterEditor(anchor);
   }, 120);
 }
 document.querySelector('.notice-keep')?.addEventListener('click', () => {
