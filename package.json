@@ -16,6 +16,7 @@
     "test": "vitest run --config vitest.config.ts",
     "test:e2e": "npm run build && playwright test",
     "start": "npm run build && electron .",
+    "package:win": "npm run build && electron-builder --win nsis --x64",
     "package:linux": "npm run build && electron-builder --linux AppImage deb",
     "install:linux": "bash scripts/install-linux.sh"
   },
@@ -60,6 +61,17 @@
       "category": "Office",
       "executableName": "setdown",
       "icon": "build/icon.png"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true
     },
     "fileAssociations": [
       {
