@@ -208,12 +208,23 @@ function previewBridgeScript(totalLines: number, documentIsBlank: boolean): stri
 <script>${bridgeSource()}</script>`;
 }
 
-async function renderCurrent(text: string, revision: number): Promise<RenderResult> {
+async function renderCurrent(
+  text: string,
+  revision: number,
+  documentPath: string,
+): Promise<RenderResult> {
   if (!currentDocument) throw new Error('No Markdown document is open.');
+  if (currentDocument.path !== documentPath) {
+    throw new Error('The preview request belongs to a document that is no longer open.');
+  }
   currentDocument = applyTextRevision(currentDocument, text, revision);
-  const notebook = await getNotebook(currentDocument.path);
-  const engine = notebook.getNoteMarkdownEngine(currentDocument.path);
-  const sourceUrl = resourceUrl(currentDocument.path);
+  const renderPath = currentDocument.path;
+  const notebook = await getNotebook(renderPath);
+  if (currentDocument?.path !== renderPath) {
+    throw new Error('The document changed while its preview was being prepared.');
+  }
+  const engine = notebook.getNoteMarkdownEngine(renderPath);
+  const sourceUrl = resourceUrl(renderPath);
   const fakePanel = {} as never;
   const config: WebviewConfig = {
     ...notebook.config,
@@ -228,7 +239,7 @@ async function renderCurrent(text: string, revision: number): Promise<RenderResu
     inputString: text.length > 0 ? text : '\n',
     config,
     vscodePreviewPanel: fakePanel,
-    head: `<base href="${resourceUrl(path.join(path.dirname(currentDocument.path), path.sep))}">`,
+    head: `<base href="${resourceUrl(path.join(path.dirname(renderPath), path.sep))}">`,
     scripts: previewBridgeScript(lineCount(text), text.trim().length === 0),
     styles: `<style>
       [data-source-line] { cursor: text; }
@@ -239,6 +250,9 @@ async function renderCurrent(text: string, revision: number): Promise<RenderResu
       .crossnote-inline-math-source { display: inline; }
     </style>`,
   });
+  if (currentDocument?.path !== renderPath) {
+    throw new Error('The document changed while its preview was being prepared.');
+  }
   const token = `${Date.now()}-${revision}-${Math.random().toString(36).slice(2)}`;
   previewDocuments.set(token, html);
   while (previewDocuments.size > 5) {
@@ -460,8 +474,8 @@ function installIpc() {
   ipcMain.on('document:update-text', (_event, { text, revision }) => {
     if (currentDocument) currentDocument = applyTextRevision(currentDocument, text, revision);
   });
-  ipcMain.handle('document:render', (_event, { text, revision }) =>
-    renderCurrent(text, revision),
+  ipcMain.handle('document:render', (_event, { text, revision, documentPath }) =>
+    renderCurrent(text, revision, documentPath),
   );
   ipcMain.handle('document:save', async (_event, { text, revision }): Promise<SaveResult> => {
     if (!currentDocument) return { canceled: true };

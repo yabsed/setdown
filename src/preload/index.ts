@@ -22,8 +22,8 @@ const api: MarkTexApi = {
   saveDocumentAs: (text, revision) =>
     ipcRenderer.invoke('document:save-as', { text, revision }),
   reloadDocument: () => ipcRenderer.invoke('document:reload'),
-  renderDocument: (text, revision) =>
-    ipcRenderer.invoke('document:render', { text, revision }),
+  renderDocument: (text, revision, documentPath) =>
+    ipcRenderer.invoke('document:render', { text, revision, documentPath }),
   openLink: (href) => ipcRenderer.invoke('document:open-link', href),
   onDocumentOpened: (listener) =>
     subscribe<DocumentSnapshot>('document:opened', listener),

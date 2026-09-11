@@ -1,6 +1,7 @@
 import * as monaco from 'monaco-editor/editor/editor.main';
 import EditorWorker from 'monaco-editor/editor/editor.worker?worker';
 import type { DocumentSnapshot } from '../shared/contracts';
+import { PreviewRenderCoordinator } from '../shared/preview-render-coordinator';
 import {
   GOLDEN_TOP_RATIO,
   clamp,
@@ -76,8 +77,13 @@ const notice = document.querySelector<HTMLElement>('.notice')!;
 let currentDocument: DocumentSnapshot | null = null;
 let model: monaco.editor.ITextModel | null = null;
 let revision = 0;
-let renderToken = 0;
 let surface: 'empty' | 'viewer' | 'editor' = 'empty';
+let previewGeneration = 0;
+let previewTimer: number | null = null;
+let previewError: { revision: number; message: string } | null = null;
+
+const PREVIEW_DEBOUNCE_MS = 700;
+const previewCoordinator = new PreviewRenderCoordinator(renderRevision);
 
 /**
  * Viewer와 Editor가 함께 보는 단 하나의 좌표. 화면 전환은 언제나 이 값을
@@ -124,6 +130,7 @@ function setSurface(next: typeof surface) {
   surface = next;
   shell.dataset.surface = next;
   modeLabel.textContent = next === 'viewer' ? 'VIEWER' : next === 'editor' ? 'EDITOR' : '';
+  updatePreviewUi();
   if (next === 'editor') window.setTimeout(() => editor.layout(), 0);
 }
 
@@ -152,40 +159,126 @@ function installModel(documentSnapshot: DocumentSnapshot) {
     revision += 1;
     window.marktex.updateText(model.getValue(), revision);
     updateChrome();
+    if (surface === 'editor') schedulePreview(revision);
   });
 }
 
-async function render(target: ViewportAnchor = anchor) {
-  if (!currentDocument || !model) return;
-  const revealed = clampAnchor(target, model.getLineCount());
-  const token = ++renderToken;
-  const requestedRevision = revision;
-  renderState.hidden = false;
-  renderError.hidden = true;
-  try {
-    const result = await window.marktex.renderDocument(model.getValue(), requestedRevision);
-    if (token !== renderToken || result.revision !== revision) return;
-    frame.onload = () => {
-      const reveal = () => frame.contentWindow?.postMessage({
-        command: 'changeTextEditorSelection',
-        line: Math.max(0, revealed.sourceLine - 1),
-        topRatio: revealed.yRatio,
-        forced: true,
-      }, '*');
-      reveal();
-      window.setTimeout(reveal, 80);
+function cancelScheduledPreview() {
+  if (previewTimer === null) return;
+  window.clearTimeout(previewTimer);
+  previewTimer = null;
+}
+
+function resetPreviewState() {
+  previewGeneration += 1;
+  cancelScheduledPreview();
+  previewCoordinator.reset();
+  previewError = null;
+  updatePreviewUi();
+}
+
+function schedulePreview(targetRevision: number) {
+  cancelScheduledPreview();
+  previewTimer = window.setTimeout(() => {
+    previewTimer = null;
+    if (surface === 'editor' && revision === targetRevision) {
+      void ensurePreview(targetRevision);
+    }
+  }, PREVIEW_DEBOUNCE_MS);
+}
+
+function updatePreviewUi() {
+  const refreshing = surface === 'viewer'
+    && previewCoordinator.isRendering
+    && previewCoordinator.readyRevision !== revision;
+  renderState.hidden = !refreshing;
+  renderState.dataset.variant = previewCoordinator.readyRevision === null
+    ? 'blocking'
+    : 'refresh';
+
+  const relevantError = surface === 'viewer' && previewError?.revision === revision;
+  renderError.hidden = !relevantError;
+  renderError.dataset.variant = previewCoordinator.readyRevision === null
+    ? 'blocking'
+    : 'refresh';
+  if (relevantError && previewError) renderErrorText.textContent = previewError.message;
+}
+
+function loadPreviewFrame(url: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      frame.removeEventListener('load', handleLoad);
+      frame.removeEventListener('error', handleError);
     };
-    frame.src = result.url;
-    renderState.hidden = true;
+    const handleLoad = () => {
+      cleanup();
+      resolve();
+    };
+    const handleError = () => {
+      cleanup();
+      reject(new Error('The preview frame could not load the rendered document.'));
+    };
+    frame.addEventListener('load', handleLoad, { once: true });
+    frame.addEventListener('error', handleError, { once: true });
+    frame.src = url;
+  });
+}
+
+async function renderRevision(targetRevision: number): Promise<boolean> {
+  if (!currentDocument || !model || targetRevision !== revision) return false;
+  const generation = previewGeneration;
+  const documentPath = currentDocument.path;
+  const text = model.getValue();
+  if (previewError?.revision === targetRevision) previewError = null;
+  try {
+    const result = await window.marktex.renderDocument(text, targetRevision, documentPath);
+    if (
+      generation !== previewGeneration
+      || currentDocument?.path !== documentPath
+      || result.revision !== targetRevision
+      || revision !== targetRevision
+    ) return false;
+
+    await loadPreviewFrame(result.url);
+    if (generation !== previewGeneration || currentDocument?.path !== documentPath) return false;
+    previewError = null;
+    return true;
   } catch (error) {
-    if (token !== renderToken) return;
-    renderState.hidden = true;
-    renderError.hidden = false;
-    renderErrorText.textContent = error instanceof Error ? error.message : String(error);
+    if (generation !== previewGeneration) return false;
+    previewError = {
+      revision: targetRevision,
+      message: error instanceof Error ? error.message : String(error),
+    };
+    return false;
   }
 }
 
+async function ensurePreview(targetRevision: number): Promise<boolean> {
+  const pending = previewCoordinator.ensure(targetRevision);
+  updatePreviewUi();
+  const ready = await pending;
+  updatePreviewUi();
+  return ready;
+}
+
+function revealPreview(target: ViewportAnchor) {
+  if (!model) return;
+  const revealed = clampAnchor(target, model.getLineCount());
+  const reveal = () => frame.contentWindow?.postMessage({
+    command: 'changeTextEditorSelection',
+    line: Math.max(0, revealed.sourceLine - 1),
+    topRatio: revealed.yRatio,
+    forced: true,
+  }, '*');
+  window.requestAnimationFrame(() => {
+    reveal();
+    window.setTimeout(reveal, 80);
+  });
+}
+
 async function showDocument(documentSnapshot: DocumentSnapshot) {
+  resetPreviewState();
+  const generation = previewGeneration;
   currentDocument = documentSnapshot;
   anchor = {
     sourceLine: 1,
@@ -198,7 +291,8 @@ async function showDocument(documentSnapshot: DocumentSnapshot) {
   installModel(documentSnapshot);
   updateChrome();
   setSurface('viewer');
-  await render(anchor);
+  const ready = await ensurePreview(revision);
+  if (ready && generation === previewGeneration) revealPreview(anchor);
 }
 
 /**
@@ -258,8 +352,16 @@ async function enterViewer() {
   if (!model) return;
   anchor = editorViewportAnchor();
   publishAnchor();
+  cancelScheduledPreview();
   setSurface('viewer');
-  await render(anchor);
+  const generation = previewGeneration;
+  const targetRevision = revision;
+  const ready = await ensurePreview(targetRevision);
+  if (
+    ready
+    && generation === previewGeneration
+    && previewCoordinator.readyRevision === revision
+  ) revealPreview(anchor);
 }
 
 async function save(saveAs = false) {
@@ -271,7 +373,17 @@ async function save(saveAs = false) {
     const pathChanged = result.document.path !== currentDocument.path;
     currentDocument = result.document;
     revision = result.document.revision;
-    if (pathChanged) installModel(result.document);
+    if (pathChanged) {
+      resetPreviewState();
+      installModel(result.document);
+      if (surface === 'editor') schedulePreview(revision);
+      else if (surface === 'viewer') {
+        const target = revision;
+        void ensurePreview(target).then((ready) => {
+          if (ready && target === revision) revealPreview(anchor);
+        });
+      }
+    }
     updateChrome();
   }
 }

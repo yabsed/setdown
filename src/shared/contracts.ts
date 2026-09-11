@@ -36,7 +36,7 @@ export type MarkTexApi = {
   saveDocument(text: string, revision: number): Promise<SaveResult>;
   saveDocumentAs(text: string, revision: number): Promise<SaveResult>;
   reloadDocument(): Promise<DocumentSnapshot | null>;
-  renderDocument(text: string, revision: number): Promise<RenderResult>;
+  renderDocument(text: string, revision: number, documentPath: string): Promise<RenderResult>;
   openLink(href: string): Promise<void>;
   onDocumentOpened(listener: (document: DocumentSnapshot) => void): () => void;
   onExternalChange(listener: (change: ExternalChange) => void): () => void;
