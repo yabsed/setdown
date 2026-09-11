@@ -479,37 +479,76 @@ async function exportPdf() {
   }
 }
 
-function clipboardContainsImage(event: ClipboardEvent) {
-  return Array.from(event.clipboardData?.items ?? []).some(
+const IMAGE_URL_PATTERN = /\.(?:avif|bmp|gif|jpe?g|png|svg|tiff?|webp)(?:$|[?#])/i;
+
+function safeRemoteImageUrl(value: string | null | undefined) {
+  if (!value) return null;
+  try {
+    const url = new URL(value.trim());
+    return ['http:', 'https:'].includes(url.protocol) ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+function remoteImageUrlFromClipboard(event: ClipboardEvent) {
+  const html = event.clipboardData?.getData('text/html');
+  if (html) {
+    const parsed = new DOMParser().parseFromString(html, 'text/html');
+    const remote = safeRemoteImageUrl(parsed.querySelector('img[src]')?.getAttribute('src'));
+    if (remote) return remote;
+  }
+  const plain = event.clipboardData?.getData('text/plain').trim();
+  return plain && IMAGE_URL_PATTERN.test(plain) ? safeRemoteImageUrl(plain) : null;
+}
+
+function clipboardContainsStoredImage(event: ClipboardEvent) {
+  const clipboard = event.clipboardData;
+  const hasBitmap = Array.from(clipboard?.items ?? []).some(
     (item) => item.kind === 'file' && item.type.startsWith('image/'),
   );
+  const types = Array.from(clipboard?.types ?? []).map((type) => type.toLowerCase());
+  const hasFileList = types.some((type) =>
+    type === 'files' || type.includes('uri-list') || type.includes('gnome-copied-files'),
+  );
+  const plain = clipboard?.getData('text/plain').trim() ?? '';
+  return hasBitmap || hasFileList || (plain.startsWith('file://') && IMAGE_URL_PATTERN.test(plain));
+}
+
+function insertImageMarkdown(markdown: string, selection: monaco.Selection | null) {
+  if (!model) return;
+  const range = selection
+    ? monaco.Range.lift(selection)
+    : new monaco.Range(1, 1, 1, 1);
+  editor.executeEdits('paste-image', [{
+    range,
+    text: markdown,
+    forceMoveMarkers: true,
+  }]);
+  const insertedEnd = model.getPositionAt(
+    model.getOffsetAt(range.getStartPosition()) + markdown.length,
+  );
+  editor.setPosition(insertedEnd);
+  editor.focus();
 }
 
 let isPastingImage = false;
-async function pasteClipboardImage() {
+async function pasteClipboardImage(remoteUrl: string | null) {
   if (!model || !currentDocument || isPastingImage) return;
   isPastingImage = true;
   const selection = editor.getSelection();
   try {
+    if (remoteUrl) {
+      insertImageMarkdown(`![외부 이미지](<${remoteUrl}>)`, selection);
+      return;
+    }
     if (currentDocument.isUntitled) {
       await save(true);
       if (!currentDocument || currentDocument.isUntitled) return;
     }
     const result = await window.marktex.pasteClipboardImage();
     if (result.canceled || !result.markdown || !model) return;
-    const range = selection
-      ? monaco.Range.lift(selection)
-      : new monaco.Range(1, 1, 1, 1);
-    editor.executeEdits('paste-image', [{
-      range,
-      text: result.markdown,
-      forceMoveMarkers: true,
-    }]);
-    const insertedEnd = model.getPositionAt(
-      model.getOffsetAt(range.getStartPosition()) + result.markdown.length,
-    );
-    editor.setPosition(insertedEnd);
-    editor.focus();
+    insertImageMarkdown(result.markdown, selection);
   } catch (error) {
     window.alert(`이미지를 붙여넣지 못했습니다.\n${error instanceof Error ? error.message : String(error)}`);
   } finally {
@@ -518,10 +557,11 @@ async function pasteClipboardImage() {
 }
 
 editorHost.addEventListener('paste', (event) => {
-  if (!clipboardContainsImage(event)) return;
+  const remoteUrl = remoteImageUrlFromClipboard(event);
+  if (!remoteUrl && !clipboardContainsStoredImage(event)) return;
   event.preventDefault();
   event.stopPropagation();
-  void pasteClipboardImage();
+  void pasteClipboardImage(remoteUrl);
 }, { capture: true });
 
 editor.addCommand(

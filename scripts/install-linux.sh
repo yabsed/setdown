@@ -18,7 +18,16 @@ if [[ ! -x "$source_dir/setdown" ]]; then
 fi
 
 mkdir -p "$app_dir" "$applications_dir" "$icons_dir"
-cp -a "$source_dir/." "$app_dir/"
+# 실행 중인 ELF 파일은 제자리 overwrite할 수 없다(ETXTBSY). 나머지 묶음을
+# 갱신한 뒤 실행 파일은 새 inode에 복사하고 rename하여 원자적으로 교체한다.
+for source_item in "$source_dir"/*; do
+  if [[ "${source_item##*/}" == "setdown" ]]; then
+    continue
+  fi
+  cp -a "$source_item" "$app_dir/"
+done
+install -m 0755 "$source_dir/setdown" "$app_dir/.setdown-update"
+mv -f "$app_dir/.setdown-update" "$app_dir/setdown"
 install -m 0644 "$project_dir/build/icon.png" "$icons_dir/setdown.png"
 
 escaped_app_dir="${app_dir//&/\\&}"

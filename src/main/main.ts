@@ -36,7 +36,11 @@ import type {
 } from '../shared/contracts';
 import { applyTextRevision, isDirty, lineCount } from '../shared/document-state';
 import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
-import { savePastedPng } from './pasted-image';
+import {
+  isSupportedImagePath,
+  savePastedImageFile,
+  savePastedPng,
+} from './pasted-image';
 import { previewRelativeReference } from './preview-resources';
 
 app.setName('Setdown');
@@ -464,6 +468,43 @@ async function saveCurrentDocument(text: string, revision: number): Promise<Save
 
 async function pasteClipboardImage(): Promise<PasteImageResult> {
   if (!currentDocument || currentDocument.isUntitled) return { canceled: true };
+
+  const localImages = clipboard.availableFormats()
+    .filter((format) => /uri-list|gnome-copied-files/i.test(format))
+    .flatMap((format) => {
+      try {
+        return clipboard.readBuffer(format).toString('utf8').replace(/\0/g, '').split(/\r?\n/);
+      } catch {
+        return [];
+      }
+    });
+  const plainText = clipboard.readText().trim();
+  if (plainText.startsWith('file://')) localImages.push(...plainText.split(/\r?\n/));
+
+  const localPaths = [...new Set(localImages
+    .map((entry) => entry.trim())
+    .filter((entry) => entry && entry !== 'copy' && entry !== 'cut' && !entry.startsWith('#'))
+    .flatMap((entry) => {
+      try {
+        const url = new URL(entry);
+        return url.protocol === 'file:' ? [fileURLToPath(url)] : [];
+      } catch {
+        return [];
+      }
+    })
+    .filter(isSupportedImagePath))];
+
+  if (localPaths.length > 0) {
+    const saved = await Promise.all(localPaths.map((sourcePath) =>
+      savePastedImageFile(currentDocument!.path, sourcePath),
+    ));
+    return {
+      canceled: false,
+      markdown: saved.map((image) => image.markdown).join('\n\n'),
+      relativePath: saved[0]?.markdownPath,
+    };
+  }
+
   const image = clipboard.readImage();
   if (image.isEmpty()) return { canceled: true };
   const saved = await savePastedPng(currentDocument.path, image.toPNG());

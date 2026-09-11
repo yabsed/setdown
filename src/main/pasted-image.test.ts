@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { savePastedPng } from './pasted-image';
+import { savePastedImageFile, savePastedPng } from './pasted-image';
 
 const temporaryDirectories: string[] = [];
 
@@ -43,5 +43,23 @@ describe('savePastedPng', () => {
 
     expect(path.basename(first.absolutePath)).toBe('pasted-20260911-070809.png');
     expect(path.basename(second.absolutePath)).toBe('pasted-20260911-070809-2.png');
+  });
+
+  it('copies a local image file while preserving its format', async () => {
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'setdown-paste-'));
+    temporaryDirectories.push(directory);
+    const source = path.join(directory, 'photo.webp');
+    await fs.writeFile(source, new Uint8Array([82, 73, 70, 70]));
+
+    const saved = await savePastedImageFile(
+      path.join(directory, 'sample.md'),
+      source,
+      new Date('2026-09-11T07:08:09.000Z'),
+    );
+
+    expect(saved.markdownPath).toBe('sample.assets/pasted-20260911-070809.webp');
+    expect(new Uint8Array(await fs.readFile(saved.absolutePath))).toEqual(
+      new Uint8Array([82, 73, 70, 70]),
+    );
   });
 });
