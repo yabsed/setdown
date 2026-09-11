@@ -14,6 +14,7 @@ function subscribe<T>(channel: string, listener: (value: T) => void) {
 
 const api: MarkTexApi = {
   getDocument: () => ipcRenderer.invoke('document:get'),
+  newDocument: () => ipcRenderer.invoke('document:new'),
   openDocument: () => ipcRenderer.invoke('document:open'),
   updateText: (text, revision) =>
     ipcRenderer.send('document:update-text', { text, revision }),
@@ -24,6 +25,8 @@ const api: MarkTexApi = {
   reloadDocument: () => ipcRenderer.invoke('document:reload'),
   renderDocument: (text, revision, documentPath) =>
     ipcRenderer.invoke('document:render', { text, revision, documentPath }),
+  exportPdf: (text, revision, documentPath) =>
+    ipcRenderer.invoke('document:export-pdf', { text, revision, documentPath }),
   openLink: (href) => ipcRenderer.invoke('document:open-link', href),
   onDocumentOpened: (listener) =>
     subscribe<DocumentSnapshot>('document:opened', listener),

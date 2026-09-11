@@ -10,6 +10,7 @@ export type DocumentSnapshot = {
   revision: number;
   savedRevision: number;
   diskVersion: DiskVersion;
+  isUntitled: boolean;
 };
 
 export type RenderResult = {
@@ -27,16 +28,28 @@ export type ExternalChange = {
   diskVersion: DiskVersion;
 };
 
-export type AppCommand = 'save' | 'save-as' | 'toggle-surface';
+export type ExportPdfResult = {
+  canceled: boolean;
+  path?: string;
+};
+
+export type AppCommand =
+  | 'new-document'
+  | 'save'
+  | 'save-as'
+  | 'export-pdf'
+  | 'toggle-surface';
 
 export type MarkTexApi = {
   getDocument(): Promise<DocumentSnapshot | null>;
+  newDocument(): Promise<DocumentSnapshot | null>;
   openDocument(): Promise<DocumentSnapshot | null>;
   updateText(text: string, revision: number): void;
   saveDocument(text: string, revision: number): Promise<SaveResult>;
   saveDocumentAs(text: string, revision: number): Promise<SaveResult>;
   reloadDocument(): Promise<DocumentSnapshot | null>;
   renderDocument(text: string, revision: number, documentPath: string): Promise<RenderResult>;
+  exportPdf(text: string, revision: number, documentPath: string): Promise<ExportPdfResult>;
   openLink(href: string): Promise<void>;
   onDocumentOpened(listener: (document: DocumentSnapshot) => void): () => void;
   onExternalChange(listener: (change: ExternalChange) => void): () => void;

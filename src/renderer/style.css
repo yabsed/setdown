@@ -47,7 +47,26 @@ button { font: inherit; }
 .document-title { justify-self: center; min-width: 0; font-size: 13px; font-weight: 550; }
 .filename { display: inline-block; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 .dirty-dot { margin-left: 5px; color: #d26a37; font-size: 18px; line-height: 10px; }
-.mode-label { padding-right: 14px; color: #999993; font-size: 9px; font-weight: 700; letter-spacing: .13em; text-align: right; }
+.mode-toggle {
+  display: grid;
+  place-items: center;
+  justify-self: end;
+  width: 30px;
+  height: 30px;
+  margin-right: 10px;
+  padding: 6px;
+  color: #696966;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+.mode-toggle[hidden] { display: none; }
+.mode-toggle:hover { color: #20201f; background: #ecece8; }
+.mode-icon { display: none; width: 18px; height: 18px; fill: currentColor; }
+.shell[data-surface="viewer"] .mode-icon-edit,
+.shell[data-surface="editor"] .mode-icon-view { display: block; }
 
 .notice {
   display: flex;
@@ -92,6 +111,9 @@ button { font: inherit; }
 .empty-state p { max-width: 440px; margin: 0 0 28px; color: #74746e; line-height: 1.65; }
 .primary-button { padding: 10px 17px; color: white; border: 0; border-radius: 8px; background: #333330; cursor: pointer; }
 .primary-button:hover { background: #111110; }
+.empty-actions { display: flex; gap: 8px; }
+.secondary-button { padding: 9px 16px; color: #444440; border: 1px solid #cfcfc9; border-radius: 8px; background: #fff; cursor: pointer; }
+.secondary-button:hover { background: #efefeb; }
 .shortcut { margin-top: 9px; color: #aaa9a2; font-size: 11px; }
 
 .viewer-surface, .editor-surface { position: relative; overflow: hidden; }
@@ -149,6 +171,6 @@ button { font: inherit; }
 
 @media (max-width: 620px) {
   .titlebar { grid-template-columns: 42px 1fr 52px; }
-  .mode-label { padding-right: 8px; }
+  .mode-toggle { margin-right: 7px; }
   .viewer-hint, .editor-hint { display: none; }
 }

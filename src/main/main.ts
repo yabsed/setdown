@@ -30,6 +30,7 @@ import type {
   DocumentSnapshot,
   RenderResult,
   SaveResult,
+  ExportPdfResult,
 } from '../shared/contracts';
 import { applyTextRevision, isDirty, lineCount } from '../shared/document-state';
 import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
@@ -49,6 +50,7 @@ let mainWindow: BrowserWindow | null = null;
 let currentDocument: DocumentSnapshot | null = null;
 let watchedPath: string | null = null;
 let activeRoot: string | null = null;
+let closeAfterConfirmation = false;
 
 type CrossnoteModule = typeof import('crossnote');
 type NotebookInstance = Awaited<ReturnType<CrossnoteModule['Notebook']['init']>>;
@@ -282,6 +284,21 @@ async function readDocument(filePath: string): Promise<DocumentSnapshot> {
     revision: 0,
     savedRevision: 0,
     diskVersion,
+    isUntitled: false,
+  };
+}
+
+function blankDocument(): DocumentSnapshot {
+  return {
+    // Crossnote의 상대 resource 해석에는 실제 absolute base path가 필요하다.
+    // 이 경로에는 저장하지 않으며 첫 Save에서 반드시 Save As를 거친다.
+    path: path.join(app.getPath('documents'), 'Untitled.md'),
+    name: 'Untitled.md',
+    text: '',
+    revision: 0,
+    savedRevision: 0,
+    diskVersion: { mtimeMs: 0, size: 0 },
+    isUntitled: true,
   };
 }
 
@@ -292,7 +309,7 @@ function stopWatching() {
 
 function watchCurrentDocument() {
   stopWatching();
-  if (!currentDocument) return;
+  if (!currentDocument || currentDocument.isUntitled) return;
   watchedPath = currentDocument.path;
   watchFile(watchedPath, { interval: 750 }, (current) => {
     if (!currentDocument || currentDocument.path !== watchedPath) return;
@@ -315,6 +332,15 @@ async function openPath(filePath: string, notify = true) {
   return currentDocument;
 }
 
+async function createNewDocument() {
+  if (!(await confirmReplaceCurrentDocument())) return null;
+  stopWatching();
+  notebookCache = null;
+  currentDocument = blankDocument();
+  activeRoot = path.dirname(currentDocument.path);
+  return currentDocument;
+}
+
 async function confirmReplaceCurrentDocument(): Promise<boolean> {
   if (!currentDocument || !isDirty(currentDocument)) return true;
   const result = await dialog.showMessageBox(mainWindow!, {
@@ -327,8 +353,11 @@ async function confirmReplaceCurrentDocument(): Promise<boolean> {
   });
   if (result.response === 2) return false;
   if (result.response === 0) {
-    if (!(await confirmOverwriteIfChanged())) return false;
-    await saveTo(currentDocument.path, currentDocument.text, currentDocument.revision);
+    const saved = await saveCurrentDocument(
+      currentDocument.text,
+      currentDocument.revision,
+    );
+    if (saved.canceled) return false;
   }
   return true;
 }
@@ -385,10 +414,102 @@ async function saveTo(filePath: string, text: string, revision: number): Promise
     revision,
     savedRevision: revision,
     diskVersion,
+    isUntitled: false,
   };
   activeRoot = path.dirname(currentDocument.path);
   watchCurrentDocument();
   return { canceled: false, document: currentDocument };
+}
+
+async function saveDocumentAs(text: string, revision: number): Promise<SaveResult> {
+  const defaultPath = currentDocument?.isUntitled
+    ? path.join(app.getPath('documents'), 'Untitled.md')
+    : currentDocument?.path ?? path.join(app.getPath('documents'), 'Untitled.md');
+  const result = await dialog.showSaveDialog(mainWindow!, {
+    defaultPath,
+    filters: [{ name: 'Markdown', extensions: ['md'] }],
+  });
+  if (result.canceled || !result.filePath) return { canceled: true };
+  notebookCache = null;
+  return saveTo(result.filePath, text, revision);
+}
+
+async function saveCurrentDocument(text: string, revision: number): Promise<SaveResult> {
+  if (!currentDocument) return { canceled: true };
+  currentDocument = applyTextRevision(currentDocument, text, revision);
+  if (currentDocument.isUntitled) return saveDocumentAs(text, revision);
+  if (!(await confirmOverwriteIfChanged())) return { canceled: true };
+  return saveTo(currentDocument.path, text, revision);
+}
+
+async function waitForPrintablePreview(window: BrowserWindow) {
+  await window.webContents.executeJavaScript(`new Promise((resolve) => {
+    const started = Date.now();
+    let stableSince = 0;
+    let previousSignature = '';
+    const check = () => {
+      const preview = document.querySelector('.markdown-preview[data-for="preview"]');
+      const pendingDiagrams = document.querySelectorAll('.mermaid:not([data-processed])').length;
+      const pendingImages = Array.from(document.images).filter((image) => !image.complete).length;
+      const signature = preview
+        ? [preview.childElementCount, preview.scrollHeight, pendingDiagrams, pendingImages].join(':')
+        : '';
+      if (signature && signature === previousSignature && pendingDiagrams === 0 && pendingImages === 0) {
+        if (!stableSince) stableSince = Date.now();
+      } else {
+        stableSince = 0;
+        previousSignature = signature;
+      }
+      if ((stableSince && Date.now() - stableSince >= 300) || Date.now() - started > 15000) {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      } else {
+        setTimeout(check, 50);
+      }
+    };
+    check();
+  })`);
+}
+
+async function exportCurrentPdf(
+  text: string,
+  revision: number,
+  documentPath: string,
+): Promise<ExportPdfResult> {
+  if (!currentDocument || currentDocument.path !== documentPath) return { canceled: true };
+  const baseName = currentDocument.name.replace(/\.[^.]+$/, '') || 'document';
+  const result = await dialog.showSaveDialog(mainWindow!, {
+    defaultPath: path.join(
+      currentDocument.isUntitled ? app.getPath('documents') : path.dirname(currentDocument.path),
+      `${baseName}.pdf`,
+    ),
+    filters: [{ name: 'PDF', extensions: ['pdf'] }],
+  });
+  if (result.canceled || !result.filePath) return { canceled: true };
+
+  const rendered = await renderCurrent(text, revision, documentPath);
+  const printWindow = new BrowserWindow({
+    show: false,
+    width: 794,
+    height: 1123,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+  try {
+    await printWindow.loadURL(rendered.url);
+    await waitForPrintablePreview(printWindow);
+    const pdf = await printWindow.webContents.printToPDF({
+      pageSize: 'A4',
+      printBackground: true,
+      preferCSSPageSize: true,
+    });
+    await fs.writeFile(result.filePath, pdf);
+    return { canceled: false, path: result.filePath };
+  } finally {
+    printWindow.destroy();
+  }
 }
 
 function sendCommand(command: AppCommand) {
@@ -400,10 +521,12 @@ function installMenu() {
     {
       label: 'File',
       submenu: [
+        { label: 'New', accelerator: 'CmdOrCtrl+N', click: () => sendCommand('new-document') },
         { label: 'Open…', accelerator: 'CmdOrCtrl+O', click: () => void chooseAndOpen() },
         { type: 'separator' },
         { id: 'save', label: 'Save', accelerator: 'CmdOrCtrl+S', click: () => sendCommand('save') },
         { label: 'Save As…', accelerator: 'CmdOrCtrl+Shift+S', click: () => sendCommand('save-as') },
+        { label: 'Export as PDF…', click: () => sendCommand('export-pdf') },
         { type: 'separator' },
         { role: 'quit' },
       ],
@@ -428,6 +551,7 @@ function installMenu() {
 }
 
 function createWindow() {
+  closeAfterConfirmation = false;
   mainWindow = new BrowserWindow({
     width: 1080,
     height: 820,
@@ -446,29 +570,26 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => mainWindow?.show());
   mainWindow.on('close', (event) => {
-    if (!currentDocument || !isDirty(currentDocument)) return;
-    const response = dialog.showMessageBoxSync(mainWindow!, {
+    if (closeAfterConfirmation || !currentDocument || !isDirty(currentDocument)) return;
+    event.preventDefault();
+    void dialog.showMessageBox(mainWindow!, {
       type: 'warning',
       message: `${currentDocument.name}의 변경 내용을 저장하시겠습니까?`,
       buttons: ['저장', '저장 안 함', '취소'],
       defaultId: 0,
       cancelId: 2,
-    });
-    if (response === 2) {
-      event.preventDefault();
-    } else if (response === 0) {
-      try {
-        const temporary = path.join(
-          path.dirname(currentDocument.path),
-          `.${currentDocument.name}.${process.pid}.closing.tmp`,
+    }).then(async ({ response }) => {
+      if (response === 2 || !currentDocument) return;
+      if (response === 0) {
+        const saved = await saveCurrentDocument(
+          currentDocument.text,
+          currentDocument.revision,
         );
-        require('node:fs').writeFileSync(temporary, currentDocument.text, 'utf8');
-        require('node:fs').renameSync(temporary, currentDocument.path);
-      } catch (error) {
-        event.preventDefault();
-        dialog.showErrorBox('저장하지 못했습니다', String(error));
+        if (saved.canceled) return;
       }
-    }
+      closeAfterConfirmation = true;
+      mainWindow?.close();
+    }).catch((error) => dialog.showErrorBox('저장하지 못했습니다', String(error)));
   });
 
   const devServer = process.env.VITE_DEV_SERVER_URL;
@@ -478,6 +599,7 @@ function createWindow() {
 
 function installIpc() {
   ipcMain.handle('document:get', () => currentDocument);
+  ipcMain.handle('document:new', () => createNewDocument());
   ipcMain.handle('document:open', () => chooseAndOpen());
   ipcMain.on('document:update-text', (_event, { text, revision }) => {
     if (currentDocument) currentDocument = applyTextRevision(currentDocument, text, revision);
@@ -486,22 +608,16 @@ function installIpc() {
     renderCurrent(text, revision, documentPath),
   );
   ipcMain.handle('document:save', async (_event, { text, revision }): Promise<SaveResult> => {
-    if (!currentDocument) return { canceled: true };
-    currentDocument = applyTextRevision(currentDocument, text, revision);
-    if (!(await confirmOverwriteIfChanged())) return { canceled: true };
-    return saveTo(currentDocument.path, text, revision);
+    return saveCurrentDocument(text, revision);
   });
   ipcMain.handle('document:save-as', async (_event, { text, revision }): Promise<SaveResult> => {
-    const result = await dialog.showSaveDialog(mainWindow!, {
-      defaultPath: currentDocument?.path ?? 'untitled.md',
-      filters: [{ name: 'Markdown', extensions: ['md'] }],
-    });
-    if (result.canceled || !result.filePath) return { canceled: true };
-    notebookCache = null;
-    return saveTo(result.filePath, text, revision);
+    return saveDocumentAs(text, revision);
   });
+  ipcMain.handle('document:export-pdf', (_event, { text, revision, documentPath }) =>
+    exportCurrentPdf(text, revision, documentPath),
+  );
   ipcMain.handle('document:reload', async () => {
-    if (!currentDocument) return null;
+    if (!currentDocument || currentDocument.isUntitled) return currentDocument;
     return openPath(currentDocument.path);
   });
   ipcMain.handle('document:open-link', async (_event, href: string) => {

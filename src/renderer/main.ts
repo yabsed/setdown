@@ -24,7 +24,10 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <div class="document-title">
         <span class="filename">MarkTex</span><span class="dirty-dot" aria-label="저장되지 않은 변경">•</span>
       </div>
-      <div class="mode-label" aria-live="polite"></div>
+      <button class="mode-toggle" type="button" hidden>
+        <svg class="mode-icon mode-icon-edit" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.862 3.487a2.25 2.25 0 0 1 3.182 3.182L8.41 18.303a2 2 0 0 1-.878.507l-3.42 1.026 1.026-3.42a2 2 0 0 1 .507-.878L16.862 3.487Zm1.06 1.06L6.705 15.765a.5.5 0 0 0-.127.22l-.538 1.792 1.792-.538a.5.5 0 0 0 .22-.127L19.104 5.608a.75.75 0 0 0-1.182-1.06Z"/></svg>
+        <svg class="mode-icon mode-icon-view" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c4.75 0 8.27 3.13 9.66 6.35a1.62 1.62 0 0 1 0 1.3C20.27 15.87 16.75 19 12 19s-8.27-3.13-9.66-6.35a1.62 1.62 0 0 1 0-1.3C3.73 8.13 7.25 5 12 5Zm0 1.5c-4 0-7 2.63-8.28 5.45a.12.12 0 0 0 0 .1C5 14.87 8 17.5 12 17.5s7-2.63 8.28-5.45a.12.12 0 0 0 0-.1C19 9.13 16 6.5 12 6.5Zm0 2.25A3.25 3.25 0 1 1 12 15.25 3.25 3.25 0 0 1 12 8.75Zm0 1.5A1.75 1.75 0 1 0 12 13.75 1.75 1.75 0 0 0 12 10.25Z"/></svg>
+      </button>
     </header>
 
     <div class="notice" hidden>
@@ -39,8 +42,11 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <div class="empty-mark">M</div>
       <h1>한 편의 문서에 집중하세요.</h1>
       <p>Markdown 파일을 아름답게 읽고, 더블 클릭해 바로 고칠 수 있습니다.</p>
-      <button class="primary-button empty-open" type="button">Markdown 파일 열기</button>
-      <span class="shortcut">Ctrl/Cmd+O</span>
+      <div class="empty-actions">
+        <button class="primary-button empty-new" type="button">새 문서</button>
+        <button class="secondary-button empty-open" type="button">Markdown 파일 열기</button>
+      </div>
+      <span class="shortcut">Ctrl/Cmd+N · Ctrl/Cmd+O</span>
     </section>
 
     <section class="viewer-surface" aria-label="렌더링된 Markdown">
@@ -66,7 +72,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 const shell = document.querySelector<HTMLElement>('.shell')!;
 const filename = document.querySelector<HTMLElement>('.filename')!;
 const dirtyDot = document.querySelector<HTMLElement>('.dirty-dot')!;
-const modeLabel = document.querySelector<HTMLElement>('.mode-label')!;
+const modeToggle = document.querySelector<HTMLButtonElement>('.mode-toggle')!;
 const frame = document.querySelector<HTMLIFrameElement>('.preview-frame')!;
 const editorHost = document.querySelector<HTMLElement>('.editor-host')!;
 const renderState = document.querySelector<HTMLElement>('.render-state')!;
@@ -130,7 +136,10 @@ function publishAnchor() {
 function setSurface(next: typeof surface) {
   surface = next;
   shell.dataset.surface = next;
-  modeLabel.textContent = next === 'viewer' ? 'VIEWER' : next === 'editor' ? 'EDITOR' : '';
+  modeToggle.hidden = next === 'empty';
+  const toggleLabel = next === 'viewer' ? '편집기로 전환' : 'Viewer로 전환';
+  modeToggle.title = `${toggleLabel} (Ctrl/Cmd+E)`;
+  modeToggle.setAttribute('aria-label', toggleLabel);
   updatePreviewUi();
   if (next === 'editor') window.setTimeout(() => editor.layout(), 0);
 }
@@ -324,7 +333,10 @@ async function showPositionedPreview(
   delete shell.dataset.previewPositioning;
 }
 
-async function showDocument(documentSnapshot: DocumentSnapshot) {
+async function showDocument(
+  documentSnapshot: DocumentSnapshot,
+  initialSurface: 'viewer' | 'editor' = 'viewer',
+) {
   resetPreviewState();
   const generation = previewGeneration;
   currentDocument = documentSnapshot;
@@ -338,6 +350,11 @@ async function showDocument(documentSnapshot: DocumentSnapshot) {
   notice.hidden = true;
   installModel(documentSnapshot);
   updateChrome();
+  if (initialSurface === 'editor') {
+    enterEditor(anchor);
+    void ensurePreview(revision);
+    return;
+  }
   setSurface('viewer');
   const ready = await ensurePreview(revision);
   if (ready && generation === previewGeneration) {
@@ -446,6 +463,20 @@ async function openDocument() {
   if (opened) await showDocument(opened);
 }
 
+async function newDocument() {
+  const created = await window.marktex.newDocument();
+  if (created) await showDocument(created, 'editor');
+}
+
+async function exportPdf() {
+  if (!model || !currentDocument) return;
+  try {
+    await window.marktex.exportPdf(model.getValue(), revision, currentDocument.path);
+  } catch (error) {
+    window.alert(`PDF를 내보내지 못했습니다.\n${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
 editor.addCommand(
   monaco.KeyCode.Escape,
   () => void enterViewer(),
@@ -454,6 +485,11 @@ editor.addCommand(
 
 document.querySelectorAll('.open-button, .empty-open').forEach((button) => {
   button.addEventListener('click', () => void openDocument());
+});
+document.querySelector('.empty-new')?.addEventListener('click', () => void newDocument());
+modeToggle.addEventListener('click', () => {
+  if (surface === 'viewer') requestViewerAnchor();
+  else if (surface === 'editor') void enterViewer();
 });
 document.querySelector('.render-error button')?.addEventListener('click', () => enterEditor());
 
@@ -508,8 +544,10 @@ window.marktex.onExternalChange(() => {
   notice.hidden = false;
 });
 window.marktex.onCommand((command) => {
+  if (command === 'new-document') void newDocument();
   if (command === 'save') void save(false);
   if (command === 'save-as') void save(true);
+  if (command === 'export-pdf') void exportPdf();
   if (command === 'toggle-surface') {
     if (surface === 'viewer') requestViewerAnchor();
     else if (surface === 'editor') void enterViewer();

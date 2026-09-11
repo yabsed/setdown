@@ -9,6 +9,7 @@ const document: DocumentSnapshot = {
   revision: 3,
   savedRevision: 3,
   diskVersion: { mtimeMs: 1, size: 8 },
+  isUntitled: false,
 };
 
 describe('document state', () => {
@@ -18,6 +19,16 @@ describe('document state', () => {
 
   test('marks an accepted edit as dirty', () => {
     expect(isDirty(applyTextRevision(document, '# after', 4))).toBe(true);
+  });
+
+  test('빈 새 문서는 편집하기 전까지 dirty가 아니다', () => {
+    expect(isDirty({
+      ...document,
+      text: '',
+      revision: 0,
+      savedRevision: 0,
+      isUntitled: true,
+    })).toBe(false);
   });
 
   test('counts all common newline forms', () => {
