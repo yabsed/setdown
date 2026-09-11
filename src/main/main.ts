@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  clipboard,
   dialog,
   ipcMain,
   Menu,
@@ -31,9 +32,12 @@ import type {
   RenderResult,
   SaveResult,
   ExportPdfResult,
+  PasteImageResult,
 } from '../shared/contracts';
 import { applyTextRevision, isDirty, lineCount } from '../shared/document-state';
 import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
+import { savePastedPng } from './pasted-image';
+import { previewRelativeReference } from './preview-resources';
 
 app.setName('Setdown');
 
@@ -106,6 +110,20 @@ function resourceUrl(filePath: string): string {
   // 상대 참조가 문서 폴더 안에서 풀리므로 되살린다.
   const trailingSeparator = /[\\/]$/.test(filePath) ? '/' : '';
   return `marktex-resource://file${pathname}${trailingSeparator}`;
+}
+
+/**
+ * Crossnote의 preview sanitizer는 사용자 콘텐츠의 custom protocol media URL을
+ * 제거한다. 문서 폴더 안 파일은 상대 URL로 유지하면 sanitizer를 통과하고,
+ * preview의 <base>가 이를 marktex-resource: URL로 안전하게 해석한다.
+ */
+function previewFileReference(filePath: string): string {
+  const absolute = canonicalPath(filePath);
+  if (activeRoot) {
+    const relative = previewRelativeReference(canonicalPath(activeRoot), absolute);
+    if (relative !== null) return relative;
+  }
+  return resourceUrl(absolute);
 }
 
 function pathFromResourceUrl(rawUrl: string): string | null {
@@ -444,6 +462,18 @@ async function saveCurrentDocument(text: string, revision: number): Promise<Save
   return saveTo(currentDocument.path, text, revision);
 }
 
+async function pasteClipboardImage(): Promise<PasteImageResult> {
+  if (!currentDocument || currentDocument.isUntitled) return { canceled: true };
+  const image = clipboard.readImage();
+  if (image.isEmpty()) return { canceled: true };
+  const saved = await savePastedPng(currentDocument.path, image.toPNG());
+  return {
+    canceled: false,
+    markdown: saved.markdown,
+    relativePath: saved.markdownPath,
+  };
+}
+
 async function waitForPrintablePreview(window: BrowserWindow) {
   await window.webContents.executeJavaScript(`new Promise((resolve) => {
     const started = Date.now();
@@ -621,6 +651,7 @@ function installIpc() {
   ipcMain.handle('document:export-pdf', (_event, { text, revision, documentPath }) =>
     exportCurrentPdf(text, revision, documentPath),
   );
+  ipcMain.handle('document:paste-clipboard-image', () => pasteClipboardImage());
   ipcMain.handle('document:reload', async () => {
     if (!currentDocument || currentDocument.isUntitled) return currentDocument;
     return openPath(currentDocument.path, false);
@@ -689,7 +720,9 @@ if (!hasLock) {
         return new Response('Resource is outside the allowed roots', { status: 403 });
       }
     });
-    utility.useExternalAddFileProtocolFunction((filePath: string) => resourceUrl(filePath));
+    utility.useExternalAddFileProtocolFunction((filePath: string) =>
+      previewFileReference(filePath),
+    );
     installIpc();
     installMenu();
     const markdownPath = markdownPathFromArgs(process.argv);

@@ -66,7 +66,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
     <section class="editor-surface" aria-label="Markdown 원문 편집기">
       <div class="editor-host"></div>
-      <div class="editor-hint"><kbd>Esc</kbd> Viewer로 돌아가기</div>
+      <div class="editor-hint">이미지 붙여넣기 지원 · <kbd>Esc</kbd> Viewer로 돌아가기</div>
     </section>
   </section>
 `;
@@ -478,6 +478,51 @@ async function exportPdf() {
     window.alert(`PDF를 내보내지 못했습니다.\n${error instanceof Error ? error.message : String(error)}`);
   }
 }
+
+function clipboardContainsImage(event: ClipboardEvent) {
+  return Array.from(event.clipboardData?.items ?? []).some(
+    (item) => item.kind === 'file' && item.type.startsWith('image/'),
+  );
+}
+
+let isPastingImage = false;
+async function pasteClipboardImage() {
+  if (!model || !currentDocument || isPastingImage) return;
+  isPastingImage = true;
+  const selection = editor.getSelection();
+  try {
+    if (currentDocument.isUntitled) {
+      await save(true);
+      if (!currentDocument || currentDocument.isUntitled) return;
+    }
+    const result = await window.marktex.pasteClipboardImage();
+    if (result.canceled || !result.markdown || !model) return;
+    const range = selection
+      ? monaco.Range.lift(selection)
+      : new monaco.Range(1, 1, 1, 1);
+    editor.executeEdits('paste-image', [{
+      range,
+      text: result.markdown,
+      forceMoveMarkers: true,
+    }]);
+    const insertedEnd = model.getPositionAt(
+      model.getOffsetAt(range.getStartPosition()) + result.markdown.length,
+    );
+    editor.setPosition(insertedEnd);
+    editor.focus();
+  } catch (error) {
+    window.alert(`이미지를 붙여넣지 못했습니다.\n${error instanceof Error ? error.message : String(error)}`);
+  } finally {
+    isPastingImage = false;
+  }
+}
+
+editorHost.addEventListener('paste', (event) => {
+  if (!clipboardContainsImage(event)) return;
+  event.preventDefault();
+  event.stopPropagation();
+  void pasteClipboardImage();
+}, { capture: true });
 
 editor.addCommand(
   monaco.KeyCode.Escape,

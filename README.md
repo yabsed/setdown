@@ -40,6 +40,9 @@ npm run install:linux
   Editor에서도 그 행이 70% 높이에 놓입니다.
 - `Ctrl/Cmd+N`은 새 문서, `Ctrl/Cmd+O`는 파일 열기, `Ctrl/Cmd+S`는 저장,
   `Ctrl/Cmd+E`는 두 화면 전환, `Ctrl/Cmd+Shift+P`는 PDF 내보내기입니다.
+- Editor에서 스크린샷이나 클립보드 이미지를 붙여넣으면
+  `<문서 이름>.assets/`에 PNG로 저장하고 현재 커서에 상대경로 이미지 문법을
+  삽입합니다. 새 문서는 이미지 저장 전에 Markdown 파일의 저장 위치를 묻습니다.
 
 ## 개발과 검증
 

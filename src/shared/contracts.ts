@@ -33,6 +33,12 @@ export type ExportPdfResult = {
   path?: string;
 };
 
+export type PasteImageResult = {
+  canceled: boolean;
+  markdown?: string;
+  relativePath?: string;
+};
+
 export type AppCommand =
   | 'new-document'
   | 'save'
@@ -50,6 +56,7 @@ export type MarkTexApi = {
   reloadDocument(): Promise<DocumentSnapshot | null>;
   renderDocument(text: string, revision: number, documentPath: string): Promise<RenderResult>;
   exportPdf(text: string, revision: number, documentPath: string): Promise<ExportPdfResult>;
+  pasteClipboardImage(): Promise<PasteImageResult>;
   openLink(href: string): Promise<void>;
   onDocumentOpened(listener: (document: DocumentSnapshot) => void): () => void;
   onExternalChange(listener: (change: ExternalChange) => void): () => void;
