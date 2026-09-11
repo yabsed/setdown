@@ -68,7 +68,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
     <section class="editor-surface" aria-label="Markdown 원문 편집기">
       <div class="editor-host"></div>
-      <div class="editor-hint">이미지 붙여넣기 지원 · <kbd>Esc</kbd> Viewer로 돌아가기</div>
+      <div class="editor-hint"><kbd>Esc</kbd> Viewer로 돌아가기</div>
     </section>
   </section>
 `;
