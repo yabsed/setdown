@@ -80,7 +80,11 @@ type PendingTabTransfer = {
   tab: TransferableTab;
   claimedByWebContentsId: number | null;
   expiresAt: number;
+  detachTimer: ReturnType<typeof setTimeout> | null;
+  detachPosition: { x: number; y: number } | null;
 };
+
+const TAB_DETACH_GRACE_MS = 250;
 
 const windowStates = new Map<number, WindowState>();
 const pendingTabTransfers = new Map<string, PendingTabTransfer>();
@@ -884,10 +888,15 @@ function installIpc() {
       tab: tab as TransferableTab,
       claimedByWebContentsId: null,
       expiresAt: Date.now() + 60_000,
+      detachTimer: null,
+      detachPosition: null,
     });
     setTimeout(() => {
       const pending = pendingTabTransfers.get(transferId);
-      if (pending && pending.expiresAt <= Date.now()) pendingTabTransfers.delete(transferId);
+      if (pending && pending.expiresAt <= Date.now()) {
+        if (pending.detachTimer) clearTimeout(pending.detachTimer);
+        pendingTabTransfers.delete(transferId);
+      }
     }, 60_500);
   });
   ipcMain.handle('tabs:claim-transfer', (event, transferId: string) => {
@@ -899,12 +908,17 @@ function installIpc() {
     if (transfer.sourceWebContentsId === event.sender.id || transfer.claimedByWebContentsId !== null) {
       return null;
     }
+    if (transfer.detachTimer) {
+      clearTimeout(transfer.detachTimer);
+      transfer.detachTimer = null;
+    }
     transfer.claimedByWebContentsId = event.sender.id;
     return { transferId, tab: transfer.tab };
   });
   ipcMain.on('tabs:complete-transfer', (event, transferId: string) => {
     const transfer = pendingTabTransfers.get(transferId);
     if (!transfer || transfer.claimedByWebContentsId !== event.sender.id) return;
+    if (transfer.detachTimer) clearTimeout(transfer.detachTimer);
     const source = stateForWebContentsId(transfer.sourceWebContentsId)?.window;
     source?.webContents.send('tabs:transfer-completed', transfer.tab.id);
     pendingTabTransfers.delete(transferId);
@@ -912,23 +926,34 @@ function installIpc() {
   ipcMain.on('tabs:cancel-transfer', (event, transferId: string) => {
     const transfer = pendingTabTransfers.get(transferId);
     if (transfer?.sourceWebContentsId === event.sender.id && transfer.claimedByWebContentsId === null) {
+      if (transfer.detachTimer) clearTimeout(transfer.detachTimer);
       pendingTabTransfers.delete(transferId);
     }
   });
   ipcMain.on('tabs:detach-to-window', (event, { transferId, x, y }) => {
     const transfer = pendingTabTransfers.get(transferId);
     if (!transfer || transfer.sourceWebContentsId !== event.sender.id || transfer.claimedByWebContentsId !== null) return;
-    const detachedWindow = createWindow({
+    transfer.detachPosition = {
       x: Math.round(Number(x) - 120),
       y: Math.round(Number(y) - 18),
-    });
-    transfer.claimedByWebContentsId = detachedWindow.webContents.id;
-    detachedWindow.webContents.once('did-finish-load', () => {
-      detachedWindow.webContents.send('tabs:transfer-incoming', {
-        transferId,
-        tab: transfer.tab,
+    };
+    // destination의 drop/claim과 source의 dragend는 서로 다른 WebContents에서
+    // 오므로 도착 순서가 보장되지 않는다. claim에 우선권을 줄 짧은 유예를
+    // 둔 뒤, 끝내 아무 창도 가져가지 않은 탭만 새 창으로 분리한다.
+    if (transfer.detachTimer) clearTimeout(transfer.detachTimer);
+    transfer.detachTimer = setTimeout(() => {
+      const pending = pendingTabTransfers.get(transferId);
+      if (!pending || pending.claimedByWebContentsId !== null || !pending.detachPosition) return;
+      pending.detachTimer = null;
+      const detachedWindow = createWindow(pending.detachPosition);
+      pending.claimedByWebContentsId = detachedWindow.webContents.id;
+      detachedWindow.webContents.once('did-finish-load', () => {
+        detachedWindow.webContents.send('tabs:transfer-incoming', {
+          transferId,
+          tab: pending.tab,
+        });
       });
-    });
+    }, TAB_DETACH_GRACE_MS);
   });
   ipcMain.on('app:close-empty-window', (event) => {
     const state = stateForWebContentsId(event.sender.id);

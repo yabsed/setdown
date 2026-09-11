@@ -312,6 +312,10 @@ function isSetdownTabDrag(event: DragEvent) {
   return (event.dataTransfer?.getData('text/plain') ?? '').startsWith('setdown-tab:');
 }
 
+function isTabStripDropTarget(event: DragEvent) {
+  return event.target instanceof Element && event.target.closest('.tab-strip') !== null;
+}
+
 function reorderDraggedTab(event: DragEvent, tabId: string) {
   const from = tabs.findIndex((tab) => tab.id === tabId);
   if (from < 0) return;
@@ -360,7 +364,7 @@ tabStrip.addEventListener('drop', (event) => {
 });
 
 window.addEventListener('dragover', (event) => {
-  if ((event.target as Element | null)?.closest('.tab-strip')) return;
+  if (isTabStripDropTarget(event)) return;
   if (!isSetdownTabDrag(event)) return;
   event.preventDefault();
   if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
@@ -370,7 +374,7 @@ window.addEventListener('dragleave', (event) => {
   if (event.relatedTarget === null) shell.classList.remove('is-window-drop-target');
 });
 window.addEventListener('drop', (event) => {
-  if ((event.target as Element | null)?.closest('.tab-strip')) return;
+  if (isTabStripDropTarget(event)) return;
   const transferId = transferIdFromDrop(event);
   if (!transferId) return;
   event.preventDefault();
