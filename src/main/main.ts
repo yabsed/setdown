@@ -17,7 +17,7 @@ import {
   unwatchFile,
 } from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   Notebook,
   getDefaultNotebookConfig,
@@ -89,16 +89,26 @@ function assertReadablePath(candidate: string): string {
   return resolved;
 }
 
+/**
+ * 경로를 URL의 path로 그대로 실어 보낸다. 경로를 통째로 encoding하면 URL에
+ * segment가 하나뿐이라, stylesheet 안의 상대 참조(KaTeX의 `fonts/...`,
+ * Font Awesome의 `../webfonts/...`)가 엉뚱한 곳을 가리켜 web font가 전부
+ * 로드에 실패한다. file:// URL을 거쳐 platform별 구분자와 특수문자만 표준
+ * 방식으로 encoding한다.
+ */
 function resourceUrl(filePath: string): string {
-  const encoded = Buffer.from(path.resolve(filePath), 'utf8').toString('base64url');
-  return `marktex-resource://file/${encoded}`;
+  const { pathname } = pathToFileURL(path.resolve(filePath));
+  // path.resolve는 끝의 구분자를 지운다. `<base href>`는 그 구분자가 있어야
+  // 상대 참조가 문서 폴더 안에서 풀리므로 되살린다.
+  const trailingSeparator = /[\\/]$/.test(filePath) ? '/' : '';
+  return `marktex-resource://file${pathname}${trailingSeparator}`;
 }
 
 function pathFromResourceUrl(rawUrl: string): string | null {
   try {
     const url = new URL(rawUrl);
     if (url.protocol !== 'marktex-resource:') return null;
-    return Buffer.from(url.pathname.slice(1), 'base64url').toString('utf8');
+    return fileURLToPath(`file://${url.pathname}`);
   } catch {
     return null;
   }
