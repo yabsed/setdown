@@ -40,6 +40,9 @@ npm run install:linux
   Editor에서도 그 행이 70% 높이에 놓입니다.
 - `Ctrl/Cmd+N`은 새 문서, `Ctrl/Cmd+O`는 파일 열기, `Ctrl/Cmd+S`는 저장,
   `Ctrl/Cmd+E`는 두 화면 전환, `Ctrl/Cmd+Shift+P`는 PDF 내보내기입니다.
+- 문서를 열거나 새로 만들면 기존 문서를 덮어쓰지 않고 새 탭에 추가됩니다. 탭마다
+  Editor 모델, Viewer 결과, 스크롤 위치와 편집/보기 모드를 독립적으로 유지합니다.
+  `Ctrl/Cmd+W`로 현재 탭을 닫고 `Ctrl+Tab`·`Ctrl+Shift+Tab`으로 이동합니다.
 - Editor는 이미지의 출처에 맞춰 붙여넣습니다. 브라우저가 HTTP/HTTPS 원본 주소를
   제공하면 외부 URL을 바로 삽입합니다. GNOME 파일 관리자에서 복사한 로컬 이미지는
   원래 형식을 유지해 `<문서 이름>.assets/`로 복사하고, 스크린샷처럼 경로가 없는

@@ -12,11 +12,70 @@ button { font: inherit; }
 
 .shell {
   display: grid;
-  grid-template-rows: 42px auto 1fr;
+  grid-template-rows: 42px 36px auto 1fr;
   width: 100%;
   height: 100%;
   background: #f7f7f5;
 }
+.shell[data-tabs="false"] { grid-template-rows: 42px 0 auto 1fr; }
+
+.tab-strip {
+  display: flex;
+  min-width: 0;
+  padding: 5px 8px 0;
+  border-bottom: 1px solid #d8d8d2;
+  background: #ecece8;
+  -webkit-app-region: drag;
+}
+.tab-strip[hidden] { display: none; }
+.tab-list { display: flex; flex: 1; min-width: 0; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.tab-list::-webkit-scrollbar { display: none; }
+.document-tab {
+  display: flex;
+  align-items: center;
+  flex: 0 1 210px;
+  min-width: 96px;
+  max-width: 230px;
+  height: 30px;
+  padding: 0 5px 0 11px;
+  color: #6c6c67;
+  border: 0;
+  border-radius: 7px 7px 0 0;
+  background: transparent;
+  font-size: 12px;
+  cursor: default;
+  -webkit-app-region: no-drag;
+}
+.document-tab:hover { background: rgba(255, 255, 255, .55); }
+.document-tab[aria-selected="true"] { color: #292927; background: #f7f7f5; }
+.tab-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.tab-dirty { margin-left: 5px; color: #d26a37; font-size: 15px; }
+.tab-close {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 3px;
+  border-radius: 5px;
+  font-size: 16px;
+  line-height: 1;
+}
+.tab-close:hover { background: #deded8; }
+.new-tab-button {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  margin-left: 4px;
+  color: #656560;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+.new-tab-button:hover { background: rgba(255,255,255,.7); }
 
 .titlebar {
   display: grid;
@@ -85,7 +144,7 @@ button { font: inherit; }
 .notice button { margin-left: 6px; padding: 5px 10px; border: 1px solid #c8ad62; border-radius: 5px; background: #fff9e8; cursor: pointer; }
 
 .empty-state, .viewer-surface, .editor-surface {
-  grid-row: 3;
+  grid-row: 4;
   grid-column: 1;
   min-width: 0;
   min-height: 0;

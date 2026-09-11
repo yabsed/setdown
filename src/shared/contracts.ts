@@ -39,17 +39,27 @@ export type PasteImageResult = {
   relativePath?: string;
 };
 
+export type TabStateSummary = {
+  name: string;
+  dirty: boolean;
+};
+
 export type AppCommand =
   | 'new-document'
   | 'save'
   | 'save-as'
   | 'export-pdf'
+  | 'close-tab'
+  | 'next-tab'
+  | 'previous-tab'
   | 'toggle-surface';
 
 export type MarkTexApi = {
   getDocument(): Promise<DocumentSnapshot | null>;
   newDocument(): Promise<DocumentSnapshot | null>;
   openDocument(): Promise<DocumentSnapshot | null>;
+  activateDocument(document: DocumentSnapshot, text: string, revision: number): Promise<DocumentSnapshot>;
+  updateTabState(tabs: TabStateSummary[]): void;
   updateText(text: string, revision: number): void;
   saveDocument(text: string, revision: number): Promise<SaveResult>;
   saveDocumentAs(text: string, revision: number): Promise<SaveResult>;

@@ -4,6 +4,7 @@ import type {
   DocumentSnapshot,
   ExternalChange,
   MarkTexApi,
+  TabStateSummary,
 } from '../shared/contracts';
 
 function subscribe<T>(channel: string, listener: (value: T) => void) {
@@ -16,6 +17,10 @@ const api: MarkTexApi = {
   getDocument: () => ipcRenderer.invoke('document:get'),
   newDocument: () => ipcRenderer.invoke('document:new'),
   openDocument: () => ipcRenderer.invoke('document:open'),
+  activateDocument: (document, text, revision) =>
+    ipcRenderer.invoke('document:activate', { document, text, revision }),
+  updateTabState: (tabs: TabStateSummary[]) =>
+    ipcRenderer.send('tabs:update-state', tabs),
   updateText: (text, revision) =>
     ipcRenderer.send('document:update-text', { text, revision }),
   saveDocument: (text, revision) =>

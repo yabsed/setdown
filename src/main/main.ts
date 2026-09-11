@@ -33,6 +33,7 @@ import type {
   SaveResult,
   ExportPdfResult,
   PasteImageResult,
+  TabStateSummary,
 } from '../shared/contracts';
 import { applyTextRevision, isDirty, lineCount } from '../shared/document-state';
 import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
@@ -61,6 +62,7 @@ let currentDocument: DocumentSnapshot | null = null;
 let watchedPath: string | null = null;
 let activeRoot: string | null = null;
 let closeAfterConfirmation = false;
+let rendererTabs: TabStateSummary[] = [];
 
 type CrossnoteModule = typeof import('crossnote');
 type NotebookInstance = Awaited<ReturnType<CrossnoteModule['Notebook']['init']>>;
@@ -289,7 +291,7 @@ async function renderCurrent(
   }
   const token = `${Date.now()}-${revision}-${Math.random().toString(36).slice(2)}`;
   previewDocuments.set(token, html);
-  while (previewDocuments.size > 5) {
+  while (previewDocuments.size > 64) {
     const oldest = previewDocuments.keys().next().value as string | undefined;
     if (!oldest) break;
     previewDocuments.delete(oldest);
@@ -357,33 +359,11 @@ async function openPath(filePath: string, notify = true) {
 }
 
 async function createNewDocument() {
-  if (!(await confirmReplaceCurrentDocument())) return null;
   stopWatching();
   notebookCache = null;
   currentDocument = blankDocument();
   activeRoot = path.dirname(currentDocument.path);
   return currentDocument;
-}
-
-async function confirmReplaceCurrentDocument(): Promise<boolean> {
-  if (!currentDocument || !isDirty(currentDocument)) return true;
-  const result = await dialog.showMessageBox(mainWindow!, {
-    type: 'warning',
-    message: `${currentDocument.name}의 변경 내용을 저장하시겠습니까?`,
-    detail: '다른 문서를 열면 저장하지 않은 변경 내용은 사라집니다.',
-    buttons: ['저장', '저장 안 함', '취소'],
-    defaultId: 0,
-    cancelId: 2,
-  });
-  if (result.response === 2) return false;
-  if (result.response === 0) {
-    const saved = await saveCurrentDocument(
-      currentDocument.text,
-      currentDocument.revision,
-    );
-    if (saved.canceled) return false;
-  }
-  return true;
 }
 
 async function chooseAndOpen(notify = true) {
@@ -395,8 +375,32 @@ async function chooseAndOpen(notify = true) {
     ],
   });
   if (result.canceled || !result.filePaths[0]) return null;
-  if (!(await confirmReplaceCurrentDocument())) return null;
   return openPath(result.filePaths[0], notify);
+}
+
+async function activateDocument(
+  document: DocumentSnapshot,
+  text: string,
+  revision: number,
+) {
+  stopWatching();
+  currentDocument = applyTextRevision(document, text, revision);
+  activeRoot = path.dirname(currentDocument.path);
+  watchCurrentDocument();
+  if (!currentDocument.isUntitled) {
+    try {
+      const diskVersion = snapshotStats(currentDocument.path);
+      if (!isSameDiskVersion(diskVersion, currentDocument.diskVersion)) {
+        mainWindow?.webContents.send('document:external-change', {
+          path: currentDocument.path,
+          diskVersion,
+        });
+      }
+    } catch {
+      // 삭제되거나 잠시 접근할 수 없는 파일은 다음 저장/새로고침에서 처리한다.
+    }
+  }
+  return currentDocument;
 }
 
 async function confirmOverwriteIfChanged(): Promise<boolean> {
@@ -601,6 +605,8 @@ function installMenu() {
         { label: 'Save As…', accelerator: 'CmdOrCtrl+Shift+S', click: () => sendCommand('save-as') },
         { label: 'Export as PDF…', click: () => sendCommand('export-pdf') },
         { type: 'separator' },
+        { label: 'Close Tab', accelerator: 'CmdOrCtrl+W', click: () => sendCommand('close-tab') },
+        { type: 'separator' },
         { role: 'quit' },
       ],
     },
@@ -608,6 +614,8 @@ function installMenu() {
       label: 'View',
       submenu: [
         { label: 'Toggle Viewer / Editor', accelerator: 'CmdOrCtrl+E', click: () => sendCommand('toggle-surface') },
+        { label: 'Next Tab', accelerator: 'Ctrl+Tab', click: () => sendCommand('next-tab') },
+        { label: 'Previous Tab', accelerator: 'Ctrl+Shift+Tab', click: () => sendCommand('previous-tab') },
         { type: 'separator' },
         { role: 'reload' },
         { role: 'toggleDevTools' },
@@ -625,6 +633,7 @@ function installMenu() {
 
 function createWindow() {
   closeAfterConfirmation = false;
+  rendererTabs = [];
   mainWindow = new BrowserWindow({
     width: 1080,
     height: 820,
@@ -643,26 +652,26 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => mainWindow?.show());
   mainWindow.on('close', (event) => {
-    if (closeAfterConfirmation || !currentDocument || !isDirty(currentDocument)) return;
+    if (closeAfterConfirmation) return;
+    const dirtyTabs = rendererTabs.filter((tab) => tab.dirty);
+    if (dirtyTabs.length === 0 && currentDocument && isDirty(currentDocument)) {
+      dirtyTabs.push({ name: currentDocument.name, dirty: true });
+    }
+    if (dirtyTabs.length === 0) return;
     event.preventDefault();
+    const names = dirtyTabs.map((tab) => tab.name).join('\n');
     void dialog.showMessageBox(mainWindow!, {
       type: 'warning',
-      message: `${currentDocument.name}의 변경 내용을 저장하시겠습니까?`,
-      buttons: ['저장', '저장 안 함', '취소'],
+      message: `저장하지 않은 문서 ${dirtyTabs.length}개를 닫으시겠습니까?`,
+      detail: names,
+      buttons: ['취소', '저장하지 않고 닫기'],
       defaultId: 0,
-      cancelId: 2,
-    }).then(async ({ response }) => {
-      if (response === 2 || !currentDocument) return;
-      if (response === 0) {
-        const saved = await saveCurrentDocument(
-          currentDocument.text,
-          currentDocument.revision,
-        );
-        if (saved.canceled) return;
-      }
+      cancelId: 0,
+    }).then(({ response }) => {
+      if (response !== 1) return;
       closeAfterConfirmation = true;
       mainWindow?.close();
-    }).catch((error) => dialog.showErrorBox('저장하지 못했습니다', String(error)));
+    }).catch((error) => dialog.showErrorBox('창을 닫지 못했습니다', String(error)));
   });
 
   const devServer = process.env.VITE_DEV_SERVER_URL;
@@ -673,6 +682,14 @@ function createWindow() {
 function installIpc() {
   ipcMain.handle('document:get', () => currentDocument);
   ipcMain.handle('document:new', () => createNewDocument());
+  ipcMain.handle('document:activate', (_event, { document, text, revision }) =>
+    activateDocument(document, text, revision),
+  );
+  ipcMain.on('tabs:update-state', (_event, tabs: TabStateSummary[]) => {
+    rendererTabs = Array.isArray(tabs)
+      ? tabs.map((tab) => ({ name: String(tab.name), dirty: Boolean(tab.dirty) }))
+      : [];
+  });
   // invoke의 반환값으로 renderer가 직접 문서를 설치하므로 opened 이벤트를
   // 함께 보내지 않는다. 두 경로가 겹치면 showDocument가 같은 문서를 두 번
   // 초기화하여 진행 중 Preview를 무효화한다.
@@ -703,7 +720,6 @@ function installIpc() {
     if (localPath) {
       const checked = assertReadablePath(localPath);
       if (/\.(?:md|markdown|mdown|mkdn|mkd|rmd|qmd|mdx)$/i.test(checked)) {
-        if (!(await confirmReplaceCurrentDocument())) return;
         await openPath(checked);
       } else {
         await shell.openPath(checked);
@@ -735,9 +751,7 @@ if (!hasLock) {
   app.on('second-instance', (_event, argv) => {
     const markdownPath = markdownPathFromArgs(argv);
     if (markdownPath) {
-      void confirmReplaceCurrentDocument().then((confirmed) => {
-        if (confirmed) return openPath(path.resolve(markdownPath));
-      });
+      void openPath(path.resolve(markdownPath));
     }
     mainWindow?.show();
     mainWindow?.focus();

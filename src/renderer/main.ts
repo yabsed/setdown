@@ -16,7 +16,7 @@ window.MonacoEnvironment = {
 };
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-  <section class="shell" data-surface="empty">
+  <section class="shell" data-surface="empty" data-tabs="false">
     <header class="titlebar">
       <button class="icon-button open-button" type="button" title="Markdown 파일 열기 (Ctrl/Cmd+O)">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H10l2 2h6.5A2.5 2.5 0 0 1 21 8.5v8A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5v-10Zm2.5-.75a.75.75 0 0 0-.75.75v10c0 .414.336.75.75.75h13a.75.75 0 0 0 .75-.75v-8a.75.75 0 0 0-.75-.75h-7.225l-2-2H5.5Z"/></svg>
@@ -30,6 +30,11 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <svg class="mode-icon mode-icon-view" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c4.75 0 8.27 3.13 9.66 6.35a1.62 1.62 0 0 1 0 1.3C20.27 15.87 16.75 19 12 19s-8.27-3.13-9.66-6.35a1.62 1.62 0 0 1 0-1.3C3.73 8.13 7.25 5 12 5Zm0 1.5c-4 0-7 2.63-8.28 5.45a.12.12 0 0 0 0 .1C5 14.87 8 17.5 12 17.5s7-2.63 8.28-5.45a.12.12 0 0 0 0-.1C19 9.13 16 6.5 12 6.5Zm0 2.25A3.25 3.25 0 1 1 12 15.25 3.25 3.25 0 0 1 12 8.75Zm0 1.5A1.75 1.75 0 1 0 12 13.75 1.75 1.75 0 0 0 12 10.25Z"/></svg>
       </button>
     </header>
+
+    <nav class="tab-strip" aria-label="열린 문서" hidden>
+      <div class="tab-list" role="tablist"></div>
+      <button class="new-tab-button" type="button" title="새 문서 (Ctrl/Cmd+N)" aria-label="새 문서">+</button>
+    </nav>
 
     <div class="notice" hidden>
       <span>이 파일이 다른 프로그램에서 변경되었습니다.</span>
@@ -81,6 +86,23 @@ const renderState = document.querySelector<HTMLElement>('.render-state')!;
 const renderError = document.querySelector<HTMLElement>('.render-error')!;
 const renderErrorText = renderError.querySelector<HTMLElement>('span')!;
 const notice = document.querySelector<HTMLElement>('.notice')!;
+const tabStrip = document.querySelector<HTMLElement>('.tab-strip')!;
+const tabList = document.querySelector<HTMLElement>('.tab-list')!;
+
+type DocumentTab = {
+  id: string;
+  document: DocumentSnapshot;
+  model: monaco.editor.ITextModel;
+  revision: number;
+  surface: 'viewer' | 'editor';
+  anchor: ViewportAnchor;
+  previewUrl: string | null;
+  previewRevision: number | null;
+  editorViewState: monaco.editor.ICodeEditorViewState | null;
+};
+
+const tabs: DocumentTab[] = [];
+let activeTabId: string | null = null;
 
 let currentDocument: DocumentSnapshot | null = null;
 let model: monaco.editor.ITextModel | null = null;
@@ -92,7 +114,7 @@ let previewError: { revision: number; message: string } | null = null;
 let previewPositionRequest = 0;
 
 const PREVIEW_DEBOUNCE_MS = 700;
-const previewCoordinator = new PreviewRenderCoordinator(renderRevision);
+let previewCoordinator = new PreviewRenderCoordinator(renderRevision);
 
 /**
  * Viewer와 Editor가 함께 보는 단 하나의 좌표. 화면 전환은 언제나 이 값을
@@ -146,6 +168,152 @@ function setSurface(next: typeof surface) {
   if (next === 'editor') window.setTimeout(() => editor.layout(), 0);
 }
 
+function activeTab() {
+  return tabs.find((tab) => tab.id === activeTabId) ?? null;
+}
+
+function saveActiveTabState() {
+  const tab = activeTab();
+  if (!tab || !currentDocument || !model) return;
+  tab.document = currentDocument;
+  tab.revision = revision;
+  tab.surface = surface === 'empty' ? 'viewer' : surface;
+  tab.anchor = anchor;
+  tab.editorViewState = editor.saveViewState();
+  if (previewCoordinator.readyRevision !== null && frame.src.startsWith('marktex-preview:')) {
+    tab.previewUrl = frame.src;
+    tab.previewRevision = previewCoordinator.readyRevision;
+  }
+}
+
+function renderTabs() {
+  tabStrip.hidden = tabs.length === 0;
+  shell.dataset.tabs = tabs.length > 0 ? 'true' : 'false';
+  shell.dataset.dirtyTabs = String(tabs.filter((tab) =>
+    tab.revision !== tab.document.savedRevision,
+  ).length);
+  tabList.replaceChildren();
+  for (const tab of tabs) {
+    const button = document.createElement('button');
+    button.className = 'document-tab';
+    button.type = 'button';
+    button.setAttribute('role', 'tab');
+    button.setAttribute('aria-selected', String(tab.id === activeTabId));
+    button.title = tab.document.path;
+
+    const name = document.createElement('span');
+    name.className = 'tab-name';
+    name.textContent = tab.document.name;
+    button.append(name);
+    if (tab.revision !== tab.document.savedRevision) {
+      const dirty = document.createElement('span');
+      dirty.className = 'tab-dirty';
+      dirty.textContent = '•';
+      dirty.setAttribute('aria-label', '저장되지 않은 변경');
+      button.append(dirty);
+    }
+    const close = document.createElement('span');
+    close.className = 'tab-close';
+    close.textContent = '×';
+    close.title = '탭 닫기';
+    close.addEventListener('click', (event) => {
+      event.stopPropagation();
+      void closeTab(tab.id);
+    });
+    button.append(close);
+    button.addEventListener('click', () => void activateTab(tab.id));
+    tabList.append(button);
+  }
+  window.marktex.updateTabState(tabs.map((tab) => ({
+    name: tab.document.name,
+    dirty: tab.revision !== tab.document.savedRevision,
+  })));
+}
+
+let tabActivation = 0;
+async function activateTab(tabId: string) {
+  if (tabId === activeTabId) return;
+  const next = tabs.find((tab) => tab.id === tabId);
+  if (!next) return;
+  const activation = ++tabActivation;
+  saveActiveTabState();
+  resetPreviewState();
+  previewCoordinator = new PreviewRenderCoordinator(renderRevision);
+  activeTabId = next.id;
+  currentDocument = next.document;
+  model = next.model;
+  revision = next.revision;
+  surface = next.surface;
+  anchor = next.anchor;
+  editor.setModel(model);
+  editor.restoreViewState(next.editorViewState);
+  publishAnchor();
+  notice.hidden = true;
+  await window.marktex.activateDocument(currentDocument, model.getValue(), revision);
+  if (activation !== tabActivation || activeTabId !== next.id) return;
+  updateChrome();
+  renderTabs();
+
+  if (next.previewUrl && next.previewRevision === revision) {
+    try {
+      await loadPreviewFrame(next.previewUrl);
+      if (activation !== tabActivation) return;
+      previewCoordinator.readyRevision = revision;
+      setSurface(next.surface);
+      if (next.surface === 'viewer') await requestPreviewPosition(anchor, revision);
+      return;
+    } catch {
+      next.previewUrl = null;
+      next.previewRevision = null;
+    }
+  }
+
+  setSurface(next.surface);
+  const ready = await ensurePreview(revision);
+  if (ready && next.surface === 'viewer' && activation === tabActivation) {
+    await requestPreviewPosition(anchor, revision);
+  }
+}
+
+async function closeTab(tabId: string) {
+  const index = tabs.findIndex((tab) => tab.id === tabId);
+  if (index < 0) return;
+  const tab = tabs[index];
+  if (tab.revision !== tab.document.savedRevision
+    && !window.confirm(`${tab.document.name}의 저장하지 않은 변경을 버리고 닫으시겠습니까?`)) {
+    return;
+  }
+  const wasActive = tab.id === activeTabId;
+  tabs.splice(index, 1);
+  if (!wasActive) {
+    tab.model.dispose();
+    renderTabs();
+    return;
+  }
+  activeTabId = null;
+  tab.model.dispose();
+  const replacement = tabs[Math.min(index, tabs.length - 1)];
+  if (replacement) {
+    await activateTab(replacement.id);
+    return;
+  }
+  resetPreviewState();
+  currentDocument = null;
+  model = null;
+  editor.setModel(null);
+  frame.removeAttribute('src');
+  setSurface('empty');
+  updateChrome();
+  renderTabs();
+}
+
+function cycleTab(direction: -1 | 1) {
+  if (tabs.length < 2 || !activeTabId) return;
+  const currentIndex = tabs.findIndex((tab) => tab.id === activeTabId);
+  const nextIndex = (currentIndex + direction + tabs.length) % tabs.length;
+  void activateTab(tabs[nextIndex].id);
+}
+
 function updateChrome() {
   if (!currentDocument) {
     filename.textContent = 'Setdown';
@@ -157,22 +325,38 @@ function updateChrome() {
   filename.textContent = currentDocument.name;
   dirtyDot.hidden = !dirty;
   document.title = `${dirty ? '• ' : ''}${currentDocument.name} — Setdown`;
+  const tab = activeTab();
+  if (tab) {
+    tab.document = currentDocument;
+    tab.revision = revision;
+  }
+  renderTabs();
+}
+
+function createDocumentModel(documentSnapshot: DocumentSnapshot, tabId: string) {
+  const uri = monaco.Uri.file(documentSnapshot.path).with({ query: tabId });
+  const created = monaco.editor.createModel(documentSnapshot.text, 'markdown', uri);
+  created.onDidChangeContent(() => {
+    if (model !== created || !currentDocument) return;
+    revision += 1;
+    window.marktex.updateText(created.getValue(), revision);
+    updateChrome();
+    if (surface === 'editor') schedulePreview(revision);
+  });
+  return created;
 }
 
 function installModel(documentSnapshot: DocumentSnapshot) {
   const previous = model;
-  const uri = monaco.Uri.file(documentSnapshot.path);
-  model = monaco.editor.createModel(documentSnapshot.text, 'markdown', uri);
+  model = createDocumentModel(documentSnapshot, activeTabId ?? crypto.randomUUID());
   editor.setModel(model);
   previous?.dispose();
   revision = documentSnapshot.revision;
-  model.onDidChangeContent(() => {
-    if (!model || !currentDocument) return;
-    revision += 1;
-    window.marktex.updateText(model.getValue(), revision);
-    updateChrome();
-    if (surface === 'editor') schedulePreview(revision);
-  });
+  const tab = activeTab();
+  if (tab) {
+    tab.model = model;
+    tab.revision = revision;
+  }
 }
 
 function cancelScheduledPreview() {
@@ -253,6 +437,11 @@ async function renderRevision(targetRevision: number): Promise<boolean> {
 
     await loadPreviewFrame(result.url);
     if (generation !== previewGeneration || currentDocument?.path !== documentPath) return false;
+    const tab = activeTab();
+    if (tab) {
+      tab.previewUrl = result.url;
+      tab.previewRevision = targetRevision;
+    }
     previewError = null;
     return true;
   } catch (error) {
@@ -339,29 +528,49 @@ async function showDocument(
   documentSnapshot: DocumentSnapshot,
   initialSurface: 'viewer' | 'editor' = 'viewer',
 ) {
-  resetPreviewState();
-  const generation = previewGeneration;
-  currentDocument = documentSnapshot;
-  anchor = {
+  if (!documentSnapshot.isUntitled) {
+    const existing = tabs.find((tab) =>
+      !tab.document.isUntitled && tab.document.path === documentSnapshot.path,
+    );
+    if (existing) {
+      await activateTab(existing.id);
+      return;
+    }
+  }
+  const id = crypto.randomUUID();
+  const initialAnchor: ViewportAnchor = {
     sourceLine: 1,
     yRatio: GOLDEN_TOP_RATIO,
     reason: 'empty-document',
     confidence: 'fallback',
   };
-  publishAnchor();
-  notice.hidden = true;
+  tabs.push({
+    id,
+    document: documentSnapshot,
+    model: createDocumentModel(documentSnapshot, id),
+    revision: documentSnapshot.revision,
+    surface: initialSurface,
+    anchor: initialAnchor,
+    previewUrl: null,
+    previewRevision: null,
+    editorViewState: null,
+  });
+  renderTabs();
+  await activateTab(id);
+}
+
+async function reloadActiveDocument(documentSnapshot: DocumentSnapshot) {
+  const tab = activeTab();
+  if (!tab) return;
+  resetPreviewState();
+  currentDocument = documentSnapshot;
+  tab.document = documentSnapshot;
+  tab.previewUrl = null;
+  tab.previewRevision = null;
   installModel(documentSnapshot);
   updateChrome();
-  if (initialSurface === 'editor') {
-    enterEditor(anchor);
-    void ensurePreview(revision);
-    return;
-  }
-  setSurface('viewer');
   const ready = await ensurePreview(revision);
-  if (ready && generation === previewGeneration) {
-    await requestPreviewPosition(anchor, revision);
-  }
+  if (ready && surface === 'viewer') await requestPreviewPosition(anchor, revision);
 }
 
 /**
@@ -448,6 +657,12 @@ async function save(saveAs = false) {
     if (pathChanged) {
       resetPreviewState();
       installModel(result.document);
+      const tab = activeTab();
+      if (tab) {
+        tab.document = result.document;
+        tab.previewUrl = null;
+        tab.previewRevision = null;
+      }
       if (surface === 'editor') schedulePreview(revision);
       else if (surface === 'viewer') {
         const target = revision;
@@ -574,6 +789,7 @@ document.querySelectorAll('.open-button, .empty-open').forEach((button) => {
   button.addEventListener('click', () => void openDocument());
 });
 document.querySelector('.empty-new')?.addEventListener('click', () => void newDocument());
+document.querySelector('.new-tab-button')?.addEventListener('click', () => void newDocument());
 modeToggle.addEventListener('click', () => {
   if (surface === 'viewer') requestViewerAnchor();
   else if (surface === 'editor') void enterViewer();
@@ -600,7 +816,7 @@ document.querySelector('.notice-keep')?.addEventListener('click', () => {
 });
 document.querySelector('.notice-reload')?.addEventListener('click', async () => {
   const reloaded = await window.marktex.reloadDocument();
-  if (reloaded) await showDocument(reloaded);
+  if (reloaded) await reloadActiveDocument(reloaded);
 });
 
 window.addEventListener('message', (event) => {
@@ -627,14 +843,17 @@ window.addEventListener('message', (event) => {
 });
 
 window.marktex.onDocumentOpened((opened) => void showDocument(opened));
-window.marktex.onExternalChange(() => {
-  notice.hidden = false;
+window.marktex.onExternalChange((change) => {
+  if (currentDocument?.path === change.path) notice.hidden = false;
 });
 window.marktex.onCommand((command) => {
   if (command === 'new-document') void newDocument();
   if (command === 'save') void save(false);
   if (command === 'save-as') void save(true);
   if (command === 'export-pdf') void exportPdf();
+  if (command === 'close-tab' && activeTabId) void closeTab(activeTabId);
+  if (command === 'next-tab') cycleTab(1);
+  if (command === 'previous-tab') cycleTab(-1);
   if (command === 'toggle-surface') {
     if (surface === 'viewer') requestViewerAnchor();
     else if (surface === 'editor') void enterViewer();
@@ -643,5 +862,8 @@ window.marktex.onCommand((command) => {
 
 window.marktex.getDocument().then((documentSnapshot) => {
   if (documentSnapshot) void showDocument(documentSnapshot);
-  else setSurface('empty');
+  else {
+    setSurface('empty');
+    renderTabs();
+  }
 });
