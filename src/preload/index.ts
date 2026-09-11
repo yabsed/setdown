@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type {
   AppCommand,
+  CloseDecision,
   DocumentSnapshot,
   ExternalChange,
   MarkTexApi,
@@ -27,6 +28,11 @@ const api: MarkTexApi = {
     ipcRenderer.invoke('document:save', { text, revision }),
   saveDocumentAs: (text, revision) =>
     ipcRenderer.invoke('document:save-as', { text, revision }),
+  saveTabDocument: (document, text, revision) =>
+    ipcRenderer.invoke('document:save-tab', { document, text, revision }),
+  confirmCloseDocument: (name) =>
+    ipcRenderer.invoke('document:confirm-close', name) as Promise<CloseDecision>,
+  finishWindowClose: (saved) => ipcRenderer.send('app:finish-window-close', saved),
   reloadDocument: () => ipcRenderer.invoke('document:reload'),
   renderDocument: (text, revision, documentPath) =>
     ipcRenderer.invoke('document:render', { text, revision, documentPath }),
@@ -39,6 +45,11 @@ const api: MarkTexApi = {
   onExternalChange: (listener) =>
     subscribe<ExternalChange>('document:external-change', listener),
   onCommand: (listener) => subscribe<AppCommand>('app:command', listener),
+  onSaveBeforeClose: (listener) => {
+    const handler = () => listener();
+    ipcRenderer.on('app:save-before-close', handler);
+    return () => ipcRenderer.removeListener('app:save-before-close', handler);
+  },
 };
 
 contextBridge.exposeInMainWorld('marktex', api);

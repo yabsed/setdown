@@ -27,6 +27,7 @@ import {
 import type { FileSystemApi, WebviewConfig } from 'crossnote';
 import type {
   AppCommand,
+  CloseDecision,
   DiskVersion,
   DocumentSnapshot,
   RenderResult,
@@ -63,6 +64,7 @@ let watchedPath: string | null = null;
 let activeRoot: string | null = null;
 let closeAfterConfirmation = false;
 let rendererTabs: TabStateSummary[] = [];
+const reservedUntitledPaths = new Set<string>();
 
 type CrossnoteModule = typeof import('crossnote');
 type NotebookInstance = Awaited<ReturnType<CrossnoteModule['Notebook']['init']>>;
@@ -315,11 +317,25 @@ async function readDocument(filePath: string): Promise<DocumentSnapshot> {
 }
 
 function blankDocument(): DocumentSnapshot {
+  const documentsPath = app.getPath('documents');
+  let sequence = 1;
+  let documentPath: string;
+  do {
+    const name = sequence === 1 ? 'Untitled.md' : `Untitled ${sequence}.md`;
+    documentPath = path.join(documentsPath, name);
+    sequence += 1;
+  } while (reservedUntitledPaths.has(documentPath) || (() => {
+    try {
+      return statSync(documentPath).isFile();
+    } catch {
+      return false;
+    }
+  })());
+  reservedUntitledPaths.add(documentPath);
   return {
-    // Crossnote의 상대 resource 해석에는 실제 absolute base path가 필요하다.
-    // 이 경로에는 저장하지 않으며 첫 Save에서 반드시 Save As를 거친다.
-    path: path.join(app.getPath('documents'), 'Untitled.md'),
-    name: 'Untitled.md',
+    // 상대 resource의 기준이자 첫 Save에서 바로 사용할 실제 기본 위치다.
+    path: documentPath,
+    name: path.basename(documentPath),
     text: '',
     revision: 0,
     savedRevision: 0,
@@ -403,11 +419,11 @@ async function activateDocument(
   return currentDocument;
 }
 
-async function confirmOverwriteIfChanged(): Promise<boolean> {
-  if (!currentDocument) return false;
+async function confirmOverwriteIfChanged(document = currentDocument): Promise<boolean> {
+  if (!document) return false;
   try {
-    const actual = snapshotStats(currentDocument.path);
-    if (isSameDiskVersion(actual, currentDocument.diskVersion)) return true;
+    const actual = snapshotStats(document.path);
+    if (isSameDiskVersion(actual, document.diskVersion)) return true;
   } catch {
     return true;
   }
@@ -449,6 +465,32 @@ async function saveTo(filePath: string, text: string, revision: number): Promise
   return { canceled: false, document: currentDocument };
 }
 
+async function saveDocumentSnapshot(
+  document: DocumentSnapshot,
+  text: string,
+  revision: number,
+): Promise<SaveResult> {
+  const updated = applyTextRevision(document, text, revision);
+  if (!updated.isUntitled && !(await confirmOverwriteIfChanged(updated))) {
+    return { canceled: true };
+  }
+  await fs.mkdir(path.dirname(updated.path), { recursive: true });
+  await atomicWrite(updated.path, text);
+  const absolute = canonicalPath(updated.path);
+  return {
+    canceled: false,
+    document: {
+      path: absolute,
+      name: path.basename(absolute),
+      text,
+      revision,
+      savedRevision: revision,
+      diskVersion: snapshotStats(absolute),
+      isUntitled: false,
+    },
+  };
+}
+
 async function saveDocumentAs(text: string, revision: number): Promise<SaveResult> {
   const defaultPath = currentDocument?.isUntitled
     ? path.join(app.getPath('documents'), 'Untitled.md')
@@ -464,10 +506,12 @@ async function saveDocumentAs(text: string, revision: number): Promise<SaveResul
 
 async function saveCurrentDocument(text: string, revision: number): Promise<SaveResult> {
   if (!currentDocument) return { canceled: true };
-  currentDocument = applyTextRevision(currentDocument, text, revision);
-  if (currentDocument.isUntitled) return saveDocumentAs(text, revision);
-  if (!(await confirmOverwriteIfChanged())) return { canceled: true };
-  return saveTo(currentDocument.path, text, revision);
+  const result = await saveDocumentSnapshot(currentDocument, text, revision);
+  if (result.canceled || !result.document) return result;
+  currentDocument = result.document;
+  activeRoot = path.dirname(currentDocument.path);
+  watchCurrentDocument();
+  return result;
 }
 
 async function pasteClipboardImage(): Promise<PasteImageResult> {
@@ -662,15 +706,19 @@ function createWindow() {
     const names = dirtyTabs.map((tab) => tab.name).join('\n');
     void dialog.showMessageBox(mainWindow!, {
       type: 'warning',
-      message: `저장하지 않은 문서 ${dirtyTabs.length}개를 닫으시겠습니까?`,
+      message: '바뀐 내용을 저장하시겠습니까?',
       detail: names,
-      buttons: ['취소', '저장하지 않고 닫기'],
-      defaultId: 0,
+      buttons: ['취소', '저장 안 함', '저장'],
+      defaultId: 2,
       cancelId: 0,
     }).then(({ response }) => {
-      if (response !== 1) return;
-      closeAfterConfirmation = true;
-      mainWindow?.close();
+      if (response === 0) return;
+      if (response === 1) {
+        closeAfterConfirmation = true;
+        mainWindow?.close();
+        return;
+      }
+      mainWindow?.webContents.send('app:save-before-close');
     }).catch((error) => dialog.showErrorBox('창을 닫지 못했습니다', String(error)));
   });
 
@@ -705,6 +753,35 @@ function installIpc() {
   });
   ipcMain.handle('document:save-as', async (_event, { text, revision }): Promise<SaveResult> => {
     return saveDocumentAs(text, revision);
+  });
+  ipcMain.handle(
+    'document:save-tab',
+    async (_event, { document, text, revision }): Promise<SaveResult> => {
+      const wasCurrent = currentDocument?.path === document.path;
+      const result = await saveDocumentSnapshot(document, text, revision);
+      if (wasCurrent && !result.canceled && result.document) {
+        currentDocument = result.document;
+        activeRoot = path.dirname(currentDocument.path);
+        watchCurrentDocument();
+      }
+      return result;
+    },
+  );
+  ipcMain.handle('document:confirm-close', async (_event, name: string): Promise<CloseDecision> => {
+    const { response } = await dialog.showMessageBox(mainWindow!, {
+      type: 'warning',
+      message: `${name}의 변경 내용을 저장하시겠습니까?`,
+      detail: '저장하지 않은 내용은 완전히 잃게 됩니다.',
+      buttons: ['취소', '저장 안 함', '저장'],
+      defaultId: 2,
+      cancelId: 0,
+    });
+    return response === 2 ? 'save' : response === 1 ? 'discard' : 'cancel';
+  });
+  ipcMain.on('app:finish-window-close', (_event, saved: boolean) => {
+    if (!saved) return;
+    closeAfterConfirmation = true;
+    mainWindow?.close();
   });
   ipcMain.handle('document:export-pdf', (_event, { text, revision, documentPath }) =>
     exportCurrentPdf(text, revision, documentPath),

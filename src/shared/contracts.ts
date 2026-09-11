@@ -44,6 +44,8 @@ export type TabStateSummary = {
   dirty: boolean;
 };
 
+export type CloseDecision = 'cancel' | 'discard' | 'save';
+
 export type AppCommand =
   | 'new-document'
   | 'save'
@@ -63,6 +65,9 @@ export type MarkTexApi = {
   updateText(text: string, revision: number): void;
   saveDocument(text: string, revision: number): Promise<SaveResult>;
   saveDocumentAs(text: string, revision: number): Promise<SaveResult>;
+  saveTabDocument(document: DocumentSnapshot, text: string, revision: number): Promise<SaveResult>;
+  confirmCloseDocument(name: string): Promise<CloseDecision>;
+  finishWindowClose(saved: boolean): void;
   reloadDocument(): Promise<DocumentSnapshot | null>;
   renderDocument(text: string, revision: number, documentPath: string): Promise<RenderResult>;
   exportPdf(text: string, revision: number, documentPath: string): Promise<ExportPdfResult>;
@@ -71,4 +76,5 @@ export type MarkTexApi = {
   onDocumentOpened(listener: (document: DocumentSnapshot) => void): () => void;
   onExternalChange(listener: (change: ExternalChange) => void): () => void;
   onCommand(listener: (command: AppCommand) => void): () => void;
+  onSaveBeforeClose(listener: () => void): () => void;
 };

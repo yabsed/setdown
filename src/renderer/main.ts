@@ -277,13 +277,25 @@ async function activateTab(tabId: string) {
 }
 
 async function closeTab(tabId: string) {
-  const index = tabs.findIndex((tab) => tab.id === tabId);
+  let index = tabs.findIndex((tab) => tab.id === tabId);
   if (index < 0) return;
   const tab = tabs[index];
-  if (tab.revision !== tab.document.savedRevision
-    && !window.confirm(`${tab.document.name}의 저장하지 않은 변경을 버리고 닫으시겠습니까?`)) {
-    return;
+  if (tab.revision !== tab.document.savedRevision) {
+    const decision = await window.marktex.confirmCloseDocument(tab.document.name);
+    if (decision === 'cancel') return;
+    if (decision === 'save') {
+      const result = await window.marktex.saveTabDocument(
+        tab.document,
+        tab.model.getValue(),
+        tab.revision,
+      );
+      if (result.canceled || !result.document) return;
+      tab.document = result.document;
+      tab.revision = result.document.revision;
+    }
   }
+  index = tabs.findIndex((candidate) => candidate.id === tabId);
+  if (index < 0) return;
   const wasActive = tab.id === activeTabId;
   tabs.splice(index, 1);
   tab.frame.remove();
@@ -683,6 +695,30 @@ async function save(saveAs = false) {
   }
 }
 
+async function saveAllDirtyTabs() {
+  try {
+    for (const tab of tabs) {
+      if (tab.revision === tab.document.savedRevision) continue;
+      const result = await window.marktex.saveTabDocument(
+        tab.document,
+        tab.model.getValue(),
+        tab.revision,
+      );
+      if (result.canceled || !result.document) {
+        window.marktex.finishWindowClose(false);
+        return;
+      }
+      tab.document = result.document;
+      tab.revision = result.document.revision;
+    }
+    renderTabs();
+    window.marktex.finishWindowClose(true);
+  } catch (error) {
+    window.alert(`문서를 저장하지 못했습니다.\n${error instanceof Error ? error.message : String(error)}`);
+    window.marktex.finishWindowClose(false);
+  }
+}
+
 async function openDocument() {
   const opened = await window.marktex.openDocument();
   if (opened) await showDocument(opened);
@@ -766,7 +802,7 @@ async function pasteClipboardImage(remoteUrl: string | null) {
       return;
     }
     if (currentDocument.isUntitled) {
-      await save(true);
+      await save(false);
       if (!currentDocument || currentDocument.isUntitled) return;
     }
     const result = await window.marktex.pasteClipboardImage();
@@ -873,6 +909,7 @@ window.marktex.onCommand((command) => {
     else if (surface === 'editor') void enterViewer();
   }
 });
+window.marktex.onSaveBeforeClose(() => void saveAllDirtyTabs());
 
 window.marktex.getDocument().then((documentSnapshot) => {
   if (documentSnapshot) void showDocument(documentSnapshot);
