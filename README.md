@@ -24,6 +24,15 @@ Setdown은 Markdown 편집기 위에 미리보기를 붙인 앱이 아닙니다.
 그림, 표가 조판된 문서를 읽고, 고칠 곳을 발견하면 그 자리에서 원문으로 들어갑니다.
 읽기와 편집은 서로 다른 작업 공간이 아니라 같은 문서를 보는 두 개의 렌즈입니다.
 
+### 읽고, 고치고, 이미지를 붙이기
+
+<p align="center">
+  <img src="live_demo.gif" alt="Setdown에서 Viewer를 더블 클릭해 편집하고 Esc로 돌아가며 이미지를 붙여넣는 모습" width="800">
+</p>
+
+Viewer를 더블 클릭해 원문을 바로 고치고, `Esc`로 읽던 자리의 Viewer로 돌아옵니다.
+편집기에서 복사한 이미지도 Markdown 문서에 바로 붙일 수 있습니다.
+
 렌더링에는 [Crossnote](https://github.com/shd101wyy/vscode-markdown-preview-enhanced)의
 엔진을, 원문 편집에는 VS Code와 같은 [Monaco Editor](https://microsoft.github.io/monaco-editor/)를
 사용합니다.
