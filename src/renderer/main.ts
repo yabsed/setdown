@@ -228,7 +228,9 @@ function renderTabs() {
   }
   window.marktex.updateTabState(tabs.map((tab) => ({
     name: tab.document.name,
+    path: tab.document.path,
     dirty: tab.revision !== tab.document.savedRevision,
+    isUntitled: tab.document.isUntitled,
   })));
 }
 
@@ -294,6 +296,7 @@ async function closeTab(tabId: string) {
       tab.revision = result.document.revision;
     }
   }
+  if (tab.document.isUntitled) await window.marktex.discardDocument(tab.document);
   index = tabs.findIndex((candidate) => candidate.id === tabId);
   if (index < 0) return;
   const wasActive = tab.id === activeTabId;
@@ -800,10 +803,6 @@ async function pasteClipboardImage(remoteUrl: string | null) {
     if (remoteUrl) {
       insertImageMarkdown(`![외부 이미지](<${remoteUrl}>)`, selection);
       return;
-    }
-    if (currentDocument.isUntitled) {
-      await save(false);
-      if (!currentDocument || currentDocument.isUntitled) return;
     }
     const result = await window.marktex.pasteClipboardImage();
     if (result.canceled || !result.markdown || !model) return;

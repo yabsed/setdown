@@ -18,6 +18,7 @@ import {
   unwatchFile,
 } from 'node:fs';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   Notebook,
@@ -44,6 +45,7 @@ import {
   savePastedPng,
 } from './pasted-image';
 import { previewRelativeReference } from './preview-resources';
+import { discardDraftBundle, saveDraftBundle } from './draft-assets';
 
 app.setName('Setdown');
 
@@ -64,7 +66,7 @@ let watchedPath: string | null = null;
 let activeRoot: string | null = null;
 let closeAfterConfirmation = false;
 let rendererTabs: TabStateSummary[] = [];
-const reservedUntitledPaths = new Set<string>();
+let untitledSequence = 0;
 
 type CrossnoteModule = typeof import('crossnote');
 type NotebookInstance = Awaited<ReturnType<CrossnoteModule['Notebook']['init']>>;
@@ -317,23 +319,12 @@ async function readDocument(filePath: string): Promise<DocumentSnapshot> {
 }
 
 function blankDocument(): DocumentSnapshot {
-  const documentsPath = app.getPath('documents');
-  let sequence = 1;
-  let documentPath: string;
-  do {
-    const name = sequence === 1 ? 'Untitled.md' : `Untitled ${sequence}.md`;
-    documentPath = path.join(documentsPath, name);
-    sequence += 1;
-  } while (reservedUntitledPaths.has(documentPath) || (() => {
-    try {
-      return statSync(documentPath).isFile();
-    } catch {
-      return false;
-    }
-  })());
-  reservedUntitledPaths.add(documentPath);
+  untitledSequence += 1;
+  const name = untitledSequence === 1 ? 'Untitled.md' : `Untitled ${untitledSequence}.md`;
+  const documentPath = path.join(app.getPath('userData'), 'drafts', randomUUID(), name);
   return {
-    // 상대 resource의 기준이자 첫 Save에서 바로 사용할 실제 기본 위치다.
+    // 아직 사용자가 소유할 경로는 정하지 않는다. 이 draft 경로가 저장 전
+    // 이미지와 상대 resource의 실제 기준 디렉터리가 된다.
     path: documentPath,
     name: path.basename(documentPath),
     text: '',
@@ -471,6 +462,32 @@ async function saveDocumentSnapshot(
   revision: number,
 ): Promise<SaveResult> {
   const updated = applyTextRevision(document, text, revision);
+  if (updated.isUntitled) {
+    const selected = await dialog.showSaveDialog(mainWindow!, {
+      defaultPath: path.join(app.getPath('documents'), updated.name),
+      filters: [{ name: 'Markdown', extensions: ['md'] }],
+    });
+    if (selected.canceled || !selected.filePath) return { canceled: true };
+    const saved = await saveDraftBundle(
+      path.join(app.getPath('userData'), 'drafts'),
+      updated.path,
+      selected.filePath,
+      text,
+    );
+    const absolute = canonicalPath(selected.filePath);
+    return {
+      canceled: false,
+      document: {
+        path: absolute,
+        name: path.basename(absolute),
+        text: saved.text,
+        revision,
+        savedRevision: revision,
+        diskVersion: snapshotStats(absolute),
+        isUntitled: false,
+      },
+    };
+  }
   if (!updated.isUntitled && !(await confirmOverwriteIfChanged(updated))) {
     return { canceled: true };
   }
@@ -492,6 +509,9 @@ async function saveDocumentSnapshot(
 }
 
 async function saveDocumentAs(text: string, revision: number): Promise<SaveResult> {
+  if (currentDocument?.isUntitled) {
+    return saveDocumentSnapshot(currentDocument, text, revision);
+  }
   const defaultPath = currentDocument?.isUntitled
     ? path.join(app.getPath('documents'), 'Untitled.md')
     : currentDocument?.path ?? path.join(app.getPath('documents'), 'Untitled.md');
@@ -515,7 +535,7 @@ async function saveCurrentDocument(text: string, revision: number): Promise<Save
 }
 
 async function pasteClipboardImage(): Promise<PasteImageResult> {
-  if (!currentDocument || currentDocument.isUntitled) return { canceled: true };
+  if (!currentDocument) return { canceled: true };
 
   const localImages = clipboard.availableFormats()
     .filter((format) => /uri-list|gnome-copied-files/i.test(format))
@@ -699,7 +719,12 @@ function createWindow() {
     if (closeAfterConfirmation) return;
     const dirtyTabs = rendererTabs.filter((tab) => tab.dirty);
     if (dirtyTabs.length === 0 && currentDocument && isDirty(currentDocument)) {
-      dirtyTabs.push({ name: currentDocument.name, dirty: true });
+      dirtyTabs.push({
+        name: currentDocument.name,
+        path: currentDocument.path,
+        dirty: true,
+        isUntitled: currentDocument.isUntitled,
+      });
     }
     if (dirtyTabs.length === 0) return;
     event.preventDefault();
@@ -711,9 +736,15 @@ function createWindow() {
       buttons: ['취소', '저장 안 함', '저장'],
       defaultId: 2,
       cancelId: 0,
-    }).then(({ response }) => {
+    }).then(async ({ response }) => {
       if (response === 0) return;
       if (response === 1) {
+        await Promise.all(rendererTabs
+          .filter((tab) => tab.isUntitled)
+          .map((tab) => discardDraftBundle(
+            path.join(app.getPath('userData'), 'drafts'),
+            tab.path,
+          )));
         closeAfterConfirmation = true;
         mainWindow?.close();
         return;
@@ -735,7 +766,12 @@ function installIpc() {
   );
   ipcMain.on('tabs:update-state', (_event, tabs: TabStateSummary[]) => {
     rendererTabs = Array.isArray(tabs)
-      ? tabs.map((tab) => ({ name: String(tab.name), dirty: Boolean(tab.dirty) }))
+      ? tabs.map((tab) => ({
+        name: String(tab.name),
+        path: String(tab.path),
+        dirty: Boolean(tab.dirty),
+        isUntitled: Boolean(tab.isUntitled),
+      }))
       : [];
   });
   // invoke의 반환값으로 renderer가 직접 문서를 설치하므로 opened 이벤트를
@@ -777,6 +813,13 @@ function installIpc() {
       cancelId: 0,
     });
     return response === 2 ? 'save' : response === 1 ? 'discard' : 'cancel';
+  });
+  ipcMain.handle('document:discard', async (_event, document: DocumentSnapshot) => {
+    if (!document.isUntitled) return;
+    await discardDraftBundle(
+      path.join(app.getPath('userData'), 'drafts'),
+      document.path,
+    );
   });
   ipcMain.on('app:finish-window-close', (_event, saved: boolean) => {
     if (!saved) return;

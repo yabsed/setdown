@@ -41,7 +41,9 @@ export type PasteImageResult = {
 
 export type TabStateSummary = {
   name: string;
+  path: string;
   dirty: boolean;
+  isUntitled: boolean;
 };
 
 export type CloseDecision = 'cancel' | 'discard' | 'save';
@@ -67,6 +69,7 @@ export type MarkTexApi = {
   saveDocumentAs(text: string, revision: number): Promise<SaveResult>;
   saveTabDocument(document: DocumentSnapshot, text: string, revision: number): Promise<SaveResult>;
   confirmCloseDocument(name: string): Promise<CloseDecision>;
+  discardDocument(document: DocumentSnapshot): Promise<void>;
   finishWindowClose(saved: boolean): void;
   reloadDocument(): Promise<DocumentSnapshot | null>;
   renderDocument(text: string, revision: number, documentPath: string): Promise<RenderResult>;

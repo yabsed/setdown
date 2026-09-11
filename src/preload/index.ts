@@ -32,6 +32,7 @@ const api: MarkTexApi = {
     ipcRenderer.invoke('document:save-tab', { document, text, revision }),
   confirmCloseDocument: (name) =>
     ipcRenderer.invoke('document:confirm-close', name) as Promise<CloseDecision>,
+  discardDocument: (document) => ipcRenderer.invoke('document:discard', document),
   finishWindowClose: (saved) => ipcRenderer.send('app:finish-window-close', saved),
   reloadDocument: () => ipcRenderer.invoke('document:reload'),
   renderDocument: (text, revision, documentPath) =>
