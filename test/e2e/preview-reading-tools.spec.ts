@@ -60,6 +60,16 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     await window.locator('.find-close').click();
     await expect(window.locator('.preview-search')).toBeHidden();
 
+    const initialReadingFrame = window.frames().find((frame) =>
+      frame.url().startsWith('marktex-preview:'))!;
+    await initialReadingFrame.evaluate(() => window.scrollTo(0, 0));
+    await application.evaluate(({ Menu }) => {
+      Menu.getApplicationMenu()?.getMenuItemById('preview-theme-medium')?.click();
+    });
+    await expect.poll(() => initialReadingFrame.evaluate(() =>
+      document.body.dataset.setdownPreviewTheme)).toBe('medium');
+    expect(await initialReadingFrame.evaluate(() => window.scrollY)).toBe(0);
+
     await expect(window.locator('.tab-actions .toc-toggle')).toBeVisible();
     await expect(window.locator('.find-toggle')).toHaveCount(0);
     await expect(window.locator('.theme-picker')).toHaveCount(0);

@@ -463,6 +463,16 @@ let themeApplication = 0;
 async function applyTheme(themeId: string, previewCssUrl: unknown, codeCssUrl: unknown) {
   if (!isLocalThemeAsset(previewCssUrl) || !isLocalThemeAsset(codeCssUrl)) return;
   const application = ++themeApplication;
+  const scrollTop = document.documentElement.scrollTop || document.body.scrollTop || 0;
+  const maximumScrollTop = Math.max(
+    0,
+    (document.documentElement.scrollHeight || 0) - (window.innerHeight || 1),
+  );
+  const boundary = scrollTop <= 1
+    ? 'start'
+    : maximumScrollTop > 0 && maximumScrollTop - scrollTop <= 1
+      ? 'end'
+      : null;
   const semanticAnchor = viewportAnchorAt(GOLDEN_TOP_RATIO);
   await Promise.all([
     replaceThemeStylesheet('/styles/preview_theme/', previewCssUrl),
@@ -470,14 +480,32 @@ async function applyTheme(themeId: string, previewCssUrl: unknown, codeCssUrl: u
   ]);
   if (application !== themeApplication) return;
   // theme별 글꼴·행간·margin이 달라져도 같은 pixel Y가 아니라 같은 source
-  // 내용을 같은 viewport 비율에 둔다. 두 frame 적용은 font/layout 후행 변화를 흡수한다.
+  // 내용을 같은 viewport 비율에 둔다. 문서 시작/끝은 그 자체가 의미론적 위치다.
+  // 두 frame 적용은 font/layout 후행 변화를 흡수한다.
+  const restoreThemePosition = () => {
+    if (boundary === 'start') {
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      return;
+    }
+    if (boundary === 'end') {
+      const nextMaximum = Math.max(
+        0,
+        (document.documentElement.scrollHeight || 0) - (window.innerHeight || 1),
+      );
+      document.documentElement.scrollTop = nextMaximum;
+      document.body.scrollTop = nextMaximum;
+      return;
+    }
+    positionPreview(semanticAnchor.sourceLine, semanticAnchor.yRatio);
+  };
   invalidateAtlas();
   await new Promise<void>((resolve) => window.requestAnimationFrame(() => {
-    positionPreview(semanticAnchor.sourceLine, semanticAnchor.yRatio);
+    restoreThemePosition();
     resolve();
   }));
   await new Promise<void>((resolve) => window.requestAnimationFrame(() => {
-    positionPreview(semanticAnchor.sourceLine, semanticAnchor.yRatio);
+    restoreThemePosition();
     resolve();
   }));
   document.body.dataset.setdownPreviewTheme = themeId;
