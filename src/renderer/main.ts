@@ -536,16 +536,6 @@ function createPreview(tabId: string) {
   window.marktex.createPreview(tabId);
 }
 
-async function loadPreview(
-  tabId: string,
-  result: RenderResult,
-  _target?: ViewportAnchor,
-  _targetRevision?: number,
-  _enforceGlobalTheme = false,
-): Promise<void> {
-  await window.marktex.loadPreview(tabId, result, readerPreferences.themeId);
-}
-
 function sendPreviewCommand(tabId: string, message: Record<string, unknown>) {
   window.marktex.sendPreviewCommand(tabId, message);
 }
@@ -1061,10 +1051,12 @@ async function renderRevision(targetRevision: number): Promise<boolean> {
   if (!targetTabId) return false;
   const documentPath = currentDocument.path;
   const text = model.getValue();
-  let attemptedUrl: string | null = null;
   if (previewError?.revision === targetRevision) previewError = null;
   try {
-    const result = await window.marktex.renderDocument(
+    // 조판과 설치를 메인이 한 번에 한다. 렌더러는 1.4MB를 받아 되돌려 보내던
+    // 중계 역할에서 빠졌다.
+    const result = await window.marktex.preparePreview(
+      targetTabId,
       text,
       targetRevision,
       documentPath,
@@ -1078,38 +1070,14 @@ async function renderRevision(targetRevision: number): Promise<boolean> {
       || result.themeId !== targetTheme
     ) return false;
 
-    // 이 결과가 확실히 대체될 때만 버린다.
-    //
-    // 설치(update-html)는 수식이 많은 문서에서 1~2초가 걸리고, coordinator가
-    // 렌더를 하나씩 처리하므로 그 시간이 그대로 사용자의 대기 시간이 된다.
-    // 그래서 버릴 수 있으면 버리는 편이 낫다.
-    //
-    // 다만 조건이 "문서가 더 나갔다"만이면 안 된다. 무거운 문서를 쉬지 않고
-    // 쓰는 동안에는 모든 체크포인트 결과가 버려져 숨은 Preview가 한 번도
-    // 갱신되지 않는다. 그건 schedulePreview가 애초에 막으려던 실패다.
-    // 다음 렌더가 이미 예약되어 있을 때 ― 보통 Esc로 최신본을 기다리는
-    // 사람이 있을 때 ― 에만 버린다.
-    if (revision > targetRevision && previewCoordinator.hasPendingRequest) return false;
-
-    const loadingTab = tabs.find((candidate) => candidate.id === targetTabId);
-    attemptedUrl = result.url;
-    if (activeTabId === targetTabId) {
-      await nextAnimationFrame();
-      syncPreviewView();
-    }
-    const loadingAnchor = activeTabId === targetTabId && surface === 'editor'
-      ? editorViewportAnchor()
-      : loadingTab?.anchor ?? anchor;
-    await loadPreview(targetTabId, result, loadingAnchor, targetRevision);
-    // load 도중 사용자가 다른 탭으로 가더라도 완성된 WebContents는 요청을
-    // 시작한 탭의 자산이다. 활성 탭 여부와 별개로 먼저 그 탭에 귀속시킨다.
     const renderedTab = tabs.find((candidate) => candidate.id === targetTabId);
     if (
       renderedTab
       && renderedTab.document.path === documentPath
       && renderedTab.revision >= targetRevision
     ) {
-      renderedTab.previewUrl = result.url;
+      // 갱신이면 url이 null이다. 페이지는 그대로이므로 덮어쓰지 않는다.
+      if (result.url) renderedTab.previewUrl = result.url;
       renderedTab.previewRevision = targetRevision;
       renderedTab.previewTheme = targetTheme;
     }
@@ -1134,12 +1102,6 @@ async function renderRevision(targetRevision: number): Promise<boolean> {
     previewError = null;
     return true;
   } catch (error) {
-    const failedTab = tabs.find((candidate) => candidate.id === targetTabId);
-    if (attemptedUrl && failedTab?.previewUrl === attemptedUrl) {
-      failedTab.previewUrl = null;
-      failedTab.previewRevision = null;
-      failedTab.previewTheme = null;
-    }
     if (generation !== previewGeneration) return false;
     previewError = {
       revision: targetRevision,

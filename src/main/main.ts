@@ -50,11 +50,7 @@ import {
 import { themeProfile } from '../shared/theme-catalog';
 import { applyTextRevision, isDirty, lineCount } from '../shared/document-state';
 import type { BandLine } from '../shared/viewport-anchor';
-import {
-  diffPreviewBlocks,
-  splitPreviewBlocks,
-  type PreviewBlock,
-} from '../shared/preview-blocks';
+import type { PreviewBlockPatch } from '../shared/preview-blocks';
 import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
 import {
   isSupportedImagePath,
@@ -116,41 +112,9 @@ type PreviewViewState = {
   pendingScrollRatio: number | null;
   /** 마지막으로 실제 적용한 bounds. 같은 값을 다시 밀지 않는다. */
   appliedBounds: Electron.Rectangle | null;
-  /**
-   * 이 Preview에 지금 설치되어 있는 최상위 블록들.
-   *
-   * 다음 갱신 때 이것과 대조해 바뀐 구간만 보낸다. 한 줄을 고쳤을 때 실제로
-   * 달라지는 것은 100여 개 중 하나뿐이라, 문서를 통째로 다시 심는 1~2초를
-   * 한 요소 교체로 바꾼다.
-   */
-  installedBlocks: PreviewBlock[] | null;
 };
 const previewViews = new Map<string, PreviewViewState>();
 const previewUpdateWaiters = new Map<string, () => void>();
-
-/**
- * 조판된 본문. token으로만 참조한다.
- *
- * 렌더러에 보내지 않는다. 수식 문서에서 1.4MB이고, 렌더러는 이것을 읽지 않고
- * `preview:load`로 그대로 되돌려 보낼 뿐이었다. 직렬화 두 번이 순수 낭비다.
- */
-type PreviewPayload = {
-  html: string;
-  markdown: string;
-  totalLineCount: number;
-  baseHref: string;
-};
-const previewPayloads = new Map<string, PreviewPayload>();
-
-function previewTokenOf(url: unknown): string | null {
-  const text = String(url ?? '');
-  if (!text.startsWith('marktex-preview://document/')) return null;
-  try {
-    return new URL(text).pathname.slice(1) || null;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * 부팅만 끝내 둔 예비 Preview.
@@ -429,11 +393,12 @@ function pathFromResourceUrl(rawUrl: string): string | null {
  * 계속 응답한다.
  */
 type RenderWorkerResult = {
-  template: string;
-  html: string;
   totalLineCount: number;
   baseHref: string;
   themeId: PreviewThemeId;
+  template?: string;
+  html?: string;
+  patch?: PreviewBlockPatch | null;
 };
 
 let renderWorker: Electron.UtilityProcess | null = null;
@@ -454,13 +419,14 @@ function ensureRenderWorker(): Electron.UtilityProcess {
     const waiter = renderWaiters.get(reply.id);
     if (!waiter) return;
     renderWaiters.delete(reply.id);
-    if (reply.ok && typeof reply.template === 'string' && typeof reply.html === 'string') {
+    if (reply.ok) {
       waiter.resolve({
-        template: reply.template,
-        html: reply.html,
         totalLineCount: Math.max(1, Number(reply.totalLineCount) || 1),
         baseHref: String(reply.baseHref ?? ''),
         themeId: normalizePreviewTheme(reply.themeId),
+        template: reply.template,
+        html: reply.html,
+        patch: reply.patch,
       });
     } else {
       waiter.reject(new Error(String(reply.message ?? 'The preview renderer failed.')));
@@ -487,27 +453,64 @@ function forgetWorkerNotebooks() {
 }
 
 function callRenderWorker(
+  tabId: string,
   text: string,
   revision: number,
   documentPath: string,
   themeId: PreviewThemeId,
+  hasPage: boolean,
 ): Promise<RenderWorkerResult> {
   const worker = ensureRenderWorker();
   const id = ++renderRequestId;
   return new Promise<RenderWorkerResult>((resolve, reject) => {
     renderWaiters.set(id, { resolve, reject });
     worker.postMessage({
-      kind: 'render', id, text, revision, documentPath, themeId, roots: readableRoots(),
+      kind: 'render', id, tabId, text, revision, documentPath, themeId,
+      roots: readableRoots(), hasPage,
     });
   });
 }
 
-async function renderCurrent(
+/**
+ * 조판하고 그 결과를 Preview에 설치한다. 한 번의 요청으로 끝난다.
+ *
+ * 예전에는 렌더러가 조판을 요청해 1.4MB를 받고, 그것을 그대로 메인으로 돌려
+ * 보내 설치했다. 렌더러는 내용을 읽지도 않으면서 프로세스 경계를 네 번 더
+ * 넘겼다. 이제 조판·분할·비교는 워커가, 설치는 메인이 하고 렌더러는 결과만
+ * 받는다.
+ */
+/** PDF 내보내기처럼 Preview view 없이 완성된 페이지가 필요할 때. */
+async function renderExportTemplate(
   text: string,
   revision: number,
   documentPath: string,
-  requestedTheme: PreviewThemeId = DEFAULT_PREVIEW_THEME,
+): Promise<{ url: string }> {
+  const exportTabId = `export:${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  activeRoot = path.dirname(documentPath);
+  const rendered = await callRenderWorker(
+    exportTabId, text, revision, documentPath, globalPreviewTheme, false,
+  );
+  renderWorker?.postMessage({ kind: 'forget-tab', tabId: exportTabId });
+  if (typeof rendered.template !== 'string') {
+    throw new Error('The preview renderer did not return a page.');
+  }
+  const token = `${Date.now()}-${revision}-${Math.random().toString(36).slice(2)}`;
+  previewDocuments.set(token, rendered.template);
+  return { url: `marktex-preview://document/${token}` };
+}
+
+async function preparePreview(
+  tabId: string,
+  text: string,
+  revision: number,
+  documentPath: string,
+  requestedTheme: PreviewThemeId,
+  senderId: number,
 ): Promise<RenderResult> {
+  const preview = previewViews.get(tabId);
+  if (!preview || preview.ownerWebContentsId !== senderId) {
+    throw new Error('The preview is not owned by this window.');
+  }
   if (!currentDocument) throw new Error('No Markdown document is open.');
   if (currentDocument.path !== documentPath) {
     throw new Error('The preview request belongs to a document that is no longer open.');
@@ -516,26 +519,78 @@ async function renderCurrent(
   const renderPath = currentDocument.path;
   const themeId = normalizePreviewTheme(requestedTheme);
   activeRoot = path.dirname(renderPath);
-  const rendered = await callRenderWorker(text, revision, renderPath, themeId);
+
+  const hasPage = preview.view.webContents.getURL()
+    .startsWith('marktex-preview://document/');
+  const rendered = await callRenderWorker(
+    tabId, text, revision, renderPath, themeId, hasPage,
+  );
   if (currentDocument?.path !== renderPath) {
     throw new Error('The document changed while its preview was being prepared.');
   }
-  const token = `${Date.now()}-${revision}-${Math.random().toString(36).slice(2)}`;
-  previewDocuments.set(token, rendered.template);
-  previewPayloads.set(token, {
-    html: rendered.html,
-    markdown: text,
-    totalLineCount: rendered.totalLineCount,
-    baseHref: rendered.baseHref,
-  });
-  rememberWarmupTemplate(rendered.template);
-  while (previewDocuments.size > 64) {
-    const oldest = previewDocuments.keys().next().value as string | undefined;
-    if (!oldest) break;
-    previewDocuments.delete(oldest);
-    previewPayloads.delete(oldest);
+  preview.view.setBackgroundColor(previewThemeBackground(themeId));
+
+  // 첫 로드: 완성된 페이지를 실는다.
+  if (typeof rendered.template === 'string') {
+    const token = `${Date.now()}-${revision}-${Math.random().toString(36).slice(2)}`;
+    previewDocuments.set(token, rendered.template);
+    rememberWarmupTemplate(rendered.template);
+    while (previewDocuments.size > 64) {
+      const oldest = previewDocuments.keys().next().value as string | undefined;
+      if (!oldest) break;
+      previewDocuments.delete(oldest);
+    }
+    const url = `marktex-preview://document/${token}`;
+    await preview.view.webContents.loadURL(url);
+    setImmediate(() => ensureSparePreview(senderId));
+    return { revision, url, themeId };
   }
-  return { revision, url: `marktex-preview://document/${token}`, themeId: rendered.themeId };
+
+  const waitForPreview = () => {
+    const waiterKey = `${tabId}:${revision}`;
+    return new Promise<void>((resolve) => {
+      const timeout = setTimeout(() => {
+        previewUpdateWaiters.delete(waiterKey);
+        resolve();
+      }, 5000);
+      previewUpdateWaiters.set(waiterKey, () => {
+        clearTimeout(timeout);
+        previewUpdateWaiters.delete(waiterKey);
+        resolve();
+      });
+    });
+  };
+  const shared = {
+    totalLineCount: rendered.totalLineCount,
+    revision,
+    baseHref: rendered.baseHref,
+  };
+
+  // 페이지는 있으나 블록 기록이 없다. 예비 view를 넘겨받은 경우다.
+  if (typeof rendered.html === 'string') {
+    const updated = waitForPreview();
+    preview.view.webContents.send('preview:command', {
+      command: 'marktex:update-html', html: rendered.html, markdown: text, ...shared,
+    });
+    await updated;
+    setImmediate(() => ensureSparePreview(senderId));
+    return { revision, url: null, themeId };
+  }
+
+  // 바뀐 것이 없으면 설정만 맞춘다.
+  if (!rendered.patch) {
+    preview.view.webContents.send('preview:command', {
+      command: 'marktex:sync-config', ...shared,
+    });
+    return { revision, url: null, themeId };
+  }
+
+  const updated = waitForPreview();
+  preview.view.webContents.send('preview:command', {
+    command: 'marktex:patch-blocks', ...rendered.patch, markdown: text, ...shared,
+  });
+  await updated;
+  return { revision, url: null, themeId };
 }
 
 async function readDocument(filePath: string): Promise<DocumentSnapshot> {
@@ -886,7 +941,7 @@ async function exportCurrentPdf(
   });
   if (result.canceled || !result.filePath) return { canceled: true };
 
-  const rendered = await renderCurrent(text, revision, documentPath);
+  const rendered = await renderExportTemplate(text, revision, documentPath);
   const printWindow = new BrowserWindow({
     show: false,
     width: 794,
@@ -1244,7 +1299,6 @@ function installIpc() {
       pendingScrollPosition: null,
       pendingScrollRatio: null,
       appliedBounds: null,
-      installedBlocks: null,
     });
     view.webContents.on('before-input-event', (inputEvent, input) => {
       if (input.type === 'keyDown' && input.key === 'Escape') {
@@ -1270,82 +1324,6 @@ function installIpc() {
       owner.window.webContents.focus();
       owner.window.webContents.send('preview:open-find', tabId);
     });
-  });
-
-  ipcMain.handle('preview:load', async (event, { tabId, result, themeId }) => {
-    const preview = previewViews.get(String(tabId));
-    if (!preview || preview.ownerWebContentsId !== event.sender.id) {
-      throw new Error('The preview is not owned by this window.');
-    }
-    const previewUrl = String(result?.url);
-    if (!previewUrl.startsWith('marktex-preview://document/')) {
-      throw new Error('Only rendered Setdown previews may be loaded.');
-    }
-    const background = previewThemeBackground(themeId);
-    preview.view.setBackgroundColor(background);
-    const payload = previewPayloads.get(previewTokenOf(previewUrl) ?? '');
-    if (
-      preview.view.webContents.getURL().startsWith('marktex-preview://document/')
-      && payload
-    ) {
-      const revision = Math.max(0, Number(result.revision) || 0);
-      const totalLineCount = payload.totalLineCount;
-      const baseHref = payload.baseHref;
-      const blocks = splitPreviewBlocks(payload.html);
-      const patch = preview.installedBlocks
-        ? diffPreviewBlocks(preview.installedBlocks, blocks)
-        : undefined;
-
-      // 바뀐 것이 없으면 아무것도 보내지 않는다.
-      if (patch === null) {
-        preview.installedBlocks = blocks;
-        preview.view.webContents.send('preview:command', {
-          command: 'marktex:sync-config', totalLineCount, revision, baseHref,
-        });
-        return;
-      }
-
-      const waiterKey = `${String(tabId)}:${revision}`;
-      const updated = new Promise<void>((resolve) => {
-        const timeout = setTimeout(() => {
-          previewUpdateWaiters.delete(waiterKey);
-          resolve();
-        }, 5000);
-        previewUpdateWaiters.set(waiterKey, () => {
-          clearTimeout(timeout);
-          previewUpdateWaiters.delete(waiterKey);
-          resolve();
-        });
-      });
-      preview.view.webContents.send('preview:command', patch
-        ? {
-          command: 'marktex:patch-blocks',
-          ...patch,
-          markdown: payload.markdown,
-          totalLineCount,
-          revision,
-          baseHref,
-        }
-        : {
-          command: 'marktex:update-html',
-          html: payload.html,
-          markdown: payload.markdown,
-          totalLineCount,
-          revision,
-          // 예비 view는 다른 문서의 base를 갖고 있다. 함께 옮기지 않으면
-          // 상대 경로 이미지가 엉뚱한 폴더를 가리킨다.
-          baseHref,
-        });
-      preview.installedBlocks = blocks;
-      await updated;
-      // 다음 탭이 쓸 예비를 채운다. 첫 문서를 실은 뒤에야 본문을 비울
-      // template이 생기므로, create 시점이 아니라 여기서도 확인한다.
-      setImmediate(() => ensureSparePreview(event.sender.id));
-      return;
-    }
-    await preview.view.webContents.loadURL(previewUrl);
-    preview.installedBlocks = payload ? splitPreviewBlocks(payload.html) : null;
-    setImmediate(() => ensureSparePreview(event.sender.id));
   });
 
   ipcMain.on('preview:show', (event, { tabId, bounds }) => {
@@ -1411,6 +1389,7 @@ function installIpc() {
     stateForWebContentsId(event.sender.id)?.window.contentView.removeChildView(preview.view);
     preview.view.webContents.close();
     previewViews.delete(tabId);
+    renderWorker?.postMessage({ kind: 'forget-tab', tabId });
   });
 
   ipcMain.on('preview:message', (event, message: Record<string, unknown>) => {
@@ -1710,14 +1689,17 @@ function installIpc() {
       if (currentDocument) currentDocument = applyTextRevision(currentDocument, text, revision);
     });
   });
-  ipcMain.handle('document:render', (event, { text, revision, documentPath, themeId }) => {
-    const state = stateForWebContentsId(event.sender.id);
-    if (!state) throw new Error('The window no longer exists.');
-    return withWindowState(
-      state,
-      () => renderCurrent(text, revision, documentPath, normalizePreviewTheme(themeId)),
-    );
-  });
+  ipcMain.handle(
+    'preview:prepare',
+    (event, { tabId, text, revision, documentPath, themeId }) => {
+      const state = stateForWebContentsId(event.sender.id);
+      if (!state) throw new Error('The window no longer exists.');
+      return withWindowState(state, () => preparePreview(
+        String(tabId), text, revision, documentPath,
+        normalizePreviewTheme(themeId), event.sender.id,
+      ));
+    },
+  );
   ipcMain.handle('document:save', async (event, { text, revision }): Promise<SaveResult> => {
     const state = stateForWebContentsId(event.sender.id);
     return state ? withWindowState(state, () => saveCurrentDocument(text, revision)) : { canceled: true };

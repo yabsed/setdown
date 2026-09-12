@@ -18,14 +18,15 @@ export type DocumentSnapshot = {
 /**
  * 렌더러가 보는 조판 결과.
  *
- * 조판된 HTML은 일부러 담지 않는다. 수식 문서에서 1.4MB가 되는데 렌더러는
- * 손도 대지 않고 `preview:load`로 되돌려 보내기만 했다. 메인이 token으로
- * 들고 있고, 프리뷰로는 바뀐 블록만 나간다.
+ * 조판된 HTML은 담지 않는다. 수식 문서에서 1.4MB가 되는데 렌더러는 손도 대지
+ * 않고 되돌려 보내기만 했다. 조판과 설치를 메인이 한 번에 처리하고, 렌더러는
+ * 결과만 받는다.
  */
 export type RenderResult = {
   revision: number;
-  url: string;
   themeId: PreviewThemeId;
+  /** 새 페이지를 실었을 때만. 갱신이면 null이다. */
+  url: string | null;
 };
 
 export type PreviewHeading = {
@@ -172,11 +173,19 @@ export type MarkTexApi = {
   adoptTabTransfer(transferId: string): Promise<boolean>;
   releaseTabTransferSource(transferId: string): void;
   createPreview(tabId: string): void;
-  loadPreview(
+  /**
+   * 조판하고 그 결과를 Preview에 설치한다.
+   *
+   * 예전에는 렌더러가 조판을 요청해 결과를 받고, 그것을 다시 메인으로 돌려
+   * 보내 설치했다. 프로세스 경계를 여섯 번 넘었고 렌더러는 중계만 했다.
+   */
+  preparePreview(
     tabId: string,
-    result: RenderResult,
+    text: string,
+    revision: number,
+    documentPath: string,
     themeId: PreviewThemeId,
-  ): Promise<void>;
+  ): Promise<RenderResult>;
   showPreview(tabId: string | null, bounds: PreviewBounds | null): void;
   /**
    * 지금 보이는 Preview를 PNG data URL로 얻는다. DOM overlay가 native view
@@ -198,12 +207,6 @@ export type MarkTexApi = {
   discardDocument(document: DocumentSnapshot): Promise<void>;
   finishWindowClose(saved: boolean): void;
   reloadDocument(): Promise<DocumentSnapshot | null>;
-  renderDocument(
-    text: string,
-    revision: number,
-    documentPath: string,
-    themeId: PreviewThemeId,
-  ): Promise<RenderResult>;
   exportPdf(text: string, revision: number, documentPath: string): Promise<ExportPdfResult>;
   pasteClipboardImage(): Promise<PasteImageResult>;
   pickLinkTarget(documentPath: string): Promise<PickLinkTargetResult>;

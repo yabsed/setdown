@@ -28,30 +28,52 @@ import {
 import { lineCount } from '../shared/document-state';
 import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
 import { previewRelativeReference } from './preview-resources';
+import {
+  diffPreviewBlocks,
+  splitPreviewBlocks,
+  type PreviewBlock,
+  type PreviewBlockPatch,
+} from '../shared/preview-blocks';
 
 export type RenderWorkerRequest =
   | {
     kind: 'render';
     id: number;
+    /** 어느 탭의 Preview인가. 직전 블록을 이 키로 들고 있는다. */
+    tabId: string;
     text: string;
     revision: number;
     documentPath: string;
     themeId: string;
     /** 이 렌더가 읽어도 되는 디렉터리. 메인이 매번 실어 보낸다. */
     roots: string[];
+    /** 대상 view가 이미 Preview 페이지를 띄우고 있는가. */
+    hasPage: boolean;
   }
-  | { kind: 'forget-notebooks' };
+  | { kind: 'forget-notebooks' }
+  | { kind: 'forget-tab'; tabId: string };
 
+/**
+ * 응답은 필요한 것만 담는다.
+ *
+ * 갱신일 때는 `patch`만 간다. 조판된 HTML은 워커가 계속 들고 있으므로 3.5MB를
+ * 프로세스 밖으로 옮기지 않는다. 측정에서 그 전송만 21ms였고, 메인이 다시
+ * 쪼개는 데 12ms가 더 들었다.
+ */
 export type RenderWorkerReply =
   | {
     kind: 'render';
     id: number;
     ok: true;
-    template: string;
-    html: string;
     totalLineCount: number;
     baseHref: string;
     themeId: PreviewThemeId;
+    /** 첫 로드용 완성 페이지. 그때만 실린다. */
+    template?: string;
+    /** 페이지는 있으나 블록 기록이 없을 때. update-html로 통째로 심는다. */
+    html?: string;
+    /** 블록 기록이 있을 때. 바뀐 구간만. null이면 바뀐 것이 없다. */
+    patch?: PreviewBlockPatch | null;
   }
   | { kind: 'render'; id: number; ok: false; message: string };
 
@@ -59,6 +81,8 @@ type CrossnoteModule = typeof import('crossnote');
 type NotebookInstance = Awaited<ReturnType<CrossnoteModule['Notebook']['init']>>;
 
 const notebookCaches = new Map<string, NotebookInstance>();
+/** 탭마다 지금 Preview에 설치되어 있는 블록. 다음 갱신의 비교 대상이다. */
+const installedBlocks = new Map<string, PreviewBlock[]>();
 const crossnoteOut = path.resolve(path.dirname(require.resolve('crossnote')), '..');
 let allowedRoots: string[] = [];
 let activeRoot: string | null = null;
@@ -373,15 +397,22 @@ async function render(request: Extract<RenderWorkerRequest, { kind: 'render' }>)
     ),
     styles: previewStyles(themeId),
   });
-  // crossnote가 다 지나간 뒤에 수식을 되돌려 넣는다. 본문과 template 안의
-  // 인코딩된 사본을 각각 채운다.
-  return {
-    template: restoreDeferredMathInTemplate(template),
-    html: restoreDeferredMath(previewFragmentFromTemplate(template)),
-    totalLineCount: lineCount(request.text),
-    baseHref,
-    themeId,
-  };
+  // crossnote가 다 지나간 뒤에 수식을 되돌려 넣는다.
+  const html = restoreDeferredMath(previewFragmentFromTemplate(template));
+  const blocks = splitPreviewBlocks(html);
+  const previous = installedBlocks.get(request.tabId);
+  installedBlocks.set(request.tabId, blocks);
+
+  const common = { totalLineCount: lineCount(request.text), baseHref, themeId };
+  if (!request.hasPage) {
+    // 첫 로드. 완성된 페이지가 필요하므로 이때만 template을 만들어 보낸다.
+    return { ...common, template: restoreDeferredMathInTemplate(template), html };
+  }
+  if (!previous) {
+    // 예비 view를 넘겨받은 경우처럼 페이지는 있으나 기록이 없다.
+    return { ...common, html };
+  }
+  return { ...common, patch: diffPreviewBlocks(previous, blocks) };
 }
 
 /**
@@ -396,6 +427,10 @@ port.on('message', (event) => {
   if (!request) return;
   if (request.kind === 'forget-notebooks') {
     notebookCaches.clear();
+    return;
+  }
+  if (request.kind === 'forget-tab') {
+    installedBlocks.delete(request.tabId);
     return;
   }
   if (request.kind !== 'render') return;

@@ -51,8 +51,6 @@ const api: MarkTexApi = {
   releaseTabTransferSource: (transferId) =>
     ipcRenderer.send('tabs:release-source', transferId),
   createPreview: (tabId) => ipcRenderer.send('preview:create', tabId),
-  loadPreview: (tabId, result, themeId) =>
-    ipcRenderer.invoke('preview:load', { tabId, result, themeId }),
   showPreview: (tabId, bounds) => ipcRenderer.send('preview:show', { tabId, bounds }),
   capturePreview: (tabId) => ipcRenderer.invoke('preview:capture', tabId),
   sendPreviewCommand: (tabId, message) =>
@@ -77,8 +75,10 @@ const api: MarkTexApi = {
   discardDocument: (document) => ipcRenderer.invoke('document:discard', document),
   finishWindowClose: (saved) => ipcRenderer.send('app:finish-window-close', saved),
   reloadDocument: () => ipcRenderer.invoke('document:reload'),
-  renderDocument: (text, revision, documentPath, themeId) =>
-    ipcRenderer.invoke('document:render', { text, revision, documentPath, themeId }),
+  preparePreview: (tabId, text, revision, documentPath, themeId) =>
+    ipcRenderer.invoke('preview:prepare', {
+      tabId, text, revision, documentPath, themeId,
+    }),
   exportPdf: (text, revision, documentPath) =>
     ipcRenderer.invoke('document:export-pdf', { text, revision, documentPath }),
   pasteClipboardImage: () => ipcRenderer.invoke('document:paste-clipboard-image'),
