@@ -217,12 +217,10 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <span></span>
         <button type="button">원문에서 확인</button>
       </div>
-      <div class="viewer-hint">더블 클릭하여 수정</div>
     </section>
 
     <section class="editor-surface" aria-label="Markdown 원문 편집기">
       <div class="editor-host"></div>
-      <div class="editor-hint"><kbd>Esc</kbd> Viewer로 돌아가기</div>
     </section>
 
     <dialog class="insertion-dialog table-dialog" aria-labelledby="table-dialog-title">
@@ -347,6 +345,8 @@ const PREVIEW_CHECKPOINT_MS = 500;
  * 그 둘은 640ms와 54ms다.
  */
 const PREVIEW_IDLE_MS = 150;
+// 찾기 바가 차지하는 높이. style.css의 .preview-search(top 10 + height 40 + 여백 10)와 맞춘다.
+const FIND_BAR_ZONE = 60;
 /**
  * 인계받은 탭의 조판 안내를 최대 이만큼만 붙잡아 둔다. Preview의 위치 확정
  * 응답을 기다리다 새 창만 느려 보이는 일을 막는다.
@@ -572,11 +572,15 @@ function syncPreviewView() {
     return;
   }
   const rect = previewFrames.getBoundingClientRect();
+  // Native preview view는 렌더러 페이지 위에 합성된다. 찾기 바는 이 페이지의 DOM
+  // 오버레이라, view가 같은 자리를 덮으면 z-index와 상관없이 가려진다. 바가 열려
+  // 있는 동안은 view를 그만큼 내려 위쪽 띠를 비워 준다.
+  const reserved = tab.find.open ? FIND_BAR_ZONE : 0;
   window.marktex.showPreview(tab.id, {
     x: rect.left,
-    y: rect.top,
+    y: rect.top + reserved,
     width: rect.width,
-    height: rect.height,
+    height: Math.max(0, rect.height - reserved),
   });
 }
 

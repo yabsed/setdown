@@ -405,26 +405,8 @@ button { font: inherit; }
 }
 .preview-search button:hover { color: var(--app-text); background: var(--app-hover); }
 .find-close { font-size: 17px; }
-.viewer-hint, .editor-hint {
-  position: absolute;
-  right: 16px;
-  bottom: 14px;
-  padding: 6px 9px;
-  color: var(--app-muted-text);
-  border: 1px solid var(--app-border);
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--app-raised-surface) 86%, transparent);
-  backdrop-filter: blur(8px);
-  font-size: 10px;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity .18s ease;
-}
-.viewer-surface:hover .viewer-hint, .editor-surface:hover .editor-hint { opacity: 1; }
 
 .editor-host { width: 100%; height: 100%; }
-.editor-hint { color: var(--app-muted-text); border-color: var(--app-border); background: color-mix(in srgb, var(--app-raised-surface) 86%, transparent); z-index: 10; }
-.editor-hint kbd { color: var(--app-text); font-family: inherit; }
 
 .render-state, .render-error {
   position: absolute;
@@ -520,7 +502,6 @@ button { font: inherit; }
 
 @media (max-width: 620px) {
   .tab-action-divider { margin: 0 4px; }
-  .viewer-hint, .editor-hint { display: none; }
   .insertion-form { padding: 17px; }
   .link-destination-row { grid-template-columns: 1fr; }
   .toc-panel { flex-basis: min(220px, 46vw); }
