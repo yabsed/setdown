@@ -112,9 +112,8 @@ test('detaching a tab restores its preview iframe at the same semantic position'
       return Number(covering?.dataset.sourceLine) || 0;
     })).toBe(anchorLine);
 
-    const focusedTitle = await application.evaluate(({ BrowserWindow }) =>
-      BrowserWindow.getFocusedWindow()?.getTitle());
-    expect(focusedTitle).toContain('sample.md');
+    await expect.poll(() => application.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getFocusedWindow()?.getTitle() ?? '')).toContain('sample.md');
   } finally {
     await application.close();
     await rm(configRoot, { recursive: true, force: true });

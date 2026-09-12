@@ -330,7 +330,9 @@ const previewMessageListeners = new Set<(payload: {
   message: Record<string, unknown>;
 }) => void>();
 
-const PREVIEW_DEBOUNCE_MS = 700;
+// 계속 입력해도 Preview가 무기한 낡지 않도록 trailing debounce가 아니라
+// checkpoint cadence로 동작한다. 진행 중 변경은 coordinator가 최신 하나로 합친다.
+const PREVIEW_CHECKPOINT_MS = 500;
 let previewCoordinator = new PreviewRenderCoordinator(renderRevision);
 
 /**
@@ -605,25 +607,43 @@ async function loadPreview(
   try {
     await new Promise<void>((resolve, reject) => {
       let settled = false;
+      let bridgeReady = false;
+      let documentLoaded = false;
       const timeout = window.setTimeout(() => {
-        settle(new Error('The Preview bridge did not become ready.'));
+        finish(new Error('The Preview document did not become ready.'));
       }, 5000);
-      const settle = (error?: Error) => {
+      const finish = (error?: Error) => {
         if (settled) return;
         settled = true;
         window.clearTimeout(timeout);
         loadingElement.removeEventListener('error', failed);
-        if (frame.settleLoad === settle) frame.settleLoad = null;
+        loadingElement.removeEventListener('load', loaded);
+        if (frame.settleLoad === bridgeSettled) frame.settleLoad = null;
         if (error) reject(error);
         else resolve();
       };
+      const completeWhenReady = () => {
+        if (bridgeReady && documentLoaded) finish();
+      };
+      const bridgeSettled = (error?: Error) => {
+        if (error) finish(error);
+        else {
+          bridgeReady = true;
+          completeWhenReady();
+        }
+      };
+      const loaded = () => {
+        documentLoaded = true;
+        completeWhenReady();
+      };
       const failed = () => {
         if (frame.loadSequence === sequence) {
-          settle(new Error('The Preview frame failed to load.'));
+          finish(new Error('The Preview frame failed to load.'));
         }
       };
       loadingElement.addEventListener('error', failed);
-      frame.settleLoad = settle;
+      loadingElement.addEventListener('load', loaded);
+      frame.settleLoad = bridgeSettled;
       loadingElement.src = url;
     });
   } catch (error) {
@@ -639,14 +659,42 @@ async function loadPreview(
     loadingElement.remove();
     throw new Error('A newer Preview replaced this load.');
   }
+  let promoted = false;
+  const promoteLoadingElement = () => {
+    if (promoted) return;
+    promoted = true;
+    const wasActive = frame.element.classList.contains('is-active');
+    loadingElement.classList.toggle('is-active', wasActive);
+    loadingElement.setAttribute('aria-hidden', String(!wasActive));
+    loadingElement.inert = !wasActive;
+    frame.element.remove();
+    frame.element = loadingElement;
+    frame.loadingElement = null;
+    frame.loadingOrigin = null;
+    frame.url = url;
+    frame.origin = parsed.origin;
+    frame.ready = true;
+    for (const pending of frame.pendingCommands.splice(0)) {
+      loadingElement.contentWindow?.postMessage(pending, parsed.origin);
+    }
+  };
   if (enforceGlobalTheme && targetRevision !== undefined) {
+    // transfer snapshot이 위를 덮고 있는 동안 iframe을 live frame으로 먼저
+    // 승격한다. sandbox navigation 중인 frame보다 이 상태에서 command 전달이
+    // 확실하며, snapshot은 theme와 position 완료 전까지 흰 초기 frame을 가린다.
+    promoteLoadingElement();
     let preparedTheme: PreviewThemeId | null = null;
     while (preparedTheme !== readerPreferences.themeId) {
       const requestedTheme: PreviewThemeId = readerPreferences.themeId;
       const assets: PreviewThemeAssets = currentPreviewThemeAssets?.themeId === requestedTheme
         ? currentPreviewThemeAssets
         : await window.marktex.getPreviewThemeAssets(requestedTheme);
-      if (frame.loadSequence !== sequence || frame.loadingElement !== loadingElement) {
+      if (
+        frame.loadSequence !== sequence
+        || (promoted
+          ? frame.element !== loadingElement
+          : frame.loadingElement !== loadingElement)
+      ) {
         loadingElement.remove();
         throw new Error('A newer Preview replaced this load.');
       }
@@ -654,7 +702,6 @@ async function loadPreview(
       const applied = await requestPreviewElementTheme(
         tabId,
         loadingElement,
-        parsed.origin,
         assets,
         targetRevision,
       );
@@ -676,21 +723,7 @@ async function loadPreview(
       targetRevision,
     );
   }
-
-  const wasActive = frame.element.classList.contains('is-active');
-  loadingElement.classList.toggle('is-active', wasActive);
-  loadingElement.setAttribute('aria-hidden', String(!wasActive));
-  loadingElement.inert = !wasActive;
-  frame.element.remove();
-  frame.element = loadingElement;
-  frame.loadingElement = null;
-  frame.loadingOrigin = null;
-  frame.url = url;
-  frame.origin = parsed.origin;
-  frame.ready = true;
-  for (const pending of frame.pendingCommands.splice(0)) {
-    loadingElement.contentWindow?.postMessage(pending, parsed.origin);
-  }
+  promoteLoadingElement();
 }
 
 function sendPreviewCommand(tabId: string, message: Record<string, unknown>) {
@@ -1128,13 +1161,15 @@ function resetPreviewState() {
 }
 
 function schedulePreview(targetRevision: number) {
-  cancelScheduledPreview();
+  // 첫 입력이 checkpoint의 시계를 시작한다. 이후 입력이 이 시계를 계속
+  // 뒤로 미루게 두면 긴 작성 세션 동안 숨은 Preview가 한 번도 갱신되지 않는다.
+  if (previewTimer !== null) return;
   previewTimer = window.setTimeout(() => {
     previewTimer = null;
-    if (surface === 'editor' && revision === targetRevision) {
-      void ensurePreview(targetRevision);
+    if (surface === 'editor' && revision >= targetRevision) {
+      void ensurePreview(revision);
     }
-  }, PREVIEW_DEBOUNCE_MS);
+  }, PREVIEW_CHECKPOINT_MS);
 }
 
 function updatePreviewUi() {
@@ -1178,7 +1213,6 @@ async function renderRevision(targetRevision: number): Promise<boolean> {
       || currentDocument?.path !== documentPath
       || result.revision !== targetRevision
       || result.themeId !== targetTheme
-      || revision !== targetRevision
     ) return false;
 
     const loadingTab = tabs.find((candidate) => candidate.id === targetTabId);
@@ -1197,7 +1231,7 @@ async function renderRevision(targetRevision: number): Promise<boolean> {
     if (
       renderedTab
       && renderedTab.document.path === documentPath
-      && renderedTab.revision === targetRevision
+      && renderedTab.revision >= targetRevision
     ) {
       renderedTab.previewUrl = result.url;
       renderedTab.previewRevision = targetRevision;
@@ -1334,7 +1368,6 @@ function requestPreviewElementPosition(
 function requestPreviewElementTheme(
   tabId: string,
   element: HTMLIFrameElement,
-  origin: string,
   assets: PreviewThemeAssets,
   targetRevision: number,
 ): Promise<boolean> {
@@ -1363,7 +1396,10 @@ function requestPreviewElementTheme(
     element.contentWindow?.postMessage({
       command: 'marktex:apply-theme',
       ...assets,
-    }, origin);
+    // sandboxed custom-scheme iframe은 navigation 직후 origin serialization이
+    // 안정되기 전일 수 있다. 대상 element와 bridge 양쪽에서 source를 검증하므로
+    // 이 준비 단계는 origin 문자열 대신 source capability로 한정한다.
+    }, '*');
   });
 }
 
@@ -2447,8 +2483,8 @@ window.addEventListener('message', (event) => {
     }
     return;
   }
+  for (const listener of previewMessageListeners) listener({ tabId, message });
   if (fromLoadingFrame) {
-    for (const listener of previewMessageListeners) listener({ tabId, message });
     return;
   }
   if (message.type === 'marktex:open-find') {

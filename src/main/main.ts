@@ -248,13 +248,16 @@ function previewThemeAssets(requestedTheme: unknown) {
   return {
     themeId,
     backgroundColor: previewThemeBackground(themeId),
-    previewCssUrl: previewFileReference(path.resolve(
+    // 제품 테마는 문서 자산이 아니다. activeRoot에 따라 상대 경로로 만들면
+    // 창 transfer 중 다른 window state가 선택된 순간 bridge allowlist를
+    // 통과하지 못한다. 항상 명시적인 app-local protocol URL을 사용한다.
+    previewCssUrl: resourceUrl(path.resolve(
       crossnoteOut,
       'styles',
       'preview_theme',
       previewThemeFile(themeId),
     )),
-    codeCssUrl: previewFileReference(path.resolve(
+    codeCssUrl: resourceUrl(path.resolve(
       crossnoteOut,
       'styles',
       'prism_theme',
