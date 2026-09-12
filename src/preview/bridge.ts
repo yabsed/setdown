@@ -5,6 +5,7 @@
  * `edit-at-anchor`를 보낸다. mapping은 목적지의 품질만 바꾸고, 전환을
  * 허가하거나 거부하지 않는다.
  */
+import { previewThemeBackground } from '../shared/preview-preferences';
 import {
   GOLDEN_TOP_RATIO,
   resolveBandScrollTop,
@@ -518,6 +519,11 @@ let themeApplication = 0;
 async function applyTheme(themeId: string, previewCssUrl: unknown, codeCssUrl: unknown) {
   if (!isLocalThemeAsset(previewCssUrl) || !isLocalThemeAsset(codeCssUrl)) return;
   const application = ++themeApplication;
+  // 생성 시 심어 둔 바탕색을 새 theme으로 옮긴다. stylesheet 교체 사이의
+  // 어떤 frame도 흰색으로 칠해지지 않는다.
+  const background = previewThemeBackground(themeId);
+  document.documentElement.style.background = background;
+  document.body.style.background = background;
   const scrollTop = document.documentElement.scrollTop || document.body.scrollTop || 0;
   const maximumScrollTop = Math.max(
     0,

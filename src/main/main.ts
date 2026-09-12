@@ -469,6 +469,10 @@ async function renderCurrent(
       themeId,
     ),
     styles: `<style>
+      /* theme stylesheet가 적용되기 전 첫 frame이 흰색으로 칠해지지 않게
+         한다. 새 문서를 열 때 보이던 흰 섬광의 원인이다. bridge가 theme을
+         바꿀 때 이 값을 함께 갱신한다. */
+      html, body { background: ${previewThemeBackground(themeId)}; }
       [data-source-line] { cursor: text; }
       .topbar, footer, .footer { display: none !important; }
       html, body { max-width: 100%; overflow-x: hidden !important; }
