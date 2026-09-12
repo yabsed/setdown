@@ -762,6 +762,88 @@ searchStyle.textContent = `
 `;
 document.head.append(searchStyle);
 
+// ── <details> 접힘 상태 ─────────────────────────────────────────────
+//
+// 블록 패칭은 바뀐 블록의 DOM을 통째로 갈아 끼운다. 그 안에 있던 <details>는
+// 새 element가 되므로 사용자가 펼쳐 둔 상태가 사라진다. 원문에는 그 상태가
+// 없다. `open` 속성은 저자가 쓴 값이지 읽는 사람이 만든 값이 아니다.
+//
+// 그래서 이 탭의 preview page가 직접 기억한다. 탭마다 page가 하나이므로 이
+// 표가 곧 탭별 상태이고, 탭 전환과 창 이동은 같은 page를 옮길 뿐이라 표도
+// 그대로 따라간다.
+type DisclosureState = {
+  /** 사용자가 마지막으로 둔 상태. toggle을 들어서만 바뀐다. */
+  open: boolean;
+  /** 원문이 주장하던 상태. 갓 심어진 DOM에서만 읽는다. */
+  authored: boolean;
+};
+
+const disclosureStates = new Map<string, DisclosureState>();
+/** 복원하며 스스로 일으킨 toggle을 사용자의 조작으로 착각하지 않는다. */
+let restoringDisclosures = false;
+
+/**
+ * summary 문구로 <details>를 가리킨다. 줄 번호는 위쪽을 고치면 밀리고, 순서만
+ * 쓰면 <details>가 하나 늘 때 전부 어긋난다. 같은 문구가 여러 번 나오면
+ * 나온 차례로 가른다.
+ */
+function disclosureKey(element: HTMLDetailsElement, seen: Map<string, number>): string {
+  const label = (element.querySelector('summary')?.textContent ?? '')
+    .trim().replace(/\s+/g, ' ').slice(0, 200);
+  const nth = (seen.get(label) ?? 0) + 1;
+  seen.set(label, nth);
+  return `${label}\u0000${nth}`;
+}
+
+function eachDisclosure(visit: (element: HTMLDetailsElement, key: string) => void) {
+  const seen = new Map<string, number>();
+  for (const element of document.querySelectorAll('details')) {
+    const details = element as HTMLDetailsElement;
+    visit(details, disclosureKey(details, seen));
+  }
+}
+
+/**
+ * 갓 심어진 DOM에만 기억해 둔 상태를 되돌린다.
+ *
+ * `inserted`가 null이면 문서 전체가 새로 그려진 것으로 본다. 살아남은
+ * element는 손대지 않는다. 그쪽의 `open`은 이미 사용자의 상태이고, 그것을
+ * 원문의 주장과 견주면 사용자가 접어 둔 것을 저자의 뜻으로 오해한다.
+ */
+function applyDisclosures(inserted: Element[] | null) {
+  restoringDisclosures = true;
+  try {
+    eachDisclosure((element, key) => {
+      const fresh = inserted === null
+        || inserted.some((node) => node === element || node.contains(element));
+      if (!fresh) return;
+      const known = disclosureStates.get(key);
+      // 처음 보거나, 원문의 open이 지난번과 다르다. 저자의 뜻이 바뀐 것이다.
+      if (!known || element.open !== known.authored) {
+        disclosureStates.set(key, { open: element.open, authored: element.open });
+        return;
+      }
+      if (element.open !== known.open) element.open = known.open;
+    });
+  } finally {
+    restoringDisclosures = false;
+  }
+}
+
+// toggle은 bubbling하지 않는다. capture 단계에서 받는다.
+document.addEventListener('toggle', (event) => {
+  if (restoringDisclosures) return;
+  const target = event.target;
+  if (!(target instanceof HTMLDetailsElement)) return;
+  eachDisclosure((element, key) => {
+    if (element !== target) return;
+    const known = disclosureStates.get(key);
+    if (known) known.open = target.open;
+    // 아직 본 적 없다면 방금 뒤집힌 것이므로 원문은 그 반대였다.
+    else disclosureStates.set(key, { open: target.open, authored: !target.open });
+  });
+}, true);
+
 let htmlUpdateSequence = 0;
 
 // ── 더블 클릭: 조건 없는 상태 전환 ──────────────────────────────────
@@ -893,6 +975,7 @@ window.addEventListener('message', (event) => {
     config.revision = Math.max(0, Number(update.revision) || 0);
     applyBaseHref(update.baseHref);
     const root = document.querySelector(PREVIEW_SELECTOR);
+    let insertedNodes: Element[] = [];
     if (root) {
       const children = Array.from(root.children);
       const from = Math.min(Math.max(0, Math.round(Number(update.from) || 0)), children.length);
@@ -903,6 +986,7 @@ window.addEventListener('message', (event) => {
       const holder = document.createElement('template');
       holder.innerHTML = String(update.html ?? '');
       const inserted = Array.from(holder.content.children);
+      insertedNodes = inserted;
       // 지우기 전에 기준점을 잡아 둔다. 지우고 나면 위치를 잃는다.
       const anchor = children[from + removeCount] ?? null;
       for (let index = 0; index < removeCount; index += 1) children[from + index].remove();
@@ -914,6 +998,7 @@ window.addEventListener('message', (event) => {
         for (const element of rest) shiftSourceLines(element, delta);
       }
     }
+    applyDisclosures(insertedNodes);
     invalidateAtlas();
     // 곧바로 답한다. 패치는 이 핸들러 안에서 동기로 끝났고, frame을 기다릴
     // 이유가 없다. 편집 중에는 이 view가 숨겨져 있어 rAF가 느려지는데,
@@ -944,6 +1029,7 @@ window.addEventListener('message', (event) => {
       completed = true;
       observer.disconnect();
       window.clearTimeout(timeout);
+      applyDisclosures(null);
       // Crossnote가 hidden DOM을 current DOM으로 승격한 paint 뒤에만 host의
       // revision을 ready로 만든다.
       window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
