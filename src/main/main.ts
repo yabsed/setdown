@@ -109,9 +109,31 @@ type PreviewViewState = {
   ownerWebContentsId: number;
   pendingScrollPosition: { x: number; y: number } | null;
   pendingScrollRatio: number | null;
+  /** 마지막으로 실제 적용한 bounds. 같은 값을 다시 밀지 않는다. */
+  appliedBounds: Electron.Rectangle | null;
 };
 const previewViews = new Map<string, PreviewViewState>();
 const previewUpdateWaiters = new Map<string, () => void>();
+
+/**
+ * 값이 달라졌을 때만 bounds를 민다.
+ *
+ * drag resize 동안 renderer의 ResizeObserver가 `preview:show`를 초당 수십 번
+ * 두드린다. 같은 bounds를 반복해서 적용하고 view를 숨겼다 다시 붙이면
+ * compositor가 surface를 놓쳐 빈 화면이 남는다.
+ */
+function applyPreviewBounds(preview: PreviewViewState, bounds: Electron.Rectangle) {
+  const applied = preview.appliedBounds;
+  if (
+    applied
+    && applied.x === bounds.x
+    && applied.y === bounds.y
+    && applied.width === bounds.width
+    && applied.height === bounds.height
+  ) return;
+  preview.appliedBounds = bounds;
+  preview.view.setBounds(bounds);
+}
 
 function restorePendingPreviewScroll(preview: PreviewViewState) {
   const owner = stateForWebContentsId(preview.ownerWebContentsId)?.window;
@@ -1082,7 +1104,7 @@ function createWindow(
     for (const preview of previewViews.values()) {
       if (preview.ownerWebContentsId !== webContentsId || !preview.view.getVisible()) continue;
       const bounds = preview.view.getBounds();
-      preview.view.setBounds({
+      applyPreviewBounds(preview, {
         ...bounds,
         width: Math.max(1, contentWidth - bounds.x),
         height: Math.max(1, contentHeight - bounds.y),
@@ -1206,6 +1228,7 @@ function installIpc() {
       ownerWebContentsId: event.sender.id,
       pendingScrollPosition: null,
       pendingScrollRatio: null,
+      appliedBounds: null,
     });
     view.webContents.on('before-input-event', (inputEvent, input) => {
       if (input.type === 'keyDown' && input.key === 'Escape') {
@@ -1277,21 +1300,32 @@ function installIpc() {
   ipcMain.on('preview:show', (event, { tabId, bounds }) => {
     const owner = stateForWebContentsId(event.sender.id)?.window;
     if (!owner) return;
+    const target = typeof tabId === 'string' ? previewViews.get(tabId) : undefined;
+    const shown = target?.ownerWebContentsId === event.sender.id ? target : undefined;
+    // 보여 줄 view는 건드리지 않는다. 숨겼다 다시 붙이는 왕복이 drag resize
+    // 동안 매 frame 반복되면 빈 화면이 남는다.
     for (const preview of previewViews.values()) {
-      if (preview.ownerWebContentsId === event.sender.id) preview.view.setVisible(false);
+      if (preview.ownerWebContentsId !== event.sender.id || preview === shown) continue;
+      if (preview.view.getVisible()) preview.view.setVisible(false);
     }
-    if (typeof tabId !== 'string' || !bounds) return;
-    const preview = previewViews.get(tabId);
-    if (!preview || preview.ownerWebContentsId !== event.sender.id) return;
-    preview.view.setBounds({
-      x: Math.max(0, Math.round(Number(bounds.x) || 0)),
-      y: Math.max(0, Math.round(Number(bounds.y) || 0)),
-      width: Math.max(1, Math.round(Number(bounds.width) || 1)),
-      height: Math.max(1, Math.round(Number(bounds.height) || 1)),
+    if (!shown || !bounds) return;
+    const [contentWidth, contentHeight] = owner.getContentSize();
+    const x = Math.max(0, Math.round(Number(bounds.x) || 0));
+    const y = Math.max(0, Math.round(Number(bounds.y) || 0));
+    // DOM rect의 반올림이 content 영역을 1px 넘기면 창 resize 보정과 매 frame
+    // 서로를 덮어쓴다. content 영역 안으로 접어 두 값을 일치시킨다.
+    applyPreviewBounds(shown, {
+      x,
+      y,
+      width: Math.max(1, Math.min(Math.round(Number(bounds.width) || 1), contentWidth - x)),
+      height: Math.max(1, Math.min(Math.round(Number(bounds.height) || 1), contentHeight - y)),
     });
-    owner.contentView.addChildView(preview.view);
-    preview.view.setVisible(true);
-    restorePendingPreviewScroll(preview);
+    // 이미 보이는 view를 다시 부모에 붙이면 compositor가 surface를 버린다.
+    if (!shown.view.getVisible()) {
+      owner.contentView.addChildView(shown.view);
+      shown.view.setVisible(true);
+    }
+    restorePendingPreviewScroll(shown);
   });
 
   ipcMain.on('preview:command', (event, { tabId, message }) => {
@@ -1434,6 +1468,8 @@ function installIpc() {
     source?.contentView.removeChildView(preview.view);
     destination.contentView.addChildView(preview.view);
     preview.ownerWebContentsId = event.sender.id;
+    // 새 창의 좌표계에서는 기억한 bounds가 의미 없다.
+    preview.appliedBounds = null;
     preview.pendingScrollPosition = scroll;
     preview.pendingScrollRatio = Number.isFinite(Number(transfer.tab.viewerScrollRatio))
       ? Math.max(0, Math.min(1, Number(transfer.tab.viewerScrollRatio)))
