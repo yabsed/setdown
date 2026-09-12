@@ -115,6 +115,7 @@ export type MarkTexApi = {
   completeTabTransfer(transferId: string): void;
   cancelTabTransfer(transferId: string): void;
   detachTabToWindow(transferId: string, x: number, y: number): void;
+  getPreviewTheme(): Promise<PreviewThemeId>;
   getPreviewThemeAssets(themeId: PreviewThemeId): Promise<PreviewThemeAssets>;
   closeEmptyWindow(): void;
   updateText(text: string, revision: number): void;

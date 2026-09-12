@@ -25,11 +25,12 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     args: ['.', documentPath],
     env: { ...environment, XDG_CONFIG_HOME: configRoot },
   });
+  let restartedApplication: Awaited<ReturnType<typeof electron.launch>> | null = null;
 
   try {
     const window = await application.firstWindow();
     await expect(window.locator('.viewer-surface')).toBeVisible();
-    await expect(window.locator('.reader-toolbar')).toBeHidden();
+    await expect(window.locator('.reader-toolbar')).toHaveCount(0);
 
     await expect(window.locator('.tab-actions .toc-toggle')).toBeVisible();
     await expect(window.locator('.find-toggle')).toHaveCount(0);
@@ -47,10 +48,19 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       frame.url().startsWith('marktex-preview:'))!;
     await expect.poll(() => readingFrame.evaluate(() => window.scrollY)).toBeGreaterThan(0);
 
+    const previewBoundsBeforeFind = await window.locator('.preview-frames').boundingBox();
     await readingFrame.locator('body').click({ position: { x: 20, y: 20 } });
     await window.keyboard.press('Control+F');
-    await expect(window.locator('.reader-toolbar')).toBeVisible();
+    await expect(window.locator('.preview-search')).toBeVisible();
     await expect(window.locator('.preview-search input')).toBeFocused();
+    const previewBoundsWithFind = await window.locator('.preview-frames').boundingBox();
+    expect(previewBoundsWithFind).toEqual(previewBoundsBeforeFind);
+    const searchBounds = await window.locator('.preview-search').boundingBox();
+    const viewerBounds = await window.locator('.viewer-surface').boundingBox();
+    expect(searchBounds).toBeTruthy();
+    expect(viewerBounds).toBeTruthy();
+    expect(Math.abs((searchBounds?.x ?? 0) + (searchBounds?.width ?? 0)
+      - (viewerBounds?.x ?? 0) - (viewerBounds?.width ?? 0) + 16)).toBeLessThanOrEqual(1);
     await window.locator('.preview-search input').fill('검색대상');
     await expect(window.locator('.find-count')).not.toHaveText('0 / 0');
 
@@ -112,8 +122,46 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       .filter((frame) => frame.url().startsWith('marktex-preview:'))
       .map((frame) => frame.evaluate(() => document.body.dataset.setdownPreviewTheme || '')),
     )).toEqual(['night', 'night']);
-  } finally {
+
+    await application.evaluate(({ Menu }) => {
+      Menu.getApplicationMenu()?.items
+        .find((item) => item.label === 'File')?.submenu?.items
+        .find((item) => item.label === 'New Window')?.click();
+    });
+    await expect.poll(() => application.windows().length).toBe(2);
+    const secondWindow = application.windows().find((candidate) => candidate !== window)!;
+    await secondWindow.locator('.empty-new').click();
+    await expect(secondWindow.locator('.editor-surface')).toBeVisible();
+    await secondWindow.locator('.mode-toggle').click();
+    await expect(secondWindow.locator('.preview-frame.is-active')).toBeVisible();
+    const secondFrame = secondWindow.frames().find((frame) =>
+      frame.url().startsWith('marktex-preview:'))!;
+    await expect.poll(() => secondFrame.evaluate(() =>
+      document.body.dataset.setdownPreviewTheme || '')).toBe('night');
+    expect(await application.evaluate(({ Menu }) =>
+      Menu.getApplicationMenu()?.getMenuItemById('preview-theme-night')?.checked)).toBe(true);
+    await secondWindow.close();
+
     await application.close();
+    restartedApplication = await electron.launch({
+      args: ['.', documentPath],
+      env: { ...environment, XDG_CONFIG_HOME: configRoot },
+    });
+    const restartedWindow = await restartedApplication.firstWindow();
+    await expect.poll(() => {
+      const frame = restartedWindow.frames().find((candidate) =>
+        candidate.url().startsWith('marktex-preview:'));
+      return frame?.url() ?? '';
+    }).not.toBe('');
+    const persistedFrame = restartedWindow.frames().find((candidate) =>
+      candidate.url().startsWith('marktex-preview:'))!;
+    await expect.poll(() => persistedFrame.evaluate(() =>
+      document.body.dataset.setdownPreviewTheme || '')).toBe('night');
+    expect(await restartedApplication.evaluate(({ Menu }) =>
+      Menu.getApplicationMenu()?.getMenuItemById('preview-theme-night')?.checked)).toBe(true);
+  } finally {
+    if (restartedApplication) await restartedApplication.close();
+    else await application.close();
     await rm(temporaryRoot, { recursive: true, force: true });
   }
 });

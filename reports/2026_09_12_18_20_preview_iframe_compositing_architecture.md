@@ -70,3 +70,20 @@ Preview 안에서 시작한 `Ctrl/Cmd+F`는 bridge가 parent에 요청하고, pa
   - 테마 변경 뒤 source anchor의 의미론적 위치 유지
   - 탭 분리 뒤 새 iframe이 같은 source anchor를 복원
 
+## 후속 수정: 테마 authority와 검색 overlay
+
+창별 `localStorage`에 theme id를 저장하면 메뉴를 소유하는 main process와 각 창이
+서로 다른 값을 참조한다. 포커스 창에만 테마 명령을 보내던 동작까지 겹쳐, 메뉴의
+checked 상태·처음 렌더한 HTML·기존 창·새 창 사이에 공통 기준이 없었다.
+
+테마 authority를 main process의 `globalPreviewTheme` 하나로 통합했다. 값은
+`userData/reader-settings.json`에 저장하며 앱 준비 단계에서 메뉴와 창을 만들기 전에
+읽는다. 메뉴 선택은 모든 열린 창에 broadcast되고, 새 창과 재실행된 앱은 Preview를
+렌더하기 전에 `preview:get-theme`로 같은 값을 받는다. 창별 `localStorage`에는 이제
+목차 열림 상태만 저장한다.
+
+검색 UI는 `.viewer-surface`의 grid row에서 제거했다. 우측 상단에 absolute overlay로
+배치해 열고 닫아도 `.reader-body`와 iframe의 크기가 바뀌지 않는다. 따라서 검색을
+시작한다는 이유로 Preview가 재배치되거나 의미론적 viewport anchor가 흔들리지 않는다.
+통합 테스트는 검색 전후 Preview bounds가 완전히 같은지, 열린 두 창과 앱 재실행 후
+Preview 및 메뉴가 모두 Night를 가리키는지 검증한다.

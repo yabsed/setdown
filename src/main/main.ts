@@ -146,6 +146,7 @@ type CrossnoteModule = typeof import('crossnote');
 type NotebookInstance = Awaited<ReturnType<CrossnoteModule['Notebook']['init']>>;
 const notebookCaches = new Map<string, NotebookInstance>();
 const previewDocuments = new Map<string, string>();
+let globalPreviewTheme: PreviewThemeId = DEFAULT_PREVIEW_THEME;
 
 const crossnoteEntry = require.resolve('crossnote');
 const crossnoteOut = path.resolve(path.dirname(crossnoteEntry), '..');
@@ -794,6 +795,39 @@ function sendCommand(command: AppCommand) {
   focusedState()?.window.webContents.send('app:command', command);
 }
 
+function previewSettingsPath() {
+  return path.join(app.getPath('userData'), 'reader-settings.json');
+}
+
+function loadGlobalPreviewTheme() {
+  try {
+    const stored = JSON.parse(readFileSync(previewSettingsPath(), 'utf8')) as {
+      previewTheme?: unknown;
+    };
+    globalPreviewTheme = normalizePreviewTheme(stored.previewTheme);
+  } catch {
+    globalPreviewTheme = DEFAULT_PREVIEW_THEME;
+  }
+}
+
+function saveGlobalPreviewTheme() {
+  const settingsPath = previewSettingsPath();
+  void fs.mkdir(path.dirname(settingsPath), { recursive: true })
+    .then(() => fs.writeFile(settingsPath, JSON.stringify({
+      previewTheme: globalPreviewTheme,
+    }, null, 2), 'utf8'))
+    .catch((error) => console.error('Failed to save reader settings:', error));
+}
+
+function setGlobalPreviewTheme(value: unknown) {
+  const themeId = normalizePreviewTheme(value);
+  globalPreviewTheme = themeId;
+  saveGlobalPreviewTheme();
+  for (const state of windowStates.values()) {
+    state.window.webContents.send('app:command', `set-preview-theme:${themeId}`);
+  }
+}
+
 function installMenu() {
   const menu = Menu.buildFromTemplate([
     {
@@ -829,8 +863,8 @@ function installMenu() {
             id: `preview-theme-${theme.id}`,
             label: theme.label,
             type: 'radio' as const,
-            checked: theme.id === DEFAULT_PREVIEW_THEME,
-            click: () => sendCommand(`set-preview-theme:${theme.id}`),
+            checked: theme.id === globalPreviewTheme,
+            click: () => setGlobalPreviewTheme(theme.id),
           })),
         },
         { type: 'separator' },
@@ -941,6 +975,12 @@ function createWindow(
 }
 
 function installIpc() {
+  ipcMain.handle('preview:get-theme', (event) => {
+    if (!stateForWebContentsId(event.sender.id)) {
+      throw new Error('The window no longer exists.');
+    }
+    return globalPreviewTheme;
+  });
   ipcMain.handle('preview:theme-assets', (event, themeId) => {
     if (!stateForWebContentsId(event.sender.id)) {
       throw new Error('The window no longer exists.');
@@ -1214,6 +1254,7 @@ if (!hasLock) {
     utility.useExternalAddFileProtocolFunction((filePath: string) =>
       previewFileReference(filePath),
     );
+    loadGlobalPreviewTheme();
     installIpc();
     installMenu();
     const markdownPath = markdownPathFromArgs(process.argv);

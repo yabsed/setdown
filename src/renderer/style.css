@@ -172,20 +172,8 @@ button { font: inherit; }
 
 .viewer-surface, .editor-surface { position: relative; overflow: hidden; }
 .viewer-surface, .reader-body, .preview-frames { background: var(--preview-background); }
-.viewer-surface { display: grid; grid-template-rows: 0 minmax(0, 1fr); }
-.shell[data-find-open="true"] .viewer-surface { grid-template-rows: 42px minmax(0, 1fr); }
-.reader-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  min-width: 0;
-  padding: 5px 9px;
-  border-bottom: 1px solid #d8d8d2;
-  background: rgba(247, 247, 245, .97);
-  z-index: 15;
-}
-.shell:not([data-find-open="true"]) .reader-toolbar { overflow: hidden; padding-block: 0; border: 0; }
-.reader-body { display: flex; min-width: 0; min-height: 0; }
+.viewer-surface { display: block; }
+.reader-body { display: flex; width: 100%; height: 100%; min-width: 0; min-height: 0; }
 .preview-frames { position: relative; flex: 1; min-width: 0; min-height: 0; height: 100%; }
 .preview-frame {
   position: absolute;
@@ -245,17 +233,20 @@ button { font: inherit; }
 .toc-item.is-active { color: #20201e; background: #deded7; font-weight: 650; }
 .toc-empty { margin: 12px 10px; color: #96968f; font-size: 11px; line-height: 1.5; }
 .preview-search {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  z-index: 20;
   display: flex;
   align-items: center;
-  flex: 1 1 360px;
-  min-width: 170px;
-  max-width: 520px;
-  height: 31px;
-  margin-left: 2px;
-  padding: 0 3px 0 8px;
-  border: 1px solid #c9c9c2;
-  border-radius: 7px;
-  background: white;
+  gap: 3px;
+  width: min(410px, calc(100% - 32px));
+  height: 48px;
+  padding: 7px 8px 7px 13px;
+  border: 1px solid rgba(120, 120, 114, .34);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .97);
+  box-shadow: 0 10px 28px rgba(28, 28, 24, .16), 0 2px 7px rgba(28, 28, 24, .08);
 }
 .preview-search[hidden] { display: none; }
 .preview-search input {
@@ -265,10 +256,10 @@ button { font: inherit; }
   outline: 0;
   background: transparent;
   font: inherit;
-  font-size: 12px;
+  font-size: 14px;
 }
 .preview-search input::-webkit-search-cancel-button { display: none; }
-.find-count { flex: 0 0 auto; padding: 0 6px; color: #888881; font-size: 10px; font-variant-numeric: tabular-nums; }
+.find-count { flex: 0 0 auto; padding: 0 6px; color: #888881; font-size: 11px; font-variant-numeric: tabular-nums; }
 .preview-search button {
   width: 25px;
   height: 25px;

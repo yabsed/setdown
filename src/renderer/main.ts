@@ -77,14 +77,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </section>
 
     <section class="viewer-surface" aria-label="렌더링된 Markdown">
-      <div class="reader-toolbar">
-        <div class="preview-search" hidden>
-          <input type="search" autocomplete="off" spellcheck="false" aria-label="렌더링된 문서에서 찾기" placeholder="문서에서 찾기">
-          <span class="find-count" aria-live="polite">0 / 0</span>
-          <button class="find-previous" type="button" aria-label="이전 검색 결과">↑</button>
-          <button class="find-next" type="button" aria-label="다음 검색 결과">↓</button>
-          <button class="find-close" type="button" aria-label="검색 닫기">×</button>
-        </div>
+      <div class="preview-search" role="search" hidden>
+        <input type="search" autocomplete="off" spellcheck="false" aria-label="렌더링된 문서에서 찾기" placeholder="찾기…">
+        <span class="find-count" aria-live="polite">0 / 0</span>
+        <button class="find-previous" type="button" aria-label="이전 검색 결과">↑</button>
+        <button class="find-next" type="button" aria-label="다음 검색 결과">↓</button>
+        <button class="find-close" type="button" aria-label="검색 닫기">×</button>
       </div>
       <div class="reader-body">
         <aside class="toc-panel" aria-label="문서 목차" hidden>
@@ -197,11 +195,11 @@ function loadReaderPreferences(): { tocOpen: boolean; themeId: PreviewThemeId } 
   try {
     const value = JSON.parse(localStorage.getItem(READER_PREFERENCES_KEY) ?? '{}') as {
       tocOpen?: unknown;
-      themeId?: unknown;
     };
     return {
       tocOpen: value.tocOpen === true,
-      themeId: normalizePreviewTheme(value.themeId),
+      // Preview theme의 authority는 main process의 app-global setting이다.
+      themeId: DEFAULT_PREVIEW_THEME,
     };
   } catch {
     return { tocOpen: false, themeId: DEFAULT_PREVIEW_THEME };
@@ -215,7 +213,9 @@ document.documentElement.style.setProperty(
 );
 
 function saveReaderPreferences() {
-  localStorage.setItem(READER_PREFERENCES_KEY, JSON.stringify(readerPreferences));
+  localStorage.setItem(READER_PREFERENCES_KEY, JSON.stringify({
+    tocOpen: readerPreferences.tocOpen,
+  }));
 }
 
 const tabs: DocumentTab[] = [];
@@ -393,9 +393,7 @@ function closePreviewFind(clearQuery = false) {
 
 async function applyPreviewTheme(value: unknown) {
   const nextTheme = normalizePreviewTheme(value);
-  if (readerPreferences.themeId === nextTheme) return;
   readerPreferences.themeId = nextTheme;
-  saveReaderPreferences();
   syncReaderUi();
   const assets = await window.marktex.getPreviewThemeAssets(nextTheme);
   if (readerPreferences.themeId !== assets.themeId) return;
@@ -1962,10 +1960,20 @@ window.addEventListener('keydown', (event) => {
   }
 }, { capture: true });
 
-window.marktex.getDocument().then((documentSnapshot) => {
+async function initializeRenderer() {
+  const themeId = normalizePreviewTheme(await window.marktex.getPreviewTheme());
+  readerPreferences.themeId = themeId;
+  const assets = await window.marktex.getPreviewThemeAssets(themeId);
+  if (assets.themeId === themeId) {
+    currentPreviewThemeAssets = assets;
+    document.documentElement.style.setProperty('--preview-background', assets.backgroundColor);
+  }
+  const documentSnapshot = await window.marktex.getDocument();
   if (documentSnapshot) void showDocument(documentSnapshot);
   else if (tabs.length === 0) {
     setSurface('empty');
     renderTabs();
   }
-});
+}
+
+void initializeRenderer();

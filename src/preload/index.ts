@@ -34,6 +34,7 @@ const api: MarkTexApi = {
     ipcRenderer.send('tabs:cancel-transfer', transferId),
   detachTabToWindow: (transferId, x, y) =>
     ipcRenderer.send('tabs:detach-to-window', { transferId, x, y }),
+  getPreviewTheme: () => ipcRenderer.invoke('preview:get-theme'),
   getPreviewThemeAssets: (themeId) =>
     ipcRenderer.invoke('preview:theme-assets', themeId),
   closeEmptyWindow: () => ipcRenderer.send('app:close-empty-window'),
