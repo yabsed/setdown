@@ -8,6 +8,7 @@ import {
   net,
   protocol,
   shell,
+  utilityProcess,
   WebContentsView,
 } from 'electron';
 import type { MenuItem } from 'electron';
@@ -22,12 +23,6 @@ import {
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import {
-  Notebook,
-  getDefaultNotebookConfig,
-  utility,
-} from 'crossnote';
-import type { FileSystemApi, WebviewConfig } from 'crossnote';
 import type {
   ApplicationMenuEntry,
   AppCommand,
@@ -312,9 +307,6 @@ function withWindowState<T>(state: WindowState, action: () => Promise<T> | T): P
   return scheduled;
 }
 
-type CrossnoteModule = typeof import('crossnote');
-type NotebookInstance = Awaited<ReturnType<CrossnoteModule['Notebook']['init']>>;
-const notebookCaches = new Map<string, NotebookInstance>();
 const previewDocuments = new Map<string, string>();
 let globalPreviewTheme: PreviewThemeId = DEFAULT_PREVIEW_THEME;
 let globalThemeRevision = 0;
@@ -372,20 +364,6 @@ function resourceUrl(filePath: string): string {
   return `marktex-resource://file${pathname}${trailingSeparator}`;
 }
 
-/**
- * Crossnote의 preview sanitizer는 사용자 콘텐츠의 custom protocol media URL을
- * 제거한다. 문서 폴더 안 파일은 상대 URL로 유지하면 sanitizer를 통과하고,
- * preview의 <base>가 이를 marktex-resource: URL로 안전하게 해석한다.
- */
-function previewFileReference(filePath: string): string {
-  const absolute = canonicalPath(filePath);
-  if (activeRoot) {
-    const relative = previewRelativeReference(canonicalPath(activeRoot), absolute);
-    if (relative !== null) return relative;
-  }
-  return resourceUrl(absolute);
-}
-
 function previewThemeAssets(requestedTheme: unknown) {
   const themeId = normalizePreviewTheme(requestedTheme);
   return {
@@ -419,124 +397,85 @@ function pathFromResourceUrl(rawUrl: string): string | null {
   }
 }
 
-function createReadOnlyFileSystem(root: string): FileSystemApi {
-  const checked = (candidate: string) => {
-    const absolute = path.resolve(candidate);
-    if (!isInside(root, absolute)) throw new Error('Path escapes the document folder.');
-    if (absolute.split(path.sep).includes('.crossnote')) {
-      throw new Error('Per-folder Crossnote configuration is disabled for untrusted documents.');
+/**
+ * 조판은 utility process에서 돈다. 메인은 요청과 결과 보관만 한다.
+ *
+ * 조판이 메인에서 돌면 수식 문서에서 한 번에 500ms 넘게 프로세스를 멈추고,
+ * 타자마다 오는 IPC가 그 뒤에 줄을 선다. 여기서는 기다리기만 하므로 메인이
+ * 계속 응답한다.
+ */
+type RenderWorkerResult = {
+  template: string;
+  html: string;
+  totalLineCount: number;
+  baseHref: string;
+  themeId: PreviewThemeId;
+};
+
+let renderWorker: Electron.UtilityProcess | null = null;
+let renderRequestId = 0;
+const renderWaiters = new Map<number, {
+  resolve: (value: RenderWorkerResult) => void;
+  reject: (error: Error) => void;
+}>();
+
+function ensureRenderWorker(): Electron.UtilityProcess {
+  if (renderWorker) return renderWorker;
+  const worker = utilityProcess.fork(path.join(__dirname, 'render-worker.cjs'));
+  renderWorker = worker;
+  worker.on('message', (reply: {
+    kind?: string; id?: number; ok?: boolean; message?: string;
+  } & Partial<RenderWorkerResult>) => {
+    if (reply?.kind !== 'render' || typeof reply.id !== 'number') return;
+    const waiter = renderWaiters.get(reply.id);
+    if (!waiter) return;
+    renderWaiters.delete(reply.id);
+    if (reply.ok && typeof reply.template === 'string' && typeof reply.html === 'string') {
+      waiter.resolve({
+        template: reply.template,
+        html: reply.html,
+        totalLineCount: Math.max(1, Number(reply.totalLineCount) || 1),
+        baseHref: String(reply.baseHref ?? ''),
+        themeId: normalizePreviewTheme(reply.themeId),
+      });
+    } else {
+      waiter.reject(new Error(String(reply.message ?? 'The preview renderer failed.')));
     }
-    return assertReadablePath(absolute);
-  };
-
-  return {
-    readFile: async (candidate, encoding = 'utf8') =>
-      (await fs.readFile(checked(candidate), encoding)).toString(),
-    writeFile: async () => {
-      throw new Error('Crossnote preview file system is read-only.');
-    },
-    mkdir: async () => {
-      throw new Error('Crossnote preview file system is read-only.');
-    },
-    exists: async (candidate) => {
-      if (path.resolve(candidate).split(path.sep).includes('.crossnote')) return false;
-      try {
-        await fs.access(checked(candidate));
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    stat: async (candidate) => {
-      const stats = await fs.lstat(checked(candidate));
-      return {
-        mtimeMs: stats.mtimeMs,
-        ctimeMs: stats.ctimeMs,
-        size: stats.size,
-        isFile: () => stats.isFile(),
-        isDirectory: () => stats.isDirectory(),
-        isSymbolicLink: () => stats.isSymbolicLink(),
-      };
-    },
-    readdir: async (candidate) => fs.readdir(checked(candidate)),
-    unlink: async () => {
-      throw new Error('Crossnote preview file system is read-only.');
-    },
-  };
-}
-
-async function getNotebook(
-  filePath: string,
-  requestedTheme: PreviewThemeId = DEFAULT_PREVIEW_THEME,
-): Promise<NotebookInstance> {
-  const root = canonicalPath(path.dirname(filePath));
-  activeRoot = root;
-  const themeId = normalizePreviewTheme(requestedTheme);
-  const cacheKey = `${root}\0${themeId}`;
-  const cached = notebookCaches.get(cacheKey);
-  if (cached) return cached;
-
-  const defaults = getDefaultNotebookConfig();
-  const notebook = await Notebook.init({
-    notebookPath: root,
-    fs: createReadOnlyFileSystem(root),
-    config: {
-      ...defaults,
-      markdownParser: 'markdown-it',
-      previewTheme: previewThemeFile(themeId),
-      codeBlockTheme: 'auto.css',
-      mathRenderingOption: 'KaTeX',
-      enablePreviewZenMode: true,
-      enablePreviewContextMenu: false,
-      enableScriptExecution: false,
-      enableHTML5Embed: false,
-      includeInHeader: '',
-      globalCss: '',
-      protocolsWhiteList:
-        'http://, https://, file://, marktex-resource://, mailto:, tel:',
-    },
   });
-  notebook.previewScriptsEnabled = false;
-  installSourceAnchors(notebook.md as unknown as MarkdownItLike);
-  notebookCaches.set(cacheKey, notebook);
-  return notebook;
+  worker.on('exit', () => {
+    if (renderWorker === worker) renderWorker = null;
+    for (const waiter of renderWaiters.values()) {
+      waiter.reject(new Error('The preview renderer stopped.'));
+    }
+    renderWaiters.clear();
+  });
+  return worker;
 }
 
-let bridgeSourceCache: string | null = null;
-
-function bridgeSource(): string {
-  if (bridgeSourceCache === null) {
-    const bundle = readFileSync(path.join(__dirname, 'preview-bridge.js'), 'utf8');
-    // 인라인 <script> 안으로 들어가므로 태그 종료 시퀀스만 막는다.
-    bridgeSourceCache = bundle.replace(/<\/script/gi, '<\\/script');
-  }
-  return bridgeSourceCache;
+/** 조판이 읽어도 되는 디렉터리. 보안 경계를 요청마다 함께 보낸다. */
+function readableRoots(): string[] {
+  return [activeRoot, ...Array.from(windowStates.values(), (state) => state.activeRoot)]
+    .filter((root): root is string => !!root);
 }
 
-function previewBridgeScript(
-  totalLines: number,
-  documentIsBlank: boolean,
+function forgetWorkerNotebooks() {
+  renderWorker?.postMessage({ kind: 'forget-notebooks' });
+}
+
+function callRenderWorker(
+  text: string,
   revision: number,
+  documentPath: string,
   themeId: PreviewThemeId,
-): string {
-  const config = JSON.stringify({
-    totalLineCount: totalLines,
-    documentIsBlank,
-    revision,
-    themeId,
+): Promise<RenderWorkerResult> {
+  const worker = ensureRenderWorker();
+  const id = ++renderRequestId;
+  return new Promise<RenderWorkerResult>((resolve, reject) => {
+    renderWaiters.set(id, { resolve, reject });
+    worker.postMessage({
+      kind: 'render', id, text, revision, documentPath, themeId, roots: readableRoots(),
+    });
   });
-  return `<script>window.__marktexPreview = ${config};</script>
-<script>${bridgeSource()}</script>`;
-}
-
-function previewFragmentFromTemplate(template: string): string {
-  const encoded = template.match(/<body\b[^>]*\bdata-html="([^"]*)"/i)?.[1] ?? '';
-  return encoded
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&');
 }
 
 async function renderCurrent(
@@ -552,82 +491,14 @@ async function renderCurrent(
   currentDocument = applyTextRevision(currentDocument, text, revision);
   const renderPath = currentDocument.path;
   const themeId = normalizePreviewTheme(requestedTheme);
-  const notebook = await getNotebook(renderPath, themeId);
-  if (currentDocument?.path !== renderPath) {
-    throw new Error('The document changed while its preview was being prepared.');
-  }
-  const engine = notebook.getNoteMarkdownEngine(renderPath);
-  const sourceUrl = resourceUrl(renderPath);
-  const baseHref = resourceUrl(path.join(path.dirname(renderPath), path.sep));
-  const fakePanel = {} as never;
-  const config: WebviewConfig = {
-    ...notebook.config,
-    sourceUri: sourceUrl,
-    cursorLine: 0,
-    scrollSync: true,
-    isVSCode: false,
-    enablePreviewZenMode: true,
-    enablePreviewContextMenu: false,
-  };
-  const html = await engine.generateHTMLTemplateForPreview({
-    inputString: text.length > 0 ? text : '\n',
-    config,
-    vscodePreviewPanel: fakePanel,
-    head: `<base href="${baseHref}">`,
-    scripts: previewBridgeScript(
-      lineCount(text),
-      text.trim().length === 0,
-      revision,
-      themeId,
-    ),
-    styles: `<style>
-      /* theme stylesheet가 적용되기 전 첫 frame이 흰색으로 칠해지지 않게
-         한다. 새 문서를 열 때 보이던 흰 섬광의 원인이다. bridge가 theme을
-         바꿀 때 이 값을 함께 갱신한다. */
-      html, body { background: ${previewThemeBackground(themeId)}; }
-      [data-source-line] { cursor: text; }
-      .topbar, footer, .footer { display: none !important; }
-      html, body { max-width: 100%; overflow-x: hidden !important; }
-      /* Preview 자체는 문서 전체를 칠하고, 폭이 긴 콘텐츠만 지역적으로 스크롤한다. */
-      .markdown-preview {
-        width: 100% !important;
-        max-width: 100% !important;
-        height: auto !important;
-        min-height: 100vh !important;
-        padding-bottom: 5rem !important;
-        overflow-x: hidden !important;
-        overflow-y: visible !important;
-      }
-      .markdown-preview pre,
-      .markdown-preview .katex-display,
-      .markdown-preview .MathJax_Display,
-      .markdown-preview .crossnote-html-source {
-        max-width: 100%;
-        overflow-x: auto;
-        overflow-y: hidden;
-      }
-      .markdown-preview table {
-        display: block;
-        max-width: 100%;
-        overflow-x: auto;
-      }
-      .markdown-preview img,
-      .markdown-preview video,
-      .markdown-preview svg { max-width: 100%; height: auto; }
-      .markdown-preview p,
-      .markdown-preview li,
-      .markdown-preview blockquote { overflow-wrap: break-word; }
-      /* 수식이 나르는 source wrapper는 조판을 바꾸지 않는다. */
-      .crossnote-math-source, .crossnote-html-source { display: block; }
-      .crossnote-inline-math-source { display: inline; }
-    </style>`,
-  });
+  activeRoot = path.dirname(renderPath);
+  const rendered = await callRenderWorker(text, revision, renderPath, themeId);
   if (currentDocument?.path !== renderPath) {
     throw new Error('The document changed while its preview was being prepared.');
   }
   const token = `${Date.now()}-${revision}-${Math.random().toString(36).slice(2)}`;
-  previewDocuments.set(token, html);
-  rememberWarmupTemplate(html);
+  previewDocuments.set(token, rendered.template);
+  rememberWarmupTemplate(rendered.template);
   while (previewDocuments.size > 64) {
     const oldest = previewDocuments.keys().next().value as string | undefined;
     if (!oldest) break;
@@ -636,11 +507,11 @@ async function renderCurrent(
   return {
     revision,
     url: `marktex-preview://document/${token}`,
-    themeId,
-    html: previewFragmentFromTemplate(html),
+    themeId: rendered.themeId,
+    html: rendered.html,
     markdown: text,
-    totalLineCount: lineCount(text),
-    baseHref,
+    totalLineCount: rendered.totalLineCount,
+    baseHref: rendered.baseHref,
   };
 }
 
@@ -705,7 +576,7 @@ function watchCurrentDocument() {
 
 async function openPath(filePath: string, notify = true) {
   currentDocument = await readDocument(filePath);
-  notebookCaches.clear();
+  forgetWorkerNotebooks();
   activeRoot = path.dirname(currentDocument.path);
   watchCurrentDocument();
   if (notify) mainWindow?.webContents.send('document:opened', currentDocument);
@@ -714,7 +585,7 @@ async function openPath(filePath: string, notify = true) {
 
 async function createNewDocument() {
   stopWatching();
-  notebookCaches.clear();
+  forgetWorkerNotebooks();
   currentDocument = blankDocument();
   activeRoot = path.dirname(currentDocument.path);
   return currentDocument;
@@ -867,7 +738,7 @@ async function saveDocumentAs(text: string, revision: number): Promise<SaveResul
     filters: [{ name: 'Markdown', extensions: ['md'] }],
   });
   if (result.canceled || !result.filePath) return { canceled: true };
-  notebookCaches.clear();
+  forgetWorkerNotebooks();
   return saveTo(result.filePath, text, revision);
 }
 
@@ -1964,9 +1835,6 @@ if (!hasLock) {
         return new Response('Resource is outside the allowed roots', { status: 403 });
       }
     });
-    utility.useExternalAddFileProtocolFunction((filePath: string) =>
-      previewFileReference(filePath),
-    );
     loadGlobalPreviewTheme();
     installIpc();
     installMenu();
