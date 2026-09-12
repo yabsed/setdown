@@ -11,7 +11,7 @@ import {
   utilityProcess,
   WebContentsView,
 } from 'electron';
-import type { MenuItem } from 'electron';
+import type { MenuItem, WebContents } from 'electron';
 import {
   promises as fs,
   readFileSync,
@@ -128,15 +128,21 @@ const previewUpdateWaiters = new Map<string, () => void>();
  */
 type SparePreview = { view: WebContentsView; ready: boolean };
 const sparePreviews = new Map<number, SparePreview>();
-/** 마지막 render의 template에서 본문만 비운 것. 자산은 그대로 남는다. */
-let warmupPreviewUrl: string | null = null;
+/**
+ * 마지막 render의 template에서 본문만 비운 것. 자산은 그대로 남는다.
+ *
+ * theme도 그 자산에 들어 있다. 어떤 theme으로 구운 template인지 함께 들고
+ * 있지 않으면, 나중에 이 template으로 띄운 예비 view가 지금 theme으로
+ * 그리고 있는지 알 길이 없다.
+ */
+let warmupPreview: { url: string; themeId: PreviewThemeId } | null = null;
 
-function rememberWarmupTemplate(template: string) {
+function rememberWarmupTemplate(template: string, themeId: PreviewThemeId) {
   const blank = template.replace(/(<body\b[^>]*\bdata-html=")[^"]*(")/i, '$1$2');
   if (blank === template) return;
   const token = `warmup-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   previewDocuments.set(token, blank);
-  warmupPreviewUrl = `marktex-preview://document/${token}`;
+  warmupPreview = { url: `marktex-preview://document/${token}`, themeId };
 }
 
 /**
@@ -177,14 +183,16 @@ function createPreviewView(): WebContentsView {
 }
 
 function ensureSparePreview(ownerWebContentsId: number) {
-  if (sparePreviews.has(ownerWebContentsId) || !warmupPreviewUrl) return;
+  const warmup = warmupPreview;
+  if (sparePreviews.has(ownerWebContentsId) || !warmup) return;
   const owner = stateForWebContentsId(ownerWebContentsId)?.window;
   if (!owner || owner.isDestroyed()) return;
   const view = createPreviewView();
   owner.contentView.addChildView(view);
   const spare: SparePreview = { view, ready: false };
   sparePreviews.set(ownerWebContentsId, spare);
-  view.webContents.loadURL(warmupPreviewUrl).then(() => {
+  view.webContents.loadURL(warmup.url).then(() => {
+    markPreviewTheme(view.webContents, warmup.themeId);
     if (sparePreviews.get(ownerWebContentsId) === spare) spare.ready = true;
   }).catch(() => {
     if (sparePreviews.get(ownerWebContentsId) === spare) {
@@ -375,6 +383,32 @@ function previewThemeAssets(requestedTheme: unknown) {
   };
 }
 
+/**
+ * Preview 페이지의 theme은 template에 구워진다. 그 뒤로 그것을 바꾸는 것은
+ * `marktex:apply-theme` 하나뿐이다. 어느 view가 지금 무엇을 그리고 있는지는
+ * 여기 한 곳에서만 센다. webContents.id로 세므로 예비 view가 탭으로
+ * 채택되거나 탭이 다른 창으로 넘어가도 장부가 따라간다.
+ */
+const previewThemes = new Map<number, PreviewThemeId>();
+
+function markPreviewTheme(contents: WebContents, themeId: PreviewThemeId) {
+  if (contents.isDestroyed()) return;
+  if (!previewThemes.has(contents.id)) {
+    contents.once('destroyed', () => previewThemes.delete(contents.id));
+  }
+  previewThemes.set(contents.id, themeId);
+}
+
+/** 이미 떠 있는 페이지의 theme을 지금 theme으로 맞춘다. 같으면 아무것도 하지 않는다. */
+function syncPreviewTheme(view: WebContentsView, themeId: PreviewThemeId) {
+  const contents = view.webContents;
+  if (contents.isDestroyed() || previewThemes.get(contents.id) === themeId) return;
+  const assets = previewThemeAssets(themeId);
+  view.setBackgroundColor(assets.backgroundColor);
+  contents.send('preview:command', { command: 'marktex:apply-theme', ...assets });
+  markPreviewTheme(contents, assets.themeId);
+}
+
 function pathFromResourceUrl(rawUrl: string): string | null {
   try {
     const url = new URL(rawUrl);
@@ -529,12 +563,15 @@ async function preparePreview(
     throw new Error('The document changed while its preview was being prepared.');
   }
   preview.view.setBackgroundColor(previewThemeBackground(themeId));
+  // 페이지가 이미 있다면 그 theme은 template에 구워진 값이다. 예비 view를
+  // 넘겨받은 경우 그 값이 지금 theme보다 오래되었을 수 있다.
+  if (hasPage) syncPreviewTheme(preview.view, themeId);
 
   // 첫 로드: 완성된 페이지를 실는다.
   if (typeof rendered.template === 'string') {
     const token = `${Date.now()}-${revision}-${Math.random().toString(36).slice(2)}`;
     previewDocuments.set(token, rendered.template);
-    rememberWarmupTemplate(rendered.template);
+    rememberWarmupTemplate(rendered.template, themeId);
     while (previewDocuments.size > 64) {
       const oldest = previewDocuments.keys().next().value as string | undefined;
       if (!oldest) break;
@@ -542,6 +579,7 @@ async function preparePreview(
     }
     const url = `marktex-preview://document/${token}`;
     await preview.view.webContents.loadURL(url);
+    markPreviewTheme(preview.view.webContents, themeId);
     setImmediate(() => ensureSparePreview(senderId));
     return { revision, url, themeId };
   }
@@ -1004,6 +1042,9 @@ function setGlobalPreviewTheme(value: unknown) {
   globalPreviewTheme = themeId;
   globalThemeRevision += 1;
   saveGlobalPreviewTheme();
+  // 예비 view는 탭이 아니어서 renderer의 theme 전파가 닿지 않는다. 여기서
+  // 맞춰 두지 않으면 다음에 여는 문서가 옛 theme으로 떠오른다.
+  for (const spare of sparePreviews.values()) syncPreviewTheme(spare.view, themeId);
   const snapshot: ThemeSnapshot = { id: themeId, revision: globalThemeRevision };
   for (const state of windowStates.values()) {
     const profile = themeProfile(themeId);
@@ -1381,6 +1422,7 @@ function installIpc() {
         command: 'marktex:apply-theme',
         ...assets,
       });
+      markPreviewTheme(preview.view.webContents, assets.themeId);
       return;
     }
     preview.view.webContents.send('preview:command', message);
