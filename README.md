@@ -219,6 +219,15 @@ asset 복사와 Markdown 링크 갱신이 모두 성공한 뒤에만 draft를 �
 
 ## 개발과 검증
 
+### 53시간 39분의 빌드
+
+Setdown은 76개의 커밋을 거쳐 10,105줄의 코드로 자랐습니다. 아래 그래프는 각 커밋의
+실제 시각과 그 시점의 소스·테스트·빌드 코드 줄 수를 함께 보여 줍니다.
+
+<p align="center">
+  <img src="docs/assets/repository-code-growth.png" width="960" alt="53시간 39분 동안 76개 커밋을 거쳐 10,105줄로 성장한 Setdown의 코드 성장 그래프">
+</p>
+
 ```sh
 npm run dev
 npm run typecheck
@@ -261,10 +270,3 @@ git submodule update --init --recursive
 - [Preview iframe 합성 실험](reports/2026_09_12_18_20_preview_iframe_compositing_architecture.md)
 - [통합 제품 테마](reports/2026_09_12_18_38_unified_product_theme_architecture.md)
 - [즉시 보이는 Preview 전환](reports/2026_09_12_20_14_zero_wait_preview_transition_architecture.md)
-
-## 현재 알려진 한계
-
-- 하나의 raw HTML block 안에 수식이 여러 개 있으면 block 내부의 정확한 열보다 해당
-  block의 원문 행 범위를 우선합니다.
-- 비정상 종료 시 draft bundle은 보존되지만, 다음 실행에서 복구할 draft를 선택하는
-  전용 화면은 아직 없습니다.
