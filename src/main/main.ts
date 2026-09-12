@@ -403,7 +403,36 @@ async function renderCurrent(
     styles: `<style>
       [data-source-line] { cursor: text; }
       .topbar, footer, .footer { display: none !important; }
-      .markdown-preview { padding-bottom: 5rem !important; }
+      html, body { max-width: 100%; overflow-x: hidden !important; }
+      /* Preview 자체는 문서 전체를 칠하고, 폭이 긴 콘텐츠만 지역적으로 스크롤한다. */
+      .markdown-preview {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        min-height: 100vh !important;
+        padding-bottom: 5rem !important;
+        overflow-x: hidden !important;
+        overflow-y: visible !important;
+      }
+      .markdown-preview pre,
+      .markdown-preview .katex-display,
+      .markdown-preview .MathJax_Display,
+      .markdown-preview .crossnote-html-source {
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+      }
+      .markdown-preview table {
+        display: block;
+        max-width: 100%;
+        overflow-x: auto;
+      }
+      .markdown-preview img,
+      .markdown-preview video,
+      .markdown-preview svg { max-width: 100%; height: auto; }
+      .markdown-preview p,
+      .markdown-preview li,
+      .markdown-preview blockquote { overflow-wrap: break-word; }
       /* 수식이 나르는 source wrapper는 조판을 바꾸지 않는다. */
       .crossnote-math-source, .crossnote-html-source { display: block; }
       .crossnote-inline-math-source { display: inline; }

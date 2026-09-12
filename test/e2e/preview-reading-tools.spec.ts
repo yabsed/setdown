@@ -12,6 +12,10 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     '',
     '검색대상 문장입니다.',
     '',
+    '```text',
+    `wide-${'0123456789'.repeat(180)}`,
+    '```',
+    '',
     ...Array.from({ length: 80 }, (_, index) => `본문 ${index + 1}`),
     '',
     '## 두 번째 장',
@@ -77,6 +81,20 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     expect(readingTabId).toBeTruthy();
     const readingFrame = window.frames().find((frame) =>
       frame.url().startsWith('marktex-preview:'))!;
+    expect(await readingFrame.evaluate(() => {
+      const preview = document.querySelector<HTMLElement>('.markdown-preview[data-for="preview"]')!;
+      const wideCode = preview.querySelector<HTMLElement>('pre')!;
+      return {
+        documentHasHorizontalOverflow:
+          document.documentElement.scrollWidth > document.documentElement.clientWidth,
+        previewOverflowX: getComputedStyle(preview).overflowX,
+        wideCodeScrollsLocally: wideCode.scrollWidth > wideCode.clientWidth,
+      };
+    })).toEqual({
+      documentHasHorizontalOverflow: false,
+      previewOverflowX: 'hidden',
+      wideCodeScrollsLocally: true,
+    });
     await expect.poll(() => readingFrame.evaluate(() => window.scrollY)).toBeGreaterThan(0);
 
     const previewBoundsBeforeFind = await window.locator('.preview-frames').boundingBox();

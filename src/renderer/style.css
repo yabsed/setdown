@@ -475,7 +475,7 @@ button { font: inherit; }
   font: inherit;
 }
 .insertion-form input:focus, .insertion-form select:focus { border-color: var(--app-focus-ring); box-shadow: 0 0 0 1px var(--app-focus-ring); }
-.insertion-form footer { display: flex; justify-content: flex-end; gap: 7px; margin-top: 2px; padding-top: 12px; border-top: 1px solid var(--app-border); }
+.insertion-form footer { display: flex; justify-content: flex-end; gap: 7px; margin-top: 2px; padding-top: 12px; }
 .insertion-form footer button, .pick-link-file { white-space: nowrap; }
 .insertion-form .primary-button,
 .insertion-form .secondary-button { min-height: 34px; padding: 6px 13px; border-radius: 3px; }
