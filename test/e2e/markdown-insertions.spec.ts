@@ -22,6 +22,14 @@ test('inserts an edited table and a URL into the Monaco document', async () => {
 
     await window.locator('.insert-table-button').click();
     await expect(window.locator('.table-dialog')).toBeVisible();
+    expect(await window.locator('.table-dialog').evaluate((element) => ({
+      radius: getComputedStyle(element).borderRadius,
+      shadow: getComputedStyle(element).boxShadow,
+    }))).toEqual({
+      radius: '4px',
+      shadow: 'rgba(28, 28, 24, 0.18) 0px 8px 28px 0px',
+    });
+    await expect(window.locator('.table-editor-scroll')).toHaveCSS('border-radius', '3px');
     const threeColumnWidth = await window.locator('.table-editor-scroll').evaluate((element) => ({
       client: element.clientWidth,
       scroll: element.scrollWidth,
@@ -54,6 +62,7 @@ test('inserts an edited table and a URL into the Monaco document', async () => {
 
     await window.keyboard.press('Control+End');
     await window.locator('.insert-link-button').click();
+    await expect(window.locator('.link-dialog')).toHaveCSS('border-radius', '4px');
     await window.locator('.link-destination').fill('https://example.com/docs');
     await window.locator('.link-form .primary-button').click();
     await expect(window.locator('.view-lines')).toContainText('alpha');

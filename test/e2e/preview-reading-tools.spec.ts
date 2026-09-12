@@ -93,7 +93,7 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     expect(searchBounds).toBeTruthy();
     expect(tocBoundsWhileFinding).toBeTruthy();
     expect(Math.abs((searchBounds?.x ?? 0) + (searchBounds?.width ?? 0)
-      - (previewBoundsWithFind?.x ?? 0) - (previewBoundsWithFind?.width ?? 0) + 10))
+      - (previewBoundsWithFind?.x ?? 0) - (previewBoundsWithFind?.width ?? 0) + 22))
       .toBeLessThanOrEqual(1);
     expect((searchBounds?.x ?? 0) + (searchBounds?.width ?? 0))
       .toBeLessThanOrEqual(tocBoundsWhileFinding?.x ?? 0);
@@ -132,6 +132,15 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     await expect(window.locator('.application-menu-popup')).toBeVisible();
     expect(await window.locator('.application-menu-popup').evaluate((element) =>
       getComputedStyle(element).backgroundColor)).toBe('rgb(65, 71, 77)');
+    await window.locator('[data-menu-item-id="menu-theme"]').hover();
+    await expect(window.locator('.application-submenu-popup')).toBeVisible();
+    await expect(window.locator('.application-submenu-popup')).toContainText('Night');
+    expect(await window.locator('.application-menu-popup').evaluate((element) =>
+      element.scrollWidth <= element.clientWidth)).toBe(true);
+    const submenuBounds = await window.locator('.application-submenu-popup').boundingBox();
+    expect(submenuBounds).toBeTruthy();
+    expect((submenuBounds?.x ?? 0) + (submenuBounds?.width ?? 0))
+      .toBeLessThanOrEqual(await window.evaluate(() => innerWidth));
     await expect(window.locator('[data-menu-item-id="preview-theme-night"]'))
       .toHaveAttribute('aria-checked', 'true');
     await window.keyboard.press('Escape');

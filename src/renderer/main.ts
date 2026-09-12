@@ -145,6 +145,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <button type="button" data-menu-id="application-menu-window">Window</button>
     </nav>
     <div class="application-menu-popup" hidden></div>
+    <div class="application-submenu-popup" hidden></div>
     <div class="titlebar-drag-space" aria-hidden="true"></div>
   </header>
   <section class="shell" data-surface="empty" data-tabs="false">
@@ -255,6 +256,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 const shell = document.querySelector<HTMLElement>('.shell')!;
 const applicationMenu = document.querySelector<HTMLElement>('.application-menu')!;
 const applicationMenuPopup = document.querySelector<HTMLElement>('.application-menu-popup')!;
+const applicationSubmenuPopup = document.querySelector<HTMLElement>('.application-submenu-popup')!;
 const modeToggle = document.querySelector<HTMLButtonElement>('.mode-toggle')!;
 const previewFrames = document.querySelector<HTMLElement>('.preview-frames')!;
 const tocToggle = document.querySelector<HTMLButtonElement>('.toc-toggle')!;
@@ -1863,7 +1865,16 @@ const applicationMenuCache = new Map<string, ApplicationMenuEntry[]>();
 let openApplicationMenuId: string | null = null;
 let applicationMenuRequest = 0;
 
+function closeApplicationSubmenu() {
+  applicationSubmenuPopup.hidden = true;
+  applicationSubmenuPopup.replaceChildren();
+  applicationMenuPopup.querySelectorAll('.is-submenu-open').forEach((row) => {
+    row.classList.remove('is-submenu-open');
+  });
+}
+
 function closeApplicationMenu() {
+  closeApplicationSubmenu();
   openApplicationMenuId = null;
   applicationMenuPopup.hidden = true;
   applicationMenuPopup.replaceChildren();
@@ -1919,9 +1930,11 @@ function menuEntryList(entries: ApplicationMenuEntry[], nested = false): HTMLULi
     row.append(button);
     if (entry.submenu?.length) {
       row.classList.add('has-submenu');
-      row.append(menuEntryList(entry.submenu, true));
-      button.addEventListener('click', () => row.classList.toggle('is-submenu-open'));
+      const showSubmenu = () => showApplicationSubmenu(row, button, entry.submenu!);
+      button.addEventListener('click', showSubmenu);
+      button.addEventListener('pointerenter', showSubmenu);
     } else {
+      if (!nested) row.addEventListener('pointerenter', closeApplicationSubmenu);
       button.addEventListener('click', () => {
         window.marktex.executeApplicationMenuItem(entry.id);
         closeApplicationMenu();
@@ -1930,6 +1943,32 @@ function menuEntryList(entries: ApplicationMenuEntry[], nested = false): HTMLULi
     list.append(row);
   }
   return list;
+}
+
+function showApplicationSubmenu(
+  row: HTMLLIElement,
+  button: HTMLButtonElement,
+  entries: ApplicationMenuEntry[],
+) {
+  applicationMenuPopup.querySelectorAll('.is-submenu-open').forEach((candidate) => {
+    candidate.classList.toggle('is-submenu-open', candidate === row);
+  });
+  row.classList.add('is-submenu-open');
+  applicationSubmenuPopup.replaceChildren(menuEntryList(entries, true));
+  applicationSubmenuPopup.hidden = false;
+
+  const bounds = button.getBoundingClientRect();
+  const submenuBounds = applicationSubmenuPopup.getBoundingClientRect();
+  const rightSide = bounds.right + 2;
+  const left = rightSide + submenuBounds.width <= window.innerWidth - 6
+    ? rightSide
+    : bounds.left - submenuBounds.width - 2;
+  const top = Math.max(6, Math.min(
+    bounds.top - 4,
+    window.innerHeight - submenuBounds.height - 6,
+  ));
+  applicationSubmenuPopup.style.left = `${Math.round(Math.max(6, left))}px`;
+  applicationSubmenuPopup.style.top = `${Math.round(top)}px`;
 }
 
 async function loadApplicationMenu(menuId: string) {
@@ -1985,11 +2024,20 @@ applicationMenu.addEventListener('pointerover', (event) => {
 });
 document.addEventListener('pointerdown', (event) => {
   const target = event.target as Node;
-  if (!applicationMenu.contains(target) && !applicationMenuPopup.contains(target)) {
+  if (!applicationMenu.contains(target)
+    && !applicationMenuPopup.contains(target)
+    && !applicationSubmenuPopup.contains(target)) {
     closeApplicationMenu();
   }
 });
+applicationMenuPopup.addEventListener('scroll', closeApplicationSubmenu, true);
 applicationMenuPopup.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeApplicationMenu();
+  }
+});
+applicationSubmenuPopup.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     event.preventDefault();
     closeApplicationMenu();
