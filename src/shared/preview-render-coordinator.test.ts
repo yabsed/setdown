@@ -96,4 +96,29 @@ describe('PreviewRenderCoordinator', () => {
     await expect(newDocument).resolves.toBe(true);
     expect(execute).toHaveBeenCalledTimes(2);
   });
+
+  it('겹친 요청이 있을 때만 hasPendingRequest가 참이다', async () => {
+    const gates = [deferred<boolean>(), deferred<boolean>()];
+    const started: number[] = [];
+    const coordinator = new PreviewRenderCoordinator((revision) => {
+      started.push(revision);
+      return gates[started.length - 1].promise;
+    });
+
+    const first = coordinator.ensure(1);
+    // 실행 중인 것과 같은 revision을 다시 물어도 예약은 생기지 않는다.
+    void coordinator.ensure(1);
+    expect(coordinator.hasPendingRequest).toBe(false);
+
+    // 더 새로운 revision이 들어오면 예약이 생긴다.
+    const second = coordinator.ensure(2);
+    expect(coordinator.hasPendingRequest).toBe(true);
+
+    // ensure는 loop 전체가 끝나야 풀리므로, 두 gate를 모두 열고 기다린다.
+    gates[0].resolve(true);
+    gates[1].resolve(true);
+    await Promise.all([first, second]);
+    expect(coordinator.hasPendingRequest).toBe(false);
+    expect(started).toEqual([1, 2]);
+  });
 });

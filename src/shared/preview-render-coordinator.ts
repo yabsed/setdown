@@ -22,6 +22,18 @@ export class PreviewRenderCoordinator {
     return this.loopPromise !== null;
   }
 
+  /**
+   * 다음에 실행할 렌더가 이미 예약되어 있는가.
+   *
+   * 예약이 있다는 것은 지금 만들고 있는 결과가 어차피 곧 대체된다는 뜻이고,
+   * 보통 그 최신본을 기다리는 사람이 있다는 뜻이다. 같은 revision을 다시
+   * 요청하는 경우에는 예약이 생기지 않으므로, 이 값이 참이면 대기 중인 것은
+   * 언제나 다른 요청이다.
+   */
+  get hasPendingRequest(): boolean {
+    return this.requested !== null;
+  }
+
   reset() {
     this.epoch += 1;
     this.readyRevision = null;
