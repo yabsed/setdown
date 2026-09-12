@@ -915,9 +915,10 @@ window.addEventListener('message', (event) => {
       }
     }
     invalidateAtlas();
-    window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
-      send({ type: 'marktex:html-updated', revision: config.revision });
-    }));
+    // 곧바로 답한다. 패치는 이 핸들러 안에서 동기로 끝났고, frame을 기다릴
+    // 이유가 없다. 편집 중에는 이 view가 숨겨져 있어 rAF가 느려지는데,
+    // 측정에서 그 대기가 34바이트 패치에 162ms였다.
+    send({ type: 'marktex:html-updated', revision: config.revision });
     return;
   }
   if (data.command === 'marktex:update-html') {
