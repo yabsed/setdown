@@ -1,5 +1,5 @@
 /**
- * Viewer(iframe) 안에서 도는 다리.
+ * Viewer WebContents 안에서 도는 다리.
  *
  * 하나의 규칙만 지킨다. Viewer의 어느 지점을 더블 클릭해도 host에게
  * `edit-at-anchor`를 보낸다. mapping은 목적지의 품질만 바꾸고, 전환을
@@ -23,6 +23,7 @@ declare global {
   interface Window {
     __marktexPreview?: Partial<BridgeConfig>;
     acquireVsCodeApi?: () => { postMessage(message: unknown): void };
+    marktexPreviewHost?: { send(message: Record<string, unknown>): void };
   }
 }
 
@@ -42,7 +43,9 @@ const PREVIEW_SELECTOR = '.markdown-preview[data-for="preview"]';
 const GESTURE_HOLD_MS = 250;
 
 function send(message: Record<string, unknown>) {
-  window.parent.postMessage({ ...message, source: 'crossnote' }, '*');
+  const payload = { ...message, source: 'crossnote' };
+  if (window.marktexPreviewHost) window.marktexPreviewHost.send(payload);
+  else window.parent.postMessage(payload, '*');
 }
 
 // ── Crossnote webview가 기대하는 host API ──────────────────────────
@@ -281,6 +284,48 @@ function anchorAtPoint(clientX: number, clientY: number, target: Element | null,
   });
 }
 
+let viewportStateFrame: number | null = null;
+
+function publishViewportState() {
+  viewportStateFrame = null;
+  const clientY = (window.innerHeight || 1) * GOLDEN_TOP_RATIO;
+  const clientX = (window.innerWidth || 1) / 2;
+  const target = document.elementFromPoint(clientX, clientY);
+  const path: EventTarget[] = [];
+  let node: Element | null = target;
+  while (node) {
+    path.push(node);
+    node = node.parentElement;
+  }
+  const scrollTop = document.documentElement.scrollTop || document.body.scrollTop || 0;
+  const maximum = Math.max(
+    0,
+    (document.documentElement.scrollHeight || 0) - (window.innerHeight || 1),
+  );
+  send({
+    type: 'marktex:viewport-state',
+    revision: config.revision,
+    anchor: anchorAtPoint(clientX, clientY, target, path),
+    scrollRatio: maximum > 0 ? scrollTop / maximum : 0,
+  });
+}
+
+function scheduleViewportState() {
+  if (viewportStateFrame !== null) return;
+  viewportStateFrame = window.requestAnimationFrame(publishViewportState);
+}
+
+function restoreScrollRatio(scrollRatio: number) {
+  const ratio = Math.min(1, Math.max(0, scrollRatio));
+  const maximum = Math.max(
+    0,
+    (document.documentElement.scrollHeight || 0) - (window.innerHeight || 1),
+  );
+  const scrollTop = maximum * ratio;
+  document.documentElement.scrollTop = scrollTop;
+  document.body.scrollTop = scrollTop;
+}
+
 // ── 더블 클릭: 조건 없는 상태 전환 ──────────────────────────────────
 document.addEventListener(
   'dblclick',
@@ -356,9 +401,41 @@ window.addEventListener('message', (event) => {
     command?: string;
     topRatio?: number;
     sourceLine?: number;
+    scrollRatio?: number;
     requestId?: number;
   } | null;
   if (!data) return;
+  if (data.command === 'marktex:restore-scroll-ratio') {
+    const ratio = Number.isFinite(data.scrollRatio) ? Number(data.scrollRatio) : 0;
+    const preview = document.querySelector(PREVIEW_SELECTOR);
+    let settleTimer: number | null = null;
+    let observer: MutationObserver | null = null;
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      if (settleTimer !== null) window.clearTimeout(settleTimer);
+      observer?.disconnect();
+      restoreScrollRatio(ratio);
+      window.requestAnimationFrame(() => send({
+        type: 'marktex:preview-scroll-restored',
+        revision: config.revision,
+        requestId: data.requestId,
+      }));
+    };
+    const applyAndSettle = () => {
+      if (finished) return;
+      restoreScrollRatio(ratio);
+      if (settleTimer !== null) window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(finish, 180);
+    };
+    if (preview) {
+      observer = new MutationObserver(applyAndSettle);
+      observer.observe(preview, { childList: true, subtree: true });
+    }
+    applyAndSettle();
+    return;
+  }
   if (data.command === 'marktex:position-preview') {
     const sourceLine = Math.min(
       config.totalLineCount,
@@ -409,15 +486,32 @@ window.addEventListener('message', (event) => {
 });
 
 // ── 색인 무효화: resize, 이미지 로드, 다이어그램 렌더 ─────────────────
-window.addEventListener('resize', invalidateAtlas);
-window.addEventListener('load', invalidateAtlas, true);
-document.addEventListener('load', invalidateAtlas, true);
-document.addEventListener('DOMContentLoaded', invalidateAtlas);
+window.addEventListener('scroll', scheduleViewportState, { passive: true });
+window.addEventListener('resize', () => {
+  invalidateAtlas();
+  scheduleViewportState();
+});
+window.addEventListener('load', () => {
+  invalidateAtlas();
+  scheduleViewportState();
+}, true);
+document.addEventListener('load', () => {
+  invalidateAtlas();
+  scheduleViewportState();
+}, true);
+document.addEventListener('DOMContentLoaded', () => {
+  invalidateAtlas();
+  scheduleViewportState();
+});
 
-const observer = new MutationObserver(invalidateAtlas);
+const observer = new MutationObserver(() => {
+  invalidateAtlas();
+  scheduleViewportState();
+});
 observer.observe(document.documentElement, {
   childList: true,
   subtree: true,
   attributes: true,
   attributeFilter: ['style', 'class', 'data-source-line', 'data-processed'],
 });
+scheduleViewportState();

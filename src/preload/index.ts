@@ -6,6 +6,7 @@ import type {
   DocumentSnapshot,
   ExternalChange,
   MarkTexApi,
+  PreviewMessage,
   TabStateSummary,
   TransferableTab,
 } from '../shared/contracts';
@@ -32,8 +33,15 @@ const api: MarkTexApi = {
     ipcRenderer.send('tabs:complete-transfer', transferId),
   cancelTabTransfer: (transferId: string) =>
     ipcRenderer.send('tabs:cancel-transfer', transferId),
-  detachTabToWindow: (transferId: string, x: number, y: number) =>
+  detachTabToWindow: (transferId, x, y) =>
     ipcRenderer.send('tabs:detach-to-window', { transferId, x, y }),
+  adoptTabTransfer: (transferId) => ipcRenderer.invoke('tabs:adopt-transfer', transferId),
+  createPreview: (tabId) => ipcRenderer.send('preview:create', tabId),
+  loadPreview: (tabId, url) => ipcRenderer.invoke('preview:load', { tabId, url }),
+  showPreview: (tabId, bounds) => ipcRenderer.send('preview:show', { tabId, bounds }),
+  sendPreviewCommand: (tabId, message) =>
+    ipcRenderer.send('preview:command', { tabId, message }),
+  destroyPreview: (tabId) => ipcRenderer.send('preview:destroy', tabId),
   closeEmptyWindow: () => ipcRenderer.send('app:close-empty-window'),
   updateText: (text, revision) =>
     ipcRenderer.send('document:update-text', { text, revision }),
@@ -68,6 +76,7 @@ const api: MarkTexApi = {
     subscribe<ClaimedTabTransfer>('tabs:transfer-incoming', listener),
   onTabTransferCompleted: (listener) =>
     subscribe<string>('tabs:transfer-completed', listener),
+  onPreviewMessage: (listener) => subscribe<PreviewMessage>('preview:message', listener),
 };
 
 contextBridge.exposeInMainWorld('marktex', api);

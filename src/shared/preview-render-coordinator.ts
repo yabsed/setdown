@@ -5,7 +5,7 @@ export type PreviewRenderExecutor = (revision: number) => Promise<boolean>;
  *
  * 이미 시작한 렌더는 끝까지 기다리되, 그동안 들어온 중간 revision은 버리고
  * 가장 최근 요청 하나만 다음 작업으로 실행한다. executor의 true는 해당
- * revision이 iframe에 정상적으로 load됐다는 뜻이다.
+ * revision이 preview WebContents에 정상적으로 load됐다는 뜻이다.
  */
 export class PreviewRenderCoordinator {
   readyRevision: number | null = null;

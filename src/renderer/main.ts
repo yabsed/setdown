@@ -76,7 +76,6 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 const shell = document.querySelector<HTMLElement>('.shell')!;
 const modeToggle = document.querySelector<HTMLButtonElement>('.mode-toggle')!;
 const previewFrames = document.querySelector<HTMLElement>('.preview-frames')!;
-let frame = document.createElement('iframe');
 const editorHost = document.querySelector<HTMLElement>('.editor-host')!;
 const renderState = document.querySelector<HTMLElement>('.render-state')!;
 const renderError = document.querySelector<HTMLElement>('.render-error')!;
@@ -94,8 +93,8 @@ type DocumentTab = {
   anchor: ViewportAnchor;
   previewUrl: string | null;
   previewRevision: number | null;
-  frame: HTMLIFrameElement;
   editorViewState: monaco.editor.ICodeEditorViewState | null;
+  viewerScrollRatio: number | null;
 };
 
 const tabs: DocumentTab[] = [];
@@ -112,6 +111,10 @@ let previewGeneration = 0;
 let previewTimer: number | null = null;
 let previewError: { revision: number; message: string } | null = null;
 let previewPositionRequest = 0;
+const previewMessageListeners = new Set<(payload: {
+  tabId: string;
+  message: Record<string, unknown>;
+}) => void>();
 
 const PREVIEW_DEBOUNCE_MS = 700;
 let previewCoordinator = new PreviewRenderCoordinator(renderRevision);
@@ -165,6 +168,7 @@ function setSurface(next: typeof surface) {
   modeToggle.title = `${toggleLabel} (Ctrl/Cmd+E)`;
   modeToggle.setAttribute('aria-label', toggleLabel);
   updatePreviewUi();
+  window.requestAnimationFrame(syncPreviewView);
   if (next === 'editor') window.setTimeout(() => editor.layout(), 0);
 }
 
@@ -172,13 +176,26 @@ function activeTab() {
   return tabs.find((tab) => tab.id === activeTabId) ?? null;
 }
 
-function createPreviewFrame() {
-  const created = document.createElement('iframe');
-  created.className = 'preview-frame';
-  created.title = 'Markdown 미리보기';
-  created.setAttribute('sandbox', 'allow-scripts allow-same-origin');
-  previewFrames.append(created);
-  return created;
+function createPreview(tabId: string) {
+  window.marktex.createPreview(tabId);
+}
+
+function syncPreviewView() {
+  const tab = activeTab();
+  const visible = !!tab
+    && (surface === 'viewer' || shell.dataset.previewPositioning === 'true')
+    && previewCoordinator.readyRevision !== null;
+  if (!visible || !tab) {
+    window.marktex.showPreview(null, null);
+    return;
+  }
+  const rect = previewFrames.getBoundingClientRect();
+  window.marktex.showPreview(tab.id, {
+    x: rect.left,
+    y: rect.top,
+    width: rect.width,
+    height: rect.height,
+  });
 }
 
 function saveActiveTabState() {
@@ -189,21 +206,8 @@ function saveActiveTabState() {
   tab.surface = surface === 'empty' ? 'viewer' : surface;
   tab.anchor = anchor;
   tab.editorViewState = editor.saveViewState();
-  if (previewCoordinator.readyRevision !== null && frame.src.startsWith('marktex-preview:')) {
-    tab.previewUrl = frame.src;
+  if (previewCoordinator.readyRevision !== null) {
     tab.previewRevision = previewCoordinator.readyRevision;
-  }
-}
-
-function viewerScrollRatio(tab: DocumentTab) {
-  try {
-    const view = tab.frame.contentWindow;
-    const root = tab.frame.contentDocument?.documentElement;
-    if (!view || !root) return null;
-    const maximum = Math.max(0, root.scrollHeight - view.innerHeight);
-    return maximum > 0 ? view.scrollY / maximum : 0;
-  } catch {
-    return null;
   }
 }
 
@@ -217,7 +221,7 @@ function transferableTab(tab: DocumentTab): TransferableTab {
     surface: tab.surface,
     anchor: tab.anchor,
     editorViewState: tab.editorViewState,
-    viewerScrollRatio: viewerScrollRatio(tab),
+    viewerScrollRatio: tab.viewerScrollRatio,
     previewUrl: tab.previewUrl,
     previewRevision: tab.previewRevision,
   };
@@ -269,7 +273,6 @@ function renderTabs() {
       button.classList.add('is-dragging');
       shell.classList.add('is-tab-dragging');
       event.dataTransfer?.setData('application/x-setdown-tab', transferId);
-      event.dataTransfer?.setData('text/plain', `setdown-tab:${transferId}`);
       if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
       window.marktex.registerTabTransfer(transferId, transferableTab(tab));
     });
@@ -300,16 +303,13 @@ function renderTabs() {
 }
 
 function transferIdFromDrop(event: DragEvent) {
-  const native = event.dataTransfer?.getData('application/x-setdown-tab');
-  if (native) return native;
-  const plain = event.dataTransfer?.getData('text/plain') ?? '';
-  return plain.startsWith('setdown-tab:') ? plain.slice('setdown-tab:'.length) : null;
+  return event.dataTransfer?.getData('application/x-setdown-tab') || null;
 }
 
 function isSetdownTabDrag(event: DragEvent) {
   const types = Array.from(event.dataTransfer?.types ?? []);
   if (types.includes('application/x-setdown-tab') || draggedTransferId) return true;
-  return (event.dataTransfer?.getData('text/plain') ?? '').startsWith('setdown-tab:');
+  return false;
 }
 
 function isTabStripDropTarget(event: DragEvent) {
@@ -398,8 +398,6 @@ async function activateTab(tabId: string) {
   if (!next) return;
   const activation = ++tabActivation;
   saveActiveTabState();
-  const previousFrame = frame;
-  previousFrame.classList.remove('is-active');
   resetPreviewState();
   previewCoordinator = new PreviewRenderCoordinator(renderRevision);
   activeTabId = next.id;
@@ -408,13 +406,11 @@ async function activateTab(tabId: string) {
   revision = next.revision;
   surface = next.surface;
   anchor = next.anchor;
-  frame = next.frame;
-  frame.classList.add('is-active');
   editor.setModel(model);
   editor.restoreViewState(next.editorViewState);
   publishAnchor();
   notice.hidden = true;
-  if (next.previewRevision === revision && frame.src.startsWith('marktex-preview:')) {
+  if (next.previewRevision === revision && next.previewUrl?.startsWith('marktex-preview:')) {
     previewCoordinator.readyRevision = revision;
   }
   updateChrome();
@@ -422,8 +418,8 @@ async function activateTab(tabId: string) {
   await window.marktex.activateDocument(currentDocument, model.getValue(), revision);
   if (activation !== tabActivation || activeTabId !== next.id) return;
 
-  // 이 탭의 iframe은 숨겨 두었을 뿐 파괴하지 않았다. 이미 조판된 DOM과
-  // scrollTop을 그대로 노출하므로 URL 재로드나 위치 재설정이 필요 없다.
+  // 탭마다 별도 WebContentsView를 유지한다. 이미 조판된 DOM과 scrollTop을
+  // 그대로 다시 노출하므로 URL 재로드나 위치 재설정이 필요 없다.
   if (previewCoordinator.readyRevision === revision) {
     updatePreviewUi();
     return;
@@ -458,7 +454,7 @@ async function closeTab(tabId: string) {
   if (index < 0) return;
   const wasActive = tab.id === activeTabId;
   tabs.splice(index, 1);
-  tab.frame.remove();
+  window.marktex.destroyPreview(tab.id);
   if (!wasActive) {
     tab.model.dispose();
     renderTabs();
@@ -474,7 +470,6 @@ async function closeTab(tabId: string) {
   resetPreviewState();
   currentDocument = null;
   model = null;
-  frame = document.createElement('iframe');
   editor.setModel(null);
   setSurface('empty');
   updateChrome();
@@ -487,7 +482,8 @@ async function removeTransferredTab(tabId: string) {
   const tab = tabs[index];
   const wasActive = tab.id === activeTabId;
   tabs.splice(index, 1);
-  tab.frame.remove();
+  // Preview WebContents는 이미 새 창으로 재부착되었다. 여기서 파괴하면
+  // 새 창의 살아 있는 DOM까지 함께 사라진다.
   if (!wasActive) {
     tab.model.dispose();
     renderTabs();
@@ -505,7 +501,6 @@ async function removeTransferredTab(tabId: string) {
   resetPreviewState();
   currentDocument = null;
   model = null;
-  frame = document.createElement('iframe');
   setSurface('empty');
   updateChrome();
   renderTabs();
@@ -599,33 +594,14 @@ function updatePreviewUi() {
     ? 'blocking'
     : 'refresh';
   if (relevantError && previewError) renderErrorText.textContent = previewError.message;
-}
-
-function loadPreviewFrame(targetFrame: HTMLIFrameElement, url: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const cleanup = () => {
-      targetFrame.removeEventListener('load', handleLoad);
-      targetFrame.removeEventListener('error', handleError);
-    };
-    const handleLoad = () => {
-      cleanup();
-      resolve();
-    };
-    const handleError = () => {
-      cleanup();
-      reject(new Error('The preview frame could not load the rendered document.'));
-    };
-    targetFrame.addEventListener('load', handleLoad, { once: true });
-    targetFrame.addEventListener('error', handleError, { once: true });
-    targetFrame.src = url;
-  });
+  window.requestAnimationFrame(syncPreviewView);
 }
 
 async function renderRevision(targetRevision: number): Promise<boolean> {
   if (!currentDocument || !model || targetRevision !== revision) return false;
   const generation = previewGeneration;
   const targetTabId = activeTabId;
-  const targetFrame = frame;
+  if (!targetTabId) return false;
   const documentPath = currentDocument.path;
   const text = model.getValue();
   if (previewError?.revision === targetRevision) previewError = null;
@@ -639,7 +615,7 @@ async function renderRevision(targetRevision: number): Promise<boolean> {
       || revision !== targetRevision
     ) return false;
 
-    await loadPreviewFrame(targetFrame, result.url);
+    await window.marktex.loadPreview(targetTabId, result.url);
     if (
       generation !== previewGeneration
       || activeTabId !== targetTabId
@@ -677,22 +653,24 @@ function nextAnimationFrame(): Promise<void> {
 function requestPreviewPosition(
   target: ViewportAnchor,
   targetRevision: number,
+  targetTabId: string = activeTabId ?? '',
+  targetLineCount: number = model?.getLineCount() ?? 1,
 ): Promise<boolean> {
-  if (!model) return Promise.resolve(false);
-  const revealed = clampAnchor(target, model.getLineCount());
+  const revealed = clampAnchor(target, targetLineCount);
   const requestId = ++previewPositionRequest;
   return new Promise((resolve) => {
     const cleanup = () => {
-      window.removeEventListener('message', handleMessage);
+      previewMessageListeners.delete(handleMessage);
       window.clearTimeout(timeout);
     };
-    const handleMessage = (event: MessageEvent) => {
+    const handleMessage = (payload: { tabId: string; message: Record<string, unknown> }) => {
+      const message = payload.message;
       if (
-        event.source !== frame.contentWindow
-        || event.data?.source !== 'crossnote'
-        || event.data?.type !== 'marktex:preview-positioned'
-        || event.data?.revision !== targetRevision
-        || event.data?.requestId !== requestId
+        payload.tabId !== targetTabId
+        || message.source !== 'crossnote'
+        || message.type !== 'marktex:preview-positioned'
+        || message.revision !== targetRevision
+        || message.requestId !== requestId
       ) return;
       cleanup();
       resolve(true);
@@ -701,13 +679,13 @@ function requestPreviewPosition(
       cleanup();
       resolve(false);
     }, 1000);
-    window.addEventListener('message', handleMessage);
-    frame.contentWindow?.postMessage({
+    previewMessageListeners.add(handleMessage);
+    window.marktex.sendPreviewCommand(targetTabId, {
       command: 'marktex:position-preview',
       sourceLine: revealed.sourceLine,
       topRatio: revealed.yRatio,
       requestId,
-    }, '*');
+    });
   });
 }
 
@@ -720,6 +698,7 @@ async function showPositionedPreview(
   // 두 surface를 같은 frame에서 맞바꿔 line 1이 잠깐 보이지 않게 한다.
   shell.dataset.previewPositioning = 'true';
   await nextAnimationFrame();
+  syncPreviewView();
   await requestPreviewPosition(target, targetRevision);
   if (
     generation !== previewGeneration
@@ -746,6 +725,7 @@ async function showDocument(
     }
   }
   const id = crypto.randomUUID();
+  createPreview(id);
   const initialAnchor: ViewportAnchor = {
     sourceLine: 1,
     yRatio: GOLDEN_TOP_RATIO,
@@ -761,8 +741,8 @@ async function showDocument(
     anchor: initialAnchor,
     previewUrl: null,
     previewRevision: null,
-    frame: createPreviewFrame(),
     editorViewState: null,
+    viewerScrollRatio: null,
   });
   renderTabs();
   await activateTab(id);
@@ -770,14 +750,7 @@ async function showDocument(
 
 async function installTransferredTab(transfer: ClaimedTabTransfer) {
   const incoming = transfer.tab;
-  const duplicate = !incoming.document.isUntitled
-    ? tabs.find((tab) => !tab.document.isUntitled && tab.document.path === incoming.document.path)
-    : null;
-  if (duplicate) {
-    await activateTab(duplicate.id);
-    window.marktex.completeTabTransfer(transfer.transferId);
-    return;
-  }
+  if (!await window.marktex.adoptTabTransfer(transfer.transferId)) return;
   const restoredDocument: DocumentSnapshot = {
     ...incoming.document,
     text: incoming.text,
@@ -792,36 +765,13 @@ async function installTransferredTab(transfer: ClaimedTabTransfer) {
     anchor: incoming.anchor as ViewportAnchor,
     previewUrl: incoming.previewUrl,
     previewRevision: incoming.previewRevision,
-    frame: createPreviewFrame(),
     editorViewState: incoming.editorViewState as monaco.editor.ICodeEditorViewState | null,
+    viewerScrollRatio: incoming.viewerScrollRatio,
   };
-  let previewLoaded: Promise<void> | null = null;
-  if (
-    incoming.previewUrl?.startsWith('marktex-preview:')
-    && incoming.previewRevision === incoming.revision
-  ) {
-    previewLoaded = new Promise((resolve) => {
-      restored.frame.addEventListener('load', () => resolve(), { once: true });
-      window.setTimeout(resolve, 1500);
-    });
-    restored.frame.src = incoming.previewUrl;
-  }
   tabs.push(restored);
   renderTabs();
   await activateTab(restored.id);
-  if (previewLoaded) await previewLoaded;
-  if (incoming.viewerScrollRatio !== null && restored.surface === 'viewer') {
-    try {
-      const view = restored.frame.contentWindow;
-      const root = restored.frame.contentDocument?.documentElement;
-      if (view && root) {
-        const maximum = Math.max(0, root.scrollHeight - view.innerHeight);
-        view.scrollTo(0, maximum * incoming.viewerScrollRatio);
-      }
-    } catch {
-      // Preview anchor restoration above remains the cross-origin-safe fallback.
-    }
-  }
+  syncPreviewView();
   window.marktex.completeTabTransfer(transfer.transferId);
 }
 
@@ -833,7 +783,6 @@ async function reloadActiveDocument(documentSnapshot: DocumentSnapshot) {
   tab.document = documentSnapshot;
   tab.previewUrl = null;
   tab.previewRevision = null;
-  tab.frame.removeAttribute('src');
   installModel(documentSnapshot);
   updateChrome();
   const ready = await ensurePreview(revision);
@@ -929,7 +878,6 @@ async function save(saveAs = false) {
         tab.document = result.document;
         tab.previewUrl = null;
         tab.previewRevision = null;
-        tab.frame.removeAttribute('src');
       }
       if (surface === 'editor') schedulePreview(revision);
       else if (surface === 'viewer') {
@@ -1092,15 +1040,14 @@ document.querySelector('.render-error button')?.addEventListener('click', () => 
 function requestViewerAnchor() {
   const pendingSurface = surface;
   const pendingTabId = activeTabId;
-  const pendingFrame = frame;
-  pendingFrame.contentWindow?.postMessage(
-    { command: 'marktex:request-anchor', topRatio: GOLDEN_TOP_RATIO },
-    '*',
-  );
+  if (!pendingTabId) return;
+  window.marktex.sendPreviewCommand(pendingTabId, {
+    command: 'marktex:request-anchor',
+    topRatio: GOLDEN_TOP_RATIO,
+  });
   window.setTimeout(() => {
     if (
       activeTabId === pendingTabId
-      && frame === pendingFrame
       && surface === pendingSurface
     ) enterEditor(anchor);
   }, 120);
@@ -1113,10 +1060,35 @@ document.querySelector('.notice-reload')?.addEventListener('click', async () => 
   if (reloaded) await reloadActiveDocument(reloaded);
 });
 
-window.addEventListener('message', (event) => {
-  if (event.source !== frame.contentWindow || event.data?.source !== 'crossnote') return;
-  if (event.data.type === 'edit-at-anchor') {
-    const received = event.data.anchor as Partial<ViewportAnchor> | undefined;
+window.marktex.onPreviewMessage((payload) => {
+  for (const listener of previewMessageListeners) listener(payload);
+  if (payload.tabId !== activeTabId || payload.message.source !== 'crossnote') return;
+  const message = payload.message;
+  if (message.type === 'marktex:viewport-state') {
+    if (message.revision !== revision || !model) return;
+    const received = message.anchor as Partial<ViewportAnchor> | undefined;
+    anchor = clampAnchor({
+      sourceLine: Number(received?.sourceLine) || 1,
+      sourceColumn: Number(received?.sourceColumn) || undefined,
+      sourceEndLine: Number(received?.sourceEndLine) || undefined,
+      yRatio: Number.isFinite(Number(received?.yRatio))
+        ? clamp(Number(received?.yRatio), 0, 1)
+        : GOLDEN_TOP_RATIO,
+      reason: received?.reason ?? 'scroll-ratio',
+      confidence: received?.confidence ?? 'fallback',
+    }, model.getLineCount());
+    const tab = activeTab();
+    if (tab) {
+      tab.anchor = anchor;
+      tab.viewerScrollRatio = Number.isFinite(Number(message.scrollRatio))
+        ? clamp(Number(message.scrollRatio), 0, 1)
+        : null;
+    }
+    publishAnchor();
+    return;
+  }
+  if (message.type === 'edit-at-anchor') {
+    const received = message.anchor as Partial<ViewportAnchor> | undefined;
     // 전환은 무조건이다. anchor가 망가져 있어도 문서 처음으로 간다.
     enterEditor({
       sourceLine: Number(received?.sourceLine) || 1,
@@ -1130,9 +1102,10 @@ window.addEventListener('message', (event) => {
     });
     return;
   }
-  if (event.data.command === 'clickTagA') {
-    const payload = event.data.args?.[0];
-    if (payload?.href) void window.marktex.openLink(payload.href);
+  if (message.command === 'clickTagA') {
+    const args = message.args as Array<{ href?: string }> | undefined;
+    const link = args?.[0];
+    if (link?.href) void window.marktex.openLink(link.href);
   }
 });
 
@@ -1168,8 +1141,12 @@ window.addEventListener('keydown', (event) => {
 
 window.marktex.getDocument().then((documentSnapshot) => {
   if (documentSnapshot) void showDocument(documentSnapshot);
-  else {
+  else if (tabs.length === 0) {
     setSurface('empty');
     renderTabs();
   }
 });
+
+const previewResizeObserver = new ResizeObserver(syncPreviewView);
+previewResizeObserver.observe(previewFrames);
+window.addEventListener('resize', syncPreviewView);
