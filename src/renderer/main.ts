@@ -134,6 +134,17 @@ window.MonacoEnvironment = {
 };
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
+  <header class="product-titlebar">
+    <div class="product-identity" aria-label="Setdown">Setdown</div>
+    <nav class="application-menu" aria-label="애플리케이션 메뉴">
+      <button type="button" data-menu-id="application-menu-file">File</button>
+      <button type="button" data-menu-id="application-menu-view">View</button>
+      <button type="button" data-menu-id="application-menu-insert">Insert</button>
+      <button type="button" data-menu-id="application-menu-edit">Edit</button>
+      <button type="button" data-menu-id="application-menu-window">Window</button>
+    </nav>
+    <div class="titlebar-drag-space" aria-hidden="true"></div>
+  </header>
   <section class="shell" data-surface="empty" data-tabs="false">
     <nav class="tab-strip" aria-label="열린 문서" hidden>
       <div class="tab-list" role="tablist"></div>
@@ -185,11 +196,11 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <button class="find-close" type="button" aria-label="검색 닫기">×</button>
       </div>
       <div class="reader-body">
+        <div class="preview-frames"></div>
         <aside class="toc-panel" aria-label="문서 목차" hidden>
           <div class="toc-panel-title"><strong>목차</strong><span class="toc-count"></span></div>
           <nav class="toc-list"></nav>
         </aside>
-        <div class="preview-frames"></div>
       </div>
       <div class="render-state" hidden>
         <div class="spinner"></div><span>문서를 조판하고 있습니다…</span>
@@ -239,6 +250,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 `;
 
 const shell = document.querySelector<HTMLElement>('.shell')!;
+const applicationMenu = document.querySelector<HTMLElement>('.application-menu')!;
 const modeToggle = document.querySelector<HTMLButtonElement>('.mode-toggle')!;
 const previewFrames = document.querySelector<HTMLElement>('.preview-frames')!;
 const tocToggle = document.querySelector<HTMLButtonElement>('.toc-toggle')!;
@@ -1841,6 +1853,12 @@ tocToggle.addEventListener('click', () => {
   if (readerPreferences.tocOpen && activeTabId) {
     sendPreviewCommand(activeTabId, { command: 'marktex:collect-headings' });
   }
+});
+applicationMenu.addEventListener('click', (event) => {
+  const button = (event.target as Element).closest<HTMLButtonElement>('button[data-menu-id]');
+  if (!button) return;
+  const bounds = button.getBoundingClientRect();
+  window.marktex.popupApplicationMenu(button.dataset.menuId!, bounds.left, bounds.bottom);
 });
 findInput.addEventListener('input', () => runPreviewFind('forward', false));
 findInput.addEventListener('keydown', (event) => {

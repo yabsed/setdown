@@ -31,12 +31,25 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     const window = await application.firstWindow();
     await expect(window.locator('.viewer-surface')).toBeVisible();
     await expect(window.locator('.reader-toolbar')).toHaveCount(0);
+    await expect(window.locator('.product-titlebar')).toBeVisible();
+    await expect(window.locator('.application-menu button')).toHaveText([
+      'File', 'View', 'Insert', 'Edit', 'Window',
+    ]);
+    expect(await application.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0]?.isMenuBarVisible())).toBe(false);
 
     await expect(window.locator('.tab-actions .toc-toggle')).toBeVisible();
     await expect(window.locator('.find-toggle')).toHaveCount(0);
     await expect(window.locator('.theme-picker')).toHaveCount(0);
     await window.locator('.toc-toggle').click();
     await expect(window.locator('.toc-panel')).toBeVisible();
+    const tocBounds = await window.locator('.toc-panel').boundingBox();
+    const previewBoundsWithToc = await window.locator('.preview-frames').boundingBox();
+    expect(tocBounds).toBeTruthy();
+    expect(previewBoundsWithToc).toBeTruthy();
+    expect(tocBounds!.x).toBeGreaterThanOrEqual(
+      previewBoundsWithToc!.x + previewBoundsWithToc!.width - 1,
+    );
     await expect(window.locator('.toc-item')).toHaveCount(2);
     await expect(window.locator('.toc-item').nth(1)).toHaveText('두 번째 장');
     await window.locator('.toc-item').nth(1).click();

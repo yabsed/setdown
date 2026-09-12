@@ -829,7 +829,12 @@ function setGlobalPreviewTheme(value: unknown) {
   saveGlobalPreviewTheme();
   const snapshot: ThemeSnapshot = { id: themeId, revision: globalThemeRevision };
   for (const state of windowStates.values()) {
-    state.window.setBackgroundColor(themeProfile(themeId).palette.canvas);
+    const profile = themeProfile(themeId);
+    state.window.setTitleBarOverlay({
+      color: profile.palette.chrome,
+      symbolColor: profile.palette.text,
+      height: 36,
+    });
     state.window.webContents.send('theme:changed', snapshot);
   }
 }
@@ -837,6 +842,7 @@ function setGlobalPreviewTheme(value: unknown) {
 function installMenu() {
   const menu = Menu.buildFromTemplate([
     {
+      id: 'application-menu-file',
       label: 'File',
       submenu: [
         { label: 'New Window', accelerator: 'CmdOrCtrl+Shift+N', click: () => createWindow() },
@@ -856,6 +862,7 @@ function installMenu() {
       ],
     },
     {
+      id: 'application-menu-view',
       label: 'View',
       submenu: [
         { label: 'Toggle Viewer / Editor', accelerator: 'CmdOrCtrl+E', click: () => sendCommand('toggle-surface') },
@@ -883,14 +890,15 @@ function installMenu() {
       ],
     },
     {
+      id: 'application-menu-insert',
       label: 'Insert',
       submenu: [
         { label: 'Table…', click: () => sendCommand('insert-table') },
         { label: 'Link…', accelerator: 'CmdOrCtrl+K', click: () => sendCommand('insert-link') },
       ],
     },
-    { role: 'editMenu' },
-    { role: 'windowMenu' },
+    { id: 'application-menu-edit', role: 'editMenu' },
+    { id: 'application-menu-window', role: 'windowMenu' },
   ]);
   Menu.setApplicationMenu(menu);
 }
@@ -906,6 +914,13 @@ function createWindow(
     minWidth: 520,
     minHeight: 420,
     backgroundColor: themeProfile(globalPreviewTheme).palette.canvas,
+    autoHideMenuBar: true,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: themeProfile(globalPreviewTheme).palette.chrome,
+      symbolColor: themeProfile(globalPreviewTheme).palette.text,
+      height: 36,
+    },
     show: false,
     title: 'Setdown',
     webPreferences: {
@@ -930,6 +945,7 @@ function createWindow(
   const webContentsId = createdWindow.webContents.id;
   windowStates.set(webContentsId, state);
   mainWindow = createdWindow;
+  createdWindow.setMenuBarVisibility(false);
 
   createdWindow.once('ready-to-show', () => createdWindow.show());
   createdWindow.on('focus', () => {
@@ -985,6 +1001,29 @@ function createWindow(
 }
 
 function installIpc() {
+  ipcMain.on('menu:popup', (event, payload: { menuId?: unknown; x?: unknown; y?: unknown }) => {
+    const state = stateForWebContentsId(event.sender.id);
+    if (!state || typeof payload?.menuId !== 'string') return;
+    const allowedMenuIds = new Set([
+      'application-menu-file',
+      'application-menu-view',
+      'application-menu-insert',
+      'application-menu-edit',
+      'application-menu-window',
+    ]);
+    if (!allowedMenuIds.has(payload.menuId)) return;
+    const item = Menu.getApplicationMenu()?.getMenuItemById(payload.menuId);
+    if (!item?.submenu) return;
+    const contentBounds = state.window.getContentBounds();
+    const relativeX = Number.isFinite(payload.x) ? Number(payload.x) : 0;
+    const relativeY = Number.isFinite(payload.y) ? Number(payload.y) : 36;
+    item.submenu.popup({
+      window: state.window,
+      x: Math.round(contentBounds.x + relativeX),
+      y: Math.round(contentBounds.y + relativeY),
+    });
+  });
+
   ipcMain.handle('theme:get', (event): ThemeSnapshot => {
     if (!stateForWebContentsId(event.sender.id)) {
       throw new Error('The window no longer exists.');
