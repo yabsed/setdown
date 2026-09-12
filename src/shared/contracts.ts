@@ -160,6 +160,11 @@ export type MarkTexApi = {
     themeId: PreviewThemeId,
   ): Promise<void>;
   showPreview(tabId: string | null, bounds: PreviewBounds | null): void;
+  /**
+   * 지금 보이는 Preview를 PNG data URL로 얻는다. DOM overlay가 native view
+   * 위에 그려질 수 없으므로, overlay가 열린 동안 이 정지 화면으로 갈음한다.
+   */
+  capturePreview(tabId: string): Promise<string | null>;
   sendPreviewCommand(tabId: string, message: Record<string, unknown>): void;
   destroyPreview(tabId: string): void;
   getTheme(): Promise<ThemeSnapshot>;

@@ -54,6 +54,7 @@ const api: MarkTexApi = {
   loadPreview: (tabId, result, themeId) =>
     ipcRenderer.invoke('preview:load', { tabId, result, themeId }),
   showPreview: (tabId, bounds) => ipcRenderer.send('preview:show', { tabId, bounds }),
+  capturePreview: (tabId) => ipcRenderer.invoke('preview:capture', tabId),
   sendPreviewCommand: (tabId, message) =>
     ipcRenderer.send('preview:command', { tabId, message }),
   destroyPreview: (tabId) => ipcRenderer.send('preview:destroy', tabId),

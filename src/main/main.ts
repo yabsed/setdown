@@ -1328,6 +1328,14 @@ function installIpc() {
     restorePendingPreviewScroll(shown);
   });
 
+  ipcMain.handle('preview:capture', async (event, tabId: unknown) => {
+    const preview = previewViews.get(String(tabId));
+    if (!preview || preview.ownerWebContentsId !== event.sender.id) return null;
+    if (!preview.view.getVisible() || preview.view.webContents.isCrashed()) return null;
+    const image = await preview.view.webContents.capturePage();
+    return image.isEmpty() ? null : image.toDataURL();
+  });
+
   ipcMain.on('preview:command', (event, { tabId, message }) => {
     const preview = previewViews.get(String(tabId));
     if (!preview || preview.ownerWebContentsId !== event.sender.id) return;

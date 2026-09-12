@@ -540,11 +540,20 @@ function destroyPreview(tabId: string) {
   window.marktex.destroyPreview(tabId);
 }
 
+/**
+ * Native Preview view는 renderer의 DOM 위에 합성된다. 메뉴 같은 DOM overlay는
+ * 그 위로 올라갈 수 없어 잘려 보인다. overlay가 열린 동안에는 view를 감추고
+ * 마지막 화면을 그림으로 깔아 둔다.
+ */
+let previewFreezeDepth = 0;
+let previewFreezeToken = 0;
+
 function syncPreviewView() {
   const tab = activeTab();
   const visible = !!tab
     && surface === 'viewer'
-    && !!tab.previewUrl;
+    && !!tab.previewUrl
+    && previewFreezeDepth === 0;
   if (!visible || !tab) {
     window.marktex.showPreview(null, null);
     return;
@@ -556,6 +565,37 @@ function syncPreviewView() {
     width: rect.width,
     height: rect.height,
   });
+}
+
+async function freezePreview() {
+  previewFreezeDepth += 1;
+  if (previewFreezeDepth > 1) return;
+  const token = ++previewFreezeToken;
+  const tab = activeTab();
+  // Viewer가 아니면 가릴 native view도 없다.
+  if (!tab || surface !== 'viewer' || !tab.previewUrl) return;
+  const image = await window.marktex.capturePreview(tab.id).catch(() => null);
+  // 기다리는 동안 overlay가 닫혔거나 탭이 바뀌었으면 버린다.
+  if (token !== previewFreezeToken || previewFreezeDepth === 0) return;
+  if (image) {
+    previewFrames.style.backgroundImage = `url("${image}")`;
+    previewFrames.dataset.frozen = 'true';
+  }
+  syncPreviewView();
+}
+
+function unfreezePreview() {
+  if (previewFreezeDepth === 0) return;
+  previewFreezeDepth -= 1;
+  if (previewFreezeDepth > 0) return;
+  previewFreezeToken += 1;
+  syncPreviewView();
+  // native view가 다시 그려진 다음 정지 화면을 걷는다.
+  window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+    if (previewFreezeDepth > 0) return;
+    previewFrames.style.backgroundImage = '';
+    delete previewFrames.dataset.frozen;
+  }));
 }
 
 function saveActiveTabState() {
@@ -1853,6 +1893,7 @@ function closeApplicationSubmenu() {
 }
 
 function closeApplicationMenu() {
+  if (openApplicationMenuId !== null) unfreezePreview();
   closeApplicationSubmenu();
   openApplicationMenuId = null;
   applicationMenuPopup.hidden = true;
@@ -1959,6 +2000,8 @@ async function loadApplicationMenu(menuId: string) {
 function showApplicationMenu(button: HTMLButtonElement, entries: ApplicationMenuEntry[]) {
   const menuId = button.dataset.menuId!;
   const bounds = button.getBoundingClientRect();
+  // 다른 메뉴에서 옮겨 온 것이면 이미 얼려 둔 상태다.
+  if (openApplicationMenuId === null) void freezePreview();
   openApplicationMenuId = menuId;
   applicationMenuPopup.replaceChildren(menuEntryList(entries));
   const menuWidth = 286;
