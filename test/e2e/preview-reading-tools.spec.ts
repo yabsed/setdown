@@ -40,20 +40,14 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     await expect(window.locator('.toc-item').nth(1)).toHaveText('두 번째 장');
     await window.locator('.toc-item').nth(1).click();
 
-    await expect.poll(() => application.evaluate(async ({ webContents }) => {
-      const preview = webContents.getAllWebContents()
-        .find((contents) => contents.getURL().startsWith('marktex-preview:'));
-      return preview ? preview.executeJavaScript('window.scrollY') : 0;
-    })).toBeGreaterThan(0);
-    const readingPreviewId = await application.evaluate(async ({ webContents }) => {
-      const previews = webContents.getAllWebContents()
-        .filter((contents) => contents.getURL().startsWith('marktex-preview:'));
-      for (const preview of previews) {
-        if (await preview.executeJavaScript('window.scrollY') > 0) return preview.id;
-      }
-      throw new Error('Scrolled preview not found');
-    });
+    const readingElement = window.locator('.preview-frame.is-active');
+    const readingTabId = await readingElement.getAttribute('data-tab-id');
+    expect(readingTabId).toBeTruthy();
+    const readingFrame = window.frames().find((frame) =>
+      frame.url().startsWith('marktex-preview:'))!;
+    await expect.poll(() => readingFrame.evaluate(() => window.scrollY)).toBeGreaterThan(0);
 
+    await readingFrame.locator('body').click({ position: { x: 20, y: 20 } });
     await window.keyboard.press('Control+F');
     await expect(window.locator('.reader-toolbar')).toBeVisible();
     await expect(window.locator('.preview-search input')).toBeFocused();
@@ -62,39 +56,23 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
 
     await window.locator('.new-tab-button').click();
     await expect(window.locator('.document-tab')).toHaveCount(2);
-    await expect.poll(() => application.evaluate(({ webContents }) =>
-      webContents.getAllWebContents()
-        .filter((contents) => contents.getURL().startsWith('marktex-preview:')).length,
-    )).toBe(2);
+    await expect.poll(() => window.frames()
+      .filter((frame) => frame.url().startsWith('marktex-preview:')).length).toBe(2);
     await window.locator('.document-tab', { hasText: 'reader-tools.md' }).click();
 
-    const beforeTheme = await application.evaluate(async ({ webContents }) =>
-      Promise.all(webContents.getAllWebContents()
-        .filter((contents) => contents.getURL().startsWith('marktex-preview:'))
-        .map(async (contents) => ({
-          id: contents.id,
-          url: contents.getURL(),
-          scrollY: await contents.executeJavaScript('window.scrollY'),
-        }))),
-    );
+    const beforeUrls = await window.locator('.preview-frame').evaluateAll((frames) =>
+      frames.map((frame) => (frame as HTMLIFrameElement).src));
     await application.evaluate(({ Menu }) => {
       Menu.getApplicationMenu()?.getMenuItemById('preview-theme-night')?.click();
     });
-    await expect.poll(() => application.evaluate(async ({ webContents }) => {
-      const previews = webContents.getAllWebContents()
-        .filter((contents) => contents.getURL().startsWith('marktex-preview:'));
-      return Promise.all(previews.map((preview) => preview.executeJavaScript(
-        `document.body.dataset.setdownPreviewTheme || ''`,
-      )));
-    })).toEqual(['night', 'night']);
-    const afterTheme = await application.evaluate(async ({ webContents }) =>
-      Promise.all(webContents.getAllWebContents()
-        .filter((contents) => contents.getURL().startsWith('marktex-preview:'))
-        .map(async (contents) => ({
-          id: contents.id,
-          url: contents.getURL(),
-          scrollY: await contents.executeJavaScript('window.scrollY'),
-          semanticPosition: await contents.executeJavaScript(`(() => {
+    await expect.poll(() => Promise.all(window.frames()
+      .filter((frame) => frame.url().startsWith('marktex-preview:'))
+      .map((frame) => frame.evaluate(() => document.body.dataset.setdownPreviewTheme || '')),
+    )).toEqual(['night', 'night']);
+    const afterUrls = await window.locator('.preview-frame').evaluateAll((frames) =>
+      frames.map((frame) => (frame as HTMLIFrameElement).src));
+    expect(afterUrls).toEqual(beforeUrls);
+    const semanticPosition = await readingFrame.evaluate(() => {
             const y = innerHeight * 0.382;
             const candidates = [...document.querySelectorAll('[data-source-line]')]
               .map((element) => ({
@@ -108,15 +86,9 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
             const visibleLine = covering?.line ?? previous?.line ?? next?.line ?? null;
             const anchorLine = Number(document.body.dataset.setdownThemeAnchorLine) || null;
             return { visibleLine, anchorLine };
-          })()`),
-        }))),
-    );
-    expect(afterTheme.map(({ id, url }) => ({ id, url })))
-      .toEqual(beforeTheme.map(({ id, url }) => ({ id, url })));
-    const readingPosition = afterTheme.find(({ id }) => id === readingPreviewId)
-      ?.semanticPosition;
-    expect(readingPosition?.anchorLine).toBeTruthy();
-    expect(readingPosition?.visibleLine).toBe(readingPosition?.anchorLine);
+    });
+    expect(semanticPosition.anchorLine).toBeTruthy();
+    expect(semanticPosition.visibleLine).toBe(semanticPosition.anchorLine);
     expect(await window.evaluate(() =>
       getComputedStyle(document.documentElement).getPropertyValue('--preview-background').trim(),
     )).toBe('#363b40');
@@ -125,37 +97,21 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       const [width, height] = owner.getSize();
       owner.setSize(width + 120, height + 80);
     });
-    const readResizedPreview = () => application.evaluate(
-      ({ BrowserWindow, WebContentsView }, id) => {
-      const owner = BrowserWindow.getAllWindows()[0];
-      const preview = owner.contentView.children.find((child) =>
-        child instanceof WebContentsView && child.webContents.id === id);
-      const bounds = preview?.getBounds();
-      const content = owner.getContentBounds();
-      return {
-        background: owner.getBackgroundColor().toLowerCase(),
-        rightGap: bounds ? content.width - bounds.x - bounds.width : -1,
-        bottomGap: bounds ? content.height - bounds.y - bounds.height : -1,
-      };
-    }, readingPreviewId);
     await expect.poll(async () => {
-      const state = await readResizedPreview();
-      return state.background === '#363b40'
-        && Math.abs(state.rightGap) <= 1
-        && Math.abs(state.bottomGap) <= 1;
+      const host = await window.locator('.preview-frames').boundingBox();
+      const frame = await window.locator(
+        `.preview-frame[data-tab-id="${readingTabId}"].is-active`,
+      ).boundingBox();
+      return !!host && !!frame
+        && Math.abs(host.width - frame.width) <= 1
+        && Math.abs(host.height - frame.height) <= 1;
     }).toBe(true);
-    const resizedPreview = await readResizedPreview();
-    expect(Math.abs(resizedPreview.rightGap)).toBeLessThanOrEqual(1);
-    expect(Math.abs(resizedPreview.bottomGap)).toBeLessThanOrEqual(1);
     await expect(window.locator('.preview-search input')).toHaveValue('검색대상');
     await window.locator('.document-tab', { hasText: 'Untitled.md' }).click();
-    await expect.poll(() => application.evaluate(async ({ webContents }) => {
-      const previews = webContents.getAllWebContents()
-        .filter((contents) => contents.getURL().startsWith('marktex-preview:'));
-      return Promise.all(previews.map((preview) => preview.executeJavaScript(
-        `document.body.dataset.setdownPreviewTheme || ''`,
-      )));
-    })).toEqual(['night', 'night']);
+    await expect.poll(() => Promise.all(window.frames()
+      .filter((frame) => frame.url().startsWith('marktex-preview:'))
+      .map((frame) => frame.evaluate(() => document.body.dataset.setdownPreviewTheme || '')),
+    )).toEqual(['night', 'night']);
   } finally {
     await application.close();
     await rm(temporaryRoot, { recursive: true, force: true });

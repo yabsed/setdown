@@ -88,9 +88,6 @@ export type ClaimedTabTransfer = {
   tab: TransferableTab;
 };
 
-export type PreviewBounds = { x: number; y: number; width: number; height: number };
-export type PreviewMessage = { tabId: string; message: Record<string, unknown> };
-
 export type CloseDecision = 'cancel' | 'discard' | 'save';
 
 export type AppCommand =
@@ -118,13 +115,7 @@ export type MarkTexApi = {
   completeTabTransfer(transferId: string): void;
   cancelTabTransfer(transferId: string): void;
   detachTabToWindow(transferId: string, x: number, y: number): void;
-  adoptTabTransfer(transferId: string): Promise<boolean>;
-  createPreview(tabId: string): void;
-  loadPreview(tabId: string, url: string, themeId: PreviewThemeId): Promise<void>;
-  showPreview(tabId: string | null, bounds: PreviewBounds | null): void;
-  sendPreviewCommand(tabId: string, message: Record<string, unknown>): void;
   getPreviewThemeAssets(themeId: PreviewThemeId): Promise<PreviewThemeAssets>;
-  destroyPreview(tabId: string): void;
   closeEmptyWindow(): void;
   updateText(text: string, revision: number): void;
   saveDocument(text: string, revision: number): Promise<SaveResult>;
@@ -150,6 +141,4 @@ export type MarkTexApi = {
   onSaveBeforeClose(listener: () => void): () => void;
   onTabTransferIncoming(listener: (transfer: ClaimedTabTransfer) => void): () => void;
   onTabTransferCompleted(listener: (tabId: string) => void): () => void;
-  onPreviewMessage(listener: (payload: PreviewMessage) => void): () => void;
-  onPreviewFindRequested(listener: (tabId: string) => void): () => void;
 };

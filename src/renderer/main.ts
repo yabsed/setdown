@@ -290,7 +290,7 @@ function setSurface(next: typeof surface) {
   modeToggle.setAttribute('aria-label', toggleLabel);
   syncReaderUi();
   updatePreviewUi();
-  window.requestAnimationFrame(syncPreviewView);
+  syncPreviewView();
   if (next === 'editor') window.setTimeout(() => editor.layout(), 0);
 }
 
@@ -319,7 +319,7 @@ function renderToc(tab: DocumentTab | null) {
     button.setAttribute('aria-current', heading.id === tab?.activeHeadingId ? 'location' : 'false');
     button.addEventListener('click', () => {
       if (!activeTabId) return;
-      window.marktex.sendPreviewCommand(activeTabId, {
+      sendPreviewCommand(activeTabId, {
         command: 'marktex:scroll-to-heading',
         id: heading.id,
       });
@@ -354,10 +354,10 @@ function runPreviewFind(direction: 'forward' | 'backward' = 'forward', findNext 
   tab.find.matches = 0;
   findCount.textContent = '0 / 0';
   if (!tab.find.query) {
-    window.marktex.sendPreviewCommand(tab.id, { command: 'marktex:stop-find' });
+    sendPreviewCommand(tab.id, { command: 'marktex:stop-find' });
     return;
   }
-  window.marktex.sendPreviewCommand(tab.id, {
+  sendPreviewCommand(tab.id, {
     command: 'marktex:find',
     query: tab.find.query,
     direction,
@@ -382,7 +382,7 @@ function openPreviewFind() {
 function closePreviewFind(clearQuery = false) {
   const tab = activeTab();
   if (!tab) return;
-  window.marktex.sendPreviewCommand(tab.id, { command: 'marktex:stop-find' });
+  sendPreviewCommand(tab.id, { command: 'marktex:stop-find' });
   tab.find.open = false;
   tab.find.activeMatch = 0;
   tab.find.matches = 0;
@@ -399,21 +399,113 @@ async function applyPreviewTheme(value: unknown) {
   syncReaderUi();
   const assets = await window.marktex.getPreviewThemeAssets(nextTheme);
   if (readerPreferences.themeId !== assets.themeId) return;
+  currentPreviewThemeAssets = assets;
   document.documentElement.style.setProperty('--preview-background', assets.backgroundColor);
   for (const tab of tabs) applyThemeAssetsToTab(tab, assets);
 }
 
 function applyThemeAssetsToTab(tab: DocumentTab, assets: PreviewThemeAssets) {
   if (!tab.previewUrl) return;
-  window.marktex.sendPreviewCommand(tab.id, {
+  sendPreviewCommand(tab.id, {
     command: 'marktex:apply-theme',
     ...assets,
   });
   tab.previewTheme = assets.themeId;
 }
 
+type PreviewFrame = {
+  element: HTMLIFrameElement;
+  url: string | null;
+  origin: string | null;
+  loadSequence: number;
+  ready: boolean;
+  pendingCommands: Record<string, unknown>[];
+  settleLoad: ((error?: Error) => void) | null;
+};
+
+const previewFrameByTab = new Map<string, PreviewFrame>();
+// 테마는 일회성 command가 아니라 모든 문서 frame이 수렴해야 하는 전역
+// reader state다. navigation과 command가 엇갈려도 ready 때 다시 적용한다.
+let currentPreviewThemeAssets: PreviewThemeAssets | null = null;
+
 function createPreview(tabId: string) {
-  window.marktex.createPreview(tabId);
+  if (previewFrameByTab.has(tabId)) return;
+  const element = document.createElement('iframe');
+  element.className = 'preview-frame';
+  element.dataset.tabId = tabId;
+  element.title = '렌더링된 Markdown 문서';
+  element.setAttribute('aria-hidden', 'true');
+  element.inert = true;
+  element.referrerPolicy = 'no-referrer';
+  element.sandbox.add('allow-scripts', 'allow-same-origin', 'allow-downloads');
+  previewFrames.append(element);
+  previewFrameByTab.set(tabId, {
+    element,
+    url: null,
+    origin: null,
+    loadSequence: 0,
+    ready: false,
+    pendingCommands: [],
+    settleLoad: null,
+  });
+}
+
+function loadPreview(tabId: string, url: string): Promise<void> {
+  const frame = previewFrameByTab.get(tabId);
+  if (!frame) return Promise.reject(new Error('Preview frame does not exist.'));
+  const parsed = new URL(url);
+  if (parsed.protocol !== 'marktex-preview:' || parsed.hostname !== 'document') {
+    return Promise.reject(new Error('Only rendered Setdown previews may be loaded.'));
+  }
+  const sequence = ++frame.loadSequence;
+  frame.settleLoad?.(new Error('A newer Preview replaced this load.'));
+  frame.url = url;
+  frame.origin = parsed.origin;
+  frame.ready = false;
+  frame.pendingCommands = [];
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timeout = window.setTimeout(() => {
+      settle(new Error('The Preview bridge did not become ready.'));
+    }, 5000);
+    const settle = (error?: Error) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      frame.element.removeEventListener('error', failed);
+      if (frame.settleLoad === settle) frame.settleLoad = null;
+      if (error) reject(error);
+      else resolve();
+    };
+    const failed = () => {
+      if (frame.loadSequence === sequence) {
+        settle(new Error('The Preview frame failed to load.'));
+      }
+    };
+    frame.element.addEventListener('error', failed);
+    frame.settleLoad = settle;
+    frame.element.src = url;
+  });
+}
+
+function sendPreviewCommand(tabId: string, message: Record<string, unknown>) {
+  const frame = previewFrameByTab.get(tabId);
+  if (!frame?.element.contentWindow || !frame.origin) return;
+  if (!frame.ready) {
+    frame.pendingCommands.push(message);
+    if (frame.pendingCommands.length > 50) frame.pendingCommands.shift();
+    return;
+  }
+  frame.element.contentWindow.postMessage(message, frame.origin);
+}
+
+function destroyPreview(tabId: string) {
+  const frame = previewFrameByTab.get(tabId);
+  if (!frame) return;
+  frame.loadSequence += 1;
+  frame.settleLoad?.(new Error('The Preview frame was destroyed.'));
+  frame.element.remove();
+  previewFrameByTab.delete(tabId);
 }
 
 function syncPreviewView() {
@@ -421,17 +513,12 @@ function syncPreviewView() {
   const visible = !!tab
     && (surface === 'viewer' || shell.dataset.previewPositioning === 'true')
     && !!tab.previewUrl;
-  if (!visible || !tab) {
-    window.marktex.showPreview(null, null);
-    return;
+  for (const [tabId, frame] of previewFrameByTab) {
+    const active = visible && tabId === tab?.id;
+    frame.element.classList.toggle('is-active', active);
+    frame.element.setAttribute('aria-hidden', String(!active));
+    frame.element.inert = !active;
   }
-  const rect = previewFrames.getBoundingClientRect();
-  window.marktex.showPreview(tab.id, {
-    x: rect.left,
-    y: rect.top,
-    width: rect.width,
-    height: rect.height,
-  });
 }
 
 function saveActiveTabState() {
@@ -656,12 +743,12 @@ async function activateTab(tabId: string) {
   }
   updateChrome();
   setSurface(next.surface);
-  window.marktex.sendPreviewCommand(next.id, { command: 'marktex:collect-headings' });
+  sendPreviewCommand(next.id, { command: 'marktex:collect-headings' });
   await window.marktex.activateDocument(currentDocument, model.getValue(), revision);
   if (activation !== tabActivation || activeTabId !== next.id) return;
 
-  // 탭마다 별도 WebContentsView를 유지한다. 이미 조판된 DOM과 scrollTop을
-  // 그대로 다시 노출하므로 URL 재로드나 위치 재설정이 필요 없다.
+  // 탭마다 별도 iframe을 유지한다. CSS로 보이는 frame만 바꾸므로 이미
+  // 조판된 DOM과 scroll 상태를 건드리지 않는다.
   if (previewCoordinator.readyRevision === revision) {
     updatePreviewUi();
     return;
@@ -696,7 +783,7 @@ async function closeTab(tabId: string) {
   if (index < 0) return;
   const wasActive = tab.id === activeTabId;
   tabs.splice(index, 1);
-  window.marktex.destroyPreview(tab.id);
+  destroyPreview(tab.id);
   if (!wasActive) {
     tab.model.dispose();
     renderTabs();
@@ -724,8 +811,8 @@ async function removeTransferredTab(tabId: string) {
   const tab = tabs[index];
   const wasActive = tab.id === activeTabId;
   tabs.splice(index, 1);
-  // Preview WebContents는 이미 새 창으로 재부착되었다. 여기서 파괴하면
-  // 새 창의 살아 있는 DOM까지 함께 사라진다.
+  // destination은 독립된 iframe을 이미 복원했다. source frame만 제거한다.
+  destroyPreview(tab.id);
   if (!wasActive) {
     tab.model.dispose();
     renderTabs();
@@ -836,7 +923,7 @@ function updatePreviewUi() {
     ? 'blocking'
     : 'refresh';
   if (relevantError && previewError) renderErrorText.textContent = previewError.message;
-  window.requestAnimationFrame(syncPreviewView);
+  syncPreviewView();
 }
 
 async function renderRevision(targetRevision: number): Promise<boolean> {
@@ -878,7 +965,7 @@ async function renderRevision(targetRevision: number): Promise<boolean> {
       await nextAnimationFrame();
       syncPreviewView();
     }
-    await window.marktex.loadPreview(targetTabId, result.url, targetTheme);
+    await loadPreview(targetTabId, result.url);
     // load 도중 사용자가 다른 탭으로 가더라도 완성된 WebContents는 요청을
     // 시작한 탭의 자산이다. 활성 탭 여부와 별개로 먼저 그 탭에 귀속시킨다.
     const renderedTab = tabs.find((candidate) => candidate.id === targetTabId);
@@ -895,9 +982,9 @@ async function renderRevision(targetRevision: number): Promise<boolean> {
       const assets = await window.marktex.getPreviewThemeAssets(readerPreferences.themeId);
       if (readerPreferences.themeId === assets.themeId) applyThemeAssetsToTab(renderedTab, assets);
     }
-    window.marktex.sendPreviewCommand(targetTabId, { command: 'marktex:collect-headings' });
+    sendPreviewCommand(targetTabId, { command: 'marktex:collect-headings' });
     if (renderedTab?.find.open && renderedTab.find.query) {
-      window.marktex.sendPreviewCommand(targetTabId, {
+      sendPreviewCommand(targetTabId, {
         command: 'marktex:find',
         query: renderedTab.find.query,
         direction: 'forward',
@@ -969,7 +1056,7 @@ function requestPreviewPosition(
       resolve(false);
     }, 1000);
     previewMessageListeners.add(handleMessage);
-    window.marktex.sendPreviewCommand(targetTabId, {
+    sendPreviewCommand(targetTabId, {
       command: 'marktex:position-preview',
       sourceLine: revealed.sourceLine,
       topRatio: revealed.yRatio,
@@ -1043,7 +1130,7 @@ async function showDocument(
 
 async function installTransferredTab(transfer: ClaimedTabTransfer) {
   const incoming = transfer.tab;
-  if (!await window.marktex.adoptTabTransfer(transfer.transferId)) return;
+  createPreview(incoming.id);
   const restoredDocument: DocumentSnapshot = {
     ...incoming.document,
     text: incoming.text,
@@ -1066,9 +1153,29 @@ async function installTransferredTab(transfer: ClaimedTabTransfer) {
     find: { open: false, query: '', activeMatch: 0, matches: 0 },
   };
   tabs.push(restored);
+  if (
+    restored.previewUrl?.startsWith('marktex-preview:')
+    && restored.previewRevision === restored.revision
+  ) {
+    try {
+      await loadPreview(restored.id, restored.previewUrl);
+    } catch {
+      restored.previewUrl = null;
+      restored.previewRevision = null;
+      restored.previewTheme = null;
+    }
+  }
   renderTabs();
   await activateTab(restored.id);
   syncPreviewView();
+  if (restored.previewRevision === restored.revision && restored.surface === 'viewer') {
+    await requestPreviewPosition(
+      restored.anchor,
+      restored.revision,
+      restored.id,
+      restored.model.getLineCount(),
+    );
+  }
   window.marktex.completeTabTransfer(transfer.transferId);
 }
 
@@ -1627,11 +1734,10 @@ tocToggle.addEventListener('click', () => {
   readerPreferences.tocOpen = !readerPreferences.tocOpen;
   saveReaderPreferences();
   syncReaderUi();
-  // hidden 상태가 바뀐 직후 getBoundingClientRect()가 layout을 확정하므로,
-  // native WebContentsView도 같은 frame 안에서 새 폭을 받는다.
+  // iframe은 reader-body의 실제 flex child이므로 이 변경과 같은 layout에 참여한다.
   syncPreviewView();
   if (readerPreferences.tocOpen && activeTabId) {
-    window.marktex.sendPreviewCommand(activeTabId, { command: 'marktex:collect-headings' });
+    sendPreviewCommand(activeTabId, { command: 'marktex:collect-headings' });
   }
 });
 findInput.addEventListener('input', () => runPreviewFind('forward', false));
@@ -1668,7 +1774,7 @@ function requestViewerAnchor() {
   const pendingSurface = surface;
   const pendingTabId = activeTabId;
   if (!pendingTabId) return;
-  window.marktex.sendPreviewCommand(pendingTabId, {
+  sendPreviewCommand(pendingTabId, {
     command: 'marktex:request-anchor',
     topRatio: GOLDEN_TOP_RATIO,
   });
@@ -1687,7 +1793,7 @@ document.querySelector('.notice-reload')?.addEventListener('click', async () => 
   if (reloaded) await reloadActiveDocument(reloaded);
 });
 
-window.marktex.onPreviewMessage((payload) => {
+function handlePreviewMessage(payload: { tabId: string; message: Record<string, unknown> }) {
   for (const listener of previewMessageListeners) listener(payload);
   if (payload.tabId !== activeTabId || payload.message.source !== 'crossnote') return;
   const message = payload.message;
@@ -1778,10 +1884,37 @@ window.marktex.onPreviewMessage((payload) => {
     const link = args?.[0];
     if (link?.href) void window.marktex.openLink(link.href);
   }
-});
+}
 
-window.marktex.onPreviewFindRequested((tabId) => {
-  if (tabId === activeTabId && surface === 'viewer') openPreviewFind();
+window.addEventListener('message', (event) => {
+  const found = Array.from(previewFrameByTab.entries()).find(([, frame]) =>
+    frame.element.contentWindow === event.source,
+  );
+  if (!found) return;
+  const [tabId, frame] = found;
+  if (frame.origin && event.origin !== frame.origin) return;
+  if (!event.data || typeof event.data !== 'object') return;
+  const message = event.data as Record<string, unknown>;
+  if (message.source !== 'crossnote') return;
+  if (message.type === 'marktex:ready') {
+    frame.ready = true;
+    frame.settleLoad?.();
+    for (const pending of frame.pendingCommands.splice(0)) {
+      frame.element.contentWindow?.postMessage(pending, frame.origin ?? '*');
+    }
+    if (currentPreviewThemeAssets?.themeId === readerPreferences.themeId) {
+      frame.element.contentWindow?.postMessage({
+        command: 'marktex:apply-theme',
+        ...currentPreviewThemeAssets,
+      }, frame.origin ?? '*');
+    }
+    return;
+  }
+  if (message.type === 'marktex:open-find') {
+    if (tabId === activeTabId && surface === 'viewer') openPreviewFind();
+    return;
+  }
+  handlePreviewMessage({ tabId, message });
 });
 
 window.marktex.onDocumentOpened((opened) => void showDocument(opened));
@@ -1836,7 +1969,3 @@ window.marktex.getDocument().then((documentSnapshot) => {
     renderTabs();
   }
 });
-
-const previewResizeObserver = new ResizeObserver(syncPreviewView);
-previewResizeObserver.observe(previewFrames);
-window.addEventListener('resize', syncPreviewView);

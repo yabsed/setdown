@@ -8,7 +8,6 @@ import {
   net,
   protocol,
   shell,
-  WebContentsView,
 } from 'electron';
 import {
   promises as fs,
@@ -94,18 +93,12 @@ type PendingTabTransfer = {
   expiresAt: number;
   detachTimer: ReturnType<typeof setTimeout> | null;
   detachPosition: { x: number; y: number } | null;
-  previewAdopted: boolean;
 };
 
 const TAB_DETACH_GRACE_MS = 250;
 
 const windowStates = new Map<number, WindowState>();
 const pendingTabTransfers = new Map<string, PendingTabTransfer>();
-const previewViews = new Map<string, {
-  view: WebContentsView;
-  ownerWebContentsId: number;
-  pendingScrollPosition: { x: number; y: number } | null;
-}>();
 let selectedState: WindowState | null = null;
 let stateQueue: Promise<unknown> = Promise.resolve();
 
@@ -349,11 +342,13 @@ function previewBridgeScript(
   totalLines: number,
   documentIsBlank: boolean,
   revision: number,
+  themeId: PreviewThemeId,
 ): string {
   const config = JSON.stringify({
     totalLineCount: totalLines,
     documentIsBlank,
     revision,
+    themeId,
   });
   return `<script>window.__marktexPreview = ${config};</script>
 <script>${bridgeSource()}</script>`;
@@ -393,7 +388,12 @@ async function renderCurrent(
     config,
     vscodePreviewPanel: fakePanel,
     head: `<base href="${resourceUrl(path.join(path.dirname(renderPath), path.sep))}">`,
-    scripts: previewBridgeScript(lineCount(text), text.trim().length === 0, revision),
+    scripts: previewBridgeScript(
+      lineCount(text),
+      text.trim().length === 0,
+      revision,
+      themeId,
+    ),
     styles: `<style>
       [data-source-line] { cursor: text; }
       .topbar, footer, .footer { display: none !important; }
@@ -885,21 +885,6 @@ function createWindow(
   };
   const webContentsId = createdWindow.webContents.id;
   windowStates.set(webContentsId, state);
-  // renderer의 ResizeObserver가 IPC 왕복을 마치기 전에 창의 native surface가
-  // 먼저 커질 수 있다. 현재 Preview의 오른쪽/아래 edge를 main에서 즉시 새
-  // content bounds까지 늘려 새 영역에 BrowserWindow 기본 배경이 드러나지 않게 한다.
-  createdWindow.on('resize', () => {
-    const contentBounds = createdWindow.getContentBounds();
-    for (const preview of previewViews.values()) {
-      if (preview.ownerWebContentsId !== webContentsId || !preview.view.getVisible()) continue;
-      const bounds = preview.view.getBounds();
-      preview.view.setBounds({
-        ...bounds,
-        width: Math.max(1, contentBounds.width - bounds.x),
-        height: Math.max(1, contentBounds.height - bounds.y),
-      });
-    }
-  });
   mainWindow = createdWindow;
 
   createdWindow.once('ready-to-show', () => createdWindow.show());
@@ -945,11 +930,6 @@ function createWindow(
   });
   createdWindow.on('closed', () => {
     if (state.watchedPath) unwatchFile(state.watchedPath);
-    for (const [tabId, preview] of previewViews) {
-      if (preview.ownerWebContentsId !== webContentsId) continue;
-      preview.view.webContents.close();
-      previewViews.delete(tabId);
-    }
     windowStates.delete(webContentsId);
     if (mainWindow === createdWindow) mainWindow = BrowserWindow.getAllWindows()[0] ?? null;
   });
@@ -961,121 +941,11 @@ function createWindow(
 }
 
 function installIpc() {
-  ipcMain.on('preview:create', (event, tabId: string) => {
-    if (typeof tabId !== 'string' || previewViews.has(tabId)) return;
-    const owner = stateForWebContentsId(event.sender.id)?.window;
-    if (!owner) return;
-    const view = new WebContentsView({
-      webPreferences: {
-        preload: path.join(__dirname, 'preview-preload.cjs'),
-        contextIsolation: true,
-        nodeIntegration: false,
-        sandbox: true,
-      },
-    });
-    view.webContents.on('before-input-event', (inputEvent, input) => {
-      if (
-        input.type !== 'keyDown'
-        || input.key.toLowerCase() !== 'f'
-        || (!input.control && !input.meta)
-        || input.alt
-      ) return;
-      inputEvent.preventDefault();
-      const preview = previewViews.get(tabId);
-      if (!preview) return;
-      const ownerState = stateForWebContentsId(preview.ownerWebContentsId);
-      if (!ownerState) return;
-      ownerState.window.webContents.focus();
-      ownerState.window.webContents.send('preview:open-find', tabId);
-    });
-    view.setVisible(false);
-    owner.contentView.addChildView(view);
-    previewViews.set(tabId, {
-      view,
-      ownerWebContentsId: event.sender.id,
-      pendingScrollPosition: null,
-    });
-  });
-  ipcMain.handle('preview:load', async (event, { tabId, url, themeId }) => {
-    const preview = previewViews.get(tabId);
-    if (!preview || preview.ownerWebContentsId !== event.sender.id) {
-      throw new Error('The preview is not owned by this window.');
-    }
-    const previewUrl = String(url);
-    if (!previewUrl.startsWith('marktex-preview://document/')) {
-      throw new Error('Only rendered Setdown previews may be loaded.');
-    }
-    const backgroundColor = previewThemeBackground(themeId);
-    preview.view.setBackgroundColor(backgroundColor);
-    stateForWebContentsId(preview.ownerWebContentsId)?.window.setBackgroundColor(backgroundColor);
-    await preview.view.webContents.loadURL(previewUrl);
-  });
-  ipcMain.on('preview:show', (event, { tabId, bounds }) => {
-    const owner = stateForWebContentsId(event.sender.id)?.window;
-    if (!owner) return;
-    for (const preview of previewViews.values()) {
-      if (preview.ownerWebContentsId === event.sender.id) preview.view.setVisible(false);
-    }
-    if (typeof tabId !== 'string' || !bounds) return;
-    const preview = previewViews.get(tabId);
-    if (!preview || preview.ownerWebContentsId !== event.sender.id) return;
-    preview.view.setBounds({
-      x: Math.max(0, Math.round(Number(bounds.x) || 0)),
-      y: Math.max(0, Math.round(Number(bounds.y) || 0)),
-      width: Math.max(1, Math.round(Number(bounds.width) || 1)),
-      height: Math.max(1, Math.round(Number(bounds.height) || 1)),
-    });
-    owner.contentView.addChildView(preview.view);
-    preview.view.setVisible(true);
-    const scrollPosition = preview.pendingScrollPosition;
-    if (scrollPosition) {
-      preview.pendingScrollPosition = null;
-      void preview.view.webContents.executeJavaScript(
-        `window.scrollTo(${JSON.stringify(scrollPosition.x)}, ${JSON.stringify(scrollPosition.y)})`,
-      );
-    }
-  });
-  ipcMain.on('preview:command', (event, { tabId, message }) => {
-    const preview = previewViews.get(tabId);
-    if (preview?.ownerWebContentsId === event.sender.id) {
-      if (message?.command === 'marktex:apply-theme') {
-        const assets = previewThemeAssets(message.themeId);
-        preview.view.setBackgroundColor(assets.backgroundColor);
-        stateForWebContentsId(preview.ownerWebContentsId)?.window.setBackgroundColor(
-          assets.backgroundColor,
-        );
-        preview.view.webContents.send('preview:command', {
-          command: 'marktex:apply-theme',
-          ...assets,
-        });
-        return;
-      }
-      preview.view.webContents.send('preview:command', message);
-    }
-  });
   ipcMain.handle('preview:theme-assets', (event, themeId) => {
     if (!stateForWebContentsId(event.sender.id)) {
       throw new Error('The window no longer exists.');
     }
     return previewThemeAssets(themeId);
-  });
-  ipcMain.on('preview:destroy', (event, tabId: string) => {
-    const preview = previewViews.get(tabId);
-    if (!preview || preview.ownerWebContentsId !== event.sender.id) return;
-    stateForWebContentsId(event.sender.id)?.window.contentView.removeChildView(preview.view);
-    preview.view.webContents.close();
-    previewViews.delete(tabId);
-  });
-  ipcMain.on('preview:message', (event, message: Record<string, unknown>) => {
-    const found = Array.from(previewViews.entries()).find(([, preview]) =>
-      preview.view.webContents.id === event.sender.id,
-    );
-    if (!found) return;
-    const [tabId, preview] = found;
-    stateForWebContentsId(preview.ownerWebContentsId)?.window.webContents.send(
-      'preview:message',
-      { tabId, message },
-    );
   });
   ipcMain.handle('document:get', (event) => stateForWebContentsId(event.sender.id)?.currentDocument ?? null);
   ipcMain.handle('document:new', (event) => {
@@ -1109,7 +979,6 @@ function installIpc() {
       expiresAt: Date.now() + 60_000,
       detachTimer: null,
       detachPosition: null,
-      previewAdopted: false,
     });
     setTimeout(() => {
       const pending = pendingTabTransfers.get(transferId);
@@ -1118,26 +987,6 @@ function installIpc() {
         pendingTabTransfers.delete(transferId);
       }
     }, 60_500);
-  });
-  ipcMain.handle('tabs:adopt-transfer', async (event, transferId: string) => {
-    const transfer = pendingTabTransfers.get(transferId);
-    if (!transfer || transfer.claimedByWebContentsId !== event.sender.id) return false;
-    const preview = previewViews.get(transfer.tab.id);
-    const destination = stateForWebContentsId(event.sender.id)?.window;
-    if (!preview || !destination || preview.ownerWebContentsId !== transfer.sourceWebContentsId) {
-      return false;
-    }
-    const scrollPosition = await preview.view.webContents.executeJavaScript(
-      '({ x: window.scrollX, y: window.scrollY })',
-    ).catch(() => ({ x: 0, y: 0 })) as { x: number; y: number };
-    const source = stateForWebContentsId(transfer.sourceWebContentsId)?.window;
-    preview.view.setVisible(false);
-    source?.contentView.removeChildView(preview.view);
-    destination.contentView.addChildView(preview.view);
-    preview.ownerWebContentsId = event.sender.id;
-    preview.pendingScrollPosition = scrollPosition;
-    transfer.previewAdopted = true;
-    return true;
   });
   ipcMain.handle('tabs:claim-transfer', (event, transferId: string) => {
     const transfer = pendingTabTransfers.get(transferId);
@@ -1157,7 +1006,7 @@ function installIpc() {
   });
   ipcMain.on('tabs:complete-transfer', (event, transferId: string) => {
     const transfer = pendingTabTransfers.get(transferId);
-    if (!transfer || transfer.claimedByWebContentsId !== event.sender.id || !transfer.previewAdopted) return;
+    if (!transfer || transfer.claimedByWebContentsId !== event.sender.id) return;
     if (transfer.detachTimer) clearTimeout(transfer.detachTimer);
     const source = stateForWebContentsId(transfer.sourceWebContentsId)?.window;
     source?.webContents.send('tabs:transfer-completed', transfer.tab.id);

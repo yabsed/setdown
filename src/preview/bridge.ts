@@ -1,5 +1,5 @@
 /**
- * Viewer WebContents 안에서 도는 다리.
+ * Viewer iframe 안에서 도는 다리.
  *
  * 하나의 규칙만 지킨다. Viewer의 어느 지점을 더블 클릭해도 host에게
  * `edit-at-anchor`를 보낸다. mapping은 목적지의 품질만 바꾸고, 전환을
@@ -17,6 +17,7 @@ type BridgeConfig = {
   documentIsBlank: boolean;
   initialHtml: string;
   revision: number;
+  themeId: string;
 };
 
 declare global {
@@ -32,7 +33,16 @@ const config: BridgeConfig = {
   documentIsBlank: !!window.__marktexPreview?.documentIsBlank,
   initialHtml: document.body.getAttribute('data-html') || '',
   revision: Number(window.__marktexPreview?.revision) || 0,
+  themeId: String(window.__marktexPreview?.themeId || 'github-light'),
 };
+
+document.body.dataset.setdownPreviewTheme = config.themeId;
+document.body.dataset.previewTheme = [
+  'github-dark',
+  'night',
+  'one-dark',
+  'solarized-dark',
+].includes(config.themeId) ? 'dark' : 'light';
 
 const ANCHOR_SELECTOR = '[data-source-line], [data-source-start], [data-source-lines]';
 const PREVIEW_SELECTOR = '.markdown-preview[data-for="preview"]';
@@ -632,6 +642,18 @@ document.addEventListener(
   true,
 );
 
+document.addEventListener('keydown', (event) => {
+  if (
+    event.key.toLowerCase() === 'f'
+    && (event.ctrlKey || event.metaKey)
+    && !event.altKey
+  ) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    send({ type: 'marktex:open-find', revision: config.revision });
+  }
+}, true);
+
 // ── gesture arbiter: 부수 효과가 큰 single click을 잠깐 붙잡는다 ─────
 const DEFERRED_SELECTOR = 'a, .code-chunk .run-btn, .code-chunk .run-all-btn, [data-cmd]';
 
@@ -679,6 +701,7 @@ document.addEventListener(
 
 // ── host의 요청: 지금 보고 있는 화면의 anchor ────────────────────────
 window.addEventListener('message', (event) => {
+  if (event.source !== window && event.source !== window.parent) return;
   const data = event.data as {
     command?: string;
     topRatio?: number;
@@ -844,5 +867,6 @@ observer.observe(document.documentElement, {
   attributes: true,
   attributeFilter: ['style', 'class', 'data-source-line', 'data-processed'],
 });
+send({ type: 'marktex:ready', revision: config.revision });
 scheduleViewportState();
 scheduleHeadings();

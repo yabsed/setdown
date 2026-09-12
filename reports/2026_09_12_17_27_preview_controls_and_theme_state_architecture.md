@@ -1,5 +1,8 @@
 # Preview 도구의 위치와 문서 상태를 분리한 이유
 
+> 후속 검증에서 `WebContentsView`의 합성 경계 자체가 흰 틈의 원인임을 확인했다.
+> 이 문서의 bounds 보정안은 [iframe 합성 구조 보고서](./2026_09_12_18_20_preview_iframe_compositing_architecture.md)로 대체됐다.
+
 ## 목차·검색·테마 지연 제거 구현 보고서
 
 2026년 9월 12일 17:27 KST
