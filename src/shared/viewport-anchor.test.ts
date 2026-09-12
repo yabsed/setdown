@@ -201,7 +201,46 @@ describe('total function', () => {
   });
 });
 
-describe('Esc: cursor가 아니라 화면을 읽는다', () => {
+describe('Esc: 화면 안의 cursor가 우선이다', () => {
+  test('화면 안의 cursor는 상대 위치까지 그대로 옮긴다', () => {
+    const anchor = resolveEditorViewport({
+      probedLine: 300,
+      firstVisibleLine: 280,
+      lineCount: 500,
+      yRatio: 0.372,
+      cursor: { line: 340, column: 7, yRatio: 0.91 },
+    });
+    expect(anchor).toMatchObject({
+      sourceLine: 340,
+      sourceColumn: 7,
+      yRatio: 0.91,
+      confidence: 'exact',
+    });
+  });
+
+  test('cursor가 화면 밖이면 기준선을 쓴다', () => {
+    const anchor = resolveEditorViewport({
+      probedLine: 300,
+      firstVisibleLine: 280,
+      lineCount: 500,
+      yRatio: 0.372,
+      cursor: null,
+    });
+    expect(anchor).toMatchObject({ sourceLine: 300, yRatio: 0.372 });
+  });
+
+  test('cursor 행도 모델 밖으로 나가지 않는다', () => {
+    const anchor = resolveEditorViewport({
+      probedLine: 10,
+      firstVisibleLine: 10,
+      lineCount: 40,
+      yRatio: 0.372,
+      cursor: { line: 900, yRatio: 3 },
+    });
+    expect(anchor).toMatchObject({ sourceLine: 40, yRatio: 1 });
+    expect(anchor.sourceColumn).toBeUndefined();
+  });
+
   test('viewport probe가 가리키는 행을 쓴다', () => {
     const anchor = resolveEditorViewport({
       probedLine: 300,

@@ -31,6 +31,7 @@ import {
   clamp,
   clampAnchor,
   resolveEditorViewport,
+  type EditorCursorProbe,
   type ViewportAnchor,
 } from '../shared/viewport-anchor';
 import './style.css';
@@ -1232,8 +1233,29 @@ function enterEditor(next: ViewportAnchor = anchor) {
 }
 
 /**
- * Editor에서 Viewer로. 따라가야 하는 것은 cursor가 아니라 사용자가 보고
- * 있던 화면이다.
+ * 화면 안에 보이는 cursor. 온전히 보이지 않으면 null이다. 화면 경계에 반쯤
+ * 걸친 cursor의 상대 위치는 어차피 쓸 수 없다.
+ */
+function visibleCursorProbe(): EditorCursorProbe | null {
+  const position = editor.getPosition();
+  if (!position) return null;
+  const height = editor.getLayoutInfo().height;
+  if (height <= 0) return null;
+  const lineHeight = editor.getOption(monaco.editor.EditorOption.lineHeight);
+  // wrap된 행에서도 cursor가 실제로 놓인 시각 행을 얻는다.
+  const offset = editor.getTopForPosition(position.lineNumber, position.column)
+    - editor.getScrollTop();
+  if (offset < 0 || offset + lineHeight > height) return null;
+  return {
+    line: position.lineNumber,
+    column: position.column,
+    yRatio: offset / height,
+  };
+}
+
+/**
+ * Editor에서 Viewer로. 화면 안에 cursor가 있으면 그 자리를 그대로 옮기고,
+ * 없으면 사용자가 보고 있던 화면을 옮긴다.
  */
 function editorViewportAnchor(): ViewportAnchor {
   if (!model) return anchor;
@@ -1254,6 +1276,7 @@ function editorViewportAnchor(): ViewportAnchor {
     firstVisibleLine: editor.getVisibleRanges()[0]?.startLineNumber ?? null,
     lineCount: model.getLineCount(),
     yRatio,
+    cursor: visibleCursorProbe(),
   });
 }
 

@@ -230,6 +230,14 @@ export function resolveViewerPoint(request: ViewerPointRequest): ViewportAnchor 
   return settle(1 + ratio * (lineCount - 1), 'scroll-ratio', 'fallback');
 }
 
+/** 화면 안에 보이는 cursor. 화면 밖이면 probe에서 null이다. */
+export type EditorCursorProbe = {
+  line: number;
+  column?: number;
+  /** viewport 안 cursor의 세로 위치, 0~1. */
+  yRatio: number;
+};
+
 export type EditorViewportProbe = {
   /** viewport의 기준선에 실제로 보이는 행. 알 수 없으면 null. */
   probedLine: number | null;
@@ -237,16 +245,36 @@ export type EditorViewportProbe = {
   firstVisibleLine: number | null;
   lineCount: number;
   yRatio: number;
+  /** 화면 안에 cursor가 있을 때만. 화면 밖이면 null. */
+  cursor?: EditorCursorProbe | null;
 };
 
 /**
- * Editor 화면을 Markdown 위치로 옮긴다. cursor는 묻지 않는다.
+ * Editor 화면을 Markdown 위치로 옮긴다.
+ *
+ * cursor가 화면 안에 있으면 그 자리를 그대로 옮긴다. 기준선을 고정하면
+ * 기준선에서 cursor까지의 거리만큼 Editor와 Viewer의 줄 높이 차이가 누적되어,
+ * 방금 고친 자리가 화면 밖으로 밀려난다. cursor가 화면 밖이면 사용자가 보고
+ * 있는 것은 cursor가 아니라 화면이므로 기준선을 쓴다.
  */
 export function resolveEditorViewport(probe: EditorViewportProbe): ViewportAnchor {
   const lineCount = Math.max(1, Math.round(finite(probe?.lineCount, 1)));
   const yRatio = clamp(finite(probe?.yRatio, GOLDEN_TOP_RATIO), 0, 1);
   const probed = finite(probe?.probedLine, Number.NaN);
   const firstVisible = finite(probe?.firstVisibleLine, Number.NaN);
+
+  const cursorLine = finite(probe?.cursor?.line, Number.NaN);
+  if (probe?.cursor && Number.isFinite(cursorLine) && cursorLine >= 1) {
+    const anchor: ViewportAnchor = {
+      sourceLine: clamp(Math.round(cursorLine), 1, lineCount),
+      yRatio: clamp(finite(probe.cursor.yRatio, yRatio), 0, 1),
+      reason: 'exact-range',
+      confidence: 'exact',
+    };
+    const column = finite(probe.cursor.column, Number.NaN);
+    if (Number.isFinite(column) && column >= 1) anchor.sourceColumn = Math.round(column);
+    return anchor;
+  }
 
   if (Number.isFinite(probed) && probed >= 1) {
     return {
