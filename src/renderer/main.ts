@@ -7,6 +7,12 @@ import type {
 } from '../shared/contracts';
 import { PreviewRenderCoordinator } from '../shared/preview-render-coordinator';
 import {
+  createMarkdownLink,
+  createMarkdownTable,
+  preferredEol,
+  type TableAlignment,
+} from '../shared/markdown-insertions';
+import {
   GOLDEN_TOP_RATIO,
   clamp,
   clampAnchor,
@@ -25,6 +31,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <div class="tab-list" role="tablist"></div>
       <div class="tab-actions">
         <button class="new-tab-button" type="button" title="새 문서 (Ctrl/Cmd+N)" aria-label="새 문서">+</button>
+        <button class="editor-action insert-table-button" type="button" title="표 삽입" aria-label="표 삽입">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.75A1.75 1.75 0 0 1 5.75 3h12.5A1.75 1.75 0 0 1 20 4.75v14.5A1.75 1.75 0 0 1 18.25 21H5.75A1.75 1.75 0 0 1 4 19.25V4.75Zm1.5 3.75h4.75v-4H5.75a.25.25 0 0 0-.25.25V8.5Zm6.25 0h6.75V4.75a.25.25 0 0 0-.25-.25h-6.5v4Zm-6.25 1.5v4h4.75v-4H5.5Zm6.25 0v4h6.75v-4h-6.75ZM5.5 15.5v3.75c0 .14.11.25.25.25h4.5v-4H5.5Zm6.25 4h6.5a.25.25 0 0 0 .25-.25V15.5h-6.75v4Z"/></svg>
+        </button>
+        <button class="editor-action insert-link-button" type="button" title="링크 삽입 (Ctrl/Cmd+K)" aria-label="링크 삽입">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 15.5 8 17a3.54 3.54 0 0 1-5-5l3-3a3.54 3.54 0 0 1 5 0 .75.75 0 0 1-1.06 1.06 2.04 2.04 0 0 0-2.88 0l-3 3a2.04 2.04 0 0 0 2.88 2.88l1.5-1.5A.75.75 0 1 1 9.5 15.5Zm5-7L16 7a3.54 3.54 0 0 1 5 5l-3 3a3.54 3.54 0 0 1-5 0 .75.75 0 0 1 1.06-1.06 2.04 2.04 0 0 0 2.88 0l3-3a2.04 2.04 0 0 0-2.88-2.88l-1.5 1.5A.75.75 0 1 1 14.5 8.5Zm1.03.97a.75.75 0 0 1 0 1.06l-5 5a.75.75 0 0 1-1.06-1.06l5-5a.75.75 0 0 1 1.06 0Z"/></svg>
+        </button>
         <span class="tab-action-divider" aria-hidden="true"></span>
         <button class="mode-toggle" type="button" hidden>
           <svg class="mode-icon mode-icon-edit" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.862 3.487a2.25 2.25 0 0 1 3.182 3.182L8.41 18.303a2 2 0 0 1-.878.507l-3.42 1.026 1.026-3.42a2 2 0 0 1 .507-.878L16.862 3.487Zm1.06 1.06L6.705 15.765a.5.5 0 0 0-.127.22l-.538 1.792 1.792-.538a.5.5 0 0 0 .22-.127L19.104 5.608a.75.75 0 0 0-1.182-1.06Z"/></svg>
@@ -70,6 +82,35 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <div class="editor-host"></div>
       <div class="editor-hint"><kbd>Esc</kbd> Viewer로 돌아가기</div>
     </section>
+
+    <dialog class="insertion-dialog table-dialog" aria-labelledby="table-dialog-title">
+      <form class="insertion-form table-form">
+        <header>
+          <div><h2 id="table-dialog-title">표 삽입</h2><p>셀 내용과 열 정렬을 지정하세요.</p></div>
+          <button class="dialog-close" type="button" aria-label="닫기">×</button>
+        </header>
+        <div class="table-size-controls">
+          <label>열 <input class="table-columns" type="number" min="1" max="12" value="3"></label>
+          <label>데이터 행 <input class="table-rows" type="number" min="0" max="30" value="2"></label>
+        </div>
+        <div class="table-editor-scroll"><div class="table-grid-editor"></div></div>
+        <footer><button class="secondary-button table-cancel" type="button">취소</button><button class="primary-button" type="submit">삽입</button></footer>
+      </form>
+    </dialog>
+
+    <dialog class="insertion-dialog link-dialog" aria-labelledby="link-dialog-title">
+      <form class="insertion-form link-form">
+        <header>
+          <div><h2 id="link-dialog-title">링크 삽입</h2><p>URL을 입력하거나 현재 문서에서 연결할 파일을 고르세요.</p></div>
+          <button class="dialog-close" type="button" aria-label="닫기">×</button>
+        </header>
+        <label>표시할 텍스트<input class="link-label" type="text" autocomplete="off"></label>
+        <label>URL 또는 경로<span class="link-destination-row"><input class="link-destination" type="text" required spellcheck="false" placeholder="https://example.com"><button class="secondary-button pick-link-file" type="button">파일 선택…</button></span></label>
+        <label>제목 <span class="optional-label">선택 사항</span><input class="link-title" type="text" autocomplete="off"></label>
+        <div class="dialog-error" role="alert" hidden></div>
+        <footer><button class="secondary-button link-cancel" type="button">취소</button><button class="primary-button" type="submit">삽입</button></footer>
+      </form>
+    </dialog>
   </section>
 `;
 
@@ -83,6 +124,17 @@ const renderErrorText = renderError.querySelector<HTMLElement>('span')!;
 const notice = document.querySelector<HTMLElement>('.notice')!;
 const tabStrip = document.querySelector<HTMLElement>('.tab-strip')!;
 const tabList = document.querySelector<HTMLElement>('.tab-list')!;
+const tableDialog = document.querySelector<HTMLDialogElement>('.table-dialog')!;
+const tableForm = document.querySelector<HTMLFormElement>('.table-form')!;
+const tableColumnsInput = document.querySelector<HTMLInputElement>('.table-columns')!;
+const tableRowsInput = document.querySelector<HTMLInputElement>('.table-rows')!;
+const tableGridEditor = document.querySelector<HTMLElement>('.table-grid-editor')!;
+const linkDialog = document.querySelector<HTMLDialogElement>('.link-dialog')!;
+const linkForm = document.querySelector<HTMLFormElement>('.link-form')!;
+const linkLabelInput = document.querySelector<HTMLInputElement>('.link-label')!;
+const linkDestinationInput = document.querySelector<HTMLInputElement>('.link-destination')!;
+const linkTitleInput = document.querySelector<HTMLInputElement>('.link-title')!;
+const linkError = document.querySelector<HTMLElement>('.dialog-error')!;
 
 type DocumentTab = {
   id: string;
@@ -862,7 +914,7 @@ async function enterViewer() {
 }
 
 async function save(saveAs = false) {
-  if (!model || !currentDocument) return;
+  if (!model || !currentDocument) return false;
   const result = saveAs
     ? await window.marktex.saveDocumentAs(model.getValue(), revision)
     : await window.marktex.saveDocument(model.getValue(), revision);
@@ -888,7 +940,9 @@ async function save(saveAs = false) {
       }
     }
     updateChrome();
+    return true;
   }
+  return false;
 }
 
 async function saveAllDirtyTabs() {
@@ -936,14 +990,200 @@ async function exportPdf() {
 
 const IMAGE_URL_PATTERN = /\.(?:avif|bmp|gif|jpe?g|png|svg|tiff?|webp)(?:$|[?#])/i;
 
-function safeRemoteImageUrl(value: string | null | undefined) {
+function safeExternalUrl(value: string | null | undefined) {
   if (!value) return null;
   try {
     const url = new URL(value.trim());
-    return ['http:', 'https:'].includes(url.protocol) ? url.href : null;
+    return ['http:', 'https:', 'mailto:', 'tel:'].includes(url.protocol) ? url.href : null;
   } catch {
     return null;
   }
+}
+
+function safeRemoteImageUrl(value: string | null | undefined) {
+  const url = safeExternalUrl(value);
+  return url && /^https?:/i.test(url) ? url : null;
+}
+
+type TableEditorState = {
+  headers: string[];
+  rows: string[][];
+  alignments: TableAlignment[];
+};
+
+let pendingTableSelection: monaco.Selection | null = null;
+let pendingLinkSelection: monaco.Selection | null = null;
+let tableEditorState: TableEditorState = {
+  headers: ['열 1', '열 2', '열 3'],
+  rows: [['', '', ''], ['', '', '']],
+  alignments: ['none', 'none', 'none'],
+};
+
+function boundedInteger(input: HTMLInputElement, fallback: number, maximum: number) {
+  const value = Number.parseInt(input.value, 10);
+  return Math.max(Number(input.min) || 0, Math.min(maximum, Number.isFinite(value) ? value : fallback));
+}
+
+function readTableEditorState() {
+  const columns = boundedInteger(tableColumnsInput, 3, 12);
+  const rowCount = boundedInteger(tableRowsInput, 2, 30);
+  const headers = Array.from(tableGridEditor.querySelectorAll<HTMLInputElement>('[data-table-header]'))
+    .map((input) => input.value);
+  const alignments = Array.from(tableGridEditor.querySelectorAll<HTMLSelectElement>('[data-table-alignment]'))
+    .map((select) => select.value as TableAlignment);
+  const rows = Array.from({ length: rowCount }, (_, row) =>
+    Array.from({ length: columns }, (_, column) =>
+      tableGridEditor.querySelector<HTMLInputElement>(
+        `[data-table-row="${row}"][data-table-column="${column}"]`,
+      )?.value ?? ''),
+  );
+  return { headers, rows, alignments };
+}
+
+function renderTableEditor() {
+  const columns = boundedInteger(tableColumnsInput, 3, 12);
+  const rowCount = boundedInteger(tableRowsInput, 2, 30);
+  tableColumnsInput.value = String(columns);
+  tableRowsInput.value = String(rowCount);
+  tableEditorState = {
+    headers: Array.from({ length: columns }, (_, column) =>
+      tableEditorState.headers[column] ?? `열 ${column + 1}`),
+    alignments: Array.from({ length: columns }, (_, column) =>
+      tableEditorState.alignments[column] ?? 'none'),
+    rows: Array.from({ length: rowCount }, (_, row) =>
+      Array.from({ length: columns }, (_, column) => tableEditorState.rows[row]?.[column] ?? '')),
+  };
+
+  tableGridEditor.replaceChildren();
+  tableGridEditor.style.gridTemplateColumns = `repeat(${columns}, minmax(132px, 1fr))`;
+  for (let column = 0; column < columns; column += 1) {
+    const header = document.createElement('div');
+    header.className = 'table-column-header';
+    const input = document.createElement('input');
+    input.value = tableEditorState.headers[column];
+    input.dataset.tableHeader = String(column);
+    input.setAttribute('aria-label', `${column + 1}열 제목`);
+    const alignment = document.createElement('select');
+    alignment.dataset.tableAlignment = String(column);
+    alignment.setAttribute('aria-label', `${column + 1}열 정렬`);
+    for (const [value, label] of [
+      ['none', '기본 정렬'], ['left', '왼쪽 정렬'], ['center', '가운데 정렬'], ['right', '오른쪽 정렬'],
+    ] as Array<[TableAlignment, string]>) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = label;
+      option.selected = tableEditorState.alignments[column] === value;
+      alignment.append(option);
+    }
+    header.append(input, alignment);
+    tableGridEditor.append(header);
+  }
+  for (let row = 0; row < rowCount; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      const input = document.createElement('input');
+      input.className = 'table-cell-input';
+      input.value = tableEditorState.rows[row][column];
+      input.dataset.tableRow = String(row);
+      input.dataset.tableColumn = String(column);
+      input.setAttribute('aria-label', `${row + 1}행 ${column + 1}열`);
+      tableGridEditor.append(input);
+    }
+  }
+}
+
+function tableFromTabSeparatedSelection(value: string): TableEditorState | null {
+  if (!value.includes('\t')) return null;
+  const lines = value.replace(/\r\n|\r/g, '\n').split('\n').filter((line) => line.length > 0);
+  if (lines.length === 0) return null;
+  const cells = lines.map((line) => line.split('\t'));
+  const columns = Math.min(12, Math.max(...cells.map((row) => row.length)));
+  return {
+    headers: Array.from({ length: columns }, (_, column) => cells[0][column] ?? ''),
+    rows: cells.slice(1, 31).map((row) =>
+      Array.from({ length: columns }, (_, column) => row[column] ?? '')),
+    alignments: Array(columns).fill('none') as TableAlignment[],
+  };
+}
+
+function blockAffixes(range: monaco.Range, eol: string) {
+  if (!model) return { prefix: '', suffix: '' };
+  const start = model.getOffsetAt(range.getStartPosition());
+  const end = model.getOffsetAt(range.getEndPosition());
+  const before = model.getValue().slice(0, start);
+  const after = model.getValue().slice(end);
+  const prefix = !before || /(?:\r\n|\r|\n){2}$/.test(before)
+    ? ''
+    : /(?:\r\n|\r|\n)$/.test(before) ? eol : eol + eol;
+  const suffix = !after || /^(?:\r\n|\r|\n){2}/.test(after)
+    ? ''
+    : /^(?:\r\n|\r|\n)/.test(after) ? eol : eol + eol;
+  return { prefix, suffix };
+}
+
+function openTableDialog() {
+  if (!model || surface !== 'editor') return;
+  pendingTableSelection = editor.getSelection();
+  const selected = pendingTableSelection ? model.getValueInRange(pendingTableSelection) : '';
+  tableEditorState = tableFromTabSeparatedSelection(selected) ?? {
+    headers: ['열 1', '열 2', '열 3'],
+    rows: [['', '', ''], ['', '', '']],
+    alignments: ['none', 'none', 'none'],
+  };
+  tableColumnsInput.value = String(tableEditorState.headers.length);
+  tableRowsInput.value = String(tableEditorState.rows.length);
+  renderTableEditor();
+  tableDialog.showModal();
+  tableGridEditor.querySelector<HTMLInputElement>('[data-table-header]')?.select();
+}
+
+function insertTableFromDialog() {
+  if (!model || !pendingTableSelection) return;
+  tableEditorState = readTableEditorState();
+  const eol = preferredEol(model.getValue());
+  const table = createMarkdownTable(tableEditorState, eol);
+  const range = monaco.Range.lift(pendingTableSelection);
+  const { prefix, suffix } = blockAffixes(range, eol);
+  const text = prefix + table + suffix;
+  const startOffset = model.getOffsetAt(range.getStartPosition());
+  editor.executeEdits('insert-table', [{ range, text, forceMoveMarkers: true }]);
+  const firstHeaderOffset = startOffset + prefix.length + 2;
+  const firstHeaderEnd = firstHeaderOffset + tableEditorState.headers[0].length;
+  editor.setSelection(monaco.Selection.fromPositions(
+    model.getPositionAt(firstHeaderOffset),
+    model.getPositionAt(firstHeaderEnd),
+  ));
+  editor.focus();
+}
+
+function openLinkDialog() {
+  if (!model || surface !== 'editor') return;
+  pendingLinkSelection = editor.getSelection();
+  const selected = pendingLinkSelection ? model.getValueInRange(pendingLinkSelection) : '';
+  const selectedUrl = safeExternalUrl(selected);
+  linkLabelInput.value = selected.replace(/\r\n|\r|\n/g, ' ');
+  linkDestinationInput.value = selectedUrl ?? '';
+  linkTitleInput.value = '';
+  linkError.hidden = true;
+  linkDialog.showModal();
+  (selectedUrl ? linkLabelInput : linkDestinationInput).focus();
+}
+
+function insertLinkMarkdown(label: string, destination: string, title: string, selection: monaco.Selection) {
+  if (!model) return;
+  const markdown = createMarkdownLink(label, destination, title);
+  const range = monaco.Range.lift(selection);
+  const startOffset = model.getOffsetAt(range.getStartPosition());
+  editor.executeEdits('insert-link', [{ range, text: markdown, forceMoveMarkers: true }]);
+  if (!label) {
+    const labelStart = startOffset + 1;
+    editor.setSelection(monaco.Selection.fromPositions(
+      model.getPositionAt(labelStart),
+      model.getPositionAt(labelStart + destination.trim().length),
+    ));
+  } else {
+    editor.setPosition(model.getPositionAt(startOffset + markdown.length));
+  }
+  editor.focus();
 }
 
 function remoteImageUrlFromClipboard(event: ClipboardEvent) {
@@ -1008,12 +1248,99 @@ async function pasteClipboardImage(remoteUrl: string | null) {
 }
 
 editorHost.addEventListener('paste', (event) => {
+  const selection = editor.getSelection();
+  const pastedUrl = safeExternalUrl(event.clipboardData?.getData('text/plain'));
+  if (selection && !selection.isEmpty() && pastedUrl && model) {
+    event.preventDefault();
+    event.stopPropagation();
+    insertLinkMarkdown(model.getValueInRange(selection), pastedUrl, '', selection);
+    return;
+  }
   const remoteUrl = remoteImageUrlFromClipboard(event);
   if (!remoteUrl && !clipboardContainsStoredImage(event)) return;
   event.preventDefault();
   event.stopPropagation();
   void pasteClipboardImage(remoteUrl);
 }, { capture: true });
+
+document.querySelector('.insert-table-button')?.addEventListener('click', openTableDialog);
+document.querySelector('.insert-link-button')?.addEventListener('click', openLinkDialog);
+
+for (const input of [tableColumnsInput, tableRowsInput]) {
+  input.addEventListener('change', () => {
+    tableEditorState = readTableEditorState();
+    renderTableEditor();
+  });
+}
+
+tableForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  insertTableFromDialog();
+  tableDialog.close();
+});
+tableDialog.querySelectorAll('.dialog-close, .table-cancel').forEach((button) => {
+  button.addEventListener('click', () => tableDialog.close());
+});
+tableDialog.addEventListener('close', () => {
+  pendingTableSelection = null;
+  editor.focus();
+});
+
+linkForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  if (!pendingLinkSelection) return;
+  try {
+    insertLinkMarkdown(
+      linkLabelInput.value,
+      linkDestinationInput.value,
+      linkTitleInput.value,
+      pendingLinkSelection,
+    );
+    linkDialog.close();
+  } catch (error) {
+    linkError.textContent = error instanceof Error ? error.message : String(error);
+    linkError.hidden = false;
+  }
+});
+linkDialog.querySelectorAll('.dialog-close, .link-cancel').forEach((button) => {
+  button.addEventListener('click', () => linkDialog.close());
+});
+linkDialog.addEventListener('close', () => {
+  pendingLinkSelection = null;
+  editor.focus();
+});
+document.querySelector('.pick-link-file')?.addEventListener('click', async () => {
+  if (!currentDocument) return;
+  linkError.hidden = true;
+  if (currentDocument.isUntitled) {
+    const saved = await save(false);
+    if (!saved || !currentDocument || currentDocument.isUntitled) {
+      linkError.textContent = '로컬 파일의 상대 경로를 만들려면 문서를 먼저 저장해야 합니다.';
+      linkError.hidden = false;
+      return;
+    }
+  }
+  const result = await window.marktex.pickLinkTarget(currentDocument.path);
+  if (result.canceled || !result.destination) return;
+  linkDestinationInput.value = result.destination;
+  if (!linkLabelInput.value && result.label) linkLabelInput.value = result.label;
+  linkTitleInput.focus();
+});
+
+editor.addAction({
+  id: 'setdown.insertLink',
+  label: '링크 삽입',
+  keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK],
+  contextMenuGroupId: '1_modification',
+  run: openLinkDialog,
+});
+
+editor.addAction({
+  id: 'setdown.insertTable',
+  label: '표 삽입',
+  contextMenuGroupId: '1_modification',
+  run: openTableDialog,
+});
 
 editor.addCommand(
   monaco.KeyCode.Escape,
@@ -1121,6 +1448,8 @@ window.marktex.onCommand((command) => {
   if (command === 'close-tab' && activeTabId) void closeTab(activeTabId);
   if (command === 'next-tab') cycleTab(1);
   if (command === 'previous-tab') cycleTab(-1);
+  if (command === 'insert-table') openTableDialog();
+  if (command === 'insert-link') openLinkDialog();
   if (command === 'toggle-surface') {
     if (surface === 'viewer') requestViewerAnchor();
     else if (surface === 'editor') void enterViewer();

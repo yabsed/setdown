@@ -36,6 +36,7 @@ import type {
   SaveResult,
   ExportPdfResult,
   PasteImageResult,
+  PickLinkTargetResult,
   TabStateSummary,
   TransferableTab,
 } from '../shared/contracts';
@@ -48,6 +49,7 @@ import {
 } from './pasted-image';
 import { previewRelativeReference } from './preview-resources';
 import { discardDraftBundle, saveDraftBundle } from './draft-assets';
+import { markdownDestinationForFile } from './markdown-link';
 
 app.setName('Setdown');
 
@@ -663,6 +665,24 @@ async function pasteClipboardImage(): Promise<PasteImageResult> {
   };
 }
 
+async function pickLinkTarget(documentPath: string): Promise<PickLinkTargetResult> {
+  if (!currentDocument || currentDocument.path !== documentPath || currentDocument.isUntitled) {
+    return { canceled: true };
+  }
+  const result = await dialog.showOpenDialog(mainWindow!, {
+    defaultPath: path.dirname(currentDocument.path),
+    properties: ['openFile'],
+    filters: [{ name: 'All files', extensions: ['*'] }],
+  });
+  const targetPath = result.filePaths[0];
+  if (result.canceled || !targetPath) return { canceled: true };
+  return {
+    canceled: false,
+    destination: markdownDestinationForFile(currentDocument.path, targetPath),
+    label: path.basename(targetPath),
+  };
+}
+
 async function waitForPrintablePreview(window: BrowserWindow) {
   await window.webContents.executeJavaScript(`new Promise((resolve) => {
     const started = Date.now();
@@ -771,6 +791,13 @@ function installMenu() {
         { role: 'resetZoom' },
         { role: 'zoomIn' },
         { role: 'zoomOut' },
+      ],
+    },
+    {
+      label: 'Insert',
+      submenu: [
+        { label: 'Table…', click: () => sendCommand('insert-table') },
+        { label: 'Link…', accelerator: 'CmdOrCtrl+K', click: () => sendCommand('insert-link') },
       ],
     },
     { role: 'editMenu' },
@@ -1153,6 +1180,12 @@ function installIpc() {
   ipcMain.handle('document:paste-clipboard-image', (event) => {
     const state = stateForWebContentsId(event.sender.id);
     return state ? withWindowState(state, () => pasteClipboardImage()) : { canceled: true };
+  });
+  ipcMain.handle('document:pick-link-target', (event, documentPath: string) => {
+    const state = stateForWebContentsId(event.sender.id);
+    return state
+      ? withWindowState(state, () => pickLinkTarget(documentPath))
+      : { canceled: true };
   });
   ipcMain.handle('document:reload', async (event) => {
     const state = stateForWebContentsId(event.sender.id);
