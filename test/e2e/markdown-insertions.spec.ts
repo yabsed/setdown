@@ -22,6 +22,20 @@ test('inserts an edited table and a URL into the Monaco document', async () => {
 
     await window.locator('.insert-table-button').click();
     await expect(window.locator('.table-dialog')).toBeVisible();
+    const threeColumnWidth = await window.locator('.table-editor-scroll').evaluate((element) => ({
+      client: element.clientWidth,
+      scroll: element.scrollWidth,
+    }));
+    expect(threeColumnWidth.scroll).toBe(threeColumnWidth.client);
+
+    await window.locator('.table-columns').fill('4');
+    await window.locator('.table-columns').press('Tab');
+    const fourColumnWidth = await window.locator('.table-editor-scroll').evaluate((element) => ({
+      client: element.clientWidth,
+      scroll: element.scrollWidth,
+    }));
+    expect(fourColumnWidth.scroll).toBeGreaterThan(fourColumnWidth.client);
+
     await window.locator('.table-columns').fill('2');
     await window.locator('.table-columns').press('Tab');
     await window.locator('.table-rows').fill('1');
@@ -29,11 +43,14 @@ test('inserts an edited table and a URL into the Monaco document', async () => {
     await expect(window.locator('[data-table-header]')).toHaveCount(2);
     await expect(window.locator('.table-cell-input')).toHaveCount(2);
     await window.locator('[data-table-header="0"]').fill('이름');
+    await window.locator('[data-table-header="0"]').press('Enter');
+    await expect(window.locator('.table-dialog')).toBeVisible();
+    await expect(window.locator('[data-table-header="1"]')).toBeFocused();
     await window.locator('[data-table-header="1"]').fill('값');
     await window.locator('[data-table-alignment="1"]').selectOption('right');
     await window.locator('[data-table-row="0"][data-table-column="0"]').fill('alpha');
     await window.locator('[data-table-row="0"][data-table-column="1"]').fill('10');
-    await window.locator('.table-form .primary-button').click();
+    await window.locator('.table-submit').click();
 
     await window.keyboard.press('Control+End');
     await window.locator('.insert-link-button').click();

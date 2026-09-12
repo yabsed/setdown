@@ -94,7 +94,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <label>데이터 행 <input class="table-rows" type="number" min="0" max="30" value="2"></label>
         </div>
         <div class="table-editor-scroll"><div class="table-grid-editor"></div></div>
-        <footer><button class="secondary-button table-cancel" type="button">취소</button><button class="primary-button" type="submit">삽입</button></footer>
+        <footer><button class="secondary-button table-cancel" type="button">취소</button><button class="primary-button table-submit" type="button">삽입</button></footer>
       </form>
     </dialog>
 
@@ -1055,7 +1055,8 @@ function renderTableEditor() {
   };
 
   tableGridEditor.replaceChildren();
-  tableGridEditor.style.gridTemplateColumns = `repeat(${columns}, minmax(132px, 1fr))`;
+  tableGridEditor.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
+  tableGridEditor.style.minWidth = `${columns * 170}px`;
   for (let column = 0; column < columns; column += 1) {
     const header = document.createElement('div');
     header.className = 'table-column-header';
@@ -1273,10 +1274,27 @@ for (const input of [tableColumnsInput, tableRowsInput]) {
   });
 }
 
-tableForm.addEventListener('submit', (event) => {
-  event.preventDefault();
+document.querySelector('.table-submit')?.addEventListener('click', () => {
   insertTableFromDialog();
   tableDialog.close();
+});
+tableForm.addEventListener('submit', (event) => event.preventDefault());
+tableForm.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter' || event.isComposing) return;
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement)) return;
+  event.preventDefault();
+  if (!tableGridEditor.contains(target)) {
+    target.blur();
+    return;
+  }
+  const cells = Array.from(tableGridEditor.querySelectorAll<HTMLInputElement>('input'));
+  const current = cells.indexOf(target);
+  const next = cells[current + (event.shiftKey ? -1 : 1)];
+  if (next) {
+    next.focus();
+    next.select();
+  }
 });
 tableDialog.querySelectorAll('.dialog-close, .table-cancel').forEach((button) => {
   button.addEventListener('click', () => tableDialog.close());
