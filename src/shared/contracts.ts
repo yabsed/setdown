@@ -1,4 +1,4 @@
-import type { PreviewThemeId } from './preview-preferences';
+import type { PreviewThemeAssets, PreviewThemeId } from './preview-preferences';
 
 export type DiskVersion = {
   mtimeMs: number;
@@ -103,6 +103,8 @@ export type AppCommand =
   | 'previous-tab'
   | 'insert-table'
   | 'insert-link'
+  | 'open-find'
+  | `set-preview-theme:${PreviewThemeId}`
   | 'toggle-surface';
 
 export type MarkTexApi = {
@@ -118,9 +120,10 @@ export type MarkTexApi = {
   detachTabToWindow(transferId: string, x: number, y: number): void;
   adoptTabTransfer(transferId: string): Promise<boolean>;
   createPreview(tabId: string): void;
-  loadPreview(tabId: string, url: string): Promise<void>;
+  loadPreview(tabId: string, url: string, themeId: PreviewThemeId): Promise<void>;
   showPreview(tabId: string | null, bounds: PreviewBounds | null): void;
   sendPreviewCommand(tabId: string, message: Record<string, unknown>): void;
+  getPreviewThemeAssets(themeId: PreviewThemeId): Promise<PreviewThemeAssets>;
   destroyPreview(tabId: string): void;
   closeEmptyWindow(): void;
   updateText(text: string, revision: number): void;

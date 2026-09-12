@@ -1,4 +1,5 @@
 :root {
+  --preview-background: #fff;
   color: #242424;
   background: #f7f7f5;
   font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -81,7 +82,7 @@ button { font: inherit; }
 }
 .new-tab-button:hover { background: rgba(255,255,255,.7); }
 .tab-actions { display: flex; align-items: center; flex: 0 0 auto; height: 28px; margin-left: 4px; -webkit-app-region: no-drag; }
-.editor-action {
+.editor-action, .viewer-action {
   display: grid;
   place-items: center;
   width: 28px;
@@ -93,9 +94,13 @@ button { font: inherit; }
   background: transparent;
   cursor: pointer;
 }
-.editor-action svg { width: 17px; height: 17px; fill: currentColor; }
-.editor-action:hover { color: #20201f; background: rgba(255,255,255,.7); }
+.editor-action svg, .viewer-action svg { width: 17px; height: 17px; fill: currentColor; }
+.editor-action:hover, .viewer-action:hover, .viewer-action.is-active {
+  color: #20201f;
+  background: rgba(255,255,255,.7);
+}
 .shell:not([data-surface="editor"]) .editor-action { display: none; }
+.shell:not([data-surface="viewer"]) .viewer-action { display: none; }
 .tab-action-divider { width: 1px; height: 17px; margin: 0 6px; background: #d2d2cc; }
 .mode-toggle {
   display: grid;
@@ -166,7 +171,9 @@ button { font: inherit; }
 .shortcut { margin-top: 9px; color: #aaa9a2; font-size: 11px; }
 
 .viewer-surface, .editor-surface { position: relative; overflow: hidden; }
-.viewer-surface { display: grid; grid-template-rows: 42px minmax(0, 1fr); }
+.viewer-surface, .reader-body, .preview-frames { background: var(--preview-background); }
+.viewer-surface { display: grid; grid-template-rows: 0 minmax(0, 1fr); }
+.shell[data-find-open="true"] .viewer-surface { grid-template-rows: 42px minmax(0, 1fr); }
 .reader-toolbar {
   display: flex;
   align-items: center;
@@ -177,21 +184,7 @@ button { font: inherit; }
   background: rgba(247, 247, 245, .97);
   z-index: 15;
 }
-.reader-tool {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  height: 30px;
-  padding: 0 9px;
-  color: #666660;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  cursor: pointer;
-}
-.reader-tool:hover, .reader-tool.is-active { color: #242422; background: #e8e8e3; }
-.reader-tool svg { width: 16px; height: 16px; fill: currentColor; }
-.reader-tool span { font-size: 12px; }
+.shell:not([data-find-open="true"]) .reader-toolbar { overflow: hidden; padding-block: 0; border: 0; }
 .reader-body { display: flex; min-width: 0; min-height: 0; }
 .preview-frames { position: relative; flex: 1; min-width: 0; min-height: 0; height: 100%; }
 .toc-panel {
@@ -272,27 +265,6 @@ button { font: inherit; }
 }
 .preview-search button:hover { color: #222; background: #ecece7; }
 .find-close { font-size: 17px; }
-.theme-picker {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-  color: #777771;
-  font-size: 11px;
-  white-space: nowrap;
-}
-.theme-picker select {
-  max-width: 150px;
-  height: 30px;
-  padding: 0 24px 0 8px;
-  color: #444440;
-  border: 1px solid #cecec8;
-  border-radius: 7px;
-  outline: none;
-  background: #fff;
-  font: inherit;
-  cursor: pointer;
-}
 .viewer-hint, .editor-hint {
   position: absolute;
   right: 16px;
@@ -408,8 +380,5 @@ button { font: inherit; }
   .viewer-hint, .editor-hint { display: none; }
   .insertion-form { padding: 17px; }
   .link-destination-row { grid-template-columns: 1fr; }
-  .reader-tool span, .theme-picker { font-size: 0; gap: 0; }
-  .reader-tool { padding: 0 7px; }
-  .theme-picker select { max-width: 108px; font-size: 11px; }
   .toc-panel { flex-basis: min(220px, 46vw); }
 }

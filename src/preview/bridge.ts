@@ -286,9 +286,8 @@ function anchorAtPoint(clientX: number, clientY: number, target: Element | null,
 
 let viewportStateFrame: number | null = null;
 
-function publishViewportState() {
-  viewportStateFrame = null;
-  const clientY = (window.innerHeight || 1) * GOLDEN_TOP_RATIO;
+function viewportAnchorAt(yRatio: number): ViewportAnchor {
+  const clientY = (window.innerHeight || 1) * yRatio;
   const clientX = (window.innerWidth || 1) / 2;
   const target = document.elementFromPoint(clientX, clientY);
   const path: EventTarget[] = [];
@@ -297,6 +296,11 @@ function publishViewportState() {
     path.push(node);
     node = node.parentElement;
   }
+  return anchorAtPoint(clientX, clientY, target, path);
+}
+
+function publishViewportState() {
+  viewportStateFrame = null;
   const scrollTop = document.documentElement.scrollTop || document.body.scrollTop || 0;
   const maximum = Math.max(
     0,
@@ -305,7 +309,7 @@ function publishViewportState() {
   send({
     type: 'marktex:viewport-state',
     revision: config.revision,
-    anchor: anchorAtPoint(clientX, clientY, target, path),
+    anchor: viewportAnchorAt(GOLDEN_TOP_RATIO),
     scrollRatio: maximum > 0 ? scrollTop / maximum : 0,
   });
 }
@@ -396,6 +400,87 @@ function scheduleHeadings() {
     headingTimer = null;
     publishHeadings();
   }, 60);
+}
+
+// 테마는 Markdown의 의미나 DOM이 아니라 표현 상태다. 문서를 다시 navigation하지
+// 않고 Crossnote가 삽입한 두 stylesheet만 교체해 scroll/search/TOC 상태를 보존한다.
+function isLocalThemeAsset(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  try {
+    return new URL(value).protocol === 'marktex-resource:';
+  } catch {
+    return false;
+  }
+}
+
+function themeStylesheet(pathFragment: string): HTMLLinkElement | null {
+  return Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'))
+    .find((link) => {
+      try {
+        return decodeURIComponent(link.href).includes(pathFragment);
+      } catch {
+        return link.href.includes(pathFragment);
+      }
+    }) ?? null;
+}
+
+function replaceThemeStylesheet(pathFragment: string, url: string): Promise<void> {
+  const existing = themeStylesheet(pathFragment);
+  if (existing) {
+    if (existing.href === url) return Promise.resolve();
+    return new Promise((resolve) => {
+      const finish = () => resolve();
+      existing.addEventListener('load', finish, { once: true });
+      existing.addEventListener('error', finish, { once: true });
+      existing.href = url;
+      window.setTimeout(finish, 1_000);
+    });
+  }
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = url;
+  return new Promise((resolve) => {
+    const finish = () => resolve();
+    link.addEventListener('load', finish, { once: true });
+    link.addEventListener('error', finish, { once: true });
+    document.head.append(link);
+    window.setTimeout(finish, 1_000);
+  });
+}
+
+let themeApplication = 0;
+
+async function applyTheme(themeId: string, previewCssUrl: unknown, codeCssUrl: unknown) {
+  if (!isLocalThemeAsset(previewCssUrl) || !isLocalThemeAsset(codeCssUrl)) return;
+  const application = ++themeApplication;
+  const semanticAnchor = viewportAnchorAt(GOLDEN_TOP_RATIO);
+  await Promise.all([
+    replaceThemeStylesheet('/styles/preview_theme/', previewCssUrl),
+    replaceThemeStylesheet('/styles/prism_theme/', codeCssUrl),
+  ]);
+  if (application !== themeApplication) return;
+  // theme별 글꼴·행간·margin이 달라져도 같은 pixel Y가 아니라 같은 source
+  // 내용을 같은 viewport 비율에 둔다. 두 frame 적용은 font/layout 후행 변화를 흡수한다.
+  invalidateAtlas();
+  await new Promise<void>((resolve) => window.requestAnimationFrame(() => {
+    positionPreview(semanticAnchor.sourceLine, semanticAnchor.yRatio);
+    resolve();
+  }));
+  await new Promise<void>((resolve) => window.requestAnimationFrame(() => {
+    positionPreview(semanticAnchor.sourceLine, semanticAnchor.yRatio);
+    resolve();
+  }));
+  document.body.dataset.setdownPreviewTheme = themeId;
+  document.body.dataset.setdownThemeAnchorLine = String(semanticAnchor.sourceLine);
+  document.body.dataset.previewTheme = [
+    'github-dark',
+    'night',
+    'one-dark',
+    'solarized-dark',
+  ].includes(themeId) ? 'dark' : 'light';
+  invalidateAtlas();
+  scheduleViewportState();
+  send({ type: 'marktex:theme-applied', revision: config.revision, themeId });
 }
 
 // CSS Highlight API는 Range를 표시할 뿐 Crossnote의 DOM을 감싸거나 바꾸지 않는다.
@@ -604,8 +689,15 @@ window.addEventListener('message', (event) => {
     query?: string;
     direction?: 'forward' | 'backward';
     findNext?: boolean;
+    themeId?: string;
+    previewCssUrl?: string;
+    codeCssUrl?: string;
   } | null;
   if (!data) return;
+  if (data.command === 'marktex:apply-theme') {
+    void applyTheme(data.themeId ?? '', data.previewCssUrl, data.codeCssUrl);
+    return;
+  }
   if (data.command === 'marktex:find') {
     performSearch(
       typeof data.query === 'string' ? data.query.slice(0, 512) : '',

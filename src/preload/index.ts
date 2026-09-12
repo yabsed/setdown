@@ -37,10 +37,13 @@ const api: MarkTexApi = {
     ipcRenderer.send('tabs:detach-to-window', { transferId, x, y }),
   adoptTabTransfer: (transferId) => ipcRenderer.invoke('tabs:adopt-transfer', transferId),
   createPreview: (tabId) => ipcRenderer.send('preview:create', tabId),
-  loadPreview: (tabId, url) => ipcRenderer.invoke('preview:load', { tabId, url }),
+  loadPreview: (tabId, url, themeId) =>
+    ipcRenderer.invoke('preview:load', { tabId, url, themeId }),
   showPreview: (tabId, bounds) => ipcRenderer.send('preview:show', { tabId, bounds }),
   sendPreviewCommand: (tabId, message) =>
     ipcRenderer.send('preview:command', { tabId, message }),
+  getPreviewThemeAssets: (themeId) =>
+    ipcRenderer.invoke('preview:theme-assets', themeId),
   destroyPreview: (tabId) => ipcRenderer.send('preview:destroy', tabId),
   closeEmptyWindow: () => ipcRenderer.send('app:close-empty-window'),
   updateText: (text, revision) =>

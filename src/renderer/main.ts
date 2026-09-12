@@ -9,7 +9,8 @@ import type {
 import {
   DEFAULT_PREVIEW_THEME,
   normalizePreviewTheme,
-  PREVIEW_THEMES,
+  previewThemeBackground,
+  type PreviewThemeAssets,
   type PreviewThemeId,
 } from '../shared/preview-preferences';
 import { PreviewRenderCoordinator } from '../shared/preview-render-coordinator';
@@ -44,6 +45,9 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <button class="editor-action insert-link-button" type="button" title="링크 삽입 (Ctrl/Cmd+K)" aria-label="링크 삽입">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 15.5 8 17a3.54 3.54 0 0 1-5-5l3-3a3.54 3.54 0 0 1 5 0 .75.75 0 0 1-1.06 1.06 2.04 2.04 0 0 0-2.88 0l-3 3a2.04 2.04 0 0 0 2.88 2.88l1.5-1.5A.75.75 0 1 1 9.5 15.5Zm5-7L16 7a3.54 3.54 0 0 1 5 5l-3 3a3.54 3.54 0 0 1-5 0 .75.75 0 0 1 1.06-1.06 2.04 2.04 0 0 0 2.88 0l3-3a2.04 2.04 0 0 0-2.88-2.88l-1.5 1.5A.75.75 0 1 1 14.5 8.5Zm1.03.97a.75.75 0 0 1 0 1.06l-5 5a.75.75 0 0 1-1.06-1.06l5-5a.75.75 0 0 1 1.06 0Z"/></svg>
         </button>
+        <button class="viewer-action toc-toggle" type="button" aria-expanded="false" title="목차 열기" aria-label="목차 열기">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h2v2H4v-2Zm4 .25h12v1.5H8v-1.5ZM4 11h2v2H4v-2Zm4 .25h12v1.5H8v-1.5ZM4 16.5h2v2H4v-2Zm4 .25h12v1.5H8v-1.5Z"/></svg>
+        </button>
         <span class="tab-action-divider" aria-hidden="true"></span>
         <button class="mode-toggle" type="button" hidden>
           <svg class="mode-icon mode-icon-edit" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.862 3.487a2.25 2.25 0 0 1 3.182 3.182L8.41 18.303a2 2 0 0 1-.878.507l-3.42 1.026 1.026-3.42a2 2 0 0 1 .507-.878L16.862 3.487Zm1.06 1.06L6.705 15.765a.5.5 0 0 0-.127.22l-.538 1.792 1.792-.538a.5.5 0 0 0 .22-.127L19.104 5.608a.75.75 0 0 0-1.182-1.06Z"/></svg>
@@ -74,14 +78,6 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
     <section class="viewer-surface" aria-label="렌더링된 Markdown">
       <div class="reader-toolbar">
-        <button class="reader-tool toc-toggle" type="button" aria-expanded="false" title="목차 열기">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h2v2H4v-2Zm4 .25h12v1.5H8v-1.5ZM4 11h2v2H4v-2Zm4 .25h12v1.5H8v-1.5ZM4 16.5h2v2H4v-2Zm4 .25h12v1.5H8v-1.5Z"/></svg>
-          <span>목차</span>
-        </button>
-        <button class="reader-tool find-toggle" type="button" title="문서에서 찾기 (Ctrl/Cmd+F)">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 4a6.5 6.5 0 1 1-4.12 11.53l-3.45 3.45-1.06-1.06 3.44-3.45A6.5 6.5 0 0 1 10.5 4Zm0 1.5a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z"/></svg>
-          <span>검색</span>
-        </button>
         <div class="preview-search" hidden>
           <input type="search" autocomplete="off" spellcheck="false" aria-label="렌더링된 문서에서 찾기" placeholder="문서에서 찾기">
           <span class="find-count" aria-live="polite">0 / 0</span>
@@ -89,9 +85,6 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <button class="find-next" type="button" aria-label="다음 검색 결과">↓</button>
           <button class="find-close" type="button" aria-label="검색 닫기">×</button>
         </div>
-        <label class="theme-picker">테마
-          <select aria-label="Preview 테마"></select>
-        </label>
       </div>
       <div class="reader-body">
         <aside class="toc-panel" aria-label="문서 목차" hidden>
@@ -154,11 +147,9 @@ const tocToggle = document.querySelector<HTMLButtonElement>('.toc-toggle')!;
 const tocPanel = document.querySelector<HTMLElement>('.toc-panel')!;
 const tocList = document.querySelector<HTMLElement>('.toc-list')!;
 const tocCount = document.querySelector<HTMLElement>('.toc-count')!;
-const findToggle = document.querySelector<HTMLButtonElement>('.find-toggle')!;
 const previewSearch = document.querySelector<HTMLElement>('.preview-search')!;
 const findInput = previewSearch.querySelector<HTMLInputElement>('input')!;
 const findCount = previewSearch.querySelector<HTMLElement>('.find-count')!;
-const themeSelect = document.querySelector<HTMLSelectElement>('.theme-picker select')!;
 const editorHost = document.querySelector<HTMLElement>('.editor-host')!;
 const renderState = document.querySelector<HTMLElement>('.render-state')!;
 const renderError = document.querySelector<HTMLElement>('.render-error')!;
@@ -218,6 +209,10 @@ function loadReaderPreferences(): { tocOpen: boolean; themeId: PreviewThemeId } 
 }
 
 const readerPreferences = loadReaderPreferences();
+document.documentElement.style.setProperty(
+  '--preview-background',
+  previewThemeBackground(readerPreferences.themeId),
+);
 
 function saveReaderPreferences() {
   localStorage.setItem(READER_PREFERENCES_KEY, JSON.stringify(readerPreferences));
@@ -303,13 +298,6 @@ function activeTab() {
   return tabs.find((tab) => tab.id === activeTabId) ?? null;
 }
 
-for (const theme of PREVIEW_THEMES) {
-  const option = document.createElement('option');
-  option.value = theme.id;
-  option.textContent = theme.label;
-  themeSelect.append(option);
-}
-
 function renderToc(tab: DocumentTab | null) {
   tocList.replaceChildren();
   const headings = tab?.headings ?? [];
@@ -347,10 +335,10 @@ function syncReaderUi() {
   tocPanel.hidden = !readerPreferences.tocOpen || !viewerVisible;
   tocToggle.setAttribute('aria-expanded', String(readerPreferences.tocOpen));
   tocToggle.title = readerPreferences.tocOpen ? '목차 닫기' : '목차 열기';
+  tocToggle.setAttribute('aria-label', tocToggle.title);
   tocToggle.classList.toggle('is-active', readerPreferences.tocOpen);
-  themeSelect.value = readerPreferences.themeId;
   previewSearch.hidden = !tab?.find.open || !viewerVisible;
-  findToggle.classList.toggle('is-active', !!tab?.find.open);
+  shell.dataset.findOpen = tab?.find.open && viewerVisible ? 'true' : 'false';
   if (tab && findInput.value !== tab.find.query) findInput.value = tab.find.query;
   findCount.textContent = tab?.find.matches
     ? `${tab.find.activeMatch} / ${tab.find.matches}`
@@ -382,8 +370,12 @@ function openPreviewFind() {
   if (!tab || surface !== 'viewer') return;
   tab.find.open = true;
   syncReaderUi();
-  findInput.focus();
+  syncPreviewView();
+  findInput.focus({ preventScroll: true });
   findInput.select();
+  queueMicrotask(() => {
+    if (document.activeElement !== findInput) findInput.focus({ preventScroll: true });
+  });
   if (tab.find.query) runPreviewFind('forward', false);
 }
 
@@ -396,6 +388,7 @@ function closePreviewFind(clearQuery = false) {
   tab.find.matches = 0;
   if (clearQuery) tab.find.query = '';
   syncReaderUi();
+  syncPreviewView();
 }
 
 async function applyPreviewTheme(value: unknown) {
@@ -403,20 +396,20 @@ async function applyPreviewTheme(value: unknown) {
   if (readerPreferences.themeId === nextTheme) return;
   readerPreferences.themeId = nextTheme;
   saveReaderPreferences();
-  const tab = activeTab();
-  if (!tab || !model || !currentDocument) {
-    syncReaderUi();
-    return;
-  }
-  const targetRevision = revision;
-  const targetAnchor = anchor;
-  resetPreviewState();
-  previewCoordinator = new PreviewRenderCoordinator(renderRevision);
   syncReaderUi();
-  const ready = await ensurePreview(targetRevision);
-  if (ready && surface === 'viewer' && targetRevision === revision) {
-    await requestPreviewPosition(targetAnchor, targetRevision);
-  }
+  const assets = await window.marktex.getPreviewThemeAssets(nextTheme);
+  if (readerPreferences.themeId !== assets.themeId) return;
+  document.documentElement.style.setProperty('--preview-background', assets.backgroundColor);
+  for (const tab of tabs) applyThemeAssetsToTab(tab, assets);
+}
+
+function applyThemeAssetsToTab(tab: DocumentTab, assets: PreviewThemeAssets) {
+  if (!tab.previewUrl) return;
+  window.marktex.sendPreviewCommand(tab.id, {
+    command: 'marktex:apply-theme',
+    ...assets,
+  });
+  tab.previewTheme = assets.themeId;
 }
 
 function createPreview(tabId: string) {
@@ -869,7 +862,6 @@ async function renderRevision(targetRevision: number): Promise<boolean> {
       || currentDocument?.path !== documentPath
       || result.revision !== targetRevision
       || result.themeId !== targetTheme
-      || readerPreferences.themeId !== targetTheme
       || revision !== targetRevision
     ) return false;
 
@@ -886,7 +878,7 @@ async function renderRevision(targetRevision: number): Promise<boolean> {
       await nextAnimationFrame();
       syncPreviewView();
     }
-    await window.marktex.loadPreview(targetTabId, result.url);
+    await window.marktex.loadPreview(targetTabId, result.url, targetTheme);
     // load 도중 사용자가 다른 탭으로 가더라도 완성된 WebContents는 요청을
     // 시작한 탭의 자산이다. 활성 탭 여부와 별개로 먼저 그 탭에 귀속시킨다.
     const renderedTab = tabs.find((candidate) => candidate.id === targetTabId);
@@ -898,6 +890,10 @@ async function renderRevision(targetRevision: number): Promise<boolean> {
       renderedTab.previewUrl = result.url;
       renderedTab.previewRevision = targetRevision;
       renderedTab.previewTheme = targetTheme;
+    }
+    if (renderedTab && readerPreferences.themeId !== targetTheme) {
+      const assets = await window.marktex.getPreviewThemeAssets(readerPreferences.themeId);
+      if (readerPreferences.themeId === assets.themeId) applyThemeAssetsToTab(renderedTab, assets);
     }
     window.marktex.sendPreviewCommand(targetTabId, { command: 'marktex:collect-headings' });
     if (renderedTab?.find.open && renderedTab.find.query) {
@@ -1631,12 +1627,13 @@ tocToggle.addEventListener('click', () => {
   readerPreferences.tocOpen = !readerPreferences.tocOpen;
   saveReaderPreferences();
   syncReaderUi();
-  window.requestAnimationFrame(syncPreviewView);
+  // hidden 상태가 바뀐 직후 getBoundingClientRect()가 layout을 확정하므로,
+  // native WebContentsView도 같은 frame 안에서 새 폭을 받는다.
+  syncPreviewView();
   if (readerPreferences.tocOpen && activeTabId) {
     window.marktex.sendPreviewCommand(activeTabId, { command: 'marktex:collect-headings' });
   }
 });
-findToggle.addEventListener('click', openPreviewFind);
 findInput.addEventListener('input', () => runPreviewFind('forward', false));
 findInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter' && !event.isComposing) {
@@ -1660,7 +1657,6 @@ previewSearch.querySelector('.find-close')?.addEventListener(
   'click',
   () => closePreviewFind(false),
 );
-themeSelect.addEventListener('change', () => void applyPreviewTheme(themeSelect.value));
 document.querySelector('.render-error button')?.addEventListener('click', () => enterEditor());
 
 /**
@@ -1802,6 +1798,10 @@ window.marktex.onCommand((command) => {
   if (command === 'previous-tab') cycleTab(-1);
   if (command === 'insert-table') openTableDialog();
   if (command === 'insert-link') openLinkDialog();
+  if (command === 'open-find') openPreviewFind();
+  if (command.startsWith('set-preview-theme:')) {
+    void applyPreviewTheme(command.slice('set-preview-theme:'.length));
+  }
   if (command === 'toggle-surface') {
     if (surface === 'viewer') requestViewerAnchor();
     else if (surface === 'editor') void enterViewer();
