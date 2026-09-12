@@ -295,6 +295,52 @@ export function resolveEditorViewport(probe: EditorViewportProbe): ViewportAncho
   return { sourceLine: 1, yRatio, reason: 'empty-document', confidence: 'fallback' };
 }
 
+/** Editor에 보이는 한 줄과 그 줄의 화면 비율. host가 Preview로 보낸다. */
+export type BandLine = { sourceLine: number; yRatio: number };
+
+/**
+ * Editor에 보이는 한 줄. 두 좌표계에서 모두 위치를 아는 지점이다.
+ */
+export type ViewportBandSample = {
+  /** Preview 문서 좌표에서 이 줄이 놓인 위치. */
+  renderedTop: number;
+  /** 이 줄이 속한 block이 Preview에서 차지하는 높이. 가중치로 쓴다. */
+  renderedHeight: number;
+  /** Editor viewport 안에서 이 줄이 놓인 세로 비율, 0~1. */
+  editorRatio: number;
+};
+
+/**
+ * 보이는 줄들의 무게중심으로 Preview scrollTop을 정한다.
+ *
+ * 줄 하나를 고정하면 그 줄에서 멀어질수록 Editor와 Preview의 줄 높이 차이가
+ * 누적되어 띠의 반대쪽 끝이 화면에서 밀려난다. 각 줄은 "내 렌더 위치가 내
+ * 화면 비율에 와야 한다"고 주장하고, 그 주장의 해는 각각
+ * `renderedTop - viewportHeight * editorRatio`다. 이들을 렌더 높이로 가중
+ * 평균하면 오차가 띠 전체에 고르게 나뉜다. 화면을 많이 차지하는 block이
+ * 짧은 단락 여러 개에 밀리지 않도록 가중치는 렌더 높이를 쓴다.
+ *
+ * 쓸 수 있는 표본이 없으면 null이다. 그때는 부르는 쪽이 한 줄 고정으로
+ * 되돌아간다.
+ */
+export function resolveBandScrollTop(
+  samples: ViewportBandSample[],
+  viewportHeight: number,
+): number | null {
+  const height = Math.max(1, finite(viewportHeight, 1));
+  let weighted = 0;
+  let total = 0;
+  for (const sample of samples ?? []) {
+    const top = finite(sample?.renderedTop, Number.NaN);
+    if (!Number.isFinite(top)) continue;
+    const ratio = clamp(finite(sample?.editorRatio, 0), 0, 1);
+    const weight = Math.max(1, finite(sample?.renderedHeight, 1));
+    weighted += weight * (top - height * ratio);
+    total += weight;
+  }
+  return total > 0 ? weighted / total : null;
+}
+
 /** 어떤 anchor든 모델의 행 수 안으로 접는다. */
 export function clampAnchor(anchor: ViewportAnchor, lineCount: number): ViewportAnchor {
   const total = Math.max(1, Math.round(finite(lineCount, 1)));

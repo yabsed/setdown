@@ -31,6 +31,7 @@ import {
   clamp,
   clampAnchor,
   resolveEditorViewport,
+  type BandLine,
   type EditorCursorProbe,
   type ViewportAnchor,
 } from '../shared/viewport-anchor';
@@ -1068,6 +1069,7 @@ function requestPreviewPosition(
   targetTabId: string = activeTabId ?? '',
   targetLineCount: number = model?.getLineCount() ?? 1,
   settle = true,
+  band: BandLine[] = [],
 ): Promise<boolean> {
   const revealed = clampAnchor(target, targetLineCount);
   const requestId = ++previewPositionRequest;
@@ -1097,6 +1099,7 @@ function requestPreviewPosition(
       command: 'marktex:position-preview',
       sourceLine: revealed.sourceLine,
       topRatio: revealed.yRatio,
+      band,
       requestId,
       settle,
     });
@@ -1254,11 +1257,32 @@ function visibleCursorProbe(): EditorCursorProbe | null {
 }
 
 /**
- * Editor에서 Viewer로. 화면 안에 cursor가 있으면 그 자리를 그대로 옮기고,
- * 없으면 사용자가 보고 있던 화면을 옮긴다.
+ * Editor에 보이는 모든 줄과 그 줄의 화면 비율. Preview는 이 띠의 무게중심에
+ * 선다. 맨 위 줄만, 혹은 기준선 한 줄만 맞추면 반대쪽 끝이 밀려난다.
  */
-function editorViewportAnchor(): ViewportAnchor {
-  if (!model) return anchor;
+function editorViewportBand(): BandLine[] {
+  if (!model) return [];
+  const height = editor.getLayoutInfo().height;
+  if (height <= 0) return [];
+  const scrollTop = editor.getScrollTop();
+  const band: BandLine[] = [];
+  for (const range of editor.getVisibleRanges()) {
+    for (let line = range.startLineNumber; line <= range.endLineNumber; line += 1) {
+      band.push({
+        sourceLine: line,
+        yRatio: clamp((editor.getTopForLineNumber(line) - scrollTop) / height, 0, 1),
+      });
+    }
+  }
+  return band;
+}
+
+/**
+ * Editor에서 Viewer로. 화면 안에 cursor가 있으면 그 한 자리를 그대로 옮기고,
+ * 없으면 보고 있던 띠 전체를 무게중심으로 옮긴다.
+ */
+function editorViewport(): { anchor: ViewportAnchor; band: BandLine[] } {
+  if (!model) return { anchor, band: [] };
   const node = editor.getDomNode();
   const yRatio = GOLDEN_TOP_RATIO;
   let probedLine: number | null = null;
@@ -1271,31 +1295,42 @@ function editorViewportAnchor(): ViewportAnchor {
     );
     probedLine = target?.position?.lineNumber ?? null;
   }
-  return resolveEditorViewport({
-    probedLine,
-    firstVisibleLine: editor.getVisibleRanges()[0]?.startLineNumber ?? null,
-    lineCount: model.getLineCount(),
-    yRatio,
-    cursor: visibleCursorProbe(),
-  });
+  const cursor = visibleCursorProbe();
+  return {
+    anchor: resolveEditorViewport({
+      probedLine,
+      firstVisibleLine: editor.getVisibleRanges()[0]?.startLineNumber ?? null,
+      lineCount: model.getLineCount(),
+      yRatio,
+      cursor,
+    }),
+    // cursor가 보이면 그 한 점이 정답이다. 평균으로 흐리지 않는다.
+    band: cursor ? [] : editorViewportBand(),
+  };
+}
+
+function editorViewportAnchor(): ViewportAnchor {
+  return editorViewport().anchor;
 }
 
 async function enterViewer() {
   if (!model) return;
   const transitionStartedAt = performance.now();
-  anchor = editorViewportAnchor();
+  const viewport = editorViewport();
+  anchor = viewport.anchor;
   publishAnchor();
   cancelScheduledPreview();
   const generation = previewGeneration;
   const targetRevision = revision;
   const targetAnchor = anchor;
+  const targetBand = viewport.band;
   const availableRevision = previewCoordinator.readyRevision;
 
   // 전환은 렌더나 위치 acknowledgement의 결과가 아니다. 이미 살아 있는
   // Preview를 즉시 노출하고, 최신 revision은 뒤에서 원자적으로 교체한다.
   if (availableRevision !== null) {
     void requestPreviewPosition(targetAnchor, availableRevision, activeTabId ?? '',
-      model.getLineCount(), false);
+      model.getLineCount(), false, targetBand);
   }
   setSurface('viewer');
   window.requestAnimationFrame(() => {
@@ -1304,7 +1339,7 @@ async function enterViewer() {
   void ensurePreview(targetRevision).then((ready) => {
     if (!ready || generation !== previewGeneration || revision !== targetRevision) return;
     void requestPreviewPosition(targetAnchor, targetRevision, activeTabId ?? '',
-      model?.getLineCount() ?? 1, false);
+      model?.getLineCount() ?? 1, false, targetBand);
   });
 }
 
@@ -1315,7 +1350,8 @@ editor.onDidScrollChange((event) => {
   editorPreviewPositionFrame = window.requestAnimationFrame(() => {
     editorPreviewPositionFrame = null;
     if (surface !== 'editor' || !model || !activeTabId) return;
-    anchor = editorViewportAnchor();
+    const viewport = editorViewport();
+    anchor = viewport.anchor;
     publishAnchor();
     const availableRevision = previewCoordinator.readyRevision;
     if (availableRevision === null) return;
@@ -1324,6 +1360,7 @@ editor.onDidScrollChange((event) => {
       command: 'marktex:position-preview',
       sourceLine: revealed.sourceLine,
       topRatio: revealed.yRatio,
+      band: viewport.band,
       settle: false,
     });
   });

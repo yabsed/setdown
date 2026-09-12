@@ -7,9 +7,12 @@
  */
 import {
   GOLDEN_TOP_RATIO,
+  resolveBandScrollTop,
   resolveViewerPoint,
+  type BandLine,
   type SourceCandidate,
   type ViewportAnchor,
+  type ViewportBandSample,
 } from '../shared/viewport-anchor';
 
 type BridgeConfig = {
@@ -166,19 +169,40 @@ function invalidateAtlas() {
   atlasStale = true;
 }
 
-function positionPreview(sourceLine: number, topRatio: number) {
-  invalidateAtlas();
-  const entries = getAtlas();
-  const ratio = Math.min(1, Math.max(0, topRatio));
-  let targetTop: number;
+/** 이 줄을 실제로 담고 있는 entry. 스냅하지 않는다. */
+function containingEntry(entries: AtlasEntry[], sourceLine: number): AtlasEntry | undefined {
+  return entries.find((entry) =>
+    entry.line <= sourceLine && (entry.endLine ?? entry.line) >= sourceLine,
+  );
+}
 
+/** 두 좌표계에서 위치를 모두 아는 줄만 표본으로 남긴다. */
+function bandSamples(entries: AtlasEntry[], band: BandLine[]): ViewportBandSample[] {
+  const samples: ViewportBandSample[] = [];
+  for (const line of band) {
+    const entry = containingEntry(entries, line.sourceLine);
+    if (!entry) continue;
+    samples.push({
+      renderedTop: entry.rect.top,
+      renderedHeight: entry.rect.bottom - entry.rect.top,
+      editorRatio: line.yRatio,
+    });
+  }
+  return samples;
+}
+
+/** 줄 하나를 화면의 주어진 비율에 고정한다. */
+function singleLineScrollTop(
+  entries: AtlasEntry[],
+  sourceLine: number,
+  ratio: number,
+): number {
+  let targetTop: number;
   if (entries.length > 0) {
-    const containing = entries.find((entry) =>
-      entry.line <= sourceLine && (entry.endLine ?? entry.line) >= sourceLine,
-    );
-    const nearest = containing ?? entries.reduce((best, entry) =>
-      Math.abs(entry.line - sourceLine) < Math.abs(best.line - sourceLine) ? entry : best,
-    );
+    const nearest = containingEntry(entries, sourceLine)
+      ?? entries.reduce((best, entry) =>
+        Math.abs(entry.line - sourceLine) < Math.abs(best.line - sourceLine) ? entry : best,
+      );
     targetTop = nearest.rect.top;
   } else {
     const documentHeight = Math.max(
@@ -190,12 +214,43 @@ function positionPreview(sourceLine: number, topRatio: number) {
       : (sourceLine - 1) / (config.totalLineCount - 1);
     targetTop = documentHeight * sourceRatio;
   }
+  return targetTop - (window.innerHeight || 1) * ratio;
+}
+
+/** host가 보낸 띠를 신뢰하지 않고 읽는다. 망가져 있으면 빈 띠다. */
+function readBand(value: unknown): BandLine[] {
+  if (!Array.isArray(value)) return [];
+  const band: BandLine[] = [];
+  for (const item of value) {
+    const sourceLine = Number((item as BandLine)?.sourceLine);
+    const yRatio = Number((item as BandLine)?.yRatio);
+    if (!Number.isFinite(sourceLine) || sourceLine < 1) continue;
+    if (!Number.isFinite(yRatio)) continue;
+    band.push({
+      sourceLine: Math.min(config.totalLineCount, Math.round(sourceLine)),
+      yRatio: Math.min(1, Math.max(0, yRatio)),
+    });
+  }
+  return band;
+}
+
+function positionPreview(sourceLine: number, topRatio: number, band: BandLine[] = []) {
+  invalidateAtlas();
+  const entries = getAtlas();
+  const ratio = Math.min(1, Math.max(0, topRatio));
+
+  // 띠를 받았으면 무게중심으로 맞춘다. cursor가 화면에 있을 때는 host가 띠를
+  // 보내지 않는다. 그 한 점이 사용자의 관심이고, 평균으로 흐리면 안 된다.
+  const target = resolveBandScrollTop(
+    bandSamples(entries, band),
+    window.innerHeight || 1,
+  ) ?? singleLineScrollTop(entries, sourceLine, ratio);
 
   const maximum = Math.max(
     0,
     (document.documentElement.scrollHeight || 0) - (window.innerHeight || 1),
   );
-  const scrollTop = Math.min(maximum, Math.max(0, targetTop - window.innerHeight * ratio));
+  const scrollTop = Math.min(maximum, Math.max(0, target));
   document.documentElement.scrollTop = scrollTop;
   document.body.scrollTop = scrollTop;
 }
@@ -743,6 +798,7 @@ window.addEventListener('message', (event) => {
     command?: string;
     topRatio?: number;
     sourceLine?: number;
+    band?: unknown;
     scrollRatio?: number;
     requestId?: number;
     settle?: boolean;
@@ -870,8 +926,9 @@ window.addEventListener('message', (event) => {
       Math.max(1, Number(data.sourceLine) || 1),
     );
     const ratio = Number.isFinite(data.topRatio) ? Number(data.topRatio) : GOLDEN_TOP_RATIO;
+    const band = readBand(data.band);
     if (data.settle === false) {
-      positionPreview(sourceLine, ratio);
+      positionPreview(sourceLine, ratio, band);
       window.requestAnimationFrame(() => send({
         type: 'marktex:preview-positioned',
         revision: config.revision,
@@ -888,7 +945,7 @@ window.addEventListener('message', (event) => {
       finished = true;
       if (settleTimer !== null) window.clearTimeout(settleTimer);
       observer?.disconnect();
-      positionPreview(sourceLine, ratio);
+      positionPreview(sourceLine, ratio, band);
       window.requestAnimationFrame(() => send({
         type: 'marktex:preview-positioned',
         revision: config.revision,
@@ -897,7 +954,7 @@ window.addEventListener('message', (event) => {
     };
     const applyAndSettle = () => {
       if (finished) return;
-      positionPreview(sourceLine, ratio);
+      positionPreview(sourceLine, ratio, band);
       if (settleTimer !== null) window.clearTimeout(settleTimer);
       settleTimer = window.setTimeout(finish, 180);
     };

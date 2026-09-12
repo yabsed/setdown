@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import {
   clampAnchor,
+  resolveBandScrollTop,
   resolveEditorViewport,
   resolveViewerPoint,
   type SourceCandidate,
@@ -269,6 +270,59 @@ describe('Esc: 화면 안의 cursor가 우선이다', () => {
       yRatio: 0.372,
     });
     expect(anchor.sourceLine).toBe(1);
+  });
+});
+
+describe('resolveBandScrollTop: 가시 띠의 무게중심', () => {
+  test('표본이 하나면 그 줄을 제 비율에 고정한다', () => {
+    const scrollTop = resolveBandScrollTop(
+      [{ renderedTop: 1000, renderedHeight: 20, editorRatio: 0.4 }],
+      800,
+    );
+    expect(scrollTop).toBe(1000 - 800 * 0.4);
+  });
+
+  test('줄 높이가 어긋나면 오차를 띠 전체에 나눈다', () => {
+    // Editor는 두 줄을 0.0과 1.0에 두었는데 Preview는 1600px 떨어뜨렸다.
+    // 한 줄만 고정하면 반대쪽 끝이 800px 밀린다. 무게중심은 양쪽을 400px씩
+    // 나눠 가진다.
+    const samples = [
+      { renderedTop: 1000, renderedHeight: 100, editorRatio: 0 },
+      { renderedTop: 2600, renderedHeight: 100, editorRatio: 1 },
+    ];
+    const scrollTop = resolveBandScrollTop(samples, 800)!;
+    expect(scrollTop).toBe(1400);
+    expect(1000 - scrollTop).toBe(-400);
+    expect(2600 - scrollTop - 800).toBe(400);
+  });
+
+  test('렌더 높이가 큰 block이 짧은 줄 여럿에 밀리지 않는다', () => {
+    const tall = { renderedTop: 1000, renderedHeight: 600, editorRatio: 0 };
+    const shorts = [0.5, 0.6, 0.7].map((editorRatio) => ({
+      renderedTop: 2000, renderedHeight: 20, editorRatio,
+    }));
+    const scrollTop = resolveBandScrollTop([tall, ...shorts], 800)!;
+    // 가중치가 같다면 1000쪽에서 훨씬 멀어진다.
+    const unweighted = resolveBandScrollTop(
+      [tall, ...shorts].map((sample) => ({ ...sample, renderedHeight: 1 })),
+      800,
+    )!;
+    expect(Math.abs(scrollTop - 1000)).toBeLessThan(Math.abs(unweighted - 1000));
+  });
+
+  test('표본이 없으면 null이다', () => {
+    expect(resolveBandScrollTop([], 800)).toBeNull();
+    expect(resolveBandScrollTop(
+      [{ renderedTop: Number.NaN, renderedHeight: 20, editorRatio: 0.5 }],
+      800,
+    )).toBeNull();
+  });
+
+  test('망가진 비율은 0~1로 접는다', () => {
+    expect(resolveBandScrollTop(
+      [{ renderedTop: 1000, renderedHeight: 20, editorRatio: 9 }],
+      800,
+    )).toBe(200);
   });
 });
 
