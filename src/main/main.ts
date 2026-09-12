@@ -55,6 +55,11 @@ import {
 import { themeProfile } from '../shared/theme-catalog';
 import { applyTextRevision, isDirty, lineCount } from '../shared/document-state';
 import type { BandLine } from '../shared/viewport-anchor';
+import {
+  diffPreviewBlocks,
+  splitPreviewBlocks,
+  type PreviewBlock,
+} from '../shared/preview-blocks';
 import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
 import {
   isSupportedImagePath,
@@ -116,6 +121,14 @@ type PreviewViewState = {
   pendingScrollRatio: number | null;
   /** 마지막으로 실제 적용한 bounds. 같은 값을 다시 밀지 않는다. */
   appliedBounds: Electron.Rectangle | null;
+  /**
+   * 이 Preview에 지금 설치되어 있는 최상위 블록들.
+   *
+   * 다음 갱신 때 이것과 대조해 바뀐 구간만 보낸다. 한 줄을 고쳤을 때 실제로
+   * 달라지는 것은 100여 개 중 하나뿐이라, 문서를 통째로 다시 심는 1~2초를
+   * 한 요소 교체로 바꾼다.
+   */
+  installedBlocks: PreviewBlock[] | null;
 };
 const previewViews = new Map<string, PreviewViewState>();
 const previewUpdateWaiters = new Map<string, () => void>();
@@ -1337,6 +1350,7 @@ function installIpc() {
       pendingScrollPosition: null,
       pendingScrollRatio: null,
       appliedBounds: null,
+      installedBlocks: null,
     });
     view.webContents.on('before-input-event', (inputEvent, input) => {
       if (input.type === 'keyDown' && input.key === 'Escape') {
@@ -1380,6 +1394,22 @@ function installIpc() {
       && typeof result?.html === 'string'
     ) {
       const revision = Math.max(0, Number(result.revision) || 0);
+      const totalLineCount = Math.max(1, Number(result.totalLineCount) || 1);
+      const baseHref = typeof result.baseHref === 'string' ? result.baseHref : '';
+      const blocks = splitPreviewBlocks(result.html);
+      const patch = preview.installedBlocks
+        ? diffPreviewBlocks(preview.installedBlocks, blocks)
+        : undefined;
+
+      // 바뀐 것이 없으면 아무것도 보내지 않는다.
+      if (patch === null) {
+        preview.installedBlocks = blocks;
+        preview.view.webContents.send('preview:command', {
+          command: 'marktex:sync-config', totalLineCount, revision, baseHref,
+        });
+        return;
+      }
+
       const waiterKey = `${String(tabId)}:${revision}`;
       const updated = new Promise<void>((resolve) => {
         const timeout = setTimeout(() => {
@@ -1392,16 +1422,26 @@ function installIpc() {
           resolve();
         });
       });
-      preview.view.webContents.send('preview:command', {
-        command: 'marktex:update-html',
-        html: result.html,
-        markdown: String(result.markdown ?? ''),
-        totalLineCount: Math.max(1, Number(result.totalLineCount) || 1),
-        revision,
-        // 예비 view는 다른 문서의 base를 갖고 있다. 함께 옮기지 않으면
-        // 상대 경로 이미지가 엉뚱한 폴더를 가리킨다.
-        baseHref: typeof result.baseHref === 'string' ? result.baseHref : '',
-      });
+      preview.view.webContents.send('preview:command', patch
+        ? {
+          command: 'marktex:patch-blocks',
+          ...patch,
+          markdown: String(result.markdown ?? ''),
+          totalLineCount,
+          revision,
+          baseHref,
+        }
+        : {
+          command: 'marktex:update-html',
+          html: result.html,
+          markdown: String(result.markdown ?? ''),
+          totalLineCount,
+          revision,
+          // 예비 view는 다른 문서의 base를 갖고 있다. 함께 옮기지 않으면
+          // 상대 경로 이미지가 엉뚱한 폴더를 가리킨다.
+          baseHref,
+        });
+      preview.installedBlocks = blocks;
       await updated;
       // 다음 탭이 쓸 예비를 채운다. 첫 문서를 실은 뒤에야 본문을 비울
       // template이 생기므로, create 시점이 아니라 여기서도 확인한다.
@@ -1409,6 +1449,9 @@ function installIpc() {
       return;
     }
     await preview.view.webContents.loadURL(previewUrl);
+    preview.installedBlocks = typeof result?.html === 'string'
+      ? splitPreviewBlocks(result.html)
+      : null;
     setImmediate(() => ensureSparePreview(event.sender.id));
   });
 

@@ -229,6 +229,52 @@ function singleLineScrollTop(
   return targetTop - (window.innerHeight || 1) * ratio;
 }
 
+/** 예비 view를 넘겨받았을 때 등, base가 다른 문서를 가리키면 옮긴다. */
+function applyBaseHref(value: unknown) {
+  if (typeof value !== 'string' || !value.startsWith('marktex-resource://')) return;
+  const base = document.querySelector('base');
+  if (base) base.setAttribute('href', value);
+}
+
+/**
+ * 줄이 밀린 블록의 source 좌표를 델타만큼 옮긴다.
+ *
+ * 내용은 그대로이므로 다시 조판하지 않는다. 속성만 고치면 되고, 그래야
+ * atlas가 가리키는 행과 실제 원문이 계속 맞는다.
+ */
+function shiftSourceLines(root: Element, delta: number) {
+  const shiftPair = (value: string | null, separator: string): string | null => {
+    if (!value) return null;
+    const parts = value.split(separator);
+    const first = Number(parts[0]);
+    if (!Number.isFinite(first)) return null;
+    parts[0] = String(Math.max(1, first + delta));
+    return parts.join(separator);
+  };
+  const apply = (element: Element) => {
+    const line = Number(element.getAttribute('data-source-line'));
+    if (Number.isFinite(line)) {
+      element.setAttribute('data-source-line', String(Math.max(1, line + delta)));
+    }
+    const lines = element.getAttribute('data-source-lines');
+    if (lines) {
+      const [start, end] = lines.split('-').map(Number);
+      if (Number.isFinite(start) && Number.isFinite(end)) {
+        element.setAttribute(
+          'data-source-lines',
+          `${Math.max(1, start + delta)}-${Math.max(1, end + delta)}`,
+        );
+      }
+    }
+    for (const name of ['data-source-start', 'data-source-end']) {
+      const shifted = shiftPair(element.getAttribute(name), ':');
+      if (shifted !== null) element.setAttribute(name, shifted);
+    }
+  };
+  if (root.matches(ANCHOR_SELECTOR)) apply(root);
+  root.querySelectorAll(ANCHOR_SELECTOR).forEach(apply);
+}
+
 /** host가 보낸 띠를 신뢰하지 않고 읽는다. 망가져 있으면 빈 띠다. */
 function readBand(value: unknown): BandLine[] {
   if (!Array.isArray(value)) return [];
@@ -814,6 +860,10 @@ window.addEventListener('message', (event) => {
     topRatio?: number;
     sourceLine?: number;
     band?: unknown;
+    from?: number;
+    removeCount?: number;
+    insertCount?: number;
+    lineDelta?: number;
     scrollRatio?: number;
     requestId?: number;
     settle?: boolean;
@@ -826,6 +876,50 @@ window.addEventListener('message', (event) => {
     codeCssUrl?: string;
   } | null;
   if (!data) return;
+  if (data.command === 'marktex:sync-config') {
+    const update = data as typeof data & { totalLineCount?: number; revision?: number };
+    config.totalLineCount = Math.max(1, Number(update.totalLineCount) || 1);
+    config.revision = Math.max(0, Number(update.revision) || 0);
+    applyBaseHref((data as typeof data & { baseHref?: string }).baseHref);
+    send({ type: 'marktex:html-updated', revision: config.revision });
+    return;
+  }
+  if (data.command === 'marktex:patch-blocks') {
+    const update = data as typeof data & {
+      html?: string; markdown?: string; totalLineCount?: number;
+      revision?: number; baseHref?: string;
+    };
+    config.totalLineCount = Math.max(1, Number(update.totalLineCount) || 1);
+    config.revision = Math.max(0, Number(update.revision) || 0);
+    applyBaseHref(update.baseHref);
+    const root = document.querySelector(PREVIEW_SELECTOR);
+    if (root) {
+      const children = Array.from(root.children);
+      const from = Math.min(Math.max(0, Math.round(Number(update.from) || 0)), children.length);
+      const removeCount = Math.min(
+        Math.max(0, Math.round(Number(update.removeCount) || 0)),
+        children.length - from,
+      );
+      const holder = document.createElement('template');
+      holder.innerHTML = String(update.html ?? '');
+      const inserted = Array.from(holder.content.children);
+      // 지우기 전에 기준점을 잡아 둔다. 지우고 나면 위치를 잃는다.
+      const anchor = children[from + removeCount] ?? null;
+      for (let index = 0; index < removeCount; index += 1) children[from + index].remove();
+      for (const node of inserted) root.insertBefore(node, anchor);
+
+      const delta = Math.round(Number(update.lineDelta) || 0);
+      if (delta !== 0) {
+        const rest = Array.from(root.children).slice(from + inserted.length);
+        for (const element of rest) shiftSourceLines(element, delta);
+      }
+    }
+    invalidateAtlas();
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+      send({ type: 'marktex:html-updated', revision: config.revision });
+    }));
+    return;
+  }
   if (data.command === 'marktex:update-html') {
     const update = data as typeof data & {
       html?: string;
@@ -836,11 +930,7 @@ window.addEventListener('message', (event) => {
     };
     // 부팅만 해 둔 예비 Preview를 넘겨받았으면 base가 이전 문서의 폴더다.
     // 새 본문을 심기 전에 옮겨야 상대 경로 자산이 제 폴더에서 풀린다.
-    if (typeof update.baseHref === 'string'
-      && update.baseHref.startsWith('marktex-resource://')) {
-      const base = document.querySelector('base');
-      if (base) base.setAttribute('href', update.baseHref);
-    }
+    applyBaseHref(update.baseHref);
     const sequence = ++htmlUpdateSequence;
     const updateRevision = Math.max(0, Number(update.revision) || 0);
     config.totalLineCount = Math.max(1, Number(update.totalLineCount) || 1);
