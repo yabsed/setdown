@@ -1322,6 +1322,8 @@ function installIpc() {
     });
     // 이미 보이는 view를 다시 부모에 붙이면 compositor가 surface를 버린다.
     if (!shown.view.getVisible()) {
+      // 다시 드러나는 첫 frame이 흰색으로 칠해지지 않게 한다.
+      shown.view.setBackgroundColor(previewThemeBackground(globalPreviewTheme));
       owner.contentView.addChildView(shown.view);
       shown.view.setVisible(true);
     }
@@ -1478,6 +1480,11 @@ function installIpc() {
     preview.ownerWebContentsId = event.sender.id;
     // 새 창의 좌표계에서는 기억한 bounds가 의미 없다.
     preview.appliedBounds = null;
+    // reparent 뒤 compositor가 surface를 다시 만들면서 첫 frame을 배경색으로
+    // 칠한다. 기본값은 흰색이므로 테마 색을 다시 못박아 흰 섬광을 없앤다.
+    preview.view.setBackgroundColor(previewThemeBackground(
+      transfer.tab.previewTheme ?? globalPreviewTheme,
+    ));
     preview.pendingScrollPosition = scroll;
     preview.pendingScrollRatio = Number.isFinite(Number(transfer.tab.viewerScrollRatio))
       ? Math.max(0, Math.min(1, Number(transfer.tab.viewerScrollRatio)))

@@ -548,12 +548,19 @@ function destroyPreview(tabId: string) {
 let previewFreezeDepth = 0;
 let previewFreezeToken = 0;
 
+/**
+ * 다른 창에서 인계받은 탭이 화면에 놓이기 전까지. 빈 창을 흰 화면으로
+ * 보여 주지 않고 조판 중임을 알린다.
+ */
+let awaitingTransferredPreview = false;
+
 function syncPreviewView() {
   const tab = activeTab();
   const visible = !!tab
     && surface === 'viewer'
     && !!tab.previewUrl
-    && previewFreezeDepth === 0;
+    && previewFreezeDepth === 0
+    && !awaitingTransferredPreview;
   if (!visible || !tab) {
     window.marktex.showPreview(null, null);
     return;
@@ -991,11 +998,13 @@ function schedulePreview(targetRevision: number) {
 }
 
 function updatePreviewUi() {
-  const refreshing = surface === 'viewer'
-    && previewCoordinator.isRendering
-    && previewCoordinator.readyRevision !== revision;
+  const refreshing = awaitingTransferredPreview
+    || (surface === 'viewer'
+      && previewCoordinator.isRendering
+      && previewCoordinator.readyRevision !== revision);
   renderState.hidden = !refreshing;
-  renderState.dataset.variant = previewCoordinator.readyRevision === null
+  renderState.dataset.variant = awaitingTransferredPreview
+    || previewCoordinator.readyRevision === null
     ? 'blocking'
     : 'refresh';
 
@@ -1190,7 +1199,23 @@ async function showDocument(
 
 async function installTransferredTab(transfer: ClaimedTabTransfer) {
   const incoming = transfer.tab;
-  if (!await window.marktex.adoptTabTransfer(transfer.transferId)) return;
+  // 빈 창이 인계받는 경우에만 알린다. 이미 문서를 보여 주고 있는 창을
+  // 덮어 가리면 그게 더 나쁘다.
+  const announceTypesetting = tabs.length === 0;
+  const finishAnnouncement = () => {
+    if (!announceTypesetting || !awaitingTransferredPreview) return;
+    awaitingTransferredPreview = false;
+    updatePreviewUi();
+  };
+  if (announceTypesetting) {
+    awaitingTransferredPreview = true;
+    // 빈 상태 화면 대신 Viewer를 띄운다. 조판 안내는 그 위에 올라간다.
+    setSurface('viewer');
+  }
+  if (!await window.marktex.adoptTabTransfer(transfer.transferId)) {
+    finishAnnouncement();
+    return;
+  }
   shell.dataset.lastTransferUsedSnapshot = 'false';
   const restoredDocument: DocumentSnapshot = {
     ...incoming.document,
@@ -1220,16 +1245,20 @@ async function installTransferredTab(transfer: ClaimedTabTransfer) {
   renderTabs();
   await activateTab(restored.id);
   syncPreviewView();
-  if (restored.surface === 'viewer' && restored.previewRevision !== null) {
-    void requestPreviewPosition(
+  // 위치를 잡는 동안에도 transfer의 handshake는 기다리지 않는다. 안내만
+  // 위치가 확정될 때까지 남겨 둔다.
+  const positioned = restored.surface === 'viewer' && restored.previewRevision !== null
+    ? requestPreviewPosition(
       restored.anchor,
       restored.previewRevision,
       restored.id,
       restored.model.getLineCount(),
       false,
-    );
-  }
+    )
+    : Promise.resolve(true);
   window.marktex.completeTabTransfer(transfer.transferId);
+  // requestPreviewPosition은 응답이 없어도 1초 뒤 반드시 끝난다.
+  void positioned.then(finishAnnouncement);
 }
 
 async function reloadActiveDocument(documentSnapshot: DocumentSnapshot) {
