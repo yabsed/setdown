@@ -295,6 +295,7 @@ type DocumentTab = {
   previewUrl: string | null;
   previewRevision: number | null;
   previewTheme: PreviewThemeId | null;
+  tocOpen: boolean;
   editorViewState: monaco.editor.ICodeEditorViewState | null;
   viewerScrollRatio: number | null;
   headings: PreviewHeading[];
@@ -307,30 +308,8 @@ type DocumentTab = {
   };
 };
 
-const READER_PREFERENCES_KEY = 'setdown.readerPreferences';
-
-function loadReaderPreferences(): { tocOpen: boolean; themeId: PreviewThemeId } {
-  try {
-    const value = JSON.parse(localStorage.getItem(READER_PREFERENCES_KEY) ?? '{}') as {
-      tocOpen?: unknown;
-    };
-    return {
-      tocOpen: value.tocOpen === true,
-      // Preview theme의 authority는 main process의 app-global setting이다.
-      themeId: initialTheme.id,
-    };
-  } catch {
-    return { tocOpen: false, themeId: initialTheme.id };
-  }
-}
-
-const readerPreferences = loadReaderPreferences();
-
-function saveReaderPreferences() {
-  localStorage.setItem(READER_PREFERENCES_KEY, JSON.stringify({
-    tocOpen: readerPreferences.tocOpen,
-  }));
-}
+// 테마만 app-global authority를 따른다. 목차는 문서 탭의 작업 상태다.
+const readerPreferences = { themeId: initialTheme.id };
 
 const tabs: DocumentTab[] = [];
 let activeTabId: string | null = null;
@@ -445,12 +424,13 @@ function renderToc(tab: DocumentTab | null) {
 function syncReaderUi() {
   const tab = activeTab();
   const viewerVisible = surface === 'viewer';
-  shell.dataset.tocOpen = readerPreferences.tocOpen && viewerVisible ? 'true' : 'false';
-  tocPanel.hidden = !readerPreferences.tocOpen || !viewerVisible;
-  tocToggle.setAttribute('aria-expanded', String(readerPreferences.tocOpen));
-  tocToggle.title = readerPreferences.tocOpen ? '목차 닫기' : '목차 열기';
+  const tocOpen = !!tab?.tocOpen;
+  shell.dataset.tocOpen = tocOpen && viewerVisible ? 'true' : 'false';
+  tocPanel.hidden = !tocOpen || !viewerVisible;
+  tocToggle.setAttribute('aria-expanded', String(tocOpen));
+  tocToggle.title = tocOpen ? '목차 닫기' : '목차 열기';
   tocToggle.setAttribute('aria-label', tocToggle.title);
-  tocToggle.classList.toggle('is-active', readerPreferences.tocOpen);
+  tocToggle.classList.toggle('is-active', tocOpen);
   previewSearch.hidden = !tab?.find.open || !viewerVisible;
   shell.dataset.findOpen = tab?.find.open && viewerVisible ? 'true' : 'false';
   if (tab && findInput.value !== tab.find.query) findInput.value = tab.find.query;
@@ -606,6 +586,7 @@ async function loadPreview(
   url: string,
   target?: ViewportAnchor,
   targetRevision?: number,
+  enforceGlobalTheme = false,
 ): Promise<void> {
   const frame = previewFrameByTab.get(tabId);
   if (!frame) throw new Error('Preview frame does not exist.');
@@ -657,6 +638,34 @@ async function loadPreview(
   if (frame.loadSequence !== sequence || frame.loadingElement !== loadingElement) {
     loadingElement.remove();
     throw new Error('A newer Preview replaced this load.');
+  }
+  if (enforceGlobalTheme && targetRevision !== undefined) {
+    let preparedTheme: PreviewThemeId | null = null;
+    while (preparedTheme !== readerPreferences.themeId) {
+      const requestedTheme: PreviewThemeId = readerPreferences.themeId;
+      const assets: PreviewThemeAssets = currentPreviewThemeAssets?.themeId === requestedTheme
+        ? currentPreviewThemeAssets
+        : await window.marktex.getPreviewThemeAssets(requestedTheme);
+      if (frame.loadSequence !== sequence || frame.loadingElement !== loadingElement) {
+        loadingElement.remove();
+        throw new Error('A newer Preview replaced this load.');
+      }
+      if (assets.themeId !== readerPreferences.themeId) continue;
+      const applied = await requestPreviewElementTheme(
+        tabId,
+        loadingElement,
+        parsed.origin,
+        assets,
+        targetRevision,
+      );
+      if (!applied) {
+        loadingElement.remove();
+        frame.loadingElement = null;
+        frame.loadingOrigin = null;
+        throw new Error('The global Preview theme could not be applied.');
+      }
+      preparedTheme = assets.themeId;
+    }
   }
   if (target && targetRevision !== undefined) {
     await requestPreviewElementPosition(
@@ -747,6 +756,7 @@ function transferableTab(tab: DocumentTab): TransferableTab {
     previewUrl: tab.previewUrl,
     previewRevision: tab.previewRevision,
     previewTheme: tab.previewTheme,
+    tocOpen: tab.tocOpen,
   };
 }
 
@@ -1321,6 +1331,42 @@ function requestPreviewElementPosition(
   });
 }
 
+function requestPreviewElementTheme(
+  tabId: string,
+  element: HTMLIFrameElement,
+  origin: string,
+  assets: PreviewThemeAssets,
+  targetRevision: number,
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      previewMessageListeners.delete(handleMessage);
+      window.clearTimeout(timeout);
+    };
+    const handleMessage = (payload: { tabId: string; message: Record<string, unknown> }) => {
+      const message = payload.message;
+      if (
+        payload.tabId !== tabId
+        || message.source !== 'crossnote'
+        || message.type !== 'marktex:theme-applied'
+        || message.revision !== targetRevision
+        || message.themeId !== assets.themeId
+      ) return;
+      cleanup();
+      resolve(true);
+    };
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      resolve(false);
+    }, 5000);
+    previewMessageListeners.add(handleMessage);
+    element.contentWindow?.postMessage({
+      command: 'marktex:apply-theme',
+      ...assets,
+    }, origin);
+  });
+}
+
 async function showDocument(
   documentSnapshot: DocumentSnapshot,
   initialSurface: 'viewer' | 'editor' = 'viewer',
@@ -1352,6 +1398,7 @@ async function showDocument(
     previewUrl: null,
     previewRevision: null,
     previewTheme: null,
+    tocOpen: false,
     editorViewState: null,
     viewerScrollRatio: null,
     headings: [],
@@ -1382,6 +1429,7 @@ async function installTransferredTab(transfer: ClaimedTabTransfer) {
     previewUrl: incoming.previewUrl,
     previewRevision: incoming.previewRevision,
     previewTheme: incoming.previewTheme,
+    tocOpen: incoming.tocOpen === true,
     editorViewState: incoming.editorViewState as monaco.editor.ICodeEditorViewState | null,
     viewerScrollRatio: incoming.viewerScrollRatio,
     headings: [],
@@ -1406,11 +1454,16 @@ async function installTransferredTab(transfer: ClaimedTabTransfer) {
   let previewReady = false;
   if (canReusePreview) {
     try {
+      // 전송 payload의 theme 표시는 참고값일 뿐이다. 대상 창은 매번 main
+      // process의 app-global authority에 재수렴한 뒤 iframe을 승격한다.
+      const authoritativeTheme = await window.marktex.getTheme();
+      await applyProductTheme(authoritativeTheme, true);
       await loadPreview(
         restored.id,
         restored.previewUrl!,
         restored.anchor,
         restored.revision,
+        true,
       );
       previewReady = true;
     } catch {
@@ -2025,12 +2078,13 @@ modeToggle.addEventListener('click', () => {
   else if (surface === 'editor') void enterViewer();
 });
 tocToggle.addEventListener('click', () => {
-  readerPreferences.tocOpen = !readerPreferences.tocOpen;
-  saveReaderPreferences();
+  const tab = activeTab();
+  if (!tab) return;
+  tab.tocOpen = !tab.tocOpen;
   syncReaderUi();
   // iframe은 reader-body의 실제 flex child이므로 이 변경과 같은 layout에 참여한다.
   syncPreviewView();
-  if (readerPreferences.tocOpen && activeTabId) {
+  if (tab.tocOpen && activeTabId) {
     sendPreviewCommand(activeTabId, { command: 'marktex:collect-headings' });
   }
 });

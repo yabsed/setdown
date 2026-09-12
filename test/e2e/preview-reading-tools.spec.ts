@@ -134,7 +134,14 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     await expect(window.locator('.document-tab')).toHaveCount(2);
     await expect.poll(() => window.frames()
       .filter((frame) => frame.url().startsWith('marktex-preview:')).length).toBe(2);
+    await expect(window.locator('.editor-surface')).toBeVisible();
+    await window.locator('.mode-toggle').click();
+    await expect(window.locator('.viewer-surface')).toBeVisible();
+    await expect(window.locator('.toc-panel')).toBeHidden();
+    await window.locator('.mode-toggle').click();
+    await expect(window.locator('.editor-surface')).toBeVisible();
     await window.locator('.document-tab', { hasText: 'reader-tools.md' }).click();
+    await expect(window.locator('.toc-panel')).toBeVisible();
 
     const beforeUrls = await window.locator('.preview-frame').evaluateAll((frames) =>
       frames.map((frame) => (frame as HTMLIFrameElement).src));

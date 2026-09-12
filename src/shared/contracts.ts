@@ -81,6 +81,7 @@ export type TransferableTab = {
   previewUrl: string | null;
   previewRevision: number | null;
   previewTheme: PreviewThemeId | null;
+  tocOpen: boolean;
 };
 
 export type PreviewTransferBounds = {

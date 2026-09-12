@@ -35,6 +35,16 @@ test('detaching a tab restores its preview iframe at the same semantic position'
       frame.url() === activePreviewUrl)!;
     await expect.poll(() => sourcePreview.evaluate(() => window.innerHeight)).toBeGreaterThan(0);
 
+    // URL을 만든 뒤 동적으로 바꾼 전역 테마와 탭별 목차 상태가 모두
+    // transfer 경계를 넘어가는지 확인한다.
+    await application.evaluate(({ Menu }) => {
+      Menu.getApplicationMenu()?.getMenuItemById('preview-theme-night')?.click();
+    });
+    await expect.poll(() => sourcePreview.evaluate(() =>
+      document.body.dataset.setdownPreviewTheme)).toBe('night');
+    await sourceWindow.locator('.toc-toggle').click();
+    await expect(sourceWindow.locator('.toc-panel')).toBeVisible();
+
     // 실제 사용 상황과 같이 분리할 탭을 활성화한 상태에서 현재 DOM과
     // viewport를 기록한다.
     await expect.poll(() => sourcePreview.evaluate(() =>
@@ -82,6 +92,14 @@ test('detaching a tab restores its preview iframe at the same semantic position'
     await expect(detachedWindow!.locator('.preview-frame')).toHaveCount(1);
     await expect(detachedWindow!.locator('.preview-frame'))
       .toHaveAttribute('src', activePreviewUrl!);
+    await expect(detachedWindow!.locator('html')).toHaveAttribute('data-theme', 'night');
+    await expect.poll(async () => {
+      const frame = detachedWindow!.frames().find((candidate) =>
+        candidate.url().startsWith('marktex-preview:'));
+      return frame?.evaluate(() =>
+        document.body?.dataset.setdownPreviewTheme ?? '').catch(() => '') ?? '';
+    }).toBe('night');
+    await expect(detachedWindow!.locator('.toc-panel')).toBeVisible();
     const detachedPreview = detachedWindow!.frames().find((frame) =>
       frame.url().startsWith('marktex-preview:'))!;
     await expect.poll(() => detachedPreview.evaluate(() => {
