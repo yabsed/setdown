@@ -79,6 +79,17 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       .filter((frame) => frame.url().startsWith('marktex-preview:'))
       .map((frame) => frame.evaluate(() => document.body.dataset.setdownPreviewTheme || '')),
     )).toEqual(['night', 'night']);
+    await expect.poll(() => window.evaluate(() => ({
+      theme: document.documentElement.dataset.theme,
+      appearance: document.documentElement.dataset.appearance,
+      shell: getComputedStyle(document.querySelector('.shell')!).backgroundColor,
+      editor: getComputedStyle(document.querySelector('.monaco-editor')!).backgroundColor,
+    }))).toEqual({
+      theme: 'night',
+      appearance: 'dark',
+      shell: 'rgb(47, 52, 57)',
+      editor: 'rgb(54, 59, 64)',
+    });
     const afterUrls = await window.locator('.preview-frame').evaluateAll((frames) =>
       frames.map((frame) => (frame as HTMLIFrameElement).src));
     expect(afterUrls).toEqual(beforeUrls);
@@ -138,6 +149,15 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       frame.url().startsWith('marktex-preview:'))!;
     await expect.poll(() => secondFrame.evaluate(() =>
       document.body.dataset.setdownPreviewTheme || '')).toBe('night');
+    await expect.poll(() => secondWindow.evaluate(() => ({
+      theme: document.documentElement.dataset.theme,
+      shell: getComputedStyle(document.querySelector('.shell')!).backgroundColor,
+      editor: getComputedStyle(document.querySelector('.monaco-editor')!).backgroundColor,
+    }))).toEqual({
+      theme: 'night',
+      shell: 'rgb(47, 52, 57)',
+      editor: 'rgb(54, 59, 64)',
+    });
     expect(await application.evaluate(({ Menu }) =>
       Menu.getApplicationMenu()?.getMenuItemById('preview-theme-night')?.checked)).toBe(true);
     await secondWindow.close();
@@ -157,6 +177,17 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       candidate.url().startsWith('marktex-preview:'))!;
     await expect.poll(() => persistedFrame.evaluate(() =>
       document.body.dataset.setdownPreviewTheme || '')).toBe('night');
+    await expect.poll(() => restartedWindow.evaluate(() => ({
+      theme: document.documentElement.dataset.theme,
+      appearance: document.documentElement.dataset.appearance,
+      shell: getComputedStyle(document.querySelector('.shell')!).backgroundColor,
+      editor: getComputedStyle(document.querySelector('.monaco-editor')!).backgroundColor,
+    }))).toEqual({
+      theme: 'night',
+      appearance: 'dark',
+      shell: 'rgb(47, 52, 57)',
+      editor: 'rgb(54, 59, 64)',
+    });
     expect(await restartedApplication.evaluate(({ Menu }) =>
       Menu.getApplicationMenu()?.getMenuItemById('preview-theme-night')?.checked)).toBe(true);
   } finally {

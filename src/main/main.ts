@@ -37,6 +37,7 @@ import type {
   PasteImageResult,
   PickLinkTargetResult,
   TabStateSummary,
+  ThemeSnapshot,
   TransferableTab,
 } from '../shared/contracts';
 import {
@@ -48,6 +49,7 @@ import {
   previewThemeFile,
   type PreviewThemeId,
 } from '../shared/preview-preferences';
+import { themeProfile } from '../shared/theme-catalog';
 import { applyTextRevision, isDirty, lineCount } from '../shared/document-state';
 import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
 import {
@@ -147,6 +149,7 @@ type NotebookInstance = Awaited<ReturnType<CrossnoteModule['Notebook']['init']>>
 const notebookCaches = new Map<string, NotebookInstance>();
 const previewDocuments = new Map<string, string>();
 let globalPreviewTheme: PreviewThemeId = DEFAULT_PREVIEW_THEME;
+let globalThemeRevision = 0;
 
 const crossnoteEntry = require.resolve('crossnote');
 const crossnoteOut = path.resolve(path.dirname(crossnoteEntry), '..');
@@ -822,9 +825,12 @@ function saveGlobalPreviewTheme() {
 function setGlobalPreviewTheme(value: unknown) {
   const themeId = normalizePreviewTheme(value);
   globalPreviewTheme = themeId;
+  globalThemeRevision += 1;
   saveGlobalPreviewTheme();
+  const snapshot: ThemeSnapshot = { id: themeId, revision: globalThemeRevision };
   for (const state of windowStates.values()) {
-    state.window.webContents.send('app:command', `set-preview-theme:${themeId}`);
+    state.window.setBackgroundColor(themeProfile(themeId).palette.canvas);
+    state.window.webContents.send('theme:changed', snapshot);
   }
 }
 
@@ -858,7 +864,7 @@ function installMenu() {
         { type: 'separator' },
         { id: 'preview-find', label: 'Find in Preview', accelerator: 'CmdOrCtrl+F', click: () => sendCommand('open-find') },
         {
-          label: 'Preview Theme',
+          label: 'Theme',
           submenu: PREVIEW_THEMES.map((theme) => ({
             id: `preview-theme-${theme.id}`,
             label: theme.label,
@@ -899,7 +905,7 @@ function createWindow(
     ...(position ? { x: position.x, y: position.y } : {}),
     minWidth: 520,
     minHeight: 420,
-    backgroundColor: '#f7f7f5',
+    backgroundColor: themeProfile(globalPreviewTheme).palette.canvas,
     show: false,
     title: 'Setdown',
     webPreferences: {
@@ -907,6 +913,10 @@ function createWindow(
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      additionalArguments: [
+        `--setdown-theme=${globalPreviewTheme}`,
+        `--setdown-theme-revision=${globalThemeRevision}`,
+      ],
     },
   });
   const state: WindowState = {
@@ -975,11 +985,11 @@ function createWindow(
 }
 
 function installIpc() {
-  ipcMain.handle('preview:get-theme', (event) => {
+  ipcMain.handle('theme:get', (event): ThemeSnapshot => {
     if (!stateForWebContentsId(event.sender.id)) {
       throw new Error('The window no longer exists.');
     }
-    return globalPreviewTheme;
+    return { id: globalPreviewTheme, revision: globalThemeRevision };
   });
   ipcMain.handle('preview:theme-assets', (event, themeId) => {
     if (!stateForWebContentsId(event.sender.id)) {

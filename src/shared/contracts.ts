@@ -88,6 +88,11 @@ export type ClaimedTabTransfer = {
   tab: TransferableTab;
 };
 
+export type ThemeSnapshot = {
+  id: PreviewThemeId;
+  revision: number;
+};
+
 export type CloseDecision = 'cancel' | 'discard' | 'save';
 
 export type AppCommand =
@@ -101,10 +106,10 @@ export type AppCommand =
   | 'insert-table'
   | 'insert-link'
   | 'open-find'
-  | `set-preview-theme:${PreviewThemeId}`
   | 'toggle-surface';
 
 export type MarkTexApi = {
+  initialTheme: ThemeSnapshot;
   getDocument(): Promise<DocumentSnapshot | null>;
   newDocument(): Promise<DocumentSnapshot | null>;
   openDocument(): Promise<DocumentSnapshot | null>;
@@ -115,7 +120,7 @@ export type MarkTexApi = {
   completeTabTransfer(transferId: string): void;
   cancelTabTransfer(transferId: string): void;
   detachTabToWindow(transferId: string, x: number, y: number): void;
-  getPreviewTheme(): Promise<PreviewThemeId>;
+  getTheme(): Promise<ThemeSnapshot>;
   getPreviewThemeAssets(themeId: PreviewThemeId): Promise<PreviewThemeAssets>;
   closeEmptyWindow(): void;
   updateText(text: string, revision: number): void;
@@ -139,6 +144,7 @@ export type MarkTexApi = {
   onDocumentOpened(listener: (document: DocumentSnapshot) => void): () => void;
   onExternalChange(listener: (change: ExternalChange) => void): () => void;
   onCommand(listener: (command: AppCommand) => void): () => void;
+  onThemeChanged(listener: (theme: ThemeSnapshot) => void): () => void;
   onSaveBeforeClose(listener: () => void): () => void;
   onTabTransferIncoming(listener: (transfer: ClaimedTabTransfer) => void): () => void;
   onTabTransferCompleted(listener: (tabId: string) => void): () => void;

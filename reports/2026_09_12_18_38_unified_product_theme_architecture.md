@@ -280,3 +280,26 @@ Preview 테마를 제품 전체의 주인으로 만들면 Crossnote vendor CSS�
 palette는 Setdown이 소유하고, Crossnote와 Monaco는 각각 문서 조판 엔진과 코드 편집
 엔진으로서 그 선택을 번역한다. 이것이 엔진의 전문성을 보존하면서도 한 제품처럼
 보이게 만드는 가장 작은 구조다.
+
+## 구현 결과
+
+이 설계를 실제 코드에 적용했다.
+
+- `src/shared/theme-catalog.ts`를 단일 catalog로 만들고 8개 제품 테마의 Preview,
+  Shell semantic palette, Monaco syntax palette를 한 profile에 묶었다.
+- main process가 `{ id, revision }` snapshot의 유일한 authority가 되었다. 변경 시 모든
+  창으로 같은 snapshot을 broadcast하며, 새 창에는 `additionalArguments`로 초기
+  snapshot을 전달한다.
+- preload가 초기 snapshot을 동기적으로 노출하므로 renderer는 DOM과 Monaco를 만들기
+  전에 Shell과 Editor 테마를 적용한다. 재실행이나 새 창에서 기본 테마가 잠깐 보이는
+  flash가 발생하지 않는다.
+- renderer의 세 adapter가 같은 snapshot을 소비한다. 비동기 Preview asset 적용은
+  revision을 다시 검사하여 빠른 연속 선택에서 오래된 응답이 최신 테마를 덮지 못한다.
+- Monaco는 editor/model을 재생성하지 않고 등록된 `setdown-*` theme만 교체한다. undo,
+  cursor, selection과 scroll state가 유지된다.
+- tab strip, TOC, 검색 overlay, dialog, form을 포함한 앱 chrome의 하드코딩 색을 semantic
+  CSS variable로 치환했다.
+
+검증 결과 `npm test`의 63개 단위·통합 테스트, `npm run build`, Electron Playwright의
+4개 E2E 테스트가 모두 통과했다. E2E는 현재 창, 새 창, 앱 재실행에서 Night 테마의
+Shell·Monaco·Preview 및 메뉴 상태가 함께 유지되는 경로를 검사한다.

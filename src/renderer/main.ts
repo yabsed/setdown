@@ -4,15 +4,19 @@ import type {
   ClaimedTabTransfer,
   DocumentSnapshot,
   PreviewHeading,
+  ThemeSnapshot,
   TransferableTab,
 } from '../shared/contracts';
 import {
-  DEFAULT_PREVIEW_THEME,
   normalizePreviewTheme,
-  previewThemeBackground,
   type PreviewThemeAssets,
   type PreviewThemeId,
 } from '../shared/preview-preferences';
+import {
+  THEME_PROFILES,
+  themeProfile,
+  type ThemePalette,
+} from '../shared/theme-catalog';
 import { PreviewRenderCoordinator } from '../shared/preview-render-coordinator';
 import {
   createMarkdownLink,
@@ -28,6 +32,102 @@ import {
   type ViewportAnchor,
 } from '../shared/viewport-anchor';
 import './style.css';
+
+const SHELL_THEME_VARIABLES: Record<keyof ThemePalette, string> = {
+  canvas: '--app-canvas',
+  surface: '--app-surface',
+  raisedSurface: '--app-raised-surface',
+  chrome: '--app-chrome',
+  editorBackground: '--app-editor-background',
+  text: '--app-text',
+  mutedText: '--app-muted-text',
+  subtleText: '--app-subtle-text',
+  border: '--app-border',
+  strongBorder: '--app-strong-border',
+  hover: '--app-hover',
+  selected: '--app-selected',
+  accent: '--app-accent',
+  focusRing: '--app-focus-ring',
+  warningSurface: '--app-warning-surface',
+  warningText: '--app-warning-text',
+  warningBorder: '--app-warning-border',
+  dangerText: '--app-danger-text',
+  shadow: '--app-shadow',
+  overlay: '--app-overlay',
+};
+
+function monacoThemeName(themeId: PreviewThemeId) {
+  return `setdown-${themeId}`;
+}
+
+function withAlpha(color: string, alpha: string) {
+  return /^#[0-9a-f]{6}$/i.test(color) ? `${color}${alpha}` : color;
+}
+
+function registerMonacoThemes() {
+  for (const profile of THEME_PROFILES) {
+    const { palette, syntax } = profile;
+    monaco.editor.defineTheme(monacoThemeName(profile.id), {
+      base: profile.appearance === 'dark' ? 'vs-dark' : 'vs',
+      inherit: true,
+      colors: {
+        'editor.background': palette.editorBackground,
+        'editor.foreground': syntax.foreground,
+        'editorCursor.foreground': palette.accent,
+        'editorLineNumber.foreground': palette.subtleText,
+        'editorLineNumber.activeForeground': palette.text,
+        'editor.lineHighlightBackground': withAlpha(palette.hover, '80'),
+        'editor.selectionBackground': withAlpha(palette.accent, '55'),
+        'editor.inactiveSelectionBackground': withAlpha(palette.accent, '32'),
+        'editor.findMatchBackground': withAlpha(palette.accent, '66'),
+        'editor.findMatchHighlightBackground': withAlpha(palette.accent, '36'),
+        'editorWidget.background': palette.raisedSurface,
+        'editorWidget.border': palette.border,
+        'input.background': palette.surface,
+        'input.foreground': palette.text,
+        'input.border': palette.border,
+        'focusBorder': palette.focusRing,
+        'scrollbarSlider.background': withAlpha(palette.mutedText, '44'),
+        'scrollbarSlider.hoverBackground': withAlpha(palette.mutedText, '66'),
+        'editorGutter.background': palette.editorBackground,
+        'editorIndentGuide.background1': palette.border,
+        'editorIndentGuide.activeBackground1': palette.strongBorder,
+      },
+      rules: [
+        { token: 'comment', foreground: syntax.comment.slice(1), fontStyle: 'italic' },
+        { token: 'keyword', foreground: syntax.keyword.slice(1) },
+        { token: 'string', foreground: syntax.string.slice(1) },
+        { token: 'number', foreground: syntax.number.slice(1) },
+        { token: 'tag', foreground: syntax.heading.slice(1), fontStyle: 'bold' },
+        { token: 'type', foreground: syntax.heading.slice(1) },
+        { token: 'string.link', foreground: syntax.link.slice(1), fontStyle: 'underline' },
+        { token: 'markup.heading.markdown', foreground: syntax.heading.slice(1), fontStyle: 'bold' },
+        { token: 'markup.inline.raw.markdown', foreground: syntax.code.slice(1) },
+        { token: 'delimiter', foreground: syntax.punctuation.slice(1) },
+      ],
+    });
+  }
+}
+
+function applyShellTheme(themeId: PreviewThemeId) {
+  const profile = themeProfile(themeId);
+  const root = document.documentElement;
+  root.dataset.theme = profile.id;
+  root.dataset.appearance = profile.appearance;
+  root.style.colorScheme = profile.appearance;
+  root.style.setProperty('--preview-background', profile.preview.background);
+  for (const [name, value] of Object.entries(profile.palette)) {
+    root.style.setProperty(SHELL_THEME_VARIABLES[name as keyof ThemePalette], value);
+  }
+}
+
+const initialTheme: ThemeSnapshot = {
+  id: normalizePreviewTheme(window.marktex.initialTheme.id),
+  revision: Math.max(0, window.marktex.initialTheme.revision),
+};
+let appliedThemeRevision = initialTheme.revision;
+registerMonacoThemes();
+applyShellTheme(initialTheme.id);
 
 window.MonacoEnvironment = {
   getWorker: () => new EditorWorker(),
@@ -199,18 +299,14 @@ function loadReaderPreferences(): { tocOpen: boolean; themeId: PreviewThemeId } 
     return {
       tocOpen: value.tocOpen === true,
       // Preview theme의 authority는 main process의 app-global setting이다.
-      themeId: DEFAULT_PREVIEW_THEME,
+      themeId: initialTheme.id,
     };
   } catch {
-    return { tocOpen: false, themeId: DEFAULT_PREVIEW_THEME };
+    return { tocOpen: false, themeId: initialTheme.id };
   }
 }
 
 const readerPreferences = loadReaderPreferences();
-document.documentElement.style.setProperty(
-  '--preview-background',
-  previewThemeBackground(readerPreferences.themeId),
-);
 
 function saveReaderPreferences() {
   localStorage.setItem(READER_PREFERENCES_KEY, JSON.stringify({
@@ -254,7 +350,7 @@ let anchor: ViewportAnchor = {
 const editor = monaco.editor.create(editorHost, {
   automaticLayout: true,
   language: 'markdown',
-  theme: 'vs-dark',
+  theme: monacoThemeName(initialTheme.id),
   wordWrap: 'on',
   wrappingIndent: 'same',
   lineNumbers: 'on',
@@ -391,14 +487,22 @@ function closePreviewFind(clearQuery = false) {
   syncPreviewView();
 }
 
-async function applyPreviewTheme(value: unknown) {
-  const nextTheme = normalizePreviewTheme(value);
+async function applyProductTheme(snapshot: ThemeSnapshot, forceAssets = false) {
+  const nextTheme = normalizePreviewTheme(snapshot.id);
+  if (snapshot.revision < appliedThemeRevision) return;
+  if (!forceAssets && snapshot.revision === appliedThemeRevision
+    && readerPreferences.themeId === nextTheme) return;
+  appliedThemeRevision = snapshot.revision;
   readerPreferences.themeId = nextTheme;
+  applyShellTheme(nextTheme);
+  monaco.editor.setTheme(monacoThemeName(nextTheme));
   syncReaderUi();
   const assets = await window.marktex.getPreviewThemeAssets(nextTheme);
-  if (readerPreferences.themeId !== assets.themeId) return;
+  if (
+    appliedThemeRevision !== snapshot.revision
+    || readerPreferences.themeId !== assets.themeId
+  ) return;
   currentPreviewThemeAssets = assets;
-  document.documentElement.style.setProperty('--preview-background', assets.backgroundColor);
   for (const tab of tabs) applyThemeAssetsToTab(tab, assets);
 }
 
@@ -1919,6 +2023,7 @@ window.marktex.onDocumentOpened((opened) => void showDocument(opened));
 window.marktex.onExternalChange((change) => {
   if (currentDocument?.path === change.path) notice.hidden = false;
 });
+window.marktex.onThemeChanged((snapshot) => void applyProductTheme(snapshot));
 window.marktex.onCommand((command) => {
   if (command === 'new-document') void newDocument();
   if (command === 'save') void save(false);
@@ -1930,9 +2035,6 @@ window.marktex.onCommand((command) => {
   if (command === 'insert-table') openTableDialog();
   if (command === 'insert-link') openLinkDialog();
   if (command === 'open-find') openPreviewFind();
-  if (command.startsWith('set-preview-theme:')) {
-    void applyPreviewTheme(command.slice('set-preview-theme:'.length));
-  }
   if (command === 'toggle-surface') {
     if (surface === 'viewer') requestViewerAnchor();
     else if (surface === 'editor') void enterViewer();
@@ -1961,13 +2063,8 @@ window.addEventListener('keydown', (event) => {
 }, { capture: true });
 
 async function initializeRenderer() {
-  const themeId = normalizePreviewTheme(await window.marktex.getPreviewTheme());
-  readerPreferences.themeId = themeId;
-  const assets = await window.marktex.getPreviewThemeAssets(themeId);
-  if (assets.themeId === themeId) {
-    currentPreviewThemeAssets = assets;
-    document.documentElement.style.setProperty('--preview-background', assets.backgroundColor);
-  }
+  const snapshot = await window.marktex.getTheme();
+  await applyProductTheme(snapshot, true);
   const documentSnapshot = await window.marktex.getDocument();
   if (documentSnapshot) void showDocument(documentSnapshot);
   else if (tabs.length === 0) {

@@ -7,8 +7,10 @@ import type {
   ExternalChange,
   MarkTexApi,
   TabStateSummary,
+  ThemeSnapshot,
   TransferableTab,
 } from '../shared/contracts';
+import { normalizePreviewTheme } from '../shared/preview-preferences';
 
 function subscribe<T>(channel: string, listener: (value: T) => void) {
   const handler = (_event: Electron.IpcRendererEvent, value: T) => listener(value);
@@ -16,7 +18,17 @@ function subscribe<T>(channel: string, listener: (value: T) => void) {
   return () => ipcRenderer.removeListener(channel, handler);
 }
 
+function initialThemeSnapshot(): ThemeSnapshot {
+  const idArgument = process.argv.find((value) => value.startsWith('--setdown-theme='));
+  const revisionArgument = process.argv.find((value) => value.startsWith('--setdown-theme-revision='));
+  return {
+    id: normalizePreviewTheme(idArgument?.slice('--setdown-theme='.length)),
+    revision: Math.max(0, Number(revisionArgument?.slice('--setdown-theme-revision='.length)) || 0),
+  };
+}
+
 const api: MarkTexApi = {
+  initialTheme: initialThemeSnapshot(),
   getDocument: () => ipcRenderer.invoke('document:get'),
   newDocument: () => ipcRenderer.invoke('document:new'),
   openDocument: () => ipcRenderer.invoke('document:open'),
@@ -34,7 +46,7 @@ const api: MarkTexApi = {
     ipcRenderer.send('tabs:cancel-transfer', transferId),
   detachTabToWindow: (transferId, x, y) =>
     ipcRenderer.send('tabs:detach-to-window', { transferId, x, y }),
-  getPreviewTheme: () => ipcRenderer.invoke('preview:get-theme'),
+  getTheme: () => ipcRenderer.invoke('theme:get'),
   getPreviewThemeAssets: (themeId) =>
     ipcRenderer.invoke('preview:theme-assets', themeId),
   closeEmptyWindow: () => ipcRenderer.send('app:close-empty-window'),
@@ -64,6 +76,7 @@ const api: MarkTexApi = {
   onExternalChange: (listener) =>
     subscribe<ExternalChange>('document:external-change', listener),
   onCommand: (listener) => subscribe<AppCommand>('app:command', listener),
+  onThemeChanged: (listener) => subscribe<ThemeSnapshot>('theme:changed', listener),
   onSaveBeforeClose: (listener) => {
     const handler = () => listener();
     ipcRenderer.on('app:save-before-close', handler);
