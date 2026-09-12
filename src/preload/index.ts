@@ -56,8 +56,8 @@ const api: MarkTexApi = {
   discardDocument: (document) => ipcRenderer.invoke('document:discard', document),
   finishWindowClose: (saved) => ipcRenderer.send('app:finish-window-close', saved),
   reloadDocument: () => ipcRenderer.invoke('document:reload'),
-  renderDocument: (text, revision, documentPath) =>
-    ipcRenderer.invoke('document:render', { text, revision, documentPath }),
+  renderDocument: (text, revision, documentPath, themeId) =>
+    ipcRenderer.invoke('document:render', { text, revision, documentPath, themeId }),
   exportPdf: (text, revision, documentPath) =>
     ipcRenderer.invoke('document:export-pdf', { text, revision, documentPath }),
   pasteClipboardImage: () => ipcRenderer.invoke('document:paste-clipboard-image'),
@@ -79,6 +79,8 @@ const api: MarkTexApi = {
   onTabTransferCompleted: (listener) =>
     subscribe<string>('tabs:transfer-completed', listener),
   onPreviewMessage: (listener) => subscribe<PreviewMessage>('preview:message', listener),
+  onPreviewFindRequested: (listener) =>
+    subscribe<string>('preview:open-find', listener),
 };
 
 contextBridge.exposeInMainWorld('marktex', api);

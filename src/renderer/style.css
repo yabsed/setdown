@@ -141,7 +141,7 @@ button { font: inherit; }
 .shell:not([data-surface="viewer"]) .viewer-surface,
 .shell:not([data-surface="editor"]) .editor-surface { display: none; }
 .shell[data-preview-positioning="true"] .viewer-surface {
-  display: block;
+  display: grid;
   visibility: hidden;
 }
 .shell[data-preview-positioning="true"] .editor-surface { display: block; }
@@ -166,7 +166,133 @@ button { font: inherit; }
 .shortcut { margin-top: 9px; color: #aaa9a2; font-size: 11px; }
 
 .viewer-surface, .editor-surface { position: relative; overflow: hidden; }
-.preview-frames { position: relative; width: 100%; height: 100%; }
+.viewer-surface { display: grid; grid-template-rows: 42px minmax(0, 1fr); }
+.reader-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 5px 9px;
+  border-bottom: 1px solid #d8d8d2;
+  background: rgba(247, 247, 245, .97);
+  z-index: 15;
+}
+.reader-tool {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 9px;
+  color: #666660;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+}
+.reader-tool:hover, .reader-tool.is-active { color: #242422; background: #e8e8e3; }
+.reader-tool svg { width: 16px; height: 16px; fill: currentColor; }
+.reader-tool span { font-size: 12px; }
+.reader-body { display: flex; min-width: 0; min-height: 0; }
+.preview-frames { position: relative; flex: 1; min-width: 0; min-height: 0; height: 100%; }
+.toc-panel {
+  flex: 0 0 clamp(220px, 24vw, 300px);
+  min-width: 0;
+  overflow: hidden;
+  color: #4c4c47;
+  border-right: 1px solid #d8d8d2;
+  background: #f2f2ee;
+}
+.toc-panel[hidden] { display: none; }
+.toc-panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 39px;
+  padding: 0 13px;
+  color: #6f6f69;
+  border-bottom: 1px solid #deded8;
+  font-size: 11px;
+  letter-spacing: .02em;
+}
+.toc-count { color: #9a9a93; font-variant-numeric: tabular-nums; }
+.toc-list { height: calc(100% - 39px); padding: 8px 6px 24px; overflow: auto; }
+.toc-item {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  overflow: hidden;
+  color: #666660;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.toc-item:hover { color: #222220; background: #e7e7e1; }
+.toc-item.is-active { color: #20201e; background: #deded7; font-weight: 650; }
+.toc-empty { margin: 12px 10px; color: #96968f; font-size: 11px; line-height: 1.5; }
+.preview-search {
+  display: flex;
+  align-items: center;
+  flex: 1 1 360px;
+  min-width: 170px;
+  max-width: 520px;
+  height: 31px;
+  margin-left: 2px;
+  padding: 0 3px 0 8px;
+  border: 1px solid #c9c9c2;
+  border-radius: 7px;
+  background: white;
+}
+.preview-search[hidden] { display: none; }
+.preview-search input {
+  flex: 1;
+  min-width: 70px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+}
+.preview-search input::-webkit-search-cancel-button { display: none; }
+.find-count { flex: 0 0 auto; padding: 0 6px; color: #888881; font-size: 10px; font-variant-numeric: tabular-nums; }
+.preview-search button {
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  color: #777770;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
+}
+.preview-search button:hover { color: #222; background: #ecece7; }
+.find-close { font-size: 17px; }
+.theme-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: #777771;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.theme-picker select {
+  max-width: 150px;
+  height: 30px;
+  padding: 0 24px 0 8px;
+  color: #444440;
+  border: 1px solid #cecec8;
+  border-radius: 7px;
+  outline: none;
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
+}
 .viewer-hint, .editor-hint {
   position: absolute;
   right: 16px;
@@ -282,4 +408,8 @@ button { font: inherit; }
   .viewer-hint, .editor-hint { display: none; }
   .insertion-form { padding: 17px; }
   .link-destination-row { grid-template-columns: 1fr; }
+  .reader-tool span, .theme-picker { font-size: 0; gap: 0; }
+  .reader-tool { padding: 0 7px; }
+  .theme-picker select { max-width: 108px; font-size: 11px; }
+  .toc-panel { flex-basis: min(220px, 46vw); }
 }

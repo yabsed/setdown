@@ -3,8 +3,15 @@ import EditorWorker from 'monaco-editor/editor/editor.worker?worker';
 import type {
   ClaimedTabTransfer,
   DocumentSnapshot,
+  PreviewHeading,
   TransferableTab,
 } from '../shared/contracts';
+import {
+  DEFAULT_PREVIEW_THEME,
+  normalizePreviewTheme,
+  PREVIEW_THEMES,
+  type PreviewThemeId,
+} from '../shared/preview-preferences';
 import { PreviewRenderCoordinator } from '../shared/preview-render-coordinator';
 import {
   createMarkdownLink,
@@ -66,7 +73,33 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </section>
 
     <section class="viewer-surface" aria-label="렌더링된 Markdown">
-      <div class="preview-frames"></div>
+      <div class="reader-toolbar">
+        <button class="reader-tool toc-toggle" type="button" aria-expanded="false" title="목차 열기">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h2v2H4v-2Zm4 .25h12v1.5H8v-1.5ZM4 11h2v2H4v-2Zm4 .25h12v1.5H8v-1.5ZM4 16.5h2v2H4v-2Zm4 .25h12v1.5H8v-1.5Z"/></svg>
+          <span>목차</span>
+        </button>
+        <button class="reader-tool find-toggle" type="button" title="문서에서 찾기 (Ctrl/Cmd+F)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 4a6.5 6.5 0 1 1-4.12 11.53l-3.45 3.45-1.06-1.06 3.44-3.45A6.5 6.5 0 0 1 10.5 4Zm0 1.5a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z"/></svg>
+          <span>검색</span>
+        </button>
+        <div class="preview-search" hidden>
+          <input type="search" autocomplete="off" spellcheck="false" aria-label="렌더링된 문서에서 찾기" placeholder="문서에서 찾기">
+          <span class="find-count" aria-live="polite">0 / 0</span>
+          <button class="find-previous" type="button" aria-label="이전 검색 결과">↑</button>
+          <button class="find-next" type="button" aria-label="다음 검색 결과">↓</button>
+          <button class="find-close" type="button" aria-label="검색 닫기">×</button>
+        </div>
+        <label class="theme-picker">테마
+          <select aria-label="Preview 테마"></select>
+        </label>
+      </div>
+      <div class="reader-body">
+        <aside class="toc-panel" aria-label="문서 목차" hidden>
+          <div class="toc-panel-title"><strong>목차</strong><span class="toc-count"></span></div>
+          <nav class="toc-list"></nav>
+        </aside>
+        <div class="preview-frames"></div>
+      </div>
       <div class="render-state" hidden>
         <div class="spinner"></div><span>문서를 조판하고 있습니다…</span>
       </div>
@@ -117,6 +150,15 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 const shell = document.querySelector<HTMLElement>('.shell')!;
 const modeToggle = document.querySelector<HTMLButtonElement>('.mode-toggle')!;
 const previewFrames = document.querySelector<HTMLElement>('.preview-frames')!;
+const tocToggle = document.querySelector<HTMLButtonElement>('.toc-toggle')!;
+const tocPanel = document.querySelector<HTMLElement>('.toc-panel')!;
+const tocList = document.querySelector<HTMLElement>('.toc-list')!;
+const tocCount = document.querySelector<HTMLElement>('.toc-count')!;
+const findToggle = document.querySelector<HTMLButtonElement>('.find-toggle')!;
+const previewSearch = document.querySelector<HTMLElement>('.preview-search')!;
+const findInput = previewSearch.querySelector<HTMLInputElement>('input')!;
+const findCount = previewSearch.querySelector<HTMLElement>('.find-count')!;
+const themeSelect = document.querySelector<HTMLSelectElement>('.theme-picker select')!;
 const editorHost = document.querySelector<HTMLElement>('.editor-host')!;
 const renderState = document.querySelector<HTMLElement>('.render-state')!;
 const renderError = document.querySelector<HTMLElement>('.render-error')!;
@@ -145,9 +187,41 @@ type DocumentTab = {
   anchor: ViewportAnchor;
   previewUrl: string | null;
   previewRevision: number | null;
+  previewTheme: PreviewThemeId | null;
   editorViewState: monaco.editor.ICodeEditorViewState | null;
   viewerScrollRatio: number | null;
+  headings: PreviewHeading[];
+  activeHeadingId: string | null;
+  find: {
+    open: boolean;
+    query: string;
+    activeMatch: number;
+    matches: number;
+  };
 };
+
+const READER_PREFERENCES_KEY = 'setdown.readerPreferences';
+
+function loadReaderPreferences(): { tocOpen: boolean; themeId: PreviewThemeId } {
+  try {
+    const value = JSON.parse(localStorage.getItem(READER_PREFERENCES_KEY) ?? '{}') as {
+      tocOpen?: unknown;
+      themeId?: unknown;
+    };
+    return {
+      tocOpen: value.tocOpen === true,
+      themeId: normalizePreviewTheme(value.themeId),
+    };
+  } catch {
+    return { tocOpen: false, themeId: DEFAULT_PREVIEW_THEME };
+  }
+}
+
+const readerPreferences = loadReaderPreferences();
+
+function saveReaderPreferences() {
+  localStorage.setItem(READER_PREFERENCES_KEY, JSON.stringify(readerPreferences));
+}
 
 const tabs: DocumentTab[] = [];
 let activeTabId: string | null = null;
@@ -219,6 +293,7 @@ function setSurface(next: typeof surface) {
   const toggleLabel = next === 'viewer' ? '편집기로 전환' : 'Viewer로 전환';
   modeToggle.title = `${toggleLabel} (Ctrl/Cmd+E)`;
   modeToggle.setAttribute('aria-label', toggleLabel);
+  syncReaderUi();
   updatePreviewUi();
   window.requestAnimationFrame(syncPreviewView);
   if (next === 'editor') window.setTimeout(() => editor.layout(), 0);
@@ -226,6 +301,122 @@ function setSurface(next: typeof surface) {
 
 function activeTab() {
   return tabs.find((tab) => tab.id === activeTabId) ?? null;
+}
+
+for (const theme of PREVIEW_THEMES) {
+  const option = document.createElement('option');
+  option.value = theme.id;
+  option.textContent = theme.label;
+  themeSelect.append(option);
+}
+
+function renderToc(tab: DocumentTab | null) {
+  tocList.replaceChildren();
+  const headings = tab?.headings ?? [];
+  tocCount.textContent = headings.length > 0 ? String(headings.length) : '';
+  if (headings.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'toc-empty';
+    empty.textContent = '이 문서에는 제목이 없습니다.';
+    tocList.append(empty);
+    return;
+  }
+  for (const heading of headings) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'toc-item';
+    button.textContent = heading.text;
+    button.style.paddingLeft = `${8 + (heading.level - 1) * 13}px`;
+    button.classList.toggle('is-active', heading.id === tab?.activeHeadingId);
+    button.setAttribute('aria-current', heading.id === tab?.activeHeadingId ? 'location' : 'false');
+    button.addEventListener('click', () => {
+      if (!activeTabId) return;
+      window.marktex.sendPreviewCommand(activeTabId, {
+        command: 'marktex:scroll-to-heading',
+        id: heading.id,
+      });
+    });
+    tocList.append(button);
+  }
+}
+
+function syncReaderUi() {
+  const tab = activeTab();
+  const viewerVisible = surface === 'viewer';
+  shell.dataset.tocOpen = readerPreferences.tocOpen && viewerVisible ? 'true' : 'false';
+  tocPanel.hidden = !readerPreferences.tocOpen || !viewerVisible;
+  tocToggle.setAttribute('aria-expanded', String(readerPreferences.tocOpen));
+  tocToggle.title = readerPreferences.tocOpen ? '목차 닫기' : '목차 열기';
+  tocToggle.classList.toggle('is-active', readerPreferences.tocOpen);
+  themeSelect.value = readerPreferences.themeId;
+  previewSearch.hidden = !tab?.find.open || !viewerVisible;
+  findToggle.classList.toggle('is-active', !!tab?.find.open);
+  if (tab && findInput.value !== tab.find.query) findInput.value = tab.find.query;
+  findCount.textContent = tab?.find.matches
+    ? `${tab.find.activeMatch} / ${tab.find.matches}`
+    : '0 / 0';
+  renderToc(tab);
+}
+
+function runPreviewFind(direction: 'forward' | 'backward' = 'forward', findNext = false) {
+  const tab = activeTab();
+  if (!tab) return;
+  tab.find.query = findInput.value;
+  tab.find.activeMatch = 0;
+  tab.find.matches = 0;
+  findCount.textContent = '0 / 0';
+  if (!tab.find.query) {
+    window.marktex.sendPreviewCommand(tab.id, { command: 'marktex:stop-find' });
+    return;
+  }
+  window.marktex.sendPreviewCommand(tab.id, {
+    command: 'marktex:find',
+    query: tab.find.query,
+    direction,
+    findNext,
+  });
+}
+
+function openPreviewFind() {
+  const tab = activeTab();
+  if (!tab || surface !== 'viewer') return;
+  tab.find.open = true;
+  syncReaderUi();
+  findInput.focus();
+  findInput.select();
+  if (tab.find.query) runPreviewFind('forward', false);
+}
+
+function closePreviewFind(clearQuery = false) {
+  const tab = activeTab();
+  if (!tab) return;
+  window.marktex.sendPreviewCommand(tab.id, { command: 'marktex:stop-find' });
+  tab.find.open = false;
+  tab.find.activeMatch = 0;
+  tab.find.matches = 0;
+  if (clearQuery) tab.find.query = '';
+  syncReaderUi();
+}
+
+async function applyPreviewTheme(value: unknown) {
+  const nextTheme = normalizePreviewTheme(value);
+  if (readerPreferences.themeId === nextTheme) return;
+  readerPreferences.themeId = nextTheme;
+  saveReaderPreferences();
+  const tab = activeTab();
+  if (!tab || !model || !currentDocument) {
+    syncReaderUi();
+    return;
+  }
+  const targetRevision = revision;
+  const targetAnchor = anchor;
+  resetPreviewState();
+  previewCoordinator = new PreviewRenderCoordinator(renderRevision);
+  syncReaderUi();
+  const ready = await ensurePreview(targetRevision);
+  if (ready && surface === 'viewer' && targetRevision === revision) {
+    await requestPreviewPosition(targetAnchor, targetRevision);
+  }
 }
 
 function createPreview(tabId: string) {
@@ -236,7 +427,7 @@ function syncPreviewView() {
   const tab = activeTab();
   const visible = !!tab
     && (surface === 'viewer' || shell.dataset.previewPositioning === 'true')
-    && previewCoordinator.readyRevision !== null;
+    && !!tab.previewUrl;
   if (!visible || !tab) {
     window.marktex.showPreview(null, null);
     return;
@@ -276,6 +467,7 @@ function transferableTab(tab: DocumentTab): TransferableTab {
     viewerScrollRatio: tab.viewerScrollRatio,
     previewUrl: tab.previewUrl,
     previewRevision: tab.previewRevision,
+    previewTheme: tab.previewTheme,
   };
 }
 
@@ -462,11 +654,16 @@ async function activateTab(tabId: string) {
   editor.restoreViewState(next.editorViewState);
   publishAnchor();
   notice.hidden = true;
-  if (next.previewRevision === revision && next.previewUrl?.startsWith('marktex-preview:')) {
+  if (
+    next.previewRevision === revision
+    && next.previewTheme === readerPreferences.themeId
+    && next.previewUrl?.startsWith('marktex-preview:')
+  ) {
     previewCoordinator.readyRevision = revision;
   }
   updateChrome();
   setSurface(next.surface);
+  window.marktex.sendPreviewCommand(next.id, { command: 'marktex:collect-headings' });
   await window.marktex.activateDocument(currentDocument, model.getValue(), revision);
   if (activation !== tabActivation || activeTabId !== next.id) return;
 
@@ -653,34 +850,78 @@ async function renderRevision(targetRevision: number): Promise<boolean> {
   if (!currentDocument || !model || targetRevision !== revision) return false;
   const generation = previewGeneration;
   const targetTabId = activeTabId;
+  const targetTheme = readerPreferences.themeId;
   if (!targetTabId) return false;
   const documentPath = currentDocument.path;
   const text = model.getValue();
+  let attemptedUrl: string | null = null;
   if (previewError?.revision === targetRevision) previewError = null;
   try {
-    const result = await window.marktex.renderDocument(text, targetRevision, documentPath);
+    const result = await window.marktex.renderDocument(
+      text,
+      targetRevision,
+      documentPath,
+      targetTheme,
+    );
     if (
       generation !== previewGeneration
       || activeTabId !== targetTabId
       || currentDocument?.path !== documentPath
       || result.revision !== targetRevision
+      || result.themeId !== targetTheme
+      || readerPreferences.themeId !== targetTheme
       || revision !== targetRevision
     ) return false;
 
+    const loadingTab = tabs.find((candidate) => candidate.id === targetTabId);
+    attemptedUrl = result.url;
+    if (loadingTab) {
+      // navigation 중 탭이 이동해도 같은 WebContents를 재사용할 수 있도록
+      // URL의 소유 identity를 navigation 시작 전에 함께 기록한다.
+      loadingTab.previewUrl = result.url;
+      loadingTab.previewRevision = targetRevision;
+      loadingTab.previewTheme = targetTheme;
+    }
+    if (activeTabId === targetTabId) {
+      await nextAnimationFrame();
+      syncPreviewView();
+    }
     await window.marktex.loadPreview(targetTabId, result.url);
+    // load 도중 사용자가 다른 탭으로 가더라도 완성된 WebContents는 요청을
+    // 시작한 탭의 자산이다. 활성 탭 여부와 별개로 먼저 그 탭에 귀속시킨다.
+    const renderedTab = tabs.find((candidate) => candidate.id === targetTabId);
+    if (
+      renderedTab
+      && renderedTab.document.path === documentPath
+      && renderedTab.revision === targetRevision
+    ) {
+      renderedTab.previewUrl = result.url;
+      renderedTab.previewRevision = targetRevision;
+      renderedTab.previewTheme = targetTheme;
+    }
+    window.marktex.sendPreviewCommand(targetTabId, { command: 'marktex:collect-headings' });
+    if (renderedTab?.find.open && renderedTab.find.query) {
+      window.marktex.sendPreviewCommand(targetTabId, {
+        command: 'marktex:find',
+        query: renderedTab.find.query,
+        direction: 'forward',
+        findNext: false,
+      });
+    }
     if (
       generation !== previewGeneration
       || activeTabId !== targetTabId
       || currentDocument?.path !== documentPath
     ) return false;
-    const tab = activeTab();
-    if (tab) {
-      tab.previewUrl = result.url;
-      tab.previewRevision = targetRevision;
-    }
     previewError = null;
     return true;
   } catch (error) {
+    const failedTab = tabs.find((candidate) => candidate.id === targetTabId);
+    if (attemptedUrl && failedTab?.previewUrl === attemptedUrl) {
+      failedTab.previewUrl = null;
+      failedTab.previewRevision = null;
+      failedTab.previewTheme = null;
+    }
     if (generation !== previewGeneration) return false;
     previewError = {
       revision: targetRevision,
@@ -793,8 +1034,12 @@ async function showDocument(
     anchor: initialAnchor,
     previewUrl: null,
     previewRevision: null,
+    previewTheme: null,
     editorViewState: null,
     viewerScrollRatio: null,
+    headings: [],
+    activeHeadingId: null,
+    find: { open: false, query: '', activeMatch: 0, matches: 0 },
   });
   renderTabs();
   await activateTab(id);
@@ -817,8 +1062,12 @@ async function installTransferredTab(transfer: ClaimedTabTransfer) {
     anchor: incoming.anchor as ViewportAnchor,
     previewUrl: incoming.previewUrl,
     previewRevision: incoming.previewRevision,
+    previewTheme: incoming.previewTheme,
     editorViewState: incoming.editorViewState as monaco.editor.ICodeEditorViewState | null,
     viewerScrollRatio: incoming.viewerScrollRatio,
+    headings: [],
+    activeHeadingId: null,
+    find: { open: false, query: '', activeMatch: 0, matches: 0 },
   };
   tabs.push(restored);
   renderTabs();
@@ -835,6 +1084,7 @@ async function reloadActiveDocument(documentSnapshot: DocumentSnapshot) {
   tab.document = documentSnapshot;
   tab.previewUrl = null;
   tab.previewRevision = null;
+  tab.previewTheme = null;
   installModel(documentSnapshot);
   updateChrome();
   const ready = await ensurePreview(revision);
@@ -847,6 +1097,7 @@ async function reloadActiveDocument(documentSnapshot: DocumentSnapshot) {
  */
 function enterEditor(next: ViewportAnchor = anchor) {
   if (!model) return;
+  if (activeTab()?.find.open) closePreviewFind(false);
   anchor = clampAnchor(next, model.getLineCount());
   publishAnchor();
   setSurface('editor');
@@ -930,6 +1181,7 @@ async function save(saveAs = false) {
         tab.document = result.document;
         tab.previewUrl = null;
         tab.previewRevision = null;
+        tab.previewTheme = null;
       }
       if (surface === 'editor') schedulePreview(revision);
       else if (surface === 'viewer') {
@@ -1375,6 +1627,40 @@ modeToggle.addEventListener('click', () => {
   if (surface === 'viewer') requestViewerAnchor();
   else if (surface === 'editor') void enterViewer();
 });
+tocToggle.addEventListener('click', () => {
+  readerPreferences.tocOpen = !readerPreferences.tocOpen;
+  saveReaderPreferences();
+  syncReaderUi();
+  window.requestAnimationFrame(syncPreviewView);
+  if (readerPreferences.tocOpen && activeTabId) {
+    window.marktex.sendPreviewCommand(activeTabId, { command: 'marktex:collect-headings' });
+  }
+});
+findToggle.addEventListener('click', openPreviewFind);
+findInput.addEventListener('input', () => runPreviewFind('forward', false));
+findInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !event.isComposing) {
+    event.preventDefault();
+    runPreviewFind(event.shiftKey ? 'backward' : 'forward', true);
+  } else if (event.key === 'Escape') {
+    event.preventDefault();
+    event.stopPropagation();
+    closePreviewFind(false);
+  }
+});
+previewSearch.querySelector('.find-previous')?.addEventListener(
+  'click',
+  () => runPreviewFind('backward', true),
+);
+previewSearch.querySelector('.find-next')?.addEventListener(
+  'click',
+  () => runPreviewFind('forward', true),
+);
+previewSearch.querySelector('.find-close')?.addEventListener(
+  'click',
+  () => closePreviewFind(false),
+);
+themeSelect.addEventListener('change', () => void applyPreviewTheme(themeSelect.value));
 document.querySelector('.render-error button')?.addEventListener('click', () => enterEditor());
 
 /**
@@ -1409,6 +1695,50 @@ window.marktex.onPreviewMessage((payload) => {
   for (const listener of previewMessageListeners) listener(payload);
   if (payload.tabId !== activeTabId || payload.message.source !== 'crossnote') return;
   const message = payload.message;
+  if (message.type === 'marktex:headings') {
+    if (message.revision !== revision || !Array.isArray(message.headings)) return;
+    const tab = activeTab();
+    if (!tab) return;
+    tab.headings = message.headings.slice(0, 500).flatMap((candidate) => {
+      if (!candidate || typeof candidate !== 'object') return [];
+      const heading = candidate as Record<string, unknown>;
+      const level = Number(heading.level);
+      if (
+        typeof heading.id !== 'string'
+        || typeof heading.text !== 'string'
+        || !Number.isInteger(level)
+        || level < 1
+        || level > 6
+      ) return [];
+      return [{
+        id: heading.id.slice(0, 512),
+        text: heading.text.slice(0, 500),
+        level: level as PreviewHeading['level'],
+        sourceLine: Number.isFinite(Number(heading.sourceLine))
+          ? Number(heading.sourceLine)
+          : undefined,
+      }];
+    });
+    renderToc(tab);
+    return;
+  }
+  if (message.type === 'marktex:active-heading') {
+    if (message.revision !== revision) return;
+    const tab = activeTab();
+    if (!tab) return;
+    tab.activeHeadingId = typeof message.id === 'string' ? message.id : null;
+    renderToc(tab);
+    return;
+  }
+  if (message.type === 'marktex:find-result') {
+    if (message.revision !== revision) return;
+    const tab = activeTab();
+    if (!tab) return;
+    tab.find.activeMatch = Math.max(0, Number(message.activeMatch) || 0);
+    tab.find.matches = Math.max(0, Number(message.matches) || 0);
+    syncReaderUi();
+    return;
+  }
   if (message.type === 'marktex:viewport-state') {
     if (message.revision !== revision || !model) return;
     const received = message.anchor as Partial<ViewportAnchor> | undefined;
@@ -1454,6 +1784,10 @@ window.marktex.onPreviewMessage((payload) => {
   }
 });
 
+window.marktex.onPreviewFindRequested((tabId) => {
+  if (tabId === activeTabId && surface === 'viewer') openPreviewFind();
+});
+
 window.marktex.onDocumentOpened((opened) => void showDocument(opened));
 window.marktex.onExternalChange((change) => {
   if (currentDocument?.path === change.path) notice.hidden = false;
@@ -1484,6 +1818,15 @@ window.marktex.onTabTransferCompleted((tabId) => {
 });
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && draggedTabId) tabDragCanceled = true;
+  if (
+    surface === 'viewer'
+    && event.key.toLowerCase() === 'f'
+    && (event.ctrlKey || event.metaKey)
+    && !event.altKey
+  ) {
+    event.preventDefault();
+    openPreviewFind();
+  }
 }, { capture: true });
 
 window.marktex.getDocument().then((documentSnapshot) => {

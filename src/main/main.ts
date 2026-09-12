@@ -40,6 +40,12 @@ import type {
   TabStateSummary,
   TransferableTab,
 } from '../shared/contracts';
+import {
+  DEFAULT_PREVIEW_THEME,
+  normalizePreviewTheme,
+  previewThemeFile,
+  type PreviewThemeId,
+} from '../shared/preview-preferences';
 import { applyTextRevision, isDirty, lineCount } from '../shared/document-state';
 import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
 import {
@@ -142,7 +148,7 @@ function withWindowState<T>(state: WindowState, action: () => Promise<T> | T): P
 
 type CrossnoteModule = typeof import('crossnote');
 type NotebookInstance = Awaited<ReturnType<CrossnoteModule['Notebook']['init']>>;
-let notebookCache: { root: string; notebook: NotebookInstance } | null = null;
+const notebookCaches = new Map<string, NotebookInstance>();
 const previewDocuments = new Map<string, string>();
 
 const crossnoteEntry = require.resolve('crossnote');
@@ -268,10 +274,16 @@ function createReadOnlyFileSystem(root: string): FileSystemApi {
   };
 }
 
-async function getNotebook(filePath: string): Promise<NotebookInstance> {
+async function getNotebook(
+  filePath: string,
+  requestedTheme: PreviewThemeId = DEFAULT_PREVIEW_THEME,
+): Promise<NotebookInstance> {
   const root = canonicalPath(path.dirname(filePath));
   activeRoot = root;
-  if (notebookCache?.root === root) return notebookCache.notebook;
+  const themeId = normalizePreviewTheme(requestedTheme);
+  const cacheKey = `${root}\0${themeId}`;
+  const cached = notebookCaches.get(cacheKey);
+  if (cached) return cached;
 
   const defaults = getDefaultNotebookConfig();
   const notebook = await Notebook.init({
@@ -280,7 +292,7 @@ async function getNotebook(filePath: string): Promise<NotebookInstance> {
     config: {
       ...defaults,
       markdownParser: 'markdown-it',
-      previewTheme: 'github-light.css',
+      previewTheme: previewThemeFile(themeId),
       codeBlockTheme: 'auto.css',
       mathRenderingOption: 'KaTeX',
       enablePreviewZenMode: true,
@@ -295,7 +307,7 @@ async function getNotebook(filePath: string): Promise<NotebookInstance> {
   });
   notebook.previewScriptsEnabled = false;
   installSourceAnchors(notebook.md as unknown as MarkdownItLike);
-  notebookCache = { root, notebook };
+  notebookCaches.set(cacheKey, notebook);
   return notebook;
 }
 
@@ -328,6 +340,7 @@ async function renderCurrent(
   text: string,
   revision: number,
   documentPath: string,
+  requestedTheme: PreviewThemeId = DEFAULT_PREVIEW_THEME,
 ): Promise<RenderResult> {
   if (!currentDocument) throw new Error('No Markdown document is open.');
   if (currentDocument.path !== documentPath) {
@@ -335,7 +348,8 @@ async function renderCurrent(
   }
   currentDocument = applyTextRevision(currentDocument, text, revision);
   const renderPath = currentDocument.path;
-  const notebook = await getNotebook(renderPath);
+  const themeId = normalizePreviewTheme(requestedTheme);
+  const notebook = await getNotebook(renderPath, themeId);
   if (currentDocument?.path !== renderPath) {
     throw new Error('The document changed while its preview was being prepared.');
   }
@@ -376,7 +390,7 @@ async function renderCurrent(
     if (!oldest) break;
     previewDocuments.delete(oldest);
   }
-  return { revision, url: `marktex-preview://document/${token}` };
+  return { revision, url: `marktex-preview://document/${token}`, themeId };
 }
 
 async function readDocument(filePath: string): Promise<DocumentSnapshot> {
@@ -440,7 +454,7 @@ function watchCurrentDocument() {
 
 async function openPath(filePath: string, notify = true) {
   currentDocument = await readDocument(filePath);
-  notebookCache = null;
+  notebookCaches.clear();
   activeRoot = path.dirname(currentDocument.path);
   watchCurrentDocument();
   if (notify) mainWindow?.webContents.send('document:opened', currentDocument);
@@ -449,7 +463,7 @@ async function openPath(filePath: string, notify = true) {
 
 async function createNewDocument() {
   stopWatching();
-  notebookCache = null;
+  notebookCaches.clear();
   currentDocument = blankDocument();
   activeRoot = path.dirname(currentDocument.path);
   return currentDocument;
@@ -602,7 +616,7 @@ async function saveDocumentAs(text: string, revision: number): Promise<SaveResul
     filters: [{ name: 'Markdown', extensions: ['md'] }],
   });
   if (result.canceled || !result.filePath) return { canceled: true };
-  notebookCache = null;
+  notebookCaches.clear();
   return saveTo(result.filePath, text, revision);
 }
 
@@ -909,6 +923,21 @@ function installIpc() {
         sandbox: true,
       },
     });
+    view.webContents.on('before-input-event', (inputEvent, input) => {
+      if (
+        input.type !== 'keyDown'
+        || input.key.toLowerCase() !== 'f'
+        || (!input.control && !input.meta)
+        || input.alt
+      ) return;
+      inputEvent.preventDefault();
+      const preview = previewViews.get(tabId);
+      if (!preview) return;
+      stateForWebContentsId(preview.ownerWebContentsId)?.window.webContents.send(
+        'preview:open-find',
+        tabId,
+      );
+    });
     view.setVisible(false);
     owner.contentView.addChildView(view);
     previewViews.set(tabId, {
@@ -1115,10 +1144,13 @@ function installIpc() {
       if (currentDocument) currentDocument = applyTextRevision(currentDocument, text, revision);
     });
   });
-  ipcMain.handle('document:render', (event, { text, revision, documentPath }) => {
+  ipcMain.handle('document:render', (event, { text, revision, documentPath, themeId }) => {
     const state = stateForWebContentsId(event.sender.id);
     if (!state) throw new Error('The window no longer exists.');
-    return withWindowState(state, () => renderCurrent(text, revision, documentPath));
+    return withWindowState(
+      state,
+      () => renderCurrent(text, revision, documentPath, normalizePreviewTheme(themeId)),
+    );
   });
   ipcMain.handle('document:save', async (event, { text, revision }): Promise<SaveResult> => {
     const state = stateForWebContentsId(event.sender.id);

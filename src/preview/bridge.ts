@@ -326,6 +326,203 @@ function restoreScrollRatio(scrollRatio: number) {
   document.body.scrollTop = scrollTop;
 }
 
+// ── 읽기 도구: Crossnote DOM에서 heading 구조만 꺼낸다 ─────────────
+type PreviewHeading = {
+  id: string;
+  text: string;
+  level: 1 | 2 | 3 | 4 | 5 | 6;
+  sourceLine?: number;
+};
+
+let headingElements = new Map<string, HTMLElement>();
+let headingSignature = '';
+let activeHeadingId: string | null = null;
+let headingTimer: number | null = null;
+
+function readHeadings(): PreviewHeading[] {
+  const root = document.querySelector(PREVIEW_SELECTOR);
+  const nextElements = new Map<string, HTMLElement>();
+  const headings: PreviewHeading[] = [];
+  root?.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6').forEach((heading, index) => {
+    const level = Number(heading.tagName.slice(1)) as PreviewHeading['level'];
+    const text = (heading.textContent ?? '').replace(/\s+/g, ' ').trim();
+    if (!text) return;
+    const id = heading.id ? `id:${heading.id}` : `index:${index}`;
+    const source = Number(
+      heading.getAttribute('data-source-line')
+      ?? heading.closest('[data-source-line]')?.getAttribute('data-source-line'),
+    );
+    nextElements.set(id, heading);
+    headings.push({
+      id,
+      text,
+      level,
+      sourceLine: Number.isFinite(source) && source > 0 ? source : undefined,
+    });
+  });
+  headingElements = nextElements;
+  return headings;
+}
+
+function publishActiveHeading() {
+  if (headingElements.size === 0) readHeadings();
+  const threshold = Math.min(120, Math.max(36, window.innerHeight * 0.16));
+  let active: string | null = null;
+  for (const [id, heading] of headingElements) {
+    if (heading.getBoundingClientRect().top <= threshold) active = id;
+    else if (active === null) {
+      active = id;
+      break;
+    } else break;
+  }
+  if (active === activeHeadingId) return;
+  activeHeadingId = active;
+  send({ type: 'marktex:active-heading', revision: config.revision, id: active });
+}
+
+function publishHeadings(force = false) {
+  const headings = readHeadings();
+  const signature = JSON.stringify(headings);
+  if (force || signature !== headingSignature) {
+    headingSignature = signature;
+    send({ type: 'marktex:headings', revision: config.revision, headings });
+  }
+  publishActiveHeading();
+}
+
+function scheduleHeadings() {
+  if (headingTimer !== null) window.clearTimeout(headingTimer);
+  headingTimer = window.setTimeout(() => {
+    headingTimer = null;
+    publishHeadings();
+  }, 60);
+}
+
+// CSS Highlight API는 Range를 표시할 뿐 Crossnote의 DOM을 감싸거나 바꾸지 않는다.
+type HighlightRegistry = {
+  set(name: string, highlight: unknown): void;
+  delete(name: string): void;
+};
+
+type HighlightConstructor = new (...ranges: Range[]) => unknown;
+
+let searchQuery = '';
+let searchRanges: Range[] = [];
+let activeSearchIndex = -1;
+
+function highlightRegistry(): HighlightRegistry | null {
+  return (CSS as unknown as { highlights?: HighlightRegistry }).highlights ?? null;
+}
+
+function clearSearchHighlights() {
+  const registry = highlightRegistry();
+  registry?.delete('setdown-search-results');
+  registry?.delete('setdown-search-active');
+  searchQuery = '';
+  searchRanges = [];
+  activeSearchIndex = -1;
+}
+
+function buildSearchRanges(query: string): Range[] {
+  const root = document.querySelector(PREVIEW_SELECTOR);
+  if (!root || !query) return [];
+  const nodes: Array<{ node: Text; start: number; end: number }> = [];
+  let text = '';
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const parent = node.parentElement;
+      if (!parent || parent.closest('script, style, noscript, [hidden]')) {
+        return NodeFilter.FILTER_REJECT;
+      }
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+  let current = walker.nextNode();
+  while (current) {
+    const node = current as Text;
+    const start = text.length;
+    text += node.data;
+    nodes.push({ node, start, end: text.length });
+    current = walker.nextNode();
+  }
+
+  const haystack = text.toLocaleLowerCase();
+  const needle = query.toLocaleLowerCase();
+  const ranges: Range[] = [];
+  let offset = 0;
+  while (needle && ranges.length < 10_000) {
+    const found = haystack.indexOf(needle, offset);
+    if (found < 0) break;
+    const end = found + needle.length;
+    const startNode = nodes.find((entry) => entry.start <= found && entry.end > found);
+    const endNode = nodes.find((entry) => entry.start < end && entry.end >= end);
+    if (startNode && endNode) {
+      const range = document.createRange();
+      range.setStart(startNode.node, found - startNode.start);
+      range.setEnd(endNode.node, end - endNode.start);
+      ranges.push(range);
+    }
+    offset = Math.max(end, found + 1);
+  }
+  return ranges;
+}
+
+function paintSearchHighlights() {
+  const registry = highlightRegistry();
+  const HighlightType = (window as unknown as { Highlight?: HighlightConstructor }).Highlight;
+  if (!registry || !HighlightType) return;
+  registry.delete('setdown-search-results');
+  registry.delete('setdown-search-active');
+  if (searchRanges.length === 0) return;
+  registry.set('setdown-search-results', new HighlightType(...searchRanges));
+  if (activeSearchIndex >= 0) {
+    registry.set('setdown-search-active', new HighlightType(searchRanges[activeSearchIndex]));
+  }
+}
+
+function publishSearchResult() {
+  send({
+    type: 'marktex:find-result',
+    revision: config.revision,
+    activeMatch: activeSearchIndex >= 0 ? activeSearchIndex + 1 : 0,
+    matches: searchRanges.length,
+  });
+}
+
+function performSearch(query: string, direction: 'forward' | 'backward', findNext: boolean) {
+  if (!query) {
+    clearSearchHighlights();
+    publishSearchResult();
+    return;
+  }
+  if (query !== searchQuery || !findNext) {
+    searchQuery = query;
+    searchRanges = buildSearchRanges(query);
+    activeSearchIndex = searchRanges.length === 0
+      ? -1
+      : direction === 'backward' ? searchRanges.length - 1 : 0;
+  } else if (searchRanges.length > 0) {
+    const step = direction === 'backward' ? -1 : 1;
+    activeSearchIndex = (activeSearchIndex + step + searchRanges.length) % searchRanges.length;
+  }
+  paintSearchHighlights();
+  const active = searchRanges[activeSearchIndex];
+  if (active) {
+    const rect = active.getBoundingClientRect();
+    if (rect.top < 48 || rect.bottom > window.innerHeight - 24) {
+      active.startContainer.parentElement?.scrollIntoView({ block: 'center' });
+    }
+  }
+  publishSearchResult();
+}
+
+const searchStyle = document.createElement('style');
+searchStyle.textContent = `
+  ::highlight(setdown-search-results) { background: rgba(255, 210, 64, .58); color: inherit; }
+  ::highlight(setdown-search-active) { background: #ff9f1c; color: #17130b; }
+`;
+document.head.append(searchStyle);
+
 // ── 더블 클릭: 조건 없는 상태 전환 ──────────────────────────────────
 document.addEventListener(
   'dblclick',
@@ -403,8 +600,43 @@ window.addEventListener('message', (event) => {
     sourceLine?: number;
     scrollRatio?: number;
     requestId?: number;
+    id?: string;
+    query?: string;
+    direction?: 'forward' | 'backward';
+    findNext?: boolean;
   } | null;
   if (!data) return;
+  if (data.command === 'marktex:find') {
+    performSearch(
+      typeof data.query === 'string' ? data.query.slice(0, 512) : '',
+      data.direction === 'backward' ? 'backward' : 'forward',
+      !!data.findNext,
+    );
+    return;
+  }
+  if (data.command === 'marktex:stop-find') {
+    clearSearchHighlights();
+    publishSearchResult();
+    return;
+  }
+  if (data.command === 'marktex:collect-headings') {
+    publishHeadings(true);
+    return;
+  }
+  if (data.command === 'marktex:scroll-to-heading') {
+    if (typeof data.id !== 'string') return;
+    let target = headingElements.get(data.id);
+    if (!target) {
+      readHeadings();
+      target = headingElements.get(data.id);
+    }
+    target?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    window.setTimeout(() => {
+      publishActiveHeading();
+      scheduleViewportState();
+    }, 180);
+    return;
+  }
   if (data.command === 'marktex:restore-scroll-ratio') {
     const ratio = Number.isFinite(data.scrollRatio) ? Number(data.scrollRatio) : 0;
     const preview = document.querySelector(PREVIEW_SELECTOR);
@@ -486,10 +718,14 @@ window.addEventListener('message', (event) => {
 });
 
 // ── 색인 무효화: resize, 이미지 로드, 다이어그램 렌더 ─────────────────
-window.addEventListener('scroll', scheduleViewportState, { passive: true });
+window.addEventListener('scroll', () => {
+  scheduleViewportState();
+  publishActiveHeading();
+}, { passive: true });
 window.addEventListener('resize', () => {
   invalidateAtlas();
   scheduleViewportState();
+  publishActiveHeading();
 });
 window.addEventListener('load', () => {
   invalidateAtlas();
@@ -502,11 +738,13 @@ document.addEventListener('load', () => {
 document.addEventListener('DOMContentLoaded', () => {
   invalidateAtlas();
   scheduleViewportState();
+  scheduleHeadings();
 });
 
 const observer = new MutationObserver(() => {
   invalidateAtlas();
   scheduleViewportState();
+  scheduleHeadings();
 });
 observer.observe(document.documentElement, {
   childList: true,
@@ -515,3 +753,4 @@ observer.observe(document.documentElement, {
   attributeFilter: ['style', 'class', 'data-source-line', 'data-processed'],
 });
 scheduleViewportState();
+scheduleHeadings();

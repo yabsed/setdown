@@ -1,3 +1,5 @@
+import type { PreviewThemeId } from './preview-preferences';
+
 export type DiskVersion = {
   mtimeMs: number;
   size: number;
@@ -16,6 +18,14 @@ export type DocumentSnapshot = {
 export type RenderResult = {
   revision: number;
   url: string;
+  themeId: PreviewThemeId;
+};
+
+export type PreviewHeading = {
+  id: string;
+  text: string;
+  level: 1 | 2 | 3 | 4 | 5 | 6;
+  sourceLine?: number;
 };
 
 export type SaveResult = {
@@ -70,6 +80,7 @@ export type TransferableTab = {
   viewerScrollRatio: number | null;
   previewUrl: string | null;
   previewRevision: number | null;
+  previewTheme: PreviewThemeId | null;
 };
 
 export type ClaimedTabTransfer = {
@@ -120,7 +131,12 @@ export type MarkTexApi = {
   discardDocument(document: DocumentSnapshot): Promise<void>;
   finishWindowClose(saved: boolean): void;
   reloadDocument(): Promise<DocumentSnapshot | null>;
-  renderDocument(text: string, revision: number, documentPath: string): Promise<RenderResult>;
+  renderDocument(
+    text: string,
+    revision: number,
+    documentPath: string,
+    themeId: PreviewThemeId,
+  ): Promise<RenderResult>;
   exportPdf(text: string, revision: number, documentPath: string): Promise<ExportPdfResult>;
   pasteClipboardImage(): Promise<PasteImageResult>;
   pickLinkTarget(documentPath: string): Promise<PickLinkTargetResult>;
@@ -132,4 +148,5 @@ export type MarkTexApi = {
   onTabTransferIncoming(listener: (transfer: ClaimedTabTransfer) => void): () => void;
   onTabTransferCompleted(listener: (tabId: string) => void): () => void;
   onPreviewMessage(listener: (payload: PreviewMessage) => void): () => void;
+  onPreviewFindRequested(listener: (tabId: string) => void): () => void;
 };
