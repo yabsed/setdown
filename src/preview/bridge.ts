@@ -643,6 +643,13 @@ document.addEventListener(
 );
 
 document.addEventListener('keydown', (event) => {
+  // Crossnote는 Esc를 자체 Outline 토글로 사용한다. Setdown은 독립된 목차를
+  // 제공하므로 iframe 내부의 숨은 두 번째 navigation surface를 열지 않는다.
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    return;
+  }
   if (
     event.key.toLowerCase() === 'f'
     && (event.ctrlKey || event.metaKey)

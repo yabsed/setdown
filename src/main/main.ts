@@ -9,6 +9,7 @@ import {
   protocol,
   shell,
 } from 'electron';
+import type { MenuItem } from 'electron';
 import {
   promises as fs,
   readFileSync,
@@ -27,6 +28,7 @@ import {
 } from 'crossnote';
 import type { FileSystemApi, WebviewConfig } from 'crossnote';
 import type {
+  ApplicationMenuEntry,
   AppCommand,
   CloseDecision,
   DiskVersion,
@@ -845,32 +847,33 @@ function installMenu() {
       id: 'application-menu-file',
       label: 'File',
       submenu: [
-        { label: 'New Window', accelerator: 'CmdOrCtrl+Shift+N', click: () => createWindow() },
-        { label: 'New', accelerator: 'CmdOrCtrl+N', click: () => sendCommand('new-document') },
-        { label: 'Open…', accelerator: 'CmdOrCtrl+O', click: () => {
+        { id: 'menu-new-window', label: 'New Window', accelerator: 'CmdOrCtrl+Shift+N', click: () => createWindow() },
+        { id: 'menu-new-document', label: 'New', accelerator: 'CmdOrCtrl+N', click: () => sendCommand('new-document') },
+        { id: 'menu-open-document', label: 'Open…', accelerator: 'CmdOrCtrl+O', click: () => {
           const state = focusedState();
           if (state) void withWindowState(state, () => chooseAndOpen());
         } },
         { type: 'separator' },
         { id: 'save', label: 'Save', accelerator: 'CmdOrCtrl+S', click: () => sendCommand('save') },
-        { label: 'Save As…', accelerator: 'CmdOrCtrl+Shift+S', click: () => sendCommand('save-as') },
-        { label: 'Export as PDF…', click: () => sendCommand('export-pdf') },
+        { id: 'menu-save-as', label: 'Save As…', accelerator: 'CmdOrCtrl+Shift+S', click: () => sendCommand('save-as') },
+        { id: 'menu-export-pdf', label: 'Export as PDF…', click: () => sendCommand('export-pdf') },
         { type: 'separator' },
-        { label: 'Close Tab', accelerator: 'CmdOrCtrl+W', click: () => sendCommand('close-tab') },
+        { id: 'menu-close-tab', label: 'Close Tab', accelerator: 'CmdOrCtrl+W', click: () => sendCommand('close-tab') },
         { type: 'separator' },
-        { role: 'quit' },
+        { id: 'menu-quit', label: 'Quit', accelerator: 'CmdOrCtrl+Q', click: () => app.quit() },
       ],
     },
     {
       id: 'application-menu-view',
       label: 'View',
       submenu: [
-        { label: 'Toggle Viewer / Editor', accelerator: 'CmdOrCtrl+E', click: () => sendCommand('toggle-surface') },
-        { label: 'Next Tab', accelerator: 'Ctrl+Tab', click: () => sendCommand('next-tab') },
-        { label: 'Previous Tab', accelerator: 'Ctrl+Shift+Tab', click: () => sendCommand('previous-tab') },
+        { id: 'menu-toggle-surface', label: 'Toggle Viewer / Editor', accelerator: 'CmdOrCtrl+E', click: () => sendCommand('toggle-surface') },
+        { id: 'menu-next-tab', label: 'Next Tab', accelerator: 'Ctrl+Tab', click: () => sendCommand('next-tab') },
+        { id: 'menu-previous-tab', label: 'Previous Tab', accelerator: 'Ctrl+Shift+Tab', click: () => sendCommand('previous-tab') },
         { type: 'separator' },
         { id: 'preview-find', label: 'Find in Preview', accelerator: 'CmdOrCtrl+F', click: () => sendCommand('open-find') },
         {
+          id: 'menu-theme',
           label: 'Theme',
           submenu: PREVIEW_THEMES.map((theme) => ({
             id: `preview-theme-${theme.id}`,
@@ -881,24 +884,56 @@ function installMenu() {
           })),
         },
         { type: 'separator' },
-        { role: 'reload' },
-        { role: 'toggleDevTools' },
+        { id: 'menu-reload', label: 'Reload', accelerator: 'CmdOrCtrl+R', click: () => focusedState()?.window.webContents.reload() },
+        { id: 'menu-toggle-devtools', label: 'Toggle Developer Tools', accelerator: 'CmdOrCtrl+Shift+I', click: () => focusedState()?.window.webContents.toggleDevTools() },
         { type: 'separator' },
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
+        { id: 'menu-reset-zoom', label: 'Actual Size', accelerator: 'CmdOrCtrl+0', click: () => focusedState()?.window.webContents.setZoomLevel(0) },
+        { id: 'menu-zoom-in', label: 'Zoom In', accelerator: 'CmdOrCtrl+Plus', click: () => {
+          const contents = focusedState()?.window.webContents;
+          if (contents) contents.setZoomLevel(contents.getZoomLevel() + 0.5);
+        } },
+        { id: 'menu-zoom-out', label: 'Zoom Out', accelerator: 'CmdOrCtrl+-', click: () => {
+          const contents = focusedState()?.window.webContents;
+          if (contents) contents.setZoomLevel(contents.getZoomLevel() - 0.5);
+        } },
       ],
     },
     {
       id: 'application-menu-insert',
       label: 'Insert',
       submenu: [
-        { label: 'Table…', click: () => sendCommand('insert-table') },
-        { label: 'Link…', accelerator: 'CmdOrCtrl+K', click: () => sendCommand('insert-link') },
+        { id: 'menu-insert-table', label: 'Table…', click: () => sendCommand('insert-table') },
+        { id: 'menu-insert-link', label: 'Link…', accelerator: 'CmdOrCtrl+K', click: () => sendCommand('insert-link') },
       ],
     },
-    { id: 'application-menu-edit', role: 'editMenu' },
-    { id: 'application-menu-window', role: 'windowMenu' },
+    {
+      id: 'application-menu-edit',
+      label: 'Edit',
+      submenu: [
+        { id: 'menu-undo', label: 'Undo', accelerator: 'CmdOrCtrl+Z', click: () => focusedState()?.window.webContents.undo() },
+        { id: 'menu-redo', label: 'Redo', accelerator: 'CmdOrCtrl+Shift+Z', click: () => focusedState()?.window.webContents.redo() },
+        { type: 'separator' },
+        { id: 'menu-cut', label: 'Cut', accelerator: 'CmdOrCtrl+X', click: () => focusedState()?.window.webContents.cut() },
+        { id: 'menu-copy', label: 'Copy', accelerator: 'CmdOrCtrl+C', click: () => focusedState()?.window.webContents.copy() },
+        { id: 'menu-paste', label: 'Paste', accelerator: 'CmdOrCtrl+V', click: () => focusedState()?.window.webContents.paste() },
+        { type: 'separator' },
+        { id: 'menu-select-all', label: 'Select All', accelerator: 'CmdOrCtrl+A', click: () => focusedState()?.window.webContents.selectAll() },
+      ],
+    },
+    {
+      id: 'application-menu-window',
+      label: 'Window',
+      submenu: [
+        { id: 'menu-minimize-window', label: 'Minimize', accelerator: 'CmdOrCtrl+M', click: () => focusedState()?.window.minimize() },
+        { id: 'menu-toggle-maximize-window', label: 'Toggle Maximize', click: () => {
+          const window = focusedState()?.window;
+          if (!window) return;
+          if (window.isMaximized()) window.unmaximize();
+          else window.maximize();
+        } },
+        { id: 'menu-close-window', label: 'Close Window', accelerator: 'CmdOrCtrl+Shift+W', click: () => focusedState()?.window.close() },
+      ],
+    },
   ]);
   Menu.setApplicationMenu(menu);
 }
@@ -1000,28 +1035,64 @@ function createWindow(
   return createdWindow;
 }
 
-function installIpc() {
-  ipcMain.on('menu:popup', (event, payload: { menuId?: unknown; x?: unknown; y?: unknown }) => {
-    const state = stateForWebContentsId(event.sender.id);
-    if (!state || typeof payload?.menuId !== 'string') return;
-    const allowedMenuIds = new Set([
-      'application-menu-file',
-      'application-menu-view',
-      'application-menu-insert',
-      'application-menu-edit',
-      'application-menu-window',
-    ]);
-    if (!allowedMenuIds.has(payload.menuId)) return;
-    const item = Menu.getApplicationMenu()?.getMenuItemById(payload.menuId);
-    if (!item?.submenu) return;
-    const contentBounds = state.window.getContentBounds();
-    const relativeX = Number.isFinite(payload.x) ? Number(payload.x) : 0;
-    const relativeY = Number.isFinite(payload.y) ? Number(payload.y) : 36;
-    item.submenu.popup({
-      window: state.window,
-      x: Math.round(contentBounds.x + relativeX),
-      y: Math.round(contentBounds.y + relativeY),
+const APPLICATION_MENU_IDS = new Set([
+  'application-menu-file',
+  'application-menu-view',
+  'application-menu-insert',
+  'application-menu-edit',
+  'application-menu-window',
+]);
+
+function serializeMenuItems(items: readonly MenuItem[], parentId: string): ApplicationMenuEntry[] {
+  return items
+    .filter((item) => item.visible)
+    .map((item, index) => {
+      const type: ApplicationMenuEntry['type'] = item.submenu
+        ? 'submenu'
+        : item.type === 'separator' || item.type === 'checkbox' || item.type === 'radio'
+          ? item.type
+          : 'normal';
+      return {
+        id: item.id || `${parentId}-separator-${index}`,
+        label: item.label,
+        ...(item.accelerator ? { accelerator: String(item.accelerator) } : {}),
+        type,
+        enabled: item.enabled,
+        checked: item.checked,
+        ...(item.submenu
+          ? { submenu: serializeMenuItems(item.submenu.items, item.id || parentId) }
+          : {}),
+      };
     });
+}
+
+function findApplicationMenuItem(items: readonly MenuItem[], id: string): MenuItem | null {
+  for (const item of items) {
+    if (item.id === id) return item;
+    if (item.submenu) {
+      const nested = findApplicationMenuItem(item.submenu.items, id);
+      if (nested) return nested;
+    }
+  }
+  return null;
+}
+
+function installIpc() {
+  ipcMain.handle('menu:get', (event, menuId: unknown): ApplicationMenuEntry[] => {
+    const state = stateForWebContentsId(event.sender.id);
+    if (!state || typeof menuId !== 'string' || !APPLICATION_MENU_IDS.has(menuId)) return [];
+    const item = Menu.getApplicationMenu()?.getMenuItemById(menuId);
+    return item?.submenu ? serializeMenuItems(item.submenu.items, menuId) : [];
+  });
+
+  ipcMain.on('menu:execute', (event, itemId: unknown) => {
+    const state = stateForWebContentsId(event.sender.id);
+    const applicationMenu = Menu.getApplicationMenu();
+    if (!state || !applicationMenu || typeof itemId !== 'string') return;
+    const item = findApplicationMenuItem(applicationMenu.items, itemId);
+    if (!item?.click || item.submenu || item.type === 'separator') return;
+    selectWindowState(state);
+    item.click(item, state.window, { triggeredByAccelerator: false } as Electron.KeyboardEvent);
   });
 
   ipcMain.handle('theme:get', (event): ThemeSnapshot => {

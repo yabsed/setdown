@@ -47,8 +47,8 @@ const api: MarkTexApi = {
   detachTabToWindow: (transferId, x, y) =>
     ipcRenderer.send('tabs:detach-to-window', { transferId, x, y }),
   getTheme: () => ipcRenderer.invoke('theme:get'),
-  popupApplicationMenu: (menuId, x, y) =>
-    ipcRenderer.send('menu:popup', { menuId, x, y }),
+  getApplicationMenu: (menuId) => ipcRenderer.invoke('menu:get', menuId),
+  executeApplicationMenuItem: (itemId) => ipcRenderer.send('menu:execute', itemId),
   getPreviewThemeAssets: (themeId) =>
     ipcRenderer.invoke('preview:theme-assets', themeId),
   closeEmptyWindow: () => ipcRenderer.send('app:close-empty-window'),

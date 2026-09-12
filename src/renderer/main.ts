@@ -1,6 +1,7 @@
 import * as monaco from 'monaco-editor/editor/editor.main';
 import EditorWorker from 'monaco-editor/editor/editor.worker?worker';
 import type {
+  ApplicationMenuEntry,
   ClaimedTabTransfer,
   DocumentSnapshot,
   PreviewHeading,
@@ -143,6 +144,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <button type="button" data-menu-id="application-menu-edit">Edit</button>
       <button type="button" data-menu-id="application-menu-window">Window</button>
     </nav>
+    <div class="application-menu-popup" hidden></div>
     <div class="titlebar-drag-space" aria-hidden="true"></div>
   </header>
   <section class="shell" data-surface="empty" data-tabs="false">
@@ -188,15 +190,16 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </section>
 
     <section class="viewer-surface" aria-label="렌더링된 Markdown">
-      <div class="preview-search" role="search" hidden>
-        <input type="search" autocomplete="off" spellcheck="false" aria-label="렌더링된 문서에서 찾기" placeholder="찾기…">
-        <span class="find-count" aria-live="polite">0 / 0</span>
-        <button class="find-previous" type="button" aria-label="이전 검색 결과">↑</button>
-        <button class="find-next" type="button" aria-label="다음 검색 결과">↓</button>
-        <button class="find-close" type="button" aria-label="검색 닫기">×</button>
-      </div>
       <div class="reader-body">
-        <div class="preview-frames"></div>
+        <div class="preview-frames">
+          <div class="preview-search" role="search" hidden>
+            <input type="search" autocomplete="off" spellcheck="false" aria-label="렌더링된 문서에서 찾기" placeholder="찾기…">
+            <span class="find-count" aria-live="polite">0 / 0</span>
+            <button class="find-previous" type="button" aria-label="이전 검색 결과">↑</button>
+            <button class="find-next" type="button" aria-label="다음 검색 결과">↓</button>
+            <button class="find-close" type="button" aria-label="검색 닫기">×</button>
+          </div>
+        </div>
         <aside class="toc-panel" aria-label="문서 목차" hidden>
           <div class="toc-panel-title"><strong>목차</strong><span class="toc-count"></span></div>
           <nav class="toc-list"></nav>
@@ -251,6 +254,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
 const shell = document.querySelector<HTMLElement>('.shell')!;
 const applicationMenu = document.querySelector<HTMLElement>('.application-menu')!;
+const applicationMenuPopup = document.querySelector<HTMLElement>('.application-menu-popup')!;
 const modeToggle = document.querySelector<HTMLButtonElement>('.mode-toggle')!;
 const previewFrames = document.querySelector<HTMLElement>('.preview-frames')!;
 const tocToggle = document.querySelector<HTMLButtonElement>('.toc-toggle')!;
@@ -506,6 +510,7 @@ async function applyProductTheme(snapshot: ThemeSnapshot, forceAssets = false) {
     && readerPreferences.themeId === nextTheme) return;
   appliedThemeRevision = snapshot.revision;
   readerPreferences.themeId = nextTheme;
+  applicationMenuCache.delete('application-menu-view');
   applyShellTheme(nextTheme);
   monaco.editor.setTheme(monacoThemeName(nextTheme));
   syncReaderUi();
@@ -1854,11 +1859,141 @@ tocToggle.addEventListener('click', () => {
     sendPreviewCommand(activeTabId, { command: 'marktex:collect-headings' });
   }
 });
+const applicationMenuCache = new Map<string, ApplicationMenuEntry[]>();
+let openApplicationMenuId: string | null = null;
+let applicationMenuRequest = 0;
+
+function closeApplicationMenu() {
+  openApplicationMenuId = null;
+  applicationMenuPopup.hidden = true;
+  applicationMenuPopup.replaceChildren();
+  applicationMenu.querySelectorAll('button').forEach((button) => {
+    button.classList.remove('is-open');
+    button.setAttribute('aria-expanded', 'false');
+  });
+}
+
+function displayAccelerator(value: string | undefined) {
+  if (!value) return '';
+  const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
+  return value
+    .replace(/CmdOrCtrl/g, isMac ? '⌘' : 'Ctrl')
+    .replace(/CommandOrControl/g, isMac ? '⌘' : 'Ctrl')
+    .replace(/\+Plus$/, '++');
+}
+
+function menuEntryList(entries: ApplicationMenuEntry[], nested = false): HTMLUListElement {
+  const list = document.createElement('ul');
+  list.className = nested ? 'product-submenu' : 'product-menu-root';
+  list.setAttribute('role', 'menu');
+  for (const entry of entries) {
+    const row = document.createElement('li');
+    row.setAttribute('role', 'none');
+    if (entry.type === 'separator') {
+      row.className = 'product-menu-separator';
+      row.setAttribute('aria-hidden', 'true');
+      list.append(row);
+      continue;
+    }
+    row.className = 'product-menu-row';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.menuItemId = entry.id;
+    button.disabled = !entry.enabled;
+    button.setAttribute('role', entry.type === 'radio' ? 'menuitemradio' : 'menuitem');
+    if (entry.type === 'radio') button.setAttribute('aria-checked', String(entry.checked));
+
+    const marker = document.createElement('span');
+    marker.className = 'product-menu-marker';
+    marker.textContent = entry.type === 'radio' && entry.checked ? '•' : '';
+    const label = document.createElement('span');
+    label.className = 'product-menu-label';
+    label.textContent = entry.label;
+    const accelerator = document.createElement('span');
+    accelerator.className = 'product-menu-accelerator';
+    accelerator.textContent = displayAccelerator(entry.accelerator);
+    const arrow = document.createElement('span');
+    arrow.className = 'product-menu-arrow';
+    arrow.textContent = entry.submenu?.length ? '›' : '';
+    button.append(marker, label, accelerator, arrow);
+    row.append(button);
+    if (entry.submenu?.length) {
+      row.classList.add('has-submenu');
+      row.append(menuEntryList(entry.submenu, true));
+      button.addEventListener('click', () => row.classList.toggle('is-submenu-open'));
+    } else {
+      button.addEventListener('click', () => {
+        window.marktex.executeApplicationMenuItem(entry.id);
+        closeApplicationMenu();
+      });
+    }
+    list.append(row);
+  }
+  return list;
+}
+
+async function loadApplicationMenu(menuId: string) {
+  const entries = await window.marktex.getApplicationMenu(menuId);
+  applicationMenuCache.set(menuId, entries);
+  return entries;
+}
+
+function showApplicationMenu(button: HTMLButtonElement, entries: ApplicationMenuEntry[]) {
+  const menuId = button.dataset.menuId!;
+  const bounds = button.getBoundingClientRect();
+  openApplicationMenuId = menuId;
+  applicationMenuPopup.replaceChildren(menuEntryList(entries));
+  const menuWidth = 286;
+  const left = Math.min(bounds.left, Math.max(6, window.innerWidth - menuWidth - 6));
+  applicationMenuPopup.style.left = `${Math.round(left)}px`;
+  applicationMenuPopup.style.top = `${Math.round(bounds.bottom + 2)}px`;
+  applicationMenuPopup.hidden = false;
+  applicationMenu.querySelectorAll('button').forEach((candidate) => {
+    const isOpen = candidate === button;
+    candidate.classList.toggle('is-open', isOpen);
+    candidate.setAttribute('aria-expanded', String(isOpen));
+  });
+}
+
+async function openApplicationMenu(button: HTMLButtonElement) {
+  const menuId = button.dataset.menuId!;
+  if (openApplicationMenuId === menuId) {
+    closeApplicationMenu();
+    return;
+  }
+  const request = ++applicationMenuRequest;
+  const cached = applicationMenuCache.get(menuId);
+  if (cached) showApplicationMenu(button, cached);
+  const entries = await loadApplicationMenu(menuId);
+  if (request !== applicationMenuRequest) return;
+  showApplicationMenu(button, entries);
+}
+
+applicationMenu.querySelectorAll<HTMLButtonElement>('button[data-menu-id]').forEach((button) => {
+  button.setAttribute('aria-haspopup', 'menu');
+  button.setAttribute('aria-expanded', 'false');
+  void loadApplicationMenu(button.dataset.menuId!);
+});
 applicationMenu.addEventListener('click', (event) => {
   const button = (event.target as Element).closest<HTMLButtonElement>('button[data-menu-id]');
-  if (!button) return;
-  const bounds = button.getBoundingClientRect();
-  window.marktex.popupApplicationMenu(button.dataset.menuId!, bounds.left, bounds.bottom);
+  if (button) void openApplicationMenu(button);
+});
+applicationMenu.addEventListener('pointerover', (event) => {
+  if (!openApplicationMenuId) return;
+  const button = (event.target as Element).closest<HTMLButtonElement>('button[data-menu-id]');
+  if (button && button.dataset.menuId !== openApplicationMenuId) void openApplicationMenu(button);
+});
+document.addEventListener('pointerdown', (event) => {
+  const target = event.target as Node;
+  if (!applicationMenu.contains(target) && !applicationMenuPopup.contains(target)) {
+    closeApplicationMenu();
+  }
+});
+applicationMenuPopup.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeApplicationMenu();
+  }
 });
 findInput.addEventListener('input', () => runPreviewFind('forward', false));
 findInput.addEventListener('keydown', (event) => {
@@ -2068,6 +2203,12 @@ window.marktex.onTabTransferCompleted((tabId) => {
   void removeTransferredTab(tabId);
 });
 window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && openApplicationMenuId) {
+    event.preventDefault();
+    event.stopPropagation();
+    closeApplicationMenu();
+    return;
+  }
   if (event.key === 'Escape' && draggedTabId) tabDragCanceled = true;
   if (
     surface === 'viewer'

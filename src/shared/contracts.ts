@@ -93,6 +93,16 @@ export type ThemeSnapshot = {
   revision: number;
 };
 
+export type ApplicationMenuEntry = {
+  id: string;
+  label: string;
+  accelerator?: string;
+  type: 'normal' | 'separator' | 'checkbox' | 'radio' | 'submenu';
+  enabled: boolean;
+  checked: boolean;
+  submenu?: ApplicationMenuEntry[];
+};
+
 export type CloseDecision = 'cancel' | 'discard' | 'save';
 
 export type AppCommand =
@@ -121,7 +131,8 @@ export type MarkTexApi = {
   cancelTabTransfer(transferId: string): void;
   detachTabToWindow(transferId: string, x: number, y: number): void;
   getTheme(): Promise<ThemeSnapshot>;
-  popupApplicationMenu(menuId: string, x: number, y: number): void;
+  getApplicationMenu(menuId: string): Promise<ApplicationMenuEntry[]>;
+  executeApplicationMenuItem(itemId: string): void;
   getPreviewThemeAssets(themeId: PreviewThemeId): Promise<PreviewThemeAssets>;
   closeEmptyWindow(): void;
   updateText(text: string, revision: number): void;

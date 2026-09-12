@@ -37,6 +37,24 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     ]);
     expect(await application.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0]?.isMenuBarVisible())).toBe(false);
+    await window.locator('.application-menu button', { hasText: 'View' }).click();
+    await expect(window.locator('.application-menu-popup')).toBeVisible();
+    await expect(window.locator('.application-menu-popup')).toContainText('Find in Preview');
+    expect(await window.locator('.application-menu-popup').evaluate((element) => ({
+      radius: getComputedStyle(element).borderRadius,
+      background: getComputedStyle(element).backgroundColor,
+      themedBackground: getComputedStyle(document.documentElement)
+        .getPropertyValue('--app-raised-surface').trim(),
+    }))).toEqual({
+      radius: '3px',
+      background: 'rgb(255, 255, 255)',
+      themedBackground: '#ffffff',
+    });
+    await window.locator('.application-menu-popup button', { hasText: 'Find in Preview' }).click();
+    await expect(window.locator('.application-menu-popup')).toBeHidden();
+    await expect(window.locator('.preview-search')).toBeVisible();
+    await window.locator('.find-close').click();
+    await expect(window.locator('.preview-search')).toBeHidden();
 
     await expect(window.locator('.tab-actions .toc-toggle')).toBeVisible();
     await expect(window.locator('.find-toggle')).toHaveCount(0);
@@ -63,17 +81,24 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
 
     const previewBoundsBeforeFind = await window.locator('.preview-frames').boundingBox();
     await readingFrame.locator('body').click({ position: { x: 20, y: 20 } });
+    await window.keyboard.press('Escape');
+    await expect(readingFrame.locator('.md-sidebar-toc')).toHaveClass(/\bhidden\b/);
     await window.keyboard.press('Control+F');
     await expect(window.locator('.preview-search')).toBeVisible();
     await expect(window.locator('.preview-search input')).toBeFocused();
     const previewBoundsWithFind = await window.locator('.preview-frames').boundingBox();
     expect(previewBoundsWithFind).toEqual(previewBoundsBeforeFind);
     const searchBounds = await window.locator('.preview-search').boundingBox();
-    const viewerBounds = await window.locator('.viewer-surface').boundingBox();
+    const tocBoundsWhileFinding = await window.locator('.toc-panel').boundingBox();
     expect(searchBounds).toBeTruthy();
-    expect(viewerBounds).toBeTruthy();
+    expect(tocBoundsWhileFinding).toBeTruthy();
     expect(Math.abs((searchBounds?.x ?? 0) + (searchBounds?.width ?? 0)
-      - (viewerBounds?.x ?? 0) - (viewerBounds?.width ?? 0) + 16)).toBeLessThanOrEqual(1);
+      - (previewBoundsWithFind?.x ?? 0) - (previewBoundsWithFind?.width ?? 0) + 10))
+      .toBeLessThanOrEqual(1);
+    expect((searchBounds?.x ?? 0) + (searchBounds?.width ?? 0))
+      .toBeLessThanOrEqual(tocBoundsWhileFinding?.x ?? 0);
+    expect(await window.locator('.preview-search').evaluate((element) =>
+      getComputedStyle(element).borderRadius)).toBe('3px');
     await window.locator('.preview-search input').fill('검색대상');
     await expect(window.locator('.find-count')).not.toHaveText('0 / 0');
 
@@ -103,6 +128,14 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       shell: 'rgb(47, 52, 57)',
       editor: 'rgb(54, 59, 64)',
     });
+    await window.locator('.application-menu button', { hasText: 'View' }).click();
+    await expect(window.locator('.application-menu-popup')).toBeVisible();
+    expect(await window.locator('.application-menu-popup').evaluate((element) =>
+      getComputedStyle(element).backgroundColor)).toBe('rgb(65, 71, 77)');
+    await expect(window.locator('[data-menu-item-id="preview-theme-night"]'))
+      .toHaveAttribute('aria-checked', 'true');
+    await window.keyboard.press('Escape');
+    await expect(window.locator('.application-menu-popup')).toBeHidden();
     const afterUrls = await window.locator('.preview-frame').evaluateAll((frames) =>
       frames.map((frame) => (frame as HTMLIFrameElement).src));
     expect(afterUrls).toEqual(beforeUrls);
