@@ -92,6 +92,14 @@ export type TransferableTab = {
    * 이 띠의 무게중심으로 맞추면 보던 구간 전체가 같은 자리에 선다.
    */
   viewerBand?: { sourceLine: number; yRatio: number }[];
+  /**
+   * 목적지 창의 content 크기가 원래 창과 같은가.
+   *
+   * 같으면 폭도 배율도 그대로이므로 조판 결과가 한 픽셀도 달라지지 않는다.
+   * 그때는 위치를 다시 계산하지 않는다. 재계산은 아무리 정확해도 몇 px의
+   * 어긋남을 만들고, 그것이 화면이 흔들리는 것으로 보인다.
+   */
+  previewGeometryUnchanged?: boolean;
   previewUrl: string | null;
   previewRevision: number | null;
   previewTheme: PreviewThemeId | null;

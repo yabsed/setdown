@@ -1250,7 +1250,12 @@ async function installTransferredTab(transfer: ClaimedTabTransfer) {
   renderTabs();
   await activateTab(restored.id);
   syncPreviewView();
-  const positioned = restored.surface === 'viewer' && restored.previewRevision !== null
+  // 창 크기가 같으면 조판이 한 픽셀도 다르지 않다. 위치를 다시 계산하지
+  // 않는다. reparent만으로 scroll은 그대로 남아 있고, 재계산은 몇 px의
+  // 어긋남을 만들어 화면이 흔들리는 것으로 보인다.
+  const positioned = restored.surface === 'viewer'
+    && restored.previewRevision !== null
+    && incoming.previewGeometryUnchanged !== true
     ? requestPreviewPosition(
       restored.anchor,
       restored.previewRevision,

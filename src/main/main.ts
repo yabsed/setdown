@@ -103,6 +103,8 @@ type PendingTabTransfer = {
   previewScrollPosition: Promise<{ x: number; y: number }>;
   /** dragstart 순간 source Viewer에 보이던 띠. 무게중심 정렬의 재료다. */
   previewBand: Promise<BandLine[]>;
+  /** 탭을 내보낸 창의 content 크기. 목적지와 같으면 조판이 그대로다. */
+  sourceContentSize: { width: number; height: number } | null;
 };
 
 const windowStates = new Map<number, WindowState>();
@@ -139,6 +141,21 @@ function rememberWarmupTemplate(template: string) {
   const token = `warmup-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   previewDocuments.set(token, blank);
   warmupPreviewUrl = `marktex-preview://document/${token}`;
+}
+
+/**
+ * 목적지 창이 원래 창과 같은 content 크기인가. 같으면 조판이 그대로이므로
+ * Preview의 scroll을 손대지 않는다.
+ */
+function transferKeepsGeometry(
+  transfer: PendingTabTransfer,
+  destinationWebContentsId: number,
+): boolean {
+  const source = transfer.sourceContentSize;
+  const destination = sourceContentSize(destinationWebContentsId);
+  return !!source && !!destination
+    && source.width === destination.width
+    && source.height === destination.height;
 }
 
 /** 탭을 내보내는 창의 content 크기. 분리된 창을 같은 크기로 열기 위한 값이다. */
@@ -1548,6 +1565,7 @@ function installIpc() {
         ?? Promise.resolve({ x: 0, y: 0 }),
       // 화면에 온전히 들어온 줄만 모은다. 위로 걸친 block을 넣으면 비율이
       // 음수가 되어 clamp에 눌리고, 무게중심이 한쪽으로 치우친다.
+      sourceContentSize: sourceContentSize(event.sender.id),
       previewBand: previewViews.get(String(tab.id))?.view.webContents
         .executeJavaScript(`(() => {
           const root = document.querySelector('.markdown-preview[data-for="preview"]');
@@ -1603,11 +1621,13 @@ function installIpc() {
     preview.view.setBackgroundColor(previewThemeBackground(
       transfer.tab.previewTheme ?? globalPreviewTheme,
     ));
-    // 띠를 얻었으면 좌표계를 하나로 둔다. 픽셀 복원과 무게중심 정렬이 함께
-    // 돌면 서로 다른 답을 내어 화면이 두 번 튄다.
+    // 크기가 같으면 조판이 그대로다. scroll은 reparent만으로 이미 보존되므로
+    // 아무것도 하지 않는 것이 정답이다. 띠를 얻었으면 좌표계를 하나로 둔다.
+    // 픽셀 복원과 무게중심 정렬이 함께 돌면 서로 다른 답을 내어 두 번 튄다.
+    const keepsGeometry = transferKeepsGeometry(transfer, event.sender.id);
     const band = await transfer.previewBand.catch(() => [] as BandLine[]);
-    preview.pendingScrollPosition = band.length > 0 ? null : scroll;
-    preview.pendingScrollRatio = band.length > 0
+    preview.pendingScrollPosition = keepsGeometry || band.length > 0 ? null : scroll;
+    preview.pendingScrollRatio = keepsGeometry || band.length > 0
       || !Number.isFinite(Number(transfer.tab.viewerScrollRatio))
       ? null
       : Math.max(0, Math.min(1, Number(transfer.tab.viewerScrollRatio)));
@@ -1634,7 +1654,11 @@ function installIpc() {
     }
     return {
       transferId,
-      tab: { ...transfer.tab, viewerBand: await transfer.previewBand },
+      tab: {
+        ...transfer.tab,
+        viewerBand: await transfer.previewBand,
+        previewGeometryUnchanged: transferKeepsGeometry(transfer, event.sender.id),
+      },
     };
   });
   ipcMain.on('tabs:complete-transfer', (event, transferId: string) => {
@@ -1716,7 +1740,12 @@ function installIpc() {
       if (!pendingTabTransfers.has(transferId) || detachedWindow.isDestroyed()) return;
       detachedWindow.webContents.send('tabs:transfer-incoming', {
         transferId,
-        tab: { ...transfer.tab, viewerBand: band },
+        tab: {
+          ...transfer.tab,
+          viewerBand: band,
+          previewGeometryUnchanged:
+            transferKeepsGeometry(transfer, detachedWindow.webContents.id),
+        },
       });
     };
     if (detachedWindow.webContents.isLoadingMainFrame()) {
