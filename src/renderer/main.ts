@@ -336,6 +336,11 @@ const previewMessageListeners = new Set<(payload: {
 // 계속 입력해도 Preview가 무기한 낡지 않도록 trailing debounce가 아니라
 // checkpoint cadence로 동작한다. 진행 중 변경은 coordinator가 최신 하나로 합친다.
 const PREVIEW_CHECKPOINT_MS = 500;
+/**
+ * 인계받은 탭의 조판 안내를 최대 이만큼만 붙잡아 둔다. Preview의 위치 확정
+ * 응답을 기다리다 새 창만 느려 보이는 일을 막는다.
+ */
+const TRANSFER_ANNOUNCE_GRACE_MS = 150;
 let previewCoordinator = new PreviewRenderCoordinator(renderRevision);
 
 /**
@@ -1245,8 +1250,6 @@ async function installTransferredTab(transfer: ClaimedTabTransfer) {
   renderTabs();
   await activateTab(restored.id);
   syncPreviewView();
-  // 위치를 잡는 동안에도 transfer의 handshake는 기다리지 않는다. 안내만
-  // 위치가 확정될 때까지 남겨 둔다.
   const positioned = restored.surface === 'viewer' && restored.previewRevision !== null
     ? requestPreviewPosition(
       restored.anchor,
@@ -1257,8 +1260,14 @@ async function installTransferredTab(transfer: ClaimedTabTransfer) {
     )
     : Promise.resolve(true);
   window.marktex.completeTabTransfer(transfer.transferId);
-  // requestPreviewPosition은 응답이 없어도 1초 뒤 반드시 끝난다.
-  void positioned.then(finishAnnouncement);
+  // 안내를 걷는 시점을 Preview의 왕복 응답에 걸지 않는다. 응답이 늦으면
+  // 그 대기 시간이 그대로 안내 노출 시간이 되어, 같은 일을 하는 기존 창
+  // 경로보다 새 창만 느려 보인다. 응답이 제때 오면 쓰고, 아니면 짧은 유예
+  // 뒤에 그냥 드러낸다.
+  void Promise.race([
+    positioned,
+    new Promise((resolve) => window.setTimeout(resolve, TRANSFER_ANNOUNCE_GRACE_MS)),
+  ]).then(finishAnnouncement);
 }
 
 async function reloadActiveDocument(documentSnapshot: DocumentSnapshot) {
