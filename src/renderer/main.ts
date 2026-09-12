@@ -327,6 +327,8 @@ let surface: 'empty' | 'viewer' | 'editor' = 'empty';
 let previewGeneration = 0;
 let previewTimer: number | null = null;
 let previewIdleTimer: number | null = null;
+/** Viewer의 anchor 요청 세대. 뒤늦은 fallback을 걸러 내는 데 쓴다. */
+let viewerAnchorRequest = 0;
 let previewError: { revision: number; message: string } | null = null;
 let previewPositionRequest = 0;
 const previewMessageListeners = new Set<(payload: {
@@ -1304,6 +1306,8 @@ async function reloadActiveDocument(documentSnapshot: DocumentSnapshot) {
  * anchor의 품질은 목적지만 바꾼다. confidence는 검사하지 않는다.
  */
 function enterEditor(next: ViewportAnchor = anchor) {
+  // 편집기가 열렸으니 대기 중이던 anchor 요청의 fallback은 무효다.
+  viewerAnchorRequest += 1;
   if (!model) return;
   if (activeTab()?.find.open) closePreviewFind(false);
   anchor = clampAnchor(next, model.getLineCount());
@@ -2148,18 +2152,22 @@ document.querySelector('.render-error button')?.addEventListener('click', () => 
  * 않아도 전환은 보장한다.
  */
 function requestViewerAnchor() {
-  const pendingSurface = surface;
   const pendingTabId = activeTabId;
   if (!pendingTabId) return;
+  const request = ++viewerAnchorRequest;
   sendPreviewCommand(pendingTabId, {
     command: 'marktex:request-anchor',
     topRatio: GOLDEN_TOP_RATIO,
   });
   window.setTimeout(() => {
-    if (
-      activeTabId === pendingTabId
-      && surface === pendingSurface
-    ) enterEditor(anchor);
+    // 답이 끝내 오지 않았을 때만 대신 연다.
+    //
+    // 예전에는 "지금 surface가 요청할 때와 같은가"로 판정했다. 그런데 편집기가
+    // 열린 뒤 120ms 안에 Esc로 돌아오면 surface가 다시 viewer가 되어, 이미
+    // 소임을 다한 fallback이 편집기를 한 번 더 열어 버렸다. 판정은 화면이
+    // 아니라 "이 요청이 아직 유효한가"여야 한다.
+    if (request !== viewerAnchorRequest || activeTabId !== pendingTabId) return;
+    enterEditor(anchor);
   }, 120);
 }
 document.querySelector('.notice-keep')?.addEventListener('click', () => {

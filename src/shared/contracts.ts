@@ -25,7 +25,7 @@ export type DocumentSnapshot = {
 export type RenderResult = {
   revision: number;
   themeId: PreviewThemeId;
-  /** 새 페이지를 실었을 때만. 갱신이면 null이다. */
+  /** 이 탭의 Preview가 지금 띄우고 있는 페이지. 실패했을 때만 null이다. */
   url: string | null;
 };
 

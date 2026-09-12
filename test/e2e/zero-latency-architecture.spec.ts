@@ -19,7 +19,9 @@ test('keeps one live preview WebContents through Esc and window transfer', async
       const owner = BrowserWindow.getAllWindows().find((candidate) => candidate.isVisible());
       const preview = owner?.contentView.children.find((candidate) =>
         'webContents' in candidate
-        && candidate.webContents.getURL().startsWith('marktex-preview://document/'));
+        // 미리 부팅해 둔 예비(warmup) view가 아니라 실제 문서의 view를 고른다.
+        && candidate.webContents.getURL().startsWith('marktex-preview://document/')
+        && !candidate.webContents.getURL().includes('/warmup-'));
       if (!owner || !preview || !('webContents' in preview)) return null;
       await preview.webContents.executeJavaScript(
         'window.__setdownTransferSentinel = 41; window.scrollTo(0, 240);',
@@ -44,7 +46,9 @@ test('keeps one live preview WebContents through Esc and window transfer', async
       const owner = BrowserWindow.getAllWindows().find((candidate) => candidate.isVisible());
       const preview = owner?.contentView.children.find((candidate) =>
         'webContents' in candidate
-        && candidate.webContents.getURL().startsWith('marktex-preview://document/'));
+        // 미리 부팅해 둔 예비(warmup) view가 아니라 실제 문서의 view를 고른다.
+        && candidate.webContents.getURL().startsWith('marktex-preview://document/')
+        && !candidate.webContents.getURL().includes('/warmup-'));
       return preview && 'webContents' in preview
         ? { previewId: preview.webContents.id, url: preview.webContents.getURL() }
         : null;

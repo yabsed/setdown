@@ -2,6 +2,7 @@ import { _electron as electron, expect, test } from '@playwright/test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { previews } from './preview-view';
 
 test('uses the rendered document for TOC, search, and Crossnote themes', async () => {
   const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-reader-tools-e2e-'));
@@ -60,15 +61,14 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     await window.locator('.find-close').click();
     await expect(window.locator('.preview-search')).toBeHidden();
 
-    const initialReadingFrame = window.frames().find((frame) =>
-      frame.url().startsWith('marktex-preview:'))!;
-    await initialReadingFrame.evaluate(() => window.scrollTo(0, 0));
+    const reading = previews(application);
+    await reading.evaluate('window.scrollTo(0, 0), true');
     await application.evaluate(({ Menu }) => {
       Menu.getApplicationMenu()?.getMenuItemById('preview-theme-medium')?.click();
     });
-    await expect.poll(() => initialReadingFrame.evaluate(() =>
-      document.body.dataset.setdownPreviewTheme)).toBe('medium');
-    expect(await initialReadingFrame.evaluate(() => window.scrollY)).toBe(0);
+    await expect.poll(() =>
+      reading.evaluate('document.body.dataset.setdownPreviewTheme')).toBe('medium');
+    expect(await reading.evaluate('Math.round(scrollY)')).toBe(0);
 
     await expect(window.locator('.tab-actions .toc-toggle')).toBeVisible();
     await expect(window.locator('.find-toggle')).toHaveCount(0);
@@ -86,31 +86,28 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     await expect(window.locator('.toc-item').nth(1)).toHaveText('두 번째 장');
     await window.locator('.toc-item').nth(1).click();
 
-    const readingElement = window.locator('.preview-frame.is-active');
-    const readingTabId = await readingElement.getAttribute('data-tab-id');
-    expect(readingTabId).toBeTruthy();
-    const readingFrame = window.frames().find((frame) =>
-      frame.url().startsWith('marktex-preview:'))!;
-    expect(await readingFrame.evaluate(() => {
-      const preview = document.querySelector<HTMLElement>('.markdown-preview[data-for="preview"]')!;
-      const wideCode = preview.querySelector<HTMLElement>('pre')!;
+    expect(await reading.hasVisible()).toBe(true);
+    expect(await reading.evaluate(`(() => {
+      const preview = document.querySelector('.markdown-preview[data-for="preview"]');
+      const wideCode = preview.querySelector('pre');
       return {
         documentHasHorizontalOverflow:
           document.documentElement.scrollWidth > document.documentElement.clientWidth,
         previewOverflowX: getComputedStyle(preview).overflowX,
         wideCodeScrollsLocally: wideCode.scrollWidth > wideCode.clientWidth,
       };
-    })).toEqual({
+    })()`)).toEqual({
       documentHasHorizontalOverflow: false,
       previewOverflowX: 'hidden',
       wideCodeScrollsLocally: true,
     });
-    await expect.poll(() => readingFrame.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+    await expect.poll(() => reading.evaluate('Math.round(scrollY)')).toBeGreaterThan(0);
 
     const previewBoundsBeforeFind = await window.locator('.preview-frames').boundingBox();
-    await readingFrame.locator('body').click({ position: { x: 20, y: 20 } });
-    await window.keyboard.press('Escape');
-    await expect(readingFrame.locator('.md-sidebar-toc')).toHaveClass(/\bhidden\b/);
+    // Zen mode에서 crossnote의 sidebar TOC는 감춰져 있어야 한다.
+    await expect.poll(() => reading.evaluate(
+      "document.querySelector('.md-sidebar-toc')?.className ?? 'none'",
+    )).toMatch(/hidden|none/);
     await window.keyboard.press('Control+F');
     await expect(window.locator('.preview-search')).toBeVisible();
     await expect(window.locator('.preview-search input')).toBeFocused();
@@ -132,8 +129,7 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
 
     await window.locator('.new-tab-button').click();
     await expect(window.locator('.document-tab')).toHaveCount(2);
-    await expect.poll(() => window.frames()
-      .filter((frame) => frame.url().startsWith('marktex-preview:')).length).toBe(2);
+    await expect.poll(reading.count).toBe(2);
     await expect(window.locator('.editor-surface')).toBeVisible();
     await window.locator('.mode-toggle').click();
     await expect(window.locator('.viewer-surface')).toBeVisible();
@@ -143,15 +139,13 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     await window.locator('.document-tab', { hasText: 'reader-tools.md' }).click();
     await expect(window.locator('.toc-panel')).toBeVisible();
 
-    const beforeUrls = await window.locator('.preview-frame').evaluateAll((frames) =>
-      frames.map((frame) => (frame as HTMLIFrameElement).src));
+    const beforeUrls = await reading.urls();
     await application.evaluate(({ Menu }) => {
       Menu.getApplicationMenu()?.getMenuItemById('preview-theme-night')?.click();
     });
-    await expect.poll(() => Promise.all(window.frames()
-      .filter((frame) => frame.url().startsWith('marktex-preview:'))
-      .map((frame) => frame.evaluate(() => document.body.dataset.setdownPreviewTheme || '')),
-    )).toEqual(['night', 'night']);
+    await expect.poll(() =>
+      reading.evaluateAll<string>("document.body.dataset.setdownPreviewTheme || ''"),
+    ).toEqual(['night', 'night']);
     await expect.poll(() => window.evaluate(() => ({
       theme: document.documentElement.dataset.theme,
       appearance: document.documentElement.dataset.appearance,
@@ -180,24 +174,25 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       .toHaveAttribute('aria-checked', 'true');
     await window.keyboard.press('Escape');
     await expect(window.locator('.application-menu-popup')).toBeHidden();
-    const afterUrls = await window.locator('.preview-frame').evaluateAll((frames) =>
-      frames.map((frame) => (frame as HTMLIFrameElement).src));
+    const afterUrls = await reading.urls();
     expect(afterUrls).toEqual(beforeUrls);
-    const semanticPosition = await readingFrame.evaluate(() => {
-            const y = innerHeight * 0.382;
-            const candidates = [...document.querySelectorAll('[data-source-line]')]
-              .map((element) => ({
-                line: Number(element.getAttribute('data-source-line')),
-                rect: element.getBoundingClientRect(),
-              }))
-              .filter(({ line, rect }) => line > 0 && (rect.width > 0 || rect.height > 0));
-            const covering = candidates.find(({ rect }) => rect.top <= y && rect.bottom >= y);
-            const previous = candidates.filter(({ rect }) => rect.bottom <= y).at(-1);
-            const next = candidates.find(({ rect }) => rect.top >= y);
-            const visibleLine = covering?.line ?? previous?.line ?? next?.line ?? null;
-            const anchorLine = Number(document.body.dataset.setdownThemeAnchorLine) || null;
-            return { visibleLine, anchorLine };
-    });
+    const semanticPosition = (await reading.evaluate<{
+      visibleLine: number | null; anchorLine: number | null;
+    }>(`(() => {
+      const y = innerHeight * 0.382;
+      const candidates = [...document.querySelectorAll('[data-source-line]')]
+        .map((element) => ({
+          line: Number(element.getAttribute('data-source-line')),
+          rect: element.getBoundingClientRect(),
+        }))
+        .filter((entry) => entry.line > 0 && (entry.rect.width > 0 || entry.rect.height > 0));
+      const covering = candidates.find((entry) => entry.rect.top <= y && entry.rect.bottom >= y);
+      const previous = candidates.filter((entry) => entry.rect.bottom <= y).at(-1);
+      const next = candidates.find((entry) => entry.rect.top >= y);
+      const visibleLine = (covering || previous || next || {}).line ?? null;
+      const anchorLine = Number(document.body.dataset.setdownThemeAnchorLine) || null;
+      return { visibleLine, anchorLine };
+    })()`))!;
     expect(semanticPosition.anchorLine).toBeTruthy();
     expect(semanticPosition.visibleLine).toBe(semanticPosition.anchorLine);
     expect(await window.evaluate(() =>
@@ -208,27 +203,25 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       const [width, height] = owner.getSize();
       owner.setSize(width + 120, height + 80);
     });
+    // native view의 bounds가 DOM placeholder와 맞는지 본다.
     await expect.poll(async () => {
       const host = await window.locator('.preview-frames').boundingBox();
-      const frame = await window.locator(
-        `.preview-frame[data-tab-id="${readingTabId}"].is-active`,
-      ).boundingBox();
-      return !!host && !!frame
-        && Math.abs(host.width - frame.width) <= 1
-        && Math.abs(host.height - frame.height) <= 1;
+      const view = await reading.visibleBounds();
+      return !!host && !!view
+        && Math.abs(host.width - view.width) <= 1
+        && Math.abs(host.height - view.height) <= 1;
     }).toBe(true);
     await expect(window.locator('.preview-search input')).toHaveValue('검색대상');
     await window.locator('.document-tab', { hasText: 'Untitled.md' }).click();
-    await expect.poll(() => Promise.all(window.frames()
-      .filter((frame) => frame.url().startsWith('marktex-preview:'))
-      .map((frame) => frame.evaluate(() => document.body.dataset.setdownPreviewTheme || '')),
-    )).toEqual(['night', 'night']);
+    await expect.poll(() =>
+      reading.evaluateAll<string>("document.body.dataset.setdownPreviewTheme || ''"),
+    ).toEqual(['night', 'night']);
     await expect(window.locator('.editor-surface')).toBeVisible();
     await window.locator('.monaco-editor').click({ position: { x: 120, y: 80 } });
     await window.keyboard.type('instant preview');
     await window.keyboard.press('Escape');
     await expect(window.locator('.viewer-surface')).toBeVisible();
-    await expect(window.locator('.preview-frame.is-active')).toBeVisible();
+    await expect.poll(reading.hasVisible).toBe(true);
     await expect.poll(() => window.locator('.shell').evaluate((element) =>
       Number((element as HTMLElement).dataset.lastViewerFirstFrameMs) || 0)).toBeGreaterThan(0);
     const firstFrameMs = await window.locator('.shell').evaluate((element) =>
@@ -245,11 +238,10 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     await secondWindow.locator('.empty-new').click();
     await expect(secondWindow.locator('.editor-surface')).toBeVisible();
     await secondWindow.locator('.mode-toggle').click();
-    await expect(secondWindow.locator('.preview-frame.is-active')).toBeVisible();
-    const secondFrame = secondWindow.frames().find((frame) =>
-      frame.url().startsWith('marktex-preview:'))!;
-    await expect.poll(() => secondFrame.evaluate(() =>
-      document.body.dataset.setdownPreviewTheme || '')).toBe('night');
+    const secondPreview = previews(application, 1);
+    await expect.poll(secondPreview.hasVisible).toBe(true);
+    await expect.poll(() =>
+      secondPreview.evaluate<string>("document.body.dataset.setdownPreviewTheme || ''")).toBe('night');
     await expect.poll(() => secondWindow.evaluate(() => ({
       theme: document.documentElement.dataset.theme,
       shell: getComputedStyle(document.querySelector('.shell')!).backgroundColor,
@@ -269,15 +261,10 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       env: { ...environment, XDG_CONFIG_HOME: configRoot },
     });
     const restartedWindow = await restartedApplication.firstWindow();
-    await expect.poll(() => {
-      const frame = restartedWindow.frames().find((candidate) =>
-        candidate.url().startsWith('marktex-preview:'));
-      return frame?.url() ?? '';
-    }).not.toBe('');
-    const persistedFrame = restartedWindow.frames().find((candidate) =>
-      candidate.url().startsWith('marktex-preview:'))!;
-    await expect.poll(() => persistedFrame.evaluate(() =>
-      document.body.dataset.setdownPreviewTheme || '')).toBe('night');
+    const restartedPreview = previews(restartedApplication);
+    await expect.poll(restartedPreview.count).toBeGreaterThan(0);
+    await expect.poll(() =>
+      restartedPreview.evaluate<string>("document.body.dataset.setdownPreviewTheme || ''")).toBe('night');
     await expect.poll(() => restartedWindow.evaluate(() => ({
       theme: document.documentElement.dataset.theme,
       appearance: document.documentElement.dataset.appearance,

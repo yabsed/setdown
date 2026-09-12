@@ -567,6 +567,10 @@ async function preparePreview(
   };
 
   // 페이지는 있으나 블록 기록이 없다. 예비 view를 넘겨받은 경우다.
+  //
+  // 이때는 navigate하지 않으므로 새 url이 없다. 그래도 렌더러에는 지금 이
+  // view가 띄우고 있는 url을 돌려줘야 한다. `tab.previewUrl`이 비어 있으면
+  // `syncPreviewView`가 "보여 줄 Preview가 없다"고 보아 탭이 빈 채로 남는다.
   if (typeof rendered.html === 'string') {
     const updated = waitForPreview();
     preview.view.webContents.send('preview:command', {
@@ -574,7 +578,7 @@ async function preparePreview(
     });
     await updated;
     setImmediate(() => ensureSparePreview(senderId));
-    return { revision, url: null, themeId };
+    return { revision, url: preview.view.webContents.getURL(), themeId };
   }
 
   // 바뀐 것이 없으면 설정만 맞춘다.
@@ -582,7 +586,7 @@ async function preparePreview(
     preview.view.webContents.send('preview:command', {
       command: 'marktex:sync-config', ...shared,
     });
-    return { revision, url: null, themeId };
+    return { revision, url: preview.view.webContents.getURL(), themeId };
   }
 
   const updated = waitForPreview();
@@ -590,7 +594,7 @@ async function preparePreview(
     command: 'marktex:patch-blocks', ...rendered.patch, markdown: text, ...shared,
   });
   await updated;
-  return { revision, url: null, themeId };
+  return { revision, url: preview.view.webContents.getURL(), themeId };
 }
 
 async function readDocument(filePath: string): Promise<DocumentSnapshot> {
