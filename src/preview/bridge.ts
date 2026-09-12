@@ -40,6 +40,17 @@ const config: BridgeConfig = {
   themeId: String(window.__marktexPreview?.themeId || 'github-light'),
 };
 
+// Chromium은 root 요소의 배경을 canvas에 칠한다. crossnote의 preview.css가
+// `html`을 흰색으로 두므로, 본문이 조판되기 전 첫 frame이 흰색으로 번쩍인다.
+// stylesheet 순서로는 이길 수 없어 inline important로 못박는다.
+function paintRootBackground(themeId: string) {
+  const background = previewThemeBackground(themeId);
+  document.documentElement.style.setProperty('background-color', background, 'important');
+  document.body.style.setProperty('background-color', background, 'important');
+}
+
+paintRootBackground(config.themeId);
+
 document.body.dataset.setdownPreviewTheme = config.themeId;
 document.body.dataset.previewTheme = [
   'github-dark',
@@ -519,11 +530,9 @@ let themeApplication = 0;
 async function applyTheme(themeId: string, previewCssUrl: unknown, codeCssUrl: unknown) {
   if (!isLocalThemeAsset(previewCssUrl) || !isLocalThemeAsset(codeCssUrl)) return;
   const application = ++themeApplication;
-  // 생성 시 심어 둔 바탕색을 새 theme으로 옮긴다. stylesheet 교체 사이의
-  // 어떤 frame도 흰색으로 칠해지지 않는다.
-  const background = previewThemeBackground(themeId);
-  document.documentElement.style.background = background;
-  document.body.style.background = background;
+  // 심어 둔 바탕색을 새 theme으로 옮긴다. stylesheet 교체 사이의 어떤
+  // frame도 흰색으로 칠해지지 않는다.
+  paintRootBackground(themeId);
   const scrollTop = document.documentElement.scrollTop || document.body.scrollTop || 0;
   const maximumScrollTop = Math.max(
     0,
