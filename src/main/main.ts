@@ -1654,6 +1654,16 @@ function installIpc() {
     transfer.preparedWindow = detachedWindow;
     detachedWindow.setPosition(transfer.detachPosition.x, transfer.detachPosition.y, false);
     transfer.claimedByWebContentsId = detachedWindow.webContents.id;
+    // Preview를 옮기기 전에 목적지 창을 화면에 올린다.
+    //
+    // 화면에 올라가지 않은 창의 WebContents는 display 배율을 모른다.
+    // devicePixelRatio가 1로 떨어지고, 분수 배율(예: 1.333) 환경에서는 모든
+    // 줄 높이가 다르게 반올림된다. 측정에서 15,285px 문서가 15,428px로
+    // 부풀었다가 창이 보이는 순간 되돌아왔다. 그 중간 레이아웃이 사용자가
+    // 보는 "탁탁"이다. 순서를 바꾸면 뷰는 같은 배율에서 같은 배율로 옮겨
+    // 가므로 중간 레이아웃이 생기지 않는다. 기다리지 않으므로 전환은 그대로
+    // 즉시다.
+    if (!detachedWindow.isVisible()) detachedWindow.show();
     const sendIncoming = () => {
       if (!pendingTabTransfers.has(transferId) || detachedWindow.isDestroyed()) return;
       detachedWindow.webContents.send('tabs:transfer-incoming', {
