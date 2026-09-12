@@ -8,8 +8,9 @@ import {
   net,
   protocol,
   shell,
+  WebContentsView,
 } from 'electron';
-import type { MenuItem, Rectangle } from 'electron';
+import type { MenuItem } from 'electron';
 import {
   promises as fs,
   readFileSync,
@@ -38,8 +39,6 @@ import type {
   ExportPdfResult,
   PasteImageResult,
   PickLinkTargetResult,
-  PreviewTransferBounds,
-  PreviewTransferSnapshot,
   TabStateSummary,
   ThemeSnapshot,
   TransferableTab,
@@ -98,11 +97,45 @@ type PendingTabTransfer = {
   claimedByWebContentsId: number | null;
   expiresAt: number;
   detachPosition: { x: number; y: number } | null;
-  previewSnapshot: Promise<PreviewTransferSnapshot | null>;
+  previewAdopted: boolean;
+  preparedWindow: BrowserWindow | null;
+  previewScrollPosition: Promise<{ x: number; y: number }>;
 };
 
 const windowStates = new Map<number, WindowState>();
 const pendingTabTransfers = new Map<string, PendingTabTransfer>();
+type PreviewViewState = {
+  view: WebContentsView;
+  ownerWebContentsId: number;
+  pendingScrollPosition: { x: number; y: number } | null;
+  pendingScrollRatio: number | null;
+};
+const previewViews = new Map<string, PreviewViewState>();
+const previewUpdateWaiters = new Map<string, () => void>();
+
+function restorePendingPreviewScroll(preview: PreviewViewState) {
+  const owner = stateForWebContentsId(preview.ownerWebContentsId)?.window;
+  const scroll = preview.pendingScrollPosition;
+  if (!owner?.isVisible() || !scroll || !preview.view.getVisible()) return;
+  preview.pendingScrollPosition = null;
+  const ratio = preview.pendingScrollRatio;
+  preview.pendingScrollRatio = null;
+  void preview.view.webContents.executeJavaScript(`new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const maximum = Math.max(0, document.documentElement.scrollHeight - innerHeight);
+      const ratioY = Number.isFinite(${JSON.stringify(ratio)})
+        ? maximum * ${JSON.stringify(ratio)}
+        : 0;
+      window.scrollTo(${JSON.stringify(scroll.x)}, Math.max(${JSON.stringify(scroll.y)}, ratioY));
+      window.__setdownTransferScroll = {
+        ...(window.__setdownTransferScroll || {}),
+        restoredX: window.scrollX,
+        restoredY: window.scrollY,
+      };
+      resolve();
+    }));
+  })`);
+}
 let selectedState: WindowState | null = null;
 let stateQueue: Promise<unknown> = Promise.resolve();
 
@@ -112,29 +145,6 @@ function stateForWebContentsId(id: number) {
 
 function stateForWindow(window: BrowserWindow | null) {
   return window ? stateForWebContentsId(window.webContents.id) : null;
-}
-
-async function captureTransferPreview(
-  sourceWebContentsId: number,
-  bounds: PreviewTransferBounds | null,
-): Promise<PreviewTransferSnapshot | null> {
-  const state = stateForWebContentsId(sourceWebContentsId);
-  if (!state || !bounds) return null;
-  const [contentWidth, contentHeight] = state.window.getContentSize();
-  const x = Math.max(0, Math.round(Number(bounds.x)));
-  const y = Math.max(0, Math.round(Number(bounds.y)));
-  const width = Math.min(contentWidth - x, Math.round(Number(bounds.width)));
-  const height = Math.min(contentHeight - y, Math.round(Number(bounds.height)));
-  if (![x, y, width, height].every(Number.isFinite) || width < 1 || height < 1) return null;
-  try {
-    const rectangle: Rectangle = { x, y, width, height };
-    const image = await state.window.webContents.capturePage(rectangle);
-    if (image.isEmpty()) return null;
-    const size = image.getSize();
-    return { dataUrl: image.toDataURL(), width: size.width, height: size.height };
-  } catch {
-    return null;
-  }
 }
 
 function focusedState() {
@@ -386,6 +396,16 @@ function previewBridgeScript(
 <script>${bridgeSource()}</script>`;
 }
 
+function previewFragmentFromTemplate(template: string): string {
+  const encoded = template.match(/<body\b[^>]*\bdata-html="([^"]*)"/i)?.[1] ?? '';
+  return encoded
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
 async function renderCurrent(
   text: string,
   revision: number,
@@ -474,7 +494,14 @@ async function renderCurrent(
     if (!oldest) break;
     previewDocuments.delete(oldest);
   }
-  return { revision, url: `marktex-preview://document/${token}`, themeId };
+  return {
+    revision,
+    url: `marktex-preview://document/${token}`,
+    themeId,
+    html: previewFragmentFromTemplate(html),
+    markdown: text,
+    totalLineCount: lineCount(text),
+  };
 }
 
 async function readDocument(filePath: string): Promise<DocumentSnapshot> {
@@ -996,6 +1023,7 @@ function installMenu() {
 function createWindow(
   position: { x: number; y: number } | null = null,
   initialDocument: DocumentSnapshot | null = null,
+  showWhenReady = true,
 ) {
   const createdWindow = new BrowserWindow({
     width: 1080,
@@ -1034,12 +1062,32 @@ function createWindow(
   };
   const webContentsId = createdWindow.webContents.id;
   windowStates.set(webContentsId, state);
-  mainWindow = createdWindow;
+  if (showWhenReady) mainWindow = createdWindow;
   createdWindow.setMenuBarVisibility(false);
+  createdWindow.webContents.on('before-input-event', (_event, input) => {
+    if (input.type === 'keyDown' && input.key === 'Escape') {
+      createdWindow.webContents.send('app:command', 'escape');
+    }
+  });
 
-  createdWindow.once('ready-to-show', () => createdWindow.show());
+  if (showWhenReady) createdWindow.once('ready-to-show', () => createdWindow.show());
   createdWindow.on('focus', () => {
     mainWindow = createdWindow;
+  });
+  // Renderer의 ResizeObserver보다 native compositor가 먼저 커지는 구간에도
+  // 현재 Preview가 새 content 영역을 즉시 덮도록 한다. 축소는 창 clip이 맡고,
+  // 정밀한 최종 bounds는 같은 frame의 preview:show가 보정한다.
+  createdWindow.on('resize', () => {
+    const [contentWidth, contentHeight] = createdWindow.getContentSize();
+    for (const preview of previewViews.values()) {
+      if (preview.ownerWebContentsId !== webContentsId || !preview.view.getVisible()) continue;
+      const bounds = preview.view.getBounds();
+      preview.view.setBounds({
+        ...bounds,
+        width: Math.max(1, contentWidth - bounds.x),
+        height: Math.max(1, contentHeight - bounds.y),
+      });
+    }
   });
   createdWindow.on('close', (event) => {
     if (state.closeAfterConfirmation) return;
@@ -1080,6 +1128,11 @@ function createWindow(
   });
   createdWindow.on('closed', () => {
     if (state.watchedPath) unwatchFile(state.watchedPath);
+    for (const [tabId, preview] of previewViews) {
+      if (preview.ownerWebContentsId !== webContentsId) continue;
+      preview.view.webContents.close();
+      previewViews.delete(tabId);
+    }
     windowStates.delete(webContentsId);
     if (mainWindow === createdWindow) mainWindow = BrowserWindow.getAllWindows()[0] ?? null;
   });
@@ -1133,6 +1186,153 @@ function findApplicationMenuItem(items: readonly MenuItem[], id: string): MenuIt
 }
 
 function installIpc() {
+  ipcMain.on('preview:create', (event, tabId: unknown) => {
+    if (typeof tabId !== 'string' || previewViews.has(tabId)) return;
+    const ownerState = stateForWebContentsId(event.sender.id);
+    if (!ownerState) return;
+    const view = new WebContentsView({
+      webPreferences: {
+        preload: path.join(__dirname, 'preview-preload.cjs'),
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+      },
+    });
+    view.setBackgroundColor(previewThemeBackground(globalPreviewTheme));
+    view.setVisible(false);
+    ownerState.window.contentView.addChildView(view);
+    previewViews.set(tabId, {
+      view,
+      ownerWebContentsId: event.sender.id,
+      pendingScrollPosition: null,
+      pendingScrollRatio: null,
+    });
+    view.webContents.on('before-input-event', (inputEvent, input) => {
+      if (input.type === 'keyDown' && input.key === 'Escape') {
+        inputEvent.preventDefault();
+        const preview = previewViews.get(tabId);
+        const owner = preview && stateForWebContentsId(preview.ownerWebContentsId);
+        if (owner) {
+          owner.window.webContents.focus();
+          owner.window.webContents.send('app:command', 'escape');
+        }
+        return;
+      }
+      if (
+        input.type !== 'keyDown'
+        || input.key.toLowerCase() !== 'f'
+        || (!input.control && !input.meta)
+        || input.alt
+      ) return;
+      inputEvent.preventDefault();
+      const preview = previewViews.get(tabId);
+      const owner = preview && stateForWebContentsId(preview.ownerWebContentsId);
+      if (!owner) return;
+      owner.window.webContents.focus();
+      owner.window.webContents.send('preview:open-find', tabId);
+    });
+  });
+
+  ipcMain.handle('preview:load', async (event, { tabId, result, themeId }) => {
+    const preview = previewViews.get(String(tabId));
+    if (!preview || preview.ownerWebContentsId !== event.sender.id) {
+      throw new Error('The preview is not owned by this window.');
+    }
+    const previewUrl = String(result?.url);
+    if (!previewUrl.startsWith('marktex-preview://document/')) {
+      throw new Error('Only rendered Setdown previews may be loaded.');
+    }
+    const background = previewThemeBackground(themeId);
+    preview.view.setBackgroundColor(background);
+    if (
+      preview.view.webContents.getURL().startsWith('marktex-preview://document/')
+      && typeof result?.html === 'string'
+    ) {
+      const revision = Math.max(0, Number(result.revision) || 0);
+      const waiterKey = `${String(tabId)}:${revision}`;
+      const updated = new Promise<void>((resolve) => {
+        const timeout = setTimeout(() => {
+          previewUpdateWaiters.delete(waiterKey);
+          resolve();
+        }, 5000);
+        previewUpdateWaiters.set(waiterKey, () => {
+          clearTimeout(timeout);
+          previewUpdateWaiters.delete(waiterKey);
+          resolve();
+        });
+      });
+      preview.view.webContents.send('preview:command', {
+        command: 'marktex:update-html',
+        html: result.html,
+        markdown: String(result.markdown ?? ''),
+        totalLineCount: Math.max(1, Number(result.totalLineCount) || 1),
+        revision,
+      });
+      await updated;
+      return;
+    }
+    await preview.view.webContents.loadURL(previewUrl);
+  });
+
+  ipcMain.on('preview:show', (event, { tabId, bounds }) => {
+    const owner = stateForWebContentsId(event.sender.id)?.window;
+    if (!owner) return;
+    for (const preview of previewViews.values()) {
+      if (preview.ownerWebContentsId === event.sender.id) preview.view.setVisible(false);
+    }
+    if (typeof tabId !== 'string' || !bounds) return;
+    const preview = previewViews.get(tabId);
+    if (!preview || preview.ownerWebContentsId !== event.sender.id) return;
+    preview.view.setBounds({
+      x: Math.max(0, Math.round(Number(bounds.x) || 0)),
+      y: Math.max(0, Math.round(Number(bounds.y) || 0)),
+      width: Math.max(1, Math.round(Number(bounds.width) || 1)),
+      height: Math.max(1, Math.round(Number(bounds.height) || 1)),
+    });
+    owner.contentView.addChildView(preview.view);
+    preview.view.setVisible(true);
+    restorePendingPreviewScroll(preview);
+  });
+
+  ipcMain.on('preview:command', (event, { tabId, message }) => {
+    const preview = previewViews.get(String(tabId));
+    if (!preview || preview.ownerWebContentsId !== event.sender.id) return;
+    if (message?.command === 'marktex:apply-theme') {
+      const assets = previewThemeAssets(message.themeId);
+      preview.view.setBackgroundColor(assets.backgroundColor);
+      preview.view.webContents.send('preview:command', {
+        command: 'marktex:apply-theme',
+        ...assets,
+      });
+      return;
+    }
+    preview.view.webContents.send('preview:command', message);
+  });
+
+  ipcMain.on('preview:destroy', (event, tabId: unknown) => {
+    if (typeof tabId !== 'string') return;
+    const preview = previewViews.get(tabId);
+    if (!preview || preview.ownerWebContentsId !== event.sender.id) return;
+    stateForWebContentsId(event.sender.id)?.window.contentView.removeChildView(preview.view);
+    preview.view.webContents.close();
+    previewViews.delete(tabId);
+  });
+
+  ipcMain.on('preview:message', (event, message: Record<string, unknown>) => {
+    const found = Array.from(previewViews.entries()).find(([, preview]) =>
+      preview.view.webContents.id === event.sender.id,
+    );
+    if (!found) return;
+    const [tabId, preview] = found;
+    if (message.type === 'marktex:html-updated') {
+      previewUpdateWaiters.get(`${tabId}:${Math.max(0, Number(message.revision) || 0)}`)?.();
+    }
+    stateForWebContentsId(preview.ownerWebContentsId)?.window.webContents.send(
+      'preview:message',
+      { tabId, message },
+    );
+  });
+
   ipcMain.handle('menu:get', (event, menuId: unknown): ApplicationMenuEntry[] => {
     const state = stateForWebContentsId(event.sender.id);
     if (!state || typeof menuId !== 'string' || !APPLICATION_MENU_IDS.has(menuId)) return [];
@@ -1185,7 +1385,7 @@ function installIpc() {
       }))
       : [];
   });
-  ipcMain.on('tabs:register-transfer', (event, { transferId, tab, previewBounds }) => {
+  ipcMain.on('tabs:register-transfer', (event, { transferId, tab }) => {
     if (typeof transferId !== 'string' || !tab || typeof tab.id !== 'string') return;
     pendingTabTransfers.set(transferId, {
       sourceWebContentsId: event.sender.id,
@@ -1193,17 +1393,53 @@ function installIpc() {
       claimedByWebContentsId: null,
       expiresAt: Date.now() + 60_000,
       detachPosition: null,
-      previewSnapshot: captureTransferPreview(
-        event.sender.id,
-        previewBounds as PreviewTransferBounds | null,
-      ),
+      previewAdopted: false,
+      // 새 OS 창 생성도 drop의 선행 조건에서 뺀다. 실제 drag 동안 숨은
+      // renderer를 부팅하고, transfer commit 전에는 사용자에게 보이지 않는다.
+      preparedWindow: createWindow(null, null, false),
+      // reparent 직전이 아니라 dragstart 순간의 좌표를 잡는다. 준비 중이던
+      // updateHtml이 뒤늦게 DOM을 승격해 viewport를 바꿔도 사용자가 이동을
+      // 시작했을 때 보던 위치가 transfer의 authority다.
+      previewScrollPosition: previewViews.get(String(tab.id))?.view.webContents
+        .executeJavaScript('({ x: window.scrollX, y: window.scrollY })')
+        .catch(() => ({ x: 0, y: 0 }))
+        ?? Promise.resolve({ x: 0, y: 0 }),
     });
     setTimeout(() => {
       const pending = pendingTabTransfers.get(transferId);
       if (pending && pending.expiresAt <= Date.now()) {
+        if (pending.preparedWindow && !pending.preparedWindow.isDestroyed()) {
+          pending.preparedWindow.destroy();
+        }
         pendingTabTransfers.delete(transferId);
       }
     }, 60_500);
+  });
+  ipcMain.handle('tabs:adopt-transfer', async (event, transferId: string) => {
+    const transfer = pendingTabTransfers.get(transferId);
+    if (!transfer || transfer.claimedByWebContentsId !== event.sender.id) return false;
+    const preview = previewViews.get(transfer.tab.id);
+    const destination = stateForWebContentsId(event.sender.id)?.window;
+    if (!preview || !destination || preview.ownerWebContentsId !== transfer.sourceWebContentsId) {
+      return false;
+    }
+    const scroll = await transfer.previewScrollPosition;
+    void preview.view.webContents.executeJavaScript(
+      `window.__setdownTransferScroll = { capturedX: ${JSON.stringify(scroll.x)}, capturedY: ${JSON.stringify(scroll.y)} }`,
+    );
+    const source = stateForWebContentsId(transfer.sourceWebContentsId)?.window;
+    // 같은 WebContents를 파괴하거나 navigate하지 않는다. remove/add는 같은
+    // main-process task에서 끝내 viewport=0 구간을 최소화한다.
+    preview.view.setVisible(false);
+    source?.contentView.removeChildView(preview.view);
+    destination.contentView.addChildView(preview.view);
+    preview.ownerWebContentsId = event.sender.id;
+    preview.pendingScrollPosition = scroll;
+    preview.pendingScrollRatio = Number.isFinite(Number(transfer.tab.viewerScrollRatio))
+      ? Math.max(0, Math.min(1, Number(transfer.tab.viewerScrollRatio)))
+      : null;
+    transfer.previewAdopted = true;
+    return true;
   });
   ipcMain.handle('tabs:claim-transfer', async (event, transferId: string) => {
     const transfer = pendingTabTransfers.get(transferId);
@@ -1215,15 +1451,26 @@ function installIpc() {
       return null;
     }
     transfer.claimedByWebContentsId = event.sender.id;
+    if (
+      transfer.preparedWindow
+      && !transfer.preparedWindow.isDestroyed()
+      && transfer.preparedWindow.webContents.id !== event.sender.id
+    ) {
+      transfer.preparedWindow.destroy();
+      transfer.preparedWindow = null;
+    }
     return {
       transferId,
       tab: transfer.tab,
-      previewSnapshot: await transfer.previewSnapshot,
     };
   });
   ipcMain.on('tabs:complete-transfer', (event, transferId: string) => {
     const transfer = pendingTabTransfers.get(transferId);
-    if (!transfer || transfer.claimedByWebContentsId !== event.sender.id) return;
+    if (
+      !transfer
+      || transfer.claimedByWebContentsId !== event.sender.id
+      || !transfer.previewAdopted
+    ) return;
     const source = stateForWebContentsId(transfer.sourceWebContentsId)?.window;
     source?.webContents.send('tabs:transfer-completed', {
       transferId,
@@ -1237,11 +1484,28 @@ function installIpc() {
       ? null
       : stateForWebContentsId(transfer.claimedByWebContentsId)?.window;
     pendingTabTransfers.delete(transferId);
-    if (destination && !destination.isDestroyed()) destination.focus();
+    if (destination && !destination.isDestroyed()) {
+      if (!destination.isVisible()) {
+        destination.once('show', () => {
+          setImmediate(() => {
+            for (const preview of previewViews.values()) {
+              if (preview.ownerWebContentsId === destination.webContents.id) {
+                restorePendingPreviewScroll(preview);
+              }
+            }
+          });
+        });
+        destination.show();
+      }
+      destination.focus();
+    }
   });
   ipcMain.on('tabs:cancel-transfer', (event, transferId: string) => {
     const transfer = pendingTabTransfers.get(transferId);
     if (transfer?.sourceWebContentsId === event.sender.id && transfer.claimedByWebContentsId === null) {
+      if (transfer.preparedWindow && !transfer.preparedWindow.isDestroyed()) {
+        transfer.preparedWindow.destroy();
+      }
       pendingTabTransfers.delete(transferId);
     }
   });
@@ -1252,18 +1516,24 @@ function installIpc() {
       x: Math.round(Number(x) - 120),
       y: Math.round(Number(y) - 18),
     };
-    const detachedWindow = createWindow(transfer.detachPosition);
+    const detachedWindow = transfer.preparedWindow && !transfer.preparedWindow.isDestroyed()
+      ? transfer.preparedWindow
+      : createWindow(transfer.detachPosition, null, false);
+    transfer.preparedWindow = detachedWindow;
+    detachedWindow.setPosition(transfer.detachPosition.x, transfer.detachPosition.y, false);
     transfer.claimedByWebContentsId = detachedWindow.webContents.id;
-    detachedWindow.webContents.once('did-finish-load', () => {
-      void transfer.previewSnapshot.then((previewSnapshot) => {
-        if (!pendingTabTransfers.has(transferId) || detachedWindow.isDestroyed()) return;
-        detachedWindow.webContents.send('tabs:transfer-incoming', {
-          transferId,
-          tab: transfer.tab,
-          previewSnapshot,
-        });
+    const sendIncoming = () => {
+      if (!pendingTabTransfers.has(transferId) || detachedWindow.isDestroyed()) return;
+      detachedWindow.webContents.send('tabs:transfer-incoming', {
+        transferId,
+        tab: transfer.tab,
       });
-    });
+    };
+    if (detachedWindow.webContents.isLoadingMainFrame()) {
+      detachedWindow.webContents.once('did-finish-load', sendIncoming);
+    } else {
+      sendIncoming();
+    }
   });
   ipcMain.on('app:close-empty-window', (event) => {
     const state = stateForWebContentsId(event.sender.id);

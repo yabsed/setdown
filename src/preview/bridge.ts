@@ -646,6 +646,8 @@ searchStyle.textContent = `
 `;
 document.head.append(searchStyle);
 
+let htmlUpdateSequence = 0;
+
 // ── 더블 클릭: 조건 없는 상태 전환 ──────────────────────────────────
 document.addEventListener(
   'dblclick',
@@ -753,6 +755,49 @@ window.addEventListener('message', (event) => {
     codeCssUrl?: string;
   } | null;
   if (!data) return;
+  if (data.command === 'marktex:update-html') {
+    const update = data as typeof data & {
+      html?: string;
+      markdown?: string;
+      totalLineCount?: number;
+      revision?: number;
+    };
+    const sequence = ++htmlUpdateSequence;
+    const updateRevision = Math.max(0, Number(update.revision) || 0);
+    config.totalLineCount = Math.max(1, Number(update.totalLineCount) || 1);
+    config.revision = updateRevision;
+    let completed = false;
+    let timeout = 0;
+    const observer = new MutationObserver(() => finish());
+    const finish = () => {
+      if (completed || sequence !== htmlUpdateSequence) return;
+      completed = true;
+      observer.disconnect();
+      window.clearTimeout(timeout);
+      // Crossnote가 hidden DOM을 current DOM으로 승격한 paint 뒤에만 host의
+      // revision을 ready로 만든다.
+      window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+        if (sequence === htmlUpdateSequence) {
+          send({ type: 'marktex:html-updated', revision: updateRevision });
+        }
+      }));
+    };
+    observer.observe(document.body, { childList: true, subtree: true });
+    timeout = window.setTimeout(finish, 4500);
+    // Crossnote preview runtime가 제공하는 updateHtml 경로를 그대로 쓴다.
+    // navigation하지 않으므로 현재 WebContents, stylesheet, JS heap과 viewport가
+    // 살아 있고 Crossnote의 hidden DOM buffer가 완성된 내용만 승격한다.
+    window.postMessage({
+      command: 'updateHtml',
+      html: String(update.html ?? ''),
+      markdown: String(update.markdown ?? ''),
+      tocHTML: '',
+      totalLineCount: config.totalLineCount,
+      id: '',
+      class: '',
+    }, '*');
+    return;
+  }
   if (data.command === 'marktex:apply-theme') {
     void applyTheme(data.themeId ?? '', data.previewCssUrl, data.codeCssUrl);
     return;

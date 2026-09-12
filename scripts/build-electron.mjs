@@ -21,6 +21,12 @@ await Promise.all([
     outfile: 'dist-electron/preload.cjs',
     format: 'cjs',
   }),
+  build({
+    ...shared,
+    entryPoints: ['src/preview/preload.ts'],
+    outfile: 'dist-electron/preview-preload.cjs',
+    format: 'cjs',
+  }),
   // Viewer WebContents 안에서 도는 다리. 인라인 <script>로 들어가므로 sourcemap 없이
   // 하나의 IIFE로 묶는다.
   build({

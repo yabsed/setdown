@@ -6,7 +6,7 @@ import type {
   DocumentSnapshot,
   ExternalChange,
   MarkTexApi,
-  PreviewTransferBounds,
+  PreviewMessage,
   TabStateSummary,
   ThemeSnapshot,
   TransferableTab,
@@ -37,11 +37,8 @@ const api: MarkTexApi = {
     ipcRenderer.invoke('document:activate', { document, text, revision }),
   updateTabState: (tabs: TabStateSummary[]) =>
     ipcRenderer.send('tabs:update-state', tabs),
-  registerTabTransfer: (
-    transferId: string,
-    tab: TransferableTab,
-    previewBounds: PreviewTransferBounds | null,
-  ) => ipcRenderer.send('tabs:register-transfer', { transferId, tab, previewBounds }),
+  registerTabTransfer: (transferId: string, tab: TransferableTab) =>
+    ipcRenderer.send('tabs:register-transfer', { transferId, tab }),
   claimTabTransfer: (transferId: string) =>
     ipcRenderer.invoke('tabs:claim-transfer', transferId),
   completeTabTransfer: (transferId: string) =>
@@ -50,8 +47,16 @@ const api: MarkTexApi = {
     ipcRenderer.send('tabs:cancel-transfer', transferId),
   detachTabToWindow: (transferId, x, y) =>
     ipcRenderer.send('tabs:detach-to-window', { transferId, x, y }),
+  adoptTabTransfer: (transferId) => ipcRenderer.invoke('tabs:adopt-transfer', transferId),
   releaseTabTransferSource: (transferId) =>
     ipcRenderer.send('tabs:release-source', transferId),
+  createPreview: (tabId) => ipcRenderer.send('preview:create', tabId),
+  loadPreview: (tabId, result, themeId) =>
+    ipcRenderer.invoke('preview:load', { tabId, result, themeId }),
+  showPreview: (tabId, bounds) => ipcRenderer.send('preview:show', { tabId, bounds }),
+  sendPreviewCommand: (tabId, message) =>
+    ipcRenderer.send('preview:command', { tabId, message }),
+  destroyPreview: (tabId) => ipcRenderer.send('preview:destroy', tabId),
   getTheme: () => ipcRenderer.invoke('theme:get'),
   getApplicationMenu: (menuId) => ipcRenderer.invoke('menu:get', menuId),
   executeApplicationMenuItem: (itemId) => ipcRenderer.send('menu:execute', itemId),
@@ -94,6 +99,8 @@ const api: MarkTexApi = {
     subscribe<ClaimedTabTransfer>('tabs:transfer-incoming', listener),
   onTabTransferCompleted: (listener) =>
     subscribe<{ transferId: string; tabId: string }>('tabs:transfer-completed', listener),
+  onPreviewMessage: (listener) => subscribe<PreviewMessage>('preview:message', listener),
+  onPreviewFindRequested: (listener) => subscribe<string>('preview:open-find', listener),
 };
 
 contextBridge.exposeInMainWorld('marktex', api);

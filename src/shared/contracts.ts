@@ -19,6 +19,9 @@ export type RenderResult = {
   revision: number;
   url: string;
   themeId: PreviewThemeId;
+  html: string;
+  markdown: string;
+  totalLineCount: number;
 };
 
 export type PreviewHeading = {
@@ -100,8 +103,10 @@ export type PreviewTransferSnapshot = {
 export type ClaimedTabTransfer = {
   transferId: string;
   tab: TransferableTab;
-  previewSnapshot: PreviewTransferSnapshot | null;
 };
+
+export type PreviewBounds = { x: number; y: number; width: number; height: number };
+export type PreviewMessage = { tabId: string; message: Record<string, unknown> };
 
 export type ThemeSnapshot = {
   id: PreviewThemeId;
@@ -131,6 +136,7 @@ export type AppCommand =
   | 'insert-table'
   | 'insert-link'
   | 'open-find'
+  | 'escape'
   | 'toggle-surface';
 
 export type MarkTexApi = {
@@ -140,16 +146,22 @@ export type MarkTexApi = {
   openDocument(): Promise<DocumentSnapshot | null>;
   activateDocument(document: DocumentSnapshot, text: string, revision: number): Promise<DocumentSnapshot>;
   updateTabState(tabs: TabStateSummary[]): void;
-  registerTabTransfer(
-    transferId: string,
-    tab: TransferableTab,
-    previewBounds: PreviewTransferBounds | null,
-  ): void;
+  registerTabTransfer(transferId: string, tab: TransferableTab): void;
   claimTabTransfer(transferId: string): Promise<ClaimedTabTransfer | null>;
   completeTabTransfer(transferId: string): void;
   cancelTabTransfer(transferId: string): void;
   detachTabToWindow(transferId: string, x: number, y: number): void;
+  adoptTabTransfer(transferId: string): Promise<boolean>;
   releaseTabTransferSource(transferId: string): void;
+  createPreview(tabId: string): void;
+  loadPreview(
+    tabId: string,
+    result: RenderResult,
+    themeId: PreviewThemeId,
+  ): Promise<void>;
+  showPreview(tabId: string | null, bounds: PreviewBounds | null): void;
+  sendPreviewCommand(tabId: string, message: Record<string, unknown>): void;
+  destroyPreview(tabId: string): void;
   getTheme(): Promise<ThemeSnapshot>;
   getApplicationMenu(menuId: string): Promise<ApplicationMenuEntry[]>;
   executeApplicationMenuItem(itemId: string): void;
@@ -180,4 +192,6 @@ export type MarkTexApi = {
   onSaveBeforeClose(listener: () => void): () => void;
   onTabTransferIncoming(listener: (transfer: ClaimedTabTransfer) => void): () => void;
   onTabTransferCompleted(listener: (transfer: { transferId: string; tabId: string }) => void): () => void;
+  onPreviewMessage(listener: (payload: PreviewMessage) => void): () => void;
+  onPreviewFindRequested(listener: (tabId: string) => void): () => void;
 };
