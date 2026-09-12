@@ -28,6 +28,9 @@ test('detaching a tab restores its preview iframe at the same semantic position'
     await sourceWindow.locator('.document-tab', { hasText: 'sample.md' }).click();
     const activePreviewUrl = await sourceWindow.locator('.preview-frame.is-active')
       .getAttribute('src');
+    expect(activePreviewUrl).toMatch(/^marktex-preview:\/\/document\//);
+    await expect.poll(() => sourceWindow.frames().map((frame) => frame.url()))
+      .toContain(activePreviewUrl);
     const sourcePreview = sourceWindow.frames().find((frame) =>
       frame.url() === activePreviewUrl)!;
     await expect.poll(() => sourcePreview.evaluate(() => window.innerHeight)).toBeGreaterThan(0);
@@ -73,8 +76,12 @@ test('detaching a tab restores its preview iframe at the same semantic position'
     const detachedWindow = (await shellWindows(application)).find((window) => window !== sourceWindow);
     expect(detachedWindow).toBeTruthy();
     await expect(detachedWindow!.locator('.tab-name')).toHaveText(['sample.md']);
+    await expect(detachedWindow!.locator('.shell'))
+      .toHaveAttribute('data-last-transfer-used-snapshot', 'true');
 
     await expect(detachedWindow!.locator('.preview-frame')).toHaveCount(1);
+    await expect(detachedWindow!.locator('.preview-frame'))
+      .toHaveAttribute('src', activePreviewUrl!);
     const detachedPreview = detachedWindow!.frames().find((frame) =>
       frame.url().startsWith('marktex-preview:'))!;
     await expect.poll(() => detachedPreview.evaluate(() => {

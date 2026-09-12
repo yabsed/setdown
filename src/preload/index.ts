@@ -6,6 +6,7 @@ import type {
   DocumentSnapshot,
   ExternalChange,
   MarkTexApi,
+  PreviewTransferBounds,
   TabStateSummary,
   ThemeSnapshot,
   TransferableTab,
@@ -36,8 +37,11 @@ const api: MarkTexApi = {
     ipcRenderer.invoke('document:activate', { document, text, revision }),
   updateTabState: (tabs: TabStateSummary[]) =>
     ipcRenderer.send('tabs:update-state', tabs),
-  registerTabTransfer: (transferId: string, tab: TransferableTab) =>
-    ipcRenderer.send('tabs:register-transfer', { transferId, tab }),
+  registerTabTransfer: (
+    transferId: string,
+    tab: TransferableTab,
+    previewBounds: PreviewTransferBounds | null,
+  ) => ipcRenderer.send('tabs:register-transfer', { transferId, tab, previewBounds }),
   claimTabTransfer: (transferId: string) =>
     ipcRenderer.invoke('tabs:claim-transfer', transferId),
   completeTabTransfer: (transferId: string) =>
@@ -46,6 +50,8 @@ const api: MarkTexApi = {
     ipcRenderer.send('tabs:cancel-transfer', transferId),
   detachTabToWindow: (transferId, x, y) =>
     ipcRenderer.send('tabs:detach-to-window', { transferId, x, y }),
+  releaseTabTransferSource: (transferId) =>
+    ipcRenderer.send('tabs:release-source', transferId),
   getTheme: () => ipcRenderer.invoke('theme:get'),
   getApplicationMenu: (menuId) => ipcRenderer.invoke('menu:get', menuId),
   executeApplicationMenuItem: (itemId) => ipcRenderer.send('menu:execute', itemId),
@@ -87,7 +93,7 @@ const api: MarkTexApi = {
   onTabTransferIncoming: (listener) =>
     subscribe<ClaimedTabTransfer>('tabs:transfer-incoming', listener),
   onTabTransferCompleted: (listener) =>
-    subscribe<string>('tabs:transfer-completed', listener),
+    subscribe<{ transferId: string; tabId: string }>('tabs:transfer-completed', listener),
 };
 
 contextBridge.exposeInMainWorld('marktex', api);

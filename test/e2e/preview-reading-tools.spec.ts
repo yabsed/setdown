@@ -216,6 +216,17 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       .filter((frame) => frame.url().startsWith('marktex-preview:'))
       .map((frame) => frame.evaluate(() => document.body.dataset.setdownPreviewTheme || '')),
     )).toEqual(['night', 'night']);
+    await expect(window.locator('.editor-surface')).toBeVisible();
+    await window.locator('.monaco-editor').click({ position: { x: 120, y: 80 } });
+    await window.keyboard.type('instant preview');
+    await window.keyboard.press('Escape');
+    await expect(window.locator('.viewer-surface')).toBeVisible();
+    await expect(window.locator('.preview-frame.is-active')).toBeVisible();
+    await expect.poll(() => window.locator('.shell').evaluate((element) =>
+      Number((element as HTMLElement).dataset.lastViewerFirstFrameMs) || 0)).toBeGreaterThan(0);
+    const firstFrameMs = await window.locator('.shell').evaluate((element) =>
+      Number((element as HTMLElement).dataset.lastViewerFirstFrameMs));
+    expect(firstFrameMs).toBeLessThan(50);
 
     await application.evaluate(({ Menu }) => {
       Menu.getApplicationMenu()?.items

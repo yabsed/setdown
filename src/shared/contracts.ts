@@ -83,9 +83,23 @@ export type TransferableTab = {
   previewTheme: PreviewThemeId | null;
 };
 
+export type PreviewTransferBounds = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+export type PreviewTransferSnapshot = {
+  dataUrl: string;
+  width: number;
+  height: number;
+};
+
 export type ClaimedTabTransfer = {
   transferId: string;
   tab: TransferableTab;
+  previewSnapshot: PreviewTransferSnapshot | null;
 };
 
 export type ThemeSnapshot = {
@@ -125,11 +139,16 @@ export type MarkTexApi = {
   openDocument(): Promise<DocumentSnapshot | null>;
   activateDocument(document: DocumentSnapshot, text: string, revision: number): Promise<DocumentSnapshot>;
   updateTabState(tabs: TabStateSummary[]): void;
-  registerTabTransfer(transferId: string, tab: TransferableTab): void;
+  registerTabTransfer(
+    transferId: string,
+    tab: TransferableTab,
+    previewBounds: PreviewTransferBounds | null,
+  ): void;
   claimTabTransfer(transferId: string): Promise<ClaimedTabTransfer | null>;
   completeTabTransfer(transferId: string): void;
   cancelTabTransfer(transferId: string): void;
   detachTabToWindow(transferId: string, x: number, y: number): void;
+  releaseTabTransferSource(transferId: string): void;
   getTheme(): Promise<ThemeSnapshot>;
   getApplicationMenu(menuId: string): Promise<ApplicationMenuEntry[]>;
   executeApplicationMenuItem(itemId: string): void;
@@ -159,5 +178,5 @@ export type MarkTexApi = {
   onThemeChanged(listener: (theme: ThemeSnapshot) => void): () => void;
   onSaveBeforeClose(listener: () => void): () => void;
   onTabTransferIncoming(listener: (transfer: ClaimedTabTransfer) => void): () => void;
-  onTabTransferCompleted(listener: (tabId: string) => void): () => void;
+  onTabTransferCompleted(listener: (transfer: { transferId: string; tabId: string }) => void): () => void;
 };

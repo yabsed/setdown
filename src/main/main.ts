@@ -9,7 +9,7 @@ import {
   protocol,
   shell,
 } from 'electron';
-import type { MenuItem } from 'electron';
+import type { MenuItem, Rectangle } from 'electron';
 import {
   promises as fs,
   readFileSync,
@@ -38,6 +38,8 @@ import type {
   ExportPdfResult,
   PasteImageResult,
   PickLinkTargetResult,
+  PreviewTransferBounds,
+  PreviewTransferSnapshot,
   TabStateSummary,
   ThemeSnapshot,
   TransferableTab,
@@ -95,11 +97,9 @@ type PendingTabTransfer = {
   tab: TransferableTab;
   claimedByWebContentsId: number | null;
   expiresAt: number;
-  detachTimer: ReturnType<typeof setTimeout> | null;
   detachPosition: { x: number; y: number } | null;
+  previewSnapshot: Promise<PreviewTransferSnapshot | null>;
 };
-
-const TAB_DETACH_GRACE_MS = 250;
 
 const windowStates = new Map<number, WindowState>();
 const pendingTabTransfers = new Map<string, PendingTabTransfer>();
@@ -112,6 +112,29 @@ function stateForWebContentsId(id: number) {
 
 function stateForWindow(window: BrowserWindow | null) {
   return window ? stateForWebContentsId(window.webContents.id) : null;
+}
+
+async function captureTransferPreview(
+  sourceWebContentsId: number,
+  bounds: PreviewTransferBounds | null,
+): Promise<PreviewTransferSnapshot | null> {
+  const state = stateForWebContentsId(sourceWebContentsId);
+  if (!state || !bounds) return null;
+  const [contentWidth, contentHeight] = state.window.getContentSize();
+  const x = Math.max(0, Math.round(Number(bounds.x)));
+  const y = Math.max(0, Math.round(Number(bounds.y)));
+  const width = Math.min(contentWidth - x, Math.round(Number(bounds.width)));
+  const height = Math.min(contentHeight - y, Math.round(Number(bounds.height)));
+  if (![x, y, width, height].every(Number.isFinite) || width < 1 || height < 1) return null;
+  try {
+    const rectangle: Rectangle = { x, y, width, height };
+    const image = await state.window.webContents.capturePage(rectangle);
+    if (image.isEmpty()) return null;
+    const size = image.getSize();
+    return { dataUrl: image.toDataURL(), width: size.width, height: size.height };
+  } catch {
+    return null;
+  }
 }
 
 function focusedState() {
@@ -1159,25 +1182,27 @@ function installIpc() {
       }))
       : [];
   });
-  ipcMain.on('tabs:register-transfer', (event, { transferId, tab }) => {
+  ipcMain.on('tabs:register-transfer', (event, { transferId, tab, previewBounds }) => {
     if (typeof transferId !== 'string' || !tab || typeof tab.id !== 'string') return;
     pendingTabTransfers.set(transferId, {
       sourceWebContentsId: event.sender.id,
       tab: tab as TransferableTab,
       claimedByWebContentsId: null,
       expiresAt: Date.now() + 60_000,
-      detachTimer: null,
       detachPosition: null,
+      previewSnapshot: captureTransferPreview(
+        event.sender.id,
+        previewBounds as PreviewTransferBounds | null,
+      ),
     });
     setTimeout(() => {
       const pending = pendingTabTransfers.get(transferId);
       if (pending && pending.expiresAt <= Date.now()) {
-        if (pending.detachTimer) clearTimeout(pending.detachTimer);
         pendingTabTransfers.delete(transferId);
       }
     }, 60_500);
   });
-  ipcMain.handle('tabs:claim-transfer', (event, transferId: string) => {
+  ipcMain.handle('tabs:claim-transfer', async (event, transferId: string) => {
     const transfer = pendingTabTransfers.get(transferId);
     if (!transfer || transfer.expiresAt < Date.now()) {
       pendingTabTransfers.delete(transferId);
@@ -1186,25 +1211,34 @@ function installIpc() {
     if (transfer.sourceWebContentsId === event.sender.id || transfer.claimedByWebContentsId !== null) {
       return null;
     }
-    if (transfer.detachTimer) {
-      clearTimeout(transfer.detachTimer);
-      transfer.detachTimer = null;
-    }
     transfer.claimedByWebContentsId = event.sender.id;
-    return { transferId, tab: transfer.tab };
+    return {
+      transferId,
+      tab: transfer.tab,
+      previewSnapshot: await transfer.previewSnapshot,
+    };
   });
   ipcMain.on('tabs:complete-transfer', (event, transferId: string) => {
     const transfer = pendingTabTransfers.get(transferId);
     if (!transfer || transfer.claimedByWebContentsId !== event.sender.id) return;
-    if (transfer.detachTimer) clearTimeout(transfer.detachTimer);
     const source = stateForWebContentsId(transfer.sourceWebContentsId)?.window;
-    source?.webContents.send('tabs:transfer-completed', transfer.tab.id);
+    source?.webContents.send('tabs:transfer-completed', {
+      transferId,
+      tabId: transfer.tab.id,
+    });
+  });
+  ipcMain.on('tabs:release-source', (event, transferId: string) => {
+    const transfer = pendingTabTransfers.get(transferId);
+    if (!transfer || transfer.sourceWebContentsId !== event.sender.id) return;
+    const destination = transfer.claimedByWebContentsId === null
+      ? null
+      : stateForWebContentsId(transfer.claimedByWebContentsId)?.window;
     pendingTabTransfers.delete(transferId);
+    if (destination && !destination.isDestroyed()) destination.focus();
   });
   ipcMain.on('tabs:cancel-transfer', (event, transferId: string) => {
     const transfer = pendingTabTransfers.get(transferId);
     if (transfer?.sourceWebContentsId === event.sender.id && transfer.claimedByWebContentsId === null) {
-      if (transfer.detachTimer) clearTimeout(transfer.detachTimer);
       pendingTabTransfers.delete(transferId);
     }
   });
@@ -1215,23 +1249,18 @@ function installIpc() {
       x: Math.round(Number(x) - 120),
       y: Math.round(Number(y) - 18),
     };
-    // destination의 drop/claim과 source의 dragend는 서로 다른 WebContents에서
-    // 오므로 도착 순서가 보장되지 않는다. claim에 우선권을 줄 짧은 유예를
-    // 둔 뒤, 끝내 아무 창도 가져가지 않은 탭만 새 창으로 분리한다.
-    if (transfer.detachTimer) clearTimeout(transfer.detachTimer);
-    transfer.detachTimer = setTimeout(() => {
-      const pending = pendingTabTransfers.get(transferId);
-      if (!pending || pending.claimedByWebContentsId !== null || !pending.detachPosition) return;
-      pending.detachTimer = null;
-      const detachedWindow = createWindow(pending.detachPosition);
-      pending.claimedByWebContentsId = detachedWindow.webContents.id;
-      detachedWindow.webContents.once('did-finish-load', () => {
+    const detachedWindow = createWindow(transfer.detachPosition);
+    transfer.claimedByWebContentsId = detachedWindow.webContents.id;
+    detachedWindow.webContents.once('did-finish-load', () => {
+      void transfer.previewSnapshot.then((previewSnapshot) => {
+        if (!pendingTabTransfers.has(transferId) || detachedWindow.isDestroyed()) return;
         detachedWindow.webContents.send('tabs:transfer-incoming', {
           transferId,
-          tab: pending.tab,
+          tab: transfer.tab,
+          previewSnapshot,
         });
       });
-    }, TAB_DETACH_GRACE_MS);
+    });
   });
   ipcMain.on('app:close-empty-window', (event) => {
     const state = stateForWebContentsId(event.sender.id);

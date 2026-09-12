@@ -743,6 +743,7 @@ window.addEventListener('message', (event) => {
     sourceLine?: number;
     scrollRatio?: number;
     requestId?: number;
+    settle?: boolean;
     id?: string;
     query?: string;
     direction?: 'forward' | 'backward';
@@ -824,6 +825,15 @@ window.addEventListener('message', (event) => {
       Math.max(1, Number(data.sourceLine) || 1),
     );
     const ratio = Number.isFinite(data.topRatio) ? Number(data.topRatio) : GOLDEN_TOP_RATIO;
+    if (data.settle === false) {
+      positionPreview(sourceLine, ratio);
+      window.requestAnimationFrame(() => send({
+        type: 'marktex:preview-positioned',
+        revision: config.revision,
+        requestId: data.requestId,
+      }));
+      return;
+    }
     const preview = document.querySelector(PREVIEW_SELECTOR);
     let settleTimer: number | null = null;
     let observer: MutationObserver | null = null;

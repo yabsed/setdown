@@ -250,13 +250,17 @@ button { font: inherit; }
   min-height: 0;
 }
 .shell:not([data-surface="empty"]) .empty-state,
-.shell:not([data-surface="viewer"]) .viewer-surface,
-.shell:not([data-surface="editor"]) .editor-surface { display: none; }
-.shell[data-preview-positioning="true"] .viewer-surface {
-  display: grid;
+.shell[data-surface="empty"] .viewer-surface,
+.shell[data-surface="empty"] .editor-surface { display: none; }
+.shell[data-surface="editor"] .viewer-surface,
+.shell[data-surface="viewer"] .editor-surface {
   visibility: hidden;
+  pointer-events: none;
 }
-.shell[data-preview-positioning="true"] .editor-surface { display: block; }
+.shell[data-surface="editor"] .viewer-surface .preview-frame.is-active {
+  visibility: hidden;
+  pointer-events: none;
+}
 
 .empty-state {
   display: flex;
@@ -298,6 +302,19 @@ button { font: inherit; }
   visibility: visible;
   pointer-events: auto;
 }
+.preview-transfer-snapshot {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  height: 100%;
+  visibility: hidden;
+  object-fit: fill;
+  background: var(--preview-background);
+  pointer-events: none;
+}
+.preview-transfer-snapshot.is-active { visibility: visible; }
 .toc-panel {
   flex: 0 0 clamp(220px, 24vw, 300px);
   min-width: 0;
