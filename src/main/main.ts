@@ -1888,6 +1888,10 @@ if (!hasLock) {
     loadGlobalPreviewTheme();
     installIpc();
     installMenu();
+    // 조판 worker는 crossnote를 읽어 들이는 데만 0.6초를 쓴다. 첫 요청을
+    // 기다렸다 fork하면 그 시간이 renderer 부팅 뒤에 그대로 붙는다. 여기서
+    // 미리 띄우면 renderer가 뜨는 동안 나란히 준비된다.
+    ensureRenderWorker();
     const markdownPath = markdownPathFromArgs(process.argv);
     const initialDocument = markdownPath
       ? await readDocument(path.resolve(markdownPath))
