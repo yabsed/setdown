@@ -96,6 +96,66 @@ function findInlineRule(md: MarkdownItLike, name: string): InlineRule | null {
   return typeof found?.fn === 'function' ? found.fn : null;
 }
 
+/** 닫는 tag가 오지 않는 요소. */
+const VOID_HTML_ELEMENTS = new Set([
+  'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+  'link', 'meta', 'param', 'source', 'track', 'wbr',
+]);
+
+const HTML_TAG = /<!--[\s\S]*?-->|<\/([a-zA-Z][a-zA-Z0-9-]*)\s*>|<([a-zA-Z][a-zA-Z0-9-]*)((?:"[^"]*"|'[^']*'|[^>])*)>/g;
+
+/**
+ * 이 조각 안에서 연 tag를 모두 이 조각 안에서 닫는가.
+ *
+ * markdown-it은 빈 줄에서 raw HTML을 끊는다. 그래서 아래 문서는 세 개의
+ * html_block이 되고, `<details>`는 첫 조각에서 열려 세 번째 조각에서 닫힌다.
+ *
+ * ```
+ * <details>
+ * <summary>제목</summary>
+ *
+ * 본문
+ *
+ * </details>
+ * ```
+ *
+ * 이런 조각을 `<div>`로 감싸면 `</div>`가 `<details>`를 그 자리에서 닫아,
+ * 본문이 `<details>` 밖으로 빠져나가고 접히지 않는 문단이 된다.
+ */
+export function isSelfContainedHtmlBlock(content: string): boolean {
+  const open: string[] = [];
+  HTML_TAG.lastIndex = 0;
+  for (let match = HTML_TAG.exec(content); match; match = HTML_TAG.exec(content)) {
+    const [text, closing, opening, attributes] = match;
+    if (text.startsWith('<!--')) continue;
+    if (closing) {
+      const depth = open.lastIndexOf(closing.toLowerCase());
+      // 이 조각 밖에서 연 tag를 닫고 있다.
+      if (depth === -1) return false;
+      open.length = depth;
+      continue;
+    }
+    const name = opening.toLowerCase();
+    if (VOID_HTML_ELEMENTS.has(name) || /\/\s*$/.test(attributes ?? '')) continue;
+    open.push(name);
+  }
+  return open.length === 0;
+}
+
+const LEADING_OPEN_TAG = /^\s*<[a-zA-Z][a-zA-Z0-9-]*/;
+
+/**
+ * 감쌀 수 없는 조각은 여는 tag에 직접 원문 행을 심는다. DOM 구조를 전혀
+ * 건드리지 않으므로 여러 조각에 걸친 element도 온전히 남는다.
+ */
+export function injectSourceLine(html: string, line: number): string | null {
+  const match = LEADING_OPEN_TAG.exec(html);
+  if (!match) return null;
+  const at = match[0].length;
+  if (/\sdata-source-line=/.test(html.slice(0, at + 40))) return null;
+  return `${html.slice(0, at)} data-source-line="${line}"${html.slice(at)}`;
+}
+
 /**
  * div 안에 넣어도 DOM이 깨지지 않는 raw HTML block인지 본다. `<tr>`이나
  * `<li>`처럼 부모가 정해진 조각은 감싸면 브라우저가 버린다.
@@ -220,11 +280,14 @@ export function installSourceAnchors(md: MarkdownItLike): void {
       const html = renderHtmlBlock(tokens, index, options, env, self);
       const token = tokens[index];
       const map = token?.map;
-      if (!options?.sourceMap || !map || !canWrapHtmlBlock(token.content ?? '')) {
-        return html;
-      }
+      if (!options?.sourceMap || !map) return html;
+      const content = token.content ?? '';
       const start = map[0] + 1;
       const end = Math.max(start, map[1]);
+      // 조각 하나로 끝나지 않는 HTML은 감싸면 그 자리에서 닫혀 버린다.
+      // 그럴 때는 여는 tag에 행 번호만 얹고 구조는 그대로 둔다.
+      if (!isSelfContainedHtmlBlock(content)) return injectSourceLine(html, start) ?? html;
+      if (!canWrapHtmlBlock(content)) return html;
       return (
         `<div class="crossnote-html-source" data-source-line="${start}"` +
         ` data-source-lines="${start}-${end}">${html}</div>`

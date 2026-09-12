@@ -4,7 +4,9 @@ import type { FileSystemApi } from 'crossnote';
 import {
   absoluteColumn,
   canWrapHtmlBlock,
+  injectSourceLine,
   installSourceAnchors,
+  isSelfContainedHtmlBlock,
   offsetToLineColumn,
   type MarkdownItLike,
 } from './source-anchors';
@@ -15,6 +17,24 @@ describe('순수 계산', () => {
     expect(offsetToLineColumn('abc\ndef', 5)).toEqual({ line: 2, column: 2 });
     expect(offsetToLineColumn('abc\ndef', 999)).toEqual({ line: 2, column: 4 });
     expect(offsetToLineColumn('abc', Number.NaN)).toEqual({ line: 1, column: 1 });
+  });
+
+  test('조각 하나로 닫히는 HTML만 self-contained다', () => {
+    expect(isSelfContainedHtmlBlock('<table><tr><td>a</td></tr></table>')).toBe(true);
+    expect(isSelfContainedHtmlBlock('<img src="a.png">')).toBe(true);
+    expect(isSelfContainedHtmlBlock('<br/>')).toBe(true);
+    expect(isSelfContainedHtmlBlock('<!-- <div> -->')).toBe(true);
+    expect(isSelfContainedHtmlBlock('<details>\n<summary>x</summary>')).toBe(false);
+    expect(isSelfContainedHtmlBlock('</details>')).toBe(false);
+    expect(isSelfContainedHtmlBlock('<div a="<b>">x</div>')).toBe(true);
+  });
+
+  test('여는 tag에 행 번호를 심는다', () => {
+    expect(injectSourceLine('<details>\n<summary>x</summary>', 5))
+      .toBe('<details data-source-line="5">\n<summary>x</summary>');
+    expect(injectSourceLine('<details open>', 5)).toBe('<details data-source-line="5" open>');
+    expect(injectSourceLine('</details>', 5)).toBeNull();
+    expect(injectSourceLine('<p data-source-line="2">x</p>', 5)).toBeNull();
   });
 
   test('container marker가 벗겨진 만큼 열을 되돌린다', () => {
@@ -90,6 +110,17 @@ describe.each(['KaTeX', 'MathJax'] as const)('%s 수식의 source range', (mathR
   test('raw HTML block은 최소한 자기 범위를 남긴다', () => {
     const html = render('<table>\n<tr><td>$y^2$</td></tr>\n</table>\n');
     expect(html).toContain('class="crossnote-html-source" data-source-line="1"');
+  });
+
+  test('빈 줄로 끊긴 details는 본문을 품은 채로 남는다', () => {
+    const html = render('<details>\n<summary>제목</summary>\n\n본문 문단\n\n</details>\n');
+    // div로 감싸면 </div>가 <details>를 닫아 본문이 밖으로 빠져나간다.
+    expect(html).not.toContain('crossnote-html-source');
+    expect(html).toContain('<details data-source-line="1">');
+    const opened = html.indexOf('<details');
+    const closed = html.indexOf('</details>');
+    expect(closed).toBeGreaterThan(opened);
+    expect(html.slice(opened, closed)).toContain('본문 문단');
   });
 
   test('code fence 안의 달러는 수식이 아니다', () => {
