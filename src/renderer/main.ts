@@ -326,6 +326,7 @@ let revision = 0;
 let surface: 'empty' | 'viewer' | 'editor' = 'empty';
 let previewGeneration = 0;
 let previewTimer: number | null = null;
+let previewIdleTimer: number | null = null;
 let previewError: { revision: number; message: string } | null = null;
 let previewPositionRequest = 0;
 const previewMessageListeners = new Set<(payload: {
@@ -336,6 +337,14 @@ const previewMessageListeners = new Set<(payload: {
 // 계속 입력해도 Preview가 무기한 낡지 않도록 trailing debounce가 아니라
 // checkpoint cadence로 동작한다. 진행 중 변경은 coordinator가 최신 하나로 합친다.
 const PREVIEW_CHECKPOINT_MS = 500;
+/**
+ * 입력이 멈춘 뒤 이만큼 지나면 곧바로 조판해 둔다.
+ *
+ * 사람은 단어 사이, 생각할 때, 커서를 옮길 때 계속 멈춘다. 그 짧은 멈춤마다
+ * 최신본을 설치해 두면 Esc는 "기다리기"가 아니라 "드러내기"가 된다. 측정으로
+ * 그 둘은 640ms와 54ms다.
+ */
+const PREVIEW_IDLE_MS = 150;
 /**
  * 인계받은 탭의 조판 안내를 최대 이만큼만 붙잡아 둔다. Preview의 위치 확정
  * 응답을 기다리다 새 창만 느려 보이는 일을 막는다.
@@ -977,9 +986,14 @@ function installModel(documentSnapshot: DocumentSnapshot) {
 }
 
 function cancelScheduledPreview() {
-  if (previewTimer === null) return;
-  window.clearTimeout(previewTimer);
-  previewTimer = null;
+  if (previewTimer !== null) {
+    window.clearTimeout(previewTimer);
+    previewTimer = null;
+  }
+  if (previewIdleTimer !== null) {
+    window.clearTimeout(previewIdleTimer);
+    previewIdleTimer = null;
+  }
 }
 
 function resetPreviewState() {
@@ -990,16 +1004,33 @@ function resetPreviewState() {
   updatePreviewUi();
 }
 
+function renderCheckpoint(targetRevision: number) {
+  if (surface !== 'editor' || revision < targetRevision) return;
+  void ensurePreview(revision);
+}
+
+/**
+ * 숨은 Preview를 최신으로 유지하는 두 개의 시계.
+ *
+ * 하한은 미루지 않는다. 첫 입력이 시작한 시계를 이후 입력이 계속 뒤로 밀게
+ * 두면, 긴 작성 세션 동안 숨은 Preview가 한 번도 갱신되지 않는다.
+ *
+ * 유휴는 반대로 매 입력에 다시 맞춘다. 멈추는 순간을 잡아 그때 조판을
+ * 끝내 둔다. 둘을 함께 두면 연속 입력 중에도(하한) 멈출 때도(유휴) 최신본이
+ * 준비된다.
+ */
 function schedulePreview(targetRevision: number) {
-  // 첫 입력이 checkpoint의 시계를 시작한다. 이후 입력이 이 시계를 계속
-  // 뒤로 미루게 두면 긴 작성 세션 동안 숨은 Preview가 한 번도 갱신되지 않는다.
-  if (previewTimer !== null) return;
-  previewTimer = window.setTimeout(() => {
-    previewTimer = null;
-    if (surface === 'editor' && revision >= targetRevision) {
-      void ensurePreview(revision);
-    }
-  }, PREVIEW_CHECKPOINT_MS);
+  if (previewTimer === null) {
+    previewTimer = window.setTimeout(() => {
+      previewTimer = null;
+      renderCheckpoint(targetRevision);
+    }, PREVIEW_CHECKPOINT_MS);
+  }
+  if (previewIdleTimer !== null) window.clearTimeout(previewIdleTimer);
+  previewIdleTimer = window.setTimeout(() => {
+    previewIdleTimer = null;
+    renderCheckpoint(targetRevision);
+  }, PREVIEW_IDLE_MS);
 }
 
 function updatePreviewUi() {

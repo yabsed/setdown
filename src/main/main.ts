@@ -129,6 +129,30 @@ const previewViews = new Map<string, PreviewViewState>();
 const previewUpdateWaiters = new Map<string, () => void>();
 
 /**
+ * 조판된 본문. token으로만 참조한다.
+ *
+ * 렌더러에 보내지 않는다. 수식 문서에서 1.4MB이고, 렌더러는 이것을 읽지 않고
+ * `preview:load`로 그대로 되돌려 보낼 뿐이었다. 직렬화 두 번이 순수 낭비다.
+ */
+type PreviewPayload = {
+  html: string;
+  markdown: string;
+  totalLineCount: number;
+  baseHref: string;
+};
+const previewPayloads = new Map<string, PreviewPayload>();
+
+function previewTokenOf(url: unknown): string | null {
+  const text = String(url ?? '');
+  if (!text.startsWith('marktex-preview://document/')) return null;
+  try {
+    return new URL(text).pathname.slice(1) || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * 부팅만 끝내 둔 예비 Preview.
  *
  * 새 WebContentsView의 첫 `loadURL`은 crossnote 런타임, KaTeX·Font Awesome
@@ -498,21 +522,20 @@ async function renderCurrent(
   }
   const token = `${Date.now()}-${revision}-${Math.random().toString(36).slice(2)}`;
   previewDocuments.set(token, rendered.template);
+  previewPayloads.set(token, {
+    html: rendered.html,
+    markdown: text,
+    totalLineCount: rendered.totalLineCount,
+    baseHref: rendered.baseHref,
+  });
   rememberWarmupTemplate(rendered.template);
   while (previewDocuments.size > 64) {
     const oldest = previewDocuments.keys().next().value as string | undefined;
     if (!oldest) break;
     previewDocuments.delete(oldest);
+    previewPayloads.delete(oldest);
   }
-  return {
-    revision,
-    url: `marktex-preview://document/${token}`,
-    themeId: rendered.themeId,
-    html: rendered.html,
-    markdown: text,
-    totalLineCount: rendered.totalLineCount,
-    baseHref: rendered.baseHref,
-  };
+  return { revision, url: `marktex-preview://document/${token}`, themeId: rendered.themeId };
 }
 
 async function readDocument(filePath: string): Promise<DocumentSnapshot> {
@@ -1260,14 +1283,15 @@ function installIpc() {
     }
     const background = previewThemeBackground(themeId);
     preview.view.setBackgroundColor(background);
+    const payload = previewPayloads.get(previewTokenOf(previewUrl) ?? '');
     if (
       preview.view.webContents.getURL().startsWith('marktex-preview://document/')
-      && typeof result?.html === 'string'
+      && payload
     ) {
       const revision = Math.max(0, Number(result.revision) || 0);
-      const totalLineCount = Math.max(1, Number(result.totalLineCount) || 1);
-      const baseHref = typeof result.baseHref === 'string' ? result.baseHref : '';
-      const blocks = splitPreviewBlocks(result.html);
+      const totalLineCount = payload.totalLineCount;
+      const baseHref = payload.baseHref;
+      const blocks = splitPreviewBlocks(payload.html);
       const patch = preview.installedBlocks
         ? diffPreviewBlocks(preview.installedBlocks, blocks)
         : undefined;
@@ -1297,15 +1321,15 @@ function installIpc() {
         ? {
           command: 'marktex:patch-blocks',
           ...patch,
-          markdown: String(result.markdown ?? ''),
+          markdown: payload.markdown,
           totalLineCount,
           revision,
           baseHref,
         }
         : {
           command: 'marktex:update-html',
-          html: result.html,
-          markdown: String(result.markdown ?? ''),
+          html: payload.html,
+          markdown: payload.markdown,
           totalLineCount,
           revision,
           // 예비 view는 다른 문서의 base를 갖고 있다. 함께 옮기지 않으면
@@ -1320,9 +1344,7 @@ function installIpc() {
       return;
     }
     await preview.view.webContents.loadURL(previewUrl);
-    preview.installedBlocks = typeof result?.html === 'string'
-      ? splitPreviewBlocks(result.html)
-      : null;
+    preview.installedBlocks = payload ? splitPreviewBlocks(payload.html) : null;
     setImmediate(() => ensureSparePreview(event.sender.id));
   });
 
