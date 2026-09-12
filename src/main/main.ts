@@ -54,6 +54,7 @@ import {
 } from '../shared/preview-preferences';
 import { themeProfile } from '../shared/theme-catalog';
 import { applyTextRevision, isDirty, lineCount } from '../shared/document-state';
+import type { BandLine } from '../shared/viewport-anchor';
 import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
 import {
   isSupportedImagePath,
@@ -100,6 +101,8 @@ type PendingTabTransfer = {
   previewAdopted: boolean;
   preparedWindow: BrowserWindow | null;
   previewScrollPosition: Promise<{ x: number; y: number }>;
+  /** dragstart 순간 source Viewer에 보이던 띠. 무게중심 정렬의 재료다. */
+  previewBand: Promise<BandLine[]>;
 };
 
 const windowStates = new Map<number, WindowState>();
@@ -136,6 +139,14 @@ function rememberWarmupTemplate(template: string) {
   const token = `warmup-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   previewDocuments.set(token, blank);
   warmupPreviewUrl = `marktex-preview://document/${token}`;
+}
+
+/** 탭을 내보내는 창의 content 크기. 분리된 창을 같은 크기로 열기 위한 값이다. */
+function sourceContentSize(ownerWebContentsId: number): { width: number; height: number } | null {
+  const owner = stateForWebContentsId(ownerWebContentsId)?.window;
+  if (!owner || owner.isDestroyed()) return null;
+  const [width, height] = owner.getContentSize();
+  return width > 0 && height > 0 ? { width, height } : null;
 }
 
 function createPreviewView(): WebContentsView {
@@ -1123,10 +1134,16 @@ function createWindow(
   position: { x: number; y: number } | null = null,
   initialDocument: DocumentSnapshot | null = null,
   showWhenReady = true,
+  contentSize: { width: number; height: number } | null = null,
 ) {
   const createdWindow = new BrowserWindow({
     width: 1080,
     height: 820,
+    // 탭을 분리해 만든 창은 원래 창과 같은 크기로 연다. 폭이 같으면 본문이
+    // 재배치되지 않으므로 보고 있던 화면이 그대로 옮겨진다.
+    ...(contentSize
+      ? { width: contentSize.width, height: contentSize.height, useContentSize: true }
+      : {}),
     ...(position ? { x: position.x, y: position.y } : {}),
     minWidth: 520,
     minHeight: 420,
@@ -1521,7 +1538,7 @@ function installIpc() {
       previewAdopted: false,
       // 새 OS 창 생성도 drop의 선행 조건에서 뺀다. 실제 drag 동안 숨은
       // renderer를 부팅하고, transfer commit 전에는 사용자에게 보이지 않는다.
-      preparedWindow: createWindow(null, null, false),
+      preparedWindow: createWindow(null, null, false, sourceContentSize(event.sender.id)),
       // reparent 직전이 아니라 dragstart 순간의 좌표를 잡는다. 준비 중이던
       // updateHtml이 뒤늦게 DOM을 승격해 viewport를 바꿔도 사용자가 이동을
       // 시작했을 때 보던 위치가 transfer의 authority다.
@@ -1529,6 +1546,26 @@ function installIpc() {
         .executeJavaScript('({ x: window.scrollX, y: window.scrollY })')
         .catch(() => ({ x: 0, y: 0 }))
         ?? Promise.resolve({ x: 0, y: 0 }),
+      // 화면에 온전히 들어온 줄만 모은다. 위로 걸친 block을 넣으면 비율이
+      // 음수가 되어 clamp에 눌리고, 무게중심이 한쪽으로 치우친다.
+      previewBand: previewViews.get(String(tab.id))?.view.webContents
+        .executeJavaScript(`(() => {
+          const root = document.querySelector('.markdown-preview[data-for="preview"]');
+          if (!root) return [];
+          const height = window.innerHeight || 1;
+          const band = [];
+          root.querySelectorAll('[data-source-line]').forEach((element) => {
+            const line = Number(element.getAttribute('data-source-line'));
+            if (!Number.isFinite(line) || line < 1) return;
+            const rect = element.getBoundingClientRect();
+            if (rect.width === 0 && rect.height === 0) return;
+            if (rect.top < 0 || rect.top > height) return;
+            band.push({ sourceLine: line, yRatio: rect.top / height });
+          });
+          return band;
+        })()`)
+        .catch(() => [] as BandLine[])
+        ?? Promise.resolve([] as BandLine[]),
     });
     setTimeout(() => {
       const pending = pendingTabTransfers.get(transferId);
@@ -1566,10 +1603,14 @@ function installIpc() {
     preview.view.setBackgroundColor(previewThemeBackground(
       transfer.tab.previewTheme ?? globalPreviewTheme,
     ));
-    preview.pendingScrollPosition = scroll;
-    preview.pendingScrollRatio = Number.isFinite(Number(transfer.tab.viewerScrollRatio))
-      ? Math.max(0, Math.min(1, Number(transfer.tab.viewerScrollRatio)))
-      : null;
+    // 띠를 얻었으면 좌표계를 하나로 둔다. 픽셀 복원과 무게중심 정렬이 함께
+    // 돌면 서로 다른 답을 내어 화면이 두 번 튄다.
+    const band = await transfer.previewBand.catch(() => [] as BandLine[]);
+    preview.pendingScrollPosition = band.length > 0 ? null : scroll;
+    preview.pendingScrollRatio = band.length > 0
+      || !Number.isFinite(Number(transfer.tab.viewerScrollRatio))
+      ? null
+      : Math.max(0, Math.min(1, Number(transfer.tab.viewerScrollRatio)));
     transfer.previewAdopted = true;
     return true;
   });
@@ -1593,7 +1634,7 @@ function installIpc() {
     }
     return {
       transferId,
-      tab: transfer.tab,
+      tab: { ...transfer.tab, viewerBand: await transfer.previewBand },
     };
   });
   ipcMain.on('tabs:complete-transfer', (event, transferId: string) => {
@@ -1650,7 +1691,8 @@ function installIpc() {
     };
     const detachedWindow = transfer.preparedWindow && !transfer.preparedWindow.isDestroyed()
       ? transfer.preparedWindow
-      : createWindow(transfer.detachPosition, null, false);
+      : createWindow(transfer.detachPosition, null, false,
+        sourceContentSize(event.sender.id));
     transfer.preparedWindow = detachedWindow;
     detachedWindow.setPosition(transfer.detachPosition.x, transfer.detachPosition.y, false);
     transfer.claimedByWebContentsId = detachedWindow.webContents.id;
@@ -1663,18 +1705,24 @@ function installIpc() {
     // 보는 "탁탁"이다. 순서를 바꾸면 뷰는 같은 배율에서 같은 배율로 옮겨
     // 가므로 중간 레이아웃이 생기지 않는다. 기다리지 않으므로 전환은 그대로
     // 즉시다.
-    if (!detachedWindow.isVisible()) detachedWindow.show();
-    const sendIncoming = () => {
+    // showInactive로 올린다. 배율을 얻는 데 필요한 것은 display에 붙는 것뿐이고,
+    // 포커스는 transfer가 끝난 뒤 tabs:release-source가 준다.
+    if (!detachedWindow.isVisible()) detachedWindow.showInactive();
+    // 새 창으로 분리하는 경로는 claim-transfer를 지나지 않는다. 띠를 여기서
+    // 직접 실어 보내지 않으면 목적지가 무게중심 정렬을 쓸 수 없다.
+    const sendIncoming = async () => {
+      if (!pendingTabTransfers.has(transferId) || detachedWindow.isDestroyed()) return;
+      const band = await transfer.previewBand.catch(() => [] as BandLine[]);
       if (!pendingTabTransfers.has(transferId) || detachedWindow.isDestroyed()) return;
       detachedWindow.webContents.send('tabs:transfer-incoming', {
         transferId,
-        tab: transfer.tab,
+        tab: { ...transfer.tab, viewerBand: band },
       });
     };
     if (detachedWindow.webContents.isLoadingMainFrame()) {
-      detachedWindow.webContents.once('did-finish-load', sendIncoming);
+      detachedWindow.webContents.once('did-finish-load', () => void sendIncoming());
     } else {
-      sendIncoming();
+      void sendIncoming();
     }
   });
   ipcMain.on('app:close-empty-window', (event) => {

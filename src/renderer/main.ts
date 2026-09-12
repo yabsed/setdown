@@ -1257,6 +1257,9 @@ async function installTransferredTab(transfer: ClaimedTabTransfer) {
       restored.id,
       restored.model.getLineCount(),
       false,
+      // source 창에서 보던 띠 전체를 무게중심으로 맞춘다. 목적지의 폭이
+      // 달라 본문이 재배치되어도 보던 구간이 같은 자리에 선다.
+      Array.isArray(incoming.viewerBand) ? incoming.viewerBand : [],
     )
     : Promise.resolve(true);
   window.marktex.completeTabTransfer(transfer.transferId);

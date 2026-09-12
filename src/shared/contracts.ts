@@ -86,6 +86,12 @@ export type TransferableTab = {
   };
   editorViewState: unknown;
   viewerScrollRatio: number | null;
+  /**
+   * 이동을 시작한 순간 source 창의 Viewer에 보이던 줄들과 그 화면 비율.
+   * 목적지 창의 폭이 다르면 본문이 재배치되므로 픽셀 scroll은 원리상 틀린다.
+   * 이 띠의 무게중심으로 맞추면 보던 구간 전체가 같은 자리에 선다.
+   */
+  viewerBand?: { sourceLine: number; yRatio: number }[];
   previewUrl: string | null;
   previewRevision: number | null;
   previewTheme: PreviewThemeId | null;
