@@ -74,7 +74,7 @@ Setdown은 원문을 감추는 서식 도구 대신, 손으로 만들기 번거�
 결과는 언제나 Monaco에서 직접 읽고 고칠 수 있는 평범한 Markdown이며 한 번의 undo로
 되돌릴 수 있습니다.
 
-- **표 삽입:** 1~12개 열, 0~30개 데이터 행, 열별 정렬을 지정해 GFM pipe table 생성
+- **표 삽입:** 열은 최대 12개, 데이터 행은 최대 30개까지 지정해 GFM pipe table 생성
 - **TSV 가져오기:** 스프레드시트에서 복사한 셀을 표 편집기에 불러와 Markdown으로 변환
 - **링크 삽입:** URL 또는 OS 파일 선택기로 고른 로컬 파일을 portable Markdown 링크로 생성
 - **빠른 URL 붙여넣기:** 선택한 텍스트 위에 HTTP/HTTPS/mailto/tel URL을 붙여 바로 링크 생성
