@@ -22,6 +22,11 @@ export type RenderResult = {
   html: string;
   markdown: string;
   totalLineCount: number;
+  /**
+   * 이 문서의 상대 참조가 풀리는 기준. 부팅만 해 둔 예비 Preview는 다른
+   * 문서의 base를 갖고 있으므로, 본문을 갈아끼울 때 함께 옮겨야 한다.
+   */
+  baseHref: string;
 };
 
 export type PreviewHeading = {

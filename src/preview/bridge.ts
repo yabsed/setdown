@@ -832,7 +832,15 @@ window.addEventListener('message', (event) => {
       markdown?: string;
       totalLineCount?: number;
       revision?: number;
+      baseHref?: string;
     };
+    // 부팅만 해 둔 예비 Preview를 넘겨받았으면 base가 이전 문서의 폴더다.
+    // 새 본문을 심기 전에 옮겨야 상대 경로 자산이 제 폴더에서 풀린다.
+    if (typeof update.baseHref === 'string'
+      && update.baseHref.startsWith('marktex-resource://')) {
+      const base = document.querySelector('base');
+      if (base) base.setAttribute('href', update.baseHref);
+    }
     const sequence = ++htmlUpdateSequence;
     const updateRevision = Math.max(0, Number(update.revision) || 0);
     config.totalLineCount = Math.max(1, Number(update.totalLineCount) || 1);

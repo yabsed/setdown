@@ -116,6 +116,76 @@ const previewViews = new Map<string, PreviewViewState>();
 const previewUpdateWaiters = new Map<string, () => void>();
 
 /**
+ * 부팅만 끝내 둔 예비 Preview.
+ *
+ * 새 WebContentsView의 첫 `loadURL`은 crossnote 런타임, KaTeX·Font Awesome
+ * stylesheet, bridge script를 처음부터 올린다. 측정으로 이 고정 비용이 문서
+ * 내용과 무관하게 약 860ms였다. 탭마다 새로 내는 대신, 본문이 빈 template을
+ * 미리 한 장 띄워 두고 새 탭에 넘긴다. 넘겨받은 view는 이미
+ * `marktex-preview://` 문서를 띄우고 있으므로 `preview:load`가 `loadURL`이
+ * 아니라 `marktex:update-html`로 내용만 갈아끼운다.
+ */
+type SparePreview = { view: WebContentsView; ready: boolean };
+const sparePreviews = new Map<number, SparePreview>();
+/** 마지막 render의 template에서 본문만 비운 것. 자산은 그대로 남는다. */
+let warmupPreviewUrl: string | null = null;
+
+function rememberWarmupTemplate(template: string) {
+  const blank = template.replace(/(<body\b[^>]*\bdata-html=")[^"]*(")/i, '$1$2');
+  if (blank === template) return;
+  const token = `warmup-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  previewDocuments.set(token, blank);
+  warmupPreviewUrl = `marktex-preview://document/${token}`;
+}
+
+function createPreviewView(): WebContentsView {
+  const view = new WebContentsView({
+    webPreferences: {
+      preload: path.join(__dirname, 'preview-preload.cjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+  view.setBackgroundColor(previewThemeBackground(globalPreviewTheme));
+  view.setVisible(false);
+  return view;
+}
+
+function ensureSparePreview(ownerWebContentsId: number) {
+  if (sparePreviews.has(ownerWebContentsId) || !warmupPreviewUrl) return;
+  const owner = stateForWebContentsId(ownerWebContentsId)?.window;
+  if (!owner || owner.isDestroyed()) return;
+  const view = createPreviewView();
+  owner.contentView.addChildView(view);
+  const spare: SparePreview = { view, ready: false };
+  sparePreviews.set(ownerWebContentsId, spare);
+  view.webContents.loadURL(warmupPreviewUrl).then(() => {
+    if (sparePreviews.get(ownerWebContentsId) === spare) spare.ready = true;
+  }).catch(() => {
+    if (sparePreviews.get(ownerWebContentsId) === spare) {
+      sparePreviews.delete(ownerWebContentsId);
+    }
+    if (!view.webContents.isDestroyed()) view.webContents.close();
+  });
+}
+
+/** 부팅이 끝난 예비 view를 꺼낸다. 준비 전이면 쓰지 않는다. */
+function takeSparePreview(ownerWebContentsId: number): WebContentsView | null {
+  const spare = sparePreviews.get(ownerWebContentsId);
+  if (!spare?.ready || spare.view.webContents.isDestroyed()) return null;
+  sparePreviews.delete(ownerWebContentsId);
+  return spare.view;
+}
+
+function discardSparePreview(ownerWebContentsId: number) {
+  const spare = sparePreviews.get(ownerWebContentsId);
+  if (!spare) return;
+  sparePreviews.delete(ownerWebContentsId);
+  if (!spare.view.webContents.isDestroyed()) spare.view.webContents.close();
+}
+
+/**
  * 값이 달라졌을 때만 bounds를 민다.
  *
  * drag resize 동안 renderer의 ResizeObserver가 `preview:show`를 초당 수십 번
@@ -447,6 +517,7 @@ async function renderCurrent(
   }
   const engine = notebook.getNoteMarkdownEngine(renderPath);
   const sourceUrl = resourceUrl(renderPath);
+  const baseHref = resourceUrl(path.join(path.dirname(renderPath), path.sep));
   const fakePanel = {} as never;
   const config: WebviewConfig = {
     ...notebook.config,
@@ -461,7 +532,7 @@ async function renderCurrent(
     inputString: text.length > 0 ? text : '\n',
     config,
     vscodePreviewPanel: fakePanel,
-    head: `<base href="${resourceUrl(path.join(path.dirname(renderPath), path.sep))}">`,
+    head: `<base href="${baseHref}">`,
     scripts: previewBridgeScript(
       lineCount(text),
       text.trim().length === 0,
@@ -515,6 +586,7 @@ async function renderCurrent(
   }
   const token = `${Date.now()}-${revision}-${Math.random().toString(36).slice(2)}`;
   previewDocuments.set(token, html);
+  rememberWarmupTemplate(html);
   while (previewDocuments.size > 64) {
     const oldest = previewDocuments.keys().next().value as string | undefined;
     if (!oldest) break;
@@ -527,6 +599,7 @@ async function renderCurrent(
     html: previewFragmentFromTemplate(html),
     markdown: text,
     totalLineCount: lineCount(text),
+    baseHref,
   };
 }
 
@@ -1154,6 +1227,7 @@ function createWindow(
   });
   createdWindow.on('closed', () => {
     if (state.watchedPath) unwatchFile(state.watchedPath);
+    discardSparePreview(webContentsId);
     for (const [tabId, preview] of previewViews) {
       if (preview.ownerWebContentsId !== webContentsId) continue;
       preview.view.webContents.close();
@@ -1216,17 +1290,13 @@ function installIpc() {
     if (typeof tabId !== 'string' || previewViews.has(tabId)) return;
     const ownerState = stateForWebContentsId(event.sender.id);
     if (!ownerState) return;
-    const view = new WebContentsView({
-      webPreferences: {
-        preload: path.join(__dirname, 'preview-preload.cjs'),
-        contextIsolation: true,
-        nodeIntegration: false,
-        sandbox: true,
-      },
-    });
+    // 부팅이 끝난 예비 view가 있으면 그것을 쓴다. 없으면 새로 만든다.
+    const view = takeSparePreview(event.sender.id) ?? createPreviewView();
     view.setBackgroundColor(previewThemeBackground(globalPreviewTheme));
     view.setVisible(false);
     ownerState.window.contentView.addChildView(view);
+    // 다음 탭이 쓸 예비를 background에서 다시 채운다.
+    setImmediate(() => ensureSparePreview(event.sender.id));
     previewViews.set(tabId, {
       view,
       ownerWebContentsId: event.sender.id,
@@ -1294,11 +1364,18 @@ function installIpc() {
         markdown: String(result.markdown ?? ''),
         totalLineCount: Math.max(1, Number(result.totalLineCount) || 1),
         revision,
+        // 예비 view는 다른 문서의 base를 갖고 있다. 함께 옮기지 않으면
+        // 상대 경로 이미지가 엉뚱한 폴더를 가리킨다.
+        baseHref: typeof result.baseHref === 'string' ? result.baseHref : '',
       });
       await updated;
+      // 다음 탭이 쓸 예비를 채운다. 첫 문서를 실은 뒤에야 본문을 비울
+      // template이 생기므로, create 시점이 아니라 여기서도 확인한다.
+      setImmediate(() => ensureSparePreview(event.sender.id));
       return;
     }
     await preview.view.webContents.loadURL(previewUrl);
+    setImmediate(() => ensureSparePreview(event.sender.id));
   });
 
   ipcMain.on('preview:show', (event, { tabId, bounds }) => {
