@@ -144,8 +144,8 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       Menu.getApplicationMenu()?.getMenuItemById('preview-theme-night')?.click();
     });
     await expect.poll(() =>
-      reading.evaluateAll<string>("document.body.dataset.setdownPreviewTheme || ''"),
-    ).toEqual(['night', 'night']);
+      reading.evaluate<string>("document.body.dataset.setdownPreviewTheme || ''"),
+    ).toBe('night');
     await expect.poll(() => window.evaluate(() => ({
       theme: document.documentElement.dataset.theme,
       appearance: document.documentElement.dataset.appearance,
@@ -203,13 +203,17 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       const [width, height] = owner.getSize();
       owner.setSize(width + 120, height + 80);
     });
-    // native view의 bounds가 DOM placeholder와 맞는지 본다.
+    // 검색 바를 위해 비운 위쪽 띠를 제외하고 native view의 bounds가 DOM
+    // placeholder와 맞는지 본다.
     await expect.poll(async () => {
       const host = await window.locator('.preview-frames').boundingBox();
+      const search = await window.locator('.preview-search').boundingBox();
       const view = await reading.visibleBounds();
-      return !!host && !!view
+      return !!host && !!search && !!view
+        && Math.abs(host.x - view.x) <= 1
+        && Math.abs(search.y + search.height + 10 - view.y) <= 1
         && Math.abs(host.width - view.width) <= 1
-        && Math.abs(host.height - view.height) <= 1;
+        && Math.abs(host.y + host.height - view.y - view.height) <= 1;
     }).toBe(true);
     await expect(window.locator('.preview-search input')).toHaveValue('검색대상');
     await window.locator('.document-tab', { hasText: 'Untitled.md' }).click();
@@ -233,8 +237,16 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
         .find((item) => item.label === 'File')?.submenu?.items
         .find((item) => item.label === 'New Window')?.click();
     });
-    await expect.poll(() => application.windows().length).toBe(2);
-    const secondWindow = application.windows().find((candidate) => candidate !== window)!;
+    await expect.poll(() => application.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows().length)).toBe(2);
+    let secondWindow = application.windows().find((candidate) =>
+      candidate !== window && candidate.url().startsWith('file:'));
+    await expect.poll(() => {
+      secondWindow = application.windows().find((candidate) =>
+        candidate !== window && candidate.url().startsWith('file:'));
+      return !!secondWindow;
+    }).toBe(true);
+    if (!secondWindow) throw new Error('The second application window did not open.');
     await secondWindow.locator('.empty-new').click();
     await expect(secondWindow.locator('.editor-surface')).toBeVisible();
     await secondWindow.locator('.mode-toggle').click();
