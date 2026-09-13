@@ -7,6 +7,10 @@
  */
 import { previewThemeBackground } from '../shared/preview-preferences';
 import {
+  INITIAL_HTML_TEMPLATE_ID,
+  requiresCrossnoteInstall,
+} from '../shared/preview-install';
+import {
   GOLDEN_TOP_RATIO,
   resolveBandScrollTop,
   resolveViewerPoint,
@@ -78,7 +82,10 @@ window.acquireVsCodeApi = () => ({
   postMessage(message: unknown) {
     send(message as Record<string, unknown>);
     if ((message as { command?: string })?.command === 'webviewFinishLoading') {
-      queueMicrotask(() =>
+      queueMicrotask(() => {
+        // 워커가 본문을 `<template>`으로 실어 보냈으면 그대로 옮겨 심는다.
+        // crossnote에게 다시 넘기면 sanitize와 숨은 DOM 왕복이 붙는다.
+        if (installInitialHtml()) return;
         window.postMessage(
           {
             command: 'updateHtml',
@@ -93,8 +100,8 @@ window.acquireVsCodeApi = () => ({
             class: 'zen-mode',
           },
           '*',
-        ),
-      );
+        );
+      });
     }
   },
 });
@@ -422,8 +429,44 @@ function viewportAnchorAt(yRatio: number): ViewportAnchor {
   return anchorAtPoint(clientX, clientY, target, path);
 }
 
+/**
+ * 첫 자리가 잡히기 전에는 화면을 보고하지 않는다.
+ *
+ * 이 보고는 "지금 화면 38% 높이에 있는 원문 줄"이고, host는 그것을 나중에
+ * Preview를 그 높이로 되돌리는 기준으로 쓴다. stylesheet와 수식 font가 붙기
+ * 전에는 블록이 제 높이를 갖지 않아 첫 화면 안에 문서의 절반이 들어와 있는
+ * 것처럼 보인다. 그 상태를 보고하면 문서를 열자마자 한가운데로 내려간다.
+ *
+ * 한 번 자리가 잡히면 다시 가리지 않는다. font는 뒤늦게 한 벌 더 불려올 수
+ * 있고, 그때마다 보고를 막으면 사용자가 실제로 보고 있는 위치를 host가
+ * 영영 모르게 된다.
+ */
+let initialLayoutReady = false;
+
+function markInitialLayoutReady() {
+  if (initialLayoutReady) return;
+  initialLayoutReady = true;
+  invalidateAtlas();
+  scheduleViewportState();
+}
+
+function awaitInitialLayout() {
+  const settle = () => {
+    if (document.fonts) {
+      void document.fonts.ready.then(markInitialLayoutReady, markInitialLayoutReady);
+    } else {
+      markInitialLayoutReady();
+    }
+  };
+  if (document.readyState === 'complete') settle();
+  else window.addEventListener('load', settle, { once: true });
+}
+
+awaitInitialLayout();
+
 function publishViewportState() {
   viewportStateFrame = null;
+  if (!initialLayoutReady) return;
   const scrollTop = document.documentElement.scrollTop || document.body.scrollTop || 0;
   const maximum = Math.max(
     0,
@@ -934,6 +977,77 @@ document.addEventListener(
   true,
 );
 
+// ── 본문 설치: crossnote의 왕복을 건너뛰고 한 번만 파싱한다 ──────────
+
+function previewRoot(): HTMLElement | null {
+  return document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
+}
+
+/**
+ * 본문이 자리를 잡은 뒤에 해야 하는 일.
+ *
+ * crossnote의 `updateHtml`이 초기화 끝에 하던 것 중 이 앱이 쓰는 것만
+ * 남겼다. class는 zen mode를, 나머지는 새 DOM 위에서 색인과 접힘 상태를
+ * 다시 세운다. 링크는 위임 handler가 문서 하나에 한 번만 달린다.
+ */
+function finishInstall(root: HTMLElement) {
+  root.className = 'crossnote markdown-preview zen-mode';
+  applyDisclosures(null);
+  invalidateAtlas();
+  scheduleHeadings();
+  scheduleViewportState();
+  // 새 본문이 부르는 font가 붙으면 모든 블록의 높이가 달라진다. 그때 색인과
+  // 화면 보고를 한 번 다시 세운다.
+  void document.fonts?.ready.then(() => {
+    invalidateAtlas();
+    scheduleViewportState();
+  }).catch(() => {});
+}
+
+/**
+ * 첫 로드. 워커가 `<template>`에 실어 보낸 본문을 그 자리로 옮긴다.
+ *
+ * `replaceChildren`은 이미 파싱된 node를 옮기기만 한다. 문자열로 되돌리는
+ * 단계도, 다시 파싱하는 단계도 없다.
+ */
+function installInitialHtml(): boolean {
+  const carrier = document.getElementById(INITIAL_HTML_TEMPLATE_ID);
+  const root = previewRoot();
+  if (!(carrier instanceof HTMLTemplateElement) || !root) return false;
+  root.replaceChildren(carrier.content);
+  carrier.remove();
+  finishInstall(root);
+  return true;
+}
+
+// ── 링크: crossnote의 초기화를 거치지 않으므로 여기서 위임으로 받는다 ──
+document.addEventListener('click', (event) => {
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+  const anchor = target.closest('a');
+  if (!anchor || !previewRoot()?.contains(anchor)) return;
+  const href = anchor.getAttribute('href') ?? '';
+  // tag anchor는 이 앱이 다루지 않는다. 그대로 둔다.
+  if (anchor.classList.contains('tag') || href.startsWith('tag://')) return;
+  if (!href) return;
+  event.preventDefault();
+  event.stopPropagation();
+  if (href.startsWith('#')) {
+    const id = decodeURIComponent(href.slice(1));
+    const destination = id ? previewRoot()?.querySelector(`[id="${CSS.escape(id)}"]`) : null;
+    destination?.scrollIntoView({ block: 'start' });
+    return;
+  }
+  send({
+    command: 'clickTagA',
+    args: [{
+      uri: document.querySelector('base')?.href ?? '',
+      href: encodeURIComponent(href.replace(/\\/g, '/')),
+      scheme: 'file',
+    }],
+  });
+}, true);
+
 // ── host의 요청: 지금 보고 있는 화면의 anchor ────────────────────────
 window.addEventListener('message', (event) => {
   if (event.source !== window && event.source !== window.parent) return;
@@ -1021,31 +1135,45 @@ window.addEventListener('message', (event) => {
     const updateRevision = Math.max(0, Number(update.revision) || 0);
     config.totalLineCount = Math.max(1, Number(update.totalLineCount) || 1);
     config.revision = updateRevision;
+    const html = String(update.html ?? '');
+    const root = previewRoot();
+
+    // 워커가 보낸 HTML은 이미 sanitize를 거쳤다. 곧바로 심으면 본문을 한 번만
+    // 파싱한다. crossnote에게 넘기면 sanitize 한 번, 숨은 DOM에 한 번,
+    // 그것을 문자열로 되돌려 보이는 DOM에 다시 한 번 지나간다.
+    if (root && !requiresCrossnoteInstall(html)) {
+      root.innerHTML = html;
+      finishInstall(root);
+      // patch 경로와 같은 이유로 곧바로 답한다. 설치는 이 handler 안에서
+      // 동기로 끝났고, 이 view는 아직 숨어 있어 frame이 오지 않는다. host는
+      // 이 답을 받아야 view를 보여 주므로, frame을 기다리면 서로를 기다린다.
+      send({ type: 'marktex:html-updated', revision: updateRevision });
+      return;
+    }
+
+    // 브라우저에서 그려지는 도해가 든 문서. crossnote의 초기화가 필요하다.
     let completed = false;
     let timeout = 0;
-    const observer = new MutationObserver(() => finish());
     const finish = () => {
       if (completed || sequence !== htmlUpdateSequence) return;
       completed = true;
       observer.disconnect();
       window.clearTimeout(timeout);
-      applyDisclosures(null);
-      // Crossnote가 hidden DOM을 current DOM으로 승격한 paint 뒤에만 host의
-      // revision을 ready로 만든다.
-      window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
-        if (sequence === htmlUpdateSequence) {
-          send({ type: 'marktex:html-updated', revision: updateRevision });
-        }
-      }));
+      const installed = previewRoot();
+      if (installed) finishInstall(installed);
+      send({ type: 'marktex:html-updated', revision: updateRevision });
     };
-    observer.observe(document.body, { childList: true, subtree: true });
+    // 보이는 쪽 DOM만 본다. 숨은 DOM은 crossnote가 먼저 채우므로, 그것을
+    // 신호로 삼으면 본문이 승격되기도 전에 다 됐다고 답하게 된다.
+    const observer = new MutationObserver(() => finish());
+    if (root) observer.observe(root, { childList: true });
     timeout = window.setTimeout(finish, 4500);
     // Crossnote preview runtime가 제공하는 updateHtml 경로를 그대로 쓴다.
     // navigation하지 않으므로 현재 WebContents, stylesheet, JS heap과 viewport가
     // 살아 있고 Crossnote의 hidden DOM buffer가 완성된 내용만 승격한다.
     window.postMessage({
       command: 'updateHtml',
-      html: String(update.html ?? ''),
+      html,
       markdown: String(update.markdown ?? ''),
       tocHTML: '',
       totalLineCount: config.totalLineCount,

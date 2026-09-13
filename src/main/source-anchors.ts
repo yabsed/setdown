@@ -79,9 +79,38 @@ export function absoluteColumn(
   return column;
 }
 
+/**
+ * 행 목록을 두 벌만 기억한다.
+ *
+ * 아래 core rule은 inline 수식마다 원문 전체(`state.src`)와 그 문단
+ * (`token.content`)에서 행을 꺼낸다. 매번 `split('\n')`을 다시 하면 수식
+ * 하나당 문서 전체를 훑는 셈이 된다. 수식 766개짜리 문서의 재조판에서 이
+ * 함수 하나가 CPU profile의 self time 1위였고, markdown-it 단계 34ms 중
+ * 28ms를 썼다.
+ *
+ * 두 벌이면 충분하다. 번갈아 오는 것이 원문과 문단 둘뿐이다.
+ */
+let lastText: string | null = null;
+let lastLines: string[] = [];
+let previousText: string | null = null;
+let previousLines: string[] = [];
+
 function lineOf(text: string, line: number): string {
-  const lines = text.split('\n');
-  return lines[line - 1] ?? '';
+  if (text !== lastText) {
+    if (text === previousText) {
+      const lines = previousLines;
+      previousText = lastText;
+      previousLines = lastLines;
+      lastText = text;
+      lastLines = lines;
+    } else {
+      previousText = lastText;
+      previousLines = lastLines;
+      lastText = text;
+      lastLines = text.split('\n');
+    }
+  }
+  return lastLines[line - 1] ?? '';
 }
 
 /**

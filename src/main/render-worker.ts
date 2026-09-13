@@ -34,6 +34,7 @@ import {
   type PreviewBlock,
   type PreviewBlockPatch,
 } from '../shared/preview-blocks';
+import { INITIAL_HTML_TEMPLATE_ID, canInlineInitialHtml } from '../shared/preview-install';
 
 export type RenderWorkerRequest =
   | {
@@ -283,6 +284,36 @@ function restoreDeferredMathInTemplate(template: string): string {
   });
 }
 
+/**
+ * 첫 로드 페이지에서 본문이 두 번 파싱되는 구조를 없앤다.
+ *
+ * crossnote의 template은 조판된 본문을 `<body data-html="...">`에 엔티티
+ * 인코딩해 싣고, 브라우저의 preview runtime이 그것을 다시 sanitize한 뒤
+ * `innerHTML`로 심는다. 같은 본문을 속성으로 한 번, 마크업으로 또 한 번
+ * 파싱하는 것이다. 수식 문서에서 그 속성만 2.1MB였다.
+ *
+ * 대신 본문을 `<head>`의 `<template>`에 진짜 마크업으로 싣는다. 파서는
+ * 문서를 읽으면서 이것을 fragment로 한 번만 만들고, bridge는 그 node를
+ * 자리만 옮긴다. 다시 파싱하지도, 문자열로 되돌리지도 않는다.
+ */
+function inlineInitialHtml(template: string, html: string): string {
+  const bodyTag = /<body\b[^>]*>/i.exec(template);
+  if (!bodyTag) return restoreDeferredMathInTemplate(template);
+  const attributeAt = bodyTag[0].search(/\sdata-html="/i);
+  if (attributeAt < 0) return restoreDeferredMathInTemplate(template);
+  const start = bodyTag.index + attributeAt;
+  // `escape(html)`을 거친 값이라 속성 안에 따옴표가 남아 있지 않다.
+  const valueAt = template.indexOf('"', start);
+  const end = template.indexOf('"', valueAt + 1);
+  if (valueAt < 0 || end < 0) return restoreDeferredMathInTemplate(template);
+
+  const withoutBody = template.slice(0, start) + template.slice(end + 1);
+  const headEnd = withoutBody.search(/<\/head>/i);
+  if (headEnd < 0) return restoreDeferredMathInTemplate(template);
+  const carrier = `<template id="${INITIAL_HTML_TEMPLATE_ID}">${html}</template>`;
+  return withoutBody.slice(0, headEnd) + carrier + withoutBody.slice(headEnd);
+}
+
 let bridgeSourceCache: string | null = null;
 
 function bridgeSource(): string {
@@ -326,6 +357,12 @@ function previewStyles(themeId: PreviewThemeId): string {
          바꿀 때 이 값을 함께 갱신한다. */
       html, body { background: ${previewThemeBackground(themeId)}; }
       [data-source-line] { cursor: text; }
+      /* crossnote의 로딩 overlay.
+         crossnote는 자기 \`updateHtml\` 경로가 끝나야 이 overlay를 걷는데,
+         본문 설치는 이 앱이 직접 한다. 그래서 그 상태는 영원히 풀리지 않고,
+         5초 뒤에는 "Something is wrong."까지 띄운다. 조판 중임을 알리는
+         화면은 host가 이미 그리므로 여기서는 감춘다. */
+      .markdown-preview.z-50 { display: none !important; }
       .topbar, footer, .footer { display: none !important; }
       html, body { max-width: 100%; overflow-x: hidden !important; }
       /* Preview 자체는 문서 전체를 칠하고, 폭이 긴 콘텐츠만 지역적으로 스크롤한다. */
@@ -406,7 +443,12 @@ async function render(request: Extract<RenderWorkerRequest, { kind: 'render' }>)
   const common = { totalLineCount: lineCount(request.text), baseHref, themeId };
   if (!request.hasPage) {
     // 첫 로드. 완성된 페이지가 필요하므로 이때만 template을 만들어 보낸다.
-    return { ...common, template: restoreDeferredMathInTemplate(template), html };
+    // 본문을 `<template>`으로 실을 수 있으면 그 편이 한 번만 파싱된다.
+    // 브라우저에서 그려지는 도해가 든 문서만 예전 경로로 보낸다.
+    const page = canInlineInitialHtml(html)
+      ? inlineInitialHtml(template, html)
+      : restoreDeferredMathInTemplate(template);
+    return { ...common, template: page, html };
   }
   if (!previous) {
     // 예비 view를 넘겨받은 경우처럼 페이지는 있으나 기록이 없다.

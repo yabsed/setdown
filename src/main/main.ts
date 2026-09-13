@@ -58,6 +58,7 @@ import {
   savePastedPng,
 } from './pasted-image';
 import { previewRelativeReference } from './preview-resources';
+import { INITIAL_HTML_TEMPLATE_ID } from '../shared/preview-install';
 import { discardDraftBundle, saveDraftBundle } from './draft-assets';
 import { markdownDestinationForFile } from './markdown-link';
 
@@ -137,8 +138,18 @@ const sparePreviews = new Map<number, SparePreview>();
  */
 let warmupPreview: { url: string; themeId: PreviewThemeId } | null = null;
 
+const INITIAL_HTML_CARRIER = new RegExp(
+  `(<template id="${INITIAL_HTML_TEMPLATE_ID}">)[\\s\\S]*?(</template>)`,
+  'i',
+);
+
 function rememberWarmupTemplate(template: string, themeId: PreviewThemeId) {
-  const blank = template.replace(/(<body\b[^>]*\bdata-html=")[^"]*(")/i, '$1$2');
+  // 본문은 두 가지 방식으로 실린다. `<template>`에 마크업으로 실은 것과,
+  // 도해가 든 문서에서 쓰는 crossnote의 `data-html` 속성이다. 어느 쪽이든
+  // 비워야 자산만 남은 빈 페이지가 된다.
+  const blank = template
+    .replace(INITIAL_HTML_CARRIER, '$1$2')
+    .replace(/(<body\b[^>]*\bdata-html=")[^"]*(")/i, '$1$2');
   if (blank === template) return;
   const token = `warmup-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   previewDocuments.set(token, blank);
