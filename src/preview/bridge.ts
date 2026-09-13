@@ -658,7 +658,28 @@ async function applyTheme(themeId: string, previewCssUrl: unknown, codeCssUrl: u
     }
     positionPreview(semanticAnchor.sourceLine, semanticAnchor.yRatio);
   };
+  const finishThemeApplication = () => {
+    document.body.dataset.setdownPreviewTheme = themeId;
+    document.body.dataset.setdownThemeAnchorLine = String(semanticAnchor.sourceLine);
+    document.body.dataset.previewTheme = [
+      'github-dark',
+      'night',
+      'one-dark',
+      'solarized-dark',
+    ].includes(themeId) ? 'dark' : 'light';
+    invalidateAtlas();
+    scheduleViewportState();
+    send({ type: 'marktex:theme-applied', revision: config.revision, themeId });
+  };
   invalidateAtlas();
+  // 숨긴 WebContentsView에는 Chromium이 animation frame을 주지 않는다. 여기서
+  // frame을 기다리면 탭을 드러낸 뒤에야 테마가 완료되어 이전 색이 한 번 보인다.
+  // stylesheet는 이미 load됐으므로 숨은 탭은 동기적으로 위치를 맞추고 완료한다.
+  if (document.visibilityState === 'hidden') {
+    restoreThemePosition();
+    finishThemeApplication();
+    return;
+  }
   await new Promise<void>((resolve) => window.requestAnimationFrame(() => {
     restoreThemePosition();
     resolve();
@@ -667,17 +688,7 @@ async function applyTheme(themeId: string, previewCssUrl: unknown, codeCssUrl: u
     restoreThemePosition();
     resolve();
   }));
-  document.body.dataset.setdownPreviewTheme = themeId;
-  document.body.dataset.setdownThemeAnchorLine = String(semanticAnchor.sourceLine);
-  document.body.dataset.previewTheme = [
-    'github-dark',
-    'night',
-    'one-dark',
-    'solarized-dark',
-  ].includes(themeId) ? 'dark' : 'light';
-  invalidateAtlas();
-  scheduleViewportState();
-  send({ type: 'marktex:theme-applied', revision: config.revision, themeId });
+  finishThemeApplication();
 }
 
 // CSS Highlight API는 Range를 표시할 뿐 Crossnote의 DOM을 감싸거나 바꾸지 않는다.

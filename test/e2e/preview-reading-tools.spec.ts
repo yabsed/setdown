@@ -157,6 +157,19 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     await expect.poll(() =>
       reading.evaluate<string>("document.body.dataset.setdownPreviewTheme || ''"),
     ).toBe('night');
+    // 보이지 않는 Untitled Preview도 지금 바뀌어야 한다. hidden WebContents의
+    // animation frame을 탭 전환 뒤까지 기다리면 이전 테마가 한 frame 번쩍인다.
+    await expect.poll(() => application.evaluate(async ({ BrowserWindow }) => {
+      const owner = BrowserWindow.getAllWindows()[0];
+      const previews = owner.contentView.children.filter((candidate) =>
+        'webContents' in candidate
+        && candidate.webContents.getURL().startsWith('marktex-preview://document/'));
+      const themes = await Promise.all(previews.map((preview) =>
+        'webContents' in preview ? preview.webContents.executeJavaScript(
+          "document.body.dataset.setdownPreviewTheme || ''",
+        ).catch(() => '') : ''));
+      return themes.length >= 2 && themes.every((theme) => theme === 'night');
+    })).toBe(true);
     await expect.poll(() => window.evaluate(() => ({
       theme: document.documentElement.dataset.theme,
       appearance: document.documentElement.dataset.appearance,
@@ -292,11 +305,20 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       theme: document.documentElement.dataset.theme,
       appearance: document.documentElement.dataset.appearance,
       shell: getComputedStyle(document.querySelector('.shell')!).backgroundColor,
-      editor: getComputedStyle(document.querySelector('.monaco-editor')!).backgroundColor,
     }))).toEqual({
       theme: 'night',
       appearance: 'dark',
       shell: 'rgb(47, 52, 57)',
+    });
+    // 재시작한 읽기 화면은 Monaco를 선행 로드하지 않는다. 실제 편집 전환이
+    // 준비를 보장한 뒤 persisted theme가 editor에도 적용됐는지 확인한다.
+    await restartedWindow.locator('.mode-toggle').click();
+    await expect(restartedWindow.locator('.editor-surface')).toBeVisible();
+    await expect.poll(() => restartedWindow.evaluate(() => ({
+      theme: document.documentElement.dataset.theme,
+      editor: getComputedStyle(document.querySelector('.monaco-editor')!).backgroundColor,
+    }))).toEqual({
+      theme: 'night',
       editor: 'rgb(54, 59, 64)',
     });
     expect(await restartedApplication.evaluate(({ Menu }) =>

@@ -306,6 +306,9 @@ type DocumentTab = {
 
 // 테마만 app-global authority를 따른다. 목차는 문서 탭의 작업 상태다.
 const readerPreferences = { themeId: initialTheme.id };
+// 테마를 직접 고른 순간 보이던 탭만 기존 화면을 유지하며 stylesheet를 교체한다.
+// 그 사이 다른 탭으로 가면 새 탭은 적용 완료 신호 전까지 드러내지 않는다.
+let themeTransitionVisibleTabId: string | null = null;
 
 const tabs: DocumentTab[] = [];
 let activeTabId: string | null = null;
@@ -566,6 +569,7 @@ async function applyProductTheme(snapshot: ThemeSnapshot, forceAssets = false) {
   if (!forceAssets && snapshot.revision === appliedThemeRevision
     && readerPreferences.themeId === nextTheme) return;
   appliedThemeRevision = snapshot.revision;
+  themeTransitionVisibleTabId = activeTabId;
   readerPreferences.themeId = nextTheme;
   applicationMenuCache.delete('application-menu-view');
   applyShellTheme(nextTheme);
@@ -577,6 +581,7 @@ async function applyProductTheme(snapshot: ThemeSnapshot, forceAssets = false) {
     || readerPreferences.themeId !== assets.themeId
   ) return;
   for (const tab of tabs) applyThemeAssetsToTab(tab, assets);
+  syncPreviewView();
 }
 
 function applyThemeAssetsToTab(tab: DocumentTab, assets: PreviewThemeAssets) {
@@ -585,7 +590,6 @@ function applyThemeAssetsToTab(tab: DocumentTab, assets: PreviewThemeAssets) {
     command: 'marktex:apply-theme',
     ...assets,
   });
-  tab.previewTheme = assets.themeId;
 }
 
 function createPreview(tabId: string) {
@@ -619,6 +623,8 @@ function syncPreviewView() {
   const visible = !!tab
     && surface === 'viewer'
     && !!tab.previewUrl
+    && (tab.previewTheme === readerPreferences.themeId
+      || tab.id === themeTransitionVisibleTabId)
     && previewFreezeDepth === 0
     && !awaitingTransferredPreview;
   if (!visible || !tab) {
@@ -2288,8 +2294,19 @@ document.querySelector('.notice-reload')?.addEventListener('click', async () => 
 
 function handlePreviewMessage(payload: { tabId: string; message: Record<string, unknown> }) {
   for (const listener of previewMessageListeners) listener(payload);
-  if (payload.tabId !== activeTabId || payload.message.source !== 'crossnote') return;
   const message = payload.message;
+  if (message.source !== 'crossnote') return;
+  if (message.type === 'marktex:theme-applied') {
+    const tab = tabs.find((candidate) => candidate.id === payload.tabId);
+    const themeId = normalizePreviewTheme(message.themeId);
+    if (tab && themeId === readerPreferences.themeId) {
+      tab.previewTheme = themeId;
+      if (themeTransitionVisibleTabId === tab.id) themeTransitionVisibleTabId = null;
+      syncPreviewView();
+    }
+    return;
+  }
+  if (payload.tabId !== activeTabId) return;
   if (message.type === 'marktex:headings') {
     if (message.revision !== revision || !Array.isArray(message.headings)) return;
     const tab = activeTab();
