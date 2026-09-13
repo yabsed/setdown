@@ -1,5 +1,4 @@
-import * as monaco from 'monaco-editor/editor/editor.main';
-import EditorWorker from 'monaco-editor/editor/editor.worker?worker';
+import type * as Monaco from 'monaco-editor';
 import type {
   ApplicationMenuEntry,
   ClaimedTabTransfer,
@@ -68,7 +67,7 @@ function withAlpha(color: string, alpha: string) {
   return /^#[0-9a-f]{6}$/i.test(color) ? `${color}${alpha}` : color;
 }
 
-function registerMonacoThemes() {
+function registerMonacoThemes(monaco: typeof Monaco) {
   for (const profile of THEME_PROFILES) {
     const { palette, syntax } = profile;
     monaco.editor.defineTheme(monacoThemeName(profile.id), {
@@ -130,12 +129,7 @@ const initialTheme: ThemeSnapshot = {
   revision: Math.max(0, window.marktex.initialTheme.revision),
 };
 let appliedThemeRevision = initialTheme.revision;
-registerMonacoThemes();
 applyShellTheme(initialTheme.id);
-
-window.MonacoEnvironment = {
-  getWorker: () => new EditorWorker(),
-};
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <header class="product-titlebar">
@@ -289,7 +283,8 @@ const linkError = document.querySelector<HTMLElement>('.dialog-error')!;
 type DocumentTab = {
   id: string;
   document: DocumentSnapshot;
-  model: monaco.editor.ITextModel;
+  text: string;
+  model: Monaco.editor.ITextModel | null;
   revision: number;
   surface: 'viewer' | 'editor';
   anchor: ViewportAnchor;
@@ -297,7 +292,7 @@ type DocumentTab = {
   previewRevision: number | null;
   previewTheme: PreviewThemeId | null;
   tocOpen: boolean;
-  editorViewState: monaco.editor.ICodeEditorViewState | null;
+  editorViewState: Monaco.editor.ICodeEditorViewState | null;
   viewerScrollRatio: number | null;
   headings: PreviewHeading[];
   activeHeadingId: string | null;
@@ -319,7 +314,10 @@ let draggedTransferId: string | null = null;
 let tabDragCanceled = false;
 
 let currentDocument: DocumentSnapshot | null = null;
-let model: monaco.editor.ITextModel | null = null;
+let monaco: typeof Monaco | null = null;
+let editor: Monaco.editor.IStandaloneCodeEditor | null = null;
+let editorLoad: Promise<Monaco.editor.IStandaloneCodeEditor> | null = null;
+let model: Monaco.editor.ITextModel | null = null;
 let revision = 0;
 let surface: 'empty' | 'viewer' | 'editor' = 'empty';
 let previewGeneration = 0;
@@ -365,25 +363,81 @@ let anchor: ViewportAnchor = {
   confidence: 'fallback',
 };
 
-const editor = monaco.editor.create(editorHost, {
-  automaticLayout: true,
-  language: 'markdown',
-  theme: monacoThemeName(initialTheme.id),
-  wordWrap: 'on',
-  wrappingIndent: 'same',
-  lineNumbers: 'on',
-  minimap: { enabled: false },
-  scrollBeyondLastLine: false,
-  smoothScrolling: true,
-  cursorSmoothCaretAnimation: 'on',
-  fontFamily: "'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
-  fontSize: 15,
-  lineHeight: 24,
-  padding: { top: 26, bottom: 60 },
-  renderWhitespace: 'selection',
-  bracketPairColorization: { enabled: true },
-  stickyScroll: { enabled: false },
-});
+function tabText(tab: DocumentTab): string {
+  return tab.model?.getValue() ?? tab.text;
+}
+
+function currentText(): string | null {
+  const tab = activeTab();
+  return tab ? tabText(tab) : currentDocument?.text ?? null;
+}
+
+function textLineCount(text: string): number {
+  return text.length === 0 ? 1 : text.split(/\r\n|\r|\n/).length;
+}
+
+function activeLineCount(): number {
+  return model?.getLineCount() ?? textLineCount(currentText() ?? '');
+}
+
+function ensureTabModel(tab: DocumentTab): Monaco.editor.ITextModel {
+  if (tab.model) return tab.model;
+  tab.model = createDocumentModel(tab.document, tab.id, tab.text);
+  return tab.model;
+}
+
+/**
+ * 읽기 모드의 첫 문서가 표시될 때까지 Monaco의 module graph와 worker를 요청하지
+ * 않는다. 편집 전환은 이 Promise를 기다리고, Viewer가 준비된 뒤에는 background로
+ * 시작해 보통 사용자가 편집을 누르기 전에 끝난다.
+ */
+function ensureEditorLoaded(): Promise<Monaco.editor.IStandaloneCodeEditor> {
+  if (editor) return Promise.resolve(editor);
+  if (editorLoad) return editorLoad;
+  shell.dataset.editorRuntime = 'loading';
+  editorLoad = Promise.all([
+    import('monaco-editor/editor/editor.main'),
+    import('monaco-editor/editor/editor.worker?worker'),
+  ]).then(([loadedMonaco, workerModule]) => {
+    monaco = loadedMonaco;
+    window.MonacoEnvironment = {
+      getWorker: () => new workerModule.default(),
+    };
+    registerMonacoThemes(monaco);
+    editor = monaco.editor.create(editorHost, {
+      automaticLayout: true,
+      language: 'markdown',
+      theme: monacoThemeName(readerPreferences.themeId),
+      wordWrap: 'on',
+      wrappingIndent: 'same',
+      lineNumbers: 'on',
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      smoothScrolling: true,
+      cursorSmoothCaretAnimation: 'on',
+      fontFamily: "'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
+      fontSize: 15,
+      lineHeight: 24,
+      padding: { top: 26, bottom: 60 },
+      renderWhitespace: 'selection',
+      bracketPairColorization: { enabled: true },
+      stickyScroll: { enabled: false },
+    });
+    installEditorBindings(editor, monaco);
+    for (const tab of tabs) ensureTabModel(tab);
+    const tab = activeTab();
+    model = tab ? ensureTabModel(tab) : null;
+    editor.setModel(model);
+    if (tab?.editorViewState) editor.restoreViewState(tab.editorViewState);
+    shell.dataset.editorRuntime = 'ready';
+    return editor;
+  }).catch((error) => {
+    editorLoad = null;
+    shell.dataset.editorRuntime = 'error';
+    throw error;
+  });
+  return editorLoad;
+}
 
 /**
  * 지금 두 화면이 공유하고 있는 좌표를 DOM에 적어 둔다. confidence는 시험과
@@ -405,7 +459,7 @@ function setSurface(next: typeof surface) {
   syncReaderUi();
   updatePreviewUi();
   syncPreviewView();
-  if (next === 'editor') window.setTimeout(() => editor.layout(), 0);
+  if (next === 'editor') window.setTimeout(() => editor?.layout(), 0);
 }
 
 function activeTab() {
@@ -515,7 +569,7 @@ async function applyProductTheme(snapshot: ThemeSnapshot, forceAssets = false) {
   readerPreferences.themeId = nextTheme;
   applicationMenuCache.delete('application-menu-view');
   applyShellTheme(nextTheme);
-  monaco.editor.setTheme(monacoThemeName(nextTheme));
+  monaco?.editor.setTheme(monacoThemeName(nextTheme));
   syncReaderUi();
   const assets = await window.marktex.getPreviewThemeAssets(nextTheme);
   if (
@@ -617,12 +671,13 @@ function unfreezePreview() {
 
 function saveActiveTabState() {
   const tab = activeTab();
-  if (!tab || !currentDocument || !model) return;
+  if (!tab || !currentDocument) return;
   tab.document = currentDocument;
+  tab.text = tabText(tab);
   tab.revision = revision;
   tab.surface = surface === 'empty' ? 'viewer' : surface;
   tab.anchor = anchor;
-  tab.editorViewState = editor.saveViewState();
+  tab.editorViewState = editor?.saveViewState() ?? tab.editorViewState;
   if (previewCoordinator.readyRevision !== null) {
     tab.previewRevision = previewCoordinator.readyRevision;
   }
@@ -633,7 +688,7 @@ function transferableTab(tab: DocumentTab): TransferableTab {
   return {
     id: tab.id,
     document: tab.document,
-    text: tab.model.getValue(),
+    text: tabText(tab),
     revision: tab.revision,
     surface: tab.surface,
     anchor: tab.anchor,
@@ -814,21 +869,30 @@ window.addEventListener('drop', (event) => {
 
 let tabActivation = 0;
 async function activateTab(tabId: string) {
-  if (tabId === activeTabId) return;
+  if (tabId === activeTabId) {
+    // 다른 탭이 Monaco 로드를 기다리며 활성화 대기 중일 수 있다. 사용자가 현재
+    // 탭을 다시 고른 것도 최신 선택이므로 그 대기 요청을 취소한다.
+    tabActivation += 1;
+    return;
+  }
   const next = tabs.find((tab) => tab.id === tabId);
   if (!next) return;
   const activation = ++tabActivation;
+  if (next.surface === 'editor') await ensureEditorLoaded();
+  // Monaco를 기다리는 동안 사용자가 다른 탭을 골랐다면 이전 요청이 선택을
+  // 되가져가서는 안 된다.
+  if (activation !== tabActivation) return;
   saveActiveTabState();
   resetPreviewState();
   previewCoordinator = new PreviewRenderCoordinator(renderRevision);
   activeTabId = next.id;
   currentDocument = next.document;
-  model = next.model;
+  model = editor ? ensureTabModel(next) : null;
   revision = next.revision;
   surface = next.surface;
   anchor = next.anchor;
-  editor.setModel(model);
-  editor.restoreViewState(next.editorViewState);
+  editor?.setModel(model);
+  if (next.editorViewState) editor?.restoreViewState(next.editorViewState);
   publishAnchor();
   notice.hidden = true;
   if (
@@ -841,7 +905,7 @@ async function activateTab(tabId: string) {
   updateChrome();
   setSurface(next.surface);
   sendPreviewCommand(next.id, { command: 'marktex:collect-headings' });
-  await window.marktex.activateDocument(currentDocument, model.getValue(), revision);
+  await window.marktex.activateDocument(currentDocument, tabText(next), revision);
   if (activation !== tabActivation || activeTabId !== next.id) return;
 
   // 탭마다 별도 iframe을 유지한다. CSS로 보이는 frame만 바꾸므로 이미
@@ -867,7 +931,7 @@ async function closeTab(tabId: string) {
     if (decision === 'save') {
       const result = await window.marktex.saveTabDocument(
         tab.document,
-        tab.model.getValue(),
+        tabText(tab),
         tab.revision,
       );
       if (result.canceled || !result.document) return;
@@ -882,12 +946,12 @@ async function closeTab(tabId: string) {
   tabs.splice(index, 1);
   destroyPreview(tab.id);
   if (!wasActive) {
-    tab.model.dispose();
+    tab.model?.dispose();
     renderTabs();
     return;
   }
   activeTabId = null;
-  tab.model.dispose();
+  tab.model?.dispose();
   const replacement = tabs[Math.min(index, tabs.length - 1)];
   if (replacement) {
     await activateTab(replacement.id);
@@ -896,7 +960,7 @@ async function closeTab(tabId: string) {
   resetPreviewState();
   currentDocument = null;
   model = null;
-  editor.setModel(null);
+  editor?.setModel(null);
   setSurface('empty');
   updateChrome();
   renderTabs();
@@ -911,7 +975,7 @@ async function removeTransferredTab(tabId: string) {
   // 살아 있는 Preview는 이미 destination BrowserWindow가 소유한다. source는
   // Monaco model과 탭 metadata만 버려야 한다.
   if (!wasActive) {
-    tab.model.dispose();
+    tab.model?.dispose();
     renderTabs();
     return;
   }
@@ -919,11 +983,11 @@ async function removeTransferredTab(tabId: string) {
   const replacement = tabs[Math.min(index, tabs.length - 1)];
   if (replacement) {
     await activateTab(replacement.id);
-    tab.model.dispose();
+    tab.model?.dispose();
     return;
   }
-  editor.setModel(null);
-  tab.model.dispose();
+  editor?.setModel(null);
+  tab.model?.dispose();
   resetPreviewState();
   currentDocument = null;
   model = null;
@@ -955,11 +1019,14 @@ function updateChrome() {
   renderTabs();
 }
 
-function createDocumentModel(documentSnapshot: DocumentSnapshot, tabId: string) {
+function createDocumentModel(documentSnapshot: DocumentSnapshot, tabId: string, text = documentSnapshot.text) {
+  if (!monaco) throw new Error('Monaco is not loaded.');
   const uri = monaco.Uri.file(documentSnapshot.path).with({ query: tabId });
-  const created = monaco.editor.createModel(documentSnapshot.text, 'markdown', uri);
+  const created = monaco.editor.createModel(text, 'markdown', uri);
   created.onDidChangeContent(() => {
     if (model !== created || !currentDocument) return;
+    const tab = activeTab();
+    if (tab) tab.text = created.getValue();
     revision += 1;
     window.marktex.updateText(created.getValue(), revision);
     updateChrome();
@@ -970,12 +1037,15 @@ function createDocumentModel(documentSnapshot: DocumentSnapshot, tabId: string) 
 
 function installModel(documentSnapshot: DocumentSnapshot) {
   const previous = model;
-  model = createDocumentModel(documentSnapshot, activeTabId ?? crypto.randomUUID());
-  editor.setModel(model);
   previous?.dispose();
+  model = editor
+    ? createDocumentModel(documentSnapshot, activeTabId ?? crypto.randomUUID())
+    : null;
+  editor?.setModel(model);
   revision = documentSnapshot.revision;
   const tab = activeTab();
   if (tab) {
+    tab.text = documentSnapshot.text;
     tab.model = model;
     tab.revision = revision;
   }
@@ -1050,13 +1120,14 @@ function updatePreviewUi() {
 }
 
 async function renderRevision(targetRevision: number): Promise<boolean> {
-  if (!currentDocument || !model || targetRevision !== revision) return false;
+  if (!currentDocument || targetRevision !== revision) return false;
   const generation = previewGeneration;
   const targetTabId = activeTabId;
   const targetTheme = readerPreferences.themeId;
   if (!targetTabId) return false;
   const documentPath = currentDocument.path;
-  const text = model.getValue();
+  const text = currentText();
+  if (text === null) return false;
   if (previewError?.revision === targetRevision) previewError = null;
   try {
     // 조판과 설치를 메인이 한 번에 한다. 렌더러는 1.4MB를 받아 되돌려 보내던
@@ -1133,7 +1204,7 @@ function requestPreviewPosition(
   target: ViewportAnchor,
   targetRevision: number,
   targetTabId: string = activeTabId ?? '',
-  targetLineCount: number = model?.getLineCount() ?? 1,
+  targetLineCount: number = activeLineCount(),
   settle = true,
   band: BandLine[] = [],
 ): Promise<boolean> {
@@ -1196,7 +1267,8 @@ async function showDocument(
   tabs.push({
     id,
     document: documentSnapshot,
-    model: createDocumentModel(documentSnapshot, id),
+    text: documentSnapshot.text,
+    model: null,
     revision: documentSnapshot.revision,
     surface: initialSurface,
     anchor: initialAnchor,
@@ -1212,6 +1284,13 @@ async function showDocument(
   });
   renderTabs();
   await activateTab(id);
+  if (initialSurface === 'viewer') {
+    // Preview가 실제로 표시된 다음에야 편집기를 준비한다. 첫 화면의 network,
+    // parse, compile과 Monaco가 CPU·I/O를 놓고 경쟁하지 않게 한다.
+    window.setTimeout(() => {
+      void ensureEditorLoaded().catch((error) => console.error('Failed to load editor', error));
+    }, 0);
+  }
 }
 
 async function installTransferredTab(transfer: ClaimedTabTransfer) {
@@ -1242,7 +1321,8 @@ async function installTransferredTab(transfer: ClaimedTabTransfer) {
   const restored: DocumentTab = {
     id: incoming.id,
     document: restoredDocument,
-    model: createDocumentModel(restoredDocument, incoming.id),
+    text: incoming.text,
+    model: null,
     revision: incoming.revision,
     surface: incoming.surface,
     anchor: incoming.anchor as ViewportAnchor,
@@ -1250,7 +1330,7 @@ async function installTransferredTab(transfer: ClaimedTabTransfer) {
     previewRevision: incoming.previewRevision,
     previewTheme: incoming.previewTheme,
     tocOpen: incoming.tocOpen === true,
-    editorViewState: incoming.editorViewState as monaco.editor.ICodeEditorViewState | null,
+    editorViewState: incoming.editorViewState as Monaco.editor.ICodeEditorViewState | null,
     viewerScrollRatio: incoming.viewerScrollRatio,
     headings: [],
     activeHeadingId: null,
@@ -1272,7 +1352,7 @@ async function installTransferredTab(transfer: ClaimedTabTransfer) {
       restored.anchor,
       restored.previewRevision,
       restored.id,
-      restored.model.getLineCount(),
+      textLineCount(restored.text),
       false,
       // source 창에서 보던 띠 전체를 무게중심으로 맞춘다. 목적지의 폭이
       // 달라 본문이 재배치되어도 보던 구간이 같은 자리에 선다.
@@ -1309,10 +1389,20 @@ async function reloadActiveDocument(documentSnapshot: DocumentSnapshot) {
  * Viewer가 준 anchor로 Editor를 연다. 전환은 이미 확정된 사실이고,
  * anchor의 품질은 목적지만 바꾼다. confidence는 검사하지 않는다.
  */
-function enterEditor(next: ViewportAnchor = anchor) {
+async function enterEditor(next: ViewportAnchor = anchor) {
   // 편집기가 열렸으니 대기 중이던 anchor 요청의 fallback은 무효다.
   viewerAnchorRequest += 1;
-  if (!model) return;
+  const targetTabId = activeTabId;
+  if (!targetTabId) return;
+  const loadedEditor = await ensureEditorLoaded();
+  if (activeTabId !== targetTabId) return;
+  const tab = activeTab();
+  if (!tab) return;
+  editor = loadedEditor;
+  const targetEditor = loadedEditor;
+  model = ensureTabModel(tab);
+  targetEditor.setModel(model);
+  if (tab.editorViewState) targetEditor.restoreViewState(tab.editorViewState);
   if (activeTab()?.find.open) closePreviewFind(false);
   anchor = clampAnchor(next, model.getLineCount());
   publishAnchor();
@@ -1322,16 +1412,16 @@ function enterEditor(next: ViewportAnchor = anchor) {
     anchor.sourceColumn ?? 1,
     model.getLineMaxColumn(line),
   );
-  editor.setPosition({ lineNumber: line, column });
+  targetEditor.setPosition({ lineNumber: line, column });
   // 화면이 막 바뀐 참이라 layout이 아직 낡았다. 다음 tick에 자리를 잡는다.
   window.setTimeout(() => {
-    editor.layout();
+    targetEditor.layout();
     // 사용자가 누른 높이에 그 행을 그대로 둔다. 가운데로 보내면 클릭할
     // 때마다 문서가 위아래로 뛴다.
-    const height = editor.getLayoutInfo().height;
-    const top = editor.getTopForLineNumber(line) - height * anchor.yRatio;
-    editor.setScrollTop(Math.max(0, top));
-    editor.focus();
+    const height = targetEditor.getLayoutInfo().height;
+    const top = targetEditor.getTopForLineNumber(line) - height * anchor.yRatio;
+    targetEditor.setScrollTop(Math.max(0, top));
+    targetEditor.focus();
   }, 0);
 }
 
@@ -1340,6 +1430,7 @@ function enterEditor(next: ViewportAnchor = anchor) {
  * 걸친 cursor의 상대 위치는 어차피 쓸 수 없다.
  */
 function visibleCursorProbe(): EditorCursorProbe | null {
+  if (!editor || !monaco) return null;
   const position = editor.getPosition();
   if (!position) return null;
   const height = editor.getLayoutInfo().height;
@@ -1361,7 +1452,7 @@ function visibleCursorProbe(): EditorCursorProbe | null {
  * 선다. 맨 위 줄만, 혹은 기준선 한 줄만 맞추면 반대쪽 끝이 밀려난다.
  */
 function editorViewportBand(): BandLine[] {
-  if (!model) return [];
+  if (!editor || !model) return [];
   const height = editor.getLayoutInfo().height;
   if (height <= 0) return [];
   const scrollTop = editor.getScrollTop();
@@ -1382,7 +1473,7 @@ function editorViewportBand(): BandLine[] {
  * 없으면 보고 있던 띠 전체를 무게중심으로 옮긴다.
  */
 function editorViewport(): { anchor: ViewportAnchor; band: BandLine[] } {
-  if (!model) return { anchor, band: [] };
+  if (!editor || !model) return { anchor, band: [] };
   const node = editor.getDomNode();
   const yRatio = GOLDEN_TOP_RATIO;
   let probedLine: number | null = null;
@@ -1414,7 +1505,7 @@ function editorViewportAnchor(): ViewportAnchor {
 }
 
 async function enterViewer() {
-  if (!model) return;
+  if (!editor || !model) return;
   const transitionStartedAt = performance.now();
   const viewport = editorViewport();
   anchor = viewport.anchor;
@@ -1444,33 +1535,37 @@ async function enterViewer() {
 }
 
 let editorPreviewPositionFrame: number | null = null;
-editor.onDidScrollChange((event) => {
-  if (!event.scrollTopChanged || surface !== 'editor' || !activeTabId) return;
-  if (editorPreviewPositionFrame !== null) window.cancelAnimationFrame(editorPreviewPositionFrame);
-  editorPreviewPositionFrame = window.requestAnimationFrame(() => {
-    editorPreviewPositionFrame = null;
-    if (surface !== 'editor' || !model || !activeTabId) return;
-    const viewport = editorViewport();
-    anchor = viewport.anchor;
-    publishAnchor();
-    const availableRevision = previewCoordinator.readyRevision;
-    if (availableRevision === null) return;
-    const revealed = clampAnchor(anchor, model.getLineCount());
-    sendPreviewCommand(activeTabId, {
-      command: 'marktex:position-preview',
-      sourceLine: revealed.sourceLine,
-      topRatio: revealed.yRatio,
-      band: viewport.band,
-      settle: false,
+function installEditorScrollBinding(targetEditor: Monaco.editor.IStandaloneCodeEditor) {
+  targetEditor.onDidScrollChange((event) => {
+    if (!event.scrollTopChanged || surface !== 'editor' || !activeTabId) return;
+    if (editorPreviewPositionFrame !== null) window.cancelAnimationFrame(editorPreviewPositionFrame);
+    editorPreviewPositionFrame = window.requestAnimationFrame(() => {
+      editorPreviewPositionFrame = null;
+      if (surface !== 'editor' || !model || !activeTabId) return;
+      const viewport = editorViewport();
+      anchor = viewport.anchor;
+      publishAnchor();
+      const availableRevision = previewCoordinator.readyRevision;
+      if (availableRevision === null) return;
+      const revealed = clampAnchor(anchor, model.getLineCount());
+      sendPreviewCommand(activeTabId, {
+        command: 'marktex:position-preview',
+        sourceLine: revealed.sourceLine,
+        topRatio: revealed.yRatio,
+        band: viewport.band,
+        settle: false,
+      });
     });
   });
-});
+}
 
 async function save(saveAs = false) {
-  if (!model || !currentDocument) return false;
+  if (!currentDocument) return false;
+  const text = currentText();
+  if (text === null) return false;
   const result = saveAs
-    ? await window.marktex.saveDocumentAs(model.getValue(), revision)
-    : await window.marktex.saveDocument(model.getValue(), revision);
+    ? await window.marktex.saveDocumentAs(text, revision)
+    : await window.marktex.saveDocument(text, revision);
   if (!result.canceled && result.document) {
     const pathChanged = result.document.path !== currentDocument.path;
     currentDocument = result.document;
@@ -1505,7 +1600,7 @@ async function saveAllDirtyTabs() {
       if (tab.revision === tab.document.savedRevision) continue;
       const result = await window.marktex.saveTabDocument(
         tab.document,
-        tab.model.getValue(),
+        tabText(tab),
         tab.revision,
       );
       if (result.canceled || !result.document) {
@@ -1534,9 +1629,11 @@ async function newDocument() {
 }
 
 async function exportPdf() {
-  if (!model || !currentDocument) return;
+  if (!currentDocument) return;
+  const text = currentText();
+  if (text === null) return;
   try {
-    await window.marktex.exportPdf(model.getValue(), revision, currentDocument.path);
+    await window.marktex.exportPdf(text, revision, currentDocument.path);
   } catch (error) {
     window.alert(`PDF를 내보내지 못했습니다.\n${error instanceof Error ? error.message : String(error)}`);
   }
@@ -1565,8 +1662,8 @@ type TableEditorState = {
   alignments: TableAlignment[];
 };
 
-let pendingTableSelection: monaco.Selection | null = null;
-let pendingLinkSelection: monaco.Selection | null = null;
+let pendingTableSelection: Monaco.Selection | null = null;
+let pendingLinkSelection: Monaco.Selection | null = null;
 let tableEditorState: TableEditorState = {
   headers: ['열 1', '열 2', '열 3'],
   rows: [['', '', ''], ['', '', '']],
@@ -1660,7 +1757,7 @@ function tableFromTabSeparatedSelection(value: string): TableEditorState | null 
   };
 }
 
-function blockAffixes(range: monaco.Range, eol: string) {
+function blockAffixes(range: Monaco.Range, eol: string) {
   if (!model) return { prefix: '', suffix: '' };
   const start = model.getOffsetAt(range.getStartPosition());
   const end = model.getOffsetAt(range.getEndPosition());
@@ -1676,7 +1773,7 @@ function blockAffixes(range: monaco.Range, eol: string) {
 }
 
 function openTableDialog() {
-  if (!model || surface !== 'editor') return;
+  if (!editor || !model || surface !== 'editor') return;
   pendingTableSelection = editor.getSelection();
   const selected = pendingTableSelection ? model.getValueInRange(pendingTableSelection) : '';
   tableEditorState = tableFromTabSeparatedSelection(selected) ?? {
@@ -1692,7 +1789,7 @@ function openTableDialog() {
 }
 
 function insertTableFromDialog() {
-  if (!model || !pendingTableSelection) return;
+  if (!editor || !monaco || !model || !pendingTableSelection) return;
   tableEditorState = readTableEditorState();
   const eol = preferredEol(model.getValue());
   const table = createMarkdownTable(tableEditorState, eol);
@@ -1711,7 +1808,7 @@ function insertTableFromDialog() {
 }
 
 function openLinkDialog() {
-  if (!model || surface !== 'editor') return;
+  if (!editor || !model || surface !== 'editor') return;
   pendingLinkSelection = editor.getSelection();
   const selected = pendingLinkSelection ? model.getValueInRange(pendingLinkSelection) : '';
   const selectedUrl = safeExternalUrl(selected);
@@ -1723,8 +1820,8 @@ function openLinkDialog() {
   (selectedUrl ? linkLabelInput : linkDestinationInput).focus();
 }
 
-function insertLinkMarkdown(label: string, destination: string, title: string, selection: monaco.Selection) {
-  if (!model) return;
+function insertLinkMarkdown(label: string, destination: string, title: string, selection: Monaco.Selection) {
+  if (!editor || !monaco || !model) return;
   const markdown = createMarkdownLink(label, destination, title);
   const range = monaco.Range.lift(selection);
   const startOffset = model.getOffsetAt(range.getStartPosition());
@@ -1765,8 +1862,8 @@ function clipboardContainsStoredImage(event: ClipboardEvent) {
   return hasBitmap || hasFileList || (plain.startsWith('file://') && IMAGE_URL_PATTERN.test(plain));
 }
 
-function insertImageMarkdown(markdown: string, selection: monaco.Selection | null) {
-  if (!model) return;
+function insertImageMarkdown(markdown: string, selection: Monaco.Selection | null) {
+  if (!editor || !monaco || !model) return;
   const range = selection
     ? monaco.Range.lift(selection)
     : new monaco.Range(1, 1, 1, 1);
@@ -1784,7 +1881,7 @@ function insertImageMarkdown(markdown: string, selection: monaco.Selection | nul
 
 let isPastingImage = false;
 async function pasteClipboardImage(remoteUrl: string | null) {
-  if (!model || !currentDocument || isPastingImage) return;
+  if (!editor || !model || !currentDocument || isPastingImage) return;
   isPastingImage = true;
   const selection = editor.getSelection();
   try {
@@ -1803,6 +1900,7 @@ async function pasteClipboardImage(remoteUrl: string | null) {
 }
 
 editorHost.addEventListener('paste', (event) => {
+  if (!editor) return;
   const selection = editor.getSelection();
   const pastedUrl = safeExternalUrl(event.clipboardData?.getData('text/plain'));
   if (selection && !selection.isEmpty() && pastedUrl && model) {
@@ -1855,7 +1953,7 @@ tableDialog.querySelectorAll('.dialog-close, .table-cancel').forEach((button) =>
 });
 tableDialog.addEventListener('close', () => {
   pendingTableSelection = null;
-  editor.focus();
+  editor?.focus();
 });
 
 linkForm.addEventListener('submit', (event) => {
@@ -1879,7 +1977,7 @@ linkDialog.querySelectorAll('.dialog-close, .link-cancel').forEach((button) => {
 });
 linkDialog.addEventListener('close', () => {
   pendingLinkSelection = null;
-  editor.focus();
+  editor?.focus();
 });
 document.querySelector('.pick-link-file')?.addEventListener('click', async () => {
   if (!currentDocument) return;
@@ -1899,26 +1997,32 @@ document.querySelector('.pick-link-file')?.addEventListener('click', async () =>
   linkTitleInput.focus();
 });
 
-editor.addAction({
-  id: 'setdown.insertLink',
-  label: '링크 삽입',
-  keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK],
-  contextMenuGroupId: '1_modification',
-  run: openLinkDialog,
-});
+function installEditorBindings(
+  targetEditor: Monaco.editor.IStandaloneCodeEditor,
+  api: typeof Monaco,
+) {
+  installEditorScrollBinding(targetEditor);
+  targetEditor.addAction({
+    id: 'setdown.insertLink',
+    label: '링크 삽입',
+    keybindings: [api.KeyMod.CtrlCmd | api.KeyCode.KeyK],
+    contextMenuGroupId: '1_modification',
+    run: openLinkDialog,
+  });
 
-editor.addAction({
-  id: 'setdown.insertTable',
-  label: '표 삽입',
-  contextMenuGroupId: '1_modification',
-  run: openTableDialog,
-});
+  targetEditor.addAction({
+    id: 'setdown.insertTable',
+    label: '표 삽입',
+    contextMenuGroupId: '1_modification',
+    run: openTableDialog,
+  });
 
-editor.addCommand(
-  monaco.KeyCode.Escape,
-  () => void enterViewer(),
-  '!suggestWidgetVisible && !findInputFocussed && !renameInputVisible && !compositionInProgress',
-);
+  targetEditor.addCommand(
+    api.KeyCode.Escape,
+    () => void enterViewer(),
+    '!suggestWidgetVisible && !findInputFocussed && !renameInputVisible && !compositionInProgress',
+  );
+}
 
 document.querySelectorAll('.open-button, .empty-open').forEach((button) => {
   button.addEventListener('click', () => void openDocument());
@@ -2231,7 +2335,7 @@ function handlePreviewMessage(payload: { tabId: string; message: Record<string, 
     return;
   }
   if (message.type === 'marktex:viewport-state') {
-    if (message.revision !== revision || !model) return;
+    if (message.revision !== revision) return;
     const received = message.anchor as Partial<ViewportAnchor> | undefined;
     anchor = clampAnchor({
       sourceLine: Number(received?.sourceLine) || 1,
@@ -2242,7 +2346,7 @@ function handlePreviewMessage(payload: { tabId: string; message: Record<string, 
         : GOLDEN_TOP_RATIO,
       reason: received?.reason ?? 'scroll-ratio',
       confidence: received?.confidence ?? 'fallback',
-    }, model.getLineCount());
+    }, activeLineCount());
     const tab = activeTab();
     if (tab) {
       tab.anchor = anchor;

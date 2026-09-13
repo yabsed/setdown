@@ -295,6 +295,35 @@ P0 이후 최대 잔여 비용은 `sample.md`의 약 3.6만 개 수식 element�
 검증하는 것이다. 현재 결과만으로는 전체 문서 기하에 의존하는 semantic scroll을
 훼손하면서 지연 layout을 바로 적용할 근거는 충분하지 않다.
 
+## Monaco 지연 로드 구현 및 재계측 결과
+
+같은 날 읽기 모드의 초기 경로에서 Monaco를 분리했다. 문서 탭은 editor model이
+없어도 원문 문자열로 Preview를 요청하고 저장·내보내기·탭 인계를 수행할 수 있다.
+Monaco module, worker, model과 editor는 Preview가 표시된 뒤 background에서 준비하며,
+그보다 먼저 편집을 요청하면 편집 전환이 동일한 준비 Promise를 기다린다.
+
+production build에서 초기 renderer JavaScript는 약 3.96MB에서 **58.45KB**로
+분리됐다. 3.96MB의 `editor.main`은 별도 dynamic chunk가 되어 첫 Preview의 resource
+graph에 포함되지 않는다. `sample.md`를 새 프로세스로 세 번 연 계측에서는 Preview가
+보인 순간 Monaco 관련 resource 요청이 세 번 모두 0개였다.
+
+| 실행 | 프로세스 실행 → Preview 표시 |
+|---|---:|
+| 1 | 3.22초 |
+| 2 | 1.44초 |
+| 3 | 1.50초 |
+| 중앙값 | **1.50초** |
+
+첫 실행은 filesystem/code cache 영향으로 큰 outlier였다. 동일 조건을 엄밀하게
+통제한 benchmark는 아니지만 이전 P0 직후 중앙값 2.49초와 비교하면 약 **0.99초,
+40% 감소**했다. 이는 기존 분석에서 Monaco 선행 초기화 비용으로 추정한 약 1초와
+일치한다.
+
+지연 로드가 드러낸 탭 활성화 경쟁 조건도 함께 고쳤다. 새 편집 탭이 Monaco를
+기다리는 사이 사용자가 기존 탭을 다시 선택하면, 늦게 완료된 요청이 선택을
+되가져가지 못하도록 activation generation으로 무효화한다. 최종적으로 단위 테스트
+94개, production build, Electron E2E 6개가 모두 통과했다.
+
 ## 검증 기준
 
 개선 구현은 같은 세 대조군으로 최소 10회, 실행 순서를 무작위로 섞어 median과 p95를
@@ -315,9 +344,10 @@ HTML을 보여 주기 위해 **범용 Crossnote 브라우저 환경 전체를 �
 이어서 **KaTeX가 확장한 5만 개의 layout object를 한 번에 배치하는 것**이었다.
 
 P0 구현으로 일반 문서의 첫 원인은 제거됐다. Preview navigation 중앙값은 57%
-감소했고 runtime이 만들던 약 1.5만 DOM node와 외부 script 요청도 사라졌다. 현재
-최대 잔여 병목은 lean page에도 필요한 약 3.6만 개의 수식 element를 파싱하고 첫
-layout에 배치하는 구간이다.
+감소했고 runtime이 만들던 약 1.5만 DOM node와 외부 script 요청도 사라졌다. Monaco
+지연 로드로 renderer의 약 3.96MB 초기 module graph도 critical path에서 빠졌다.
+현재 최대 잔여 병목은 lean page에도 필요한 약 3.6만 개의 수식 element를 파싱하고
+첫 layout에 배치하는 구간이다.
 
 가장 큰 절감은 다음 두 경계를 바꿀 때 얻어진다.
 
