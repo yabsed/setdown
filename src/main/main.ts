@@ -654,6 +654,7 @@ async function readDocument(filePath: string): Promise<DocumentSnapshot> {
     path: absolute,
     name: path.basename(absolute),
     text,
+    savedText: text,
     revision: 0,
     savedRevision: 0,
     diskVersion,
@@ -671,6 +672,7 @@ function blankDocument(): DocumentSnapshot {
     path: documentPath,
     name: path.basename(documentPath),
     text: '',
+    savedText: '',
     revision: 0,
     savedRevision: 0,
     diskVersion: { mtimeMs: 0, size: 0 },
@@ -795,6 +797,7 @@ async function saveTo(filePath: string, text: string, revision: number): Promise
     path: canonicalPath(filePath),
     name: path.basename(filePath),
     text,
+    savedText: text,
     revision,
     savedRevision: revision,
     diskVersion,
@@ -830,6 +833,7 @@ async function saveDocumentSnapshot(
         path: absolute,
         name: path.basename(absolute),
         text: saved.text,
+        savedText: saved.text,
         revision,
         savedRevision: revision,
         diskVersion: snapshotStats(absolute),
@@ -849,6 +853,7 @@ async function saveDocumentSnapshot(
       path: absolute,
       name: path.basename(absolute),
       text,
+      savedText: text,
       revision,
       savedRevision: revision,
       diskVersion: snapshotStats(absolute),
@@ -1243,7 +1248,13 @@ function createWindow(
   createdWindow.on('close', (event) => {
     if (state.closeAfterConfirmation) return;
     const dirtyTabs = state.rendererTabs.filter((tab) => tab.dirty);
-    if (dirtyTabs.length === 0 && state.currentDocument && isDirty(state.currentDocument)) {
+    // renderer가 탭 상태를 보낸 뒤에는 문자열 기반 판정을 신뢰한다. revision만
+    // 보고 fallback하면 편집 후 원문으로 되돌린 clean 탭도 다시 dirty가 된다.
+    if (
+      state.rendererTabs.length === 0
+      && state.currentDocument
+      && isDirty(state.currentDocument)
+    ) {
       dirtyTabs.push({
         name: state.currentDocument.name,
         path: state.currentDocument.path,

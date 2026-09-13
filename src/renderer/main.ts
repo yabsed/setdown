@@ -25,6 +25,7 @@ import {
   preferredEol,
   type TableAlignment,
 } from '../shared/markdown-insertions';
+import { hasUnsavedText } from '../shared/document-state';
 import {
   GOLDEN_TOP_RATIO,
   clamp,
@@ -370,6 +371,10 @@ function tabText(tab: DocumentTab): string {
   return tab.model?.getValue() ?? tab.text;
 }
 
+function isTabDirty(tab: DocumentTab): boolean {
+  return hasUnsavedText(tab.document, tabText(tab));
+}
+
 function currentText(): string | null {
   const tab = activeTab();
   return tab ? tabText(tab) : currentDocument?.text ?? null;
@@ -711,7 +716,7 @@ function renderTabs() {
   tabStrip.hidden = tabs.length === 0;
   shell.dataset.tabs = tabs.length > 0 ? 'true' : 'false';
   shell.dataset.dirtyTabs = String(tabs.filter((tab) =>
-    tab.revision !== tab.document.savedRevision,
+    isTabDirty(tab),
   ).length);
   tabList.replaceChildren();
   for (const tab of tabs) {
@@ -728,7 +733,7 @@ function renderTabs() {
     name.className = 'tab-name';
     name.textContent = tab.document.name;
     button.append(name);
-    if (tab.revision !== tab.document.savedRevision) {
+    if (isTabDirty(tab)) {
       const dirty = document.createElement('span');
       dirty.className = 'tab-dirty';
       dirty.textContent = '•';
@@ -779,7 +784,7 @@ function renderTabs() {
   window.marktex.updateTabState(tabs.map((tab) => ({
     name: tab.document.name,
     path: tab.document.path,
-    dirty: tab.revision !== tab.document.savedRevision,
+    dirty: isTabDirty(tab),
     isUntitled: tab.document.isUntitled,
   })));
 }
@@ -931,7 +936,7 @@ async function closeTab(tabId: string) {
   let index = tabs.findIndex((tab) => tab.id === tabId);
   if (index < 0) return;
   const tab = tabs[index];
-  if (tab.revision !== tab.document.savedRevision) {
+  if (isTabDirty(tab)) {
     const decision = await window.marktex.confirmCloseDocument(tab.document.name);
     if (decision === 'cancel') return;
     if (decision === 'save') {
@@ -1015,7 +1020,7 @@ function updateChrome() {
     document.title = 'Setdown';
     return;
   }
-  const dirty = revision !== currentDocument.savedRevision;
+  const dirty = hasUnsavedText(currentDocument, currentText() ?? currentDocument.text);
   document.title = `${dirty ? '• ' : ''}${currentDocument.name} — Setdown`;
   const tab = activeTab();
   if (tab) {
@@ -1386,6 +1391,7 @@ async function reloadActiveDocument(documentSnapshot: DocumentSnapshot) {
   tab.previewRevision = null;
   tab.previewTheme = null;
   installModel(documentSnapshot);
+  notice.hidden = true;
   updateChrome();
   const ready = await ensurePreview(revision);
   if (ready && surface === 'viewer') await requestPreviewPosition(anchor, revision);
@@ -1603,7 +1609,7 @@ async function save(saveAs = false) {
 async function saveAllDirtyTabs() {
   try {
     for (const tab of tabs) {
-      if (tab.revision === tab.document.savedRevision) continue;
+      if (!isTabDirty(tab)) continue;
       const result = await window.marktex.saveTabDocument(
         tab.document,
         tabText(tab),
@@ -2285,7 +2291,34 @@ function requestViewerAnchor() {
   }, 120);
 }
 document.querySelector('.notice-keep')?.addEventListener('click', () => {
-  notice.hidden = true;
+  const tab = activeTab();
+  if (!tab || !currentDocument) return;
+  const tabId = tab.id;
+  const documentPath = currentDocument.path;
+  const keptText = tabText(tab);
+  const keptRevision = revision;
+  void window.marktex.reloadDocument().then(async (diskDocument) => {
+    if (
+      !diskDocument
+      || activeTabId !== tabId
+      || currentDocument?.path !== documentPath
+    ) return;
+    // 디스크의 새 문자열과 version을 저장 기준으로 받아들이되 editor 내용은
+    // 그대로 둔다. 둘이 다르면 곧바로 dirty이며, 같으면 clean이다.
+    const keptDocument: DocumentSnapshot = {
+      ...diskDocument,
+      text: keptText,
+      revision: keptRevision,
+    };
+    currentDocument = keptDocument;
+    tab.document = keptDocument;
+    tab.text = keptText;
+    tab.revision = keptRevision;
+    await window.marktex.activateDocument(keptDocument, keptText, keptRevision);
+    if (activeTabId !== tabId) return;
+    notice.hidden = true;
+    updateChrome();
+  }).catch((error) => console.error('Failed to keep current document text', error));
 });
 document.querySelector('.notice-reload')?.addEventListener('click', async () => {
   const reloaded = await window.marktex.reloadDocument();

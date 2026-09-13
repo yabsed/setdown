@@ -12,7 +12,12 @@ export function applyTextRevision(
 }
 
 export function isDirty(document: DocumentSnapshot): boolean {
-  return document.revision !== document.savedRevision;
+  return document.text !== document.savedText;
+}
+
+/** renderer처럼 현재 문자열을 snapshot 밖에 보관하는 경우의 dirty 판정. */
+export function hasUnsavedText(document: DocumentSnapshot, currentText: string): boolean {
+  return currentText !== document.savedText;
 }
 
 export function lineCount(text: string): number {
