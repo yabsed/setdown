@@ -62,6 +62,15 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     await expect(window.locator('.preview-search')).toBeHidden();
 
     const reading = previews(application);
+    await expect.poll(() => reading.evaluate(
+      "document.body.dataset.setdownPreviewRuntime || ''",
+    )).toBe('lean');
+    expect(await reading.evaluate(`({
+      externalScripts: [...document.scripts].filter((script) => script.src).length,
+      diagramRuntimeRequests: performance.getEntriesByType('resource')
+        .filter((entry) => /mermaid|wavedrom|vega|zenuml|webview\\/preview\\.js/.test(entry.name))
+        .length,
+    })`)).toEqual({ externalScripts: 0, diagramRuntimeRequests: 0 });
     await reading.evaluate('window.scrollTo(0, 0), true');
     await application.evaluate(({ Menu }) => {
       Menu.getApplicationMenu()?.getMenuItemById('preview-theme-medium')?.click();
@@ -129,10 +138,12 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
 
     await window.locator('.new-tab-button').click();
     await expect(window.locator('.document-tab')).toHaveCount(2);
-    await expect.poll(reading.count).toBe(2);
     await expect(window.locator('.editor-surface')).toBeVisible();
     await window.locator('.mode-toggle').click();
     await expect(window.locator('.viewer-surface')).toBeVisible();
+    // 편집 모드의 새 탭은 인계받은 warmup URL을 그대로 유지한다. 화면에 드러난
+    // 뒤에야 e2e helper가 미사용 예비 view와 실제 탭 view를 구분할 수 있다.
+    await expect.poll(reading.count).toBe(2);
     await expect(window.locator('.toc-panel')).toBeHidden();
     await window.locator('.mode-toggle').click();
     await expect(window.locator('.editor-surface')).toBeVisible();
@@ -217,15 +228,15 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     }).toBe(true);
     await expect(window.locator('.preview-search input')).toHaveValue('검색대상');
     await window.locator('.document-tab', { hasText: 'Untitled.md' }).click();
-    await expect.poll(() =>
-      reading.evaluateAll<string>("document.body.dataset.setdownPreviewTheme || ''"),
-    ).toEqual(['night', 'night']);
     await expect(window.locator('.editor-surface')).toBeVisible();
     await window.locator('.monaco-editor').click({ position: { x: 120, y: 80 } });
     await window.keyboard.type('instant preview');
     await window.keyboard.press('Escape');
     await expect(window.locator('.viewer-surface')).toBeVisible();
     await expect.poll(reading.hasVisible).toBe(true);
+    await expect.poll(() =>
+      reading.evaluateAll<string>("document.body.dataset.setdownPreviewTheme || ''"),
+    ).toEqual(['night', 'night']);
     await expect.poll(() => window.locator('.shell').evaluate((element) =>
       Number((element as HTMLElement).dataset.lastViewerFirstFrameMs) || 0)).toBeGreaterThan(0);
     const firstFrameMs = await window.locator('.shell').evaluate((element) =>

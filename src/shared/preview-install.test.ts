@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { canInlineInitialHtml, requiresCrossnoteInstall } from './preview-install';
+import {
+  canInlineInitialHtml,
+  createLeanPreviewTemplate,
+  requiresCrossnoteInstall,
+} from './preview-install';
 
 describe('preview 본문 설치 경로', () => {
   it('서버에서 조판이 끝난 본문은 직접 심는다', () => {
@@ -27,5 +31,32 @@ describe('preview 본문 설치 경로', () => {
     expect(canInlineInitialHtml(html)).toBe(false);
     // 그래도 갱신 경로에서는 직접 심을 수 있다. template을 쓰지 않기 때문이다.
     expect(requiresCrossnoteInstall(html)).toBe(false);
+  });
+
+  it('Crossnote head와 본문만 남긴 lean page를 만든다', () => {
+    const template = '<!doctype html><html><head><link rel="stylesheet" href="theme.css">'
+      + '<base href="file:///document/"></head><body data-html="encoded"></body>'
+      + '<script src="mermaid.js"></script><script src="preview.js"></script></html>';
+    const page = createLeanPreviewTemplate(
+      template,
+      '<p data-source-line="1">본문</p>',
+      '<script>window.bridgeInstalled = true;</script>',
+    );
+
+    expect(page).toContain('<link rel="stylesheet" href="theme.css">');
+    expect(page).toContain('<base href="file:///document/">');
+    expect(page).toContain('data-setdown-preview-runtime="lean"');
+    expect(page).toContain('<div class="crossnote markdown-preview zen-mode" data-for="preview">');
+    expect(page).toContain('<template id="marktex-initial-html">');
+    expect(page).toContain('window.bridgeInstalled = true');
+    expect(page).not.toContain('data-html="encoded"');
+    expect(page).not.toContain('mermaid.js');
+    expect(page).not.toContain('preview.js');
+  });
+
+  it('head에 script가 있으면 기존 Crossnote page로 물러선다', () => {
+    const template = '<html><head><script src="custom.js"></script></head><body></body></html>';
+    expect(createLeanPreviewTemplate(template, '<p>본문</p>', '<script>bridge</script>'))
+      .toBeNull();
   });
 });

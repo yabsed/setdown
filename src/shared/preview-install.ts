@@ -36,3 +36,35 @@ export function canInlineInitialHtml(html: string): boolean {
 
 /** 첫 로드 본문을 나르는 `<template>`의 id. 워커가 심고 bridge가 꺼낸다. */
 export const INITIAL_HTML_TEMPLATE_ID = 'marktex-initial-html';
+
+/** Preview page가 가진 browser-side renderer의 종류. */
+export type PreviewRuntime = 'lean' | 'crossnote';
+
+/**
+ * Crossnote가 만든 head는 theme, KaTeX, code highlight CSS의 단일 출처다.
+ * 그 head만 보존하고 body 뒤의 범용 diagram/runtime script는 버린다.
+ *
+ * 본문과 bridge는 앱이 만든 신뢰 경계 안의 문자열이다. 그래도 Crossnote head에
+ * script가 생긴 경우에는 조용히 제거하지 않고 full runtime으로 물러선다. 문서별
+ * header script를 일부만 실행하는 상태보다 기존 동작을 온전히 유지하는 편이 낫다.
+ */
+export function createLeanPreviewTemplate(
+  crossnoteTemplate: string,
+  html: string,
+  bridgeScripts: string,
+): string | null {
+  if (!canInlineInitialHtml(html)) return null;
+  const head = /<head\b[^>]*>([\s\S]*?)<\/head>/i.exec(crossnoteTemplate)?.[1];
+  if (head === undefined || /<script\b/i.test(head)) return null;
+  return `<!DOCTYPE html>
+<html>
+<head>
+${head}
+<template id="${INITIAL_HTML_TEMPLATE_ID}">${html}</template>
+</head>
+<body class="preview-container" data-setdown-preview-runtime="lean">
+  <div class="crossnote markdown-preview zen-mode" data-for="preview"></div>
+  ${bridgeScripts}
+</body>
+</html>`;
+}

@@ -1331,6 +1331,11 @@ document.addEventListener('DOMContentLoaded', () => {
   scheduleHeadings();
 });
 
+// lean page에는 Crossnote preview.js가 없으므로 webviewFinishLoading 신호도 없다.
+// root와 carrier는 이 bundle보다 앞에 파싱되어 있어 여기서 곧바로 옮길 수 있다.
+// full page는 기존 Crossnote 신호가 같은 함수를 호출한다.
+if (document.body.dataset.setdownPreviewRuntime === 'lean') installInitialHtml();
+
 const observer = new MutationObserver(() => {
   invalidateAtlas();
   scheduleViewportState();

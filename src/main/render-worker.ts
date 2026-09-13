@@ -34,7 +34,11 @@ import {
   type PreviewBlock,
   type PreviewBlockPatch,
 } from '../shared/preview-blocks';
-import { INITIAL_HTML_TEMPLATE_ID, canInlineInitialHtml } from '../shared/preview-install';
+import {
+  createLeanPreviewTemplate,
+  requiresCrossnoteInstall,
+  type PreviewRuntime,
+} from '../shared/preview-install';
 
 export type RenderWorkerRequest =
   | {
@@ -82,8 +86,11 @@ type CrossnoteModule = typeof import('crossnote');
 type NotebookInstance = Awaited<ReturnType<CrossnoteModule['Notebook']['init']>>;
 
 const notebookCaches = new Map<string, NotebookInstance>();
-/** 탭마다 지금 Preview에 설치되어 있는 블록. 다음 갱신의 비교 대상이다. */
-const installedBlocks = new Map<string, PreviewBlock[]>();
+/** 탭마다 설치된 블록과 browser runtime. 다음 갱신과 capability 전환의 기준이다. */
+const installedPreviews = new Map<string, {
+  blocks: PreviewBlock[];
+  runtime: PreviewRuntime;
+}>();
 const crossnoteOut = path.resolve(path.dirname(require.resolve('crossnote')), '..');
 let allowedRoots: string[] = [];
 let activeRoot: string | null = null;
@@ -284,36 +291,6 @@ function restoreDeferredMathInTemplate(template: string): string {
   });
 }
 
-/**
- * 첫 로드 페이지에서 본문이 두 번 파싱되는 구조를 없앤다.
- *
- * crossnote의 template은 조판된 본문을 `<body data-html="...">`에 엔티티
- * 인코딩해 싣고, 브라우저의 preview runtime이 그것을 다시 sanitize한 뒤
- * `innerHTML`로 심는다. 같은 본문을 속성으로 한 번, 마크업으로 또 한 번
- * 파싱하는 것이다. 수식 문서에서 그 속성만 2.1MB였다.
- *
- * 대신 본문을 `<head>`의 `<template>`에 진짜 마크업으로 싣는다. 파서는
- * 문서를 읽으면서 이것을 fragment로 한 번만 만들고, bridge는 그 node를
- * 자리만 옮긴다. 다시 파싱하지도, 문자열로 되돌리지도 않는다.
- */
-function inlineInitialHtml(template: string, html: string): string {
-  const bodyTag = /<body\b[^>]*>/i.exec(template);
-  if (!bodyTag) return restoreDeferredMathInTemplate(template);
-  const attributeAt = bodyTag[0].search(/\sdata-html="/i);
-  if (attributeAt < 0) return restoreDeferredMathInTemplate(template);
-  const start = bodyTag.index + attributeAt;
-  // `escape(html)`을 거친 값이라 속성 안에 따옴표가 남아 있지 않다.
-  const valueAt = template.indexOf('"', start);
-  const end = template.indexOf('"', valueAt + 1);
-  if (valueAt < 0 || end < 0) return restoreDeferredMathInTemplate(template);
-
-  const withoutBody = template.slice(0, start) + template.slice(end + 1);
-  const headEnd = withoutBody.search(/<\/head>/i);
-  if (headEnd < 0) return restoreDeferredMathInTemplate(template);
-  const carrier = `<template id="${INITIAL_HTML_TEMPLATE_ID}">${html}</template>`;
-  return withoutBody.slice(0, headEnd) + carrier + withoutBody.slice(headEnd);
-}
-
 let bridgeSourceCache: string | null = null;
 
 function bridgeSource(): string {
@@ -421,40 +398,54 @@ async function render(request: Extract<RenderWorkerRequest, { kind: 'render' }>)
     enablePreviewZenMode: true,
     enablePreviewContextMenu: false,
   };
+  const bridgeScripts = previewBridgeScript(
+    lineCount(request.text),
+    request.text.trim().length === 0,
+    request.revision,
+    themeId,
+  );
   const template = await engine.generateHTMLTemplateForPreview({
     inputString: request.text.length > 0 ? request.text : '\n',
     config,
     vscodePreviewPanel: {} as never,
     head: `<base href="${baseHref}">`,
-    scripts: previewBridgeScript(
-      lineCount(request.text),
-      request.text.trim().length === 0,
-      request.revision,
-      themeId,
-    ),
+    scripts: bridgeScripts,
     styles: previewStyles(themeId),
   });
   // crossnote가 다 지나간 뒤에 수식을 되돌려 넣는다.
   const html = restoreDeferredMath(previewFragmentFromTemplate(template));
   const blocks = splitPreviewBlocks(html);
-  const previous = installedBlocks.get(request.tabId);
-  installedBlocks.set(request.tabId, blocks);
+  const previous = installedPreviews.get(request.tabId);
+  const leanTemplate = createLeanPreviewTemplate(template, html, bridgeScripts);
+  const fullTemplate = () => restoreDeferredMathInTemplate(template).replace(
+    /<body\b/i,
+    '<body data-setdown-preview-runtime="crossnote"',
+  );
 
   const common = { totalLineCount: lineCount(request.text), baseHref, themeId };
   if (!request.hasPage) {
-    // 첫 로드. 완성된 페이지가 필요하므로 이때만 template을 만들어 보낸다.
-    // 본문을 `<template>`으로 실을 수 있으면 그 편이 한 번만 파싱된다.
-    // 브라우저에서 그려지는 도해가 든 문서만 예전 경로로 보낸다.
-    const page = canInlineInitialHtml(html)
-      ? inlineInitialHtml(template, html)
-      : restoreDeferredMathInTemplate(template);
+    // 첫 로드. 일반 문서는 CSS와 bridge만 가진 lean page를 쓴다. 브라우저에서
+    // 그리는 도해나 안전하게 carrier에 넣을 수 없는 본문만 full runtime으로 간다.
+    const runtime: PreviewRuntime = leanTemplate ? 'lean' : 'crossnote';
+    installedPreviews.set(request.tabId, { blocks, runtime });
+    const page = leanTemplate ?? fullTemplate();
     return { ...common, template: page, html };
   }
+
+  // lean page에서 편집 중 Mermaid 같은 client-rendered 도해가 생기면 그 page에는
+  // renderer가 없다. 현재 내용을 full Crossnote page로 한 번 navigate해 capability를
+  // 올린다. 반대 방향은 불필요한 navigation을 피하려고 현재 runtime을 유지한다.
+  const runtime = previous?.runtime ?? 'lean';
+  if (runtime === 'lean' && requiresCrossnoteInstall(html)) {
+    installedPreviews.set(request.tabId, { blocks, runtime: 'crossnote' });
+    return { ...common, template: fullTemplate(), html };
+  }
+  installedPreviews.set(request.tabId, { blocks, runtime });
   if (!previous) {
     // 예비 view를 넘겨받은 경우처럼 페이지는 있으나 기록이 없다.
     return { ...common, html };
   }
-  return { ...common, patch: diffPreviewBlocks(previous, blocks) };
+  return { ...common, patch: diffPreviewBlocks(previous.blocks, blocks) };
 }
 
 /**
@@ -472,7 +463,7 @@ port.on('message', (event) => {
     return;
   }
   if (request.kind === 'forget-tab') {
-    installedBlocks.delete(request.tabId);
+    installedPreviews.delete(request.tabId);
     return;
   }
   if (request.kind !== 'render') return;

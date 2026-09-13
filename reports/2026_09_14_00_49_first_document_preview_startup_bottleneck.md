@@ -259,25 +259,65 @@ background에서 불러오거나 사용자가 편집기로 전환하기 전에 �
 parser나 IPC 최적화는 위 작업 뒤 다시 측정해 worker 구간이 실제 병목으로 올라왔을
 때 수행하는 것이 합리적이다.
 
+## P0 구현 및 재계측 결과
+
+2026년 9월 14일 01:08 KST에 P0 lean Preview shell을 구현했다. 일반 문서는 기존
+Crossnote template의 CSS와 `<base>`는 유지하되, `preview.js`, Mermaid, Vega,
+WaveDrom 등의 browser runtime을 싣지 않는다. Preview bridge가 초기 HTML을 즉시
+설치한다. Mermaid 등 client-side 조판이 필요한 문서는 기존 full Crossnote
+template을 사용하며, lean 상태에서 편집으로 도해가 추가되면 full runtime으로 한
+번 승격한다.
+
+같은 production build 경로에서 `sample.md`를 새 프로세스로 세 번 실행한 재계측은
+다음과 같다. 표의 이전 navigation 값은 구현 직전 동일 계측의 중앙값이다. 이 보고서
+앞부분의 최초 측정값 1.50초와 차이가 있는 것은 OS filesystem cache를 고정하지 않은
+cold-process 측정 편차 때문이다.
+
+| 지표 | 구현 전 | lean shell 구현 후 | 변화 |
+|---|---:|---:|---:|
+| Preview navigation → 표시 | 1.34초 | 0.57초 | **0.77초, 57% 감소** |
+| “조판 중” → 표시 | 1.76초 | 1.26초 | **0.50초, 29% 감소** |
+| 프로세스 실행 → 표시 | 2.80초 | 2.49초 | 0.31초, 11% 감소 |
+| Preview 외부 script 요청 | 다수 | 0개 | 전부 제거 |
+| DOM node (`sample.md`) | 51,123 | 35,678 | 약 30% 감소 |
+
+구현 후 세 번의 Preview navigation은 각각 0.79초, 0.57초, 0.52초였다. 실행 전체
+중앙값은 OS cache와 프로세스 경합의 영향을 더 크게 받지만, navigation 구간 자체의
+일관된 감소와 외부 script 0개는 원인 제거가 실제로 작동했음을 보여 준다.
+
+이 변경은 단위 테스트 94개와 Electron E2E 6개를 모두 통과했다. E2E에는 일반 문서가
+lean runtime과 외부 script 0개로 시작하는 검증, 그리고 편집 중 Mermaid를 추가했을
+때 full Crossnote runtime으로 승격되어 실제 도해가 생성되는 검증이 포함된다.
+
+P0 이후 최대 잔여 비용은 `sample.md`의 약 3.6만 개 수식 element를 Chromium이
+파싱하고 배치하는 구간이다. 따라서 다음 직접 개선은 P1 prewarm보다도 실제 사용자
+체감에 미치는 효과를 A/B한 뒤, P2의 첫 viewport 우선 수식 설치를 작은 실험으로
+검증하는 것이다. 현재 결과만으로는 전체 문서 기하에 의존하는 semantic scroll을
+훼손하면서 지연 layout을 바로 적용할 근거는 충분하지 않다.
+
 ## 검증 기준
 
 개선 구현은 같은 세 대조군으로 최소 10회, 실행 순서를 무작위로 섞어 median과 p95를
 비교해야 한다. OS filesystem cache가 찬 경우와 찬 상태가 아닌 경우도 별도로 기록한다.
 
-초기 목표는 다음처럼 잡을 수 있다. 이는 현재 측정에서 도출한 목표이며 아직 달성값은
-아니다.
+초기 목표와 P0 구현 직후의 달성 상태는 다음과 같다.
 
-- 일반 작은 Markdown: “조판 중” 표시를 거의 보지 않거나 0.25초 이내
-- `sample.md`: “조판 중” 이후 1초 미만
-- Preview 시작 중 외부 네트워크 요청 0개
-- TOC, 검색, theme, semantic scroll과 수식 접근성 유지
-- client-rendered 도해 문서는 기존 결과와 동일
+- 일반 작은 Markdown: “조판 중” 표시를 거의 보지 않거나 0.25초 이내 — 재계측 필요
+- `sample.md`: “조판 중” 이후 1초 미만 — 현재 1.26초로 미달
+- Preview 시작 중 외부 script 요청 0개 — 달성
+- TOC, 검색, theme, semantic scroll과 수식 접근성 유지 — E2E 통과
+- client-rendered 도해 문서는 기존 결과와 동일 — Mermaid 승격 E2E 통과
 
 ## 최종 판단
 
-현재의 성능 문제는 계산량 하나가 큰 것이 아니라 첫 문서에서 이미 완성된 HTML을
-보여 주기 위해 **범용 Crossnote 브라우저 환경 전체를 새로 부팅하고**, 이어서
-**KaTeX가 확장한 5만 개의 layout object를 한 번에 배치하는 것**이다.
+초기 계측에서 성능 문제는 계산량 하나가 큰 것이 아니라 첫 문서에서 이미 완성된
+HTML을 보여 주기 위해 **범용 Crossnote 브라우저 환경 전체를 새로 부팅하고**,
+이어서 **KaTeX가 확장한 5만 개의 layout object를 한 번에 배치하는 것**이었다.
+
+P0 구현으로 일반 문서의 첫 원인은 제거됐다. Preview navigation 중앙값은 57%
+감소했고 runtime이 만들던 약 1.5만 DOM node와 외부 script 요청도 사라졌다. 현재
+최대 잔여 병목은 lean page에도 필요한 약 3.6만 개의 수식 element를 파싱하고 첫
+layout에 배치하는 구간이다.
 
 가장 큰 절감은 다음 두 경계를 바꿀 때 얻어진다.
 
@@ -285,6 +325,7 @@ parser나 IPC 최적화는 위 작업 뒤 다시 측정해 worker 구간이 실�
 2. 첫 Preview의 완료 조건을 전체 문서 layout이 아니라 첫 viewport의 유효한 표시로
    바꾼다.
 
-따라서 첫 투자 지점은 `render-worker.ts`의 Markdown 계산을 더 빠르게 만드는 일이
-아니라 `main.ts`의 첫 `WebContentsView.loadURL()` 경로를 lean, reusable,
-viewport-first 구조로 바꾸는 일이다.
+따라서 다음 투자 지점은 `render-worker.ts`의 Markdown 계산을 미세 최적화하는 일이
+아니라, 첫 viewport를 먼저 유효하게 표시하면서도 semantic scroll의 문서 기하를
+보존하는 수식 DOM 설치 전략을 검증하는 일이다. 그와 별도로 lean shell prewarm이
+0.57초의 남은 navigation을 앱 시작과 얼마나 겹칠 수 있는지도 A/B 측정해야 한다.
