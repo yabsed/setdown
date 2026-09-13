@@ -7,9 +7,12 @@
  */
 import { previewThemeBackground } from '../shared/preview-preferences';
 import {
+  DEFERRED_HTML_SCRIPT_ID,
   INITIAL_HTML_TEMPLATE_ID,
+  partitionPreviewHtml,
   requiresCrossnoteInstall,
 } from '../shared/preview-install';
+import { splitPreviewBlocks } from '../shared/preview-blocks';
 import {
   GOLDEN_TOP_RATIO,
   resolveBandScrollTop,
@@ -280,6 +283,23 @@ function shiftSourceLines(root: Element, delta: number) {
   };
   if (root.matches(ANCHOR_SELECTOR)) apply(root);
   root.querySelectorAll(ANCHOR_SELECTOR).forEach(apply);
+}
+
+/** 아직 문자열로 남은 뒤쪽 블록에도 같은 줄 이동을 적용한다. */
+function shiftSourceLinesHtml(html: string, delta: number): string {
+  if (delta === 0) return html;
+  return html.replace(
+    /\b(data-source-(?:line|lines|start|end))="(\d+)(?:([:-])(\d+))?"/g,
+    (whole, name: string, first: string, separator?: string, second?: string) => {
+      const shiftedFirst = Math.max(1, Number(first) + delta);
+      if (!separator || second === undefined) return `${name}="${shiftedFirst}"`;
+      // lines의 두 숫자는 모두 행이다. start/end의 두 번째 숫자는 열이다.
+      const shiftedSecond = separator === '-'
+        ? Math.max(1, Number(second) + delta)
+        : Number(second);
+      return `${name}="${shiftedFirst}${separator}${shiftedSecond}"`;
+    },
+  );
 }
 
 /** host가 보낸 띠를 신뢰하지 않고 읽는다. 망가져 있으면 빈 띠다. */
@@ -1015,6 +1035,142 @@ function finishInstall(root: HTMLElement) {
   }).catch(() => {});
 }
 
+let deferredHtmlBlocks: string[] = [];
+let deferredHydrationGeneration = 0;
+let deferredHydrationStartedGeneration = 0;
+
+function cancelDeferredHydration() {
+  deferredHtmlBlocks = [];
+  deferredHydrationGeneration += 1;
+  document.body.dataset.setdownHydration = 'complete';
+  document.body.dataset.setdownDeferredBlockCount = '0';
+  document.body.dataset.setdownPendingBlockCount = '0';
+}
+
+function finishDeferredHydration(root: HTMLElement) {
+  document.body.dataset.setdownHydration = 'complete';
+  document.body.dataset.setdownPendingBlockCount = '0';
+  document.body.dataset.setdownHydrationCompletedMs = String(performance.now());
+  document.body.dataset.setdownFullElementCount = String(root.querySelectorAll('*').length);
+  invalidateAtlas();
+  scheduleHeadings();
+  scheduleViewportState();
+}
+
+/** 한 frame의 style/layout을 다시 길게 막지 않도록 뒤쪽 블록을 작은 묶음으로 심는다. */
+function hydrateDeferredBatch(root: HTMLElement, generation: number) {
+  if (generation !== deferredHydrationGeneration || deferredHtmlBlocks.length === 0) return;
+  const batch: string[] = [];
+  let bytes = 0;
+  while (deferredHtmlBlocks.length > 0 && batch.length < 8) {
+    const next = deferredHtmlBlocks[0];
+    if (batch.length > 0 && bytes + next.length > 64 * 1024) {
+      break;
+    }
+    deferredHtmlBlocks.shift();
+    batch.push(next);
+    bytes += next.length;
+  }
+  document.body.dataset.setdownPendingBlockCount = String(deferredHtmlBlocks.length);
+
+  const holder = document.createElement('template');
+  holder.innerHTML = batch.join('\n');
+  const inserted = Array.from(holder.content.children);
+  root.append(holder.content);
+  applyDisclosures(inserted);
+  invalidateAtlas();
+  scheduleHeadings();
+
+  if (deferredHtmlBlocks.length === 0) {
+    finishDeferredHydration(root);
+    return;
+  }
+  scheduleHydrationFrame(root, generation);
+}
+
+function scheduleHydrationFrame(root: HTMLElement, generation: number) {
+  window.requestAnimationFrame(() => hydrateDeferredBatch(root, generation));
+}
+
+function beginDeferredHydration(root: HTMLElement, blocks: string[]) {
+  const generation = ++deferredHydrationGeneration;
+  deferredHtmlBlocks = blocks;
+  document.body.dataset.setdownHydrationStartedMs = String(performance.now());
+  document.body.dataset.setdownInitialElementCount = String(root.querySelectorAll('*').length);
+  document.body.dataset.setdownDeferredBlockCount = String(blocks.length);
+  document.body.dataset.setdownPendingBlockCount = String(blocks.length);
+  if (blocks.length === 0) {
+    finishDeferredHydration(root);
+    return;
+  }
+  document.body.dataset.setdownHydration = 'pending';
+}
+
+function resumeDeferredHydrationAfterPaint() {
+  const root = previewRoot();
+  const generation = deferredHydrationGeneration;
+  if (!root || deferredHtmlBlocks.length === 0) return;
+  if (deferredHydrationStartedGeneration === generation) return;
+  deferredHydrationStartedGeneration = generation;
+  // 메인이 view를 드러낸 뒤 보내는 신호다. 최초 본문을 표시할 frame 둘을
+  // compositor에 먼저 양보한 다음에만 뒤쪽 DOM을 만들기 시작한다.
+  window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+    if (generation === deferredHydrationGeneration) scheduleHydrationFrame(root, generation);
+  }));
+}
+
+/** 검색·편집·임의 위치 이동은 전체 문서를 전제로 하므로 남은 본문을 즉시 완성한다. */
+function hydrateAllDeferredHtml() {
+  if (deferredHtmlBlocks.length === 0) return;
+  const root = previewRoot();
+  if (!root) return;
+  const pending = deferredHtmlBlocks;
+  deferredHtmlBlocks = [];
+  deferredHydrationGeneration += 1;
+  const holder = document.createElement('template');
+  holder.innerHTML = pending.join('\n');
+  const inserted = Array.from(holder.content.children);
+  root.append(holder.content);
+  applyDisclosures(inserted);
+  finishDeferredHydration(root);
+}
+
+function readDeferredInitialBlocks(): string[] {
+  const carrier = document.getElementById(DEFERRED_HTML_SCRIPT_ID);
+  if (!carrier) return [];
+  carrier.remove();
+  try {
+    const parsed = JSON.parse(carrier.textContent || '[]');
+    return Array.isArray(parsed)
+      ? parsed.filter((value): value is string => typeof value === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function hydratedThroughSourceLine(sourceLine: number, band: BandLine[]): boolean {
+  if (deferredHtmlBlocks.length === 0) return true;
+  const root = previewRoot();
+  if (!root) return false;
+  let lastLine = 0;
+  root.querySelectorAll(ANCHOR_SELECTOR).forEach((element) => {
+    const values = [
+      parseLinePair(element.getAttribute('data-source-end'))?.[0],
+      parseLinePair(element.getAttribute('data-source-lines'))?.[1],
+      Number(element.getAttribute('data-source-line')),
+    ];
+    for (const value of values) {
+      if (Number.isFinite(value)) lastLine = Math.max(lastLine, Number(value));
+    }
+  });
+  const requestedLine = band.reduce(
+    (largest, entry) => Math.max(largest, entry.sourceLine),
+    sourceLine,
+  );
+  return requestedLine <= lastLine;
+}
+
 /**
  * 첫 로드. 워커가 `<template>`에 실어 보낸 본문을 그 자리로 옮긴다.
  *
@@ -1027,7 +1183,9 @@ function installInitialHtml(): boolean {
   if (!(carrier instanceof HTMLTemplateElement) || !root) return false;
   root.replaceChildren(carrier.content);
   carrier.remove();
+  const deferred = readDeferredInitialBlocks();
   finishInstall(root);
+  beginDeferredHydration(root, deferred);
   return true;
 }
 
@@ -1083,6 +1241,10 @@ window.addEventListener('message', (event) => {
     codeCssUrl?: string;
   } | null;
   if (!data) return;
+  if (data.command === 'marktex:resume-hydration') {
+    resumeDeferredHydrationAfterPaint();
+    return;
+  }
   if (data.command === 'marktex:sync-config') {
     const update = data as typeof data & { totalLineCount?: number; revision?: number };
     config.totalLineCount = Math.max(1, Number(update.totalLineCount) || 1);
@@ -1099,29 +1261,61 @@ window.addEventListener('message', (event) => {
     config.totalLineCount = Math.max(1, Number(update.totalLineCount) || 1);
     config.revision = Math.max(0, Number(update.revision) || 0);
     applyBaseHref(update.baseHref);
-    const root = document.querySelector(PREVIEW_SELECTOR);
+    const root = previewRoot();
     let insertedNodes: Element[] = [];
     if (root) {
       const children = Array.from(root.children);
-      const from = Math.min(Math.max(0, Math.round(Number(update.from) || 0)), children.length);
+      const completeLength = children.length + deferredHtmlBlocks.length;
+      const from = Math.min(Math.max(0, Math.round(Number(update.from) || 0)), completeLength);
       const removeCount = Math.min(
         Math.max(0, Math.round(Number(update.removeCount) || 0)),
-        children.length - from,
+        completeLength - from,
       );
-      const holder = document.createElement('template');
-      holder.innerHTML = String(update.html ?? '');
-      const inserted = Array.from(holder.content.children);
-      insertedNodes = inserted;
-      // 지우기 전에 기준점을 잡아 둔다. 지우고 나면 위치를 잃는다.
-      const anchor = children[from + removeCount] ?? null;
-      for (let index = 0; index < removeCount; index += 1) children[from + index].remove();
-      for (const node of inserted) root.insertBefore(node, anchor);
-
+      const insertedHtml = splitPreviewBlocks(String(update.html ?? ''))
+        .map((block) => block.html);
       const delta = Math.round(Number(update.lineDelta) || 0);
-      if (delta !== 0) {
-        const rest = Array.from(root.children).slice(from + inserted.length);
-        for (const element of rest) shiftSourceLines(element, delta);
+
+      if (deferredHtmlBlocks.length > 0 && from > children.length) {
+        // 변경 지점 전체가 아직 문자열인 경우 DOM은 전혀 건드리지 않는다.
+        const deferredFrom = from - children.length;
+        deferredHtmlBlocks.splice(
+          deferredFrom,
+          removeCount,
+          ...insertedHtml,
+        );
+        if (delta !== 0) {
+          for (let index = deferredFrom + insertedHtml.length;
+            index < deferredHtmlBlocks.length; index += 1) {
+            deferredHtmlBlocks[index] = shiftSourceLinesHtml(deferredHtmlBlocks[index], delta);
+          }
+        }
+      } else {
+        // 변경이 설치된 접두에 닿으면 그 작은 구간만 DOM에 반영한다. 삭제가
+        // 경계를 넘은 부분만 deferred 배열의 앞에서 함께 걷어낸다.
+        const holder = document.createElement('template');
+        holder.innerHTML = insertedHtml.join('\n');
+        const inserted = Array.from(holder.content.children);
+        const domFrom = Math.min(from, children.length);
+        const domRemoveCount = Math.min(removeCount, children.length - domFrom);
+        const deferredRemoveCount = removeCount - domRemoveCount;
+        const anchor = children[domFrom + domRemoveCount] ?? null;
+        for (let index = 0; index < domRemoveCount; index += 1) {
+          children[domFrom + index].remove();
+        }
+        for (const node of inserted) root.insertBefore(node, anchor);
+        insertedNodes = inserted;
+        if (deferredRemoveCount > 0) deferredHtmlBlocks.splice(0, deferredRemoveCount);
+        if (delta !== 0) {
+          const rest = Array.from(root.children).slice(domFrom + inserted.length);
+          for (const element of rest) shiftSourceLines(element, delta);
+          for (let index = 0; index < deferredHtmlBlocks.length; index += 1) {
+            deferredHtmlBlocks[index] = shiftSourceLinesHtml(deferredHtmlBlocks[index], delta);
+          }
+        }
       }
+
+      document.body.dataset.setdownPendingBlockCount = String(deferredHtmlBlocks.length);
+      if (deferredHtmlBlocks.length === 0) finishDeferredHydration(root);
     }
     applyDisclosures(insertedNodes);
     invalidateAtlas();
@@ -1148,13 +1342,16 @@ window.addEventListener('message', (event) => {
     config.revision = updateRevision;
     const html = String(update.html ?? '');
     const root = previewRoot();
+    cancelDeferredHydration();
 
     // 워커가 보낸 HTML은 이미 sanitize를 거쳤다. 곧바로 심으면 본문을 한 번만
     // 파싱한다. crossnote에게 넘기면 sanitize 한 번, 숨은 DOM에 한 번,
     // 그것을 문자열로 되돌려 보이는 DOM에 다시 한 번 지나간다.
     if (root && !requiresCrossnoteInstall(html)) {
-      root.innerHTML = html;
+      const partition = partitionPreviewHtml(html);
+      root.innerHTML = partition.eagerHtml;
       finishInstall(root);
+      beginDeferredHydration(root, partition.deferredBlocks);
       // patch 경로와 같은 이유로 곧바로 답한다. 설치는 이 handler 안에서
       // 동기로 끝났고, 이 view는 아직 숨어 있어 frame이 오지 않는다. host는
       // 이 답을 받아야 view를 보여 주므로, frame을 기다리면 서로를 기다린다.
@@ -1198,6 +1395,7 @@ window.addEventListener('message', (event) => {
     return;
   }
   if (data.command === 'marktex:find') {
+    if (data.query) hydrateAllDeferredHtml();
     performSearch(
       typeof data.query === 'string' ? data.query.slice(0, 512) : '',
       data.direction === 'backward' ? 'backward' : 'forward',
@@ -1218,6 +1416,7 @@ window.addEventListener('message', (event) => {
     if (typeof data.id !== 'string') return;
     let target = headingElements.get(data.id);
     if (!target) {
+      hydrateAllDeferredHtml();
       readHeadings();
       target = headingElements.get(data.id);
     }
@@ -1229,6 +1428,7 @@ window.addEventListener('message', (event) => {
     return;
   }
   if (data.command === 'marktex:restore-scroll-ratio') {
+    hydrateAllDeferredHtml();
     const ratio = Number.isFinite(data.scrollRatio) ? Number(data.scrollRatio) : 0;
     const preview = document.querySelector(PREVIEW_SELECTOR);
     let settleTimer: number | null = null;
@@ -1266,7 +1466,12 @@ window.addEventListener('message', (event) => {
     );
     const ratio = Number.isFinite(data.topRatio) ? Number(data.topRatio) : GOLDEN_TOP_RATIO;
     const band = readBand(data.band);
-    if (data.settle === false) {
+    if (!hydratedThroughSourceLine(sourceLine, band)) hydrateAllDeferredHtml();
+    // 목표가 이미 설치된 접두에 있으면 뒤쪽 배치 추가는 그 위치를 바꾸지 않는다.
+    // 그 mutation을 끝까지 관찰하며 position을 재적용하면, 사용자가 그 사이 직접
+    // 스크롤한 것까지 수 초 뒤 과거 위치로 되돌려 버린다.
+    const shouldSettle = data.settle !== false && deferredHtmlBlocks.length === 0;
+    if (!shouldSettle) {
       positionPreview(sourceLine, ratio, band);
       window.requestAnimationFrame(() => send({
         type: 'marktex:preview-positioned',
@@ -1320,6 +1525,23 @@ window.addEventListener('message', (event) => {
 
 // ── 색인 무효화: resize, 이미지 로드, 다이어그램 렌더 ─────────────────
 window.addEventListener('scroll', () => {
+  if (deferredHtmlBlocks.length > 0 && window.scrollY > (window.innerHeight || 1) * 1.5) {
+    // 스크롤바를 잡아 아직 만들지 않은 먼 구간으로 뛴 경우다. 부분 문서 높이의
+    // 같은 pixel에 머물면 의도보다 위쪽 내용이나 source anchor 없는 빈 띠가 온다.
+    // 전체를 완성한 뒤 사용자가 고른 상대 위치를 원문 행으로 환산해 golden line에
+    // 놓는다. 그래야 높이가 크게 다른 수식 사이의 빈 margin이 anchor가 되지 않는다.
+    const oldMaximum = Math.max(
+      1,
+      document.documentElement.scrollHeight - (window.innerHeight || 1),
+    );
+    const ratio = Math.min(1, Math.max(0, window.scrollY / oldMaximum));
+    hydrateAllDeferredHtml();
+    const estimatedSourceLine = Math.max(
+      1,
+      Math.min(config.totalLineCount, Math.round(1 + ratio * (config.totalLineCount - 1))),
+    );
+    positionPreview(estimatedSourceLine, GOLDEN_TOP_RATIO);
+  }
   scheduleViewportState();
   publishActiveHeading();
 }, { passive: true });

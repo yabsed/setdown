@@ -2,8 +2,17 @@ import { describe, expect, it } from 'vitest';
 import {
   canInlineInitialHtml,
   createLeanPreviewTemplate,
+  DEFERRED_HTML_SCRIPT_ID,
+  partitionPreviewHtml,
   requiresCrossnoteInstall,
 } from './preview-install';
+
+function largeMathHtml(): string {
+  return Array.from({ length: 24 }, (_, index) =>
+    `<p data-source-line="${index + 1}" data-block="${index}">`
+      + `<span class="katex"><span>${'x'.repeat(14_000)}</span></span></p>`,
+  ).join('');
+}
 
 describe('preview 본문 설치 경로', () => {
   it('서버에서 조판이 끝난 본문은 직접 심는다', () => {
@@ -52,6 +61,39 @@ describe('preview 본문 설치 경로', () => {
     expect(page).not.toContain('data-html="encoded"');
     expect(page).not.toContain('mermaid.js');
     expect(page).not.toContain('preview.js');
+  });
+
+  it('큰 KaTeX 문서는 첫 화면 블록만 DOM markup으로 싣는다', () => {
+    const html = largeMathHtml();
+    const partition = partitionPreviewHtml(html);
+
+    expect(partition.deferredBlocks.length).toBeGreaterThan(0);
+    expect(partition.eagerHtml).toContain('data-block="0"');
+    expect(partition.eagerHtml).not.toContain('data-block="23"');
+    expect(partition.eagerHtml.length).toBeLessThan(html.length / 2);
+
+    const page = createLeanPreviewTemplate(
+      '<html><head><link href="theme.css"></head><body></body></html>',
+      html,
+      '<script>bridge</script>',
+    )!;
+    const eager = new RegExp(`<template id="marktex-initial-html">([\\s\\S]*?)</template>`)
+      .exec(page)?.[1] ?? '';
+    expect(eager).not.toContain('data-block="23"');
+    expect(page).toContain(`id="${DEFERRED_HTML_SCRIPT_ID}"`);
+  });
+
+  it('PDF용 page는 큰 문서도 지연하지 않고 전부 싣는다', () => {
+    const html = largeMathHtml();
+    const page = createLeanPreviewTemplate(
+      '<html><head><link href="theme.css"></head><body></body></html>',
+      html,
+      '<script>bridge</script>',
+      false,
+    )!;
+
+    expect(page).toContain('data-block="23"');
+    expect(page).not.toContain(DEFERRED_HTML_SCRIPT_ID);
   });
 
   it('head에 script가 있으면 기존 Crossnote page로 물러선다', () => {

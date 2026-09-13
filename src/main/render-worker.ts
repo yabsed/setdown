@@ -54,6 +54,8 @@ export type RenderWorkerRequest =
     roots: string[];
     /** 대상 view가 이미 Preview 페이지를 띄우고 있는가. */
     hasPage: boolean;
+    /** PDF처럼 첫 paint보다 완성된 DOM이 먼저 필요한가. */
+    deferOffscreenHtml?: boolean;
   }
   | { kind: 'forget-notebooks' }
   | { kind: 'forget-tab'; tabId: string };
@@ -416,7 +418,12 @@ async function render(request: Extract<RenderWorkerRequest, { kind: 'render' }>)
   const html = restoreDeferredMath(previewFragmentFromTemplate(template));
   const blocks = splitPreviewBlocks(html);
   const previous = installedPreviews.get(request.tabId);
-  const leanTemplate = createLeanPreviewTemplate(template, html, bridgeScripts);
+  const leanTemplate = createLeanPreviewTemplate(
+    template,
+    html,
+    bridgeScripts,
+    request.deferOffscreenHtml !== false,
+  );
   const fullTemplate = () => restoreDeferredMathInTemplate(template).replace(
     /<body\b/i,
     '<body data-setdown-preview-runtime="crossnote"',

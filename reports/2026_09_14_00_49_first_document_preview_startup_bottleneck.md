@@ -359,3 +359,42 @@ P0 구현으로 일반 문서의 첫 원인은 제거됐다. Preview navigation 
 아니라, 첫 viewport를 먼저 유효하게 표시하면서도 semantic scroll의 문서 기하를
 보존하는 수식 DOM 설치 전략을 검증하는 일이다. 그와 별도로 lean shell prewarm이
 0.57초의 남은 navigation을 앱 시작과 얼마나 겹칠 수 있는지도 A/B 측정해야 한다.
+
+## P2 첫 viewport 우선 설치 구현 및 재계측
+
+2026년 9월 14일 02:42 KST에 큰 KaTeX 문서의 DOM을 두 단계로 설치하도록 바꿨다.
+256KB 미만이거나 KaTeX가 없는 문서는 기존 경로를 유지한다. 그보다 큰 수식 문서는
+첫 96KB 안팎(최소 6개, 최대 16개 최상위 블록)만 실제 `<template>` markup으로
+싣고, 나머지는 inert JSON text로 보관한다. Preview가 드러난 뒤 첫 두 frame을
+양보하고 frame마다 최대 64KB를 추가한다.
+
+`sample.md` production build 3회 계측 결과는 다음과 같다.
+
+| 지표 | P0 lean shell | P2 viewport 우선 | 변화 |
+|---|---:|---:|---:|
+| Preview navigation 중앙값 | 0.57초 | 0.192초 | **0.378초, 66% 감소** |
+| 첫 설치 Preview element | 35,656개 | 2,218개 | **33,438개, 93.8% 감소** |
+| 첫 설치 뒤로 미룬 블록 | 0개 | 93개 | critical path에서 제외 |
+
+P2의 세 navigation 측정값은 0.192초, 0.185초, 0.195초였다. 35,656개 element를
+모두 완성하는 작업 자체는 2.692~2.712초 동안 여러 frame으로 분산됐다. 즉 총 계산을
+없앤 것이 아니라, 사용자가 첫 페이지를 기다리는 critical path에서 제거한 것이다.
+한 번에 약 0.89초짜리 parse/style/layout long task를 만들던 구조도 최대 64KB 단위의
+작업으로 잘렸다.
+
+정확성을 위해 다음 경계를 함께 두었다.
+
+- 검색, 아직 설치되지 않은 heading·source line 이동, scroll ratio 복원은 먼저 전체
+  DOM을 완성한다.
+- 사용자가 스크롤바로 아직 설치되지 않은 먼 구간을 고르면 전체 DOM을 완성한 뒤,
+  선택한 상대 위치를 원문 행으로 환산해 semantic anchor에 놓는다.
+- 편집 patch는 전체 DOM을 강제 생성하지 않고 아직 문자열인 블록을 그 상태로
+  삽입·삭제·줄 번호 이동한다.
+- 초기 위치 복원은 이미 설치된 접두를 대상으로 할 때 한 번만 적용한다. 후속 DOM
+  mutation을 수 초간 관찰해 사용자의 새 스크롤을 과거 위치로 되돌리지 않는다.
+- PDF는 처음부터 전체 DOM을 설치하며 지연 경로를 사용하지 않는다.
+- 예비 Preview template에서는 eager carrier와 deferred carrier를 모두 비워 이전
+  문서 본문이 다음 탭으로 새지 않게 한다.
+
+검증은 단위 테스트 98개, production build, Preview 읽기 도구 E2E, 그리고
+`sample.md` 편집 전환·같은 WebContents 창 이동 E2E 3회 반복으로 수행했다.

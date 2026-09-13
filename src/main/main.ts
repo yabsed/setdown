@@ -58,7 +58,10 @@ import {
   savePastedPng,
 } from './pasted-image';
 import { previewRelativeReference } from './preview-resources';
-import { INITIAL_HTML_TEMPLATE_ID } from '../shared/preview-install';
+import {
+  DEFERRED_HTML_SCRIPT_ID,
+  INITIAL_HTML_TEMPLATE_ID,
+} from '../shared/preview-install';
 import { discardDraftBundle, saveDraftBundle } from './draft-assets';
 import { markdownDestinationForFile } from './markdown-link';
 
@@ -142,6 +145,10 @@ const INITIAL_HTML_CARRIER = new RegExp(
   `(<template id="${INITIAL_HTML_TEMPLATE_ID}">)[\\s\\S]*?(</template>)`,
   'i',
 );
+const DEFERRED_HTML_CARRIER = new RegExp(
+  `(<script type="application/json" id="${DEFERRED_HTML_SCRIPT_ID}">)[\\s\\S]*?(</script>)`,
+  'i',
+);
 
 function rememberWarmupTemplate(template: string, themeId: PreviewThemeId) {
   // 본문은 두 가지 방식으로 실린다. `<template>`에 마크업으로 실은 것과,
@@ -149,6 +156,7 @@ function rememberWarmupTemplate(template: string, themeId: PreviewThemeId) {
   // 비워야 자산만 남은 빈 페이지가 된다.
   const blank = template
     .replace(INITIAL_HTML_CARRIER, '$1$2')
+    .replace(DEFERRED_HTML_CARRIER, '$1[]$2')
     .replace(/(<body\b[^>]*\bdata-html=")[^"]*(")/i, '$1$2');
   if (blank === template) return;
   const token = `warmup-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -504,6 +512,7 @@ function callRenderWorker(
   documentPath: string,
   themeId: PreviewThemeId,
   hasPage: boolean,
+  deferOffscreenHtml = true,
 ): Promise<RenderWorkerResult> {
   const worker = ensureRenderWorker();
   const id = ++renderRequestId;
@@ -511,7 +520,7 @@ function callRenderWorker(
     renderWaiters.set(id, { resolve, reject });
     worker.postMessage({
       kind: 'render', id, tabId, text, revision, documentPath, themeId,
-      roots: readableRoots(), hasPage,
+      roots: readableRoots(), hasPage, deferOffscreenHtml,
     });
   });
 }
@@ -533,7 +542,7 @@ async function renderExportTemplate(
   const exportTabId = `export:${Date.now()}-${Math.random().toString(36).slice(2)}`;
   activeRoot = path.dirname(documentPath);
   const rendered = await callRenderWorker(
-    exportTabId, text, revision, documentPath, globalPreviewTheme, false,
+    exportTabId, text, revision, documentPath, globalPreviewTheme, false, false,
   );
   renderWorker?.postMessage({ kind: 'forget-tab', tabId: exportTabId });
   if (typeof rendered.template !== 'string') {
@@ -1424,6 +1433,7 @@ function installIpc() {
       shown.view.setVisible(true);
     }
     restorePendingPreviewScroll(shown);
+    shown.view.webContents.send('preview:command', { command: 'marktex:resume-hydration' });
   });
 
   ipcMain.handle('preview:capture', async (event, tabId: unknown) => {
@@ -1673,6 +1683,9 @@ function installIpc() {
                 restorePendingPreviewScroll(preview);
               }
             }
+            // 일부 window manager는 show 직후 같은 task의 focus 요청을 버린다.
+            // compositor와 Preview를 붙인 다음 task에서 목적지에 한 번 더 준다.
+            if (!destination.isDestroyed()) destination.focus();
           });
         });
         destination.show();
