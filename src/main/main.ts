@@ -1858,22 +1858,45 @@ function installIpc() {
   });
   ipcMain.handle('document:open-link', async (event, href: string) => {
     const state = stateForWebContentsId(event.sender.id);
-    if (state) selectWindowState(state);
-    const decodedHref = decodeURIComponent(href);
-    const localPath = pathFromResourceUrl(decodedHref);
-    if (localPath) {
-      const checked = assertReadablePath(localPath);
-      if (/\.(?:md|markdown|mdown|mkdn|mkd|rmd|qmd|mdx)$/i.test(checked)) {
-        await openPath(checked);
-      } else {
-        await shell.openPath(checked);
+    if (!state) return;
+    return withWindowState(state, async () => {
+      let decodedHref: string;
+      try {
+        decodedHref = decodeURIComponent(String(href));
+      } catch {
+        return;
       }
-      return;
-    }
-    const url = new URL(decodedHref);
-    if (['http:', 'https:', 'mailto:', 'tel:'].includes(url.protocol)) {
-      await shell.openExternal(url.href);
-    }
+      const localPath = pathFromResourceUrl(decodedHref);
+      if (localPath) {
+        // resource protocol의 일반 요청은 문서 root 안으로 제한하지만, 링크 클릭은
+        // 사용자가 명시적으로 선택한 navigation이다. 그래서 ../로 연결된 파일도
+        // 열되 실제 일반 파일인지 확인하고, Markdown만 앱 탭으로 들인다.
+        const checked = canonicalPath(localPath);
+        try {
+          if (!(await fs.stat(checked)).isFile()) return;
+        } catch {
+          return;
+        }
+        if (/\.(?:md|markdown|mdown|mkdn|mkd|rmd|qmd|mdx)$/i.test(checked)) {
+          // 자기 자신으로 가는 링크 때문에 저장하지 않은 현재 문서를 디스크
+          // snapshot으로 덮어쓰지 않는다.
+          if (currentDocument && canonicalPath(currentDocument.path) === checked) return;
+          const document = await openPath(checked, false);
+          state.window.webContents.send('document:opened', document);
+        } else {
+          await shell.openPath(checked);
+        }
+        return;
+      }
+      try {
+        const url = new URL(decodedHref);
+        if (['http:', 'https:', 'mailto:', 'tel:'].includes(url.protocol)) {
+          await shell.openExternal(url.href);
+        }
+      } catch {
+        // 상대 주소는 bridge에서 절대 주소로 바뀌어 와야 한다.
+      }
+    });
   });
 }
 

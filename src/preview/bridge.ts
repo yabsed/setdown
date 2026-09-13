@@ -1207,11 +1207,22 @@ document.addEventListener('click', (event) => {
     destination?.scrollIntoView({ block: 'start' });
     return;
   }
+  const normalizedHref = href.replace(/\\/g, '/');
+  let resolvedHref = normalizedHref;
+  try {
+    resolvedHref = new URL(
+      normalizedHref,
+      document.querySelector('base')?.href || window.location.href,
+    ).href;
+  } catch {
+    // main이 허용 protocol만 다시 검사한다. 해석할 수 없는 값은 그대로 보내
+    // 조용히 거부되게 한다.
+  }
   send({
     command: 'clickTagA',
     args: [{
       uri: document.querySelector('base')?.href ?? '',
-      href: encodeURIComponent(href.replace(/\\/g, '/')),
+      href: encodeURIComponent(resolvedHref),
       scheme: 'file',
     }],
   });
