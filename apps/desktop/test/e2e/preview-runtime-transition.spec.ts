@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { previews } from './preview-view';
+import { disposeApplication } from './electron-app';
 
 test('promotes a lean preview when client-rendered diagrams are added', async () => {
   const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-preview-runtime-e2e-'));
@@ -41,7 +42,7 @@ test('promotes a lean preview when client-rendered diagrams are added', async ()
       "document.querySelectorAll('.markdown-preview[data-for=\"preview\"] .mermaid').length",
     )).toBe(1);
   } finally {
-    await application.close();
+    await disposeApplication(application);
     await rm(temporaryRoot, { recursive: true, force: true });
   }
 });

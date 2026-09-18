@@ -1,3 +1,5 @@
+import type { ApplicationMenuEntry, CloseDecision } from '../protocol/desktop-api';
+
 export type TabView = {
   id: string;
   name: string;
@@ -12,9 +14,15 @@ export type HeadingView = {
   level: number;
 };
 
+export type ClosePromptView = {
+  scope: 'tab' | 'window';
+  names: string[];
+};
+
 export type AppActions = {
   loadMenu(id: string): Promise<ApplicationMenuEntry[]>;
   executeMenuItem(id: string): void;
+  resolveClosePrompt(decision: CloseDecision): void;
   activateTab(id: string): void;
   closeTab(id: string): void;
   startTabDrag(id: string, event: DragEvent): void;
@@ -54,5 +62,5 @@ export const view = $state({
   renderVariant: 'blocking' as 'blocking' | 'refresh',
   renderError: '',
   renderErrorVariant: 'blocking' as 'blocking' | 'refresh',
+  closePrompt: null as ClosePromptView | null,
 });
-import type { ApplicationMenuEntry } from '../protocol/desktop-api';

@@ -14,6 +14,7 @@ type Handlers = {
   documentOpened(document: DocumentSnapshot): void;
   externalChange(change: ExternalChange): void;
   themeChanged(theme: ThemeSnapshot): void;
+  windowCloseRequested(names: string[]): void;
   command(command: AppCommand): void;
   saveBeforeClose(): void;
   transferIncoming(transfer: ClaimedTabTransfer): void;
@@ -29,6 +30,7 @@ export function installWorkspaceEvents(desktop: DesktopPort, handlers: Handlers)
     desktop.onDocumentOpened(handlers.documentOpened),
     desktop.onExternalChange(handlers.externalChange),
     desktop.onThemeChanged(handlers.themeChanged),
+    desktop.onWindowCloseRequested(handlers.windowCloseRequested),
     desktop.onCommand(handlers.command),
     desktop.onSaveBeforeClose(handlers.saveBeforeClose),
     desktop.onTabTransferIncoming(handlers.transferIncoming),

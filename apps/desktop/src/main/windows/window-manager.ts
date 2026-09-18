@@ -1,11 +1,10 @@
-import { BrowserWindow, dialog } from 'electron';
+import { BrowserWindow } from 'electron';
 import type { Event as ElectronEvent } from 'electron';
 import { unwatchFile } from 'node:fs';
 import path from 'node:path';
 import { isDirty } from '../../core/document/document-state';
 import { themeProfile } from '../../core/theme/theme-catalog';
 import type { DocumentSnapshot } from '../../core/document/document';
-import type { DocumentManager } from '../documents/document-manager';
 import type { PreviewManager } from '../preview/preview-manager';
 import type { ThemeManager } from '../theme/theme-manager';
 import type { WindowState } from './window-state';
@@ -13,7 +12,6 @@ import type { WindowRegistry } from './window-registry';
 
 type Options = {
   registry: WindowRegistry;
-  documents: DocumentManager;
   previews: PreviewManager;
   themes: ThemeManager;
 };
@@ -59,11 +57,13 @@ export class WindowManager {
       },
     });
     const state: WindowState = {
+      webContentsId: window.webContents.id,
       window,
       currentDocument: initialDocument,
       activeRoot: initialDocument ? path.dirname(initialDocument.path) : null,
       watchedPath: null,
       closeAfterConfirmation: false,
+      closePromptOpen: false,
       rendererTabs: [],
     };
     const webContentsId = window.webContents.id;
@@ -75,7 +75,7 @@ export class WindowManager {
       }
     });
     if (showWhenReady) window.once('ready-to-show', () => window.show());
-    window.on('focus', () => this.options.registry.focus(window));
+    window.on('focus', () => this.options.registry.focus(webContentsId));
     window.on('resize', () => {
       const [width, height] = window.getContentSize();
       this.options.previews.resizeOwner(webContentsId, width, height);
@@ -84,7 +84,7 @@ export class WindowManager {
     window.on('closed', () => {
       if (state.watchedPath) unwatchFile(state.watchedPath);
       this.options.previews.closeOwner(webContentsId);
-      this.options.registry.remove(window);
+      this.options.registry.remove(webContentsId);
     });
     const devServer = process.env.VITE_DEV_SERVER_URL;
     if (devServer) void window.loadURL(devServer);
@@ -112,24 +112,11 @@ export class WindowManager {
     }
     if (dirtyTabs.length === 0) return;
     event.preventDefault();
-    void dialog.showMessageBox(state.window, {
-      type: 'warning',
-      message: '바뀐 내용을 저장하시겠습니까?',
-      detail: dirtyTabs.map((tab) => tab.name).join('\n'),
-      buttons: ['취소', '저장 안 함', '저장'],
-      defaultId: 2,
-      cancelId: 0,
-    }).then(async ({ response }) => {
-      if (response === 0) return;
-      if (response === 1) {
-        await Promise.all(state.rendererTabs
-          .filter((tab) => tab.isUntitled)
-          .map((tab) => this.options.documents.discardDraft(tab.path)));
-        state.closeAfterConfirmation = true;
-        state.window.close();
-        return;
-      }
-      state.window.webContents.send('app:save-before-close');
-    }).catch((error) => dialog.showErrorBox('창을 닫지 못했습니다', String(error)));
+    if (state.closePromptOpen) return;
+    state.closePromptOpen = true;
+    state.window.webContents.send(
+      'app:request-window-close',
+      dirtyTabs.map((tab) => tab.name),
+    );
   }
 }

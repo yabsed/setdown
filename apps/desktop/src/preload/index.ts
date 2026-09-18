@@ -70,9 +70,9 @@ const api: MarkTexApi = {
     ipcRenderer.invoke('document:save-as', { text, revision }),
   saveTabDocument: (document, text, revision) =>
     ipcRenderer.invoke('document:save-tab', { document, text, revision }),
-  confirmCloseDocument: (name) =>
-    ipcRenderer.invoke('document:confirm-close', name) as Promise<CloseDecision>,
   discardDocument: (document) => ipcRenderer.invoke('document:discard', document),
+  resolveWindowClose: (decision: CloseDecision) =>
+    ipcRenderer.send('app:resolve-window-close', decision),
   finishWindowClose: (saved) => ipcRenderer.send('app:finish-window-close', saved),
   reloadDocument: () => ipcRenderer.invoke('document:reload'),
   preparePreview: (tabId, text, revision, documentPath, themeId) =>
@@ -91,6 +91,8 @@ const api: MarkTexApi = {
     subscribe<ExternalChange>('document:external-change', listener),
   onCommand: (listener) => subscribe<AppCommand>('app:command', listener),
   onThemeChanged: (listener) => subscribe<ThemeSnapshot>('theme:changed', listener),
+  onWindowCloseRequested: (listener) =>
+    subscribe<string[]>('app:request-window-close', listener),
   onSaveBeforeClose: (listener) => {
     const handler = () => listener();
     ipcRenderer.on('app:save-before-close', handler);

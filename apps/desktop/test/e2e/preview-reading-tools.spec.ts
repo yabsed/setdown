@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { previews } from './preview-view';
+import { disposeApplication } from './electron-app';
 
 test('uses the rendered document for TOC, search, and Crossnote themes', async () => {
   const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-reader-tools-e2e-'));
@@ -291,7 +292,7 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       Menu.getApplicationMenu()?.getMenuItemById('preview-theme-night')?.checked)).toBe(true);
     await secondWindow.close();
 
-    await application.close();
+    await disposeApplication(application);
     restartedApplication = await electron.launch({
       args: ['.', documentPath],
       env: { ...environment, XDG_CONFIG_HOME: configRoot },
@@ -324,8 +325,7 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     expect(await restartedApplication.evaluate(({ Menu }) =>
       Menu.getApplicationMenu()?.getMenuItemById('preview-theme-night')?.checked)).toBe(true);
   } finally {
-    if (restartedApplication) await restartedApplication.close();
-    else await application.close();
+    await disposeApplication(restartedApplication ?? application);
     await rm(temporaryRoot, { recursive: true, force: true });
   }
 });

@@ -31,7 +31,7 @@ type Query =
  */
 export function previews(application: Application, window: WindowSelector = 0) {
   const ask = <T>(query: Query): Promise<T> => application.evaluate(
-    async ({ BrowserWindow }, [selector, request]) => {
+    ({ BrowserWindow }, [selector, request]) => {
       const windows = BrowserWindow.getAllWindows();
       const owner = typeof selector === 'number'
         ? windows[selector]

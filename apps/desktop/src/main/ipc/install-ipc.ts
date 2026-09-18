@@ -1,4 +1,4 @@
-import { dialog, ipcMain, shell } from 'electron';
+import { ipcMain, shell } from 'electron';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { normalizePreviewTheme } from '../../core/preview/preview-preferences';
@@ -107,21 +107,31 @@ export function installIpc(options: Options): void {
       return result;
     },
   );
-  channels.handle('document:confirm-close', async (state, name: string): Promise<CloseDecision> => {
-    const { response } = await dialog.showMessageBox(state.window, {
-      type: 'warning',
-      message: `${name}의 변경 내용을 저장하시겠습니까?`,
-      detail: '저장하지 않은 내용은 완전히 잃게 됩니다.',
-      buttons: ['취소', '저장 안 함', '저장'],
-      defaultId: 2,
-      cancelId: 0,
-    });
-    return response === 2 ? 'save' : response === 1 ? 'discard' : 'cancel';
-  });
   ipcMain.handle('document:discard', async (_event, document: DocumentSnapshot) => {
     await documents.discard(document);
   });
+  channels.on('app:resolve-window-close', (state, decision: CloseDecision) => {
+    if (!['cancel', 'discard', 'save'].includes(decision)) return;
+    state.closePromptOpen = false;
+    if (decision === 'cancel') return;
+    if (decision === 'save') {
+      state.window.webContents.send('app:save-before-close');
+      return;
+    }
+    const drafts = state.rendererTabs
+      .filter((tab) => tab.isUntitled)
+      .map((tab) => tab.path);
+    if (drafts.length === 0 && state.currentDocument?.isUntitled) {
+      drafts.push(state.currentDocument.path);
+    }
+    void Promise.all(drafts.map((draft) => documents.discardDraft(draft))).then(() => {
+      if (state.window.isDestroyed()) return;
+      state.closeAfterConfirmation = true;
+      state.window.close();
+    });
+  });
   channels.on('app:finish-window-close', (state, saved: boolean) => {
+    state.closePromptOpen = false;
     if (!saved) return;
     state.closeAfterConfirmation = true;
     state.window.close();

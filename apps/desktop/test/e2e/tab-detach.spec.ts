@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { previews } from './preview-view';
+import { disposeApplication } from './electron-app';
 
 async function shellWindows(application: Awaited<ReturnType<typeof electron.launch>>) {
   const candidates = application.windows();
@@ -122,7 +123,7 @@ test('detaching a tab restores its preview iframe at the same semantic position'
     await expect.poll(() => application.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getFocusedWindow()?.getTitle() ?? '')).toContain('sample.md');
   } finally {
-    await application.close();
+    await disposeApplication(application);
     await rm(configRoot, { recursive: true, force: true });
   }
 });
@@ -183,7 +184,7 @@ test('detaching the middle tab leaves documents one and three in the original wi
       { timeout: 10000 }).toContain('Untitled.md');
     }
   } finally {
-    await application.close();
+    await disposeApplication(application);
     await rm(configRoot, { recursive: true, force: true });
   }
 });

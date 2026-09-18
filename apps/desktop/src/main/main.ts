@@ -55,7 +55,7 @@ renderer = new PreviewRenderer({
   workerPath: path.join(__dirname, 'render-worker.cjs'),
 });
 const documents = new DocumentManager(() => renderer.forgetNotebooks());
-const windows = new WindowManager({ registry, documents, previews, themes });
+const windows = new WindowManager({ registry, previews, themes });
 const transfers = new TabTransferManager({
   previews,
   stateFor: (id) => registry.stateForWebContents(id),

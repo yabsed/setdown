@@ -279,6 +279,8 @@ button { font: inherit; }
 .empty-actions { display: flex; gap: 8px; }
 .secondary-button { padding: 9px 16px; color: var(--app-text); border: 1px solid var(--app-border); border-radius: 8px; background: var(--app-raised-surface); cursor: pointer; }
 .secondary-button:hover { background: var(--app-hover); }
+.danger-button { padding: 9px 16px; color: #fff; border: 1px solid transparent; border-radius: 8px; background: var(--app-danger-text); cursor: pointer; }
+.danger-button:hover { filter: brightness(.88); }
 .shortcut { margin-top: 9px; color: var(--app-subtle-text); font-size: 11px; }
 
 .viewer-surface, .editor-surface { position: relative; overflow: hidden; }
@@ -495,6 +497,28 @@ button { font: inherit; }
 .table-column-header select { height: 28px; color: var(--app-muted-text); font-size: 11px; }
 .table-cell-input { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
 .link-dialog { width: min(540px, calc(100vw - 32px)); }
+.close-prompt-dialog { width: min(460px, calc(100vw - 32px)); }
+.close-prompt-form { gap: 14px; padding: 19px; }
+.close-document-list {
+  display: grid;
+  max-height: 156px;
+  overflow: auto;
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  background: var(--app-chrome);
+}
+.close-document-list div {
+  overflow: hidden;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--app-border);
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.close-document-list div:last-child { border-bottom: 0; }
+.close-prompt-form .close-prompt-warning { color: var(--app-danger-text); font-size: 11px; }
+.close-prompt-form footer button { min-height: 34px; padding: 6px 13px; border-radius: 3px; }
 .link-destination-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; }
 .optional-label { color: var(--app-subtle-text); font-weight: 400; }
 .dialog-error { padding: 8px 10px; color: var(--app-danger-text); border-radius: 3px; background: color-mix(in srgb, var(--app-danger-text) 14%, var(--app-surface)); font-size: 12px; }

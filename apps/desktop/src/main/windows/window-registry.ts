@@ -3,7 +3,7 @@ import type { WindowState } from './window-state';
 
 export class WindowRegistry {
   private readonly states = new Map<number, WindowState>();
-  private mainWindow: BrowserWindow | null = null;
+  private primaryId: number | null = null;
 
   get values(): IterableIterator<WindowState> {
     return this.states.values();
@@ -15,23 +15,26 @@ export class WindowRegistry {
 
   focused(): WindowState | null {
     const focused = BrowserWindow.getFocusedWindow();
-    return (focused ? this.stateForWebContents(focused.webContents.id) : null)
-      ?? (this.mainWindow ? this.stateForWebContents(this.mainWindow.webContents.id) : null)
+    return (focused && !focused.isDestroyed()
+      ? this.stateForWebContents(focused.webContents.id) : null)
+      ?? (this.primaryId === null ? null : this.stateForWebContents(this.primaryId))
       ?? this.states.values().next().value
       ?? null;
   }
 
   add(state: WindowState, primary: boolean): void {
-    this.states.set(state.window.webContents.id, state);
-    if (primary) this.mainWindow = state.window;
+    this.states.set(state.webContentsId, state);
+    if (primary) this.primaryId = state.webContentsId;
   }
 
-  focus(window: BrowserWindow): void {
-    this.mainWindow = window;
+  focus(webContentsId: number): void {
+    this.primaryId = webContentsId;
   }
 
-  remove(window: BrowserWindow): void {
-    this.states.delete(window.webContents.id);
-    if (this.mainWindow === window) this.mainWindow = BrowserWindow.getAllWindows()[0] ?? null;
+  remove(webContentsId: number): void {
+    this.states.delete(webContentsId);
+    if (this.primaryId === webContentsId) {
+      this.primaryId = this.states.keys().next().value ?? null;
+    }
   }
 }

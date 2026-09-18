@@ -6,6 +6,7 @@ import { mount } from 'svelte';
 import App from '../App.svelte';
 import { MonacoEditor } from '../adapters/monaco-editor';
 import { SurfaceController } from '../application/surface-controller';
+import { ClosePromptController } from '../application/close-prompt-controller';
 import { installWorkspaceEvents } from '../application/workspace-events';
 import { createEditorInsertions } from '../editor/editor-insertions';
 import type { DesktopPort } from '../ports/desktop-port';
@@ -36,6 +37,7 @@ export function startWorkspace(desktop: DesktopPort) {
   const actions: AppActions = {
     loadMenu: (id) => desktop.getApplicationMenu(id),
     executeMenuItem: (id) => desktop.executeApplicationMenuItem(id),
+    resolveClosePrompt: (decision) => closePrompt.resolve(decision),
     activateTab: (id) => void tabs.activate(id),
     closeTab: (id) => void tabs.close(id),
     startTabDrag: (id, event) => tabDrag.start(id, event),
@@ -68,6 +70,7 @@ export function startWorkspace(desktop: DesktopPort) {
   const workspace = new WorkspaceState();
   const active = () => workspace.active;
   const session = createTabSession(active, EMPTY_ANCHOR);
+  const closePrompt = new ClosePromptController();
 
   let surfaces: SurfaceController;
   let tabs: TabController;
@@ -108,7 +111,17 @@ export function startWorkspace(desktop: DesktopPort) {
     insertTable: () => insertions.openTable(),
   });
   surfaces = new SurfaceController({ workspace, session, shell, editor, reader, preview });
-  tabs = new TabController({ desktop, workspace, session, shell, editor, reader, preview, surfaces });
+  tabs = new TabController({
+    desktop,
+    workspace,
+    session,
+    shell,
+    editor,
+    reader,
+    preview,
+    surfaces,
+    confirmClose: (name) => closePrompt.request('tab', [name]),
+  });
 
   const tabDrag = createTabDrag({
     desktop,
@@ -171,6 +184,11 @@ export function startWorkspace(desktop: DesktopPort) {
       if (session.document?.path === change.path) view.notice = true;
     },
     themeChanged: (snapshot) => void reader.applyTheme(snapshot),
+    windowCloseRequested: (names) => {
+      void closePrompt.request('window', names).then((decision) => {
+        desktop.resolveWindowClose(decision);
+      });
+    },
     command: (command) => {
       if (command === 'new-document') void documents.create();
       if (command === 'save') void documents.save(false);

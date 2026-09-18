@@ -2,6 +2,7 @@ import { _electron as electron, expect, test } from '@playwright/test';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { disposeApplication } from './electron-app';
 
 test('inserts an edited table and a URL into the Monaco document', async () => {
   const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-insertions-e2e-'));
@@ -76,7 +77,7 @@ test('inserts an edited table and a URL into the Monaco document', async () => {
       '[https://example.com/docs](<https://example.com/docs>)',
     );
   } finally {
-    await application.close();
+    await disposeApplication(application);
     await rm(temporaryRoot, { recursive: true, force: true });
   }
 });

@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { previews } from './preview-view';
+import { disposeApplication } from './electron-app';
 
 test('reloads or keeps an externally changed document with content-based dirty state', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-external-change-'));
@@ -54,7 +55,7 @@ test('reloads or keeps an externally changed document with content-based dirty s
     await expect(window.locator('.tab-dirty')).toHaveCount(0);
     await expect(window.locator('.shell')).toHaveAttribute('data-dirty-tabs', '0');
   } finally {
-    await application.close();
+    await disposeApplication(application);
     await rm(root, { recursive: true, force: true });
   }
 });

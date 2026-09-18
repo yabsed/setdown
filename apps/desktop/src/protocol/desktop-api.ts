@@ -156,8 +156,8 @@ export type MarkTexApi = {
   saveDocument(text: string, revision: number): Promise<SaveResult>;
   saveDocumentAs(text: string, revision: number): Promise<SaveResult>;
   saveTabDocument(document: DocumentSnapshot, text: string, revision: number): Promise<SaveResult>;
-  confirmCloseDocument(name: string): Promise<CloseDecision>;
   discardDocument(document: DocumentSnapshot): Promise<void>;
+  resolveWindowClose(decision: CloseDecision): void;
   finishWindowClose(saved: boolean): void;
   reloadDocument(): Promise<DocumentSnapshot | null>;
   exportPdf(text: string, revision: number, documentPath: string): Promise<ExportPdfResult>;
@@ -168,6 +168,7 @@ export type MarkTexApi = {
   onExternalChange(listener: (change: ExternalChange) => void): () => void;
   onCommand(listener: (command: AppCommand) => void): () => void;
   onThemeChanged(listener: (theme: ThemeSnapshot) => void): () => void;
+  onWindowCloseRequested(listener: (names: string[]) => void): () => void;
   onSaveBeforeClose(listener: () => void): () => void;
   onTabTransferIncoming(listener: (transfer: ClaimedTabTransfer) => void): () => void;
   onTabTransferCompleted(listener: (transfer: { transferId: string; tabId: string }) => void): () => void;

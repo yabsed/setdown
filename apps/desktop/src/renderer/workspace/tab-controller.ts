@@ -6,7 +6,12 @@ import {
   type WorkspaceState,
   type WorkspaceTab,
 } from '../../core/workspace/workspace-state';
-import type { ClaimedTabTransfer, DocumentSnapshot, TransferableTab } from '../../protocol/desktop-api';
+import type {
+  ClaimedTabTransfer,
+  CloseDecision,
+  DocumentSnapshot,
+  TransferableTab,
+} from '../../protocol/desktop-api';
 import type { MonacoEditor } from '../adapters/monaco-editor';
 import type { SurfaceController } from '../application/surface-controller';
 import type { DesktopPort } from '../ports/desktop-port';
@@ -23,6 +28,7 @@ type Options = {
   reader: ReaderController;
   preview: PreviewSession;
   surfaces: SurfaceController;
+  confirmClose(name: string): Promise<CloseDecision>;
 };
 
 const TRANSFER_ANNOUNCE_GRACE_MS = 150;
@@ -147,7 +153,7 @@ export class TabController {
     if (index < 0) return;
     const tab = workspace.tabs[index];
     if (this.dirty(tab)) {
-      const decision = await desktop.confirmCloseDocument(tab.document.name);
+      const decision = await this.options.confirmClose(tab.document.name);
       if (decision === 'cancel') return;
       if (decision === 'save') {
         const result = await desktop.saveTabDocument(tab.document, this.text(tab), tab.revision);

@@ -38,7 +38,7 @@ export class ReaderController {
   constructor(private readonly options: Options) {
     this.themeId = options.initialTheme.id;
     this.appliedThemeRevision = options.initialTheme.revision;
-    window.addEventListener('setdown:menu-visibility', ((event: CustomEvent<boolean>) => {
+    window.addEventListener('setdown:native-overlay-visibility', ((event: CustomEvent<boolean>) => {
       if (event.detail) void this.freeze();
       else this.unfreeze();
     }) as EventListener);
@@ -235,7 +235,9 @@ export class ReaderController {
     const token = ++this.freezeToken;
     const tab = this.options.active();
     if (!tab || tab.surface !== 'viewer' || !tab.previewUrl) return;
-    const image = await this.options.desktop.capturePreview(tab.id).catch(() => null);
+    const capture = this.options.desktop.capturePreview(tab.id).catch(() => null);
+    this.syncView();
+    const image = await capture;
     if (token !== this.freezeToken || this.freezeDepth === 0) return;
     if (image) {
       this.options.frames.style.backgroundImage = `url("${image}")`;

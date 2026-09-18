@@ -4,6 +4,7 @@
   import ReaderSurface from './reader/ReaderSurface.svelte';
   import TabChrome from './tabs/TabChrome.svelte';
   import TitleBar from './shell/TitleBar.svelte';
+  import ClosePrompt from './shell/ClosePrompt.svelte';
   import { view, type AppActions } from './view-state.svelte';
 
   let { actions }: { actions: AppActions } = $props();
@@ -22,4 +23,5 @@
   <EmptyState {actions} />
   <ReaderSurface {actions} />
   <InsertionDialogs {actions} />
+  <ClosePrompt {actions} />
 </section>

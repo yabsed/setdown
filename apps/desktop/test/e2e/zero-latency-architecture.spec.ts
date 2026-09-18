@@ -2,6 +2,7 @@ import { _electron as electron, expect, test } from '@playwright/test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { disposeApplication } from './electron-app';
 
 test('keeps one live preview WebContents through Esc and window transfer', async () => {
   const configRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-zero-latency-e2e-'));
@@ -23,9 +24,14 @@ test('keeps one live preview WebContents through Esc and window transfer', async
         && candidate.webContents.getURL().startsWith('marktex-preview://document/')
         && !candidate.webContents.getURL().includes('/warmup-'));
       if (!owner || !preview || !('webContents' in preview)) return null;
-      await preview.webContents.executeJavaScript(
-        'window.__setdownTransferSentinel = 41; window.scrollTo(0, 240);',
-      );
+      try {
+        await preview.webContents.executeJavaScript(
+          'window.__setdownTransferSentinel = 41; window.scrollTo(0, 240);',
+        );
+      } catch {
+        // Preview navigation과 정확히 겹치면 실행 context가 교체된다. poll이 다시 시도한다.
+        return null;
+      }
       return {
         ownerId: owner.webContents.id,
         previewId: preview.webContents.id,
@@ -108,7 +114,7 @@ test('keeps one live preview WebContents through Esc and window transfer', async
     expect(transferred.sentinel).toBe(41);
     await expect.poll(async () => (await readTransferred())?.scrollY ?? 0).toBeGreaterThan(0);
   } finally {
-    await application.close();
+    await disposeApplication(application);
     await rm(configRoot, { recursive: true, force: true });
   }
 });

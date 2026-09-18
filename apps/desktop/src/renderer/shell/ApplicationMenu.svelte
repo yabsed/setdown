@@ -26,7 +26,7 @@
   } | null>(null);
 
   const announce = (open: boolean) => window.dispatchEvent(
-    new CustomEvent('setdown:menu-visibility', { detail: open }),
+    new CustomEvent('setdown:native-overlay-visibility', { detail: open }),
   );
 
   function close() {

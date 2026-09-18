@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { previews } from './preview-view';
+import { disposeApplication } from './electron-app';
 
 test('opens a parent-relative Markdown link in a document tab', async () => {
   const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-local-link-e2e-'));
@@ -58,7 +59,7 @@ test('opens a parent-relative Markdown link in a document tab', async () => {
     await expect(window.locator('.document-tab[aria-selected="true"] .tab-name'))
       .toHaveText('2024_Mondrian.md');
   } finally {
-    await application.close();
+    await disposeApplication(application);
     await rm(temporaryRoot, { recursive: true, force: true });
   }
 });
