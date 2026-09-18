@@ -178,6 +178,7 @@ export function startWorkspace(desktop: DesktopPort) {
     surfaces,
     confirmClose: (names) => closePrompt.request('tab', names),
     workspaceChanged: () => projectContextChanged(),
+    documentChanged: (path, text) => projects.documentChanged(path, text),
   });
 
   const tabDrag = createTabDrag({
@@ -229,6 +230,8 @@ export function startWorkspace(desktop: DesktopPort) {
       shell.dataset.gitDiff = String(open);
       reader.setSuspended(activeReview);
     },
+    workingTreeBuffer: tabs.documentBuffer,
+    workingTreeChanged: tabs.acceptWorkingTreeBuffer,
     canSaveWorkingTree: tabs.canAcceptWorkingTreeEdit,
     workingTreeSaved: tabs.acceptWorkingTreeSave,
     highlight: (query, target) => {

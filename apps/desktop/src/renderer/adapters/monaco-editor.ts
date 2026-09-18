@@ -124,6 +124,19 @@ export class MonacoEditor {
     if (active) this.activate(tab);
   }
 
+  /** Updates an existing document buffer without changing its saved baseline. */
+  setText(tab: WorkspaceTab, text: string): boolean {
+    const model = this.models.get(tab.id);
+    if (!model) {
+      tab.text = text;
+      return false;
+    }
+    if (model.getValue() === text) return this.editorValue?.getModel() === model;
+    const active = this.editorValue?.getModel() === model;
+    model.setValue(text);
+    return active;
+  }
+
   dispose(tabId: string): void {
     const model = this.models.get(tabId);
     const editor = this.editorValue;

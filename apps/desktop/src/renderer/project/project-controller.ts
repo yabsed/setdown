@@ -29,7 +29,9 @@ type Options = {
   prepareRemove(path: string): Promise<boolean>;
   preferRenderedDiff(): boolean;
   reviewChanged(open: boolean, active: boolean): void;
-  canSaveWorkingTree(path: string, expectedText: string): boolean;
+  workingTreeBuffer(path: string): string | null;
+  workingTreeChanged(path: string, text: string): void;
+  canSaveWorkingTree(path: string, expectedText: string, workingText: string): boolean;
   workingTreeSaved(path: string, previousText: string, document: DocumentSnapshot): void;
   resized(): void;
 };
@@ -61,6 +63,8 @@ export class ProjectController {
       desktop: options.desktop,
       preferRendered: options.preferRenderedDiff,
       reviewChanged: options.reviewChanged,
+      workingTreeBuffer: options.workingTreeBuffer,
+      workingTreeChanged: options.workingTreeChanged,
       canSaveWorkingTree: options.canSaveWorkingTree,
       workingTreeSaved: options.workingTreeSaved,
     });
@@ -139,6 +143,9 @@ export class ProjectController {
   search = (query: string): void => this.searcher.search(query);
   toggleSearchGroup = (path: string): void => this.searcher.toggleGroup(path);
   contextChanged = (): void => this.searcher.contextChanged();
+  documentChanged = (path: string, text: string): void => {
+    this.sourceControl.documentChanged(path, text);
+  };
   documentSaved = (document: DocumentSnapshot): void => {
     void this.sourceControl.documentSaved(document);
   };
