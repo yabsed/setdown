@@ -54,7 +54,9 @@ document never has to replace useful content with a blank or incomplete Preview.
 Setdown remains document-first: opening a Markdown file from the operating system
 opens that document without turning its parent directory into a project. When a
 folder is explicitly opened, a VS Code-inspired side bar adds an Explorer, Markdown
-search, and Git status as optional navigation tools. The folder does not own the
+search, and source control as optional navigation tools. The Explorer creates,
+renames, moves, and safely trashes entries; source control reviews diffs and supports
+staging, unstaging, discard, commit, fetch, pull, push, and sync. The folder does not own the
 open tabs, and closing the side bar never closes a document.
 
 The Setdown wordmark toggles the folder tools. Both the left folder panel and the
@@ -62,7 +64,7 @@ right document outline can be resized by dragging their inner edge. Reloading th
 window restores their visibility, selected view, expanded folders, and widths.
 
 Directories load only when expanded, search runs outside the renderer after a short
-typing delay, and the Git view reads the repository on demand. None of these paths
+typing delay, and Git commands run in the main process on demand. None of these paths
 participate in tab switching or Viewer activation.
 
 ### Reading tools
@@ -165,13 +167,18 @@ apps/
 │   │   ├── core/             Pure domain rules with no UI or Electron dependency
 │   │   ├── protocol/         Serializable IPC contracts
 │   │   ├── main/             Electron system adapters and composition root
+│   │   │   └── project/      Isolated Explorer, search, Git, and path services
 │   │   ├── preload/          Safe renderer IPC boundary
 │   │   ├── preview-runtime/  Runtime for isolated Reader WebContents
 │   │   └── renderer/
 │   │       ├── application/  Input and surface-transition use cases
 │   │       ├── ports/        Interfaces required by the renderer
 │   │       ├── adapters/     Electron and Monaco implementations
-│   │       └── */            Svelte UI and feature controllers
+│   │       ├── project/
+│   │       │   ├── explorer/ File-tree UI and controller
+│   │       │   ├── search/   Mode-aware folder search
+│   │       │   └── source-control/ Git UI, diff review, and controller
+│   │       └── */            Remaining Svelte UI and feature controllers
 │   └── test/
 └── code-growth/              Repository growth graph app and generated output
 ```

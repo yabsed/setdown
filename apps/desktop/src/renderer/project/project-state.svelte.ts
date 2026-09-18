@@ -1,4 +1,5 @@
 import type {
+  GitDiff,
   GitSnapshot,
   ProjectEntry,
   ProjectFolder,
@@ -54,7 +55,11 @@ export const project = $state({
   searchResults: [] as ProjectSearchResult[],
   searching: false,
   git: null as GitSnapshot | null,
+  gitDiff: null as GitDiff | null,
+  gitDiffLoading: false,
   gitLoading: false,
+  gitBusy: false,
+  commitMessage: '',
   error: '',
 });
 

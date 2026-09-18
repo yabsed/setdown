@@ -53,11 +53,24 @@ export function startWorkspace(desktop: DesktopPort) {
     selectProjectView: (target) => projects.select(target),
     chooseProjectFolder: () => void projects.chooseFolder(),
     refreshProjectExplorer: () => void projects.refreshExplorer(),
+    collapseProjectExplorer: () => projects.collapseExplorer(),
     toggleProjectDirectory: (path) => void projects.toggleDirectory(path),
     openProjectFile: (path) => void projects.openFile(path),
+    createProjectEntry: (parent, name, kind) => projects.createEntry(parent, name, kind),
+    renameProjectEntry: (path, name) => projects.renameEntry(path, name),
+    moveProjectEntry: (path, target) => projects.moveEntry(path, target),
+    trashProjectEntry: (path) => projects.trashEntry(path),
     openProjectSearchResult: (result) => void projects.openSearchResult(result),
     searchProject: (query) => projects.search(query),
     refreshProjectGit: () => void projects.refreshGit(),
+    reviewProjectGitChange: (path, staged) => void projects.reviewGitChange(path, staged),
+    closeProjectGitDiff: () => projects.closeGitDiff(),
+    initializeProjectGit: () => void projects.initializeGit(),
+    stageProjectGit: (paths) => void projects.stageGit(paths),
+    unstageProjectGit: (paths) => void projects.unstageGit(paths),
+    discardProjectGit: (paths) => void projects.discardGit(paths),
+    commitProjectGit: (message) => void projects.commitGit(message),
+    runProjectGitRemote: (action) => void projects.runGitRemote(action),
     toggleSurface: () => surfaces.toggle(),
     openTable: () => insertions.openTable(),
     openLink: () => insertions.openLink(),
@@ -145,7 +158,7 @@ export function startWorkspace(desktop: DesktopPort) {
     reader,
     preview,
     surfaces,
-    confirmClose: (name) => closePrompt.request('tab', [name]),
+    confirmClose: (names) => closePrompt.request('tab', names),
     workspaceChanged: () => projectContextChanged(),
   });
 
@@ -186,6 +199,8 @@ export function startWorkspace(desktop: DesktopPort) {
       await tabs.show(documentSnapshot);
       return true;
     },
+    pathMoved: tabs.relocatePath,
+    prepareRemove: tabs.prepareRemove,
     highlight: (query, target) => {
       const editing = workspace.active?.surface === 'editor';
       const currentTarget = target?.surface === (editing ? 'editor' : 'viewer')

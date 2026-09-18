@@ -90,9 +90,23 @@ const api: MarkTexApi = {
   restoreProjectFolder: (folderPath) => ipcRenderer.invoke('project:restore-folder', folderPath),
   readProjectDirectory: (directoryPath) =>
     ipcRenderer.invoke('project:read-directory', directoryPath),
+  createProjectEntry: (parentPath, name, kind) =>
+    ipcRenderer.invoke('project:create-entry', { parentPath, name, kind }),
+  renameProjectEntry: (entryPath, name) =>
+    ipcRenderer.invoke('project:rename-entry', { entryPath, name }),
+  moveProjectEntry: (entryPath, targetDirectory) =>
+    ipcRenderer.invoke('project:move-entry', { entryPath, targetDirectory }),
+  trashProjectEntry: (entryPath) => ipcRenderer.invoke('project:trash-entry', entryPath),
   openProjectFile: (filePath) => ipcRenderer.invoke('project:open-file', filePath),
   searchProject: (request) => ipcRenderer.invoke('project:search', request),
   getGitStatus: () => ipcRenderer.invoke('project:git-status'),
+  getGitDiff: (filePath, staged) => ipcRenderer.invoke('project:git-diff', { filePath, staged }),
+  initializeGit: () => ipcRenderer.invoke('project:git-init'),
+  stageGit: (paths) => ipcRenderer.invoke('project:git-stage', paths),
+  unstageGit: (paths) => ipcRenderer.invoke('project:git-unstage', paths),
+  discardGit: (paths) => ipcRenderer.invoke('project:git-discard', paths),
+  commitGit: (message) => ipcRenderer.invoke('project:git-commit', message),
+  runGitRemote: (action) => ipcRenderer.invoke('project:git-remote', action),
   openLink: (href) => ipcRenderer.invoke('document:open-link', href),
   onDocumentOpened: (listener) =>
     subscribe<DocumentSnapshot>('document:opened', listener),

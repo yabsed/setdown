@@ -1,16 +1,15 @@
 import type {
-  ProjectEntry,
+  GitRemoteAction,
+  ProjectEntryKind,
   ProjectFolder,
   ProjectSearchDocument,
   ProjectSearchResult,
 } from '../../protocol/desktop-api';
 import type { DesktopPort } from '../ports/desktop-port';
-import {
-  project,
-  rememberProjectState,
-  type ProjectView,
-  type VisibleProjectEntry,
-} from './project-state.svelte';
+import { ExplorerController } from './explorer/explorer-controller';
+import { project, rememberProjectState, type ProjectView } from './project-state.svelte';
+import { SearchController } from './search/search-controller';
+import { SourceControlController } from './source-control/source-control-controller';
 
 type SearchTarget = Pick<
   ProjectSearchResult,
@@ -22,31 +21,45 @@ type Options = {
   searchDocuments(): ProjectSearchDocument[];
   showDocument(path: string): Promise<boolean>;
   highlight(query: string, target?: SearchTarget): void;
+  pathMoved(from: string, to: string): Promise<void>;
+  prepareRemove(path: string): Promise<boolean>;
   resized(): void;
 };
 
+/** Project composition facade. Feature controllers own Explorer, Search, and Git behavior. */
 export class ProjectController {
-  private readonly children = new Map<string, ProjectEntry[]>();
-  private readonly expanded = new Set<string>();
-  private searchTimer?: number;
-  private searchRequest = 0;
+  private readonly explorer: ExplorerController;
+  private readonly searcher: SearchController;
+  private readonly sourceControl: SourceControlController;
 
   constructor(private readonly options: Options) {
-    for (const path of project.expanded) this.expanded.add(path);
+    this.explorer = new ExplorerController({
+      desktop: options.desktop,
+      showDocument: options.showDocument,
+      pathMoved: options.pathMoved,
+      prepareRemove: options.prepareRemove,
+    });
+    this.searcher = new SearchController({
+      desktop: options.desktop,
+      documents: options.searchDocuments,
+      open: this.explorer.open,
+      highlight: options.highlight,
+    });
+    this.sourceControl = new SourceControlController(options.desktop);
   }
 
-  toggle = () => {
+  toggle = (): void => {
     project.visible = !project.visible;
     rememberProjectState();
-    this.highlight();
+    this.searcher.highlight();
     this.resize();
   };
 
-  select = (view: ProjectView) => {
+  select = (view: ProjectView): void => {
     if (project.open && project.activeView === view) {
       project.open = false;
       rememberProjectState();
-      this.highlight();
+      this.searcher.highlight();
       return this.resize();
     }
     project.visible = true;
@@ -54,18 +67,17 @@ export class ProjectController {
     project.activeView = view;
     project.error = '';
     rememberProjectState();
-    if (view === 'git') void this.refreshGit();
-    this.highlight();
+    if (view === 'git') void this.sourceControl.refresh();
+    this.searcher.highlight();
     this.resize();
   };
 
-  chooseFolder = async () => {
+  chooseFolder = async (): Promise<void> => {
     const folder = await this.options.desktop.chooseProjectFolder();
-    if (!folder) return;
-    await this.replaceFolder(folder);
+    if (folder) await this.replaceFolder(folder);
   };
 
-  openFolderPath = async (folderPath: string) => {
+  openFolderPath = async (folderPath: string): Promise<void> => {
     const folder = await this.options.desktop.restoreProjectFolder(folderPath);
     if (!folder) {
       project.error = 'Drop a folder to open it.';
@@ -74,24 +86,7 @@ export class ProjectController {
     await this.replaceFolder(folder);
   };
 
-  private async replaceFolder(folder: ProjectFolder) {
-    project.folder = folder;
-    project.visible = true;
-    project.open = true;
-    project.activeView = 'explorer';
-    project.searchQuery = '';
-    project.searchResults = [];
-    project.git = null;
-    this.options.highlight('');
-    void this.options.desktop.searchProject({ query: '', documents: [] });
-    this.children.clear();
-    this.expanded.clear();
-    rememberProjectState();
-    await this.load(folder.path);
-    this.resize();
-  }
-
-  restore = async () => {
+  restore = async (): Promise<void> => {
     const remembered = project.folder;
     const folder = await this.options.desktop.getProjectFolder()
       ?? (remembered ? await this.options.desktop.restoreProjectFolder(remembered.path) : null);
@@ -102,130 +97,55 @@ export class ProjectController {
     }
     project.folder = folder;
     rememberProjectState();
-    await this.load(folder.path);
-    for (const directoryPath of [...this.expanded]) {
-      if (directoryPath !== folder.path) await this.load(directoryPath);
-    }
-    if (project.activeView === 'git') await this.refreshGit();
+    await this.explorer.restore(folder);
+    if (project.activeView === 'git') await this.sourceControl.refresh();
     this.resize();
   };
 
-  refreshExplorer = async () => {
-    if (!project.folder) return;
-    this.children.clear();
-    this.expanded.clear();
-    await this.load(project.folder.path);
+  refreshExplorer = (): Promise<void> => this.explorer.refresh();
+  collapseExplorer = (): void => this.explorer.collapse();
+  toggleDirectory = (path: string): Promise<void> => this.explorer.toggle(path);
+  openFile = (path: string): Promise<boolean> => this.explorer.open(path);
+  createEntry = (parent: string, name: string, kind: ProjectEntryKind): Promise<void> =>
+    this.explorer.create(parent, name, kind);
+  renameEntry = (path: string, name: string): Promise<void> => this.explorer.rename(path, name);
+  moveEntry = (path: string, target: string): Promise<void> => this.explorer.move(path, target);
+  trashEntry = (path: string): Promise<void> => this.explorer.trash(path);
+
+  openSearchResult = (result: ProjectSearchResult): Promise<void> => this.searcher.open(result);
+  search = (query: string): void => this.searcher.search(query);
+  contextChanged = (): void => this.searcher.contextChanged();
+
+  refreshGit = (): Promise<void> => this.sourceControl.refresh();
+  reviewGitChange = (path: string, staged: boolean): Promise<void> =>
+    this.sourceControl.review(path, staged);
+  closeGitDiff = (): void => this.sourceControl.closeDiff();
+  initializeGit = (): Promise<void> => this.sourceControl.initialize();
+  stageGit = (paths: string[]): Promise<void> => this.sourceControl.stage(paths);
+  unstageGit = (paths: string[]): Promise<void> => this.sourceControl.unstage(paths);
+  discardGit = async (paths: string[]): Promise<void> => {
+    await this.sourceControl.discard(paths);
+    await this.explorer.refresh();
+  };
+  commitGit = (message: string): Promise<void> => this.sourceControl.commit(message);
+  runGitRemote = async (action: GitRemoteAction): Promise<void> => {
+    await this.sourceControl.remote(action);
+    if (action !== 'fetch') await this.explorer.refresh();
   };
 
-  toggleDirectory = async (directoryPath: string) => {
-    if (this.expanded.delete(directoryPath)) return this.renderEntries();
-    this.expanded.add(directoryPath);
-    this.renderEntries();
-    if (!this.children.has(directoryPath)) await this.load(directoryPath);
-  };
-
-  openFile = async (filePath: string): Promise<boolean> => {
-    try {
-      project.error = '';
-      return await this.options.showDocument(filePath);
-    } catch (error) {
-      project.error = error instanceof Error ? error.message : String(error);
-      return false;
-    }
-  };
-
-  openSearchResult = async (result: ProjectSearchResult) => {
-    if (await this.openFile(result.path)) this.options.highlight(project.searchQuery.trim(), result);
-  };
-
-  search = (query: string) => {
-    project.searchQuery = query;
-    this.highlight();
-    window.clearTimeout(this.searchTimer);
-    if (!query.trim() || !project.folder) {
-      project.searchResults = [];
-      project.searching = false;
-      if (project.folder) void this.options.desktop.searchProject({ query: '', documents: [] });
-      return;
-    }
-    project.searching = true;
-    this.searchTimer = window.setTimeout(() => void this.runSearch(query), 200);
-  };
-
-  contextChanged = () => {
-    if (project.searchQuery.trim()) this.search(project.searchQuery);
-  };
-
-  refreshGit = async () => {
-    if (!project.folder || project.gitLoading) return;
-    project.gitLoading = true;
-    project.error = '';
-    try {
-      project.git = await this.options.desktop.getGitStatus();
-    } catch (error) {
-      project.error = error instanceof Error ? error.message : String(error);
-    } finally {
-      project.gitLoading = false;
-    }
-  };
-
-  private async load(directoryPath: string) {
-    project.error = '';
-    try {
-      this.children.set(directoryPath, await this.options.desktop.readProjectDirectory(directoryPath));
-    } catch (error) {
-      project.error = error instanceof Error ? error.message : String(error);
-      this.expanded.delete(directoryPath);
-    }
-    this.renderEntries();
-  }
-
-  private async runSearch(query: string) {
-    const request = ++this.searchRequest;
-    try {
-      const results = await this.options.desktop.searchProject({
-        query,
-        documents: this.options.searchDocuments(),
-      });
-      if (request === this.searchRequest && query === project.searchQuery) {
-        project.searchResults = results;
-        project.error = '';
-      }
-    } catch (error) {
-      if (request === this.searchRequest) {
-        project.error = error instanceof Error ? error.message : String(error);
-      }
-    } finally {
-      if (request === this.searchRequest) project.searching = false;
-    }
-  }
-
-  private renderEntries() {
-    const visible: VisibleProjectEntry[] = [];
-    const append = (directoryPath: string, depth: number) => {
-      for (const entry of this.children.get(directoryPath) ?? []) {
-        const expanded = entry.kind === 'directory' && this.expanded.has(entry.path);
-        visible.push({
-          ...entry,
-          depth,
-          expanded,
-          loading: expanded && !this.children.has(entry.path),
-        });
-        if (expanded) append(entry.path, depth + 1);
-      }
-    };
-    if (project.folder) append(project.folder.path, 0);
-    project.entries = visible;
-    project.expanded = [...this.expanded];
+  private async replaceFolder(folder: ProjectFolder): Promise<void> {
+    project.folder = folder;
+    project.visible = true;
+    project.open = true;
+    project.activeView = 'explorer';
+    this.searcher.clear();
+    this.sourceControl.clear();
     rememberProjectState();
+    await this.explorer.reset(folder);
+    this.resize();
   }
 
-  private resize() {
+  private resize(): void {
     window.requestAnimationFrame(this.options.resized);
-  }
-
-  private highlight() {
-    this.options.highlight(project.visible && project.open && project.activeView === 'search'
-      ? project.searchQuery.trim() : '');
   }
 }

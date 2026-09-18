@@ -26,9 +26,12 @@ describe('project service', () => {
 
   test('turns porcelain status into compact source-control rows', () => {
     expect(parseGitStatus(' M notes.md\nA  staged.md\n?? new file.md\n')).toEqual([
-      { path: 'notes.md', filePath: '', status: 'M', staged: false },
-      { path: 'staged.md', filePath: '', status: 'A', staged: true },
-      { path: 'new file.md', filePath: '', status: '??', staged: false },
+      { path: 'notes.md', filePath: '', status: 'M', indexStatus: ' ',
+        workingTreeStatus: 'M', staged: false, unstaged: true, conflict: false },
+      { path: 'staged.md', filePath: '', status: 'A', indexStatus: 'A',
+        workingTreeStatus: ' ', staged: true, unstaged: false, conflict: false },
+      { path: 'new file.md', filePath: '', status: 'U', indexStatus: '?',
+        workingTreeStatus: '?', staged: false, unstaged: true, conflict: false },
     ]);
   });
 

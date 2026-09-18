@@ -29,7 +29,7 @@ type Options = {
   reader: ReaderController;
   preview: PreviewSession;
   surfaces: SurfaceController;
-  confirmClose(name: string): Promise<CloseDecision>;
+  confirmClose(names: string[]): Promise<CloseDecision>;
   workspaceChanged(): void;
 };
 
@@ -150,37 +150,98 @@ export class TabController {
     }
   };
 
-  close = async (tabId: string): Promise<void> => {
+  close = async (tabId: string, confirmed = false): Promise<boolean> => {
     const { desktop, editor, preview, reader, session, surfaces, workspace } = this.options;
     let index = workspace.tabs.findIndex((tab) => tab.id === tabId);
-    if (index < 0) return;
+    if (index < 0) return true;
     const tab = workspace.tabs[index];
-    if (this.dirty(tab)) {
-      const decision = await this.options.confirmClose(tab.document.name);
-      if (decision === 'cancel') return;
+    if (this.dirty(tab) && !confirmed) {
+      const decision = await this.options.confirmClose([tab.document.name]);
+      if (decision === 'cancel') return false;
       if (decision === 'save') {
         const result = await desktop.saveTabDocument(tab.document, this.text(tab), tab.revision);
-        if (result.canceled || !result.document) return;
+        if (result.canceled || !result.document) return false;
         tab.document = result.document;
         tab.revision = result.document.revision;
       }
     }
     if (tab.document.isUntitled) await desktop.discardDocument(tab.document);
     index = workspace.tabs.findIndex((candidate) => candidate.id === tabId);
-    if (index < 0) return;
+    if (index < 0) return true;
     const removed = workspace.remove(tab.id);
-    if (!removed) return;
+    if (!removed) return true;
     reader.destroy(tab.id);
     editor.dispose(tab.id);
-    if (!removed.wasActive) return this.render();
+    if (!removed.wasActive) {
+      this.render();
+      return true;
+    }
     const replacement = workspace.replacement(removed.index);
-    if (replacement) return void await this.activate(replacement.id);
+    if (replacement) {
+      await this.activate(replacement.id);
+      return true;
+    }
     preview.reset();
     session.document = null;
     editor.clear();
     surfaces.set('empty');
     this.updateChrome();
     this.render();
+    return true;
+  };
+
+  prepareRemove = async (entryPath: string): Promise<boolean> => {
+    const affected = this.options.workspace.tabs.filter((tab) =>
+      this.pathUnder(tab.document.path, entryPath));
+    const dirty = affected.filter(this.dirty);
+    if (dirty.length) {
+      const decision = await this.options.confirmClose(dirty.map((tab) => tab.document.name));
+      if (decision === 'cancel') return false;
+      if (decision === 'save') {
+        for (const tab of dirty) {
+          const result = await this.options.desktop.saveTabDocument(
+            tab.document,
+            this.text(tab),
+            tab.revision,
+          );
+          if (result.canceled || !result.document) return false;
+          tab.document = result.document;
+          tab.revision = result.document.revision;
+        }
+      }
+    }
+    for (const tab of affected) {
+      if (!await this.close(tab.id, true)) return false;
+    }
+    return true;
+  };
+
+  relocatePath = async (from: string, to: string): Promise<void> => {
+    const { desktop, preview, session, workspace } = this.options;
+    let activeMoved = false;
+    for (const tab of workspace.tabs) {
+      if (!this.pathUnder(tab.document.path, from)) continue;
+      const nextPath = `${to}${tab.document.path.slice(from.length)}`;
+      tab.document = {
+        ...tab.document,
+        path: nextPath,
+        name: nextPath.split(/[\\/]/).at(-1) || tab.document.name,
+      };
+      tab.previewUrl = null;
+      tab.previewRevision = null;
+      tab.previewTheme = null;
+      activeMoved ||= tab.id === workspace.activeId;
+    }
+    this.updateChrome();
+    if (!activeMoved || !workspace.active || !session.document) return;
+    preview.reset();
+    await desktop.activateDocument(
+      workspace.active.document,
+      this.text(workspace.active),
+      workspace.active.revision,
+    );
+    if (session.surface === 'viewer') await preview.ensure(session.revision);
+    else preview.schedule(session.revision);
   };
 
   removeTransferred = async (tabId: string): Promise<void> => {
@@ -335,5 +396,9 @@ export class TabController {
 
   private countLines(text: string): number {
     return text.length === 0 ? 1 : text.split(/\r\n|\r|\n/).length;
+  }
+
+  private pathUnder(candidate: string, root: string): boolean {
+    return candidate === root || candidate.startsWith(`${root}/`) || candidate.startsWith(`${root}\\`);
   }
 }

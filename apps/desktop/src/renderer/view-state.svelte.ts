@@ -1,6 +1,8 @@
 import type {
   ApplicationMenuEntry,
   CloseDecision,
+  GitRemoteAction,
+  ProjectEntryKind,
   ProjectSearchResult,
 } from '../protocol/desktop-api';
 import type { ProjectView } from './project/project-state.svelte';
@@ -38,11 +40,24 @@ export type AppActions = {
   selectProjectView(view: ProjectView): void;
   chooseProjectFolder(): void;
   refreshProjectExplorer(): void;
+  collapseProjectExplorer(): void;
   toggleProjectDirectory(path: string): void;
   openProjectFile(path: string): void;
+  createProjectEntry(parentPath: string, name: string, kind: ProjectEntryKind): Promise<void>;
+  renameProjectEntry(path: string, name: string): Promise<void>;
+  moveProjectEntry(path: string, targetDirectory: string): Promise<void>;
+  trashProjectEntry(path: string): Promise<void>;
   openProjectSearchResult(result: ProjectSearchResult): void;
   searchProject(query: string): void;
   refreshProjectGit(): void;
+  reviewProjectGitChange(path: string, staged: boolean): void;
+  closeProjectGitDiff(): void;
+  initializeProjectGit(): void;
+  stageProjectGit(paths: string[]): void;
+  unstageProjectGit(paths: string[]): void;
+  discardProjectGit(paths: string[]): void;
+  commitProjectGit(message: string): void;
+  runProjectGitRemote(action: GitRemoteAction): void;
   toggleSurface(): void;
   openTable(): void;
   openLink(): void;

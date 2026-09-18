@@ -42,6 +42,13 @@ export type ProjectEntry = {
   kind: 'directory' | 'document' | 'file';
 };
 
+export type ProjectEntryKind = 'file' | 'directory';
+
+export type ProjectEntryMove = {
+  from: string;
+  to: string;
+};
+
 export type ProjectSearchResult = {
   path: string;
   name: string;
@@ -69,13 +76,29 @@ export type GitChange = {
   path: string;
   filePath: string;
   status: string;
+  indexStatus: string;
+  workingTreeStatus: string;
   staged: boolean;
+  unstaged: boolean;
+  conflict: boolean;
 };
 
 export type GitSnapshot = {
   repository: boolean;
   branch: string;
+  upstream: string;
+  ahead: number;
+  behind: number;
   changes: GitChange[];
+};
+
+export type GitRemoteAction = 'fetch' | 'pull' | 'push' | 'sync';
+
+export type GitDiff = {
+  path: string;
+  filePath: string;
+  staged: boolean;
+  patch: string;
 };
 
 export type TabStateSummary = {
@@ -212,9 +235,20 @@ export type MarkTexApi = {
   getProjectFolder(): Promise<ProjectFolder | null>;
   restoreProjectFolder(path: string): Promise<ProjectFolder | null>;
   readProjectDirectory(directoryPath: string): Promise<ProjectEntry[]>;
+  createProjectEntry(parentPath: string, name: string, kind: ProjectEntryKind): Promise<ProjectEntry>;
+  renameProjectEntry(entryPath: string, name: string): Promise<ProjectEntryMove>;
+  moveProjectEntry(entryPath: string, targetDirectory: string): Promise<ProjectEntryMove>;
+  trashProjectEntry(entryPath: string): Promise<void>;
   openProjectFile(filePath: string): Promise<DocumentSnapshot | null>;
   searchProject(request: ProjectSearchRequest): Promise<ProjectSearchResult[]>;
   getGitStatus(): Promise<GitSnapshot>;
+  getGitDiff(filePath: string, staged: boolean): Promise<GitDiff>;
+  initializeGit(): Promise<GitSnapshot>;
+  stageGit(paths: string[]): Promise<GitSnapshot>;
+  unstageGit(paths: string[]): Promise<GitSnapshot>;
+  discardGit(paths: string[]): Promise<GitSnapshot>;
+  commitGit(message: string): Promise<GitSnapshot>;
+  runGitRemote(action: GitRemoteAction): Promise<GitSnapshot>;
   openLink(href: string): Promise<void>;
   onDocumentOpened(listener: (document: DocumentSnapshot) => void): () => void;
   onExternalChange(listener: (change: ExternalChange) => void): () => void;

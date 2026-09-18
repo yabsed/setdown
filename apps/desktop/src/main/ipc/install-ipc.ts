@@ -5,6 +5,8 @@ import { normalizePreviewTheme } from '../../core/preview/preview-preferences';
 import type {
   CloseDecision,
   DocumentSnapshot,
+  GitRemoteAction,
+  ProjectEntryKind,
   ProjectSearchRequest,
   SaveResult,
   TabStateSummary,
@@ -154,11 +156,30 @@ export function installIpc(options: Options): void {
     projects.restore(state, folderPath));
   channels.handle('project:read-directory', (state, directoryPath: string) =>
     projects.readDirectory(state, directoryPath));
+  channels.handle('project:create-entry', (state, request: {
+    parentPath: string; name: string; kind: ProjectEntryKind;
+  }) => projects.createEntry(state, request.parentPath, request.name, request.kind));
+  channels.handle('project:rename-entry', (state, request: { entryPath: string; name: string }) =>
+    projects.renameEntry(state, request.entryPath, request.name));
+  channels.handle('project:move-entry', (state, request: {
+    entryPath: string; targetDirectory: string;
+  }) => projects.moveEntry(state, request.entryPath, request.targetDirectory));
+  channels.handle('project:trash-entry', (state, entryPath: string) =>
+    projects.trashEntry(state, entryPath));
   channels.handle('project:open-file', (state, filePath: string) =>
     documents.open(state, projects.assertDocument(state, filePath), false));
   channels.handle('project:search', (state, request: ProjectSearchRequest) =>
     projects.search(state, request));
   channels.handle('project:git-status', (state) => projects.gitStatus(state));
+  channels.handle('project:git-diff', (state, request: { filePath: string; staged: boolean }) =>
+    projects.gitDiff(state, request.filePath, Boolean(request.staged)));
+  channels.handle('project:git-init', (state) => projects.initializeGit(state));
+  channels.handle('project:git-stage', (state, paths: string[]) => projects.stageGit(state, paths));
+  channels.handle('project:git-unstage', (state, paths: string[]) => projects.unstageGit(state, paths));
+  channels.handle('project:git-discard', (state, paths: string[]) => projects.discardGit(state, paths));
+  channels.handle('project:git-commit', (state, message: string) => projects.commitGit(state, message));
+  channels.handle('project:git-remote', (state, action: GitRemoteAction) =>
+    projects.runGitRemote(state, action));
   channels.handle('document:reload', (state) => documents.reload(state));
   channels.handle('document:open-link', (state, href: string) => openLink(documents, state, href));
 }

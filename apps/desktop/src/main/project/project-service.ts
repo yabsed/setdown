@@ -1,83 +1,40 @@
-import { execFile } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { promisify } from 'node:util';
 import { dialog } from 'electron';
 import type {
-  GitChange,
-  GitSnapshot,
-  ProjectEntry,
+  GitRemoteAction,
+  ProjectEntryKind,
   ProjectFolder,
   ProjectSearchRequest,
-  ProjectSearchResult,
 } from '../../protocol/desktop-api';
-import type { VisibleSearchMatch } from './visible-search';
-import { canonicalPath, isInside } from '../documents/file-system';
+import { canonicalPath } from '../documents/file-system';
 import type { WindowState } from '../windows/window-state';
+import { ExplorerService } from './explorer-service';
+import { GitService } from './git-service';
+import { isMarkdownDocument, ProjectPaths } from './project-paths';
+import { SearchService } from './search-service';
+import type { VisibleSearchMatch } from './visible-search';
 
-const exec = promisify(execFile);
-const DOCUMENT = /\.(?:md|markdown|mdown|mkdn|mkd|rmd|qmd|mdx)$/i;
-const HIDDEN_DIRECTORIES = new Set(['.git', '.hg', '.svn']);
-const SEARCH_DIRECTORIES = new Set([...HIDDEN_DIRECTORIES, 'node_modules']);
-const MAX_RESULTS = 300;
-const MAX_FILE_SIZE = 2_000_000;
+export { parseGitStatus } from './git-service';
+export { isMarkdownDocument } from './project-paths';
+export { searchSourceText } from './search-service';
 
-export const isMarkdownDocument = (filePath: string) => DOCUMENT.test(filePath);
-
-export function searchSourceText(
-  text: string,
-  rawQuery: string,
-  limit = MAX_RESULTS,
-): VisibleSearchMatch[] {
-  const query = rawQuery.toLocaleLowerCase();
-  if (!query || limit <= 0) return [];
-  const results: VisibleSearchMatch[] = [];
-  const lines = text.split(/\r\n|\r|\n/);
-  let ordinal = 0;
-  for (let index = 0; index < lines.length && results.length < limit; index += 1) {
-    const line = lines[index];
-    const folded = line.toLocaleLowerCase();
-    let lineOccurrence = 0;
-    for (let match = folded.indexOf(query); match >= 0 && results.length < limit;
-      match = folded.indexOf(query, match + query.length)) {
-      const start = Math.max(0, match - 60);
-      const end = Math.min(line.length, match + query.length + 120);
-      results.push({
-        line: index + 1,
-        column: match + 1,
-        lineOccurrence: lineOccurrence++,
-        ordinal: ordinal++,
-        preview: `${start ? '…' : ''}${line.slice(start, end)}${end < line.length ? '…' : ''}`,
-      });
-    }
-  }
-  return results;
-}
-
-export function parseGitStatus(output: string): GitChange[] {
-  return output.split(/\r?\n/).flatMap((line) => {
-    if (line.length < 4) return [];
-    const code = line.slice(0, 2);
-    const renamed = line.slice(3).split(' -> ').at(-1) ?? '';
-    return [{
-      path: renamed.replace(/^"|"$/g, ''),
-      filePath: '',
-      status: code.trim() || '?',
-      staged: code[0] !== ' ' && code[0] !== '?',
-    }];
-  });
-}
-
+/** Thin project facade. Files, search, and Git keep their own policies and dependencies. */
 export class ProjectService {
-  private readonly searches = new Map<number, number>();
+  private readonly paths = new ProjectPaths();
+  private readonly explorer = new ExplorerService(this.paths);
+  private readonly git = new GitService(this.paths);
+  private readonly searcher: SearchService;
 
-  constructor(private readonly searchVisible: (
+  constructor(searchVisible: (
     documentPath: string,
     text: string,
     query: string,
     limit: number,
     root: string,
-  ) => Promise<VisibleSearchMatch[]>) {}
+  ) => Promise<VisibleSearchMatch[]>) {
+    this.searcher = new SearchService(this.paths, searchVisible);
+  }
 
   async choose(state: WindowState): Promise<ProjectFolder | null> {
     const selected = await dialog.showOpenDialog(state.window, {
@@ -101,123 +58,41 @@ export class ProjectService {
     return this.folder(folderPath);
   }
 
-  async readDirectory(state: WindowState, candidate: string): Promise<ProjectEntry[]> {
-    const directory = this.inside(state, candidate);
-    const entries = await fs.readdir(directory, { withFileTypes: true });
-    return entries
-      .filter((entry) => !entry.isSymbolicLink() && !HIDDEN_DIRECTORIES.has(entry.name))
-      .map((entry): ProjectEntry => {
-        const entryPath = path.join(directory, entry.name);
-        return {
-          path: entryPath,
-          name: entry.name,
-          kind: entry.isDirectory()
-            ? 'directory'
-            : isMarkdownDocument(entry.name) ? 'document' : 'file',
-        };
-      })
-      .sort((a, b) => Number(b.kind === 'directory') - Number(a.kind === 'directory')
-        || a.name.localeCompare(b.name, undefined, { numeric: true }));
-  }
+  readDirectory = (state: WindowState, directoryPath: string) =>
+    this.explorer.readDirectory(state, directoryPath);
 
-  async search(state: WindowState, request: ProjectSearchRequest): Promise<ProjectSearchResult[]> {
-    const root = this.root(state);
-    const sequence = (this.searches.get(state.webContentsId) ?? 0) + 1;
-    this.searches.set(state.webContentsId, sequence);
-    const query = String(request?.query ?? '').trim();
-    if (!query) return [];
-    const openDocuments = new Map((Array.isArray(request?.documents) ? request.documents : [])
-      .flatMap((document) => {
-        if (!document || typeof document.path !== 'string' || typeof document.text !== 'string'
-          || !['viewer', 'editor'].includes(document.surface)) return [];
-        const documentPath = canonicalPath(document.path);
-        return isInside(root, documentPath) && isMarkdownDocument(documentPath)
-          ? [[documentPath, { text: document.text, surface: document.surface }] as const] : [];
-      }));
-    const results: ProjectSearchResult[] = [];
-    await this.walk(root, async (filePath) => {
-      if (results.length >= MAX_RESULTS || !isMarkdownDocument(filePath)) return;
-      const stat = await fs.stat(filePath).catch(() => null);
-      if (!stat?.isFile() || stat.size > MAX_FILE_SIZE) return;
-      const open = openDocuments.get(canonicalPath(filePath));
-      const text = open?.text ?? await fs.readFile(filePath, 'utf8').catch(() => '');
-      const surface = open?.surface ?? 'viewer';
-      const remaining = MAX_RESULTS - results.length;
-      const matches = surface === 'editor'
-        ? searchSourceText(text, query, remaining)
-        : await this.searchVisible(filePath, text, query, remaining, root).catch(() => []);
-      results.push(...matches.map((match) => ({
-        path: filePath,
-        name: path.basename(filePath),
-        relativePath: path.relative(root, filePath),
-        surface,
-        ...match,
-      })));
-    }, () => this.searches.get(state.webContentsId) !== sequence || results.length >= MAX_RESULTS);
-    return results;
-  }
+  createEntry = (state: WindowState, parentPath: string, name: string, kind: ProjectEntryKind) =>
+    this.explorer.create(state, parentPath, name, kind);
 
-  async gitStatus(state: WindowState): Promise<GitSnapshot> {
-    const root = this.root(state);
-    try {
-      const [{ stdout: branch }, { stdout: status }] = await Promise.all([
-        exec('git', ['-C', root, 'branch', '--show-current'], { timeout: 5000 }),
-        exec('git', ['-C', root, 'status', '--short', '--untracked-files=all', '--', '.'], {
-          timeout: 5000,
-          maxBuffer: 2_000_000,
-        }),
-      ]);
-      return {
-        repository: true,
-        branch: branch.trim() || 'HEAD',
-        changes: parseGitStatus(status).map((change) => ({
-          ...change,
-          filePath: path.join(root, change.path),
-        })),
-      };
-    } catch {
-      return { repository: false, branch: '', changes: [] };
-    }
-  }
+  renameEntry = (state: WindowState, entryPath: string, name: string) =>
+    this.explorer.rename(state, entryPath, name);
+
+  moveEntry = (state: WindowState, entryPath: string, targetDirectory: string) =>
+    this.explorer.move(state, entryPath, targetDirectory);
+
+  trashEntry = (state: WindowState, entryPath: string) =>
+    this.explorer.trashEntry(state, entryPath);
+
+  search = (state: WindowState, request: ProjectSearchRequest) =>
+    this.searcher.search(state, request);
+
+  gitStatus = (state: WindowState) => this.git.status(state);
+  gitDiff = (state: WindowState, filePath: string, staged: boolean) =>
+    this.git.diff(state, filePath, staged);
+  initializeGit = (state: WindowState) => this.git.initialize(state);
+  stageGit = (state: WindowState, paths: string[]) => this.git.stage(state, paths);
+  unstageGit = (state: WindowState, paths: string[]) => this.git.unstage(state, paths);
+  discardGit = (state: WindowState, paths: string[]) => this.git.discard(state, paths);
+  commitGit = (state: WindowState, message: string) => this.git.commit(state, message);
+  runGitRemote = (state: WindowState, action: GitRemoteAction) => this.git.remote(state, action);
 
   assertDocument(state: WindowState, candidate: string): string {
-    const filePath = this.inside(state, candidate);
+    const filePath = this.paths.inside(state, candidate);
     if (!isMarkdownDocument(filePath)) throw new Error('Setdown opens Markdown documents only.');
     return filePath;
   }
 
   private folder(root: string): ProjectFolder {
     return { path: root, name: path.basename(root) || root };
-  }
-
-  private root(state: WindowState): string {
-    if (!state.projectRoot) throw new Error('No folder is open.');
-    return state.projectRoot;
-  }
-
-  private inside(state: WindowState, candidate: string): string {
-    const root = this.root(state);
-    const resolved = canonicalPath(candidate);
-    if (!isInside(root, resolved)) throw new Error('The path is outside the open folder.');
-    return resolved;
-  }
-
-  private async walk(
-    directory: string,
-    visit: (filePath: string) => Promise<void>,
-    stopped: () => boolean,
-  ): Promise<void> {
-    if (stopped()) return;
-    if (directory !== path.parse(directory).root && SEARCH_DIRECTORIES.has(path.basename(directory))) return;
-    const entries = await fs.readdir(directory, { withFileTypes: true })
-      .then((items) => items.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })))
-      .catch(() => []);
-    for (const entry of entries) {
-      if (stopped()) return;
-      if (entry.isSymbolicLink() || SEARCH_DIRECTORIES.has(entry.name)) continue;
-      const entryPath = path.join(directory, entry.name);
-      if (entry.isDirectory()) await this.walk(entryPath, visit, stopped);
-      else await visit(entryPath);
-    }
   }
 }
