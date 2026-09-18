@@ -678,21 +678,6 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 }
 .git-review-axis { color: var(--app-text); font-weight: 650; font-variant-numeric: tabular-nums; }
 .git-review-note { overflow: hidden; text-overflow: ellipsis; }
-.git-review-header.is-unsaved { background: var(--app-warning-surface); }
-.git-review-header.is-unsaved .git-review-axis { color: var(--app-warning-text); }
-.git-review-save {
-  margin-left: auto;
-  padding: 2px 10px;
-  color: var(--app-text);
-  border: 1px solid var(--app-strong-border);
-  border-radius: 3px;
-  background: transparent;
-  font-size: 10px;
-  cursor: pointer;
-}
-.git-review-save:hover:not(:disabled) { background: var(--app-hover); }
-.git-review-save:disabled { color: var(--app-subtle-text); cursor: default; }
-.unsaved-dot { color: var(--app-warning-text); font-style: normal; font-weight: 700; }
 .git-diff-preview-host, .git-diff-editor { position: relative; flex: 1; min-width: 0; min-height: 0; }
 .git-diff-preview-host.is-frozen {
   background-repeat: no-repeat;

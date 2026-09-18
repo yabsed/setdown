@@ -53,8 +53,8 @@ export type AppActions = {
   toggleProjectSearchGroup(path: string): void;
   refreshProjectGit(): void;
   reviewProjectGitChange(path: string, staged: boolean): void;
-  activateProjectGitDiff(): void;
-  closeProjectGitDiff(): void;
+  activateProjectGitDiff(id: string): void;
+  closeProjectGitDiff(id: string): void;
   layoutProjectGitDiff(bounds: PreviewBounds | null): void;
   changeProjectGitWorkingTree(text: string): void;
   saveProjectGitWorkingTree(): void;

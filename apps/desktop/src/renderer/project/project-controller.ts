@@ -24,15 +24,13 @@ type Options = {
   desktop: DesktopPort;
   searchDocuments(query: string): ProjectSearchDocument[];
   showDocument(path: string): Promise<boolean>;
+  workingTreeBuffer(path: string): string | null;
+  workingTreeChanged(path: string, text: string): void;
   highlight(query: string, target?: SearchTarget): void;
   pathMoved(from: string, to: string): Promise<void>;
   prepareRemove(path: string): Promise<boolean>;
   preferRenderedDiff(): boolean;
   reviewChanged(open: boolean, active: boolean): void;
-  workingTreeBuffer(path: string): string | null;
-  workingTreeChanged(path: string, text: string): void;
-  canSaveWorkingTree(path: string, expectedText: string, workingText: string): boolean;
-  workingTreeSaved(path: string, previousText: string, document: DocumentSnapshot): void;
   resized(): void;
 };
 
@@ -62,11 +60,10 @@ export class ProjectController {
     this.sourceControl = new SourceControlController({
       desktop: options.desktop,
       preferRendered: options.preferRenderedDiff,
-      reviewChanged: options.reviewChanged,
+      openWorkingTree: options.showDocument,
       workingTreeBuffer: options.workingTreeBuffer,
       workingTreeChanged: options.workingTreeChanged,
-      canSaveWorkingTree: options.canSaveWorkingTree,
-      workingTreeSaved: options.workingTreeSaved,
+      reviewChanged: options.reviewChanged,
     });
   }
 
@@ -143,12 +140,8 @@ export class ProjectController {
   search = (query: string): void => this.searcher.search(query);
   toggleSearchGroup = (path: string): void => this.searcher.toggleGroup(path);
   contextChanged = (): void => this.searcher.contextChanged();
-  documentChanged = (path: string, text: string): void => {
-    this.sourceControl.documentChanged(path, text);
-  };
-  documentSaved = (document: DocumentSnapshot): void => {
-    void this.sourceControl.documentSaved(document);
-  };
+  documentSaved = (document: DocumentSnapshot): Promise<void> =>
+    this.sourceControl.documentSaved(document);
 
   filesChanged = (root: string): void => {
     if (root !== project.folder?.path) return;
@@ -159,14 +152,15 @@ export class ProjectController {
   refreshGit = (): Promise<void> => this.sourceControl.refresh();
   reviewGitChange = (path: string, staged: boolean): Promise<void> =>
     this.sourceControl.review(path, staged);
-  activateGitDiff = (): void => this.sourceControl.activateDiff();
+  activateGitDiff = (id: string): void => void this.sourceControl.activateDiff(id);
   deactivateGitDiff = (): void => this.sourceControl.deactivateDiff();
-  closeGitDiff = (): void => this.sourceControl.closeDiff();
+  closeGitDiff = (id?: string): void => this.sourceControl.closeDiff(id);
+  closeWorkingTreeReviews = (path: string): void =>
+    this.sourceControl.closeWorkingTreeReviews(path);
   layoutGitDiff = (bounds: PreviewBounds | null): void => this.sourceControl.layoutDiff(bounds);
-  changeGitWorkingTree = (text: string): void => this.sourceControl.changeWorkingTree(text);
-  saveGitWorkingTree = (): Promise<void> => this.sourceControl.saveWorkingTree();
   toggleGitDiffMode = (): void => this.sourceControl.toggleDiffMode();
   showRenderedGitDiff = (): void => this.sourceControl.showRendered();
+  changeGitWorkingTree = (text: string): void => this.sourceControl.changeWorkingTree(text);
   previewMessage = (payload: PreviewMessage): boolean => this.sourceControl.previewMessage(payload);
   applyTheme = (themeId: PreviewThemeId): Promise<void> => this.sourceControl.applyTheme(themeId);
   initializeGit = (): Promise<void> => this.sourceControl.initialize();

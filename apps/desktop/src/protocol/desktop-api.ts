@@ -115,13 +115,8 @@ export type GitDiff = {
   originalText: string | null;
   modifiedText: string | null;
   originalLabel: 'EMPTY' | 'HEAD' | 'INDEX';
-  /**
-   * Right-hand stage of the comparison. The main process only emits INDEX or
-   * WORKTREE (saved disk bytes, the `git diff` view). The renderer resolves
-   * BUFFER when an open editor holds unsaved content for the same file, which
-   * is why a Changes review can legitimately differ from `git diff`.
-   */
-  modifiedLabel: 'INDEX' | 'WORKTREE' | 'BUFFER';
+  /** Right-hand side. WORKTREE may be the live ordinary document buffer. */
+  modifiedLabel: 'INDEX' | 'WORKTREE';
   hunks: GitDiffHunk[];
 };
 
@@ -140,8 +135,6 @@ export type GitReviewState = TabStateSummary & {
   active: boolean;
   mode: 'rendered' | 'source';
   line: number;
-  expectedText: string | null;
-  workingText: string | null;
 };
 
 export type TransferableTab = {
@@ -281,11 +274,6 @@ export type MarkTexApi = {
   searchProject(request: ProjectSearchRequest): Promise<ProjectSearchResult[]>;
   getGitStatus(): Promise<GitSnapshot>;
   getGitDiff(filePath: string, staged: boolean): Promise<GitDiff>;
-  saveGitWorkingTree(
-    filePath: string,
-    text: string,
-    expectedText: string,
-  ): Promise<DocumentSnapshot>;
   prepareGitDiffPreview(
     tabId: string,
     diff: GitDiff,

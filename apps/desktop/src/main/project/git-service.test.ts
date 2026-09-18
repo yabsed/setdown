@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import type { WindowState } from '../windows/window-state';
+import { GitCli } from './engines/git-cli';
 import { GitService, parseGitDiffHunks, parseGitStatus } from './git-service';
 import { ProjectPaths } from './project-paths';
 
@@ -107,5 +108,30 @@ describe('Git status parser', () => {
 
     const snapshot = await service.status({ projectRoot: folder } as WindowState);
     expect(snapshot.changes).toMatchObject([{ path: 'chapter.md', filePath, status: 'U' }]);
+  });
+
+  test('compares unstaged changes with the staged Index, not HEAD', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-git-index-diff-'));
+    temporaryDirectories.push(root);
+    const service = new GitService(new ProjectPaths());
+    const state = { projectRoot: root } as WindowState;
+    const filePath = path.join(root, 'review.md');
+
+    await service.initialize(state);
+    await GitCli.run(root, ['config', 'user.email', 'setdown@example.test']);
+    await GitCli.run(root, ['config', 'user.name', 'Setdown Test']);
+    await writeFile(filePath, '# HEAD\n', 'utf8');
+    await service.stage(state, [filePath]);
+    await service.commit(state, 'base');
+    await writeFile(filePath, '# Staged\n', 'utf8');
+    await service.stage(state, [filePath]);
+    await writeFile(filePath, '# Current document\n', 'utf8');
+
+    expect(await service.diff(state, filePath, false)).toMatchObject({
+      originalText: '# Staged\n',
+      modifiedText: '# Current document\n',
+      originalLabel: 'INDEX',
+      modifiedLabel: 'WORKTREE',
+    });
   });
 });

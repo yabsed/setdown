@@ -12,6 +12,13 @@ export type VisibleProjectEntry = ProjectEntry & {
   expanded: boolean;
   loading: boolean;
 };
+export type GitDiffTabState = {
+  id: string;
+  filePath: string;
+  staged: boolean;
+  mode: 'rendered' | 'source';
+  line: number;
+};
 
 const STORAGE_KEY = 'setdown:folder-tools';
 
@@ -69,6 +76,8 @@ export const project = $state({
   expandedSearchGroups: restored.expandedSearchGroups,
   searching: false,
   git: null as GitSnapshot | null,
+  gitDiffTabs: [] as GitDiffTabState[],
+  activeGitDiffId: null as string | null,
   gitDiff: null as GitDiff | null,
   gitDiffTarget: null as { filePath: string; staged: boolean } | null,
   gitDiffActive: false,
@@ -79,11 +88,6 @@ export const project = $state({
   gitDiffFrozen: false,
   gitDiffSnapshot: '',
   gitDiffLine: 1,
-  gitDiffWorkingText: '',
-  gitDiffExpectedText: null as string | null,
-  gitDiffDirty: false,
-  gitDiffIncludesUnsaved: false,
-  gitDiffSaving: false,
   gitLoading: false,
   gitBusy: false,
   commitMessage: '',

@@ -22,6 +22,10 @@ export function textDiffHunks(original: string, modified: string): TextDiffHunk[
   const hunks: TextDiffHunk[] = [];
   let oldLine = 1;
   let newLine = 1;
+  let oldColumn = 0;
+  let newColumn = 0;
+  let oldOffset = 0;
+  let newOffset = 0;
   let active: {
     oldStart: number;
     newStart: number;
@@ -43,6 +47,19 @@ export function textDiffHunks(original: string, modified: string): TextDiffHunk[
     0,
     lineBreaks(text) - (text.endsWith('\n') ? 1 : 0),
   );
+  const advance = (side: 'old' | 'new', text: string) => {
+    const breaks = lineBreaks(text);
+    const lastBreak = text.lastIndexOf('\n');
+    if (side === 'old') {
+      oldLine += breaks;
+      oldColumn = lastBreak < 0 ? oldColumn + text.length : text.length - lastBreak - 1;
+      oldOffset += text.length;
+    } else {
+      newLine += breaks;
+      newColumn = lastBreak < 0 ? newColumn + text.length : text.length - lastBreak - 1;
+      newOffset += text.length;
+    }
+  };
   const flush = () => {
     if (!active) return;
     hunks.push({
@@ -59,18 +76,30 @@ export function textDiffHunks(original: string, modified: string): TextDiffHunk[
     const breaks = lineBreaks(text);
     if (operation === DIFF_EQUAL) {
       if (breaks) flush();
-      oldLine += breaks;
-      newLine += breaks;
+      advance('old', text);
+      advance('new', text);
     } else if (operation === DIFF_DELETE) {
       const hunk = begin();
       hunk.oldTouched = true;
       hunk.oldEnd = Math.max(hunk.oldEnd, touchedEnd(oldLine, text));
-      oldLine += breaks;
+      const removesWholeLines = newColumn === 0
+        && (text.endsWith('\n') || newOffset === modified.length);
+      if (!removesWholeLines) {
+        hunk.newTouched = true;
+        hunk.newEnd = Math.max(hunk.newEnd, newLine);
+      }
+      advance('old', text);
     } else if (operation === DIFF_INSERT) {
       const hunk = begin();
       hunk.newTouched = true;
       hunk.newEnd = Math.max(hunk.newEnd, touchedEnd(newLine, text));
-      newLine += breaks;
+      const insertsWholeLines = oldColumn === 0
+        && (text.endsWith('\n') || oldOffset === original.length);
+      if (!insertsWholeLines) {
+        hunk.oldTouched = true;
+        hunk.oldEnd = Math.max(hunk.oldEnd, oldLine);
+      }
+      advance('new', text);
     }
   }
   flush();

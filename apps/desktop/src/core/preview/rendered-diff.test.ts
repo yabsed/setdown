@@ -4,6 +4,7 @@ import {
   responsiveRenderedDiff,
   RENDERED_DIFF_STYLES,
 } from './rendered-diff';
+import { textDiffHunks } from '../diff/text-diff';
 
 describe('rendered diff', () => {
   test('keeps unchanged blocks once and marks only replaced blocks', () => {
@@ -74,6 +75,37 @@ describe('rendered diff', () => {
     expect(rows[1]).toContain('<section class="setdown-rendered-diff-before" aria-label="Before"></section>');
     expect(rows[1]).toContain('>B</p>');
     expect(rows[2].match(/>C<\/p>/g)).toHaveLength(2);
+  });
+
+  test('keeps an edited block at the top when paragraphs are appended after its line', () => {
+    const originalText = ['same', '', 'first', 'second', 'changed', '', 'tail'].join('\n');
+    const modifiedText = [
+      'same', '', 'first', 'second', 'changed ?', '', 'inserted one', '', 'inserted two', '', 'tail',
+    ].join('\n');
+    const rendered = responsiveRenderedDiff(
+      [
+        '<p data-source-line="1">same</p>',
+        '<p data-source-line="3">first<br>second<br>changed</p>',
+        '<p data-source-line="7">tail</p>',
+      ].join(''),
+      [
+        '<p data-source-line="1">same</p>',
+        '<p data-source-line="3">first<br>second<br>changed ?</p>',
+        '<p data-source-line="7">inserted one</p>',
+        '<p data-source-line="9">inserted two</p>',
+        '<p data-source-line="11">tail</p>',
+      ].join(''),
+      textDiffHunks(originalText, modifiedText),
+    );
+    const rows = rendered.split(/<div class="setdown-rendered-diff-row [^"]+">/).slice(1);
+
+    expect(rows).toHaveLength(3);
+    expect(rows[1]).toContain('first<br>second<br>changed</p>');
+    expect(rows[1]).toContain('first<br>second<br>changed <span');
+    expect(rows[1]).toContain('>?</span>');
+    expect(rows[1]).toContain('inserted one');
+    expect(rows[1]).toContain('inserted two');
+    expect(rows[2].match(/>tail<\/p>/g)).toHaveLength(2);
   });
 
   test('keeps split cells inside their equal-width grid tracks', () => {

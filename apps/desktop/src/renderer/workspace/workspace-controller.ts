@@ -48,7 +48,7 @@ export function startWorkspace(desktop: DesktopPort) {
       projects.deactivateGitDiff();
       void tabs.activate(id);
     },
-    closeTab: (id) => void tabs.close(id),
+    closeTab: (id) => void closeDocumentTab(id),
     startTabDrag: (id, event) => tabDrag.start(id, event),
     endTabDrag: (event) => tabDrag.end(event),
     newDocument: () => {
@@ -75,13 +75,13 @@ export function startWorkspace(desktop: DesktopPort) {
     toggleProjectSearchGroup: (path) => projects.toggleSearchGroup(path),
     refreshProjectGit: () => void projects.refreshGit(),
     reviewProjectGitChange: (path, staged) => void projects.reviewGitChange(path, staged),
-    activateProjectGitDiff: () => projects.activateGitDiff(),
-    closeProjectGitDiff: () => void closeGitDiff(),
+    activateProjectGitDiff: (id) => projects.activateGitDiff(id),
+    closeProjectGitDiff: (id) => projects.closeGitDiff(id),
     layoutProjectGitDiff: (bounds) => projects.layoutGitDiff(bounds),
     changeProjectGitWorkingTree: (text) => projects.changeGitWorkingTree(text),
-    saveProjectGitWorkingTree: () => void projects.saveGitWorkingTree(),
+    saveProjectGitWorkingTree: () => void documents.save(false),
     initializeProjectGit: () => void projects.initializeGit(),
-    stageProjectGit: (paths) => void projects.stageGit(paths),
+    stageProjectGit: (paths) => void stageProjectChanges(paths),
     unstageProjectGit: (paths) => void projects.unstageGit(paths),
     discardProjectGit: (paths) => void projects.discardGit(paths),
     commitProjectGit: (message) => void projects.commitGit(message),
@@ -178,7 +178,6 @@ export function startWorkspace(desktop: DesktopPort) {
     surfaces,
     confirmClose: (names) => closePrompt.request('tab', names),
     workspaceChanged: () => projectContextChanged(),
-    documentChanged: (path, text) => projects.documentChanged(path, text),
   });
 
   const tabDrag = createTabDrag({
@@ -223,6 +222,8 @@ export function startWorkspace(desktop: DesktopPort) {
       await tabs.show(documentSnapshot);
       return true;
     },
+    workingTreeBuffer: tabs.documentBuffer,
+    workingTreeChanged: tabs.acceptWorkingTreeBuffer,
     pathMoved: tabs.relocatePath,
     prepareRemove: tabs.prepareRemove,
     preferRenderedDiff: () => session.surface !== 'editor',
@@ -230,10 +231,6 @@ export function startWorkspace(desktop: DesktopPort) {
       shell.dataset.gitDiff = String(open);
       reader.setSuspended(activeReview);
     },
-    workingTreeBuffer: tabs.documentBuffer,
-    workingTreeChanged: tabs.acceptWorkingTreeBuffer,
-    canSaveWorkingTree: tabs.canAcceptWorkingTreeEdit,
-    workingTreeSaved: tabs.acceptWorkingTreeSave,
     highlight: (query, target) => {
       const editing = workspace.active?.surface === 'editor';
       const currentTarget = target?.surface === (editing ? 'editor' : 'viewer')
@@ -275,23 +272,39 @@ export function startWorkspace(desktop: DesktopPort) {
     if (workspace.activeId) reader.send(workspace.activeId, { command: 'marktex:scroll-to-heading', id });
   }
 
-  function gitDiffName() {
-    const filePath = project.gitDiff?.filePath ?? project.gitDiffTarget?.filePath ?? 'Working Tree';
-    const name = filePath.split(/[\\/]/).at(-1) ?? filePath;
-    const staged = project.gitDiff?.staged ?? project.gitDiffTarget?.staged ?? false;
-    const side = staged ? 'Index' : project.gitDiffIncludesUnsaved ? 'Buffer' : 'Working Tree';
-    return `${name} (${side})`;
+  function closeGitDiff() {
+    projects.closeGitDiff();
   }
 
-  async function closeGitDiff() {
-    if (!project.gitDiffDirty) return projects.closeGitDiff();
-    const decision = await closePrompt.request('tab', [gitDiffName()]);
-    if (decision === 'cancel') return;
-    if (decision === 'save') {
-      await projects.saveGitWorkingTree();
-      if (project.gitDiffDirty) return;
+  let stagingChanges = false;
+  async function stageProjectChanges(paths: string[]) {
+    if (stagingChanges) return;
+    stagingChanges = true;
+    try {
+      if (await documents.savePaths(paths)) await projects.stageGit(paths);
+    } finally {
+      stagingChanges = false;
     }
-    projects.closeGitDiff();
+  }
+
+  async function closeDocumentTab(id: string) {
+    const path = workspace.find(id)?.document.path;
+    if (await tabs.close(id) && path) projects.closeWorkingTreeReviews(path);
+  }
+
+  function cycleTab(direction: -1 | 1) {
+    const documentTabs = workspace.tabs.map((tab) => ({ id: tab.id, diff: false }));
+    const diffTabs = project.gitDiffTabs.map((tab) => ({ id: tab.id, diff: true }));
+    const all = [...documentTabs, ...diffTabs];
+    if (all.length < 2) return;
+    const activeId = project.gitDiffActive ? project.activeGitDiffId : workspace.activeId;
+    const current = Math.max(0, all.findIndex((tab) => tab.id === activeId));
+    const next = all[(current + direction + all.length) % all.length];
+    if (next.diff) projects.activateGitDiff(next.id);
+    else {
+      projects.deactivateGitDiff();
+      void tabs.activate(next.id);
+    }
   }
 
   installWorkspaceEvents(desktop, {
@@ -313,7 +326,17 @@ export function startWorkspace(desktop: DesktopPort) {
       void tabs.show(opened);
     },
     externalChange: (change) => {
-      if (session.document?.path === change.path) view.notice = true;
+      const active = workspace.active;
+      if (!active || active.document.path !== change.path) return;
+      if (tabs.dirty(active)) {
+        view.notice = true;
+        return;
+      }
+      void desktop.reloadDocument().then((documentSnapshot) => {
+        if (documentSnapshot && workspace.active?.id === active.id) {
+          void tabs.reload(documentSnapshot);
+        }
+      });
     },
     projectFilesChanged: (event) => projects.filesChanged(event.root),
     themeChanged: (snapshot) => {
@@ -332,12 +355,10 @@ export function startWorkspace(desktop: DesktopPort) {
       }
       if (command === 'open-folder') void projects.chooseFolder();
       if (command === 'save') {
-        if (project.gitDiffActive) void projects.saveGitWorkingTree();
-        else void documents.save(false);
+        if (!project.gitDiffActive || !project.gitDiff?.staged) void documents.save(false);
       }
       if (command === 'save-as') {
-        if (project.gitDiffActive) void projects.saveGitWorkingTree();
-        else void documents.save(true);
+        if (!project.gitDiffActive || !project.gitDiff?.staged) void documents.save(true);
       }
       if (command === 'export-pdf') void documents.exportPdf();
       if (command === 'close-tab') {
@@ -346,12 +367,10 @@ export function startWorkspace(desktop: DesktopPort) {
         } else if (workspace.activeId) void tabs.close(workspace.activeId);
       }
       if (command === 'next-tab') {
-        projects.deactivateGitDiff();
-        tabs.cycle(1);
+        cycleTab(1);
       }
       if (command === 'previous-tab') {
-        projects.deactivateGitDiff();
-        tabs.cycle(-1);
+        cycleTab(-1);
       }
       if (command === 'open-find' && !project.gitDiffActive) reader.openFind();
       if (command === 'escape' && project.gitDiffActive && project.gitDiff) {
@@ -363,14 +382,7 @@ export function startWorkspace(desktop: DesktopPort) {
         else surfaces.toggle();
       }
     },
-    saveBeforeClose: () => void (async () => {
-      if (project.gitDiffDirty) await projects.saveGitWorkingTree();
-      if (project.gitDiffDirty) {
-        desktop.finishWindowClose(false);
-        return;
-      }
-      await documents.saveAll();
-    })(),
+    saveBeforeClose: () => void documents.saveAll(),
     transferIncoming: (transfer) => {
       projects.deactivateGitDiff();
       void tabs.installTransferred(transfer);

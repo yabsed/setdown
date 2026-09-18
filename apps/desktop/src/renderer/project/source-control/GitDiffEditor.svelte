@@ -69,24 +69,33 @@
         lineHeight: 22,
         padding: { top: 16, bottom: 48 },
       });
-      editor.updateOptions({ readOnly: diff.staged, originalEditable: false });
+      const originalAriaLabel = diff.staged ? `${diff.originalLabel} version`
+        : diff.originalLabel === 'EMPTY' ? 'Empty staged version' : 'Staged version';
+      const modifiedAriaLabel = diff.staged ? 'Staged version' : 'Current document';
+      editor.updateOptions({
+        readOnly: diff.staged,
+        originalEditable: false,
+        renderMarginRevertIcon: !diff.staged,
+      });
+      editor.getOriginalEditor().updateOptions({ ariaLabel: originalAriaLabel });
+      editor.getModifiedEditor().updateOptions({ ariaLabel: modifiedAriaLabel });
       disposeModels();
       const id = crypto.randomUUID();
       const syntax = language(diff.filePath);
       original = monaco.editor.createModel(diff.originalText, syntax,
         monaco.Uri.parse(`inmemory://setdown-diff/${id}/original`));
-      modified = monaco.editor.createModel(project.gitDiffWorkingText, syntax,
+      modified = monaco.editor.createModel(diff.modifiedText, syntax,
         monaco.Uri.parse(`inmemory://setdown-diff/${id}/modified`));
       editor.setModel({ original, modified });
-      const workingModel = modified;
-      workingModel.onDidChangeContent(() => {
-        if (diff.staged) return;
-        actions.changeProjectGitWorkingTree(workingModel.getValue());
+      modified.onDidChangeContent(() => {
+        if (!diff.staged && modified) actions.changeProjectGitWorkingTree(modified.getValue());
       });
-      editor.getModifiedEditor().addCommand(
-        monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
-        () => actions.saveProjectGitWorkingTree(),
-      );
+      if (!diff.staged) {
+        editor.getModifiedEditor().addCommand(
+          monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
+          () => actions.saveProjectGitWorkingTree(),
+        );
+      }
       const target = Math.min(Math.max(1, line), modified.getLineCount());
       editor.getModifiedEditor().revealLineInCenter(target);
       if (!diff.staged) editor.getModifiedEditor().focus();

@@ -4,14 +4,6 @@
   let { actions }: { actions: AppActions } = $props();
 
   const base = (candidate: string) => candidate.split(/[\\/]/).at(-1) ?? candidate;
-  let diffOpen = $derived(!!project.gitDiff || !!project.gitDiffTarget || project.gitDiffLoading);
-  let diffPath = $derived(project.gitDiff?.filePath ?? project.gitDiffTarget?.filePath ?? 'Changes');
-  let diffStaged = $derived(project.gitDiff?.staged ?? project.gitDiffTarget?.staged ?? false);
-  let diffSide = $derived(diffStaged ? 'INDEX'
-    : project.gitDiffIncludesUnsaved ? 'BUFFER'
-      : project.gitDiff?.modifiedLabel ?? 'WORKTREE');
-  let diffTitle = $derived(`${base(diffPath)} (${diffSide === 'INDEX' ? 'Index'
-    : diffSide === 'BUFFER' ? 'Buffer' : 'Working Tree'})`);
 </script>
 
 <nav class="tab-strip" aria-label="Open documents">
@@ -50,25 +42,24 @@
         >×</span>
       </button>
     {/each}
-    {#if diffOpen}
+    {#each project.gitDiffTabs as diffTab (diffTab.id)}
       <button class="document-tab git-diff-tab" type="button" role="tab"
-        aria-selected={project.gitDiffActive} title={diffPath}
-        onclick={actions.activateProjectGitDiff}>
-        <span class="tab-name">{diffTitle}</span>
-        {#if project.gitDiffDirty}<span class="tab-dirty" aria-label="Unsaved changes">•</span>{/if}
+        aria-selected={project.gitDiffActive && project.activeGitDiffId === diffTab.id}
+        title={diffTab.filePath} onclick={() => actions.activateProjectGitDiff(diffTab.id)}>
+        <span class="tab-name">{base(diffTab.filePath)} ({diffTab.staged ? 'Index' : 'Working Tree'})</span>
         <span class="tab-close" title="Close diff" role="button" tabindex="0"
           onclick={(event) => {
             event.stopPropagation();
-            actions.closeProjectGitDiff();
+            actions.closeProjectGitDiff(diffTab.id);
           }}
           onkeydown={(event) => {
             if (event.key !== 'Enter' && event.key !== ' ') return;
             event.preventDefault();
             event.stopPropagation();
-            actions.closeProjectGitDiff();
+            actions.closeProjectGitDiff(diffTab.id);
           }}>×</span>
       </button>
-    {/if}
+    {/each}
   </div>
   <div class="tab-actions">
     <button class="new-tab-button" type="button" title="New document (Ctrl/Cmd+N)" aria-label="New document" onclick={actions.newDocument}>+</button>

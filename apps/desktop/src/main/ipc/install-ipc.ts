@@ -74,8 +74,6 @@ export function installIpc(options: Options): void {
       active: Boolean(review.active),
       mode: review.mode === 'source' ? 'source' : 'rendered',
       line: Math.max(1, Number(review.line) || 1),
-      expectedText: typeof review.expectedText === 'string' ? review.expectedText : null,
-      workingText: typeof review.workingText === 'string' ? review.workingText : null,
     } : null;
   });
   channels.on('app:close-empty-window', (state) => {
@@ -189,18 +187,6 @@ export function installIpc(options: Options): void {
   channels.handle('project:git-status', (state) => projects.gitStatus(state));
   channels.handle('project:git-diff', (state, request: { filePath: string; staged: boolean }) =>
     projects.gitDiff(state, request.filePath, Boolean(request.staged)));
-  channels.handle('project:git-save-working-tree', async (state, request: {
-    filePath: string; text: string; expectedText: string;
-  }) => {
-    const filePath = projects.assertProjectFile(state, request.filePath);
-    const document = await documents.read(filePath);
-    if (document.text !== request.expectedText) {
-      throw new Error('The working tree changed while this diff was open. Reopen the diff and try again.');
-    }
-    const result = await documents.saveSnapshot(state, document, request.text, 1);
-    if (result.canceled || !result.document) throw new Error('The working-tree edit was not saved.');
-    return result.document;
-  });
   channels.handle('project:git-diff-preview', (state, request: {
     tabId: string;
     diff: Awaited<ReturnType<ProjectService['gitDiff']>>;

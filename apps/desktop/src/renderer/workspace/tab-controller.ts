@@ -31,7 +31,6 @@ type Options = {
   surfaces: SurfaceController;
   confirmClose(names: string[]): Promise<CloseDecision>;
   workspaceChanged(): void;
-  documentChanged(path: string, text: string): void;
 };
 
 const TRANSFER_ANNOUNCE_GRACE_MS = 150;
@@ -48,6 +47,28 @@ export class TabController {
   currentText = (): string | null => {
     const tab = this.options.workspace.active;
     return tab ? this.text(tab) : this.options.session.document?.text ?? null;
+  };
+
+  documentBuffer = (path: string): string | null => {
+    const tab = this.options.workspace.tabs.find((candidate) =>
+      !candidate.document.isUntitled && candidate.document.path === path);
+    return tab ? this.text(tab) : null;
+  };
+
+  acceptWorkingTreeBuffer = (path: string, text: string): void => {
+    const { desktop, editor, preview, workspace } = this.options;
+    const tab = workspace.tabs.find((candidate) =>
+      !candidate.document.isUntitled && candidate.document.path === path);
+    if (!tab || this.text(tab) === text) return;
+    const notified = editor.setText(tab, text);
+    if (!notified) {
+      tab.text = text;
+      tab.revision += 1;
+      if (tab.id === workspace.activeId) desktop.updateText(text, tab.revision);
+    }
+    Object.assign(tab, { previewUrl: null, previewRevision: null, previewTheme: null });
+    if (tab.id === workspace.activeId && tab.surface === 'viewer') preview.reset();
+    this.updateChrome();
   };
 
   lineCount = (): number => {
@@ -294,7 +315,6 @@ export class TabController {
     tab.text = text;
     tab.revision += 1;
     desktop.updateText(text, tab.revision);
-    this.options.documentChanged(tab.document.path, text);
     this.updateChrome();
     if (tab.surface === 'editor') preview.schedule(tab.revision);
   };
@@ -302,59 +322,6 @@ export class TabController {
   installModel = (documentSnapshot: DocumentSnapshot): void => {
     const tab = this.options.workspace.active;
     if (tab) this.options.editor.replace(tab, documentSnapshot);
-  };
-
-  documentBuffer = (path: string): string | null => {
-    const tab = this.options.workspace.tabs.find((candidate) => candidate.document.path === path);
-    return tab ? this.text(tab) : null;
-  };
-
-  canAcceptWorkingTreeEdit = (path: string, expectedText: string, workingText: string): boolean => {
-    const tab = this.options.workspace.tabs.find((candidate) => candidate.document.path === path);
-    return !tab || this.text(tab) === expectedText || this.text(tab) === workingText;
-  };
-
-  acceptWorkingTreeBuffer = (path: string, text: string): void => {
-    const { desktop, editor, preview, workspace } = this.options;
-    const tab = workspace.tabs.find((candidate) => candidate.document.path === path);
-    if (!tab) return;
-    const current = this.text(tab);
-    if (current === text) return;
-    const notified = editor.setText(tab, text);
-    if (!notified) {
-      tab.text = text;
-      tab.revision += 1;
-      if (tab.id === workspace.activeId) {
-        desktop.updateText(text, tab.revision);
-        this.options.documentChanged(path, text);
-      }
-    }
-    Object.assign(tab, { previewUrl: null, previewRevision: null, previewTheme: null });
-    if (tab.id === workspace.activeId && tab.surface === 'viewer') preview.reset();
-    this.updateChrome();
-  };
-
-  acceptWorkingTreeSave = (
-    path: string,
-    previousText: string,
-    documentSnapshot: DocumentSnapshot,
-  ): void => {
-    const { preview, workspace } = this.options;
-    const tab = workspace.tabs.find((candidate) => candidate.document.path === path);
-    if (!tab || (this.text(tab) !== previousText && this.text(tab) !== documentSnapshot.text)) return;
-    const revision = Math.max(tab.revision + 1, documentSnapshot.revision);
-    const synced = { ...documentSnapshot, revision, savedRevision: revision };
-    tab.document = synced;
-    tab.previewUrl = null;
-    tab.previewRevision = null;
-    tab.previewTheme = null;
-    this.options.editor.replace(tab, synced);
-    if (tab.id === workspace.activeId) {
-      preview.reset();
-      void this.options.desktop.activateDocument(synced, synced.text, revision);
-    }
-    view.notice = false;
-    this.updateChrome();
   };
 
   show = async (
