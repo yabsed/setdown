@@ -447,25 +447,23 @@ button { font: inherit; }
   padding: 0;
   color: var(--app-text);
   border: 1px solid var(--app-strong-border);
-  border-radius: 3px;
+  border-radius: 5px;
   box-shadow: 0 7px 24px var(--app-shadow);
   background: var(--app-raised-surface);
 }
 .close-prompt-dialog::backdrop { background: var(--app-overlay); }
-.close-prompt-form { display: flex; flex-direction: column; padding: 0; }
+.close-prompt-form { display: flex; flex-direction: column; padding: 16px 18px 15px; }
 .close-prompt-form header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 39px;
-  padding: 0 10px 0 13px;
-  border-bottom: 1px solid var(--app-border);
-  background: var(--app-chrome);
+  min-height: 27px;
 }
-.close-prompt-form h2 { margin: 0; font-size: 12px; font-weight: 650; }
+.close-prompt-form h2 { margin: 0; font-size: 13px; font-weight: 650; }
 .dialog-close {
   width: 24px;
   height: 24px;
+  margin: -4px -5px 0 0;
   padding: 0;
   color: var(--app-muted-text);
   border: 0;
@@ -474,9 +472,11 @@ button { font: inherit; }
   font-size: 19px;
   line-height: 1;
   cursor: pointer;
+  outline: 0;
 }
 .dialog-close:hover { color: var(--app-text); background: var(--app-hover); }
-.close-prompt-body { padding: 15px 14px 14px; }
+.dialog-close:focus-visible { box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-focus-ring) 48%, transparent); }
+.close-prompt-body { padding: 13px 0 15px; }
 .close-prompt-body > p { margin: 0; font-size: 12px; line-height: 1.5; }
 .close-prompt-body > p strong { font-weight: 650; }
 .close-document-list {
@@ -497,21 +497,37 @@ button { font: inherit; }
 .close-document-list div:last-child { border-bottom: 0; }
 .close-prompt-body .close-prompt-warning { margin-top: 7px; color: var(--app-muted-text); font-size: 10px; }
 .close-prompt-form footer {
-  display: grid;
-  grid-template-columns: auto 1fr auto auto;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 9px 11px;
-  border-top: 1px solid var(--app-border);
-  background: var(--app-chrome);
+  gap: 7px;
 }
-.close-prompt-form footer button { min-height: 28px; padding: 4px 10px; border-radius: 2px; font-size: 11px; }
-.close-prompt-form .close-discard {
-  color: var(--app-danger-text);
-  border-color: transparent;
+.close-prompt-form footer button {
+  min-height: 29px;
+  padding: 4px 11px;
+  color: var(--app-text);
+  border: 1px solid transparent;
+  border-radius: 3px;
   background: transparent;
+  font-size: 11px;
+  cursor: pointer;
+  outline: 0;
+}
+.close-prompt-form footer button:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-focus-ring) 48%, transparent);
+}
+.close-prompt-form .close-discard {
+  margin-right: auto;
+  color: var(--app-danger-text);
 }
 .close-prompt-form .close-discard:hover { background: var(--app-hover); filter: none; }
+.close-prompt-form .close-cancel { color: var(--app-muted-text); }
+.close-prompt-form .close-cancel:hover { color: var(--app-text); background: var(--app-hover); }
+.close-prompt-form .close-save {
+  color: #fff;
+  border-color: var(--app-accent);
+  background: var(--app-accent);
+}
+.close-prompt-form .close-save:hover { filter: brightness(.9); }
 @media (max-width: 620px) {
   .tab-action-divider { margin: 0 4px; }
   .toc-panel { flex-basis: min(220px, 46vw); }

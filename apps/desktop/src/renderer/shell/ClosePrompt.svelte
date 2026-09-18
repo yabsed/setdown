@@ -52,10 +52,9 @@
       <p class="close-prompt-warning">Unsaved changes will be lost.</p>
     </div>
     <footer>
-      <button class="danger-button close-discard" type="button" onclick={() => choose('discard')}>Don't Save</button>
-      <span></span>
-      <button class="secondary-button close-cancel" type="button" onclick={() => choose('cancel')}>Cancel</button>
-      <button class="primary-button close-save" type="button" onclick={() => choose('save')}>Save</button>
+      <button class="close-discard" type="button" onclick={() => choose('discard')}>Don't Save</button>
+      <button class="close-cancel" type="button" onclick={() => choose('cancel')}>Cancel</button>
+      <button class="close-save" type="button" onclick={() => choose('save')}>Save</button>
     </footer>
   </form>
 </dialog>

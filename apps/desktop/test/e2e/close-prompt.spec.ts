@@ -63,6 +63,11 @@ test('uses the Setdown close prompt for dirty tabs and windows', async () => {
     await expect(prompt.getByRole('button', { name: "Don't Save", exact: true })).toBeVisible();
     await expect(prompt.getByRole('button', { name: 'Cancel' }).first()).toBeVisible();
     await expect(prompt.locator('.close-discard')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    await expect(prompt.locator('.close-cancel')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    await expect(prompt.locator('.close-save')).toHaveCSS('background-color', 'rgb(9, 105, 218)');
+    await expect(prompt.locator('.close-save')).toHaveCSS('outline-style', 'none');
+    await expect(prompt.locator('header')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    await expect(prompt.locator('footer')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     await prompt.locator('.close-cancel').click();
     await expect(prompt).toBeHidden();
     await expect(window.locator('.document-tab')).toHaveCount(1);
