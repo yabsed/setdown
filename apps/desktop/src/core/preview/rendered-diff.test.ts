@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'vitest';
-import { mergeRenderedDiff, responsiveRenderedDiff } from './rendered-diff';
+import {
+  mergeRenderedDiff,
+  responsiveRenderedDiff,
+  RENDERED_DIFF_STYLES,
+} from './rendered-diff';
 
 describe('rendered diff', () => {
   test('keeps unchanged blocks once and marks only replaced blocks', () => {
@@ -49,5 +53,35 @@ describe('rendered diff', () => {
     expect(rendered).toContain('setdown-rendered-diff-after');
     expect(rendered).toContain('setdown-diff-word-removed">Old</span>');
     expect(rendered).toContain('setdown-diff-word-added">New</span>');
+  });
+
+  test('aligns an insertion with an empty opposite cell and rejoins unchanged content', () => {
+    const rendered = responsiveRenderedDiff(
+      [
+        '<p data-source-line="1">A</p>',
+        '<p data-source-line="3">C</p>',
+      ].join(''),
+      [
+        '<p data-source-line="1">A</p>',
+        '<p data-source-line="3">B</p>',
+        '<p data-source-line="5">C</p>',
+      ].join(''),
+      [{ oldStart: 3, oldLines: 0, newStart: 3, newLines: 1 }],
+    );
+    const rows = rendered.split(/<div class="setdown-rendered-diff-row [^"]+">/).slice(1);
+
+    expect(rows).toHaveLength(3);
+    expect(rows[1]).toContain('<section class="setdown-rendered-diff-before" aria-label="Before"></section>');
+    expect(rows[1]).toContain('>B</p>');
+    expect(rows[2].match(/>C<\/p>/g)).toHaveLength(2);
+  });
+
+  test('keeps split cells inside their equal-width grid tracks', () => {
+    const sideRule = RENDERED_DIFF_STYLES.match(
+      /\.setdown-rendered-diff-before,\n\s+\.setdown-rendered-diff-after \{([\s\S]*?)\n\s+\}/,
+    )?.[1];
+
+    expect(sideRule).toContain('box-sizing: border-box');
+    expect(sideRule).not.toContain('width: 100%');
   });
 });

@@ -12,6 +12,7 @@ type RenderedDiffAnalysis = {
   highlightedOriginal: Map<number, string>;
   highlightedModified: Map<number, string>;
 };
+type RenderedDiffRow = { before: string; after: string; changed: boolean };
 
 const TOKEN = /\s+|&(?:#\d+|#x[\da-f]+|\w+);|[\p{L}\p{N}_]+|[^\s\p{L}\p{N}_]+/giu;
 const UNSAFE_TAG = /^(?:script|style|svg|math)$/i;
@@ -214,6 +215,72 @@ function mergeAnalyzedDiff(analysis: RenderedDiffAnalysis): string {
   return output.join('\n');
 }
 
+/**
+ * Groups both documents at the same change boundaries. Each group becomes one
+ * grid row, so a taller insertion/deletion reserves the same vertical space on
+ * the opposite side and the following unchanged content lines up again.
+ */
+function splitDiffRows(analysis: RenderedDiffAnalysis): RenderedDiffRow[] {
+  const {
+    original,
+    modified,
+    added,
+    removed,
+    highlightedOriginal,
+    highlightedModified,
+  } = analysis;
+  const rows: RenderedDiffRow[] = [];
+  let oldIndex = 0;
+  let newIndex = 0;
+
+  while (oldIndex < original.length || newIndex < modified.length) {
+    const oldChanged = oldIndex < original.length && removed.has(oldIndex);
+    const newChanged = newIndex < modified.length && added.has(newIndex);
+
+    if (oldIndex < original.length && newIndex < modified.length
+      && !oldChanged && !newChanged) {
+      const before: string[] = [];
+      const after: string[] = [];
+      while (oldIndex < original.length && newIndex < modified.length
+        && !removed.has(oldIndex) && !added.has(newIndex)) {
+        before.push(original[oldIndex].html);
+        after.push(modified[newIndex].html);
+        oldIndex += 1;
+        newIndex += 1;
+      }
+      rows.push({ before: before.join('\n'), after: after.join('\n'), changed: false });
+      continue;
+    }
+
+    const before: string[] = [];
+    const after: string[] = [];
+    while (oldIndex < original.length && removed.has(oldIndex)) {
+      before.push(marked(
+        highlightedOriginal.get(oldIndex) ?? original[oldIndex].html,
+        'removed',
+      ));
+      oldIndex += 1;
+    }
+    while (newIndex < modified.length && added.has(newIndex)) {
+      after.push(marked(
+        highlightedModified.get(newIndex) ?? modified[newIndex].html,
+        'added',
+      ));
+      newIndex += 1;
+    }
+
+    // Be defensive about incomplete hunk metadata: consume unmatched tail
+    // blocks instead of allowing the row builder to stall.
+    if (!before.length && !after.length) {
+      if (oldIndex < original.length) before.push(original[oldIndex++].html);
+      if (newIndex < modified.length) after.push(modified[newIndex++].html);
+    }
+    rows.push({ before: before.join('\n'), after: after.join('\n'), changed: true });
+  }
+
+  return rows;
+}
+
 /** Merges two sanitized preview fragments into one document with changed blocks only duplicated. */
 export function mergeRenderedDiff(
   originalHtml: string,
@@ -233,16 +300,13 @@ export function responsiveRenderedDiff(
   hunks: RenderedDiffHunk[],
 ): string {
   const analysis = analyzeRenderedDiff(originalHtml, modifiedHtml, hunks);
-  const before = analysis.original.map((block) => analysis.removed.has(block.index)
-    ? marked(analysis.highlightedOriginal.get(block.index) ?? block.html, 'removed')
-    : block.html).join('\n');
-  const after = analysis.modified.map((block) => analysis.added.has(block.index)
-    ? marked(analysis.highlightedModified.get(block.index) ?? block.html, 'added')
-    : block.html).join('\n');
+  const rows = splitDiffRows(analysis).map((row) => `  <div class="setdown-rendered-diff-row setdown-rendered-diff-row-${row.changed ? 'changed' : 'unchanged'}">
+    <section class="setdown-rendered-diff-before" aria-label="Before">${row.before}</section>
+    <section class="setdown-rendered-diff-after" aria-label="After">${row.after}</section>
+  </div>`).join('\n');
   return `<div class="setdown-rendered-diff-unified">${mergeAnalyzedDiff(analysis)}</div>
 <div class="setdown-rendered-diff-split" aria-label="Side-by-side rendered comparison">
-  <section class="setdown-rendered-diff-before" aria-label="Before">${before}</section>
-  <section class="setdown-rendered-diff-after" aria-label="After">${after}</section>
+${rows}
 </div>`;
 }
 
@@ -276,17 +340,26 @@ export const RENDERED_DIFF_STYLES = `<style id="setdown-rendered-diff-styles">
   @media (min-width: 720px) {
     .setdown-rendered-diff-unified { display: none; }
     .setdown-rendered-diff-split {
+      display: block;
+      margin: -1rem -1.25rem 0;
+    }
+    .setdown-rendered-diff-row {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      align-items: start;
-      margin: -1rem -1.25rem 0;
+      align-items: stretch;
     }
     .setdown-rendered-diff-before,
     .setdown-rendered-diff-after {
+      box-sizing: border-box;
       min-width: 0;
-      width: 100%;
-      padding: 1rem 1.5rem 5rem;
+      padding: 0 1.5rem;
       overflow-wrap: anywhere;
+    }
+    .setdown-rendered-diff-row:first-child > :where(.setdown-rendered-diff-before, .setdown-rendered-diff-after) {
+      padding-top: 1rem;
+    }
+    .setdown-rendered-diff-row:last-child > :where(.setdown-rendered-diff-before, .setdown-rendered-diff-after) {
+      padding-bottom: 5rem;
     }
     .setdown-rendered-diff-before {
       border-right: 1px solid rgba(127, 127, 127, .2);
