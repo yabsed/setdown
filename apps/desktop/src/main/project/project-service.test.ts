@@ -3,7 +3,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import type { WindowState } from '../windows/window-state';
-import { isMarkdownDocument, parseGitStatus, ProjectService } from './project-service';
+import {
+  isMarkdownDocument,
+  parseGitStatus,
+  ProjectService,
+  searchSourceText,
+} from './project-service';
 
 const temporaryDirectories: string[] = [];
 
@@ -37,7 +42,8 @@ describe('project service', () => {
     await writeFile(path.join(root, 'chapter', 'more.md'), 'A needle then needle here.\n', 'utf8');
     await writeFile(path.join(root, 'node_modules', 'hidden.md'), 'needle', 'utf8');
     const state = { projectRoot: root } as WindowState;
-    const service = new ProjectService();
+    const service = new ProjectService(async (_path, text, query, limit) =>
+      searchSourceText(text, query, limit));
 
     const reloaded = { projectRoot: null } as WindowState;
     expect(await service.restore(reloaded, root)).toEqual({ path: root, name: path.basename(root) });
@@ -49,7 +55,7 @@ describe('project service', () => {
       { path: path.join(root, 'image.png'), name: 'image.png', kind: 'file' },
       { path: path.join(root, 'notes.md'), name: 'notes.md', kind: 'document' },
     ]);
-    const results = await service.search(state, 'needle');
+    const results = await service.search(state, { query: 'needle', documents: [] });
     expect(results.map(({ relativePath, line, column, lineOccurrence, ordinal }) => ({
       relativePath, line, column, lineOccurrence, ordinal,
     }))).toEqual([
@@ -60,5 +66,29 @@ describe('project service', () => {
       { relativePath: 'notes.md', line: 1, column: 3, lineOccurrence: 0, ordinal: 0 },
     ]);
     expect(results.every((result) => /needle/i.test(result.preview))).toBe(true);
+  });
+
+  test('uses unsaved source text only for documents open in the editor', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-project-'));
+    temporaryDirectories.push(root);
+    const filePath = path.join(root, 'notes.md');
+    await writeFile(filePath, '**visible**\n', 'utf8');
+    const state = { projectRoot: root } as WindowState;
+    const viewerQueries: string[] = [];
+    const service = new ProjectService(async (_path, _text, query) => {
+      viewerQueries.push(query);
+      return [];
+    });
+
+    expect(await service.search(state, { query: '**', documents: [] })).toEqual([]);
+    expect(viewerQueries).toEqual(['**']);
+    const editorResults = await service.search(state, {
+      query: '**',
+      documents: [{ path: filePath, text: '**changed**', surface: 'editor' }],
+    });
+    expect(editorResults).toMatchObject([
+      { path: filePath, surface: 'editor', line: 1, column: 1 },
+      { path: filePath, surface: 'editor', line: 1, column: 10 },
+    ]);
   });
 });

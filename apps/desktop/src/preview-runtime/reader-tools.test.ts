@@ -17,4 +17,9 @@ describe('preview search targeting', () => {
     const spans = [{ start: 1, end: 1 }, { start: 1, end: 1 }, { start: 5, end: 5 }];
     expect(selectSearchMatch(spans, 3, 0, 1)).toBe(1);
   });
+
+  test('uses the rendered occurrence as the exact project-search identity', () => {
+    const spans = [{ start: 1, end: 5 }, { start: 3, end: 3 }, { start: 3, end: 3 }];
+    expect(selectSearchMatch(spans, 3, 0, 2)).toBe(2);
+  });
 });

@@ -660,6 +660,8 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 .find-close { font-size: 17px; }
 
 .editor-host { width: 100%; height: 100%; }
+.monaco-editor .editor-project-search-match { background: rgba(214, 164, 30, .45); }
+.monaco-editor .editor-project-search-active { background: #ff9f1c; color: #17130b !important; }
 
 .render-state, .render-error {
   position: absolute;

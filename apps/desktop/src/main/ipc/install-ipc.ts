@@ -5,6 +5,7 @@ import { normalizePreviewTheme } from '../../core/preview/preview-preferences';
 import type {
   CloseDecision,
   DocumentSnapshot,
+  ProjectSearchRequest,
   SaveResult,
   TabStateSummary,
   ThemeSnapshot,
@@ -155,7 +156,8 @@ export function installIpc(options: Options): void {
     projects.readDirectory(state, directoryPath));
   channels.handle('project:open-file', (state, filePath: string) =>
     documents.open(state, projects.assertDocument(state, filePath), false));
-  channels.handle('project:search', (state, query: string) => projects.search(state, query));
+  channels.handle('project:search', (state, request: ProjectSearchRequest) =>
+    projects.search(state, request));
   channels.handle('project:git-status', (state) => projects.gitStatus(state));
   channels.handle('document:reload', (state) => documents.reload(state));
   channels.handle('document:open-link', (state, href: string) => openLink(documents, state, href));

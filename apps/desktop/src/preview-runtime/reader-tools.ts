@@ -20,9 +20,12 @@ export function selectSearchMatch(
   spans: Array<SourceSpan | null>,
   sourceLine?: number,
   sourceOccurrence = 0,
-  ordinal = 0,
+  ordinal?: number,
 ): number {
   if (!spans.length) return -1;
+  if (Number.isFinite(Number(ordinal))) {
+    return Math.min(Math.max(0, Math.trunc(Number(ordinal))), spans.length - 1);
+  }
   const targetLine = Number(sourceLine);
   if (Number.isFinite(targetLine)) {
     const matches = spans.flatMap((span, index) => span
@@ -32,7 +35,7 @@ export function selectSearchMatch(
       return matches[Math.min(occurrence, matches.length - 1)];
     }
   }
-  return Math.min(Math.max(0, Math.trunc(ordinal)), spans.length - 1);
+  return 0;
 }
 
 function rangeSourceSpan(range: Range): SourceSpan | null {
@@ -144,7 +147,10 @@ export function createReaderTools(send: Send, revision: () => number, rootSelect
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
       acceptNode(node) {
         const parent = node.parentElement;
-        return !parent || parent.closest('script, style, noscript, [hidden]')
+        return !parent || parent.closest(
+          'script, style, noscript, annotation, [hidden], '
+          + '.katex-mathml, .MathJax_Preview, mjx-assistive-mml',
+        )
           ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
       },
     });

@@ -89,6 +89,7 @@ export function startWorkspace(desktop: DesktopPort) {
   let surfaces: SurfaceController;
   let tabs: TabController;
   let projects: ProjectController;
+  let projectContextChanged = () => {};
   const reader = new ReaderController({
     desktop,
     shell,
@@ -125,7 +126,15 @@ export function startWorkspace(desktop: DesktopPort) {
     insertLink: () => insertions.openLink(),
     insertTable: () => insertions.openTable(),
   });
-  surfaces = new SurfaceController({ workspace, session, shell, editor, reader, preview });
+  surfaces = new SurfaceController({
+    workspace,
+    session,
+    shell,
+    editor,
+    reader,
+    preview,
+    changed: () => projectContextChanged(),
+  });
   tabs = new TabController({
     desktop,
     workspace,
@@ -136,6 +145,7 @@ export function startWorkspace(desktop: DesktopPort) {
     preview,
     surfaces,
     confirmClose: (name) => closePrompt.request('tab', [name]),
+    workspaceChanged: () => projectContextChanged(),
   });
 
   const tabDrag = createTabDrag({
@@ -164,15 +174,27 @@ export function startWorkspace(desktop: DesktopPort) {
   });
   projects = new ProjectController({
     desktop,
+    searchDocuments: () => workspace.tabs.map((tab) => ({
+      path: tab.document.path,
+      text: tabs.text(tab),
+      surface: tab.surface,
+    })),
     showDocument: async (path) => {
       const documentSnapshot = await desktop.openProjectFile(path);
       if (!documentSnapshot) return false;
       await tabs.show(documentSnapshot);
       return true;
     },
-    highlight: (query, target) => reader.projectSearch(query, target),
+    highlight: (query, target) => {
+      const editing = workspace.active?.surface === 'editor';
+      const currentTarget = target?.surface === (editing ? 'editor' : 'viewer')
+        ? target : undefined;
+      reader.projectSearch(editing ? '' : query, editing ? undefined : currentTarget);
+      editor.projectSearch(editing ? query : '', editing ? currentTarget : undefined);
+    },
     resized: reader.syncView,
   });
+  projectContextChanged = projects.contextChanged;
   void projects.restore();
   const editorContext = {
     desktop,

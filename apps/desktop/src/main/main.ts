@@ -12,6 +12,7 @@ import { installApplicationMenu } from './menu/application-menu';
 import { PreviewManager } from './preview/preview-manager';
 import { PreviewRenderer } from './preview/preview-renderer';
 import { ProjectService } from './project/project-service';
+import { ProjectSearchRenderer } from './project/project-search-renderer';
 import { pathFromResourceUrl } from './preview/resource-url';
 import { TabTransferManager } from './tabs/tab-transfer-manager';
 import { ThemeManager } from './theme/theme-manager';
@@ -57,7 +58,12 @@ renderer = new PreviewRenderer({
   workerPath: path.join(__dirname, 'render-worker.cjs'),
 });
 const documents = new DocumentManager(() => renderer.forgetNotebooks());
-const projects = new ProjectService();
+const projectSearchRenderer = new ProjectSearchRenderer(
+  path.join(__dirname, 'render-worker.cjs'),
+  () => themes.id,
+);
+const projects = new ProjectService((documentPath, text, query, limit, root) =>
+  projectSearchRenderer.search(documentPath, text, query, limit, root));
 const windows = new WindowManager({ registry, previews, themes });
 const transfers = new TabTransferManager({
   previews,

@@ -19,10 +19,13 @@ type Options = {
   insertTable: () => void;
 };
 
+type SearchTarget = { line: number; column: number; ordinal: number };
+
 export class MonacoEditor {
   private apiValue: typeof Monaco | null = null;
   private editorValue: Monaco.editor.IStandaloneCodeEditor | null = null;
   private loading: Promise<void> | null = null;
+  private projectDecorations: Monaco.editor.IEditorDecorationsCollection | null = null;
   private readonly models = new Map<string, Monaco.editor.ITextModel>();
   private readonly views = new Map<string, Monaco.editor.ICodeEditorViewState | null>();
 
@@ -72,6 +75,7 @@ export class MonacoEditor {
         bracketPairColorization: { enabled: true },
         stickyScroll: { enabled: false },
       });
+      this.projectDecorations = this.editorValue.createDecorationsCollection();
       this.installBindings(api, this.editorValue);
       for (const tab of this.options.tabs()) this.ensureModel(tab);
       const active = this.options.active();
@@ -154,6 +158,37 @@ export class MonacoEditor {
       editor.setScrollTop(Math.max(0, top));
       editor.focus();
     }, 0);
+  }
+
+  projectSearch(query: string, target?: SearchTarget): void {
+    const editor = this.editorValue;
+    const model = editor?.getModel();
+    if (!editor || !model || !this.projectDecorations) return;
+    if (!query) {
+      this.projectDecorations.clear();
+      return;
+    }
+    const matches = model.findMatches(query, false, false, false, null, false, 10_000);
+    let active = -1;
+    if (target) {
+      active = matches.findIndex(({ range }) => range.startLineNumber === target.line
+        && range.startColumn === target.column);
+      if (active < 0 && matches.length) {
+        active = Math.min(Math.max(0, target.ordinal), matches.length - 1);
+      }
+    }
+    this.projectDecorations.set(matches.map(({ range }, index) => ({
+      range,
+      options: {
+        inlineClassName: index === active
+          ? 'editor-project-search-active' : 'editor-project-search-match',
+      },
+    })));
+    if (active >= 0) {
+      editor.setSelection(matches[active].range);
+      editor.revealRangeInCenterIfOutsideViewport(matches[active].range);
+      editor.focus();
+    }
   }
 
   private ensureModel(tab: WorkspaceTab): Monaco.editor.ITextModel {

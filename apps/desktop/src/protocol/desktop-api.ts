@@ -46,11 +46,23 @@ export type ProjectSearchResult = {
   path: string;
   name: string;
   relativePath: string;
+  surface: 'viewer' | 'editor';
   line: number;
   column: number;
   lineOccurrence: number;
   ordinal: number;
   preview: string;
+};
+
+export type ProjectSearchDocument = {
+  path: string;
+  text: string;
+  surface: 'viewer' | 'editor';
+};
+
+export type ProjectSearchRequest = {
+  query: string;
+  documents: ProjectSearchDocument[];
 };
 
 export type GitChange = {
@@ -200,7 +212,7 @@ export type MarkTexApi = {
   restoreProjectFolder(path: string): Promise<ProjectFolder | null>;
   readProjectDirectory(directoryPath: string): Promise<ProjectEntry[]>;
   openProjectFile(filePath: string): Promise<DocumentSnapshot | null>;
-  searchProject(query: string): Promise<ProjectSearchResult[]>;
+  searchProject(request: ProjectSearchRequest): Promise<ProjectSearchResult[]>;
   getGitStatus(): Promise<GitSnapshot>;
   openLink(href: string): Promise<void>;
   onDocumentOpened(listener: (document: DocumentSnapshot) => void): () => void;

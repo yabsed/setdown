@@ -104,10 +104,10 @@
         {#if project.searching}Searching…{:else if project.searchQuery}{project.searchResults.length} results{/if}
       </div>
       <div class="project-results" aria-live="polite">
-        {#each project.searchResults as result (`${result.path}:${result.line}:${result.column}`)}
-          <button type="button" title={`${result.relativePath}:${result.line}:${result.column}`}
+        {#each project.searchResults as result (`${result.path}:${result.surface}:${result.ordinal}`)}
+          <button type="button" title={`${result.relativePath}:${result.line}${result.surface === 'editor' ? `:${result.column}` : ''}`}
             onclick={() => actions.openProjectSearchResult(result)}>
-            <span class="result-title"><strong>{result.name}</strong><small>:{result.line}:{result.column}</small></span>
+            <span class="result-title"><strong>{result.name}</strong><small>:{result.line}{result.surface === 'editor' ? `:${result.column}` : ''}</small></span>
             <span class="result-preview">
               {#each searchHighlightParts(result.preview || ' ', project.searchQuery.trim()) as part}
                 {#if part.match}<mark>{part.text}</mark>{:else}{part.text}{/if}

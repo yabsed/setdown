@@ -1,4 +1,8 @@
-import type { ProjectEntry, ProjectSearchResult } from '../../protocol/desktop-api';
+import type {
+  ProjectEntry,
+  ProjectSearchDocument,
+  ProjectSearchResult,
+} from '../../protocol/desktop-api';
 import type { DesktopPort } from '../ports/desktop-port';
 import {
   project,
@@ -7,10 +11,14 @@ import {
   type VisibleProjectEntry,
 } from './project-state.svelte';
 
-type SearchTarget = Pick<ProjectSearchResult, 'line' | 'lineOccurrence' | 'ordinal'>;
+type SearchTarget = Pick<
+  ProjectSearchResult,
+  'surface' | 'line' | 'column' | 'lineOccurrence' | 'ordinal'
+>;
 
 type Options = {
   desktop: DesktopPort;
+  searchDocuments(): ProjectSearchDocument[];
   showDocument(path: string): Promise<boolean>;
   highlight(query: string, target?: SearchTarget): void;
   resized(): void;
@@ -61,7 +69,7 @@ export class ProjectController {
     project.searchResults = [];
     project.git = null;
     this.options.highlight('');
-    void this.options.desktop.searchProject('');
+    void this.options.desktop.searchProject({ query: '', documents: [] });
     this.children.clear();
     this.expanded.clear();
     rememberProjectState();
@@ -118,16 +126,20 @@ export class ProjectController {
 
   search = (query: string) => {
     project.searchQuery = query;
-    this.options.highlight(query.trim());
+    this.highlight();
     window.clearTimeout(this.searchTimer);
     if (!query.trim() || !project.folder) {
       project.searchResults = [];
       project.searching = false;
-      if (project.folder) void this.options.desktop.searchProject('');
+      if (project.folder) void this.options.desktop.searchProject({ query: '', documents: [] });
       return;
     }
     project.searching = true;
     this.searchTimer = window.setTimeout(() => void this.runSearch(query), 200);
+  };
+
+  contextChanged = () => {
+    if (project.searchQuery.trim()) this.search(project.searchQuery);
   };
 
   refreshGit = async () => {
@@ -157,7 +169,10 @@ export class ProjectController {
   private async runSearch(query: string) {
     const request = ++this.searchRequest;
     try {
-      const results = await this.options.desktop.searchProject(query);
+      const results = await this.options.desktop.searchProject({
+        query,
+        documents: this.options.searchDocuments(),
+      });
       if (request === this.searchRequest && query === project.searchQuery) {
         project.searchResults = results;
         project.error = '';

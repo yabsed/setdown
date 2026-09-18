@@ -30,6 +30,7 @@ type Options = {
   preview: PreviewSession;
   surfaces: SurfaceController;
   confirmClose(name: string): Promise<CloseDecision>;
+  workspaceChanged(): void;
 };
 
 const TRANSFER_ANNOUNCE_GRACE_MS = 150;
@@ -98,6 +99,7 @@ export class TabController {
       dirty: this.dirty(tab),
       isUntitled: tab.document.isUntitled,
     })));
+    this.options.workspaceChanged();
   };
 
   updateChrome = (): void => {

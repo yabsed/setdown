@@ -90,7 +90,7 @@ const api: MarkTexApi = {
   readProjectDirectory: (directoryPath) =>
     ipcRenderer.invoke('project:read-directory', directoryPath),
   openProjectFile: (filePath) => ipcRenderer.invoke('project:open-file', filePath),
-  searchProject: (query) => ipcRenderer.invoke('project:search', query),
+  searchProject: (request) => ipcRenderer.invoke('project:search', request),
   getGitStatus: () => ipcRenderer.invoke('project:git-status'),
   openLink: (href) => ipcRenderer.invoke('document:open-link', href),
   onDocumentOpened: (listener) =>

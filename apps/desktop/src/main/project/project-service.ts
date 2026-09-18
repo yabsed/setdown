@@ -8,8 +8,10 @@ import type {
   GitSnapshot,
   ProjectEntry,
   ProjectFolder,
+  ProjectSearchRequest,
   ProjectSearchResult,
 } from '../../protocol/desktop-api';
+import type { VisibleSearchMatch } from './visible-search';
 import { canonicalPath, isInside } from '../documents/file-system';
 import type { WindowState } from '../windows/window-state';
 
@@ -21,6 +23,36 @@ const MAX_RESULTS = 300;
 const MAX_FILE_SIZE = 2_000_000;
 
 export const isMarkdownDocument = (filePath: string) => DOCUMENT.test(filePath);
+
+export function searchSourceText(
+  text: string,
+  rawQuery: string,
+  limit = MAX_RESULTS,
+): VisibleSearchMatch[] {
+  const query = rawQuery.toLocaleLowerCase();
+  if (!query || limit <= 0) return [];
+  const results: VisibleSearchMatch[] = [];
+  const lines = text.split(/\r\n|\r|\n/);
+  let ordinal = 0;
+  for (let index = 0; index < lines.length && results.length < limit; index += 1) {
+    const line = lines[index];
+    const folded = line.toLocaleLowerCase();
+    let lineOccurrence = 0;
+    for (let match = folded.indexOf(query); match >= 0 && results.length < limit;
+      match = folded.indexOf(query, match + query.length)) {
+      const start = Math.max(0, match - 60);
+      const end = Math.min(line.length, match + query.length + 120);
+      results.push({
+        line: index + 1,
+        column: match + 1,
+        lineOccurrence: lineOccurrence++,
+        ordinal: ordinal++,
+        preview: `${start ? '…' : ''}${line.slice(start, end)}${end < line.length ? '…' : ''}`,
+      });
+    }
+  }
+  return results;
+}
 
 export function parseGitStatus(output: string): GitChange[] {
   return output.split(/\r?\n/).flatMap((line) => {
@@ -38,6 +70,14 @@ export function parseGitStatus(output: string): GitChange[] {
 
 export class ProjectService {
   private readonly searches = new Map<number, number>();
+
+  constructor(private readonly searchVisible: (
+    documentPath: string,
+    text: string,
+    query: string,
+    limit: number,
+    root: string,
+  ) => Promise<VisibleSearchMatch[]>) {}
 
   async choose(state: WindowState): Promise<ProjectFolder | null> {
     const selected = await dialog.showOpenDialog(state.window, {
@@ -80,41 +120,40 @@ export class ProjectService {
         || a.name.localeCompare(b.name, undefined, { numeric: true }));
   }
 
-  async search(state: WindowState, rawQuery: string): Promise<ProjectSearchResult[]> {
+  async search(state: WindowState, request: ProjectSearchRequest): Promise<ProjectSearchResult[]> {
     const root = this.root(state);
-    const request = (this.searches.get(state.webContentsId) ?? 0) + 1;
-    this.searches.set(state.webContentsId, request);
-    const query = rawQuery.trim().toLocaleLowerCase();
+    const sequence = (this.searches.get(state.webContentsId) ?? 0) + 1;
+    this.searches.set(state.webContentsId, sequence);
+    const query = String(request?.query ?? '').trim();
     if (!query) return [];
+    const openDocuments = new Map((Array.isArray(request?.documents) ? request.documents : [])
+      .flatMap((document) => {
+        if (!document || typeof document.path !== 'string' || typeof document.text !== 'string'
+          || !['viewer', 'editor'].includes(document.surface)) return [];
+        const documentPath = canonicalPath(document.path);
+        return isInside(root, documentPath) && isMarkdownDocument(documentPath)
+          ? [[documentPath, { text: document.text, surface: document.surface }] as const] : [];
+      }));
     const results: ProjectSearchResult[] = [];
     await this.walk(root, async (filePath) => {
       if (results.length >= MAX_RESULTS || !isMarkdownDocument(filePath)) return;
       const stat = await fs.stat(filePath).catch(() => null);
       if (!stat?.isFile() || stat.size > MAX_FILE_SIZE) return;
-      const text = await fs.readFile(filePath, 'utf8').catch(() => '');
-      const lines = text.split(/\r\n|\r|\n/);
-      let ordinal = 0;
-      for (let index = 0; index < lines.length && results.length < MAX_RESULTS; index += 1) {
-        const line = lines[index];
-        const folded = line.toLocaleLowerCase();
-        let lineOccurrence = 0;
-        for (let match = folded.indexOf(query); match >= 0 && results.length < MAX_RESULTS;
-          match = folded.indexOf(query, match + query.length)) {
-          const start = Math.max(0, match - 60);
-          const end = Math.min(line.length, match + query.length + 120);
-          results.push({
-            path: filePath,
-            name: path.basename(filePath),
-            relativePath: path.relative(root, filePath),
-            line: index + 1,
-            column: match + 1,
-            lineOccurrence: lineOccurrence++,
-            ordinal: ordinal++,
-            preview: `${start ? '…' : ''}${line.slice(start, end)}${end < line.length ? '…' : ''}`,
-          });
-        }
-      }
-    }, () => this.searches.get(state.webContentsId) !== request || results.length >= MAX_RESULTS);
+      const open = openDocuments.get(canonicalPath(filePath));
+      const text = open?.text ?? await fs.readFile(filePath, 'utf8').catch(() => '');
+      const surface = open?.surface ?? 'viewer';
+      const remaining = MAX_RESULTS - results.length;
+      const matches = surface === 'editor'
+        ? searchSourceText(text, query, remaining)
+        : await this.searchVisible(filePath, text, query, remaining, root).catch(() => []);
+      results.push(...matches.map((match) => ({
+        path: filePath,
+        name: path.basename(filePath),
+        relativePath: path.relative(root, filePath),
+        surface,
+        ...match,
+      })));
+    }, () => this.searches.get(state.webContentsId) !== sequence || results.length >= MAX_RESULTS);
     return results;
   }
 

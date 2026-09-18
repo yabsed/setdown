@@ -12,6 +12,7 @@ type Options = {
   editor: MonacoEditor;
   reader: ReaderController;
   preview: PreviewSession;
+  changed(): void;
 };
 
 export class SurfaceController {
@@ -34,6 +35,7 @@ export class SurfaceController {
     this.options.reader.syncUi();
     this.options.preview.updateUi();
     this.options.reader.syncView();
+    this.options.changed();
     if (next === 'viewer') this.options.reader.restoreSearch();
     if (next === 'editor') window.setTimeout(() => this.options.editor.layout(), 0);
   }
