@@ -1,4 +1,5 @@
 import type {
+  DocumentSnapshot,
   GitRemoteAction,
   GitSnapshot,
   PreviewBounds,
@@ -11,7 +12,9 @@ import { project } from '../project-state.svelte';
 type Options = {
   desktop: DesktopPort;
   preferRendered(): boolean;
-  reviewChanged(open: boolean): void;
+  reviewChanged(open: boolean, active: boolean): void;
+  canSaveWorkingTree(path: string, expectedText: string): boolean;
+  workingTreeSaved(path: string, previousText: string, document: DocumentSnapshot): void;
 };
 
 export class SourceControlController {
@@ -25,26 +28,39 @@ export class SourceControlController {
   refresh = async (): Promise<void> => {
     if (!project.folder || project.gitLoading || project.gitBusy) return;
     project.gitLoading = true;
-    await this.perform(() => this.options.desktop.getGitStatus(), false, false);
+    await this.perform(() => this.options.desktop.getGitStatus(), false);
     project.gitLoading = false;
   };
 
   review = async (filePath: string, staged: boolean): Promise<void> => {
     if (project.gitDiffLoading) return;
+    if (project.gitDiffDirty) {
+      project.error = 'Save or close the current Working Tree diff first.';
+      this.activateDiff();
+      return;
+    }
     const request = ++this.request;
     this.options.desktop.showPreview(null, null);
     this.options.desktop.destroyPreview(this.previewId);
-    this.options.reviewChanged(true);
+    this.options.reviewChanged(true, true);
     project.gitDiff = null;
     project.gitDiffTarget = { filePath, staged };
+    project.gitDiffActive = true;
     project.gitDiffLoading = true;
     project.gitDiffPreviewLoading = false;
     project.gitDiffPreviewReady = false;
+    project.gitDiffWorkingText = '';
+    project.gitDiffDirty = false;
+    project.gitDiffSaving = false;
     project.error = '';
+    this.publishReview();
     try {
       const diff = await this.options.desktop.getGitDiff(filePath, staged);
       if (request !== this.request) return;
       project.gitDiff = diff;
+      project.gitDiffWorkingText = diff.modifiedText ?? '';
+      project.gitDiffDirty = false;
+      this.publishReview();
       project.gitDiffLine = diff.hunks[0]?.newStart ?? 1;
       const renderable = diff.originalText !== null && diff.modifiedText !== null
         && /\.(?:md|markdown|mdown|mkdn|mkd|rmd|qmd|mdx)$/i.test(diff.filePath);
@@ -69,17 +85,38 @@ export class SourceControlController {
     Object.assign(project, {
       gitDiff: null,
       gitDiffTarget: null,
+      gitDiffActive: false,
       gitDiffLoading: false,
       gitDiffPreviewLoading: false,
       gitDiffPreviewReady: false,
       gitDiffLine: 1,
+      gitDiffWorkingText: '',
+      gitDiffDirty: false,
+      gitDiffSaving: false,
     });
-    this.options.reviewChanged(false);
+    this.options.desktop.updateGitReviewState(null);
+    this.options.reviewChanged(false, false);
+  };
+
+  activateDiff = (): void => {
+    if (!project.gitDiff && !project.gitDiffLoading) return;
+    project.gitDiffActive = true;
+    this.options.reviewChanged(true, true);
+    this.syncPreview();
+  };
+
+  deactivateDiff = (): void => {
+    if (!project.gitDiffActive) return;
+    project.gitDiffActive = false;
+    this.options.desktop.showPreview(null, null);
+    this.options.reviewChanged(true, false);
   };
 
   layoutDiff = (bounds: PreviewBounds | null): void => {
     this.bounds = bounds;
-    this.syncPreview();
+    // An unmounting diff host reports its final null layout after the document
+    // preview has already been restored. It must not hide that document again.
+    if (project.gitDiffActive) this.syncPreview();
   };
 
   toggleDiffMode = (): void => {
@@ -90,8 +127,55 @@ export class SourceControlController {
 
   showRendered = (): void => {
     if (!project.gitDiffPreviewReady) return;
+    if (project.gitDiffDirty) {
+      project.error = 'Save the Working Tree diff before returning to the rendered comparison.';
+      return;
+    }
     project.gitDiffMode = 'rendered';
-    this.syncPreview();
+    if (project.gitDiffActive) this.syncPreview();
+  };
+
+  changeWorkingTree = (text: string): void => {
+    const diff = project.gitDiff;
+    if (!diff || diff.staged) return;
+    project.gitDiffWorkingText = text;
+    project.gitDiffDirty = text !== diff.modifiedText;
+    this.publishReview();
+  };
+
+  saveWorkingTree = async (): Promise<void> => {
+    const diff = project.gitDiff;
+    if (!diff || diff.staged || !project.gitDiffDirty || project.gitDiffSaving) return;
+    if (!this.options.canSaveWorkingTree(diff.filePath, diff.modifiedText ?? '')) {
+      project.error = 'The open document has newer unsaved changes. Save or discard them first.';
+      return;
+    }
+    project.gitDiffSaving = true;
+    project.error = '';
+    const previousText = diff.modifiedText ?? '';
+    try {
+      const document = await this.options.desktop.saveGitWorkingTree(
+        diff.filePath,
+        project.gitDiffWorkingText,
+        previousText,
+      );
+      this.options.workingTreeSaved(diff.filePath, previousText, document);
+      const refreshed = await this.options.desktop.getGitDiff(diff.filePath, false);
+      if (project.gitDiff !== diff) return;
+      project.gitDiff = refreshed;
+      project.gitDiffWorkingText = refreshed.modifiedText ?? '';
+      project.gitDiffDirty = false;
+      this.publishReview();
+      project.git = await this.options.desktop.getGitStatus();
+      project.gitDiffPreviewReady = false;
+      if (refreshed.originalText !== null && refreshed.modifiedText !== null) {
+        await this.preparePreview(this.request, refreshed);
+      }
+    } catch (error) {
+      project.error = error instanceof Error ? error.message : String(error);
+    } finally {
+      project.gitDiffSaving = false;
+    }
   };
 
   previewMessage = (payload: PreviewMessage): boolean => {
@@ -133,13 +217,15 @@ export class SourceControlController {
   private showSource(line: number): void {
     project.gitDiffLine = line;
     project.gitDiffMode = 'source';
-    this.options.desktop.showPreview(null, null);
+    if (project.gitDiffActive) this.options.desktop.showPreview(null, null);
   }
 
   private syncPreview(): void {
     this.options.desktop.showPreview(
-      project.gitDiffMode === 'rendered' && project.gitDiffPreviewReady ? this.previewId : null,
-      project.gitDiffMode === 'rendered' && project.gitDiffPreviewReady ? this.bounds : null,
+      project.gitDiffActive && project.gitDiffMode === 'rendered' && project.gitDiffPreviewReady
+        ? this.previewId : null,
+      project.gitDiffActive && project.gitDiffMode === 'rendered' && project.gitDiffPreviewReady
+        ? this.bounds : null,
     );
   }
 
@@ -160,21 +246,48 @@ export class SourceControlController {
     if (project.gitBusy) return;
     project.gitBusy = true;
     await this.perform(action);
+    if (!project.error && !project.gitDiffDirty) await this.refreshOpenDiff();
     project.gitBusy = false;
   }
 
-  private async perform(
-    action: () => Promise<GitSnapshot>,
-    clear = true,
-    closeReview = true,
-  ): Promise<void> {
+  private async perform(action: () => Promise<GitSnapshot>, clear = true): Promise<void> {
     if (clear) project.error = '';
     try {
       project.git = await action();
-      if (closeReview && (project.gitDiff || project.gitDiffLoading)) this.closeDiff();
       project.error = '';
     } catch (error) {
       project.error = error instanceof Error ? error.message : String(error);
     }
+  }
+
+  private async refreshOpenDiff(): Promise<void> {
+    const target = project.gitDiffTarget;
+    if (!target) return;
+    try {
+      const diff = await this.options.desktop.getGitDiff(target.filePath, target.staged);
+      project.gitDiff = diff;
+      project.gitDiffWorkingText = diff.modifiedText ?? '';
+      project.gitDiffDirty = false;
+      this.publishReview();
+      project.gitDiffPreviewReady = false;
+      const renderable = diff.originalText !== null && diff.modifiedText !== null
+        && /\.(?:md|markdown|mdown|mkdn|mkd|rmd|qmd|mdx)$/i.test(diff.filePath);
+      if (renderable) await this.preparePreview(this.request, diff);
+      else if (project.gitDiffMode === 'rendered') project.gitDiffMode = 'source';
+    } catch (error) {
+      project.error = error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  private publishReview(): void {
+    const target = project.gitDiffTarget;
+    if (!target) return this.options.desktop.updateGitReviewState(null);
+    const name = target.filePath.split(/[\\/]/).at(-1) ?? target.filePath;
+    this.options.desktop.updateGitReviewState({
+      name: `${name} (${target.staged ? 'Index' : 'Working Tree'})`,
+      path: target.filePath,
+      dirty: project.gitDiffDirty,
+      isUntitled: false,
+    });
   }
 }

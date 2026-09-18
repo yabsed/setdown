@@ -12,4 +12,5 @@ export type WindowState = {
   closeAfterConfirmation: boolean;
   closePromptOpen: boolean;
   rendererTabs: TabStateSummary[];
+  rendererGitReview: TabStateSummary | null;
 };

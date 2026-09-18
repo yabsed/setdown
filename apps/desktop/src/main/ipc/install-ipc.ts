@@ -62,8 +62,16 @@ export function installIpc(options: Options): void {
       }))
       : [];
   });
+  channels.on('git-review:update-state', (state, review: TabStateSummary | null) => {
+    state.rendererGitReview = review ? {
+      name: String(review.name),
+      path: String(review.path),
+      dirty: Boolean(review.dirty),
+      isUntitled: false,
+    } : null;
+  });
   channels.on('app:close-empty-window', (state) => {
-    if (state.rendererTabs.length > 0) return;
+    if (state.rendererTabs.length > 0 || state.rendererGitReview) return;
     state.closeAfterConfirmation = true;
     state.window.close();
   });
@@ -173,6 +181,18 @@ export function installIpc(options: Options): void {
   channels.handle('project:git-status', (state) => projects.gitStatus(state));
   channels.handle('project:git-diff', (state, request: { filePath: string; staged: boolean }) =>
     projects.gitDiff(state, request.filePath, Boolean(request.staged)));
+  channels.handle('project:git-save-working-tree', async (state, request: {
+    filePath: string; text: string; expectedText: string;
+  }) => {
+    const filePath = projects.assertProjectFile(state, request.filePath);
+    const document = await documents.read(filePath);
+    if (document.text !== request.expectedText) {
+      throw new Error('The working tree changed while this diff was open. Reopen the diff and try again.');
+    }
+    const result = await documents.saveSnapshot(state, document, request.text, 1);
+    if (result.canceled || !result.document) throw new Error('The working-tree edit was not saved.');
+    return result.document;
+  });
   channels.handle('project:git-diff-preview', (state, request: {
     tabId: string;
     diff: Awaited<ReturnType<ProjectService['gitDiff']>>;

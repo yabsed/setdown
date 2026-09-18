@@ -1,4 +1,5 @@
 import type {
+  DocumentSnapshot,
   GitRemoteAction,
   PreviewBounds,
   PreviewMessage,
@@ -27,7 +28,9 @@ type Options = {
   pathMoved(from: string, to: string): Promise<void>;
   prepareRemove(path: string): Promise<boolean>;
   preferRenderedDiff(): boolean;
-  reviewChanged(open: boolean): void;
+  reviewChanged(open: boolean, active: boolean): void;
+  canSaveWorkingTree(path: string, expectedText: string): boolean;
+  workingTreeSaved(path: string, previousText: string, document: DocumentSnapshot): void;
   resized(): void;
 };
 
@@ -48,13 +51,18 @@ export class ProjectController {
     this.searcher = new SearchController({
       desktop: options.desktop,
       documents: options.searchDocuments,
-      open: this.explorer.open,
+      open: (path) => {
+        this.sourceControl.deactivateDiff();
+        return this.explorer.open(path);
+      },
       highlight: options.highlight,
     });
     this.sourceControl = new SourceControlController({
       desktop: options.desktop,
       preferRendered: options.preferRenderedDiff,
       reviewChanged: options.reviewChanged,
+      canSaveWorkingTree: options.canSaveWorkingTree,
+      workingTreeSaved: options.workingTreeSaved,
     });
   }
 
@@ -66,7 +74,6 @@ export class ProjectController {
   };
 
   select = (view: ProjectView): void => {
-    if (view !== 'git' && (project.gitDiff || project.gitDiffLoading)) this.sourceControl.closeDiff();
     if (project.open && project.activeView === view) {
       project.open = false;
       rememberProjectState();
@@ -118,7 +125,7 @@ export class ProjectController {
   collapseExplorer = (): void => this.explorer.collapse();
   toggleDirectory = (path: string): Promise<void> => this.explorer.toggle(path);
   openFile = (path: string): Promise<boolean> => {
-    if (project.gitDiff || project.gitDiffLoading) this.sourceControl.closeDiff();
+    this.sourceControl.deactivateDiff();
     return this.explorer.open(path);
   };
   createEntry = (parent: string, name: string, kind: ProjectEntryKind): Promise<void> =>
@@ -141,8 +148,12 @@ export class ProjectController {
   refreshGit = (): Promise<void> => this.sourceControl.refresh();
   reviewGitChange = (path: string, staged: boolean): Promise<void> =>
     this.sourceControl.review(path, staged);
+  activateGitDiff = (): void => this.sourceControl.activateDiff();
+  deactivateGitDiff = (): void => this.sourceControl.deactivateDiff();
   closeGitDiff = (): void => this.sourceControl.closeDiff();
   layoutGitDiff = (bounds: PreviewBounds | null): void => this.sourceControl.layoutDiff(bounds);
+  changeGitWorkingTree = (text: string): void => this.sourceControl.changeWorkingTree(text);
+  saveGitWorkingTree = (): Promise<void> => this.sourceControl.saveWorkingTree();
   toggleGitDiffMode = (): void => this.sourceControl.toggleDiffMode();
   showRenderedGitDiff = (): void => this.sourceControl.showRendered();
   previewMessage = (payload: PreviewMessage): boolean => this.sourceControl.previewMessage(payload);

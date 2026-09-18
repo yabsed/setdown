@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { GitDiff, GitDiffPreviewResult, RenderResult } from '../../protocol/desktop-api';
 import { applyTextRevision } from '../../core/document/document-state';
 import type { PreviewBlockPatch } from '../../core/preview/preview-blocks';
-import { mergeRenderedDiff, RENDERED_DIFF_STYLES } from '../../core/preview/rendered-diff';
+import { responsiveRenderedDiff, RENDERED_DIFF_STYLES } from '../../core/preview/rendered-diff';
 import { replaceInitialPreviewHtml } from '../../core/preview/preview-install';
 import { normalizePreviewTheme, previewThemeBackground, type PreviewThemeId } from '../../core/preview/preview-preferences';
 import type { WindowState } from '../windows/window-state';
@@ -142,7 +142,7 @@ export class PreviewRenderer {
       ]);
       if (typeof original.html !== 'string' || typeof modified.html !== 'string'
         || typeof modified.template !== 'string') return unsupported();
-      const merged = mergeRenderedDiff(original.html, modified.html, diff.hunks);
+      const merged = responsiveRenderedDiff(original.html, modified.html, diff.hunks);
       const installed = replaceInitialPreviewHtml(modified.template, merged);
       if (!installed) return unsupported();
       const page = installed.replace('</head>', `${RENDERED_DIFF_STYLES}</head>`);

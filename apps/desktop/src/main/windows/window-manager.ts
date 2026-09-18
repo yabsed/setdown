@@ -66,6 +66,7 @@ export class WindowManager {
       closeAfterConfirmation: false,
       closePromptOpen: false,
       rendererTabs: [],
+      rendererGitReview: null,
     };
     const webContentsId = window.webContents.id;
     this.options.registry.add(state, showWhenReady);
@@ -103,6 +104,7 @@ export class WindowManager {
   private confirmClose(event: ElectronEvent, state: WindowState): void {
     if (state.closeAfterConfirmation) return;
     const dirtyTabs = state.rendererTabs.filter((tab) => tab.dirty);
+    if (state.rendererGitReview?.dirty) dirtyTabs.push(state.rendererGitReview);
     if (state.rendererTabs.length === 0 && state.currentDocument && isDirty(state.currentDocument)) {
       dirtyTabs.push({
         name: state.currentDocument.name,

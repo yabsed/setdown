@@ -38,6 +38,7 @@ const api: MarkTexApi = {
     ipcRenderer.invoke('document:activate', { document, text, revision }),
   updateTabState: (tabs: TabStateSummary[]) =>
     ipcRenderer.send('tabs:update-state', tabs),
+  updateGitReviewState: (review) => ipcRenderer.send('git-review:update-state', review),
   registerTabTransfer: (transferId: string, tab: TransferableTab) =>
     ipcRenderer.send('tabs:register-transfer', { transferId, tab }),
   claimTabTransfer: (transferId: string) =>
@@ -102,6 +103,8 @@ const api: MarkTexApi = {
   searchProject: (request) => ipcRenderer.invoke('project:search', request),
   getGitStatus: () => ipcRenderer.invoke('project:git-status'),
   getGitDiff: (filePath, staged) => ipcRenderer.invoke('project:git-diff', { filePath, staged }),
+  saveGitWorkingTree: (filePath, text, expectedText) =>
+    ipcRenderer.invoke('project:git-save-working-tree', { filePath, text, expectedText }),
   prepareGitDiffPreview: (tabId, diff, themeId) =>
     ipcRenderer.invoke('project:git-diff-preview', { tabId, diff, themeId }),
   initializeGit: () => ipcRenderer.invoke('project:git-init'),

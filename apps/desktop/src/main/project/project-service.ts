@@ -91,9 +91,13 @@ export class ProjectService {
   runGitRemote = (state: WindowState, action: GitRemoteAction) => this.git.remote(state, action);
 
   assertDocument(state: WindowState, candidate: string): string {
-    const filePath = this.paths.inside(state, candidate);
+    const filePath = this.assertProjectFile(state, candidate);
     if (!isMarkdownDocument(filePath)) throw new Error('Setdown opens Markdown documents only.');
     return filePath;
+  }
+
+  assertProjectFile(state: WindowState, candidate: string): string {
+    return this.paths.inside(state, candidate);
   }
 
   private folder(root: string): ProjectFolder {

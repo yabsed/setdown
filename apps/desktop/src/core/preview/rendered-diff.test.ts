@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { mergeRenderedDiff } from './rendered-diff';
+import { mergeRenderedDiff, responsiveRenderedDiff } from './rendered-diff';
 
 describe('rendered diff', () => {
   test('keeps unchanged blocks once and marks only replaced blocks', () => {
@@ -21,7 +21,10 @@ describe('rendered diff', () => {
     expect(merged.match(/>Same ending</g)).toHaveLength(1);
     expect(merged).toContain('class="setdown-diff-removed"');
     expect(merged).toContain('class="setdown-diff-added"');
-    expect(merged.indexOf('Old text')).toBeLessThan(merged.indexOf('New text'));
+    expect(merged).toContain('class="setdown-diff-word-removed">Old</span>');
+    expect(merged).toContain('class="setdown-diff-word-added">New</span>');
+    expect(merged.indexOf('setdown-diff-removed'))
+      .toBeLessThan(merged.indexOf('setdown-diff-added'));
   });
 
   test('inserts a removed block at a pure-deletion boundary', () => {
@@ -32,5 +35,19 @@ describe('rendered diff', () => {
     );
     expect(merged.indexOf('Delete')).toBeLessThan(merged.indexOf('Tail'));
     expect(merged).toContain('setdown-diff-removed');
+  });
+
+  test('carries complete before and after documents for the wide layout', () => {
+    const rendered = responsiveRenderedDiff(
+      '<h1 data-source-line="1">Title</h1><p data-source-line="3">Old text</p>',
+      '<h1 data-source-line="1">Title</h1><p data-source-line="3">New text</p>',
+      [{ oldStart: 3, oldLines: 1, newStart: 3, newLines: 1 }],
+    );
+
+    expect(rendered).toContain('setdown-rendered-diff-unified');
+    expect(rendered).toContain('setdown-rendered-diff-before');
+    expect(rendered).toContain('setdown-rendered-diff-after');
+    expect(rendered).toContain('setdown-diff-word-removed">Old</span>');
+    expect(rendered).toContain('setdown-diff-word-added">New</span>');
   });
 });

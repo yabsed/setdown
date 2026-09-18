@@ -1,8 +1,11 @@
 <script lang="ts">
   import type * as Monaco from 'monaco-editor';
   import { normalizePreviewTheme } from '../../../core/preview/preview-preferences';
+  import type { AppActions } from '../../view-state.svelte';
   import { monacoThemeName, registerMonacoThemes } from '../../theme';
   import { project } from '../project-state.svelte';
+
+  let { actions }: { actions: AppActions } = $props();
 
   let host = $state<HTMLDivElement>();
   let loading = $state(true);
@@ -44,11 +47,15 @@
       editor ??= monaco.editor.createDiffEditor(host, {
         automaticLayout: true,
         theme: monacoThemeName(normalizePreviewTheme(document.documentElement.dataset.theme)),
-        readOnly: true,
+        readOnly: diff.staged,
         originalEditable: false,
         renderSideBySide: true,
         useInlineViewWhenSpaceIsLimited: true,
         renderSideBySideInlineBreakpoint: 760,
+        diffAlgorithm: 'advanced',
+        ignoreTrimWhitespace: false,
+        renderIndicators: true,
+        renderMarginRevertIcon: !diff.staged,
         wordWrap: 'on',
         diffWordWrap: 'on',
         minimap: { enabled: false },
@@ -59,16 +66,27 @@
         lineHeight: 22,
         padding: { top: 16, bottom: 48 },
       });
+      editor.updateOptions({ readOnly: diff.staged, originalEditable: false });
       disposeModels();
       const id = crypto.randomUUID();
       const syntax = language(diff.filePath);
       original = monaco.editor.createModel(diff.originalText, syntax,
         monaco.Uri.parse(`inmemory://setdown-diff/${id}/original`));
-      modified = monaco.editor.createModel(diff.modifiedText, syntax,
+      modified = monaco.editor.createModel(project.gitDiffWorkingText, syntax,
         monaco.Uri.parse(`inmemory://setdown-diff/${id}/modified`));
       editor.setModel({ original, modified });
+      const workingModel = modified;
+      workingModel.onDidChangeContent(() => {
+        if (diff.staged) return;
+        actions.changeProjectGitWorkingTree(workingModel.getValue());
+      });
+      editor.getModifiedEditor().addCommand(
+        monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
+        () => actions.saveProjectGitWorkingTree(),
+      );
       const target = Math.min(Math.max(1, line), modified.getLineCount());
       editor.getModifiedEditor().revealLineInCenter(target);
+      if (!diff.staged) editor.getModifiedEditor().focus();
       loading = false;
       requestAnimationFrame(() => editor?.layout());
     } catch (cause) {

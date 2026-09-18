@@ -36,6 +36,7 @@ export function registerMonacoThemes(monaco: typeof Monaco) {
     /^#[0-9a-f]{6}$/i.test(color) ? `${color}${alpha}` : color
   );
   for (const { id, appearance, palette, syntax } of THEME_PROFILES) {
+    const dark = appearance === 'dark';
     monaco.editor.defineTheme(monacoThemeName(id), {
       base: appearance === 'dark' ? 'vs-dark' : 'vs',
       inherit: true,
@@ -61,6 +62,14 @@ export function registerMonacoThemes(monaco: typeof Monaco) {
         'editorGutter.background': palette.editorBackground,
         'editorIndentGuide.background1': palette.border,
         'editorIndentGuide.activeBackground1': palette.strongBorder,
+        'diffEditor.insertedLineBackground': dark ? '#2ea04314' : '#2da44e12',
+        'diffEditor.removedLineBackground': dark ? '#f8514914' : '#cf222e12',
+        'diffEditor.insertedTextBackground': dark ? '#2ea04366' : '#2da44e4d',
+        'diffEditor.removedTextBackground': dark ? '#f8514966' : '#cf222e4d',
+        'diffEditorGutter.insertedLineBackground': dark ? '#2ea04388' : '#2da44e77',
+        'diffEditorGutter.removedLineBackground': dark ? '#f8514988' : '#cf222e77',
+        'diffEditor.border': palette.border,
+        'diffEditor.diagonalFill': withAlpha(palette.border, '55'),
       },
       rules: [
         { token: 'comment', foreground: syntax.comment.slice(1), fontStyle: 'italic' },

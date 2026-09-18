@@ -288,6 +288,34 @@ export class TabController {
     if (tab) this.options.editor.replace(tab, documentSnapshot);
   };
 
+  canAcceptWorkingTreeEdit = (path: string, expectedText: string): boolean => {
+    const tab = this.options.workspace.tabs.find((candidate) => candidate.document.path === path);
+    return !tab || this.text(tab) === expectedText;
+  };
+
+  acceptWorkingTreeSave = (
+    path: string,
+    previousText: string,
+    documentSnapshot: DocumentSnapshot,
+  ): void => {
+    const { preview, workspace } = this.options;
+    const tab = workspace.tabs.find((candidate) => candidate.document.path === path);
+    if (!tab || this.text(tab) !== previousText) return;
+    const revision = Math.max(tab.revision + 1, documentSnapshot.revision);
+    const synced = { ...documentSnapshot, revision, savedRevision: revision };
+    tab.document = synced;
+    tab.previewUrl = null;
+    tab.previewRevision = null;
+    tab.previewTheme = null;
+    this.options.editor.replace(tab, synced);
+    if (tab.id === workspace.activeId) {
+      preview.reset();
+      void this.options.desktop.activateDocument(synced, synced.text, revision);
+    }
+    view.notice = false;
+    this.updateChrome();
+  };
+
   show = async (
     documentSnapshot: DocumentSnapshot,
     initialSurface: 'viewer' | 'editor' = 'viewer',

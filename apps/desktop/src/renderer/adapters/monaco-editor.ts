@@ -115,11 +115,13 @@ export class MonacoEditor {
   }
 
   replace(tab: WorkspaceTab, document: DocumentSnapshot): void {
-    this.models.get(tab.id)?.dispose();
+    const previous = this.models.get(tab.id);
+    const active = this.editorValue?.getModel() === previous;
+    previous?.dispose();
     this.models.delete(tab.id);
     tab.text = document.text;
     tab.revision = document.revision;
-    if (this.editorValue) this.activate(tab);
+    if (active) this.activate(tab);
   }
 
   dispose(tabId: string): void {

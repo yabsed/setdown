@@ -34,6 +34,7 @@ const EMPTY_ANCHOR: ViewportAnchor = {
 
 /** Renderer composition root. 모든 실제 동작은 주입된 책임 객체가 수행한다. */
 export function startWorkspace(desktop: DesktopPort) {
+  desktop.updateGitReviewState(null);
   const initialTheme: ThemeSnapshot = {
     id: normalizePreviewTheme(desktop.initialTheme.id),
     revision: Math.max(0, desktop.initialTheme.revision),
@@ -45,18 +46,18 @@ export function startWorkspace(desktop: DesktopPort) {
     executeMenuItem: (id) => desktop.executeApplicationMenuItem(id),
     resolveClosePrompt: (decision) => closePrompt.resolve(decision),
     activateTab: (id) => {
-      projects.closeGitDiff();
+      projects.deactivateGitDiff();
       void tabs.activate(id);
     },
     closeTab: (id) => void tabs.close(id),
     startTabDrag: (id, event) => tabDrag.start(id, event),
     endTabDrag: (event) => tabDrag.end(event),
     newDocument: () => {
-      projects.closeGitDiff();
+      projects.deactivateGitDiff();
       void documents.create();
     },
     openDocument: () => {
-      projects.closeGitDiff();
+      projects.deactivateGitDiff();
       void documents.open();
     },
     toggleProjectSidebar: () => projects.toggle(),
@@ -75,8 +76,11 @@ export function startWorkspace(desktop: DesktopPort) {
     toggleProjectSearchGroup: (path) => projects.toggleSearchGroup(path),
     refreshProjectGit: () => void projects.refreshGit(),
     reviewProjectGitChange: (path, staged) => void projects.reviewGitChange(path, staged),
-    closeProjectGitDiff: () => projects.closeGitDiff(),
+    activateProjectGitDiff: () => projects.activateGitDiff(),
+    closeProjectGitDiff: () => void closeGitDiff(),
     layoutProjectGitDiff: (bounds) => projects.layoutGitDiff(bounds),
+    changeProjectGitWorkingTree: (text) => projects.changeGitWorkingTree(text),
+    saveProjectGitWorkingTree: () => void projects.saveGitWorkingTree(),
     initializeProjectGit: () => void projects.initializeGit(),
     stageProjectGit: (paths) => void projects.stageGit(paths),
     unstageProjectGit: (paths) => void projects.unstageGit(paths),
@@ -84,7 +88,7 @@ export function startWorkspace(desktop: DesktopPort) {
     commitProjectGit: (message) => void projects.commitGit(message),
     runProjectGitRemote: (action) => void projects.runGitRemote(action),
     toggleSurface: () => {
-      if (project.gitDiff) projects.toggleGitDiffMode();
+      if (project.gitDiffActive && project.gitDiff) projects.toggleGitDiffMode();
       else surfaces.toggle();
     },
     openTable: () => insertions.openTable(),
@@ -184,7 +188,7 @@ export function startWorkspace(desktop: DesktopPort) {
     tabs: workspace.tabs,
     activeId: () => workspace.activeId,
     activate: (id) => {
-      projects.closeGitDiff();
+      projects.deactivateGitDiff();
       void tabs.activate(id);
     },
     serialize: tabs.transferable,
@@ -221,10 +225,12 @@ export function startWorkspace(desktop: DesktopPort) {
     pathMoved: tabs.relocatePath,
     prepareRemove: tabs.prepareRemove,
     preferRenderedDiff: () => session.surface !== 'editor',
-    reviewChanged: (open) => {
+    reviewChanged: (open, activeReview) => {
       shell.dataset.gitDiff = String(open);
-      reader.setSuspended(open);
+      reader.setSuspended(activeReview);
     },
+    canSaveWorkingTree: tabs.canAcceptWorkingTreeEdit,
+    workingTreeSaved: tabs.acceptWorkingTreeSave,
     highlight: (query, target) => {
       const editing = workspace.active?.surface === 'editor';
       const currentTarget = target?.surface === (editing ? 'editor' : 'viewer')
@@ -266,6 +272,23 @@ export function startWorkspace(desktop: DesktopPort) {
     if (workspace.activeId) reader.send(workspace.activeId, { command: 'marktex:scroll-to-heading', id });
   }
 
+  function gitDiffName() {
+    const filePath = project.gitDiff?.filePath ?? project.gitDiffTarget?.filePath ?? 'Working Tree';
+    const name = filePath.split(/[\\/]/).at(-1) ?? filePath;
+    return `${name} (${project.gitDiff?.staged ? 'Index' : 'Working Tree'})`;
+  }
+
+  async function closeGitDiff() {
+    if (!project.gitDiffDirty) return projects.closeGitDiff();
+    const decision = await closePrompt.request('tab', [gitDiffName()]);
+    if (decision === 'cancel') return;
+    if (decision === 'save') {
+      await projects.saveGitWorkingTree();
+      if (project.gitDiffDirty) return;
+    }
+    projects.closeGitDiff();
+  }
+
   installWorkspaceEvents(desktop, {
     previewMessage: (payload) => {
       if (payload.message.type === 'marktex:folder-drop'
@@ -280,7 +303,10 @@ export function startWorkspace(desktop: DesktopPort) {
     previewFindRequested: (tabId) => {
       if (tabId === workspace.activeId && session.surface === 'viewer') reader.openFind();
     },
-    documentOpened: (opened) => void tabs.show(opened),
+    documentOpened: (opened) => {
+      projects.deactivateGitDiff();
+      void tabs.show(opened);
+    },
     externalChange: (change) => {
       if (session.document?.path === change.path) view.notice = true;
     },
@@ -295,43 +321,62 @@ export function startWorkspace(desktop: DesktopPort) {
       });
     },
     command: (command) => {
-      if (command === 'new-document') void documents.create();
+      if (command === 'new-document') {
+        projects.deactivateGitDiff();
+        void documents.create();
+      }
       if (command === 'open-folder') void projects.chooseFolder();
-      if (command === 'save') void documents.save(false);
-      if (command === 'save-as') void documents.save(true);
+      if (command === 'save') {
+        if (project.gitDiffActive) void projects.saveGitWorkingTree();
+        else void documents.save(false);
+      }
+      if (command === 'save-as') {
+        if (project.gitDiffActive) void projects.saveGitWorkingTree();
+        else void documents.save(true);
+      }
       if (command === 'export-pdf') void documents.exportPdf();
       if (command === 'close-tab') {
-        if (project.gitDiff || project.gitDiffTarget || project.gitDiffLoading) {
-          projects.closeGitDiff();
+        if (project.gitDiffActive) {
+          void closeGitDiff();
         } else if (workspace.activeId) void tabs.close(workspace.activeId);
       }
       if (command === 'next-tab') {
-        projects.closeGitDiff();
+        projects.deactivateGitDiff();
         tabs.cycle(1);
       }
       if (command === 'previous-tab') {
-        projects.closeGitDiff();
+        projects.deactivateGitDiff();
         tabs.cycle(-1);
       }
-      if (command === 'open-find' && !project.gitDiff) reader.openFind();
-      if (command === 'escape' && project.gitDiff) {
+      if (command === 'open-find' && !project.gitDiffActive) reader.openFind();
+      if (command === 'escape' && project.gitDiffActive && project.gitDiff) {
         if (project.gitDiffMode === 'source') projects.showRenderedGitDiff();
       } else if (command === 'escape' && session.surface === 'editor') void surfaces.enterViewer();
       if (command === 'toggle-folder-tools') projects.toggle();
       if (command === 'toggle-surface') {
-        if (project.gitDiff) projects.toggleGitDiffMode();
+        if (project.gitDiffActive && project.gitDiff) projects.toggleGitDiffMode();
         else surfaces.toggle();
       }
     },
-    saveBeforeClose: () => void documents.saveAll(),
-    transferIncoming: (transfer) => void tabs.installTransferred(transfer),
+    saveBeforeClose: () => void (async () => {
+      if (project.gitDiffDirty) await projects.saveGitWorkingTree();
+      if (project.gitDiffDirty) {
+        desktop.finishWindowClose(false);
+        return;
+      }
+      await documents.saveAll();
+    })(),
+    transferIncoming: (transfer) => {
+      projects.deactivateGitDiff();
+      void tabs.installTransferred(transfer);
+    },
     transferCompleted: ({ transferId, tabId }) => {
       tabDrag.reset();
       void tabs.removeTransferred(tabId).finally(() => desktop.releaseTabTransferSource(transferId));
     },
     keydown: (event) => {
       if (event.key === 'Escape') tabDrag.cancel();
-      if (event.key === 'Escape' && project.gitDiff) {
+      if (event.key === 'Escape' && project.gitDiffActive && project.gitDiff) {
         event.preventDefault();
         event.stopPropagation();
         if (project.gitDiffMode === 'source' && project.gitDiffPreviewReady) {
@@ -345,7 +390,7 @@ export function startWorkspace(desktop: DesktopPort) {
         void surfaces.enterViewer();
         return;
       }
-      if (!project.gitDiff && session.surface === 'viewer' && event.key.toLowerCase() === 'f'
+      if (!project.gitDiffActive && session.surface === 'viewer' && event.key.toLowerCase() === 'f'
         && (event.ctrlKey || event.metaKey) && !event.altKey) {
         event.preventDefault();
         reader.openFind();

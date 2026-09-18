@@ -205,6 +205,7 @@ export type MarkTexApi = {
   openDocument(): Promise<DocumentSnapshot | null>;
   activateDocument(document: DocumentSnapshot, text: string, revision: number): Promise<DocumentSnapshot>;
   updateTabState(tabs: TabStateSummary[]): void;
+  updateGitReviewState(review: TabStateSummary | null): void;
   registerTabTransfer(transferId: string, tab: TransferableTab): void;
   claimTabTransfer(transferId: string): Promise<ClaimedTabTransfer | null>;
   completeTabTransfer(transferId: string): void;
@@ -263,6 +264,11 @@ export type MarkTexApi = {
   searchProject(request: ProjectSearchRequest): Promise<ProjectSearchResult[]>;
   getGitStatus(): Promise<GitSnapshot>;
   getGitDiff(filePath: string, staged: boolean): Promise<GitDiff>;
+  saveGitWorkingTree(
+    filePath: string,
+    text: string,
+    expectedText: string,
+  ): Promise<DocumentSnapshot>;
   prepareGitDiffPreview(
     tabId: string,
     diff: GitDiff,
