@@ -13,11 +13,13 @@
   let tablePopover: HTMLElement;
   let linkPopover: HTMLElement;
   let draggingTable = $state(false);
+  let tableActive = $state(false);
 
   const tableColumns = () => insertion.table.headers.length;
   const tableRows = () => insertion.table.rows.length + 1;
 
   function selectTable(column: number, row: number) {
+    tableActive = true;
     if (column === tableColumns() && row === tableRows()) return;
     resizeTable(column, row - 1);
   }
@@ -90,10 +92,7 @@
   });
 
   $effect(() => {
-    if (!insertion.tableOpen) return;
-    queueMicrotask(() => tablePopover?.querySelector<HTMLButtonElement>(
-      `[data-columns="${tableColumns()}"][data-rows="${tableRows()}"]`,
-    )?.focus());
+    if (!insertion.tableOpen) tableActive = false;
   });
 
   $effect(() => {
@@ -106,14 +105,15 @@
   role="dialog" aria-label="표 삽입" tabindex="-1" hidden={!insertion.tableOpen}>
   <header class="insertion-popover-header">
     <strong>표 크기</strong>
-    <span>{tableColumns()} × {tableRows()}</span>
+    <span>{tableActive ? `${tableColumns()} × ${tableRows()}` : ''}</span>
     <button type="button" aria-label="닫기" onclick={actions.closeTable}>×</button>
   </header>
-  <div class="table-size-grid" class:is-dragging={draggingTable} aria-label="표 크기 선택">
+  <div class="table-size-grid" class:is-dragging={draggingTable} role="group" aria-label="표 크기 선택"
+    onpointerleave={() => tableActive = false}>
     {#each tableCells as cell (`${cell.column}:${cell.row}`)}
       <button
         class="table-size-cell"
-        class:is-selected={cell.column <= tableColumns() && cell.row <= tableRows()}
+        class:is-selected={tableActive && cell.column <= tableColumns() && cell.row <= tableRows()}
         type="button"
         tabindex={cell.column === tableColumns() && cell.row === tableRows() ? 0 : -1}
         aria-label={`${cell.column}열 ${cell.row}행`}

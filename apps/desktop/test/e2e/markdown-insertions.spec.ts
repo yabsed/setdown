@@ -25,9 +25,15 @@ test('inserts a table and a URL from compact editor popovers', async () => {
     const tablePopover = window.locator('.table-popover');
     await expect(tablePopover).toBeVisible();
     await expect(window.locator('dialog.table-dialog')).toHaveCount(0);
+    await expect(tablePopover.locator('.table-size-cell')).toHaveCount(100);
+    await expect(tablePopover.locator('.table-size-cell.is-selected')).toHaveCount(0);
+    await expect(tablePopover.locator('header span')).toBeEmpty();
     await window.locator('.table-size-cell[data-columns="5"][data-rows="9"]').hover();
     await expect(tablePopover.locator('header span')).toHaveText('5 × 9');
     await expect(tablePopover.locator('.table-size-cell.is-selected')).toHaveCount(45);
+    await tablePopover.locator('header').hover();
+    await expect(tablePopover.locator('.table-size-cell.is-selected')).toHaveCount(0);
+    await expect(tablePopover.locator('header span')).toBeEmpty();
     await window.locator('.table-size-cell[data-columns="2"][data-rows="2"]').click();
     await expect(tablePopover).toBeHidden();
 
