@@ -33,6 +33,7 @@ export class ReaderController {
   private appliedThemeRevision: number;
   private transitionTabId: string | null = null;
   private freezeDepth = 0;
+  private frozen = false;
   private freezeToken = 0;
 
   constructor(private readonly options: Options) {
@@ -217,7 +218,7 @@ export class ReaderController {
       && tab.surface === 'viewer'
       && !!tab.previewUrl
       && (tab.previewTheme === this.themeId || tab.id === this.transitionTabId)
-      && this.freezeDepth === 0
+      && !this.frozen
       && !this.awaiting;
     if (!visible || !tab) {
       this.options.desktop.showPreview(null, null);
@@ -239,20 +240,24 @@ export class ReaderController {
     const token = ++this.freezeToken;
     const tab = this.options.active();
     if (!tab || tab.surface !== 'viewer' || !tab.previewUrl) return;
-    const capture = this.options.desktop.capturePreview(tab.id).catch(() => null);
-    this.syncView();
-    const image = await capture;
+    const image = await this.options.desktop.capturePreview(tab.id).catch(() => null);
     if (token !== this.freezeToken || this.freezeDepth === 0) return;
     if (image) {
       this.options.frames.style.backgroundImage = `url("${image}")`;
       this.options.frames.dataset.frozen = 'true';
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => resolve());
+      }));
+      if (token !== this.freezeToken || this.freezeDepth === 0) return;
     }
+    this.frozen = true;
     this.syncView();
   }
 
   private unfreeze() {
     if (this.freezeDepth === 0 || --this.freezeDepth > 0) return;
     this.freezeToken += 1;
+    this.frozen = false;
     this.syncView();
     window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
       if (this.freezeDepth > 0) return;
