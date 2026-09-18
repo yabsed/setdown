@@ -273,7 +273,7 @@ export const RENDERED_DIFF_STYLES = `<style id="setdown-rendered-diff-styles">
     text-decoration-thickness: 1px;
   }
   .setdown-rendered-diff-split { display: none; }
-  @media (min-width: 1080px) {
+  @media (min-width: 720px) {
     .setdown-rendered-diff-unified { display: none; }
     .setdown-rendered-diff-split {
       display: grid;
