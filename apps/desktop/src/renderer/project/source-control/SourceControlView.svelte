@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { AppActions } from '../../view-state.svelte';
   import { project } from '../project-state.svelte';
+  import SideViewMenu from '../SideViewMenu.svelte';
   import ChangeGroup from './ChangeGroup.svelte';
   import GitDiffView from './GitDiffView.svelte';
 
@@ -29,20 +30,20 @@
 
 <header class="side-view-title">
   <span>SOURCE CONTROL</span>
-  <button type="button" title="Fetch" aria-label="Fetch" disabled={!project.git?.repository || project.gitBusy}
-    onclick={() => actions.runProjectGitRemote('fetch')}><svg viewBox="0 0 16 16"><path d="M8 2v8m-3-3 3 3 3-3M3 13.5h10"/></svg></button>
-  <button type="button" title="Pull" aria-label="Pull" disabled={!project.git?.repository || project.gitBusy}
-    onclick={() => actions.runProjectGitRemote('pull')}><svg viewBox="0 0 16 16"><path d="M8 2v10m-3-3 3 3 3-3"/></svg></button>
-  <button type="button" title="Push" aria-label="Push" disabled={!project.git?.repository || project.gitBusy}
-    onclick={() => actions.runProjectGitRemote('push')}><svg viewBox="0 0 16 16"><path d="M8 14V4M5 7l3-3 3 3"/></svg></button>
-  <button type="button" title="Synchronize Changes" aria-label="Synchronize Changes"
-    disabled={!project.git?.repository || project.gitBusy} onclick={() => actions.runProjectGitRemote('sync')}>
-    <svg viewBox="0 0 16 16"><path d="M13 6A5 5 0 0 0 4.2 3.5L3 5m0-3v3h3M3 10a5 5 0 0 0 8.8 2.5L13 11m0 3v-3h-3"/></svg>
-  </button>
   <button type="button" title="Refresh Source Control" aria-label="Refresh Source Control"
     disabled={!project.folder || project.gitLoading || project.gitBusy} onclick={actions.refreshProjectGit}>
-    <svg viewBox="0 0 24 24"><path d="M19 7v5h-5M5 17v-5h5M18.3 12A6.5 6.5 0 0 0 7 7.6L5 10m14 4-2 2.4A6.5 6.5 0 0 1 5.7 12"/></svg>
+    <svg viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.46-3.54L13 6M13 2v4H9"/></svg>
   </button>
+  <SideViewMenu items={[
+    { label: 'Fetch', disabled: !project.git?.repository || project.gitBusy,
+      run: () => actions.runProjectGitRemote('fetch') },
+    { label: 'Pull', disabled: !project.git?.repository || project.gitBusy,
+      run: () => actions.runProjectGitRemote('pull') },
+    { label: 'Push', disabled: !project.git?.repository || project.gitBusy,
+      run: () => actions.runProjectGitRemote('push') },
+    { label: 'Synchronize Changes', disabled: !project.git?.repository || project.gitBusy,
+      run: () => actions.runProjectGitRemote('sync') },
+  ]} />
 </header>
 
 {#if !project.folder}

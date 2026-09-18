@@ -2,6 +2,7 @@
   import type { ProjectEntryKind } from '../../../protocol/desktop-api';
   import type { AppActions } from '../../view-state.svelte';
   import { project, type VisibleProjectEntry } from '../project-state.svelte';
+  import SideViewMenu from '../SideViewMenu.svelte';
   import ExplorerEditRow from './ExplorerEditRow.svelte';
 
   type Edit = {
@@ -137,18 +138,13 @@
   <button type="button" title="New File" aria-label="New File" disabled={!project.folder}
     onclick={() => beginCreate('file')}><svg viewBox="0 0 16 16"><path d="M3 1.5h6l4 4v9H3v-13Zm6 0v4h4M8 8v4m-2-2h4"/></svg></button>
   <button type="button" title="New Folder" aria-label="New Folder" disabled={!project.folder}
-    onclick={() => beginCreate('directory')}><svg viewBox="0 0 16 16"><path d="M1.5 4.5h5l1.5 2h6.5v7h-13v-9ZM8 8.5v3m-1.5-1.5h3"/></svg></button>
-  <button type="button" title="Open Folder" aria-label="Open Folder" onclick={actions.chooseProjectFolder}>
-    <svg viewBox="0 0 24 24"><path d="M3.5 6.5h6l2 2h9v10h-17v-12Zm8.5 5v5m-2.5-2.5h5"/></svg>
+    onclick={() => beginCreate('directory')}>
+    <svg viewBox="0 0 16 16"><path d="M1.5 4.5h5l1.5 2h6.5v7h-13v-9ZM8 8.5v3m-1.5-1.5h3"/></svg>
   </button>
-  <button type="button" title="Refresh Explorer" aria-label="Refresh Explorer"
-    disabled={!project.folder} onclick={actions.refreshProjectExplorer}>
-    <svg viewBox="0 0 24 24"><path d="M19 7v5h-5M5 17v-5h5M18.3 12A6.5 6.5 0 0 0 7 7.6L5 10m14 4-2 2.4A6.5 6.5 0 0 1 5.7 12"/></svg>
-  </button>
-  <button type="button" title="Collapse Folders" aria-label="Collapse Folders"
-    disabled={!project.folder} onclick={actions.collapseProjectExplorer}>
-    <svg viewBox="0 0 16 16"><path d="m4 6 4 4 4-4M3 2.5h10M3 13.5h10"/></svg>
-  </button>
+  <SideViewMenu items={[
+    { label: 'Refresh Explorer', disabled: !project.folder, run: actions.refreshProjectExplorer },
+    { label: 'Collapse Folders', disabled: !project.folder, run: actions.collapseProjectExplorer },
+  ]} />
 </header>
 
 {#if !project.folder}
