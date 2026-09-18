@@ -6,10 +6,7 @@ import {
   net,
   protocol,
   shell,
-  utilityProcess,
-  WebContentsView,
 } from 'electron';
-import type { WebContents } from 'electron';
 import {
   promises as fs,
   readFileSync,
@@ -21,16 +18,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import type {
   AppCommand,
   CloseDecision,
-  DiskVersion,
   DocumentSnapshot,
-  RenderResult,
   SaveResult,
   ExportPdfResult,
-  PasteImageResult,
-  PickLinkTargetResult,
   TabStateSummary,
   ThemeSnapshot,
-  TransferableTab,
 } from '../shared/contracts';
 import {
   DEFAULT_PREVIEW_THEME,
@@ -41,23 +33,20 @@ import {
   type PreviewThemeId,
 } from '../shared/preview-preferences';
 import { themeProfile } from '../shared/theme-catalog';
-import { applyTextRevision, isDirty, lineCount } from '../shared/document-state';
-import type { BandLine } from '../shared/viewport-anchor';
-import type { PreviewBlockPatch } from '../shared/preview-blocks';
-import { canonicalPath, isInside } from './file-system';
+import { isDirty } from '../shared/document-state';
+import { canonicalPath, isInside } from './documents/file-system';
 import {
   applicationMenuEntries,
   executeApplicationMenu,
   installApplicationMenu,
-} from './application-menu';
-import { DocumentManager } from './document-manager';
-import type { WindowState } from './window-state';
-import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
-import { previewRelativeReference } from './preview-resources';
-import {
-  DEFERRED_HTML_SCRIPT_ID,
-  INITIAL_HTML_TEMPLATE_ID,
-} from '../shared/preview-install';
+} from './menu/application-menu';
+import { DocumentManager } from './documents/document-manager';
+import { PreviewManager } from './preview/preview-manager';
+import { PreviewRenderer } from './preview/preview-renderer';
+import { TabTransferManager } from './tabs/tab-transfer-manager';
+import { windowIpc } from './ipc/window-ipc';
+import type { WindowState } from './windows/window-state';
+import { resourceUrl } from './preview/resource-url';
 
 app.setName('Setdown');
 
@@ -74,194 +63,9 @@ protocol.registerSchemesAsPrivileged([
 
 let mainWindow: BrowserWindow | null = null;
 
-type PendingTabTransfer = {
-  sourceWebContentsId: number;
-  tab: TransferableTab;
-  claimedByWebContentsId: number | null;
-  expiresAt: number;
-  detachPosition: { x: number; y: number } | null;
-  previewAdopted: boolean;
-  preparedWindow: BrowserWindow | null;
-  previewScrollPosition: Promise<{ x: number; y: number }>;
-  /** dragstart 순간 source Viewer에 보이던 띠. 무게중심 정렬의 재료다. */
-  previewBand: Promise<BandLine[]>;
-  /** 탭을 내보낸 창의 content 크기. 목적지와 같으면 조판이 그대로다. */
-  sourceContentSize: { width: number; height: number } | null;
-};
-
 const windowStates = new Map<number, WindowState>();
-const pendingTabTransfers = new Map<string, PendingTabTransfer>();
-type PreviewViewState = {
-  view: WebContentsView;
-  ownerWebContentsId: number;
-  pendingScrollPosition: { x: number; y: number } | null;
-  pendingScrollRatio: number | null;
-  /** 마지막으로 실제 적용한 bounds. 같은 값을 다시 밀지 않는다. */
-  appliedBounds: Electron.Rectangle | null;
-};
-const previewViews = new Map<string, PreviewViewState>();
-const previewUpdateWaiters = new Map<string, () => void>();
-
-/**
- * 부팅만 끝내 둔 예비 Preview.
- *
- * 새 WebContentsView의 첫 `loadURL`은 crossnote 런타임, KaTeX·Font Awesome
- * stylesheet, bridge script를 처음부터 올린다. 측정으로 이 고정 비용이 문서
- * 내용과 무관하게 약 860ms였다. 탭마다 새로 내는 대신, 본문이 빈 template을
- * 미리 한 장 띄워 두고 새 탭에 넘긴다. 넘겨받은 view는 이미
- * `marktex-preview://` 문서를 띄우고 있으므로 `preview:load`가 `loadURL`이
- * 아니라 `marktex:update-html`로 내용만 갈아끼운다.
- */
-type SparePreview = { view: WebContentsView; ready: boolean };
-const sparePreviews = new Map<number, SparePreview>();
-/**
- * 마지막 render의 template에서 본문만 비운 것. 자산은 그대로 남는다.
- *
- * theme도 그 자산에 들어 있다. 어떤 theme으로 구운 template인지 함께 들고
- * 있지 않으면, 나중에 이 template으로 띄운 예비 view가 지금 theme으로
- * 그리고 있는지 알 길이 없다.
- */
-let warmupPreview: { url: string; themeId: PreviewThemeId } | null = null;
-
-const INITIAL_HTML_CARRIER = new RegExp(
-  `(<template id="${INITIAL_HTML_TEMPLATE_ID}">)[\\s\\S]*?(</template>)`,
-  'i',
-);
-const DEFERRED_HTML_CARRIER = new RegExp(
-  `(<script type="application/json" id="${DEFERRED_HTML_SCRIPT_ID}">)[\\s\\S]*?(</script>)`,
-  'i',
-);
-
-function rememberWarmupTemplate(template: string, themeId: PreviewThemeId) {
-  // 본문은 두 가지 방식으로 실린다. `<template>`에 마크업으로 실은 것과,
-  // 도해가 든 문서에서 쓰는 crossnote의 `data-html` 속성이다. 어느 쪽이든
-  // 비워야 자산만 남은 빈 페이지가 된다.
-  const blank = template
-    .replace(INITIAL_HTML_CARRIER, '$1$2')
-    .replace(DEFERRED_HTML_CARRIER, '$1[]$2')
-    .replace(/(<body\b[^>]*\bdata-html=")[^"]*(")/i, '$1$2');
-  if (blank === template) return;
-  const token = `warmup-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  previewDocuments.set(token, blank);
-  warmupPreview = { url: `marktex-preview://document/${token}`, themeId };
-}
-
-/**
- * 목적지 창이 원래 창과 같은 content 크기인가. 같으면 조판이 그대로이므로
- * Preview의 scroll을 손대지 않는다.
- */
-function transferKeepsGeometry(
-  transfer: PendingTabTransfer,
-  destinationWebContentsId: number,
-): boolean {
-  const source = transfer.sourceContentSize;
-  const destination = sourceContentSize(destinationWebContentsId);
-  return !!source && !!destination
-    && source.width === destination.width
-    && source.height === destination.height;
-}
-
-/** 탭을 내보내는 창의 content 크기. 분리된 창을 같은 크기로 열기 위한 값이다. */
-function sourceContentSize(ownerWebContentsId: number): { width: number; height: number } | null {
-  const owner = stateForWebContentsId(ownerWebContentsId)?.window;
-  if (!owner || owner.isDestroyed()) return null;
-  const [width, height] = owner.getContentSize();
-  return width > 0 && height > 0 ? { width, height } : null;
-}
-
-function createPreviewView(): WebContentsView {
-  const view = new WebContentsView({
-    webPreferences: {
-      preload: path.join(__dirname, 'preview-preload.cjs'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-    },
-  });
-  view.setBackgroundColor(previewThemeBackground(globalPreviewTheme));
-  view.setVisible(false);
-  return view;
-}
-
-function ensureSparePreview(ownerWebContentsId: number) {
-  const warmup = warmupPreview;
-  if (sparePreviews.has(ownerWebContentsId) || !warmup) return;
-  const owner = stateForWebContentsId(ownerWebContentsId)?.window;
-  if (!owner || owner.isDestroyed()) return;
-  const view = createPreviewView();
-  owner.contentView.addChildView(view);
-  const spare: SparePreview = { view, ready: false };
-  sparePreviews.set(ownerWebContentsId, spare);
-  view.webContents.loadURL(warmup.url).then(() => {
-    markPreviewTheme(view.webContents, warmup.themeId);
-    if (sparePreviews.get(ownerWebContentsId) === spare) spare.ready = true;
-  }).catch(() => {
-    if (sparePreviews.get(ownerWebContentsId) === spare) {
-      sparePreviews.delete(ownerWebContentsId);
-    }
-    if (!view.webContents.isDestroyed()) view.webContents.close();
-  });
-}
-
-/** 부팅이 끝난 예비 view를 꺼낸다. 준비 전이면 쓰지 않는다. */
-function takeSparePreview(ownerWebContentsId: number): WebContentsView | null {
-  const spare = sparePreviews.get(ownerWebContentsId);
-  if (!spare?.ready || spare.view.webContents.isDestroyed()) return null;
-  sparePreviews.delete(ownerWebContentsId);
-  return spare.view;
-}
-
-function discardSparePreview(ownerWebContentsId: number) {
-  const spare = sparePreviews.get(ownerWebContentsId);
-  if (!spare) return;
-  sparePreviews.delete(ownerWebContentsId);
-  if (!spare.view.webContents.isDestroyed()) spare.view.webContents.close();
-}
-
-/**
- * 값이 달라졌을 때만 bounds를 민다.
- *
- * drag resize 동안 renderer의 ResizeObserver가 `preview:show`를 초당 수십 번
- * 두드린다. 같은 bounds를 반복해서 적용하고 view를 숨겼다 다시 붙이면
- * compositor가 surface를 놓쳐 빈 화면이 남는다.
- */
-function applyPreviewBounds(preview: PreviewViewState, bounds: Electron.Rectangle) {
-  const applied = preview.appliedBounds;
-  if (
-    applied
-    && applied.x === bounds.x
-    && applied.y === bounds.y
-    && applied.width === bounds.width
-    && applied.height === bounds.height
-  ) return;
-  preview.appliedBounds = bounds;
-  preview.view.setBounds(bounds);
-}
-
-function restorePendingPreviewScroll(preview: PreviewViewState) {
-  const owner = stateForWebContentsId(preview.ownerWebContentsId)?.window;
-  const scroll = preview.pendingScrollPosition;
-  if (!owner?.isVisible() || !scroll || !preview.view.getVisible()) return;
-  preview.pendingScrollPosition = null;
-  const ratio = preview.pendingScrollRatio;
-  preview.pendingScrollRatio = null;
-  void preview.view.webContents.executeJavaScript(`new Promise((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      const maximum = Math.max(0, document.documentElement.scrollHeight - innerHeight);
-      const ratioY = Number.isFinite(${JSON.stringify(ratio)})
-        ? maximum * ${JSON.stringify(ratio)}
-        : 0;
-      window.scrollTo(${JSON.stringify(scroll.x)}, Math.max(${JSON.stringify(scroll.y)}, ratioY));
-      window.__setdownTransferScroll = {
-        ...(window.__setdownTransferScroll || {}),
-        restoredX: window.scrollX,
-        restoredY: window.scrollY,
-      };
-      resolve();
-    }));
-  })`);
-}
-
+// Preview WebContents와 warmup 문서의 수명주기는 PreviewManager가 소유한다.
+// Preview 생성·표시·복원은 PreviewManager에 위임한다.
 function stateForWebContentsId(id: number) {
   return windowStates.get(id) ?? null;
 }
@@ -277,7 +81,6 @@ function focusedState() {
     ?? null;
 }
 
-const previewDocuments = new Map<string, string>();
 let globalPreviewTheme: PreviewThemeId = DEFAULT_PREVIEW_THEME;
 let globalThemeRevision = 0;
 
@@ -294,21 +97,6 @@ function assertReadablePath(candidate: string): string {
     throw new Error('The preview attempted to read outside the document folder.');
   }
   return resolved;
-}
-
-/**
- * 경로를 URL의 path로 그대로 실어 보낸다. 경로를 통째로 encoding하면 URL에
- * segment가 하나뿐이라, stylesheet 안의 상대 참조(KaTeX의 `fonts/...`,
- * Font Awesome의 `../webfonts/...`)가 엉뚱한 곳을 가리켜 web font가 전부
- * 로드에 실패한다. file:// URL을 거쳐 platform별 구분자와 특수문자만 표준
- * 방식으로 encoding한다.
- */
-function resourceUrl(filePath: string): string {
-  const { pathname } = pathToFileURL(path.resolve(filePath));
-  // path.resolve는 끝의 구분자를 지운다. `<base href>`는 그 구분자가 있어야
-  // 상대 참조가 문서 폴더 안에서 풀리므로 되살린다.
-  const trailingSeparator = /[\\/]$/.test(filePath) ? '/' : '';
-  return `marktex-resource://file${pathname}${trailingSeparator}`;
 }
 
 function previewThemeAssets(requestedTheme: unknown) {
@@ -340,26 +128,28 @@ function previewThemeAssets(requestedTheme: unknown) {
  * 여기 한 곳에서만 센다. webContents.id로 세므로 예비 view가 탭으로
  * 채택되거나 탭이 다른 창으로 넘어가도 장부가 따라간다.
  */
-const previewThemes = new Map<number, PreviewThemeId>();
-
-function markPreviewTheme(contents: WebContents, themeId: PreviewThemeId) {
-  if (contents.isDestroyed()) return;
-  if (!previewThemes.has(contents.id)) {
-    contents.once('destroyed', () => previewThemes.delete(contents.id));
-  }
-  previewThemes.set(contents.id, themeId);
-}
-
-/** 이미 떠 있는 페이지의 theme을 지금 theme으로 맞춘다. 같으면 아무것도 하지 않는다. */
-function syncPreviewTheme(view: WebContentsView, themeId: PreviewThemeId) {
-  const contents = view.webContents;
-  if (contents.isDestroyed() || previewThemes.get(contents.id) === themeId) return;
-  const assets = previewThemeAssets(themeId);
-  view.setBackgroundColor(assets.backgroundColor);
-  contents.send('preview:command', { command: 'marktex:apply-theme', ...assets });
-  markPreviewTheme(contents, assets.themeId);
-}
-
+const previews = new PreviewManager({
+  preload: path.join(__dirname, 'preview-preload.cjs'),
+  stateFor: stateForWebContentsId,
+  theme: () => globalPreviewTheme,
+  themeAssets: previewThemeAssets,
+  forgetTab: (tabId) => renderer.forgetTab(tabId),
+});
+const renderer = new PreviewRenderer({
+  previews,
+  roots: () => Array.from(windowStates.values(), (state) => state.activeRoot)
+    .filter((root): root is string => !!root),
+  theme: () => globalPreviewTheme,
+  workerPath: path.join(__dirname, 'render-worker.cjs'),
+});
+const documents = new DocumentManager(() => renderer.forgetNotebooks());
+const transfers = new TabTransferManager({
+  previews,
+  stateFor: stateForWebContentsId,
+  theme: () => globalPreviewTheme,
+  createWindow,
+});
+const windowChannels = windowIpc(stateForWebContentsId);
 function pathFromResourceUrl(rawUrl: string): string | null {
   try {
     const url = new URL(rawUrl);
@@ -368,227 +158,6 @@ function pathFromResourceUrl(rawUrl: string): string | null {
   } catch {
     return null;
   }
-}
-
-/**
- * 조판은 utility process에서 돈다. 메인은 요청과 결과 보관만 한다.
- *
- * 조판이 메인에서 돌면 수식 문서에서 한 번에 500ms 넘게 프로세스를 멈추고,
- * 타자마다 오는 IPC가 그 뒤에 줄을 선다. 여기서는 기다리기만 하므로 메인이
- * 계속 응답한다.
- */
-type RenderWorkerResult = {
-  totalLineCount: number;
-  baseHref: string;
-  themeId: PreviewThemeId;
-  template?: string;
-  html?: string;
-  patch?: PreviewBlockPatch | null;
-};
-
-let renderWorker: Electron.UtilityProcess | null = null;
-let renderRequestId = 0;
-const renderWaiters = new Map<number, {
-  resolve: (value: RenderWorkerResult) => void;
-  reject: (error: Error) => void;
-}>();
-
-function ensureRenderWorker(): Electron.UtilityProcess {
-  if (renderWorker) return renderWorker;
-  const worker = utilityProcess.fork(path.join(__dirname, 'render-worker.cjs'));
-  renderWorker = worker;
-  worker.on('message', (reply: {
-    kind?: string; id?: number; ok?: boolean; message?: string;
-  } & Partial<RenderWorkerResult>) => {
-    if (reply?.kind !== 'render' || typeof reply.id !== 'number') return;
-    const waiter = renderWaiters.get(reply.id);
-    if (!waiter) return;
-    renderWaiters.delete(reply.id);
-    if (reply.ok) {
-      waiter.resolve({
-        totalLineCount: Math.max(1, Number(reply.totalLineCount) || 1),
-        baseHref: String(reply.baseHref ?? ''),
-        themeId: normalizePreviewTheme(reply.themeId),
-        template: reply.template,
-        html: reply.html,
-        patch: reply.patch,
-      });
-    } else {
-      waiter.reject(new Error(String(reply.message ?? 'The preview renderer failed.')));
-    }
-  });
-  worker.on('exit', () => {
-    if (renderWorker === worker) renderWorker = null;
-    for (const waiter of renderWaiters.values()) {
-      waiter.reject(new Error('The preview renderer stopped.'));
-    }
-    renderWaiters.clear();
-  });
-  return worker;
-}
-
-/** 조판이 읽어도 되는 디렉터리. 보안 경계를 요청마다 함께 보낸다. */
-function readableRoots(): string[] {
-  return Array.from(windowStates.values(), (state) => state.activeRoot)
-    .filter((root): root is string => !!root);
-}
-
-function forgetWorkerNotebooks() {
-  renderWorker?.postMessage({ kind: 'forget-notebooks' });
-}
-
-const documents = new DocumentManager(forgetWorkerNotebooks);
-
-function callRenderWorker(
-  tabId: string,
-  text: string,
-  revision: number,
-  documentPath: string,
-  themeId: PreviewThemeId,
-  hasPage: boolean,
-  deferOffscreenHtml = true,
-): Promise<RenderWorkerResult> {
-  const worker = ensureRenderWorker();
-  const id = ++renderRequestId;
-  return new Promise<RenderWorkerResult>((resolve, reject) => {
-    renderWaiters.set(id, { resolve, reject });
-    worker.postMessage({
-      kind: 'render', id, tabId, text, revision, documentPath, themeId,
-      roots: readableRoots(), hasPage, deferOffscreenHtml,
-    });
-  });
-}
-
-/**
- * 조판하고 그 결과를 Preview에 설치한다. 한 번의 요청으로 끝난다.
- *
- * 예전에는 렌더러가 조판을 요청해 1.4MB를 받고, 그것을 그대로 메인으로 돌려
- * 보내 설치했다. 렌더러는 내용을 읽지도 않으면서 프로세스 경계를 네 번 더
- * 넘겼다. 이제 조판·분할·비교는 워커가, 설치는 메인이 하고 렌더러는 결과만
- * 받는다.
- */
-/** PDF 내보내기처럼 Preview view 없이 완성된 페이지가 필요할 때. */
-async function renderExportTemplate(
-  state: WindowState,
-  text: string,
-  revision: number,
-  documentPath: string,
-): Promise<{ url: string }> {
-  const exportTabId = `export:${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  state.activeRoot = path.dirname(documentPath);
-  const rendered = await callRenderWorker(
-    exportTabId, text, revision, documentPath, globalPreviewTheme, false, false,
-  );
-  renderWorker?.postMessage({ kind: 'forget-tab', tabId: exportTabId });
-  if (typeof rendered.template !== 'string') {
-    throw new Error('The preview renderer did not return a page.');
-  }
-  const token = `${Date.now()}-${revision}-${Math.random().toString(36).slice(2)}`;
-  previewDocuments.set(token, rendered.template);
-  return { url: `marktex-preview://document/${token}` };
-}
-
-async function preparePreview(
-  state: WindowState,
-  tabId: string,
-  text: string,
-  revision: number,
-  documentPath: string,
-  requestedTheme: PreviewThemeId,
-  senderId: number,
-): Promise<RenderResult> {
-  const preview = previewViews.get(tabId);
-  if (!preview || preview.ownerWebContentsId !== senderId) {
-    throw new Error('The preview is not owned by this window.');
-  }
-  if (!state.currentDocument) throw new Error('No Markdown document is open.');
-  if (state.currentDocument.path !== documentPath) {
-    throw new Error('The preview request belongs to a document that is no longer open.');
-  }
-  state.currentDocument = applyTextRevision(state.currentDocument, text, revision);
-  const renderPath = state.currentDocument.path;
-  const themeId = normalizePreviewTheme(requestedTheme);
-  state.activeRoot = path.dirname(renderPath);
-
-  const hasPage = preview.view.webContents.getURL()
-    .startsWith('marktex-preview://document/');
-  const rendered = await callRenderWorker(
-    tabId, text, revision, renderPath, themeId, hasPage,
-  );
-  if (state.currentDocument?.path !== renderPath) {
-    throw new Error('The document changed while its preview was being prepared.');
-  }
-  preview.view.setBackgroundColor(previewThemeBackground(themeId));
-  // 페이지가 이미 있다면 그 theme은 template에 구워진 값이다. 예비 view를
-  // 넘겨받은 경우 그 값이 지금 theme보다 오래되었을 수 있다.
-  if (hasPage) syncPreviewTheme(preview.view, themeId);
-
-  // 첫 로드: 완성된 페이지를 실는다.
-  if (typeof rendered.template === 'string') {
-    const token = `${Date.now()}-${revision}-${Math.random().toString(36).slice(2)}`;
-    previewDocuments.set(token, rendered.template);
-    rememberWarmupTemplate(rendered.template, themeId);
-    while (previewDocuments.size > 64) {
-      const oldest = previewDocuments.keys().next().value as string | undefined;
-      if (!oldest) break;
-      previewDocuments.delete(oldest);
-    }
-    const url = `marktex-preview://document/${token}`;
-    await preview.view.webContents.loadURL(url);
-    markPreviewTheme(preview.view.webContents, themeId);
-    setImmediate(() => ensureSparePreview(senderId));
-    return { revision, url, themeId };
-  }
-
-  const waitForPreview = () => {
-    const waiterKey = `${tabId}:${revision}`;
-    return new Promise<void>((resolve) => {
-      const timeout = setTimeout(() => {
-        previewUpdateWaiters.delete(waiterKey);
-        resolve();
-      }, 5000);
-      previewUpdateWaiters.set(waiterKey, () => {
-        clearTimeout(timeout);
-        previewUpdateWaiters.delete(waiterKey);
-        resolve();
-      });
-    });
-  };
-  const shared = {
-    totalLineCount: rendered.totalLineCount,
-    revision,
-    baseHref: rendered.baseHref,
-  };
-
-  // 페이지는 있으나 블록 기록이 없다. 예비 view를 넘겨받은 경우다.
-  //
-  // 이때는 navigate하지 않으므로 새 url이 없다. 그래도 렌더러에는 지금 이
-  // view가 띄우고 있는 url을 돌려줘야 한다. `tab.previewUrl`이 비어 있으면
-  // `syncPreviewView`가 "보여 줄 Preview가 없다"고 보아 탭이 빈 채로 남는다.
-  if (typeof rendered.html === 'string') {
-    const updated = waitForPreview();
-    preview.view.webContents.send('preview:command', {
-      command: 'marktex:update-html', html: rendered.html, markdown: text, ...shared,
-    });
-    await updated;
-    setImmediate(() => ensureSparePreview(senderId));
-    return { revision, url: preview.view.webContents.getURL(), themeId };
-  }
-
-  // 바뀐 것이 없으면 설정만 맞춘다.
-  if (!rendered.patch) {
-    preview.view.webContents.send('preview:command', {
-      command: 'marktex:sync-config', ...shared,
-    });
-    return { revision, url: preview.view.webContents.getURL(), themeId };
-  }
-
-  const updated = waitForPreview();
-  preview.view.webContents.send('preview:command', {
-    command: 'marktex:patch-blocks', ...rendered.patch, markdown: text, ...shared,
-  });
-  await updated;
-  return { revision, url: preview.view.webContents.getURL(), themeId };
 }
 
 async function waitForPrintablePreview(window: BrowserWindow) {
@@ -637,7 +206,7 @@ async function exportCurrentPdf(
   });
   if (result.canceled || !result.filePath) return { canceled: true };
 
-  const rendered = await renderExportTemplate(state, text, revision, documentPath);
+  const url = await renderer.renderExport(state, text, revision, documentPath);
   const printWindow = new BrowserWindow({
     show: false,
     width: 794,
@@ -649,7 +218,7 @@ async function exportCurrentPdf(
     },
   });
   try {
-    await printWindow.loadURL(rendered.url);
+    await printWindow.loadURL(url);
     await waitForPrintablePreview(printWindow);
     const pdf = await printWindow.webContents.printToPDF({
       pageSize: 'A4',
@@ -698,7 +267,7 @@ function setGlobalPreviewTheme(value: unknown) {
   saveGlobalPreviewTheme();
   // 예비 view는 탭이 아니어서 renderer의 theme 전파가 닿지 않는다. 여기서
   // 맞춰 두지 않으면 다음에 여는 문서가 옛 theme으로 떠오른다.
-  for (const spare of sparePreviews.values()) syncPreviewTheme(spare.view, themeId);
+  previews.setTheme(themeId);
   const snapshot: ThemeSnapshot = { id: themeId, revision: globalThemeRevision };
   for (const state of windowStates.values()) {
     const profile = themeProfile(themeId);
@@ -777,15 +346,7 @@ function createWindow(
   // 정밀한 최종 bounds는 같은 frame의 preview:show가 보정한다.
   createdWindow.on('resize', () => {
     const [contentWidth, contentHeight] = createdWindow.getContentSize();
-    for (const preview of previewViews.values()) {
-      if (preview.ownerWebContentsId !== webContentsId || !preview.view.getVisible()) continue;
-      const bounds = preview.view.getBounds();
-      applyPreviewBounds(preview, {
-        ...bounds,
-        width: Math.max(1, contentWidth - bounds.x),
-        height: Math.max(1, contentHeight - bounds.y),
-      });
-    }
+    previews.resizeOwner(webContentsId, contentWidth, contentHeight);
   });
   createdWindow.on('close', (event) => {
     if (state.closeAfterConfirmation) return;
@@ -829,12 +390,7 @@ function createWindow(
   });
   createdWindow.on('closed', () => {
     if (state.watchedPath) unwatchFile(state.watchedPath);
-    discardSparePreview(webContentsId);
-    for (const [tabId, preview] of previewViews) {
-      if (preview.ownerWebContentsId !== webContentsId) continue;
-      preview.view.webContents.close();
-      previewViews.delete(tabId);
-    }
+    previews.closeOwner(webContentsId);
     windowStates.delete(webContentsId);
     if (mainWindow === createdWindow) mainWindow = BrowserWindow.getAllWindows()[0] ?? null;
   });
@@ -848,167 +404,24 @@ function createWindow(
 // IPC endpoints are registered together so startup has one explicit boundary.
 
 function installIpc() {
-  ipcMain.on('preview:create', (event, tabId: unknown) => {
-    if (typeof tabId !== 'string' || previewViews.has(tabId)) return;
-    const ownerState = stateForWebContentsId(event.sender.id);
-    if (!ownerState) return;
-    // 부팅이 끝난 예비 view가 있으면 그것을 쓴다. 없으면 새로 만든다.
-    const view = takeSparePreview(event.sender.id) ?? createPreviewView();
-    view.setBackgroundColor(previewThemeBackground(globalPreviewTheme));
-    view.setVisible(false);
-    ownerState.window.contentView.addChildView(view);
-    // 다음 탭이 쓸 예비를 background에서 다시 채운다.
-    setImmediate(() => ensureSparePreview(event.sender.id));
-    previewViews.set(tabId, {
-      view,
-      ownerWebContentsId: event.sender.id,
-      pendingScrollPosition: null,
-      pendingScrollRatio: null,
-      appliedBounds: null,
-    });
-    view.webContents.on('before-input-event', (inputEvent, input) => {
-      if (input.type === 'keyDown' && input.key === 'Escape') {
-        inputEvent.preventDefault();
-        const preview = previewViews.get(tabId);
-        const owner = preview && stateForWebContentsId(preview.ownerWebContentsId);
-        if (owner) {
-          owner.window.webContents.focus();
-          owner.window.webContents.send('app:command', 'escape');
-        }
-        return;
-      }
-      if (
-        input.type !== 'keyDown'
-        || input.key.toLowerCase() !== 'f'
-        || (!input.control && !input.meta)
-        || input.alt
-      ) return;
-      inputEvent.preventDefault();
-      const preview = previewViews.get(tabId);
-      const owner = preview && stateForWebContentsId(preview.ownerWebContentsId);
-      if (!owner) return;
-      owner.window.webContents.focus();
-      owner.window.webContents.send('preview:open-find', tabId);
-    });
-  });
+  previews.registerIpc();
 
-  ipcMain.on('preview:show', (event, { tabId, bounds }) => {
-    const owner = stateForWebContentsId(event.sender.id)?.window;
-    if (!owner) return;
-    const target = typeof tabId === 'string' ? previewViews.get(tabId) : undefined;
-    const shown = target?.ownerWebContentsId === event.sender.id ? target : undefined;
-    // 보여 줄 view는 건드리지 않는다. 숨겼다 다시 붙이는 왕복이 drag resize
-    // 동안 매 frame 반복되면 빈 화면이 남는다.
-    for (const preview of previewViews.values()) {
-      if (preview.ownerWebContentsId !== event.sender.id || preview === shown) continue;
-      if (preview.view.getVisible()) preview.view.setVisible(false);
-    }
-    if (!shown || !bounds) return;
-    const [contentWidth, contentHeight] = owner.getContentSize();
-    const x = Math.max(0, Math.round(Number(bounds.x) || 0));
-    const y = Math.max(0, Math.round(Number(bounds.y) || 0));
-    // DOM rect의 반올림이 content 영역을 1px 넘기면 창 resize 보정과 매 frame
-    // 서로를 덮어쓴다. content 영역 안으로 접어 두 값을 일치시킨다.
-    applyPreviewBounds(shown, {
-      x,
-      y,
-      width: Math.max(1, Math.min(Math.round(Number(bounds.width) || 1), contentWidth - x)),
-      height: Math.max(1, Math.min(Math.round(Number(bounds.height) || 1), contentHeight - y)),
-    });
-    // 이미 보이는 view를 다시 부모에 붙이면 compositor가 surface를 버린다.
-    if (!shown.view.getVisible()) {
-      // 다시 드러나는 첫 frame이 흰색으로 칠해지지 않게 한다.
-      shown.view.setBackgroundColor(previewThemeBackground(globalPreviewTheme));
-      owner.contentView.addChildView(shown.view);
-      shown.view.setVisible(true);
-    }
-    restorePendingPreviewScroll(shown);
-    shown.view.webContents.send('preview:command', { command: 'marktex:resume-hydration' });
-  });
-
-  ipcMain.handle('preview:capture', async (event, tabId: unknown) => {
-    const preview = previewViews.get(String(tabId));
-    if (!preview || preview.ownerWebContentsId !== event.sender.id) return null;
-    if (!preview.view.getVisible() || preview.view.webContents.isCrashed()) return null;
-    const image = await preview.view.webContents.capturePage();
-    return image.isEmpty() ? null : image.toDataURL();
-  });
-
-  ipcMain.on('preview:command', (event, { tabId, message }) => {
-    const preview = previewViews.get(String(tabId));
-    if (!preview || preview.ownerWebContentsId !== event.sender.id) return;
-    if (message?.command === 'marktex:apply-theme') {
-      const assets = previewThemeAssets(message.themeId);
-      preview.view.setBackgroundColor(assets.backgroundColor);
-      preview.view.webContents.send('preview:command', {
-        command: 'marktex:apply-theme',
-        ...assets,
-      });
-      markPreviewTheme(preview.view.webContents, assets.themeId);
-      return;
-    }
-    preview.view.webContents.send('preview:command', message);
-  });
-
-  ipcMain.on('preview:destroy', (event, tabId: unknown) => {
-    if (typeof tabId !== 'string') return;
-    const preview = previewViews.get(tabId);
-    if (!preview || preview.ownerWebContentsId !== event.sender.id) return;
-    stateForWebContentsId(event.sender.id)?.window.contentView.removeChildView(preview.view);
-    preview.view.webContents.close();
-    previewViews.delete(tabId);
-    renderWorker?.postMessage({ kind: 'forget-tab', tabId });
-  });
-
-  ipcMain.on('preview:message', (event, message: Record<string, unknown>) => {
-    const found = Array.from(previewViews.entries()).find(([, preview]) =>
-      preview.view.webContents.id === event.sender.id,
-    );
-    if (!found) return;
-    const [tabId, preview] = found;
-    if (message.type === 'marktex:html-updated') {
-      previewUpdateWaiters.get(`${tabId}:${Math.max(0, Number(message.revision) || 0)}`)?.();
-    }
-    stateForWebContentsId(preview.ownerWebContentsId)?.window.webContents.send(
-      'preview:message',
-      { tabId, message },
-    );
-  });
-
-  ipcMain.handle('menu:get', (event, menuId: unknown) => {
-    const state = stateForWebContentsId(event.sender.id);
-    return state ? applicationMenuEntries(menuId) : [];
-  });
-
-  ipcMain.on('menu:execute', (event, itemId: unknown) => {
-    const state = stateForWebContentsId(event.sender.id);
-    if (state) executeApplicationMenu(itemId, state.window);
-  });
-
-  ipcMain.handle('theme:get', (event): ThemeSnapshot => {
-    if (!stateForWebContentsId(event.sender.id)) {
-      throw new Error('The window no longer exists.');
-    }
-    return { id: globalPreviewTheme, revision: globalThemeRevision };
-  });
-  ipcMain.handle('preview:theme-assets', (event, themeId) => {
-    if (!stateForWebContentsId(event.sender.id)) {
-      throw new Error('The window no longer exists.');
-    }
-    return previewThemeAssets(themeId);
-  });
-  ipcMain.handle('document:get', (event) => stateForWebContentsId(event.sender.id)?.currentDocument ?? null);
-  ipcMain.handle('document:new', (event) => {
-    const state = stateForWebContentsId(event.sender.id);
-    return state ? documents.newDocument(state) : null;
-  });
-  ipcMain.handle('document:activate', (event, { document, text, revision }) => {
-    const state = stateForWebContentsId(event.sender.id);
-    return state ? documents.activate(state, document, text, revision) : document;
-  });
-  ipcMain.on('tabs:update-state', (event, tabs: TabStateSummary[]) => {
-    const state = stateForWebContentsId(event.sender.id);
-    if (!state) return;
+  windowChannels.handle('menu:get', (_state, menuId: unknown) => applicationMenuEntries(menuId));
+  windowChannels.on('menu:execute', (state, itemId: unknown) =>
+    executeApplicationMenu(itemId, state.window));
+  windowChannels.handle('theme:get', (): ThemeSnapshot =>
+    ({ id: globalPreviewTheme, revision: globalThemeRevision }));
+  windowChannels.handle('preview:theme-assets', (_state, themeId: unknown) =>
+    previewThemeAssets(themeId));
+  windowChannels.handle('document:get', (state) => state.currentDocument);
+  windowChannels.handle('document:new', (state) => documents.newDocument(state));
+  windowChannels.handle(
+    'document:activate',
+    (state, { document, text, revision }: {
+      document: DocumentSnapshot; text: string; revision: number;
+    }) => documents.activate(state, document, text, revision),
+  );
+  windowChannels.on('tabs:update-state', (state, tabs: TabStateSummary[]) => {
     state.rendererTabs = Array.isArray(tabs)
       ? tabs.map((tab) => ({
         name: String(tab.name),
@@ -1018,260 +431,45 @@ function installIpc() {
       }))
       : [];
   });
-  ipcMain.on('tabs:register-transfer', (event, { transferId, tab }) => {
-    if (typeof transferId !== 'string' || !tab || typeof tab.id !== 'string') return;
-    pendingTabTransfers.set(transferId, {
-      sourceWebContentsId: event.sender.id,
-      tab: tab as TransferableTab,
-      claimedByWebContentsId: null,
-      expiresAt: Date.now() + 60_000,
-      detachPosition: null,
-      previewAdopted: false,
-      // 새 OS 창 생성도 drop의 선행 조건에서 뺀다. 실제 drag 동안 숨은
-      // renderer를 부팅하고, transfer commit 전에는 사용자에게 보이지 않는다.
-      preparedWindow: createWindow(null, null, false, sourceContentSize(event.sender.id)),
-      // reparent 직전이 아니라 dragstart 순간의 좌표를 잡는다. 준비 중이던
-      // updateHtml이 뒤늦게 DOM을 승격해 viewport를 바꿔도 사용자가 이동을
-      // 시작했을 때 보던 위치가 transfer의 authority다.
-      previewScrollPosition: previewViews.get(String(tab.id))?.view.webContents
-        .executeJavaScript('({ x: window.scrollX, y: window.scrollY })')
-        .catch(() => ({ x: 0, y: 0 }))
-        ?? Promise.resolve({ x: 0, y: 0 }),
-      // 화면에 온전히 들어온 줄만 모은다. 위로 걸친 block을 넣으면 비율이
-      // 음수가 되어 clamp에 눌리고, 무게중심이 한쪽으로 치우친다.
-      sourceContentSize: sourceContentSize(event.sender.id),
-      previewBand: previewViews.get(String(tab.id))?.view.webContents
-        .executeJavaScript(`(() => {
-          const root = document.querySelector('.markdown-preview[data-for="preview"]');
-          if (!root) return [];
-          const height = window.innerHeight || 1;
-          const band = [];
-          root.querySelectorAll('[data-source-line]').forEach((element) => {
-            const line = Number(element.getAttribute('data-source-line'));
-            if (!Number.isFinite(line) || line < 1) return;
-            const rect = element.getBoundingClientRect();
-            if (rect.width === 0 && rect.height === 0) return;
-            if (rect.top < 0 || rect.top > height) return;
-            band.push({ sourceLine: line, yRatio: rect.top / height });
-          });
-          return band;
-        })()`)
-        .catch(() => [] as BandLine[])
-        ?? Promise.resolve([] as BandLine[]),
-    });
-    setTimeout(() => {
-      const pending = pendingTabTransfers.get(transferId);
-      if (pending && pending.expiresAt <= Date.now()) {
-        if (pending.preparedWindow && !pending.preparedWindow.isDestroyed()) {
-          pending.preparedWindow.destroy();
-        }
-        pendingTabTransfers.delete(transferId);
-      }
-    }, 60_500);
-  });
-  ipcMain.handle('tabs:adopt-transfer', async (event, transferId: string) => {
-    const transfer = pendingTabTransfers.get(transferId);
-    if (!transfer || transfer.claimedByWebContentsId !== event.sender.id) return false;
-    const preview = previewViews.get(transfer.tab.id);
-    const destination = stateForWebContentsId(event.sender.id)?.window;
-    if (!preview || !destination || preview.ownerWebContentsId !== transfer.sourceWebContentsId) {
-      return false;
-    }
-    const scroll = await transfer.previewScrollPosition;
-    void preview.view.webContents.executeJavaScript(
-      `window.__setdownTransferScroll = { capturedX: ${JSON.stringify(scroll.x)}, capturedY: ${JSON.stringify(scroll.y)} }`,
-    );
-    const source = stateForWebContentsId(transfer.sourceWebContentsId)?.window;
-    // 같은 WebContents를 파괴하거나 navigate하지 않는다. remove/add는 같은
-    // main-process task에서 끝내 viewport=0 구간을 최소화한다.
-    preview.view.setVisible(false);
-    source?.contentView.removeChildView(preview.view);
-    destination.contentView.addChildView(preview.view);
-    preview.ownerWebContentsId = event.sender.id;
-    // 새 창의 좌표계에서는 기억한 bounds가 의미 없다.
-    preview.appliedBounds = null;
-    // reparent 뒤 compositor가 surface를 다시 만들면서 첫 frame을 배경색으로
-    // 칠한다. 기본값은 흰색이므로 테마 색을 다시 못박아 흰 섬광을 없앤다.
-    preview.view.setBackgroundColor(previewThemeBackground(
-      transfer.tab.previewTheme ?? globalPreviewTheme,
-    ));
-    // 크기가 같으면 조판이 그대로다. scroll은 reparent만으로 이미 보존되므로
-    // 아무것도 하지 않는 것이 정답이다. 띠를 얻었으면 좌표계를 하나로 둔다.
-    // 픽셀 복원과 무게중심 정렬이 함께 돌면 서로 다른 답을 내어 두 번 튄다.
-    const keepsGeometry = transferKeepsGeometry(transfer, event.sender.id);
-    const band = await transfer.previewBand.catch(() => [] as BandLine[]);
-    preview.pendingScrollPosition = keepsGeometry || band.length > 0 ? null : scroll;
-    preview.pendingScrollRatio = keepsGeometry || band.length > 0
-      || !Number.isFinite(Number(transfer.tab.viewerScrollRatio))
-      ? null
-      : Math.max(0, Math.min(1, Number(transfer.tab.viewerScrollRatio)));
-    transfer.previewAdopted = true;
-    return true;
-  });
-  ipcMain.handle('tabs:claim-transfer', async (event, transferId: string) => {
-    const transfer = pendingTabTransfers.get(transferId);
-    if (!transfer || transfer.expiresAt < Date.now()) {
-      pendingTabTransfers.delete(transferId);
-      return null;
-    }
-    if (transfer.sourceWebContentsId === event.sender.id || transfer.claimedByWebContentsId !== null) {
-      return null;
-    }
-    transfer.claimedByWebContentsId = event.sender.id;
-    if (
-      transfer.preparedWindow
-      && !transfer.preparedWindow.isDestroyed()
-      && transfer.preparedWindow.webContents.id !== event.sender.id
-    ) {
-      transfer.preparedWindow.destroy();
-      transfer.preparedWindow = null;
-    }
-    return {
-      transferId,
-      tab: {
-        ...transfer.tab,
-        viewerBand: await transfer.previewBand,
-        previewGeometryUnchanged: transferKeepsGeometry(transfer, event.sender.id),
-      },
-    };
-  });
-  ipcMain.on('tabs:complete-transfer', (event, transferId: string) => {
-    const transfer = pendingTabTransfers.get(transferId);
-    if (
-      !transfer
-      || transfer.claimedByWebContentsId !== event.sender.id
-      || !transfer.previewAdopted
-    ) return;
-    const source = stateForWebContentsId(transfer.sourceWebContentsId)?.window;
-    source?.webContents.send('tabs:transfer-completed', {
-      transferId,
-      tabId: transfer.tab.id,
-    });
-  });
-  ipcMain.on('tabs:release-source', (event, transferId: string) => {
-    const transfer = pendingTabTransfers.get(transferId);
-    if (!transfer || transfer.sourceWebContentsId !== event.sender.id) return;
-    const destination = transfer.claimedByWebContentsId === null
-      ? null
-      : stateForWebContentsId(transfer.claimedByWebContentsId)?.window;
-    pendingTabTransfers.delete(transferId);
-    if (destination && !destination.isDestroyed()) {
-      if (!destination.isVisible()) {
-        destination.once('show', () => {
-          setImmediate(() => {
-            for (const preview of previewViews.values()) {
-              if (preview.ownerWebContentsId === destination.webContents.id) {
-                restorePendingPreviewScroll(preview);
-              }
-            }
-            // 일부 window manager는 show 직후 같은 task의 focus 요청을 버린다.
-            // compositor와 Preview를 붙인 다음 task에서 목적지에 한 번 더 준다.
-            if (!destination.isDestroyed()) destination.focus();
-          });
-        });
-        destination.show();
-      }
-      destination.focus();
-    }
-  });
-  ipcMain.on('tabs:cancel-transfer', (event, transferId: string) => {
-    const transfer = pendingTabTransfers.get(transferId);
-    if (transfer?.sourceWebContentsId === event.sender.id && transfer.claimedByWebContentsId === null) {
-      if (transfer.preparedWindow && !transfer.preparedWindow.isDestroyed()) {
-        transfer.preparedWindow.destroy();
-      }
-      pendingTabTransfers.delete(transferId);
-    }
-  });
-  ipcMain.on('tabs:detach-to-window', (event, { transferId, x, y }) => {
-    const transfer = pendingTabTransfers.get(transferId);
-    if (!transfer || transfer.sourceWebContentsId !== event.sender.id || transfer.claimedByWebContentsId !== null) return;
-    transfer.detachPosition = {
-      x: Math.round(Number(x) - 120),
-      y: Math.round(Number(y) - 18),
-    };
-    const detachedWindow = transfer.preparedWindow && !transfer.preparedWindow.isDestroyed()
-      ? transfer.preparedWindow
-      : createWindow(transfer.detachPosition, null, false,
-        sourceContentSize(event.sender.id));
-    transfer.preparedWindow = detachedWindow;
-    detachedWindow.setPosition(transfer.detachPosition.x, transfer.detachPosition.y, false);
-    transfer.claimedByWebContentsId = detachedWindow.webContents.id;
-    // Preview를 옮기기 전에 목적지 창을 화면에 올린다.
-    //
-    // 화면에 올라가지 않은 창의 WebContents는 display 배율을 모른다.
-    // devicePixelRatio가 1로 떨어지고, 분수 배율(예: 1.333) 환경에서는 모든
-    // 줄 높이가 다르게 반올림된다. 측정에서 15,285px 문서가 15,428px로
-    // 부풀었다가 창이 보이는 순간 되돌아왔다. 그 중간 레이아웃이 사용자가
-    // 보는 "탁탁"이다. 순서를 바꾸면 뷰는 같은 배율에서 같은 배율로 옮겨
-    // 가므로 중간 레이아웃이 생기지 않는다. 기다리지 않으므로 전환은 그대로
-    // 즉시다.
-    // showInactive로 올린다. 배율을 얻는 데 필요한 것은 display에 붙는 것뿐이고,
-    // 포커스는 transfer가 끝난 뒤 tabs:release-source가 준다.
-    if (!detachedWindow.isVisible()) detachedWindow.showInactive();
-    // 새 창으로 분리하는 경로는 claim-transfer를 지나지 않는다. 띠를 여기서
-    // 직접 실어 보내지 않으면 목적지가 무게중심 정렬을 쓸 수 없다.
-    const sendIncoming = async () => {
-      if (!pendingTabTransfers.has(transferId) || detachedWindow.isDestroyed()) return;
-      const band = await transfer.previewBand.catch(() => [] as BandLine[]);
-      if (!pendingTabTransfers.has(transferId) || detachedWindow.isDestroyed()) return;
-      detachedWindow.webContents.send('tabs:transfer-incoming', {
-        transferId,
-        tab: {
-          ...transfer.tab,
-          viewerBand: band,
-          previewGeometryUnchanged:
-            transferKeepsGeometry(transfer, detachedWindow.webContents.id),
-        },
-      });
-    };
-    if (detachedWindow.webContents.isLoadingMainFrame()) {
-      detachedWindow.webContents.once('did-finish-load', () => void sendIncoming());
-    } else {
-      void sendIncoming();
-    }
-  });
-  ipcMain.on('app:close-empty-window', (event) => {
-    const state = stateForWebContentsId(event.sender.id);
-    if (!state || state.rendererTabs.length > 0) return;
+  transfers.registerIpc();
+  windowChannels.on('app:close-empty-window', (state) => {
+    if (state.rendererTabs.length > 0) return;
     state.closeAfterConfirmation = true;
     state.window.close();
   });
   // invoke의 반환값으로 renderer가 직접 문서를 설치하므로 opened 이벤트를
   // 함께 보내지 않는다. 두 경로가 겹치면 showDocument가 같은 문서를 두 번
   // 초기화하여 진행 중 Preview를 무효화한다.
-  ipcMain.handle('document:open', (event) => {
-    const state = stateForWebContentsId(event.sender.id);
-    return state ? documents.chooseAndOpen(state, false) : null;
-  });
-  ipcMain.on('document:update-text', (event, { text, revision }) => {
-    const state = stateForWebContentsId(event.sender.id);
-    if (state) documents.updateText(state, text, revision);
-  });
-  ipcMain.handle(
-    'preview:prepare',
-    (event, { tabId, text, revision, documentPath, themeId }) => {
-      const state = stateForWebContentsId(event.sender.id);
-      if (!state) throw new Error('The window no longer exists.');
-      return preparePreview(
-        state, String(tabId), text, revision, documentPath,
-        normalizePreviewTheme(themeId), event.sender.id,
-      );
-    },
+  windowChannels.handle('document:open', (state) => documents.chooseAndOpen(state, false));
+  windowChannels.on(
+    'document:update-text',
+    (state, { text, revision }: { text: string; revision: number }) =>
+      documents.updateText(state, text, revision),
   );
-  ipcMain.handle('document:save', async (event, { text, revision }): Promise<SaveResult> => {
-    const state = stateForWebContentsId(event.sender.id);
-    return state ? documents.saveCurrent(state, text, revision) : { canceled: true };
-  });
-  ipcMain.handle('document:save-as', async (event, { text, revision }): Promise<SaveResult> => {
-    const state = stateForWebContentsId(event.sender.id);
-    return state ? documents.saveAs(state, text, revision) : { canceled: true };
-  });
-  ipcMain.handle(
+  windowChannels.handle(
+    'preview:prepare',
+    (state, request: {
+      tabId: unknown; text: string; revision: number; documentPath: string; themeId: unknown;
+    }) => renderer.prepare(
+      state, String(request.tabId), request.text, request.revision, request.documentPath,
+      normalizePreviewTheme(request.themeId), state.window.webContents.id,
+    ),
+  );
+  windowChannels.handle(
+    'document:save',
+    (state, { text, revision }: { text: string; revision: number }): Promise<SaveResult> =>
+      documents.saveCurrent(state, text, revision),
+  );
+  windowChannels.handle(
+    'document:save-as',
+    (state, { text, revision }: { text: string; revision: number }): Promise<SaveResult> =>
+      documents.saveAs(state, text, revision),
+  );
+  windowChannels.handle(
     'document:save-tab',
-    async (event, { document, text, revision }): Promise<SaveResult> => {
-      const state = stateForWebContentsId(event.sender.id);
-      if (!state) return { canceled: true };
+    async (state, { document, text, revision }: {
+      document: DocumentSnapshot; text: string; revision: number;
+    }): Promise<SaveResult> => {
       const wasCurrent = state.currentDocument?.path === document.path;
       const result = await documents.saveSnapshot(state, document, text, revision);
       if (wasCurrent && !result.canceled && result.document) {
@@ -1282,10 +480,8 @@ function installIpc() {
       return result;
     },
   );
-  ipcMain.handle('document:confirm-close', async (event, name: string): Promise<CloseDecision> => {
-    const parent = stateForWebContentsId(event.sender.id)?.window;
-    if (!parent) return 'cancel';
-    const { response } = await dialog.showMessageBox(parent, {
+  windowChannels.handle('document:confirm-close', async (state, name: string): Promise<CloseDecision> => {
+    const { response } = await dialog.showMessageBox(state.window, {
       type: 'warning',
       message: `${name}의 변경 내용을 저장하시겠습니까?`,
       detail: '저장하지 않은 내용은 완전히 잃게 됩니다.',
@@ -1298,70 +494,58 @@ function installIpc() {
   ipcMain.handle('document:discard', async (_event, document: DocumentSnapshot) => {
     await documents.discard(document);
   });
-  ipcMain.on('app:finish-window-close', (event, saved: boolean) => {
-    const state = stateForWebContentsId(event.sender.id);
-    if (!saved || !state) return;
+  windowChannels.on('app:finish-window-close', (state, saved: boolean) => {
+    if (!saved) return;
     state.closeAfterConfirmation = true;
     state.window.close();
   });
-  ipcMain.handle('document:export-pdf', (event, { text, revision, documentPath }) => {
-    const state = stateForWebContentsId(event.sender.id);
-    return state ? exportCurrentPdf(state, text, revision, documentPath) : { canceled: true };
-  });
-  ipcMain.handle('document:paste-clipboard-image', (event) => {
-    const state = stateForWebContentsId(event.sender.id);
-    return state ? documents.pasteImage(state) : { canceled: true };
-  });
-  ipcMain.handle('document:pick-link-target', (event, documentPath: string) => {
-    const state = stateForWebContentsId(event.sender.id);
-    return state ? documents.pickLink(state, documentPath) : { canceled: true };
-  });
-  ipcMain.handle('document:reload', async (event) => {
-    const state = stateForWebContentsId(event.sender.id);
-    if (!state) return null;
-    return documents.reload(state);
-  });
-  ipcMain.handle('document:open-link', async (event, href: string) => {
-    const state = stateForWebContentsId(event.sender.id);
-    if (!state) return;
-    return (async () => {
-      let decodedHref: string;
+  windowChannels.handle(
+    'document:export-pdf',
+    (state, { text, revision, documentPath }: {
+      text: string; revision: number; documentPath: string;
+    }) => exportCurrentPdf(state, text, revision, documentPath),
+  );
+  windowChannels.handle('document:paste-clipboard-image', (state) => documents.pasteImage(state));
+  windowChannels.handle('document:pick-link-target', (state, documentPath: string) =>
+    documents.pickLink(state, documentPath));
+  windowChannels.handle('document:reload', (state) => documents.reload(state));
+  windowChannels.handle('document:open-link', async (state, href: string) => {
+    let decodedHref: string;
+    try {
+      decodedHref = decodeURIComponent(String(href));
+    } catch {
+      return;
+    }
+    const localPath = pathFromResourceUrl(decodedHref);
+    if (localPath) {
+      // resource protocol의 일반 요청은 문서 root 안으로 제한하지만, 링크 클릭은
+      // 사용자가 명시적으로 선택한 navigation이다. 그래서 ../로 연결된 파일도
+      // 열되 실제 일반 파일인지 확인하고, Markdown만 앱 탭으로 들인다.
+      const checked = canonicalPath(localPath);
       try {
-        decodedHref = decodeURIComponent(String(href));
+        if (!(await fs.stat(checked)).isFile()) return;
       } catch {
         return;
       }
-      const localPath = pathFromResourceUrl(decodedHref);
-      if (localPath) {
-        // resource protocol의 일반 요청은 문서 root 안으로 제한하지만, 링크 클릭은
-        // 사용자가 명시적으로 선택한 navigation이다. 그래서 ../로 연결된 파일도
-        // 열되 실제 일반 파일인지 확인하고, Markdown만 앱 탭으로 들인다.
-        const checked = canonicalPath(localPath);
-        try {
-          if (!(await fs.stat(checked)).isFile()) return;
-        } catch {
-          return;
-        }
-        if (/\.(?:md|markdown|mdown|mkdn|mkd|rmd|qmd|mdx)$/i.test(checked)) {
-          // 자기 자신으로 가는 링크 때문에 저장하지 않은 현재 문서를 디스크
-          // snapshot으로 덮어쓰지 않는다.
-          if (state.currentDocument && canonicalPath(state.currentDocument.path) === checked) return;
-          const document = await documents.open(state, checked, false);
-          state.window.webContents.send('document:opened', document);
-        } else {
-          await shell.openPath(checked);
-        }
-        return;
+      if (/\.(?:md|markdown|mdown|mkdn|mkd|rmd|qmd|mdx)$/i.test(checked)) {
+        // 자기 자신으로 가는 링크 때문에 저장하지 않은 현재 문서를 디스크
+        // snapshot으로 덮어쓰지 않는다.
+        if (state.currentDocument && canonicalPath(state.currentDocument.path) === checked) return;
+        const document = await documents.open(state, checked, false);
+        state.window.webContents.send('document:opened', document);
+      } else {
+        await shell.openPath(checked);
       }
-      try {
-        const url = new URL(decodedHref);
-        if (['http:', 'https:', 'mailto:', 'tel:'].includes(url.protocol)) {
-          await shell.openExternal(url.href);
-        }
-      } catch {
-        // 상대 주소는 bridge에서 절대 주소로 바뀌어 와야 한다.
+      return;
+    }
+    try {
+      const url = new URL(decodedHref);
+      if (['http:', 'https:', 'mailto:', 'tel:'].includes(url.protocol)) {
+        await shell.openExternal(url.href);
       }
-    })();
+    } catch {
+      // 상대 주소는 bridge에서 절대 주소로 바뀌어 와야 한다.
+    }
   });
 }
 
@@ -1393,7 +577,7 @@ if (!hasLock) {
   app.whenReady().then(async () => {
     protocol.handle('marktex-preview', (request) => {
       const token = new URL(request.url).pathname.slice(1);
-      const html = previewDocuments.get(token);
+      const html = previews.html(token);
       if (!html) return new Response('Preview expired', { status: 404 });
       return new Response(html, {
         headers: { 'content-type': 'text/html; charset=utf-8' },
@@ -1421,7 +605,7 @@ if (!hasLock) {
     // 조판 worker는 crossnote를 읽어 들이는 데만 0.6초를 쓴다. 첫 요청을
     // 기다렸다 fork하면 그 시간이 renderer 부팅 뒤에 그대로 붙는다. 여기서
     // 미리 띄우면 renderer가 뜨는 동안 나란히 준비된다.
-    ensureRenderWorker();
+    renderer.warmup();
     const markdownPath = markdownPathFromArgs(process.argv);
     const initialDocument = markdownPath
       ? await documents.read(path.resolve(markdownPath))

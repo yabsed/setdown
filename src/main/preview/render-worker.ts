@@ -13,32 +13,32 @@
  * 보안 경계도 함께 넘어온다. 이 프로세스는 요청이 실어 보낸 root 목록
  * 안에서만 파일을 읽는다.
  */
-import { promises as fs, readFileSync, realpathSync } from 'node:fs';
+import { promises as fs, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { Notebook, getDefaultNotebookConfig, utility } from 'crossnote';
 import type { FileSystemApi, WebviewConfig } from 'crossnote';
 import {
-  codeThemeFile,
   normalizePreviewTheme,
   previewThemeBackground,
   previewThemeFile,
   type PreviewThemeId,
-} from '../shared/preview-preferences';
-import { lineCount } from '../shared/document-state';
+} from '../../shared/preview-preferences';
+import { lineCount } from '../../shared/document-state';
 import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
 import { previewRelativeReference } from './preview-resources';
+import { resourceUrl } from './resource-url';
+import { canonicalPath, isInside } from '../documents/file-system';
 import {
   diffPreviewBlocks,
   splitPreviewBlocks,
   type PreviewBlock,
   type PreviewBlockPatch,
-} from '../shared/preview-blocks';
+} from '../../shared/preview-blocks';
 import {
   createLeanPreviewTemplate,
   requiresCrossnoteInstall,
   type PreviewRuntime,
-} from '../shared/preview-install';
+} from '../../shared/preview-install';
 
 export type RenderWorkerRequest =
   | {
@@ -97,19 +97,6 @@ const crossnoteOut = path.resolve(path.dirname(require.resolve('crossnote')), '.
 let allowedRoots: string[] = [];
 let activeRoot: string | null = null;
 
-function isInside(root: string, candidate: string): boolean {
-  const relative = path.relative(root, candidate);
-  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
-}
-
-function canonicalPath(candidate: string): string {
-  try {
-    return realpathSync(candidate);
-  } catch {
-    return path.resolve(candidate);
-  }
-}
-
 function assertReadablePath(candidate: string): string {
   const resolved = canonicalPath(candidate);
   const roots = [crossnoteOut, activeRoot, ...allowedRoots]
@@ -118,16 +105,6 @@ function assertReadablePath(candidate: string): string {
     throw new Error('The preview attempted to read outside the document folder.');
   }
   return resolved;
-}
-
-/**
- * 경로를 URL의 path로 그대로 실어 보낸다. 통째로 encoding하면 stylesheet 안의
- * 상대 참조(KaTeX의 `fonts/...`)가 엉뚱한 곳을 가리킨다.
- */
-function resourceUrl(filePath: string): string {
-  const { pathname } = pathToFileURL(path.resolve(filePath));
-  const trailingSeparator = /[\\/]$/.test(filePath) ? '/' : '';
-  return `marktex-resource://file${pathname}${trailingSeparator}`;
 }
 
 /**

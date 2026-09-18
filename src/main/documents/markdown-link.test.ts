@@ -12,4 +12,3 @@ describe('markdownDestinationForFile', () => {
     expect(destination).toBe('../assets/reference.pdf');
   });
 });
-

@@ -498,7 +498,7 @@ function scheduleHydrationFrame(root: HTMLElement, generation: number) {
 }
 
 function beginDeferredHydration(root: HTMLElement, blocks: string[]) {
-  const generation = ++deferredHydrationGeneration;
+  deferredHydrationGeneration += 1;
   deferredHtmlBlocks = blocks;
   document.body.dataset.setdownHydrationStartedMs = String(performance.now());
   document.body.dataset.setdownInitialElementCount = String(root.querySelectorAll('*').length);

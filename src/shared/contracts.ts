@@ -108,19 +108,6 @@ export type TransferableTab = {
   tocOpen: boolean;
 };
 
-export type PreviewTransferBounds = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-};
-
-export type PreviewTransferSnapshot = {
-  dataUrl: string;
-  width: number;
-  height: number;
-};
-
 export type ClaimedTabTransfer = {
   transferId: string;
   tab: TransferableTab;

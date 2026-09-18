@@ -1,6 +1,6 @@
 import { promises as fs, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
-import type { DiskVersion } from '../shared/contracts';
+import type { DiskVersion } from '../../shared/contracts';
 
 export function diskVersion(filePath: string): DiskVersion {
   const stat = statSync(filePath);

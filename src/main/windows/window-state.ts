@@ -1,5 +1,5 @@
 import type { BrowserWindow } from 'electron';
-import type { DocumentSnapshot, TabStateSummary } from '../shared/contracts';
+import type { DocumentSnapshot, TabStateSummary } from '../../shared/contracts';
 
 export type WindowState = {
   window: BrowserWindow;

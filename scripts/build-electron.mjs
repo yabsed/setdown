@@ -24,7 +24,7 @@ await Promise.all([
   // 조판 전용 utility process. 메인이 IPC를 처리하는 동안 다른 코어에서 돈다.
   build({
     ...shared,
-    entryPoints: ['src/main/render-worker.ts'],
+    entryPoints: ['src/main/preview/render-worker.ts'],
     outfile: 'dist-electron/render-worker.cjs',
     format: 'cjs',
   }),

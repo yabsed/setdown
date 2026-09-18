@@ -8,13 +8,13 @@ import type {
   PasteImageResult,
   PickLinkTargetResult,
   SaveResult,
-} from '../shared/contracts';
-import { applyTextRevision } from '../shared/document-state';
+} from '../../shared/contracts';
+import { applyTextRevision } from '../../shared/document-state';
 import { discardDraftBundle, saveDraftBundle } from './draft-assets';
 import { isSupportedImagePath, savePastedImageFile, savePastedPng } from './pasted-image';
 import { markdownDestinationForFile } from './markdown-link';
 import { atomicWrite, canonicalPath, diskVersion, sameDiskVersion } from './file-system';
-import type { WindowState } from './window-state';
+import type { WindowState } from '../windows/window-state';
 
 const MARKDOWN_FILTER = {
   name: 'Markdown',
