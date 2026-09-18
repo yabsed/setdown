@@ -54,6 +54,7 @@ export function startWorkspace(desktop: DesktopPort) {
     refreshProjectExplorer: () => void projects.refreshExplorer(),
     toggleProjectDirectory: (path) => void projects.toggleDirectory(path),
     openProjectFile: (path) => void projects.openFile(path),
+    openProjectSearchResult: (result) => void projects.openSearchResult(result),
     searchProject: (query) => projects.search(query),
     refreshProjectGit: () => void projects.refreshGit(),
     toggleSurface: () => surfaces.toggle(),
@@ -165,8 +166,11 @@ export function startWorkspace(desktop: DesktopPort) {
     desktop,
     showDocument: async (path) => {
       const documentSnapshot = await desktop.openProjectFile(path);
-      if (documentSnapshot) await tabs.show(documentSnapshot);
+      if (!documentSnapshot) return false;
+      await tabs.show(documentSnapshot);
+      return true;
     },
+    highlight: (query, target) => reader.projectSearch(query, target),
     resized: reader.syncView,
   });
   void projects.restore();

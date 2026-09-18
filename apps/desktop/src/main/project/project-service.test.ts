@@ -34,10 +34,14 @@ describe('project service', () => {
     await mkdir(path.join(root, 'node_modules'));
     await writeFile(path.join(root, 'notes.md'), '# Needle\n', 'utf8');
     await writeFile(path.join(root, 'image.png'), 'needle', 'utf8');
-    await writeFile(path.join(root, 'chapter', 'more.md'), 'A needle here.\n', 'utf8');
+    await writeFile(path.join(root, 'chapter', 'more.md'), 'A needle then needle here.\n', 'utf8');
     await writeFile(path.join(root, 'node_modules', 'hidden.md'), 'needle', 'utf8');
     const state = { projectRoot: root } as WindowState;
     const service = new ProjectService();
+
+    const reloaded = { projectRoot: null } as WindowState;
+    expect(await service.restore(reloaded, root)).toEqual({ path: root, name: path.basename(root) });
+    expect(reloaded.projectRoot).toBe(root);
 
     expect(await service.readDirectory(state, root)).toEqual([
       { path: path.join(root, 'chapter'), name: 'chapter', kind: 'directory' },
@@ -46,9 +50,14 @@ describe('project service', () => {
       { path: path.join(root, 'notes.md'), name: 'notes.md', kind: 'document' },
     ]);
     const results = await service.search(state, 'needle');
-    expect(results.map((result) => result.relativePath)).toEqual([
-      path.join('chapter', 'more.md'),
-      'notes.md',
+    expect(results.map(({ relativePath, line, column, lineOccurrence, ordinal }) => ({
+      relativePath, line, column, lineOccurrence, ordinal,
+    }))).toEqual([
+      { relativePath: path.join('chapter', 'more.md'), line: 1, column: 3,
+        lineOccurrence: 0, ordinal: 0 },
+      { relativePath: path.join('chapter', 'more.md'), line: 1, column: 15,
+        lineOccurrence: 1, ordinal: 1 },
+      { relativePath: 'notes.md', line: 1, column: 3, lineOccurrence: 0, ordinal: 0 },
     ]);
     expect(results.every((result) => /needle/i.test(result.preview))).toBe(true);
   });

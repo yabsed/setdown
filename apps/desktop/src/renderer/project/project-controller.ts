@@ -1,4 +1,4 @@
-import type { ProjectEntry } from '../../protocol/desktop-api';
+import type { ProjectEntry, ProjectSearchResult } from '../../protocol/desktop-api';
 import type { DesktopPort } from '../ports/desktop-port';
 import {
   project,
@@ -7,9 +7,12 @@ import {
   type VisibleProjectEntry,
 } from './project-state.svelte';
 
+type SearchTarget = Pick<ProjectSearchResult, 'line' | 'lineOccurrence' | 'ordinal'>;
+
 type Options = {
   desktop: DesktopPort;
-  showDocument(path: string): Promise<void>;
+  showDocument(path: string): Promise<boolean>;
+  highlight(query: string, target?: SearchTarget): void;
   resized(): void;
 };
 
@@ -26,6 +29,7 @@ export class ProjectController {
   toggle = () => {
     project.open = !project.open;
     rememberProjectState();
+    this.highlight();
     this.resize();
   };
 
@@ -33,6 +37,7 @@ export class ProjectController {
     if (project.open && project.activeView === view) {
       project.open = false;
       rememberProjectState();
+      this.highlight();
       return this.resize();
     }
     project.open = true;
@@ -40,6 +45,7 @@ export class ProjectController {
     project.error = '';
     rememberProjectState();
     if (view === 'git') void this.refreshGit();
+    this.highlight();
     this.resize();
   };
 
@@ -52,18 +58,26 @@ export class ProjectController {
     project.searchQuery = '';
     project.searchResults = [];
     project.git = null;
+    this.options.highlight('');
     void this.options.desktop.searchProject('');
     this.children.clear();
     this.expanded.clear();
-    await this.load(folder.path);
     rememberProjectState();
+    await this.load(folder.path);
     this.resize();
   };
 
   restore = async () => {
-    const folder = await this.options.desktop.getProjectFolder();
-    if (!folder) return;
+    const remembered = project.folder;
+    const folder = await this.options.desktop.getProjectFolder()
+      ?? (remembered ? await this.options.desktop.restoreProjectFolder(remembered.path) : null);
+    if (!folder) {
+      project.folder = null;
+      rememberProjectState();
+      return;
+    }
     project.folder = folder;
+    rememberProjectState();
     await this.load(folder.path);
     for (const directoryPath of [...this.expanded]) {
       if (directoryPath !== folder.path) await this.load(directoryPath);
@@ -86,17 +100,23 @@ export class ProjectController {
     if (!this.children.has(directoryPath)) await this.load(directoryPath);
   };
 
-  openFile = async (filePath: string) => {
+  openFile = async (filePath: string): Promise<boolean> => {
     try {
       project.error = '';
-      await this.options.showDocument(filePath);
+      return await this.options.showDocument(filePath);
     } catch (error) {
       project.error = error instanceof Error ? error.message : String(error);
+      return false;
     }
+  };
+
+  openSearchResult = async (result: ProjectSearchResult) => {
+    if (await this.openFile(result.path)) this.options.highlight(project.searchQuery.trim(), result);
   };
 
   search = (query: string) => {
     project.searchQuery = query;
+    this.options.highlight(query.trim());
     window.clearTimeout(this.searchTimer);
     if (!query.trim() || !project.folder) {
       project.searchResults = [];
@@ -171,5 +191,10 @@ export class ProjectController {
 
   private resize() {
     window.requestAnimationFrame(this.options.resized);
+  }
+
+  private highlight() {
+    this.options.highlight(project.open && project.activeView === 'search'
+      ? project.searchQuery.trim() : '');
   }
 }

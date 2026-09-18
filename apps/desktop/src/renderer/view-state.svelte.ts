@@ -1,4 +1,8 @@
-import type { ApplicationMenuEntry, CloseDecision } from '../protocol/desktop-api';
+import type {
+  ApplicationMenuEntry,
+  CloseDecision,
+  ProjectSearchResult,
+} from '../protocol/desktop-api';
 import type { ProjectView } from './project/project-state.svelte';
 
 export type TabView = {
@@ -36,6 +40,7 @@ export type AppActions = {
   refreshProjectExplorer(): void;
   toggleProjectDirectory(path: string): void;
   openProjectFile(path: string): void;
+  openProjectSearchResult(result: ProjectSearchResult): void;
   searchProject(query: string): void;
   refreshProjectGit(): void;
   toggleSurface(): void;

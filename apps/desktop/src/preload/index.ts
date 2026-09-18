@@ -86,6 +86,7 @@ const api: MarkTexApi = {
     ipcRenderer.invoke('document:pick-link-target', documentPath),
   chooseProjectFolder: () => ipcRenderer.invoke('project:choose-folder'),
   getProjectFolder: () => ipcRenderer.invoke('project:get-folder'),
+  restoreProjectFolder: (folderPath) => ipcRenderer.invoke('project:restore-folder', folderPath),
   readProjectDirectory: (directoryPath) =>
     ipcRenderer.invoke('project:read-directory', directoryPath),
   openProjectFile: (filePath) => ipcRenderer.invoke('project:open-file', filePath),

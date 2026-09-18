@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { disposeApplication } from './electron-app';
 
-test('restores side panels and their widths after Reload', async () => {
+test('restores the open folder, side panels, and their widths after Reload', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-reload-layout-'));
   const documentPath = path.join(root, 'reload.md');
   await writeFile(documentPath, '# Reload layout\n\nBody', 'utf8');
@@ -14,6 +14,11 @@ test('restores side panels and their widths after Reload', async () => {
   try {
     const window = await application.firstWindow();
     await window.locator('.product-identity').click();
+    await window.evaluate(async (folderPath) => {
+      await (window as typeof window & {
+        marktex: { restoreProjectFolder(path: string): Promise<unknown> };
+      }).marktex.restoreProjectFolder(folderPath);
+    }, root);
     await window.locator('.toc-toggle').click();
     await window.locator('.panel-resize-right').press('ArrowRight');
     await window.locator('.panel-resize-left').press('ArrowLeft');
@@ -29,6 +34,7 @@ test('restores side panels and their widths after Reload', async () => {
     ]);
 
     await expect(window.locator('.project-sidebar')).toBeVisible();
+    await expect(window.locator('.explorer-root')).toContainText(path.basename(root).toUpperCase());
     await expect(window.locator('.toc-panel')).toBeVisible();
     await expect.poll(() => window.locator('.shell').evaluate((shell) => ({
       project: getComputedStyle(shell).getPropertyValue('--project-sidebar-width'),

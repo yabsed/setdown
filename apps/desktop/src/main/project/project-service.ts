@@ -53,6 +53,14 @@ export class ProjectService {
     return state.projectRoot ? this.folder(state.projectRoot) : null;
   }
 
+  async restore(state: WindowState, candidate: string): Promise<ProjectFolder | null> {
+    const folderPath = canonicalPath(candidate);
+    const stat = await fs.stat(folderPath).catch(() => null);
+    if (!stat?.isDirectory()) return null;
+    state.projectRoot = folderPath;
+    return this.folder(folderPath);
+  }
+
   async readDirectory(state: WindowState, candidate: string): Promise<ProjectEntry[]> {
     const directory = this.inside(state, candidate);
     const entries = await fs.readdir(directory, { withFileTypes: true });
@@ -85,19 +93,26 @@ export class ProjectService {
       if (!stat?.isFile() || stat.size > MAX_FILE_SIZE) return;
       const text = await fs.readFile(filePath, 'utf8').catch(() => '');
       const lines = text.split(/\r\n|\r|\n/);
+      let ordinal = 0;
       for (let index = 0; index < lines.length && results.length < MAX_RESULTS; index += 1) {
         const line = lines[index];
-        const match = line.toLocaleLowerCase().indexOf(query);
-        if (match < 0) continue;
-        const start = Math.max(0, match - 60);
-        const end = Math.min(line.length, match + query.length + 120);
-        results.push({
-          path: filePath,
-          name: path.basename(filePath),
-          relativePath: path.relative(root, filePath),
-          line: index + 1,
-          preview: `${start ? '…' : ''}${line.slice(start, end)}${end < line.length ? '…' : ''}`,
-        });
+        const folded = line.toLocaleLowerCase();
+        let lineOccurrence = 0;
+        for (let match = folded.indexOf(query); match >= 0 && results.length < MAX_RESULTS;
+          match = folded.indexOf(query, match + query.length)) {
+          const start = Math.max(0, match - 60);
+          const end = Math.min(line.length, match + query.length + 120);
+          results.push({
+            path: filePath,
+            name: path.basename(filePath),
+            relativePath: path.relative(root, filePath),
+            line: index + 1,
+            column: match + 1,
+            lineOccurrence: lineOccurrence++,
+            ordinal: ordinal++,
+            preview: `${start ? '…' : ''}${line.slice(start, end)}${end < line.length ? '…' : ''}`,
+          });
+        }
       }
     }, () => this.searches.get(state.webContentsId) !== request || results.length >= MAX_RESULTS);
     return results;

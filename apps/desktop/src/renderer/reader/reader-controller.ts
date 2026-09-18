@@ -27,11 +27,15 @@ type Options = {
   anchorChanged: () => void;
 };
 
+type SearchTarget = { line: number; lineOccurrence: number; ordinal: number };
+
 export class ReaderController {
   themeId: PreviewThemeId;
   awaiting = false;
   private appliedThemeRevision: number;
   private transitionTabId: string | null = null;
+  private projectQuery = '';
+  private searchSource: 'find' | 'project' = 'project';
   private freezeDepth = 0;
   private frozen = false;
   private freezeToken = 0;
@@ -74,6 +78,7 @@ export class ReaderController {
   find(query: string, direction: 'forward' | 'backward' = 'forward', findNext = false) {
     const tab = this.options.active();
     if (!tab) return;
+    this.searchSource = 'find';
     const queryChanged = query !== tab.find.query;
     tab.find.query = query;
     if (!findNext || queryChanged) {
@@ -90,19 +95,51 @@ export class ReaderController {
     const tab = this.options.active();
     if (!tab || tab.surface !== 'viewer') return;
     tab.find.open = true;
+    this.searchSource = 'find';
     this.syncUi();
     this.syncView();
-    if (tab.find.query) this.find(tab.find.query);
+    this.restoreSearch(tab);
   }
 
   closeFind(clearQuery = false) {
     const tab = this.options.active();
     if (!tab) return;
-    this.send(tab.id, { command: 'marktex:stop-find' });
     Object.assign(tab.find, { open: false, activeMatch: 0, matches: 0 });
     if (clearQuery) tab.find.query = '';
+    this.searchSource = 'project';
     this.syncUi();
     this.syncView();
+    this.restoreSearch(tab);
+  }
+
+  projectSearch(query: string, target?: SearchTarget) {
+    const tab = this.options.active();
+    this.projectQuery = query.slice(0, 512);
+    this.searchSource = this.projectQuery ? 'project' : tab?.find.open ? 'find' : 'project';
+    if (this.projectQuery && tab?.find.open) {
+      tab.find.open = false;
+      this.syncUi();
+      this.syncView();
+    }
+    this.restoreSearch(tab, target);
+  }
+
+  restoreSearch(
+    tab: WorkspaceTab | null | undefined = this.options.active(),
+    target?: SearchTarget,
+  ) {
+    if (!tab?.previewUrl) return;
+    const local = this.searchSource === 'find' && tab.find.open;
+    const query = local ? tab.find.query : this.projectQuery;
+    this.send(tab.id, query ? {
+      command: 'marktex:find',
+      query,
+      direction: 'forward',
+      findNext: false,
+      sourceLine: target?.line,
+      sourceOccurrence: target?.lineOccurrence,
+      searchOrdinal: target?.ordinal,
+    } : { command: 'marktex:stop-find' });
   }
 
   applyAssets(tab: WorkspaceTab, assets: PreviewThemeAssets) {

@@ -47,6 +47,9 @@ export type ProjectSearchResult = {
   name: string;
   relativePath: string;
   line: number;
+  column: number;
+  lineOccurrence: number;
+  ordinal: number;
   preview: string;
 };
 
@@ -194,6 +197,7 @@ export type MarkTexApi = {
   pickLinkTarget(documentPath: string): Promise<PickLinkTargetResult>;
   chooseProjectFolder(): Promise<ProjectFolder | null>;
   getProjectFolder(): Promise<ProjectFolder | null>;
+  restoreProjectFolder(path: string): Promise<ProjectFolder | null>;
   readProjectDirectory(directoryPath: string): Promise<ProjectEntry[]>;
   openProjectFile(filePath: string): Promise<DocumentSnapshot | null>;
   searchProject(query: string): Promise<ProjectSearchResult[]>;
