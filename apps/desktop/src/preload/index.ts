@@ -7,6 +7,7 @@ import type {
   ExternalChange,
   MarkTexApi,
   PreviewMessage,
+  ProjectFilesChanged,
   TabStateSummary,
   ThemeSnapshot,
   TransferableTab,
@@ -112,6 +113,8 @@ const api: MarkTexApi = {
     subscribe<DocumentSnapshot>('document:opened', listener),
   onExternalChange: (listener) =>
     subscribe<ExternalChange>('document:external-change', listener),
+  onProjectFilesChanged: (listener) =>
+    subscribe<ProjectFilesChanged>('project:files-changed', listener),
   onCommand: (listener) => subscribe<AppCommand>('app:command', listener),
   onThemeChanged: (listener) => subscribe<ThemeSnapshot>('theme:changed', listener),
   onWindowCloseRequested: (listener) =>

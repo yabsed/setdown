@@ -3,6 +3,7 @@ import type { DocumentSnapshot } from '../../core/document/document';
 import type { PreviewThemeId } from '../../core/preview/preview-preferences';
 import type { BandLine, ViewportAnchor } from '../../core/preview/viewport-anchor';
 import type { WorkspaceTab } from '../../core/workspace/workspace-state';
+import type { ProjectSearchDocument } from '../../protocol/desktop-api';
 import { readEditorViewport } from '../editor/editor-viewport';
 import { monacoThemeName, registerMonacoThemes } from '../theme';
 
@@ -20,6 +21,7 @@ type Options = {
 };
 
 type SearchTarget = { line: number; column: number; ordinal: number };
+type ProjectMatch = NonNullable<ProjectSearchDocument['matches']>[number];
 
 export class MonacoEditor {
   private apiValue: typeof Monaco | null = null;
@@ -189,6 +191,29 @@ export class MonacoEditor {
       editor.revealRangeInCenterIfOutsideViewport(matches[active].range);
       editor.focus();
     }
+  }
+
+  projectMatches(tab: WorkspaceTab, query: string, limit = 300): ProjectMatch[] {
+    const model = this.models.get(tab.id);
+    if (!model || !query) return [];
+    const perLine = new Map<number, number>();
+    return model.findMatches(query, false, false, false, null, false, limit)
+      .map(({ range }, ordinal) => {
+        const line = range.startLineNumber;
+        const column = range.startColumn;
+        const content = model.getLineContent(line);
+        const start = Math.max(0, column - 1 - 60);
+        const end = Math.min(content.length, range.endColumn - 1 + 120);
+        const match: ProjectMatch = {
+          line,
+          column,
+          lineOccurrence: perLine.get(line) ?? 0,
+          ordinal,
+          preview: `${start ? '…' : ''}${content.slice(start, end)}${end < content.length ? '…' : ''}`,
+        };
+        perLine.set(line, match.lineOccurrence + 1);
+        return match;
+      });
   }
 
   private ensureModel(tab: WorkspaceTab): Monaco.editor.ITextModel {

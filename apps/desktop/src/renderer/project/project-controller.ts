@@ -18,7 +18,7 @@ type SearchTarget = Pick<
 
 type Options = {
   desktop: DesktopPort;
-  searchDocuments(): ProjectSearchDocument[];
+  searchDocuments(query: string): ProjectSearchDocument[];
   showDocument(path: string): Promise<boolean>;
   highlight(query: string, target?: SearchTarget): void;
   pathMoved(from: string, to: string): Promise<void>;
@@ -31,6 +31,7 @@ export class ProjectController {
   private readonly explorer: ExplorerController;
   private readonly searcher: SearchController;
   private readonly sourceControl: SourceControlController;
+  private changeTimer?: number;
 
   constructor(private readonly options: Options) {
     this.explorer = new ExplorerController({
@@ -116,6 +117,12 @@ export class ProjectController {
   search = (query: string): void => this.searcher.search(query);
   contextChanged = (): void => this.searcher.contextChanged();
 
+  filesChanged = (root: string): void => {
+    if (root !== project.folder?.path) return;
+    window.clearTimeout(this.changeTimer);
+    this.changeTimer = window.setTimeout(() => void this.refreshChangedProject(), 120);
+  };
+
   refreshGit = (): Promise<void> => this.sourceControl.refresh();
   reviewGitChange = (path: string, staged: boolean): Promise<void> =>
     this.sourceControl.review(path, staged);
@@ -143,6 +150,12 @@ export class ProjectController {
     rememberProjectState();
     await this.explorer.reset(folder);
     this.resize();
+  }
+
+  private async refreshChangedProject(): Promise<void> {
+    await this.explorer.refresh();
+    if (project.searchQuery.trim()) this.searcher.contextChanged();
+    if (project.activeView === 'git') await this.sourceControl.refresh();
   }
 
   private resize(): void {

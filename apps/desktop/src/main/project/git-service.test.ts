@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
@@ -15,20 +15,34 @@ afterEach(async () => {
 
 describe('Git status parser', () => {
   test('keeps index and working-tree states independently', () => {
-    expect(parseGitStatus('MM both.md\nUU conflict.md\nR  old.md -> new.md\n')).toMatchObject([
+    const status = [
+      '# branch.head feature/power',
+      '# branch.upstream origin/feature/power',
+      '# branch.ab +2 -3',
+      '1 MM N... 100644 100644 100644 a b both.md',
+      'u UU N... 100644 100644 100644 100644 a b c conflict.md',
+      '2 R. N... 100644 100644 100644 a b R100 new.md',
+      'old.md',
+      '',
+    ].join('\0');
+    expect(parseGitStatus(status)).toMatchObject({
+      branch: 'feature/power', upstream: 'origin/feature/power', ahead: 2, behind: 3,
+      changes: [
       { path: 'both.md', indexStatus: 'M', workingTreeStatus: 'M', staged: true, unstaged: true },
       { path: 'conflict.md', conflict: true, status: '!' },
       { path: 'new.md', indexStatus: 'R', staged: true },
-    ]);
+      ],
+    });
   });
 
-  test('decodes quoted rename paths before selecting the destination', () => {
-    expect(parseGitStatus('R  "old file.md -> new file.md"\n')[0].path).toBe('new file.md');
+  test('uses the destination record for renames without parsing filename syntax', () => {
+    const output = '2 R. N... 100644 100644 100644 a b R100 new file.md\0old file.md\0';
+    expect(parseGitStatus(output).changes[0].path).toBe('new file.md');
   });
 
-  test('preserves unquoted spaces in untracked paths', () => {
-    expect(parseGitStatus('?? new file.md\n')[0]).toMatchObject({
-      path: 'new file.md', indexStatus: '?', workingTreeStatus: '?', unstaged: true,
+  test('preserves spaces and newlines in NUL-delimited untracked paths', () => {
+    expect(parseGitStatus('? new file\ncontinued.md\0').changes[0]).toMatchObject({
+      path: 'new file\ncontinued.md', indexStatus: '?', workingTreeStatus: '?', unstaged: true,
     });
   });
 
@@ -56,5 +70,19 @@ describe('Git status parser', () => {
     expect((await service.diff(state, filePath, false)).patch).toContain('--- /dev/null');
     expect((await service.discard(state, [filePath])).changes).toEqual([]);
     expect(trashed).toEqual([filePath]);
+  });
+
+  test('maps repository-relative porcelain paths back into an open subfolder', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-git-subfolder-'));
+    temporaryDirectories.push(root);
+    const service = new GitService(new ProjectPaths());
+    await service.initialize({ projectRoot: root } as WindowState);
+    const folder = path.join(root, 'notes');
+    const filePath = path.join(folder, 'chapter.md');
+    await mkdir(folder);
+    await writeFile(filePath, '# Chapter\n', 'utf8');
+
+    const snapshot = await service.status({ projectRoot: folder } as WindowState);
+    expect(snapshot.changes).toMatchObject([{ path: 'chapter.md', filePath, status: 'U' }]);
   });
 });

@@ -188,10 +188,11 @@ export function startWorkspace(desktop: DesktopPort) {
   });
   projects = new ProjectController({
     desktop,
-    searchDocuments: () => workspace.tabs.map((tab) => ({
+    searchDocuments: (query) => workspace.tabs.map((tab) => ({
       path: tab.document.path,
       text: tabs.text(tab),
       surface: tab.surface,
+      matches: tab.surface === 'editor' ? editor.projectMatches(tab, query.trim()) : undefined,
     })),
     showDocument: async (path) => {
       const documentSnapshot = await desktop.openProjectFile(path);
@@ -259,6 +260,7 @@ export function startWorkspace(desktop: DesktopPort) {
     externalChange: (change) => {
       if (session.document?.path === change.path) view.notice = true;
     },
+    projectFilesChanged: (event) => projects.filesChanged(event.root),
     themeChanged: (snapshot) => void reader.applyTheme(snapshot),
     windowCloseRequested: (names) => {
       void closePrompt.request('window', names).then((decision) => {

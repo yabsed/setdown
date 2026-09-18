@@ -9,7 +9,7 @@ type SearchTarget = Pick<
 
 type Options = {
   desktop: DesktopPort;
-  documents(): ProjectSearchDocument[];
+  documents(query: string): ProjectSearchDocument[];
   open(path: string): Promise<boolean>;
   highlight(query: string, target?: SearchTarget): void;
 };
@@ -60,7 +60,7 @@ export class SearchController {
     try {
       const results = await this.options.desktop.searchProject({
         query,
-        documents: this.options.documents(),
+        documents: this.options.documents(query),
       });
       if (request === this.request && query === project.searchQuery) {
         project.searchResults = results;

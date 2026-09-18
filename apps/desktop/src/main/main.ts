@@ -155,7 +155,10 @@ if (!app.requestSingleInstanceLock()) {
     windows.create(null, initialDocument);
   });
 
-  app.on('before-quit', () => windows.disposeWatchers());
+  app.on('before-quit', () => {
+    windows.disposeWatchers();
+    void projects.dispose();
+  });
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
   });

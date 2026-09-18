@@ -36,6 +36,8 @@ export type PickLinkTargetResult = {
 
 export type ProjectFolder = { path: string; name: string };
 
+export type ProjectFilesChanged = { root: string };
+
 export type ProjectEntry = {
   path: string;
   name: string;
@@ -65,6 +67,10 @@ export type ProjectSearchDocument = {
   path: string;
   text: string;
   surface: 'viewer' | 'editor';
+  matches?: Array<Pick<
+    ProjectSearchResult,
+    'line' | 'column' | 'lineOccurrence' | 'ordinal' | 'preview'
+  >>;
 };
 
 export type ProjectSearchRequest = {
@@ -252,6 +258,7 @@ export type MarkTexApi = {
   openLink(href: string): Promise<void>;
   onDocumentOpened(listener: (document: DocumentSnapshot) => void): () => void;
   onExternalChange(listener: (change: ExternalChange) => void): () => void;
+  onProjectFilesChanged(listener: (event: ProjectFilesChanged) => void): () => void;
   onCommand(listener: (command: AppCommand) => void): () => void;
   onThemeChanged(listener: (theme: ThemeSnapshot) => void): () => void;
   onWindowCloseRequested(listener: (names: string[]) => void): () => void;

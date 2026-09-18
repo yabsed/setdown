@@ -5,7 +5,7 @@ const shared = {
   platform: 'node',
   target: 'node22',
   sourcemap: true,
-  external: ['electron', 'crossnote'],
+  external: ['electron', 'crossnote', '@parcel/watcher', '@vscode/ripgrep'],
 };
 
 await Promise.all([

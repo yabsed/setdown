@@ -10,6 +10,7 @@ import type {
 import { canonicalPath } from '../documents/file-system';
 import type { WindowState } from '../windows/window-state';
 import { ExplorerService } from './explorer-service';
+import { ProjectWatcher, type ProjectWatcherPort } from './engines/project-watcher';
 import { GitService } from './git-service';
 import { isMarkdownDocument, ProjectPaths } from './project-paths';
 import { SearchService } from './search-service';
@@ -17,7 +18,6 @@ import type { VisibleSearchMatch } from './visible-search';
 
 export { parseGitStatus } from './git-service';
 export { isMarkdownDocument } from './project-paths';
-export { searchSourceText } from './search-service';
 
 /** Thin project facade. Files, search, and Git keep their own policies and dependencies. */
 export class ProjectService {
@@ -32,7 +32,7 @@ export class ProjectService {
     query: string,
     limit: number,
     root: string,
-  ) => Promise<VisibleSearchMatch[]>) {
+  ) => Promise<VisibleSearchMatch[]>, private readonly watcher: ProjectWatcherPort = new ProjectWatcher()) {
     this.searcher = new SearchService(this.paths, searchVisible);
   }
 
@@ -43,6 +43,7 @@ export class ProjectService {
     });
     if (selected.canceled || !selected.filePaths[0]) return null;
     state.projectRoot = canonicalPath(selected.filePaths[0]);
+    await this.watch(state, state.projectRoot);
     return this.folder(state.projectRoot);
   }
 
@@ -55,8 +56,11 @@ export class ProjectService {
     const stat = await fs.stat(folderPath).catch(() => null);
     if (!stat?.isDirectory()) return null;
     state.projectRoot = folderPath;
+    await this.watch(state, folderPath);
     return this.folder(folderPath);
   }
+
+  dispose = (): Promise<void> => this.watcher.dispose();
 
   readDirectory = (state: WindowState, directoryPath: string) =>
     this.explorer.readDirectory(state, directoryPath);
@@ -94,5 +98,11 @@ export class ProjectService {
 
   private folder(root: string): ProjectFolder {
     return { path: root, name: path.basename(root) || root };
+  }
+
+  private async watch(state: WindowState, root: string): Promise<void> {
+    await this.watcher.watch(state, root).catch((error) => {
+      console.error('Could not watch the open folder:', error);
+    });
   }
 }
