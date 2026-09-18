@@ -2,6 +2,7 @@
   import EmptyState from './shell/EmptyState.svelte';
   import InsertionDialogs from './editor/InsertionDialogs.svelte';
   import ReaderSurface from './reader/ReaderSurface.svelte';
+  import ProjectSidebar from './project/ProjectSidebar.svelte';
   import TabChrome from './tabs/TabChrome.svelte';
   import TitleBar from './shell/TitleBar.svelte';
   import ClosePrompt from './shell/ClosePrompt.svelte';
@@ -13,6 +14,7 @@
 <TitleBar {actions} />
 <section class="shell" data-surface="empty" data-tabs="false">
   <TabChrome {actions} />
+  <ProjectSidebar {actions} />
   <div class="notice" hidden={!view.notice}>
     <span>This file was changed by another application.</span>
     <div>

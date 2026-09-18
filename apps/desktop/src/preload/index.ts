@@ -84,6 +84,12 @@ const api: MarkTexApi = {
   pasteClipboardImage: () => ipcRenderer.invoke('document:paste-clipboard-image'),
   pickLinkTarget: (documentPath) =>
     ipcRenderer.invoke('document:pick-link-target', documentPath),
+  chooseProjectFolder: () => ipcRenderer.invoke('project:choose-folder'),
+  readProjectDirectory: (directoryPath) =>
+    ipcRenderer.invoke('project:read-directory', directoryPath),
+  openProjectFile: (filePath) => ipcRenderer.invoke('project:open-file', filePath),
+  searchProject: (query) => ipcRenderer.invoke('project:search', query),
+  getGitStatus: () => ipcRenderer.invoke('project:git-status'),
   openLink: (href) => ipcRenderer.invoke('document:open-link', href),
   onDocumentOpened: (listener) =>
     subscribe<DocumentSnapshot>('document:opened', listener),

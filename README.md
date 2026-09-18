@@ -49,6 +49,21 @@ While you edit, Setdown prepares the next Preview in the background and keeps th
 last completed Viewer visible until the new revision is ready. Even a math-heavy
 document never has to replace useful content with a blank or incomplete Preview.
 
+### Optional folder navigation
+
+Setdown remains document-first: opening a Markdown file from the operating system
+opens that document without turning its parent directory into a project. When a
+folder is explicitly opened, a VS Code-inspired side bar adds an Explorer, Markdown
+search, and Git status as optional navigation tools. The folder does not own the
+open tabs, and closing the side bar never closes a document.
+
+The Setdown wordmark toggles the folder tools. Both the left folder panel and the
+right document outline can be resized by dragging their inner edge.
+
+Directories load only when expanded, search runs outside the renderer after a short
+typing delay, and the Git view reads the repository on demand. None of these paths
+participate in tab switching or Viewer activation.
+
 ### Reading tools
 
 - A per-document outline built from the headings in the rendered result
@@ -176,6 +191,8 @@ enforce these boundaries.
 | New window | `Ctrl/Cmd+Shift+N` |
 | New document | `Ctrl/Cmd+N` |
 | Open file | `Ctrl/Cmd+O` |
+| Open folder | The left side-bar button or `File → Open Folder…` |
+| Toggle folder tools | Click `Setdown` or use `View → Toggle Folder Tools` |
 | Save / Save As | `Ctrl/Cmd+S` / `Ctrl/Cmd+Shift+S` |
 | Insert URL | `Ctrl/Cmd+K` or the Editor toolbar |
 | Insert table | Editor toolbar |

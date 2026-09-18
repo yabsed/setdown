@@ -61,6 +61,7 @@ export class WindowManager {
       window,
       currentDocument: initialDocument,
       activeRoot: initialDocument ? path.dirname(initialDocument.path) : null,
+      projectRoot: null,
       watchedPath: null,
       closeAfterConfirmation: false,
       closePromptOpen: false,

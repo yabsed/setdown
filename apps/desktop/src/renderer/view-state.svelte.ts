@@ -1,4 +1,5 @@
 import type { ApplicationMenuEntry, CloseDecision } from '../protocol/desktop-api';
+import type { ProjectView } from './project/project-state.svelte';
 
 export type TabView = {
   id: string;
@@ -29,6 +30,14 @@ export type AppActions = {
   endTabDrag(event: DragEvent): void;
   newDocument(): void;
   openDocument(): void;
+  toggleProjectSidebar(): void;
+  selectProjectView(view: ProjectView): void;
+  chooseProjectFolder(): void;
+  refreshProjectExplorer(): void;
+  toggleProjectDirectory(path: string): void;
+  openProjectFile(path: string): void;
+  searchProject(query: string): void;
+  refreshProjectGit(): void;
   toggleSurface(): void;
   openTable(): void;
   openLink(): void;

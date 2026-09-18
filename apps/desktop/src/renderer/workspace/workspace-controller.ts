@@ -11,6 +11,7 @@ import { installWorkspaceEvents } from '../application/workspace-events';
 import { createEditorInsertions } from '../editor/editor-insertions';
 import { installEditorImagePaste } from '../editor/editor-image-paste';
 import type { DesktopPort } from '../ports/desktop-port';
+import { ProjectController } from '../project/project-controller';
 import { PreviewSession } from '../reader/preview-session';
 import { ReaderController } from '../reader/reader-controller';
 import { createTabDrag } from '../tabs/tab-drag';
@@ -45,6 +46,14 @@ export function startWorkspace(desktop: DesktopPort) {
     endTabDrag: (event) => tabDrag.end(event),
     newDocument: () => void documents.create(),
     openDocument: () => void documents.open(),
+    toggleProjectSidebar: () => projects.toggle(),
+    selectProjectView: (target) => projects.select(target),
+    chooseProjectFolder: () => void projects.chooseFolder(),
+    refreshProjectExplorer: () => void projects.refreshExplorer(),
+    toggleProjectDirectory: (path) => void projects.toggleDirectory(path),
+    openProjectFile: (path) => void projects.openFile(path),
+    searchProject: (query) => projects.search(query),
+    refreshProjectGit: () => void projects.refreshGit(),
     toggleSurface: () => surfaces.toggle(),
     openTable: () => insertions.openTable(),
     openLink: () => insertions.openLink(),
@@ -75,6 +84,7 @@ export function startWorkspace(desktop: DesktopPort) {
 
   let surfaces: SurfaceController;
   let tabs: TabController;
+  let projects: ProjectController;
   const reader = new ReaderController({
     desktop,
     shell,
@@ -148,6 +158,14 @@ export function startWorkspace(desktop: DesktopPort) {
     renderTabs: tabs.render,
     updateChrome: tabs.updateChrome,
   });
+  projects = new ProjectController({
+    desktop,
+    showDocument: async (path) => {
+      const documentSnapshot = await desktop.openProjectFile(path);
+      if (documentSnapshot) await tabs.show(documentSnapshot);
+    },
+    resized: reader.syncView,
+  });
   const editorContext = {
     desktop,
     host: editorHost,
@@ -196,6 +214,7 @@ export function startWorkspace(desktop: DesktopPort) {
     },
     command: (command) => {
       if (command === 'new-document') void documents.create();
+      if (command === 'open-folder') void projects.chooseFolder();
       if (command === 'save') void documents.save(false);
       if (command === 'save-as') void documents.save(true);
       if (command === 'export-pdf') void documents.exportPdf();
@@ -204,6 +223,7 @@ export function startWorkspace(desktop: DesktopPort) {
       if (command === 'previous-tab') tabs.cycle(-1);
       if (command === 'open-find') reader.openFind();
       if (command === 'escape' && session.surface === 'editor') void surfaces.enterViewer();
+      if (command === 'toggle-folder-tools') projects.toggle();
       if (command === 'toggle-surface') surfaces.toggle();
     },
     saveBeforeClose: () => void documents.saveAll(),

@@ -34,6 +34,35 @@ export type PickLinkTargetResult = {
   label?: string;
 };
 
+export type ProjectFolder = { path: string; name: string };
+
+export type ProjectEntry = {
+  path: string;
+  name: string;
+  kind: 'directory' | 'document' | 'file';
+};
+
+export type ProjectSearchResult = {
+  path: string;
+  name: string;
+  relativePath: string;
+  line: number;
+  preview: string;
+};
+
+export type GitChange = {
+  path: string;
+  filePath: string;
+  status: string;
+  staged: boolean;
+};
+
+export type GitSnapshot = {
+  repository: boolean;
+  branch: string;
+  changes: GitChange[];
+};
+
 export type TabStateSummary = {
   name: string;
   path: string;
@@ -99,6 +128,7 @@ export type CloseDecision = 'cancel' | 'discard' | 'save';
 
 export type AppCommand =
   | 'new-document'
+  | 'open-folder'
   | 'save'
   | 'save-as'
   | 'export-pdf'
@@ -107,6 +137,7 @@ export type AppCommand =
   | 'previous-tab'
   | 'open-find'
   | 'escape'
+  | 'toggle-folder-tools'
   | 'toggle-surface';
 
 export type MarkTexApi = {
@@ -161,6 +192,11 @@ export type MarkTexApi = {
   exportPdf(text: string, revision: number, documentPath: string): Promise<ExportPdfResult>;
   pasteClipboardImage(): Promise<PasteImageResult>;
   pickLinkTarget(documentPath: string): Promise<PickLinkTargetResult>;
+  chooseProjectFolder(): Promise<ProjectFolder | null>;
+  readProjectDirectory(directoryPath: string): Promise<ProjectEntry[]>;
+  openProjectFile(filePath: string): Promise<DocumentSnapshot | null>;
+  searchProject(query: string): Promise<ProjectSearchResult[]>;
+  getGitStatus(): Promise<GitSnapshot>;
   openLink(href: string): Promise<void>;
   onDocumentOpened(listener: (document: DocumentSnapshot) => void): () => void;
   onExternalChange(listener: (change: ExternalChange) => void): () => void;

@@ -70,6 +70,7 @@ export function installApplicationMenu(context: MenuContext) {
           const current = state();
           if (current) void context.openDocument(current);
         } },
+        { id: 'menu-open-folder', label: 'Open Folder…', click: () => command('open-folder') },
         { type: 'separator' },
         { id: 'save', label: 'Save', accelerator: 'CmdOrCtrl+S', click: () => command('save') },
         { id: 'menu-save-as', label: 'Save As…', accelerator: 'CmdOrCtrl+Shift+S', click: () => command('save-as') },
@@ -82,6 +83,7 @@ export function installApplicationMenu(context: MenuContext) {
     },
     {
       id: 'application-menu-view', label: 'View', submenu: [
+        { id: 'menu-toggle-folder-tools', label: 'Toggle Folder Tools', click: () => command('toggle-folder-tools') },
         { id: 'menu-toggle-surface', label: 'Toggle Viewer / Editor', accelerator: 'CmdOrCtrl+E', click: () => command('toggle-surface') },
         { id: 'menu-next-tab', label: 'Next Tab', accelerator: 'Ctrl+Tab', click: () => command('next-tab') },
         { id: 'menu-previous-tab', label: 'Previous Tab', accelerator: 'Ctrl+Shift+Tab', click: () => command('previous-tab') },

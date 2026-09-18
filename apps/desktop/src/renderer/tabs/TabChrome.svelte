@@ -3,7 +3,7 @@
   let { actions }: { actions: AppActions } = $props();
 </script>
 
-<nav class="tab-strip" aria-label="Open documents" hidden={view.tabs.length === 0}>
+<nav class="tab-strip" aria-label="Open documents">
   <div class="tab-list" role="tablist">
     {#each view.tabs as tab (tab.id)}
       <button

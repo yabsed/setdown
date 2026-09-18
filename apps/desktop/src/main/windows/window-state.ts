@@ -7,6 +7,7 @@ export type WindowState = {
   window: BrowserWindow;
   currentDocument: DocumentSnapshot | null;
   activeRoot: string | null;
+  projectRoot: string | null;
   watchedPath: string | null;
   closeAfterConfirmation: boolean;
   closePromptOpen: boolean;

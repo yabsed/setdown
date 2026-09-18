@@ -15,6 +15,7 @@ import { applicationMenuEntries, executeApplicationMenu } from '../menu/applicat
 import { exportPdf } from '../preview/pdf-exporter';
 import type { PreviewManager } from '../preview/preview-manager';
 import type { PreviewRenderer } from '../preview/preview-renderer';
+import type { ProjectService } from '../project/project-service';
 import { pathFromResourceUrl } from '../preview/resource-url';
 import type { TabTransferManager } from '../tabs/tab-transfer-manager';
 import type { ThemeManager } from '../theme/theme-manager';
@@ -25,12 +26,13 @@ type Options = {
   documents: DocumentManager;
   previews: PreviewManager;
   renderer: PreviewRenderer;
+  projects: ProjectService;
   themes: ThemeManager;
   transfers: TabTransferManager;
 };
 
 export function installIpc(options: Options): void {
-  const { channels, documents, previews, renderer, themes, transfers } = options;
+  const { channels, documents, previews, projects, renderer, themes, transfers } = options;
   previews.registerIpc();
   transfers.registerIpc();
 
@@ -145,6 +147,13 @@ export function installIpc(options: Options): void {
   channels.handle('document:paste-clipboard-image', (state) => documents.pasteImage(state));
   channels.handle('document:pick-link-target', (state, documentPath: string) =>
     documents.pickLink(state, documentPath));
+  channels.handle('project:choose-folder', (state) => projects.choose(state));
+  channels.handle('project:read-directory', (state, directoryPath: string) =>
+    projects.readDirectory(state, directoryPath));
+  channels.handle('project:open-file', (state, filePath: string) =>
+    documents.open(state, projects.assertDocument(state, filePath), false));
+  channels.handle('project:search', (state, query: string) => projects.search(state, query));
+  channels.handle('project:git-status', (state) => projects.gitStatus(state));
   channels.handle('document:reload', (state) => documents.reload(state));
   channels.handle('document:open-link', (state, href: string) => openLink(documents, state, href));
 }
