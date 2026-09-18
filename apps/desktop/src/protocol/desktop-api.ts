@@ -1,42 +1,11 @@
-import type { PreviewThemeAssets, PreviewThemeId } from './preview-preferences';
+import type { PreviewThemeAssets, PreviewThemeId } from '../core/preview/preview-preferences';
+import type { DiskVersion, DocumentSnapshot } from '../core/document/document';
+import type { RenderResult } from '../core/preview/preview-state';
+import type { ThemeSnapshot } from '../core/theme/theme-state';
 
-export type DiskVersion = {
-  mtimeMs: number;
-  size: number;
-};
-
-export type DocumentSnapshot = {
-  path: string;
-  name: string;
-  text: string;
-  /** 마지막으로 확인한 디스크 내용. dirty 여부의 기준이다. */
-  savedText: string;
-  revision: number;
-  savedRevision: number;
-  diskVersion: DiskVersion;
-  isUntitled: boolean;
-};
-
-/**
- * 렌더러가 보는 조판 결과.
- *
- * 조판된 HTML은 담지 않는다. 수식 문서에서 1.4MB가 되는데 렌더러는 손도 대지
- * 않고 되돌려 보내기만 했다. 조판과 설치를 메인이 한 번에 처리하고, 렌더러는
- * 결과만 받는다.
- */
-export type RenderResult = {
-  revision: number;
-  themeId: PreviewThemeId;
-  /** 이 탭의 Preview가 지금 띄우고 있는 페이지. 실패했을 때만 null이다. */
-  url: string | null;
-};
-
-export type PreviewHeading = {
-  id: string;
-  text: string;
-  level: 1 | 2 | 3 | 4 | 5 | 6;
-  sourceLine?: number;
-};
+export type { DiskVersion, DocumentSnapshot } from '../core/document/document';
+export type { PreviewHeading, RenderResult } from '../core/preview/preview-state';
+export type { ThemeSnapshot } from '../core/theme/theme-state';
 
 export type SaveResult = {
   canceled: boolean;
@@ -115,11 +84,6 @@ export type ClaimedTabTransfer = {
 
 export type PreviewBounds = { x: number; y: number; width: number; height: number };
 export type PreviewMessage = { tabId: string; message: Record<string, unknown> };
-
-export type ThemeSnapshot = {
-  id: PreviewThemeId;
-  revision: number;
-};
 
 export type ApplicationMenuEntry = {
   id: string;

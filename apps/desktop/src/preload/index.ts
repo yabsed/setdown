@@ -10,8 +10,8 @@ import type {
   TabStateSummary,
   ThemeSnapshot,
   TransferableTab,
-} from '../shared/contracts';
-import { normalizePreviewTheme } from '../shared/preview-preferences';
+} from '../protocol/desktop-api';
+import { normalizePreviewTheme } from '../core/preview/preview-preferences';
 
 function subscribe<T>(channel: string, listener: (value: T) => void) {
   const handler = (_event: Electron.IpcRendererEvent, value: T) => listener(value);

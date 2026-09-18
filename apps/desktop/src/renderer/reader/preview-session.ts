@@ -1,12 +1,14 @@
-import { PreviewRenderCoordinator } from '../../shared/preview-render-coordinator';
-import { clampAnchor, type BandLine, type ViewportAnchor } from '../../shared/viewport-anchor';
-import type { DocumentTab } from '../tabs/tab-state';
+import { PreviewRenderCoordinator } from '../../core/preview/preview-render-coordinator';
+import { clampAnchor, type BandLine, type ViewportAnchor } from '../../core/preview/viewport-anchor';
+import type { WorkspaceTab } from '../../core/workspace/workspace-state';
+import type { DesktopPort } from '../ports/desktop-port';
 import { view } from '../view-state.svelte';
 import type { ReaderController } from './reader-controller';
 
 type Options = {
-  tabs: DocumentTab[];
-  active: () => DocumentTab | null;
+  desktop: DesktopPort;
+  tabs: WorkspaceTab[];
+  active: () => WorkspaceTab | null;
   activeId: () => string | null;
   text: () => string | null;
   lineCount: () => number;
@@ -95,7 +97,7 @@ export class PreviewSession {
     if (text === null) return false;
     if (this.error?.revision === targetRevision) this.error = null;
     try {
-      const result = await window.marktex.preparePreview(
+      const result = await this.options.desktop.preparePreview(
         tabId, text, targetRevision, documentPath, theme,
       );
       if (!this.isCurrent(epoch, tabId, documentPath)
@@ -108,7 +110,7 @@ export class PreviewSession {
         rendered.previewTheme = theme;
       }
       if (rendered && this.options.reader.themeId !== theme) {
-        const assets = await window.marktex.getPreviewThemeAssets(this.options.reader.themeId);
+        const assets = await this.options.desktop.getPreviewThemeAssets(this.options.reader.themeId);
         if (this.options.reader.themeId === assets.themeId) {
           this.options.reader.applyAssets(rendered, assets);
         }

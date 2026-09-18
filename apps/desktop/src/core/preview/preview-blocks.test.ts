@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { blockKey, diffPreviewBlocks, splitPreviewBlocks } from './preview-blocks';
 
 describe('splitPreviewBlocks', () => {

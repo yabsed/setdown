@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ApplicationMenuEntry } from '../../shared/contracts';
+  import type { ApplicationMenuEntry } from '../../protocol/desktop-api';
 
   let {
     entries,

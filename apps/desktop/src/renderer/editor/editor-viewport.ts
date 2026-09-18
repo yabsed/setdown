@@ -6,7 +6,7 @@ import {
   type BandLine,
   type EditorCursorProbe,
   type ViewportAnchor,
-} from '../../shared/viewport-anchor';
+} from '../../core/preview/viewport-anchor';
 
 function visibleCursor(
   editor: Monaco.editor.IStandaloneCodeEditor,

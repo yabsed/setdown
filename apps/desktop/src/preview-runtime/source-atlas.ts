@@ -4,7 +4,7 @@ import {
   type BandLine,
   type SourceCandidate,
   type ViewportAnchor,
-} from '../shared/viewport-anchor';
+} from '../core/preview/viewport-anchor';
 
 export const ANCHOR_SELECTOR = '[data-source-line], [data-source-start], [data-source-lines]';
 export const PREVIEW_SELECTOR = '.markdown-preview[data-for="preview"]';

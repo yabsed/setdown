@@ -1,4 +1,4 @@
-import type { MarkTexApi } from '../shared/contracts';
+import type { MarkTexApi } from '../protocol/desktop-api';
 
 declare global {
   interface Window {

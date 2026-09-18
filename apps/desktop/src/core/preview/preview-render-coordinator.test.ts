@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+
 import { PreviewRenderCoordinator } from './preview-render-coordinator';
 
 function deferred<T>() {

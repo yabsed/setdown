@@ -1,9 +1,9 @@
 import { utilityProcess } from 'electron';
 import path from 'node:path';
-import type { RenderResult } from '../../shared/contracts';
-import { applyTextRevision } from '../../shared/document-state';
-import type { PreviewBlockPatch } from '../../shared/preview-blocks';
-import { normalizePreviewTheme, previewThemeBackground, type PreviewThemeId } from '../../shared/preview-preferences';
+import type { RenderResult } from '../../protocol/desktop-api';
+import { applyTextRevision } from '../../core/document/document-state';
+import type { PreviewBlockPatch } from '../../core/preview/preview-blocks';
+import { normalizePreviewTheme, previewThemeBackground, type PreviewThemeId } from '../../core/preview/preview-preferences';
 import type { WindowState } from '../windows/window-state';
 import type { PreviewManager } from './preview-manager';
 

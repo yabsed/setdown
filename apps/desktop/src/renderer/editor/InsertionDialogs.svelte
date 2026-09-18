@@ -1,6 +1,6 @@
 <script lang="ts">
   import { insertion, resizeTable } from './insertion-state.svelte';
-  import type { TableAlignment } from '../../shared/markdown-insertions';
+  import type { TableAlignment } from '../../core/markdown/markdown-insertions';
   import type { AppActions } from '../view-state.svelte';
 
   let { actions }: { actions: AppActions } = $props();

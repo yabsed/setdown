@@ -9,7 +9,7 @@
   let { actions }: { actions: AppActions } = $props();
 </script>
 
-<TitleBar />
+<TitleBar {actions} />
 <section class="shell" data-surface="empty" data-tabs="false">
   <TabChrome {actions} />
   <div class="notice" hidden={!view.notice}>

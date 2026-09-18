@@ -1,4 +1,4 @@
-import type { TableAlignment } from '../../shared/markdown-insertions';
+import type { TableAlignment } from '../../core/markdown/markdown-insertions';
 
 export type TableDraft = {
   headers: string[];

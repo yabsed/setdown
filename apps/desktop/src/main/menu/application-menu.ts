@@ -1,7 +1,7 @@
 import { app, Menu } from 'electron';
 import type { BrowserWindow, MenuItem } from 'electron';
-import type { ApplicationMenuEntry, AppCommand } from '../../shared/contracts';
-import { PREVIEW_THEMES, type PreviewThemeId } from '../../shared/preview-preferences';
+import type { ApplicationMenuEntry, AppCommand } from '../../protocol/desktop-api';
+import { PREVIEW_THEMES, type PreviewThemeId } from '../../core/preview/preview-preferences';
 import type { WindowState } from '../windows/window-state';
 
 type MenuContext = {

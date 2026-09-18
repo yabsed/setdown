@@ -1,8 +1,8 @@
 import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
-import type { TransferableTab } from '../../shared/contracts';
-import { previewThemeBackground, type PreviewThemeId } from '../../shared/preview-preferences';
-import type { BandLine } from '../../shared/viewport-anchor';
+import type { TransferableTab } from '../../protocol/desktop-api';
+import { previewThemeBackground, type PreviewThemeId } from '../../core/preview/preview-preferences';
+import type { BandLine } from '../../core/preview/viewport-anchor';
 import type { WindowState } from '../windows/window-state';
 import type { PreviewManager } from '../preview/preview-manager';
 

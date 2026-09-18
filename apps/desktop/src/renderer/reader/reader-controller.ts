@@ -1,23 +1,25 @@
-import type { PreviewHeading, ThemeSnapshot } from '../../shared/contracts';
+import type { PreviewHeading, ThemeSnapshot } from '../../protocol/desktop-api';
 import {
   normalizePreviewTheme,
   type PreviewThemeAssets,
   type PreviewThemeId,
-} from '../../shared/preview-preferences';
-import type { DocumentTab } from '../tabs/tab-state';
+} from '../../core/preview/preview-preferences';
+import type { WorkspaceTab } from '../../core/workspace/workspace-state';
+import type { DesktopPort } from '../ports/desktop-port';
 import { view } from '../view-state.svelte';
 import {
   GOLDEN_TOP_RATIO,
   clamp,
   clampAnchor,
   type ViewportAnchor,
-} from '../../shared/viewport-anchor';
+} from '../../core/preview/viewport-anchor';
 
 type Options = {
+  desktop: DesktopPort;
   shell: HTMLElement;
   frames: HTMLElement;
-  tabs: DocumentTab[];
-  active: () => DocumentTab | null;
+  tabs: WorkspaceTab[];
+  active: () => WorkspaceTab | null;
   activeId: () => string | null;
   initialTheme: ThemeSnapshot;
   applyProductTheme: (theme: PreviewThemeId) => void;
@@ -43,15 +45,15 @@ export class ReaderController {
   }
 
   send(tabId: string, message: Record<string, unknown>) {
-    window.marktex.sendPreviewCommand(tabId, message);
+    this.options.desktop.sendPreviewCommand(tabId, message);
   }
 
   create(tabId: string) {
-    window.marktex.createPreview(tabId);
+    this.options.desktop.createPreview(tabId);
   }
 
   destroy(tabId: string) {
-    window.marktex.destroyPreview(tabId);
+    this.options.desktop.destroyPreview(tabId);
   }
 
   syncUi = () => {
@@ -98,7 +100,7 @@ export class ReaderController {
     this.syncView();
   }
 
-  applyAssets(tab: DocumentTab, assets: PreviewThemeAssets) {
+  applyAssets(tab: WorkspaceTab, assets: PreviewThemeAssets) {
     if (tab.previewUrl) this.send(tab.id, { command: 'marktex:apply-theme', ...assets });
   }
 
@@ -111,7 +113,7 @@ export class ReaderController {
     this.themeId = next;
     this.options.applyProductTheme(next);
     this.syncUi();
-    const assets = await window.marktex.getPreviewThemeAssets(next);
+    const assets = await this.options.desktop.getPreviewThemeAssets(next);
     if (this.appliedThemeRevision !== snapshot.revision || this.themeId !== assets.themeId) return;
     for (const tab of this.options.tabs) this.applyAssets(tab, assets);
     this.syncView();
@@ -173,8 +175,10 @@ export class ReaderController {
     }
     if (message.type === 'marktex:viewport-state') {
       if (message.revision !== tab.revision) return;
-      tab.anchor = clampAnchor(this.messageAnchor(message.anchor),
-        tab.model?.getLineCount() ?? Math.max(1, tab.text.split(/\r\n|\r|\n/).length));
+      tab.anchor = clampAnchor(
+        this.messageAnchor(message.anchor),
+        Math.max(1, tab.text.split(/\r\n|\r|\n/).length),
+      );
       tab.viewerScrollRatio = Number.isFinite(Number(message.scrollRatio))
         ? clamp(Number(message.scrollRatio), 0, 1) : null;
       this.options.anchorChanged();
@@ -186,7 +190,7 @@ export class ReaderController {
     }
     if (message.command === 'clickTagA') {
       const href = (message.args as Array<{ href?: string }> | undefined)?.[0]?.href;
-      if (href) void window.marktex.openLink(href);
+      if (href) void this.options.desktop.openLink(href);
     }
   }
 
@@ -212,12 +216,12 @@ export class ReaderController {
       && this.freezeDepth === 0
       && !this.awaiting;
     if (!visible || !tab) {
-      window.marktex.showPreview(null, null);
+      this.options.desktop.showPreview(null, null);
       return;
     }
     const rect = this.options.frames.getBoundingClientRect();
     const reserved = tab.find.open ? 60 : 0;
-    window.marktex.showPreview(tab.id, {
+    this.options.desktop.showPreview(tab.id, {
       x: rect.left,
       y: rect.top + reserved,
       width: rect.width,
@@ -231,7 +235,7 @@ export class ReaderController {
     const token = ++this.freezeToken;
     const tab = this.options.active();
     if (!tab || tab.surface !== 'viewer' || !tab.previewUrl) return;
-    const image = await window.marktex.capturePreview(tab.id).catch(() => null);
+    const image = await this.options.desktop.capturePreview(tab.id).catch(() => null);
     if (token !== this.freezeToken || this.freezeDepth === 0) return;
     if (image) {
       this.options.frames.style.backgroundImage = `url("${image}")`;

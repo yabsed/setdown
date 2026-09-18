@@ -13,6 +13,8 @@ export type HeadingView = {
 };
 
 export type AppActions = {
+  loadMenu(id: string): Promise<ApplicationMenuEntry[]>;
+  executeMenuItem(id: string): void;
   activateTab(id: string): void;
   closeTab(id: string): void;
   startTabDrag(id: string, event: DragEvent): void;
@@ -53,3 +55,4 @@ export const view = $state({
   renderError: '',
   renderErrorVariant: 'blocking' as 'blocking' | 'refresh',
 });
+import type { ApplicationMenuEntry } from '../protocol/desktop-api';

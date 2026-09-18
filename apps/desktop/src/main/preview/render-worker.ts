@@ -22,8 +22,8 @@ import {
   previewThemeBackground,
   previewThemeFile,
   type PreviewThemeId,
-} from '../../shared/preview-preferences';
-import { lineCount } from '../../shared/document-state';
+} from '../../core/preview/preview-preferences';
+import { lineCount } from '../../core/document/document-state';
 import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
 import { previewRelativeReference } from './preview-resources';
 import { resourceUrl } from './resource-url';
@@ -33,12 +33,12 @@ import {
   splitPreviewBlocks,
   type PreviewBlock,
   type PreviewBlockPatch,
-} from '../../shared/preview-blocks';
+} from '../../core/preview/preview-blocks';
 import {
   createLeanPreviewTemplate,
   requiresCrossnoteInstall,
   type PreviewRuntime,
-} from '../../shared/preview-install';
+} from '../../core/preview/preview-install';
 
 export type RenderWorkerRequest =
   | {

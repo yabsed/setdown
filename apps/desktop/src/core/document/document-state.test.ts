@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import type { DocumentSnapshot } from './contracts';
+
+import type { DocumentSnapshot } from './document';
 import { applyTextRevision, hasUnsavedText, isDirty, lineCount } from './document-state';
 
 const document: DocumentSnapshot = {

@@ -146,13 +146,24 @@ Windows 설치기는 사용자 단위로 설치되며 설치 경로를 선택할
 ```text
 apps/
 ├── desktop/
-│   ├── src/main/             Electron main process
-│   ├── src/preload/          renderer IPC 경계
-│   ├── src/preview-runtime/  격리된 Reader WebContents
-│   ├── src/renderer/         Svelte UI와 workspace
-│   └── src/shared/           데스크톱 프로세스 간 순수 로직과 계약
+│   └── src/
+│       ├── core/             UI와 Electron을 모르는 순수 도메인·정책
+│       ├── protocol/         프로세스 사이의 IPC 계약
+│       ├── main/             Electron 시스템 어댑터와 조립부
+│       ├── preload/          안전한 renderer IPC 경계
+│       ├── preview-runtime/  격리된 Reader WebContents의 런타임
+│       └── renderer/
+│           ├── application/ 입력 이벤트와 화면 전환 유스케이스
+│           ├── ports/        renderer가 외부에 요구하는 인터페이스
+│           ├── adapters/     Electron·Monaco 구현
+│           └── */            Svelte UI와 기능별 controller
 └── code-growth/              저장소 코드 성장 그래프 앱과 결과물
 ```
+
+의존성은 바깥에서 안쪽으로만 향합니다. `core`는 어떤 실행 환경도 모르고,
+`protocol`은 전달 가능한 데이터만 정의합니다. 각 프로세스의 진입점은 객체를 조립할
+뿐이며, Electron 전역 접근은 adapter에 격리됩니다. 이 경계는 자동 테스트로도
+검사합니다.
 
 ## 조작
 
@@ -195,7 +206,7 @@ Editor 안에 커서가 보이면 wrap된 시각 행까지 계산해 그 위치�
 가중한 무게중심을 사용합니다. 긴 문단과 수식 때문에 Viewer의 줄 높이가 달라도 화면
 전체의 오차가 한쪽으로 몰리지 않습니다.
 
-- [`apps/desktop/src/shared/viewport-anchor.ts`](apps/desktop/src/shared/viewport-anchor.ts): 항상 유효한 화면 좌표 계산
+- [`apps/desktop/src/core/preview/viewport-anchor.ts`](apps/desktop/src/core/preview/viewport-anchor.ts): 항상 유효한 화면 좌표 계산
 - [`apps/desktop/src/preview-runtime/bridge.ts`](apps/desktop/src/preview-runtime/bridge.ts): 렌더링 DOM과 원문 위치 연결
 - [`apps/desktop/src/main/preview/source-anchors.ts`](apps/desktop/src/main/preview/source-anchors.ts): 수식과 raw HTML에 source metadata 주입
 

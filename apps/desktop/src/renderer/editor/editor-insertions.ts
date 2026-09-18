@@ -1,9 +1,11 @@
 import type * as Monaco from 'monaco-editor';
-import type { DocumentSnapshot } from '../../shared/contracts';
-import { createMarkdownLink, createMarkdownTable, preferredEol } from '../../shared/markdown-insertions';
+import type { DocumentSnapshot } from '../../protocol/desktop-api';
+import { createMarkdownLink, createMarkdownTable, preferredEol } from '../../core/markdown/markdown-insertions';
 import { emptyTable, insertion, type TableDraft } from './insertion-state.svelte';
+import type { DesktopPort } from '../ports/desktop-port';
 
 type Context = {
+  desktop: DesktopPort;
   host: HTMLElement;
   editor: () => Monaco.editor.IStandaloneCodeEditor | null;
   monaco: () => typeof Monaco | null;
@@ -159,7 +161,7 @@ export function createEditorInsertions(context: Context) {
         return;
       }
     }
-    const result = await window.marktex.pickLinkTarget(current.path);
+    const result = await context.desktop.pickLinkTarget(current.path);
     if (result.canceled || !result.destination) return;
     insertion.linkDestination = result.destination;
     if (!insertion.linkLabel && result.label) insertion.linkLabel = result.label;
@@ -185,7 +187,7 @@ export function createEditorInsertions(context: Context) {
     try {
       if (remote) insertImage(`![외부 이미지](<${remote}>)`, selection);
       else {
-        const result = await window.marktex.pasteClipboardImage();
+        const result = await context.desktop.pasteClipboardImage();
         if (!result.canceled && result.markdown) insertImage(result.markdown, selection);
       }
     } catch (error) {

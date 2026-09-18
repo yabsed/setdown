@@ -1,14 +1,16 @@
-import type { ClaimedTabTransfer, TransferableTab } from '../../shared/contracts';
+import type { ClaimedTabTransfer, TransferableTab } from '../../protocol/desktop-api';
 import { view } from '../view-state.svelte';
-import type { DocumentTab } from './tab-state';
+import type { WorkspaceTab } from '../../core/workspace/workspace-state';
+import type { DesktopPort } from '../ports/desktop-port';
 
 type Options = {
+  desktop: DesktopPort;
   shell: HTMLElement;
   strip: HTMLElement;
-  tabs: DocumentTab[];
+  tabs: WorkspaceTab[];
   activeId: () => string | null;
   activate: (id: string) => void;
-  serialize: (tab: DocumentTab) => TransferableTab;
+  serialize: (tab: WorkspaceTab) => TransferableTab;
   render: () => void;
   install: (transfer: ClaimedTabTransfer) => void;
 };
@@ -32,7 +34,7 @@ export function createTabDrag(options: Options) {
     Array.from(event.dataTransfer?.types ?? []).includes('application/x-setdown-tab') || !!transferId;
   const isStrip = (event: DragEvent) =>
     event.target instanceof Element && event.target.closest('.tab-strip') !== null;
-  const claim = (id: string) => void window.marktex.claimTabTransfer(id).then((transfer) => {
+  const claim = (id: string) => void options.desktop.claimTabTransfer(id).then((transfer) => {
     if (transfer) options.install(transfer);
   });
 
@@ -76,7 +78,7 @@ export function createTabDrag(options: Options) {
       return;
     }
     reorder(event, tabId);
-    window.marktex.cancelTabTransfer(incoming);
+    options.desktop.cancelTabTransfer(incoming);
     reset();
   });
 
@@ -101,7 +103,7 @@ export function createTabDrag(options: Options) {
       return;
     }
     reset();
-    window.marktex.detachTabToWindow(incoming, event.screenX, event.screenY);
+    options.desktop.detachTabToWindow(incoming, event.screenX, event.screenY);
   }, { capture: true });
 
   return {
@@ -116,14 +118,14 @@ export function createTabDrag(options: Options) {
       options.shell.classList.add('is-tab-dragging');
       event.dataTransfer?.setData('application/x-setdown-tab', transferId);
       if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
-      window.marktex.registerTabTransfer(transferId, options.serialize(tab));
+      options.desktop.registerTabTransfer(transferId, options.serialize(tab));
     },
     end(event: DragEvent) {
       const id = transferId;
       const shouldDetach = id && !canceled && event.dataTransfer?.dropEffect !== 'move';
       reset();
-      if (shouldDetach) window.marktex.detachTabToWindow(id, event.screenX, event.screenY);
-      else if (id && canceled) window.marktex.cancelTabTransfer(id);
+      if (shouldDetach) options.desktop.detachTabToWindow(id, event.screenX, event.screenY);
+      else if (id && canceled) options.desktop.cancelTabTransfer(id);
     },
     cancel() {
       if (tabId) canceled = true;

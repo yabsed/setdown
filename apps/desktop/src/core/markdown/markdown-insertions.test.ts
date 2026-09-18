@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { createMarkdownLink, createMarkdownTable, preferredEol } from './markdown-insertions';
 
 describe('createMarkdownTable', () => {

@@ -8,8 +8,8 @@ import type {
   PasteImageResult,
   PickLinkTargetResult,
   SaveResult,
-} from '../../shared/contracts';
-import { applyTextRevision } from '../../shared/document-state';
+} from '../../protocol/desktop-api';
+import { applyTextRevision } from '../../core/document/document-state';
 import { discardDraftBundle, saveDraftBundle } from './draft-assets';
 import { isSupportedImagePath, savePastedImageFile, savePastedPng } from './pasted-image';
 import { markdownDestinationForFile } from './markdown-link';

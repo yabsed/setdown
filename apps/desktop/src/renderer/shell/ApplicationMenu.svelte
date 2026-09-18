@@ -1,7 +1,15 @@
 <script lang="ts">
   import { tick } from 'svelte';
-  import type { ApplicationMenuEntry } from '../../shared/contracts';
+  import type { ApplicationMenuEntry } from '../../protocol/desktop-api';
   import MenuItems from './MenuItems.svelte';
+
+  let {
+    load,
+    execute,
+  }: {
+    load: (menuId: string) => Promise<ApplicationMenuEntry[]>;
+    execute: (itemId: string) => void;
+  } = $props();
 
   const menus = ['File', 'View', 'Insert', 'Edit', 'Window'] as const;
   let root: HTMLElement;
@@ -36,7 +44,7 @@
     openId = menuId;
     submenu = null;
     const ownRequest = ++request;
-    const loaded = await window.marktex.getApplicationMenu(menuId);
+    const loaded = await load(menuId);
     if (ownRequest !== request || openId !== menuId) return;
     entries = loaded;
     await tick();
@@ -61,8 +69,8 @@
     };
   }
 
-  function execute(id: string) {
-    window.marktex.executeApplicationMenuItem(id);
+  function choose(id: string) {
+    execute(id);
     close();
   }
 
@@ -106,7 +114,7 @@
   <MenuItems
     {entries}
     openSubmenuId={submenu?.id}
-    onexecute={execute}
+    onexecute={choose}
     onsubmenu={showSubmenu}
     onleafhover={() => submenu = null}
   />
@@ -122,7 +130,7 @@
   <MenuItems
     entries={submenu?.entries ?? []}
     nested
-    onexecute={execute}
+    onexecute={choose}
     onsubmenu={() => undefined}
     onleafhover={() => undefined}
   />

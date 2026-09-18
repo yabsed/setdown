@@ -5,7 +5,7 @@ import {
   themeProfile,
   type ThemeId,
   type PreviewStylesheet,
-} from './theme-catalog';
+} from '../theme/theme-catalog';
 
 export const PREVIEW_THEMES = THEME_PROFILES.map((profile) => ({
   id: profile.id,

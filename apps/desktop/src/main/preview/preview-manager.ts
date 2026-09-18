@@ -1,12 +1,12 @@
 import { ipcMain, WebContentsView } from 'electron';
 import type { Rectangle, WebContents } from 'electron';
-import type { AppCommand, PreviewBounds } from '../../shared/contracts';
+import type { AppCommand, PreviewBounds } from '../../protocol/desktop-api';
 import {
   previewThemeBackground,
   type PreviewThemeAssets,
   type PreviewThemeId,
-} from '../../shared/preview-preferences';
-import { DEFERRED_HTML_SCRIPT_ID, INITIAL_HTML_TEMPLATE_ID } from '../../shared/preview-install';
+} from '../../core/preview/preview-preferences';
+import { DEFERRED_HTML_SCRIPT_ID, INITIAL_HTML_TEMPLATE_ID } from '../../core/preview/preview-install';
 import type { WindowState } from '../windows/window-state';
 
 export type PreviewViewState = {

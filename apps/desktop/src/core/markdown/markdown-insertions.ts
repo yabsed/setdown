@@ -1,5 +1,6 @@
 export type TableAlignment = 'none' | 'left' | 'center' | 'right';
 
+
 export type MarkdownTable = {
   headers: string[];
   rows: string[][];

@@ -1,5 +1,6 @@
 export type PreviewRenderExecutor = (revision: number) => Promise<boolean>;
 
+
 /**
  * Preview 요청을 하나의 실행 흐름으로 합친다.
  *

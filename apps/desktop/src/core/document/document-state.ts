@@ -1,4 +1,4 @@
-import type { DocumentSnapshot } from './contracts';
+import type { DocumentSnapshot } from './document';
 
 export function applyTextRevision(
   document: DocumentSnapshot,

@@ -1,10 +1,10 @@
 import type * as Monaco from 'monaco-editor';
-import type { PreviewThemeId } from '../shared/preview-preferences';
+import type { PreviewThemeId } from '../core/preview/preview-preferences';
 import {
   THEME_PROFILES,
   themeProfile,
   type ThemePalette,
-} from '../shared/theme-catalog';
+} from '../core/theme/theme-catalog';
 
 const SHELL_THEME_VARIABLES: Record<keyof ThemePalette, string> = {
   canvas: '--app-canvas',

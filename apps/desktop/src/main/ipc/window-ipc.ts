@@ -27,3 +27,5 @@ export function windowIpc(stateFor: (webContentsId: number) => WindowState | nul
     },
   };
 }
+
+export type WindowIpc = ReturnType<typeof windowIpc>;
