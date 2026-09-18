@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { disposeApplication } from './electron-app';
 
-test('inserts an edited table and a URL into the Monaco document', async () => {
+test('inserts a table and a URL from compact editor popovers', async () => {
   const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-insertions-e2e-'));
   const configRoot = path.join(temporaryRoot, 'config');
   const documentPath = path.join(temporaryRoot, 'document.md');
@@ -22,59 +22,31 @@ test('inserts an edited table and a URL into the Monaco document', async () => {
     await expect(window.locator('.insert-table-button')).toBeVisible();
 
     await window.locator('.insert-table-button').click();
-    await expect(window.locator('.table-dialog')).toBeVisible();
-    expect(await window.locator('.table-dialog').evaluate((element) => ({
-      radius: getComputedStyle(element).borderRadius,
-      shadow: getComputedStyle(element).boxShadow,
-    }))).toEqual({
-      radius: '4px',
-      shadow: 'rgba(28, 28, 24, 0.18) 0px 8px 28px 0px',
-    });
-    await expect(window.locator('.table-editor-scroll')).toHaveCSS('border-radius', '3px');
-    const threeColumnWidth = await window.locator('.table-editor-scroll').evaluate((element) => ({
-      client: element.clientWidth,
-      scroll: element.scrollWidth,
-    }));
-    expect(threeColumnWidth.scroll).toBe(threeColumnWidth.client);
-
-    await window.locator('.table-columns').fill('4');
-    await window.locator('.table-columns').press('Tab');
-    const fourColumnWidth = await window.locator('.table-editor-scroll').evaluate((element) => ({
-      client: element.clientWidth,
-      scroll: element.scrollWidth,
-    }));
-    expect(fourColumnWidth.scroll).toBeGreaterThan(fourColumnWidth.client);
-
-    await window.locator('.table-columns').fill('2');
-    await window.locator('.table-columns').press('Tab');
-    await window.locator('.table-rows').fill('1');
-    await window.locator('.table-rows').press('Tab');
-    await expect(window.locator('[data-table-header]')).toHaveCount(2);
-    await expect(window.locator('.table-cell-input')).toHaveCount(2);
-    await window.locator('[data-table-header="0"]').fill('이름');
-    await window.locator('[data-table-header="0"]').press('Enter');
-    await expect(window.locator('.table-dialog')).toBeVisible();
-    await expect(window.locator('[data-table-header="1"]')).toBeFocused();
-    await window.locator('[data-table-header="1"]').fill('값');
-    await window.locator('[data-table-alignment="1"]').selectOption('right');
-    await window.locator('[data-table-row="0"][data-table-column="0"]').fill('alpha');
-    await window.locator('[data-table-row="0"][data-table-column="1"]').fill('10');
-    await window.locator('.table-submit').click();
+    const tablePopover = window.locator('.table-popover');
+    await expect(tablePopover).toBeVisible();
+    await expect(window.locator('dialog.table-dialog')).toHaveCount(0);
+    await window.locator('.table-size-cell[data-columns="5"][data-rows="9"]').hover();
+    await expect(tablePopover.locator('header span')).toHaveText('5 × 9');
+    await expect(tablePopover.locator('.table-size-cell.is-selected')).toHaveCount(45);
+    await window.locator('.table-size-cell[data-columns="2"][data-rows="2"]').click();
+    await expect(tablePopover).toBeHidden();
 
     await window.keyboard.press('Control+End');
     await window.locator('.insert-link-button').click();
-    await expect(window.locator('.link-dialog')).toHaveCSS('border-radius', '4px');
+    await expect(window.locator('.link-popover')).toBeVisible();
+    await expect(window.locator('dialog.link-dialog')).toHaveCount(0);
     await window.locator('.link-destination').fill('https://example.com/docs');
-    await window.locator('.link-form .primary-button').click();
-    await expect(window.locator('.view-lines')).toContainText('alpha');
+    await window.locator('.link-label').fill('문서');
+    await window.locator('.link-submit').click();
+    await expect(window.locator('.view-lines')).toContainText('열 1');
     await application.evaluate(({ Menu }) => Menu.getApplicationMenu()
       ?.getMenuItemById('save')?.click());
 
     await expect.poll(() => readFile(documentPath, 'utf8')).toContain(
-      '| 이름 | 값 |\n| --- | ---: |\n| alpha | 10 |',
+      '| 열 1 | 열 2 |\n| --- | --- |\n|  |  |',
     );
     await expect.poll(() => readFile(documentPath, 'utf8')).toContain(
-      '[https://example.com/docs](<https://example.com/docs>)',
+      '[문서](<https://example.com/docs>)',
     );
   } finally {
     await disposeApplication(application);

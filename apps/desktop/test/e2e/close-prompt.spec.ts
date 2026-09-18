@@ -54,10 +54,15 @@ test('uses the Setdown close prompt for dirty tabs and windows', async () => {
     await window.locator('.tab-close').click();
     const prompt = window.locator('.close-prompt-dialog');
     await expect(prompt).toBeVisible();
-    await expect(prompt.getByRole('heading')).toHaveText('변경 내용을 저장할까요?');
+    await expect(prompt.getByRole('heading')).toHaveText('변경 내용 저장');
+    const promptBounds = await prompt.boundingBox();
+    expect(promptBounds?.width).toBeLessThanOrEqual(402);
+    expect(promptBounds?.height).toBeLessThan(220);
+    await expect(prompt.locator('.close-document-list')).toHaveCount(0);
     await expect(prompt.getByRole('button', { name: '저장', exact: true })).toBeVisible();
     await expect(prompt.getByRole('button', { name: '저장 안 함', exact: true })).toBeVisible();
     await expect(prompt.getByRole('button', { name: '취소' }).first()).toBeVisible();
+    await expect(prompt.locator('.close-discard')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     await prompt.locator('.close-cancel').click();
     await expect(prompt).toBeHidden();
     await expect(window.locator('.document-tab')).toHaveCount(1);
@@ -66,7 +71,7 @@ test('uses the Setdown close prompt for dirty tabs and windows', async () => {
     await expect(window.locator('.viewer-surface')).toBeVisible();
     await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.close());
     await expect(prompt).toBeVisible();
-    await expect(prompt.locator('.close-document-list')).toContainText('closing.md');
+    await expect(prompt.locator('.close-prompt-body')).toContainText('closing.md');
 
     const closed = window.waitForEvent('close');
     await prompt.locator('.close-discard').click();

@@ -52,9 +52,12 @@ export function createEditorInsertions(context: Context) {
   let pastingImage = false;
 
   function openTable() {
+    if (insertion.tableOpen) return closeTable();
     const editor = context.editor();
     const model = context.model();
     if (!editor || !model || !context.editing()) return;
+    insertion.linkOpen = false;
+    linkSelection = null;
     tableSelection = editor.getSelection();
     insertion.table = tableFromTsv(
       tableSelection ? model.getValueInRange(tableSelection) : '',
@@ -97,9 +100,12 @@ export function createEditorInsertions(context: Context) {
   }
 
   function openLink() {
+    if (insertion.linkOpen) return closeLink();
     const editor = context.editor();
     const model = context.model();
     if (!editor || !model || !context.editing()) return;
+    insertion.tableOpen = false;
+    tableSelection = null;
     linkSelection = editor.getSelection();
     const selected = linkSelection ? model.getValueInRange(linkSelection) : '';
     const selectedUrl = safeUrl(selected);
