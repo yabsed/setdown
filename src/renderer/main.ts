@@ -1,6 +1,5 @@
 import type * as Monaco from 'monaco-editor';
 import type {
-  ApplicationMenuEntry,
   ClaimedTabTransfer,
   DocumentSnapshot,
   PreviewHeading,
@@ -13,18 +12,7 @@ import {
   type PreviewThemeAssets,
   type PreviewThemeId,
 } from '../shared/preview-preferences';
-import {
-  THEME_PROFILES,
-  themeProfile,
-  type ThemePalette,
-} from '../shared/theme-catalog';
 import { PreviewRenderCoordinator } from '../shared/preview-render-coordinator';
-import {
-  createMarkdownLink,
-  createMarkdownTable,
-  preferredEol,
-  type TableAlignment,
-} from '../shared/markdown-insertions';
 import { hasUnsavedText } from '../shared/document-state';
 import {
   GOLDEN_TOP_RATIO,
@@ -35,95 +23,13 @@ import {
   type EditorCursorProbe,
   type ViewportAnchor,
 } from '../shared/viewport-anchor';
+import { mount } from 'svelte';
+import App from './App.svelte';
+import { createEditorInsertions } from './editor-insertions';
+import { applyShellTheme, monacoThemeName, registerMonacoThemes } from './theme';
+import { onUiCommand } from './ui-command';
+import { view } from './view-state.svelte';
 import './style.css';
-
-const SHELL_THEME_VARIABLES: Record<keyof ThemePalette, string> = {
-  canvas: '--app-canvas',
-  surface: '--app-surface',
-  raisedSurface: '--app-raised-surface',
-  chrome: '--app-chrome',
-  editorBackground: '--app-editor-background',
-  text: '--app-text',
-  mutedText: '--app-muted-text',
-  subtleText: '--app-subtle-text',
-  border: '--app-border',
-  strongBorder: '--app-strong-border',
-  hover: '--app-hover',
-  selected: '--app-selected',
-  accent: '--app-accent',
-  focusRing: '--app-focus-ring',
-  warningSurface: '--app-warning-surface',
-  warningText: '--app-warning-text',
-  warningBorder: '--app-warning-border',
-  dangerText: '--app-danger-text',
-  shadow: '--app-shadow',
-  overlay: '--app-overlay',
-};
-
-function monacoThemeName(themeId: PreviewThemeId) {
-  return `setdown-${themeId}`;
-}
-
-function withAlpha(color: string, alpha: string) {
-  return /^#[0-9a-f]{6}$/i.test(color) ? `${color}${alpha}` : color;
-}
-
-function registerMonacoThemes(monaco: typeof Monaco) {
-  for (const profile of THEME_PROFILES) {
-    const { palette, syntax } = profile;
-    monaco.editor.defineTheme(monacoThemeName(profile.id), {
-      base: profile.appearance === 'dark' ? 'vs-dark' : 'vs',
-      inherit: true,
-      colors: {
-        'editor.background': palette.editorBackground,
-        'editor.foreground': syntax.foreground,
-        'editorCursor.foreground': palette.accent,
-        'editorLineNumber.foreground': palette.subtleText,
-        'editorLineNumber.activeForeground': palette.text,
-        'editor.lineHighlightBackground': withAlpha(palette.hover, '80'),
-        'editor.selectionBackground': withAlpha(palette.accent, '55'),
-        'editor.inactiveSelectionBackground': withAlpha(palette.accent, '32'),
-        'editor.findMatchBackground': withAlpha(palette.accent, '66'),
-        'editor.findMatchHighlightBackground': withAlpha(palette.accent, '36'),
-        'editorWidget.background': palette.raisedSurface,
-        'editorWidget.border': palette.border,
-        'input.background': palette.surface,
-        'input.foreground': palette.text,
-        'input.border': palette.border,
-        'focusBorder': palette.focusRing,
-        'scrollbarSlider.background': withAlpha(palette.mutedText, '44'),
-        'scrollbarSlider.hoverBackground': withAlpha(palette.mutedText, '66'),
-        'editorGutter.background': palette.editorBackground,
-        'editorIndentGuide.background1': palette.border,
-        'editorIndentGuide.activeBackground1': palette.strongBorder,
-      },
-      rules: [
-        { token: 'comment', foreground: syntax.comment.slice(1), fontStyle: 'italic' },
-        { token: 'keyword', foreground: syntax.keyword.slice(1) },
-        { token: 'string', foreground: syntax.string.slice(1) },
-        { token: 'number', foreground: syntax.number.slice(1) },
-        { token: 'tag', foreground: syntax.heading.slice(1), fontStyle: 'bold' },
-        { token: 'type', foreground: syntax.heading.slice(1) },
-        { token: 'string.link', foreground: syntax.link.slice(1), fontStyle: 'underline' },
-        { token: 'markup.heading.markdown', foreground: syntax.heading.slice(1), fontStyle: 'bold' },
-        { token: 'markup.inline.raw.markdown', foreground: syntax.code.slice(1) },
-        { token: 'delimiter', foreground: syntax.punctuation.slice(1) },
-      ],
-    });
-  }
-}
-
-function applyShellTheme(themeId: PreviewThemeId) {
-  const profile = themeProfile(themeId);
-  const root = document.documentElement;
-  root.dataset.theme = profile.id;
-  root.dataset.appearance = profile.appearance;
-  root.style.colorScheme = profile.appearance;
-  root.style.setProperty('--preview-background', profile.preview.background);
-  for (const [name, value] of Object.entries(profile.palette)) {
-    root.style.setProperty(SHELL_THEME_VARIABLES[name as keyof ThemePalette], value);
-  }
-}
 
 const initialTheme: ThemeSnapshot = {
   id: normalizePreviewTheme(window.marktex.initialTheme.id),
@@ -132,127 +38,9 @@ const initialTheme: ThemeSnapshot = {
 let appliedThemeRevision = initialTheme.revision;
 applyShellTheme(initialTheme.id);
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-  <header class="product-titlebar">
-    <div class="product-identity" aria-label="Setdown">Setdown</div>
-    <nav class="application-menu" aria-label="애플리케이션 메뉴">
-      <button type="button" data-menu-id="application-menu-file">File</button>
-      <button type="button" data-menu-id="application-menu-view">View</button>
-      <button type="button" data-menu-id="application-menu-insert">Insert</button>
-      <button type="button" data-menu-id="application-menu-edit">Edit</button>
-      <button type="button" data-menu-id="application-menu-window">Window</button>
-    </nav>
-    <div class="application-menu-popup" hidden></div>
-    <div class="application-submenu-popup" hidden></div>
-    <div class="titlebar-drag-space" aria-hidden="true"></div>
-  </header>
-  <section class="shell" data-surface="empty" data-tabs="false">
-    <nav class="tab-strip" aria-label="열린 문서" hidden>
-      <div class="tab-list" role="tablist"></div>
-      <div class="tab-actions">
-        <button class="new-tab-button" type="button" title="새 문서 (Ctrl/Cmd+N)" aria-label="새 문서">+</button>
-        <button class="editor-action insert-table-button" type="button" title="표 삽입" aria-label="표 삽입">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.75A1.75 1.75 0 0 1 5.75 3h12.5A1.75 1.75 0 0 1 20 4.75v14.5A1.75 1.75 0 0 1 18.25 21H5.75A1.75 1.75 0 0 1 4 19.25V4.75Zm1.5 3.75h4.75v-4H5.75a.25.25 0 0 0-.25.25V8.5Zm6.25 0h6.75V4.75a.25.25 0 0 0-.25-.25h-6.5v4Zm-6.25 1.5v4h4.75v-4H5.5Zm6.25 0v4h6.75v-4h-6.75ZM5.5 15.5v3.75c0 .14.11.25.25.25h4.5v-4H5.5Zm6.25 4h6.5a.25.25 0 0 0 .25-.25V15.5h-6.75v4Z"/></svg>
-        </button>
-        <button class="editor-action insert-link-button" type="button" title="링크 삽입 (Ctrl/Cmd+K)" aria-label="링크 삽입">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 15.5 8 17a3.54 3.54 0 0 1-5-5l3-3a3.54 3.54 0 0 1 5 0 .75.75 0 0 1-1.06 1.06 2.04 2.04 0 0 0-2.88 0l-3 3a2.04 2.04 0 0 0 2.88 2.88l1.5-1.5A.75.75 0 1 1 9.5 15.5Zm5-7L16 7a3.54 3.54 0 0 1 5 5l-3 3a3.54 3.54 0 0 1-5 0 .75.75 0 0 1 1.06-1.06 2.04 2.04 0 0 0 2.88 0l3-3a2.04 2.04 0 0 0-2.88-2.88l-1.5 1.5A.75.75 0 1 1 14.5 8.5Zm1.03.97a.75.75 0 0 1 0 1.06l-5 5a.75.75 0 0 1-1.06-1.06l5-5a.75.75 0 0 1 1.06 0Z"/></svg>
-        </button>
-        <button class="viewer-action toc-toggle" type="button" aria-expanded="false" title="목차 열기" aria-label="목차 열기">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h2v2H4v-2Zm4 .25h12v1.5H8v-1.5ZM4 11h2v2H4v-2Zm4 .25h12v1.5H8v-1.5ZM4 16.5h2v2H4v-2Zm4 .25h12v1.5H8v-1.5Z"/></svg>
-        </button>
-        <span class="tab-action-divider" aria-hidden="true"></span>
-        <button class="mode-toggle" type="button" hidden>
-          <svg class="mode-icon mode-icon-edit" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.862 3.487a2.25 2.25 0 0 1 3.182 3.182L8.41 18.303a2 2 0 0 1-.878.507l-3.42 1.026 1.026-3.42a2 2 0 0 1 .507-.878L16.862 3.487Zm1.06 1.06L6.705 15.765a.5.5 0 0 0-.127.22l-.538 1.792 1.792-.538a.5.5 0 0 0 .22-.127L19.104 5.608a.75.75 0 0 0-1.182-1.06Z"/></svg>
-          <svg class="mode-icon mode-icon-view" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c4.75 0 8.27 3.13 9.66 6.35a1.62 1.62 0 0 1 0 1.3C20.27 15.87 16.75 19 12 19s-8.27-3.13-9.66-6.35a1.62 1.62 0 0 1 0-1.3C3.73 8.13 7.25 5 12 5Zm0 1.5c-4 0-7 2.63-8.28 5.45a.12.12 0 0 0 0 .1C5 14.87 8 17.5 12 17.5s7-2.63 8.28-5.45a.12.12 0 0 0 0-.1C19 9.13 16 6.5 12 6.5Zm0 2.25A3.25 3.25 0 1 1 12 15.25 3.25 3.25 0 0 1 12 8.75Zm0 1.5A1.75 1.75 0 1 0 12 13.75 1.75 1.75 0 0 0 12 10.25Z"/></svg>
-        </button>
-      </div>
-    </nav>
-
-    <div class="notice" hidden>
-      <span>이 파일이 다른 프로그램에서 변경되었습니다.</span>
-      <div>
-        <button class="notice-keep" type="button">현재 내용 유지</button>
-        <button class="notice-reload" type="button">다시 불러오기</button>
-      </div>
-    </div>
-
-    <section class="empty-state">
-      <img class="empty-mark" src="./setdown-mark.svg" alt="Setdown" />
-      <div class="wordmark">Setdown</div>
-      <h1>Write plain. Read beautifully.</h1>
-      <p>Markdown 파일을 아름답게 읽고, 더블 클릭해 바로 고칠 수 있습니다.</p>
-      <div class="empty-actions">
-        <button class="primary-button empty-new" type="button">새 문서</button>
-        <button class="secondary-button empty-open" type="button">Markdown 파일 열기</button>
-      </div>
-      <span class="shortcut">Ctrl/Cmd+N · Ctrl/Cmd+O</span>
-    </section>
-
-    <section class="viewer-surface" aria-label="렌더링된 Markdown">
-      <div class="reader-body">
-        <div class="preview-frames">
-          <div class="preview-search" role="search" hidden>
-            <input type="search" autocomplete="off" spellcheck="false" aria-label="렌더링된 문서에서 찾기" placeholder="찾기…">
-            <span class="find-count" aria-live="polite">0 / 0</span>
-            <button class="find-previous" type="button" aria-label="이전 검색 결과">↑</button>
-            <button class="find-next" type="button" aria-label="다음 검색 결과">↓</button>
-            <button class="find-close" type="button" aria-label="검색 닫기">×</button>
-          </div>
-        </div>
-        <aside class="toc-panel" aria-label="문서 목차" hidden>
-          <div class="toc-panel-title"><strong>목차</strong><span class="toc-count"></span></div>
-          <nav class="toc-list"></nav>
-        </aside>
-      </div>
-      <div class="render-state" hidden>
-        <div class="spinner"></div><span>문서를 조판하고 있습니다…</span>
-      </div>
-      <div class="render-error" hidden>
-        <strong>문서를 렌더링하지 못했습니다.</strong>
-        <span></span>
-        <button type="button">원문에서 확인</button>
-      </div>
-    </section>
-
-    <section class="editor-surface" aria-label="Markdown 원문 편집기">
-      <div class="editor-host"></div>
-    </section>
-
-    <dialog class="insertion-dialog table-dialog" aria-labelledby="table-dialog-title">
-      <form class="insertion-form table-form">
-        <header>
-          <div><h2 id="table-dialog-title">표 삽입</h2><p>셀 내용과 열 정렬을 지정하세요.</p></div>
-          <button class="dialog-close" type="button" aria-label="닫기">×</button>
-        </header>
-        <div class="table-size-controls">
-          <label>열 <input class="table-columns" type="number" min="1" max="12" value="3"></label>
-          <label>데이터 행 <input class="table-rows" type="number" min="0" max="30" value="2"></label>
-        </div>
-        <div class="table-editor-scroll"><div class="table-grid-editor"></div></div>
-        <footer><button class="secondary-button table-cancel" type="button">취소</button><button class="primary-button table-submit" type="button">삽입</button></footer>
-      </form>
-    </dialog>
-
-    <dialog class="insertion-dialog link-dialog" aria-labelledby="link-dialog-title">
-      <form class="insertion-form link-form">
-        <header>
-          <div><h2 id="link-dialog-title">링크 삽입</h2><p>URL을 입력하거나 현재 문서에서 연결할 파일을 고르세요.</p></div>
-          <button class="dialog-close" type="button" aria-label="닫기">×</button>
-        </header>
-        <label>표시할 텍스트<input class="link-label" type="text" autocomplete="off"></label>
-        <label>URL 또는 경로<span class="link-destination-row"><input class="link-destination" type="text" required spellcheck="false" placeholder="https://example.com"><button class="secondary-button pick-link-file" type="button">파일 선택…</button></span></label>
-        <label>제목 <span class="optional-label">선택 사항</span><input class="link-title" type="text" autocomplete="off"></label>
-        <div class="dialog-error" role="alert" hidden></div>
-        <footer><button class="secondary-button link-cancel" type="button">취소</button><button class="primary-button" type="submit">삽입</button></footer>
-      </form>
-    </dialog>
-  </section>
-`;
+mount(App, { target: document.querySelector<HTMLDivElement>('#app')! });
 
 const shell = document.querySelector<HTMLElement>('.shell')!;
-const applicationMenu = document.querySelector<HTMLElement>('.application-menu')!;
-const applicationMenuPopup = document.querySelector<HTMLElement>('.application-menu-popup')!;
-const applicationSubmenuPopup = document.querySelector<HTMLElement>('.application-submenu-popup')!;
 const modeToggle = document.querySelector<HTMLButtonElement>('.mode-toggle')!;
 const previewFrames = document.querySelector<HTMLElement>('.preview-frames')!;
 const tocToggle = document.querySelector<HTMLButtonElement>('.toc-toggle')!;
@@ -268,18 +56,6 @@ const renderError = document.querySelector<HTMLElement>('.render-error')!;
 const renderErrorText = renderError.querySelector<HTMLElement>('span')!;
 const notice = document.querySelector<HTMLElement>('.notice')!;
 const tabStrip = document.querySelector<HTMLElement>('.tab-strip')!;
-const tabList = document.querySelector<HTMLElement>('.tab-list')!;
-const tableDialog = document.querySelector<HTMLDialogElement>('.table-dialog')!;
-const tableForm = document.querySelector<HTMLFormElement>('.table-form')!;
-const tableColumnsInput = document.querySelector<HTMLInputElement>('.table-columns')!;
-const tableRowsInput = document.querySelector<HTMLInputElement>('.table-rows')!;
-const tableGridEditor = document.querySelector<HTMLElement>('.table-grid-editor')!;
-const linkDialog = document.querySelector<HTMLDialogElement>('.link-dialog')!;
-const linkForm = document.querySelector<HTMLFormElement>('.link-form')!;
-const linkLabelInput = document.querySelector<HTMLInputElement>('.link-label')!;
-const linkDestinationInput = document.querySelector<HTMLInputElement>('.link-destination')!;
-const linkTitleInput = document.querySelector<HTMLInputElement>('.link-title')!;
-const linkError = document.querySelector<HTMLElement>('.dialog-error')!;
 
 type DocumentTab = {
   id: string;
@@ -576,7 +352,6 @@ async function applyProductTheme(snapshot: ThemeSnapshot, forceAssets = false) {
   appliedThemeRevision = snapshot.revision;
   themeTransitionVisibleTabId = activeTabId;
   readerPreferences.themeId = nextTheme;
-  applicationMenuCache.delete('application-menu-view');
   applyShellTheme(nextTheme);
   monaco?.editor.setTheme(monacoThemeName(nextTheme));
   syncReaderUi();
@@ -680,6 +455,11 @@ function unfreezePreview() {
   }));
 }
 
+window.addEventListener('setdown:menu-visibility', ((event: CustomEvent<boolean>) => {
+  if (event.detail) void freezePreview();
+  else unfreezePreview();
+}) as EventListener);
+
 function saveActiveTabState() {
   const tab = activeTab();
   if (!tab || !currentDocument) return;
@@ -713,74 +493,16 @@ function transferableTab(tab: DocumentTab): TransferableTab {
 }
 
 function renderTabs() {
-  tabStrip.hidden = tabs.length === 0;
-  shell.dataset.tabs = tabs.length > 0 ? 'true' : 'false';
-  shell.dataset.dirtyTabs = String(tabs.filter((tab) =>
-    isTabDirty(tab),
-  ).length);
-  tabList.replaceChildren();
-  for (const tab of tabs) {
-    const button = document.createElement('button');
-    button.className = 'document-tab';
-    button.type = 'button';
-    button.setAttribute('role', 'tab');
-    button.setAttribute('aria-selected', String(tab.id === activeTabId));
-    button.title = tab.document.path;
-    button.draggable = true;
-    button.dataset.tabId = tab.id;
-
-    const name = document.createElement('span');
-    name.className = 'tab-name';
-    name.textContent = tab.document.name;
-    button.append(name);
-    if (isTabDirty(tab)) {
-      const dirty = document.createElement('span');
-      dirty.className = 'tab-dirty';
-      dirty.textContent = '•';
-      dirty.setAttribute('aria-label', '저장되지 않은 변경');
-      button.append(dirty);
-    }
-    const close = document.createElement('span');
-    close.className = 'tab-close';
-    close.textContent = '×';
-    close.title = '탭 닫기';
-    close.addEventListener('click', (event) => {
-      event.stopPropagation();
-      void closeTab(tab.id);
-    });
-    button.append(close);
-    button.addEventListener('click', () => void activateTab(tab.id));
-    button.addEventListener('dragstart', (event) => {
-      if (tab.id !== activeTabId) void activateTab(tab.id);
-      const transferId = crypto.randomUUID();
-      draggedTabId = tab.id;
-      draggedTransferId = transferId;
-      tabDragCanceled = false;
-      button.classList.add('is-dragging');
-      shell.classList.add('is-tab-dragging');
-      event.dataTransfer?.setData('application/x-setdown-tab', transferId);
-      if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
-      window.marktex.registerTabTransfer(transferId, transferableTab(tab));
-    });
-    button.addEventListener('dragend', (event) => {
-      button.classList.remove('is-dragging');
-      const transferId = draggedTransferId;
-      const shouldDetach = transferId
-        && !tabDragCanceled
-        && event.dataTransfer?.dropEffect !== 'move';
-      draggedTabId = null;
-      draggedTransferId = null;
-      tabDragCanceled = false;
-      tabStrip.classList.remove('is-drop-target');
-      shell.classList.remove('is-tab-dragging', 'is-window-drop-target');
-      if (shouldDetach) {
-        window.marktex.detachTabToWindow(transferId, event.screenX, event.screenY);
-      } else if (transferId && tabDragCanceled) {
-        window.marktex.cancelTabTransfer(transferId);
-      }
-    });
-    tabList.append(button);
-  }
+  const summaries = tabs.map((tab) => ({
+    id: tab.id,
+    name: tab.document.name,
+    path: tab.document.path,
+    active: tab.id === activeTabId,
+    dirty: isTabDirty(tab),
+  }));
+  view.tabs = summaries;
+  shell.dataset.tabs = summaries.length > 0 ? 'true' : 'false';
+  shell.dataset.dirtyTabs = String(summaries.filter((tab) => tab.dirty).length);
   window.marktex.updateTabState(tabs.map((tab) => ({
     name: tab.document.name,
     path: tab.document.path,
@@ -788,6 +510,42 @@ function renderTabs() {
     isUntitled: tab.document.isUntitled,
   })));
 }
+
+function startTabDrag(tabId: string, event: DragEvent) {
+  const tab = tabs.find((candidate) => candidate.id === tabId);
+  if (!tab) return;
+  if (tab.id !== activeTabId) void activateTab(tab.id);
+  const transferId = crypto.randomUUID();
+  draggedTabId = tab.id;
+  draggedTransferId = transferId;
+  tabDragCanceled = false;
+  view.draggedTabId = tab.id;
+  shell.classList.add('is-tab-dragging');
+  event.dataTransfer?.setData('application/x-setdown-tab', transferId);
+  if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+  window.marktex.registerTabTransfer(transferId, transferableTab(tab));
+}
+
+function endTabDrag(event: DragEvent) {
+  const transferId = draggedTransferId;
+  const canceled = tabDragCanceled;
+  const shouldDetach = transferId && !canceled && event.dataTransfer?.dropEffect !== 'move';
+  draggedTabId = null;
+  draggedTransferId = null;
+  tabDragCanceled = false;
+  view.draggedTabId = null;
+  tabStrip.classList.remove('is-drop-target');
+  shell.classList.remove('is-tab-dragging', 'is-window-drop-target');
+  if (shouldDetach) window.marktex.detachTabToWindow(transferId, event.screenX, event.screenY);
+  else if (transferId && canceled) window.marktex.cancelTabTransfer(transferId);
+}
+
+onUiCommand((command) => {
+  if (command.type === 'activate-tab') void activateTab(command.tabId);
+  else if (command.type === 'close-tab') void closeTab(command.tabId);
+  else if (command.type === 'tab-drag-start') startTabDrag(command.tabId, command.event);
+  else if (command.type === 'tab-drag-end') endTabDrag(command.event);
+});
 
 function transferIdFromDrop(event: DragEvent) {
   return event.dataTransfer?.getData('application/x-setdown-tab') || null;
@@ -843,6 +601,7 @@ tabStrip.addEventListener('drop', (event) => {
     window.marktex.cancelTabTransfer(transferId);
     draggedTabId = null;
     draggedTransferId = null;
+    view.draggedTabId = null;
     return;
   }
   void window.marktex.claimTabTransfer(transferId).then((transfer) => {
@@ -870,6 +629,7 @@ window.addEventListener('drop', (event) => {
   if (draggedTabId) {
     draggedTabId = null;
     draggedTransferId = null;
+    view.draggedTabId = null;
     window.marktex.detachTabToWindow(transferId, event.screenX, event.screenY);
     return;
   }
@@ -1651,362 +1411,13 @@ async function exportPdf() {
   }
 }
 
-const IMAGE_URL_PATTERN = /\.(?:avif|bmp|gif|jpe?g|png|svg|tiff?|webp)(?:$|[?#])/i;
-
-function safeExternalUrl(value: string | null | undefined) {
-  if (!value) return null;
-  try {
-    const url = new URL(value.trim());
-    return ['http:', 'https:', 'mailto:', 'tel:'].includes(url.protocol) ? url.href : null;
-  } catch {
-    return null;
-  }
-}
-
-function safeRemoteImageUrl(value: string | null | undefined) {
-  const url = safeExternalUrl(value);
-  return url && /^https?:/i.test(url) ? url : null;
-}
-
-type TableEditorState = {
-  headers: string[];
-  rows: string[][];
-  alignments: TableAlignment[];
-};
-
-let pendingTableSelection: Monaco.Selection | null = null;
-let pendingLinkSelection: Monaco.Selection | null = null;
-let tableEditorState: TableEditorState = {
-  headers: ['열 1', '열 2', '열 3'],
-  rows: [['', '', ''], ['', '', '']],
-  alignments: ['none', 'none', 'none'],
-};
-
-function boundedInteger(input: HTMLInputElement, fallback: number, maximum: number) {
-  const value = Number.parseInt(input.value, 10);
-  return Math.max(Number(input.min) || 0, Math.min(maximum, Number.isFinite(value) ? value : fallback));
-}
-
-function readTableEditorState() {
-  const columns = boundedInteger(tableColumnsInput, 3, 12);
-  const rowCount = boundedInteger(tableRowsInput, 2, 30);
-  const headers = Array.from(tableGridEditor.querySelectorAll<HTMLInputElement>('[data-table-header]'))
-    .map((input) => input.value);
-  const alignments = Array.from(tableGridEditor.querySelectorAll<HTMLSelectElement>('[data-table-alignment]'))
-    .map((select) => select.value as TableAlignment);
-  const rows = Array.from({ length: rowCount }, (_, row) =>
-    Array.from({ length: columns }, (_, column) =>
-      tableGridEditor.querySelector<HTMLInputElement>(
-        `[data-table-row="${row}"][data-table-column="${column}"]`,
-      )?.value ?? ''),
-  );
-  return { headers, rows, alignments };
-}
-
-function renderTableEditor() {
-  const columns = boundedInteger(tableColumnsInput, 3, 12);
-  const rowCount = boundedInteger(tableRowsInput, 2, 30);
-  tableColumnsInput.value = String(columns);
-  tableRowsInput.value = String(rowCount);
-  tableEditorState = {
-    headers: Array.from({ length: columns }, (_, column) =>
-      tableEditorState.headers[column] ?? `열 ${column + 1}`),
-    alignments: Array.from({ length: columns }, (_, column) =>
-      tableEditorState.alignments[column] ?? 'none'),
-    rows: Array.from({ length: rowCount }, (_, row) =>
-      Array.from({ length: columns }, (_, column) => tableEditorState.rows[row]?.[column] ?? '')),
-  };
-
-  tableGridEditor.replaceChildren();
-  tableGridEditor.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
-  tableGridEditor.style.minWidth = `${columns * 170}px`;
-  for (let column = 0; column < columns; column += 1) {
-    const header = document.createElement('div');
-    header.className = 'table-column-header';
-    const input = document.createElement('input');
-    input.value = tableEditorState.headers[column];
-    input.dataset.tableHeader = String(column);
-    input.setAttribute('aria-label', `${column + 1}열 제목`);
-    const alignment = document.createElement('select');
-    alignment.dataset.tableAlignment = String(column);
-    alignment.setAttribute('aria-label', `${column + 1}열 정렬`);
-    for (const [value, label] of [
-      ['none', '기본 정렬'], ['left', '왼쪽 정렬'], ['center', '가운데 정렬'], ['right', '오른쪽 정렬'],
-    ] as Array<[TableAlignment, string]>) {
-      const option = document.createElement('option');
-      option.value = value;
-      option.textContent = label;
-      option.selected = tableEditorState.alignments[column] === value;
-      alignment.append(option);
-    }
-    header.append(input, alignment);
-    tableGridEditor.append(header);
-  }
-  for (let row = 0; row < rowCount; row += 1) {
-    for (let column = 0; column < columns; column += 1) {
-      const input = document.createElement('input');
-      input.className = 'table-cell-input';
-      input.value = tableEditorState.rows[row][column];
-      input.dataset.tableRow = String(row);
-      input.dataset.tableColumn = String(column);
-      input.setAttribute('aria-label', `${row + 1}행 ${column + 1}열`);
-      tableGridEditor.append(input);
-    }
-  }
-}
-
-function tableFromTabSeparatedSelection(value: string): TableEditorState | null {
-  if (!value.includes('\t')) return null;
-  const lines = value.replace(/\r\n|\r/g, '\n').split('\n').filter((line) => line.length > 0);
-  if (lines.length === 0) return null;
-  const cells = lines.map((line) => line.split('\t'));
-  const columns = Math.min(12, Math.max(...cells.map((row) => row.length)));
-  return {
-    headers: Array.from({ length: columns }, (_, column) => cells[0][column] ?? ''),
-    rows: cells.slice(1, 31).map((row) =>
-      Array.from({ length: columns }, (_, column) => row[column] ?? '')),
-    alignments: Array(columns).fill('none') as TableAlignment[],
-  };
-}
-
-function blockAffixes(range: Monaco.Range, eol: string) {
-  if (!model) return { prefix: '', suffix: '' };
-  const start = model.getOffsetAt(range.getStartPosition());
-  const end = model.getOffsetAt(range.getEndPosition());
-  const before = model.getValue().slice(0, start);
-  const after = model.getValue().slice(end);
-  const prefix = !before || /(?:\r\n|\r|\n){2}$/.test(before)
-    ? ''
-    : /(?:\r\n|\r|\n)$/.test(before) ? eol : eol + eol;
-  const suffix = !after || /^(?:\r\n|\r|\n){2}/.test(after)
-    ? ''
-    : /^(?:\r\n|\r|\n)/.test(after) ? eol : eol + eol;
-  return { prefix, suffix };
-}
-
-function openTableDialog() {
-  if (!editor || !model || surface !== 'editor') return;
-  pendingTableSelection = editor.getSelection();
-  const selected = pendingTableSelection ? model.getValueInRange(pendingTableSelection) : '';
-  tableEditorState = tableFromTabSeparatedSelection(selected) ?? {
-    headers: ['열 1', '열 2', '열 3'],
-    rows: [['', '', ''], ['', '', '']],
-    alignments: ['none', 'none', 'none'],
-  };
-  tableColumnsInput.value = String(tableEditorState.headers.length);
-  tableRowsInput.value = String(tableEditorState.rows.length);
-  renderTableEditor();
-  tableDialog.showModal();
-  tableGridEditor.querySelector<HTMLInputElement>('[data-table-header]')?.select();
-}
-
-function insertTableFromDialog() {
-  if (!editor || !monaco || !model || !pendingTableSelection) return;
-  tableEditorState = readTableEditorState();
-  const eol = preferredEol(model.getValue());
-  const table = createMarkdownTable(tableEditorState, eol);
-  const range = monaco.Range.lift(pendingTableSelection);
-  const { prefix, suffix } = blockAffixes(range, eol);
-  const text = prefix + table + suffix;
-  const startOffset = model.getOffsetAt(range.getStartPosition());
-  editor.executeEdits('insert-table', [{ range, text, forceMoveMarkers: true }]);
-  const firstHeaderOffset = startOffset + prefix.length + 2;
-  const firstHeaderEnd = firstHeaderOffset + tableEditorState.headers[0].length;
-  editor.setSelection(monaco.Selection.fromPositions(
-    model.getPositionAt(firstHeaderOffset),
-    model.getPositionAt(firstHeaderEnd),
-  ));
-  editor.focus();
-}
-
-function openLinkDialog() {
-  if (!editor || !model || surface !== 'editor') return;
-  pendingLinkSelection = editor.getSelection();
-  const selected = pendingLinkSelection ? model.getValueInRange(pendingLinkSelection) : '';
-  const selectedUrl = safeExternalUrl(selected);
-  linkLabelInput.value = selected.replace(/\r\n|\r|\n/g, ' ');
-  linkDestinationInput.value = selectedUrl ?? '';
-  linkTitleInput.value = '';
-  linkError.hidden = true;
-  linkDialog.showModal();
-  (selectedUrl ? linkLabelInput : linkDestinationInput).focus();
-}
-
-function insertLinkMarkdown(label: string, destination: string, title: string, selection: Monaco.Selection) {
-  if (!editor || !monaco || !model) return;
-  const markdown = createMarkdownLink(label, destination, title);
-  const range = monaco.Range.lift(selection);
-  const startOffset = model.getOffsetAt(range.getStartPosition());
-  editor.executeEdits('insert-link', [{ range, text: markdown, forceMoveMarkers: true }]);
-  if (!label) {
-    const labelStart = startOffset + 1;
-    editor.setSelection(monaco.Selection.fromPositions(
-      model.getPositionAt(labelStart),
-      model.getPositionAt(labelStart + destination.trim().length),
-    ));
-  } else {
-    editor.setPosition(model.getPositionAt(startOffset + markdown.length));
-  }
-  editor.focus();
-}
-
-function remoteImageUrlFromClipboard(event: ClipboardEvent) {
-  const html = event.clipboardData?.getData('text/html');
-  if (html) {
-    const parsed = new DOMParser().parseFromString(html, 'text/html');
-    const remote = safeRemoteImageUrl(parsed.querySelector('img[src]')?.getAttribute('src'));
-    if (remote) return remote;
-  }
-  const plain = event.clipboardData?.getData('text/plain').trim();
-  return plain && IMAGE_URL_PATTERN.test(plain) ? safeRemoteImageUrl(plain) : null;
-}
-
-function clipboardContainsStoredImage(event: ClipboardEvent) {
-  const clipboard = event.clipboardData;
-  const hasBitmap = Array.from(clipboard?.items ?? []).some(
-    (item) => item.kind === 'file' && item.type.startsWith('image/'),
-  );
-  const types = Array.from(clipboard?.types ?? []).map((type) => type.toLowerCase());
-  const hasFileList = types.some((type) =>
-    type === 'files' || type.includes('uri-list') || type.includes('gnome-copied-files'),
-  );
-  const plain = clipboard?.getData('text/plain').trim() ?? '';
-  return hasBitmap || hasFileList || (plain.startsWith('file://') && IMAGE_URL_PATTERN.test(plain));
-}
-
-function insertImageMarkdown(markdown: string, selection: Monaco.Selection | null) {
-  if (!editor || !monaco || !model) return;
-  const range = selection
-    ? monaco.Range.lift(selection)
-    : new monaco.Range(1, 1, 1, 1);
-  editor.executeEdits('paste-image', [{
-    range,
-    text: markdown,
-    forceMoveMarkers: true,
-  }]);
-  const insertedEnd = model.getPositionAt(
-    model.getOffsetAt(range.getStartPosition()) + markdown.length,
-  );
-  editor.setPosition(insertedEnd);
-  editor.focus();
-}
-
-let isPastingImage = false;
-async function pasteClipboardImage(remoteUrl: string | null) {
-  if (!editor || !model || !currentDocument || isPastingImage) return;
-  isPastingImage = true;
-  const selection = editor.getSelection();
-  try {
-    if (remoteUrl) {
-      insertImageMarkdown(`![외부 이미지](<${remoteUrl}>)`, selection);
-      return;
-    }
-    const result = await window.marktex.pasteClipboardImage();
-    if (result.canceled || !result.markdown || !model) return;
-    insertImageMarkdown(result.markdown, selection);
-  } catch (error) {
-    window.alert(`이미지를 붙여넣지 못했습니다.\n${error instanceof Error ? error.message : String(error)}`);
-  } finally {
-    isPastingImage = false;
-  }
-}
-
-editorHost.addEventListener('paste', (event) => {
-  if (!editor) return;
-  const selection = editor.getSelection();
-  const pastedUrl = safeExternalUrl(event.clipboardData?.getData('text/plain'));
-  if (selection && !selection.isEmpty() && pastedUrl && model) {
-    event.preventDefault();
-    event.stopPropagation();
-    insertLinkMarkdown(model.getValueInRange(selection), pastedUrl, '', selection);
-    return;
-  }
-  const remoteUrl = remoteImageUrlFromClipboard(event);
-  if (!remoteUrl && !clipboardContainsStoredImage(event)) return;
-  event.preventDefault();
-  event.stopPropagation();
-  void pasteClipboardImage(remoteUrl);
-}, { capture: true });
-
-document.querySelector('.insert-table-button')?.addEventListener('click', openTableDialog);
-document.querySelector('.insert-link-button')?.addEventListener('click', openLinkDialog);
-
-for (const input of [tableColumnsInput, tableRowsInput]) {
-  input.addEventListener('change', () => {
-    tableEditorState = readTableEditorState();
-    renderTableEditor();
-  });
-}
-
-document.querySelector('.table-submit')?.addEventListener('click', () => {
-  insertTableFromDialog();
-  tableDialog.close();
-});
-tableForm.addEventListener('submit', (event) => event.preventDefault());
-tableForm.addEventListener('keydown', (event) => {
-  if (event.key !== 'Enter' || event.isComposing) return;
-  const target = event.target;
-  if (!(target instanceof HTMLInputElement)) return;
-  event.preventDefault();
-  if (!tableGridEditor.contains(target)) {
-    target.blur();
-    return;
-  }
-  const cells = Array.from(tableGridEditor.querySelectorAll<HTMLInputElement>('input'));
-  const current = cells.indexOf(target);
-  const next = cells[current + (event.shiftKey ? -1 : 1)];
-  if (next) {
-    next.focus();
-    next.select();
-  }
-});
-tableDialog.querySelectorAll('.dialog-close, .table-cancel').forEach((button) => {
-  button.addEventListener('click', () => tableDialog.close());
-});
-tableDialog.addEventListener('close', () => {
-  pendingTableSelection = null;
-  editor?.focus();
-});
-
-linkForm.addEventListener('submit', (event) => {
-  event.preventDefault();
-  if (!pendingLinkSelection) return;
-  try {
-    insertLinkMarkdown(
-      linkLabelInput.value,
-      linkDestinationInput.value,
-      linkTitleInput.value,
-      pendingLinkSelection,
-    );
-    linkDialog.close();
-  } catch (error) {
-    linkError.textContent = error instanceof Error ? error.message : String(error);
-    linkError.hidden = false;
-  }
-});
-linkDialog.querySelectorAll('.dialog-close, .link-cancel').forEach((button) => {
-  button.addEventListener('click', () => linkDialog.close());
-});
-linkDialog.addEventListener('close', () => {
-  pendingLinkSelection = null;
-  editor?.focus();
-});
-document.querySelector('.pick-link-file')?.addEventListener('click', async () => {
-  if (!currentDocument) return;
-  linkError.hidden = true;
-  if (currentDocument.isUntitled) {
-    const saved = await save(false);
-    if (!saved || !currentDocument || currentDocument.isUntitled) {
-      linkError.textContent = '로컬 파일의 상대 경로를 만들려면 문서를 먼저 저장해야 합니다.';
-      linkError.hidden = false;
-      return;
-    }
-  }
-  const result = await window.marktex.pickLinkTarget(currentDocument.path);
-  if (result.canceled || !result.destination) return;
-  linkDestinationInput.value = result.destination;
-  if (!linkLabelInput.value && result.label) linkLabelInput.value = result.label;
-  linkTitleInput.focus();
+const insertions = createEditorInsertions({
+  editor: () => editor,
+  monaco: () => monaco,
+  model: () => model,
+  document: () => currentDocument,
+  editing: () => surface === 'editor',
+  save: () => save(false),
 });
 
 function installEditorBindings(
@@ -2019,14 +1430,14 @@ function installEditorBindings(
     label: '링크 삽입',
     keybindings: [api.KeyMod.CtrlCmd | api.KeyCode.KeyK],
     contextMenuGroupId: '1_modification',
-    run: openLinkDialog,
+    run: insertions.openLink,
   });
 
   targetEditor.addAction({
     id: 'setdown.insertTable',
     label: '표 삽입',
     contextMenuGroupId: '1_modification',
-    run: openTableDialog,
+    run: insertions.openTable,
   });
 
   targetEditor.addCommand(
@@ -2054,191 +1465,6 @@ tocToggle.addEventListener('click', () => {
   syncPreviewView();
   if (tab.tocOpen && activeTabId) {
     sendPreviewCommand(activeTabId, { command: 'marktex:collect-headings' });
-  }
-});
-const applicationMenuCache = new Map<string, ApplicationMenuEntry[]>();
-let openApplicationMenuId: string | null = null;
-let applicationMenuRequest = 0;
-
-function closeApplicationSubmenu() {
-  applicationSubmenuPopup.hidden = true;
-  applicationSubmenuPopup.replaceChildren();
-  applicationMenuPopup.querySelectorAll('.is-submenu-open').forEach((row) => {
-    row.classList.remove('is-submenu-open');
-  });
-}
-
-function closeApplicationMenu() {
-  if (openApplicationMenuId !== null) unfreezePreview();
-  closeApplicationSubmenu();
-  openApplicationMenuId = null;
-  applicationMenuPopup.hidden = true;
-  applicationMenuPopup.replaceChildren();
-  applicationMenu.querySelectorAll('button').forEach((button) => {
-    button.classList.remove('is-open');
-    button.setAttribute('aria-expanded', 'false');
-  });
-}
-
-function displayAccelerator(value: string | undefined) {
-  if (!value) return '';
-  const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
-  return value
-    .replace(/CmdOrCtrl/g, isMac ? '⌘' : 'Ctrl')
-    .replace(/CommandOrControl/g, isMac ? '⌘' : 'Ctrl')
-    .replace(/\+Plus$/, '++');
-}
-
-function menuEntryList(entries: ApplicationMenuEntry[], nested = false): HTMLUListElement {
-  const list = document.createElement('ul');
-  list.className = nested ? 'product-submenu' : 'product-menu-root';
-  list.setAttribute('role', 'menu');
-  for (const entry of entries) {
-    const row = document.createElement('li');
-    row.setAttribute('role', 'none');
-    if (entry.type === 'separator') {
-      row.className = 'product-menu-separator';
-      row.setAttribute('aria-hidden', 'true');
-      list.append(row);
-      continue;
-    }
-    row.className = 'product-menu-row';
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.dataset.menuItemId = entry.id;
-    button.disabled = !entry.enabled;
-    button.setAttribute('role', entry.type === 'radio' ? 'menuitemradio' : 'menuitem');
-    if (entry.type === 'radio') button.setAttribute('aria-checked', String(entry.checked));
-
-    const marker = document.createElement('span');
-    marker.className = 'product-menu-marker';
-    marker.textContent = entry.type === 'radio' && entry.checked ? '•' : '';
-    const label = document.createElement('span');
-    label.className = 'product-menu-label';
-    label.textContent = entry.label;
-    const accelerator = document.createElement('span');
-    accelerator.className = 'product-menu-accelerator';
-    accelerator.textContent = displayAccelerator(entry.accelerator);
-    const arrow = document.createElement('span');
-    arrow.className = 'product-menu-arrow';
-    arrow.textContent = entry.submenu?.length ? '›' : '';
-    button.append(marker, label, accelerator, arrow);
-    row.append(button);
-    if (entry.submenu?.length) {
-      row.classList.add('has-submenu');
-      const showSubmenu = () => showApplicationSubmenu(row, button, entry.submenu!);
-      button.addEventListener('click', showSubmenu);
-      button.addEventListener('pointerenter', showSubmenu);
-    } else {
-      if (!nested) row.addEventListener('pointerenter', closeApplicationSubmenu);
-      button.addEventListener('click', () => {
-        window.marktex.executeApplicationMenuItem(entry.id);
-        closeApplicationMenu();
-      });
-    }
-    list.append(row);
-  }
-  return list;
-}
-
-function showApplicationSubmenu(
-  row: HTMLLIElement,
-  button: HTMLButtonElement,
-  entries: ApplicationMenuEntry[],
-) {
-  applicationMenuPopup.querySelectorAll('.is-submenu-open').forEach((candidate) => {
-    candidate.classList.toggle('is-submenu-open', candidate === row);
-  });
-  row.classList.add('is-submenu-open');
-  applicationSubmenuPopup.replaceChildren(menuEntryList(entries, true));
-  applicationSubmenuPopup.hidden = false;
-
-  const bounds = button.getBoundingClientRect();
-  const submenuBounds = applicationSubmenuPopup.getBoundingClientRect();
-  const rightSide = bounds.right + 2;
-  const left = rightSide + submenuBounds.width <= window.innerWidth - 6
-    ? rightSide
-    : bounds.left - submenuBounds.width - 2;
-  const top = Math.max(6, Math.min(
-    bounds.top - 4,
-    window.innerHeight - submenuBounds.height - 6,
-  ));
-  applicationSubmenuPopup.style.left = `${Math.round(Math.max(6, left))}px`;
-  applicationSubmenuPopup.style.top = `${Math.round(top)}px`;
-}
-
-async function loadApplicationMenu(menuId: string) {
-  const entries = await window.marktex.getApplicationMenu(menuId);
-  applicationMenuCache.set(menuId, entries);
-  return entries;
-}
-
-function showApplicationMenu(button: HTMLButtonElement, entries: ApplicationMenuEntry[]) {
-  const menuId = button.dataset.menuId!;
-  const bounds = button.getBoundingClientRect();
-  // 다른 메뉴에서 옮겨 온 것이면 이미 얼려 둔 상태다.
-  if (openApplicationMenuId === null) void freezePreview();
-  openApplicationMenuId = menuId;
-  applicationMenuPopup.replaceChildren(menuEntryList(entries));
-  const menuWidth = 286;
-  const left = Math.min(bounds.left, Math.max(6, window.innerWidth - menuWidth - 6));
-  applicationMenuPopup.style.left = `${Math.round(left)}px`;
-  applicationMenuPopup.style.top = `${Math.round(bounds.bottom + 2)}px`;
-  applicationMenuPopup.hidden = false;
-  applicationMenu.querySelectorAll('button').forEach((candidate) => {
-    const isOpen = candidate === button;
-    candidate.classList.toggle('is-open', isOpen);
-    candidate.setAttribute('aria-expanded', String(isOpen));
-  });
-}
-
-async function openApplicationMenu(button: HTMLButtonElement) {
-  const menuId = button.dataset.menuId!;
-  if (openApplicationMenuId === menuId) {
-    closeApplicationMenu();
-    return;
-  }
-  const request = ++applicationMenuRequest;
-  const cached = applicationMenuCache.get(menuId);
-  if (cached) showApplicationMenu(button, cached);
-  const entries = await loadApplicationMenu(menuId);
-  if (request !== applicationMenuRequest) return;
-  showApplicationMenu(button, entries);
-}
-
-applicationMenu.querySelectorAll<HTMLButtonElement>('button[data-menu-id]').forEach((button) => {
-  button.setAttribute('aria-haspopup', 'menu');
-  button.setAttribute('aria-expanded', 'false');
-  void loadApplicationMenu(button.dataset.menuId!);
-});
-applicationMenu.addEventListener('click', (event) => {
-  const button = (event.target as Element).closest<HTMLButtonElement>('button[data-menu-id]');
-  if (button) void openApplicationMenu(button);
-});
-applicationMenu.addEventListener('pointerover', (event) => {
-  if (!openApplicationMenuId) return;
-  const button = (event.target as Element).closest<HTMLButtonElement>('button[data-menu-id]');
-  if (button && button.dataset.menuId !== openApplicationMenuId) void openApplicationMenu(button);
-});
-document.addEventListener('pointerdown', (event) => {
-  const target = event.target as Node;
-  if (!applicationMenu.contains(target)
-    && !applicationMenuPopup.contains(target)
-    && !applicationSubmenuPopup.contains(target)) {
-    closeApplicationMenu();
-  }
-});
-applicationMenuPopup.addEventListener('scroll', closeApplicationSubmenu, true);
-applicationMenuPopup.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') {
-    event.preventDefault();
-    closeApplicationMenu();
-  }
-});
-applicationSubmenuPopup.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') {
-    event.preventDefault();
-    closeApplicationMenu();
   }
 });
 findInput.addEventListener('input', () => runPreviewFind('forward', false));
@@ -2454,8 +1680,8 @@ window.marktex.onCommand((command) => {
   if (command === 'close-tab' && activeTabId) void closeTab(activeTabId);
   if (command === 'next-tab') cycleTab(1);
   if (command === 'previous-tab') cycleTab(-1);
-  if (command === 'insert-table') openTableDialog();
-  if (command === 'insert-link') openLinkDialog();
+  if (command === 'insert-table') insertions.openTable();
+  if (command === 'insert-link') insertions.openLink();
   if (command === 'open-find') openPreviewFind();
   if (command === 'escape' && surface === 'editor') void enterViewer();
   if (command === 'toggle-surface') {
@@ -2469,18 +1695,13 @@ window.marktex.onTabTransferCompleted(({ transferId, tabId }) => {
   draggedTabId = null;
   draggedTransferId = null;
   tabDragCanceled = false;
+  view.draggedTabId = null;
   shell.classList.remove('is-tab-dragging', 'is-window-drop-target');
   void removeTransferredTab(tabId).finally(() => {
     window.marktex.releaseTabTransferSource(transferId);
   });
 });
 window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && openApplicationMenuId) {
-    event.preventDefault();
-    event.stopPropagation();
-    closeApplicationMenu();
-    return;
-  }
   if (event.key === 'Escape' && draggedTabId) tabDragCanceled = true;
   if (event.key === 'Escape' && surface === 'editor') {
     event.preventDefault();

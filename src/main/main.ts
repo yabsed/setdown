@@ -1,30 +1,24 @@
 import {
   app,
   BrowserWindow,
-  clipboard,
   dialog,
   ipcMain,
-  Menu,
   net,
   protocol,
   shell,
   utilityProcess,
   WebContentsView,
 } from 'electron';
-import type { MenuItem, WebContents } from 'electron';
+import type { WebContents } from 'electron';
 import {
   promises as fs,
   readFileSync,
-  realpathSync,
   statSync,
-  watchFile,
   unwatchFile,
 } from 'node:fs';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import type {
-  ApplicationMenuEntry,
   AppCommand,
   CloseDecision,
   DiskVersion,
@@ -42,7 +36,6 @@ import {
   DEFAULT_PREVIEW_THEME,
   codeThemeFile,
   normalizePreviewTheme,
-  PREVIEW_THEMES,
   previewThemeBackground,
   previewThemeFile,
   type PreviewThemeId,
@@ -51,19 +44,20 @@ import { themeProfile } from '../shared/theme-catalog';
 import { applyTextRevision, isDirty, lineCount } from '../shared/document-state';
 import type { BandLine } from '../shared/viewport-anchor';
 import type { PreviewBlockPatch } from '../shared/preview-blocks';
-import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
+import { canonicalPath, isInside } from './file-system';
 import {
-  isSupportedImagePath,
-  savePastedImageFile,
-  savePastedPng,
-} from './pasted-image';
+  applicationMenuEntries,
+  executeApplicationMenu,
+  installApplicationMenu,
+} from './application-menu';
+import { DocumentManager } from './document-manager';
+import type { WindowState } from './window-state';
+import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
 import { previewRelativeReference } from './preview-resources';
 import {
   DEFERRED_HTML_SCRIPT_ID,
   INITIAL_HTML_TEMPLATE_ID,
 } from '../shared/preview-install';
-import { discardDraftBundle, saveDraftBundle } from './draft-assets';
-import { markdownDestinationForFile } from './markdown-link';
 
 app.setName('Setdown');
 
@@ -79,18 +73,6 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 let mainWindow: BrowserWindow | null = null;
-let currentDocument: DocumentSnapshot | null = null;
-let activeRoot: string | null = null;
-let untitledSequence = 0;
-
-type WindowState = {
-  window: BrowserWindow;
-  currentDocument: DocumentSnapshot | null;
-  activeRoot: string | null;
-  watchedPath: string | null;
-  closeAfterConfirmation: boolean;
-  rendererTabs: TabStateSummary[];
-};
 
 type PendingTabTransfer = {
   sourceWebContentsId: number;
@@ -279,8 +261,6 @@ function restorePendingPreviewScroll(preview: PreviewViewState) {
     }));
   })`);
 }
-let selectedState: WindowState | null = null;
-let stateQueue: Promise<unknown> = Promise.resolve();
 
 function stateForWebContentsId(id: number) {
   return windowStates.get(id) ?? null;
@@ -297,31 +277,6 @@ function focusedState() {
     ?? null;
 }
 
-function selectWindowState(state: WindowState) {
-  selectedState = state;
-  mainWindow = state.window;
-  currentDocument = state.currentDocument;
-  activeRoot = state.activeRoot;
-}
-
-function persistWindowState(state: WindowState) {
-  state.currentDocument = currentDocument;
-  state.activeRoot = activeRoot;
-}
-
-function withWindowState<T>(state: WindowState, action: () => Promise<T> | T): Promise<T> {
-  const scheduled = stateQueue.then(async () => {
-    selectWindowState(state);
-    try {
-      return await action();
-    } finally {
-      persistWindowState(state);
-    }
-  });
-  stateQueue = scheduled.catch(() => undefined);
-  return scheduled;
-}
-
 const previewDocuments = new Map<string, string>();
 let globalPreviewTheme: PreviewThemeId = DEFAULT_PREVIEW_THEME;
 let globalThemeRevision = 0;
@@ -329,33 +284,10 @@ let globalThemeRevision = 0;
 const crossnoteEntry = require.resolve('crossnote');
 const crossnoteOut = path.resolve(path.dirname(crossnoteEntry), '..');
 
-function snapshotStats(filePath: string): DiskVersion {
-  const stat = statSync(filePath);
-  return { mtimeMs: stat.mtimeMs, size: stat.size };
-}
-
-function isSameDiskVersion(a: DiskVersion, b: DiskVersion): boolean {
-  return a.mtimeMs === b.mtimeMs && a.size === b.size;
-}
-
-function isInside(root: string, candidate: string): boolean {
-  const relative = path.relative(root, candidate);
-  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
-}
-
-function canonicalPath(candidate: string): string {
-  try {
-    return realpathSync(candidate);
-  } catch {
-    return path.resolve(candidate);
-  }
-}
-
 function assertReadablePath(candidate: string): string {
   const resolved = canonicalPath(candidate);
   const roots = [
     crossnoteOut,
-    activeRoot,
     ...Array.from(windowStates.values(), (state) => state.activeRoot),
   ].filter((root): root is string => !!root);
   if (!roots.some((root) => isInside(canonicalPath(root), resolved))) {
@@ -497,13 +429,15 @@ function ensureRenderWorker(): Electron.UtilityProcess {
 
 /** 조판이 읽어도 되는 디렉터리. 보안 경계를 요청마다 함께 보낸다. */
 function readableRoots(): string[] {
-  return [activeRoot, ...Array.from(windowStates.values(), (state) => state.activeRoot)]
+  return Array.from(windowStates.values(), (state) => state.activeRoot)
     .filter((root): root is string => !!root);
 }
 
 function forgetWorkerNotebooks() {
   renderWorker?.postMessage({ kind: 'forget-notebooks' });
 }
+
+const documents = new DocumentManager(forgetWorkerNotebooks);
 
 function callRenderWorker(
   tabId: string,
@@ -535,12 +469,13 @@ function callRenderWorker(
  */
 /** PDF 내보내기처럼 Preview view 없이 완성된 페이지가 필요할 때. */
 async function renderExportTemplate(
+  state: WindowState,
   text: string,
   revision: number,
   documentPath: string,
 ): Promise<{ url: string }> {
   const exportTabId = `export:${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  activeRoot = path.dirname(documentPath);
+  state.activeRoot = path.dirname(documentPath);
   const rendered = await callRenderWorker(
     exportTabId, text, revision, documentPath, globalPreviewTheme, false, false,
   );
@@ -554,6 +489,7 @@ async function renderExportTemplate(
 }
 
 async function preparePreview(
+  state: WindowState,
   tabId: string,
   text: string,
   revision: number,
@@ -565,21 +501,21 @@ async function preparePreview(
   if (!preview || preview.ownerWebContentsId !== senderId) {
     throw new Error('The preview is not owned by this window.');
   }
-  if (!currentDocument) throw new Error('No Markdown document is open.');
-  if (currentDocument.path !== documentPath) {
+  if (!state.currentDocument) throw new Error('No Markdown document is open.');
+  if (state.currentDocument.path !== documentPath) {
     throw new Error('The preview request belongs to a document that is no longer open.');
   }
-  currentDocument = applyTextRevision(currentDocument, text, revision);
-  const renderPath = currentDocument.path;
+  state.currentDocument = applyTextRevision(state.currentDocument, text, revision);
+  const renderPath = state.currentDocument.path;
   const themeId = normalizePreviewTheme(requestedTheme);
-  activeRoot = path.dirname(renderPath);
+  state.activeRoot = path.dirname(renderPath);
 
   const hasPage = preview.view.webContents.getURL()
     .startsWith('marktex-preview://document/');
   const rendered = await callRenderWorker(
     tabId, text, revision, renderPath, themeId, hasPage,
   );
-  if (currentDocument?.path !== renderPath) {
+  if (state.currentDocument?.path !== renderPath) {
     throw new Error('The document changed while its preview was being prepared.');
   }
   preview.view.setBackgroundColor(previewThemeBackground(themeId));
@@ -655,315 +591,6 @@ async function preparePreview(
   return { revision, url: preview.view.webContents.getURL(), themeId };
 }
 
-async function readDocument(filePath: string): Promise<DocumentSnapshot> {
-  const absolute = canonicalPath(filePath);
-  const text = await fs.readFile(absolute, 'utf8');
-  const diskVersion = snapshotStats(absolute);
-  return {
-    path: absolute,
-    name: path.basename(absolute),
-    text,
-    savedText: text,
-    revision: 0,
-    savedRevision: 0,
-    diskVersion,
-    isUntitled: false,
-  };
-}
-
-function blankDocument(): DocumentSnapshot {
-  untitledSequence += 1;
-  const name = untitledSequence === 1 ? 'Untitled.md' : `Untitled ${untitledSequence}.md`;
-  const documentPath = path.join(app.getPath('userData'), 'drafts', randomUUID(), name);
-  return {
-    // 아직 사용자가 소유할 경로는 정하지 않는다. 이 draft 경로가 저장 전
-    // 이미지와 상대 resource의 실제 기준 디렉터리가 된다.
-    path: documentPath,
-    name: path.basename(documentPath),
-    text: '',
-    savedText: '',
-    revision: 0,
-    savedRevision: 0,
-    diskVersion: { mtimeMs: 0, size: 0 },
-    isUntitled: true,
-  };
-}
-
-function stopWatching() {
-  const state = selectedState;
-  if (!state) return;
-  if (state.watchedPath) unwatchFile(state.watchedPath);
-  state.watchedPath = null;
-}
-
-function watchCurrentDocument() {
-  stopWatching();
-  const state = selectedState;
-  if (!state || !currentDocument || currentDocument.isUntitled) return;
-  state.currentDocument = currentDocument;
-  state.watchedPath = currentDocument.path;
-  const watchedPath = state.watchedPath;
-  watchFile(watchedPath, { interval: 750 }, (current) => {
-    const watchedDocument = state.currentDocument;
-    if (!watchedDocument || watchedDocument.path !== watchedPath) return;
-    const next = { mtimeMs: current.mtimeMs, size: current.size };
-    if (current.nlink > 0 && !isSameDiskVersion(next, watchedDocument.diskVersion)) {
-      state.window.webContents.send('document:external-change', {
-        path: watchedDocument.path,
-        diskVersion: next,
-      });
-    }
-  });
-}
-
-async function openPath(filePath: string, notify = true) {
-  currentDocument = await readDocument(filePath);
-  forgetWorkerNotebooks();
-  activeRoot = path.dirname(currentDocument.path);
-  watchCurrentDocument();
-  if (notify) mainWindow?.webContents.send('document:opened', currentDocument);
-  return currentDocument;
-}
-
-async function createNewDocument() {
-  stopWatching();
-  forgetWorkerNotebooks();
-  currentDocument = blankDocument();
-  activeRoot = path.dirname(currentDocument.path);
-  return currentDocument;
-}
-
-async function chooseAndOpen(notify = true) {
-  const result = await dialog.showOpenDialog(mainWindow!, {
-    properties: ['openFile'],
-    filters: [
-      { name: 'Markdown', extensions: ['md', 'markdown', 'mdown', 'mkdn', 'mkd', 'rmd', 'qmd', 'mdx'] },
-      { name: 'All files', extensions: ['*'] },
-    ],
-  });
-  if (result.canceled || !result.filePaths[0]) return null;
-  return openPath(result.filePaths[0], notify);
-}
-
-async function activateDocument(
-  document: DocumentSnapshot,
-  text: string,
-  revision: number,
-) {
-  stopWatching();
-  currentDocument = applyTextRevision(document, text, revision);
-  activeRoot = path.dirname(currentDocument.path);
-  watchCurrentDocument();
-  if (!currentDocument.isUntitled) {
-    try {
-      const diskVersion = snapshotStats(currentDocument.path);
-      if (!isSameDiskVersion(diskVersion, currentDocument.diskVersion)) {
-        mainWindow?.webContents.send('document:external-change', {
-          path: currentDocument.path,
-          diskVersion,
-        });
-      }
-    } catch {
-      // 삭제되거나 잠시 접근할 수 없는 파일은 다음 저장/새로고침에서 처리한다.
-    }
-  }
-  return currentDocument;
-}
-
-async function confirmOverwriteIfChanged(document = currentDocument): Promise<boolean> {
-  if (!document) return false;
-  try {
-    const actual = snapshotStats(document.path);
-    if (isSameDiskVersion(actual, document.diskVersion)) return true;
-  } catch {
-    return true;
-  }
-  const result = await dialog.showMessageBox(mainWindow!, {
-    type: 'warning',
-    message: '파일이 다른 프로그램에서 변경되었습니다.',
-    detail: '현재 편집 내용을 덮어쓰시겠습니까?',
-    buttons: ['취소', '덮어쓰기'],
-    defaultId: 0,
-    cancelId: 0,
-  });
-  return result.response === 1;
-}
-
-async function atomicWrite(filePath: string, text: string) {
-  const stat = await fs.stat(filePath).catch(() => null);
-  const temporary = path.join(
-    path.dirname(filePath),
-    `.${path.basename(filePath)}.${process.pid}.${Date.now()}.tmp`,
-  );
-  await fs.writeFile(temporary, text, { encoding: 'utf8', mode: stat?.mode });
-  await fs.rename(temporary, filePath);
-}
-
-async function saveTo(filePath: string, text: string, revision: number): Promise<SaveResult> {
-  await atomicWrite(filePath, text);
-  const diskVersion = snapshotStats(filePath);
-  currentDocument = {
-    path: canonicalPath(filePath),
-    name: path.basename(filePath),
-    text,
-    savedText: text,
-    revision,
-    savedRevision: revision,
-    diskVersion,
-    isUntitled: false,
-  };
-  activeRoot = path.dirname(currentDocument.path);
-  watchCurrentDocument();
-  return { canceled: false, document: currentDocument };
-}
-
-async function saveDocumentSnapshot(
-  document: DocumentSnapshot,
-  text: string,
-  revision: number,
-): Promise<SaveResult> {
-  const updated = applyTextRevision(document, text, revision);
-  if (updated.isUntitled) {
-    const selected = await dialog.showSaveDialog(mainWindow!, {
-      defaultPath: path.join(app.getPath('documents'), updated.name),
-      filters: [{ name: 'Markdown', extensions: ['md'] }],
-    });
-    if (selected.canceled || !selected.filePath) return { canceled: true };
-    const saved = await saveDraftBundle(
-      path.join(app.getPath('userData'), 'drafts'),
-      updated.path,
-      selected.filePath,
-      text,
-    );
-    const absolute = canonicalPath(selected.filePath);
-    return {
-      canceled: false,
-      document: {
-        path: absolute,
-        name: path.basename(absolute),
-        text: saved.text,
-        savedText: saved.text,
-        revision,
-        savedRevision: revision,
-        diskVersion: snapshotStats(absolute),
-        isUntitled: false,
-      },
-    };
-  }
-  if (!updated.isUntitled && !(await confirmOverwriteIfChanged(updated))) {
-    return { canceled: true };
-  }
-  await fs.mkdir(path.dirname(updated.path), { recursive: true });
-  await atomicWrite(updated.path, text);
-  const absolute = canonicalPath(updated.path);
-  return {
-    canceled: false,
-    document: {
-      path: absolute,
-      name: path.basename(absolute),
-      text,
-      savedText: text,
-      revision,
-      savedRevision: revision,
-      diskVersion: snapshotStats(absolute),
-      isUntitled: false,
-    },
-  };
-}
-
-async function saveDocumentAs(text: string, revision: number): Promise<SaveResult> {
-  if (currentDocument?.isUntitled) {
-    return saveDocumentSnapshot(currentDocument, text, revision);
-  }
-  const defaultPath = currentDocument?.isUntitled
-    ? path.join(app.getPath('documents'), 'Untitled.md')
-    : currentDocument?.path ?? path.join(app.getPath('documents'), 'Untitled.md');
-  const result = await dialog.showSaveDialog(mainWindow!, {
-    defaultPath,
-    filters: [{ name: 'Markdown', extensions: ['md'] }],
-  });
-  if (result.canceled || !result.filePath) return { canceled: true };
-  forgetWorkerNotebooks();
-  return saveTo(result.filePath, text, revision);
-}
-
-async function saveCurrentDocument(text: string, revision: number): Promise<SaveResult> {
-  if (!currentDocument) return { canceled: true };
-  const result = await saveDocumentSnapshot(currentDocument, text, revision);
-  if (result.canceled || !result.document) return result;
-  currentDocument = result.document;
-  activeRoot = path.dirname(currentDocument.path);
-  watchCurrentDocument();
-  return result;
-}
-
-async function pasteClipboardImage(): Promise<PasteImageResult> {
-  if (!currentDocument) return { canceled: true };
-
-  const localImages = clipboard.availableFormats()
-    .filter((format) => /uri-list|gnome-copied-files/i.test(format))
-    .flatMap((format) => {
-      try {
-        return clipboard.readBuffer(format).toString('utf8').replace(/\0/g, '').split(/\r?\n/);
-      } catch {
-        return [];
-      }
-    });
-  const plainText = clipboard.readText().trim();
-  if (plainText.startsWith('file://')) localImages.push(...plainText.split(/\r?\n/));
-
-  const localPaths = [...new Set(localImages
-    .map((entry) => entry.trim())
-    .filter((entry) => entry && entry !== 'copy' && entry !== 'cut' && !entry.startsWith('#'))
-    .flatMap((entry) => {
-      try {
-        const url = new URL(entry);
-        return url.protocol === 'file:' ? [fileURLToPath(url)] : [];
-      } catch {
-        return [];
-      }
-    })
-    .filter(isSupportedImagePath))];
-
-  if (localPaths.length > 0) {
-    const saved = await Promise.all(localPaths.map((sourcePath) =>
-      savePastedImageFile(currentDocument!.path, sourcePath),
-    ));
-    return {
-      canceled: false,
-      markdown: saved.map((image) => image.markdown).join('\n\n'),
-      relativePath: saved[0]?.markdownPath,
-    };
-  }
-
-  const image = clipboard.readImage();
-  if (image.isEmpty()) return { canceled: true };
-  const saved = await savePastedPng(currentDocument.path, image.toPNG());
-  return {
-    canceled: false,
-    markdown: saved.markdown,
-    relativePath: saved.markdownPath,
-  };
-}
-
-async function pickLinkTarget(documentPath: string): Promise<PickLinkTargetResult> {
-  if (!currentDocument || currentDocument.path !== documentPath || currentDocument.isUntitled) {
-    return { canceled: true };
-  }
-  const result = await dialog.showOpenDialog(mainWindow!, {
-    defaultPath: path.dirname(currentDocument.path),
-    properties: ['openFile'],
-    filters: [{ name: 'All files', extensions: ['*'] }],
-  });
-  const targetPath = result.filePaths[0];
-  if (result.canceled || !targetPath) return { canceled: true };
-  return {
-    canceled: false,
-    destination: markdownDestinationForFile(currentDocument.path, targetPath),
-    label: path.basename(targetPath),
-  };
-}
-
 async function waitForPrintablePreview(window: BrowserWindow) {
   await window.webContents.executeJavaScript(`new Promise((resolve) => {
     const started = Date.now();
@@ -993,22 +620,24 @@ async function waitForPrintablePreview(window: BrowserWindow) {
 }
 
 async function exportCurrentPdf(
+  state: WindowState,
   text: string,
   revision: number,
   documentPath: string,
 ): Promise<ExportPdfResult> {
-  if (!currentDocument || currentDocument.path !== documentPath) return { canceled: true };
-  const baseName = currentDocument.name.replace(/\.[^.]+$/, '') || 'document';
-  const result = await dialog.showSaveDialog(mainWindow!, {
+  const document = state.currentDocument;
+  if (!document || document.path !== documentPath) return { canceled: true };
+  const baseName = document.name.replace(/\.[^.]+$/, '') || 'document';
+  const result = await dialog.showSaveDialog(state.window, {
     defaultPath: path.join(
-      currentDocument.isUntitled ? app.getPath('documents') : path.dirname(currentDocument.path),
+      document.isUntitled ? app.getPath('documents') : path.dirname(document.path),
       `${baseName}.pdf`,
     ),
     filters: [{ name: 'PDF', extensions: ['pdf'] }],
   });
   if (result.canceled || !result.filePath) return { canceled: true };
 
-  const rendered = await renderExportTemplate(text, revision, documentPath);
+  const rendered = await renderExportTemplate(state, text, revision, documentPath);
   const printWindow = new BrowserWindow({
     show: false,
     width: 794,
@@ -1082,102 +711,6 @@ function setGlobalPreviewTheme(value: unknown) {
   }
 }
 
-function installMenu() {
-  const menu = Menu.buildFromTemplate([
-    {
-      id: 'application-menu-file',
-      label: 'File',
-      submenu: [
-        { id: 'menu-new-window', label: 'New Window', accelerator: 'CmdOrCtrl+Shift+N', click: () => createWindow() },
-        { id: 'menu-new-document', label: 'New', accelerator: 'CmdOrCtrl+N', click: () => sendCommand('new-document') },
-        { id: 'menu-open-document', label: 'Open…', accelerator: 'CmdOrCtrl+O', click: () => {
-          const state = focusedState();
-          if (state) void withWindowState(state, () => chooseAndOpen());
-        } },
-        { type: 'separator' },
-        { id: 'save', label: 'Save', accelerator: 'CmdOrCtrl+S', click: () => sendCommand('save') },
-        { id: 'menu-save-as', label: 'Save As…', accelerator: 'CmdOrCtrl+Shift+S', click: () => sendCommand('save-as') },
-        { id: 'menu-export-pdf', label: 'Export as PDF…', click: () => sendCommand('export-pdf') },
-        { type: 'separator' },
-        { id: 'menu-close-tab', label: 'Close Tab', accelerator: 'CmdOrCtrl+W', click: () => sendCommand('close-tab') },
-        { type: 'separator' },
-        { id: 'menu-quit', label: 'Quit', accelerator: 'CmdOrCtrl+Q', click: () => app.quit() },
-      ],
-    },
-    {
-      id: 'application-menu-view',
-      label: 'View',
-      submenu: [
-        { id: 'menu-toggle-surface', label: 'Toggle Viewer / Editor', accelerator: 'CmdOrCtrl+E', click: () => sendCommand('toggle-surface') },
-        { id: 'menu-next-tab', label: 'Next Tab', accelerator: 'Ctrl+Tab', click: () => sendCommand('next-tab') },
-        { id: 'menu-previous-tab', label: 'Previous Tab', accelerator: 'Ctrl+Shift+Tab', click: () => sendCommand('previous-tab') },
-        { type: 'separator' },
-        { id: 'preview-find', label: 'Find in Preview', accelerator: 'CmdOrCtrl+F', click: () => sendCommand('open-find') },
-        {
-          id: 'menu-theme',
-          label: 'Theme',
-          submenu: PREVIEW_THEMES.map((theme) => ({
-            id: `preview-theme-${theme.id}`,
-            label: theme.label,
-            type: 'radio' as const,
-            checked: theme.id === globalPreviewTheme,
-            click: () => setGlobalPreviewTheme(theme.id),
-          })),
-        },
-        { type: 'separator' },
-        { id: 'menu-reload', label: 'Reload', accelerator: 'CmdOrCtrl+R', click: () => focusedState()?.window.webContents.reload() },
-        { id: 'menu-toggle-devtools', label: 'Toggle Developer Tools', accelerator: 'CmdOrCtrl+Shift+I', click: () => focusedState()?.window.webContents.toggleDevTools() },
-        { type: 'separator' },
-        { id: 'menu-reset-zoom', label: 'Actual Size', accelerator: 'CmdOrCtrl+0', click: () => focusedState()?.window.webContents.setZoomLevel(0) },
-        { id: 'menu-zoom-in', label: 'Zoom In', accelerator: 'CmdOrCtrl+Plus', click: () => {
-          const contents = focusedState()?.window.webContents;
-          if (contents) contents.setZoomLevel(contents.getZoomLevel() + 0.5);
-        } },
-        { id: 'menu-zoom-out', label: 'Zoom Out', accelerator: 'CmdOrCtrl+-', click: () => {
-          const contents = focusedState()?.window.webContents;
-          if (contents) contents.setZoomLevel(contents.getZoomLevel() - 0.5);
-        } },
-      ],
-    },
-    {
-      id: 'application-menu-insert',
-      label: 'Insert',
-      submenu: [
-        { id: 'menu-insert-table', label: 'Table…', click: () => sendCommand('insert-table') },
-        { id: 'menu-insert-link', label: 'Link…', accelerator: 'CmdOrCtrl+K', click: () => sendCommand('insert-link') },
-      ],
-    },
-    {
-      id: 'application-menu-edit',
-      label: 'Edit',
-      submenu: [
-        { id: 'menu-undo', label: 'Undo', accelerator: 'CmdOrCtrl+Z', click: () => focusedState()?.window.webContents.undo() },
-        { id: 'menu-redo', label: 'Redo', accelerator: 'CmdOrCtrl+Shift+Z', click: () => focusedState()?.window.webContents.redo() },
-        { type: 'separator' },
-        { id: 'menu-cut', label: 'Cut', accelerator: 'CmdOrCtrl+X', click: () => focusedState()?.window.webContents.cut() },
-        { id: 'menu-copy', label: 'Copy', accelerator: 'CmdOrCtrl+C', click: () => focusedState()?.window.webContents.copy() },
-        { id: 'menu-paste', label: 'Paste', accelerator: 'CmdOrCtrl+V', click: () => focusedState()?.window.webContents.paste() },
-        { type: 'separator' },
-        { id: 'menu-select-all', label: 'Select All', accelerator: 'CmdOrCtrl+A', click: () => focusedState()?.window.webContents.selectAll() },
-      ],
-    },
-    {
-      id: 'application-menu-window',
-      label: 'Window',
-      submenu: [
-        { id: 'menu-minimize-window', label: 'Minimize', accelerator: 'CmdOrCtrl+M', click: () => focusedState()?.window.minimize() },
-        { id: 'menu-toggle-maximize-window', label: 'Toggle Maximize', click: () => {
-          const window = focusedState()?.window;
-          if (!window) return;
-          if (window.isMaximized()) window.unmaximize();
-          else window.maximize();
-        } },
-        { id: 'menu-close-window', label: 'Close Window', accelerator: 'CmdOrCtrl+Shift+W', click: () => focusedState()?.window.close() },
-      ],
-    },
-  ]);
-  Menu.setApplicationMenu(menu);
-}
 
 function createWindow(
   position: { x: number; y: number } | null = null,
@@ -1286,10 +819,7 @@ function createWindow(
       if (response === 1) {
         await Promise.all(state.rendererTabs
           .filter((tab) => tab.isUntitled)
-          .map((tab) => discardDraftBundle(
-            path.join(app.getPath('userData'), 'drafts'),
-            tab.path,
-          )));
+          .map((tab) => documents.discardDraft(tab.path)));
         state.closeAfterConfirmation = true;
         createdWindow.close();
         return;
@@ -1315,47 +845,7 @@ function createWindow(
   return createdWindow;
 }
 
-const APPLICATION_MENU_IDS = new Set([
-  'application-menu-file',
-  'application-menu-view',
-  'application-menu-insert',
-  'application-menu-edit',
-  'application-menu-window',
-]);
-
-function serializeMenuItems(items: readonly MenuItem[], parentId: string): ApplicationMenuEntry[] {
-  return items
-    .filter((item) => item.visible)
-    .map((item, index) => {
-      const type: ApplicationMenuEntry['type'] = item.submenu
-        ? 'submenu'
-        : item.type === 'separator' || item.type === 'checkbox' || item.type === 'radio'
-          ? item.type
-          : 'normal';
-      return {
-        id: item.id || `${parentId}-separator-${index}`,
-        label: item.label,
-        ...(item.accelerator ? { accelerator: String(item.accelerator) } : {}),
-        type,
-        enabled: item.enabled,
-        checked: item.checked,
-        ...(item.submenu
-          ? { submenu: serializeMenuItems(item.submenu.items, item.id || parentId) }
-          : {}),
-      };
-    });
-}
-
-function findApplicationMenuItem(items: readonly MenuItem[], id: string): MenuItem | null {
-  for (const item of items) {
-    if (item.id === id) return item;
-    if (item.submenu) {
-      const nested = findApplicationMenuItem(item.submenu.items, id);
-      if (nested) return nested;
-    }
-  }
-  return null;
-}
+// IPC endpoints are registered together so startup has one explicit boundary.
 
 function installIpc() {
   ipcMain.on('preview:create', (event, tabId: unknown) => {
@@ -1485,21 +975,14 @@ function installIpc() {
     );
   });
 
-  ipcMain.handle('menu:get', (event, menuId: unknown): ApplicationMenuEntry[] => {
+  ipcMain.handle('menu:get', (event, menuId: unknown) => {
     const state = stateForWebContentsId(event.sender.id);
-    if (!state || typeof menuId !== 'string' || !APPLICATION_MENU_IDS.has(menuId)) return [];
-    const item = Menu.getApplicationMenu()?.getMenuItemById(menuId);
-    return item?.submenu ? serializeMenuItems(item.submenu.items, menuId) : [];
+    return state ? applicationMenuEntries(menuId) : [];
   });
 
   ipcMain.on('menu:execute', (event, itemId: unknown) => {
     const state = stateForWebContentsId(event.sender.id);
-    const applicationMenu = Menu.getApplicationMenu();
-    if (!state || !applicationMenu || typeof itemId !== 'string') return;
-    const item = findApplicationMenuItem(applicationMenu.items, itemId);
-    if (!item?.click || item.submenu || item.type === 'separator') return;
-    selectWindowState(state);
-    item.click(item, state.window, { triggeredByAccelerator: false } as Electron.KeyboardEvent);
+    if (state) executeApplicationMenu(itemId, state.window);
   });
 
   ipcMain.handle('theme:get', (event): ThemeSnapshot => {
@@ -1517,13 +1000,11 @@ function installIpc() {
   ipcMain.handle('document:get', (event) => stateForWebContentsId(event.sender.id)?.currentDocument ?? null);
   ipcMain.handle('document:new', (event) => {
     const state = stateForWebContentsId(event.sender.id);
-    return state ? withWindowState(state, () => createNewDocument()) : null;
+    return state ? documents.newDocument(state) : null;
   });
   ipcMain.handle('document:activate', (event, { document, text, revision }) => {
     const state = stateForWebContentsId(event.sender.id);
-    return state
-      ? withWindowState(state, () => activateDocument(document, text, revision))
-      : document;
+    return state ? documents.activate(state, document, text, revision) : document;
   });
   ipcMain.on('tabs:update-state', (event, tabs: TabStateSummary[]) => {
     const state = stateForWebContentsId(event.sender.id);
@@ -1761,49 +1242,44 @@ function installIpc() {
   // 초기화하여 진행 중 Preview를 무효화한다.
   ipcMain.handle('document:open', (event) => {
     const state = stateForWebContentsId(event.sender.id);
-    return state ? withWindowState(state, () => chooseAndOpen(false)) : null;
+    return state ? documents.chooseAndOpen(state, false) : null;
   });
   ipcMain.on('document:update-text', (event, { text, revision }) => {
     const state = stateForWebContentsId(event.sender.id);
-    if (!state) return;
-    void withWindowState(state, () => {
-      if (currentDocument) currentDocument = applyTextRevision(currentDocument, text, revision);
-    });
+    if (state) documents.updateText(state, text, revision);
   });
   ipcMain.handle(
     'preview:prepare',
     (event, { tabId, text, revision, documentPath, themeId }) => {
       const state = stateForWebContentsId(event.sender.id);
       if (!state) throw new Error('The window no longer exists.');
-      return withWindowState(state, () => preparePreview(
-        String(tabId), text, revision, documentPath,
+      return preparePreview(
+        state, String(tabId), text, revision, documentPath,
         normalizePreviewTheme(themeId), event.sender.id,
-      ));
+      );
     },
   );
   ipcMain.handle('document:save', async (event, { text, revision }): Promise<SaveResult> => {
     const state = stateForWebContentsId(event.sender.id);
-    return state ? withWindowState(state, () => saveCurrentDocument(text, revision)) : { canceled: true };
+    return state ? documents.saveCurrent(state, text, revision) : { canceled: true };
   });
   ipcMain.handle('document:save-as', async (event, { text, revision }): Promise<SaveResult> => {
     const state = stateForWebContentsId(event.sender.id);
-    return state ? withWindowState(state, () => saveDocumentAs(text, revision)) : { canceled: true };
+    return state ? documents.saveAs(state, text, revision) : { canceled: true };
   });
   ipcMain.handle(
     'document:save-tab',
     async (event, { document, text, revision }): Promise<SaveResult> => {
       const state = stateForWebContentsId(event.sender.id);
       if (!state) return { canceled: true };
-      return withWindowState(state, async () => {
-      const wasCurrent = currentDocument?.path === document.path;
-      const result = await saveDocumentSnapshot(document, text, revision);
+      const wasCurrent = state.currentDocument?.path === document.path;
+      const result = await documents.saveSnapshot(state, document, text, revision);
       if (wasCurrent && !result.canceled && result.document) {
-        currentDocument = result.document;
-        activeRoot = path.dirname(currentDocument.path);
-        watchCurrentDocument();
+        state.currentDocument = result.document;
+        state.activeRoot = path.dirname(result.document.path);
+        documents.watch(state);
       }
       return result;
-      });
     },
   );
   ipcMain.handle('document:confirm-close', async (event, name: string): Promise<CloseDecision> => {
@@ -1820,11 +1296,7 @@ function installIpc() {
     return response === 2 ? 'save' : response === 1 ? 'discard' : 'cancel';
   });
   ipcMain.handle('document:discard', async (_event, document: DocumentSnapshot) => {
-    if (!document.isUntitled) return;
-    await discardDraftBundle(
-      path.join(app.getPath('userData'), 'drafts'),
-      document.path,
-    );
+    await documents.discard(document);
   });
   ipcMain.on('app:finish-window-close', (event, saved: boolean) => {
     const state = stateForWebContentsId(event.sender.id);
@@ -1834,32 +1306,25 @@ function installIpc() {
   });
   ipcMain.handle('document:export-pdf', (event, { text, revision, documentPath }) => {
     const state = stateForWebContentsId(event.sender.id);
-    return state
-      ? withWindowState(state, () => exportCurrentPdf(text, revision, documentPath))
-      : { canceled: true };
+    return state ? exportCurrentPdf(state, text, revision, documentPath) : { canceled: true };
   });
   ipcMain.handle('document:paste-clipboard-image', (event) => {
     const state = stateForWebContentsId(event.sender.id);
-    return state ? withWindowState(state, () => pasteClipboardImage()) : { canceled: true };
+    return state ? documents.pasteImage(state) : { canceled: true };
   });
   ipcMain.handle('document:pick-link-target', (event, documentPath: string) => {
     const state = stateForWebContentsId(event.sender.id);
-    return state
-      ? withWindowState(state, () => pickLinkTarget(documentPath))
-      : { canceled: true };
+    return state ? documents.pickLink(state, documentPath) : { canceled: true };
   });
   ipcMain.handle('document:reload', async (event) => {
     const state = stateForWebContentsId(event.sender.id);
     if (!state) return null;
-    return withWindowState(state, async () => {
-      if (!currentDocument || currentDocument.isUntitled) return currentDocument;
-      return openPath(currentDocument.path, false);
-    });
+    return documents.reload(state);
   });
   ipcMain.handle('document:open-link', async (event, href: string) => {
     const state = stateForWebContentsId(event.sender.id);
     if (!state) return;
-    return withWindowState(state, async () => {
+    return (async () => {
       let decodedHref: string;
       try {
         decodedHref = decodeURIComponent(String(href));
@@ -1880,8 +1345,8 @@ function installIpc() {
         if (/\.(?:md|markdown|mdown|mkdn|mkd|rmd|qmd|mdx)$/i.test(checked)) {
           // 자기 자신으로 가는 링크 때문에 저장하지 않은 현재 문서를 디스크
           // snapshot으로 덮어쓰지 않는다.
-          if (currentDocument && canonicalPath(currentDocument.path) === checked) return;
-          const document = await openPath(checked, false);
+          if (state.currentDocument && canonicalPath(state.currentDocument.path) === checked) return;
+          const document = await documents.open(state, checked, false);
           state.window.webContents.send('document:opened', document);
         } else {
           await shell.openPath(checked);
@@ -1896,7 +1361,7 @@ function installIpc() {
       } catch {
         // 상대 주소는 bridge에서 절대 주소로 바뀌어 와야 한다.
       }
-    });
+    })();
   });
 }
 
@@ -1919,7 +1384,7 @@ if (!hasLock) {
     const markdownPath = markdownPathFromArgs(argv);
     const state = focusedState();
     if (markdownPath && state) {
-      void withWindowState(state, () => openPath(path.resolve(markdownPath)));
+      void documents.open(state, path.resolve(markdownPath));
     }
     state?.window.show();
     state?.window.focus();
@@ -1945,14 +1410,21 @@ if (!hasLock) {
     });
     loadGlobalPreviewTheme();
     installIpc();
-    installMenu();
+    installApplicationMenu({
+      focusedState,
+      createWindow,
+      openDocument: (state) => documents.chooseAndOpen(state),
+      sendCommand,
+      setTheme: setGlobalPreviewTheme,
+      theme: () => globalPreviewTheme,
+    });
     // 조판 worker는 crossnote를 읽어 들이는 데만 0.6초를 쓴다. 첫 요청을
     // 기다렸다 fork하면 그 시간이 renderer 부팅 뒤에 그대로 붙는다. 여기서
     // 미리 띄우면 renderer가 뜨는 동안 나란히 준비된다.
     ensureRenderWorker();
     const markdownPath = markdownPathFromArgs(process.argv);
     const initialDocument = markdownPath
-      ? await readDocument(path.resolve(markdownPath))
+      ? await documents.read(path.resolve(markdownPath))
       : null;
     createWindow(null, initialDocument);
   });
