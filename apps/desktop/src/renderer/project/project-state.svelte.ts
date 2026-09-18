@@ -21,6 +21,8 @@ function restoredState(): {
   activeView: ProjectView;
   folder: ProjectFolder | null;
   expanded: string[];
+  searchQuery: string;
+  expandedSearchGroups: string[];
 } {
   try {
     const value = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? '{}') as Record<string, unknown>;
@@ -36,9 +38,20 @@ function restoredState(): {
         ? value.folder as ProjectFolder : null,
       expanded: Array.isArray(value.expanded)
         ? value.expanded.filter((path): path is string => typeof path === 'string') : [],
+      searchQuery: typeof value.searchQuery === 'string' ? value.searchQuery : '',
+      expandedSearchGroups: Array.isArray(value.expandedSearchGroups)
+        ? value.expandedSearchGroups.filter((path): path is string => typeof path === 'string') : [],
     };
   } catch {
-    return { visible: false, open: false, activeView: 'explorer', folder: null, expanded: [] };
+    return {
+      visible: false,
+      open: false,
+      activeView: 'explorer',
+      folder: null,
+      expanded: [],
+      searchQuery: '',
+      expandedSearchGroups: [],
+    };
   }
 }
 
@@ -51,8 +64,9 @@ export const project = $state({
   folder: restored.folder,
   entries: [] as VisibleProjectEntry[],
   expanded: restored.expanded,
-  searchQuery: '',
+  searchQuery: restored.searchQuery,
   searchResults: [] as ProjectSearchResult[],
+  expandedSearchGroups: restored.expandedSearchGroups,
   searching: false,
   git: null as GitSnapshot | null,
   gitDiff: null as GitDiff | null,
@@ -71,6 +85,8 @@ export function rememberProjectState() {
       activeView: project.activeView,
       folder: project.folder,
       expanded: project.expanded,
+      searchQuery: project.searchQuery,
+      expandedSearchGroups: project.expandedSearchGroups,
     }));
   } catch {
     // Session storage can be unavailable in hardened browser environments.

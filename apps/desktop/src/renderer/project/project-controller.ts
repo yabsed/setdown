@@ -99,6 +99,7 @@ export class ProjectController {
     project.folder = folder;
     rememberProjectState();
     await this.explorer.restore(folder);
+    this.searcher.restore();
     if (project.activeView === 'git') await this.sourceControl.refresh();
     this.resize();
   };
@@ -115,6 +116,7 @@ export class ProjectController {
 
   openSearchResult = (result: ProjectSearchResult): Promise<void> => this.searcher.open(result);
   search = (query: string): void => this.searcher.search(query);
+  toggleSearchGroup = (path: string): void => this.searcher.toggleGroup(path);
   contextChanged = (): void => this.searcher.contextChanged();
 
   filesChanged = (root: string): void => {

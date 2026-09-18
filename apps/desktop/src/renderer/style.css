@@ -493,11 +493,9 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 .project-search-box input:focus { border-color: var(--app-focus-ring); }
 .project-search-box input::-webkit-search-cancel-button { display: none; }
 .search-summary { min-height: 22px; padding: 2px 11px 5px; color: var(--app-subtle-text); font-size: 10px; }
-.project-results button {
+.search-file-heading, .search-result {
   display: flex;
-  flex-direction: column;
   width: 100%;
-  padding: 6px 10px 7px 13px;
   overflow: hidden;
   color: var(--app-text);
   border: 0;
@@ -505,19 +503,38 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
   text-align: left;
   cursor: default;
 }
-.project-results button:hover, .project-results button:focus-visible { background: var(--app-hover); outline: 0; }
-.result-title { display: flex; align-items: baseline; max-width: 100%; font-size: 11px; }
-.result-title strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
-.result-title small { color: var(--app-subtle-text); }
-.result-preview, .result-path { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.result-preview { margin-top: 2px; color: var(--app-muted-text); font-family: ui-monospace, monospace; font-size: 10px; }
+.search-file-heading:hover, .search-file-heading:focus-visible,
+.search-result:hover, .search-result:focus-visible { background: var(--app-hover); outline: 0; }
+.search-file-group { display: block; }
+.search-file-heading { align-items: center; height: 25px; padding: 0 9px 0 7px; gap: 4px; font-size: 11px; }
+.search-file-heading svg {
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  transition: transform 80ms ease;
+}
+.search-file-heading svg.expanded { transform: rotate(90deg); }
+.search-file-heading strong, .search-file-heading span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.search-file-heading strong { flex: 0 1 auto; font-weight: 600; }
+.search-file-heading span { flex: 1; min-width: 0; color: var(--app-subtle-text); font-size: 9px; }
+.search-file-heading small { margin-left: auto; color: var(--app-subtle-text); font-size: 9px; font-variant-numeric: tabular-nums; }
+.search-file-results { padding-bottom: 3px; }
+.search-result { align-items: baseline; min-height: 24px; padding: 4px 10px 4px 23px; gap: 7px; }
+.result-position { flex: 0 0 28px; overflow: hidden; color: var(--app-subtle-text); font-size: 9px; text-align: right; }
+.result-preview { min-width: 0; overflow: hidden; color: var(--app-muted-text); font-family: ui-monospace, monospace; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .result-preview mark {
   padding: 0;
   color: inherit;
   background: rgba(255, 210, 64, .58);
   border-radius: 1px;
 }
-.result-path { margin-top: 2px; color: var(--app-subtle-text); font-size: 9px; }
 .git-branch { display: flex; align-items: center; gap: 6px; min-height: 31px; padding: 0 11px; color: var(--app-muted-text); border-bottom: 1px solid var(--app-border); font-size: 11px; }
 .git-branch strong { min-width: 0; overflow: hidden; color: var(--app-text); text-overflow: ellipsis; white-space: nowrap; }
 .git-branch > span { margin-left: auto; color: var(--app-subtle-text); font-size: 10px; font-variant-numeric: tabular-nums; }

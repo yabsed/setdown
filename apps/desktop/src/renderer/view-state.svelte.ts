@@ -49,6 +49,7 @@ export type AppActions = {
   trashProjectEntry(path: string): Promise<void>;
   openProjectSearchResult(result: ProjectSearchResult): void;
   searchProject(query: string): void;
+  toggleProjectSearchGroup(path: string): void;
   refreshProjectGit(): void;
   reviewProjectGitChange(path: string, staged: boolean): void;
   closeProjectGitDiff(): void;

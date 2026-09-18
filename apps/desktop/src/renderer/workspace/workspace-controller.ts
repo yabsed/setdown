@@ -62,6 +62,7 @@ export function startWorkspace(desktop: DesktopPort) {
     trashProjectEntry: (path) => projects.trashEntry(path),
     openProjectSearchResult: (result) => void projects.openSearchResult(result),
     searchProject: (query) => projects.search(query),
+    toggleProjectSearchGroup: (path) => projects.toggleSearchGroup(path),
     refreshProjectGit: () => void projects.refreshGit(),
     reviewProjectGitChange: (path, staged) => void projects.reviewGitChange(path, staged),
     closeProjectGitDiff: () => projects.closeGitDiff(),

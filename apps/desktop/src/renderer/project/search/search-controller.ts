@@ -1,6 +1,6 @@
 import type { ProjectSearchDocument, ProjectSearchResult } from '../../../protocol/desktop-api';
 import type { DesktopPort } from '../../ports/desktop-port';
-import { project } from '../project-state.svelte';
+import { project, rememberProjectState } from '../project-state.svelte';
 
 type SearchTarget = Pick<
   ProjectSearchResult,
@@ -21,7 +21,9 @@ export class SearchController {
   constructor(private readonly options: Options) {}
 
   search = (query: string): void => {
+    if (query !== project.searchQuery) project.expandedSearchGroups = [];
     project.searchQuery = query;
+    rememberProjectState();
     this.highlight();
     window.clearTimeout(this.timer);
     if (!query.trim() || !project.folder) {
@@ -42,6 +44,20 @@ export class SearchController {
     if (project.searchQuery.trim()) this.search(project.searchQuery);
   };
 
+  restore = (): void => {
+    if (!project.searchQuery.trim() || !project.folder) return;
+    project.searching = true;
+    this.highlight();
+    void this.run(project.searchQuery);
+  };
+
+  toggleGroup = (path: string): void => {
+    project.expandedSearchGroups = project.expandedSearchGroups.includes(path)
+      ? project.expandedSearchGroups.filter((candidate) => candidate !== path)
+      : [...project.expandedSearchGroups, path];
+    rememberProjectState();
+  };
+
   highlight = (): void => {
     this.options.highlight(project.visible && project.open && project.activeView === 'search'
       ? project.searchQuery.trim() : '');
@@ -50,7 +66,9 @@ export class SearchController {
   clear = (): void => {
     project.searchQuery = '';
     project.searchResults = [];
+    project.expandedSearchGroups = [];
     project.searching = false;
+    rememberProjectState();
     this.options.highlight('');
     void this.options.desktop.searchProject({ query: '', documents: [] });
   };
