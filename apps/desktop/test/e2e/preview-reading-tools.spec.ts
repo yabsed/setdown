@@ -39,7 +39,7 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     await expect(window.locator('.reader-toolbar')).toHaveCount(0);
     await expect(window.locator('.product-titlebar')).toBeVisible();
     await expect(window.locator('.application-menu button')).toHaveText([
-      'File', 'View', 'Insert', 'Edit', 'Window',
+      'File', 'View', 'Edit', 'Window',
     ]);
     expect(await application.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0]?.isMenuBarVisible())).toBe(false);

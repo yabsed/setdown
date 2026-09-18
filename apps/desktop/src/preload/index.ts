@@ -82,8 +82,6 @@ const api: MarkTexApi = {
   exportPdf: (text, revision, documentPath) =>
     ipcRenderer.invoke('document:export-pdf', { text, revision, documentPath }),
   pasteClipboardImage: () => ipcRenderer.invoke('document:paste-clipboard-image'),
-  pickLinkTarget: (documentPath) =>
-    ipcRenderer.invoke('document:pick-link-target', documentPath),
   openLink: (href) => ipcRenderer.invoke('document:open-link', href),
   onDocumentOpened: (listener) =>
     subscribe<DocumentSnapshot>('document:opened', listener),

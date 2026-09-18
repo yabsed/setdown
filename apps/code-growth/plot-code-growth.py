@@ -198,25 +198,25 @@ def save_detailed(records: list[dict[str, object]]) -> None:
     growth_axis = figure.add_subplot(grid[0])
     delta_axis = figure.add_subplot(grid[1], sharex=growth_axis)
     draw_growth(growth_axis, times, lines)
-    growth_axis.set_ylabel("전체 코드 줄 수", fontsize=10, labelpad=14)
+    growth_axis.set_ylabel("Total lines of code", fontsize=10, labelpad=14)
     growth_axis.tick_params(axis="x", labelbottom=False)
 
     draw_deltas(delta_axis, times, deltas)
-    delta_axis.set_ylabel("커밋별 증감", fontsize=10, labelpad=14)
+    delta_axis.set_ylabel("Change per commit", fontsize=10, labelpad=14)
 
-    figure.text(0.075, 0.935, f"Setdown의 첫 {hours}시간", fontsize=25, weight="bold")
+    figure.text(0.075, 0.935, f"Setdown's first {hours} hours", fontsize=25, weight="bold")
     figure.text(
         0.075,
         0.893,
-        "실제 커밋 시각에 따른 저장소 코드의 성장과 커밋별 순변화",
+        "Repository growth and net change by actual commit time",
         fontsize=11.5,
         color=MUTED,
     )
 
     metrics = (
-        ("개발 기간", f"{hours}시간 {minutes}분"),
-        ("커밋", f"{len(records)}개"),
-        ("최종 코드", f"{lines[-1]:,}줄"),
+        ("Development time", f"{hours}h {minutes}m"),
+        ("Commits", f"{len(records)}"),
+        ("Final size", f"{lines[-1]:,} lines"),
     )
     for x_position, (label, value) in zip((0.64, 0.76, 0.86), metrics):
         figure.text(x_position, 0.934, label, fontsize=9.5, color=MUTED)
@@ -225,7 +225,7 @@ def save_detailed(records: list[dict[str, object]]) -> None:
     figure.text(
         0.985,
         0.025,
-        "포함: 앱 소스 · 테스트 · 빌드 설정   |   제외: README · 보고서 · lockfile · 자산 · vendor",
+        "Included: app source · tests · build config   |   Excluded: README · reports · lockfiles · assets · vendor",
         ha="right",
         fontsize=8.5,
         color=MUTED,

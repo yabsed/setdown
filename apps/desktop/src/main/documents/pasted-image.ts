@@ -50,7 +50,7 @@ async function savePastedAsset(
         markdownPath: relativePath,
         // angle destination은 공백을 보존하면서 Markdown parser가 실제 파일
         // 경로를 URL 인코딩된 별도 파일명으로 오해하지 않게 한다.
-        markdown: `![붙여넣은 이미지](<${relativePath}>)`,
+        markdown: `![Pasted image](<${relativePath}>)`,
       };
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
@@ -77,10 +77,10 @@ export async function savePastedImageFile(
   now = new Date(),
 ): Promise<SavedPastedImage> {
   if (!isSupportedImagePath(sourcePath)) {
-    throw new Error('지원하지 않는 이미지 파일 형식입니다.');
+    throw new Error('This image format is not supported.');
   }
   const sourceStats = await fs.stat(sourcePath);
-  if (!sourceStats.isFile()) throw new Error('붙여넣을 이미지가 파일이 아닙니다.');
+  if (!sourceStats.isFile()) throw new Error('The pasted image is not a file.');
   const extension = path.extname(sourcePath).toLowerCase();
   return savePastedAsset(
     documentPath,

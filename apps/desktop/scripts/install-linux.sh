@@ -13,7 +13,7 @@ npx electron-builder --linux dir
 
 source_dir="$project_dir/release/linux-unpacked"
 if [[ ! -x "$source_dir/setdown" ]]; then
-  echo "Setdown 실행 파일을 만들지 못했습니다: $source_dir/setdown" >&2
+  echo "Could not build the Setdown executable: $source_dir/setdown" >&2
   exit 1
 fi
 
@@ -40,6 +40,6 @@ update-desktop-database "$applications_dir"
 xdg-mime default setdown.desktop text/markdown
 xdg-mime default setdown.desktop text/x-markdown
 
-echo "Setdown을 설치했습니다."
-echo "앱 위치: $app_dir"
-echo "GNOME 앱 ID: setdown.desktop"
+echo "Setdown was installed successfully."
+echo "Application directory: $app_dir"
+echo "GNOME application ID: setdown.desktop"

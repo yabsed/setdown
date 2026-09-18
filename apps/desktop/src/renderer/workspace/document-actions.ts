@@ -68,7 +68,7 @@ export class DocumentActions {
       this.options.renderTabs();
       this.options.desktop.finishWindowClose(true);
     } catch (error) {
-      window.alert(`문서를 저장하지 못했습니다.\n${error instanceof Error ? error.message : String(error)}`);
+      window.alert(`Could not save the document.\n${error instanceof Error ? error.message : String(error)}`);
       this.options.desktop.finishWindowClose(false);
     }
   }
@@ -89,7 +89,7 @@ export class DocumentActions {
     try {
       await this.options.desktop.exportPdf(this.options.text(tab), tab.revision, tab.document.path);
     } catch (error) {
-      window.alert(`PDF를 내보내지 못했습니다.\n${error instanceof Error ? error.message : String(error)}`);
+      window.alert(`Could not export the PDF.\n${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

@@ -54,7 +54,7 @@ export async function saveDraftBundle(
   text: string,
 ) {
   if (!isDraftDocumentPath(draftsRoot, sourceDocumentPath)) {
-    throw new Error('임시 문서가 Setdown draft 디렉터리 밖에 있습니다.');
+    throw new Error('The temporary document is outside the Setdown drafts directory.');
   }
   const sourceRoot = path.dirname(sourceDocumentPath);
   const sourceAssets = assetDirectoryFor(sourceDocumentPath);

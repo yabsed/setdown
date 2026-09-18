@@ -15,8 +15,6 @@ type Options = {
   changed: (tab: WorkspaceTab, text: string) => void;
   scrolled: () => void;
   escape: () => void;
-  insertLink: () => void;
-  insertTable: () => void;
 };
 
 export class MonacoEditor {
@@ -172,19 +170,6 @@ export class MonacoEditor {
   private installBindings(api: typeof Monaco, editor: Monaco.editor.IStandaloneCodeEditor): void {
     editor.onDidScrollChange((event) => {
       if (event.scrollTopChanged) this.options.scrolled();
-    });
-    editor.addAction({
-      id: 'setdown.insertLink',
-      label: '링크 삽입',
-      keybindings: [api.KeyMod.CtrlCmd | api.KeyCode.KeyK],
-      contextMenuGroupId: '1_modification',
-      run: this.options.insertLink,
-    });
-    editor.addAction({
-      id: 'setdown.insertTable',
-      label: '표 삽입',
-      contextMenuGroupId: '1_modification',
-      run: this.options.insertTable,
     });
     editor.addCommand(
       api.KeyCode.Escape,

@@ -6,13 +6,11 @@ import { fileURLToPath } from 'node:url';
 import type {
   DocumentSnapshot,
   PasteImageResult,
-  PickLinkTargetResult,
   SaveResult,
 } from '../../protocol/desktop-api';
 import { applyTextRevision } from '../../core/document/document-state';
 import { discardDraftBundle, saveDraftBundle } from './draft-assets';
 import { isSupportedImagePath, savePastedImageFile, savePastedPng } from './pasted-image';
-import { markdownDestinationForFile } from './markdown-link';
 import { atomicWrite, canonicalPath, diskVersion, sameDiskVersion } from './file-system';
 import type { WindowState } from '../windows/window-state';
 
@@ -143,9 +141,9 @@ export class DocumentManager {
     }
     const { response } = await dialog.showMessageBox(state.window, {
       type: 'warning',
-      message: '파일이 다른 프로그램에서 변경되었습니다.',
-      detail: '현재 편집 내용을 덮어쓰시겠습니까?',
-      buttons: ['취소', '덮어쓰기'],
+      message: 'This file was changed by another application.',
+      detail: 'Do you want to overwrite it with your current changes?',
+      buttons: ['Cancel', 'Overwrite'],
       defaultId: 0,
       cancelId: 0,
     });
@@ -288,25 +286,6 @@ export class DocumentManager {
     if (image.isEmpty()) return { canceled: true };
     const saved = await savePastedPng(document.path, image.toPNG());
     return { canceled: false, markdown: saved.markdown, relativePath: saved.markdownPath };
-  }
-
-  async pickLink(state: WindowState, documentPath: string): Promise<PickLinkTargetResult> {
-    const document = state.currentDocument;
-    if (!document || document.path !== documentPath || document.isUntitled) {
-      return { canceled: true };
-    }
-    const result = await dialog.showOpenDialog(state.window, {
-      defaultPath: path.dirname(document.path),
-      properties: ['openFile'],
-      filters: [{ name: 'All files', extensions: ['*'] }],
-    });
-    const target = result.filePaths[0];
-    if (result.canceled || !target) return { canceled: true };
-    return {
-      canceled: false,
-      destination: markdownDestinationForFile(document.path, target),
-      label: path.basename(target),
-    };
   }
 
   async reload(state: WindowState) {

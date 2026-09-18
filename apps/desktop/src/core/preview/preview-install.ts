@@ -120,7 +120,7 @@ export function createLeanPreviewTemplate(
     ? `<script type="application/json" id="${DEFERRED_HTML_SCRIPT_ID}">${serializeDeferredBlocks(partition.deferredBlocks)}</script>`
     : '';
   return `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 ${head}
 <template id="${INITIAL_HTML_TEMPLATE_ID}">${partition.eagerHtml}</template>

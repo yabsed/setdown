@@ -54,14 +54,14 @@ test('uses the Setdown close prompt for dirty tabs and windows', async () => {
     await window.locator('.tab-close').click();
     const prompt = window.locator('.close-prompt-dialog');
     await expect(prompt).toBeVisible();
-    await expect(prompt.getByRole('heading')).toHaveText('변경 내용 저장');
+    await expect(prompt.getByRole('heading')).toHaveText('Save Changes');
     const promptBounds = await prompt.boundingBox();
     expect(promptBounds?.width).toBeLessThanOrEqual(402);
     expect(promptBounds?.height).toBeLessThan(220);
     await expect(prompt.locator('.close-document-list')).toHaveCount(0);
-    await expect(prompt.getByRole('button', { name: '저장', exact: true })).toBeVisible();
-    await expect(prompt.getByRole('button', { name: '저장 안 함', exact: true })).toBeVisible();
-    await expect(prompt.getByRole('button', { name: '취소' }).first()).toBeVisible();
+    await expect(prompt.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
+    await expect(prompt.getByRole('button', { name: "Don't Save", exact: true })).toBeVisible();
+    await expect(prompt.getByRole('button', { name: 'Cancel' }).first()).toBeVisible();
     await expect(prompt.locator('.close-discard')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     await prompt.locator('.close-cancel').click();
     await expect(prompt).toBeHidden();

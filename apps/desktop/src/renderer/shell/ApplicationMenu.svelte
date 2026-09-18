@@ -11,7 +11,7 @@
     execute: (itemId: string) => void;
   } = $props();
 
-  const menus = ['File', 'View', 'Insert', 'Edit', 'Window'] as const;
+  const menus = ['File', 'View', 'Edit', 'Window'] as const;
   let root: HTMLElement;
   let popup: HTMLElement;
   let submenuPopup: HTMLElement;
@@ -89,7 +89,7 @@
 
 <svelte:window onpointerdown={outside} onkeydown={keydown} />
 
-<nav bind:this={root} class="application-menu" aria-label="애플리케이션 메뉴">
+<nav bind:this={root} class="application-menu" aria-label="Application menu">
   {#each menus as label}
     <button
       type="button"

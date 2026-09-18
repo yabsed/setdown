@@ -16,7 +16,6 @@ type MenuContext = {
 const TOP_LEVEL_IDS = new Set([
   'application-menu-file',
   'application-menu-view',
-  'application-menu-insert',
   'application-menu-edit',
   'application-menu-window',
 ]);
@@ -110,12 +109,6 @@ export function installApplicationMenu(context: MenuContext) {
           const target = contents();
           if (target) target.setZoomLevel(target.getZoomLevel() - 0.5);
         } },
-      ],
-    },
-    {
-      id: 'application-menu-insert', label: 'Insert', submenu: [
-        { id: 'menu-insert-table', label: 'Table…', click: () => command('insert-table') },
-        { id: 'menu-insert-link', label: 'Link…', accelerator: 'CmdOrCtrl+K', click: () => command('insert-link') },
       ],
     },
     {

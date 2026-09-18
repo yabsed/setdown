@@ -24,30 +24,30 @@
   }
 </script>
 
-<section class="viewer-surface" aria-label="렌더링된 Markdown">
+<section class="viewer-surface" aria-label="Rendered Markdown">
   <div class="reader-body">
     <div class="preview-frames">
       <div class="preview-search" role="search" hidden={!view.findOpen || view.surface !== 'viewer'}>
         <input bind:this={findInput} bind:value={view.findQuery} type="search" autocomplete="off"
-          spellcheck="false" aria-label="렌더링된 문서에서 찾기" placeholder="찾기…"
+          spellcheck="false" aria-label="Find in rendered document" placeholder="Find…"
           oninput={() => actions.find(view.findQuery)} onkeydown={findKey} />
         <span class="find-count" aria-live="polite">
           {view.findMatches ? `${view.findActive} / ${view.findMatches}` : '0 / 0'}
         </span>
-        <button class="find-previous" type="button" aria-label="이전 검색 결과"
+        <button class="find-previous" type="button" aria-label="Previous match"
           onclick={() => actions.find(view.findQuery, 'backward', true)}>↑</button>
-        <button class="find-next" type="button" aria-label="다음 검색 결과"
+        <button class="find-next" type="button" aria-label="Next match"
           onclick={() => actions.find(view.findQuery, 'forward', true)}>↓</button>
-        <button class="find-close" type="button" aria-label="검색 닫기" onclick={actions.closeFind}>×</button>
+        <button class="find-close" type="button" aria-label="Close search" onclick={actions.closeFind}>×</button>
       </div>
     </div>
-    <aside class="toc-panel" aria-label="문서 목차" hidden={!view.tocOpen || view.surface !== 'viewer'}>
+    <aside class="toc-panel" aria-label="Document outline" hidden={!view.tocOpen || view.surface !== 'viewer'}>
       <div class="toc-panel-title">
-        <strong>목차</strong><span class="toc-count">{view.headings.length || ''}</span>
+        <strong>Outline</strong><span class="toc-count">{view.headings.length || ''}</span>
       </div>
       <nav class="toc-list">
         {#if view.headings.length === 0}
-          <p class="toc-empty">이 문서에는 제목이 없습니다.</p>
+          <p class="toc-empty">This document has no headings.</p>
         {:else}
           {#each view.headings as heading (heading.id)}
             <button class="toc-item" class:is-active={heading.id === view.activeHeadingId}
@@ -60,15 +60,15 @@
     </aside>
   </div>
   <div class="render-state" hidden={!view.rendering} data-variant={view.renderVariant}>
-    <div class="spinner"></div><span>문서를 조판하고 있습니다…</span>
+    <div class="spinner"></div><span>Typesetting document…</span>
   </div>
   <div class="render-error" hidden={!view.renderError} data-variant={view.renderErrorVariant}>
-    <strong>문서를 렌더링하지 못했습니다.</strong>
+    <strong>Could not render the document.</strong>
     <span>{view.renderError}</span>
-    <button type="button" onclick={actions.showRenderError}>원문에서 확인</button>
+    <button type="button" onclick={actions.showRenderError}>View Source</button>
   </div>
 </section>
 
-<section class="editor-surface" aria-label="Markdown 원문 편집기">
+<section class="editor-surface" aria-label="Markdown source editor">
   <div class="editor-host"></div>
 </section>

@@ -27,7 +27,7 @@ describe('savePastedPng', () => {
 
     expect(saved.markdownPath).toBe('My notes.assets/pasted-20260911-070809.png');
     expect(saved.markdown).toBe(
-      '![붙여넣은 이미지](<My notes.assets/pasted-20260911-070809.png>)',
+      '![Pasted image](<My notes.assets/pasted-20260911-070809.png>)',
     );
     expect(new Uint8Array(await fs.readFile(saved.absolutePath))).toEqual(png);
   });

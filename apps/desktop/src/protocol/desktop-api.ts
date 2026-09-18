@@ -28,12 +28,6 @@ export type PasteImageResult = {
   relativePath?: string;
 };
 
-export type PickLinkTargetResult = {
-  canceled: boolean;
-  destination?: string;
-  label?: string;
-};
-
 export type TabStateSummary = {
   name: string;
   path: string;
@@ -105,8 +99,6 @@ export type AppCommand =
   | 'close-tab'
   | 'next-tab'
   | 'previous-tab'
-  | 'insert-table'
-  | 'insert-link'
   | 'open-find'
   | 'escape'
   | 'toggle-surface';
@@ -162,7 +154,6 @@ export type MarkTexApi = {
   reloadDocument(): Promise<DocumentSnapshot | null>;
   exportPdf(text: string, revision: number, documentPath: string): Promise<ExportPdfResult>;
   pasteClipboardImage(): Promise<PasteImageResult>;
-  pickLinkTarget(documentPath: string): Promise<PickLinkTargetResult>;
   openLink(href: string): Promise<void>;
   onDocumentOpened(listener: (document: DocumentSnapshot) => void): () => void;
   onExternalChange(listener: (change: ExternalChange) => void): () => void;

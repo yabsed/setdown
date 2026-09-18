@@ -30,13 +30,6 @@ export type AppActions = {
   newDocument(): void;
   openDocument(): void;
   toggleSurface(): void;
-  openTable(): void;
-  openLink(): void;
-  submitTable(): void;
-  closeTable(): void;
-  submitLink(): void;
-  closeLink(): void;
-  pickLinkFile(): void;
   toggleToc(): void;
   find(query: string, direction?: 'forward' | 'backward', next?: boolean): void;
   closeFind(): void;
