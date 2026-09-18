@@ -27,7 +27,7 @@ export class ProjectController {
   }
 
   toggle = () => {
-    project.open = !project.open;
+    project.visible = !project.visible;
     rememberProjectState();
     this.highlight();
     this.resize();
@@ -40,6 +40,7 @@ export class ProjectController {
       this.highlight();
       return this.resize();
     }
+    project.visible = true;
     project.open = true;
     project.activeView = view;
     project.error = '';
@@ -53,6 +54,7 @@ export class ProjectController {
     const folder = await this.options.desktop.chooseProjectFolder();
     if (!folder) return;
     project.folder = folder;
+    project.visible = true;
     project.open = true;
     project.activeView = 'explorer';
     project.searchQuery = '';
@@ -194,7 +196,7 @@ export class ProjectController {
   }
 
   private highlight() {
-    this.options.highlight(project.open && project.activeView === 'search'
+    this.options.highlight(project.visible && project.open && project.activeView === 'search'
       ? project.searchQuery.trim() : '');
   }
 }

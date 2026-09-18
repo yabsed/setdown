@@ -17,22 +17,25 @@
   }
 </script>
 
-<aside class="project-sidebar" aria-label="Folder tools" hidden={!project.open}>
+<aside class="project-sidebar" class:is-collapsed={!project.open} aria-label="Folder tools" hidden={!project.visible}>
   <nav class="activity-bar" aria-label="Folder views">
-    <button type="button" class:is-active={project.activeView === 'explorer'}
-      aria-label="Explorer" title="Explorer" onclick={() => select('explorer')}>
+    <button type="button" class:is-active={project.open && project.activeView === 'explorer'}
+      aria-label="Explorer" aria-expanded={project.open && project.activeView === 'explorer'}
+      title="Explorer" onclick={() => select('explorer')}>
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M4.5 3.5h9l3 3v12h-12v-15Zm9 0v3h3M7.5 7h-5v13.5h11v-2"/>
       </svg>
     </button>
-    <button type="button" class:is-active={project.activeView === 'search'}
-      aria-label="Search" title="Search" onclick={() => select('search')}>
+    <button type="button" class:is-active={project.open && project.activeView === 'search'}
+      aria-label="Search" aria-expanded={project.open && project.activeView === 'search'}
+      title="Search" onclick={() => select('search')}>
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/>
       </svg>
     </button>
-    <button type="button" class:is-active={project.activeView === 'git'}
-      aria-label="Source Control" title="Source Control" onclick={() => select('git')}>
+    <button type="button" class:is-active={project.open && project.activeView === 'git'}
+      aria-label="Source Control" aria-expanded={project.open && project.activeView === 'git'}
+      title="Source Control" onclick={() => select('git')}>
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="8" r="2"/>
         <path d="M6 7v10M8 6.5c4.5 0 2.5 5.5 8 3"/>
@@ -40,7 +43,7 @@
     </button>
   </nav>
 
-  <section class="side-view" aria-label={project.activeView}>
+  <section class="side-view" aria-label={project.activeView} hidden={!project.open}>
     <header class="side-view-title">
       <span>{project.activeView === 'explorer' ? 'EXPLORER' : project.activeView === 'search' ? 'SEARCH' : 'SOURCE CONTROL'}</span>
       {#if project.activeView === 'explorer'}
@@ -142,7 +145,7 @@
     {#if project.error}<p class="project-error">{project.error}</p>{/if}
   </section>
   <button class="panel-resize-handle panel-resize-right" type="button"
-    aria-label="Resize Folder Tools"
+    aria-label="Resize Folder Tools" hidden={!project.open}
     onpointerdown={(event) => startPanelResize(event, resize)}
     onkeydown={(event) => resizePanelWithKeyboard(event, resize)}></button>
 </aside>

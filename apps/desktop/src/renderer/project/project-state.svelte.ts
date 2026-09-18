@@ -15,6 +15,7 @@ export type VisibleProjectEntry = ProjectEntry & {
 const STORAGE_KEY = 'setdown:folder-tools';
 
 function restoredState(): {
+  visible: boolean;
   open: boolean;
   activeView: ProjectView;
   folder: ProjectFolder | null;
@@ -25,6 +26,7 @@ function restoredState(): {
     const activeView = ['explorer', 'search', 'git'].includes(String(value.activeView))
       ? value.activeView as ProjectView : 'explorer';
     return {
+      visible: typeof value.visible === 'boolean' ? value.visible : value.open === true,
       open: value.open === true,
       activeView,
       folder: value.folder && typeof value.folder === 'object'
@@ -35,13 +37,14 @@ function restoredState(): {
         ? value.expanded.filter((path): path is string => typeof path === 'string') : [],
     };
   } catch {
-    return { open: false, activeView: 'explorer', folder: null, expanded: [] };
+    return { visible: false, open: false, activeView: 'explorer', folder: null, expanded: [] };
   }
 }
 
 const restored = restoredState();
 
 export const project = $state({
+  visible: restored.visible,
   open: restored.open,
   activeView: restored.activeView,
   folder: restored.folder,
@@ -58,6 +61,7 @@ export const project = $state({
 export function rememberProjectState() {
   try {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+      visible: project.visible,
       open: project.open,
       activeView: project.activeView,
       folder: project.folder,

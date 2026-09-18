@@ -279,6 +279,8 @@ button { font: inherit; }
   z-index: 18;
 }
 .project-sidebar[hidden] { display: none; }
+.project-sidebar.is-collapsed { width: 48px; }
+.side-view[hidden], .project-sidebar .panel-resize-handle[hidden] { display: none; }
 .activity-bar {
   flex: 0 0 48px;
   width: 48px;
