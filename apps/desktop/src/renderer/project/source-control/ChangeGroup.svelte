@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { GitChange } from '../../../protocol/desktop-api';
+  import { view } from '../../view-state.svelte';
   import { project } from '../project-state.svelte';
 
   let {
@@ -10,6 +11,7 @@
     discard,
     review,
     open,
+    unsavedHint = false,
   }: {
     title: string;
     changes: GitChange[];
@@ -18,7 +20,12 @@
     discard?: (paths: string[]) => void;
     review(path: string): void;
     open(path: string): void;
+    unsavedHint?: boolean;
   } = $props();
+
+  let unsavedPaths = $derived(new Set(
+    view.tabs.filter((tab) => tab.dirty).map((tab) => tab.path),
+  ));
 
   const markdown = (filePath: string) => /\.(?:md|markdown|mdown|mkdn|mkd|rmd|qmd|mdx)$/i.test(filePath);
   const base = (candidate: string) => candidate.split(/[\\/]/).at(-1) ?? candidate;
@@ -54,6 +61,9 @@
             {#if markdown(change.path)}<button type="button" title="Open File" aria-label={`Open ${change.path}`}
               onclick={() => open(change.filePath)}>↗</button>{/if}
           </div>
+          {#if unsavedHint && unsavedPaths.has(change.filePath)}
+            <i class="unsaved-dot" title="Unsaved edits open — this review shows the Buffer, git diff shows the saved file.">•</i>
+          {/if}
           <b class:is-conflict={change.conflict}>{change.status}</b>
         </div>
       {/each}

@@ -278,7 +278,9 @@ export function startWorkspace(desktop: DesktopPort) {
   function gitDiffName() {
     const filePath = project.gitDiff?.filePath ?? project.gitDiffTarget?.filePath ?? 'Working Tree';
     const name = filePath.split(/[\\/]/).at(-1) ?? filePath;
-    return `${name} (${project.gitDiff?.staged ? 'Index' : 'Working Tree'})`;
+    const staged = project.gitDiff?.staged ?? project.gitDiffTarget?.staged ?? false;
+    const side = staged ? 'Index' : project.gitDiffIncludesUnsaved ? 'Buffer' : 'Working Tree';
+    return `${name} (${side})`;
   }
 
   async function closeGitDiff() {

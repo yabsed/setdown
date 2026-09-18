@@ -115,7 +115,13 @@ export type GitDiff = {
   originalText: string | null;
   modifiedText: string | null;
   originalLabel: 'EMPTY' | 'HEAD' | 'INDEX';
-  modifiedLabel: 'INDEX' | 'WORKTREE';
+  /**
+   * Right-hand stage of the comparison. The main process only emits INDEX or
+   * WORKTREE (saved disk bytes, the `git diff` view). The renderer resolves
+   * BUFFER when an open editor holds unsaved content for the same file, which
+   * is why a Changes review can legitimately differ from `git diff`.
+   */
+  modifiedLabel: 'INDEX' | 'WORKTREE' | 'BUFFER';
   hunks: GitDiffHunk[];
 };
 

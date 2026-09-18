@@ -6,9 +6,12 @@
   const base = (candidate: string) => candidate.split(/[\\/]/).at(-1) ?? candidate;
   let diffOpen = $derived(!!project.gitDiff || !!project.gitDiffTarget || project.gitDiffLoading);
   let diffPath = $derived(project.gitDiff?.filePath ?? project.gitDiffTarget?.filePath ?? 'Changes');
-  let diffSide = $derived(project.gitDiff?.modifiedLabel
-    ?? (project.gitDiffTarget?.staged ? 'INDEX' : 'WORKTREE'));
-  let diffTitle = $derived(`${base(diffPath)} (${diffSide === 'INDEX' ? 'Index' : 'Working Tree'})`);
+  let diffStaged = $derived(project.gitDiff?.staged ?? project.gitDiffTarget?.staged ?? false);
+  let diffSide = $derived(diffStaged ? 'INDEX'
+    : project.gitDiffIncludesUnsaved ? 'BUFFER'
+      : project.gitDiff?.modifiedLabel ?? 'WORKTREE');
+  let diffTitle = $derived(`${base(diffPath)} (${diffSide === 'INDEX' ? 'Index'
+    : diffSide === 'BUFFER' ? 'Buffer' : 'Working Tree'})`);
 </script>
 
 <nav class="tab-strip" aria-label="Open documents">

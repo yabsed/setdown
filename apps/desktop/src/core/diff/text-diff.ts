@@ -5,14 +5,21 @@ import {
   cleanupSemantic,
   makeDiff,
 } from '@sanity/diff-match-patch';
-import type { GitDiffHunk } from '../../protocol/desktop-api';
+
+/** Changed line range. Mirrors the transferable hunk shape without importing IPC layers. */
+export type TextDiffHunk = {
+  oldStart: number;
+  oldLines: number;
+  newStart: number;
+  newLines: number;
+};
 
 const lineBreaks = (text: string) => text.match(/\n/g)?.length ?? 0;
 
 /** Uses the diff engine to map an in-memory editor buffer to rendered source-line hunks. */
-export function textDiffHunks(original: string, modified: string): GitDiffHunk[] {
+export function textDiffHunks(original: string, modified: string): TextDiffHunk[] {
   if (original === modified) return [];
-  const hunks: GitDiffHunk[] = [];
+  const hunks: TextDiffHunk[] = [];
   let oldLine = 1;
   let newLine = 1;
   let active: {

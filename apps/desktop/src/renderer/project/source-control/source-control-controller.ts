@@ -8,6 +8,7 @@ import type {
   PreviewMessage,
 } from '../../../protocol/desktop-api';
 import { textDiffHunks } from '../../../core/diff/text-diff';
+import { resolveUnstagedComparison } from '../../../core/git/four-stage';
 import type { PreviewThemeId } from '../../../core/preview/preview-preferences';
 import type { DesktopPort } from '../../ports/desktop-port';
 import { project } from '../project-state.svelte';
@@ -57,6 +58,7 @@ export class SourceControlController {
       gitDiffWorkingText: '',
       gitDiffExpectedText: saved.expectedText,
       gitDiffDirty: false,
+      gitDiffIncludesUnsaved: false,
       gitDiffSaving: false,
     });
     project.error = '';
@@ -71,6 +73,7 @@ export class SourceControlController {
       project.gitDiffExpectedText = expectedText;
       project.gitDiffWorkingText = restoreDraft ? saved.workingText! : diff.modifiedText ?? '';
       project.gitDiffDirty = restoreDraft && saved.workingText !== expectedText;
+      this.syncUnsavedFlag(diff);
       project.gitDiffMode = renderable ? saved.mode : 'source';
       if (project.gitDiffDirty && diff.modifiedText !== expectedText) {
         project.error = 'The file changed on disk while Setdown reloaded. Your Working Tree edit was restored without overwriting it.';
@@ -102,6 +105,7 @@ export class SourceControlController {
     if (project.gitDiffWorkingText === text) return;
     project.gitDiffWorkingText = text;
     project.gitDiffDirty = text !== (project.gitDiffExpectedText ?? diff.modifiedText);
+    this.syncUnsavedFlag(diff);
     project.gitDiffPreviewReady = false;
     this.publishReview();
   };
@@ -118,6 +122,7 @@ export class SourceControlController {
       project.gitDiffWorkingText = diff.modifiedText ?? '';
       project.gitDiffExpectedText = diff.modifiedText;
       project.gitDiffDirty = false;
+      project.gitDiffIncludesUnsaved = false;
       project.gitDiffPreviewReady = false;
       project.error = '';
       this.publishReview();
@@ -136,7 +141,7 @@ export class SourceControlController {
   review = async (filePath: string, staged: boolean): Promise<void> => {
     if (project.gitDiffLoading) return;
     if (project.gitDiffDirty) {
-      project.error = 'Save or close the current Working Tree diff first.';
+      project.error = 'Save or close the current unsaved diff first.';
       this.activateDiff();
       return;
     }
@@ -155,6 +160,7 @@ export class SourceControlController {
     project.gitDiffWorkingText = '';
     project.gitDiffExpectedText = null;
     project.gitDiffDirty = false;
+    project.gitDiffIncludesUnsaved = false;
     project.gitDiffSaving = false;
     project.error = '';
     this.publishReview();
@@ -167,6 +173,7 @@ export class SourceControlController {
         : this.options.workingTreeBuffer(filePath) ?? diff.modifiedText ?? '';
       project.gitDiffExpectedText = diff.modifiedText;
       project.gitDiffDirty = !staged && project.gitDiffWorkingText !== diff.modifiedText;
+      this.syncUnsavedFlag(diff);
       this.publishReview();
       project.gitDiffLine = this.effectiveDiff(diff).hunks[0]?.newStart ?? 1;
       const renderable = this.renderable(diff);
@@ -203,6 +210,7 @@ export class SourceControlController {
       gitDiffWorkingText: '',
       gitDiffExpectedText: null,
       gitDiffDirty: false,
+      gitDiffIncludesUnsaved: false,
       gitDiffSaving: false,
     });
     this.options.desktop.updateGitReviewState(null);
@@ -253,6 +261,7 @@ export class SourceControlController {
     if (project.gitDiffWorkingText === text) return;
     project.gitDiffWorkingText = text;
     project.gitDiffDirty = text !== (project.gitDiffExpectedText ?? diff.modifiedText);
+    this.syncUnsavedFlag(diff);
     project.gitDiffPreviewReady = false;
     this.options.workingTreeChanged(diff.filePath, text);
     this.publishReview();
@@ -290,6 +299,7 @@ export class SourceControlController {
       project.gitDiffWorkingText = refreshed.modifiedText ?? '';
       project.gitDiffExpectedText = refreshed.modifiedText;
       project.gitDiffDirty = false;
+      project.gitDiffIncludesUnsaved = false;
       this.publishReview();
       project.git = await this.options.desktop.getGitStatus();
       project.gitDiffPreviewReady = false;
@@ -401,6 +411,7 @@ export class SourceControlController {
       project.gitDiffWorkingText = diff.modifiedText ?? '';
       project.gitDiffExpectedText = diff.modifiedText;
       project.gitDiffDirty = false;
+      project.gitDiffIncludesUnsaved = false;
       this.publishReview();
       project.gitDiffPreviewReady = false;
       const renderable = this.renderable(diff);
@@ -415,8 +426,9 @@ export class SourceControlController {
     const target = project.gitDiffTarget;
     if (!target) return this.options.desktop.updateGitReviewState(null);
     const name = target.filePath.split(/[\\/]/).at(-1) ?? target.filePath;
+    const side = target.staged ? 'Index' : project.gitDiffIncludesUnsaved ? 'Buffer' : 'Working Tree';
     const state: GitReviewState = {
-      name: `${name} (${target.staged ? 'Index' : 'Working Tree'})`,
+      name: `${name} (${side})`,
       path: target.filePath,
       dirty: project.gitDiffDirty,
       isUntitled: false,
@@ -441,8 +453,22 @@ export class SourceControlController {
     return {
       ...diff,
       modifiedText,
+      modifiedLabel: project.gitDiffIncludesUnsaved ? 'BUFFER' : 'WORKTREE',
       hunks: textDiffHunks(diff.originalText, modifiedText),
     };
+  }
+
+  private syncUnsavedFlag(diff: GitDiff): void {
+    if (diff.staged || diff.originalText === null || diff.modifiedText === null) {
+      project.gitDiffIncludesUnsaved = false;
+      return;
+    }
+    project.gitDiffIncludesUnsaved = resolveUnstagedComparison({
+      indexText: diff.originalText,
+      diskText: project.gitDiffExpectedText ?? diff.modifiedText,
+      bufferText: project.gitDiffWorkingText,
+      untracked: diff.originalLabel === 'EMPTY',
+    }).includesUnsaved;
   }
 
   private async freezePreview(): Promise<void> {

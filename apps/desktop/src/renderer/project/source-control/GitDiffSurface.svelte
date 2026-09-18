@@ -7,6 +7,20 @@
   let { actions }: { actions: AppActions } = $props();
   let previewHost = $state<HTMLDivElement>();
   let observer: ResizeObserver | null = null;
+  let axis = $derived.by(() => {
+    const diff = project.gitDiff;
+    if (!diff) return '';
+    if (diff.staged) return `${diff.originalLabel} ↔ INDEX`;
+    const right = project.gitDiffIncludesUnsaved ? 'BUFFER' : 'WORKTREE';
+    return `${diff.originalLabel} ↔ ${right}`;
+  });
+  let note = $derived.by(() => {
+    const diff = project.gitDiff;
+    if (!diff) return '';
+    if (diff.staged) return 'Staged comparison — unsaved edits never affect it.';
+    if (project.gitDiffIncludesUnsaved) return 'Includes unsaved editor content — git diff shows the saved file.';
+    return 'Saved file — matches git diff.';
+  });
   function layout() {
     if (!previewHost || project.gitDiffMode !== 'rendered') {
       actions.layoutProjectGitDiff(null);
@@ -39,6 +53,18 @@
 
 {#if project.gitDiffActive && (project.gitDiff || project.gitDiffLoading)}
   <section class="git-review" aria-label="Git diff review">
+    {#if project.gitDiff && !project.gitDiffLoading}
+      <header class="git-review-header" class:is-unsaved={!project.gitDiff.staged && project.gitDiffIncludesUnsaved}>
+        <span class="git-review-axis">{axis}</span>
+        <span class="git-review-note">{note}</span>
+        {#if project.gitDiffDirty && !project.gitDiff.staged}
+          <button type="button" class="git-review-save"
+            disabled={project.gitDiffSaving} onclick={actions.saveProjectGitWorkingTree}>
+            {project.gitDiffSaving ? 'Saving…' : 'Save'}
+          </button>
+        {/if}
+      </header>
+    {/if}
     {#if project.gitDiffLoading && !project.gitDiff}
       <div class="git-review-state">Reading versions…</div>
     {:else if project.gitDiff?.originalText === null || project.gitDiff?.modifiedText === null}

@@ -82,6 +82,7 @@ export const project = $state({
   gitDiffWorkingText: '',
   gitDiffExpectedText: null as string | null,
   gitDiffDirty: false,
+  gitDiffIncludesUnsaved: false,
   gitDiffSaving: false,
   gitLoading: false,
   gitBusy: false,

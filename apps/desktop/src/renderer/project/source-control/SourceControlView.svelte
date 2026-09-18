@@ -75,7 +75,7 @@
       primary={actions.unstageProjectGit} review={(path) => actions.reviewProjectGitChange(path, true)}
       open={actions.openProjectFile} />
     <ChangeGroup title="CHANGES" changes={changed} primaryLabel="Stage"
-      primary={actions.stageProjectGit} discard={requestDiscard}
+      primary={actions.stageProjectGit} discard={requestDiscard} unsavedHint
       review={(path) => actions.reviewProjectGitChange(path, false)} open={actions.openProjectFile} />
     {#if project.git.changes.length === 0}<p class="side-view-message">No changes.</p>{/if}
   </div>

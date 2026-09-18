@@ -56,7 +56,10 @@ opens that document without turning its parent directory into a project. When a
 folder is explicitly opened, a VS Code-inspired side bar adds an Explorer, Markdown
 search, and source control as optional navigation tools. The Explorer creates,
 renames, moves, and safely trashes entries; source control reviews diffs and supports
-staging, unstaging, discard, commit, fetch, pull, push, and sync. The folder does not own the
+staging, unstaging, discard, commit, fetch, pull, push, and sync. Reviews use an explicit
+four-stage model — HEAD, Index, saved Working Tree, and unsaved editor Buffer — so a
+Changes review names its axis (`INDEX ↔ BUFFER` versus `INDEX ↔ WORKTREE`) and says when it
+legitimately differs from `git diff`. The folder does not own the
 open tabs, and closing the side bar never closes a document.
 
 The Setdown wordmark toggles the folder tools. Both the left folder panel and the
