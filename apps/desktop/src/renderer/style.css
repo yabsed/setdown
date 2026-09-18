@@ -137,6 +137,8 @@ button { font: inherit; }
   color: var(--app-text);
   background: var(--app-canvas);
 }
+.shell[data-tabs="false"] { grid-template-rows: 0 auto 1fr; }
+.shell[data-tabs="false"] .tab-strip { display: none; }
 .tab-strip {
   grid-column: 2;
   display: flex;
