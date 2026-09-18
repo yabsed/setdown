@@ -1,6 +1,11 @@
 import type { ProjectEntry } from '../../protocol/desktop-api';
 import type { DesktopPort } from '../ports/desktop-port';
-import { project, type ProjectView, type VisibleProjectEntry } from './project-state.svelte';
+import {
+  project,
+  rememberProjectState,
+  type ProjectView,
+  type VisibleProjectEntry,
+} from './project-state.svelte';
 
 type Options = {
   desktop: DesktopPort;
@@ -14,21 +19,26 @@ export class ProjectController {
   private searchTimer?: number;
   private searchRequest = 0;
 
-  constructor(private readonly options: Options) {}
+  constructor(private readonly options: Options) {
+    for (const path of project.expanded) this.expanded.add(path);
+  }
 
   toggle = () => {
     project.open = !project.open;
+    rememberProjectState();
     this.resize();
   };
 
   select = (view: ProjectView) => {
     if (project.open && project.activeView === view) {
       project.open = false;
+      rememberProjectState();
       return this.resize();
     }
     project.open = true;
     project.activeView = view;
     project.error = '';
+    rememberProjectState();
     if (view === 'git') void this.refreshGit();
     this.resize();
   };
@@ -46,6 +56,19 @@ export class ProjectController {
     this.children.clear();
     this.expanded.clear();
     await this.load(folder.path);
+    rememberProjectState();
+    this.resize();
+  };
+
+  restore = async () => {
+    const folder = await this.options.desktop.getProjectFolder();
+    if (!folder) return;
+    project.folder = folder;
+    await this.load(folder.path);
+    for (const directoryPath of [...this.expanded]) {
+      if (directoryPath !== folder.path) await this.load(directoryPath);
+    }
+    if (project.activeView === 'git') await this.refreshGit();
     this.resize();
   };
 
@@ -143,6 +166,7 @@ export class ProjectController {
     if (project.folder) append(project.folder.path, 0);
     project.entries = visible;
     project.expanded = [...this.expanded];
+    rememberProjectState();
   }
 
   private resize() {

@@ -193,6 +193,7 @@ export type MarkTexApi = {
   pasteClipboardImage(): Promise<PasteImageResult>;
   pickLinkTarget(documentPath: string): Promise<PickLinkTargetResult>;
   chooseProjectFolder(): Promise<ProjectFolder | null>;
+  getProjectFolder(): Promise<ProjectFolder | null>;
   readProjectDirectory(directoryPath: string): Promise<ProjectEntry[]>;
   openProjectFile(filePath: string): Promise<DocumentSnapshot | null>;
   searchProject(query: string): Promise<ProjectSearchResult[]>;

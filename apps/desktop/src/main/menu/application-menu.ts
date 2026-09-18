@@ -8,6 +8,7 @@ type MenuContext = {
   focusedState: () => WindowState | null;
   createWindow: () => unknown;
   openDocument: (state: WindowState) => unknown;
+  reloadWindow: (state: WindowState) => void;
   sendCommand: (command: AppCommand) => void;
   setTheme: (theme: PreviewThemeId) => void;
   theme: () => PreviewThemeId;
@@ -99,7 +100,10 @@ export function installApplicationMenu(context: MenuContext) {
           })),
         },
         { type: 'separator' },
-        { id: 'menu-reload', label: 'Reload', accelerator: 'CmdOrCtrl+R', click: () => contents()?.reload() },
+        { id: 'menu-reload', label: 'Reload', accelerator: 'CmdOrCtrl+R', click: () => {
+          const current = state();
+          if (current) context.reloadWindow(current);
+        } },
         { id: 'menu-toggle-devtools', label: 'Toggle Developer Tools', accelerator: 'CmdOrCtrl+Shift+I', click: () => contents()?.toggleDevTools() },
         { type: 'separator' },
         { id: 'menu-reset-zoom', label: 'Actual Size', accelerator: 'CmdOrCtrl+0', click: () => contents()?.setZoomLevel(0) },

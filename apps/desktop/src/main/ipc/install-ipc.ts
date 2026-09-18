@@ -148,6 +148,7 @@ export function installIpc(options: Options): void {
   channels.handle('document:pick-link-target', (state, documentPath: string) =>
     documents.pickLink(state, documentPath));
   channels.handle('project:choose-folder', (state) => projects.choose(state));
+  channels.handle('project:get-folder', (state) => projects.current(state));
   channels.handle('project:read-directory', (state, directoryPath: string) =>
     projects.readDirectory(state, directoryPath));
   channels.handle('project:open-file', (state, filePath: string) =>

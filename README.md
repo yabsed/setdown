@@ -58,7 +58,8 @@ search, and Git status as optional navigation tools. The folder does not own the
 open tabs, and closing the side bar never closes a document.
 
 The Setdown wordmark toggles the folder tools. Both the left folder panel and the
-right document outline can be resized by dragging their inner edge.
+right document outline can be resized by dragging their inner edge. Reloading the
+window restores their visibility, selected view, expanded folders, and widths.
 
 Directories load only when expanded, search runs outside the renderer after a short
 typing delay, and the Git view reads the repository on demand. None of these paths

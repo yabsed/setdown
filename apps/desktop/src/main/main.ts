@@ -133,6 +133,10 @@ if (!app.requestSingleInstanceLock()) {
       focusedState: () => registry.focused(),
       createWindow: windows.create,
       openDocument: (state) => documents.chooseAndOpen(state),
+      reloadWindow: (state) => {
+        previews.closeOwner(state.webContentsId);
+        state.window.webContents.reload();
+      },
       sendCommand,
       setTheme: (theme) => themes.set(theme),
       theme: () => themes.id,

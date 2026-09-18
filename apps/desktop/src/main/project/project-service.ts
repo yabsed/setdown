@@ -49,6 +49,10 @@ export class ProjectService {
     return this.folder(state.projectRoot);
   }
 
+  current(state: WindowState): ProjectFolder | null {
+    return state.projectRoot ? this.folder(state.projectRoot) : null;
+  }
+
   async readDirectory(state: WindowState, candidate: string): Promise<ProjectEntry[]> {
     const directory = this.inside(state, candidate);
     const entries = await fs.readdir(directory, { withFileTypes: true });

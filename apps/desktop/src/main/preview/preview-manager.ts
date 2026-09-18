@@ -294,6 +294,7 @@ export class PreviewManager {
       if (preview.ownerWebContentsId !== ownerId) continue;
       preview.view.webContents.close();
       this.views.delete(tabId);
+      this.options.forgetTab(tabId);
     }
   }
 

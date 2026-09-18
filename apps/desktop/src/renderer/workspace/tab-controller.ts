@@ -18,6 +18,7 @@ import type { DesktopPort } from '../ports/desktop-port';
 import type { PreviewSession } from '../reader/preview-session';
 import type { ReaderController } from '../reader/reader-controller';
 import { view } from '../view-state.svelte';
+import { restoredOutlineOpen } from '../shell/layout-session';
 
 type Options = {
   desktop: DesktopPort;
@@ -236,12 +237,14 @@ export class TabController {
     }
     const id = crypto.randomUUID();
     reader.create(id);
-    workspace.add(createWorkspaceTab(id, documentSnapshot, initialSurface, {
+    const created = createWorkspaceTab(id, documentSnapshot, initialSurface, {
       sourceLine: 1,
       yRatio: GOLDEN_TOP_RATIO,
       reason: 'empty-document',
       confidence: 'fallback',
-    }));
+    });
+    created.tocOpen = restoredOutlineOpen();
+    workspace.add(created);
     this.render();
     await this.activate(id);
     if (initialSurface === 'viewer') {

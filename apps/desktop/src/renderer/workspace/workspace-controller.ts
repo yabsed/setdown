@@ -16,6 +16,8 @@ import { PreviewSession } from '../reader/preview-session';
 import { ReaderController } from '../reader/reader-controller';
 import { createTabDrag } from '../tabs/tab-drag';
 import { applyShellTheme } from '../theme';
+import { restorePanelWidths } from '../shell/panel-resize';
+import { rememberOutlineOpen } from '../shell/layout-session';
 import { view, type AppActions } from '../view-state.svelte';
 import { DocumentActions } from './document-actions';
 import { TabController } from './tab-controller';
@@ -74,6 +76,7 @@ export function startWorkspace(desktop: DesktopPort) {
   mount(App, { target: document.querySelector<HTMLDivElement>('#app')!, props: { actions } });
 
   const shell = document.querySelector<HTMLElement>('.shell')!;
+  restorePanelWidths(shell);
   const previewFrames = document.querySelector<HTMLElement>('.preview-frames')!;
   const editorHost = document.querySelector<HTMLElement>('.editor-host')!;
   const tabStrip = document.querySelector<HTMLElement>('.tab-strip')!;
@@ -166,6 +169,7 @@ export function startWorkspace(desktop: DesktopPort) {
     },
     resized: reader.syncView,
   });
+  void projects.restore();
   const editorContext = {
     desktop,
     host: editorHost,
@@ -185,6 +189,7 @@ export function startWorkspace(desktop: DesktopPort) {
     const tab = workspace.active;
     if (!tab) return;
     tab.tocOpen = !tab.tocOpen;
+    rememberOutlineOpen(tab.tocOpen);
     reader.syncUi();
     reader.syncView();
     if (tab.tocOpen) reader.send(tab.id, { command: 'marktex:collect-headings' });
