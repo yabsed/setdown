@@ -135,7 +135,22 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     expect(await window.locator('.preview-search').evaluate((element) =>
       getComputedStyle(element).borderRadius)).toBe('3px');
     await window.locator('.preview-search input').fill('검색대상');
-    await expect(window.locator('.find-count')).not.toHaveText('0 / 0');
+    const findCount = window.locator('.find-count');
+    await expect(findCount).toHaveText('1 / 2');
+    await findCount.evaluate((element) => {
+      const changes = [element.textContent?.trim() ?? ''];
+      (window as typeof window & { __setdownFindCountChanges?: string[] })
+        .__setdownFindCountChanges = changes;
+      new MutationObserver(() => changes.push(element.textContent?.trim() ?? ''))
+        .observe(element, { childList: true, characterData: true, subtree: true });
+    });
+    await window.locator('.preview-search input').press('Enter');
+    await expect(findCount).toHaveText('2 / 2');
+    const findCountChanges = await window.evaluate(() =>
+      (window as typeof window & { __setdownFindCountChanges?: string[] })
+        .__setdownFindCountChanges ?? []);
+    expect(findCountChanges).toContain('2 / 2');
+    expect(findCountChanges.every((count) => count.endsWith('/ 2'))).toBe(true);
 
     await window.locator('.new-tab-button').click();
     await expect(window.locator('.document-tab')).toHaveCount(2);

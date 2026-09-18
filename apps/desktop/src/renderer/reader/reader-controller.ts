@@ -73,9 +73,13 @@ export class ReaderController {
   find(query: string, direction: 'forward' | 'backward' = 'forward', findNext = false) {
     const tab = this.options.active();
     if (!tab) return;
-    Object.assign(tab.find, { query, activeMatch: 0, matches: 0 });
-    view.findActive = 0;
-    view.findMatches = 0;
+    const queryChanged = query !== tab.find.query;
+    tab.find.query = query;
+    if (!findNext || queryChanged) {
+      Object.assign(tab.find, { activeMatch: 0, matches: 0 });
+      view.findActive = 0;
+      view.findMatches = 0;
+    }
     this.send(tab.id, query
       ? { command: 'marktex:find', query, direction, findNext }
       : { command: 'marktex:stop-find' });
