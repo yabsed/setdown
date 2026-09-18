@@ -143,6 +143,8 @@ export function installIpc(options: Options): void {
     }) => exportPdf(renderer, state, text, revision, documentPath),
   );
   channels.handle('document:paste-clipboard-image', (state) => documents.pasteImage(state));
+  channels.handle('document:pick-link-target', (state, documentPath: string) =>
+    documents.pickLink(state, documentPath));
   channels.handle('document:reload', (state) => documents.reload(state));
   channels.handle('document:open-link', (state, href: string) => openLink(documents, state, href));
 }

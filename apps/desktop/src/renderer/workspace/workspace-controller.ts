@@ -8,6 +8,7 @@ import { MonacoEditor } from '../adapters/monaco-editor';
 import { SurfaceController } from '../application/surface-controller';
 import { ClosePromptController } from '../application/close-prompt-controller';
 import { installWorkspaceEvents } from '../application/workspace-events';
+import { createEditorInsertions } from '../editor/editor-insertions';
 import { installEditorImagePaste } from '../editor/editor-image-paste';
 import type { DesktopPort } from '../ports/desktop-port';
 import { PreviewSession } from '../reader/preview-session';
@@ -45,6 +46,13 @@ export function startWorkspace(desktop: DesktopPort) {
     newDocument: () => void documents.create(),
     openDocument: () => void documents.open(),
     toggleSurface: () => surfaces.toggle(),
+    openTable: () => insertions.openTable(),
+    openLink: () => insertions.openLink(),
+    submitTable: () => insertions.submitTable(),
+    closeTable: () => insertions.closeTable(),
+    submitLink: () => insertions.submitLink(),
+    closeLink: () => insertions.closeLink(),
+    pickLinkFile: () => void insertions.pickLinkFile(),
     toggleToc,
     find: (query, direction, next) => reader.find(query, direction, next),
     closeFind: () => reader.closeFind(false),
@@ -100,6 +108,8 @@ export function startWorkspace(desktop: DesktopPort) {
     changed: (tab, text) => tabs.editorChanged(tab, text),
     scrolled: () => surfaces.editorScrolled(),
     escape: () => void surfaces.enterViewer(),
+    insertLink: () => insertions.openLink(),
+    insertTable: () => insertions.openTable(),
   });
   surfaces = new SurfaceController({ workspace, session, shell, editor, reader, preview });
   tabs = new TabController({
@@ -138,14 +148,20 @@ export function startWorkspace(desktop: DesktopPort) {
     renderTabs: tabs.render,
     updateChrome: tabs.updateChrome,
   });
-  installEditorImagePaste({
+  const editorContext = {
     desktop,
     host: editorHost,
     editor: () => editor.editor,
     monaco: () => editor.api,
     model: () => editor.model,
     document: () => session.document,
+  };
+  const insertions = createEditorInsertions({
+    ...editorContext,
+    editing: () => session.surface === 'editor',
+    save: () => documents.save(false),
   });
+  installEditorImagePaste(editorContext);
 
   function toggleToc() {
     const tab = workspace.active;

@@ -62,6 +62,18 @@ across every open window. Changing it does not reload the Preview URL or re-rend
 Markdown, so search results and reading positions remain intact. The preference is
 restored on the next launch.
 
+### Small helpers for repetitive Markdown
+
+The Editor keeps Markdown visible and editable while handling the structures that
+are tedious to type by hand:
+
+- Choose a table size from a compact 10 × 10 grid, or convert selected TSV data.
+- Insert an HTTP, HTTPS, mail, telephone, or portable local-file link.
+- Paste a URL over selected text to turn the selection into a link immediately.
+
+The table and URL tools live in the Editor toolbar instead of a separate `Insert`
+menu. Their output is ordinary Markdown and can be undone in one step.
+
 ### Paste images, keep ordinary Markdown
 
 Paste an image into the Editor and Setdown creates the appropriate Markdown and
@@ -165,6 +177,8 @@ enforce these boundaries.
 | New document | `Ctrl/Cmd+N` |
 | Open file | `Ctrl/Cmd+O` |
 | Save / Save As | `Ctrl/Cmd+S` / `Ctrl/Cmd+Shift+S` |
+| Insert URL | `Ctrl/Cmd+K` or the Editor toolbar |
+| Insert table | Editor toolbar |
 | Close tab | `Ctrl/Cmd+W` |
 | Next / previous tab | `Ctrl+Tab` / `Ctrl+Shift+Tab` |
 | Reorder or detach a tab | Drag the tab |

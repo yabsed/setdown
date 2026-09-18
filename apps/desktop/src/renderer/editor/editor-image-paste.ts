@@ -57,6 +57,7 @@ export function installEditorImagePaste(context: Context) {
   }
 
   context.host.addEventListener('paste', (event) => {
+    if (event.defaultPrevented) return;
     if (!context.editor()) return;
     const plain = event.clipboardData?.getData('text/plain').trim() ?? '';
     const html = event.clipboardData?.getData('text/html');
