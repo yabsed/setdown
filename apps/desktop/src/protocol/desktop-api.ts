@@ -128,6 +128,16 @@ export type TabStateSummary = {
   isUntitled: boolean;
 };
 
+/** Renderer-owned Git review state retained by the window across a renderer reload. */
+export type GitReviewState = TabStateSummary & {
+  staged: boolean;
+  active: boolean;
+  mode: 'rendered' | 'source';
+  line: number;
+  expectedText: string | null;
+  workingText: string | null;
+};
+
 export type TransferableTab = {
   id: string;
   document: DocumentSnapshot;
@@ -205,7 +215,8 @@ export type MarkTexApi = {
   openDocument(): Promise<DocumentSnapshot | null>;
   activateDocument(document: DocumentSnapshot, text: string, revision: number): Promise<DocumentSnapshot>;
   updateTabState(tabs: TabStateSummary[]): void;
-  updateGitReviewState(review: TabStateSummary | null): void;
+  getGitReviewState(): Promise<GitReviewState | null>;
+  updateGitReviewState(review: GitReviewState | null): void;
   registerTabTransfer(transferId: string, tab: TransferableTab): void;
   claimTabTransfer(transferId: string): Promise<ClaimedTabTransfer | null>;
   completeTabTransfer(transferId: string): void;

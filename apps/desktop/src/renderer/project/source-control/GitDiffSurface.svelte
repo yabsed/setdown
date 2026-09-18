@@ -46,7 +46,9 @@
     {:else if project.gitDiffMode === 'source'}
       <GitDiffEditor {actions} />
     {:else}
-      <div class="git-diff-preview-host" bind:this={previewHost}>
+      <div class="git-diff-preview-host" class:is-frozen={project.gitDiffFrozen}
+        style:background-image={project.gitDiffSnapshot
+          ? `url("${project.gitDiffSnapshot}")` : undefined} bind:this={previewHost}>
         {#if project.gitDiffPreviewLoading}<div class="git-review-state">Typesetting changes…</div>{/if}
         {#if !project.gitDiffPreviewLoading && !project.gitDiffPreviewReady}
           <div class="git-review-state">Rendered comparison is unavailable. Press the edit button for source.</div>

@@ -38,6 +38,7 @@ const api: MarkTexApi = {
     ipcRenderer.invoke('document:activate', { document, text, revision }),
   updateTabState: (tabs: TabStateSummary[]) =>
     ipcRenderer.send('tabs:update-state', tabs),
+  getGitReviewState: () => ipcRenderer.invoke('git-review:get-state'),
   updateGitReviewState: (review) => ipcRenderer.send('git-review:update-state', review),
   registerTabTransfer: (transferId: string, tab: TransferableTab) =>
     ipcRenderer.send('tabs:register-transfer', { transferId, tab }),

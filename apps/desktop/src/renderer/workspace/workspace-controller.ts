@@ -34,7 +34,6 @@ const EMPTY_ANCHOR: ViewportAnchor = {
 
 /** Renderer composition root. 모든 실제 동작은 주입된 책임 객체가 수행한다. */
 export function startWorkspace(desktop: DesktopPort) {
-  desktop.updateGitReviewState(null);
   const initialTheme: ThemeSnapshot = {
     id: normalizePreviewTheme(desktop.initialTheme.id),
     revision: Math.max(0, desktop.initialTheme.revision),
@@ -205,6 +204,7 @@ export function startWorkspace(desktop: DesktopPort) {
     installModel: tabs.installModel,
     show: tabs.show,
     reload: tabs.reload,
+    saved: (document) => projects.documentSaved(document),
     renderTabs: tabs.render,
     updateChrome: tabs.updateChrome,
   });

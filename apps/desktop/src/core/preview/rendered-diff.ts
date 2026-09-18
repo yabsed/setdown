@@ -284,11 +284,34 @@ export const RENDERED_DIFF_STYLES = `<style id="setdown-rendered-diff-styles">
     .setdown-rendered-diff-before,
     .setdown-rendered-diff-after {
       min-width: 0;
+      width: 100%;
       padding: 1rem 1.5rem 5rem;
-      overflow: hidden;
+      overflow-wrap: anywhere;
     }
     .setdown-rendered-diff-before {
       border-right: 1px solid rgba(127, 127, 127, .2);
+    }
+    .setdown-rendered-diff-split :where(h1, h2, h3, h4, h5, h6, p, li, blockquote) {
+      min-width: 0;
+      max-width: 100%;
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+    }
+    .setdown-rendered-diff-split :where(pre, .katex-display, .MathJax_Display, .crossnote-html-source) {
+      min-width: 0;
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    .setdown-rendered-diff-split table {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+    .setdown-rendered-diff-split :where(img, video, svg) {
+      max-width: 100%;
+      height: auto;
     }
   }
 </style>`;

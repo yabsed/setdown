@@ -6,6 +6,7 @@ import type {
   CloseDecision,
   DocumentSnapshot,
   GitRemoteAction,
+  GitReviewState,
   ProjectEntryKind,
   ProjectSearchRequest,
   SaveResult,
@@ -62,12 +63,19 @@ export function installIpc(options: Options): void {
       }))
       : [];
   });
-  channels.on('git-review:update-state', (state, review: TabStateSummary | null) => {
+  channels.handle('git-review:get-state', (state) => state.rendererGitReview);
+  channels.on('git-review:update-state', (state, review: GitReviewState | null) => {
     state.rendererGitReview = review ? {
       name: String(review.name),
       path: String(review.path),
       dirty: Boolean(review.dirty),
       isUntitled: false,
+      staged: Boolean(review.staged),
+      active: Boolean(review.active),
+      mode: review.mode === 'source' ? 'source' : 'rendered',
+      line: Math.max(1, Number(review.line) || 1),
+      expectedText: typeof review.expectedText === 'string' ? review.expectedText : null,
+      workingText: typeof review.workingText === 'string' ? review.workingText : null,
     } : null;
   });
   channels.on('app:close-empty-window', (state) => {

@@ -115,12 +115,26 @@ export class TabController {
 
   activate = async (tabId: string): Promise<void> => {
     const { desktop, editor, preview, reader, session, surfaces, workspace } = this.options;
-    if (tabId === workspace.activeId) {
-      this.activation += 1;
-      return;
-    }
     const next = workspace.find(tabId);
     if (!next) return;
+    if (tabId === workspace.activeId) {
+      const activation = ++this.activation;
+      surfaces.set(next.surface);
+      this.updateChrome();
+      if (next.surface !== 'viewer') {
+        window.setTimeout(() => editor.layout(), 0);
+        return;
+      }
+      if (preview.readyRevision === session.revision && next.previewUrl) {
+        preview.updateUi();
+        return;
+      }
+      const ready = await preview.ensure(session.revision);
+      if (ready && activation === this.activation && workspace.activeId === next.id) {
+        await preview.position(session.anchor, session.revision);
+      }
+      return;
+    }
     const activation = ++this.activation;
     if (next.surface === 'editor') await editor.load();
     if (activation !== this.activation) return;

@@ -665,6 +665,11 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
   background: var(--app-editor-background);
 }
 .git-diff-preview-host, .git-diff-editor { position: relative; flex: 1; min-width: 0; min-height: 0; }
+.git-diff-preview-host.is-frozen {
+  background-repeat: no-repeat;
+  background-position: top left;
+  background-size: 100% 100%;
+}
 .git-review-state {
   position: absolute;
   inset: 0;

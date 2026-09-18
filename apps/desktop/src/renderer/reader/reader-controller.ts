@@ -251,6 +251,9 @@ export class ReaderController {
   }
 
   syncView = () => {
+    // Git review owns the shared native preview layer while it is active.
+    // Document resize/overlay callbacks must not hide that view afterward.
+    if (this.suspended) return;
     const tab = this.options.active();
     const visible = !!tab
       && tab.surface === 'viewer'
@@ -282,6 +285,7 @@ export class ReaderController {
     this.freezeDepth += 1;
     if (this.freezeDepth > 1) return;
     const token = ++this.freezeToken;
+    if (this.suspended) return;
     const tab = this.options.active();
     if (!tab || tab.surface !== 'viewer' || !tab.previewUrl) return;
     const image = await this.options.desktop.capturePreview(tab.id).catch(() => null);

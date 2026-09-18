@@ -14,6 +14,7 @@ type Options = {
   installModel: (document: DocumentSnapshot) => void;
   show: (document: DocumentSnapshot, surface?: 'viewer' | 'editor') => Promise<void>;
   reload: (document: DocumentSnapshot) => Promise<void>;
+  saved: (document: DocumentSnapshot) => void;
   renderTabs: () => void;
   updateChrome: () => void;
 };
@@ -47,6 +48,7 @@ export class DocumentActions {
         });
       }
     }
+    this.options.saved(result.document);
     this.options.updateChrome();
     return true;
   }
@@ -64,6 +66,7 @@ export class DocumentActions {
         }
         tab.document = result.document;
         tab.revision = result.document.revision;
+        this.options.saved(result.document);
       }
       this.options.renderTabs();
       this.options.desktop.finishWindowClose(true);

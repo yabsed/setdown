@@ -118,6 +118,7 @@ export class ProjectController {
     await this.explorer.restore(folder);
     this.searcher.restore();
     if (project.activeView === 'git') await this.sourceControl.refresh();
+    await this.sourceControl.restore();
     this.resize();
   };
 
@@ -138,6 +139,9 @@ export class ProjectController {
   search = (query: string): void => this.searcher.search(query);
   toggleSearchGroup = (path: string): void => this.searcher.toggleGroup(path);
   contextChanged = (): void => this.searcher.contextChanged();
+  documentSaved = (document: DocumentSnapshot): void => {
+    void this.sourceControl.documentSaved(document);
+  };
 
   filesChanged = (root: string): void => {
     if (root !== project.folder?.path) return;

@@ -58,6 +58,9 @@
         renderMarginRevertIcon: !diff.staged,
         wordWrap: 'on',
         diffWordWrap: 'on',
+        wrappingIndent: 'same',
+        enableSplitViewResizing: true,
+        smoothScrolling: true,
         minimap: { enabled: false },
         scrollBeyondLastLine: false,
         renderOverviewRuler: false,
@@ -101,6 +104,21 @@
     const diff = project.gitDiff;
     const line = project.gitDiffLine;
     if (host && diff) void show(diff, line);
+  });
+
+  $effect(() => {
+    const target = host;
+    if (!target) return;
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => editor?.layout());
+    });
+    observer.observe(target);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   });
 
   $effect(() => () => {
