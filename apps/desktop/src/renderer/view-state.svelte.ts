@@ -4,6 +4,7 @@ import type {
   GitRemoteAction,
   ProjectEntryKind,
   ProjectSearchResult,
+  PreviewBounds,
 } from '../protocol/desktop-api';
 import type { ProjectView } from './project/project-state.svelte';
 
@@ -53,6 +54,7 @@ export type AppActions = {
   refreshProjectGit(): void;
   reviewProjectGitChange(path: string, staged: boolean): void;
   closeProjectGitDiff(): void;
+  layoutProjectGitDiff(bounds: PreviewBounds | null): void;
   initializeProjectGit(): void;
   stageProjectGit(paths: string[]): void;
   unstageProjectGit(paths: string[]): void;

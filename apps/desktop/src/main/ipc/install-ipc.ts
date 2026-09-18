@@ -173,6 +173,20 @@ export function installIpc(options: Options): void {
   channels.handle('project:git-status', (state) => projects.gitStatus(state));
   channels.handle('project:git-diff', (state, request: { filePath: string; staged: boolean }) =>
     projects.gitDiff(state, request.filePath, Boolean(request.staged)));
+  channels.handle('project:git-diff-preview', (state, request: {
+    tabId: string;
+    diff: Awaited<ReturnType<ProjectService['gitDiff']>>;
+    themeId: unknown;
+  }) => {
+    previews.create(state.window.webContents.id, request.tabId);
+    return renderer.prepareDiff(
+      state,
+      request.tabId,
+      request.diff,
+      normalizePreviewTheme(request.themeId),
+      state.window.webContents.id,
+    );
+  });
   channels.handle('project:git-init', (state) => projects.initializeGit(state));
   channels.handle('project:git-stage', (state, paths: string[]) => projects.stageGit(state, paths));
   channels.handle('project:git-unstage', (state, paths: string[]) => projects.unstageGit(state, paths));

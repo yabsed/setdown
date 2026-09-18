@@ -16,7 +16,7 @@ import { isMarkdownDocument, ProjectPaths } from './project-paths';
 import { SearchService } from './search-service';
 import type { VisibleSearchMatch } from './visible-search';
 
-export { parseGitStatus } from './git-service';
+export { parseGitDiffHunks, parseGitStatus } from './git-service';
 export { isMarkdownDocument } from './project-paths';
 
 /** Thin project facade. Files, search, and Git keep their own policies and dependencies. */

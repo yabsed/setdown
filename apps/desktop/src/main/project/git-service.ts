@@ -4,6 +4,7 @@ import { shell } from 'electron';
 import type {
   GitChange,
   GitDiff,
+  GitDiffHunk,
   GitRemoteAction,
   GitSnapshot,
 } from '../../protocol/desktop-api';
@@ -22,6 +23,43 @@ const EMPTY: GitSnapshot = {
 };
 
 type ParsedStatus = Omit<GitSnapshot, 'repository'>;
+
+/** Turns unified patch runs into exact changed line ranges, excluding context lines. */
+export function parseGitDiffHunks(patch: string): GitDiffHunk[] {
+  const hunks: GitDiffHunk[] = [];
+  let oldLine = 0;
+  let newLine = 0;
+  let active: GitDiffHunk | null = null;
+  const flush = () => {
+    if (active && (active.oldLines > 0 || active.newLines > 0)) hunks.push(active);
+    active = null;
+  };
+  for (const line of patch.split(/\r?\n/)) {
+    const header = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(line);
+    if (header) {
+      flush();
+      oldLine = Number(header[1]);
+      newLine = Number(header[2]);
+      continue;
+    }
+    if (!oldLine && !newLine) continue;
+    if (line.startsWith('-') && !line.startsWith('---')) {
+      active ??= { oldStart: oldLine, oldLines: 0, newStart: newLine, newLines: 0 };
+      active.oldLines += 1;
+      oldLine += 1;
+    } else if (line.startsWith('+') && !line.startsWith('+++')) {
+      active ??= { oldStart: oldLine, oldLines: 0, newStart: newLine, newLines: 0 };
+      active.newLines += 1;
+      newLine += 1;
+    } else if (line.startsWith(' ')) {
+      flush();
+      oldLine += 1;
+      newLine += 1;
+    }
+  }
+  flush();
+  return hunks;
+}
 
 /** Parses Git's stable porcelain-v2 NUL protocol; filenames are never guessed or unquoted. */
 export function parseGitStatus(output: string): ParsedStatus {
@@ -107,8 +145,11 @@ export class GitService {
 
   async diff(state: WindowState, candidate: string, staged: boolean): Promise<GitDiff> {
     const root = this.paths.root(state);
+    const repository = await this.repository(root);
+    if (!repository) throw new Error('The open folder is not a Git repository.');
     const filePath = this.paths.inside(state, candidate);
     const relative = this.paths.relative(state, filePath);
+    const repositoryRelative = path.relative(repository.repositoryRoot, filePath).split(path.sep).join('/');
     const change = (await this.status(state)).changes.find((item) => item.filePath === filePath);
     let patch: string;
     if (!staged && change?.indexStatus === '?' && change.workingTreeStatus === '?') {
@@ -122,7 +163,34 @@ export class GitService {
       patch = await this.run(root, ['diff', '--no-ext-diff', '--no-color',
         ...(staged ? ['--cached'] : []), '--', relative]);
     }
-    return { path: relative, filePath, staged: Boolean(staged), patch };
+    const fromGit = async (specification: string): Promise<string | null> => {
+      try {
+        const contents = await repository.run(['show', specification]);
+        return contents.includes('\0') ? null : contents;
+      } catch {
+        return '';
+      }
+    };
+    const fromDisk = async (): Promise<string | null> => {
+      const contents = await fs.readFile(filePath).catch(() => null);
+      if (!contents) return '';
+      return contents.includes(0) ? null : contents.toString('utf8');
+    };
+    const originalText = staged
+      ? await fromGit(`HEAD:${repositoryRelative}`)
+      : change?.indexStatus === '?' ? '' : await fromGit(`:${repositoryRelative}`);
+    const modifiedText = staged ? await fromGit(`:${repositoryRelative}`) : await fromDisk();
+    return {
+      path: relative,
+      filePath,
+      staged: Boolean(staged),
+      patch,
+      originalText,
+      modifiedText,
+      originalLabel: staged ? 'HEAD' : change?.indexStatus === '?' ? 'EMPTY' : 'INDEX',
+      modifiedLabel: staged ? 'INDEX' : 'WORKTREE',
+      hunks: parseGitDiffHunks(patch),
+    };
   }
 
   async stage(state: WindowState, candidates: string[]): Promise<GitSnapshot> {

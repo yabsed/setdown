@@ -1,10 +1,13 @@
 import type {
   GitRemoteAction,
+  PreviewBounds,
+  PreviewMessage,
   ProjectEntryKind,
   ProjectFolder,
   ProjectSearchDocument,
   ProjectSearchResult,
 } from '../../protocol/desktop-api';
+import type { PreviewThemeId } from '../../core/preview/preview-preferences';
 import type { DesktopPort } from '../ports/desktop-port';
 import { ExplorerController } from './explorer/explorer-controller';
 import { project, rememberProjectState, type ProjectView } from './project-state.svelte';
@@ -23,6 +26,8 @@ type Options = {
   highlight(query: string, target?: SearchTarget): void;
   pathMoved(from: string, to: string): Promise<void>;
   prepareRemove(path: string): Promise<boolean>;
+  preferRenderedDiff(): boolean;
+  reviewChanged(open: boolean): void;
   resized(): void;
 };
 
@@ -46,7 +51,11 @@ export class ProjectController {
       open: this.explorer.open,
       highlight: options.highlight,
     });
-    this.sourceControl = new SourceControlController(options.desktop);
+    this.sourceControl = new SourceControlController({
+      desktop: options.desktop,
+      preferRendered: options.preferRenderedDiff,
+      reviewChanged: options.reviewChanged,
+    });
   }
 
   toggle = (): void => {
@@ -57,6 +66,7 @@ export class ProjectController {
   };
 
   select = (view: ProjectView): void => {
+    if (view !== 'git' && (project.gitDiff || project.gitDiffLoading)) this.sourceControl.closeDiff();
     if (project.open && project.activeView === view) {
       project.open = false;
       rememberProjectState();
@@ -107,7 +117,10 @@ export class ProjectController {
   refreshExplorer = (): Promise<void> => this.explorer.refresh();
   collapseExplorer = (): void => this.explorer.collapse();
   toggleDirectory = (path: string): Promise<void> => this.explorer.toggle(path);
-  openFile = (path: string): Promise<boolean> => this.explorer.open(path);
+  openFile = (path: string): Promise<boolean> => {
+    if (project.gitDiff || project.gitDiffLoading) this.sourceControl.closeDiff();
+    return this.explorer.open(path);
+  };
   createEntry = (parent: string, name: string, kind: ProjectEntryKind): Promise<void> =>
     this.explorer.create(parent, name, kind);
   renameEntry = (path: string, name: string): Promise<void> => this.explorer.rename(path, name);
@@ -129,6 +142,11 @@ export class ProjectController {
   reviewGitChange = (path: string, staged: boolean): Promise<void> =>
     this.sourceControl.review(path, staged);
   closeGitDiff = (): void => this.sourceControl.closeDiff();
+  layoutGitDiff = (bounds: PreviewBounds | null): void => this.sourceControl.layoutDiff(bounds);
+  toggleGitDiffMode = (): void => this.sourceControl.toggleDiffMode();
+  showRenderedGitDiff = (): void => this.sourceControl.showRendered();
+  previewMessage = (payload: PreviewMessage): boolean => this.sourceControl.previewMessage(payload);
+  applyTheme = (themeId: PreviewThemeId): Promise<void> => this.sourceControl.applyTheme(themeId);
   initializeGit = (): Promise<void> => this.sourceControl.initialize();
   stageGit = (paths: string[]): Promise<void> => this.sourceControl.stage(paths);
   unstageGit = (paths: string[]): Promise<void> => this.sourceControl.unstage(paths);

@@ -3,7 +3,6 @@
   import { project } from '../project-state.svelte';
   import SideViewMenu from '../SideViewMenu.svelte';
   import ChangeGroup from './ChangeGroup.svelte';
-  import GitDiffView from './GitDiffView.svelte';
 
   let { actions }: { actions: AppActions } = $props();
   let discardPaths = $state<string[]>([]);
@@ -81,8 +80,6 @@
     {#if project.git.changes.length === 0}<p class="side-view-message">No changes.</p>{/if}
   </div>
 {/if}
-
-{#if project.gitDiff || project.gitDiffLoading}<GitDiffView {actions} />{/if}
 
 {#if discardPaths.length}
   <div class="project-confirm" role="alertdialog" aria-modal="true" aria-labelledby="discard-title">

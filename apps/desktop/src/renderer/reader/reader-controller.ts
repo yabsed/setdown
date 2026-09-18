@@ -39,6 +39,7 @@ export class ReaderController {
   private freezeDepth = 0;
   private frozen = false;
   private freezeToken = 0;
+  private suspended = false;
 
   constructor(private readonly options: Options) {
     this.themeId = options.initialTheme.id;
@@ -255,6 +256,7 @@ export class ReaderController {
       && tab.surface === 'viewer'
       && !!tab.previewUrl
       && (tab.previewTheme === this.themeId || tab.id === this.transitionTabId)
+      && !this.suspended
       && !this.frozen
       && !this.awaiting;
     if (!visible || !tab) {
@@ -270,6 +272,11 @@ export class ReaderController {
       height: Math.max(0, rect.height - reserved),
     });
   };
+
+  setSuspended(value: boolean) {
+    this.suspended = value;
+    this.syncView();
+  }
 
   private async freeze() {
     this.freezeDepth += 1;

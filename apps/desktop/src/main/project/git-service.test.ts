@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import type { WindowState } from '../windows/window-state';
-import { GitService, parseGitStatus } from './git-service';
+import { GitService, parseGitDiffHunks, parseGitStatus } from './git-service';
 import { ProjectPaths } from './project-paths';
 
 const temporaryDirectories: string[] = [];
@@ -14,6 +14,25 @@ afterEach(async () => {
 });
 
 describe('Git status parser', () => {
+  test('extracts exact changed ranges without including unified-diff context', () => {
+    expect(parseGitDiffHunks([
+      '@@ -2,5 +2,6 @@',
+      ' same',
+      '-old one',
+      '-old two',
+      '+new one',
+      '+new two',
+      '+new three',
+      ' same again',
+      '@@ -20 +21 @@',
+      '-gone',
+      '+here',
+    ].join('\n'))).toEqual([
+      { oldStart: 3, oldLines: 2, newStart: 3, newLines: 3 },
+      { oldStart: 20, oldLines: 1, newStart: 21, newLines: 1 },
+    ]);
+  });
+
   test('keeps index and working-tree states independently', () => {
     const status = [
       '# branch.head feature/power',
@@ -63,11 +82,15 @@ describe('Git status parser', () => {
     expect((await service.stage(state, [filePath])).changes[0]).toMatchObject({
       status: 'A', staged: true, unstaged: false,
     });
-    expect((await service.diff(state, filePath, true)).patch).toContain('+# Notes');
+    expect(await service.diff(state, filePath, true)).toMatchObject({
+      originalText: '', modifiedText: '# Notes\n', originalLabel: 'HEAD', modifiedLabel: 'INDEX',
+    });
     expect((await service.unstage(state, [filePath])).changes[0]).toMatchObject({
       status: 'U', staged: false, unstaged: true,
     });
-    expect((await service.diff(state, filePath, false)).patch).toContain('--- /dev/null');
+    expect(await service.diff(state, filePath, false)).toMatchObject({
+      originalText: '', modifiedText: '# Notes\n', originalLabel: 'EMPTY', modifiedLabel: 'WORKTREE',
+    });
     expect((await service.discard(state, [filePath])).changes).toEqual([]);
     expect(trashed).toEqual([filePath]);
   });

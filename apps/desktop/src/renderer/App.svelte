@@ -2,6 +2,7 @@
   import EmptyState from './shell/EmptyState.svelte';
   import InsertionDialogs from './editor/InsertionDialogs.svelte';
   import ReaderSurface from './reader/ReaderSurface.svelte';
+  import GitDiffSurface from './project/source-control/GitDiffSurface.svelte';
   import ProjectSidebar from './project/ProjectSidebar.svelte';
   import TabChrome from './tabs/TabChrome.svelte';
   import TitleBar from './shell/TitleBar.svelte';
@@ -24,6 +25,7 @@
   </div>
   <EmptyState {actions} />
   <ReaderSurface {actions} />
+  <GitDiffSurface {actions} />
   <InsertionDialogs {actions} />
   <ClosePrompt {actions} />
 </section>

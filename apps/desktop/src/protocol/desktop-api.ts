@@ -100,12 +100,26 @@ export type GitSnapshot = {
 
 export type GitRemoteAction = 'fetch' | 'pull' | 'push' | 'sync';
 
+export type GitDiffHunk = {
+  oldStart: number;
+  oldLines: number;
+  newStart: number;
+  newLines: number;
+};
+
 export type GitDiff = {
   path: string;
   filePath: string;
   staged: boolean;
   patch: string;
+  originalText: string | null;
+  modifiedText: string | null;
+  originalLabel: 'EMPTY' | 'HEAD' | 'INDEX';
+  modifiedLabel: 'INDEX' | 'WORKTREE';
+  hunks: GitDiffHunk[];
 };
+
+export type GitDiffPreviewResult = RenderResult & { supported: boolean };
 
 export type TabStateSummary = {
   name: string;
@@ -249,6 +263,11 @@ export type MarkTexApi = {
   searchProject(request: ProjectSearchRequest): Promise<ProjectSearchResult[]>;
   getGitStatus(): Promise<GitSnapshot>;
   getGitDiff(filePath: string, staged: boolean): Promise<GitDiff>;
+  prepareGitDiffPreview(
+    tabId: string,
+    diff: GitDiff,
+    themeId: PreviewThemeId,
+  ): Promise<GitDiffPreviewResult>;
   initializeGit(): Promise<GitSnapshot>;
   stageGit(paths: string[]): Promise<GitSnapshot>;
   unstageGit(paths: string[]): Promise<GitSnapshot>;

@@ -102,6 +102,8 @@ const api: MarkTexApi = {
   searchProject: (request) => ipcRenderer.invoke('project:search', request),
   getGitStatus: () => ipcRenderer.invoke('project:git-status'),
   getGitDiff: (filePath, staged) => ipcRenderer.invoke('project:git-diff', { filePath, staged }),
+  prepareGitDiffPreview: (tabId, diff, themeId) =>
+    ipcRenderer.invoke('project:git-diff-preview', { tabId, diff, themeId }),
   initializeGit: () => ipcRenderer.invoke('project:git-init'),
   stageGit: (paths) => ipcRenderer.invoke('project:git-stage', paths),
   unstageGit: (paths) => ipcRenderer.invoke('project:git-unstage', paths),

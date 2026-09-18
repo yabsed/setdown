@@ -12,6 +12,7 @@ import { createEditorInsertions } from '../editor/editor-insertions';
 import { installEditorImagePaste } from '../editor/editor-image-paste';
 import type { DesktopPort } from '../ports/desktop-port';
 import { ProjectController } from '../project/project-controller';
+import { project } from '../project/project-state.svelte';
 import { installFolderDrop } from '../project/folder-drop';
 import { PreviewSession } from '../reader/preview-session';
 import { ReaderController } from '../reader/reader-controller';
@@ -43,12 +44,21 @@ export function startWorkspace(desktop: DesktopPort) {
     loadMenu: (id) => desktop.getApplicationMenu(id),
     executeMenuItem: (id) => desktop.executeApplicationMenuItem(id),
     resolveClosePrompt: (decision) => closePrompt.resolve(decision),
-    activateTab: (id) => void tabs.activate(id),
+    activateTab: (id) => {
+      projects.closeGitDiff();
+      void tabs.activate(id);
+    },
     closeTab: (id) => void tabs.close(id),
     startTabDrag: (id, event) => tabDrag.start(id, event),
     endTabDrag: (event) => tabDrag.end(event),
-    newDocument: () => void documents.create(),
-    openDocument: () => void documents.open(),
+    newDocument: () => {
+      projects.closeGitDiff();
+      void documents.create();
+    },
+    openDocument: () => {
+      projects.closeGitDiff();
+      void documents.open();
+    },
     toggleProjectSidebar: () => projects.toggle(),
     selectProjectView: (target) => projects.select(target),
     chooseProjectFolder: () => void projects.chooseFolder(),
@@ -66,13 +76,17 @@ export function startWorkspace(desktop: DesktopPort) {
     refreshProjectGit: () => void projects.refreshGit(),
     reviewProjectGitChange: (path, staged) => void projects.reviewGitChange(path, staged),
     closeProjectGitDiff: () => projects.closeGitDiff(),
+    layoutProjectGitDiff: (bounds) => projects.layoutGitDiff(bounds),
     initializeProjectGit: () => void projects.initializeGit(),
     stageProjectGit: (paths) => void projects.stageGit(paths),
     unstageProjectGit: (paths) => void projects.unstageGit(paths),
     discardProjectGit: (paths) => void projects.discardGit(paths),
     commitProjectGit: (message) => void projects.commitGit(message),
     runProjectGitRemote: (action) => void projects.runGitRemote(action),
-    toggleSurface: () => surfaces.toggle(),
+    toggleSurface: () => {
+      if (project.gitDiff) projects.toggleGitDiffMode();
+      else surfaces.toggle();
+    },
     openTable: () => insertions.openTable(),
     openLink: () => insertions.openLink(),
     submitTable: () => insertions.submitTable(),
@@ -169,7 +183,10 @@ export function startWorkspace(desktop: DesktopPort) {
     strip: tabStrip,
     tabs: workspace.tabs,
     activeId: () => workspace.activeId,
-    activate: (id) => void tabs.activate(id),
+    activate: (id) => {
+      projects.closeGitDiff();
+      void tabs.activate(id);
+    },
     serialize: tabs.transferable,
     render: tabs.render,
     install: (transfer) => void tabs.installTransferred(transfer),
@@ -203,6 +220,11 @@ export function startWorkspace(desktop: DesktopPort) {
     },
     pathMoved: tabs.relocatePath,
     prepareRemove: tabs.prepareRemove,
+    preferRenderedDiff: () => session.surface !== 'editor',
+    reviewChanged: (open) => {
+      shell.dataset.gitDiff = String(open);
+      reader.setSuspended(open);
+    },
     highlight: (query, target) => {
       const editing = workspace.active?.surface === 'editor';
       const currentTarget = target?.surface === (editing ? 'editor' : 'viewer')
@@ -251,6 +273,7 @@ export function startWorkspace(desktop: DesktopPort) {
         void projects.openFolderPath(payload.message.path);
         return;
       }
+      if (projects.previewMessage(payload)) return;
       preview.receive(payload);
       reader.handleMessage(payload);
     },
@@ -262,7 +285,10 @@ export function startWorkspace(desktop: DesktopPort) {
       if (session.document?.path === change.path) view.notice = true;
     },
     projectFilesChanged: (event) => projects.filesChanged(event.root),
-    themeChanged: (snapshot) => void reader.applyTheme(snapshot),
+    themeChanged: (snapshot) => {
+      void reader.applyTheme(snapshot);
+      void projects.applyTheme(snapshot.id);
+    },
     windowCloseRequested: (names) => {
       void closePrompt.request('window', names).then((decision) => {
         desktop.resolveWindowClose(decision);
@@ -274,13 +300,28 @@ export function startWorkspace(desktop: DesktopPort) {
       if (command === 'save') void documents.save(false);
       if (command === 'save-as') void documents.save(true);
       if (command === 'export-pdf') void documents.exportPdf();
-      if (command === 'close-tab' && workspace.activeId) void tabs.close(workspace.activeId);
-      if (command === 'next-tab') tabs.cycle(1);
-      if (command === 'previous-tab') tabs.cycle(-1);
-      if (command === 'open-find') reader.openFind();
-      if (command === 'escape' && session.surface === 'editor') void surfaces.enterViewer();
+      if (command === 'close-tab') {
+        if (project.gitDiff || project.gitDiffTarget || project.gitDiffLoading) {
+          projects.closeGitDiff();
+        } else if (workspace.activeId) void tabs.close(workspace.activeId);
+      }
+      if (command === 'next-tab') {
+        projects.closeGitDiff();
+        tabs.cycle(1);
+      }
+      if (command === 'previous-tab') {
+        projects.closeGitDiff();
+        tabs.cycle(-1);
+      }
+      if (command === 'open-find' && !project.gitDiff) reader.openFind();
+      if (command === 'escape' && project.gitDiff) {
+        if (project.gitDiffMode === 'source') projects.showRenderedGitDiff();
+      } else if (command === 'escape' && session.surface === 'editor') void surfaces.enterViewer();
       if (command === 'toggle-folder-tools') projects.toggle();
-      if (command === 'toggle-surface') surfaces.toggle();
+      if (command === 'toggle-surface') {
+        if (project.gitDiff) projects.toggleGitDiffMode();
+        else surfaces.toggle();
+      }
     },
     saveBeforeClose: () => void documents.saveAll(),
     transferIncoming: (transfer) => void tabs.installTransferred(transfer),
@@ -290,13 +331,21 @@ export function startWorkspace(desktop: DesktopPort) {
     },
     keydown: (event) => {
       if (event.key === 'Escape') tabDrag.cancel();
+      if (event.key === 'Escape' && project.gitDiff) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (project.gitDiffMode === 'source' && project.gitDiffPreviewReady) {
+          projects.showRenderedGitDiff();
+        }
+        return;
+      }
       if (event.key === 'Escape' && session.surface === 'editor') {
         event.preventDefault();
         event.stopPropagation();
         void surfaces.enterViewer();
         return;
       }
-      if (session.surface === 'viewer' && event.key.toLowerCase() === 'f'
+      if (!project.gitDiff && session.surface === 'viewer' && event.key.toLowerCase() === 'f'
         && (event.ctrlKey || event.metaKey) && !event.altKey) {
         event.preventDefault();
         reader.openFind();
