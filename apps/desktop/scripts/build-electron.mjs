@@ -30,7 +30,7 @@ await Promise.all([
   }),
   build({
     ...shared,
-    entryPoints: ['src/preview/preload.ts'],
+    entryPoints: ['src/preview-runtime/preload.ts'],
     outfile: 'dist-electron/preview-preload.cjs',
     format: 'cjs',
   }),
@@ -41,7 +41,7 @@ await Promise.all([
     platform: 'browser',
     target: 'chrome120',
     format: 'iife',
-    entryPoints: ['src/preview/bridge.ts'],
+    entryPoints: ['src/preview-runtime/bridge.ts'],
     outfile: 'dist-electron/preview-bridge.js',
     sourcemap: false,
     legalComments: 'none',

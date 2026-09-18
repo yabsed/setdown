@@ -1,98 +1,22 @@
 {
-  "name": "setdown",
-  "productName": "Setdown",
+  "name": "setdown-workspace",
   "version": "0.1.0",
   "private": true,
-  "author": "Setdown Contributors",
-  "description": "A document-first Markdown reader and editor for beautifully typeset local documents",
-  "type": "module",
-  "main": "dist-electron/main.cjs",
+  "workspaces": ["apps/*"],
   "scripts": {
-    "dev": "concurrently -k \"vite --host 127.0.0.1\" \"npm:dev:electron\"",
-    "dev:electron": "wait-on tcp:5173 && npm run build:electron && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .",
-    "build:electron": "node scripts/build-electron.mjs",
-    "build": "npm run typecheck && vite build && npm run build:electron",
-    "typecheck": "tsc --noEmit && svelte-check --config ./svelte.config.js --tsconfig ./tsconfig.json --fail-on-warnings",
-    "test": "vitest run --config vitest.config.ts",
-    "test:e2e": "npm run build && playwright test",
-    "start": "npm run build && electron .",
-    "package:win": "npm run build && electron-builder --win nsis --x64",
-    "package:linux": "npm run build && electron-builder --linux AppImage deb",
-    "install:linux": "bash scripts/install-linux.sh"
-  },
-  "dependencies": {
-    "crossnote": "0.9.35",
-    "monaco-editor": "0.56.0"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.60.0",
-    "@sveltejs/vite-plugin-svelte": "^6.2.4",
-    "@types/node": "^22.0.0",
-    "concurrently": "^9.0.0",
-    "cross-env": "^10.0.0",
-    "electron": "^38.0.0",
-    "electron-builder": "^26.15.3",
-    "esbuild": "^0.25.0",
-    "svelte": "^5.57.0",
-    "svelte-check": "^4.7.6",
-    "typescript": "^5.9.0",
-    "vite": "^7.0.0",
-    "vitest": "^3.0.0",
-    "wait-on": "^8.0.0"
+    "dev": "npm run dev --workspace @setdown/desktop",
+    "build": "npm run build --workspace @setdown/desktop",
+    "typecheck": "npm run typecheck --workspace @setdown/desktop",
+    "test": "npm test --workspace @setdown/desktop",
+    "test:e2e": "npm run test:e2e --workspace @setdown/desktop",
+    "plot:code-growth": "npm run build --workspace @setdown/code-growth",
+    "start": "npm start --workspace @setdown/desktop --",
+    "package:win": "npm run package:win --workspace @setdown/desktop",
+    "package:linux": "npm run package:linux --workspace @setdown/desktop",
+    "install:linux": "npm run install:linux --workspace @setdown/desktop"
   },
   "overrides": {
     "dompurify": "3.4.15",
     "sharp": "0.35.4"
-  },
-  "build": {
-    "appId": "app.setdown.desktop",
-    "productName": "Setdown",
-    "artifactName": "Setdown-${version}-${arch}.${ext}",
-    "files": [
-      "dist/**/*",
-      "dist-electron/**/*",
-      "package.json"
-    ],
-    "directories": {
-      "output": "release"
-    },
-    "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ],
-      "category": "Office",
-      "executableName": "setdown",
-      "icon": "build/icon.png"
-    },
-    "win": {
-      "target": "nsis",
-      "icon": "build/icon.ico"
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": "always",
-      "createStartMenuShortcut": true
-    },
-    "fileAssociations": [
-      {
-        "ext": [
-          "md",
-          "markdown",
-          "mdown",
-          "mkdn",
-          "mkd",
-          "rmd",
-          "qmd",
-          "mdx"
-        ],
-        "name": "Markdown document",
-        "description": "Markdown document",
-        "role": "Editor",
-        "mimeType": "text/markdown"
-      }
-    ]
   }
 }

@@ -64,4 +64,3 @@ export function preferredEol(text: string) {
   const match = text.match(/\r\n|\r|\n/);
   return match?.[0] ?? '\n';
 }
-

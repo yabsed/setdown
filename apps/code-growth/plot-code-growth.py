@@ -3,10 +3,16 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
+
+os.environ.setdefault(
+    "MPLCONFIGDIR", str(Path(tempfile.gettempdir()) / "setdown-matplotlib")
+)
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
@@ -14,9 +20,10 @@ from matplotlib import font_manager
 from matplotlib.ticker import FuncFormatter
 
 
-ROOT = Path(__file__).resolve().parents[1]
-CLEAN_OUTPUT = ROOT / "docs" / "assets" / "repository-code-growth.png"
-DETAILED_OUTPUT = ROOT / "docs" / "assets" / "repository-code-growth-detailed.png"
+APP_DIR = Path(__file__).resolve().parent
+ROOT = APP_DIR.parents[1]
+CLEAN_OUTPUT = APP_DIR / "output" / "repository-code-growth.png"
+DETAILED_OUTPUT = APP_DIR / "output" / "repository-code-growth-detailed.png"
 SEOUL = ZoneInfo("Asia/Seoul")
 
 BACKGROUND = "none"
@@ -35,9 +42,19 @@ ROOT_CODE_FILES = {
     "playwright.config.ts",
     "vite.config.ts",
     "vitest.config.ts",
+    "apps/desktop/index.html",
+    "apps/desktop/playwright.config.ts",
+    "apps/desktop/vite.config.ts",
+    "apps/desktop/vitest.config.ts",
 }
-CODE_SUFFIXES = {".ts", ".tsx", ".js", ".mjs", ".cjs", ".css", ".html", ".sh"}
-CODE_DIRECTORIES = ("src/", "test/", "scripts/")
+CODE_SUFFIXES = {
+    ".ts", ".tsx", ".js", ".mjs", ".cjs", ".css", ".html", ".sh", ".py"
+}
+CODE_DIRECTORIES = (
+    "src/", "test/", "scripts/",
+    "apps/desktop/src/", "apps/desktop/test/", "apps/desktop/scripts/",
+    "apps/code-growth/",
+)
 
 
 def git(*args: str) -> str:
@@ -208,7 +225,7 @@ def save_detailed(records: list[dict[str, object]]) -> None:
     figure.text(
         0.985,
         0.025,
-        "포함: src · test · scripts · HTML · 빌드 설정   |   제외: README · 보고서 · lockfile · 자산 · vendor",
+        "포함: 앱 소스 · 테스트 · 빌드 설정   |   제외: README · 보고서 · lockfile · 자산 · vendor",
         ha="right",
         fontsize=8.5,
         color=MUTED,

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/setdown-mark.svg" width="104" height="104" alt="Setdown logo">
+  <img src="apps/desktop/public/setdown-mark.svg" width="104" height="104" alt="Setdown logo">
 </p>
 
 <h1 align="center">Setdown</h1>
@@ -121,7 +121,8 @@ npm run install:linux
 실행 파일은 `~/.local/share/setdown`에, Desktop entry는 사용자 애플리케이션 영역에
 등록됩니다.
 
-배포 파일만 만들려면 다음 명령을 사용합니다. AppImage와 deb는 `release/`에 생성됩니다.
+배포 파일만 만들려면 다음 명령을 사용합니다. AppImage와 deb는
+`apps/desktop/release/`에 생성됩니다.
 
 ```sh
 npm run package:linux
@@ -135,6 +136,23 @@ npm run package:win
 
 Windows 설치기는 사용자 단위로 설치되며 설치 경로를 선택할 수 있습니다. 바탕 화면과
 시작 메뉴 바로가기, Markdown 계열 파일 연결도 함께 구성합니다.
+
+### 저장소 구조
+
+저장소는 배포 단위를 먼저 나누고, 각 앱 안에서는 실행 프로세스와 기능 책임으로
+나눕니다. 모바일이나 서버가 추가되면 `apps/` 아래에 독립된 workspace로 들어갑니다.
+둘 이상의 앱이 실제로 공유하는 코드만 그 시점에 `packages/`로 추출합니다.
+
+```text
+apps/
+├── desktop/
+│   ├── src/main/             Electron main process
+│   ├── src/preload/          renderer IPC 경계
+│   ├── src/preview-runtime/  격리된 Reader WebContents
+│   ├── src/renderer/         Svelte UI와 workspace
+│   └── src/shared/           데스크톱 프로세스 간 순수 로직과 계약
+└── code-growth/              저장소 코드 성장 그래프 앱과 결과물
+```
 
 ## 조작
 
@@ -177,9 +195,9 @@ Editor 안에 커서가 보이면 wrap된 시각 행까지 계산해 그 위치�
 가중한 무게중심을 사용합니다. 긴 문단과 수식 때문에 Viewer의 줄 높이가 달라도 화면
 전체의 오차가 한쪽으로 몰리지 않습니다.
 
-- [`src/shared/viewport-anchor.ts`](src/shared/viewport-anchor.ts): 항상 유효한 화면 좌표 계산
-- [`src/preview/bridge.ts`](src/preview/bridge.ts): 렌더링 DOM과 원문 위치 연결
-- [`src/main/source-anchors.ts`](src/main/source-anchors.ts): 수식과 raw HTML에 source metadata 주입
+- [`apps/desktop/src/shared/viewport-anchor.ts`](apps/desktop/src/shared/viewport-anchor.ts): 항상 유효한 화면 좌표 계산
+- [`apps/desktop/src/preview-runtime/bridge.ts`](apps/desktop/src/preview-runtime/bridge.ts): 렌더링 DOM과 원문 위치 연결
+- [`apps/desktop/src/main/preview/source-anchors.ts`](apps/desktop/src/main/preview/source-anchors.ts): 수식과 raw HTML에 source metadata 주입
 
 ### Revision 기반 Preview
 
@@ -219,14 +237,20 @@ asset 복사와 Markdown 링크 갱신이 모두 성공한 뒤에만 draft를 �
 
 ## 개발과 검증
 
-### 53시간 39분의 빌드
+### 저장소의 성장
 
-Setdown은 76개의 커밋을 거쳐 10,105줄의 코드로 자랐습니다. 아래 그래프는 각 커밋의
-실제 시각과 그 시점의 소스·테스트·빌드 코드 줄 수를 함께 보여 줍니다.
+아래 그래프는 각 커밋의 실제 시각과 그 시점의 앱 소스·테스트·빌드 코드 줄 수를 함께
+보여 줍니다.
 
 <p align="center">
-  <img src="docs/assets/repository-code-growth.png" width="960" alt="53시간 39분 동안 76개 커밋을 거쳐 10,105줄로 성장한 Setdown의 코드 성장 그래프">
+  <img src="apps/code-growth/output/repository-code-growth.png" width="960" alt="Setdown 저장소의 커밋별 코드 성장 그래프">
 </p>
+
+그래프를 다시 만들려면 다음 명령을 실행합니다.
+
+```sh
+npm run plot:code-growth
+```
 
 ```sh
 npm run dev

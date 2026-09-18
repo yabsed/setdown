@@ -7,7 +7,7 @@ test('keeps one live preview WebContents through Esc and window transfer', async
   const configRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-zero-latency-e2e-'));
   const { ELECTRON_RUN_AS_NODE: _ignored, ...environment } = process.env;
   const application = await electron.launch({
-    args: ['.', path.resolve('reports/sample.md')],
+    args: ['.', path.resolve('test/fixtures/sample.md')],
     env: { ...environment, XDG_CONFIG_HOME: configRoot },
   });
 

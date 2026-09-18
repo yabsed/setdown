@@ -50,4 +50,3 @@ describe('preferredEol', () => {
     expect(preferredEol('a')).toBe('\n');
   });
 });
-

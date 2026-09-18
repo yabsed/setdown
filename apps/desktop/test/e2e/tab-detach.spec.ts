@@ -15,7 +15,7 @@ test('detaching a tab restores its preview iframe at the same semantic position'
   const configRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-e2e-'));
   const { ELECTRON_RUN_AS_NODE: _ignored, ...environment } = process.env;
   const application = await electron.launch({
-    args: ['.', path.resolve('reports/sample.md')],
+    args: ['.', path.resolve('test/fixtures/sample.md')],
     env: { ...environment, XDG_CONFIG_HOME: configRoot },
   });
 
@@ -131,7 +131,7 @@ test('detaching the middle tab leaves documents one and three in the original wi
   const configRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-e2e-'));
   const { ELECTRON_RUN_AS_NODE: _ignored, ...environment } = process.env;
   const application = await electron.launch({
-    args: ['.', path.resolve('reports/sample.md')],
+    args: ['.', path.resolve('test/fixtures/sample.md')],
     env: { ...environment, XDG_CONFIG_HOME: configRoot },
   });
 

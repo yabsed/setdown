@@ -4,28 +4,31 @@ import type {
   DocumentSnapshot,
   ThemeSnapshot,
   TransferableTab,
-} from '../shared/contracts';
+} from '../../shared/contracts';
 import {
   normalizePreviewTheme,
-} from '../shared/preview-preferences';
-import { hasUnsavedText } from '../shared/document-state';
+} from '../../shared/preview-preferences';
+import { hasUnsavedText } from '../../shared/document-state';
 import {
   GOLDEN_TOP_RATIO,
   clampAnchor,
   type BandLine,
   type ViewportAnchor,
-} from '../shared/viewport-anchor';
+} from '../../shared/viewport-anchor';
 import { mount } from 'svelte';
-import App from './App.svelte';
-import { createEditorInsertions } from './editor/editor-insertions';
-import { readEditorViewport } from './editor/editor-viewport';
-import { ReaderController } from './reader/reader-controller';
-import { PreviewSession } from './reader/preview-session';
-import { applyShellTheme, monacoThemeName, registerMonacoThemes } from './theme';
-import { createTabDrag } from './tabs/tab-drag';
-import { createTabSession, type DocumentTab } from './tabs/tab-state';
-import { view, type AppActions } from './view-state.svelte';
-import './style.css';
+import App from '../App.svelte';
+import { createEditorInsertions } from '../editor/editor-insertions';
+import { readEditorViewport } from '../editor/editor-viewport';
+import { ReaderController } from '../reader/reader-controller';
+import { PreviewSession } from '../reader/preview-session';
+import { applyShellTheme, monacoThemeName, registerMonacoThemes } from '../theme';
+import { createTabDrag } from '../tabs/tab-drag';
+import { createTabSession, type DocumentTab } from '../tabs/tab-state';
+import { view, type AppActions } from '../view-state.svelte';
+import { DocumentActions } from './document-actions';
+import '../style.css';
+
+export function startWorkspace() {
 
 const initialTheme: ThemeSnapshot = {
   id: normalizePreviewTheme(window.marktex.initialTheme.id),
@@ -38,8 +41,8 @@ const actions: AppActions = {
   closeTab: (id) => void closeTab(id),
   startTabDrag: (id, event) => tabDrag.start(id, event),
   endTabDrag: (event) => tabDrag.end(event),
-  newDocument: () => void newDocument(),
-  openDocument: () => void openDocument(),
+  newDocument: () => void documents.create(),
+  openDocument: () => void documents.open(),
   toggleSurface,
   openTable: () => insertions.openTable(),
   openLink: () => insertions.openLink(),
@@ -52,8 +55,8 @@ const actions: AppActions = {
   find: (query, direction, next) => reader.find(query, direction, next),
   closeFind: () => reader.closeFind(false),
   scrollToHeading,
-  keepExternalChange,
-  reloadExternalChange: () => void reloadExternalChange(),
+  keepExternalChange: () => documents.keepExternalChange(),
+  reloadExternalChange: () => void documents.reloadExternalChange(),
   showRenderError: () => void enterEditor(),
 };
 
@@ -686,85 +689,18 @@ function installEditorScrollBinding(targetEditor: Monaco.editor.IStandaloneCodeE
   });
 }
 
-async function save(saveAs = false) {
-  if (!session.document) return false;
-  const text = currentText();
-  if (text === null) return false;
-  const result = saveAs
-    ? await window.marktex.saveDocumentAs(text, session.revision)
-    : await window.marktex.saveDocument(text, session.revision);
-  if (!result.canceled && result.document) {
-    const pathChanged = result.document.path !== session.document.path;
-    session.document = result.document;
-    session.revision = result.document.revision;
-    if (pathChanged) {
-      preview.reset();
-      installModel(result.document);
-      const tab = activeTab();
-      if (tab) {
-        tab.document = result.document;
-        tab.previewUrl = null;
-        tab.previewRevision = null;
-        tab.previewTheme = null;
-      }
-      if (session.surface === 'editor') preview.schedule(session.revision);
-      else if (session.surface === 'viewer') {
-        const target = session.revision;
-        void preview.ensure(target).then((ready) => {
-          if (ready && target === session.revision) void preview.position(session.anchor, target);
-        });
-      }
-    }
-    updateChrome();
-    return true;
-  }
-  return false;
-}
-
-async function saveAllDirtyTabs() {
-  try {
-    for (const tab of tabs) {
-      if (!isTabDirty(tab)) continue;
-      const result = await window.marktex.saveTabDocument(
-        tab.document,
-        tabText(tab),
-        tab.revision,
-      );
-      if (result.canceled || !result.document) {
-        window.marktex.finishWindowClose(false);
-        return;
-      }
-      tab.document = result.document;
-      tab.revision = result.document.revision;
-    }
-    renderTabs();
-    window.marktex.finishWindowClose(true);
-  } catch (error) {
-    window.alert(`문서를 저장하지 못했습니다.\n${error instanceof Error ? error.message : String(error)}`);
-    window.marktex.finishWindowClose(false);
-  }
-}
-
-async function openDocument() {
-  const opened = await window.marktex.openDocument();
-  if (opened) await showDocument(opened);
-}
-
-async function newDocument() {
-  const created = await window.marktex.newDocument();
-  if (created) await showDocument(created, 'editor');
-}
-
-async function exportPdf() {
-  if (!session.document) return;
-  const text = currentText();
-  if (text === null) return;
-  try {
-    await window.marktex.exportPdf(text, session.revision, session.document.path);
-  } catch (error) {
-    window.alert(`PDF를 내보내지 못했습니다.\n${error instanceof Error ? error.message : String(error)}`);
-  }
-}
+const documents = new DocumentActions({
+  tabs,
+  active: activeTab,
+  text: tabText,
+  dirty: isTabDirty,
+  preview,
+  installModel,
+  show: showDocument,
+  reload: reloadActiveDocument,
+  renderTabs,
+  updateChrome,
+});
 
 const insertions = createEditorInsertions({
   host: editorHost,
@@ -773,7 +709,7 @@ const insertions = createEditorInsertions({
   model: () => session.model,
   document: () => session.document,
   editing: () => session.surface === 'editor',
-  save: () => save(false),
+  save: () => documents.save(false),
 });
 
 function installEditorBindings(
@@ -848,40 +784,6 @@ function requestViewerAnchor() {
     enterEditor(session.anchor);
   }, 120);
 }
-function keepExternalChange() {
-  const tab = activeTab();
-  if (!tab || !session.document) return;
-  const tabId = tab.id;
-  const documentPath = session.document.path;
-  const keptText = tabText(tab);
-  const keptRevision = session.revision;
-  void window.marktex.reloadDocument().then(async (diskDocument) => {
-    if (
-      !diskDocument
-      || activeTabId !== tabId
-      || session.document?.path !== documentPath
-    ) return;
-    // 디스크의 새 문자열과 version을 저장 기준으로 받아들이되 editor 내용은
-    // 그대로 둔다. 둘이 다르면 곧바로 dirty이며, 같으면 clean이다.
-    const keptDocument: DocumentSnapshot = {
-      ...diskDocument,
-      text: keptText,
-      revision: keptRevision,
-    };
-    session.document = keptDocument;
-    tab.text = keptText;
-    tab.revision = keptRevision;
-    await window.marktex.activateDocument(keptDocument, keptText, keptRevision);
-    if (activeTabId !== tabId) return;
-    view.notice = false;
-    updateChrome();
-  }).catch((error) => console.error('Failed to keep current document text', error));
-}
-
-async function reloadExternalChange() {
-  const reloaded = await window.marktex.reloadDocument();
-  if (reloaded) await reloadActiveDocument(reloaded);
-}
 
 window.marktex.onPreviewMessage((payload) => {
   preview.receive(payload);
@@ -897,10 +799,10 @@ window.marktex.onExternalChange((change) => {
 });
 window.marktex.onThemeChanged((snapshot) => void reader.applyTheme(snapshot));
 window.marktex.onCommand((command) => {
-  if (command === 'new-document') void newDocument();
-  if (command === 'save') void save(false);
-  if (command === 'save-as') void save(true);
-  if (command === 'export-pdf') void exportPdf();
+  if (command === 'new-document') void documents.create();
+  if (command === 'save') void documents.save(false);
+  if (command === 'save-as') void documents.save(true);
+  if (command === 'export-pdf') void documents.exportPdf();
   if (command === 'close-tab' && activeTabId) void closeTab(activeTabId);
   if (command === 'next-tab') cycleTab(1);
   if (command === 'previous-tab') cycleTab(-1);
@@ -913,7 +815,7 @@ window.marktex.onCommand((command) => {
     else if (session.surface === 'editor') void enterViewer();
   }
 });
-window.marktex.onSaveBeforeClose(() => void saveAllDirtyTabs());
+window.marktex.onSaveBeforeClose(() => void documents.saveAll());
 window.marktex.onTabTransferIncoming((transfer) => void installTransferredTab(transfer));
 window.marktex.onTabTransferCompleted(({ transferId, tabId }) => {
   tabDrag.reset();
@@ -958,3 +860,4 @@ void initializeRenderer();
 const previewResizeObserver = new ResizeObserver(reader.syncView);
 previewResizeObserver.observe(previewFrames);
 window.addEventListener('resize', reader.syncView);
+}
