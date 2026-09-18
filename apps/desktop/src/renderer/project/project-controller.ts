@@ -1,5 +1,6 @@
 import type {
   ProjectEntry,
+  ProjectFolder,
   ProjectSearchDocument,
   ProjectSearchResult,
 } from '../../protocol/desktop-api';
@@ -61,6 +62,19 @@ export class ProjectController {
   chooseFolder = async () => {
     const folder = await this.options.desktop.chooseProjectFolder();
     if (!folder) return;
+    await this.replaceFolder(folder);
+  };
+
+  openFolderPath = async (folderPath: string) => {
+    const folder = await this.options.desktop.restoreProjectFolder(folderPath);
+    if (!folder) {
+      project.error = 'Drop a folder to open it.';
+      return;
+    }
+    await this.replaceFolder(folder);
+  };
+
+  private async replaceFolder(folder: ProjectFolder) {
     project.folder = folder;
     project.visible = true;
     project.open = true;
@@ -75,7 +89,7 @@ export class ProjectController {
     rememberProjectState();
     await this.load(folder.path);
     this.resize();
-  };
+  }
 
   restore = async () => {
     const remembered = project.folder;

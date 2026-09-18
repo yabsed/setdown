@@ -139,6 +139,21 @@ button { font: inherit; }
 }
 .shell[data-tabs="false"] { grid-template-rows: 0 auto 1fr; }
 .shell[data-tabs="false"] .tab-strip { display: none; }
+.shell.is-folder-drop-target::after {
+  content: 'Open Folder';
+  position: absolute;
+  inset: 10px;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  color: var(--app-text);
+  border: 2px dashed var(--app-accent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--app-accent) 16%, var(--app-canvas));
+  font-size: 15px;
+  font-weight: 650;
+  pointer-events: none;
+}
 .tab-strip {
   grid-column: 2;
   display: flex;
@@ -506,7 +521,7 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 .empty-state p { max-width: 440px; margin: 0 0 28px; color: var(--app-muted-text); line-height: 1.65; }
 .primary-button { padding: 10px 17px; color: var(--app-surface); border: 0; border-radius: 8px; background: var(--app-text); cursor: pointer; }
 .primary-button:hover { filter: brightness(.86); }
-.empty-actions { display: flex; gap: 8px; }
+.empty-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
 .secondary-button { padding: 9px 16px; color: var(--app-text); border: 1px solid var(--app-border); border-radius: 8px; background: var(--app-raised-surface); cursor: pointer; }
 .secondary-button:hover { background: var(--app-hover); }
 .danger-button { padding: 9px 16px; color: #fff; border: 1px solid transparent; border-radius: 8px; background: var(--app-danger-text); cursor: pointer; }

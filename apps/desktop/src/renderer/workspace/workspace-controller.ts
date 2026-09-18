@@ -12,6 +12,7 @@ import { createEditorInsertions } from '../editor/editor-insertions';
 import { installEditorImagePaste } from '../editor/editor-image-paste';
 import type { DesktopPort } from '../ports/desktop-port';
 import { ProjectController } from '../project/project-controller';
+import { installFolderDrop } from '../project/folder-drop';
 import { PreviewSession } from '../reader/preview-session';
 import { ReaderController } from '../reader/reader-controller';
 import { createTabDrag } from '../tabs/tab-drag';
@@ -195,6 +196,7 @@ export function startWorkspace(desktop: DesktopPort) {
     resized: reader.syncView,
   });
   projectContextChanged = projects.contextChanged;
+  installFolderDrop(shell, desktop, (path) => void projects.openFolderPath(path));
   void projects.restore();
   const editorContext = {
     desktop,
@@ -227,6 +229,11 @@ export function startWorkspace(desktop: DesktopPort) {
 
   installWorkspaceEvents(desktop, {
     previewMessage: (payload) => {
+      if (payload.message.type === 'marktex:folder-drop'
+        && typeof payload.message.path === 'string') {
+        void projects.openFolderPath(payload.message.path);
+        return;
+      }
       preview.receive(payload);
       reader.handleMessage(payload);
     },

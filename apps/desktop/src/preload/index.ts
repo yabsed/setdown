@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type {
   AppCommand,
   CloseDecision,
@@ -84,6 +84,7 @@ const api: MarkTexApi = {
   pasteClipboardImage: () => ipcRenderer.invoke('document:paste-clipboard-image'),
   pickLinkTarget: (documentPath) =>
     ipcRenderer.invoke('document:pick-link-target', documentPath),
+  pathForFile: (file) => webUtils.getPathForFile(file),
   chooseProjectFolder: () => ipcRenderer.invoke('project:choose-folder'),
   getProjectFolder: () => ipcRenderer.invoke('project:get-folder'),
   restoreProjectFolder: (folderPath) => ipcRenderer.invoke('project:restore-folder', folderPath),

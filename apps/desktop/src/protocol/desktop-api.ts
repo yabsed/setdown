@@ -207,6 +207,7 @@ export type MarkTexApi = {
   exportPdf(text: string, revision: number, documentPath: string): Promise<ExportPdfResult>;
   pasteClipboardImage(): Promise<PasteImageResult>;
   pickLinkTarget(documentPath: string): Promise<PickLinkTargetResult>;
+  pathForFile(file: File): string;
   chooseProjectFolder(): Promise<ProjectFolder | null>;
   getProjectFolder(): Promise<ProjectFolder | null>;
   restoreProjectFolder(path: string): Promise<ProjectFolder | null>;

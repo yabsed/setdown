@@ -333,6 +333,20 @@ function previewStyles(themeId: PreviewThemeId): string {
          한다. 새 문서를 열 때 보이던 흰 섬광의 원인이다. bridge가 theme을
          바꿀 때 이 값을 함께 갱신한다. */
       html, body { background: ${previewThemeBackground(themeId)}; }
+      html[data-setdown-folder-drop] body::after {
+        content: 'Open Folder';
+        position: fixed;
+        inset: 10px;
+        z-index: 2147483647;
+        display: grid;
+        place-items: center;
+        color: currentColor;
+        border: 2px dashed rgba(72, 139, 218, .9);
+        border-radius: 8px;
+        background: rgba(72, 139, 218, .16);
+        font: 600 15px Inter, ui-sans-serif, sans-serif;
+        pointer-events: none;
+      }
       [data-source-line] { cursor: text; }
       /* crossnote의 로딩 overlay.
          crossnote는 자기 \`updateHtml\` 경로가 끝나야 이 overlay를 걷는데,
