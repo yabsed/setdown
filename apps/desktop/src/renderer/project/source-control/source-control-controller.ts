@@ -1,6 +1,8 @@
 import { textDiffHunks } from '../../../core/diff/text-diff';
 import type { PreviewThemeId } from '../../../core/preview/preview-preferences';
-import { GOLDEN_TOP_RATIO } from '../../../core/preview/viewport-anchor';
+import { readReviewBookmark, reviewViewport, reviewPositionCommand, type ReviewViewport }
+  from '../../../core/preview/review-viewport';
+import { gitDiffViewport, type GitDiffViewportPort } from './git-diff-viewport';
 import type {
   DocumentSnapshot,
   GitDiff,
@@ -16,6 +18,7 @@ import { project, type GitDiffTabState } from '../project-state.svelte';
 
 type Options = {
   desktop: DesktopPort;
+  viewport?: GitDiffViewportPort;
   openWorkingTree(path: string): Promise<boolean>;
   activateWorkingTree(path: string): boolean;
   workingTreeBuffer(path: string): string | null;
@@ -23,6 +26,15 @@ type Options = {
   reviewChanged(open: boolean, active: boolean): void;
 };
 
+type ReviewReadingState = {
+  source: ReviewViewport;
+  viewer: ReviewViewport | null;
+  presentedId: string | null;
+  presentedBounds: PreviewBounds | null;
+  observationId: number | null;
+  observedId: string | null;
+  sequence: number;
+};
 const PREVIEW_DEBOUNCE_MS = 400;
 
 export class SourceControlController {
@@ -32,7 +44,10 @@ export class SourceControlController {
   private refreshTask: Promise<void> | null = null;
   private statusGeneration = 0;
   private bounds: PreviewBounds | null = null;
-  private pendingPreviewPosition: string | null = null;
+  private pendingPreviewPosition: { tabId: string; intent: 'source' | 'resume' } | null = null;
+  private readonly readingStates = new Map<string, ReviewReadingState>();
+  private observationSequence = 0;
+  private get viewport(): GitDiffViewportPort { return this.options.viewport ?? gitDiffViewport; }
   private themeId: PreviewThemeId | null = null;
   private overlayDepth = 0;
   private overlayToken = 0;
@@ -180,22 +195,31 @@ export class SourceControlController {
 
   toggleDiffMode = (): void => {
     if (!project.gitDiff) return;
-    if (project.gitDiffMode === 'rendered') this.showSource(project.gitDiffLine);
+    if (project.gitDiffMode === 'rendered') {
+      const tab = this.activeTab();
+      if (tab) this.showSource(this.readingState(tab).viewer ?? this.readingState(tab).source);
+    }
     else this.showRendered();
   };
 
   showRendered = (): void => {
     const tab = this.activeTab();
     if (!tab?.diff || project.gitDiffMode === 'rendered') return;
-    const diff = this.effectiveDiff(tab.diff);
+    // Switching surfaces does not need a fresh text diff. Preparation computes
+    // hunks off this immediate path; the live buffer was already mirrored.
+    const diff = tab.diff;
     if (!this.renderable(diff)) return;
-    tab.diff = diff;
+    const reading = this.readingState(tab);
+    reading.source = this.viewport.read(tab.id) ?? reviewViewport(tab.line);
+    reading.viewer = null; // Esc is a new navigation intent, not a tab resume.
+    reading.observationId = null;
+    reading.observedId = null;
     tab.mode = 'rendered';
     project.gitDiffLine = tab.line || 1;
     project.gitDiff = diff;
     project.gitDiffMode = 'rendered';
     this.copyPreviewState(tab);
-    this.syncPreview(true);
+    this.syncPreview('source');
     if (tab.previewDirty || !tab.previewId) this.schedulePreview(tab, 0);
     this.publishReview();
   };
@@ -203,10 +227,31 @@ export class SourceControlController {
   previewMessage = (payload: PreviewMessage): boolean => {
     const tab = project.gitDiffTabs.find((candidate) =>
       this.previewIds(candidate).includes(payload.tabId));
-    if (!tab || payload.message.type !== 'edit-at-anchor') return false;
-    if (project.activeGitDiffId !== tab.id || !project.gitDiffActive) this.activateTabState(tab);
-    const anchor = payload.message.anchor as { sourceLine?: unknown } | undefined;
-    this.showSource(Math.max(1, Number(anchor?.sourceLine) || 1));
+    if (!tab) return false;
+    const message = payload.message;
+    const reading = this.readingState(tab);
+    if (message.type === 'marktex:viewport-state') {
+      // A/B back-buffer load, hidden layout and obsolete observation sessions
+      // may publish too. Only a session we actually presented owns reading state.
+      if (tab.mode !== 'rendered' || message.observationId !== reading.observationId
+        || reading.observationId === null || payload.tabId !== reading.observedId
+        || typeof message.sequence !== 'number' || !Number.isFinite(message.sequence)
+        || message.sequence <= reading.sequence) return true;
+      const bookmark = readReviewBookmark(message.anchor);
+      if (bookmark) {
+        reading.viewer = bookmark;
+        reading.sequence = message.sequence;
+      }
+      return true;
+    }
+    if (message.type === 'edit-at-anchor') {
+      // Background/obsolete views must never activate tabs or move the caret.
+      if (!project.gitDiffActive || project.activeGitDiffId !== tab.id
+        || project.gitDiffMode !== 'rendered' || payload.tabId !== tab.previewId) return true;
+      const bookmark = readReviewBookmark(message.anchor);
+      if (bookmark) this.showSource(bookmark);
+    }
+    // Do not route Git viewport/headings messages into ordinary document state.
     return true;
   };
 
@@ -316,19 +361,25 @@ export class SourceControlController {
     this.copyPreviewState(tab);
     this.options.reviewChanged(true, true);
     project.error = '';
-    this.syncPreview(true);
+    this.syncPreview('resume');
     if (tab.diff && this.renderable(tab.diff) && !tab.previewLoading
       && (tab.previewDirty || !tab.previewId)) this.schedulePreview(tab, 0);
     this.publishReview();
   }
 
-  private showSource(line: number): void {
+  private showSource(target: ReviewViewport): void {
     const tab = this.activeTab();
     if (!tab) return;
     if (tab.diff) {
       tab.diff = this.effectiveDiff(tab.diff);
       project.gitDiff = tab.diff;
     }
+    this.pauseObservation(tab);
+    const reading = this.readingState(tab);
+    reading.observationId = null;
+    reading.source = { ...target, band: [], blockOffset: undefined };
+    this.viewport.requestSource(tab.id, reading.source);
+    const line = target.anchor.sourceLine;
     tab.line = line;
     tab.mode = 'source';
     project.gitDiffLine = line;
@@ -384,9 +435,10 @@ export class SourceControlController {
 
   private rememberActiveTab(): void {
     const tab = this.activeTab();
-    if (!tab) return;
+    if (!tab || !project.gitDiffActive) return;
     tab.mode = project.gitDiffMode;
-    if (project.gitDiffMode === 'rendered') tab.line = project.gitDiffLine;
+    // Source and Viewer positions are not interchangeable.
+    if (tab.mode === 'rendered') this.pauseObservation(tab);
   }
 
   private resetActiveState(): void {
@@ -410,26 +462,66 @@ export class SourceControlController {
     project.gitDiffPreviewReady = !!tab.previewId;
   }
 
-  private syncPreview(position = false): void {
+  private readingState(tab: GitDiffTabState): ReviewReadingState {
+    let state = this.readingStates.get(tab.id);
+    if (!state) {
+      state = { source: reviewViewport(tab.line), viewer: null, presentedId: null,
+        presentedBounds: null, observationId: null, observedId: null, sequence: 0 };
+      this.readingStates.set(tab.id, state);
+    }
+    return state;
+  }
+
+  private pauseObservation(tab: GitDiffTabState): void {
+    const reading = this.readingStates.get(tab.id);
+    if (!reading?.observedId || reading.observationId === null) return;
+    this.options.desktop.sendPreviewCommand(reading.observedId, {
+      command: 'marktex:observe-viewport', observationId: null,
+    });
+    // Retain the token to accept the final scroll sample after tab deactivation.
+    // A subsequent presentation or Esc replaces it, rejecting late old samples.
+  }
+
+  private syncPreview(intent?: 'source' | 'resume'): void {
     const tab = this.activeTab();
-    if (position) {
-      this.pendingPreviewPosition = project.gitDiffActive && project.gitDiffMode === 'rendered'
-        ? tab?.id ?? null : null;
+    if (intent) {
+      if (!project.gitDiffActive || project.gitDiffMode !== 'rendered' || !tab) {
+        this.pendingPreviewPosition = null;
+      } else if (intent === 'source' || this.pendingPreviewPosition?.tabId !== tab.id) {
+        this.pendingPreviewPosition = { tabId: tab.id, intent };
+      }
     }
     if (!project.gitDiffActive || this.overlayFrozen) return;
     const previewId = project.gitDiffMode === 'rendered' ? tab?.previewId : null;
     const shownId = this.bounds ? previewId : null;
     this.options.desktop.showPreview(shownId ?? null, shownId ? this.bounds : null);
-    // The first Esc can precede BOTH the preview and the Svelte host layout.
-    // Retain the intent until both exist; the show IPC must set native bounds
-    // before the position IPC asks SourceAtlas to measure rendered blocks.
-    if (!tab || !shownId || this.pendingPreviewPosition !== tab.id) return;
+    // Retain cold-Esc intent until both the page and CURRENT geometry exist.
+    // Keep show/bounds -> position ordering without awaiting layout or rendering.
+    if (!tab || !shownId || !this.bounds) return;
+    const reading = this.readingState(tab);
+    if (this.pendingPreviewPosition?.tabId !== tab.id) {
+      if (reading.presentedId === shownId) reading.presentedBounds = { ...this.bounds };
+      return;
+    }
+    const pending = this.pendingPreviewPosition;
     this.pendingPreviewPosition = null;
+    const samePage = reading.presentedId === shownId;
+    const sameSize = reading.presentedBounds?.width === this.bounds.width
+      && reading.presentedBounds?.height === this.bounds.height;
+    if (pending.intent === 'source' || !samePage || !sameSize) {
+      this.options.desktop.sendPreviewCommand(shownId, reviewPositionCommand(
+        pending.intent === 'source' ? reading.source : reading.viewer ?? reading.source,
+      ));
+    }
+    // A same-page, same-layout resume deliberately sends NO scroll command.
+    // Native scrollTop is more precise than reconstructing a source-line anchor.
+    reading.presentedId = shownId;
+    reading.presentedBounds = { ...this.bounds };
+    reading.observedId = shownId;
+    reading.observationId = ++this.observationSequence;
+    reading.sequence = 0;
     this.options.desktop.sendPreviewCommand(shownId, {
-      command: 'marktex:position-preview',
-      sourceLine: tab.line || 1,
-      topRatio: GOLDEN_TOP_RATIO,
-      settle: false,
+      command: 'marktex:observe-viewport', observationId: reading.observationId,
     });
   }
 
@@ -495,12 +587,17 @@ export class SourceControlController {
         // Swap to the freshly rendered hidden view. The previous view stays
         // alive as the next render target, so generations neither create nor
         // destroy native views.
+        this.pauseObservation(tab);
+        const reading = this.readingState(tab);
+        reading.presentedId = null;
+        reading.observationId = null;
+        reading.observedId = null;
         tab.previewId = candidateId;
         if (this.activeTab()?.id === tab.id) {
           project.gitDiff = tab.diff;
           project.gitDiffMode = tab.mode;
           this.copyPreviewState(tab);
-          this.syncPreview(true);
+          this.syncPreview('resume');
           this.publishReview();
         }
       }
@@ -521,7 +618,9 @@ export class SourceControlController {
   }
 
   private disposeTab(tab: GitDiffTabState): void {
-    if (this.pendingPreviewPosition === tab.id) this.pendingPreviewPosition = null;
+    if (this.pendingPreviewPosition?.tabId === tab.id) this.pendingPreviewPosition = null;
+    this.readingStates.delete(tab.id);
+    this.viewport.forget(tab.id);
     this.loadGenerations.set(tab.id, (this.loadGenerations.get(tab.id) ?? 0) + 1);
     const timer = this.previewTimers.get(tab.id);
     if (timer !== undefined) window.clearTimeout(timer);
@@ -577,7 +676,10 @@ export class SourceControlController {
       staged: target.staged,
       active: project.gitDiffActive,
       mode: project.gitDiffMode,
-      line: project.gitDiffLine,
+      line: project.gitDiffMode === 'rendered'
+        ? this.readingStates.get(project.activeGitDiffId ?? '')?.viewer?.anchor.sourceLine
+          ?? project.gitDiffLine
+        : project.gitDiffLine,
     };
     this.options.desktop.updateGitReviewState(state);
   }

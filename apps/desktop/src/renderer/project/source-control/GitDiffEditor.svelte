@@ -7,12 +7,16 @@
   import { monacoThemeName, registerMonacoThemes } from '../../theme';
   import { CompositionGuard } from '../../editor/composition-guard';
   import { project } from '../project-state.svelte';
+  import { readEditorViewport } from '../../editor/editor-viewport';
+  import { reviewViewport, type ReviewSourceSide } from '../../../core/preview/review-viewport';
+  import { gitDiffViewport } from './git-diff-viewport';
 
   type CachedModels = {
     original: Monaco.editor.ITextModel;
     modified: Monaco.editor.ITextModel;
     originalText: string;
     modifiedText: string;
+    sourceSide: ReviewSourceSide;
     staged: boolean;
     filePath: string;
     listener: Monaco.IDisposable;
@@ -34,6 +38,24 @@
   const models = new Map<string, CachedModels>();
   const input = new CompositionGuard(() => untrack(reconcileCurrent));
   const inputListeners: Monaco.IDisposable[] = [];
+  const unregisterViewport = gitDiffViewport.register((tabId) => {
+    if (!editor || !api || shownId !== tabId || !project.gitDiffActive
+      || project.gitDiffMode !== 'source') return null;
+    const cached = models.get(tabId);
+    if (!cached) return null;
+    const original = editor.getOriginalEditor();
+    // Inline mode's original is hidden; otherwise honor the side last used.
+    const sourceSide = cached.sourceSide === 'before' && original.getLayoutInfo().width > 0
+      ? 'before' : 'after';
+    const side = sourceSide === 'before' ? original : editor.getModifiedEditor();
+    const model = sourceSide === 'before' ? cached.original : cached.modified;
+    return { ...readEditorViewport(side, api, model, reviewViewport(project.gitDiffLine).anchor), sourceSide };
+  });
+
+  function rememberSourceSide(side: ReviewSourceSide) {
+    const cached = shownId ? models.get(shownId) : null;
+    if (cached) cached.sourceSide = side;
+  }
 
   const language = (filePath: string) => {
     const extension = filePath.split('.').at(-1)?.toLowerCase();
@@ -95,6 +117,8 @@
     });
     const modifiedEditor = editor.getModifiedEditor();
     inputListeners.push(
+      editor.getOriginalEditor().onDidFocusEditorText(() => rememberSourceSide('before')),
+      modifiedEditor.onDidFocusEditorText(() => rememberSourceSide('after')),
       modifiedEditor.onDidCompositionStart(() => {
         interruptReveal();
         input.start();
@@ -147,6 +171,7 @@
       modified,
       originalText: diff.originalText,
       modifiedText: diff.modifiedText,
+      sourceSide: 'after',
       staged: diff.staged,
       filePath: diff.filePath,
       listener: { dispose() {} },
@@ -266,18 +291,36 @@
       ariaLabel: active.diff.staged ? 'Staged version' : 'Current document',
     });
     const revealKey = `${activeId}:${line}:${visible}`;
-    if (visible && revealKey !== lastRevealKey) {
+    const requested = visible ? gitDiffViewport.takeSourceTarget(active.id) : null;
+    if (visible && (requested || revealKey !== lastRevealKey)) {
       lastRevealKey = revealKey;
-      const target = Math.min(Math.max(1, line), cached.modified.getLineCount());
-      const modifiedEditor = editor.getModifiedEditor();
-      modifiedEditor.setPosition({ lineNumber: target, column: 1 });
-      modifiedEditor.revealLineInCenter(target);
-      const first = active.diff.hunks[0];
-      const firstChangedLine = first ? Math.max(1, first.newStart || first.oldStart || 1) : 1;
-      if (!cached.viewState && target === firstChangedLine) {
-        revealFirstChangeWhenReady(monaco, active.id, cached, target);
+      if (requested) {
+        interruptReveal();
+        cached.sourceSide = requested.sourceSide;
+        const targetEditor = requested.sourceSide === 'before'
+          ? editor.getOriginalEditor() : editor.getModifiedEditor();
+        const targetModel = requested.sourceSide === 'before' ? cached.original : cached.modified;
+        const position = targetModel.validatePosition({
+          lineNumber: requested.anchor.sourceLine, column: requested.anchor.sourceColumn ?? 1,
+        });
+        targetEditor.setPosition(position);
+        targetEditor.setScrollTop(targetEditor.getTopForPosition(position.lineNumber, position.column)
+          - targetEditor.getLayoutInfo().height * requested.anchor.yRatio, monaco.editor.ScrollType.Immediate);
+        targetEditor.focus();
+      } else if (!cached.viewState) {
+        const target = Math.min(Math.max(1, line), cached.modified.getLineCount());
+        const modifiedEditor = editor.getModifiedEditor();
+        modifiedEditor.setPosition({ lineNumber: target, column: 1 });
+        modifiedEditor.revealLineInCenter(target);
+        const first = active.diff.hunks[0];
+        const firstChangedLine = first ? Math.max(1, first.newStart || first.oldStart || 1) : 1;
+        if (target === firstChangedLine) revealFirstChangeWhenReady(monaco, active.id, cached, target);
+        if (!active.diff.staged) modifiedEditor.focus();
+      } else {
+        (cached.sourceSide === 'before' ? editor.getOriginalEditor() : editor.getModifiedEditor()).focus();
       }
-      if (!active.diff.staged) modifiedEditor.focus();
+      // Ordinary tab resume keeps Monaco's saved caret/scroll state. Only an
+      // explicit Viewer -> Source request is allowed to reposition it.
       layout = true;
     }
     if (layout) requestAnimationFrame(() => editor?.layout());
@@ -344,6 +387,7 @@
 
   onDestroy(() => {
     request += 1;
+    unregisterViewport();
     input.dispose();
     for (const listener of inputListeners) listener.dispose();
     interruptReveal();

@@ -16,6 +16,9 @@ type PreviewCommand = {
   sourceOccurrence?: number;
   searchOrdinal?: number;
   band?: unknown;
+  sourceSide?: unknown;
+  blockOffset?: number;
+  observationId?: number | null;
   from?: number;
   removeCount?: number;
   lineDelta?: number;
@@ -148,15 +151,17 @@ export function installCommandRouter(options: Options): void {
   };
 
   const positionPreview = (command: PreviewCommand) => {
+    const side = command.sourceSide === 'before' || command.sourceSide === 'after'
+      ? command.sourceSide : undefined;
     const sourceLine = Math.min(
-      options.config.totalLineCount,
+      options.sourceAtlas.lineCount(side),
       Math.max(1, Number(command.sourceLine) || 1),
     );
     const ratio = Number.isFinite(command.topRatio)
       ? Number(command.topRatio) : GOLDEN_TOP_RATIO;
-    const band = options.sourceAtlas.readBand(command.band);
+    const band = options.sourceAtlas.readBand(command.band, side);
     if (!options.content.includesSourceLine(sourceLine, band)) options.content.hydrateAll();
-    const apply = () => options.sourceAtlas.position(sourceLine, ratio, band);
+    const apply = () => options.sourceAtlas.position(sourceLine, ratio, band, side, command.blockOffset);
     const done = () => acknowledge('marktex:preview-positioned', command.requestId);
     if (command.settle === false || options.content.pendingCount > 0) {
       apply();
@@ -185,6 +190,11 @@ export function installCommandRouter(options: Options): void {
     const command = event.data as PreviewCommand | null;
     if (!command) return;
     switch (command.command) {
+      case 'marktex:observe-viewport':
+        options.viewport.observe(typeof command.observationId === 'number'
+          && Number.isSafeInteger(command.observationId) && command.observationId > 0
+          ? command.observationId : null);
+        break;
       case 'marktex:resume-hydration':
         options.content.resumeAfterPaint();
         break;

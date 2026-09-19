@@ -5,11 +5,21 @@ import {
   type SourceCandidate,
   type ViewportAnchor,
 } from '../core/preview/viewport-anchor';
+import type { ReviewSourceSide } from '../core/preview/review-viewport';
 
 export const ANCHOR_SELECTOR = '[data-source-line], [data-source-start], [data-source-lines]';
 export const PREVIEW_SELECTOR = '.markdown-preview[data-for="preview"]';
 
 type Entry = SourceCandidate & { element: Element };
+type ReviewAnchor = ViewportAnchor & { sourceSide?: ReviewSourceSide; blockOffset?: number };
+
+function sourceSideOf(element: Element | null): ReviewSourceSide | undefined {
+  if (element?.closest('.setdown-rendered-diff-before')) return 'before';
+  if (element?.closest('.setdown-rendered-diff-after')) return 'after';
+  // Unified mode has no before/after class, but still carries change semantics.
+  const cell = element?.closest('.setdown-rendered-diff-unified .setdown-diff-cell');
+  return cell ? cell.getAttribute('data-change') === 'removed' ? 'before' : 'after' : undefined;
+}
 type AtlasOptions = { lineCount: () => number; documentIsBlank: () => boolean };
 
 export const sourceLinePair = (value: string | null): [number, number | undefined] | null => {
@@ -52,6 +62,7 @@ const containing = (entries: Entry[], line: number) => entries.find((entry) => (
 export class SourceAtlas {
   private entries: Entry[] = [];
   private stale = true;
+  private reviewSide: ReviewSourceSide = 'after';
 
   constructor(private readonly options: AtlasOptions) {}
 
@@ -67,23 +78,37 @@ export class SourceAtlas {
     return this.entries;
   }
 
-  readBand(value: unknown): BandLine[] {
+  private scoped(side?: ReviewSourceSide): Entry[] {
+    return this.read().filter((entry) => !side || !sourceSideOf(entry.element)
+      || sourceSideOf(entry.element) === side);
+  }
+
+  lineCount(side?: ReviewSourceSide): number {
+    // Git's before side can be longer than the modified document used to boot
+    // the preview. Never clamp an original line to the modified line count.
+    if (side !== 'before') return this.options.lineCount();
+    return this.scoped(side).reduce((last, entry) => Math.max(last, entry.endLine ?? entry.line), 1);
+  }
+
+  readBand(value: unknown, side?: ReviewSourceSide): BandLine[] {
     if (!Array.isArray(value)) return [];
     return value.flatMap((item) => {
       const sourceLine = Number((item as BandLine)?.sourceLine);
       const yRatio = Number((item as BandLine)?.yRatio);
       return Number.isFinite(sourceLine) && sourceLine >= 1 && Number.isFinite(yRatio)
         ? [{
-          sourceLine: Math.min(this.options.lineCount(), Math.round(sourceLine)),
+          sourceLine: Math.min(this.lineCount(side), Math.round(sourceLine)),
           yRatio: Math.min(1, Math.max(0, yRatio)),
         }]
         : [];
     });
   }
 
-  position(sourceLine: number, topRatio: number, band: BandLine[] = []) {
+  position(sourceLine: number, topRatio: number, band: BandLine[] = [],
+    sourceSide?: ReviewSourceSide, blockOffset = 0) {
     this.invalidate();
-    const entries = this.read();
+    if (sourceSide) this.reviewSide = sourceSide;
+    const entries = this.scoped(sourceSide);
     const height = innerHeight || 1;
     const samples = band.flatMap(({ sourceLine: line, yRatio }) => {
       const entry = containing(entries, line);
@@ -100,10 +125,11 @@ export class SourceAtlas {
       undefined,
     );
     const documentHeight = Math.max(document.documentElement.scrollHeight || 0, height);
-    const sourceRatio = this.options.lineCount() <= 1
-      ? 0
-      : (sourceLine - 1) / (this.options.lineCount() - 1);
-    const fallbackTop = (nearest?.rect.top ?? documentHeight * sourceRatio)
+    const count = this.lineCount(sourceSide);
+    const sourceRatio = count <= 1 ? 0 : (sourceLine - 1) / (count - 1);
+    const withinBlock = nearest && Number.isFinite(blockOffset)
+      ? (nearest.rect.bottom - nearest.rect.top) * Math.min(1, Math.max(0, blockOffset)) : 0;
+    const fallbackTop = (nearest?.rect.top ?? documentHeight * sourceRatio) + withinBlock
       - height * Math.min(1, Math.max(0, topRatio));
     const target = resolveBandScrollTop(samples, height) ?? fallbackTop;
     const scrollTop = Math.min(
@@ -138,7 +164,12 @@ export class SourceAtlas {
     clientY: number,
     target: Element | null,
     path: EventTarget[],
-  ): ViewportAnchor {
+  ): ReviewAnchor {
+    const review = !!document.querySelector('.setdown-rendered-diff-split, .setdown-rendered-diff-unified');
+    const sourceSide = review ? sourceSideOf(target) ?? this.reviewSide : undefined;
+    if (sourceSide) this.reviewSide = sourceSide;
+    const accepts = (element: Element) => !sourceSide || !sourceSideOf(element)
+      || sourceSideOf(element) === sourceSide;
     const nodes = path.filter((node): node is Element => node instanceof Element);
     if (!nodes.length && target) {
       for (let element: Element | null = target; element; element = element.parentElement) {
@@ -146,18 +177,18 @@ export class SourceAtlas {
       }
     }
     const ancestors = nodes.flatMap((element, index) => {
-      const value = element.matches(ANCHOR_SELECTOR) ? this.fromElement(element, index) : null;
+      const value = element.matches(ANCHOR_SELECTOR) && accepts(element) ? this.fromElement(element, index) : null;
       return value ? [value] : [];
     });
     const descendants = target
       ? Array.from(target.querySelectorAll(ANCHOR_SELECTOR)).flatMap((element, index) => {
-        const value = this.fromElement(element, index);
+        const value = accepts(element) ? this.fromElement(element, index) : null;
         return value ? [value] : [];
       })
       : [];
     const top = document.documentElement.scrollTop || 0;
     const left = document.documentElement.scrollLeft || 0;
-    const candidates = this.read().map((entry) => ({
+    const candidates = this.scoped(sourceSide).map((entry) => ({
       line: entry.line,
       endLine: entry.endLine,
       column: entry.column,
@@ -170,25 +201,47 @@ export class SourceAtlas {
       },
     }));
     const documentHeight = Math.max(document.documentElement.scrollHeight || 0, innerHeight || 1);
-    return resolveViewerPoint({
+    const anchor = resolveViewerPoint({
       point: { x: clientX, y: clientY },
       viewportHeight: innerHeight || 1,
-      lineCount: this.options.lineCount(),
+      lineCount: this.lineCount(sourceSide),
       ancestors,
       descendants,
       candidates,
       scrollRatio: (top + clientY) / documentHeight,
       documentIsBlank: this.options.documentIsBlank(),
     });
+    return sourceSide ? { ...anchor, sourceSide } : anchor;
   }
 
   viewportAnchorAt(yRatio: number) {
     const clientY = (innerHeight || 1) * yRatio;
-    const clientX = (innerWidth || 1) / 2;
+    const pane = Array.from(document.querySelectorAll(`.setdown-rendered-diff-${this.reviewSide}`))
+      .find((element) => element.getBoundingClientRect().width > 0);
+    const rect = pane?.getBoundingClientRect();
+    // The window midpoint is the split gutter, not either document's center.
+    const clientX = rect ? rect.left + rect.width / 2 : (innerWidth || 1) / 2;
     const target = document.elementFromPoint(clientX, clientY);
     const path: EventTarget[] = [];
     for (let node: Element | null = target; node; node = node.parentElement) path.push(node);
     return this.anchorAtPoint(clientX, clientY, target, path);
+  }
+
+  /** Preserve a reading point *inside* a tall paragraph/math block on A/B swap. */
+  bookmarkAt(yRatio: number): ReviewAnchor {
+    this.invalidate();
+    const anchor = this.viewportAnchorAt(yRatio);
+    if (!anchor.sourceSide) return anchor; // ordinary Markdown is unchanged
+    const entry = containing(this.scoped(anchor.sourceSide), anchor.sourceLine);
+    if (!entry) return anchor;
+    const point = (document.documentElement.scrollTop || 0) + (innerHeight || 1) * yRatio;
+    const height = Math.max(1, entry.rect.bottom - entry.rect.top);
+    if (point >= entry.rect.top && point <= entry.rect.bottom) {
+      return { ...anchor, blockOffset: (point - entry.rect.top) / height };
+    }
+    // In inter-block whitespace, pin the nearby block's actual screen height.
+    const blockRatio = (entry.rect.top - (document.documentElement.scrollTop || 0)) / (innerHeight || 1);
+    return { ...anchor, yRatio: Math.min(1, Math.max(0, blockRatio)), blockOffset: 0 };
   }
 }
 

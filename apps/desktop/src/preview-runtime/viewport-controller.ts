@@ -10,6 +10,18 @@ type Options = {
 export class ViewportController {
   private frame: number | null = null;
   private layoutReady = false;
+  private observationId: number | null = null;
+  private sequence = 0;
+
+  observe(observationId: number | null): void {
+    // Flush before parking so a final scroll frame can still reach its own tab.
+    if (this.frame !== null) window.cancelAnimationFrame(this.frame);
+    this.frame = null;
+    if (this.observationId !== null) this.publish();
+    this.observationId = observationId;
+    this.sequence = 0;
+    if (observationId !== null) this.schedule();
+  }
 
   constructor(private readonly options: Options) {}
 
@@ -54,7 +66,11 @@ export class ViewportController {
     this.options.send({
       type: 'marktex:viewport-state',
       revision: this.options.revision(),
-      anchor: this.options.sourceAtlas.viewportAnchorAt(GOLDEN_TOP_RATIO),
+      anchor: this.observationId === null
+        ? this.options.sourceAtlas.viewportAnchorAt(GOLDEN_TOP_RATIO)
+        : this.options.sourceAtlas.bookmarkAt(GOLDEN_TOP_RATIO),
+      observationId: this.observationId,
+      sequence: ++this.sequence,
       scrollRatio: maximum > 0 ? scrollTop / maximum : 0,
     });
   };
