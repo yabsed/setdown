@@ -253,8 +253,9 @@ test('keeps staged and live working-tree reviews in separate tabs', async () => 
     await window.locator('.git-diff-tab').nth(0).click();
     await window.locator('.git-diff-tab').nth(1).click();
     await expect(window.locator('.git-review-header')).toHaveCount(0);
+    // Index keeps one page; editable Working Tree eagerly seeds its A/B pair.
     await expect.poll(async () => (await diffPreviews(application)).length, { timeout: 20_000 })
-      .toBe(2);
+      .toBe(3);
     const warmed = await diffPreviews(application);
     const warmedIdentity = warmed.map(({ id, url }) => ({ id, url }))
       .sort((left, right) => left.id - right.id);

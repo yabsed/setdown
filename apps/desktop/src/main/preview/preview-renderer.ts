@@ -6,7 +6,7 @@ import type { PreviewBlockPatch } from '../../core/preview/preview-blocks';
 import { normalizePreviewTheme, previewThemeBackground, type PreviewThemeId } from '../../core/preview/preview-preferences';
 import type { WindowState } from '../windows/window-state';
 import type { PreviewManager } from './preview-manager';
-import { ReviewRenderClient } from './review-render-client';
+import { ReviewRenderClient, type ReviewAssemblyResult } from './review-render-client';
 import { ReviewBaselineCache } from './review-baseline-cache';
 
 type WorkerResult = {
@@ -29,7 +29,8 @@ export class PreviewRenderer {
   private requestId = 0;
   private reviewRevision = 0;
   private readonly reviews: ReviewRenderClient;
-  private readonly reviewPages = new WeakMap<Electron.WebContents, string>();
+  private readonly reviewPages = new WeakMap<Electron.WebContents, { url: string; revision: number; pageKey: string }>();
+  private readonly reviewSeeds = new WeakMap<Electron.WebContents, Promise<void>>();
   private readonly baselines = new ReviewBaselineCache<string>();
   private baselineEpoch = 0;
   private readonly waiters = new Map<number, {
@@ -110,7 +111,7 @@ export class PreviewRenderer {
     const previews = this.options.previews;
     const preview = previews.views.get(tabId);
     const themeId = normalizePreviewTheme(requestedTheme);
-    const revision = ++this.reviewRevision;
+    let revision = ++this.reviewRevision;
     const unsupported = (): GitDiffPreviewResult => ({ revision, url: null, themeId, supported: false });
     if (!preview || preview.ownerWebContentsId !== senderId
       || diff.originalText === null || diff.modifiedText === null
@@ -120,6 +121,9 @@ export class PreviewRenderer {
     const owned = () => previews.views.get(tabId) === preview
       && preview.ownerWebContentsId === senderId && !contents.isDestroyed();
     const check = () => { if (!owned()) throw new Error('The Git preview was closed or transferred.'); };
+    // Join an optional initial standby load rather than racing it with an edit.
+    const seed = this.reviewSeeds.get(contents);
+    if (seed) { await seed; check(); }
     state.activeRoot = path.dirname(diff.filePath);
     const originalId = `${tabId}:original`;
     const modifiedId = `${tabId}:modified`;
@@ -142,32 +146,56 @@ export class PreviewRenderer {
           2 * (original.html.length + diff.originalText.length + context.length));
       }
       const currentUrl = contents.getURL();
-      const reusable = this.reviewPages.get(contents) === currentUrl;
-      const assembled = await this.reviews.assemble({
+      const page = this.reviewPages.get(contents);
+      const reusable = !!page && page.url === currentUrl;
+      const pageKey = page?.pageKey ?? `${senderId}:${contents.id}:${tabId}`;
+      const input = {
         originalHtml: original.html, modifiedHtml: modified.html,
-        template: modified.template, needsTemplate: !reusable,
-      });
+        // Avoid sending the large unused page template across a second IPC hop.
+        template: reusable ? undefined : modified.template, needsTemplate: !reusable,
+        pageKey, baseRevision: reusable ? page!.revision : null, revision,
+      };
+      const assembled = await this.reviews.assemble(input);
       check();
-      if (!assembled.supported || typeof assembled.html !== 'string') return unsupported();
+      if (!assembled.supported || (!assembled.patch && typeof assembled.html !== 'string')) return unsupported();
       preview.view.setBackgroundColor(previewThemeBackground(themeId));
       let url: string;
       if (reusable) {
-        if (contents.getURL() !== currentUrl || preview.view.getVisible()) {
-          throw new Error('The Git preview changed during preparation.');
-        }
+        const install = async (update: ReviewAssemblyResult) => {
+          check();
+          if (contents.getURL() !== currentUrl || preview.view.getVisible()) {
+            throw new Error('The Git preview changed during preparation.');
+          }
+          if (update.patch && (update.patch.baseRevision !== page!.revision || update.patch.revision !== revision)) {
+            throw new Error('The comparison worker returned a mismatched row patch.');
+          }
+          if (!update.supported || (!update.patch && typeof update.html !== 'string')) {
+            throw new Error('The comparison worker did not return an installable review.');
+          }
+          const installed = previews.waitForUpdate(tabId, revision, true);
+          try {
+            const common = { revision, totalLineCount: modified.totalLineCount, baseHref: modified.baseHref };
+            contents.send('preview:command', update.patch
+              ? { command: 'marktex:patch-review-rows', patch: update.patch, ...common }
+              : { command: 'marktex:update-html', html: update.html, markdown: diff.modifiedText, ...common });
+            await installed;
+          } catch (error) {
+            void installed.catch(() => {});
+            throw error;
+          }
+        };
         previews.syncTheme(preview.view, themeId);
-        // Register before sending. Timeout must fail, never silently promote.
-        const installed = previews.waitForUpdate(tabId, revision, true);
         try {
-          contents.send('preview:command', {
-            command: 'marktex:update-html', html: assembled.html, markdown: diff.modifiedText,
-            revision, totalLineCount: modified.totalLineCount, baseHref: modified.baseHref,
-          });
-          await installed;
+          await install(assembled);
         } catch (error) {
-          // A synchronous send failure must not leave an unhandled timeout promise.
-          void installed.catch(() => {});
-          throw error;
+          if (!assembled.patch) throw error;
+          check();
+          if (contents.getURL() !== currentUrl || preview.view.getVisible()) throw error;
+          // Cache loss or an unexpected DOM base gets a same-page reset. Use a
+          // NEW revision so a late ACK of a timed-out patch cannot complete it.
+          revision = ++this.reviewRevision;
+          const reset = await this.reviews.assemble({ ...input, baseRevision: null, revision });
+          await install(reset);
         }
         url = currentUrl;
       } else {
@@ -175,18 +203,52 @@ export class PreviewRenderer {
         url = previews.storeDocument(assembled.template, themeId);
         await previews.loadURL(preview.view, url, senderId);
         check();
-        this.reviewPages.set(contents, url);
         previews.markTheme(contents, themeId);
         setImmediate(() => previews.ensureSpare(senderId));
       }
       check();
+      if (!this.reviewPages.has(contents)) contents.once('destroyed', () => this.reviews.forget(pageKey));
+      this.reviewPages.set(contents, { url, revision, pageKey });
       await previews.prepareReviewViewport(senderId, tabId, revision);
       check();
+      if (!reusable && !diff.staged) {
+        try { this.seedReviewStandby(tabId, senderId, { url, revision, pageKey }, themeId); }
+        catch { /* Optional warmup must never invalidate a ready front. */ }
+      }
       return { revision, url, themeId, supported: true };
     } finally {
       this.forgetTab(originalId);
       this.forgetTab(modifiedId);
     }
+  }
+
+  /** Move the second page's one-time DOM construction before the first edit. */
+  private seedReviewStandby(tabId: string, ownerId: number,
+    source: { url: string; revision: number; pageKey: string }, themeId: PreviewThemeId): void {
+    if (!/^git-diff:.*:[ab]$/.test(tabId)) return;
+    const standbyId = tabId.replace(/:[ab]$/, tabId.endsWith(':a') ? ':b' : ':a');
+    const previews = this.options.previews;
+    if (previews.views.has(standbyId)) return;
+    previews.create(ownerId, standbyId);
+    const standby = previews.views.get(standbyId);
+    if (!standby || standby.ownerWebContentsId !== ownerId || standby.view.getVisible()) return;
+    const contents = standby.view.webContents;
+    const pageKey = `${ownerId}:${contents.id}:${standbyId}`;
+    const bounds = previews.views.get(tabId)?.appliedBounds;
+    if (bounds) previews.applyBounds(standby, { ...bounds });
+    const task = (async () => {
+      // Already sanitized HTML and revision; no extra Markdown/KaTeX/alignment.
+      // Existing isolated initial navigation preserves the IME focus boundary.
+      await previews.loadURL(standby.view, source.url, ownerId);
+      if (previews.views.get(standbyId) !== standby || standby.ownerWebContentsId !== ownerId
+        || contents.isDestroyed() || contents.getURL() !== source.url) return;
+      this.reviews.seed(source.pageKey, pageKey, source.revision);
+      contents.once('destroyed', () => this.reviews.forget(pageKey));
+      this.reviewPages.set(contents, { url: source.url, revision: source.revision, pageKey });
+      previews.markTheme(contents, themeId);
+    })().catch(() => { /* A failed standby falls back on its next real request. */ });
+    this.reviewSeeds.set(contents, task);
+    void task.then(() => { if (this.reviewSeeds.get(contents) === task) this.reviewSeeds.delete(contents); });
   }
 
   async prepare(state: WindowState, tabId: string, text: string, revision: number,

@@ -31,7 +31,7 @@ const DEFERRED_HTML = new RegExp(`(<script type="application/json" id="${DEFERRE
 export class PreviewManager {
   readonly views = new Map<string, PreviewViewState>();
   private readonly documents = new Map<string, string>();
-  private readonly waiters = new Map<string, () => void>();
+  private readonly waiters = new Map<string, (error?: string) => void>();
   private readonly spares = new Map<number, { view: WebContentsView; ready: boolean }>();
   private readonly navigating = new Map<WebContentsView, symbol>();
   private readonly themes = new Map<number, PreviewThemeId>();
@@ -267,7 +267,10 @@ export class PreviewManager {
     if (!found) return;
     const [tabId, preview] = found;
     this.reviews.receive(tabId, message);
-    if (message.type === 'marktex:html-updated') this.waiters.get(`${tabId}:${Math.max(0, Number(message.revision) || 0)}`)?.();
+    if (message.type === 'marktex:html-updated') {
+      this.waiters.get(`${tabId}:${Math.max(0, Number(message.revision) || 0)}`)?.(
+        typeof message.error === 'string' ? message.error : undefined);
+    }
     this.options.stateFor(preview.ownerWebContentsId)?.window.webContents.send('preview:message', { tabId, message });
   }
 
@@ -279,7 +282,11 @@ export class PreviewManager {
         if (strict) reject(new Error('Git preview installation did not acknowledge.'));
         else resolve();
       }, 5000);
-      this.waiters.set(key, () => { clearTimeout(timeout); this.waiters.delete(key); resolve(); });
+      this.waiters.set(key, (error) => {
+        clearTimeout(timeout);
+        this.waiters.delete(key);
+        if (error) reject(new Error(error)); else resolve();
+      });
     });
   }
 

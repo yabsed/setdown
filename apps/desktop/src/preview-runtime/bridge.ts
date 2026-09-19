@@ -4,10 +4,11 @@ import { installCommandRouter, type PreviewRuntimeConfig } from './command-route
 import { ContentController } from './content-controller';
 import { installInteractions } from './interactions';
 import { createReaderTools } from './reader-tools';
-import { PREVIEW_SELECTOR, SourceAtlas } from './source-atlas';
+import { applyBaseHref, PREVIEW_SELECTOR, SourceAtlas } from './source-atlas';
 import { ThemeController } from './theme-controller';
 import { ViewportController } from './viewport-controller';
 import { installReviewPreparation } from './review-preparation';
+import { installReviewRowUpdates } from './review-row-updates';
 
 type BridgeConfig = PreviewRuntimeConfig & {
   documentIsBlank: boolean;
@@ -45,6 +46,17 @@ const content = new ContentController({ sourceAtlas, applyDisclosures: reader.ap
 
 installReviewPreparation({ sourceAtlas, revision: () => config.revision, send,
   hydrate: () => content.hydrateAll() });
+installReviewRowUpdates({ config, root: () => content.root(), send,
+  afterPatch: (inserted, baseHref) => {
+    applyBaseHref(baseHref);
+    reader.applyDisclosures(inserted);
+    sourceAtlas.invalidate();
+    reader.scheduleHeadings();
+    viewport.schedule();
+    void document.fonts?.ready.then(() => {
+      sourceAtlas.invalidate(); viewport.schedule();
+    }).catch(() => {});
+  } });
 viewport.start();
 themes.initialize(config.themeId);
 installInteractions({ sourceAtlas, revision: () => config.revision, root: () => content.root(), send });

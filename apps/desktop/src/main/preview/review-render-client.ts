@@ -1,12 +1,16 @@
 import { utilityProcess } from 'electron';
+import type { ReviewRowsPatch } from '../../core/preview/review-row-patch';
 
 export type ReviewAssembly = {
   originalHtml: string;
   modifiedHtml: string;
-  template: string;
+  template?: string;
   needsTemplate: boolean;
+  pageKey: string;
+  baseRevision: number | null;
+  revision: number;
 };
-export type ReviewAssemblyResult = { supported: boolean; html?: string; template?: string };
+export type ReviewAssemblyResult = { supported: boolean; html?: string; template?: string; patch?: ReviewRowsPatch };
 
 /** Main owns IPC bookkeeping; HTML parsing/alignment never executes here. */
 export class ReviewRenderClient {
@@ -18,6 +22,15 @@ export class ReviewRenderClient {
   }>();
 
   constructor(private readonly workerPath: string) {}
+
+  forget(pageKey: string): void {
+    try { this.worker?.postMessage({ kind: 'forget', pageKey }); } catch { /* Worker exit discards its cache. */ }
+  }
+
+  seed(sourceKey: string, targetKey: string, revision: number): void {
+    // Same-worker ordering places this before the target's next assembly.
+    try { this.worker?.postMessage({ kind: 'seed', sourceKey, targetKey, revision }); } catch { /* Cache miss is safe. */ }
+  }
 
   assemble(input: ReviewAssembly): Promise<ReviewAssemblyResult> {
     if (!this.worker) {

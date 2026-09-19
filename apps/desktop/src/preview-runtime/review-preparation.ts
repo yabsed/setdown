@@ -26,7 +26,7 @@ export function installReviewPreparation(options: Options): void {
     if (event.source !== window && event.source !== window.parent) return;
     const command = event.data as Record<string, unknown> | null;
     if (!command) return;
-    if (['marktex:position-preview', 'marktex:update-html', 'marktex:patch-blocks'].includes(String(command.command))) {
+    if (['marktex:position-preview', 'marktex:update-html', 'marktex:patch-blocks', 'marktex:patch-review-rows'].includes(String(command.command))) {
       generation += 1;
       return;
     }
