@@ -24,7 +24,8 @@
 <header class="side-view-title">
   <span>SOURCE CONTROL</span>
   <button type="button" title="Refresh Source Control" aria-label="Refresh Source Control"
-    disabled={!project.folder || project.gitLoading || project.gitBusy} onclick={actions.refreshProjectGit}>
+    aria-busy={project.gitLoading} disabled={!project.folder || project.gitBusy}
+    onclick={actions.refreshProjectGit}>
     <svg viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.46-3.54L13 6M13 2v4H9"/></svg>
   </button>
   <SideViewMenu items={[

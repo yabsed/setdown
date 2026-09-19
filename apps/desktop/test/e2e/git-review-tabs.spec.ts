@@ -80,6 +80,18 @@ test('new staged and working-tree reviews open source diff at the first change',
     await Promise.all([window.waitForEvent('load'), window.reload()]);
     await window.getByRole('button', { name: 'Toggle Folder Tools' }).click();
     await window.getByRole('button', { name: 'Source Control' }).click();
+    const refreshSourceControl = window.getByRole('button', { name: 'Refresh Source Control' });
+    await refreshSourceControl.evaluate((button) => {
+      const states: boolean[] = [];
+      (window as typeof window & { refreshDisabledStates?: boolean[] }).refreshDisabledStates = states;
+      new MutationObserver(() => states.push((button as HTMLButtonElement).disabled))
+        .observe(button, { attributes: true, attributeFilter: ['disabled'] });
+    });
+    await refreshSourceControl.click();
+    await window.waitForTimeout(250);
+    expect(await window.evaluate(() =>
+      (window as typeof window & { refreshDisabledStates?: boolean[] }).refreshDisabledStates))
+      .not.toContain(true);
 
     const staged = window.locator('.scm-group').filter({
       has: window.getByText('STAGED CHANGES', { exact: true }),

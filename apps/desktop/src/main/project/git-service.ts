@@ -118,8 +118,10 @@ export class GitService {
     const root = this.paths.root(state);
     const repository = await this.repository(root);
     if (!repository) return { ...EMPTY, changes: [] };
+    // A normal `git status` may refresh and rewrite .git/index. The project watcher sees that
+    // write and requests another status, creating a self-sustaining refresh loop.
     const parsed = parseGitStatus(await repository.run([
-      'status', '--porcelain=v2', '-z', '--branch', '--ahead-behind',
+      '--no-optional-locks', 'status', '--porcelain=v2', '-z', '--branch', '--ahead-behind',
       '--untracked-files=all', '--', '.',
     ]));
     return {
