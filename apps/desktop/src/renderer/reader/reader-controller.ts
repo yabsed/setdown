@@ -27,13 +27,19 @@ type Options = {
   anchorChanged: () => void;
 };
 
+type SearchTarget = { line: number; lineOccurrence: number; ordinal: number };
+
 export class ReaderController {
   themeId: PreviewThemeId;
   awaiting = false;
   private appliedThemeRevision: number;
   private transitionTabId: string | null = null;
+  private projectQuery = '';
+  private searchSource: 'find' | 'project' = 'project';
   private freezeDepth = 0;
+  private frozen = false;
   private freezeToken = 0;
+  private suspended = false;
 
   constructor(private readonly options: Options) {
     this.themeId = options.initialTheme.id;
@@ -73,6 +79,7 @@ export class ReaderController {
   find(query: string, direction: 'forward' | 'backward' = 'forward', findNext = false) {
     const tab = this.options.active();
     if (!tab) return;
+    this.searchSource = 'find';
     const queryChanged = query !== tab.find.query;
     tab.find.query = query;
     if (!findNext || queryChanged) {
@@ -89,19 +96,51 @@ export class ReaderController {
     const tab = this.options.active();
     if (!tab || tab.surface !== 'viewer') return;
     tab.find.open = true;
+    this.searchSource = 'find';
     this.syncUi();
     this.syncView();
-    if (tab.find.query) this.find(tab.find.query);
+    this.restoreSearch(tab);
   }
 
   closeFind(clearQuery = false) {
     const tab = this.options.active();
     if (!tab) return;
-    this.send(tab.id, { command: 'marktex:stop-find' });
     Object.assign(tab.find, { open: false, activeMatch: 0, matches: 0 });
     if (clearQuery) tab.find.query = '';
+    this.searchSource = 'project';
     this.syncUi();
     this.syncView();
+    this.restoreSearch(tab);
+  }
+
+  projectSearch(query: string, target?: SearchTarget) {
+    const tab = this.options.active();
+    this.projectQuery = query.slice(0, 512);
+    this.searchSource = this.projectQuery ? 'project' : tab?.find.open ? 'find' : 'project';
+    if (this.projectQuery && tab?.find.open) {
+      tab.find.open = false;
+      this.syncUi();
+      this.syncView();
+    }
+    this.restoreSearch(tab, target);
+  }
+
+  restoreSearch(
+    tab: WorkspaceTab | null | undefined = this.options.active(),
+    target?: SearchTarget,
+  ) {
+    if (!tab?.previewUrl) return;
+    const local = this.searchSource === 'find' && tab.find.open;
+    const query = local ? tab.find.query : this.projectQuery;
+    this.send(tab.id, query ? {
+      command: 'marktex:find',
+      query,
+      direction: 'forward',
+      findNext: false,
+      sourceLine: target?.line,
+      sourceOccurrence: target?.lineOccurrence,
+      searchOrdinal: target?.ordinal,
+    } : { command: 'marktex:stop-find' });
   }
 
   applyAssets(tab: WorkspaceTab, assets: PreviewThemeAssets) {
@@ -212,12 +251,16 @@ export class ReaderController {
   }
 
   syncView = () => {
+    // Git review owns the shared native preview layer while it is active.
+    // Document resize/overlay callbacks must not hide that view afterward.
+    if (this.suspended) return;
     const tab = this.options.active();
     const visible = !!tab
       && tab.surface === 'viewer'
       && !!tab.previewUrl
       && (tab.previewTheme === this.themeId || tab.id === this.transitionTabId)
-      && this.freezeDepth === 0
+      && !this.suspended
+      && !this.frozen
       && !this.awaiting;
     if (!visible || !tab) {
       this.options.desktop.showPreview(null, null);
@@ -233,26 +276,36 @@ export class ReaderController {
     });
   };
 
+  setSuspended(value: boolean) {
+    this.suspended = value;
+    this.syncView();
+  }
+
   private async freeze() {
     this.freezeDepth += 1;
     if (this.freezeDepth > 1) return;
     const token = ++this.freezeToken;
+    if (this.suspended) return;
     const tab = this.options.active();
     if (!tab || tab.surface !== 'viewer' || !tab.previewUrl) return;
-    const capture = this.options.desktop.capturePreview(tab.id).catch(() => null);
-    this.syncView();
-    const image = await capture;
+    const image = await this.options.desktop.capturePreview(tab.id).catch(() => null);
     if (token !== this.freezeToken || this.freezeDepth === 0) return;
     if (image) {
       this.options.frames.style.backgroundImage = `url("${image}")`;
       this.options.frames.dataset.frozen = 'true';
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => resolve());
+      }));
+      if (token !== this.freezeToken || this.freezeDepth === 0) return;
     }
+    this.frozen = true;
     this.syncView();
   }
 
   private unfreeze() {
     if (this.freezeDepth === 0 || --this.freezeDepth > 0) return;
     this.freezeToken += 1;
+    this.frozen = false;
     this.syncView();
     window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
       if (this.freezeDepth > 0) return;

@@ -14,6 +14,43 @@ type HighlightRegistry = {
 
 type HighlightConstructor = new (...ranges: Range[]) => unknown;
 type DisclosureState = { open: boolean; authored: boolean };
+type SourceSpan = { start: number; end: number };
+
+export function selectSearchMatch(
+  spans: Array<SourceSpan | null>,
+  sourceLine?: number,
+  sourceOccurrence = 0,
+  ordinal?: number,
+): number {
+  if (!spans.length) return -1;
+  if (Number.isFinite(Number(ordinal))) {
+    return Math.min(Math.max(0, Math.trunc(Number(ordinal))), spans.length - 1);
+  }
+  const targetLine = Number(sourceLine);
+  if (Number.isFinite(targetLine)) {
+    const matches = spans.flatMap((span, index) => span
+      && span.start <= targetLine && span.end >= targetLine ? [index] : []);
+    if (matches.length) {
+      const occurrence = Math.max(0, Math.trunc(sourceOccurrence));
+      return matches[Math.min(occurrence, matches.length - 1)];
+    }
+  }
+  return 0;
+}
+
+function rangeSourceSpan(range: Range): SourceSpan | null {
+  const anchor = range.startContainer.parentElement
+    ?.closest('[data-source-line], [data-source-start], [data-source-lines]');
+  if (!anchor) return null;
+  const start = Number(anchor.getAttribute('data-source-start')?.split(':')[0]
+    ?? anchor.getAttribute('data-source-lines')?.split('-')[0]
+    ?? anchor.getAttribute('data-source-line'));
+  const end = Number(anchor.getAttribute('data-source-end')?.split(':')[0]
+    ?? anchor.getAttribute('data-source-lines')?.split('-')[1]
+    ?? start);
+  return Number.isFinite(start) && start > 0
+    ? { start, end: Number.isFinite(end) && end >= start ? end : start } : null;
+}
 
 export function createReaderTools(send: Send, revision: () => number, rootSelector: string) {
   let headingElements = new Map<string, HTMLElement>();
@@ -110,7 +147,10 @@ export function createReaderTools(send: Send, revision: () => number, rootSelect
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
       acceptNode(node) {
         const parent = node.parentElement;
-        return !parent || parent.closest('script, style, noscript, [hidden]')
+        return !parent || parent.closest(
+          'script, style, noscript, annotation, [hidden], '
+          + '.katex-mathml, .MathJax_Preview, mjx-assistive-mml',
+        )
           ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
       },
     });
@@ -153,13 +193,26 @@ export function createReaderTools(send: Send, revision: () => number, rootSelect
     }
   }
 
-  function search(query: string, direction: 'forward' | 'backward', findNext: boolean) {
+  function search(
+    query: string,
+    direction: 'forward' | 'backward',
+    findNext: boolean,
+    sourceLine?: number,
+    sourceOccurrence?: number,
+    searchOrdinal?: number,
+  ) {
     if (!query) return clearSearch();
     if (query !== searchQuery || !findNext) {
       searchQuery = query;
       searchRanges = buildSearchRanges(query);
-      activeSearchIndex = !searchRanges.length ? -1
-        : direction === 'backward' ? searchRanges.length - 1 : 0;
+      activeSearchIndex = Number.isFinite(sourceLine) || Number.isFinite(searchOrdinal)
+        ? selectSearchMatch(
+          searchRanges.map(rangeSourceSpan),
+          sourceLine,
+          sourceOccurrence,
+          searchOrdinal,
+        )
+        : !searchRanges.length ? -1 : direction === 'backward' ? searchRanges.length - 1 : 0;
     } else if (searchRanges.length) {
       const step = direction === 'backward' ? -1 : 1;
       activeSearchIndex = (activeSearchIndex + step + searchRanges.length) % searchRanges.length;

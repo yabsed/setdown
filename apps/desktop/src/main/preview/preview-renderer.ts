@@ -1,8 +1,10 @@
 import { utilityProcess } from 'electron';
 import path from 'node:path';
-import type { RenderResult } from '../../protocol/desktop-api';
+import type { GitDiff, GitDiffPreviewResult, RenderResult } from '../../protocol/desktop-api';
 import { applyTextRevision } from '../../core/document/document-state';
 import type { PreviewBlockPatch } from '../../core/preview/preview-blocks';
+import { responsiveRenderedDiff, RENDERED_DIFF_STYLES } from '../../core/preview/rendered-diff';
+import { replaceInitialPreviewHtml } from '../../core/preview/preview-install';
 import { normalizePreviewTheme, previewThemeBackground, type PreviewThemeId } from '../../core/preview/preview-preferences';
 import type { WindowState } from '../windows/window-state';
 import type { PreviewManager } from './preview-manager';
@@ -110,6 +112,50 @@ export class PreviewRenderer {
       throw new Error('The preview renderer did not return a page.');
     }
     return this.options.previews.storeDocument(rendered.template);
+  }
+
+  async prepareDiff(
+    state: WindowState,
+    tabId: string,
+    diff: GitDiff,
+    requestedTheme: PreviewThemeId,
+    senderId: number,
+  ): Promise<GitDiffPreviewResult> {
+    const preview = this.options.previews.views.get(tabId);
+    const themeId = normalizePreviewTheme(requestedTheme);
+    const unsupported = (): GitDiffPreviewResult => ({
+      revision: 0, url: null, themeId, supported: false,
+    });
+    if (!preview || preview.ownerWebContentsId !== senderId
+      || diff.originalText === null || diff.modifiedText === null) return unsupported();
+    if (!/\.(?:md|markdown|mdown|mkdn|mkd|rmd|qmd|mdx)$/i.test(diff.filePath)) {
+      return unsupported();
+    }
+
+    state.activeRoot = path.dirname(diff.filePath);
+    const originalId = `${tabId}:original`;
+    const modifiedId = `${tabId}:modified`;
+    try {
+      const [original, modified] = await Promise.all([
+        this.render(originalId, diff.originalText, 0, diff.filePath, themeId, false, false),
+        this.render(modifiedId, diff.modifiedText, 0, diff.filePath, themeId, false, false),
+      ]);
+      if (typeof original.html !== 'string' || typeof modified.html !== 'string'
+        || typeof modified.template !== 'string') return unsupported();
+      const merged = responsiveRenderedDiff(original.html, modified.html, diff.hunks);
+      const installed = replaceInitialPreviewHtml(modified.template, merged);
+      if (!installed) return unsupported();
+      const page = installed.replace('</head>', `${RENDERED_DIFF_STYLES}</head>`);
+      const url = this.options.previews.storeDocument(page, themeId);
+      preview.view.setBackgroundColor(previewThemeBackground(themeId));
+      await preview.view.webContents.loadURL(url);
+      this.options.previews.markTheme(preview.view.webContents, themeId);
+      setImmediate(() => this.options.previews.ensureSpare(senderId));
+      return { revision: 0, url, themeId, supported: true };
+    } finally {
+      this.forgetTab(originalId);
+      this.forgetTab(modifiedId);
+    }
   }
 
   async prepare(

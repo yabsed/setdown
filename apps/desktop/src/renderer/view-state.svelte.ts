@@ -1,4 +1,12 @@
-import type { ApplicationMenuEntry, CloseDecision } from '../protocol/desktop-api';
+import type {
+  ApplicationMenuEntry,
+  CloseDecision,
+  GitRemoteAction,
+  ProjectEntryKind,
+  ProjectSearchResult,
+  PreviewBounds,
+} from '../protocol/desktop-api';
+import type { ProjectView } from './project/project-state.svelte';
 
 export type TabView = {
   id: string;
@@ -19,6 +27,16 @@ export type ClosePromptView = {
   names: string[];
 };
 
+export type WorkingTreeEdit = {
+  range: {
+    startLineNumber: number;
+    startColumn: number;
+    endLineNumber: number;
+    endColumn: number;
+  };
+  text: string;
+};
+
 export type AppActions = {
   loadMenu(id: string): Promise<ApplicationMenuEntry[]>;
   executeMenuItem(id: string): void;
@@ -29,6 +47,36 @@ export type AppActions = {
   endTabDrag(event: DragEvent): void;
   newDocument(): void;
   openDocument(): void;
+  toggleProjectSidebar(): void;
+  selectProjectView(view: ProjectView): void;
+  chooseProjectFolder(): void;
+  refreshProjectExplorer(): void;
+  collapseProjectExplorer(): void;
+  toggleProjectExplorerRoot(): void;
+  toggleProjectDirectory(path: string): void;
+  openProjectFile(path: string): void;
+  createProjectEntry(parentPath: string, name: string, kind: ProjectEntryKind): Promise<void>;
+  renameProjectEntry(path: string, name: string): Promise<void>;
+  moveProjectEntry(path: string, targetDirectory: string): Promise<void>;
+  trashProjectEntry(path: string): Promise<void>;
+  openProjectSearchResult(result: ProjectSearchResult): void;
+  searchProject(query: string): void;
+  toggleProjectSearchGroup(path: string): void;
+  refreshProjectGit(): void;
+  toggleProjectGitGroup(title: string): void;
+  reviewProjectGitChange(path: string, staged: boolean): void;
+  activateProjectGitDiff(id: string): void;
+  closeProjectGitDiff(id: string): void;
+  layoutProjectGitDiff(bounds: PreviewBounds | null): void;
+  updateProjectGitDiffLine(line: number): void;
+  changeProjectGitWorkingTree(text: string, edits?: WorkingTreeEdit[]): void;
+  saveProjectGitWorkingTree(): void;
+  initializeProjectGit(): void;
+  stageProjectGit(paths: string[]): void;
+  unstageProjectGit(paths: string[]): void;
+  discardProjectGit(paths: string[]): void;
+  commitProjectGit(message: string): void;
+  runProjectGitRemote(action: GitRemoteAction): void;
   toggleSurface(): void;
   openTable(): void;
   openLink(): void;

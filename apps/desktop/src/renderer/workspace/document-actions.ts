@@ -14,6 +14,7 @@ type Options = {
   installModel: (document: DocumentSnapshot) => void;
   show: (document: DocumentSnapshot, surface?: 'viewer' | 'editor') => Promise<void>;
   reload: (document: DocumentSnapshot) => Promise<void>;
+  saved: (document: DocumentSnapshot) => void | Promise<void>;
   renderTabs: () => void;
   updateChrome: () => void;
 };
@@ -47,8 +48,33 @@ export class DocumentActions {
         });
       }
     }
+    await this.options.saved(result.document);
     this.options.updateChrome();
     return true;
+  }
+
+  async savePaths(paths: string[]): Promise<boolean> {
+    const selected = new Set(paths);
+    try {
+      for (const tab of this.options.tabs) {
+        if (!selected.has(tab.document.path) || !this.options.dirty(tab)) continue;
+        const result = await this.options.desktop.saveTabDocument(
+          tab.document,
+          this.options.text(tab),
+          tab.revision,
+        );
+        if (result.canceled || !result.document) return false;
+        tab.document = result.document;
+        tab.revision = result.document.revision;
+        await this.options.saved(result.document);
+      }
+      this.options.renderTabs();
+      this.options.updateChrome();
+      return true;
+    } catch (error) {
+      window.alert(`Could not save changes before staging.\n${error instanceof Error ? error.message : String(error)}`);
+      return false;
+    }
   }
 
   async saveAll() {
@@ -64,6 +90,7 @@ export class DocumentActions {
         }
         tab.document = result.document;
         tab.revision = result.document.revision;
+        await this.options.saved(result.document);
       }
       this.options.renderTabs();
       this.options.desktop.finishWindowClose(true);

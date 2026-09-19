@@ -1,8 +1,11 @@
 <script lang="ts">
   import { view, type AppActions } from '../view-state.svelte';
+  import { resizePanelWithKeyboard, startPanelResize } from '../shell/panel-resize';
 
   let { actions }: { actions: AppActions } = $props();
   let findInput: HTMLInputElement;
+  const resize = { property: '--toc-panel-width' as const, direction: -1 as const,
+    min: 180, max: () => innerWidth * .46 };
 
   $effect(() => {
     if (!view.findOpen || view.surface !== 'viewer') return;
@@ -42,6 +45,10 @@
       </div>
     </div>
     <aside class="toc-panel" aria-label="Document outline" hidden={!view.tocOpen || view.surface !== 'viewer'}>
+      <button class="panel-resize-handle panel-resize-left" type="button"
+        aria-label="Resize Outline"
+        onpointerdown={(event) => startPanelResize(event, resize)}
+        onkeydown={(event) => resizePanelWithKeyboard(event, resize)}></button>
       <div class="toc-panel-title">
         <strong>Outline</strong><span class="toc-count">{view.headings.length || ''}</span>
       </div>

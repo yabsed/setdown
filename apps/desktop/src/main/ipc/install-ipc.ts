@@ -5,6 +5,10 @@ import { normalizePreviewTheme } from '../../core/preview/preview-preferences';
 import type {
   CloseDecision,
   DocumentSnapshot,
+  GitRemoteAction,
+  GitReviewState,
+  ProjectEntryKind,
+  ProjectSearchRequest,
   SaveResult,
   TabStateSummary,
   ThemeSnapshot,
@@ -15,6 +19,7 @@ import { applicationMenuEntries, executeApplicationMenu } from '../menu/applicat
 import { exportPdf } from '../preview/pdf-exporter';
 import type { PreviewManager } from '../preview/preview-manager';
 import type { PreviewRenderer } from '../preview/preview-renderer';
+import type { ProjectService } from '../project/project-service';
 import { pathFromResourceUrl } from '../preview/resource-url';
 import type { TabTransferManager } from '../tabs/tab-transfer-manager';
 import type { ThemeManager } from '../theme/theme-manager';
@@ -25,12 +30,13 @@ type Options = {
   documents: DocumentManager;
   previews: PreviewManager;
   renderer: PreviewRenderer;
+  projects: ProjectService;
   themes: ThemeManager;
   transfers: TabTransferManager;
 };
 
 export function installIpc(options: Options): void {
-  const { channels, documents, previews, renderer, themes, transfers } = options;
+  const { channels, documents, previews, projects, renderer, themes, transfers } = options;
   previews.registerIpc();
   transfers.registerIpc();
 
@@ -57,8 +63,21 @@ export function installIpc(options: Options): void {
       }))
       : [];
   });
+  channels.handle('git-review:get-state', (state) => state.rendererGitReview);
+  channels.on('git-review:update-state', (state, review: GitReviewState | null) => {
+    state.rendererGitReview = review ? {
+      name: String(review.name),
+      path: String(review.path),
+      dirty: Boolean(review.dirty),
+      isUntitled: false,
+      staged: Boolean(review.staged),
+      active: Boolean(review.active),
+      mode: review.mode === 'source' ? 'source' : 'rendered',
+      line: Math.max(1, Number(review.line) || 1),
+    } : null;
+  });
   channels.on('app:close-empty-window', (state) => {
-    if (state.rendererTabs.length > 0) return;
+    if (state.rendererTabs.length > 0 || state.rendererGitReview) return;
     state.closeAfterConfirmation = true;
     state.window.close();
   });
@@ -145,6 +164,50 @@ export function installIpc(options: Options): void {
   channels.handle('document:paste-clipboard-image', (state) => documents.pasteImage(state));
   channels.handle('document:pick-link-target', (state, documentPath: string) =>
     documents.pickLink(state, documentPath));
+  channels.handle('project:choose-folder', (state) => projects.choose(state));
+  channels.handle('project:get-folder', (state) => projects.current(state));
+  channels.handle('project:restore-folder', (state, folderPath: string) =>
+    projects.restore(state, folderPath));
+  channels.handle('project:read-directory', (state, directoryPath: string) =>
+    projects.readDirectory(state, directoryPath));
+  channels.handle('project:create-entry', (state, request: {
+    parentPath: string; name: string; kind: ProjectEntryKind;
+  }) => projects.createEntry(state, request.parentPath, request.name, request.kind));
+  channels.handle('project:rename-entry', (state, request: { entryPath: string; name: string }) =>
+    projects.renameEntry(state, request.entryPath, request.name));
+  channels.handle('project:move-entry', (state, request: {
+    entryPath: string; targetDirectory: string;
+  }) => projects.moveEntry(state, request.entryPath, request.targetDirectory));
+  channels.handle('project:trash-entry', (state, entryPath: string) =>
+    projects.trashEntry(state, entryPath));
+  channels.handle('project:open-file', (state, filePath: string) =>
+    documents.open(state, projects.assertDocument(state, filePath), false));
+  channels.handle('project:search', (state, request: ProjectSearchRequest) =>
+    projects.search(state, request));
+  channels.handle('project:git-status', (state) => projects.gitStatus(state));
+  channels.handle('project:git-diff', (state, request: { filePath: string; staged: boolean }) =>
+    projects.gitDiff(state, request.filePath, Boolean(request.staged)));
+  channels.handle('project:git-diff-preview', (state, request: {
+    tabId: string;
+    diff: Awaited<ReturnType<ProjectService['gitDiff']>>;
+    themeId: unknown;
+  }) => {
+    previews.create(state.window.webContents.id, request.tabId);
+    return renderer.prepareDiff(
+      state,
+      request.tabId,
+      request.diff,
+      normalizePreviewTheme(request.themeId),
+      state.window.webContents.id,
+    );
+  });
+  channels.handle('project:git-init', (state) => projects.initializeGit(state));
+  channels.handle('project:git-stage', (state, paths: string[]) => projects.stageGit(state, paths));
+  channels.handle('project:git-unstage', (state, paths: string[]) => projects.unstageGit(state, paths));
+  channels.handle('project:git-discard', (state, paths: string[]) => projects.discardGit(state, paths));
+  channels.handle('project:git-commit', (state, message: string) => projects.commitGit(state, message));
+  channels.handle('project:git-remote', (state, action: GitRemoteAction) =>
+    projects.runGitRemote(state, action));
   channels.handle('document:reload', (state) => documents.reload(state));
   channels.handle('document:open-link', (state, href: string) => openLink(documents, state, href));
 }

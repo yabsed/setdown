@@ -13,6 +13,8 @@ type PreviewCommand = {
   command?: string;
   topRatio?: number;
   sourceLine?: number;
+  sourceOccurrence?: number;
+  searchOrdinal?: number;
   band?: unknown;
   from?: number;
   removeCount?: number;
@@ -43,7 +45,14 @@ type Options = {
   send: (message: Record<string, unknown>) => void;
   clearSearch: () => void;
   publishHeadings: (force?: boolean) => void;
-  search: (query: string, direction: 'forward' | 'backward', findNext: boolean) => void;
+  search: (
+    query: string,
+    direction: 'forward' | 'backward',
+    findNext: boolean,
+    sourceLine?: number,
+    sourceOccurrence?: number,
+    searchOrdinal?: number,
+  ) => void;
   scrollToHeading: (id: string, hydrate: () => void, afterScroll: () => void) => void;
 };
 
@@ -204,6 +213,9 @@ export function installCommandRouter(options: Options): void {
           typeof command.query === 'string' ? command.query.slice(0, 512) : '',
           command.direction === 'backward' ? 'backward' : 'forward',
           !!command.findNext,
+          Number.isFinite(command.sourceLine) ? Number(command.sourceLine) : undefined,
+          Number.isFinite(command.sourceOccurrence) ? Number(command.sourceOccurrence) : undefined,
+          Number.isFinite(command.searchOrdinal) ? Number(command.searchOrdinal) : undefined,
         );
         break;
       case 'marktex:stop-find':

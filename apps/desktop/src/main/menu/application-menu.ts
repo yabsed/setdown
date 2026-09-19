@@ -8,6 +8,7 @@ type MenuContext = {
   focusedState: () => WindowState | null;
   createWindow: () => unknown;
   openDocument: (state: WindowState) => unknown;
+  reloadWindow: (state: WindowState) => void;
   sendCommand: (command: AppCommand) => void;
   setTheme: (theme: PreviewThemeId) => void;
   theme: () => PreviewThemeId;
@@ -70,6 +71,7 @@ export function installApplicationMenu(context: MenuContext) {
           const current = state();
           if (current) void context.openDocument(current);
         } },
+        { id: 'menu-open-folder', label: 'Open Folder…', click: () => command('open-folder') },
         { type: 'separator' },
         { id: 'save', label: 'Save', accelerator: 'CmdOrCtrl+S', click: () => command('save') },
         { id: 'menu-save-as', label: 'Save As…', accelerator: 'CmdOrCtrl+Shift+S', click: () => command('save-as') },
@@ -82,6 +84,7 @@ export function installApplicationMenu(context: MenuContext) {
     },
     {
       id: 'application-menu-view', label: 'View', submenu: [
+        { id: 'menu-toggle-folder-tools', label: 'Toggle Folder Tools', click: () => command('toggle-folder-tools') },
         { id: 'menu-toggle-surface', label: 'Toggle Viewer / Editor', accelerator: 'CmdOrCtrl+E', click: () => command('toggle-surface') },
         { id: 'menu-next-tab', label: 'Next Tab', accelerator: 'Ctrl+Tab', click: () => command('next-tab') },
         { id: 'menu-previous-tab', label: 'Previous Tab', accelerator: 'Ctrl+Shift+Tab', click: () => command('previous-tab') },
@@ -97,7 +100,10 @@ export function installApplicationMenu(context: MenuContext) {
           })),
         },
         { type: 'separator' },
-        { id: 'menu-reload', label: 'Reload', accelerator: 'CmdOrCtrl+R', click: () => contents()?.reload() },
+        { id: 'menu-reload', label: 'Reload', accelerator: 'CmdOrCtrl+R', click: () => {
+          const current = state();
+          if (current) context.reloadWindow(current);
+        } },
         { id: 'menu-toggle-devtools', label: 'Toggle Developer Tools', accelerator: 'CmdOrCtrl+Shift+I', click: () => contents()?.toggleDevTools() },
         { type: 'separator' },
         { id: 'menu-reset-zoom', label: 'Actual Size', accelerator: 'CmdOrCtrl+0', click: () => contents()?.setZoomLevel(0) },

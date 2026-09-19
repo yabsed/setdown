@@ -49,6 +49,30 @@ While you edit, Setdown prepares the next Preview in the background and keeps th
 last completed Viewer visible until the new revision is ready. Even a math-heavy
 document never has to replace useful content with a blank or incomplete Preview.
 
+### Optional folder navigation
+
+Setdown remains document-first: opening a Markdown file from the operating system
+opens that document without turning its parent directory into a project. When a
+folder is explicitly opened, a VS Code-inspired side bar adds an Explorer, Markdown
+search, and source control as optional navigation tools. The Explorer creates,
+renames, moves, and safely trashes entries; source control reviews diffs and supports
+staging, unstaging, discard, commit, fetch, pull, push, and sync. Reviews use an explicit
+three-stage Git model — HEAD, Staged Index, and the current document. A Changes review compares
+the Staged Index with the same live text used by the ordinary document tab, so edits on either
+surface are shared immediately. Staging saves the selected open documents before `git add`.
+Staged and unstaged comparisons for the same file can stay open in
+separate tabs. A clean document tab reloads Working Tree changes immediately; a dirty
+tab keeps its local edits and asks before replacing them. The folder does not own the
+open tabs, and closing the side bar never closes a document.
+
+The Setdown wordmark toggles the folder tools. Both the left folder panel and the
+right document outline can be resized by dragging their inner edge. Reloading the
+window restores their visibility, selected view, expanded folders, and widths.
+
+Directories load only when expanded, search runs outside the renderer after a short
+typing delay, and Git commands run in the main process on demand. None of these paths
+participate in tab switching or Viewer activation.
+
 ### Reading tools
 
 - A per-document outline built from the headings in the rendered result
@@ -149,13 +173,18 @@ apps/
 │   │   ├── core/             Pure domain rules with no UI or Electron dependency
 │   │   ├── protocol/         Serializable IPC contracts
 │   │   ├── main/             Electron system adapters and composition root
+│   │   │   └── project/      Isolated Explorer, search, Git, and path services
 │   │   ├── preload/          Safe renderer IPC boundary
 │   │   ├── preview-runtime/  Runtime for isolated Reader WebContents
 │   │   └── renderer/
 │   │       ├── application/  Input and surface-transition use cases
 │   │       ├── ports/        Interfaces required by the renderer
 │   │       ├── adapters/     Electron and Monaco implementations
-│   │       └── */            Svelte UI and feature controllers
+│   │       ├── project/
+│   │       │   ├── explorer/ File-tree UI and controller
+│   │       │   ├── search/   Mode-aware folder search
+│   │       │   └── source-control/ Git UI, diff review, and controller
+│   │       └── */            Remaining Svelte UI and feature controllers
 │   └── test/
 └── code-growth/              Repository growth graph app and generated output
 ```
@@ -176,6 +205,8 @@ enforce these boundaries.
 | New window | `Ctrl/Cmd+Shift+N` |
 | New document | `Ctrl/Cmd+N` |
 | Open file | `Ctrl/Cmd+O` |
+| Open folder | The left side-bar button or `File → Open Folder…` |
+| Toggle folder tools | Click `Setdown` or use `View → Toggle Folder Tools` |
 | Save / Save As | `Ctrl/Cmd+S` / `Ctrl/Cmd+Shift+S` |
 | Insert URL | `Ctrl/Cmd+K` or the Editor toolbar |
 | Insert table | Editor toolbar |

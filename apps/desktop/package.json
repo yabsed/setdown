@@ -21,7 +21,11 @@
     "install:linux": "bash scripts/install-linux.sh"
   },
   "dependencies": {
+    "@sanity/diff-match-patch": "^3.2.0",
+    "@parcel/watcher": "^2.6.0",
+    "@vscode/ripgrep": "^1.18.0",
     "crossnote": "0.9.35",
+    "htmlparser2": "9.1.0",
     "monaco-editor": "0.56.0"
   },
   "devDependencies": {

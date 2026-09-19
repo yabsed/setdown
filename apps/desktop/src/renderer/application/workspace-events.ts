@@ -4,6 +4,7 @@ import type {
   DocumentSnapshot,
   ExternalChange,
   PreviewMessage,
+  ProjectFilesChanged,
   ThemeSnapshot,
 } from '../../protocol/desktop-api';
 import type { DesktopPort } from '../ports/desktop-port';
@@ -13,6 +14,7 @@ type Handlers = {
   previewFindRequested(tabId: string): void;
   documentOpened(document: DocumentSnapshot): void;
   externalChange(change: ExternalChange): void;
+  projectFilesChanged(event: ProjectFilesChanged): void;
   themeChanged(theme: ThemeSnapshot): void;
   windowCloseRequested(names: string[]): void;
   command(command: AppCommand): void;
@@ -29,6 +31,7 @@ export function installWorkspaceEvents(desktop: DesktopPort, handlers: Handlers)
     desktop.onPreviewFindRequested(handlers.previewFindRequested),
     desktop.onDocumentOpened(handlers.documentOpened),
     desktop.onExternalChange(handlers.externalChange),
+    desktop.onProjectFilesChanged(handlers.projectFilesChanged),
     desktop.onThemeChanged(handlers.themeChanged),
     desktop.onWindowCloseRequested(handlers.windowCloseRequested),
     desktop.onCommand(handlers.command),

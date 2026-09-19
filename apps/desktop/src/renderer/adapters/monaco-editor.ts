@@ -3,6 +3,8 @@ import type { DocumentSnapshot } from '../../core/document/document';
 import type { PreviewThemeId } from '../../core/preview/preview-preferences';
 import type { BandLine, ViewportAnchor } from '../../core/preview/viewport-anchor';
 import type { WorkspaceTab } from '../../core/workspace/workspace-state';
+import type { ProjectSearchDocument } from '../../protocol/desktop-api';
+import type { WorkingTreeEdit } from '../view-state.svelte';
 import { readEditorViewport } from '../editor/editor-viewport';
 import { monacoThemeName, registerMonacoThemes } from '../theme';
 
@@ -19,10 +21,14 @@ type Options = {
   insertTable: () => void;
 };
 
+type SearchTarget = { line: number; column: number; ordinal: number };
+type ProjectMatch = NonNullable<ProjectSearchDocument['matches']>[number];
+
 export class MonacoEditor {
   private apiValue: typeof Monaco | null = null;
   private editorValue: Monaco.editor.IStandaloneCodeEditor | null = null;
   private loading: Promise<void> | null = null;
+  private projectDecorations: Monaco.editor.IEditorDecorationsCollection | null = null;
   private readonly models = new Map<string, Monaco.editor.ITextModel>();
   private readonly views = new Map<string, Monaco.editor.ICodeEditorViewState | null>();
 
@@ -72,6 +78,7 @@ export class MonacoEditor {
         bracketPairColorization: { enabled: true },
         stickyScroll: { enabled: false },
       });
+      this.projectDecorations = this.editorValue.createDecorationsCollection();
       this.installBindings(api, this.editorValue);
       for (const tab of this.options.tabs()) this.ensureModel(tab);
       const active = this.options.active();
@@ -109,11 +116,32 @@ export class MonacoEditor {
   }
 
   replace(tab: WorkspaceTab, document: DocumentSnapshot): void {
-    this.models.get(tab.id)?.dispose();
+    const previous = this.models.get(tab.id);
+    const active = this.editorValue?.getModel() === previous;
+    previous?.dispose();
     this.models.delete(tab.id);
     tab.text = document.text;
     tab.revision = document.revision;
-    if (this.editorValue) this.activate(tab);
+    if (active) this.activate(tab);
+  }
+
+  /** Updates an existing document buffer without changing its saved baseline. */
+  setText(tab: WorkspaceTab, text: string, edits?: WorkingTreeEdit[]): boolean {
+    const model = this.models.get(tab.id);
+    if (!model) {
+      tab.text = text;
+      return false;
+    }
+    const active = this.editorValue?.getModel() === model;
+    if (edits) {
+      if (edits.length) {
+        model.applyEdits(edits.map((edit) => ({ range: edit.range, text: edit.text })));
+      }
+      return active;
+    }
+    if (model.getValue() === text) return active;
+    model.setValue(text);
+    return active;
   }
 
   dispose(tabId: string): void {
@@ -154,6 +182,60 @@ export class MonacoEditor {
       editor.setScrollTop(Math.max(0, top));
       editor.focus();
     }, 0);
+  }
+
+  projectSearch(query: string, target?: SearchTarget): void {
+    const editor = this.editorValue;
+    const model = editor?.getModel();
+    if (!editor || !model || !this.projectDecorations) return;
+    if (!query) {
+      this.projectDecorations.clear();
+      return;
+    }
+    const matches = model.findMatches(query, false, false, false, null, false, 10_000);
+    let active = -1;
+    if (target) {
+      active = matches.findIndex(({ range }) => range.startLineNumber === target.line
+        && range.startColumn === target.column);
+      if (active < 0 && matches.length) {
+        active = Math.min(Math.max(0, target.ordinal), matches.length - 1);
+      }
+    }
+    this.projectDecorations.set(matches.map(({ range }, index) => ({
+      range,
+      options: {
+        inlineClassName: index === active
+          ? 'editor-project-search-active' : 'editor-project-search-match',
+      },
+    })));
+    if (active >= 0) {
+      editor.setSelection(matches[active].range);
+      editor.revealRangeInCenterIfOutsideViewport(matches[active].range);
+      editor.focus();
+    }
+  }
+
+  projectMatches(tab: WorkspaceTab, query: string, limit = 300): ProjectMatch[] {
+    const model = this.models.get(tab.id);
+    if (!model || !query) return [];
+    const perLine = new Map<number, number>();
+    return model.findMatches(query, false, false, false, null, false, limit)
+      .map(({ range }, ordinal) => {
+        const line = range.startLineNumber;
+        const column = range.startColumn;
+        const content = model.getLineContent(line);
+        const start = Math.max(0, column - 1 - 60);
+        const end = Math.min(content.length, range.endColumn - 1 + 120);
+        const match: ProjectMatch = {
+          line,
+          column,
+          lineOccurrence: perLine.get(line) ?? 0,
+          ordinal,
+          preview: `${start ? '…' : ''}${content.slice(start, end)}${end < content.length ? '…' : ''}`,
+        };
+        perLine.set(line, match.lineOccurrence + 1);
+        return match;
+      });
   }
 
   private ensureModel(tab: WorkspaceTab): Monaco.editor.ITextModel {

@@ -34,11 +34,107 @@ export type PickLinkTargetResult = {
   label?: string;
 };
 
+export type ProjectFolder = { path: string; name: string };
+
+export type ProjectFilesChanged = { root: string };
+
+export type ProjectEntry = {
+  path: string;
+  name: string;
+  kind: 'directory' | 'document' | 'file';
+};
+
+export type ProjectEntryKind = 'file' | 'directory';
+
+export type ProjectEntryMove = {
+  from: string;
+  to: string;
+};
+
+export type ProjectSearchResult = {
+  path: string;
+  name: string;
+  relativePath: string;
+  surface: 'viewer' | 'editor';
+  line: number;
+  column: number;
+  lineOccurrence: number;
+  ordinal: number;
+  preview: string;
+};
+
+export type ProjectSearchDocument = {
+  path: string;
+  text: string;
+  surface: 'viewer' | 'editor';
+  matches?: Array<Pick<
+    ProjectSearchResult,
+    'line' | 'column' | 'lineOccurrence' | 'ordinal' | 'preview'
+  >>;
+};
+
+export type ProjectSearchRequest = {
+  query: string;
+  documents: ProjectSearchDocument[];
+};
+
+export type GitChange = {
+  path: string;
+  filePath: string;
+  status: string;
+  indexStatus: string;
+  workingTreeStatus: string;
+  staged: boolean;
+  unstaged: boolean;
+  conflict: boolean;
+};
+
+export type GitSnapshot = {
+  repository: boolean;
+  branch: string;
+  upstream: string;
+  ahead: number;
+  behind: number;
+  changes: GitChange[];
+};
+
+export type GitRemoteAction = 'fetch' | 'pull' | 'push' | 'sync';
+
+export type GitDiffHunk = {
+  oldStart: number;
+  oldLines: number;
+  newStart: number;
+  newLines: number;
+};
+
+export type GitDiff = {
+  path: string;
+  filePath: string;
+  staged: boolean;
+  patch: string;
+  originalText: string | null;
+  modifiedText: string | null;
+  originalLabel: 'EMPTY' | 'HEAD' | 'INDEX';
+  /** Right-hand side. WORKTREE may be the live ordinary document buffer. */
+  modifiedLabel: 'INDEX' | 'WORKTREE';
+  hunks: GitDiffHunk[];
+};
+
+export type GitDiffPreviewResult = RenderResult & { supported: boolean };
+
 export type TabStateSummary = {
   name: string;
   path: string;
   dirty: boolean;
   isUntitled: boolean;
+};
+
+/** Renderer-owned Git review state retained by the window across a renderer reload. */
+export type GitReviewState = TabStateSummary & {
+  staged: boolean;
+  active: boolean;
+  mode: 'rendered' | 'source';
+  line: number;
 };
 
 export type TransferableTab = {
@@ -99,6 +195,7 @@ export type CloseDecision = 'cancel' | 'discard' | 'save';
 
 export type AppCommand =
   | 'new-document'
+  | 'open-folder'
   | 'save'
   | 'save-as'
   | 'export-pdf'
@@ -107,6 +204,7 @@ export type AppCommand =
   | 'previous-tab'
   | 'open-find'
   | 'escape'
+  | 'toggle-folder-tools'
   | 'toggle-surface';
 
 export type MarkTexApi = {
@@ -116,6 +214,8 @@ export type MarkTexApi = {
   openDocument(): Promise<DocumentSnapshot | null>;
   activateDocument(document: DocumentSnapshot, text: string, revision: number): Promise<DocumentSnapshot>;
   updateTabState(tabs: TabStateSummary[]): void;
+  getGitReviewState(): Promise<GitReviewState | null>;
+  updateGitReviewState(review: GitReviewState | null): void;
   registerTabTransfer(transferId: string, tab: TransferableTab): void;
   claimTabTransfer(transferId: string): Promise<ClaimedTabTransfer | null>;
   completeTabTransfer(transferId: string): void;
@@ -161,9 +261,34 @@ export type MarkTexApi = {
   exportPdf(text: string, revision: number, documentPath: string): Promise<ExportPdfResult>;
   pasteClipboardImage(): Promise<PasteImageResult>;
   pickLinkTarget(documentPath: string): Promise<PickLinkTargetResult>;
+  pathForFile(file: File): string;
+  chooseProjectFolder(): Promise<ProjectFolder | null>;
+  getProjectFolder(): Promise<ProjectFolder | null>;
+  restoreProjectFolder(path: string): Promise<ProjectFolder | null>;
+  readProjectDirectory(directoryPath: string): Promise<ProjectEntry[]>;
+  createProjectEntry(parentPath: string, name: string, kind: ProjectEntryKind): Promise<ProjectEntry>;
+  renameProjectEntry(entryPath: string, name: string): Promise<ProjectEntryMove>;
+  moveProjectEntry(entryPath: string, targetDirectory: string): Promise<ProjectEntryMove>;
+  trashProjectEntry(entryPath: string): Promise<void>;
+  openProjectFile(filePath: string): Promise<DocumentSnapshot | null>;
+  searchProject(request: ProjectSearchRequest): Promise<ProjectSearchResult[]>;
+  getGitStatus(): Promise<GitSnapshot>;
+  getGitDiff(filePath: string, staged: boolean): Promise<GitDiff>;
+  prepareGitDiffPreview(
+    tabId: string,
+    diff: GitDiff,
+    themeId: PreviewThemeId,
+  ): Promise<GitDiffPreviewResult>;
+  initializeGit(): Promise<GitSnapshot>;
+  stageGit(paths: string[]): Promise<GitSnapshot>;
+  unstageGit(paths: string[]): Promise<GitSnapshot>;
+  discardGit(paths: string[]): Promise<GitSnapshot>;
+  commitGit(message: string): Promise<GitSnapshot>;
+  runGitRemote(action: GitRemoteAction): Promise<GitSnapshot>;
   openLink(href: string): Promise<void>;
   onDocumentOpened(listener: (document: DocumentSnapshot) => void): () => void;
   onExternalChange(listener: (change: ExternalChange) => void): () => void;
+  onProjectFilesChanged(listener: (event: ProjectFilesChanged) => void): () => void;
   onCommand(listener: (command: AppCommand) => void): () => void;
   onThemeChanged(listener: (theme: ThemeSnapshot) => void): () => void;
   onWindowCloseRequested(listener: (names: string[]) => void): () => void;

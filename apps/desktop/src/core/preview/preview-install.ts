@@ -132,3 +132,14 @@ ${deferredCarrier}
 </body>
 </html>`;
 }
+
+/** Reuses a sanitized lean preview page while replacing its inert initial document. */
+export function replaceInitialPreviewHtml(template: string, html: string): string | null {
+  if (!canInlineInitialHtml(html)) return null;
+  const carrier = new RegExp(
+    `(<template id="${INITIAL_HTML_TEMPLATE_ID}">)[\\s\\S]*?(</template>)`,
+    'i',
+  );
+  if (!carrier.test(template)) return null;
+  return template.replace(carrier, (_whole, open: string, close: string) => `${open}${html}${close}`);
+}

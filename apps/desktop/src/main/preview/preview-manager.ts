@@ -76,7 +76,25 @@ export class PreviewManager {
     });
     view.setBackgroundColor(previewThemeBackground(this.options.theme()));
     view.setVisible(false);
+    view.webContents.on('focus', () => this.returnFocusFromHiddenView(view));
     return view;
+  }
+
+  private returnFocusFromHiddenView(view: WebContentsView) {
+    if (view.getVisible()) return;
+    const preview = Array.from(this.views.values()).find((candidate) => candidate.view === view);
+    const spareOwnerId = Array.from(this.spares.entries())
+      .find(([, candidate]) => candidate.view === view)?.[0];
+    const ownerId = preview?.ownerWebContentsId ?? spareOwnerId;
+    const owner = ownerId === undefined ? null : this.options.stateFor(ownerId)?.window;
+    if (!owner || owner.isDestroyed() || !owner.isFocused()
+      || owner.webContents.isDestroyed()) return;
+    owner.webContents.focus();
+    setImmediate(() => {
+      if (!view.webContents.isDestroyed() && !view.getVisible()
+        && view.webContents.isFocused() && owner.isFocused()
+        && !owner.webContents.isDestroyed()) owner.webContents.focus();
+    });
   }
 
   ensureSpare(ownerId: number) {
@@ -148,10 +166,15 @@ export class PreviewManager {
     if (!owner) return;
     const target = typeof tabId === 'string' ? this.views.get(tabId) : undefined;
     const shown = target?.ownerWebContentsId === ownerId ? target : undefined;
+    let hiddenFocusedView = false;
     for (const preview of this.views.values()) {
       if (preview.ownerWebContentsId === ownerId && preview !== shown && preview.view.getVisible()) {
+        hiddenFocusedView ||= preview.view.webContents.isFocused();
         preview.view.setVisible(false);
       }
+    }
+    if (hiddenFocusedView && owner.isFocused() && !owner.webContents.isDestroyed()) {
+      owner.webContents.focus();
     }
     if (!shown || !bounds) return;
     const [width, height] = owner.getContentSize();
@@ -294,6 +317,7 @@ export class PreviewManager {
       if (preview.ownerWebContentsId !== ownerId) continue;
       preview.view.webContents.close();
       this.views.delete(tabId);
+      this.options.forgetTab(tabId);
     }
   }
 

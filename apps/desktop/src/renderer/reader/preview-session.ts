@@ -116,14 +116,7 @@ export class PreviewSession {
         }
       }
       this.options.reader.send(tabId, { command: 'marktex:collect-headings' });
-      if (rendered?.find.open && rendered.find.query) {
-        this.options.reader.send(tabId, {
-          command: 'marktex:find',
-          query: rendered.find.query,
-          direction: 'forward',
-          findNext: false,
-        });
-      }
+      if (rendered) this.options.reader.restoreSearch(rendered);
       if (!this.isCurrent(epoch, tabId, documentPath)) return false;
       this.error = null;
       return true;

@@ -39,6 +39,12 @@ import {
   requiresCrossnoteInstall,
   type PreviewRuntime,
 } from '../../core/preview/preview-install';
+import {
+  indexVisibleHtml,
+  searchVisibleText,
+  type VisibleSearchMatch,
+  type VisibleTextIndex,
+} from '../project/visible-search';
 
 export type RenderWorkerRequest =
   | {
@@ -56,6 +62,16 @@ export type RenderWorkerRequest =
     hasPage: boolean;
     /** PDF처럼 첫 paint보다 완성된 DOM이 먼저 필요한가. */
     deferOffscreenHtml?: boolean;
+  }
+  | {
+    kind: 'search';
+    id: number;
+    text: string;
+    query: string;
+    limit: number;
+    documentPath: string;
+    themeId: string;
+    roots: string[];
   }
   | { kind: 'forget-notebooks' }
   | { kind: 'forget-tab'; tabId: string };
@@ -82,7 +98,12 @@ export type RenderWorkerReply =
     /** 블록 기록이 있을 때. 바뀐 구간만. null이면 바뀐 것이 없다. */
     patch?: PreviewBlockPatch | null;
   }
-  | { kind: 'render'; id: number; ok: false; message: string };
+  | { kind: 'render'; id: number; ok: false; message: string }
+  | { kind: 'search'; id: number; ok: true; matches: VisibleSearchMatch[] }
+  | { kind: 'search'; id: number; ok: false; message: string };
+
+const visibleIndexes = new Map<string, { text: string; index: VisibleTextIndex }>();
+const MAX_VISIBLE_INDEXES = 128;
 
 type CrossnoteModule = typeof import('crossnote');
 type NotebookInstance = Awaited<ReturnType<CrossnoteModule['Notebook']['init']>>;
@@ -312,6 +333,20 @@ function previewStyles(themeId: PreviewThemeId): string {
          한다. 새 문서를 열 때 보이던 흰 섬광의 원인이다. bridge가 theme을
          바꿀 때 이 값을 함께 갱신한다. */
       html, body { background: ${previewThemeBackground(themeId)}; }
+      html[data-setdown-folder-drop] body::after {
+        content: 'Open Folder';
+        position: fixed;
+        inset: 10px;
+        z-index: 2147483647;
+        display: grid;
+        place-items: center;
+        color: currentColor;
+        border: 2px dashed rgba(72, 139, 218, .9);
+        border-radius: 8px;
+        background: rgba(72, 139, 218, .16);
+        font: 600 15px Inter, ui-sans-serif, sans-serif;
+        pointer-events: none;
+      }
       [data-source-line] { cursor: text; }
       /* crossnote의 로딩 overlay.
          crossnote는 자기 \`updateHtml\` 경로가 끝나야 이 overlay를 걷는데,
@@ -432,6 +467,38 @@ async function render(request: Extract<RenderWorkerRequest, { kind: 'render' }>)
   return { ...common, patch: diffPreviewBlocks(previous.blocks, blocks) };
 }
 
+async function search(request: Extract<RenderWorkerRequest, { kind: 'search' }>) {
+  let cached = visibleIndexes.get(request.documentPath);
+  if (!cached || cached.text !== request.text) {
+    const tabId = `search:${request.documentPath}`;
+    const rendered = await render({
+      kind: 'render',
+      id: request.id,
+      tabId,
+      text: request.text,
+      revision: 0,
+      documentPath: request.documentPath,
+      themeId: request.themeId,
+      roots: request.roots,
+      hasPage: false,
+      deferOffscreenHtml: true,
+    });
+    installedPreviews.delete(tabId);
+    cached = {
+      text: request.text,
+      index: indexVisibleHtml('html' in rendered ? rendered.html : ''),
+    };
+  }
+  visibleIndexes.delete(request.documentPath);
+  visibleIndexes.set(request.documentPath, cached);
+  while (visibleIndexes.size > MAX_VISIBLE_INDEXES) {
+    const oldest = visibleIndexes.keys().next().value;
+    if (typeof oldest !== 'string') break;
+    visibleIndexes.delete(oldest);
+  }
+  return searchVisibleText(cached.index, request.query, request.limit);
+}
+
 /**
  * 조판은 한 번에 하나씩 한다. 수식 표가 모듈 수준이라 겹치면 섞인다.
  * crossnote 자체도 재진입을 가정하지 않는다.
@@ -444,21 +511,30 @@ port.on('message', (event) => {
   if (!request) return;
   if (request.kind === 'forget-notebooks') {
     notebookCaches.clear();
+    visibleIndexes.clear();
     return;
   }
   if (request.kind === 'forget-tab') {
     installedPreviews.delete(request.tabId);
     return;
   }
-  if (request.kind !== 'render') return;
-  renderQueue = renderQueue.then(() => render(request)).then((result) => {
-    port.postMessage({ kind: 'render', id: request.id, ok: true, ...result });
-  }).catch((error: unknown) => {
-    port.postMessage({
-      kind: 'render',
-      id: request.id,
-      ok: false,
-      message: error instanceof Error ? error.message : String(error),
+  if (request.kind === 'render') {
+    renderQueue = renderQueue.then(() => render(request)).then((result) => {
+      port.postMessage({ kind: 'render', id: request.id, ok: true, ...result });
+    }).catch((error: unknown) => {
+      port.postMessage({
+        kind: 'render', id: request.id, ok: false,
+        message: error instanceof Error ? error.message : String(error),
+      });
     });
-  });
+  } else if (request.kind === 'search') {
+    renderQueue = renderQueue.then(() => search(request)).then((matches) => {
+      port.postMessage({ kind: 'search', id: request.id, ok: true, matches });
+    }).catch((error: unknown) => {
+      port.postMessage({
+        kind: 'search', id: request.id, ok: false,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }
 });
