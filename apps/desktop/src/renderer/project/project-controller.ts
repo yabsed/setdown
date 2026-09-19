@@ -10,6 +10,7 @@ import type {
 } from '../../protocol/desktop-api';
 import type { PreviewThemeId } from '../../core/preview/preview-preferences';
 import type { DesktopPort } from '../ports/desktop-port';
+import type { WorkingTreeEdit } from '../view-state.svelte';
 import { ExplorerController } from './explorer/explorer-controller';
 import { project, rememberProjectState, type ProjectView } from './project-state.svelte';
 import { SearchController } from './search/search-controller';
@@ -164,7 +165,8 @@ export class ProjectController {
   updateGitDiffLine = (line: number): void => this.sourceControl.updateSourceLine(line);
   toggleGitDiffMode = (): void => this.sourceControl.toggleDiffMode();
   showRenderedGitDiff = (): void => this.sourceControl.showRendered();
-  changeGitWorkingTree = (text: string): void => this.sourceControl.changeWorkingTree(text);
+  changeGitWorkingTree = (text: string, edits?: WorkingTreeEdit[]): void =>
+    this.sourceControl.changeWorkingTree(text, edits);
   previewMessage = (payload: PreviewMessage): boolean => this.sourceControl.previewMessage(payload);
   applyTheme = (themeId: PreviewThemeId): Promise<void> => this.sourceControl.applyTheme(themeId);
   initializeGit = (): Promise<void> => this.sourceControl.initialize();

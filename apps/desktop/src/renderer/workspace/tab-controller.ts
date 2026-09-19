@@ -17,7 +17,7 @@ import type { SurfaceController } from '../application/surface-controller';
 import type { DesktopPort } from '../ports/desktop-port';
 import type { PreviewSession } from '../reader/preview-session';
 import type { ReaderController } from '../reader/reader-controller';
-import { view } from '../view-state.svelte';
+import { view, type WorkingTreeEdit } from '../view-state.svelte';
 import { restoredOutlineOpen } from '../shell/layout-session';
 
 type Options = {
@@ -64,12 +64,12 @@ export class TabController {
     return true;
   };
 
-  acceptWorkingTreeBuffer = (path: string, text: string): void => {
+  acceptWorkingTreeBuffer = (path: string, text: string, edits?: WorkingTreeEdit[]): void => {
     const { desktop, editor, preview, workspace } = this.options;
     const tab = workspace.tabs.find((candidate) =>
       !candidate.document.isUntitled && candidate.document.path === path);
     if (!tab || this.text(tab) === text) return;
-    const notified = editor.setText(tab, text);
+    const notified = editor.setText(tab, text, edits);
     if (!notified) {
       tab.text = text;
       tab.revision += 1;
@@ -78,7 +78,7 @@ export class TabController {
     Object.assign(tab, { previewUrl: null, previewRevision: null, previewTheme: null });
     if (tab.id === workspace.activeId && tab.surface === 'viewer'
       && preview.readyRevision !== null) preview.reset();
-    this.updateChrome();
+    if (!notified) this.updateChrome();
   };
 
   reloadDocumentPaths = async (paths: string[]): Promise<void> => {

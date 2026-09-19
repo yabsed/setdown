@@ -42,7 +42,7 @@
     if (host && rendered && ready) {
       observer = new ResizeObserver(layout);
       observer.observe(host);
-      requestAnimationFrame(layout);
+      layout();
     } else actions.layoutProjectGitDiff(null);
   });
 

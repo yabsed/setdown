@@ -79,7 +79,7 @@ export function startWorkspace(desktop: DesktopPort) {
     closeProjectGitDiff: (id) => projects.closeGitDiff(id),
     layoutProjectGitDiff: (bounds) => projects.layoutGitDiff(bounds),
     updateProjectGitDiffLine: (line) => projects.updateGitDiffLine(line),
-    changeProjectGitWorkingTree: (text) => projects.changeGitWorkingTree(text),
+    changeProjectGitWorkingTree: (text, edits) => projects.changeGitWorkingTree(text, edits),
     saveProjectGitWorkingTree: () => void documents.save(false),
     initializeProjectGit: () => void projects.initializeGit(),
     stageProjectGit: (paths) => void stageProjectChanges(paths),
@@ -408,7 +408,7 @@ export function startWorkspace(desktop: DesktopPort) {
       if (event.key === 'Escape' && project.gitDiffActive && project.gitDiff) {
         event.preventDefault();
         event.stopPropagation();
-        if (project.gitDiffMode === 'source' && project.gitDiffPreviewReady) {
+        if (project.gitDiffMode === 'source') {
           projects.showRenderedGitDiff();
         }
         return;

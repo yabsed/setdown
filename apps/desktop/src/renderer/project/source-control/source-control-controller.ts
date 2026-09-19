@@ -11,6 +11,7 @@ import type {
   PreviewMessage,
 } from '../../../protocol/desktop-api';
 import type { DesktopPort } from '../../ports/desktop-port';
+import type { WorkingTreeEdit } from '../../view-state.svelte';
 import { project, type GitDiffTabState } from '../project-state.svelte';
 
 type Options = {
@@ -19,7 +20,7 @@ type Options = {
   openWorkingTree(path: string): Promise<boolean>;
   activateWorkingTree(path: string): boolean;
   workingTreeBuffer(path: string): string | null;
-  workingTreeChanged(path: string, text: string): void;
+  workingTreeChanged(path: string, text: string, edits?: WorkingTreeEdit[]): void;
   reviewChanged(open: boolean, active: boolean): void;
 };
 
@@ -27,7 +28,6 @@ const PREVIEW_DEBOUNCE_MS = 400;
 
 export class SourceControlController {
   private readonly loadGenerations = new Map<string, number>();
-  private readonly previewGenerations = new Map<string, number>();
   private readonly previewTimers = new Map<string, number>();
   private bounds: PreviewBounds | null = null;
   private themeId: PreviewThemeId | null = null;
@@ -155,7 +155,7 @@ export class SourceControlController {
 
   showRendered = (): void => {
     const tab = this.activeTab();
-    if (!tab?.diff) return;
+    if (!tab?.diff || project.gitDiffMode === 'rendered') return;
     const diff = this.effectiveDiff(tab.diff);
     if (!this.renderable(diff)) return;
     tab.diff = diff;
@@ -171,7 +171,8 @@ export class SourceControlController {
   };
 
   previewMessage = (payload: PreviewMessage): boolean => {
-    const tab = project.gitDiffTabs.find((candidate) => candidate.previewId === payload.tabId);
+    const tab = project.gitDiffTabs.find((candidate) =>
+      this.previewIds(candidate).includes(payload.tabId));
     if (!tab || payload.message.type !== 'edit-at-anchor') return false;
     if (project.activeGitDiffId !== tab.id || !project.gitDiffActive) this.activateTabState(tab);
     const anchor = payload.message.anchor as { sourceLine?: unknown } | undefined;
@@ -181,9 +182,7 @@ export class SourceControlController {
 
   applyTheme = async (themeId: PreviewThemeId): Promise<void> => {
     this.themeId = themeId;
-    const previews = project.gitDiffTabs
-      .map((tab) => tab.previewId)
-      .filter((id): id is string => !!id);
+    const previews = project.gitDiffTabs.flatMap((tab) => this.previewIds(tab));
     if (!previews.length) return;
     const assets = await this.options.desktop.getPreviewThemeAssets(themeId);
     if (this.themeId !== themeId) return;
@@ -207,12 +206,12 @@ export class SourceControlController {
     if (!project.error) project.commitMessage = '';
   };
 
-  changeWorkingTree = (text: string): void => {
+  changeWorkingTree = (text: string, edits?: WorkingTreeEdit[]): void => {
     const tab = this.activeTab();
     const diff = tab?.diff;
     if (!tab || !diff || diff.staged || diff.originalText === null
       || diff.modifiedText === null) return;
-    this.options.workingTreeChanged(diff.filePath, text);
+    this.options.workingTreeChanged(diff.filePath, text, edits);
     tab.diff = {
       ...diff,
       modifiedText: text,
@@ -394,17 +393,10 @@ export class SourceControlController {
   }
 
   private invalidatePreview(tab: GitDiffTabState): void {
-    this.previewGenerations.set(tab.id, (this.previewGenerations.get(tab.id) ?? 0) + 1);
     tab.previewDirty = true;
     const timer = this.previewTimers.get(tab.id);
     if (timer !== undefined) window.clearTimeout(timer);
     this.previewTimers.delete(tab.id);
-    if (tab.pendingPreviewId) {
-      this.options.desktop.destroyPreview(tab.pendingPreviewId);
-      tab.pendingPreviewId = null;
-      tab.previewLoading = false;
-    }
-    if (this.activeTab()?.id === tab.id) this.copyPreviewState(tab);
   }
 
   private schedulePreview(tab: GitDiffTabState, delay: number): void {
@@ -417,39 +409,51 @@ export class SourceControlController {
     this.previewTimers.set(tab.id, timer);
   }
 
+  private previewIds(tab: GitDiffTabState): [string, string] {
+    return [`git-diff:${tab.id}:a`, `git-diff:${tab.id}:b`];
+  }
+
+  private tabExists(tab: GitDiffTabState): boolean {
+    return project.gitDiffTabs.some((candidate) => candidate.id === tab.id);
+  }
+
   private async preparePreview(tab: GitDiffTabState): Promise<void> {
+    if (!this.tabExists(tab)) return;
     const diff = tab.diff && this.effectiveDiff(tab.diff);
-    if (!diff || !this.renderable(diff)
-      || !project.gitDiffTabs.some((candidate) => candidate.id === tab.id)) return;
+    if (!diff || !this.renderable(diff)) return;
+    if (tab.previewLoading) {
+      // Renders are serialized per tab; the in-flight prepare re-triggers us.
+      tab.previewDirty = true;
+      return;
+    }
     tab.diff = diff;
-    const generation = (this.previewGenerations.get(tab.id) ?? 0) + 1;
-    this.previewGenerations.set(tab.id, generation);
-    if (tab.pendingPreviewId) this.options.desktop.destroyPreview(tab.pendingPreviewId);
-    const candidateId = `git-diff:${tab.id}:${generation}:${crypto.randomUUID()}`;
+    const [frontId, backId] = this.previewIds(tab);
+    const candidateId = tab.previewId === frontId ? backId : frontId;
     tab.pendingPreviewId = candidateId;
     tab.previewLoading = true;
     tab.previewDirty = false;
     if (this.activeTab()?.id === tab.id) this.copyPreviewState(tab);
     try {
-      const theme = await this.options.desktop.getTheme();
-      this.themeId ??= theme.id;
-      if (!this.isCurrentPreview(tab, generation, candidateId)) return;
+      if (!this.themeId) {
+        const theme = await this.options.desktop.getTheme();
+        this.themeId = theme.id;
+      }
+      if (!this.tabExists(tab)) return;
       const rendered = await this.options.desktop.prepareGitDiffPreview(
         candidateId,
         this.serializableDiff(diff),
         this.themeId,
       );
-      if (!this.isCurrentPreview(tab, generation, candidateId)) {
-        this.options.desktop.destroyPreview(candidateId);
-        return;
-      }
+      if (!this.tabExists(tab)) return;
       tab.pendingPreviewId = null;
       tab.previewLoading = false;
       if (!rendered.supported) {
         this.options.desktop.destroyPreview(candidateId);
         if (!tab.previewId && tab.mode === 'rendered') tab.mode = 'source';
-      } else {
-        const previousId = tab.previewId;
+      } else if (!tab.previewDirty) {
+        // Swap to the freshly rendered hidden view. The previous view stays
+        // alive as the next render target, so generations neither create nor
+        // destroy native views.
         tab.previewId = candidateId;
         if (this.activeTab()?.id === tab.id) {
           project.gitDiff = tab.diff;
@@ -459,13 +463,12 @@ export class SourceControlController {
           this.positionPreview(tab);
           this.publishReview();
         }
-        if (previousId) this.options.desktop.destroyPreview(previousId);
-        if (this.themeId !== theme.id) void this.applyTheme(this.themeId);
       }
       if (this.activeTab()?.id === tab.id) this.copyPreviewState(tab);
+      if (tab.previewDirty) this.schedulePreview(tab, 0);
     } catch (error) {
       this.options.desktop.destroyPreview(candidateId);
-      if (this.isCurrentPreview(tab, generation, candidateId)) {
+      if (this.tabExists(tab)) {
         tab.pendingPreviewId = null;
         tab.previewLoading = false;
         tab.previewDirty = true;
@@ -477,22 +480,13 @@ export class SourceControlController {
     }
   }
 
-  private isCurrentPreview(tab: GitDiffTabState, generation: number, candidateId: string): boolean {
-    return project.gitDiffTabs.some((candidate) => candidate.id === tab.id)
-      && this.previewGenerations.get(tab.id) === generation
-      && tab.pendingPreviewId === candidateId;
-  }
-
   private disposeTab(tab: GitDiffTabState): void {
     this.loadGenerations.set(tab.id, (this.loadGenerations.get(tab.id) ?? 0) + 1);
-    this.previewGenerations.set(tab.id, (this.previewGenerations.get(tab.id) ?? 0) + 1);
     const timer = this.previewTimers.get(tab.id);
     if (timer !== undefined) window.clearTimeout(timer);
     this.previewTimers.delete(tab.id);
-    if (tab.previewId) this.options.desktop.destroyPreview(tab.previewId);
-    if (tab.pendingPreviewId) this.options.desktop.destroyPreview(tab.pendingPreviewId);
+    for (const id of this.previewIds(tab)) this.options.desktop.destroyPreview(id);
     this.loadGenerations.delete(tab.id);
-    this.previewGenerations.delete(tab.id);
   }
 
   private async mutate(

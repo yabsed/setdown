@@ -4,6 +4,7 @@ import type { PreviewThemeId } from '../../core/preview/preview-preferences';
 import type { BandLine, ViewportAnchor } from '../../core/preview/viewport-anchor';
 import type { WorkspaceTab } from '../../core/workspace/workspace-state';
 import type { ProjectSearchDocument } from '../../protocol/desktop-api';
+import type { WorkingTreeEdit } from '../view-state.svelte';
 import { readEditorViewport } from '../editor/editor-viewport';
 import { monacoThemeName, registerMonacoThemes } from '../theme';
 
@@ -125,14 +126,20 @@ export class MonacoEditor {
   }
 
   /** Updates an existing document buffer without changing its saved baseline. */
-  setText(tab: WorkspaceTab, text: string): boolean {
+  setText(tab: WorkspaceTab, text: string, edits?: WorkingTreeEdit[]): boolean {
     const model = this.models.get(tab.id);
     if (!model) {
       tab.text = text;
       return false;
     }
-    if (model.getValue() === text) return this.editorValue?.getModel() === model;
     const active = this.editorValue?.getModel() === model;
+    if (edits) {
+      if (edits.length) {
+        model.applyEdits(edits.map((edit) => ({ range: edit.range, text: edit.text })));
+      }
+      return active;
+    }
+    if (model.getValue() === text) return active;
     model.setValue(text);
     return active;
   }

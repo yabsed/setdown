@@ -11,6 +11,7 @@
     original: Monaco.editor.ITextModel;
     modified: Monaco.editor.ITextModel;
     originalText: string;
+    modifiedText: string;
     staged: boolean;
     filePath: string;
     listener: Monaco.IDisposable;
@@ -118,14 +119,16 @@
       original,
       modified,
       originalText: diff.originalText,
+      modifiedText: diff.modifiedText,
       staged: diff.staged,
       filePath: diff.filePath,
       listener: { dispose() {} },
       viewState: null,
     };
-    cached.listener = modified.onDidChangeContent(() => {
+    cached.listener = modified.onDidChangeContent((event) => {
       if (!cached.staged && project.activeGitDiffId === id) {
-        actions.changeProjectGitWorkingTree(modified.getValue());
+        cached.modifiedText = modified.getValue();
+        actions.changeProjectGitWorkingTree(cached.modifiedText, event.changes);
       }
     });
     return cached;
@@ -138,8 +141,12 @@
     }
     const existing = models.get(id);
     if (existing && existing.originalText === diff.originalText
-      && existing.modified.getValue() === diff.modifiedText
-      && existing.staged === diff.staged && existing.filePath === diff.filePath) return existing;
+      && (existing.modifiedText === diff.modifiedText
+        || existing.modified.getValue() === diff.modifiedText)
+      && existing.staged === diff.staged && existing.filePath === diff.filePath) {
+      existing.modifiedText = diff.modifiedText;
+      return existing;
+    }
     const viewState = existing?.viewState ?? null;
     if (shownId === id) saveShownView();
     disposeModels(id);

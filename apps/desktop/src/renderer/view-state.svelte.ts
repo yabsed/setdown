@@ -27,6 +27,16 @@ export type ClosePromptView = {
   names: string[];
 };
 
+export type WorkingTreeEdit = {
+  range: {
+    startLineNumber: number;
+    startColumn: number;
+    endLineNumber: number;
+    endColumn: number;
+  };
+  text: string;
+};
+
 export type AppActions = {
   loadMenu(id: string): Promise<ApplicationMenuEntry[]>;
   executeMenuItem(id: string): void;
@@ -57,7 +67,7 @@ export type AppActions = {
   closeProjectGitDiff(id: string): void;
   layoutProjectGitDiff(bounds: PreviewBounds | null): void;
   updateProjectGitDiffLine(line: number): void;
-  changeProjectGitWorkingTree(text: string): void;
+  changeProjectGitWorkingTree(text: string, edits?: WorkingTreeEdit[]): void;
   saveProjectGitWorkingTree(): void;
   initializeProjectGit(): void;
   stageProjectGit(paths: string[]): void;
