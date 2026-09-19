@@ -8,6 +8,7 @@ import type {
   ThemeSnapshot,
 } from '../../protocol/desktop-api';
 import type { DesktopPort } from '../ports/desktop-port';
+import { isComposingInput } from '../editor/composition-guard';
 
 type Handlers = {
   previewMessage(payload: PreviewMessage): void;
@@ -26,6 +27,10 @@ type Handlers = {
 
 /** Preload 이벤트를 workspace 명령으로 번역하는 renderer 입력 어댑터. */
 export function installWorkspaceEvents(desktop: DesktopPort, handlers: Handlers): () => void {
+  const keydown = (event: KeyboardEvent) => {
+    // Do not preventDefault: IME must receive its Escape/Enter/processing key.
+    if (!isComposingInput(event)) handlers.keydown(event);
+  };
   const unsubscribe = [
     desktop.onPreviewMessage(handlers.previewMessage),
     desktop.onPreviewFindRequested(handlers.previewFindRequested),
@@ -34,14 +39,18 @@ export function installWorkspaceEvents(desktop: DesktopPort, handlers: Handlers)
     desktop.onProjectFilesChanged(handlers.projectFilesChanged),
     desktop.onThemeChanged(handlers.themeChanged),
     desktop.onWindowCloseRequested(handlers.windowCloseRequested),
-    desktop.onCommand(handlers.command),
+    desktop.onCommand((command) => {
+      // Native EditContext events do not necessarily set a DOM event flag.
+      if ((command === 'escape' || command === 'toggle-surface') && isComposingInput()) return;
+      handlers.command(command);
+    }),
     desktop.onSaveBeforeClose(handlers.saveBeforeClose),
     desktop.onTabTransferIncoming(handlers.transferIncoming),
     desktop.onTabTransferCompleted(handlers.transferCompleted),
   ];
-  window.addEventListener('keydown', handlers.keydown, { capture: true });
+  window.addEventListener('keydown', keydown, { capture: true });
   return () => {
     for (const remove of unsubscribe) remove();
-    window.removeEventListener('keydown', handlers.keydown, { capture: true });
+    window.removeEventListener('keydown', keydown, { capture: true });
   };
 }

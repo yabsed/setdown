@@ -148,7 +148,7 @@ export class PreviewRenderer {
       const page = installed.replace('</head>', `${RENDERED_DIFF_STYLES}</head>`);
       const url = this.options.previews.storeDocument(page, themeId);
       preview.view.setBackgroundColor(previewThemeBackground(themeId));
-      await preview.view.webContents.loadURL(url);
+      await this.options.previews.loadURL(preview.view, url, senderId);
       this.options.previews.markTheme(preview.view.webContents, themeId);
       setImmediate(() => this.options.previews.ensureSpare(senderId));
       return { revision: 0, url, themeId, supported: true };
@@ -190,7 +190,7 @@ export class PreviewRenderer {
 
     if (typeof rendered.template === 'string') {
       const url = this.options.previews.storeDocument(rendered.template, themeId);
-      await preview.view.webContents.loadURL(url);
+      await this.options.previews.loadURL(preview.view, url, senderId);
       this.options.previews.markTheme(preview.view.webContents, themeId);
       setImmediate(() => this.options.previews.ensureSpare(senderId));
       return { revision, url, themeId };

@@ -72,7 +72,7 @@ export class WindowManager {
     this.options.registry.add(state, showWhenReady);
     window.setMenuBarVisibility(false);
     window.webContents.on('before-input-event', (_event, input) => {
-      if (input.type === 'keyDown' && input.key === 'Escape') {
+      if (input.type === 'keyDown' && input.key === 'Escape' && !input.isComposing) {
         window.webContents.send('app:command', 'escape');
       }
     });

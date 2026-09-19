@@ -37,6 +37,7 @@ export class PreviewManager {
   private readonly documents = new Map<string, string>();
   private readonly waiters = new Map<string, () => void>();
   private readonly spares = new Map<number, { view: WebContentsView; ready: boolean }>();
+  private readonly navigating = new Map<WebContentsView, symbol>();
   private readonly themes = new Map<number, PreviewThemeId>();
   private warmup: { url: string; themeId: PreviewThemeId } | null = null;
 
@@ -88,7 +89,7 @@ export class PreviewManager {
     const ownerId = preview?.ownerWebContentsId ?? spareOwnerId;
     const owner = ownerId === undefined ? null : this.options.stateFor(ownerId)?.window;
     if (!owner || owner.isDestroyed() || !owner.isFocused()
-      || owner.webContents.isDestroyed()) return;
+      || owner.webContents.isDestroyed() || owner.webContents.isFocused()) return;
     owner.webContents.focus();
     setImmediate(() => {
       if (!view.webContents.isDestroyed() && !view.getVisible()
@@ -103,10 +104,9 @@ export class PreviewManager {
     const owner = this.options.stateFor(ownerId)?.window;
     if (!owner || owner.isDestroyed()) return;
     const view = this.createView();
-    owner.contentView.addChildView(view);
     const spare = { view, ready: false };
     this.spares.set(ownerId, spare);
-    view.webContents.loadURL(warmup.url).then(() => {
+    this.loadURL(view, warmup.url, ownerId).then(() => {
       this.markTheme(view.webContents, warmup.themeId);
       if (this.spares.get(ownerId) === spare) spare.ready = true;
     }).catch(() => {
@@ -136,7 +136,7 @@ export class PreviewManager {
     const view = this.takeSpare(ownerId) ?? this.createView();
     view.setBackgroundColor(previewThemeBackground(this.options.theme()));
     view.setVisible(false);
-    owner.window.contentView.addChildView(view);
+    // A fresh view is attached only after its initial navigation has completed.
     setImmediate(() => this.ensureSpare(ownerId));
     this.views.set(tabId, {
       view,
@@ -148,7 +148,7 @@ export class PreviewManager {
     view.webContents.on('before-input-event', (event, input) => {
       const preview = this.views.get(tabId);
       const state = preview && this.options.stateFor(preview.ownerWebContentsId);
-      if (!state || input.type !== 'keyDown') return;
+      if (!state || input.type !== 'keyDown' || input.isComposing) return;
       if (input.key === 'Escape') {
         event.preventDefault();
         state.window.webContents.focus();
@@ -159,6 +159,42 @@ export class PreviewManager {
         state.window.webContents.send('preview:open-find', tabId);
       }
     });
+  }
+
+  /**
+   * Electron 38 focuses a WebContents at navigation commit, even if its view is
+   * hidden. Restoring focus afterwards is too late for an IME composition.
+   * Keep hidden views out of the native input tree for the entire navigation,
+   * including loads already in flight when the user starts a new syllable.
+   * Reattach the completed, still-hidden view without navigating it again.
+   */
+  async loadURL(view: WebContentsView, url: string, ownerId: number): Promise<void> {
+    const owner = this.options.stateFor(ownerId)?.window;
+    if (!owner || owner.isDestroyed() || view.webContents.isDestroyed()) {
+      throw new Error('The preview owner was closed.');
+    }
+    const token = Symbol('preview-navigation');
+    this.navigating.set(view, token);
+    const hidden = !view.getVisible();
+    if (hidden && owner.contentView.children.includes(view)) {
+      owner.contentView.removeChildView(view);
+    }
+    try {
+      await view.webContents.loadURL(url);
+      const stillOwned = this.spares.get(ownerId)?.view === view
+        || Array.from(this.views.values()).some((preview) =>
+          preview.view === view && preview.ownerWebContentsId === ownerId);
+      if (this.navigating.get(view) !== token || !stillOwned
+        || view.webContents.isDestroyed() || owner.isDestroyed()
+        || this.options.stateFor(ownerId)?.window !== owner) return;
+      if (hidden && !owner.contentView.children.includes(view)) {
+        // setVisible(false) was retained while detached: attaching a completed
+        // hidden view must not focus it or steal an in-progress composition.
+        owner.contentView.addChildView(view);
+      }
+    } finally {
+      if (this.navigating.get(view) === token) this.navigating.delete(view);
+    }
   }
 
   show(ownerId: number, tabId: unknown, bounds: PreviewBounds | null) {
@@ -176,7 +212,7 @@ export class PreviewManager {
     if (hiddenFocusedView && owner.isFocused() && !owner.webContents.isDestroyed()) {
       owner.webContents.focus();
     }
-    if (!shown || !bounds) return;
+    if (!shown || !bounds || this.navigating.has(shown.view)) return;
     const [width, height] = owner.getContentSize();
     const x = Math.max(0, Math.round(Number(bounds.x) || 0));
     const y = Math.max(0, Math.round(Number(bounds.y) || 0));
@@ -244,8 +280,12 @@ export class PreviewManager {
     if (typeof tabId !== 'string') return;
     const preview = this.views.get(tabId);
     if (!preview || preview.ownerWebContentsId !== ownerId) return;
-    this.options.stateFor(ownerId)?.window.contentView.removeChildView(preview.view);
-    preview.view.webContents.close();
+    const owner = this.options.stateFor(ownerId)?.window;
+    if (owner && !owner.isDestroyed() && owner.contentView.children.includes(preview.view)) {
+      owner.contentView.removeChildView(preview.view);
+    }
+    this.navigating.delete(preview.view);
+    if (!preview.view.webContents.isDestroyed()) preview.view.webContents.close();
     this.views.delete(tabId);
     this.options.forgetTab(tabId);
   }

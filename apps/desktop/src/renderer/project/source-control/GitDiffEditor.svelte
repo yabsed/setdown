@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, untrack } from 'svelte';
   import type * as Monaco from 'monaco-editor';
   import { normalizePreviewTheme } from '../../../core/preview/preview-preferences';
   import type { GitDiff } from '../../../protocol/desktop-api';
   import type { AppActions } from '../../view-state.svelte';
   import { monacoThemeName, registerMonacoThemes } from '../../theme';
+  import { CompositionGuard } from '../../editor/composition-guard';
   import { project } from '../project-state.svelte';
 
   type CachedModels = {
@@ -31,6 +32,8 @@
   let lastRevealKey = '';
   let pendingFirstReveal: Monaco.IDisposable | null = null;
   const models = new Map<string, CachedModels>();
+  const input = new CompositionGuard(() => untrack(reconcileCurrent));
+  const inputListeners: Monaco.IDisposable[] = [];
 
   const language = (filePath: string) => {
     const extension = filePath.split('.').at(-1)?.toLowerCase();
@@ -53,6 +56,12 @@
       return monaco;
     });
     return apiPromise;
+  }
+
+  function interruptReveal() {
+    input.interrupt();
+    pendingFirstReveal?.dispose();
+    pendingFirstReveal = null;
   }
 
   function ensureEditor(monaco: typeof Monaco) {
@@ -82,11 +91,26 @@
       lineHeight: 22,
       padding: { top: 16, bottom: 48 },
     });
-    editor.getModifiedEditor().onDidChangeCursorPosition(({ position }) => {
-      if (project.gitDiffActive && project.gitDiffMode === 'source') {
-        actions.updateProjectGitDiffLine(position.lineNumber);
-      }
-    });
+    const modifiedEditor = editor.getModifiedEditor();
+    inputListeners.push(
+      modifiedEditor.onDidCompositionStart(() => {
+        interruptReveal();
+        input.start();
+      }),
+      modifiedEditor.onDidCompositionEnd(() => input.end()),
+      modifiedEditor.onDidBlurEditorText(() => {
+        interruptReveal();
+        input.end();
+      }),
+      modifiedEditor.onKeyDown(interruptReveal),
+      modifiedEditor.onMouseDown(interruptReveal),
+      modifiedEditor.onDidChangeModelContent(interruptReveal),
+      modifiedEditor.onDidChangeCursorPosition(({ position }) => {
+        if (project.gitDiffActive && project.gitDiffMode === 'source') {
+          actions.updateProjectGitDiffLine(position.lineNumber);
+        }
+      }),
+    );
   }
 
   function saveShownView() {
@@ -129,7 +153,9 @@
     cached.listener = modified.onDidChangeContent((event) => {
       if (!cached.staged && project.activeGitDiffId === id) {
         cached.modifiedText = modified.getValue();
-        actions.changeProjectGitWorkingTree(cached.modifiedText, event.changes);
+        // Keep every ordered edit (including composition updates) in the shared
+        // document. Never discard intermediate ranges or normalize the user's text.
+        untrack(() => actions.changeProjectGitWorkingTree(cached.modifiedText, event.changes));
       }
     });
     return cached;
@@ -148,8 +174,8 @@
       existing.modifiedText = diff.modifiedText;
       return existing;
     }
-    const viewState = existing?.viewState ?? null;
     if (shownId === id) saveShownView();
+    const viewState = existing?.viewState ?? null;
     disposeModels(id);
     const created = createModels(monaco, id, diff);
     if (created) {
@@ -166,19 +192,28 @@
     line: number,
   ) {
     if (!editor) return;
+    pendingFirstReveal?.dispose();
+    pendingFirstReveal = null;
     const expectedEditor = editor;
+    const valid = input.navigationTicket();
+    const version = cached.modified.getVersionId();
     const reveal = () => {
-      if (editor !== expectedEditor || shownId !== id
-        || expectedEditor.getModel()?.modified !== cached.modified) return;
-      const modifiedEditor = expectedEditor.getModifiedEditor();
-      modifiedEditor.setPosition({ lineNumber: line, column: 1 });
-      modifiedEditor.revealLineInCenter(line, monaco.editor.ScrollType.Immediate);
+      if (!valid() || !project.gitDiffActive || project.gitDiffMode !== 'source'
+        || editor !== expectedEditor || shownId !== id
+        || expectedEditor.getModel()?.modified !== cached.modified
+        || cached.modified.getVersionId() !== version) return;
+      // The initial synchronous reveal already chose the cursor. A late diff
+      // calculation must never reset the caret/selection of a user who started typing.
+      expectedEditor.getModifiedEditor().revealLineInCenter(line, monaco.editor.ScrollType.Immediate);
     };
     if (expectedEditor.getLineChanges() !== null) {
-      requestAnimationFrame(reveal);
+      const frame = requestAnimationFrame(() => {
+        pendingFirstReveal = null;
+        reveal();
+      });
+      pendingFirstReveal = { dispose: () => cancelAnimationFrame(frame) };
       return;
     }
-    pendingFirstReveal?.dispose();
     const listener = expectedEditor.onDidUpdateDiff(() => {
       listener.dispose();
       if (pendingFirstReveal === listener) pendingFirstReveal = null;
@@ -194,6 +229,9 @@
     line: number,
     visible: boolean,
   ) {
+    // Reconcile the latest project snapshot after compositionend, not an
+    // intermediate echo while the IME owns this model's selection and range.
+    if (input.active) return;
     ensureEditor(monaco);
     const retained = new Set(snapshots.map((snapshot) => snapshot.id));
     for (const id of models.keys()) {
@@ -207,6 +245,7 @@
     if (!active?.diff || !cached || !editor) return;
     let layout = false;
     if (shownId !== activeId || editor.getModel()?.modified !== cached.modified) {
+      interruptReveal();
       saveShownView();
       editor.setModel({ original: cached.original, modified: cached.modified });
       shownId = activeId;
@@ -233,8 +272,6 @@
       modifiedEditor.revealLineInCenter(target);
       const first = active.diff.hunks[0];
       const firstChangedLine = first ? Math.max(1, first.newStart || first.oldStart || 1) : 1;
-      // Diff mappings are asynchronous, so wait for them before fixing the initial viewport.
-      // Otherwise the pre-layout scroll position can leave the first change just off-screen.
       if (!cached.viewState && target === firstChangedLine) {
         revealFirstChangeWhenReady(monaco, active.id, cached, target);
       }
@@ -277,13 +314,16 @@
     }
   }
 
-  $effect(() => {
+  function reconcileCurrent() {
     const snapshots = project.gitDiffTabs.map((tab) => ({ id: tab.id, diff: tab.diff }));
     const activeId = project.activeGitDiffId;
     const line = project.gitDiffLine;
     const visible = project.gitDiffActive && project.gitDiffMode === 'source';
-    if (host) void reconcile(snapshots, activeId, line, visible);
-  });
+    // Track only explicit input state. Reads performed inside Monaco callbacks
+    // must not accidentally become dependencies of this Svelte effect.
+    if (host) untrack(() => void reconcile(snapshots, activeId, line, visible));
+  }
+  $effect(reconcileCurrent);
 
   $effect(() => {
     const target = host;
@@ -302,7 +342,9 @@
 
   onDestroy(() => {
     request += 1;
-    pendingFirstReveal?.dispose();
+    input.dispose();
+    for (const listener of inputListeners) listener.dispose();
+    interruptReveal();
     for (const id of [...models.keys()]) disposeModels(id);
     editor?.dispose();
     editor = null;
