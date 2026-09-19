@@ -191,7 +191,7 @@ test('keeps staged and live working-tree reviews in separate tabs', async () => 
   }
 });
 
-test('discard reloads the open document buffer from the restored file', async () => {
+test('returning from a review, discarding, and saving keep the document usable', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-git-discard-'));
   const configRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-git-discard-config-'));
   const documentPath = path.join(root, 'discard.md');
@@ -229,17 +229,32 @@ test('discard reloads the open document buffer from the restored file', async ()
     await workingTreeEditor.pressSequentially('\nUnsaved buffer text');
     await expect(window.locator('.document-tab:not(.git-diff-tab) .tab-dirty')).toHaveCount(1);
 
+    await workingTreeEditor.press('Control+C');
+    await window.locator('.document-tab:not(.git-diff-tab)').click();
+    await expect(window.locator('.git-review')).toBeHidden();
+    await expect(window.locator('.git-diff-editor')).toBeHidden();
+    await expect.poll(reading.hasVisible).toBe(true);
+
     await changed.getByRole('button', { name: 'Discard All Changes' }).click();
-    await window.getByRole('button', { name: 'Discard Changes', exact: true }).click();
+    await expect(window.getByText('Discard this change?', { exact: true })).toHaveCount(0);
     await expect.poll(() => readFile(documentPath, 'utf8')).toBe('# Base\n');
     await expect(changed.locator('.git-change-open')).toHaveCount(0);
 
-    await window.locator('.document-tab:not(.git-diff-tab)').click();
     await expect(window.locator('.document-tab:not(.git-diff-tab) .tab-dirty')).toHaveCount(0);
     await expect.poll(reading.hasVisible).toBe(true);
     await expect.poll(() => reading.evaluate<string>('document.body.innerText')).toContain('Base');
     expect(await reading.evaluate<string>('document.body.innerText')).not.toContain('Changed on disk');
     expect(await reading.evaluate<string>('document.body.innerText')).not.toContain('Unsaved buffer text');
+
+    await window.getByRole('button', { name: 'Switch to Editor' }).click();
+    await expect(window.locator('.editor-surface')).toBeVisible();
+    await window.locator('.editor-surface .monaco-editor').click({ position: { x: 120, y: 80 } });
+    await window.keyboard.press('Control+End');
+    await window.keyboard.insertText('\nSaved after discard');
+    await expect(window.locator('.document-tab:not(.git-diff-tab) .tab-dirty')).toHaveCount(1);
+    await window.keyboard.press('Control+S');
+    await expect.poll(() => readFile(documentPath, 'utf8')).toContain('Saved after discard');
+    await expect(window.locator('.document-tab:not(.git-diff-tab) .tab-dirty')).toHaveCount(0);
   } finally {
     await disposeApplication(application);
     await rm(root, { recursive: true, force: true });

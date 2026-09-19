@@ -5,20 +5,12 @@
   import ChangeGroup from './ChangeGroup.svelte';
 
   let { actions }: { actions: AppActions } = $props();
-  let discardPaths = $state<string[]>([]);
   let conflicts = $derived(project.git?.changes.filter((change) => change.conflict) ?? []);
   let staged = $derived(project.git?.changes.filter((change) => change.staged && !change.conflict) ?? []);
   let changed = $derived(project.git?.changes.filter((change) => change.unstaged && !change.conflict) ?? []);
 
   function requestDiscard(paths: string[]) {
-    discardPaths = paths;
-  }
-
-  function confirmDiscard() {
-    // `$state` arrays are proxies; copy them before crossing contextBridge/IPC.
-    const paths = [...discardPaths];
-    discardPaths = [];
-    actions.discardProjectGit(paths);
+    actions.discardProjectGit([...paths]);
   }
 
   function commit(event?: KeyboardEvent) {
@@ -79,14 +71,5 @@
       primary={actions.stageProjectGit} discard={requestDiscard}
       review={(path) => actions.reviewProjectGitChange(path, false)} open={actions.openProjectFile} />
     {#if project.git.changes.length === 0}<p class="side-view-message">No changes.</p>{/if}
-  </div>
-{/if}
-
-{#if discardPaths.length}
-  <div class="project-confirm" role="alertdialog" aria-modal="true" aria-labelledby="discard-title">
-    <strong id="discard-title">Discard {discardPaths.length === 1 ? 'this change' : `${discardPaths.length} changes`}?</strong>
-    <span>Tracked edits cannot be recovered. Untracked files go to the system Trash.</span>
-    <div><button type="button" class="ghost" onclick={() => discardPaths = []}>Cancel</button>
-      <button type="button" class="danger" onclick={confirmDiscard}>Discard Changes</button></div>
   </div>
 {/if}

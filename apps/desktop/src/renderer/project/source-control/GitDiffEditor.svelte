@@ -80,13 +80,6 @@
       lineHeight: 22,
       padding: { top: 16, bottom: 48 },
     });
-    editor.getModifiedEditor().addCommand(
-      monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
-      () => {
-        const tab = project.gitDiffTabs.find((candidate) => candidate.id === shownId);
-        if (tab && !tab.staged) actions.saveProjectGitWorkingTree();
-      },
-    );
   }
 
   function saveShownView() {

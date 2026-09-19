@@ -394,6 +394,13 @@ export function startWorkspace(desktop: DesktopPort) {
       void tabs.removeTransferred(tabId).finally(() => desktop.releaseTabTransferSource(transferId));
     },
     keydown: (event) => {
+      if (event.key.toLowerCase() === 's' && (event.ctrlKey || event.metaKey)
+        && !event.altKey && !event.shiftKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!project.gitDiffActive || !project.gitDiff?.staged) void documents.save(false);
+        return;
+      }
       if (event.key === 'Escape') tabDrag.cancel();
       if (event.key === 'Escape' && project.gitDiffActive && project.gitDiff) {
         event.preventDefault();
