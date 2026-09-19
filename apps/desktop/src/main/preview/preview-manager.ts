@@ -8,6 +8,7 @@ import {
 } from '../../core/preview/preview-preferences';
 import { DEFERRED_HTML_SCRIPT_ID, INITIAL_HTML_TEMPLATE_ID } from '../../core/preview/preview-install';
 import type { WindowState } from '../windows/window-state';
+import { ReviewPreparation } from './review-preparation';
 
 export type PreviewViewState = {
   view: WebContentsView;
@@ -16,7 +17,6 @@ export type PreviewViewState = {
   pendingScrollRatio: number | null;
   appliedBounds: Rectangle | null;
 };
-
 type Options = {
   preload: string;
   stateFor: (id: number) => WindowState | null;
@@ -25,12 +25,8 @@ type Options = {
   forgetTab: (tabId: string) => void;
 };
 
-const INITIAL_HTML = new RegExp(
-  `(<template id="${INITIAL_HTML_TEMPLATE_ID}">)[\\s\\S]*?(</template>)`, 'i',
-);
-const DEFERRED_HTML = new RegExp(
-  `(<script type="application/json" id="${DEFERRED_HTML_SCRIPT_ID}">)[\\s\\S]*?(</script>)`, 'i',
-);
+const INITIAL_HTML = new RegExp(`(<template id="${INITIAL_HTML_TEMPLATE_ID}">)[\\s\\S]*?(</template>)`, 'i');
+const DEFERRED_HTML = new RegExp(`(<script type="application/json" id="${DEFERRED_HTML_SCRIPT_ID}">)[\\s\\S]*?(</script>)`, 'i');
 
 export class PreviewManager {
   readonly views = new Map<string, PreviewViewState>();
@@ -39,13 +35,16 @@ export class PreviewManager {
   private readonly spares = new Map<number, { view: WebContentsView; ready: boolean }>();
   private readonly navigating = new Map<WebContentsView, symbol>();
   private readonly themes = new Map<number, PreviewThemeId>();
+  private readonly reviews = new ReviewPreparation({
+    views: this.views,
+    applyBounds: (preview, bounds) => this.applyBounds(preview, bounds),
+    navigating: (preview) => this.navigating.has(preview.view),
+  });
   private warmup: { url: string; themeId: PreviewThemeId } | null = null;
 
   constructor(private readonly options: Options) {}
 
-  html(token: string) {
-    return this.documents.get(token) ?? null;
-  }
+  html(token: string) { return this.documents.get(token) ?? null; }
 
   storeDocument(template: string, themeId?: PreviewThemeId) {
     const token = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -56,9 +55,7 @@ export class PreviewManager {
   }
 
   private rememberWarmup(template: string, themeId: PreviewThemeId) {
-    const blank = template
-      .replace(INITIAL_HTML, '$1$2')
-      .replace(DEFERRED_HTML, '$1[]$2')
+    const blank = template.replace(INITIAL_HTML, '$1$2').replace(DEFERRED_HTML, '$1[]$2')
       .replace(/(<body\b[^>]*\bdata-html=")[^"]*(")/i, '$1$2');
     if (blank === template) return;
     const token = `warmup-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -67,14 +64,9 @@ export class PreviewManager {
   }
 
   private createView() {
-    const view = new WebContentsView({
-      webPreferences: {
-        preload: this.options.preload,
-        contextIsolation: true,
-        nodeIntegration: false,
-        sandbox: true,
-      },
-    });
+    const view = new WebContentsView({ webPreferences: {
+      preload: this.options.preload, contextIsolation: true, nodeIntegration: false, sandbox: true,
+    } });
     view.setBackgroundColor(previewThemeBackground(this.options.theme()));
     view.setVisible(false);
     view.webContents.on('focus', () => this.returnFocusFromHiddenView(view));
@@ -84,8 +76,7 @@ export class PreviewManager {
   private returnFocusFromHiddenView(view: WebContentsView) {
     if (view.getVisible()) return;
     const preview = Array.from(this.views.values()).find((candidate) => candidate.view === view);
-    const spareOwnerId = Array.from(this.spares.entries())
-      .find(([, candidate]) => candidate.view === view)?.[0];
+    const spareOwnerId = Array.from(this.spares.entries()).find(([, candidate]) => candidate.view === view)?.[0];
     const ownerId = preview?.ownerWebContentsId ?? spareOwnerId;
     const owner = ownerId === undefined ? null : this.options.stateFor(ownerId)?.window;
     if (!owner || owner.isDestroyed() || !owner.isFocused()
@@ -138,13 +129,8 @@ export class PreviewManager {
     view.setVisible(false);
     // A fresh view is attached only after its initial navigation has completed.
     setImmediate(() => this.ensureSpare(ownerId));
-    this.views.set(tabId, {
-      view,
-      ownerWebContentsId: ownerId,
-      pendingScrollPosition: null,
-      pendingScrollRatio: null,
-      appliedBounds: null,
-    });
+    this.views.set(tabId, { view, ownerWebContentsId: ownerId,
+      pendingScrollPosition: null, pendingScrollRatio: null, appliedBounds: null });
     view.webContents.on('before-input-event', (event, input) => {
       const preview = this.views.get(tabId);
       const state = preview && this.options.stateFor(preview.ownerWebContentsId);
@@ -161,37 +147,21 @@ export class PreviewManager {
     });
   }
 
-  /**
-   * Electron 38 focuses a WebContents at navigation commit, even if its view is
-   * hidden. Restoring focus afterwards is too late for an IME composition.
-   * Keep hidden views out of the native input tree for the entire navigation,
-   * including loads already in flight when the user starts a new syllable.
-   * Reattach the completed, still-hidden view without navigating it again.
-   */
+  /** Preserve IME isolation for initial navigation; warm Git updates avoid it. */
   async loadURL(view: WebContentsView, url: string, ownerId: number): Promise<void> {
     const owner = this.options.stateFor(ownerId)?.window;
-    if (!owner || owner.isDestroyed() || view.webContents.isDestroyed()) {
-      throw new Error('The preview owner was closed.');
-    }
+    if (!owner || owner.isDestroyed() || view.webContents.isDestroyed()) throw new Error('The preview owner was closed.');
     const token = Symbol('preview-navigation');
     this.navigating.set(view, token);
     const hidden = !view.getVisible();
-    if (hidden && owner.contentView.children.includes(view)) {
-      owner.contentView.removeChildView(view);
-    }
+    if (hidden && owner.contentView.children.includes(view)) owner.contentView.removeChildView(view);
     try {
       await view.webContents.loadURL(url);
       const stillOwned = this.spares.get(ownerId)?.view === view
-        || Array.from(this.views.values()).some((preview) =>
-          preview.view === view && preview.ownerWebContentsId === ownerId);
-      if (this.navigating.get(view) !== token || !stillOwned
-        || view.webContents.isDestroyed() || owner.isDestroyed()
-        || this.options.stateFor(ownerId)?.window !== owner) return;
-      if (hidden && !owner.contentView.children.includes(view)) {
-        // setVisible(false) was retained while detached: attaching a completed
-        // hidden view must not focus it or steal an in-progress composition.
-        owner.contentView.addChildView(view);
-      }
+        || Array.from(this.views.values()).some((preview) => preview.view === view && preview.ownerWebContentsId === ownerId);
+      if (this.navigating.get(view) !== token || !stillOwned || view.webContents.isDestroyed()
+        || owner.isDestroyed() || this.options.stateFor(ownerId)?.window !== owner) return;
+      if (hidden && !owner.contentView.children.includes(view)) owner.contentView.addChildView(view);
     } finally {
       if (this.navigating.get(view) === token) this.navigating.delete(view);
     }
@@ -209,16 +179,12 @@ export class PreviewManager {
         preview.view.setVisible(false);
       }
     }
-    if (hiddenFocusedView && owner.isFocused() && !owner.webContents.isDestroyed()) {
-      owner.webContents.focus();
-    }
+    if (hiddenFocusedView && owner.isFocused() && !owner.webContents.isDestroyed()) owner.webContents.focus();
     if (!shown || !bounds || this.navigating.has(shown.view)) return;
     const [width, height] = owner.getContentSize();
     const x = Math.max(0, Math.round(Number(bounds.x) || 0));
     const y = Math.max(0, Math.round(Number(bounds.y) || 0));
-    this.applyBounds(shown, {
-      x,
-      y,
+    this.applyBounds(shown, { x, y,
       width: Math.max(1, Math.min(Math.round(Number(bounds.width) || 1), width - x)),
       height: Math.max(1, Math.min(Math.round(Number(bounds.height) || 1), height - y)),
     });
@@ -237,6 +203,10 @@ export class PreviewManager {
       && previous.width === bounds.width && previous.height === bounds.height) return;
     preview.appliedBounds = bounds;
     preview.view.setBounds(bounds);
+  }
+
+  prepareReviewViewport(ownerId: number, tabId: string, revision: number): Promise<void> {
+    return this.reviews.prepare(ownerId, tabId, revision);
   }
 
   restoreScroll(preview: PreviewViewState) {
@@ -266,8 +236,11 @@ export class PreviewManager {
   }
 
   command(ownerId: number, tabId: unknown, message: Record<string, unknown>) {
+    if (typeof tabId === 'string' && /^git-diff:.*:[ab]$/.test(tabId)
+      && message?.command === 'marktex:prime-review') this.create(ownerId, tabId);
     const preview = this.views.get(String(tabId));
     if (!preview || preview.ownerWebContentsId !== ownerId) return;
+    if (this.reviews.command(ownerId, String(tabId), message)) return;
     if (message?.command === 'marktex:apply-theme') {
       const assets = this.options.themeAssets(message.themeId);
       preview.view.setBackgroundColor(assets.backgroundColor);
@@ -280,10 +253,9 @@ export class PreviewManager {
     if (typeof tabId !== 'string') return;
     const preview = this.views.get(tabId);
     if (!preview || preview.ownerWebContentsId !== ownerId) return;
+    this.reviews.forget(tabId);
     const owner = this.options.stateFor(ownerId)?.window;
-    if (owner && !owner.isDestroyed() && owner.contentView.children.includes(preview.view)) {
-      owner.contentView.removeChildView(preview.view);
-    }
+    if (owner && !owner.isDestroyed() && owner.contentView.children.includes(preview.view)) owner.contentView.removeChildView(preview.view);
     this.navigating.delete(preview.view);
     if (!preview.view.webContents.isDestroyed()) preview.view.webContents.close();
     this.views.delete(tabId);
@@ -291,38 +263,29 @@ export class PreviewManager {
   }
 
   receive(senderId: number, message: Record<string, unknown>) {
-    const found = Array.from(this.views.entries()).find(([, preview]) =>
-      preview.view.webContents.id === senderId);
+    const found = Array.from(this.views.entries()).find(([, preview]) => preview.view.webContents.id === senderId);
     if (!found) return;
     const [tabId, preview] = found;
-    if (message.type === 'marktex:html-updated') {
-      this.waiters.get(`${tabId}:${Math.max(0, Number(message.revision) || 0)}`)?.();
-    }
-    this.options.stateFor(preview.ownerWebContentsId)?.window.webContents.send(
-      'preview:message', { tabId, message },
-    );
+    this.reviews.receive(tabId, message);
+    if (message.type === 'marktex:html-updated') this.waiters.get(`${tabId}:${Math.max(0, Number(message.revision) || 0)}`)?.();
+    this.options.stateFor(preview.ownerWebContentsId)?.window.webContents.send('preview:message', { tabId, message });
   }
 
-  waitForUpdate(tabId: string, revision: number) {
+  waitForUpdate(tabId: string, revision: number, strict = false) {
     const key = `${tabId}:${revision}`;
-    return new Promise<void>((resolve) => {
+    return new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.waiters.delete(key);
-        resolve();
+        if (strict) reject(new Error('Git preview installation did not acknowledge.'));
+        else resolve();
       }, 5000);
-      this.waiters.set(key, () => {
-        clearTimeout(timeout);
-        this.waiters.delete(key);
-        resolve();
-      });
+      this.waiters.set(key, () => { clearTimeout(timeout); this.waiters.delete(key); resolve(); });
     });
   }
 
   markTheme(contents: WebContents, themeId: PreviewThemeId) {
     if (contents.isDestroyed()) return;
-    if (!this.themes.has(contents.id)) {
-      contents.once('destroyed', () => this.themes.delete(contents.id));
-    }
+    if (!this.themes.has(contents.id)) contents.once('destroyed', () => this.themes.delete(contents.id));
     this.themes.set(contents.id, themeId);
   }
 
@@ -335,18 +298,14 @@ export class PreviewManager {
     this.markTheme(contents, assets.themeId);
   }
 
-  setTheme(themeId: PreviewThemeId) {
-    for (const spare of this.spares.values()) this.syncTheme(spare.view, themeId);
-  }
+  setTheme(themeId: PreviewThemeId) { for (const spare of this.spares.values()) this.syncTheme(spare.view, themeId); }
 
   resizeOwner(ownerId: number, contentWidth: number, contentHeight: number) {
     for (const preview of this.views.values()) {
       if (preview.ownerWebContentsId !== ownerId || !preview.view.getVisible()) continue;
       const bounds = preview.view.getBounds();
-      this.applyBounds(preview, {
-        ...bounds,
-        width: Math.max(1, contentWidth - bounds.x),
-        height: Math.max(1, contentHeight - bounds.y),
+      this.applyBounds(preview, { ...bounds,
+        width: Math.max(1, contentWidth - bounds.x), height: Math.max(1, contentHeight - bounds.y),
       });
     }
   }
@@ -355,6 +314,7 @@ export class PreviewManager {
     this.discardSpare(ownerId);
     for (const [tabId, preview] of this.views) {
       if (preview.ownerWebContentsId !== ownerId) continue;
+      this.reviews.forget(tabId);
       preview.view.webContents.close();
       this.views.delete(tabId);
       this.options.forgetTab(tabId);
@@ -365,8 +325,7 @@ export class PreviewManager {
     ipcMain.on('preview:create', (event, tabId) => this.create(event.sender.id, tabId));
     ipcMain.on('preview:show', (event, { tabId, bounds }) => this.show(event.sender.id, tabId, bounds));
     ipcMain.handle('preview:capture', (event, tabId) => this.capture(event.sender.id, tabId));
-    ipcMain.on('preview:command', (event, { tabId, message }) =>
-      this.command(event.sender.id, tabId, message));
+    ipcMain.on('preview:command', (event, { tabId, message }) => this.command(event.sender.id, tabId, message));
     ipcMain.on('preview:destroy', (event, tabId) => this.destroy(event.sender.id, tabId));
     ipcMain.on('preview:message', (event, message) => this.receive(event.sender.id, message));
   }

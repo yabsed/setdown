@@ -1,37 +1,48 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, untrack } from 'svelte';
   import type { AppActions } from '../../view-state.svelte';
   import { project } from '../project-state.svelte';
   import GitDiffEditor from './GitDiffEditor.svelte';
+  import { gitDiffViewport } from './git-diff-viewport';
 
   let { actions }: { actions: AppActions } = $props();
   let previewHost = $state<HTMLDivElement>();
   let observer: ResizeObserver | null = null;
+  let active = $derived(project.gitDiffActive && (!!project.gitDiff || project.gitDiffLoading));
+  let refreshing = $derived(project.gitDiffPreviewReady && (project.gitDiffPreviewLoading
+    || !!project.gitDiffTabs.find((tab) => tab.id === project.activeGitDiffId)?.previewDirty));
+
   function layout() {
-    if (!previewHost || !project.gitDiffActive || project.gitDiffMode !== 'rendered'
-      || !project.gitDiffPreviewReady) {
+    if (!previewHost || !active) {
       actions.layoutProjectGitDiff(null);
       return;
     }
     const rect = previewHost.getBoundingClientRect();
     actions.layoutProjectGitDiff({ x: rect.left, y: rect.top, width: rect.width, height: rect.height });
   }
-
   $effect(() => {
-    const active = project.gitDiffActive && (!!project.gitDiff || project.gitDiffLoading);
+    const enabled = active;
     const host = previewHost;
-    const rendered = project.gitDiffMode === 'rendered';
-    const ready = project.gitDiffPreviewReady;
     observer?.disconnect();
     observer = null;
-    if (!active) return;
-    if (host && rendered && ready) {
-      observer = new ResizeObserver(layout);
+    if (enabled && host) {
+      // Hidden source/preview layers occupy the same live box. Warm native
+      // geometry before Esc; never resurrect geometry of an inactive review.
+      observer = new ResizeObserver(() => untrack(layout));
       observer.observe(host);
-      layout();
-    } else actions.layoutProjectGitDiff(null);
+      untrack(layout);
+    } else untrack(() => actions.layoutProjectGitDiff(null));
   });
-
+  $effect(() => {
+    const source = previewHost?.parentElement?.querySelector('.git-diff-source-layer');
+    if (!source) return;
+    // Observe both Monaco panes without wrapping any input/composition handlers.
+    // The port samples actual Monaco state on the next frame and again on Esc.
+    const changed = () => gitDiffViewport.changed();
+    const events = ['scroll', 'wheel', 'keyup', 'pointerup', 'input'];
+    for (const event of events) source.addEventListener(event, changed, { capture: true, passive: true });
+    return () => { for (const event of events) source.removeEventListener(event, changed, true); };
+  });
   onDestroy(() => {
     observer?.disconnect();
     actions.layoutProjectGitDiff(null);
@@ -47,7 +58,7 @@
           && project.gitDiff?.originalText !== null && project.gitDiff?.modifiedText !== null}>
         <GitDiffEditor {actions} />
       </div>
-      <div class="git-diff-preview-host"
+      <div class="git-diff-preview-host" aria-busy={refreshing}
         class:is-active={project.gitDiffActive && project.gitDiffMode === 'rendered'}
         class:is-frozen={project.gitDiffFrozen}
         style:background-image={project.gitDiffSnapshot
