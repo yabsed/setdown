@@ -55,6 +55,14 @@ export class TabController {
     return tab ? this.text(tab) : null;
   };
 
+  activateDocumentPath = (path: string): boolean => {
+    const tab = this.options.workspace.tabs.find((candidate) =>
+      !candidate.document.isUntitled && candidate.document.path === path);
+    if (!tab) return false;
+    void this.activate(tab.id);
+    return true;
+  };
+
   acceptWorkingTreeBuffer = (path: string, text: string): void => {
     const { desktop, editor, preview, workspace } = this.options;
     const tab = workspace.tabs.find((candidate) =>
@@ -68,6 +76,57 @@ export class TabController {
     }
     Object.assign(tab, { previewUrl: null, previewRevision: null, previewTheme: null });
     if (tab.id === workspace.activeId && tab.surface === 'viewer') preview.reset();
+    this.updateChrome();
+  };
+
+  reloadDocumentPaths = async (paths: string[]): Promise<void> => {
+    const selected = new Set(paths);
+    const { desktop, editor, preview, reader, session, workspace } = this.options;
+    const targets = workspace.tabs.filter((tab) =>
+      !tab.document.isUntitled && selected.has(tab.document.path));
+    let activeReloaded = false;
+
+    for (const tab of targets) {
+      let diskDocument: DocumentSnapshot | null = null;
+      try {
+        diskDocument = await desktop.openProjectFile(tab.document.path);
+      } catch {
+        // Discarding an untracked file moves it to the trash. Its open tab must
+        // disappear as well because there is no longer a disk version to load.
+        await this.close(tab.id, true);
+        continue;
+      }
+      if (!diskDocument) continue;
+      const active = workspace.activeId === tab.id;
+      tab.document = diskDocument;
+      Object.assign(tab, {
+        previewUrl: null,
+        previewRevision: null,
+        previewTheme: null,
+      });
+      editor.replace(tab, diskDocument);
+      if (active) {
+        session.document = diskDocument;
+        preview.reset();
+        view.notice = false;
+        activeReloaded = true;
+      }
+    }
+
+    const active = workspace.active;
+    if (active) {
+      await desktop.activateDocument(active.document, this.text(active), active.revision);
+      if (activeReloaded && active.surface === 'viewer') {
+        const revision = active.revision;
+        void preview.ensure(revision).then((ready) => {
+          if (ready && workspace.activeId === active.id) {
+            void preview.position(active.anchor, revision);
+          }
+        });
+      }
+      reader.send(active.id, { command: 'marktex:collect-headings' });
+    }
+    this.render();
     this.updateChrome();
   };
 

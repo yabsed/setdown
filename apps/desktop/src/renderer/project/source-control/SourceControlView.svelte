@@ -15,7 +15,8 @@
   }
 
   function confirmDiscard() {
-    const paths = discardPaths;
+    // `$state` arrays are proxies; copy them before crossing contextBridge/IPC.
+    const paths = [...discardPaths];
     discardPaths = [];
     actions.discardProjectGit(paths);
   }

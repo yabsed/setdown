@@ -9,6 +9,31 @@ import { previews } from './preview-view';
 
 const exec = promisify(execFile);
 
+type Application = Awaited<ReturnType<typeof electron.launch>>;
+
+function diffPreviews(application: Application) {
+  return application.evaluate(async ({ BrowserWindow }) => {
+    const owner = BrowserWindow.getAllWindows().find((candidate) => candidate.isVisible());
+    if (!owner) return [];
+    const rows = await Promise.all(owner.contentView.children.map(async (candidate) => {
+      if (!('webContents' in candidate)) return null;
+      const url = candidate.webContents.getURL();
+      if (!url.startsWith('marktex-preview://document/')) return null;
+      const renderedDiff = await candidate.webContents.executeJavaScript(
+        'Boolean(document.querySelector(".setdown-rendered-diff-split"))',
+      ).catch(() => false);
+      return renderedDiff ? {
+        id: candidate.webContents.id,
+        url,
+        visible: candidate.getVisible(),
+        text: await candidate.webContents.executeJavaScript('document.body.innerText')
+          .catch(() => ''),
+      } : null;
+    }));
+    return rows.filter((row): row is NonNullable<typeof row> => !!row);
+  });
+}
+
 test('keeps staged and live working-tree reviews in separate tabs', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-git-review-tabs-'));
   const configRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-git-review-config-'));
@@ -68,6 +93,32 @@ test('keeps staged and live working-tree reviews in separate tabs', async () => 
     await window.locator('.git-diff-tab').nth(1).click();
     await expect(window.locator('.git-review-axis')).toHaveText('STAGED ↔ CURRENT DOCUMENT');
     await expect(window.locator('.git-review-note')).toContainText('staged Index');
+    await expect.poll(async () => (await diffPreviews(application)).length, { timeout: 20_000 })
+      .toBe(2);
+    const warmed = await diffPreviews(application);
+    const warmedIdentity = warmed.map(({ id, url }) => ({ id, url }))
+      .sort((left, right) => left.id - right.id);
+    const firstFrame = await window.evaluate(async () => {
+      const tabs = document.querySelectorAll<HTMLButtonElement>('.git-diff-tab');
+      const started = performance.now();
+      tabs[0]?.click();
+      return await new Promise<{ elapsed: number; axis: string; selected: boolean }>((resolve) => {
+        requestAnimationFrame(() => resolve({
+          elapsed: performance.now() - started,
+          axis: document.querySelector('.git-review-axis')?.textContent ?? '',
+          selected: tabs[0]?.getAttribute('aria-selected') === 'true',
+        }));
+      });
+    });
+    expect(firstFrame).toMatchObject({ axis: 'HEAD ↔ STAGED', selected: true });
+    expect(firstFrame.elapsed).toBeLessThan(80);
+    await expect.poll(async () => (await diffPreviews(application)).find((view) => view.visible)?.text)
+      .toContain('Base');
+    await window.locator('.git-diff-tab').nth(1).click();
+    await expect.poll(async () => (await diffPreviews(application)).find((view) => view.visible)?.text)
+      .toContain('Working tree');
+    expect((await diffPreviews(application)).map(({ id, url }) => ({ id, url }))
+      .sort((left, right) => left.id - right.id)).toEqual(warmedIdentity);
     const renderedBefore = `Array.from(document.querySelectorAll('.setdown-rendered-diff-before'))
       .map((node) => node.textContent).join(' ')`;
     const renderedAfter = `Array.from(document.querySelectorAll('.setdown-rendered-diff-after'))
@@ -100,6 +151,24 @@ test('keeps staged and live working-tree reviews in separate tabs', async () => 
       .toContainText('Staged');
     await expect(window.locator('.modified-in-monaco-diff-editor .view-lines'))
       .toContainText('Working tree');
+    await window.locator('.git-diff-tab').nth(0).click();
+    await window.getByRole('button', { name: 'View Source Diff' }).click();
+    await expect(window.locator('.original-in-monaco-diff-editor .view-lines'))
+      .toContainText('Base');
+    const sourceFirstFrame = await window.evaluate(async () => {
+      const tabs = document.querySelectorAll<HTMLButtonElement>('.git-diff-tab');
+      const started = performance.now();
+      tabs[1]?.click();
+      return await new Promise<{ elapsed: number; text: string }>((resolve) => {
+        requestAnimationFrame(() => resolve({
+          elapsed: performance.now() - started,
+          text: (document.querySelector('.modified-in-monaco-diff-editor .view-lines')
+            ?.textContent ?? '').replace(/\s+/g, ' '),
+        }));
+      });
+    });
+    expect(sourceFirstFrame.elapsed).toBeLessThan(80);
+    expect(sourceFirstFrame.text).toContain('Inserted one');
     const workingTreeEditor = window.locator('.git-diff-editor').getByRole('textbox').nth(1);
     await expect(workingTreeEditor).toBeEditable();
     await workingTreeEditor.press('Control+End');
@@ -115,6 +184,62 @@ test('keeps staged and live working-tree reviews in separate tabs', async () => 
     await expect.poll(async () => (await exec('git', ['show', ':review.md'], { cwd: root })).stdout)
       .toContain('Shared draft');
     await expect(changed.locator('.git-change-open')).toHaveCount(0);
+  } finally {
+    await disposeApplication(application);
+    await rm(root, { recursive: true, force: true });
+    await rm(configRoot, { recursive: true, force: true });
+  }
+});
+
+test('discard reloads the open document buffer from the restored file', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-git-discard-'));
+  const configRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-git-discard-config-'));
+  const documentPath = path.join(root, 'discard.md');
+  await exec('git', ['init'], { cwd: root });
+  await exec('git', ['config', 'user.email', 'setdown@example.test'], { cwd: root });
+  await exec('git', ['config', 'user.name', 'Setdown Test'], { cwd: root });
+  await writeFile(documentPath, '# Base\n', 'utf8');
+  await exec('git', ['add', 'discard.md'], { cwd: root });
+  await exec('git', ['commit', '-m', 'base'], { cwd: root });
+  await writeFile(documentPath, '# Changed on disk\n', 'utf8');
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...environment } = process.env;
+  const application = await electron.launch({
+    args: ['.', documentPath],
+    env: { ...environment, XDG_CONFIG_HOME: configRoot },
+  });
+
+  try {
+    const window = await application.firstWindow();
+    const reading = previews(application);
+    await window.evaluate(async (folderPath) => {
+      await (window as typeof window & {
+        marktex: { restoreProjectFolder(path: string): Promise<unknown> };
+      }).marktex.restoreProjectFolder(folderPath);
+    }, root);
+    await Promise.all([window.waitForEvent('load'), window.reload()]);
+    await window.getByRole('button', { name: 'Toggle Folder Tools' }).click();
+    await window.getByRole('button', { name: 'Source Control' }).click();
+    const changed = window.locator('.scm-group').filter({
+      has: window.getByText('CHANGES', { exact: true }),
+    });
+    await changed.locator('.git-change-open').click();
+    await window.getByRole('button', { name: 'View Source Diff' }).click();
+    const workingTreeEditor = window.locator('.git-diff-editor').getByRole('textbox').nth(1);
+    await workingTreeEditor.press('Control+End');
+    await workingTreeEditor.pressSequentially('\nUnsaved buffer text');
+    await expect(window.locator('.document-tab:not(.git-diff-tab) .tab-dirty')).toHaveCount(1);
+
+    await changed.getByRole('button', { name: 'Discard All Changes' }).click();
+    await window.getByRole('button', { name: 'Discard Changes', exact: true }).click();
+    await expect.poll(() => readFile(documentPath, 'utf8')).toBe('# Base\n');
+    await expect(changed.locator('.git-change-open')).toHaveCount(0);
+
+    await window.locator('.document-tab:not(.git-diff-tab)').click();
+    await expect(window.locator('.document-tab:not(.git-diff-tab) .tab-dirty')).toHaveCount(0);
+    await expect.poll(reading.hasVisible).toBe(true);
+    await expect.poll(() => reading.evaluate<string>('document.body.innerText')).toContain('Base');
+    expect(await reading.evaluate<string>('document.body.innerText')).not.toContain('Changed on disk');
+    expect(await reading.evaluate<string>('document.body.innerText')).not.toContain('Unsaved buffer text');
   } finally {
     await disposeApplication(application);
     await rm(root, { recursive: true, force: true });

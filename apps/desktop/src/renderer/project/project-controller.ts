@@ -24,8 +24,10 @@ type Options = {
   desktop: DesktopPort;
   searchDocuments(query: string): ProjectSearchDocument[];
   showDocument(path: string): Promise<boolean>;
+  activateDocument(path: string): boolean;
   workingTreeBuffer(path: string): string | null;
   workingTreeChanged(path: string, text: string): void;
+  reloadDocuments(paths: string[]): Promise<void>;
   highlight(query: string, target?: SearchTarget): void;
   pathMoved(from: string, to: string): Promise<void>;
   prepareRemove(path: string): Promise<boolean>;
@@ -61,6 +63,7 @@ export class ProjectController {
       desktop: options.desktop,
       preferRendered: options.preferRenderedDiff,
       openWorkingTree: options.showDocument,
+      activateWorkingTree: options.activateDocument,
       workingTreeBuffer: options.workingTreeBuffer,
       workingTreeChanged: options.workingTreeChanged,
       reviewChanged: options.reviewChanged,
@@ -167,7 +170,7 @@ export class ProjectController {
   stageGit = (paths: string[]): Promise<void> => this.sourceControl.stage(paths);
   unstageGit = (paths: string[]): Promise<void> => this.sourceControl.unstage(paths);
   discardGit = async (paths: string[]): Promise<void> => {
-    await this.sourceControl.discard(paths);
+    await this.sourceControl.discard(paths, () => this.options.reloadDocuments(paths));
     await this.explorer.refresh();
   };
   commitGit = (message: string): Promise<void> => this.sourceControl.commit(message);

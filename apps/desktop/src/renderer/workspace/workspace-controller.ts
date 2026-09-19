@@ -222,8 +222,10 @@ export function startWorkspace(desktop: DesktopPort) {
       await tabs.show(documentSnapshot);
       return true;
     },
+    activateDocument: tabs.activateDocumentPath,
     workingTreeBuffer: tabs.documentBuffer,
     workingTreeChanged: tabs.acceptWorkingTreeBuffer,
+    reloadDocuments: tabs.reloadDocumentPaths,
     pathMoved: tabs.relocatePath,
     prepareRemove: tabs.prepareRemove,
     preferRenderedDiff: () => session.surface !== 'editor',

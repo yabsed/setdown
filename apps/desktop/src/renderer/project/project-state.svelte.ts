@@ -18,6 +18,12 @@ export type GitDiffTabState = {
   staged: boolean;
   mode: 'rendered' | 'source';
   line: number;
+  diff: GitDiff | null;
+  loading: boolean;
+  previewId: string | null;
+  pendingPreviewId: string | null;
+  previewLoading: boolean;
+  previewDirty: boolean;
 };
 
 const STORAGE_KEY = 'setdown:folder-tools';

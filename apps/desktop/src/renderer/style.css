@@ -663,7 +663,10 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
   min-width: 0;
   min-height: 0;
   background: var(--app-editor-background);
+  visibility: hidden;
+  pointer-events: none;
 }
+.git-review.is-active { visibility: visible; pointer-events: auto; }
 .git-review-header {
   display: flex;
   align-items: center;
@@ -678,7 +681,21 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 }
 .git-review-axis { color: var(--app-text); font-weight: 650; font-variant-numeric: tabular-nums; }
 .git-review-note { overflow: hidden; text-overflow: ellipsis; }
-.git-diff-preview-host, .git-diff-editor { position: relative; flex: 1; min-width: 0; min-height: 0; }
+.git-review-body { position: relative; flex: 1; min-width: 0; min-height: 0; }
+.git-diff-source-layer, .git-diff-preview-host {
+  position: absolute;
+  inset: 0;
+  min-width: 0;
+  min-height: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.git-diff-source-layer.is-active, .git-diff-preview-host.is-active {
+  visibility: visible;
+  pointer-events: auto;
+}
+.git-diff-source-layer { display: flex; }
+.git-diff-editor { position: relative; flex: 1; min-width: 0; min-height: 0; }
 .git-diff-preview-host.is-frozen {
   background-repeat: no-repeat;
   background-position: top left;
