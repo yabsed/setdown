@@ -29,6 +29,7 @@ export class SourceControlController {
   private readonly loadGenerations = new Map<string, number>();
   private readonly previewTimers = new Map<string, number>();
   private bounds: PreviewBounds | null = null;
+  private pendingPreviewPosition: string | null = null;
   private themeId: PreviewThemeId | null = null;
   private overlayDepth = 0;
   private overlayToken = 0;
@@ -127,16 +128,18 @@ export class SourceControlController {
     if (!project.gitDiffActive) return;
     this.rememberActiveTab();
     project.gitDiffActive = false;
+    this.bounds = null;
+    this.pendingPreviewPosition = null;
     this.options.desktop.showPreview(null, null);
     this.options.reviewChanged(project.gitDiffTabs.length > 0, false);
     this.publishReview();
   };
 
   layoutDiff = (bounds: PreviewBounds | null): void => {
-    // Keep the last valid geometry. It lets a cached native preview become
-    // visible in the same task as tab activation; ResizeObserver corrects it
-    // on the next frame if the shell moved while the review was inactive.
-    if (bounds) this.bounds = bounds;
+    // A hidden/unmounted source surface has no current preview geometry.
+    // Do not let cached bounds make a cold preview look ready for positioning.
+    this.bounds = bounds && [bounds.x, bounds.y, bounds.width, bounds.height].every(Number.isFinite)
+      && bounds.width > 0 && bounds.height > 0 ? bounds : null;
     if (project.gitDiffActive) this.syncPreview();
   };
 
@@ -163,8 +166,7 @@ export class SourceControlController {
     project.gitDiff = diff;
     project.gitDiffMode = 'rendered';
     this.copyPreviewState(tab);
-    this.syncPreview();
-    this.positionPreview(tab);
+    this.syncPreview(true);
     if (tab.previewDirty || !tab.previewId) this.schedulePreview(tab, 0);
     this.publishReview();
   };
@@ -255,7 +257,7 @@ export class SourceControlController {
   }
 
   private activeTab(): GitDiffTabState | null {
-    return project.gitDiffTabs.find((tab) => tab.id === project.activeGitDiffId) ?? null;
+    return project.gitDiffTabs.find((candidate) => candidate.id === project.activeGitDiffId) ?? null;
   }
 
   private activateTabState(tab: GitDiffTabState): void {
@@ -283,8 +285,7 @@ export class SourceControlController {
     this.copyPreviewState(tab);
     this.options.reviewChanged(true, true);
     project.error = '';
-    this.syncPreview();
-    this.positionPreview(tab);
+    this.syncPreview(true);
     if (tab.diff && this.renderable(tab.diff) && !tab.previewLoading
       && (tab.previewDirty || !tab.previewId)) this.schedulePreview(tab, 0);
     this.publishReview();
@@ -301,6 +302,8 @@ export class SourceControlController {
     tab.mode = 'source';
     project.gitDiffLine = line;
     project.gitDiffMode = 'source';
+    this.bounds = null;
+    this.pendingPreviewPosition = null;
     if (project.gitDiffActive) this.options.desktop.showPreview(null, null);
     this.publishReview();
   }
@@ -356,6 +359,8 @@ export class SourceControlController {
   }
 
   private resetActiveState(): void {
+    this.bounds = null;
+    this.pendingPreviewPosition = null;
     Object.assign(project, {
       gitDiff: null,
       gitDiffTarget: null,
@@ -374,16 +379,22 @@ export class SourceControlController {
     project.gitDiffPreviewReady = !!tab.previewId;
   }
 
-  private syncPreview(): void {
-    if (!project.gitDiffActive || this.overlayFrozen) return;
+  private syncPreview(position = false): void {
     const tab = this.activeTab();
+    if (position) {
+      this.pendingPreviewPosition = project.gitDiffActive && project.gitDiffMode === 'rendered'
+        ? tab?.id ?? null : null;
+    }
+    if (!project.gitDiffActive || this.overlayFrozen) return;
     const previewId = project.gitDiffMode === 'rendered' ? tab?.previewId : null;
-    this.options.desktop.showPreview(previewId ?? null, previewId ? this.bounds : null);
-  }
-
-  private positionPreview(tab: GitDiffTabState): void {
-    if (!project.gitDiffActive || project.gitDiffMode !== 'rendered' || !tab.previewId) return;
-    this.options.desktop.sendPreviewCommand(tab.previewId, {
+    const shownId = this.bounds ? previewId : null;
+    this.options.desktop.showPreview(shownId ?? null, shownId ? this.bounds : null);
+    // The first Esc can precede BOTH the preview and the Svelte host layout.
+    // Retain the intent until both exist; the show IPC must set native bounds
+    // before the position IPC asks SourceAtlas to measure rendered blocks.
+    if (!tab || !shownId || this.pendingPreviewPosition !== tab.id) return;
+    this.pendingPreviewPosition = null;
+    this.options.desktop.sendPreviewCommand(shownId, {
       command: 'marktex:position-preview',
       sourceLine: tab.line || 1,
       topRatio: GOLDEN_TOP_RATIO,
@@ -458,8 +469,7 @@ export class SourceControlController {
           project.gitDiff = tab.diff;
           project.gitDiffMode = tab.mode;
           this.copyPreviewState(tab);
-          this.syncPreview();
-          this.positionPreview(tab);
+          this.syncPreview(true);
           this.publishReview();
         }
       }
@@ -480,6 +490,7 @@ export class SourceControlController {
   }
 
   private disposeTab(tab: GitDiffTabState): void {
+    if (this.pendingPreviewPosition === tab.id) this.pendingPreviewPosition = null;
     this.loadGenerations.set(tab.id, (this.loadGenerations.get(tab.id) ?? 0) + 1);
     const timer = this.previewTimers.get(tab.id);
     if (timer !== undefined) window.clearTimeout(timer);
