@@ -10,7 +10,8 @@ vi.mock('../project-state.svelte', () => ({ project: {} }));
 
 const bounds: PreviewBounds = { x: 260, y: 84, width: 850, height: 650 };
 type Call = { kind: 'show'; id: string | null; bounds: PreviewBounds | null }
-  | { kind: 'position'; id: string; line: number };
+  | { kind: 'position'; id: string; line: number }
+  | { kind: 'prime'; id: string; primeId: number };
 const controllers: SourceControlController[] = [];
 
 beforeEach(() => {
@@ -56,6 +57,8 @@ function fixture(staged = false, prepared = true) {
     sendPreviewCommand(id: string, message: Record<string, unknown>) {
       if (message.command === 'marktex:position-preview') {
         calls.push({ kind: 'position', id, line: Number(message.sourceLine) });
+      } else if (message.command === 'marktex:prime-review') {
+        calls.push({ kind: 'prime', id, primeId: Number(message.primeId) });
       }
     },
     updateGitReviewState() {},
@@ -189,4 +192,31 @@ test('a late layout after switching tabs does not position the old preview', asy
   assert.equal(f.positions().length, 0);
   f.controller.showRendered();
   assert.deepEqual(f.positions(), [{ kind: 'position', id: second.previewId, line: 70 }]);
+});
+
+test('acknowledged source prewarm makes warm Esc a show-only native transition', async () => {
+  vi.useFakeTimers();
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) =>
+    window.setTimeout(() => callback(performance.now()), 0));
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => window.clearTimeout(id));
+  const f = fixture();
+  try {
+    await f.controller.activateDiff(f.tab.id);
+    f.controller.layoutDiff(bounds);
+    await vi.advanceTimersByTimeAsync(0);
+    const prime = f.calls.find((call): call is Extract<Call, { kind: 'prime' }> => call.kind === 'prime');
+    assert.ok(prime);
+    assert.equal(f.controller.previewMessage({
+      tabId: prime.id,
+      message: { type: 'marktex:review-primed', primeId: prime.primeId },
+    }), true);
+    f.calls.length = 0;
+    f.controller.showRendered();
+    assert.deepEqual(f.calls.filter((call) => call.kind === 'position'), []);
+    assert.deepEqual(f.calls.find((call) => call.kind === 'show'), {
+      kind: 'show', id: f.tab.previewId, bounds,
+    });
+  } finally {
+    vi.useRealTimers();
+  }
 });

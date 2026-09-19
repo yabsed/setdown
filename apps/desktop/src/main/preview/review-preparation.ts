@@ -6,7 +6,7 @@ type Options = {
   applyBounds(preview: PreviewViewState, bounds: PreviewBounds): void;
   navigating(preview: PreviewViewState): boolean;
 };
-type Primed = { bounds: PreviewBounds; position: Record<string, unknown> };
+type Primed = { bounds: PreviewBounds; position: Record<string, unknown>; primeId: number };
 
 /** Hidden preparation never changes native visibility or keyboard focus. */
 export class ReviewPreparation {
@@ -35,6 +35,8 @@ export class ReviewPreparation {
         && typeof item.yRatio === 'number' && Number.isFinite(item.yRatio)
         ? [{ sourceLine: Math.max(1, Math.round(item.sourceLine)), yRatio: Math.max(0, Math.min(1, item.yRatio)) }] : [];
     }) : [];
+    const primeId = Number.isSafeInteger(Number(message.primeId)) && Number(message.primeId) > 0
+      ? Number(message.primeId) : 0;
     const position = {
       command: 'marktex:position-preview', sourceLine: Math.max(1, Math.round(value.sourceLine)),
       topRatio: typeof value.topRatio === 'number' && Number.isFinite(value.topRatio)
@@ -51,10 +53,12 @@ export class ReviewPreparation {
     };
     // A late source-prewarming event may not reposition the visible front.
     if (preview.view.getVisible()) return true;
-    this.primed.set(tabId, { bounds, position });
+    this.primed.set(tabId, { bounds, position, primeId });
     this.options.applyBounds(preview, bounds);
     if (!this.options.navigating(preview) && preview.view.webContents.getURL().startsWith('marktex-preview://document/')) {
-      preview.view.webContents.send('preview:command', { ...position, command: 'marktex:prime-position' });
+      preview.view.webContents.send('preview:command', {
+        ...position, command: 'marktex:prime-position', primeId,
+      });
     }
     return true;
   }
@@ -78,7 +82,8 @@ export class ReviewPreparation {
       this.waiting.set(tabId, { id, revision, finish });
       try {
         preview.view.webContents.send('preview:command', {
-          ...primed.position, command: 'marktex:prepare-review', requestId: id, revision,
+          ...primed.position, command: 'marktex:prepare-review', requestId: id,
+          revision, primeId: primed.primeId,
         });
       } catch (error) { finish(error instanceof Error ? error : new Error(String(error))); }
     });

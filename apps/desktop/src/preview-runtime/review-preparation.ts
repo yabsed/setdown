@@ -33,9 +33,13 @@ export function installReviewPreparation(options: Options): void {
     if (command.command !== 'marktex:prepare-review' && command.command !== 'marktex:prime-position') return;
     const current = ++generation;
     const revision = command.revision;
-    const reply = (error?: string) => options.send({
-      type: 'marktex:review-prepared', requestId: command.requestId, revision, ...(error ? { error } : {}),
-    });
+    const reply = (error?: string) => {
+      options.send({ type: 'marktex:review-prepared', requestId: command.requestId,
+        revision, ...(error ? { error } : {}) });
+      if (!error && Number.isSafeInteger(Number(command.primeId)) && Number(command.primeId) > 0) {
+        options.send({ type: 'marktex:review-primed', primeId: Number(command.primeId), revision });
+      }
+    };
     const position = () => {
       const side = command.sourceSide === 'before' ? 'before' : 'after';
       const line = Math.min(options.sourceAtlas.lineCount(side), Math.max(1, Number(command.sourceLine) || 1));
@@ -45,7 +49,11 @@ export function installReviewPreparation(options: Options): void {
     if (command.command === 'marktex:prime-position') {
       options.hydrate();
       position();
-      return; // No rAF acknowledgments for continuous source prewarming.
+      if (Number.isSafeInteger(Number(command.primeId)) && Number(command.primeId) > 0) {
+        options.send({ type: 'marktex:review-primed', primeId: Number(command.primeId),
+          revision: options.revision() });
+      }
+      return; // No rAF/settle wait for continuous source prewarming.
     }
     void (async () => {
       if (revision !== options.revision()) return reply('Obsolete preview preparation.');

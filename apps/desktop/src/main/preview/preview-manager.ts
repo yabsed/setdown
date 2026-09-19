@@ -190,7 +190,9 @@ export class PreviewManager {
     });
     if (!shown.view.getVisible()) {
       shown.view.setBackgroundColor(previewThemeBackground(this.options.theme()));
-      owner.contentView.addChildView(shown.view);
+      // Prepared hidden views normally remain attached. Avoid mutating the
+      // native child hierarchy again on the warm Esc hot path.
+      if (!owner.contentView.children.includes(shown.view)) owner.contentView.addChildView(shown.view);
       shown.view.setVisible(true);
     }
     this.restoreScroll(shown);
