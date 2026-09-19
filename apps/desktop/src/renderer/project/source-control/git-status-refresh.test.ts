@@ -17,6 +17,8 @@ const snapshot = (branch: string): GitSnapshot => ({
   repository: true, branch, upstream: '', ahead: 0, behind: 0, changes: [],
 });
 const turn = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+// Each read observes new async state, not an earlier assert's null narrowing.
+const currentBranch = () => project.git?.branch;
 
 beforeEach(() => {
   vi.stubGlobal('window', { addEventListener() {}, setTimeout, clearTimeout });
@@ -58,7 +60,7 @@ test('overlapping status requests are serialized and one trailing read is retain
   assert.equal(f.reads.length, 2);
   f.reads[1].resolve(snapshot('new'));
   await Promise.all([first, second, third]);
-  assert.equal(project.git?.branch, 'new');
+  assert.equal(currentBranch(), 'new');
   assert.equal(project.gitLoading, false);
 });
 
@@ -69,7 +71,7 @@ test('saving a document updates status without an open Git review', async () => 
   assert.equal(f.reads.length, 1);
   f.reads[0].resolve(snapshot('saved'));
   await done;
-  assert.equal(project.git?.branch, 'saved');
+  assert.equal(currentBranch(), 'saved');
 });
 
 test('changing folders discards the old result and drains the new folder request', async () => {
@@ -84,7 +86,7 @@ test('changing folders discards the old result and drains the new folder request
   assert.equal(f.reads.length, 2);
   f.reads[1].resolve(snapshot('other'));
   await Promise.all([oldRead, newRead]);
-  assert.equal(project.git?.branch, 'other');
+  assert.equal(currentBranch(), 'other');
 });
 
 test('a read started before a Git mutation cannot overwrite its newer snapshot', async () => {
@@ -95,7 +97,7 @@ test('a read started before a Git mutation cannot overwrite its newer snapshot',
   await staging;
   f.reads[0].resolve(snapshot('stale-before-stage'));
   await reading;
-  assert.equal(project.git?.branch, 'staged');
+  assert.equal(currentBranch(), 'staged');
 });
 
 test('a status request during a mutation runs after the mutation finishes', async () => {
@@ -109,7 +111,7 @@ test('a status request during a mutation runs after the mutation finishes', asyn
   assert.equal(f.reads.length, 1);
   f.reads[0].resolve(snapshot('latest'));
   await turn();
-  assert.equal(project.git?.branch, 'latest');
+  assert.equal(currentBranch(), 'latest');
   assert.equal(project.gitLoading, false);
 });
 
@@ -123,5 +125,5 @@ test('failed reads release loading and allow later refreshes', async () => {
   const retry = f.controller.refresh();
   f.reads[1].resolve(snapshot('recovered'));
   await retry;
-  assert.equal(project.git?.branch, 'recovered');
+  assert.equal(currentBranch(), 'recovered');
 });
