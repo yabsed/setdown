@@ -194,10 +194,8 @@ test('keeps staged and live working-tree reviews in separate tabs', async () => 
     await window.locator('.git-diff-tab').nth(1).click();
 
     await window.locator('.git-diff-tab').nth(0).click();
-    await expect(window.locator('.git-review-axis')).toHaveText('HEAD ↔ STAGED');
     await window.locator('.git-diff-tab').nth(1).click();
-    await expect(window.locator('.git-review-axis')).toHaveText('STAGED ↔ CURRENT DOCUMENT');
-    await expect(window.locator('.git-review-note')).toContainText('staged Index');
+    await expect(window.locator('.git-review-header')).toHaveCount(0);
     await expect.poll(async () => (await diffPreviews(application)).length, { timeout: 20_000 })
       .toBe(2);
     const warmed = await diffPreviews(application);
@@ -207,15 +205,14 @@ test('keeps staged and live working-tree reviews in separate tabs', async () => 
       const tabs = document.querySelectorAll<HTMLButtonElement>('.git-diff-tab');
       const started = performance.now();
       tabs[0]?.click();
-      return await new Promise<{ elapsed: number; axis: string; selected: boolean }>((resolve) => {
+      return await new Promise<{ elapsed: number; selected: boolean }>((resolve) => {
         requestAnimationFrame(() => resolve({
           elapsed: performance.now() - started,
-          axis: document.querySelector('.git-review-axis')?.textContent ?? '',
           selected: tabs[0]?.getAttribute('aria-selected') === 'true',
         }));
       });
     });
-    expect(firstFrame).toMatchObject({ axis: 'HEAD ↔ STAGED', selected: true });
+    expect(firstFrame.selected).toBe(true);
     expect(firstFrame.elapsed).toBeLessThan(80);
     await expect.poll(async () => (await diffPreviews(application)).find((view) => view.visible)?.text)
       .toContain('Base');

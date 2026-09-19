@@ -80,6 +80,8 @@
       renderMarginRevertIcon: false,
       wordWrap: 'on',
       diffWordWrap: 'on',
+      wordWrapOverride1: 'on',
+      wordWrapOverride2: 'on',
       wrappingIndent: 'same',
       enableSplitViewResizing: true,
       smoothScrolling: true,
@@ -249,12 +251,6 @@
       saveShownView();
       editor.setModel({ original: cached.original, modified: cached.modified });
       shownId = activeId;
-      const originalAriaLabel = active.diff.staged ? `${active.diff.originalLabel} version`
-        : active.diff.originalLabel === 'EMPTY' ? 'Empty staged version' : 'Staged version';
-      editor.getOriginalEditor().updateOptions({ ariaLabel: originalAriaLabel });
-      editor.getModifiedEditor().updateOptions({
-        ariaLabel: active.diff.staged ? 'Staged version' : 'Current document',
-      });
       editor.updateOptions({
         readOnly: active.diff.staged,
         originalEditable: false,
@@ -263,6 +259,12 @@
       if (cached.viewState) editor.restoreViewState(cached.viewState);
       layout = true;
     }
+    const originalAriaLabel = active.diff.staged ? `${active.diff.originalLabel} version`
+      : active.diff.originalLabel === 'EMPTY' ? 'Empty staged version' : 'Staged version';
+    editor.getOriginalEditor().updateOptions({ ariaLabel: originalAriaLabel });
+    editor.getModifiedEditor().updateOptions({
+      ariaLabel: active.diff.staged ? 'Staged version' : 'Current document',
+    });
     const revealKey = `${activeId}:${line}:${visible}`;
     if (visible && revealKey !== lastRevealKey) {
       lastRevealKey = revealKey;

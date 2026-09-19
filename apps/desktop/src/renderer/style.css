@@ -590,7 +590,7 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 .scm-commit textarea {
   flex: 1;
   min-width: 0;
-  resize: vertical;
+  resize: none;
   padding: 4px 6px;
   color: var(--app-text);
   border: 1px solid var(--app-strong-border);
@@ -696,20 +696,6 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
   pointer-events: none;
 }
 .git-review.is-active { display: flex; pointer-events: auto; }
-.git-review-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 28px;
-  padding: 3px 12px;
-  color: var(--app-muted-text);
-  border-bottom: 1px solid var(--app-border);
-  background: var(--app-surface);
-  font-size: 10px;
-  white-space: nowrap;
-}
-.git-review-axis { color: var(--app-text); font-weight: 650; font-variant-numeric: tabular-nums; }
-.git-review-note { overflow: hidden; text-overflow: ellipsis; }
 .git-review-body { position: relative; flex: 1; min-width: 0; min-height: 0; }
 .git-diff-source-layer, .git-diff-preview-host {
   position: absolute;

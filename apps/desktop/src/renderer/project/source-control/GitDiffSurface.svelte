@@ -7,20 +7,6 @@
   let { actions }: { actions: AppActions } = $props();
   let previewHost = $state<HTMLDivElement>();
   let observer: ResizeObserver | null = null;
-  let axis = $derived.by(() => {
-    const diff = project.gitDiff;
-    if (!diff) return '';
-    if (diff.staged) return `${diff.originalLabel} ↔ STAGED`;
-    return diff.originalLabel === 'EMPTY'
-      ? 'EMPTY ↔ CURRENT DOCUMENT'
-      : 'STAGED ↔ CURRENT DOCUMENT';
-  });
-  let note = $derived.by(() => {
-    const diff = project.gitDiff;
-    if (!diff) return '';
-    if (diff.staged) return 'Committed version compared with the staged Index.';
-    return 'The staged Index is compared with the live document tab.';
-  });
   function layout() {
     if (!previewHost || !project.gitDiffActive || project.gitDiffMode !== 'rendered'
       || !project.gitDiffPreviewReady) {
@@ -55,12 +41,6 @@
 {#if project.gitDiffTabs.length}
   <section class="git-review" class:is-active={project.gitDiffActive}
     aria-hidden={!project.gitDiffActive} aria-label="Git diff review">
-    {#if project.gitDiffActive && project.gitDiff}
-      <header class="git-review-header">
-        <span class="git-review-axis">{axis}</span>
-        <span class="git-review-note">{note}</span>
-      </header>
-    {/if}
     <div class="git-review-body">
       <div class="git-diff-source-layer"
         class:is-active={project.gitDiffActive && project.gitDiffMode === 'source'
