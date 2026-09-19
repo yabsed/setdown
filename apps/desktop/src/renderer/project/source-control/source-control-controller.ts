@@ -28,6 +28,9 @@ const PREVIEW_DEBOUNCE_MS = 400;
 export class SourceControlController {
   private readonly loadGenerations = new Map<string, number>();
   private readonly previewTimers = new Map<string, number>();
+  private refreshRequested = false;
+  private refreshTask: Promise<void> | null = null;
+  private statusGeneration = 0;
   private bounds: PreviewBounds | null = null;
   private pendingPreviewPosition: string | null = null;
   private themeId: PreviewThemeId | null = null;
@@ -55,19 +58,45 @@ export class SourceControlController {
     void this.reloadTab(tab);
   };
 
-  refresh = async (): Promise<void> => {
-    if (!project.folder || project.gitLoading || project.gitBusy) return;
-    project.gitLoading = true;
-    await this.perform(() => this.options.desktop.getGitStatus(), false);
-    project.gitLoading = false;
+  refresh = (): Promise<void> => {
+    if (!project.folder) return Promise.resolve();
+    this.refreshRequested = true;
+    if (this.refreshTask) return this.refreshTask;
+    if (project.gitBusy) return Promise.resolve();
+    this.refreshTask = this.drainStatusRefreshes().finally(() => {
+      this.refreshTask = null;
+      if (this.refreshRequested && project.folder && !project.gitBusy) void this.refresh();
+    });
+    return this.refreshTask;
   };
+
+  private async drainStatusRefreshes(): Promise<void> {
+    project.gitLoading = true;
+    try {
+      while (this.refreshRequested && project.folder && !project.gitBusy) {
+        this.refreshRequested = false;
+        const root = project.folder.path;
+        const generation = this.statusGeneration;
+        const current = () => generation === this.statusGeneration
+          && root === project.folder?.path && !project.gitBusy;
+        try {
+          const snapshot = await this.options.desktop.getGitStatus();
+          if (current()) project.git = snapshot;
+        } catch (error) {
+          if (current()) project.error = error instanceof Error ? error.message : String(error);
+        }
+      }
+    } finally {
+      project.gitLoading = false;
+    }
+  }
 
   documentSaved = async (document: DocumentSnapshot): Promise<void> => {
     const tabs = project.gitDiffTabs.filter((tab) =>
       !tab.staged && tab.filePath === document.path);
-    if (!tabs.length) return;
     await Promise.all(tabs.map((tab) => this.reloadTab(tab)));
-    await this.perform(() => this.options.desktop.getGitStatus(), false);
+    // The badge must update even when this document has never opened a review.
+    await this.refresh();
   };
 
   review = async (filePath: string, staged: boolean): Promise<void> => {
@@ -223,6 +252,8 @@ export class SourceControlController {
   };
 
   clear = (): void => {
+    this.statusGeneration += 1;
+    this.refreshRequested = false;
     for (const tab of [...project.gitDiffTabs]) this.disposeTab(tab);
     project.git = null;
     project.gitDiffTabs.splice(0);
@@ -504,6 +535,8 @@ export class SourceControlController {
     afterAction?: () => Promise<void>,
   ): Promise<void> {
     if (project.gitBusy) return;
+    // A status read begun before a write must not overwrite the write's result.
+    this.statusGeneration += 1;
     project.gitBusy = true;
     try {
       await this.perform(action);
@@ -513,6 +546,7 @@ export class SourceControlController {
       project.error = error instanceof Error ? error.message : String(error);
     } finally {
       project.gitBusy = false;
+      if (this.refreshRequested) void this.refresh();
     }
   }
 

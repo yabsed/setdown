@@ -120,7 +120,7 @@ export class ProjectController {
     rememberProjectState();
     await this.explorer.restore(folder);
     this.searcher.restore();
-    if (project.activeView === 'git') await this.sourceControl.refresh();
+    await this.sourceControl.refresh();
     await this.sourceControl.restore();
     this.resize();
   };
@@ -199,13 +199,14 @@ export class ProjectController {
     this.sourceControl.clear();
     rememberProjectState();
     await this.explorer.reset(folder);
+    await this.sourceControl.refresh();
     this.resize();
   }
 
   private async refreshChangedProject(): Promise<void> {
     await this.explorer.refresh();
     if (project.searchQuery.trim()) this.searcher.contextChanged();
-    if (project.activeView === 'git') await this.sourceControl.refresh();
+    await this.sourceControl.refresh();
   }
 
   private resize(): void {

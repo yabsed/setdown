@@ -3,11 +3,13 @@
   import { project } from '../project-state.svelte';
   import SideViewMenu from '../SideViewMenu.svelte';
   import ChangeGroup from './ChangeGroup.svelte';
+  import { gitChangeGroups } from './git-change-groups';
 
   let { actions }: { actions: AppActions } = $props();
-  let conflicts = $derived(project.git?.changes.filter((change) => change.conflict) ?? []);
-  let staged = $derived(project.git?.changes.filter((change) => change.staged && !change.conflict) ?? []);
-  let changed = $derived(project.git?.changes.filter((change) => change.unstaged && !change.conflict) ?? []);
+  let groups = $derived(gitChangeGroups(project.git?.changes));
+  let conflicts = $derived(groups.conflicts);
+  let staged = $derived(groups.staged);
+  let changed = $derived(groups.changed);
   const groupExpanded = (title: string) => !project.collapsedGitGroups.includes(title);
 
   function requestDiscard(paths: string[]) {

@@ -1,63 +1,59 @@
 import { splitPreviewBlocks, type PreviewBlock } from './preview-blocks';
+import { alignPreviewBlocks } from './rendered-diff-alignment';
 
-type LocatedBlock = PreviewBlock & { index: number; start: number; end: number };
 type RenderedDiffHunk = { oldStart: number; oldLines: number; newStart: number; newLines: number };
 type HtmlToken = { value: string; part: number; changed: boolean };
-type RenderedDiffAnalysis = {
-  original: LocatedBlock[];
-  modified: LocatedBlock[];
-  added: Set<number>;
-  removed: Set<number>;
-  removedAt: Map<number, number[]>;
-  highlightedOriginal: Map<number, string>;
-  highlightedModified: Map<number, string>;
-};
-type RenderedDiffRow = { before: string; after: string; changed: boolean };
+type DiffCell = { html: string; change: 'equal' | 'added' | 'removed' | 'empty'; whole: boolean };
+type DiffRow = { before: DiffCell; after: DiffCell; equal: boolean };
 
 const TOKEN = /\s+|&(?:#\d+|#x[\da-f]+|\w+);|[\p{L}\p{N}_]+|[^\s\p{L}\p{N}_]+/giu;
 const UNSAFE_TAG = /^(?:script|style|svg|math)$/i;
 const VOID_TAG = /^(?:area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)$/i;
 
-function tokenizeHtml(html: string): { parts: string[]; tokens: HtmlToken[] } {
+function tokenizeHtml(html: string) {
   const parts = html.split(/(<[^>]+>)/g);
   const tokens: HtmlToken[] = [];
   const unsafe: boolean[] = [];
+  const structure: string[] = [];
   for (let part = 0; part < parts.length; part += 1) {
     const value = parts[part];
     if (value.startsWith('<')) {
+      structure.push(value.replace(/\sdata-source-(?:line|lines|start|end)="[^"]*"/g, ''));
       if (/^<\//.test(value)) unsafe.pop();
       else if (!/^<!/.test(value) && !/\/>$/.test(value)) {
         const name = /^<\s*([\w-]+)/.exec(value)?.[1] ?? '';
         if (VOID_TAG.test(name)) continue;
-        const own = UNSAFE_TAG.test(name) || /\bclass="[^"]*\bkatex\b/.test(value);
+        const own = UNSAFE_TAG.test(name) || /\bclass="[^"]*\b(?:katex|MathJax)\b/.test(value);
         unsafe.push(own || unsafe.at(-1) === true);
       }
       continue;
     }
-    if (unsafe.at(-1)) continue;
-    for (const match of value.matchAll(TOKEN)) {
-      tokens.push({ value: match[0], part, changed: false });
+    if (unsafe.at(-1)) {
+      structure.push(value);
+      continue;
     }
+    for (const match of value.matchAll(TOKEN)) tokens.push({ value: match[0], part, changed: false });
   }
-  return { parts, tokens };
+  return { parts, tokens, structure: structure.join('') };
 }
 
-function markChangedTokens(originalHtml: string, modifiedHtml: string): [string, string] {
+function markChangedTokens(originalHtml: string, modifiedHtml: string) {
   const original = tokenizeHtml(originalHtml);
   const modified = tokenizeHtml(modifiedHtml);
   const left = original.tokens;
   const right = modified.tokens;
-  if (!left.length || !right.length || left.length > 500 || right.length > 500
-    || left.length * right.length > 80_000) {
-    return [originalHtml, modifiedHtml];
-  }
+  const whole = { before: originalHtml, after: modifiedHtml, inline: false };
+  // Opaque math/SVG, attributes and formatting changes remain visible too.
+  // Never inject word spans into their DOM or silently skip their differences.
+  if (original.structure !== modified.structure || !left.length || !right.length
+    || left.length > 500 || right.length > 500 || left.length * right.length > 80_000) return whole;
 
-  const rows = Array.from({ length: left.length + 1 }, () => new Uint16Array(right.length + 1));
+  const lengths = Array.from({ length: left.length + 1 }, () => new Uint16Array(right.length + 1));
   for (let l = left.length - 1; l >= 0; l -= 1) {
     for (let r = right.length - 1; r >= 0; r -= 1) {
-      rows[l][r] = left[l].value === right[r].value
-        ? rows[l + 1][r + 1] + 1
-        : Math.max(rows[l + 1][r], rows[l][r + 1]);
+      lengths[l][r] = left[l].value === right[r].value
+        ? lengths[l + 1][r + 1] + 1
+        : Math.max(lengths[l + 1][r], lengths[l][r + 1]);
     }
   }
   left.forEach((token) => token.changed = true);
@@ -66,13 +62,11 @@ function markChangedTokens(originalHtml: string, modifiedHtml: string): [string,
   let r = 0;
   while (l < left.length && r < right.length) {
     if (left[l].value === right[r].value) {
-      left[l].changed = right[r].changed = false;
-      l += 1;
-      r += 1;
-    } else if (rows[l + 1][r] >= rows[l][r + 1]) l += 1;
+      left[l++].changed = right[r++].changed = false;
+    } else if (lengths[l + 1][r] >= lengths[l][r + 1]) l += 1;
     else r += 1;
   }
-
+  if (![...left, ...right].some((token) => token.changed && token.value.trim())) return whole;
   const rebuild = ({ parts, tokens }: ReturnType<typeof tokenizeHtml>, kind: 'added' | 'removed') => {
     const byPart = new Map<number, HtmlToken[]>();
     for (const token of tokens) {
@@ -88,303 +82,167 @@ function markChangedTokens(originalHtml: string, modifiedHtml: string): [string,
       }
       let marked = false;
       parts[part] = group.map((token) => {
-        const changed = token.changed;
-        const before = changed && !marked ? `<span class="setdown-diff-word-${kind}">` : '';
-        const after = !changed && marked ? '</span>' : '';
-        marked = changed;
+        const before = token.changed && !marked ? `<span class="setdown-diff-word-${kind}">` : '';
+        const after = !token.changed && marked ? '</span>' : '';
+        marked = token.changed;
         return `${after}${before}${token.value}`;
       }).join('') + (marked ? '</span>' : '');
     }
     return parts.join('');
   };
-  return [rebuild(original, 'removed'), rebuild(modified, 'added')];
+  return { before: rebuild(original, 'removed'), after: rebuild(modified, 'added'), inline: true };
 }
 
-function locate(blocks: PreviewBlock[]): LocatedBlock[] {
-  const starts: number[] = [];
-  let previous = 1;
-  for (const block of blocks) {
-    if (block.line !== null) previous = block.line;
-    starts.push(previous);
-  }
-  const nextStarts: Array<number | undefined> = [];
-  let next: number | undefined;
-  for (let index = blocks.length - 1; index >= 0; index -= 1) {
-    nextStarts[index] = next;
-    if (blocks[index].line !== null) next = blocks[index].line!;
-  }
-  return blocks.map((block, index) => ({
-    ...block,
-    index,
-    start: starts[index],
-    end: nextStarts[index] === undefined
-      ? Number.MAX_SAFE_INTEGER : Math.max(starts[index], nextStarts[index]! - 1),
-  }));
+function cell(block: PreviewBlock | null, change: DiffCell['change'], whole = false): DiffCell {
+  return { html: block?.html ?? '', change: block ? change : 'empty', whole: !!block && whole };
 }
 
-function overlapping(blocks: LocatedBlock[], start: number, count: number): number[] {
-  if (count <= 0) return [];
-  const end = start + count - 1;
-  return blocks.filter((block) => block.start <= end && block.end >= start)
-    .map(({ index }) => index);
-}
-
-function insertionIndex(blocks: LocatedBlock[], line: number): number {
-  return blocks.find(({ start, end }) => start >= line || end >= line)?.index ?? blocks.length;
-}
-
-function marked(html: string, kind: 'added' | 'removed'): string {
-  const className = `setdown-diff-${kind}`;
-  const opening = /^\s*<[a-z][^>]*>/i.exec(html)?.[0];
-  if (!opening) return `<div class="${className}" data-setdown-diff="${kind}">${html}</div>`;
-  const decorated = /\sclass="/i.test(opening)
-    ? opening.replace(/\sclass="/i, ` class="${className} `)
-    : opening.replace(/>$/, ` class="${className}" data-setdown-diff="${kind}">`);
-  return `${decorated}${html.slice(opening.length)}`;
-}
-
-function analyzeRenderedDiff(
-  originalHtml: string,
-  modifiedHtml: string,
-  hunks: RenderedDiffHunk[],
-): RenderedDiffAnalysis {
-  const original = locate(splitPreviewBlocks(originalHtml));
-  const modified = locate(splitPreviewBlocks(modifiedHtml));
-  const added = new Set<number>();
-  const removed = new Set<number>();
-  const removedAt = new Map<number, number[]>();
-  const highlightedOriginal = new Map<number, string>();
-  const highlightedModified = new Map<number, string>();
-
-  for (const hunk of hunks) {
-    const oldIndices = overlapping(original, hunk.oldStart, hunk.oldLines);
-    const newIndices = overlapping(modified, hunk.newStart, hunk.newLines);
-    for (let index = 0; index < Math.min(oldIndices.length, newIndices.length); index += 1) {
-      const oldIndex = oldIndices[index];
-      const newIndex = newIndices[index];
-      const [oldHtml, newHtml] = markChangedTokens(
-        original[oldIndex].html,
-        modified[newIndex].html,
-      );
-      highlightedOriginal.set(oldIndex, oldHtml);
-      highlightedModified.set(newIndex, newHtml);
+function analyze(originalHtml: string, modifiedHtml: string): DiffRow[] {
+  return alignPreviewBlocks(splitPreviewBlocks(originalHtml), splitPreviewBlocks(modifiedHtml)).map((row) => {
+    if (row.kind === 'equal') return { before: cell(row.before, 'equal'), after: cell(row.after, 'equal'), equal: true };
+    const before = cell(row.before, 'removed', true);
+    const after = cell(row.after, 'added', true);
+    if (row.kind === 'replace' && row.before && row.after) {
+      const highlighted = markChangedTokens(row.before.html, row.after.html);
+      before.html = highlighted.before;
+      after.html = highlighted.after;
+      before.whole = after.whole = !highlighted.inline;
     }
-    for (const index of oldIndices) removed.add(index);
-    for (const index of newIndices) added.add(index);
-    const at = newIndices[0] ?? insertionIndex(modified, hunk.newStart);
-    const existing = removedAt.get(at) ?? [];
-    for (const index of oldIndices) if (!existing.includes(index)) existing.push(index);
-    if (existing.length) removedAt.set(at, existing);
-  }
-
-  return {
-    original,
-    modified,
-    added,
-    removed,
-    removedAt,
-    highlightedOriginal,
-    highlightedModified,
-  };
+    return { before, after, equal: false };
+  });
 }
 
-function mergeAnalyzedDiff(analysis: RenderedDiffAnalysis): string {
-  const {
-    original,
-    modified,
-    added,
-    removedAt,
-    highlightedOriginal,
-    highlightedModified,
-  } = analysis;
-
-  const output: string[] = [];
-  const emittedRemoved = new Set<number>();
-  for (let index = 0; index <= modified.length; index += 1) {
-    for (const oldIndex of removedAt.get(index) ?? []) {
-      if (emittedRemoved.has(oldIndex)) continue;
-      emittedRemoved.add(oldIndex);
-      output.push(marked(highlightedOriginal.get(oldIndex) ?? original[oldIndex].html, 'removed'));
-    }
-    if (index < modified.length) {
-      output.push(added.has(index)
-        ? marked(highlightedModified.get(index) ?? modified[index].html, 'added')
-        : modified[index].html);
-    }
-  }
-  return output.join('\n');
+function renderCell(cell: DiffCell, side?: 'before' | 'after'): string {
+  const label = side === 'before' ? 'Before' : 'After';
+  const changed = cell.change === 'added' || cell.change === 'removed';
+  const classes = ['setdown-diff-cell', ...(side ? [`setdown-rendered-diff-${side}`] : []),
+    ...(changed ? [`setdown-diff-${cell.change}`] : [])].join(' ');
+  const detail = changed && cell.whole ? ', block-level change' : '';
+  const aria = cell.change === 'empty' ? ' aria-hidden="true"'
+    : ` aria-label="${side ? `${label}: ` : ''}${cell.change === 'equal' ? 'Unchanged' : cell.change === 'added' ? 'Added' : 'Removed'}${detail}"`;
+  return `<section class="${classes}" data-change="${cell.change}" data-whole="${cell.whole}"${aria}>${cell.html}</section>`;
 }
 
-/**
- * Groups both documents at the same change boundaries. Each group becomes one
- * grid row, so a taller insertion/deletion reserves the same vertical space on
- * the opposite side and the following unchanged content lines up again.
+function unified(rows: DiffRow[]): string {
+  return rows.flatMap((row) => row.equal ? [renderCell(row.after)]
+    : [row.before, row.after].filter((entry) => entry.change !== 'empty').map((entry) => renderCell(entry))).join('\n');
+}
+
+/** Rendered equality is independent of Git's whitespace/source hunk grouping.
+ * Keep hunks in the public API for callers; source navigation retains original
+ * data-source-* attributes. Never zip non-hunk blocks by ordinal index.
  */
-function splitDiffRows(analysis: RenderedDiffAnalysis): RenderedDiffRow[] {
-  const {
-    original,
-    modified,
-    added,
-    removed,
-    highlightedOriginal,
-    highlightedModified,
-  } = analysis;
-  const rows: RenderedDiffRow[] = [];
-  let oldIndex = 0;
-  let newIndex = 0;
-
-  while (oldIndex < original.length || newIndex < modified.length) {
-    const oldChanged = oldIndex < original.length && removed.has(oldIndex);
-    const newChanged = newIndex < modified.length && added.has(newIndex);
-
-    if (oldIndex < original.length && newIndex < modified.length
-      && !oldChanged && !newChanged) {
-      const before: string[] = [];
-      const after: string[] = [];
-      while (oldIndex < original.length && newIndex < modified.length
-        && !removed.has(oldIndex) && !added.has(newIndex)) {
-        before.push(original[oldIndex].html);
-        after.push(modified[newIndex].html);
-        oldIndex += 1;
-        newIndex += 1;
-      }
-      rows.push({ before: before.join('\n'), after: after.join('\n'), changed: false });
-      continue;
-    }
-
-    const before: string[] = [];
-    const after: string[] = [];
-    while (oldIndex < original.length && removed.has(oldIndex)) {
-      before.push(marked(
-        highlightedOriginal.get(oldIndex) ?? original[oldIndex].html,
-        'removed',
-      ));
-      oldIndex += 1;
-    }
-    while (newIndex < modified.length && added.has(newIndex)) {
-      after.push(marked(
-        highlightedModified.get(newIndex) ?? modified[newIndex].html,
-        'added',
-      ));
-      newIndex += 1;
-    }
-
-    // Be defensive about incomplete hunk metadata: consume unmatched tail
-    // blocks instead of allowing the row builder to stall.
-    if (!before.length && !after.length) {
-      if (oldIndex < original.length) before.push(original[oldIndex++].html);
-      if (newIndex < modified.length) after.push(modified[newIndex++].html);
-    }
-    rows.push({ before: before.join('\n'), after: after.join('\n'), changed: true });
-  }
-
-  return rows;
+export function mergeRenderedDiff(originalHtml: string, modifiedHtml: string, _hunks: RenderedDiffHunk[]): string {
+  return unified(analyze(originalHtml, modifiedHtml));
 }
 
-/** Merges two sanitized preview fragments into one document with changed blocks only duplicated. */
-export function mergeRenderedDiff(
-  originalHtml: string,
-  modifiedHtml: string,
-  hunks: RenderedDiffHunk[],
-): string {
-  return mergeAnalyzedDiff(analyzeRenderedDiff(originalHtml, modifiedHtml, hunks));
-}
-
-/**
- * Keeps the compact, unified review for narrow windows and also carries a complete
- * before/after pair that CSS reveals when both documents have useful reading width.
- */
-export function responsiveRenderedDiff(
-  originalHtml: string,
-  modifiedHtml: string,
-  hunks: RenderedDiffHunk[],
-): string {
-  const analysis = analyzeRenderedDiff(originalHtml, modifiedHtml, hunks);
-  const rows = splitDiffRows(analysis).map((row) => `  <div class="setdown-rendered-diff-row setdown-rendered-diff-row-${row.changed ? 'changed' : 'unchanged'}">
-    <section class="setdown-rendered-diff-before" aria-label="Before">${row.before}</section>
-    <section class="setdown-rendered-diff-after" aria-label="After">${row.after}</section>
-  </div>`).join('\n');
-  return `<div class="setdown-rendered-diff-unified">${mergeAnalyzedDiff(analysis)}</div>
-<div class="setdown-rendered-diff-split" aria-label="Side-by-side rendered comparison">
-${rows}
-</div>`;
+export function responsiveRenderedDiff(originalHtml: string, modifiedHtml: string, _hunks: RenderedDiffHunk[]): string {
+  const analysis = analyze(originalHtml, modifiedHtml);
+  const rows = analysis.map((row) => `<div class="setdown-rendered-diff-row setdown-rendered-diff-row-${row.equal ? 'unchanged' : 'changed'}">
+${renderCell(row.before, 'before')}${renderCell(row.after, 'after')}
+</div>`).join('\n');
+  return `<div class="setdown-rendered-diff-unified">${unified(analysis)}</div>
+<div class="setdown-rendered-diff-split" aria-label="Side-by-side rendered comparison">${rows}</div>`;
 }
 
 export const RENDERED_DIFF_STYLES = `<style id="setdown-rendered-diff-styles">
-  .setdown-diff-added, .setdown-diff-removed {
-    margin-left: -10px !important;
-    margin-right: -10px !important;
-    padding-left: 10px !important;
-    padding-right: 10px !important;
+  .setdown-rendered-diff-unified, .setdown-rendered-diff-split {
+    --diff-add-context: rgba(39, 151, 69, .12);
+    --diff-remove-context: rgba(201, 54, 48, .11);
+    --diff-add-strong: rgba(39, 151, 69, .30);
+    --diff-remove-strong: rgba(201, 54, 48, .28);
+    --diff-add-edge: #227a3c;
+    --diff-remove-edge: #b1302a;
+    --diff-empty: rgba(127, 127, 127, .035);
   }
-  .setdown-diff-added {
-    background: rgba(55, 166, 83, .07) !important;
+  body[data-preview-theme="dark"] :is(.setdown-rendered-diff-unified, .setdown-rendered-diff-split) {
+    --diff-add-context: rgba(70, 190, 110, .14);
+    --diff-remove-context: rgba(244, 100, 94, .13);
+    --diff-add-strong: rgba(70, 190, 110, .30);
+    --diff-remove-strong: rgba(244, 100, 94, .28);
+    --diff-add-edge: #72d392;
+    --diff-remove-edge: #ff958e;
   }
-  .setdown-diff-removed {
-    background: rgba(208, 93, 87, .06) !important;
+  .setdown-diff-cell {
+    box-sizing: border-box;
+    position: relative;
+    display: flow-root;
+    min-width: 0;
+    padding: .6rem 1.5rem;
+    border-left: 3px solid transparent;
+    border-right: 1px solid transparent;
+    overflow-wrap: anywhere;
   }
+  .setdown-diff-cell > :first-child { margin-top: 0 !important; }
+  .setdown-diff-cell > :last-child { margin-bottom: 0 !important; }
+  .setdown-diff-cell[data-change="added"] {
+    background: var(--diff-add-context) !important;
+    border-left-color: var(--diff-add-edge);
+  }
+  .setdown-diff-cell[data-change="removed"] {
+    background: var(--diff-remove-context) !important;
+    border-left-color: var(--diff-remove-edge);
+  }
+  /* Match the actual composited word highlight, not just its alpha value. */
+  .setdown-diff-cell[data-change="added"][data-whole="true"] { background: linear-gradient(var(--diff-add-strong), var(--diff-add-strong)) var(--diff-add-context) !important; }
+  .setdown-diff-cell[data-change="removed"][data-whole="true"] { background: linear-gradient(var(--diff-remove-strong), var(--diff-remove-strong)) var(--diff-remove-context) !important; }
+  .setdown-diff-cell[data-change="empty"] { background: var(--diff-empty); }
+  .setdown-diff-cell[data-change="added"]::before,
+  .setdown-diff-cell[data-change="removed"]::before {
+    position: absolute;
+    left: .25rem;
+    top: .6rem;
+    font: 600 12px/1.6 ui-monospace, monospace;
+    pointer-events: none;
+  }
+  .setdown-diff-cell[data-change="added"]::before { content: "+"; color: var(--diff-add-edge); }
+  .setdown-diff-cell[data-change="removed"]::before { content: "−"; color: var(--diff-remove-edge); }
   .setdown-diff-word-added, .setdown-diff-word-removed {
-    padding: .04em .08em;
+    padding: 0;
     border-radius: 2px;
+    color: inherit;
+    text-decoration: none;
     -webkit-box-decoration-break: clone;
     box-decoration-break: clone;
   }
-  .setdown-diff-word-added { background: rgba(55, 166, 83, .34); }
-  .setdown-diff-word-removed {
-    color: #d96a64;
-    background: rgba(208, 93, 87, .26);
-    text-decoration: line-through;
-    text-decoration-thickness: 1px;
-  }
+  .setdown-diff-word-added { background: var(--diff-add-strong); }
+  .setdown-diff-word-removed { background: var(--diff-remove-strong); }
   .setdown-rendered-diff-split { display: none; }
   @media (min-width: 720px) {
     .setdown-rendered-diff-unified { display: none; }
-    .setdown-rendered-diff-split {
-      display: block;
-      margin: -1rem -1.25rem 0;
-    }
+    .setdown-rendered-diff-split { display: block; margin: -1rem -1.25rem 0; padding: .4rem 0 4.4rem; }
     .setdown-rendered-diff-row {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       align-items: stretch;
+      gap: 0;
     }
-    .setdown-rendered-diff-before,
-    .setdown-rendered-diff-after {
+    .setdown-rendered-diff-before, .setdown-rendered-diff-after {
       box-sizing: border-box;
       min-width: 0;
-      padding: 0 1.5rem;
-      overflow-wrap: anywhere;
     }
-    .setdown-rendered-diff-row:first-child > :where(.setdown-rendered-diff-before, .setdown-rendered-diff-after) {
-      padding-top: 1rem;
-    }
-    .setdown-rendered-diff-row:last-child > :where(.setdown-rendered-diff-before, .setdown-rendered-diff-after) {
-      padding-bottom: 5rem;
-    }
-    .setdown-rendered-diff-before {
-      border-right: 1px solid rgba(127, 127, 127, .2);
-    }
-    .setdown-rendered-diff-split :where(h1, h2, h3, h4, h5, h6, p, li, blockquote) {
-      min-width: 0;
-      max-width: 100%;
-      white-space: normal !important;
-      overflow-wrap: anywhere !important;
-    }
-    .setdown-rendered-diff-split :where(pre, .katex-display, .MathJax_Display, .crossnote-html-source) {
-      min-width: 0;
-      max-width: 100%;
-      overflow-x: auto;
-      overflow-y: hidden;
-    }
-    .setdown-rendered-diff-split table {
-      display: block;
-      width: 100%;
-      max-width: 100%;
-      overflow-x: auto;
-    }
-    .setdown-rendered-diff-split :where(img, video, svg) {
-      max-width: 100%;
-      height: auto;
-    }
+    .setdown-rendered-diff-before { border-right-color: rgba(127, 127, 127, .2); }
+  }
+  :is(.setdown-rendered-diff-split, .setdown-rendered-diff-unified) :where(h1, h2, h3, h4, h5, h6, p, li, blockquote) {
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+  :is(.setdown-rendered-diff-split, .setdown-rendered-diff-unified) :where(pre, .katex-display, .MathJax_Display, .crossnote-html-source) {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  :is(.setdown-rendered-diff-split, .setdown-rendered-diff-unified) table {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  :is(.setdown-rendered-diff-split, .setdown-rendered-diff-unified) :where(img, video, svg) {
+    max-width: 100%;
+    height: auto;
   }
 </style>`;
