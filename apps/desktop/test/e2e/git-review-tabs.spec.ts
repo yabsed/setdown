@@ -125,6 +125,63 @@ test('new staged and working-tree reviews open source diff at the first change',
   }
 });
 
+test('keeps word wrap in the original diff pane after tab roundtrips', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-git-review-wrap-'));
+  const configRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-git-review-wrap-config-'));
+  const documentPath = path.join(root, 'wrap.md');
+  const longLine = `Long line: ${'wrap me please '.repeat(30)}`;
+  await exec('git', ['init'], { cwd: root });
+  await exec('git', ['config', 'user.email', 'setdown@example.test'], { cwd: root });
+  await exec('git', ['config', 'user.name', 'Setdown Test'], { cwd: root });
+  await writeFile(documentPath, `# Base\n\n${longLine}\n`, 'utf8');
+  await exec('git', ['add', 'wrap.md'], { cwd: root });
+  await exec('git', ['commit', '-m', 'base'], { cwd: root });
+  await writeFile(documentPath, `# Changed\n\n${longLine}\n`, 'utf8');
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...environment } = process.env;
+  const application = await electron.launch({
+    args: ['.', documentPath],
+    env: { ...environment, XDG_CONFIG_HOME: configRoot },
+  });
+
+  try {
+    const window = await application.firstWindow();
+    // Rendered view lines in the original (left) pane. The model has 3 lines;
+    // with word wrap on, the long line renders as many view lines.
+    const originalViewLineCount = () => window.evaluate(() =>
+      document.querySelectorAll('.original-in-monaco-diff-editor .view-lines > div').length);
+    await window.evaluate(async (folderPath) => {
+      await (window as typeof window & {
+        marktex: { restoreProjectFolder(path: string): Promise<unknown> };
+      }).marktex.restoreProjectFolder(folderPath);
+    }, root);
+    await Promise.all([window.waitForEvent('load'), window.reload()]);
+    await window.getByRole('button', { name: 'Toggle Folder Tools' }).click();
+    await window.getByRole('button', { name: 'Source Control' }).click();
+    const changed = window.locator('.scm-group').filter({
+      has: window.getByText('CHANGES', { exact: true }),
+    });
+    await changed.locator('.git-change-open').click();
+    await expect(window.locator('.original-in-monaco-diff-editor .view-lines'))
+      .toContainText('Long line:');
+
+    await expect.poll(originalViewLineCount, { timeout: 10_000 })
+      .toBeGreaterThan(5);
+
+    await window.locator('.document-tab:not(.git-diff-tab)').click();
+    await expect(window.locator('.git-diff-editor')).toBeHidden();
+    await window.locator('.git-diff-tab').click();
+    await expect(window.locator('.original-in-monaco-diff-editor .view-lines'))
+      .toContainText('Long line:');
+
+    await expect.poll(originalViewLineCount, { timeout: 10_000 })
+      .toBeGreaterThan(5);
+  } finally {
+    await disposeApplication(application);
+    await rm(root, { recursive: true, force: true });
+    await rm(configRoot, { recursive: true, force: true });
+  }
+});
+
 test('keeps staged and live working-tree reviews in separate tabs', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-git-review-tabs-'));
   const configRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-git-review-config-'));

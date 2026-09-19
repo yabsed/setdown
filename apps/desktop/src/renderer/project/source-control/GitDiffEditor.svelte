@@ -89,7 +89,6 @@
   function ensureEditor(monaco: typeof Monaco) {
     if (editor || !host) return;
     editor = monaco.editor.createDiffEditor(host, {
-      automaticLayout: true,
       theme: monacoThemeName(normalizePreviewTheme(document.documentElement.dataset.theme)),
       readOnly: true,
       originalEditable: false,
@@ -323,7 +322,17 @@
       // explicit Viewer -> Source request is allowed to reposition it.
       layout = true;
     }
-    if (layout) requestAnimationFrame(() => editor?.layout());
+    if (layout) requestAnimationFrame(() => layoutEditor());
+  }
+
+  // While the tab is hidden the host is 0x0 (display:none). Laying the diff
+  // editor out at zero width makes Monaco's useInlineViewWhenSpaceIsLimited
+  // flip it into inline mode, which permanently clears word wrap on the
+  // original (left) editor. Skip layout while hidden so the flip never
+  // happens; the ResizeObserver below relayouts on the next real size.
+  function layoutEditor() {
+    if (!editor || !host || host.clientWidth === 0 || host.clientHeight === 0) return;
+    editor.layout();
   }
 
   async function reconcile(
@@ -376,7 +385,7 @@
     let frame = 0;
     const observer = new ResizeObserver(() => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => editor?.layout());
+      frame = requestAnimationFrame(() => layoutEditor());
     });
     observer.observe(target);
     return () => {
