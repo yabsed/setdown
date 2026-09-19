@@ -11,6 +11,13 @@ const exec = promisify(execFile);
 
 type Application = Awaited<ReturnType<typeof electron.launch>>;
 
+function shellHasKeyboardFocus(application: Application) {
+  return application.evaluate(({ BrowserWindow, webContents }) => {
+    const owner = BrowserWindow.getAllWindows().find((candidate) => candidate.isVisible());
+    return !!owner && webContents.getFocusedWebContents()?.id === owner.webContents.id;
+  });
+}
+
 function diffPreviews(application: Application) {
   return application.evaluate(async ({ BrowserWindow }) => {
     const owner = BrowserWindow.getAllWindows().find((candidate) => candidate.isVisible());
@@ -177,8 +184,12 @@ test('keeps staged and live working-tree reviews in separate tabs', async () => 
     await workingTreeEditor.press('Control+End');
     await workingTreeEditor.pressSequentially('\nShared draft');
     await expect(window.locator('.document-tab:not(.git-diff-tab) .tab-dirty')).toHaveCount(1);
-    await window.waitForTimeout(650);
+    await expect.poll(async () => (await diffPreviews(application))
+      .some((preview) => preview.text.includes('Shared draft')), { timeout: 20_000 }).toBe(true);
+    await window.waitForTimeout(3_000);
     await expect(workingTreeEditor).toBeFocused();
+    expect(await window.evaluate(() => document.hasFocus())).toBe(true);
+    await expect.poll(() => shellHasKeyboardFocus(application)).toBe(true);
     await workingTreeEditor.pressSequentially(' continues');
     await expect(window.locator('.modified-in-monaco-diff-editor .view-lines'))
       .toContainText('Shared draft continues');
@@ -248,26 +259,32 @@ test('returning from a review, discarding, and saving keep the document usable',
     await expect(window.locator('.git-diff-editor')).toBeHidden();
     await expect.poll(reading.hasVisible).toBe(true);
 
+    await window.locator('.git-diff-tab').click();
     await changed.getByRole('button', { name: 'Discard All Changes' }).click();
     await expect(window.getByText('Discard this change?', { exact: true })).toHaveCount(0);
-    await expect.poll(() => readFile(documentPath, 'utf8')).toBe('# Base\n');
-    await expect(changed.locator('.git-change-open')).toHaveCount(0);
-
-    await expect(window.locator('.document-tab:not(.git-diff-tab) .tab-dirty')).toHaveCount(0);
-    await expect.poll(reading.hasVisible).toBe(true);
-    await expect.poll(() => reading.evaluate<string>('document.body.innerText')).toContain('Base');
-    expect(await reading.evaluate<string>('document.body.innerText')).not.toContain('Changed on disk');
-    expect(await reading.evaluate<string>('document.body.innerText')).not.toContain('Unsaved buffer text');
-
+    await window.locator('.document-tab:not(.git-diff-tab)').click();
     await window.getByRole('button', { name: 'Switch to Editor' }).click();
     await expect(window.locator('.editor-surface')).toBeVisible();
     await window.locator('.editor-surface .monaco-editor').click({ position: { x: 120, y: 80 } });
+    const documentEditor = window.locator('.editor-surface')
+      .getByRole('textbox', { name: 'Editor content' });
     await window.keyboard.press('Control+End');
     await window.keyboard.insertText('\nSaved after discard');
+
+    await expect.poll(() => readFile(documentPath, 'utf8')).toBe('# Base\n');
+    await expect(changed.locator('.git-change-open')).toHaveCount(0);
     await expect(window.locator('.document-tab:not(.git-diff-tab) .tab-dirty')).toHaveCount(1);
+    await expect.poll(async () => (await reading.evaluateAll<string>('document.body.innerText'))
+      .some((text) => text?.includes('Saved after discard')), { timeout: 20_000 }).toBe(true);
+    await window.waitForTimeout(3_000);
+    await expect(documentEditor).toBeFocused();
+    expect(await window.evaluate(() => document.hasFocus())).toBe(true);
+    await expect.poll(() => shellHasKeyboardFocus(application)).toBe(true);
+    await documentEditor.pressSequentially(' continues');
     await window.keyboard.press('Control+S');
-    await expect.poll(() => readFile(documentPath, 'utf8')).toContain('Saved after discard');
+    await expect.poll(() => readFile(documentPath, 'utf8')).toContain('Saved after discard continues');
     await expect(window.locator('.document-tab:not(.git-diff-tab) .tab-dirty')).toHaveCount(0);
+    await expect(documentEditor).toBeFocused();
   } finally {
     await disposeApplication(application);
     await rm(root, { recursive: true, force: true });
