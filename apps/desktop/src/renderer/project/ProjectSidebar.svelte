@@ -24,7 +24,7 @@
     <button type="button" class:is-active={project.open && project.activeView === 'explorer'}
       aria-label="Explorer" aria-expanded={project.open && project.activeView === 'explorer'}
       title="Explorer" onclick={() => select('explorer')}>
-      <svg viewBox="0 0 24 24"><path d="M4.5 3.5h9l3 3v12h-12v-15Zm9 0v3h3M7.5 7h-5v13.5h11v-2"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M4.5 3.5h9l3 3v12h-12v-15Zm9 0v3h3M4.5 7h-2v13.5h11v-2"/></svg>
     </button>
     <button type="button" class:is-active={project.open && project.activeView === 'search'}
       aria-label="Search" aria-expanded={project.open && project.activeView === 'search'}
