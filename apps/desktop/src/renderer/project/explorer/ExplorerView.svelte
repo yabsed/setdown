@@ -36,6 +36,7 @@
 
   function beginCreate(kind: ProjectEntryKind, parent = createParent()) {
     if (!parent) return;
+    if (!project.explorerRootExpanded) actions.toggleProjectExplorerRoot();
     selected = parent;
     const directory = project.entries.find((entry) => entry.path === parent);
     if (directory && !directory.expanded) void actions.toggleProjectDirectory(parent);
@@ -88,6 +89,12 @@
       event.preventDefault();
       trashTarget = entry;
     }
+  }
+
+  function keyRoot(event: KeyboardEvent) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    actions.toggleProjectExplorerRoot();
   }
 
   function openMenu(event: MouseEvent, entry: VisibleProjectEntry | null) {
@@ -155,14 +162,16 @@
 {:else}
   <div class="explorer-root" class:is-drop-target={dropTarget === project.folder.path}
     title={project.folder.path} role="treeitem" tabindex="0" aria-selected="false"
-    onkeydown={(event) => event.key === 'Enter' && actions.collapseProjectExplorer()}
+    aria-expanded={project.explorerRootExpanded} aria-controls="project-explorer-tree"
+    onclick={actions.toggleProjectExplorerRoot} onkeydown={keyRoot}
     oncontextmenu={(event) => openMenu(event, null)}
     ondragover={(event) => dragOver(event, project.folder!.path)}
     ondragleave={() => dropTarget = ''} ondrop={(event) => drop(event, project.folder!.path)}>
-    <svg viewBox="0 0 16 16"><path d="m5 4 4 4-4 4"/></svg>
+    <svg class:is-open={project.explorerRootExpanded} viewBox="0 0 16 16"><path d="m5 4 4 4-4 4"/></svg>
     <strong>{project.folder.name.toLocaleUpperCase()}</strong>
   </div>
-  <div class="explorer-tree" role="tree" tabindex="-1" aria-label={project.folder.name}>
+  {#if project.explorerRootExpanded}
+  <div id="project-explorer-tree" class="explorer-tree" role="tree" tabindex="-1" aria-label={project.folder.name}>
     {#if editing?.mode === 'create' && editing.parent === project.folder.path}
       <ExplorerEditRow kind={editing.kind} depth={editing.depth} initial={editing.value}
         label={`New ${editing.kind} name`} submit={(value) => void submitEdit(value)} cancel={() => editing = null} />
@@ -201,6 +210,7 @@
       {/if}
     {/each}
   </div>
+  {/if}
 {/if}
 
 {#if menu}

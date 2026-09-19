@@ -8,6 +8,7 @@
   let conflicts = $derived(project.git?.changes.filter((change) => change.conflict) ?? []);
   let staged = $derived(project.git?.changes.filter((change) => change.staged && !change.conflict) ?? []);
   let changed = $derived(project.git?.changes.filter((change) => change.unstaged && !change.conflict) ?? []);
+  const groupExpanded = (title: string) => !project.collapsedGitGroups.includes(title);
 
   function requestDiscard(paths: string[]) {
     actions.discardProjectGit([...paths]);
@@ -62,12 +63,15 @@
   </div>
   <div class="scm-groups">
     <ChangeGroup title="MERGE CHANGES" changes={conflicts} primaryLabel="Stage"
+      expanded={groupExpanded('MERGE CHANGES')} toggle={() => actions.toggleProjectGitGroup('MERGE CHANGES')}
       primary={actions.stageProjectGit} review={(path) => actions.reviewProjectGitChange(path, false)}
       open={actions.openProjectFile} />
     <ChangeGroup title="STAGED CHANGES" changes={staged} primaryLabel="Unstage"
+      expanded={groupExpanded('STAGED CHANGES')} toggle={() => actions.toggleProjectGitGroup('STAGED CHANGES')}
       primary={actions.unstageProjectGit} review={(path) => actions.reviewProjectGitChange(path, true)}
       open={actions.openProjectFile} />
     <ChangeGroup title="CHANGES" changes={changed} primaryLabel="Stage"
+      expanded={groupExpanded('CHANGES')} toggle={() => actions.toggleProjectGitGroup('CHANGES')}
       primary={actions.stageProjectGit} discard={requestDiscard}
       review={(path) => actions.reviewProjectGitChange(path, false)} open={actions.openProjectFile} />
     {#if project.git.changes.length === 0}<p class="side-view-message">No changes.</p>{/if}

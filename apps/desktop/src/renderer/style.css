@@ -445,8 +445,10 @@ button { font: inherit; }
   fill: none;
   stroke: currentColor;
   stroke-width: 1.5;
-  transform: rotate(90deg);
+  transition: transform 80ms ease;
 }
+.explorer-root svg.is-open { transform: rotate(90deg); }
+.explorer-root:hover, .explorer-root:focus-visible { background: var(--app-hover); outline: 0; }
 .explorer-root strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .explorer-tree, .project-results, .git-changes { flex: 1; min-height: 0; overflow: auto; }
 .explorer-tree { padding: 3px 0 12px; }
@@ -612,11 +614,39 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 }
 .scm-commit > button:disabled { opacity: .38; cursor: default; }
 .scm-groups { flex: 1; min-height: 0; overflow: auto; }
-.scm-heading { gap: 5px; }
-.scm-heading > svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.5; }
-.scm-heading strong { flex: 1; font-weight: 650; }
-.scm-heading span { color: var(--app-subtle-text); font-variant-numeric: tabular-nums; }
-.scm-heading button, .git-change-actions button {
+.scm-heading { gap: 2px; }
+.scm-heading-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  padding: 0;
+  color: inherit;
+  border: 0;
+  border-radius: 2px;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: default;
+}
+.scm-heading-toggle:hover, .scm-heading-toggle:focus-visible { background: var(--app-hover); }
+.scm-heading-toggle > svg {
+  flex: 0 0 13px;
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  transform: rotate(-90deg);
+  transition: transform 80ms ease;
+}
+.scm-heading-toggle > svg.is-open { transform: rotate(0); }
+.scm-heading-toggle strong { flex: 1; overflow: hidden; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.scm-heading-toggle span { color: var(--app-subtle-text); font-variant-numeric: tabular-nums; }
+.scm-heading > button:not(.scm-heading-toggle), .git-change-actions button {
   display: grid;
   place-items: center;
   width: 20px;
@@ -630,8 +660,8 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
   font-size: 14px;
   cursor: default;
 }
-.scm-heading button:hover, .git-change-actions button:hover { color: var(--app-text); background: var(--app-hover); }
-.scm-heading button:disabled { opacity: .35; }
+.scm-heading > button:not(.scm-heading-toggle):hover, .git-change-actions button:hover { color: var(--app-text); background: var(--app-hover); }
+.scm-heading > button:not(.scm-heading-toggle):disabled { opacity: .35; }
 .git-change {
   display: flex;
   align-items: center;

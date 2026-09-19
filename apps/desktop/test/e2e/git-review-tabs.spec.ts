@@ -87,6 +87,14 @@ test('new staged and working-tree reviews open source diff at the first change',
     const changed = window.locator('.scm-group').filter({
       has: window.getByText('CHANGES', { exact: true }),
     });
+    await staged.getByRole('button', { name: 'Collapse STAGED CHANGES' }).click();
+    await expect(staged.locator('.git-changes')).toHaveCount(0);
+    await staged.getByRole('button', { name: 'Expand STAGED CHANGES' }).click();
+    await expect(staged.locator('.git-changes')).toBeVisible();
+    await changed.getByRole('button', { name: 'Collapse CHANGES' }).click();
+    await expect(changed.locator('.git-changes')).toHaveCount(0);
+    await changed.getByRole('button', { name: 'Expand CHANGES' }).click();
+    await expect(changed.locator('.git-changes')).toBeVisible();
     await staged.locator('.git-change-open').click();
     await expect(window.getByRole('button', { name: 'View Rendered Diff' })).toBeVisible();
     await expect(window.locator('.original-in-monaco-diff-editor .view-lines'))

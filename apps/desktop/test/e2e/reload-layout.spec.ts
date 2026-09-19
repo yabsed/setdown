@@ -6,10 +6,14 @@ import { disposeApplication } from './electron-app';
 
 test('restores the open folder, side panels, and their widths after Reload', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-reload-layout-'));
+  const configRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-reload-layout-config-'));
   const documentPath = path.join(root, 'reload.md');
   await writeFile(documentPath, '# Reload layout\n\nBody', 'utf8');
   const { ELECTRON_RUN_AS_NODE: _ignored, ...environment } = process.env;
-  const application = await electron.launch({ args: ['.', documentPath], env: environment });
+  const application = await electron.launch({
+    args: ['.', documentPath],
+    env: { ...environment, XDG_CONFIG_HOME: configRoot },
+  });
 
   try {
     const window = await application.firstWindow();
@@ -34,7 +38,19 @@ test('restores the open folder, side panels, and their widths after Reload', asy
     ]);
 
     await expect(window.locator('.project-sidebar')).toBeVisible();
-    await expect(window.locator('.explorer-root')).toContainText(path.basename(root).toUpperCase());
+    await window.getByRole('button', { name: 'Explorer' }).click();
+    const explorerRoot = window.locator('.explorer-root');
+    await expect(explorerRoot).toContainText(path.basename(root).toUpperCase());
+    await expect(explorerRoot).toHaveAttribute('aria-expanded', 'true');
+    await explorerRoot.click();
+    await expect(explorerRoot).toHaveAttribute('aria-expanded', 'false');
+    await expect(window.locator('.explorer-tree')).toHaveCount(0);
+    await window.getByRole('button', { name: 'Source Control' }).click();
+    await window.getByRole('button', { name: 'Explorer' }).click();
+    await expect(explorerRoot).toHaveAttribute('aria-expanded', 'false');
+    await explorerRoot.press('Enter');
+    await expect(explorerRoot).toHaveAttribute('aria-expanded', 'true');
+    await expect(window.locator('.explorer-tree')).toBeVisible();
     await expect(window.locator('.toc-panel')).toBeVisible();
     await expect.poll(() => window.locator('.shell').evaluate((shell) => ({
       project: getComputedStyle(shell).getPropertyValue('--project-sidebar-width'),
@@ -43,5 +59,6 @@ test('restores the open folder, side panels, and their widths after Reload', asy
   } finally {
     await disposeApplication(application);
     await rm(root, { recursive: true, force: true });
+    await rm(configRoot, { recursive: true, force: true });
   }
 });

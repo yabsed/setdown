@@ -127,6 +127,10 @@ export class ProjectController {
 
   refreshExplorer = (): Promise<void> => this.explorer.refresh();
   collapseExplorer = (): void => this.explorer.collapse();
+  toggleExplorerRoot = (): void => {
+    project.explorerRootExpanded = !project.explorerRootExpanded;
+    rememberProjectState();
+  };
   toggleDirectory = (path: string): Promise<void> => this.explorer.toggle(path);
   openFile = (path: string): Promise<boolean> => {
     this.sourceControl.deactivateDiff();
@@ -152,6 +156,12 @@ export class ProjectController {
   };
 
   refreshGit = (): Promise<void> => this.sourceControl.refresh();
+  toggleGitGroup = (title: string): void => {
+    project.collapsedGitGroups = project.collapsedGitGroups.includes(title)
+      ? project.collapsedGitGroups.filter((candidate) => candidate !== title)
+      : [...project.collapsedGitGroups, title];
+    rememberProjectState();
+  };
   reviewGitChange = (path: string, staged: boolean): Promise<void> =>
     this.sourceControl.review(path, staged);
   activateGitDiff = (id: string): void => void this.sourceControl.activateDiff(id);

@@ -10,6 +10,8 @@
     discard,
     review,
     open,
+    expanded,
+    toggle,
   }: {
     title: string;
     changes: GitChange[];
@@ -18,18 +20,25 @@
     discard?: (paths: string[]) => void;
     review(path: string): void;
     open(path: string): void;
+    expanded: boolean;
+    toggle(): void;
   } = $props();
 
   const markdown = (filePath: string) => /\.(?:md|markdown|mdown|mkdn|mkd|rmd|qmd|mdx)$/i.test(filePath);
   const base = (candidate: string) => candidate.split(/[\\/]/).at(-1) ?? candidate;
   const directory = (candidate: string) => candidate.replace(/[\\/][^\\/]+$/, '');
+  let contentId = $derived(`git-change-group-${title.toLowerCase().replace(/[^a-z]+/g, '-')}`);
 </script>
 
 {#if changes.length}
   <section class="scm-group">
     <header class="scm-heading">
-      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
-      <strong>{title}</strong><span>{changes.length}</span>
+      <button class="scm-heading-toggle" type="button" aria-expanded={expanded}
+        aria-controls={contentId} aria-label={`${expanded ? 'Collapse' : 'Expand'} ${title}`}
+        onclick={toggle}>
+        <svg class:is-open={expanded} viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+        <strong>{title}</strong><span>{changes.length}</span>
+      </button>
       <button type="button" title={`${primaryLabel} All`} aria-label={`${primaryLabel} All`}
         disabled={project?.gitBusy} onclick={() => primary(changes.map((change) => change.filePath))}>
         {primaryLabel === 'Stage' ? '+' : '−'}
@@ -39,7 +48,8 @@
           onclick={() => discard?.(changes.map((change) => change.filePath))}>↶</button>
       {/if}
     </header>
-    <div class="git-changes">
+    {#if expanded}
+    <div id={contentId} class="git-changes">
       {#each changes as change (`${title}:${change.path}`)}
         <div class="git-change" title={change.path}>
           <button class="git-change-open" type="button" onclick={() => review(change.filePath)}>
@@ -58,5 +68,6 @@
         </div>
       {/each}
     </div>
+    {/if}
   </section>
 {/if}

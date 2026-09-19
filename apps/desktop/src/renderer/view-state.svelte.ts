@@ -52,6 +52,7 @@ export type AppActions = {
   chooseProjectFolder(): void;
   refreshProjectExplorer(): void;
   collapseProjectExplorer(): void;
+  toggleProjectExplorerRoot(): void;
   toggleProjectDirectory(path: string): void;
   openProjectFile(path: string): void;
   createProjectEntry(parentPath: string, name: string, kind: ProjectEntryKind): Promise<void>;
@@ -62,6 +63,7 @@ export type AppActions = {
   searchProject(query: string): void;
   toggleProjectSearchGroup(path: string): void;
   refreshProjectGit(): void;
+  toggleProjectGitGroup(title: string): void;
   reviewProjectGitChange(path: string, staged: boolean): void;
   activateProjectGitDiff(id: string): void;
   closeProjectGitDiff(id: string): void;
