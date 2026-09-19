@@ -32,7 +32,6 @@ type Options = {
   highlight(query: string, target?: SearchTarget): void;
   pathMoved(from: string, to: string): Promise<void>;
   prepareRemove(path: string): Promise<boolean>;
-  preferRenderedDiff(): boolean;
   reviewChanged(open: boolean, active: boolean): void;
   resized(): void;
 };
@@ -62,7 +61,6 @@ export class ProjectController {
     });
     this.sourceControl = new SourceControlController({
       desktop: options.desktop,
-      preferRendered: options.preferRenderedDiff,
       openWorkingTree: options.showDocument,
       activateWorkingTree: options.activateDocument,
       workingTreeBuffer: options.workingTreeBuffer,

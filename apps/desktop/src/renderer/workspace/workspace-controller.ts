@@ -230,7 +230,6 @@ export function startWorkspace(desktop: DesktopPort) {
     reloadDocuments: tabs.reloadDocumentPaths,
     pathMoved: tabs.relocatePath,
     prepareRemove: tabs.prepareRemove,
-    preferRenderedDiff: () => session.surface !== 'editor',
     reviewChanged: (open, activeReview) => {
       shell.dataset.gitDiff = String(open);
       reader.setSuspended(activeReview);

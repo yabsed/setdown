@@ -29,6 +29,7 @@
   let request = 0;
   let shownId: string | null = null;
   let lastRevealKey = '';
+  let pendingFirstReveal: Monaco.IDisposable | null = null;
   const models = new Map<string, CachedModels>();
 
   const language = (filePath: string) => {
@@ -158,6 +159,34 @@
     return created;
   }
 
+  function revealFirstChangeWhenReady(
+    monaco: typeof Monaco,
+    id: string,
+    cached: CachedModels,
+    line: number,
+  ) {
+    if (!editor) return;
+    const expectedEditor = editor;
+    const reveal = () => {
+      if (editor !== expectedEditor || shownId !== id
+        || expectedEditor.getModel()?.modified !== cached.modified) return;
+      const modifiedEditor = expectedEditor.getModifiedEditor();
+      modifiedEditor.setPosition({ lineNumber: line, column: 1 });
+      modifiedEditor.revealLineInCenter(line, monaco.editor.ScrollType.Immediate);
+    };
+    if (expectedEditor.getLineChanges() !== null) {
+      requestAnimationFrame(reveal);
+      return;
+    }
+    pendingFirstReveal?.dispose();
+    const listener = expectedEditor.onDidUpdateDiff(() => {
+      listener.dispose();
+      if (pendingFirstReveal === listener) pendingFirstReveal = null;
+      reveal();
+    });
+    pendingFirstReveal = listener;
+  }
+
   function applySnapshots(
     monaco: typeof Monaco,
     snapshots: Array<{ id: string; diff: GitDiff | null }>,
@@ -202,6 +231,13 @@
       const modifiedEditor = editor.getModifiedEditor();
       modifiedEditor.setPosition({ lineNumber: target, column: 1 });
       modifiedEditor.revealLineInCenter(target);
+      const first = active.diff.hunks[0];
+      const firstChangedLine = first ? Math.max(1, first.newStart || first.oldStart || 1) : 1;
+      // Diff mappings are asynchronous, so wait for them before fixing the initial viewport.
+      // Otherwise the pre-layout scroll position can leave the first change just off-screen.
+      if (!cached.viewState && target === firstChangedLine) {
+        revealFirstChangeWhenReady(monaco, active.id, cached, target);
+      }
       if (!active.diff.staged) modifiedEditor.focus();
       layout = true;
     }
@@ -266,6 +302,7 @@
 
   onDestroy(() => {
     request += 1;
+    pendingFirstReveal?.dispose();
     for (const id of [...models.keys()]) disposeModels(id);
     editor?.dispose();
     editor = null;

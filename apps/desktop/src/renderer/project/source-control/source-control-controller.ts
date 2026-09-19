@@ -16,7 +16,6 @@ import { project, type GitDiffTabState } from '../project-state.svelte';
 
 type Options = {
   desktop: DesktopPort;
-  preferRendered(): boolean;
   openWorkingTree(path: string): Promise<boolean>;
   activateWorkingTree(path: string): boolean;
   workingTreeBuffer(path: string): string | null;
@@ -237,7 +236,7 @@ export class SourceControlController {
   private createTab(
     filePath: string,
     staged: boolean,
-    mode: GitDiffTabState['mode'] = this.options.preferRendered() ? 'rendered' : 'source',
+    mode: GitDiffTabState['mode'] = 'source',
     line = 0,
   ): GitDiffTabState {
     return {
@@ -279,7 +278,7 @@ export class SourceControlController {
       gitDiffMode: tab.mode,
       gitDiffFrozen: false,
       gitDiffSnapshot: '',
-      gitDiffLine: tab.line || tab.diff?.hunks[0]?.newStart || 1,
+      gitDiffLine: tab.line || (tab.diff ? this.firstChangedLine(tab.diff) : 1),
     });
     this.copyPreviewState(tab);
     this.options.reviewChanged(true, true);
@@ -317,7 +316,7 @@ export class SourceControlController {
       const diff = this.effectiveDiff(stored);
       const changed = this.diffSignature(tab.diff) !== this.diffSignature(diff);
       tab.diff = diff;
-      tab.line ||= diff.hunks[0]?.newStart || 1;
+      tab.line ||= this.firstChangedLine(diff);
       if (!this.renderable(diff)) tab.mode = 'source';
       if (changed) this.invalidatePreview(tab);
       if (this.activeTab()?.id === tab.id) {
@@ -559,6 +558,12 @@ export class SourceControlController {
       diff.originalText ?? '\u0000',
       diff.modifiedText ?? '\u0000',
     ].join('\u0001');
+  }
+
+  private firstChangedLine(diff: GitDiff): number {
+    const first = diff.hunks[0];
+    if (!first) return 1;
+    return Math.max(1, first.newStart || first.oldStart || 1);
   }
 
   private serializableDiff(diff: GitDiff): GitDiff {
