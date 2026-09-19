@@ -29,6 +29,7 @@ type Options = {
   reader: ReaderController;
   preview: PreviewSession;
   surfaces: SurfaceController;
+  shouldSchedulePreview(): boolean;
   confirmClose(names: string[]): Promise<CloseDecision>;
   workspaceChanged(): void;
 };
@@ -75,7 +76,8 @@ export class TabController {
       if (tab.id === workspace.activeId) desktop.updateText(text, tab.revision);
     }
     Object.assign(tab, { previewUrl: null, previewRevision: null, previewTheme: null });
-    if (tab.id === workspace.activeId && tab.surface === 'viewer') preview.reset();
+    if (tab.id === workspace.activeId && tab.surface === 'viewer'
+      && preview.readyRevision !== null) preview.reset();
     this.updateChrome();
   };
 
@@ -375,7 +377,9 @@ export class TabController {
     tab.revision += 1;
     desktop.updateText(text, tab.revision);
     this.updateChrome();
-    if (tab.surface === 'editor') preview.schedule(tab.revision);
+    if (tab.surface === 'editor' && this.options.shouldSchedulePreview()) {
+      preview.schedule(tab.revision);
+    }
   };
 
   installModel = (documentSnapshot: DocumentSnapshot): void => {

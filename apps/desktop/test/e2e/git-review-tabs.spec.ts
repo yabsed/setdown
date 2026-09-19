@@ -26,6 +26,8 @@ function diffPreviews(application: Application) {
         id: candidate.webContents.id,
         url,
         visible: candidate.getVisible(),
+        scrollY: await candidate.webContents.executeJavaScript('window.scrollY')
+          .catch(() => 0),
         text: await candidate.webContents.executeJavaScript('document.body.innerText')
           .catch(() => ''),
       } : null;
@@ -44,13 +46,14 @@ test('keeps staged and live working-tree reviews in separate tabs', async () => 
   await writeFile(documentPath, '# Base\n', 'utf8');
   await exec('git', ['add', 'review.md'], { cwd: root });
   await exec('git', ['commit', '-m', 'base'], { cwd: root });
+  const filler = Array.from({ length: 90 }, (_, index) => `Filler paragraph ${index + 1}`);
   await writeFile(documentPath, [
-    '# Staged', '', 'line one', 'line two', 'Working tree', '', 'Tail', '',
+    '# Staged', '', 'line one', 'line two', 'Working tree', '', 'Tail', '', ...filler, '',
   ].join('\n'), 'utf8');
   await exec('git', ['add', 'review.md'], { cwd: root });
   await writeFile(documentPath, [
     '# Staged', '', 'line one', 'line two', 'Working tree ?', '',
-    'Inserted one', '', 'Inserted two', '', 'Tail', '',
+    'Inserted one', '', 'Inserted two', '', 'Tail', '', ...filler, '',
   ].join('\n'), 'utf8');
   const { ELECTRON_RUN_AS_NODE: _ignored, ...environment } = process.env;
   const application = await electron.launch({
@@ -174,15 +177,25 @@ test('keeps staged and live working-tree reviews in separate tabs', async () => 
     await workingTreeEditor.press('Control+End');
     await workingTreeEditor.pressSequentially('\nShared draft');
     await expect(window.locator('.document-tab:not(.git-diff-tab) .tab-dirty')).toHaveCount(1);
+    await window.waitForTimeout(650);
+    await expect(workingTreeEditor).toBeFocused();
+    await workingTreeEditor.pressSequentially(' continues');
+    await expect(window.locator('.modified-in-monaco-diff-editor .view-lines'))
+      .toContainText('Shared draft continues');
+
+    await workingTreeEditor.press('Escape');
+    await expect(window.getByRole('button', { name: 'View Source Diff' })).toBeVisible();
+    await expect.poll(async () => (await diffPreviews(application)).find((view) => view.visible)?.scrollY)
+      .toBeGreaterThan(0);
 
     await window.locator('.document-tab:not(.git-diff-tab)').click();
     await expect.poll(reading.hasVisible).toBe(true);
     await expect.poll(() => reading.evaluate('document.body.innerText')).toContain('Shared draft');
 
     await changed.getByRole('button', { name: 'Stage All' }).click();
-    await expect.poll(() => readFile(documentPath, 'utf8')).toContain('Shared draft');
+    await expect.poll(() => readFile(documentPath, 'utf8')).toContain('Shared draft continues');
     await expect.poll(async () => (await exec('git', ['show', ':review.md'], { cwd: root })).stdout)
-      .toContain('Shared draft');
+      .toContain('Shared draft continues');
     await expect(changed.locator('.git-change-open')).toHaveCount(0);
   } finally {
     await disposeApplication(application);

@@ -1,5 +1,6 @@
 import { textDiffHunks } from '../../../core/diff/text-diff';
 import type { PreviewThemeId } from '../../../core/preview/preview-preferences';
+import { GOLDEN_TOP_RATIO } from '../../../core/preview/viewport-anchor';
 import type {
   DocumentSnapshot,
   GitDiff,
@@ -22,7 +23,7 @@ type Options = {
   reviewChanged(open: boolean, active: boolean): void;
 };
 
-const PREVIEW_DEBOUNCE_MS = 140;
+const PREVIEW_DEBOUNCE_MS = 400;
 
 export class SourceControlController {
   private readonly loadGenerations = new Map<string, number>();
@@ -140,6 +141,12 @@ export class SourceControlController {
     if (project.gitDiffActive) this.syncPreview();
   };
 
+  updateSourceLine = (line: number): void => {
+    const tab = this.activeTab();
+    if (!tab || !project.gitDiffActive || project.gitDiffMode !== 'source') return;
+    tab.line = Math.max(1, Math.round(line) || 1);
+  };
+
   toggleDiffMode = (): void => {
     if (!project.gitDiff) return;
     if (project.gitDiffMode === 'rendered') this.showSource(project.gitDiffLine);
@@ -153,10 +160,12 @@ export class SourceControlController {
     if (!this.renderable(diff)) return;
     tab.diff = diff;
     tab.mode = 'rendered';
+    project.gitDiffLine = tab.line || 1;
     project.gitDiff = diff;
     project.gitDiffMode = 'rendered';
     this.copyPreviewState(tab);
     this.syncPreview();
+    this.positionPreview(tab);
     if (tab.previewDirty || !tab.previewId) this.schedulePreview(tab, 0);
     this.publishReview();
   };
@@ -208,7 +217,6 @@ export class SourceControlController {
       ...diff,
       modifiedText: text,
       modifiedLabel: 'WORKTREE',
-      hunks: textDiffHunks(diff.originalText, text),
     };
     this.invalidatePreview(tab);
     this.schedulePreview(tab, PREVIEW_DEBOUNCE_MS);
@@ -278,6 +286,7 @@ export class SourceControlController {
     this.options.reviewChanged(true, true);
     project.error = '';
     this.syncPreview();
+    this.positionPreview(tab);
     if (tab.diff && this.renderable(tab.diff) && !tab.previewLoading
       && (tab.previewDirty || !tab.previewId)) this.schedulePreview(tab, 0);
     this.publishReview();
@@ -345,7 +354,7 @@ export class SourceControlController {
     const tab = this.activeTab();
     if (!tab) return;
     tab.mode = project.gitDiffMode;
-    tab.line = project.gitDiffLine;
+    if (project.gitDiffMode === 'rendered') tab.line = project.gitDiffLine;
   }
 
   private resetActiveState(): void {
@@ -372,6 +381,16 @@ export class SourceControlController {
     const tab = this.activeTab();
     const previewId = project.gitDiffMode === 'rendered' ? tab?.previewId : null;
     this.options.desktop.showPreview(previewId ?? null, previewId ? this.bounds : null);
+  }
+
+  private positionPreview(tab: GitDiffTabState): void {
+    if (!project.gitDiffActive || project.gitDiffMode !== 'rendered' || !tab.previewId) return;
+    this.options.desktop.sendPreviewCommand(tab.previewId, {
+      command: 'marktex:position-preview',
+      sourceLine: tab.line || 1,
+      topRatio: GOLDEN_TOP_RATIO,
+      settle: false,
+    });
   }
 
   private invalidatePreview(tab: GitDiffTabState): void {
@@ -437,6 +456,7 @@ export class SourceControlController {
           project.gitDiffMode = tab.mode;
           this.copyPreviewState(tab);
           this.syncPreview();
+          this.positionPreview(tab);
           this.publishReview();
         }
         if (previousId) this.options.desktop.destroyPreview(previousId);

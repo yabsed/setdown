@@ -161,6 +161,7 @@ export class ProjectController {
   closeWorkingTreeReviews = (path: string): void =>
     this.sourceControl.closeWorkingTreeReviews(path);
   layoutGitDiff = (bounds: PreviewBounds | null): void => this.sourceControl.layoutDiff(bounds);
+  updateGitDiffLine = (line: number): void => this.sourceControl.updateSourceLine(line);
   toggleGitDiffMode = (): void => this.sourceControl.toggleDiffMode();
   showRenderedGitDiff = (): void => this.sourceControl.showRendered();
   changeGitWorkingTree = (text: string): void => this.sourceControl.changeWorkingTree(text);

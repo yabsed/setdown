@@ -56,6 +56,7 @@ export type AppActions = {
   activateProjectGitDiff(id: string): void;
   closeProjectGitDiff(id: string): void;
   layoutProjectGitDiff(bounds: PreviewBounds | null): void;
+  updateProjectGitDiffLine(line: number): void;
   changeProjectGitWorkingTree(text: string): void;
   saveProjectGitWorkingTree(): void;
   initializeProjectGit(): void;

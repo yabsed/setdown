@@ -78,6 +78,7 @@ export function startWorkspace(desktop: DesktopPort) {
     activateProjectGitDiff: (id) => projects.activateGitDiff(id),
     closeProjectGitDiff: (id) => projects.closeGitDiff(id),
     layoutProjectGitDiff: (bounds) => projects.layoutGitDiff(bounds),
+    updateProjectGitDiffLine: (line) => projects.updateGitDiffLine(line),
     changeProjectGitWorkingTree: (text) => projects.changeGitWorkingTree(text),
     saveProjectGitWorkingTree: () => void documents.save(false),
     initializeProjectGit: () => void projects.initializeGit(),
@@ -176,6 +177,7 @@ export function startWorkspace(desktop: DesktopPort) {
     reader,
     preview,
     surfaces,
+    shouldSchedulePreview: () => !project.gitDiffActive,
     confirmClose: (names) => closePrompt.request('tab', names),
     workspaceChanged: () => projectContextChanged(),
   });
@@ -232,6 +234,7 @@ export function startWorkspace(desktop: DesktopPort) {
     reviewChanged: (open, activeReview) => {
       shell.dataset.gitDiff = String(open);
       reader.setSuspended(activeReview);
+      if (activeReview) preview.cancelSchedule();
     },
     highlight: (query, target) => {
       const editing = workspace.active?.surface === 'editor';

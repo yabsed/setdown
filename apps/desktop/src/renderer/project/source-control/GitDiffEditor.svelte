@@ -80,6 +80,11 @@
       lineHeight: 22,
       padding: { top: 16, bottom: 48 },
     });
+    editor.getModifiedEditor().onDidChangeCursorPosition(({ position }) => {
+      if (project.gitDiffActive && project.gitDiffMode === 'source') {
+        actions.updateProjectGitDiffLine(position.lineNumber);
+      }
+    });
   }
 
   function saveShownView() {
@@ -164,6 +169,7 @@
     const active = activeId ? snapshots.find((snapshot) => snapshot.id === activeId) : null;
     const cached = activeId ? models.get(activeId) : null;
     if (!active?.diff || !cached || !editor) return;
+    let layout = false;
     if (shownId !== activeId || editor.getModel()?.modified !== cached.modified) {
       saveShownView();
       editor.setModel({ original: cached.original, modified: cached.modified });
@@ -174,21 +180,25 @@
       editor.getModifiedEditor().updateOptions({
         ariaLabel: active.diff.staged ? 'Staged version' : 'Current document',
       });
+      editor.updateOptions({
+        readOnly: active.diff.staged,
+        originalEditable: false,
+        renderMarginRevertIcon: !active.diff.staged,
+      });
       if (cached.viewState) editor.restoreViewState(cached.viewState);
+      layout = true;
     }
-    editor.updateOptions({
-      readOnly: active.diff.staged,
-      originalEditable: false,
-      renderMarginRevertIcon: !active.diff.staged,
-    });
     const revealKey = `${activeId}:${line}:${visible}`;
     if (visible && revealKey !== lastRevealKey) {
       lastRevealKey = revealKey;
       const target = Math.min(Math.max(1, line), cached.modified.getLineCount());
-      editor.getModifiedEditor().revealLineInCenter(target);
-      if (!active.diff.staged) editor.getModifiedEditor().focus();
+      const modifiedEditor = editor.getModifiedEditor();
+      modifiedEditor.setPosition({ lineNumber: target, column: 1 });
+      modifiedEditor.revealLineInCenter(target);
+      if (!active.diff.staged) modifiedEditor.focus();
+      layout = true;
     }
-    requestAnimationFrame(() => editor?.layout());
+    if (layout) requestAnimationFrame(() => editor?.layout());
   }
 
   async function reconcile(
