@@ -10,6 +10,8 @@
   import { readEditorViewport } from '../../editor/editor-viewport';
   import { reviewViewport, type ReviewSourceSide } from '../../../core/preview/review-viewport';
   import { gitDiffViewport } from './git-diff-viewport';
+  import { workingTreeMarkdownEditor, isMarkdownPath } from '../../editor/markdown-editor-port';
+  import { installMarkdownEditorActions } from '../../editor/markdown-editor-actions';
 
   type CachedModels = {
     original: Monaco.editor.ITextModel;
@@ -38,6 +40,17 @@
   const models = new Map<string, CachedModels>();
   const input = new CompositionGuard(() => untrack(reconcileCurrent));
   const inputListeners: Monaco.IDisposable[] = [];
+  function writableMarkdown() {
+    if (!editor || !api || !shownId || shownId !== project.activeGitDiffId
+      || !project.gitDiffActive || project.gitDiffMode !== 'source' || input.active
+      || project.gitDiff?.staged) return null;
+    const cached = models.get(shownId);
+    if (!cached || cached.staged || !isMarkdownPath(cached.filePath)
+      || editor.getModel()?.modified !== cached.modified) return null;
+    return { identity: `review:${shownId}`, filePath: cached.filePath,
+      editor: editor.getModifiedEditor(), monaco: api, model: cached.modified };
+  }
+  const unregisterMarkdown = workingTreeMarkdownEditor.register(writableMarkdown);
   const unregisterViewport = gitDiffViewport.register((tabId) => {
     if (!editor || !api || shownId !== tabId || !project.gitDiffActive
       || project.gitDiffMode !== 'source') return null;
@@ -116,6 +129,9 @@
     });
     const modifiedEditor = editor.getModifiedEditor();
     inputListeners.push(
+      installMarkdownEditorActions(monaco, modifiedEditor, {
+        insertLink: actions.openLink, insertTable: actions.openTable,
+      }, () => writableMarkdown() !== null),
       editor.getOriginalEditor().onDidFocusEditorText(() => rememberSourceSide('before')),
       modifiedEditor.onDidFocusEditorText(() => rememberSourceSide('after')),
       modifiedEditor.onDidCompositionStart(() => {
@@ -397,6 +413,7 @@
   onDestroy(() => {
     request += 1;
     unregisterViewport();
+    unregisterMarkdown();
     input.dispose();
     for (const listener of inputListeners) listener.dispose();
     interruptReveal();

@@ -10,6 +10,8 @@ import { ClosePromptController } from '../application/close-prompt-controller';
 import { installWorkspaceEvents } from '../application/workspace-events';
 import { createEditorInsertions } from '../editor/editor-insertions';
 import { installEditorImagePaste } from '../editor/editor-image-paste';
+import { workingTreeMarkdownEditor } from '../editor/markdown-editor-port';
+import type { MarkdownEditingTarget } from '../editor/markdown-editing-target';
 import type { DesktopPort } from '../ports/desktop-port';
 import { ProjectController } from '../project/project-controller';
 import { project } from '../project/project-state.svelte';
@@ -251,18 +253,30 @@ export function startWorkspace(desktop: DesktopPort) {
   void projects.restore();
   const editorContext = {
     desktop,
-    host: editorHost,
-    editor: () => editor.editor,
-    monaco: () => editor.api,
-    model: () => editor.model,
-    document: () => session.document,
+    // One paste pipeline for both surfaces; each handler checks the event's
+    // originating Monaco DOM node, never the hidden document or the left pane.
+    host: shell,
+    target: (): MarkdownEditingTarget | null => {
+      const document = session.document;
+      if (!document) return null;
+      if (project.gitDiffActive) {
+        const target = workingTreeMarkdownEditor.read();
+        // Never use a hidden ordinary document as a fallback for a review.
+        // Asset/link operations must refer to the matching active document.
+        return target && target.filePath === document.path ? { ...target, document } : null;
+      }
+      if (session.surface !== 'editor' || !workspace.activeId
+        || !editor.editor || !editor.api || !editor.model) return null;
+      return { identity: `document:${workspace.activeId}`, document,
+        editor: editor.editor, monaco: editor.api, model: editor.model };
+    },
   };
-  const insertions = createEditorInsertions({
-    ...editorContext,
-    editing: () => session.surface === 'editor',
-    save: () => documents.save(false),
-  });
-  installEditorImagePaste(editorContext);
+  const insertions = createEditorInsertions({ ...editorContext, save: () => documents.save(false) });
+  const removeImagePaste = installEditorImagePaste(editorContext);
+  window.addEventListener('beforeunload', () => {
+    insertions.dispose();
+    removeImagePaste();
+  }, { once: true });
 
   function toggleToc() {
     const tab = workspace.active;
@@ -355,6 +369,7 @@ export function startWorkspace(desktop: DesktopPort) {
       });
     },
     command: (command) => {
+      if (command === 'escape' && insertions.dismissOnEscape('native')) return;
       if (command === 'new-document') {
         projects.deactivateGitDiff();
         void documents.create();
@@ -398,6 +413,11 @@ export function startWorkspace(desktop: DesktopPort) {
       void tabs.removeTransferred(tabId).finally(() => desktop.releaseTabTransferSource(transferId));
     },
     keydown: (event) => {
+      if (event.key === 'Escape' && insertions.dismissOnEscape('dom')) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
       if (event.key.toLowerCase() === 's' && (event.ctrlKey || event.metaKey)
         && !event.altKey && !event.shiftKey) {
         event.preventDefault();

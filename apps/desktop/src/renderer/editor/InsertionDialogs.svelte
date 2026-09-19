@@ -1,6 +1,7 @@
 <script lang="ts">
   import { insertion, resizeTable } from './insertion-state.svelte';
   import type { AppActions } from '../view-state.svelte';
+  import { isComposingInput } from './composition-guard';
 
   const TABLE_COLUMNS = 10;
   const TABLE_ROWS = 10;
@@ -71,7 +72,7 @@
   }
 
   function shortcuts(event: KeyboardEvent) {
-    if (event.key !== 'Escape' || (!insertion.tableOpen && !insertion.linkOpen)) return;
+    if (isComposingInput(event) || event.key !== 'Escape' || (!insertion.tableOpen && !insertion.linkOpen)) return;
     event.preventDefault();
     event.stopPropagation();
     if (insertion.tableOpen) actions.closeTable();
@@ -108,6 +109,7 @@
     <span>{tableActive ? `${tableColumns()} × ${tableRows()}` : ''}</span>
     <button type="button" aria-label="Close" onclick={actions.closeTable}>×</button>
   </header>
+  <div class="dialog-error" role="alert" hidden={!insertion.tableError}>{insertion.tableError}</div>
   <div class="table-size-grid" class:is-dragging={draggingTable} role="group" aria-label="Choose table size"
     onpointerleave={() => tableActive = false}>
     {#each tableCells as cell (`${cell.column}:${cell.row}`)}

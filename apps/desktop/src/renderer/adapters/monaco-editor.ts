@@ -6,6 +6,7 @@ import type { WorkspaceTab } from '../../core/workspace/workspace-state';
 import type { ProjectSearchDocument } from '../../protocol/desktop-api';
 import type { WorkingTreeEdit } from '../view-state.svelte';
 import { readEditorViewport } from '../editor/editor-viewport';
+import { installMarkdownEditorActions } from '../editor/markdown-editor-actions';
 import { monacoThemeName, registerMonacoThemes } from '../theme';
 
 type Options = {
@@ -255,19 +256,7 @@ export class MonacoEditor {
     editor.onDidScrollChange((event) => {
       if (event.scrollTopChanged) this.options.scrolled();
     });
-    editor.addAction({
-      id: 'setdown.insertLink',
-      label: 'Insert URL',
-      keybindings: [api.KeyMod.CtrlCmd | api.KeyCode.KeyK],
-      contextMenuGroupId: '1_modification',
-      run: this.options.insertLink,
-    });
-    editor.addAction({
-      id: 'setdown.insertTable',
-      label: 'Insert Table',
-      contextMenuGroupId: '1_modification',
-      run: this.options.insertTable,
-    });
+    installMarkdownEditorActions(api, editor, this.options);
     editor.addCommand(
       api.KeyCode.Escape,
       this.options.escape,

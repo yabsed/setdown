@@ -1,16 +1,8 @@
-import type * as Monaco from 'monaco-editor';
-import type { DocumentSnapshot } from '../../protocol/desktop-api';
 import type { DesktopPort } from '../ports/desktop-port';
+import { pasteTarget, replaceSelection, stillCurrent,
+  type EditingContext, type InsertionTarget } from './markdown-editing-target';
 
-type Context = {
-  desktop: DesktopPort;
-  host: HTMLElement;
-  editor: () => Monaco.editor.IStandaloneCodeEditor | null;
-  monaco: () => typeof Monaco | null;
-  model: () => Monaco.editor.ITextModel | null;
-  document: () => DocumentSnapshot | null;
-};
-
+type Context = EditingContext & { desktop: DesktopPort; host: HTMLElement };
 const IMAGE_URL = /\.(?:avif|bmp|gif|jpe?g|png|svg|tiff?|webp)(?:$|[?#])/i;
 
 function remoteImageUrl(value?: string | null) {
@@ -18,47 +10,36 @@ function remoteImageUrl(value?: string | null) {
   try {
     const url = new URL(value.trim());
     return ['http:', 'https:'].includes(url.protocol) ? url.href : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
-export function installEditorImagePaste(context: Context) {
+export function installEditorImagePaste(context: Context): () => void {
   let busy = false;
+  let disposed = false;
 
-  function applyMarkdown(markdown: string, selection: Monaco.Selection | null) {
-    const editor = context.editor();
-    const monaco = context.monaco();
-    const model = context.model();
-    if (!editor || !monaco || !model) return;
-    const range = selection ? monaco.Range.lift(selection) : new monaco.Range(1, 1, 1, 1);
-    const end = model.getOffsetAt(range.getStartPosition()) + markdown.length;
-    editor.executeEdits('paste-image', [{ range, text: markdown, forceMoveMarkers: true }]);
-    editor.setPosition(model.getPositionAt(end));
-    editor.focus();
-  }
-
-  async function pasteImage(remote: string | null) {
-    const editor = context.editor();
-    if (!editor || !context.model() || !context.document() || busy) return;
+  async function pasteImage(remote: string | null, target: InsertionTarget) {
+    if (busy) return;
     busy = true;
-    const selection = editor.getSelection();
     try {
-      if (remote) applyMarkdown(`![Remote image](<${remote}>)`, selection);
-      else {
-        const result = await context.desktop.pasteClipboardImage();
-        if (!result.canceled && result.markdown) applyMarkdown(result.markdown, selection);
+      const result = remote ? { canceled: false, markdown: `![Remote image](<${remote}>)` }
+        : await context.desktop.pasteClipboardImage();
+      if (disposed || result.canceled || !result.markdown) return;
+      if (!stillCurrent(context, target)) {
+        window.alert('The document changed while the image was being prepared. Paste again at the intended location.');
+        return;
       }
+      const start = replaceSelection(target, 'paste-image', result.markdown);
+      target.editor.setPosition(target.model.getPositionAt(start + result.markdown.length));
+      target.editor.focus();
     } catch (error) {
-      window.alert(`Could not paste the image.\n${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      busy = false;
-    }
+      if (!disposed) window.alert(`Could not paste the image.\n${error instanceof Error ? error.message : String(error)}`);
+    } finally { busy = false; }
   }
 
-  context.host.addEventListener('paste', (event) => {
-    if (event.defaultPrevented) return;
-    if (!context.editor()) return;
+  const paste = (event: ClipboardEvent) => {
+    if (disposed) return;
+    const target = pasteTarget(context, event);
+    if (!target) return;
     const plain = event.clipboardData?.getData('text/plain').trim() ?? '';
     const html = event.clipboardData?.getData('text/html');
     const htmlImage = html
@@ -74,6 +55,8 @@ export function installEditorImagePaste(context: Context) {
     if (!remote && !stored) return;
     event.preventDefault();
     event.stopPropagation();
-    void pasteImage(remote);
-  }, { capture: true });
+    void pasteImage(remote, target);
+  };
+  context.host.addEventListener('paste', paste, { capture: true });
+  return () => { disposed = true; context.host.removeEventListener('paste', paste, { capture: true }); };
 }

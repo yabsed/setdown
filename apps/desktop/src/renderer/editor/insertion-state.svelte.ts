@@ -14,6 +14,7 @@ export const emptyTable = (): TableDraft => ({
 
 export const insertion = $state({
   tableOpen: false,
+  tableError: '',
   table: emptyTable(),
   linkOpen: false,
   linkLabel: '',
