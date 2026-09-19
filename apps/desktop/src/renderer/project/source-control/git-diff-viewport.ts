@@ -4,18 +4,23 @@ type Reader = (tabId: string) => ReviewViewport | null;
 
 /**
  * Renderer-local synchronous port for the Svelte-owned Monaco instance.
- * Esc reads the current viewport before hiding it; no IPC round trip, timer,
- * model writes, or stale scroll-event snapshot is involved.
+ * Esc samples the current viewport; notifications schedule optional prewarming.
  */
 export class GitDiffViewportPort {
   private reader: Reader | null = null;
   private readonly sourceTargets = new Map<string, ReviewViewport>();
+  private readonly listeners = new Set<() => void>();
 
   register(reader: Reader): () => void {
     this.reader = reader;
     return () => { if (this.reader === reader) this.reader = null; };
   }
 
+  onChange(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => { this.listeners.delete(listener); };
+  }
+  changed(): void { for (const listener of this.listeners) listener(); }
   read(tabId: string): ReviewViewport | null { return this.reader?.(tabId) ?? null; }
   requestSource(tabId: string, target: ReviewViewport): void { this.sourceTargets.set(tabId, target); }
   takeSourceTarget(tabId: string): ReviewViewport | null {
@@ -26,5 +31,4 @@ export class GitDiffViewportPort {
   forget(tabId: string): void { this.sourceTargets.delete(tabId); }
 }
 
-// One workspace/Monaco instance per renderer. Does not cross window boundaries.
 export const gitDiffViewport = new GitDiffViewportPort();
