@@ -9,11 +9,15 @@
   import ClosePrompt from './shell/ClosePrompt.svelte';
   import { view, type AppActions } from './view-state.svelte';
 
-  let { actions }: { actions: AppActions } = $props();
+  import { terminal } from './terminal/terminal-state.svelte';
+
+  import type { TerminalApi } from '../protocol/terminal';
+  let { actions, terminalApi }: { actions: AppActions; terminalApi: TerminalApi } = $props();
 </script>
 
 <TitleBar {actions} />
-<section class="shell" data-surface="empty" data-tabs="false">
+<section class="shell" data-surface="empty" data-tabs="false"
+  style:--terminal-height={terminal.open ? `min(${terminal.height}px, 65vh)` : '0px'}>
   <TabChrome {actions} />
   <ProjectSidebar {actions} />
   <div class="notice" hidden={!view.notice}>
@@ -26,6 +30,11 @@
   <EmptyState {actions} />
   <ReaderSurface {actions} />
   <GitDiffSurface {actions} />
+  {#if terminal.loaded}
+    {#await import('./terminal/TerminalPanel.svelte') then module}
+      <module.default api={terminalApi} />
+    {/await}
+  {/if}
   <InsertionDialogs {actions} />
   <ClosePrompt {actions} />
 </section>

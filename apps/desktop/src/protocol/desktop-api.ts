@@ -195,6 +195,7 @@ export type ApplicationMenuEntry = {
 export type CloseDecision = 'cancel' | 'discard' | 'save';
 
 export type AppCommand =
+  | 'toggle-terminal'
   | 'new-document'
   | 'open-folder'
   | 'save'
@@ -209,6 +210,7 @@ export type AppCommand =
   | 'toggle-surface';
 
 export type MarkTexApi = {
+  terminal: import('./terminal').TerminalApi;
   initialTheme: ThemeSnapshot;
   getDocument(): Promise<DocumentSnapshot | null>;
   newDocument(): Promise<DocumentSnapshot | null>;

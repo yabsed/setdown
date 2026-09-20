@@ -28,9 +28,12 @@
     "@sanity/diff-match-patch": "^3.2.0",
     "@parcel/watcher": "^2.6.0",
     "@vscode/ripgrep": "^1.18.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
     "crossnote": "0.9.35",
     "htmlparser2": "9.1.0",
-    "monaco-editor": "0.56.0"
+    "monaco-editor": "0.56.0",
+    "node-pty": "^1.1.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
@@ -53,6 +56,7 @@
     "productName": "Setdown",
     "artifactName": "Setdown-${version}-${arch}.${ext}",
     "files": ["dist/**/*", "dist-electron/**/*", "package.json"],
+    "asarUnpack": ["node_modules/node-pty/**/*"],
     "directories": { "output": "release" },
     "linux": {
       "target": ["AppImage", "deb"],

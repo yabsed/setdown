@@ -33,6 +33,15 @@ function initialThemeSnapshot(): ThemeSnapshot {
 }
 
 const api: MarkTexApi = {
+  terminal: {
+    create: (id, size) => ipcRenderer.invoke('terminal:create', id, size),
+    write: (id, data) => ipcRenderer.send('terminal:write', id, data),
+    resize: (id, size) => ipcRenderer.send('terminal:resize', id, size),
+    acknowledge: (id, length) => ipcRenderer.send('terminal:ack', id, length),
+    close: (id) => ipcRenderer.send('terminal:close', id),
+    focus: (focused) => ipcRenderer.send('terminal:focus', focused),
+    onEvent: (listener) => subscribe('terminal:event', listener),
+  },
   initialTheme: initialThemeSnapshot(),
   getDocument: () => ipcRenderer.invoke('document:get'),
   newDocument: () => ipcRenderer.invoke('document:new'),

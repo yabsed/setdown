@@ -7,6 +7,8 @@
   import SourceControlView from './source-control/SourceControlView.svelte';
   import { gitChangeGroups } from './source-control/git-change-groups';
 
+  import { terminal, toggleTerminal } from '../terminal/terminal-state.svelte';
+
   let { actions }: { actions: AppActions } = $props();
   let gitGroups = $derived(gitChangeGroups(project.git?.changes));
   let gitStatus = $derived(!project.git ? 'Repository status not loaded'
@@ -39,6 +41,10 @@
       {#if gitGroups.badge > 0}<span class="scm-activity-badge" aria-hidden="true">{gitGroups.badge}</span>{/if}
       <span id="source-control-status" class="scm-status-description">{gitStatus}</span>
     </button>
+    <button type="button" class="terminal-activity" class:is-active={terminal.open}
+      aria-label="Terminal" aria-expanded={terminal.open} title="Terminal (Ctrl+`)" onclick={toggleTerminal}>
+      <svg viewBox="0 0 24 24"><path d="m5 6 6 6-6 6M13 18h6"/></svg>
+    </button>
   </nav>
 
   <section class="side-view" aria-label={project.activeView} hidden={!project.open}>
@@ -54,6 +60,7 @@
 </aside>
 
 <style>
+  .terminal-activity { margin-top: auto; flex-shrink: 0; }
   .scm-activity { position: relative; }
   .scm-activity-badge {
     position: absolute;

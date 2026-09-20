@@ -84,6 +84,7 @@ export function installApplicationMenu(context: MenuContext) {
     },
     {
       id: 'application-menu-view', label: 'View', submenu: [
+        { id: 'menu-toggle-terminal', label: 'Toggle Terminal', accelerator: 'Ctrl+`', click: () => command('toggle-terminal') },
         { id: 'menu-toggle-folder-tools', label: 'Toggle Folder Tools', click: () => command('toggle-folder-tools') },
         { id: 'menu-toggle-surface', label: 'Toggle Viewer / Editor', accelerator: 'CmdOrCtrl+E', click: () => command('toggle-surface') },
         { id: 'menu-next-tab', label: 'Next Tab', accelerator: 'Ctrl+Tab', click: () => command('next-tab') },

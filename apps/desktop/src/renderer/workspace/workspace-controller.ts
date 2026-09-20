@@ -1,3 +1,4 @@
+import { toggleTerminal, terminalOwnsInput } from '../terminal/terminal-state.svelte';
 import { GOLDEN_TOP_RATIO, type ViewportAnchor } from '../../core/preview/viewport-anchor';
 import { normalizePreviewTheme } from '../../core/preview/preview-preferences';
 import { hasMarkdownPreview } from '../../core/document/document-capabilities';
@@ -93,7 +94,7 @@ export function startWorkspace(desktop: DesktopPort) {
     reloadExternalChange: () => void documents.reloadExternalChange(),
     showRenderError: () => void surfaces.enterEditor(),
   };
-  mount(App, { target: document.querySelector<HTMLDivElement>('#app')!, props: { actions } });
+  mount(App, { target: document.querySelector<HTMLDivElement>('#app')!, props: { actions, terminalApi: desktop.terminal } });
   const shell = document.querySelector<HTMLElement>('.shell')!;
   restorePanelWidths(shell);
   const previewFrames = document.querySelector<HTMLElement>('.preview-frames')!;
@@ -234,6 +235,8 @@ export function startWorkspace(desktop: DesktopPort) {
       void closePrompt.request('window', names).then((decision) => desktop.resolveWindowClose(decision));
     },
     command: (command) => {
+      if (command === 'toggle-terminal') { toggleTerminal(); return; }
+      if (command === 'escape' && terminalOwnsInput()) return;
       if (command === 'escape' && insertions.dismissOnEscape('native')) return;
       if (command === 'new-document') { projects.deactivateGitDiff(); void documents.create(); }
       if (command === 'open-folder') void projects.chooseFolder();
@@ -264,6 +267,10 @@ export function startWorkspace(desktop: DesktopPort) {
       tabDrag.reset(); void tabs.removeTransferred(tabId).finally(() => desktop.releaseTabTransferSource(transferId));
     },
     keydown: (event) => {
+      if (event.ctrlKey && !event.altKey && !event.shiftKey && event.code === 'Backquote') {
+        event.preventDefault(); toggleTerminal(); return;
+      }
+      if (terminalOwnsInput(event.target)) return;
       if (event.key === 'Escape' && insertions.dismissOnEscape('dom')) {
         event.preventDefault(); event.stopImmediatePropagation(); return;
       }

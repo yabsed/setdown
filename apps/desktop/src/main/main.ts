@@ -18,6 +18,7 @@ import { pathFromResourceUrl } from './preview/resource-url';
 import { TabTransferManager } from './tabs/tab-transfer-manager';
 import { ThemeManager } from './theme/theme-manager';
 import { WindowManager } from './windows/window-manager';
+import { installTerminalIpc } from './terminal/terminal-ipc';
 import { WindowRegistry } from './windows/window-registry';
 
 app.setName('Setdown');
@@ -85,6 +86,8 @@ else {
   app.whenReady().then(async () => {
     installProtocols(); themes.load();
     installIpc({ channels, documents, previews, projects, renderer, themes, transfers });
+    const terminals = installTerminalIpc(channels);
+    app.on('before-quit', () => terminals.dispose());
     installApplicationMenu({ focusedState: () => registry.focused(), createWindow: windows.create,
       openDocument: (state) => documents.chooseAndOpen(state).catch(openError),
       reloadWindow: (state) => { previews.closeOwner(state.webContentsId); state.window.webContents.reload(); },
