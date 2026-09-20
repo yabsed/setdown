@@ -12,7 +12,7 @@ export function listenForReviewInteraction(source: EventTarget, cancel: () => vo
   for (const event of events) source.addEventListener(event, interact, { capture: true, passive: true });
   source.addEventListener('keydown', keydown, { capture: true, passive: true });
   return () => {
-    for (const event of events) source.removeEventListener(event, interact, true);
-    source.removeEventListener('keydown', keydown, true);
+    for (const event of events) source.removeEventListener(event, interact, { capture: true });
+    source.removeEventListener('keydown', keydown, { capture: true });
   };
 }
