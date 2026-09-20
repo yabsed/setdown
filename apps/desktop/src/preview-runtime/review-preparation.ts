@@ -1,4 +1,5 @@
 import type { SourceAtlas } from './source-atlas';
+import { installReviewPresentation } from './review-presentation';
 
 type Options = {
   sourceAtlas: SourceAtlas;
@@ -11,6 +12,8 @@ type Options = {
  * The same SourceAtlas validates its page-local proof on the final command.
  */
 export function installReviewPreparation(options: Options): void {
+  installReviewPresentation({ atlas: options.sourceAtlas, revision: options.revision,
+    hydrate: options.hydrate, send: options.send });
   let generation = 0;
   const invalidate = () => options.sourceAtlas.invalidate();
   const root = document.querySelector('.markdown-preview[data-for="preview"]');
@@ -29,7 +32,8 @@ export function installReviewPreparation(options: Options): void {
     const command = event.data as Record<string, unknown> | null;
     if (!command) return;
     if (['marktex:position-preview', 'marktex:update-html', 'marktex:patch-blocks',
-      'marktex:patch-review-rows', 'marktex:apply-theme'].includes(String(command.command))) {
+      'marktex:patch-review-rows', 'marktex:apply-theme', 'marktex:present-review-page',
+      'marktex:cancel-presentation'].includes(String(command.command))) {
       generation += 1;
       return;
     }

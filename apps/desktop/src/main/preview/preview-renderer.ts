@@ -16,9 +16,12 @@ type WorkerResult = {
   template?: string;
   html?: string;
   patch?: PreviewBlockPatch | null;
+  runtime?: 'lean' | 'crossnote';
+  requiresFullRuntime?: boolean;
 };
+type ReviewPage = { url: string; revision: number; pageKey: string; runtime: 'lean' | 'crossnote' };
 type Options = {
-  previews: PreviewManager;
+  previews: PreviewManager & { beforeReviewRender?(owner: number, tabId: string): Promise<void> };
   roots: () => string[];
   theme: () => PreviewThemeId;
   workerPath: string;
@@ -29,7 +32,7 @@ export class PreviewRenderer {
   private requestId = 0;
   private reviewRevision = 0;
   private readonly reviews: ReviewRenderClient;
-  private readonly reviewPages = new WeakMap<Electron.WebContents, { url: string; revision: number; pageKey: string }>();
+  private readonly reviewPages = new WeakMap<Electron.WebContents, ReviewPage>();
   private readonly reviewSeeds = new WeakMap<Electron.WebContents, Promise<void>>();
   private readonly baselines = new ReviewBaselineCache<string>();
   private baselineEpoch = 0;
@@ -63,6 +66,7 @@ export class PreviewRenderer {
         totalLineCount: Math.max(1, Number(reply.totalLineCount) || 1),
         baseHref: String(reply.baseHref ?? ''), themeId: normalizePreviewTheme(reply.themeId),
         template: reply.template, html: reply.html, patch: reply.patch,
+        runtime: reply.runtime, requiresFullRuntime: reply.requiresFullRuntime,
       });
     });
     worker.on('exit', () => {
@@ -76,13 +80,13 @@ export class PreviewRenderer {
   }
 
   private render(tabId: string, text: string, revision: number, documentPath: string,
-    themeId: PreviewThemeId, hasPage: boolean, deferOffscreenHtml = true) {
+    themeId: PreviewThemeId, hasPage: boolean, deferOffscreenHtml = true, fragmentOnly = false) {
     const worker = this.ensureWorker();
     const id = ++this.requestId;
     return new Promise<WorkerResult>((resolve, reject) => {
       this.waiters.set(id, { resolve, reject });
       worker.postMessage({ kind: 'render', id, tabId, text, revision, documentPath, themeId,
-        roots: this.options.roots(), hasPage, deferOffscreenHtml });
+        roots: this.options.roots(), hasPage, deferOffscreenHtml, fragmentOnly });
     });
   }
 
@@ -116,6 +120,8 @@ export class PreviewRenderer {
     if (!preview || preview.ownerWebContentsId !== senderId
       || diff.originalText === null || diff.modifiedText === null
       || !/\.(?:md|markdown|mdown|mkdn|mkd|rmd|qmd|mdx)$/i.test(diff.filePath)) return unsupported();
+    await previews.beforeReviewRender?.(senderId, tabId);
+    if (previews.views.get(tabId) !== preview || preview.view.webContents.isDestroyed()) return unsupported();
     if (preview.view.getVisible()) throw new Error('Cannot prepare a visible Git preview.');
     const contents = preview.view.webContents;
     const owned = () => previews.views.get(tabId) === preview
@@ -130,28 +136,35 @@ export class PreviewRenderer {
     const cacheId = tabId.replace(/:[ab]$/, '');
     const context = JSON.stringify([diff.filePath, themeId, this.options.roots(), this.baselineEpoch]);
     const epoch = this.baselineEpoch;
+    const currentUrl = contents.getURL();
+    const page = this.reviewPages.get(contents);
+    let reusable = !!page && page.url === currentUrl;
     try {
       const cached = this.baselines.get(cacheId, diff.originalText, context);
-      const [original, modified] = await Promise.all([
+      const [original, initialModified] = await Promise.all([
         cached === undefined
-          ? this.render(originalId, diff.originalText, revision, diff.filePath, themeId, false, false)
+          ? this.render(originalId, diff.originalText, revision, diff.filePath, themeId, false, false, true)
           : Promise.resolve({ html: cached }),
-        this.render(modifiedId, diff.modifiedText, revision, diff.filePath, themeId, false, false),
+        this.render(modifiedId, diff.modifiedText, revision, diff.filePath, themeId, false, false, reusable),
       ]);
+      let modified = initialModified;
       check();
+      // A lean page that acquires a client-rendered diagram still needs the
+      // full runtime. Build it only for this capability transition.
+      if (reusable && modified.requiresFullRuntime && page?.runtime !== 'crossnote') {
+        modified = await this.render(modifiedId, diff.modifiedText, revision, diff.filePath, themeId, false, false);
+        check();
+        reusable = false;
+      }
       if (typeof original.html !== 'string' || typeof modified.html !== 'string'
-        || typeof modified.template !== 'string') return unsupported();
+        || (!reusable && typeof modified.template !== 'string')) return unsupported();
       if (cached === undefined && epoch === this.baselineEpoch) {
         this.baselines.set(cacheId, diff.originalText, context, original.html,
           2 * (original.html.length + diff.originalText.length + context.length));
       }
-      const currentUrl = contents.getURL();
-      const page = this.reviewPages.get(contents);
-      const reusable = !!page && page.url === currentUrl;
       const pageKey = page?.pageKey ?? `${senderId}:${contents.id}:${tabId}`;
       const input = {
         originalHtml: original.html, modifiedHtml: modified.html,
-        // Avoid sending the large unused page template across a second IPC hop.
         template: reusable ? undefined : modified.template, needsTemplate: !reusable,
         pageKey, baseRevision: reusable ? page!.revision : null, revision,
       };
@@ -208,11 +221,12 @@ export class PreviewRenderer {
       }
       check();
       if (!this.reviewPages.has(contents)) contents.once('destroyed', () => this.reviews.forget(pageKey));
-      this.reviewPages.set(contents, { url, revision, pageKey });
+      const runtime = reusable ? page!.runtime : modified.runtime ?? 'crossnote';
+      this.reviewPages.set(contents, { url, revision, pageKey, runtime });
       await previews.prepareReviewViewport(senderId, tabId, revision);
       check();
       if (!reusable && !diff.staged) {
-        try { this.seedReviewStandby(tabId, senderId, { url, revision, pageKey }, themeId); }
+        try { this.seedReviewStandby(tabId, senderId, { url, revision, pageKey, runtime }, themeId); }
         catch { /* Optional warmup must never invalidate a ready front. */ }
       }
       return { revision, url, themeId, supported: true };
@@ -224,7 +238,7 @@ export class PreviewRenderer {
 
   /** Move the second page's one-time DOM construction before the first edit. */
   private seedReviewStandby(tabId: string, ownerId: number,
-    source: { url: string; revision: number; pageKey: string }, themeId: PreviewThemeId): void {
+    source: ReviewPage, themeId: PreviewThemeId): void {
     if (!/^git-diff:.*:[ab]$/.test(tabId)) return;
     const standbyId = tabId.replace(/:[ab]$/, tabId.endsWith(':a') ? ':b' : ':a');
     const previews = this.options.previews;
@@ -244,7 +258,7 @@ export class PreviewRenderer {
         || contents.isDestroyed() || contents.getURL() !== source.url) return;
       this.reviews.seed(source.pageKey, pageKey, source.revision);
       contents.once('destroyed', () => this.reviews.forget(pageKey));
-      this.reviewPages.set(contents, { url: source.url, revision: source.revision, pageKey });
+      this.reviewPages.set(contents, { url: source.url, revision: source.revision, pageKey, runtime: source.runtime });
       previews.markTheme(contents, themeId);
     })().catch(() => { /* A failed standby falls back on its next real request. */ });
     this.reviewSeeds.set(contents, task);
@@ -268,6 +282,7 @@ export class PreviewRenderer {
     if (state.currentDocument?.path !== renderPath) throw new Error('The document changed while its preview was being prepared.');
     preview.view.setBackgroundColor(previewThemeBackground(themeId));
     if (hasPage) this.options.previews.syncTheme(preview.view, themeId);
+
     if (typeof rendered.template === 'string') {
       const url = this.options.previews.storeDocument(rendered.template, themeId);
       await this.options.previews.loadURL(preview.view, url, senderId);

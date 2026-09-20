@@ -10,7 +10,7 @@ import { DocumentManager } from './documents/document-manager';
 import { installIpc } from './ipc/install-ipc';
 import { windowIpc } from './ipc/window-ipc';
 import { installApplicationMenu } from './menu/application-menu';
-import { PreviewManager } from './preview/preview-manager';
+import { ReviewPreviewManager as PreviewManager } from './preview/review-preview-manager';
 import { PreviewRenderer } from './preview/preview-renderer';
 import { ProjectService } from './project/project-service';
 import { ProjectSearchRenderer } from './project/project-search-renderer';

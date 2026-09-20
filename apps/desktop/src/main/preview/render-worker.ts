@@ -28,6 +28,7 @@ import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
 import { previewRelativeReference } from './preview-resources';
 import { resourceUrl } from './resource-url';
 import { canonicalPath, isInside } from '../documents/file-system';
+import { renderReviewFragment } from './review-fragment';
 import {
   diffPreviewBlocks,
   splitPreviewBlocks,
@@ -62,6 +63,8 @@ export type RenderWorkerRequest =
     hasPage: boolean;
     /** PDF처럼 첫 paint보다 완성된 DOM이 먼저 필요한가. */
     deferOffscreenHtml?: boolean;
+    /** Git baseline / reusable page: no unused full-page template. */
+    fragmentOnly?: boolean;
   }
   | {
     kind: 'search';
@@ -97,6 +100,8 @@ export type RenderWorkerReply =
     html?: string;
     /** 블록 기록이 있을 때. 바뀐 구간만. null이면 바뀐 것이 없다. */
     patch?: PreviewBlockPatch | null;
+    runtime?: PreviewRuntime;
+    requiresFullRuntime?: boolean;
   }
   | { kind: 'render'; id: number; ok: false; message: string }
   | { kind: 'search'; id: number; ok: true; matches: VisibleSearchMatch[] }
@@ -403,6 +408,13 @@ async function render(request: Extract<RenderWorkerRequest, { kind: 'render' }>)
   const notebook = await getNotebook(renderPath, themeId);
   const engine = notebook.getNoteMarkdownEngine(renderPath);
   const baseHref = resourceUrl(path.join(path.dirname(renderPath), path.sep));
+  if (request.fragmentOnly) {
+    // SAME Crossnote enhancement/sanitization and deferred KaTeX restoration.
+    // Skip page-template generation, entity encoding, splitting and IPC copies.
+    const html = restoreDeferredMath(await renderReviewFragment(engine, request.text));
+    return { totalLineCount: lineCount(request.text), baseHref, themeId,
+      html, requiresFullRuntime: requiresCrossnoteInstall(html) };
+  }
   const config: WebviewConfig = {
     ...notebook.config,
     sourceUri: resourceUrl(renderPath),
@@ -448,7 +460,7 @@ async function render(request: Extract<RenderWorkerRequest, { kind: 'render' }>)
     const runtime: PreviewRuntime = leanTemplate ? 'lean' : 'crossnote';
     installedPreviews.set(request.tabId, { blocks, runtime });
     const page = leanTemplate ?? fullTemplate();
-    return { ...common, template: page, html };
+    return { ...common, template: page, html, runtime };
   }
 
   // lean page에서 편집 중 Mermaid 같은 client-rendered 도해가 생기면 그 page에는
@@ -493,8 +505,7 @@ async function search(request: Extract<RenderWorkerRequest, { kind: 'search' }>)
   visibleIndexes.set(request.documentPath, cached);
   while (visibleIndexes.size > MAX_VISIBLE_INDEXES) {
     const oldest = visibleIndexes.keys().next().value;
-    if (typeof oldest !== 'string') break;
-    visibleIndexes.delete(oldest);
+    if (typeof oldest === 'string') visibleIndexes.delete(oldest);
   }
   return searchVisibleText(cached.index, request.query, request.limit);
 }

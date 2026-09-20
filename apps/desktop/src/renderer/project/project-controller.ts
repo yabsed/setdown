@@ -9,6 +9,7 @@ import { ExplorerController } from './explorer/explorer-controller';
 import { project, rememberProjectState, type ProjectView } from './project-state.svelte';
 import { SearchController } from './search/search-controller';
 import { SourceControlController } from './source-control/source-control-controller';
+import { reviewPresentationPort } from './source-control/review-presentation-port';
 
 type SearchTarget = Pick<ProjectSearchResult, 'surface' | 'line' | 'column' | 'lineOccurrence' | 'ordinal'>;
 type Options = {
@@ -31,14 +32,16 @@ export class ProjectController {
   private readonly searcher: SearchController;
   private readonly sourceControl: SourceControlController;
   private changeTimer?: number;
+  private readonly presentation: ReturnType<typeof reviewPresentationPort>;
 
   constructor(private readonly options: Options) {
+    this.presentation = reviewPresentationPort(options.desktop);
     this.explorer = new ExplorerController({ desktop: options.desktop, showDocument: options.showDocument,
       pathMoved: options.pathMoved, prepareRemove: options.prepareRemove });
     this.searcher = new SearchController({ desktop: options.desktop, documents: options.searchDocuments,
       // The composition root deactivates the old review only after a successful read.
       open: (path) => this.explorer.open(path), highlight: options.highlight });
-    this.sourceControl = new SourceControlController({ desktop: options.desktop,
+    this.sourceControl = new SourceControlController({ desktop: this.presentation.desktop,
       openWorkingTree: options.showDocument, activateWorkingTree: options.activateDocument,
       workingTreeBuffer: options.workingTreeBuffer, workingTreeChanged: options.workingTreeChanged,
       reviewChanged: options.reviewChanged });
@@ -116,7 +119,15 @@ export class ProjectController {
   toggleGitDiffMode = (): void => this.sourceControl.toggleDiffMode();
   showRenderedGitDiff = (): void => this.sourceControl.showRendered();
   changeGitWorkingTree = (text: string, edits?: WorkingTreeEdit[]): void => this.sourceControl.changeWorkingTree(text, edits);
-  previewMessage = (payload: PreviewMessage): boolean => this.sourceControl.previewMessage(payload);
+  previewMessage = (payload: PreviewMessage): boolean => {
+    this.presentation.receive(payload);
+    if (payload.message.type === 'marktex:review-presentation-error') {
+      if (project.gitDiffActive && project.gitDiffMode === 'rendered') this.sourceControl.toggleDiffMode();
+      project.error = String(payload.message.error ?? 'Could not present the review.');
+      return true;
+    }
+    return this.sourceControl.previewMessage(payload);
+  };
   applyTheme = (themeId: PreviewThemeId): Promise<void> => this.sourceControl.applyTheme(themeId);
   initializeGit = (): Promise<void> => this.sourceControl.initialize();
   stageGit = (paths: string[]): Promise<void> => this.sourceControl.stage(paths);

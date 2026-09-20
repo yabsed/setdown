@@ -53,8 +53,11 @@
   <section class="git-review" class:is-active={project.gitDiffActive}
     aria-hidden={!project.gitDiffActive} aria-label="Git diff review">
     <div class="git-review-body">
+      <!-- Keep the already painted source underneath the incoming native view.
+           Inert blocks input/accessibility after Esc without painting a blank. -->
       <div class="git-diff-source-layer"
-        class:is-active={project.gitDiffActive && project.gitDiffMode === 'source'
+        inert={!project.gitDiffActive || project.gitDiffMode !== 'source'}
+        class:is-active={project.gitDiffActive
           && project.gitDiff?.originalText !== null && project.gitDiff?.modifiedText !== null}>
         <GitDiffEditor {actions} />
       </div>
