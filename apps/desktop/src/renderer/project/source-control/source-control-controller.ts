@@ -30,6 +30,11 @@ type ReviewReadingState = {
   observationId: number | null;
   observedId: string | null;
   sequence: number;
+  primeRequestId: number;
+  primeTargetId: string | null;
+  primedId: string | null;
+  primedBounds: PreviewBounds | null;
+  primedSourceKey: string;
 };
 
 export class SourceControlController {
@@ -46,6 +51,7 @@ export class SourceControlController {
   private pendingPreviewPosition: { tabId: string; intent: 'source' | 'resume' } | null = null;
   private readonly readingStates = new Map<string, ReviewReadingState>();
   private observationSequence = 0;
+  private primeSequence = 0;
   private get viewport(): GitDiffViewportPort { return this.options.viewport ?? gitDiffViewport; }
   private themeId: PreviewThemeId | null = null;
   private overlayDepth = 0;
@@ -225,6 +231,15 @@ export class SourceControlController {
     if (!tab) return false;
     const message = payload.message;
     const reading = this.readingState(tab);
+    if (message.type === 'marktex:review-primed') {
+      if (payload.tabId === reading.primeTargetId
+        && Number(message.primeId) === reading.primeRequestId) {
+        reading.primedId = payload.tabId;
+        reading.primedBounds = this.bounds ? { ...this.bounds } : null;
+        reading.primedSourceKey = this.viewportKey(reading.source);
+      }
+      return true;
+    }
     if (message.type === 'marktex:viewport-state') {
       if (tab.mode !== 'rendered' || message.observationId !== reading.observationId
         || reading.observationId === null || payload.tabId !== reading.observedId
@@ -416,7 +431,9 @@ export class SourceControlController {
     let state = this.readingStates.get(tab.id);
     if (!state) {
       state = { source: reviewViewport(tab.line), viewer: null, presentedId: null,
-        presentedBounds: null, observationId: null, observedId: null, sequence: 0 };
+        presentedBounds: null, observationId: null, observedId: null, sequence: 0,
+        primeRequestId: 0, primeTargetId: null, primedId: null,
+        primedBounds: null, primedSourceKey: '' };
       this.readingStates.set(tab.id, state);
     }
     return state;
@@ -455,7 +472,12 @@ export class SourceControlController {
     const samePage = reading.presentedId === shownId;
     const sameSize = reading.presentedBounds?.width === this.bounds.width
       && reading.presentedBounds?.height === this.bounds.height;
-    if (pending.intent === 'source' || !samePage || !sameSize) {
+    const sourceAlreadyPrimed = pending.intent === 'source'
+      && reading.primedId === shownId
+      && reading.primedSourceKey === this.viewportKey(reading.source)
+      && reading.primedBounds?.width === this.bounds.width
+      && reading.primedBounds?.height === this.bounds.height;
+    if (!sourceAlreadyPrimed && (pending.intent === 'source' || !samePage || !sameSize)) {
       this.options.desktop.sendPreviewCommand(shownId, reviewPositionCommand(
         pending.intent === 'source' ? reading.source : reading.viewer ?? reading.source));
     }
@@ -485,13 +507,23 @@ export class SourceControlController {
     });
   }
 
+  private viewportKey(viewport: ReviewViewport): string {
+    return JSON.stringify([viewport.sourceSide, viewport.anchor.sourceLine,
+      viewport.anchor.sourceColumn ?? 0, viewport.anchor.yRatio,
+      viewport.blockOffset ?? -1, viewport.band.map((line) => [line.sourceLine, line.yRatio])]);
+  }
+
   private primePreview(tab: GitDiffTabState, previewId: string, target?: ReviewViewport): void {
     if (!this.bounds || !project.gitDiffActive || this.activeTab()?.id !== tab.id) return;
     const reading = this.readingState(tab);
     const viewport = target ?? (tab.mode === 'source'
       ? this.viewport.read(tab.id) ?? reading.source : reading.viewer ?? reading.source);
+    const primeId = ++this.primeSequence;
+    reading.primeRequestId = primeId;
+    reading.primeTargetId = previewId;
     this.options.desktop.sendPreviewCommand(previewId, {
-      command: 'marktex:prime-review', bounds: { ...this.bounds }, position: reviewPositionCommand(viewport),
+      command: 'marktex:prime-review', primeId, bounds: { ...this.bounds },
+      position: reviewPositionCommand(viewport),
     });
   }
 
