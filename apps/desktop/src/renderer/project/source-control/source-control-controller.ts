@@ -229,7 +229,7 @@ export class SourceControlController {
     if (!this.renderable(diff)) return;
     if (!sameReviewContent(tab.diff, diff)) { tab.diff = diff; this.invalidatePreview(tab); }
     const reading = this.readingState(tab);
-    const source = this.viewport.read(tab.id) ?? reading.source;
+    const source = this.viewport.read(tab.id) ?? reviewViewport(tab.line);
     reading.source = { ...source, anchor: { ...source.anchor }, band: source.band.map((sample) => ({ ...sample })) };
     reading.viewer = null;
     reading.observationId = null;
@@ -334,6 +334,7 @@ export class SourceControlController {
     this.options.desktop.showPreview(null, null);
     this.overlayFrozen = false;
     this.resetActiveState();
+    this.options.desktop.updateGitReviewState(null);
     this.options.reviewChanged(false, false);
     project.commitMessage = '';
   };
@@ -499,12 +500,16 @@ export class SourceControlController {
 
   private cancelViewerRequest(): boolean {
     const tab = this.activeTab();
-    if (!tab || !this.transition.forTab(tab.id)) return false;
-    this.presentation.cancel();
+    const pending = !!tab && this.transition.forTab(tab.id);
+    // Clear a previous tab's error too. A cancelled request never moves the
+    // source cursor or consumes a new editor event.
     this.transition.cancel();
-    this.pendingPreviewPosition = null;
-    this.copyPreviewState(tab);
-    return true;
+    if (pending) {
+      this.presentation.cancel();
+      this.pendingPreviewPosition = null;
+      this.copyPreviewState(tab!);
+    }
+    return pending;
   }
 
   private wantsViewer(tab: GitDiffTabState): boolean {
