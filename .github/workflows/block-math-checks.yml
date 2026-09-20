@@ -22,7 +22,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
       PUPPETEER_SKIP_DOWNLOAD: '1'
     steps:
       - uses: actions/checkout@v4
@@ -32,21 +31,46 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - id: install
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          node node_modules/electron/install.js
       - name: Full project typecheck
         run: npm run typecheck
-      - name: Full Vitest suite including Crossnote integration
+      - name: Actual Crossnote integration and changed-unit checks
+        working-directory: apps/desktop
+        run: npm test -- src/main/preview/fast-block-math.test.ts src/main/preview/deferred-math.test.ts src/main/preview/block-math-integration.test.ts
+      - name: Full Vitest suite
+        id: suite
         working-directory: apps/desktop
         run: npm test -- --maxWorkers=2
+      # A failing full suite remains a failing job. Still collect build and
+      # performance evidence so an unrelated failure does not hide these checks.
       - name: Build
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run build
       - name: Actual Crossnote warm typesetting benchmark
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         working-directory: apps/desktop
         run: |
           node scripts/benchmark-block-math.cjs > block-math-benchmark.json
           cat block-math-benchmark.json
       - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         with:
           name: block-math-benchmark
           path: apps/desktop/block-math-benchmark.json
           retention-days: 14
+      - name: Check out unchanged baseline for failing-suite diagnosis
+        if: ${{ !cancelled() && steps.suite.outcome == 'failure' }}
+        uses: actions/checkout@v4
+        with:
+          ref: 222f58a65a0d48a2d703dfea2f8077e386bda1a2
+          path: .ci-baseline
+          persist-credentials: false
+      - name: Reproduce controller failures on unchanged baseline
+        if: ${{ !cancelled() && steps.suite.outcome == 'failure' }}
+        working-directory: .ci-baseline/apps/desktop
+        run: |
+          ln -s "$GITHUB_WORKSPACE/node_modules" ../../node_modules
+          npm test -- src/renderer/project/source-control/source-control-controller.test.ts --maxWorkers=2
