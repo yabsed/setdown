@@ -1,0 +1,5032 @@
+{
+  "baseCommit": "57729a8",
+  "fixture": "apps/desktop/test/fixtures/sample.md",
+  "metric": "Escape keydown to single capture completion; edited runs wait for latest paragraph before capture. Includes polling, IPC and readback; not monitor presentation.",
+  "groups": [
+    {
+      "readerIdleMs": 0,
+      "sourceIdleMs": 0,
+      "edits": false,
+      "successfulRuns": 3,
+      "mediansMs": {
+        "showMs": [
+          4,
+          3,
+          3,
+          2,
+          3
+        ],
+        "captureMs": [
+          60,
+          34,
+          30,
+          26,
+          24
+        ],
+        "doubleClickToEditorMs": [
+          210,
+          359,
+          29,
+          31,
+          31
+        ]
+      },
+      "rangesMs": {
+        "showMs": [
+          [
+            4,
+            59
+          ],
+          [
+            3,
+            3
+          ],
+          [
+            2,
+            3
+          ],
+          [
+            2,
+            3
+          ],
+          [
+            3,
+            3
+          ]
+        ],
+        "captureMs": [
+          [
+            58,
+            146
+          ],
+          [
+            31,
+            35
+          ],
+          [
+            24,
+            33
+          ],
+          [
+            22,
+            30
+          ],
+          [
+            19,
+            26
+          ]
+        ],
+        "doubleClickToEditorMs": [
+          [
+            195,
+            214
+          ],
+          [
+            345,
+            360
+          ],
+          [
+            26,
+            36
+          ],
+          [
+            29,
+            33
+          ],
+          [
+            27,
+            40
+          ]
+        ]
+      },
+      "runs": [
+        {
+          "readerIdle": 0,
+          "idle": 0,
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789929015580,
+              "showMs": 4,
+              "captureMs": 60,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 99,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929015584,
+                  "kind": "show",
+                  "tabId": "b727fcea-2f37-4516-9a76-960fc0d10029",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929015584,
+                  "kind": "show",
+                  "tabId": "b727fcea-2f37-4516-9a76-960fc0d10029",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929015585,
+                  "kind": "show",
+                  "tabId": "b727fcea-2f37-4516-9a76-960fc0d10029",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929015585,
+                  "kind": "show",
+                  "tabId": "b727fcea-2f37-4516-9a76-960fc0d10029",
+                  "sinceEscape": 5
+                }
+              ],
+              "doubleClickToEditorMs": 195
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789929016241,
+              "showMs": 3,
+              "captureMs": 34,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 416,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929016244,
+                  "kind": "show",
+                  "tabId": "b727fcea-2f37-4516-9a76-960fc0d10029",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929016244,
+                  "kind": "show",
+                  "tabId": "b727fcea-2f37-4516-9a76-960fc0d10029",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929016244,
+                  "kind": "show",
+                  "tabId": "b727fcea-2f37-4516-9a76-960fc0d10029",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929016245,
+                  "kind": "show",
+                  "tabId": "b727fcea-2f37-4516-9a76-960fc0d10029",
+                  "sinceEscape": 4
+                }
+              ],
+              "doubleClickToEditorMs": 345
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789929017709,
+              "showMs": 3,
+              "captureMs": 33,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 708,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929017712,
+                  "kind": "show",
+                  "tabId": "b727fcea-2f37-4516-9a76-960fc0d10029",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929017712,
+                  "kind": "show",
+                  "tabId": "b727fcea-2f37-4516-9a76-960fc0d10029",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929017712,
+                  "kind": "show",
+                  "tabId": "b727fcea-2f37-4516-9a76-960fc0d10029",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929017712,
+                  "kind": "show",
+                  "tabId": "b727fcea-2f37-4516-9a76-960fc0d10029",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 36
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789929018672,
+              "showMs": 3,
+              "captureMs": 22,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929018675,
+                  "kind": "show",
+                  "tabId": "b727fcea-2f37-4516-9a76-960fc0d10029",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929018675,
+                  "kind": "show",
+                  "tabId": "b727fcea-2f37-4516-9a76-960fc0d10029",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929018675,
+                  "kind": "show",
+                  "tabId": "b727fcea-2f37-4516-9a76-960fc0d10029",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929018675,
+                  "kind": "show",
+                  "tabId": "b727fcea-2f37-4516-9a76-960fc0d10029",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 33
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789929018791,
+              "showMs": 3,
+              "captureMs": 19,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929018794,
+                  "kind": "show",
+                  "tabId": "b727fcea-2f37-4516-9a76-960fc0d10029",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929018794,
+                  "kind": "show",
+                  "tabId": "b727fcea-2f37-4516-9a76-960fc0d10029",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929018794,
+                  "kind": "show",
+                  "tabId": "b727fcea-2f37-4516-9a76-960fc0d10029",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929018795,
+                  "kind": "show",
+                  "tabId": "b727fcea-2f37-4516-9a76-960fc0d10029",
+                  "sinceEscape": 4
+                }
+              ],
+              "doubleClickToEditorMs": 40
+            }
+          ],
+          "artifact": "apps/desktop/test-results/document-cycles-single-capture/sample-document-cycles-ord-03a2d-h-cycles-idle-0-edits-false/document-cycles.json"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 0,
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789929039002,
+              "showMs": 59,
+              "captureMs": 146,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 60,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929039005,
+                  "kind": "show",
+                  "tabId": null,
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929039005,
+                  "kind": "show",
+                  "tabId": null,
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929039005,
+                  "kind": "show",
+                  "tabId": null,
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929039061,
+                  "kind": "show",
+                  "tabId": "19b25576-1eb0-43d0-a29a-66f24182673b",
+                  "sinceEscape": 59
+                },
+                {
+                  "t": 1789929039061,
+                  "kind": "show",
+                  "tabId": "19b25576-1eb0-43d0-a29a-66f24182673b",
+                  "sinceEscape": 59
+                }
+              ],
+              "doubleClickToEditorMs": 214
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789929039927,
+              "showMs": 3,
+              "captureMs": 31,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 479,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929039930,
+                  "kind": "show",
+                  "tabId": "19b25576-1eb0-43d0-a29a-66f24182673b",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929039930,
+                  "kind": "show",
+                  "tabId": "19b25576-1eb0-43d0-a29a-66f24182673b",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929039930,
+                  "kind": "show",
+                  "tabId": "19b25576-1eb0-43d0-a29a-66f24182673b",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929039930,
+                  "kind": "show",
+                  "tabId": "19b25576-1eb0-43d0-a29a-66f24182673b",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 360
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789929041477,
+              "showMs": 3,
+              "captureMs": 30,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 760,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929041480,
+                  "kind": "show",
+                  "tabId": "19b25576-1eb0-43d0-a29a-66f24182673b",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929041480,
+                  "kind": "show",
+                  "tabId": "19b25576-1eb0-43d0-a29a-66f24182673b",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929041480,
+                  "kind": "show",
+                  "tabId": "19b25576-1eb0-43d0-a29a-66f24182673b",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929041480,
+                  "kind": "show",
+                  "tabId": "19b25576-1eb0-43d0-a29a-66f24182673b",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 29
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789929042083,
+              "showMs": 2,
+              "captureMs": 26,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929042085,
+                  "kind": "show",
+                  "tabId": "19b25576-1eb0-43d0-a29a-66f24182673b",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929042085,
+                  "kind": "show",
+                  "tabId": "19b25576-1eb0-43d0-a29a-66f24182673b",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929042085,
+                  "kind": "show",
+                  "tabId": "19b25576-1eb0-43d0-a29a-66f24182673b",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929042086,
+                  "kind": "show",
+                  "tabId": "19b25576-1eb0-43d0-a29a-66f24182673b",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 31
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789929042202,
+              "showMs": 3,
+              "captureMs": 24,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929042205,
+                  "kind": "show",
+                  "tabId": "19b25576-1eb0-43d0-a29a-66f24182673b",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929042205,
+                  "kind": "show",
+                  "tabId": "19b25576-1eb0-43d0-a29a-66f24182673b",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929042205,
+                  "kind": "show",
+                  "tabId": "19b25576-1eb0-43d0-a29a-66f24182673b",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929042205,
+                  "kind": "show",
+                  "tabId": "19b25576-1eb0-43d0-a29a-66f24182673b",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 31
+            }
+          ],
+          "artifact": "apps/desktop/test-results/document-cycles-single-capture/sample-document-cycles-ord-03a2d-h-cycles-idle-0-edits-false-repeat1/document-cycles.json"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 0,
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789929064401,
+              "showMs": 4,
+              "captureMs": 58,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 60,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929064405,
+                  "kind": "show",
+                  "tabId": "67ad4b7d-5496-4325-85f3-c10ef2b19c10",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929064405,
+                  "kind": "show",
+                  "tabId": "67ad4b7d-5496-4325-85f3-c10ef2b19c10",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929064406,
+                  "kind": "show",
+                  "tabId": "67ad4b7d-5496-4325-85f3-c10ef2b19c10",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929064406,
+                  "kind": "show",
+                  "tabId": "67ad4b7d-5496-4325-85f3-c10ef2b19c10",
+                  "sinceEscape": 5
+                }
+              ],
+              "doubleClickToEditorMs": 210
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789929065224,
+              "showMs": 3,
+              "captureMs": 35,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 479,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929065227,
+                  "kind": "show",
+                  "tabId": "67ad4b7d-5496-4325-85f3-c10ef2b19c10",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929065227,
+                  "kind": "show",
+                  "tabId": "67ad4b7d-5496-4325-85f3-c10ef2b19c10",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929065227,
+                  "kind": "show",
+                  "tabId": "67ad4b7d-5496-4325-85f3-c10ef2b19c10",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929065227,
+                  "kind": "show",
+                  "tabId": "67ad4b7d-5496-4325-85f3-c10ef2b19c10",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 359
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789929066783,
+              "showMs": 2,
+              "captureMs": 24,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 760,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929066785,
+                  "kind": "show",
+                  "tabId": "67ad4b7d-5496-4325-85f3-c10ef2b19c10",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929066786,
+                  "kind": "show",
+                  "tabId": "67ad4b7d-5496-4325-85f3-c10ef2b19c10",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929066786,
+                  "kind": "show",
+                  "tabId": "67ad4b7d-5496-4325-85f3-c10ef2b19c10",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929066786,
+                  "kind": "show",
+                  "tabId": "67ad4b7d-5496-4325-85f3-c10ef2b19c10",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 26
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789929067378,
+              "showMs": 2,
+              "captureMs": 30,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929067380,
+                  "kind": "show",
+                  "tabId": "67ad4b7d-5496-4325-85f3-c10ef2b19c10",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929067380,
+                  "kind": "show",
+                  "tabId": "67ad4b7d-5496-4325-85f3-c10ef2b19c10",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929067380,
+                  "kind": "show",
+                  "tabId": "67ad4b7d-5496-4325-85f3-c10ef2b19c10",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929067381,
+                  "kind": "show",
+                  "tabId": "67ad4b7d-5496-4325-85f3-c10ef2b19c10",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 29
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789929067499,
+              "showMs": 3,
+              "captureMs": 26,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929067502,
+                  "kind": "show",
+                  "tabId": "67ad4b7d-5496-4325-85f3-c10ef2b19c10",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929067502,
+                  "kind": "show",
+                  "tabId": "67ad4b7d-5496-4325-85f3-c10ef2b19c10",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929067502,
+                  "kind": "show",
+                  "tabId": "67ad4b7d-5496-4325-85f3-c10ef2b19c10",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929067502,
+                  "kind": "show",
+                  "tabId": "67ad4b7d-5496-4325-85f3-c10ef2b19c10",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 27
+            }
+          ],
+          "artifact": "apps/desktop/test-results/document-cycles-single-capture/sample-document-cycles-ord-03a2d-h-cycles-idle-0-edits-false-repeat2/document-cycles.json"
+        }
+      ]
+    },
+    {
+      "readerIdleMs": 0,
+      "sourceIdleMs": 0,
+      "edits": true,
+      "successfulRuns": 3,
+      "mediansMs": {
+        "showMs": [
+          5,
+          4,
+          4,
+          3,
+          3
+        ],
+        "captureMs": [
+          1129,
+          264,
+          247,
+          245,
+          230
+        ],
+        "doubleClickToEditorMs": [
+          28,
+          29,
+          16,
+          15,
+          12
+        ]
+      },
+      "rangesMs": {
+        "showMs": [
+          [
+            4,
+            6
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            4,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            3,
+            4
+          ]
+        ],
+        "captureMs": [
+          [
+            540,
+            1144
+          ],
+          [
+            242,
+            279
+          ],
+          [
+            235,
+            261
+          ],
+          [
+            245,
+            261
+          ],
+          [
+            224,
+            231
+          ]
+        ],
+        "doubleClickToEditorMs": [
+          [
+            26,
+            47
+          ],
+          [
+            15,
+            33
+          ],
+          [
+            15,
+            31
+          ],
+          [
+            12,
+            27
+          ],
+          [
+            11,
+            24
+          ]
+        ]
+      },
+      "runs": [
+        {
+          "readerIdle": 0,
+          "idle": 0,
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789929020253,
+              "showMs": 6,
+              "captureMs": 1144,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929020228,
+                  "kind": "show",
+                  "tabId": null,
+                  "sinceEscape": -25
+                },
+                {
+                  "t": 1789929020259,
+                  "kind": "show",
+                  "tabId": "1d0f8a89-a241-408e-a379-08f44b9b8b53",
+                  "sinceEscape": 6
+                },
+                {
+                  "t": 1789929020259,
+                  "kind": "show",
+                  "tabId": "1d0f8a89-a241-408e-a379-08f44b9b8b53",
+                  "sinceEscape": 6
+                },
+                {
+                  "t": 1789929020260,
+                  "kind": "show",
+                  "tabId": "1d0f8a89-a241-408e-a379-08f44b9b8b53",
+                  "sinceEscape": 7
+                },
+                {
+                  "t": 1789929021195,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 23,
+                  "sinceEscape": 942
+                },
+                {
+                  "t": 1789929021196,
+                  "kind": "show",
+                  "tabId": "1d0f8a89-a241-408e-a379-08f44b9b8b53",
+                  "sinceEscape": 943
+                }
+              ],
+              "doubleClickToEditorMs": 47
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789929021562,
+              "showMs": 4,
+              "captureMs": 279,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929021566,
+                  "kind": "show",
+                  "tabId": "1d0f8a89-a241-408e-a379-08f44b9b8b53",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929021566,
+                  "kind": "show",
+                  "tabId": "1d0f8a89-a241-408e-a379-08f44b9b8b53",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929021567,
+                  "kind": "show",
+                  "tabId": "1d0f8a89-a241-408e-a379-08f44b9b8b53",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929021632,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 46,
+                  "sinceEscape": 70
+                },
+                {
+                  "t": 1789929021633,
+                  "kind": "show",
+                  "tabId": "1d0f8a89-a241-408e-a379-08f44b9b8b53",
+                  "sinceEscape": 71
+                }
+              ],
+              "doubleClickToEditorMs": 29
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789929021981,
+              "showMs": 4,
+              "captureMs": 261,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929021985,
+                  "kind": "show",
+                  "tabId": "1d0f8a89-a241-408e-a379-08f44b9b8b53",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929021985,
+                  "kind": "show",
+                  "tabId": "1d0f8a89-a241-408e-a379-08f44b9b8b53",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929021986,
+                  "kind": "show",
+                  "tabId": "1d0f8a89-a241-408e-a379-08f44b9b8b53",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929022031,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 69,
+                  "sinceEscape": 50
+                },
+                {
+                  "t": 1789929022031,
+                  "kind": "show",
+                  "tabId": "1d0f8a89-a241-408e-a379-08f44b9b8b53",
+                  "sinceEscape": 50
+                }
+              ],
+              "doubleClickToEditorMs": 31
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789929022363,
+              "showMs": 3,
+              "captureMs": 245,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929022366,
+                  "kind": "show",
+                  "tabId": "1d0f8a89-a241-408e-a379-08f44b9b8b53",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929022366,
+                  "kind": "show",
+                  "tabId": "1d0f8a89-a241-408e-a379-08f44b9b8b53",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929022367,
+                  "kind": "show",
+                  "tabId": "1d0f8a89-a241-408e-a379-08f44b9b8b53",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929022414,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 92,
+                  "sinceEscape": 51
+                },
+                {
+                  "t": 1789929022414,
+                  "kind": "show",
+                  "tabId": "1d0f8a89-a241-408e-a379-08f44b9b8b53",
+                  "sinceEscape": 51
+                }
+              ],
+              "doubleClickToEditorMs": 27
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789929022729,
+              "showMs": 3,
+              "captureMs": 231,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929022732,
+                  "kind": "show",
+                  "tabId": "1d0f8a89-a241-408e-a379-08f44b9b8b53",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929022732,
+                  "kind": "show",
+                  "tabId": "1d0f8a89-a241-408e-a379-08f44b9b8b53",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929022733,
+                  "kind": "show",
+                  "tabId": "1d0f8a89-a241-408e-a379-08f44b9b8b53",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929022775,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 115,
+                  "sinceEscape": 46
+                },
+                {
+                  "t": 1789929022776,
+                  "kind": "show",
+                  "tabId": "1d0f8a89-a241-408e-a379-08f44b9b8b53",
+                  "sinceEscape": 47
+                }
+              ],
+              "doubleClickToEditorMs": 24
+            }
+          ],
+          "artifact": "apps/desktop/test-results/document-cycles-single-capture/sample-document-cycles-ord-db7ca-th-cycles-idle-0-edits-true/document-cycles.json"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 0,
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789929043619,
+              "showMs": 5,
+              "captureMs": 1129,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929043581,
+                  "kind": "show",
+                  "tabId": null,
+                  "sinceEscape": -38
+                },
+                {
+                  "t": 1789929043624,
+                  "kind": "show",
+                  "tabId": "b3ed7794-5992-4219-8844-c868578c728a",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929043624,
+                  "kind": "show",
+                  "tabId": "b3ed7794-5992-4219-8844-c868578c728a",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929043624,
+                  "kind": "show",
+                  "tabId": "b3ed7794-5992-4219-8844-c868578c728a",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929044552,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 23,
+                  "sinceEscape": 933
+                },
+                {
+                  "t": 1789929044553,
+                  "kind": "show",
+                  "tabId": "b3ed7794-5992-4219-8844-c868578c728a",
+                  "sinceEscape": 934
+                }
+              ],
+              "doubleClickToEditorMs": 28
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789929044894,
+              "showMs": 3,
+              "captureMs": 264,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929044897,
+                  "kind": "show",
+                  "tabId": "b3ed7794-5992-4219-8844-c868578c728a",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929044897,
+                  "kind": "show",
+                  "tabId": "b3ed7794-5992-4219-8844-c868578c728a",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929044898,
+                  "kind": "show",
+                  "tabId": "b3ed7794-5992-4219-8844-c868578c728a",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929044952,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 46,
+                  "sinceEscape": 58
+                },
+                {
+                  "t": 1789929044955,
+                  "kind": "show",
+                  "tabId": "b3ed7794-5992-4219-8844-c868578c728a",
+                  "sinceEscape": 61
+                }
+              ],
+              "doubleClickToEditorMs": 33
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789929045294,
+              "showMs": 4,
+              "captureMs": 247,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929045298,
+                  "kind": "show",
+                  "tabId": "b3ed7794-5992-4219-8844-c868578c728a",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929045298,
+                  "kind": "show",
+                  "tabId": "b3ed7794-5992-4219-8844-c868578c728a",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929045299,
+                  "kind": "show",
+                  "tabId": "b3ed7794-5992-4219-8844-c868578c728a",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929045344,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 69,
+                  "sinceEscape": 50
+                },
+                {
+                  "t": 1789929045345,
+                  "kind": "show",
+                  "tabId": "b3ed7794-5992-4219-8844-c868578c728a",
+                  "sinceEscape": 51
+                }
+              ],
+              "doubleClickToEditorMs": 16
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789929045639,
+              "showMs": 3,
+              "captureMs": 261,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929045642,
+                  "kind": "show",
+                  "tabId": "b3ed7794-5992-4219-8844-c868578c728a",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929045642,
+                  "kind": "show",
+                  "tabId": "b3ed7794-5992-4219-8844-c868578c728a",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929045642,
+                  "kind": "show",
+                  "tabId": "b3ed7794-5992-4219-8844-c868578c728a",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929045687,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 92,
+                  "sinceEscape": 48
+                },
+                {
+                  "t": 1789929045688,
+                  "kind": "show",
+                  "tabId": "b3ed7794-5992-4219-8844-c868578c728a",
+                  "sinceEscape": 49
+                }
+              ],
+              "doubleClickToEditorMs": 15
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789929046018,
+              "showMs": 4,
+              "captureMs": 224,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929046022,
+                  "kind": "show",
+                  "tabId": "b3ed7794-5992-4219-8844-c868578c728a",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929046022,
+                  "kind": "show",
+                  "tabId": "b3ed7794-5992-4219-8844-c868578c728a",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929046023,
+                  "kind": "show",
+                  "tabId": "b3ed7794-5992-4219-8844-c868578c728a",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929046062,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 115,
+                  "sinceEscape": 44
+                },
+                {
+                  "t": 1789929046063,
+                  "kind": "show",
+                  "tabId": "b3ed7794-5992-4219-8844-c868578c728a",
+                  "sinceEscape": 45
+                }
+              ],
+              "doubleClickToEditorMs": 12
+            }
+          ],
+          "artifact": "apps/desktop/test-results/document-cycles-single-capture/sample-document-cycles-ord-db7ca-th-cycles-idle-0-edits-true-repeat1/document-cycles.json"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 0,
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789929068852,
+              "showMs": 4,
+              "captureMs": 540,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929068836,
+                  "kind": "show",
+                  "tabId": null,
+                  "sinceEscape": -16
+                },
+                {
+                  "t": 1789929068856,
+                  "kind": "show",
+                  "tabId": "b3721aa9-62cf-468c-9430-3d9e07390e3e",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929068857,
+                  "kind": "show",
+                  "tabId": "b3721aa9-62cf-468c-9430-3d9e07390e3e",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929068857,
+                  "kind": "show",
+                  "tabId": "b3721aa9-62cf-468c-9430-3d9e07390e3e",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929069350,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 23,
+                  "sinceEscape": 498
+                },
+                {
+                  "t": 1789929069351,
+                  "kind": "show",
+                  "tabId": "b3721aa9-62cf-468c-9430-3d9e07390e3e",
+                  "sinceEscape": 499
+                }
+              ],
+              "doubleClickToEditorMs": 26
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789929069684,
+              "showMs": 4,
+              "captureMs": 242,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929069688,
+                  "kind": "show",
+                  "tabId": "b3721aa9-62cf-468c-9430-3d9e07390e3e",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929069688,
+                  "kind": "show",
+                  "tabId": "b3721aa9-62cf-468c-9430-3d9e07390e3e",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929069689,
+                  "kind": "show",
+                  "tabId": "b3721aa9-62cf-468c-9430-3d9e07390e3e",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929069738,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 46,
+                  "sinceEscape": 54
+                },
+                {
+                  "t": 1789929069738,
+                  "kind": "show",
+                  "tabId": "b3721aa9-62cf-468c-9430-3d9e07390e3e",
+                  "sinceEscape": 54
+                }
+              ],
+              "doubleClickToEditorMs": 15
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789929070026,
+              "showMs": 4,
+              "captureMs": 235,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929070030,
+                  "kind": "show",
+                  "tabId": "b3721aa9-62cf-468c-9430-3d9e07390e3e",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929070030,
+                  "kind": "show",
+                  "tabId": "b3721aa9-62cf-468c-9430-3d9e07390e3e",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929070031,
+                  "kind": "show",
+                  "tabId": "b3721aa9-62cf-468c-9430-3d9e07390e3e",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929070074,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 69,
+                  "sinceEscape": 48
+                },
+                {
+                  "t": 1789929070075,
+                  "kind": "show",
+                  "tabId": "b3721aa9-62cf-468c-9430-3d9e07390e3e",
+                  "sinceEscape": 49
+                }
+              ],
+              "doubleClickToEditorMs": 15
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789929070350,
+              "showMs": 4,
+              "captureMs": 245,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929070354,
+                  "kind": "show",
+                  "tabId": "b3721aa9-62cf-468c-9430-3d9e07390e3e",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929070354,
+                  "kind": "show",
+                  "tabId": "b3721aa9-62cf-468c-9430-3d9e07390e3e",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929070355,
+                  "kind": "show",
+                  "tabId": "b3721aa9-62cf-468c-9430-3d9e07390e3e",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929070395,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 92,
+                  "sinceEscape": 45
+                },
+                {
+                  "t": 1789929070396,
+                  "kind": "show",
+                  "tabId": "b3721aa9-62cf-468c-9430-3d9e07390e3e",
+                  "sinceEscape": 46
+                }
+              ],
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789929070678,
+              "showMs": 3,
+              "captureMs": 230,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929070681,
+                  "kind": "show",
+                  "tabId": "b3721aa9-62cf-468c-9430-3d9e07390e3e",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929070682,
+                  "kind": "show",
+                  "tabId": "b3721aa9-62cf-468c-9430-3d9e07390e3e",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929070683,
+                  "kind": "show",
+                  "tabId": "b3721aa9-62cf-468c-9430-3d9e07390e3e",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929070722,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 115,
+                  "sinceEscape": 44
+                },
+                {
+                  "t": 1789929070722,
+                  "kind": "show",
+                  "tabId": "b3721aa9-62cf-468c-9430-3d9e07390e3e",
+                  "sinceEscape": 44
+                }
+              ],
+              "doubleClickToEditorMs": 11
+            }
+          ],
+          "artifact": "apps/desktop/test-results/document-cycles-single-capture/sample-document-cycles-ord-db7ca-th-cycles-idle-0-edits-true-repeat2/document-cycles.json"
+        }
+      ]
+    },
+    {
+      "readerIdleMs": 0,
+      "sourceIdleMs": 3000,
+      "edits": false,
+      "successfulRuns": 3,
+      "mediansMs": {
+        "showMs": [
+          4,
+          5,
+          2,
+          3,
+          2
+        ],
+        "captureMs": [
+          58,
+          31,
+          27,
+          24,
+          23
+        ],
+        "doubleClickToEditorMs": [
+          213,
+          370,
+          30,
+          31,
+          29
+        ]
+      },
+      "rangesMs": {
+        "showMs": [
+          [
+            4,
+            4
+          ],
+          [
+            3,
+            5
+          ],
+          [
+            2,
+            3
+          ],
+          [
+            3,
+            3
+          ],
+          [
+            2,
+            3
+          ]
+        ],
+        "captureMs": [
+          [
+            56,
+            59
+          ],
+          [
+            31,
+            36
+          ],
+          [
+            26,
+            32
+          ],
+          [
+            24,
+            33
+          ],
+          [
+            22,
+            28
+          ]
+        ],
+        "doubleClickToEditorMs": [
+          [
+            210,
+            213
+          ],
+          [
+            362,
+            375
+          ],
+          [
+            26,
+            34
+          ],
+          [
+            28,
+            32
+          ],
+          [
+            28,
+            29
+          ]
+        ]
+      },
+      "runs": [
+        {
+          "readerIdle": 0,
+          "idle": 3000,
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789929027232,
+              "showMs": 4,
+              "captureMs": 58,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 60,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929027236,
+                  "kind": "show",
+                  "tabId": "8e60344b-b169-45ef-9e42-d85cb4b402cd",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929027236,
+                  "kind": "show",
+                  "tabId": "8e60344b-b169-45ef-9e42-d85cb4b402cd",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929027236,
+                  "kind": "show",
+                  "tabId": "8e60344b-b169-45ef-9e42-d85cb4b402cd",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929027236,
+                  "kind": "show",
+                  "tabId": "8e60344b-b169-45ef-9e42-d85cb4b402cd",
+                  "sinceEscape": 4
+                }
+              ],
+              "doubleClickToEditorMs": 213
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789929028072,
+              "showMs": 3,
+              "captureMs": 36,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 479,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929028075,
+                  "kind": "show",
+                  "tabId": "8e60344b-b169-45ef-9e42-d85cb4b402cd",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929028075,
+                  "kind": "show",
+                  "tabId": "8e60344b-b169-45ef-9e42-d85cb4b402cd",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929028075,
+                  "kind": "show",
+                  "tabId": "8e60344b-b169-45ef-9e42-d85cb4b402cd",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929028075,
+                  "kind": "show",
+                  "tabId": "8e60344b-b169-45ef-9e42-d85cb4b402cd",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 362
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789929029648,
+              "showMs": 2,
+              "captureMs": 27,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 760,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929029650,
+                  "kind": "show",
+                  "tabId": "8e60344b-b169-45ef-9e42-d85cb4b402cd",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929029651,
+                  "kind": "show",
+                  "tabId": "8e60344b-b169-45ef-9e42-d85cb4b402cd",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929029651,
+                  "kind": "show",
+                  "tabId": "8e60344b-b169-45ef-9e42-d85cb4b402cd",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929029651,
+                  "kind": "show",
+                  "tabId": "8e60344b-b169-45ef-9e42-d85cb4b402cd",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 30
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789929030270,
+              "showMs": 3,
+              "captureMs": 24,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929030273,
+                  "kind": "show",
+                  "tabId": "8e60344b-b169-45ef-9e42-d85cb4b402cd",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929030273,
+                  "kind": "show",
+                  "tabId": "8e60344b-b169-45ef-9e42-d85cb4b402cd",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929030273,
+                  "kind": "show",
+                  "tabId": "8e60344b-b169-45ef-9e42-d85cb4b402cd",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929030273,
+                  "kind": "show",
+                  "tabId": "8e60344b-b169-45ef-9e42-d85cb4b402cd",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 31
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789929030387,
+              "showMs": 2,
+              "captureMs": 22,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929030389,
+                  "kind": "show",
+                  "tabId": "8e60344b-b169-45ef-9e42-d85cb4b402cd",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929030390,
+                  "kind": "show",
+                  "tabId": "8e60344b-b169-45ef-9e42-d85cb4b402cd",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929030390,
+                  "kind": "show",
+                  "tabId": "8e60344b-b169-45ef-9e42-d85cb4b402cd",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929030390,
+                  "kind": "show",
+                  "tabId": "8e60344b-b169-45ef-9e42-d85cb4b402cd",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 28
+            }
+          ],
+          "artifact": "apps/desktop/test-results/document-cycles-single-capture/sample-document-cycles-ord-6d33a-ycles-idle-3000-edits-false/document-cycles.json"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 3000,
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789929050517,
+              "showMs": 4,
+              "captureMs": 56,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 60,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929050521,
+                  "kind": "show",
+                  "tabId": "f4827e61-4d62-4e0a-a139-6213170582f2",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929050521,
+                  "kind": "show",
+                  "tabId": "f4827e61-4d62-4e0a-a139-6213170582f2",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929050521,
+                  "kind": "show",
+                  "tabId": "f4827e61-4d62-4e0a-a139-6213170582f2",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929050521,
+                  "kind": "show",
+                  "tabId": "f4827e61-4d62-4e0a-a139-6213170582f2",
+                  "sinceEscape": 4
+                }
+              ],
+              "doubleClickToEditorMs": 213
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789929051343,
+              "showMs": 5,
+              "captureMs": 31,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 479,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929051348,
+                  "kind": "show",
+                  "tabId": "f4827e61-4d62-4e0a-a139-6213170582f2",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929051348,
+                  "kind": "show",
+                  "tabId": "f4827e61-4d62-4e0a-a139-6213170582f2",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929051348,
+                  "kind": "show",
+                  "tabId": "f4827e61-4d62-4e0a-a139-6213170582f2",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929051349,
+                  "kind": "show",
+                  "tabId": "f4827e61-4d62-4e0a-a139-6213170582f2",
+                  "sinceEscape": 6
+                }
+              ],
+              "doubleClickToEditorMs": 370
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789929052932,
+              "showMs": 3,
+              "captureMs": 26,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 760,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929052935,
+                  "kind": "show",
+                  "tabId": "f4827e61-4d62-4e0a-a139-6213170582f2",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929052935,
+                  "kind": "show",
+                  "tabId": "f4827e61-4d62-4e0a-a139-6213170582f2",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929052935,
+                  "kind": "show",
+                  "tabId": "f4827e61-4d62-4e0a-a139-6213170582f2",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929052935,
+                  "kind": "show",
+                  "tabId": "f4827e61-4d62-4e0a-a139-6213170582f2",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 26
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789929053528,
+              "showMs": 3,
+              "captureMs": 33,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929053531,
+                  "kind": "show",
+                  "tabId": "f4827e61-4d62-4e0a-a139-6213170582f2",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929053531,
+                  "kind": "show",
+                  "tabId": "f4827e61-4d62-4e0a-a139-6213170582f2",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929053531,
+                  "kind": "show",
+                  "tabId": "f4827e61-4d62-4e0a-a139-6213170582f2",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929053531,
+                  "kind": "show",
+                  "tabId": "f4827e61-4d62-4e0a-a139-6213170582f2",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 28
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789929053648,
+              "showMs": 2,
+              "captureMs": 28,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929053650,
+                  "kind": "show",
+                  "tabId": "f4827e61-4d62-4e0a-a139-6213170582f2",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929053650,
+                  "kind": "show",
+                  "tabId": "f4827e61-4d62-4e0a-a139-6213170582f2",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929053651,
+                  "kind": "show",
+                  "tabId": "f4827e61-4d62-4e0a-a139-6213170582f2",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929053651,
+                  "kind": "show",
+                  "tabId": "f4827e61-4d62-4e0a-a139-6213170582f2",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 29
+            }
+          ],
+          "artifact": "apps/desktop/test-results/document-cycles-single-capture/sample-document-cycles-ord-6d33a-ycles-idle-3000-edits-false-repeat1/document-cycles.json"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 3000,
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789929075097,
+              "showMs": 4,
+              "captureMs": 59,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 60,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929075101,
+                  "kind": "show",
+                  "tabId": "ed6e6a05-c4f4-4112-ab7e-ea893a911548",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929075101,
+                  "kind": "show",
+                  "tabId": "ed6e6a05-c4f4-4112-ab7e-ea893a911548",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929075101,
+                  "kind": "show",
+                  "tabId": "ed6e6a05-c4f4-4112-ab7e-ea893a911548",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929075101,
+                  "kind": "show",
+                  "tabId": "ed6e6a05-c4f4-4112-ab7e-ea893a911548",
+                  "sinceEscape": 4
+                }
+              ],
+              "doubleClickToEditorMs": 210
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789929075926,
+              "showMs": 5,
+              "captureMs": 31,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 479,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929075931,
+                  "kind": "show",
+                  "tabId": "ed6e6a05-c4f4-4112-ab7e-ea893a911548",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929075931,
+                  "kind": "show",
+                  "tabId": "ed6e6a05-c4f4-4112-ab7e-ea893a911548",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929075931,
+                  "kind": "show",
+                  "tabId": "ed6e6a05-c4f4-4112-ab7e-ea893a911548",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929075931,
+                  "kind": "show",
+                  "tabId": "ed6e6a05-c4f4-4112-ab7e-ea893a911548",
+                  "sinceEscape": 5
+                }
+              ],
+              "doubleClickToEditorMs": 375
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789929077508,
+              "showMs": 2,
+              "captureMs": 32,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 760,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929077510,
+                  "kind": "show",
+                  "tabId": "ed6e6a05-c4f4-4112-ab7e-ea893a911548",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929077510,
+                  "kind": "show",
+                  "tabId": "ed6e6a05-c4f4-4112-ab7e-ea893a911548",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929077510,
+                  "kind": "show",
+                  "tabId": "ed6e6a05-c4f4-4112-ab7e-ea893a911548",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929077511,
+                  "kind": "show",
+                  "tabId": "ed6e6a05-c4f4-4112-ab7e-ea893a911548",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 34
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789929078141,
+              "showMs": 3,
+              "captureMs": 24,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929078144,
+                  "kind": "show",
+                  "tabId": "ed6e6a05-c4f4-4112-ab7e-ea893a911548",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929078144,
+                  "kind": "show",
+                  "tabId": "ed6e6a05-c4f4-4112-ab7e-ea893a911548",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929078144,
+                  "kind": "show",
+                  "tabId": "ed6e6a05-c4f4-4112-ab7e-ea893a911548",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929078144,
+                  "kind": "show",
+                  "tabId": "ed6e6a05-c4f4-4112-ab7e-ea893a911548",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 32
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789929078253,
+              "showMs": 3,
+              "captureMs": 23,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929078256,
+                  "kind": "show",
+                  "tabId": "ed6e6a05-c4f4-4112-ab7e-ea893a911548",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929078256,
+                  "kind": "show",
+                  "tabId": "ed6e6a05-c4f4-4112-ab7e-ea893a911548",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929078256,
+                  "kind": "show",
+                  "tabId": "ed6e6a05-c4f4-4112-ab7e-ea893a911548",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929078257,
+                  "kind": "show",
+                  "tabId": "ed6e6a05-c4f4-4112-ab7e-ea893a911548",
+                  "sinceEscape": 4
+                }
+              ],
+              "doubleClickToEditorMs": 29
+            }
+          ],
+          "artifact": "apps/desktop/test-results/document-cycles-single-capture/sample-document-cycles-ord-6d33a-ycles-idle-3000-edits-false-repeat2/document-cycles.json"
+        }
+      ]
+    },
+    {
+      "readerIdleMs": 0,
+      "sourceIdleMs": 3000,
+      "edits": true,
+      "successfulRuns": 3,
+      "mediansMs": {
+        "showMs": [
+          6,
+          3,
+          3,
+          4,
+          3
+        ],
+        "captureMs": [
+          1034,
+          251,
+          251,
+          289,
+          247
+        ],
+        "doubleClickToEditorMs": [
+          30,
+          37,
+          37,
+          22,
+          23
+        ]
+      },
+      "rangesMs": {
+        "showMs": [
+          [
+            3,
+            6
+          ],
+          [
+            3,
+            5
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            3,
+            4
+          ]
+        ],
+        "captureMs": [
+          [
+            1003,
+            1055
+          ],
+          [
+            247,
+            259
+          ],
+          [
+            249,
+            287
+          ],
+          [
+            286,
+            314
+          ],
+          [
+            239,
+            247
+          ]
+        ],
+        "doubleClickToEditorMs": [
+          [
+            29,
+            36
+          ],
+          [
+            24,
+            37
+          ],
+          [
+            34,
+            38
+          ],
+          [
+            15,
+            33
+          ],
+          [
+            17,
+            26
+          ]
+        ]
+      },
+      "runs": [
+        {
+          "readerIdle": 0,
+          "idle": 3000,
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789929034727,
+              "showMs": 3,
+              "captureMs": 1003,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929034730,
+                  "kind": "show",
+                  "tabId": "671943c5-4d53-45a3-9127-b17e40fa26f4",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929034730,
+                  "kind": "show",
+                  "tabId": "671943c5-4d53-45a3-9127-b17e40fa26f4",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929034731,
+                  "kind": "show",
+                  "tabId": "671943c5-4d53-45a3-9127-b17e40fa26f4",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929035537,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 23,
+                  "sinceEscape": 810
+                },
+                {
+                  "t": 1789929035537,
+                  "kind": "show",
+                  "tabId": "671943c5-4d53-45a3-9127-b17e40fa26f4",
+                  "sinceEscape": 810
+                }
+              ],
+              "doubleClickToEditorMs": 29
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789929035874,
+              "showMs": 3,
+              "captureMs": 251,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929035877,
+                  "kind": "show",
+                  "tabId": "671943c5-4d53-45a3-9127-b17e40fa26f4",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929035877,
+                  "kind": "show",
+                  "tabId": "671943c5-4d53-45a3-9127-b17e40fa26f4",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929035878,
+                  "kind": "show",
+                  "tabId": "671943c5-4d53-45a3-9127-b17e40fa26f4",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929035929,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 46,
+                  "sinceEscape": 55
+                },
+                {
+                  "t": 1789929035929,
+                  "kind": "show",
+                  "tabId": "671943c5-4d53-45a3-9127-b17e40fa26f4",
+                  "sinceEscape": 55
+                }
+              ],
+              "doubleClickToEditorMs": 24
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789929036248,
+              "showMs": 3,
+              "captureMs": 249,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929036251,
+                  "kind": "show",
+                  "tabId": "671943c5-4d53-45a3-9127-b17e40fa26f4",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929036252,
+                  "kind": "show",
+                  "tabId": "671943c5-4d53-45a3-9127-b17e40fa26f4",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929036252,
+                  "kind": "show",
+                  "tabId": "671943c5-4d53-45a3-9127-b17e40fa26f4",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929036298,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 69,
+                  "sinceEscape": 50
+                },
+                {
+                  "t": 1789929036298,
+                  "kind": "show",
+                  "tabId": "671943c5-4d53-45a3-9127-b17e40fa26f4",
+                  "sinceEscape": 50
+                }
+              ],
+              "doubleClickToEditorMs": 34
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789929036631,
+              "showMs": 4,
+              "captureMs": 286,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929036635,
+                  "kind": "show",
+                  "tabId": "671943c5-4d53-45a3-9127-b17e40fa26f4",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929036635,
+                  "kind": "show",
+                  "tabId": "671943c5-4d53-45a3-9127-b17e40fa26f4",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929036636,
+                  "kind": "show",
+                  "tabId": "671943c5-4d53-45a3-9127-b17e40fa26f4",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929036691,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 92,
+                  "sinceEscape": 60
+                },
+                {
+                  "t": 1789929036692,
+                  "kind": "show",
+                  "tabId": "671943c5-4d53-45a3-9127-b17e40fa26f4",
+                  "sinceEscape": 61
+                }
+              ],
+              "doubleClickToEditorMs": 15
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789929037040,
+              "showMs": 3,
+              "captureMs": 239,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929037043,
+                  "kind": "show",
+                  "tabId": "671943c5-4d53-45a3-9127-b17e40fa26f4",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929037043,
+                  "kind": "show",
+                  "tabId": "671943c5-4d53-45a3-9127-b17e40fa26f4",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929037044,
+                  "kind": "show",
+                  "tabId": "671943c5-4d53-45a3-9127-b17e40fa26f4",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929037095,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 115,
+                  "sinceEscape": 55
+                },
+                {
+                  "t": 1789929037096,
+                  "kind": "show",
+                  "tabId": "671943c5-4d53-45a3-9127-b17e40fa26f4",
+                  "sinceEscape": 56
+                }
+              ],
+              "doubleClickToEditorMs": 17
+            }
+          ],
+          "artifact": "apps/desktop/test-results/document-cycles-single-capture/sample-document-cycles-ord-b569b-cycles-idle-3000-edits-true/document-cycles.json"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 3000,
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789929057963,
+              "showMs": 6,
+              "captureMs": 1055,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929057969,
+                  "kind": "show",
+                  "tabId": "e61372a1-acfc-49ca-9830-dbeba384df7a",
+                  "sinceEscape": 6
+                },
+                {
+                  "t": 1789929057969,
+                  "kind": "show",
+                  "tabId": "e61372a1-acfc-49ca-9830-dbeba384df7a",
+                  "sinceEscape": 6
+                },
+                {
+                  "t": 1789929057969,
+                  "kind": "show",
+                  "tabId": "e61372a1-acfc-49ca-9830-dbeba384df7a",
+                  "sinceEscape": 6
+                },
+                {
+                  "t": 1789929058822,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 23,
+                  "sinceEscape": 859
+                },
+                {
+                  "t": 1789929058823,
+                  "kind": "show",
+                  "tabId": "e61372a1-acfc-49ca-9830-dbeba384df7a",
+                  "sinceEscape": 860
+                }
+              ],
+              "doubleClickToEditorMs": 30
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789929059144,
+              "showMs": 3,
+              "captureMs": 247,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929059147,
+                  "kind": "show",
+                  "tabId": "e61372a1-acfc-49ca-9830-dbeba384df7a",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929059147,
+                  "kind": "show",
+                  "tabId": "e61372a1-acfc-49ca-9830-dbeba384df7a",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929059148,
+                  "kind": "show",
+                  "tabId": "e61372a1-acfc-49ca-9830-dbeba384df7a",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929059192,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 46,
+                  "sinceEscape": 48
+                },
+                {
+                  "t": 1789929059192,
+                  "kind": "show",
+                  "tabId": "e61372a1-acfc-49ca-9830-dbeba384df7a",
+                  "sinceEscape": 48
+                }
+              ],
+              "doubleClickToEditorMs": 37
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789929059523,
+              "showMs": 3,
+              "captureMs": 251,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929059526,
+                  "kind": "show",
+                  "tabId": "e61372a1-acfc-49ca-9830-dbeba384df7a",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929059526,
+                  "kind": "show",
+                  "tabId": "e61372a1-acfc-49ca-9830-dbeba384df7a",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929059526,
+                  "kind": "show",
+                  "tabId": "e61372a1-acfc-49ca-9830-dbeba384df7a",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929059573,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 69,
+                  "sinceEscape": 50
+                },
+                {
+                  "t": 1789929059574,
+                  "kind": "show",
+                  "tabId": "e61372a1-acfc-49ca-9830-dbeba384df7a",
+                  "sinceEscape": 51
+                }
+              ],
+              "doubleClickToEditorMs": 38
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789929059912,
+              "showMs": 3,
+              "captureMs": 289,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929059915,
+                  "kind": "show",
+                  "tabId": "e61372a1-acfc-49ca-9830-dbeba384df7a",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929059915,
+                  "kind": "show",
+                  "tabId": "e61372a1-acfc-49ca-9830-dbeba384df7a",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929059916,
+                  "kind": "show",
+                  "tabId": "e61372a1-acfc-49ca-9830-dbeba384df7a",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929059966,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 92,
+                  "sinceEscape": 54
+                },
+                {
+                  "t": 1789929059967,
+                  "kind": "show",
+                  "tabId": "e61372a1-acfc-49ca-9830-dbeba384df7a",
+                  "sinceEscape": 55
+                }
+              ],
+              "doubleClickToEditorMs": 22
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789929060349,
+              "showMs": 3,
+              "captureMs": 247,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929060352,
+                  "kind": "show",
+                  "tabId": "e61372a1-acfc-49ca-9830-dbeba384df7a",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929060352,
+                  "kind": "show",
+                  "tabId": "e61372a1-acfc-49ca-9830-dbeba384df7a",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929060353,
+                  "kind": "show",
+                  "tabId": "e61372a1-acfc-49ca-9830-dbeba384df7a",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929060395,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 115,
+                  "sinceEscape": 46
+                },
+                {
+                  "t": 1789929060395,
+                  "kind": "show",
+                  "tabId": "e61372a1-acfc-49ca-9830-dbeba384df7a",
+                  "sinceEscape": 46
+                }
+              ],
+              "doubleClickToEditorMs": 23
+            }
+          ],
+          "artifact": "apps/desktop/test-results/document-cycles-single-capture/sample-document-cycles-ord-b569b-cycles-idle-3000-edits-true-repeat1/document-cycles.json"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 3000,
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789929082599,
+              "showMs": 6,
+              "captureMs": 1034,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929082605,
+                  "kind": "show",
+                  "tabId": "554c1210-ea53-4fae-b5ed-cdc174d7e1a5",
+                  "sinceEscape": 6
+                },
+                {
+                  "t": 1789929082605,
+                  "kind": "show",
+                  "tabId": "554c1210-ea53-4fae-b5ed-cdc174d7e1a5",
+                  "sinceEscape": 6
+                },
+                {
+                  "t": 1789929082606,
+                  "kind": "show",
+                  "tabId": "554c1210-ea53-4fae-b5ed-cdc174d7e1a5",
+                  "sinceEscape": 7
+                },
+                {
+                  "t": 1789929083438,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 23,
+                  "sinceEscape": 839
+                },
+                {
+                  "t": 1789929083438,
+                  "kind": "show",
+                  "tabId": "554c1210-ea53-4fae-b5ed-cdc174d7e1a5",
+                  "sinceEscape": 839
+                }
+              ],
+              "doubleClickToEditorMs": 36
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789929083767,
+              "showMs": 5,
+              "captureMs": 259,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929083772,
+                  "kind": "show",
+                  "tabId": "554c1210-ea53-4fae-b5ed-cdc174d7e1a5",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929083772,
+                  "kind": "show",
+                  "tabId": "554c1210-ea53-4fae-b5ed-cdc174d7e1a5",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929083772,
+                  "kind": "show",
+                  "tabId": "554c1210-ea53-4fae-b5ed-cdc174d7e1a5",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929083821,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 46,
+                  "sinceEscape": 54
+                },
+                {
+                  "t": 1789929083822,
+                  "kind": "show",
+                  "tabId": "554c1210-ea53-4fae-b5ed-cdc174d7e1a5",
+                  "sinceEscape": 55
+                }
+              ],
+              "doubleClickToEditorMs": 37
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789929084176,
+              "showMs": 4,
+              "captureMs": 287,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929084180,
+                  "kind": "show",
+                  "tabId": "554c1210-ea53-4fae-b5ed-cdc174d7e1a5",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929084180,
+                  "kind": "show",
+                  "tabId": "554c1210-ea53-4fae-b5ed-cdc174d7e1a5",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929084180,
+                  "kind": "show",
+                  "tabId": "554c1210-ea53-4fae-b5ed-cdc174d7e1a5",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929084231,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 69,
+                  "sinceEscape": 55
+                },
+                {
+                  "t": 1789929084231,
+                  "kind": "show",
+                  "tabId": "554c1210-ea53-4fae-b5ed-cdc174d7e1a5",
+                  "sinceEscape": 55
+                }
+              ],
+              "doubleClickToEditorMs": 37
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789929084645,
+              "showMs": 4,
+              "captureMs": 314,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929084649,
+                  "kind": "show",
+                  "tabId": "554c1210-ea53-4fae-b5ed-cdc174d7e1a5",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929084649,
+                  "kind": "show",
+                  "tabId": "554c1210-ea53-4fae-b5ed-cdc174d7e1a5",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929084650,
+                  "kind": "show",
+                  "tabId": "554c1210-ea53-4fae-b5ed-cdc174d7e1a5",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929084739,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 92,
+                  "sinceEscape": 94
+                },
+                {
+                  "t": 1789929084740,
+                  "kind": "show",
+                  "tabId": "554c1210-ea53-4fae-b5ed-cdc174d7e1a5",
+                  "sinceEscape": 95
+                }
+              ],
+              "doubleClickToEditorMs": 33
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789929085100,
+              "showMs": 4,
+              "captureMs": 247,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929085104,
+                  "kind": "show",
+                  "tabId": "554c1210-ea53-4fae-b5ed-cdc174d7e1a5",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929085104,
+                  "kind": "show",
+                  "tabId": "554c1210-ea53-4fae-b5ed-cdc174d7e1a5",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929085105,
+                  "kind": "show",
+                  "tabId": "554c1210-ea53-4fae-b5ed-cdc174d7e1a5",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929085151,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 115,
+                  "sinceEscape": 51
+                },
+                {
+                  "t": 1789929085154,
+                  "kind": "show",
+                  "tabId": "554c1210-ea53-4fae-b5ed-cdc174d7e1a5",
+                  "sinceEscape": 54
+                }
+              ],
+              "doubleClickToEditorMs": 26
+            }
+          ],
+          "artifact": "apps/desktop/test-results/document-cycles-single-capture/sample-document-cycles-ord-b569b-cycles-idle-3000-edits-true-repeat2/document-cycles.json"
+        }
+      ]
+    },
+    {
+      "readerIdleMs": 3000,
+      "sourceIdleMs": 0,
+      "edits": false,
+      "successfulRuns": 3,
+      "mediansMs": {
+        "showMs": [
+          3,
+          3,
+          2,
+          2,
+          3
+        ],
+        "captureMs": [
+          38,
+          31,
+          24,
+          27,
+          29
+        ],
+        "doubleClickToEditorMs": [
+          45,
+          29,
+          28,
+          29,
+          31
+        ]
+      },
+      "rangesMs": {
+        "showMs": [
+          [
+            3,
+            4
+          ],
+          [
+            3,
+            3
+          ],
+          [
+            2,
+            2
+          ],
+          [
+            2,
+            3
+          ],
+          [
+            2,
+            3
+          ]
+        ],
+        "captureMs": [
+          [
+            36,
+            39
+          ],
+          [
+            27,
+            43
+          ],
+          [
+            19,
+            26
+          ],
+          [
+            27,
+            41
+          ],
+          [
+            18,
+            40
+          ]
+        ],
+        "doubleClickToEditorMs": [
+          [
+            41,
+            57
+          ],
+          [
+            27,
+            30
+          ],
+          [
+            27,
+            37
+          ],
+          [
+            26,
+            31
+          ],
+          [
+            28,
+            34
+          ]
+        ]
+      },
+      "runs": [
+        {
+          "readerIdle": 3000,
+          "idle": 0,
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789929107934,
+              "showMs": 3,
+              "captureMs": 39,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929107937,
+                  "kind": "show",
+                  "tabId": "be4afade-73d2-4aac-bcfc-5bf1e7cbe73e",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929107937,
+                  "kind": "show",
+                  "tabId": "be4afade-73d2-4aac-bcfc-5bf1e7cbe73e",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929107938,
+                  "kind": "show",
+                  "tabId": "be4afade-73d2-4aac-bcfc-5bf1e7cbe73e",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929107938,
+                  "kind": "show",
+                  "tabId": "be4afade-73d2-4aac-bcfc-5bf1e7cbe73e",
+                  "sinceEscape": 4
+                }
+              ],
+              "doubleClickToEditorMs": 57
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789929108137,
+              "showMs": 3,
+              "captureMs": 31,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929108140,
+                  "kind": "show",
+                  "tabId": "be4afade-73d2-4aac-bcfc-5bf1e7cbe73e",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929108140,
+                  "kind": "show",
+                  "tabId": "be4afade-73d2-4aac-bcfc-5bf1e7cbe73e",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929108140,
+                  "kind": "show",
+                  "tabId": "be4afade-73d2-4aac-bcfc-5bf1e7cbe73e",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929108140,
+                  "kind": "show",
+                  "tabId": "be4afade-73d2-4aac-bcfc-5bf1e7cbe73e",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 30
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789929108292,
+              "showMs": 2,
+              "captureMs": 26,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929108294,
+                  "kind": "show",
+                  "tabId": "be4afade-73d2-4aac-bcfc-5bf1e7cbe73e",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929108295,
+                  "kind": "show",
+                  "tabId": "be4afade-73d2-4aac-bcfc-5bf1e7cbe73e",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929108295,
+                  "kind": "show",
+                  "tabId": "be4afade-73d2-4aac-bcfc-5bf1e7cbe73e",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929108295,
+                  "kind": "show",
+                  "tabId": "be4afade-73d2-4aac-bcfc-5bf1e7cbe73e",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 37
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789929108477,
+              "showMs": 2,
+              "captureMs": 41,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929108479,
+                  "kind": "show",
+                  "tabId": "be4afade-73d2-4aac-bcfc-5bf1e7cbe73e",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929108479,
+                  "kind": "show",
+                  "tabId": "be4afade-73d2-4aac-bcfc-5bf1e7cbe73e",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929108479,
+                  "kind": "show",
+                  "tabId": "be4afade-73d2-4aac-bcfc-5bf1e7cbe73e",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929108479,
+                  "kind": "show",
+                  "tabId": "be4afade-73d2-4aac-bcfc-5bf1e7cbe73e",
+                  "sinceEscape": 2
+                }
+              ],
+              "doubleClickToEditorMs": 29
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789929108628,
+              "showMs": 2,
+              "captureMs": 40,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929108630,
+                  "kind": "show",
+                  "tabId": "be4afade-73d2-4aac-bcfc-5bf1e7cbe73e",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929108631,
+                  "kind": "show",
+                  "tabId": "be4afade-73d2-4aac-bcfc-5bf1e7cbe73e",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929108631,
+                  "kind": "show",
+                  "tabId": "be4afade-73d2-4aac-bcfc-5bf1e7cbe73e",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929108631,
+                  "kind": "show",
+                  "tabId": "be4afade-73d2-4aac-bcfc-5bf1e7cbe73e",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 28
+            }
+          ],
+          "artifact": "apps/desktop/test-results/document-cycles-reader-warm/sample-document-cycles-ord-03a2d-h-cycles-idle-0-edits-false/document-cycles.json"
+        },
+        {
+          "readerIdle": 3000,
+          "idle": 0,
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789929161884,
+              "showMs": 4,
+              "captureMs": 38,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929161888,
+                  "kind": "show",
+                  "tabId": "d1ca476e-00c0-42e2-b3ec-ab380a9aaf37",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929161888,
+                  "kind": "show",
+                  "tabId": "d1ca476e-00c0-42e2-b3ec-ab380a9aaf37",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929161888,
+                  "kind": "show",
+                  "tabId": "d1ca476e-00c0-42e2-b3ec-ab380a9aaf37",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929161889,
+                  "kind": "show",
+                  "tabId": "d1ca476e-00c0-42e2-b3ec-ab380a9aaf37",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929161975,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "edit-at-anchor",
+                  "sinceEscape": 91
+                },
+                {
+                  "t": 1789929161976,
+                  "kind": "show",
+                  "tabId": null,
+                  "sinceEscape": 92
+                },
+                {
+                  "t": 1789929161976,
+                  "kind": "show",
+                  "tabId": null,
+                  "sinceEscape": 92
+                }
+              ],
+              "doubleClickToEditorMs": 45
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789929162140,
+              "showMs": 3,
+              "captureMs": 27,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929162143,
+                  "kind": "show",
+                  "tabId": "d1ca476e-00c0-42e2-b3ec-ab380a9aaf37",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929162143,
+                  "kind": "show",
+                  "tabId": "d1ca476e-00c0-42e2-b3ec-ab380a9aaf37",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929162143,
+                  "kind": "show",
+                  "tabId": "d1ca476e-00c0-42e2-b3ec-ab380a9aaf37",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929162143,
+                  "kind": "show",
+                  "tabId": "d1ca476e-00c0-42e2-b3ec-ab380a9aaf37",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 27
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789929162280,
+              "showMs": 2,
+              "captureMs": 24,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929162282,
+                  "kind": "show",
+                  "tabId": "d1ca476e-00c0-42e2-b3ec-ab380a9aaf37",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929162282,
+                  "kind": "show",
+                  "tabId": "d1ca476e-00c0-42e2-b3ec-ab380a9aaf37",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929162282,
+                  "kind": "show",
+                  "tabId": "d1ca476e-00c0-42e2-b3ec-ab380a9aaf37",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929162283,
+                  "kind": "show",
+                  "tabId": "d1ca476e-00c0-42e2-b3ec-ab380a9aaf37",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 28
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789929162413,
+              "showMs": 3,
+              "captureMs": 27,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929162416,
+                  "kind": "show",
+                  "tabId": "d1ca476e-00c0-42e2-b3ec-ab380a9aaf37",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929162416,
+                  "kind": "show",
+                  "tabId": "d1ca476e-00c0-42e2-b3ec-ab380a9aaf37",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929162416,
+                  "kind": "show",
+                  "tabId": "d1ca476e-00c0-42e2-b3ec-ab380a9aaf37",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929162416,
+                  "kind": "show",
+                  "tabId": "d1ca476e-00c0-42e2-b3ec-ab380a9aaf37",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 26
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789929162527,
+              "showMs": 3,
+              "captureMs": 29,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929162530,
+                  "kind": "show",
+                  "tabId": "d1ca476e-00c0-42e2-b3ec-ab380a9aaf37",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929162530,
+                  "kind": "show",
+                  "tabId": "d1ca476e-00c0-42e2-b3ec-ab380a9aaf37",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929162530,
+                  "kind": "show",
+                  "tabId": "d1ca476e-00c0-42e2-b3ec-ab380a9aaf37",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929162530,
+                  "kind": "show",
+                  "tabId": "d1ca476e-00c0-42e2-b3ec-ab380a9aaf37",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 34
+            }
+          ],
+          "artifact": "apps/desktop/test-results/document-cycles-reader-warm/sample-document-cycles-ord-03a2d-h-cycles-idle-0-edits-false-repeat2/document-cycles.json"
+        },
+        {
+          "readerIdle": 3000,
+          "idle": 0,
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789929203480,
+              "showMs": 3,
+              "captureMs": 36,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929203483,
+                  "kind": "show",
+                  "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929203483,
+                  "kind": "show",
+                  "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929203483,
+                  "kind": "show",
+                  "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929203484,
+                  "kind": "show",
+                  "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2",
+                  "sinceEscape": 4
+                }
+              ],
+              "doubleClickToEditorMs": 41
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789929203657,
+              "showMs": 3,
+              "captureMs": 43,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929203660,
+                  "kind": "show",
+                  "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929203660,
+                  "kind": "show",
+                  "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929203660,
+                  "kind": "show",
+                  "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929203660,
+                  "kind": "show",
+                  "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 29
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789929203798,
+              "showMs": 2,
+              "captureMs": 19,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929203800,
+                  "kind": "show",
+                  "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929203800,
+                  "kind": "show",
+                  "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929203800,
+                  "kind": "show",
+                  "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929203801,
+                  "kind": "show",
+                  "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2",
+                  "sinceEscape": 3
+                }
+              ],
+              "doubleClickToEditorMs": 27
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789929203928,
+              "showMs": 2,
+              "captureMs": 27,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929203930,
+                  "kind": "show",
+                  "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929203930,
+                  "kind": "show",
+                  "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929203930,
+                  "kind": "show",
+                  "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2",
+                  "sinceEscape": 2
+                },
+                {
+                  "t": 1789929203930,
+                  "kind": "show",
+                  "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2",
+                  "sinceEscape": 2
+                }
+              ],
+              "doubleClickToEditorMs": 31
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789929204055,
+              "showMs": 3,
+              "captureMs": 18,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929204058,
+                  "kind": "show",
+                  "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929204058,
+                  "kind": "show",
+                  "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929204058,
+                  "kind": "show",
+                  "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929204059,
+                  "kind": "show",
+                  "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2",
+                  "sinceEscape": 4
+                }
+              ],
+              "doubleClickToEditorMs": 31
+            }
+          ],
+          "trace": [
+            {
+              "t": 1789929200308,
+              "kind": "show",
+              "tabId": null
+            },
+            {
+              "t": 1789929200318,
+              "kind": "show",
+              "tabId": null
+            },
+            {
+              "t": 1789929200328,
+              "kind": "show",
+              "tabId": null
+            },
+            {
+              "t": 1789929200333,
+              "kind": "show",
+              "tabId": null
+            },
+            {
+              "t": 1789929200333,
+              "kind": "show",
+              "tabId": null
+            },
+            {
+              "t": 1789929200333,
+              "kind": "show",
+              "tabId": null
+            },
+            {
+              "t": 1789929200335,
+              "kind": "show",
+              "tabId": null
+            },
+            {
+              "t": 1789929200338,
+              "kind": "show",
+              "tabId": null
+            },
+            {
+              "t": 1789929200704,
+              "kind": "show",
+              "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2"
+            },
+            {
+              "t": 1789929203433,
+              "kind": "ack",
+              "id": 2,
+              "type": "edit-at-anchor"
+            },
+            {
+              "t": 1789929203433,
+              "kind": "show",
+              "tabId": null
+            },
+            {
+              "t": 1789929203433,
+              "kind": "show",
+              "tabId": null
+            },
+            {
+              "t": 1789929203483,
+              "kind": "show",
+              "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2"
+            },
+            {
+              "t": 1789929203483,
+              "kind": "show",
+              "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2"
+            },
+            {
+              "t": 1789929203483,
+              "kind": "show",
+              "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2"
+            },
+            {
+              "t": 1789929203484,
+              "kind": "show",
+              "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2"
+            },
+            {
+              "t": 1789929203629,
+              "kind": "ack",
+              "id": 2,
+              "type": "edit-at-anchor"
+            },
+            {
+              "t": 1789929203629,
+              "kind": "show",
+              "tabId": null
+            },
+            {
+              "t": 1789929203629,
+              "kind": "show",
+              "tabId": null
+            },
+            {
+              "t": 1789929203660,
+              "kind": "show",
+              "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2"
+            },
+            {
+              "t": 1789929203660,
+              "kind": "show",
+              "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2"
+            },
+            {
+              "t": 1789929203660,
+              "kind": "show",
+              "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2"
+            },
+            {
+              "t": 1789929203660,
+              "kind": "show",
+              "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2"
+            },
+            {
+              "t": 1789929203774,
+              "kind": "ack",
+              "id": 2,
+              "type": "edit-at-anchor"
+            },
+            {
+              "t": 1789929203775,
+              "kind": "show",
+              "tabId": null
+            },
+            {
+              "t": 1789929203775,
+              "kind": "show",
+              "tabId": null
+            },
+            {
+              "t": 1789929203800,
+              "kind": "show",
+              "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2"
+            },
+            {
+              "t": 1789929203800,
+              "kind": "show",
+              "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2"
+            },
+            {
+              "t": 1789929203800,
+              "kind": "show",
+              "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2"
+            },
+            {
+              "t": 1789929203801,
+              "kind": "show",
+              "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2"
+            },
+            {
+              "t": 1789929203912,
+              "kind": "ack",
+              "id": 2,
+              "type": "edit-at-anchor"
+            },
+            {
+              "t": 1789929203913,
+              "kind": "show",
+              "tabId": null
+            },
+            {
+              "t": 1789929203913,
+              "kind": "show",
+              "tabId": null
+            },
+            {
+              "t": 1789929203930,
+              "kind": "show",
+              "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2"
+            },
+            {
+              "t": 1789929203930,
+              "kind": "show",
+              "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2"
+            },
+            {
+              "t": 1789929203930,
+              "kind": "show",
+              "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2"
+            },
+            {
+              "t": 1789929203930,
+              "kind": "show",
+              "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2"
+            },
+            {
+              "t": 1789929204035,
+              "kind": "ack",
+              "id": 2,
+              "type": "edit-at-anchor"
+            },
+            {
+              "t": 1789929204035,
+              "kind": "show",
+              "tabId": null
+            },
+            {
+              "t": 1789929204035,
+              "kind": "show",
+              "tabId": null
+            },
+            {
+              "t": 1789929204058,
+              "kind": "show",
+              "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2"
+            },
+            {
+              "t": 1789929204058,
+              "kind": "show",
+              "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2"
+            },
+            {
+              "t": 1789929204058,
+              "kind": "show",
+              "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2"
+            },
+            {
+              "t": 1789929204059,
+              "kind": "show",
+              "tabId": "804fff6a-7c70-4f86-9aba-789e8993e4d2"
+            },
+            {
+              "t": 1789929204156,
+              "kind": "ack",
+              "id": 2,
+              "type": "edit-at-anchor"
+            },
+            {
+              "t": 1789929204157,
+              "kind": "show",
+              "tabId": null
+            },
+            {
+              "t": 1789929204157,
+              "kind": "show",
+              "tabId": null
+            }
+          ],
+          "artifact": "apps/desktop/test-results/document-cycles-reader-warm-recheck/sample-document-cycles-ord-03a2d-h-cycles-idle-0-edits-false/document-cycles.json"
+        }
+      ]
+    },
+    {
+      "readerIdleMs": 3000,
+      "sourceIdleMs": 0,
+      "edits": true,
+      "successfulRuns": 3,
+      "mediansMs": {
+        "showMs": [
+          5,
+          4,
+          4,
+          3,
+          3
+        ],
+        "captureMs": [
+          297,
+          245,
+          259,
+          254,
+          247
+        ],
+        "doubleClickToEditorMs": [
+          33,
+          35,
+          31,
+          33,
+          31
+        ]
+      },
+      "rangesMs": {
+        "showMs": [
+          [
+            3,
+            8
+          ],
+          [
+            4,
+            4
+          ],
+          [
+            4,
+            6
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            3,
+            3
+          ]
+        ],
+        "captureMs": [
+          [
+            291,
+            456
+          ],
+          [
+            245,
+            248
+          ],
+          [
+            242,
+            259
+          ],
+          [
+            247,
+            259
+          ],
+          [
+            242,
+            249
+          ]
+        ],
+        "doubleClickToEditorMs": [
+          [
+            32,
+            34
+          ],
+          [
+            27,
+            38
+          ],
+          [
+            28,
+            37
+          ],
+          [
+            25,
+            38
+          ],
+          [
+            22,
+            35
+          ]
+        ]
+      },
+      "runs": [
+        {
+          "readerIdle": 3000,
+          "idle": 0,
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789929112675,
+              "showMs": 8,
+              "captureMs": 456,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929112663,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "edit-at-anchor",
+                  "sinceEscape": -12
+                },
+                {
+                  "t": 1789929112669,
+                  "kind": "show",
+                  "tabId": null,
+                  "sinceEscape": -6
+                },
+                {
+                  "t": 1789929112669,
+                  "kind": "show",
+                  "tabId": null,
+                  "sinceEscape": -6
+                },
+                {
+                  "t": 1789929112683,
+                  "kind": "show",
+                  "tabId": "94eedafc-166d-4ebf-a832-55dd6751c3b8",
+                  "sinceEscape": 8
+                },
+                {
+                  "t": 1789929112683,
+                  "kind": "show",
+                  "tabId": "94eedafc-166d-4ebf-a832-55dd6751c3b8",
+                  "sinceEscape": 8
+                },
+                {
+                  "t": 1789929112684,
+                  "kind": "show",
+                  "tabId": "94eedafc-166d-4ebf-a832-55dd6751c3b8",
+                  "sinceEscape": 9
+                },
+                {
+                  "t": 1789929112896,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 23,
+                  "sinceEscape": 221
+                },
+                {
+                  "t": 1789929112896,
+                  "kind": "show",
+                  "tabId": "94eedafc-166d-4ebf-a832-55dd6751c3b8",
+                  "sinceEscape": 221
+                }
+              ],
+              "doubleClickToEditorMs": 34
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789929113279,
+              "showMs": 4,
+              "captureMs": 245,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929113283,
+                  "kind": "show",
+                  "tabId": "94eedafc-166d-4ebf-a832-55dd6751c3b8",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929113283,
+                  "kind": "show",
+                  "tabId": "94eedafc-166d-4ebf-a832-55dd6751c3b8",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929113283,
+                  "kind": "show",
+                  "tabId": "94eedafc-166d-4ebf-a832-55dd6751c3b8",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929113329,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 46,
+                  "sinceEscape": 50
+                },
+                {
+                  "t": 1789929113330,
+                  "kind": "show",
+                  "tabId": "94eedafc-166d-4ebf-a832-55dd6751c3b8",
+                  "sinceEscape": 51
+                }
+              ],
+              "doubleClickToEditorMs": 35
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789929113665,
+              "showMs": 4,
+              "captureMs": 259,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929113669,
+                  "kind": "show",
+                  "tabId": "94eedafc-166d-4ebf-a832-55dd6751c3b8",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929113669,
+                  "kind": "show",
+                  "tabId": "94eedafc-166d-4ebf-a832-55dd6751c3b8",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929113670,
+                  "kind": "show",
+                  "tabId": "94eedafc-166d-4ebf-a832-55dd6751c3b8",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929113726,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 69,
+                  "sinceEscape": 61
+                },
+                {
+                  "t": 1789929113727,
+                  "kind": "show",
+                  "tabId": "94eedafc-166d-4ebf-a832-55dd6751c3b8",
+                  "sinceEscape": 62
+                }
+              ],
+              "doubleClickToEditorMs": 31
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789929114061,
+              "showMs": 3,
+              "captureMs": 254,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929114064,
+                  "kind": "show",
+                  "tabId": "94eedafc-166d-4ebf-a832-55dd6751c3b8",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929114064,
+                  "kind": "show",
+                  "tabId": "94eedafc-166d-4ebf-a832-55dd6751c3b8",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929114065,
+                  "kind": "show",
+                  "tabId": "94eedafc-166d-4ebf-a832-55dd6751c3b8",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929114115,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 92,
+                  "sinceEscape": 54
+                },
+                {
+                  "t": 1789929114115,
+                  "kind": "show",
+                  "tabId": "94eedafc-166d-4ebf-a832-55dd6751c3b8",
+                  "sinceEscape": 54
+                }
+              ],
+              "doubleClickToEditorMs": 33
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789929114443,
+              "showMs": 3,
+              "captureMs": 247,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929114446,
+                  "kind": "show",
+                  "tabId": "94eedafc-166d-4ebf-a832-55dd6751c3b8",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929114447,
+                  "kind": "show",
+                  "tabId": "94eedafc-166d-4ebf-a832-55dd6751c3b8",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929114447,
+                  "kind": "show",
+                  "tabId": "94eedafc-166d-4ebf-a832-55dd6751c3b8",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929114492,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 115,
+                  "sinceEscape": 49
+                },
+                {
+                  "t": 1789929114492,
+                  "kind": "show",
+                  "tabId": "94eedafc-166d-4ebf-a832-55dd6751c3b8",
+                  "sinceEscape": 49
+                }
+              ],
+              "doubleClickToEditorMs": 35
+            }
+          ],
+          "artifact": "apps/desktop/test-results/document-cycles-reader-warm/sample-document-cycles-ord-db7ca-th-cycles-idle-0-edits-true/document-cycles.json"
+        },
+        {
+          "readerIdle": 3000,
+          "idle": 0,
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789929155626,
+              "showMs": 3,
+              "captureMs": 291,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929155629,
+                  "kind": "show",
+                  "tabId": "3aec4ada-1f16-43f1-b01d-41e5250e8fe3",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929155630,
+                  "kind": "show",
+                  "tabId": "3aec4ada-1f16-43f1-b01d-41e5250e8fe3",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929155631,
+                  "kind": "show",
+                  "tabId": "3aec4ada-1f16-43f1-b01d-41e5250e8fe3",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929155692,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 23,
+                  "sinceEscape": 66
+                },
+                {
+                  "t": 1789929155693,
+                  "kind": "show",
+                  "tabId": "3aec4ada-1f16-43f1-b01d-41e5250e8fe3",
+                  "sinceEscape": 67
+                }
+              ],
+              "doubleClickToEditorMs": 32
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789929156078,
+              "showMs": 4,
+              "captureMs": 248,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929156082,
+                  "kind": "show",
+                  "tabId": "3aec4ada-1f16-43f1-b01d-41e5250e8fe3",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929156082,
+                  "kind": "show",
+                  "tabId": "3aec4ada-1f16-43f1-b01d-41e5250e8fe3",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929156083,
+                  "kind": "show",
+                  "tabId": "3aec4ada-1f16-43f1-b01d-41e5250e8fe3",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929156130,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 46,
+                  "sinceEscape": 52
+                },
+                {
+                  "t": 1789929156131,
+                  "kind": "show",
+                  "tabId": "3aec4ada-1f16-43f1-b01d-41e5250e8fe3",
+                  "sinceEscape": 53
+                }
+              ],
+              "doubleClickToEditorMs": 38
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789929156464,
+              "showMs": 6,
+              "captureMs": 259,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929156470,
+                  "kind": "show",
+                  "tabId": "3aec4ada-1f16-43f1-b01d-41e5250e8fe3",
+                  "sinceEscape": 6
+                },
+                {
+                  "t": 1789929156470,
+                  "kind": "show",
+                  "tabId": "3aec4ada-1f16-43f1-b01d-41e5250e8fe3",
+                  "sinceEscape": 6
+                },
+                {
+                  "t": 1789929156471,
+                  "kind": "show",
+                  "tabId": "3aec4ada-1f16-43f1-b01d-41e5250e8fe3",
+                  "sinceEscape": 7
+                },
+                {
+                  "t": 1789929156519,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 69,
+                  "sinceEscape": 55
+                },
+                {
+                  "t": 1789929156520,
+                  "kind": "show",
+                  "tabId": "3aec4ada-1f16-43f1-b01d-41e5250e8fe3",
+                  "sinceEscape": 56
+                }
+              ],
+              "doubleClickToEditorMs": 28
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789929156848,
+              "showMs": 3,
+              "captureMs": 259,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929156851,
+                  "kind": "show",
+                  "tabId": "3aec4ada-1f16-43f1-b01d-41e5250e8fe3",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929156851,
+                  "kind": "show",
+                  "tabId": "3aec4ada-1f16-43f1-b01d-41e5250e8fe3",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929156852,
+                  "kind": "show",
+                  "tabId": "3aec4ada-1f16-43f1-b01d-41e5250e8fe3",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929156896,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 92,
+                  "sinceEscape": 48
+                },
+                {
+                  "t": 1789929156897,
+                  "kind": "show",
+                  "tabId": "3aec4ada-1f16-43f1-b01d-41e5250e8fe3",
+                  "sinceEscape": 49
+                }
+              ],
+              "doubleClickToEditorMs": 38
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789929157258,
+              "showMs": 3,
+              "captureMs": 242,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929157261,
+                  "kind": "show",
+                  "tabId": "3aec4ada-1f16-43f1-b01d-41e5250e8fe3",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929157261,
+                  "kind": "show",
+                  "tabId": "3aec4ada-1f16-43f1-b01d-41e5250e8fe3",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929157261,
+                  "kind": "show",
+                  "tabId": "3aec4ada-1f16-43f1-b01d-41e5250e8fe3",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929157303,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 115,
+                  "sinceEscape": 45
+                },
+                {
+                  "t": 1789929157304,
+                  "kind": "show",
+                  "tabId": "3aec4ada-1f16-43f1-b01d-41e5250e8fe3",
+                  "sinceEscape": 46
+                }
+              ],
+              "doubleClickToEditorMs": 22
+            }
+          ],
+          "artifact": "apps/desktop/test-results/document-cycles-reader-warm/sample-document-cycles-ord-db7ca-th-cycles-idle-0-edits-true-repeat1/document-cycles.json"
+        },
+        {
+          "readerIdle": 3000,
+          "idle": 0,
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789929166601,
+              "showMs": 5,
+              "captureMs": 297,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929166579,
+                  "kind": "show",
+                  "tabId": null,
+                  "sinceEscape": -22
+                },
+                {
+                  "t": 1789929166579,
+                  "kind": "show",
+                  "tabId": null,
+                  "sinceEscape": -22
+                },
+                {
+                  "t": 1789929166606,
+                  "kind": "show",
+                  "tabId": "6b7befe7-1c40-420b-8869-0d3f07a2c421",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929166606,
+                  "kind": "show",
+                  "tabId": "6b7befe7-1c40-420b-8869-0d3f07a2c421",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929166607,
+                  "kind": "show",
+                  "tabId": "6b7befe7-1c40-420b-8869-0d3f07a2c421",
+                  "sinceEscape": 6
+                },
+                {
+                  "t": 1789929166667,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 23,
+                  "sinceEscape": 66
+                },
+                {
+                  "t": 1789929166667,
+                  "kind": "show",
+                  "tabId": "6b7befe7-1c40-420b-8869-0d3f07a2c421",
+                  "sinceEscape": 66
+                }
+              ],
+              "doubleClickToEditorMs": 33
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789929167061,
+              "showMs": 4,
+              "captureMs": 245,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929167065,
+                  "kind": "show",
+                  "tabId": "6b7befe7-1c40-420b-8869-0d3f07a2c421",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929167065,
+                  "kind": "show",
+                  "tabId": "6b7befe7-1c40-420b-8869-0d3f07a2c421",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929167066,
+                  "kind": "show",
+                  "tabId": "6b7befe7-1c40-420b-8869-0d3f07a2c421",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929167111,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 46,
+                  "sinceEscape": 50
+                },
+                {
+                  "t": 1789929167112,
+                  "kind": "show",
+                  "tabId": "6b7befe7-1c40-420b-8869-0d3f07a2c421",
+                  "sinceEscape": 51
+                }
+              ],
+              "doubleClickToEditorMs": 27
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789929167447,
+              "showMs": 4,
+              "captureMs": 242,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929167451,
+                  "kind": "show",
+                  "tabId": "6b7befe7-1c40-420b-8869-0d3f07a2c421",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929167451,
+                  "kind": "show",
+                  "tabId": "6b7befe7-1c40-420b-8869-0d3f07a2c421",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929167451,
+                  "kind": "show",
+                  "tabId": "6b7befe7-1c40-420b-8869-0d3f07a2c421",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929167497,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 69,
+                  "sinceEscape": 50
+                },
+                {
+                  "t": 1789929167497,
+                  "kind": "show",
+                  "tabId": "6b7befe7-1c40-420b-8869-0d3f07a2c421",
+                  "sinceEscape": 50
+                }
+              ],
+              "doubleClickToEditorMs": 37
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789929167825,
+              "showMs": 4,
+              "captureMs": 247,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929167829,
+                  "kind": "show",
+                  "tabId": "6b7befe7-1c40-420b-8869-0d3f07a2c421",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929167829,
+                  "kind": "show",
+                  "tabId": "6b7befe7-1c40-420b-8869-0d3f07a2c421",
+                  "sinceEscape": 4
+                },
+                {
+                  "t": 1789929167830,
+                  "kind": "show",
+                  "tabId": "6b7befe7-1c40-420b-8869-0d3f07a2c421",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929167879,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 92,
+                  "sinceEscape": 54
+                },
+                {
+                  "t": 1789929167879,
+                  "kind": "show",
+                  "tabId": "6b7befe7-1c40-420b-8869-0d3f07a2c421",
+                  "sinceEscape": 54
+                }
+              ],
+              "doubleClickToEditorMs": 25
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789929168197,
+              "showMs": 3,
+              "captureMs": 249,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 744
+              },
+              "trace": [
+                {
+                  "t": 1789929168200,
+                  "kind": "show",
+                  "tabId": "6b7befe7-1c40-420b-8869-0d3f07a2c421",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929168200,
+                  "kind": "show",
+                  "tabId": "6b7befe7-1c40-420b-8869-0d3f07a2c421",
+                  "sinceEscape": 3
+                },
+                {
+                  "t": 1789929168202,
+                  "kind": "show",
+                  "tabId": "6b7befe7-1c40-420b-8869-0d3f07a2c421",
+                  "sinceEscape": 5
+                },
+                {
+                  "t": 1789929168242,
+                  "kind": "ack",
+                  "id": 2,
+                  "type": "marktex:html-updated",
+                  "revision": 115,
+                  "sinceEscape": 45
+                },
+                {
+                  "t": 1789929168242,
+                  "kind": "show",
+                  "tabId": "6b7befe7-1c40-420b-8869-0d3f07a2c421",
+                  "sinceEscape": 45
+                }
+              ],
+              "doubleClickToEditorMs": 31
+            }
+          ],
+          "artifact": "apps/desktop/test-results/document-cycles-reader-warm/sample-document-cycles-ord-db7ca-th-cycles-idle-0-edits-true-repeat2/document-cycles.json"
+        }
+      ]
+    }
+  ],
+  "failures": [
+    {
+      "readerIdle": 3000,
+      "idle": 0,
+      "edits": false,
+      "samples": [],
+      "artifact": "apps/desktop/test-results/document-cycles-reader-warm/sample-document-cycles-ord-03a2d-h-cycles-idle-0-edits-false-repeat1/document-cycles.json",
+      "failure": "First Esc did not make a native preview visible within 30 seconds; excluded from latency medians."
+    }
+  ]
+}

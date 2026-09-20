@@ -111,7 +111,7 @@ export function createLeanPreviewTemplate(
   deferOffscreenHtml = true,
 ): string | null {
   if (!canInlineInitialHtml(html)) return null;
-  const head = /<head\b[^>]*>([\s\S]*?)<\/head>/i.exec(crossnoteTemplate)?.[1];
+  const head = /<head\b[^>]*>([\s\S]*?)<\/head>/i.exec(withoutPreviewUiStyles(crossnoteTemplate))?.[1];
   if (head === undefined || /<script\b/i.test(head)) return null;
   const partition = deferOffscreenHtml
     ? partitionPreviewHtml(html)
@@ -144,12 +144,12 @@ export function replaceInitialPreviewHtml(template: string, html: string): strin
   return template.replace(carrier, (_whole, open: string, close: string) => `${open}${html}${close}`);
 }
 
-/** A rendered comparison has no Crossnote application UI. Its bundled UI CSS
- * causes global style invalidation on local row edits. Keep the independent
- * document, theme, code, callout, icon and KaTeX stylesheets, including MathML.
+/** Lean documents and rendered comparisons have no Crossnote application UI.
+ * Its bundled UI CSS causes global style invalidation on local content edits.
+ * Keep document, theme, code, callout, icon and KaTeX styles, including MathML.
  * Only strip the trusted UI link in the page head; authored body CSS is content.
  */
-export function reviewDocumentStyles(template: string): string {
+export function withoutPreviewUiStyles(template: string): string {
   return template.replace(/(<head\b[^>]*>)([\s\S]*?)(<\/head>)/i, (_whole, open, head: string, close) =>
     open + head.replace(/<link\b[^>]*>/gi, (link) =>
       /\shref\s*=\s*(["'])marktex-resource:\/\/[^"']*\/webview\/preview\.css(?:[?#][^"']*)?\1/i.test(link) ? '' : link) + close);

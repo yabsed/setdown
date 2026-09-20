@@ -5,6 +5,7 @@ import {
   type PreviewThemeId,
 } from '../../core/preview/preview-preferences';
 import type { WorkspaceTab } from '../../core/workspace/workspace-state';
+import { hasMarkdownPreview } from '../../core/document/document-capabilities';
 import type { DesktopPort } from '../ports/desktop-port';
 import { view } from '../view-state.svelte';
 import {
@@ -217,7 +218,7 @@ export class ReaderController {
       return;
     }
     if (message.type === 'marktex:viewport-state') {
-      if (message.revision !== tab.revision) return;
+      if (message.revision !== tab.revision || tab.surface !== 'viewer') return;
       tab.anchor = clampAnchor(
         this.messageAnchor(message.anchor),
         Math.max(1, tab.text.split(/\r\n|\r|\n/).length),
@@ -264,6 +265,14 @@ export class ReaderController {
       && !this.awaiting;
     if (!visible || !tab) {
       this.options.desktop.showPreview(null, null);
+      if (tab?.surface === 'editor' && hasMarkdownPreview(tab.document)) {
+        // The reader keeps its layout while the source editor covers it. Prepare
+        // at that size without showing/focusing the native preview.
+        const rect = this.options.frames.getBoundingClientRect();
+        this.send(tab.id, { command: 'marktex:prime-document', bounds: {
+          x: rect.left, y: rect.top, width: rect.width, height: rect.height,
+        } });
+      }
       return;
     }
     const rect = this.options.frames.getBoundingClientRect();

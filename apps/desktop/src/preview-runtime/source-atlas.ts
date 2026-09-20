@@ -173,13 +173,16 @@ export class SourceAtlas {
       const value = element.matches(ANCHOR_SELECTOR) && accepts(element) ? this.fromElement(element, index) : null;
       return value ? [value] : [];
     });
-    const descendants = target ? Array.from(target.querySelectorAll(ANCHOR_SELECTOR)).flatMap((element, index) => {
+    // The resolver always prefers an authored ancestor, then a descendant.
+    // Most clicks/bookmarks land on one: measuring the entire math document
+    // cannot change their result and makes the first interaction expensive.
+    const descendants = !ancestors.length && target ? Array.from(target.querySelectorAll(ANCHOR_SELECTOR)).flatMap((element, index) => {
       const value = accepts(element) ? this.fromElement(element, index) : null;
       return value ? [value] : [];
     }) : [];
     const top = document.documentElement.scrollTop || 0;
     const left = document.documentElement.scrollLeft || 0;
-    const candidates = this.scoped(sourceSide).map((entry) => ({
+    const candidates = ancestors.length || descendants.length ? [] : this.scoped(sourceSide).map((entry) => ({
       line: entry.line, endLine: entry.endLine, column: entry.column, order: entry.order,
       rect: { top: entry.rect.top - top, bottom: entry.rect.bottom - top,
         left: entry.rect.left - left, right: entry.rect.right - left },

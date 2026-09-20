@@ -38,7 +38,8 @@ export class PreviewManager {
   private readonly navigating = new Map<WebContentsView, symbol>();
   private readonly themes = new Map<number, PreviewThemeId>();
   private readonly reviewViews = new WeakSet<WebContentsView>();
-  private readonly reviewViewports = new WeakMap<WebContentsView, { width: number; height: number }>();
+  private readonly primedDocuments = new WeakSet<WebContentsView>();
+  private readonly rendererViewports = new WeakMap<WebContentsView, { width: number; height: number }>();
   private readonly reviews = new ReviewPreparation({
     views: this.views,
     applyBounds: (preview, bounds) => this.applyBounds(preview,
@@ -165,7 +166,7 @@ export class PreviewManager {
     if (!owner || owner.isDestroyed() || view.webContents.isDestroyed()) throw new Error('The preview owner was closed.');
     const token = Symbol('preview-navigation');
     this.navigating.set(view, token);
-    this.reviewViewports.delete(view);
+    this.rendererViewports.delete(view);
     const hidden = !view.getVisible();
     if (hidden && owner.contentView.children.includes(view)) owner.contentView.removeChildView(view);
     try {
@@ -177,7 +178,10 @@ export class PreviewManager {
       if (hidden && !owner.contentView.children.includes(view)) owner.contentView.addChildView(view);
       this.navigating.delete(view);
       const preview = Array.from(this.views.values()).find((entry) => entry.view === view);
-      if (preview?.appliedBounds) this.prepareRendererViewport(preview, preview.appliedBounds);
+      if (preview?.appliedBounds) {
+        this.prepareRendererViewport(preview, preview.appliedBounds);
+        this.prepareDocument(preview);
+      }
     } finally {
       if (this.navigating.get(view) === token) this.navigating.delete(view);
     }
@@ -247,9 +251,10 @@ export class PreviewManager {
 
   private prepareRendererViewport(preview: PreviewViewState, bounds: Rectangle) {
     const contents = preview.view.webContents;
-    if (!this.reviewViews.has(preview.view) || this.navigating.has(preview.view)
+    if ((!this.reviewViews.has(preview.view) && !this.primedDocuments.has(preview.view))
+      || this.navigating.has(preview.view)
       || contents.isDestroyed() || !contents.getURL().startsWith('marktex-preview://document/')) return;
-    const previous = this.reviewViewports.get(preview.view);
+    const previous = this.rendererViewports.get(preview.view);
     if (previous?.width === bounds.width && previous.height === bounds.height) return;
     // A never-shown native view can retain a 0x0 Blink viewport despite setBounds.
     // Set its desktop viewport without exposing it or disturbing Monaco/IME focus.
@@ -259,7 +264,14 @@ export class PreviewManager {
     contents.enableDeviceEmulation({ screenPosition: 'desktop', screenSize: { width: 0, height: 0 },
       viewPosition: { x: 0, y: 0 }, deviceScaleFactor: 0,
       viewSize: { width: bounds.width, height: bounds.height }, scale: 1 });
-    this.reviewViewports.set(preview.view, { width: bounds.width, height: bounds.height });
+    this.rendererViewports.set(preview.view, { width: bounds.width, height: bounds.height });
+  }
+
+  private prepareDocument(preview: PreviewViewState) {
+    if (!this.primedDocuments.has(preview.view) || preview.view.getVisible()
+      || this.navigating.has(preview.view) || preview.view.webContents.isDestroyed()
+      || !preview.view.webContents.getURL().startsWith('marktex-preview://document/')) return;
+    preview.view.webContents.send('preview:command', { command: 'marktex:prepare-document' });
   }
 
   prepareReviewViewport(ownerId: number, tabId: string, revision: number): Promise<void> {
@@ -297,6 +309,19 @@ export class PreviewManager {
       && message?.command === 'marktex:prime-review') this.create(ownerId, tabId);
     const preview = this.views.get(String(tabId));
     if (!preview || preview.ownerWebContentsId !== ownerId) return;
+    if (message?.command === 'marktex:prime-document') {
+      if (this.reviewViews.has(preview.view) || preview.view.getVisible() || preview.view.webContents.isDestroyed()) return;
+      const bounds = message.bounds as Partial<PreviewBounds> | null;
+      if (!bounds || ![bounds.x, bounds.y, bounds.width, bounds.height].every(n => typeof n === 'number' && Number.isFinite(n))
+        || bounds.width! <= 0 || bounds.height! <= 0) return;
+      this.primedDocuments.add(preview.view);
+      const safe = { x: Math.max(0, Math.min(100_000, bounds.x!)), y: Math.max(0, Math.min(100_000, bounds.y!)),
+        width: Math.min(100_000, bounds.width!), height: Math.min(100_000, bounds.height!) };
+      this.applyBounds(preview, nativeZoomBounds(safe,
+        this.options.stateFor(ownerId)?.window.webContents.getZoomFactor?.() ?? 1));
+      this.prepareDocument(preview);
+      return;
+    }
     if (this.reviews.command(ownerId, String(tabId), message)) return;
     if (message?.command === 'marktex:apply-theme') {
       const assets = this.options.themeAssets(message.themeId);

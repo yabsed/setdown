@@ -201,6 +201,9 @@ export function installCommandRouter(options: Options): void {
       case 'marktex:resume-hydration':
         options.content.resumeAfterPaint();
         break;
+      case 'marktex:prepare-document':
+        if (innerWidth > 0 && innerHeight > 0) options.content.prepareInBackground();
+        break;
       case 'marktex:sync-config':
         updateConfig(command);
         options.send({ type: 'marktex:html-updated', revision: options.config.revision });

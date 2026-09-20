@@ -44,7 +44,7 @@
         <button class="find-close" type="button" aria-label="Close search" onclick={actions.closeFind}>×</button>
       </div>
     </div>
-    <aside class="toc-panel" aria-label="Document outline" hidden={!view.tocOpen || view.surface !== 'viewer'}>
+    <aside class="toc-panel" aria-label="Document outline" hidden={!view.tocOpen}>
       <button class="panel-resize-handle panel-resize-left" type="button"
         aria-label="Resize Outline"
         onpointerdown={(event) => startPanelResize(event, resize)}

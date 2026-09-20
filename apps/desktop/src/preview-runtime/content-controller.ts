@@ -33,6 +33,9 @@ export class ContentController {
   private deferredBlocks: string[] = [];
   private generation = 0;
   private startedGeneration = 0;
+  private backgroundGeneration = -1;
+  private batchFrame: number | null = null;
+  private batchTimer: number | null = null;
 
   constructor(private readonly options: Options) {}
 
@@ -57,6 +60,7 @@ export class ContentController {
   }
 
   cancelHydration(): void {
+    this.cancelBatch();
     this.deferredBlocks = [];
     this.generation += 1;
     document.body.dataset.setdownHydration = 'complete';
@@ -155,6 +159,7 @@ export class ContentController {
     if (this.deferredBlocks.length === 0) return;
     const root = this.root();
     if (!root) return;
+    this.cancelBatch();
     const pending = this.deferredBlocks;
     this.deferredBlocks = [];
     this.generation += 1;
@@ -189,6 +194,7 @@ export class ContentController {
   }
 
   private beginHydration(root: HTMLElement, blocks: string[]): void {
+    this.cancelBatch();
     this.generation += 1;
     this.deferredBlocks = blocks;
     document.body.dataset.setdownHydrationStartedMs = String(performance.now());
@@ -226,6 +232,9 @@ export class ContentController {
     const inserted = Array.from(holder.content.children);
     root.append(holder.content);
     this.options.applyDisclosures(inserted);
+    // Prepare layout in bounded batches so an immediate Esc/click can paint
+    // between tasks instead of waiting for the entire math tree to be built.
+    if (this.backgroundGeneration === generation) root.getBoundingClientRect();
     this.options.sourceAtlas.invalidate();
     this.options.scheduleHeadings();
     if (this.deferredBlocks.length === 0) this.finishHydration(root);
@@ -233,7 +242,32 @@ export class ContentController {
   }
 
   private scheduleBatch(root: HTMLElement, generation: number): void {
-    window.requestAnimationFrame(() => this.hydrateBatch(root, generation));
+    if (this.batchFrame !== null || this.batchTimer !== null) return;
+    if (this.backgroundGeneration === generation) {
+      this.batchTimer = window.setTimeout(() => {
+        this.batchTimer = null;
+        this.hydrateBatch(root, generation);
+      }, 0);
+    } else this.batchFrame = window.requestAnimationFrame(() => {
+      this.batchFrame = null;
+      this.hydrateBatch(root, generation);
+    });
+  }
+
+  prepareInBackground(): void {
+    const root = this.root();
+    if (!root || !this.pendingCount || this.backgroundGeneration === this.generation) return;
+    this.backgroundGeneration = this.generation;
+    this.cancelBatch();
+    // Native views that have never been shown do not receive animation frames.
+    // Tasks allow preparation during editing without displaying/focusing them.
+    this.scheduleBatch(root, this.generation);
+  }
+
+  private cancelBatch(): void {
+    if (this.batchFrame !== null) window.cancelAnimationFrame(this.batchFrame);
+    if (this.batchTimer !== null) window.clearTimeout(this.batchTimer);
+    this.batchFrame = this.batchTimer = null;
   }
 
   private readDeferredInitialBlocks(): string[] {

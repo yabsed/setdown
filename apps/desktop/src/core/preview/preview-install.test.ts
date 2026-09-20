@@ -6,7 +6,7 @@ import {
   DEFERRED_HTML_SCRIPT_ID,
   partitionPreviewHtml,
   requiresCrossnoteInstall,
-  reviewDocumentStyles,
+  withoutPreviewUiStyles,
 } from './preview-install';
 
 it('review removes only the trusted application UI stylesheet, retaining document and authored styles', () => {
@@ -16,15 +16,15 @@ it('review removes only the trusted application UI stylesheet, retaining documen
   const ui = link('webview/preview.css');
   const body = '<style>.authored{color:red}</style>' + ui;
   const template = `<html><head>${kept}${ui}</head><body>${body}</body></html>`;
-  expect(reviewDocumentStyles(template)).toBe(`<html><head>${kept}</head><body>${body}</body></html>`);
-  expect(reviewDocumentStyles('<head><link href="https://example.com/webview/preview.css"></head>'))
+  expect(withoutPreviewUiStyles(template)).toBe(`<html><head>${kept}</head><body>${body}</body></html>`);
+  expect(withoutPreviewUiStyles('<head><link href="https://example.com/webview/preview.css"></head>'))
     .toContain('https://example.com/webview/preview.css');
-  expect(reviewDocumentStyles("<head><link href='marktex-resource://file/crossnote/out/webview/preview.css'></head>"))
+  expect(withoutPreviewUiStyles("<head><link href='marktex-resource://file/crossnote/out/webview/preview.css'></head>"))
     .toBe('<head></head>');
-  expect(reviewDocumentStyles('<head><link href="marktex-resource://file/crossnote/out/webview/preview.css?v=1"></head>'))
+  expect(withoutPreviewUiStyles('<head><link href="marktex-resource://file/crossnote/out/webview/preview.css?v=1"></head>'))
     .toBe('<head></head>');
   const authoredData = '<head><link data-href="marktex-resource://file/crossnote/out/webview/preview.css"></head>';
-  expect(reviewDocumentStyles(authoredData)).toBe(authoredData);
+  expect(withoutPreviewUiStyles(authoredData)).toBe(authoredData);
 });
 
 function largeMathHtml(): string {
@@ -64,6 +64,7 @@ describe('preview 본문 설치 경로', () => {
 
   it('Crossnote head와 본문만 남긴 lean page를 만든다', () => {
     const template = '<!doctype html><html><head><link rel="stylesheet" href="theme.css">'
+      + '<link rel="stylesheet" href="marktex-resource://file/crossnote/out/webview/preview.css">'
       + '<base href="file:///document/"></head><body data-html="encoded"></body>'
       + '<script src="mermaid.js"></script><script src="preview.js"></script></html>';
     const page = createLeanPreviewTemplate(
@@ -81,6 +82,7 @@ describe('preview 본문 설치 경로', () => {
     expect(page).not.toContain('data-html="encoded"');
     expect(page).not.toContain('mermaid.js');
     expect(page).not.toContain('preview.js');
+    expect(page).not.toContain('/webview/preview.css');
   });
 
   it('큰 KaTeX 문서는 첫 화면 블록만 DOM markup으로 싣는다', () => {

@@ -59,6 +59,37 @@ function fixture() {
   return { manager, front, back, owner, children, focusCount: () => focusCount };
 }
 
+test('ordinary document preparation sizes a hidden view without exposing or focusing it', () => {
+  const f = fixture(); f.manager.create(1, 'document');
+  const preview = f.manager.views.get('document')!;
+  const commands: unknown[] = [];
+  preview.view.webContents.send = (_channel, message) => { commands.push(message); };
+  f.manager.command(1, 'document', {command:'marktex:prime-document',bounds});
+  assert.deepEqual(preview.appliedBounds, bounds);
+  assert.equal(preview.view.getVisible(), false);
+  assert.equal(f.focusCount(), 0);
+  assert.deepEqual(commands, [{command:'marktex:prepare-document'}]);
+});
+
+test('hidden document preparation is replayed after navigation, and cannot cross ownership', async () => {
+  const f = fixture(); f.manager.create(1, 'document');
+  const preview = f.manager.views.get('document')!;
+  const commands: unknown[] = [];
+  preview.view.webContents.send = (_channel, message) => { commands.push(message); };
+  f.manager.command(2, 'document', {command:'marktex:prime-document',bounds});
+  assert.equal(preview.appliedBounds, null);
+  f.manager.command(1, 'document', {command:'marktex:prime-document',bounds:{...bounds,width:NaN}});
+  assert.equal(preview.appliedBounds, null);
+  let complete!: () => void;
+  preview.view.webContents.loadURL = () => new Promise<void>(resolve => { complete=resolve; });
+  const loading=f.manager.loadURL(preview.view,'marktex-preview://document/new',1);
+  f.manager.command(1, 'document', {command:'marktex:prime-document',bounds});
+  assert.equal(commands.length,0);
+  complete(); await loading;
+  assert.deepEqual(commands,[{command:'marktex:prepare-document'}]);
+  assert.equal(preview.view.getVisible(),false);
+});
+
 test('replacement bounds and visibility precede hiding the old native front', () => {
   const f = fixture();
   const events: string[] = [];
