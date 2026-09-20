@@ -1,0 +1,381 @@
+{
+  "base": "222f58a",
+  "fixture": "apps/desktop/test/fixtures/sample.md",
+  "cpu": [
+    {
+      "file": "/home/yabsed/Documents/fall26/work/better-markdown-viewer/apps/desktop/test/fixtures/sample.md",
+      "sourceBytes": 33928,
+      "htmlBytes": 1398912,
+      "mathCount": 766,
+      "coldRenderMs": 212.29770600000006
+    },
+    {
+      "initialDiffMs": 26.102892999999995,
+      "initialRowsMs": 57.32938300000001,
+      "reviewBytes": 4247227
+    },
+    {
+      "scenario": "prose",
+      "samples": [
+        {
+          "renderMs": 48.52733999999998,
+          "diffMs": 22.115890000000036,
+          "rowsMs": 62.61990100000003,
+          "rowReadMs": 43.911530999999854,
+          "rowCompareMs": 7.363614999999982,
+          "patch": true,
+          "payloadBytes": 2823
+        },
+        {
+          "renderMs": 34.85685600000011,
+          "diffMs": 15.273869999999988,
+          "rowsMs": 58.10490200000004,
+          "rowReadMs": 46.74857399999996,
+          "rowCompareMs": 7.356972000000042,
+          "patch": true,
+          "payloadBytes": 2245
+        },
+        {
+          "renderMs": 34.77704700000004,
+          "diffMs": 13.874274000000014,
+          "rowsMs": 57.63706699999989,
+          "rowReadMs": 44.64352000000008,
+          "rowCompareMs": 7.545313999999962,
+          "patch": true,
+          "payloadBytes": 2245
+        },
+        {
+          "renderMs": 29.46693099999993,
+          "diffMs": 12.941561000000092,
+          "rowsMs": 57.91300299999989,
+          "rowReadMs": 44.30254200000013,
+          "rowCompareMs": 7.626725999999962,
+          "patch": true,
+          "payloadBytes": 2246
+        },
+        {
+          "renderMs": 29.59079299999985,
+          "diffMs": 12.960837000000083,
+          "rowsMs": 56.87982299999999,
+          "rowReadMs": 44.36377700000003,
+          "rowCompareMs": 7.535225000000082,
+          "patch": true,
+          "payloadBytes": 2247
+        },
+        {
+          "renderMs": 28.804161999999906,
+          "diffMs": 13.53436899999997,
+          "rowsMs": 57.38374399999998,
+          "rowReadMs": 44.45516799999996,
+          "rowCompareMs": 7.262836000000107,
+          "patch": true,
+          "payloadBytes": 2247
+        },
+        {
+          "renderMs": 28.838846999999987,
+          "diffMs": 13.240930999999819,
+          "rowsMs": 72.84181000000012,
+          "rowReadMs": 45.99502600000005,
+          "rowCompareMs": 6.562928000000056,
+          "patch": true,
+          "payloadBytes": 2247
+        }
+      ],
+      "medianExcludingFirst": {
+        "renderMs": 29.52886199999989,
+        "diffMs": 13.387649999999894,
+        "rowsMs": 57.77503499999989,
+        "rowReadMs": 44.54934400000002,
+        "rowCompareMs": 7.446098500000062
+      }
+    },
+    {
+      "scenario": "math",
+      "samples": [
+        {
+          "renderMs": 31.75621100000012,
+          "diffMs": 14.690980999999965,
+          "rowsMs": 56.151371000000154,
+          "rowReadMs": 44.45292399999971,
+          "rowCompareMs": 7.354107000000113,
+          "patch": true,
+          "payloadBytes": 84790
+        },
+        {
+          "renderMs": 29.40603800000008,
+          "diffMs": 14.069900999999845,
+          "rowsMs": 56.704183999999714,
+          "rowReadMs": 44.982262999999875,
+          "rowCompareMs": 7.508194000000003,
+          "patch": true,
+          "payloadBytes": 62342
+        },
+        {
+          "renderMs": 31.112065999999686,
+          "diffMs": 13.619889000000057,
+          "rowsMs": 56.16117899999972,
+          "rowReadMs": 44.78792999999996,
+          "rowCompareMs": 7.25166500000023,
+          "patch": true,
+          "payloadBytes": 62342
+        },
+        {
+          "renderMs": 27.892497000000276,
+          "diffMs": 13.551912000000357,
+          "rowsMs": 56.02800000000025,
+          "rowReadMs": 44.50004200000012,
+          "rowCompareMs": 7.25765599999977,
+          "patch": true,
+          "payloadBytes": 62342
+        },
+        {
+          "renderMs": 27.11154800000031,
+          "diffMs": 13.49940400000014,
+          "rowsMs": 56.97455899999977,
+          "rowReadMs": 44.89149300000008,
+          "rowCompareMs": 7.2562739999998485,
+          "patch": true,
+          "payloadBytes": 62342
+        },
+        {
+          "renderMs": 28.6320810000002,
+          "diffMs": 13.74290800000017,
+          "rowsMs": 57.826090999999906,
+          "rowReadMs": 46.38550600000008,
+          "rowCompareMs": 7.331705000000056,
+          "patch": true,
+          "payloadBytes": 62342
+        },
+        {
+          "renderMs": 28.395477999999912,
+          "diffMs": 14.324255999999878,
+          "rowsMs": 56.87560399999984,
+          "rowReadMs": 45.33045400000037,
+          "rowCompareMs": 7.0346700000000055,
+          "patch": true,
+          "payloadBytes": 62342
+        }
+      ],
+      "medianExcludingFirst": {
+        "renderMs": 28.513779500000055,
+        "diffMs": 13.681398500000114,
+        "rowsMs": 56.78989399999978,
+        "rowReadMs": 44.93687799999998,
+        "rowCompareMs": 7.256964999999809
+      }
+    },
+    {
+      "scenario": "line-shift",
+      "samples": [
+        {
+          "renderMs": 28.29712500000005,
+          "diffMs": 12.777764999999818,
+          "rowsMs": 118.64752099999987,
+          "rowReadMs": 45.091547999999875,
+          "rowCompareMs": 67.85690100000011,
+          "patch": true,
+          "payloadBytes": 63320
+        },
+        {
+          "renderMs": 26.541171999999733,
+          "diffMs": 13.599440999999842,
+          "rowsMs": 118.57162900000003,
+          "rowReadMs": 45.154493999999886,
+          "rowCompareMs": 68.3715129999996,
+          "patch": true,
+          "payloadBytes": 1349
+        },
+        {
+          "renderMs": 27.822207000000162,
+          "diffMs": 12.59894099999974,
+          "rowsMs": 119.32024900000033,
+          "rowReadMs": 45.19991000000027,
+          "rowCompareMs": 68.0598799999998,
+          "patch": true,
+          "payloadBytes": 1349
+        },
+        {
+          "renderMs": 28.896314000000075,
+          "diffMs": 12.950597000000016,
+          "rowsMs": 120.50826000000006,
+          "rowReadMs": 45.672983999999815,
+          "rowCompareMs": 92.86603999999988,
+          "patch": true,
+          "payloadBytes": 1349
+        },
+        {
+          "renderMs": 29.57835999999952,
+          "diffMs": 12.853807000000415,
+          "rowsMs": 115.55517000000054,
+          "rowReadMs": 44.480445000000145,
+          "rowCompareMs": 64.46808599999986,
+          "patch": true,
+          "payloadBytes": 1349
+        },
+        {
+          "renderMs": 28.075470000000678,
+          "diffMs": 13.127728999999817,
+          "rowsMs": 114.39095499999985,
+          "rowReadMs": 44.9248549999993,
+          "rowCompareMs": 65.38816700000007,
+          "patch": true,
+          "payloadBytes": 1349
+        },
+        {
+          "renderMs": 28.768254999999954,
+          "diffMs": 12.11969499999941,
+          "rowsMs": 136.08220999999958,
+          "rowReadMs": 49.14933199999996,
+          "rowCompareMs": 67.41103699999985,
+          "patch": true,
+          "payloadBytes": 1349
+        }
+      ],
+      "medianExcludingFirst": {
+        "renderMs": 28.421862500000316,
+        "diffMs": 12.902202000000216,
+        "rowsMs": 118.94593900000018,
+        "rowReadMs": 45.17720200000008,
+        "rowCompareMs": 67.73545849999982
+      }
+    }
+  ],
+  "electron": {
+    "baseline": [
+      {
+        "edit": "sample-prose-one",
+        "escToPatchMs": 177,
+        "patchToAckMs": 175,
+        "ackToShowMs": 34,
+        "escToShowMs": 386,
+        "patchStringLength": 981
+      },
+      {
+        "edit": "sample-prose-two",
+        "escToPatchMs": 174,
+        "patchToAckMs": 174,
+        "ackToShowMs": 34,
+        "escToShowMs": 382,
+        "patchStringLength": 1025
+      },
+      {
+        "edit": "sample-math $\\sum_{i=1}^{n} i^2$",
+        "escToPatchMs": 176,
+        "patchToAckMs": 314,
+        "ackToShowMs": 57,
+        "escToShowMs": 547,
+        "patchStringLength": 5291
+      },
+      {
+        "edit": "sample-prose-three",
+        "escToPatchMs": 164,
+        "patchToAckMs": 316,
+        "ackToShowMs": 57,
+        "escToShowMs": 537,
+        "patchStringLength": 5339
+      }
+    ],
+    "without-font-ready": [
+      {
+        "edit": "sample-prose-one",
+        "escToPatchMs": 183,
+        "patchToAckMs": 4,
+        "ackToShowMs": 215,
+        "escToShowMs": 402,
+        "patchStringLength": 981
+      },
+      {
+        "edit": "sample-prose-two",
+        "escToPatchMs": 177,
+        "patchToAckMs": 4,
+        "ackToShowMs": 220,
+        "escToShowMs": 401,
+        "patchStringLength": 1025
+      },
+      {
+        "edit": "sample-math $\\sum_{i=1}^{n} i^2$",
+        "escToPatchMs": 164,
+        "patchToAckMs": 3,
+        "ackToShowMs": 337,
+        "escToShowMs": 504,
+        "patchStringLength": 5291
+      },
+      {
+        "edit": "sample-prose-three",
+        "escToPatchMs": 172,
+        "patchToAckMs": 3,
+        "ackToShowMs": 378,
+        "escToShowMs": 553,
+        "patchStringLength": 5339
+      }
+    ],
+    "same-base-guard": [
+      {
+        "edit": "sample-prose-one",
+        "escToPatchMs": 172,
+        "patchToAckMs": 180,
+        "ackToShowMs": 37,
+        "escToShowMs": 389,
+        "patchStringLength": 981
+      },
+      {
+        "edit": "sample-prose-two",
+        "escToPatchMs": 174,
+        "patchToAckMs": 180,
+        "ackToShowMs": 38,
+        "escToShowMs": 392,
+        "patchStringLength": 1025
+      },
+      {
+        "edit": "sample-math $\\sum_{i=1}^{n} i^2$",
+        "escToPatchMs": 178,
+        "patchToAckMs": 317,
+        "ackToShowMs": 20,
+        "escToShowMs": 515,
+        "patchStringLength": 5291
+      },
+      {
+        "edit": "sample-prose-three",
+        "escToPatchMs": 169,
+        "patchToAckMs": 310,
+        "ackToShowMs": 19,
+        "escToShowMs": 498,
+        "patchStringLength": 5339
+      }
+    ],
+    "row-containment": [
+      {
+        "edit": "sample-prose-one",
+        "escToPatchMs": 173,
+        "patchToAckMs": 179,
+        "ackToShowMs": 37,
+        "escToShowMs": 389,
+        "patchStringLength": 981
+      },
+      {
+        "edit": "sample-prose-two",
+        "escToPatchMs": 171,
+        "patchToAckMs": 177,
+        "ackToShowMs": 37,
+        "escToShowMs": 385,
+        "patchStringLength": 1025
+      },
+      {
+        "edit": "sample-math $\\sum_{i=1}^{n} i^2$",
+        "escToPatchMs": 172,
+        "patchToAckMs": 328,
+        "ackToShowMs": 20,
+        "escToShowMs": 520,
+        "patchStringLength": 5291
+      },
+      {
+        "edit": "sample-prose-three",
+        "escToPatchMs": 162,
+        "patchToAckMs": 314,
+        "ackToShowMs": 19,
+        "escToShowMs": 495,
+        "patchStringLength": 5339
+      }
+    ]
+  }
+}
