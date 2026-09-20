@@ -10,6 +10,7 @@ export class GitDiffViewportPort {
   private reader: Reader | null = null;
   private readonly sourceTargets = new Map<string, ReviewViewport>();
   private readonly listeners = new Set<() => void>();
+  private readonly interactions = new Set<() => void>();
 
   register(reader: Reader): () => void {
     this.reader = reader;
@@ -20,6 +21,12 @@ export class GitDiffViewportPort {
     this.listeners.add(listener);
     return () => { this.listeners.delete(listener); };
   }
+  /** Explicit user intent, separate from passive layout/keyup notifications. */
+  onInteraction(listener: () => void): () => void {
+    this.interactions.add(listener);
+    return () => { this.interactions.delete(listener); };
+  }
+  interact(): void { for (const listener of this.interactions) listener(); }
   changed(): void { for (const listener of this.listeners) listener(); }
   read(tabId: string): ReviewViewport | null { return this.reader?.(tabId) ?? null; }
   requestSource(tabId: string, target: ReviewViewport): void { this.sourceTargets.set(tabId, target); }
