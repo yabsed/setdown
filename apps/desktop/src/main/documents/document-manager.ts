@@ -10,16 +10,19 @@ import type {
   SaveResult,
 } from '../../protocol/desktop-api';
 import { applyTextRevision } from '../../core/document/document-state';
+import { isMarkdownDocument, MARKDOWN_EXTENSIONS } from '../../core/document/document-profile';
+import { prepareDocumentSave, retainUnsavedRevision } from '../../core/document/document-save';
+import { readTextFile } from './text-file';
 import { discardDraftBundle, saveDraftBundle } from './draft-assets';
 import { isSupportedImagePath, savePastedImageFile, savePastedPng } from './pasted-image';
 import { markdownDestinationForFile } from './markdown-link';
 import { atomicWrite, canonicalPath, diskVersion, sameDiskVersion } from './file-system';
 import type { WindowState } from '../windows/window-state';
 
-const MARKDOWN_FILTER = {
-  name: 'Markdown',
-  extensions: ['md', 'markdown', 'mdown', 'mkdn', 'mkd', 'rmd', 'qmd', 'mdx'],
-};
+const MARKDOWN_FILTER = { name: 'Markdown', extensions: MARKDOWN_EXTENSIONS };
+const ALL_FILES_FILTER = { name: 'All files', extensions: ['*'] };
+const saveFilters = (filePath: string) => isMarkdownDocument(filePath)
+  ? [MARKDOWN_FILTER, ALL_FILES_FILTER] : [ALL_FILES_FILTER];
 
 export class DocumentManager {
   private untitledSequence = 0;
@@ -28,33 +31,29 @@ export class DocumentManager {
 
   async read(filePath: string): Promise<DocumentSnapshot> {
     const absolute = canonicalPath(filePath);
-    const text = await fs.readFile(absolute, 'utf8');
+    // Preserve Markdown's existing unbounded read policy. New text formats use
+    // the bounded, strict decoder and retain their BOM/EOL metadata.
+    const loaded = isMarkdownDocument(absolute)
+      ? { text: await fs.readFile(absolute, 'utf8'), diskVersion: diskVersion(absolute) }
+      : await readTextFile(absolute);
     return {
+      ...loaded,
       path: absolute,
       name: path.basename(absolute),
-      text,
-      savedText: text,
+      savedText: loaded.text,
       revision: 0,
       savedRevision: 0,
-      diskVersion: diskVersion(absolute),
       isUntitled: false,
     };
   }
 
   private blank(): DocumentSnapshot {
     this.untitledSequence += 1;
-    const name = this.untitledSequence === 1
-      ? 'Untitled.md'
-      : `Untitled ${this.untitledSequence}.md`;
+    const name = this.untitledSequence === 1 ? 'Untitled.md' : `Untitled ${this.untitledSequence}.md`;
     return {
       path: path.join(app.getPath('userData'), 'drafts', randomUUID(), name),
-      name,
-      text: '',
-      savedText: '',
-      revision: 0,
-      savedRevision: 0,
-      diskVersion: { mtimeMs: 0, size: 0 },
-      isUntitled: true,
+      name, text: '', savedText: '', revision: 0, savedRevision: 0,
+      diskVersion: { mtimeMs: 0, size: 0 }, isUntitled: true,
     };
   }
 
@@ -74,21 +73,19 @@ export class DocumentManager {
       if (!watchedDocument || watchedDocument.path !== watchedPath) return;
       const next = { mtimeMs: current.mtimeMs, size: current.size };
       if (current.nlink > 0 && !sameDiskVersion(next, watchedDocument.diskVersion)) {
-        state.window.webContents.send('document:external-change', {
-          path: watchedDocument.path,
-          diskVersion: next,
-        });
+        state.window.webContents.send('document:external-change', { path: watchedDocument.path, diskVersion: next });
       }
     });
   }
 
   async open(state: WindowState, filePath: string, notify = true) {
-    state.currentDocument = await this.read(filePath);
-    state.activeRoot = path.dirname(state.currentDocument.path);
-    this.resetPreviewCache();
+    const opened = await this.read(filePath); // Failure leaves the current document intact.
+    state.currentDocument = opened;
+    state.activeRoot = path.dirname(opened.path);
+    if (isMarkdownDocument(opened.path)) this.resetPreviewCache();
     this.watch(state);
-    if (notify) state.window.webContents.send('document:opened', state.currentDocument);
-    return state.currentDocument;
+    if (notify) state.window.webContents.send('document:opened', opened);
+    return opened;
   }
 
   newDocument(state: WindowState) {
@@ -101,8 +98,7 @@ export class DocumentManager {
 
   async chooseAndOpen(state: WindowState, notify = true) {
     const result = await dialog.showOpenDialog(state.window, {
-      properties: ['openFile'],
-      filters: [MARKDOWN_FILTER, { name: 'All files', extensions: ['*'] }],
+      properties: ['openFile'], filters: [MARKDOWN_FILTER, ALL_FILES_FILTER],
     });
     if (result.canceled || !result.filePaths[0]) return null;
     return this.open(state, result.filePaths[0], notify);
@@ -117,97 +113,65 @@ export class DocumentManager {
       try {
         const actual = diskVersion(state.currentDocument.path);
         if (!sameDiskVersion(actual, state.currentDocument.diskVersion)) {
-          state.window.webContents.send('document:external-change', {
-            path: state.currentDocument.path,
-            diskVersion: actual,
-          });
+          state.window.webContents.send('document:external-change', { path: state.currentDocument.path, diskVersion: actual });
         }
-      } catch {
-        // 다음 저장 또는 새로고침에서 접근 오류를 처리한다.
-      }
+      } catch { /* The next save/reload reports inaccessible files. */ }
     }
     return state.currentDocument;
   }
 
   updateText(state: WindowState, text: string, revision: number) {
-    if (state.currentDocument) {
-      state.currentDocument = applyTextRevision(state.currentDocument, text, revision);
-    }
+    if (state.currentDocument) state.currentDocument = applyTextRevision(state.currentDocument, text, revision);
   }
 
   private async confirmOverwrite(state: WindowState, document: DocumentSnapshot) {
-    try {
-      if (sameDiskVersion(diskVersion(document.path), document.diskVersion)) return true;
-    } catch {
-      return true;
-    }
+    try { if (sameDiskVersion(diskVersion(document.path), document.diskVersion)) return true; }
+    catch { return true; }
     const { response } = await dialog.showMessageBox(state.window, {
-      type: 'warning',
-      message: 'This file was changed by another application.',
+      type: 'warning', message: 'This file was changed by another application.',
       detail: 'Do you want to overwrite it with your current changes?',
-      buttons: ['Cancel', 'Overwrite'],
-      defaultId: 0,
-      cancelId: 0,
+      buttons: ['Cancel', 'Overwrite'], defaultId: 0, cancelId: 0,
     });
     return response === 1;
   }
 
-  async saveSnapshot(
-    state: WindowState,
-    document: DocumentSnapshot,
-    text: string,
-    revision: number,
-  ): Promise<SaveResult> {
+  async saveSnapshot(state: WindowState, document: DocumentSnapshot, text: string, revision: number): Promise<SaveResult> {
     const updated = applyTextRevision(document, text, revision);
     if (updated.isUntitled) {
       const selected = await dialog.showSaveDialog(state.window, {
-        defaultPath: path.join(app.getPath('documents'), updated.name),
-        filters: [{ name: 'Markdown', extensions: ['md'] }],
+        defaultPath: path.join(app.getPath('documents'), updated.name), filters: saveFilters(updated.path),
       });
       if (selected.canceled || !selected.filePath) return { canceled: true };
-      const saved = await saveDraftBundle(
-        path.join(app.getPath('userData'), 'drafts'),
-        updated.path,
-        selected.filePath,
-        text,
-      );
+      const output = prepareDocumentSave(updated, text, selected.filePath);
+      let savedText = output.text;
+      if (isMarkdownDocument(selected.filePath)) {
+        const saved = await saveDraftBundle(path.join(app.getPath('userData'), 'drafts'),
+          updated.path, selected.filePath, output.bytes);
+        savedText = saved.text;
+      } else {
+        await atomicWrite(selected.filePath, output.bytes);
+      }
       const absolute = canonicalPath(selected.filePath);
-      return {
-        canceled: false,
-        document: {
-          path: absolute,
-          name: path.basename(absolute),
-          text: saved.text,
-          savedText: saved.text,
-          revision,
-          savedRevision: revision,
-          diskVersion: diskVersion(absolute),
-          isUntitled: false,
-        },
-      };
+      return { canceled: false, document: { ...updated,
+        path: absolute, name: path.basename(absolute), text: savedText, savedText,
+        encoding: output.encoding, eol: output.eol,
+        revision, savedRevision: revision, diskVersion: diskVersion(absolute), isUntitled: false } };
     }
+    const output = prepareDocumentSave(updated, text, updated.path);
     if (!(await this.confirmOverwrite(state, updated))) return { canceled: true };
     await fs.mkdir(path.dirname(updated.path), { recursive: true });
-    await atomicWrite(updated.path, text);
+    await atomicWrite(updated.path, output.bytes);
     const absolute = canonicalPath(updated.path);
-    return {
-      canceled: false,
-      document: {
-        path: absolute,
-        name: path.basename(absolute),
-        text,
-        savedText: text,
-        revision,
-        savedRevision: revision,
-        diskVersion: diskVersion(absolute),
-        isUntitled: false,
-      },
-    };
+    return { canceled: false, document: { ...updated,
+      path: absolute, name: path.basename(absolute), text: output.text, savedText: output.text,
+      encoding: output.encoding, eol: output.eol,
+      revision, savedRevision: revision, diskVersion: diskVersion(absolute), isUntitled: false } };
   }
 
-  private acceptSaved(state: WindowState, result: SaveResult) {
-    if (!result.canceled && result.document) {
-      state.currentDocument = result.document;
+  private acceptSaved(state: WindowState, result: SaveResult, expectedPath: string) {
+    const current = state.currentDocument;
+    if (!result.canceled && result.document && current?.path === expectedPath) {
+      state.currentDocument = retainUnsavedRevision(result.document, current.text, current.revision);
       state.activeRoot = path.dirname(result.document.path);
       this.watch(state);
     }
@@ -215,74 +179,50 @@ export class DocumentManager {
   }
 
   async saveCurrent(state: WindowState, text: string, revision: number) {
-    if (!state.currentDocument) return { canceled: true } as SaveResult;
-    return this.acceptSaved(
-      state,
-      await this.saveSnapshot(state, state.currentDocument, text, revision),
-    );
+    const document = state.currentDocument;
+    if (!document) return { canceled: true } as SaveResult;
+    return this.acceptSaved(state, await this.saveSnapshot(state, document, text, revision), document.path);
   }
 
   async saveAs(state: WindowState, text: string, revision: number): Promise<SaveResult> {
-    if (!state.currentDocument) return { canceled: true };
-    if (state.currentDocument.isUntitled) return this.saveCurrent(state, text, revision);
+    const document = state.currentDocument;
+    if (!document) return { canceled: true };
+    if (document.isUntitled) return this.saveCurrent(state, text, revision);
     const selected = await dialog.showSaveDialog(state.window, {
-      defaultPath: state.currentDocument.path,
-      filters: [{ name: 'Markdown', extensions: ['md'] }],
+      defaultPath: document.path, filters: saveFilters(document.path),
     });
     if (selected.canceled || !selected.filePath) return { canceled: true };
-    this.resetPreviewCache();
-    await atomicWrite(selected.filePath, text);
+    const output = prepareDocumentSave(document, text, selected.filePath);
+    await atomicWrite(selected.filePath, output.bytes);
     const absolute = canonicalPath(selected.filePath);
-    return this.acceptSaved(state, {
-      canceled: false,
-      document: {
-        path: absolute,
-        name: path.basename(absolute),
-        text,
-        savedText: text,
-        revision,
-        savedRevision: revision,
-        diskVersion: diskVersion(absolute),
-        isUntitled: false,
-      },
-    });
+    if (isMarkdownDocument(absolute)) this.resetPreviewCache();
+    return this.acceptSaved(state, { canceled: false, document: { ...document,
+      path: absolute, name: path.basename(absolute), text: output.text, savedText: output.text,
+      encoding: output.encoding, eol: output.eol,
+      revision, savedRevision: revision, diskVersion: diskVersion(absolute), isUntitled: false } }, document.path);
   }
 
   async pasteImage(state: WindowState): Promise<PasteImageResult> {
     const document = state.currentDocument;
-    if (!document) return { canceled: true };
+    if (!document || !isMarkdownDocument(document.path)) return { canceled: true };
     const clipboardFiles = clipboard.availableFormats()
       .filter((format) => /uri-list|gnome-copied-files/i.test(format))
       .flatMap((format) => {
-        try {
-          return clipboard.readBuffer(format).toString('utf8').replace(/\0/g, '').split(/\r?\n/);
-        } catch {
-          return [];
-        }
+        try { return clipboard.readBuffer(format).toString('utf8').replace(/\0/g, '').split(/\r?\n/); }
+        catch { return []; }
       });
     const plainText = clipboard.readText().trim();
     if (plainText.startsWith('file://')) clipboardFiles.push(...plainText.split(/\r?\n/));
-    const localPaths = [...new Set(clipboardFiles
-      .map((entry) => entry.trim())
+    const localPaths = [...new Set(clipboardFiles.map((entry) => entry.trim())
       .filter((entry) => entry && !['copy', 'cut'].includes(entry) && !entry.startsWith('#'))
       .flatMap((entry) => {
-        try {
-          const url = new URL(entry);
-          return url.protocol === 'file:' ? [fileURLToPath(url)] : [];
-        } catch {
-          return [];
-        }
-      })
-      .filter(isSupportedImagePath))];
+        try { const url = new URL(entry); return url.protocol === 'file:' ? [fileURLToPath(url)] : []; }
+        catch { return []; }
+      }).filter(isSupportedImagePath))];
     if (localPaths.length) {
-      const saved = await Promise.all(localPaths.map((source) =>
-        savePastedImageFile(document.path, source),
-      ));
-      return {
-        canceled: false,
-        markdown: saved.map((image) => image.markdown).join('\n\n'),
-        relativePath: saved[0]?.markdownPath,
-      };
+      const saved = await Promise.all(localPaths.map((source) => savePastedImageFile(document.path, source)));
+      return { canceled: false, markdown: saved.map((image) => image.markdown).join('\n\n'),
+        relativePath: saved[0]?.markdownPath };
     }
     const image = clipboard.readImage();
     if (image.isEmpty()) return { canceled: true };
@@ -292,21 +232,15 @@ export class DocumentManager {
 
   async pickLink(state: WindowState, documentPath: string): Promise<PickLinkTargetResult> {
     const document = state.currentDocument;
-    if (!document || document.path !== documentPath || document.isUntitled) {
+    if (!document || !isMarkdownDocument(document.path) || document.path !== documentPath || document.isUntitled) {
       return { canceled: true };
     }
     const result = await dialog.showOpenDialog(state.window, {
-      defaultPath: path.dirname(document.path),
-      properties: ['openFile'],
-      filters: [{ name: 'All files', extensions: ['*'] }],
+      defaultPath: path.dirname(document.path), properties: ['openFile'], filters: [ALL_FILES_FILTER],
     });
     const target = result.filePaths[0];
     if (result.canceled || !target) return { canceled: true };
-    return {
-      canceled: false,
-      destination: markdownDestinationForFile(document.path, target),
-      label: path.basename(target),
-    };
+    return { canceled: false, destination: markdownDestinationForFile(document.path, target), label: path.basename(target) };
   }
 
   async reload(state: WindowState) {
