@@ -1,0 +1,42 @@
+name: Block math checks
+
+on:
+  pull_request:
+    paths:
+      - 'apps/desktop/src/main/preview/**'
+      - 'apps/desktop/test/fixtures/crossnote-block-math-0.9.35.ts'
+      - 'apps/desktop/scripts/benchmark-block-math.cjs'
+      - '.github/workflows/block-math-checks.yml'
+      - 'package-lock.json'
+      - 'apps/desktop/package.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: block-math-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      PUPPETEER_SKIP_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Full project typecheck
+        run: npm run typecheck
+      - name: Actual Vitest and Crossnote integration
+        working-directory: apps/desktop
+        run: npm test -- src/main/preview/fast-block-math.test.ts src/main/preview/deferred-math.test.ts src/main/preview/block-math-integration.test.ts
+      - name: Build
+        run: npm run build
