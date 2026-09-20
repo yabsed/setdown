@@ -700,6 +700,7 @@ export class SourceControlController {
 
   private async mutate(action: () => Promise<GitSnapshot>, afterAction?: () => Promise<void>): Promise<void> {
     if (project.gitBusy) return;
+    this.statusGeneration += 1;
     project.gitBusy = true;
     try {
       await this.perform(action);
