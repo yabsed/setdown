@@ -58,8 +58,11 @@ function fixture(staged = false, prepared = true) {
       calls.push({ kind: 'show', id, bounds: geometry });
     },
     sendPreviewCommand(id: string, message: Record<string, unknown>) {
-      if (message.command === 'marktex:position-preview') {
+      if (message.command === 'marktex:position-preview' || message.command === 'marktex:prepare-review') {
         calls.push({ kind: 'position', id, line: Number(message.sourceLine) });
+        if (message.command === 'marktex:prepare-review') controller.previewMessage({ tabId: id, message: {
+          type: 'marktex:review-prepared', revision: message.revision, requestId: message.requestId,
+        } });
       } else if (message.command === 'marktex:prime-review') {
         calls.push({ kind: 'prime', id, primeId: Number(message.primeId) });
       }
@@ -77,16 +80,27 @@ function fixture(staged = false, prepared = true) {
     workingTreeChanged() {},
     reviewChanged() {},
   });
+  // A resident ID is not readiness. Seed its exact completed input and ACK
+  // final positioning above; separate tests deliberately withhold these ACKs.
+  const state = controller as unknown as {
+    themeId: string;
+    preparedPreviews: Map<string, { diff: GitDiff; revision: number; themeId: string }>;
+  };
+  const prepare = (target: GitDiffTabState) => {
+    state.themeId = 'paper';
+    state.preparedPreviews.set(target.previewId!, { diff: target.diff!, revision: 0, themeId: 'paper' });
+  };
+  if (prepared) prepare(tab);
   controllers.push(controller);
   project.gitDiffTabs.push(tab);
   return {
-    controller, tab, calls, started, models,
+    controller, tab, calls, started, models, prepare,
     edit(text: string) { buffer = text; models.publish({ type: 'changed', path: tab.filePath, text }); },
     positions: () => calls.filter((call) => call.kind === 'position'),
     async finishPreview() {
       finish({ revision: 0, url: 'marktex-preview://document/test', themeId: 'paper', supported: true });
       await rendered;
-      await Promise.resolve();
+      for (let i = 0; i < 8; i++) await Promise.resolve();
     },
   };
 }
@@ -99,8 +113,8 @@ for (const staged of [false, true]) {
     assert.equal(f.positions().length, 0, 'must not measure an unsized native preview');
     f.controller.layoutDiff(bounds);
     assert.deepEqual(f.calls.slice(-2), [
-      { kind: 'show', id: f.tab.previewId, bounds },
       { kind: 'position', id: f.tab.previewId, line: 120 },
+      { kind: 'show', id: f.tab.previewId, bounds },
     ]);
     f.controller.showRendered(); // duplicate DOM / IPC Escape must be idempotent
     assert.equal(f.positions().length, 1);
@@ -163,8 +177,8 @@ for (const layoutFirst of [false, true]) {
       f.controller.layoutDiff(bounds);
     }
     assert.deepEqual(f.calls.slice(-2), [
-      { kind: 'show', id: 'git-diff:review:a', bounds },
       { kind: 'position', id: 'git-diff:review:a', line: 120 },
+      { kind: 'show', id: 'git-diff:review:a', bounds },
     ]);
     assert.equal(f.positions().length, 1);
   });
@@ -190,7 +204,7 @@ test('a late layout after switching tabs does not position the old preview', asy
   const second: GitDiffTabState = {
     ...f.tab, id: 'second', mode: 'source', line: 70, previewId: 'git-diff:second:a',
   };
-  project.gitDiffTabs.push(second);
+  project.gitDiffTabs.push(second); f.prepare(second);
   await f.controller.activateDiff(second.id);
   f.controller.layoutDiff(bounds);
   assert.equal(f.positions().length, 0);
