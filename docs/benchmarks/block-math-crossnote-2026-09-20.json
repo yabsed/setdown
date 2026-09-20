@@ -1,0 +1,30 @@
+{
+  "measured_head": "d89a561cd260ffe8dfecfdd5eb0924e609f960c9",
+  "baseline": "222f58a65a0d48a2d703dfea2f8077e386bda1a2",
+  "workflow_run": 35509035990,
+  "artifact_id": 10604628809,
+  "node": "v22.23.2",
+  "cpu": "AMD EPYC 7763 64-Core Processor",
+  "mode": "crossnote-template",
+  "crossnote": "0.9.35",
+  "scope": "Real Crossnote template generation, body extraction and math restoration; warm repeated matrix/fraction formulas plus an ordinary text edit. Not IPC, diff, DOM, Electron or native Esc presentation.",
+  "sampling": "Nine alternating-order pairs per size, two warmup pairs discarded, seven timed samples per variant. Exact original/optimized HTML equality checked for every pair.",
+  "results": [
+    {
+      "blocks": 64,
+      "medianMs": { "original": 66.09670700000015, "optimized": 6.221974999999929 },
+      "samples": {
+        "original": [69.30774599999995, 67.78797699999996, 63.680241000000024, 66.09670700000015, 62.246542999999974, 65.18048500000009, 66.36274400000002],
+        "optimized": [7.695529000000079, 4.973462999999811, 4.703487999999879, 6.471070000000054, 6.5677109999999175, 6.221974999999929, 4.002407999999832]
+      }
+    },
+    {
+      "blocks": 256,
+      "medianMs": { "original": 282.62539300000026, "optimized": 12.489004000000023 },
+      "samples": {
+        "original": [282.62539300000026, 285.8652320000001, 285.13212699999985, 296.1197979999997, 280.1479530000006, 281.6736430000001, 277.80781299999944],
+        "optimized": [11.59733899999992, 12.489004000000023, 12.627092999999604, 21.34157499999992, 12.434944000000542, 11.146837000000232, 19.094206000000668]
+      }
+    }
+  ]
+}
