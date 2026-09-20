@@ -62,11 +62,11 @@ for (const width of [1200, 600]) test(`row patches preserve actual DOM and indep
     focus: true, rejectedWithoutMutation: true, replaced: 2, kept: 1998, aligned: true });
   expect(Buffer.byteLength(JSON.stringify(patch))).toBeLessThan(Buffer.byteLength(after) / 100);
   if (width < 720) {
-    await expect(page.locator('.setdown-rendered-diff-unified')).toBeVisible();
-    await expect(page.locator('.setdown-rendered-diff-split')).toBeHidden();
+    await expect(page.locator('#root > .setdown-rendered-diff-unified')).toBeVisible();
+    await expect(page.locator('#root > .setdown-rendered-diff-split')).toBeHidden();
   } else {
-    await expect(page.locator('.setdown-rendered-diff-unified')).toBeHidden();
-    await expect(page.locator('.setdown-rendered-diff-split')).toBeVisible();
+    await expect(page.locator('#root > .setdown-rendered-diff-unified')).toBeHidden();
+    await expect(page.locator('#root > .setdown-rendered-diff-split')).toBeVisible();
   }
 });
 

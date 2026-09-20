@@ -29,8 +29,9 @@ test('review source coordinates, weighted band and block bookmarks survive layou
       const result = await page.evaluate<{ pass: boolean }>("(() => { atlas.position(20,.372,[{sourceLine:20,yRatio:.2},{sourceLine:30,yRatio:.8}],'after'); const expected=(300*(900-800*.2)+500*(1200-800*.8))/800; return {pass:Math.abs(scrollY-expected)<1,scrollY,expected}; })()");
       expect(result.pass, JSON.stringify(result)).toBe(true);
     });
+    // This standalone atlas fixture has no runtime ResizeObserver; deliver its invalidation explicitly.
     await test.step("tall block bookmark survives layout growth before it", async () => {
-      const result = await page.evaluate<{ pass: boolean }>("(() => { atlas.position(30,.372,[],'after'); scrollTo(0,1100); const mark=atlas.bookmarkAt(.372); document.querySelectorAll('.one').forEach(n=>n.style.height='1100px'); atlas.position(mark.sourceLine,mark.yRatio,[],mark.sourceSide,mark.blockOffset);return {pass:mark.sourceSide==='after'&&mark.sourceLine===30&&Math.abs(scrollY-1300)<1,scrollY,mark}; })()");
+      const result = await page.evaluate<{ pass: boolean }>("(() => { atlas.position(30,.372,[],'after'); scrollTo(0,1100); const mark=atlas.bookmarkAt(.372); document.querySelectorAll('.one').forEach(n=>n.style.height='1100px'); atlas.invalidate(); atlas.position(mark.sourceLine,mark.yRatio,[],mark.sourceSide,mark.blockOffset);return {pass:mark.sourceSide==='after'&&mark.sourceLine===30&&Math.abs(scrollY-1300)<1,scrollY,mark}; })()");
       expect(result.pass, JSON.stringify(result)).toBe(true);
     });
     await test.step("left click is not clamped to modified line count", async () => {

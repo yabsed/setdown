@@ -1,6 +1,7 @@
 import { splitPreviewBlocks, type PreviewBlock } from './preview-blocks';
 import { alignPreviewBlocks } from './rendered-diff-alignment';
 import { ExactPairCache } from './exact-pair-cache';
+import { serializeReviewRows, type ReviewRows } from './review-rows';
 
 type RenderedDiffHunk = { oldStart: number; oldLines: number; newStart: number; newLines: number };
 type HtmlToken = { value: string; part: number; changed: boolean };
@@ -140,9 +141,9 @@ function renderCell(cell: DiffCell, side?: 'before' | 'after'): string {
   return `<section class="${classes}" data-change="${cell.change}" data-whole="${cell.whole}"${aria}>${cell.html}</section>`;
 }
 
-function unified(rows: DiffRow[]): string {
+function unified(rows: DiffRow[]): string[] {
   return rows.flatMap((row) => row.equal ? [renderCell(row.after)]
-    : [row.before, row.after].filter((entry) => entry.change !== 'empty').map((entry) => renderCell(entry))).join('\n');
+    : [row.before, row.after].filter((entry) => entry.change !== 'empty').map((entry) => renderCell(entry)));
 }
 
 /** Rendered equality is independent of Git's whitespace/source hunk grouping.
@@ -150,16 +151,20 @@ function unified(rows: DiffRow[]): string {
  * data-source-* attributes. Never zip non-hunk blocks by ordinal index.
  */
 export function mergeRenderedDiff(originalHtml: string, modifiedHtml: string, _hunks: RenderedDiffHunk[]): string {
-  return unified(analyze(originalHtml, modifiedHtml));
+  return unified(analyze(originalHtml, modifiedHtml)).join('\n');
 }
 
 export function responsiveRenderedDiff(originalHtml: string, modifiedHtml: string, _hunks: RenderedDiffHunk[]): string {
+  return serializeReviewRows(responsiveRenderedRows(originalHtml, modifiedHtml));
+}
+
+/** Keep the already computed row boundaries through warm patch generation. */
+export function responsiveRenderedRows(originalHtml: string, modifiedHtml: string): ReviewRows {
   const analysis = analyze(originalHtml, modifiedHtml);
   const rows = analysis.map((row) => `<div class="setdown-rendered-diff-row setdown-rendered-diff-row-${row.equal ? 'unchanged' : 'changed'}">
 ${renderCell(row.before, 'before')}${renderCell(row.after, 'after')}
-</div>`).join('\n');
-  return `<div class="setdown-rendered-diff-unified">${unified(analysis)}</div>
-<div class="setdown-rendered-diff-split" aria-label="Side-by-side rendered comparison">${rows}</div>`;
+</div>`);
+  return { unified: unified(analysis), split: rows };
 }
 
 export const RENDERED_DIFF_STYLES = `<style id="setdown-rendered-diff-styles">

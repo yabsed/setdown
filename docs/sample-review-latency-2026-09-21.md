@@ -1,5 +1,10 @@
 수식이 많은 Working Tree에서 수정 직후 Esc — 조사 결과 (2026-09-21)
 
+후속 구현 완료: [실제 변경과 전후 측정](sample-review-optimization-2026-09-21.md).
+아래 내용은 변경 전 조사 기록이다. 후속 Chromium trace에서는 큰 비용이
+레이아웃 자체보다 전역 스타일 재계산임을 확인했고, 이를 유발하던 UI CSS를
+비교 페이지에서 제외했다. 전체 HTML 재분석 제거도 구현했다.
+
 기준 커밋은 `222f58a`. 실제 대상은 `apps/desktop/test/fixtures/sample.md`다.
 요청에 나온 `test/e2e/fixtures/sample.md`는 없고, IDE에 열린 위 파일을 사용했다.
 제품 소스는 변경하지 않았다. 실험은 생성된 브라우저 번들에만 적용하고,

@@ -20,6 +20,38 @@ ${['before', 'after'].map(side => `<div class="setdown-rendered-diff-${side} ${s
 <p data-source-line="1" class="lead">lead</p><p data-source-line="120" class="target">target</p>
 <p data-source-line="121" class="tail">tail</p></div>`).join('')}</div></div>`;
 
+test('atlas skips the hidden responsive tree and rebuilds when the breakpoint changes', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 600 });
+  await page.setContent(`<!doctype html><style>
+    html,body,p{margin:0}.setdown-rendered-diff-unified{display:none}
+    .lead{height:2000px}.tail{height:2000px}.target{height:100px}
+    @media(max-width:719px){.setdown-rendered-diff-unified{display:block}
+      .setdown-rendered-diff-split{display:none}.lead{height:1200px}}
+    </style><main class="markdown-preview" data-for="preview">${['unified','split'].map(kind =>
+      `<div class="setdown-rendered-diff-${kind}"><section class="setdown-rendered-diff-after">
+      <p class="lead" data-source-line="1">lead</p><p class="target" data-source-line="20">target</p>
+      <p class="tail" data-source-line="21">tail</p></section></div>`).join('')}</main>`);
+  await page.addScriptTag({ content: script });
+  await page.evaluate(() => {
+    const w = window as any;
+    w.hiddenScans = 0;
+    for (const tree of document.querySelector('.markdown-preview')!.children) {
+      const query = tree.querySelectorAll.bind(tree);
+      tree.querySelectorAll = ((selector: string) => {
+        if (!tree.getBoundingClientRect().width) w.hiddenScans++;
+        return query(selector);
+      }) as typeof tree.querySelectorAll;
+    }
+    w.atlas = new w.SourceAtlas({ lineCount: () => 21, documentIsBlank: () => false });
+    w.atlas.position(20, .5, [], 'after', 0, 1);
+  });
+  expect(await page.evaluate(() => scrollY)).toBe(1700);
+  await page.setViewportSize({ width: 600, height: 600 });
+  await page.evaluate(() => (window as any).atlas.position(20, .5, [], 'after', 0, 1));
+  expect(await page.evaluate(() => scrollY)).toBe(900);
+  expect(await page.evaluate(() => (window as any).hiddenScans)).toBe(0);
+});
+
 test('real layout: first/current target, warm no-op and invalidated prewarming', async ({ page }) => {
   await page.setViewportSize({ width: 800, height: 600 });
   await page.setContent(html);

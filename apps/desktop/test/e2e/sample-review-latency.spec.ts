@@ -83,6 +83,8 @@ test('sample math document immediate Escape diagnostics', async () => {
         window.__unchangedRowIndex = Array.from(document.querySelectorAll('.setdown-rendered-diff-row')).findIndex((row, i) => i > 20 && row.querySelector('.katex'));
         window.__unchangedReviewRow = document.querySelectorAll('.setdown-rendered-diff-row')[window.__unchangedRowIndex];
         window.__unchangedReviewMath = window.__unchangedReviewRow?.querySelector('.katex');
+        window.__originalBeforeLine = Number(window.__unchangedReviewRow.children[0].querySelector('[data-source-line]')?.getAttribute('data-source-line'));
+        window.__originalAfterLine = Number(window.__unchangedReviewRow.children[1].querySelector('[data-source-line]')?.getAttribute('data-source-line'));
       })()`);
     }, resident.map((view) => view.id));
     const editor = page.locator('.git-diff-editor').getByRole('textbox').nth(1);
@@ -94,8 +96,15 @@ test('sample math document immediate Escape diagnostics', async () => {
       }, { capture: true });
     });
     const samples: number[] = [];
-    for (const addition of ['sample-prose-one', 'sample-prose-two', 'sample-math $\\sum_{i=1}^{n} i^2$', 'sample-prose-three']) {
-      await editor.press('Control+End');
+    for (const addition of ['sample-prose-one', 'sample-prose-two', 'sample-math $\\sum_{i=1}^{n} i^2$', 'sample-prose-three', 'sample-leading-edit']) {
+      const leading = addition === 'sample-leading-edit';
+      await editor.press(leading ? 'Control+Home' : 'Control+End');
+      if (process.env.SETDOWN_TRACE_REVIEW === '1' && samples.length === 0) {
+        await app.evaluate(({ contentTracing }) => contentTracing.startRecording({
+          included_categories: ['devtools.timeline', 'blink', 'disabled-by-default-devtools.timeline',
+            'disabled-by-default-devtools.timeline.invalidationTracking'],
+        }));
+      }
       await app.evaluate(async ({ webContents }, { ids, profile }) => {
         (globalThis as any).reviewTrace = [];
         if (!profile) return;
@@ -106,12 +115,16 @@ test('sample math document immediate Escape diagnostics', async () => {
           await d.sendCommand('Profiler.start');
         }
       }, { ids: resident.map(v => v.id), profile: process.env.SETDOWN_PROFILE_REVIEW === '1' });
-      await page.keyboard.insertText(`\n${addition}`);
+      await page.keyboard.insertText(leading ? `${addition}\n\n` : `\n${addition}`);
       const start = Date.now();
       await editor.press('Escape'); // Deliberately no idle/debounce wait after editing.
       await expect.poll(() => app!.evaluate(() => (globalThis as any).reviewTrace.some((e: any) => e.kind === 'show' && e.tabId)),
         { timeout: 30_000, intervals: [10, 20, 50] }).toBe(true);
       samples.push(Date.now() - start);
+      if (process.env.SETDOWN_TRACE_REVIEW === '1' && samples.length === 1) {
+        await app.evaluate(({ contentTracing }, file) => contentTracing.stopRecording(file),
+          test.info().outputPath('native-trace.json'));
+      }
       if (process.env.SETDOWN_PROFILE_REVIEW === '1') {
         const profiles = await app.evaluate(async ({ webContents }, ids) => Promise.all(ids.map(async id => ({
           id, ...(await webContents.fromId(id)!.debugger.sendCommand('Profiler.stop')),
@@ -125,12 +138,15 @@ test('sample math document immediate Escape diagnostics', async () => {
       expect(visible.text).toContain(addition.split(' $')[0]);
       const retained = await app.evaluate(async ({ webContents }, id) =>
         webContents.fromId(id)!.executeJavaScript(`({
-          row: window.__unchangedReviewRow === document.querySelectorAll('.setdown-rendered-diff-row')[window.__unchangedRowIndex],
-          math: !!window.__unchangedReviewMath && window.__unchangedReviewMath === document.querySelectorAll('.setdown-rendered-diff-row')[window.__unchangedRowIndex]?.querySelector('.katex'),
+          row: document.querySelector('.setdown-rendered-diff-split').contains(window.__unchangedReviewRow),
+          math: !!window.__unchangedReviewMath && window.__unchangedReviewMath === window.__unchangedReviewRow.querySelector('.katex'),
+          beforeShift: Number(window.__unchangedReviewRow.children[0].querySelector('[data-source-line]')?.getAttribute('data-source-line')) - window.__originalBeforeLine,
+          afterShift: Number(window.__unchangedReviewRow.children[1].querySelector('[data-source-line]')?.getAttribute('data-source-line')) - window.__originalAfterLine,
           revision: Number(document.body.dataset.lastReviewPatchRevision || 0),
           kept: Number(document.body.dataset.lastReviewPatchRetainedRows || 0)
         })`), visible.id);
       expect(retained).toMatchObject({ row: true, math: true });
+      expect(retained).toMatchObject({ beforeShift: 0, afterShift: leading ? 2 : 0 });
       expect(retained.revision).toBeGreaterThan(0);
       expect(retained.kept).toBeGreaterThan(100);
       expect(visible.url).toBe(resident.find((view) => view.id === visible.id)?.url);

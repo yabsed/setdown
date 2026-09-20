@@ -1,7 +1,8 @@
 import { blockKey, splitPreviewBlocks } from './preview-blocks';
+import type { ReviewRows } from './review-rows';
+export type { ReviewRows } from './review-rows';
 
 /** Each A/B page has its own acknowledged baseline, not the other page's revision. */
-export type ReviewRows = { unified: string[]; split: string[] };
 export type ReviewRowSplice = { from: number; removeCount: number; rows: string[] };
 export type ReviewRowShift = { from: number; count: number; deltas: number[] };
 export type ReviewTreePatch = {

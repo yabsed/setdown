@@ -1,5 +1,6 @@
-import { responsiveRenderedDiff, RENDERED_DIFF_STYLES } from '../../core/preview/rendered-diff';
-import { canInlineInitialHtml, replaceInitialPreviewHtml } from '../../core/preview/preview-install';
+import { responsiveRenderedRows, RENDERED_DIFF_STYLES } from '../../core/preview/rendered-diff';
+import { serializeReviewRows } from '../../core/preview/review-rows';
+import { canInlineInitialHtml, replaceInitialPreviewHtml, reviewDocumentStyles } from '../../core/preview/preview-install';
 import type { ReviewAssembly } from './review-render-client';
 import { ReviewRowCache } from './review-row-cache';
 
@@ -16,20 +17,20 @@ port.on('message', ({ data }: { data: (ReviewAssembly & { id: number })
     return;
   }
   try {
-    const html = responsiveRenderedDiff(data.originalHtml, data.modifiedHtml, []);
-    if (!canInlineInitialHtml(html)) {
+    const rendered = responsiveRenderedRows(data.originalHtml, data.modifiedHtml);
+    if (!rendered.unified.every(canInlineInitialHtml) || !rendered.split.every(canInlineInitialHtml)) {
       port.postMessage({ id: data.id, ok: true, supported: false });
       return;
     }
     const installed = data.needsTemplate && data.template
-      ? replaceInitialPreviewHtml(data.template, html) : null;
+      ? replaceInitialPreviewHtml(data.template, serializeReviewRows(rendered)) : null;
     if (data.needsTemplate && !installed) {
       port.postMessage({ id: data.id, ok: true, supported: false });
       return;
     }
-    const update = rows.update(data.pageKey, data.needsTemplate ? null : data.baseRevision, data.revision, html);
+    const update = rows.updateRows(data.pageKey, data.needsTemplate ? null : data.baseRevision, data.revision, rendered);
     port.postMessage({ id: data.id, ok: true, supported: true, ...update,
-      template: installed ? installed.replace('</head>', `${RENDERED_DIFF_STYLES}</head>`) : undefined });
+      template: installed ? reviewDocumentStyles(installed).replace('</head>', `${RENDERED_DIFF_STYLES}</head>`) : undefined });
   } catch (error) {
     port.postMessage({ id: data.id, ok: false, supported: false,
       error: error instanceof Error ? error.message : String(error) });

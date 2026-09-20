@@ -9,11 +9,14 @@ const { EventEmitter } = require('node:events');
 const { buildSync } = require('esbuild');
 const desktop = path.resolve(__dirname, '..');
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'setdown-review-cpu-'));
-buildSync({ stdin: { contents: `export { responsiveRenderedDiff } from './src/core/preview/rendered-diff';
+buildSync({ stdin: { contents: `export { responsiveRenderedDiff, responsiveRenderedRows } from './src/core/preview/rendered-diff';
   export { readReviewRows, diffReviewRows } from './src/core/preview/review-row-patch';
   export { ReviewRowCache } from './src/main/preview/review-row-cache';`, resolveDir: desktop },
   bundle: true, platform: 'node', format: 'cjs', outfile: path.join(temporary, 'core.cjs') });
 const { responsiveRenderedDiff, ReviewRowCache, readReviewRows, diffReviewRows } = require(path.join(temporary, 'core.cjs'));
+// Independent analysis caches prevent the second path benefiting from the first.
+fs.copyFileSync(path.join(temporary, 'core.cjs'), path.join(temporary, 'structured.cjs'));
+const structuredCore = require(path.join(temporary, 'structured.cjs'));
 const port = new EventEmitter();
 let reply;
 port.postMessage = (message) => reply(message);
@@ -43,9 +46,11 @@ async function main() {
     htmlBytes: Buffer.byteLength(baseline.html), mathCount: (baseline.html.match(/class="katex"/g) || []).length,
     coldRenderMs: baseline.ms }));
   const cache = new ReviewRowCache();
+  const structuredCache = new structuredCore.ReviewRowCache();
   let baseRevision = ++revision;
   const initial = time(() => responsiveRenderedDiff(baseline.html, baseline.html, []));
   const seed = time(() => cache.update('page', null, baseRevision, initial.result));
+  structuredCache.updateRows('page', null, baseRevision, structuredCore.responsiveRenderedRows(baseline.html, baseline.html));
   let previousRows = readReviewRows(initial.result);
   console.log(JSON.stringify({ initialDiffMs: initial.ms, initialRowsMs: seed.ms,
     reviewBytes: Buffer.byteLength(initial.result) }));
@@ -59,12 +64,16 @@ async function main() {
       const diff = time(() => responsiveRenderedDiff(baseline.html, rendered.html, []));
       const nextRevision = ++revision;
       const rows = time(() => cache.update('page', baseRevision, nextRevision, diff.result));
+      const structured = time(() => structuredCore.responsiveRenderedRows(baseline.html, rendered.html));
+      const structuredUpdate = time(() => structuredCache.updateRows('page', baseRevision, nextRevision, structured.result));
+      require('node:assert/strict').deepEqual(structuredUpdate.result, rows.result);
       const read = time(() => readReviewRows(diff.result));
       const compare = time(() => diffReviewRows(previousRows, read.result, baseRevision, nextRevision));
       previousRows = read.result;
       baseRevision = nextRevision;
       samples.push({ renderMs: rendered.ms, diffMs: diff.ms, rowsMs: rows.ms,
         rowReadMs: read.ms, rowCompareMs: compare.ms,
+        structuredDiffMs: structured.ms, structuredRowsMs: structuredUpdate.ms,
         patch: !!rows.result.patch, payloadBytes: Buffer.byteLength(JSON.stringify(rows.result)) });
     }
     const median = (key) => {
@@ -73,7 +82,8 @@ async function main() {
     };
     console.log(JSON.stringify({ scenario, samples, medianExcludingFirst: {
       renderMs: median('renderMs'), diffMs: median('diffMs'), rowsMs: median('rowsMs'),
-      rowReadMs: median('rowReadMs'), rowCompareMs: median('rowCompareMs') } }));
+      rowReadMs: median('rowReadMs'), rowCompareMs: median('rowCompareMs'),
+      structuredDiffMs: median('structuredDiffMs'), structuredRowsMs: median('structuredRowsMs') } }));
   }
 }
 main().catch((error) => { console.error(error); process.exitCode = 1; })

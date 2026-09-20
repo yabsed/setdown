@@ -73,7 +73,15 @@ export class SourceAtlas {
     // Rectangles are document-relative: scrolling does not invalidate them.
     // Content, fonts, resources and layout changes are observed by the runtime.
     if (!this.stale && this.width === innerWidth && this.height === innerHeight) return this.entries;
-    const elements = document.querySelector(PREVIEW_SELECTOR)?.querySelectorAll(ANCHOR_SELECTOR) ?? [];
+    const root = document.querySelector(PREVIEW_SELECTOR);
+    const representations = root ? Array.from(root.children).filter((element) =>
+      element.matches('.setdown-rendered-diff-split, .setdown-rendered-diff-unified')) : [];
+    // The responsive sibling is display:none. Do not query/measure every math
+    // anchor in it merely to discard its zero rectangles afterward. A resize
+    // already invalidates the atlas, so crossing the breakpoint rebuilds it.
+    const scope = representations.length
+      ? representations.find((element) => element.getBoundingClientRect().width > 0) : root;
+    const elements = scope?.querySelectorAll(ANCHOR_SELECTOR) ?? [];
     this.entries = Array.from(elements, candidate).filter((entry): entry is Entry => !!entry);
     this.before = this.entries.filter((entry) => !entry.side || entry.side === 'before');
     this.after = this.entries.filter((entry) => !entry.side || entry.side === 'after');

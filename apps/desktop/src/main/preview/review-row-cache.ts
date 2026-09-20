@@ -1,5 +1,6 @@
 import { diffReviewRows, readReviewRows, type ReviewRows, type ReviewRowsPatch }
   from '../../core/preview/review-row-patch';
+import { reviewRowsHtmlLength, serializeReviewRows } from '../../core/preview/review-rows';
 
 type Snapshot = { revision: number; rows: ReviewRows; bytes: number };
 export type ReviewRowUpdate = { html?: string; patch?: ReviewRowsPatch };
@@ -11,14 +12,17 @@ export class ReviewRowCache {
   constructor(private readonly maxPages = 16, private readonly maxBytes = 64 * 1024 * 1024) {}
 
   update(pageKey: string, baseRevision: number | null, revision: number, html: string): ReviewRowUpdate {
+    return this.updateRows(pageKey, baseRevision, revision, readReviewRows(html));
+  }
+
+  updateRows(pageKey: string, baseRevision: number | null, revision: number, rows: ReviewRows): ReviewRowUpdate {
     const previous = this.pages.get(pageKey);
-    const rows = readReviewRows(html);
-    let result: ReviewRowUpdate = { html };
+    let result: ReviewRowUpdate | undefined;
     if (previous && previous.revision === baseRevision) {
       const patch = diffReviewRows(previous.rows, rows, previous.revision, revision);
       // A large paste/restructure can be cheaper as a full hidden-page install.
       // Ordinary local edits transfer only changed rows plus compact source shifts.
-      if (JSON.stringify(patch).length < html.length) result = { patch };
+      if (JSON.stringify(patch).length < reviewRowsHtmlLength(rows)) result = { patch };
     }
     this.forget(pageKey);
     const bytes = 2 * (rows.split.reduce((sum, row) => sum + row.length, 0)
@@ -32,7 +36,7 @@ export class ReviewRowCache {
     }
     // The next request includes the page's acknowledged base revision. Advancing
     // this cache speculatively is safe: a lost/failed install cannot match that base.
-    return result;
+    return result ?? { html: serializeReviewRows(rows) };
   }
 
   /** Both resident pages can start with the same immutable baseline, without re-rendering it. */

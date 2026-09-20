@@ -6,7 +6,26 @@ import {
   DEFERRED_HTML_SCRIPT_ID,
   partitionPreviewHtml,
   requiresCrossnoteInstall,
+  reviewDocumentStyles,
 } from './preview-install';
+
+it('review removes only the trusted application UI stylesheet, retaining document and authored styles', () => {
+  const link = (path: string) => `<link rel="stylesheet" href="marktex-resource://file/crossnote/out/${path}">`;
+  const kept = ['dependencies/katex/katex.min.css', 'styles/preview.css', 'styles/preview_theme/github-light.css',
+    'styles/markdown-it-callout.css', 'styles/prism_theme/github.css'].map(link).join('');
+  const ui = link('webview/preview.css');
+  const body = '<style>.authored{color:red}</style>' + ui;
+  const template = `<html><head>${kept}${ui}</head><body>${body}</body></html>`;
+  expect(reviewDocumentStyles(template)).toBe(`<html><head>${kept}</head><body>${body}</body></html>`);
+  expect(reviewDocumentStyles('<head><link href="https://example.com/webview/preview.css"></head>'))
+    .toContain('https://example.com/webview/preview.css');
+  expect(reviewDocumentStyles("<head><link href='marktex-resource://file/crossnote/out/webview/preview.css'></head>"))
+    .toBe('<head></head>');
+  expect(reviewDocumentStyles('<head><link href="marktex-resource://file/crossnote/out/webview/preview.css?v=1"></head>'))
+    .toBe('<head></head>');
+  const authoredData = '<head><link data-href="marktex-resource://file/crossnote/out/webview/preview.css"></head>';
+  expect(reviewDocumentStyles(authoredData)).toBe(authoredData);
+});
 
 function largeMathHtml(): string {
   return Array.from({ length: 24 }, (_, index) =>
