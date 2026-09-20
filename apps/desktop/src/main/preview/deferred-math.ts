@@ -34,7 +34,10 @@ export class DeferredMath {
         const html = original(tokens, index, options, env, self);
         // parseMath's error path can contain unsanitized source. Do not defer it.
         if (!this.nonce || !allowed() || !/^<span class="katex(?:-display)?">/.test(html)) return html;
-        const slot = this.values.push(html) - 1;
+        // The previous block path went through HTML serialization, which
+        // encodes NBSP as &nbsp;. Keep its exact output without a DOM round trip.
+        const output = name === 'math_block' ? html.replace(/\u00a0/g, '&nbsp;') : html;
+        const slot = this.values.push(output) - 1;
         return `<span data-marktex-math="${this.nonce}:${slot}"></span>`;
       };
     }
