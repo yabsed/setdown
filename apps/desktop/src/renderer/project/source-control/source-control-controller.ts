@@ -45,6 +45,8 @@ export class SourceControlController {
   }, 32, 120);
   private readonly preparedPreviews = new Map<string, { diff: GitDiff; revision: number; themeId: PreviewThemeId }>();
   private readonly presentation: ReviewPresentation;
+  // An Escape request is not a surface change. Keep the live source until commit.
+  private viewerRequest: { tabId: string; target: ReviewViewport } | null = null;
   private primeFrame: number | null = null;
   private refreshRequested = false;
   private refreshTask: Promise<void> | null = null;
@@ -67,6 +69,7 @@ export class SourceControlController {
       else this.unfreezePreview();
     }) as EventListener);
     this.viewport.onChange?.(() => this.schedulePrime());
+    this.viewport.onInteraction?.((id) => this.cancelViewerRequest(id));
   }
 
   restore = async (): Promise<void> => {
@@ -174,6 +177,7 @@ export class SourceControlController {
   };
 
   deactivateDiff = (): void => {
+    this.cancelViewerRequest();
     this.presentation.cancel();
     if (!project.gitDiffActive) return;
     this.rememberActiveTab();
@@ -198,12 +202,18 @@ export class SourceControlController {
   updateSourceLine = (line: number): void => {
     const tab = this.activeTab();
     if (!tab || !project.gitDiffActive || project.gitDiffMode !== 'source') return;
-    tab.line = Math.max(1, Math.round(line) || 1);
+    const next = Math.max(1, Math.round(line) || 1);
+    if (next !== tab.line) this.cancelViewerRequest(tab.id);
+    tab.line = next;
     this.schedulePrime();
   };
 
   toggleDiffMode = (): void => {
     if (!project.gitDiff || !this.renderable(project.gitDiff)) return;
+    if (this.viewerRequest?.tabId === project.activeGitDiffId) {
+      this.cancelViewerRequest(); // Explicit toolbar/toggle cancellation, not duplicate Esc.
+      return;
+    }
     if (project.gitDiffMode === 'rendered') {
       const tab = this.activeTab();
       if (tab) this.showSource(this.readingState(tab).viewer ?? this.readingState(tab).source);
@@ -212,22 +222,25 @@ export class SourceControlController {
 
   showRendered = (): void => {
     const tab = this.activeTab();
-    if (!tab?.diff || project.gitDiffMode === 'rendered') return;
+    if (!project.gitDiffActive || !tab?.diff || project.gitDiffMode === 'rendered'
+      || this.viewerRequest?.tabId === tab.id) return;
     const diff = this.latestDiff(tab)!;
     if (!this.renderable(diff)) return;
     if (!sameReviewContent(tab.diff, diff)) { tab.diff = diff; this.invalidatePreview(tab); }
     const reading = this.readingState(tab);
-    reading.source = this.viewport.read(tab.id) ?? reviewViewport(tab.line);
+    const source = this.viewport.read(tab.id) ?? reviewViewport(tab.line);
+    reading.source = { ...source, anchor: { ...source.anchor }, band: source.band.map((entry) => ({ ...entry })) };
     reading.viewer = null;
     reading.observationId = null;
     reading.observedId = null;
-    tab.mode = 'rendered';
-    project.gitDiffLine = tab.line || 1;
+    this.viewerRequest = { tabId: tab.id, target: reading.source };
+    project.gitDiffTransitionError = '';
     project.gitDiff = diff;
-    project.gitDiffMode = 'rendered';
+    // tab.mode and gitDiffMode continue to describe the displayed source.
+    // No remount, source reveal, read-only toggle, or loader replaces Monaco.
     this.copyPreviewState(tab);
     this.syncPreview('source');
-    if (!tab.previewLoading && (tab.previewDirty || !tab.previewId)) this.schedulePreview(tab, 0);
+    if (!tab.previewLoading && !this.latestPreview(tab)) this.schedulePreview(tab, 0);
     this.publishReview();
   };
 
@@ -263,6 +276,7 @@ export class SourceControlController {
   };
 
   applyTheme = async (themeId: PreviewThemeId): Promise<void> => {
+    this.cancelViewerRequest();
     this.presentation.cancel();
     this.themeId = themeId;
     const previews = project.gitDiffTabs.filter((tab) => isMarkdownDocument(tab.filePath))
@@ -305,6 +319,7 @@ export class SourceControlController {
   };
 
   clear = (): void => {
+    this.cancelViewerRequest();
     this.presentation.cancel();
     this.unsubscribeModels?.();
     this.unsubscribeModels = null;
@@ -384,6 +399,7 @@ export class SourceControlController {
   }
 
   private showSource(target: ReviewViewport): void {
+    this.cancelViewerRequest();
     this.presentation.cancel();
     const tab = this.activeTab();
     if (!tab) return;
@@ -443,6 +459,7 @@ export class SourceControlController {
   }
 
   private rememberActiveTab(): void {
+    this.cancelViewerRequest();
     this.presentation.cancel();
     const tab = this.activeTab();
     if (!tab || !project.gitDiffActive) return;
@@ -455,10 +472,12 @@ export class SourceControlController {
     this.pendingPreviewPosition = null;
     Object.assign(project, { gitDiff: null, gitDiffTarget: null, gitDiffActive: false,
       gitDiffLoading: false, gitDiffPreviewLoading: false, gitDiffPreviewReady: false,
-      gitDiffFrozen: false, gitDiffSnapshot: '', gitDiffLine: 1 });
+      gitDiffFrozen: false, gitDiffSnapshot: '', gitDiffLine: 1,
+      gitDiffSwitchPending: false, gitDiffTransitionError: '' });
   }
 
   private copyPreviewState(tab: GitDiffTabState): void {
+    project.gitDiffSwitchPending = this.viewerRequest?.tabId === tab.id;
     project.gitDiffPreviewLoading = tab.previewLoading || this.presentation.waiting;
     project.gitDiffPreviewReady = this.latestPreview(tab) && !this.presentation.waiting;
   }
@@ -481,16 +500,32 @@ export class SourceControlController {
     });
   }
 
+  private cancelViewerRequest(id?: string): void {
+    const request = this.viewerRequest;
+    if (!request || (id !== undefined && id !== request.tabId)) return;
+    this.viewerRequest = null;
+    this.pendingPreviewPosition = null;
+    this.presentation.cancel();
+    project.gitDiffSwitchPending = false;
+    const tab = this.activeTab();
+    if (tab) this.copyPreviewState(tab);
+    // The source never left. Do not restore an old cursor/selection or take focus.
+  }
+
+  private wantsViewer(tab: GitDiffTabState): boolean {
+    return tab.mode === 'rendered' || this.viewerRequest?.tabId === tab.id;
+  }
+
   private syncPreview(intent?: 'source' | 'resume'): void {
     const tab = this.activeTab();
     if (intent) {
-      if (!project.gitDiffActive || project.gitDiffMode !== 'rendered' || !tab) this.pendingPreviewPosition = null;
+      if (!project.gitDiffActive || !tab || !this.wantsViewer(tab)) this.pendingPreviewPosition = null;
       else if (intent === 'source' || this.pendingPreviewPosition?.tabId !== tab.id) {
         this.pendingPreviewPosition = { tabId: tab.id, intent };
       }
     }
     if (!project.gitDiffActive || this.overlayFrozen || this.overlayDepth > 0) return;
-    const shownId = project.gitDiffMode === 'rendered' && tab && this.latestPreview(tab) ? tab.previewId : null;
+    const shownId = tab && this.wantsViewer(tab) && this.latestPreview(tab) ? tab.previewId : null;
     if (!tab || !shownId || !this.bounds) {
       this.presentation.cancel();
       this.options.desktop.showPreview(null, null);
@@ -498,42 +533,61 @@ export class SourceControlController {
     }
     const ready = this.preparedPreviews.get(shownId)!;
     const reading = this.readingState(tab);
+    const request = this.viewerRequest;
     const pending = this.pendingPreviewPosition?.tabId === tab.id ? this.pendingPreviewPosition : null;
-    const target = pending?.intent === 'source' ? reading.source : reading.viewer ?? reading.source;
+    const target = request?.tabId === tab.id ? request.target
+      : pending?.intent === 'source' ? reading.source : reading.viewer ?? reading.source;
     const samePage = reading.presentedId === shownId && reading.presentedRevision === ready.revision;
     const sameSize = reading.presentedBounds?.width === this.bounds.width
       && reading.presentedBounds?.height === this.bounds.height;
+    const commitSurface = () => {
+      // Called only after show has been requested for validated current content.
+      // Monaco was visible/editable throughout typesetting and final positioning.
+      if (this.viewerRequest === request) this.viewerRequest = null;
+      tab.mode = 'rendered';
+      project.gitDiffMode = 'rendered';
+      project.gitDiffSwitchPending = false;
+      this.publishReview();
+    };
     if (!samePage) {
       const bounds = { ...this.bounds };
       const themeId = this.themeId;
       const position = reviewPositionCommand(target);
       this.presentation.present({ id: shownId, revision: ready.revision, bounds, position },
-        () => project.gitDiffActive && project.activeGitDiffId === tab.id && tab.mode === 'rendered'
-          && project.gitDiffMode === 'rendered' && !this.overlayFrozen && this.overlayDepth === 0
+        () => project.gitDiffActive && project.activeGitDiffId === tab.id && this.wantsViewer(tab)
+          && (this.viewerRequest === request || (this.viewerRequest === null && tab.mode === 'rendered'))
+          && !this.overlayFrozen && this.overlayDepth === 0
           && this.themeId === themeId && tab.previewId === shownId && this.latestPreview(tab)
           && this.preparedPreviews.get(shownId) === ready && JSON.stringify(this.bounds) === JSON.stringify(bounds),
         () => {
           this.pendingPreviewPosition = null;
-          // Exact latest content and final hidden position are both accepted.
-          // No extra position command or fixed frame delay follows this show.
           this.options.desktop.showPreview(shownId, bounds);
+          commitSurface();
           this.didPresent(tab, shownId, ready.revision, bounds);
           this.copyPreviewState(tab);
         },
-        (error) => { project.error = error; this.showSource(reading.source); this.copyPreviewState(tab); });
+        (error) => {
+          project.error = error;
+          if (this.viewerRequest?.tabId === tab.id) {
+            this.cancelViewerRequest(tab.id);
+            project.gitDiffTransitionError = error;
+          } else this.showSource(reading.source);
+          this.copyPreviewState(tab);
+        });
       this.copyPreviewState(tab);
       return;
     }
-    // Preserve the no-edit warm route: the page validates its local position
-    // proof, without another preparation ACK or timer on Escape.
+    // Preserve the no-edit warm route: no extra ACK, render, or fixed timer.
     this.presentation.cancel();
     this.options.desktop.showPreview(shownId, this.bounds);
-    if (!pending) { reading.presentedBounds = { ...this.bounds }; return; }
+    commitSurface();
+    if (!pending) { reading.presentedBounds = { ...this.bounds }; this.copyPreviewState(tab); return; }
     this.pendingPreviewPosition = null;
     if (pending.intent === 'source' || !sameSize) {
       this.options.desktop.sendPreviewCommand(shownId, reviewPositionCommand(target));
     }
     this.didPresent(tab, shownId, ready.revision, this.bounds);
+    this.copyPreviewState(tab);
   }
 
   private didPresent(tab: GitDiffTabState, id: string, revision: number, bounds: PreviewBounds): void {
@@ -575,7 +629,8 @@ export class SourceControlController {
       if (!tab?.diff || !this.renderable(tab.diff)
         || !project.gitDiffActive || project.gitDiffMode !== 'source' || !this.bounds) return;
       const reading = this.readingState(tab);
-      reading.source = this.viewport.read(tab.id) ?? reading.source;
+      reading.source = this.viewerRequest?.tabId === tab.id ? this.viewerRequest.target
+        : this.viewport.read(tab.id) ?? reading.source;
       for (const id of new Set([tab.previewId, tab.pendingPreviewId])) {
         if (id) this.primePreview(tab, id, reading.source);
       }
@@ -586,7 +641,7 @@ export class SourceControlController {
     if (!tab.diff || !this.renderable(tab.diff)) return;
     if (!this.bounds || !project.gitDiffActive || this.activeTab()?.id !== tab.id) return;
     const reading = this.readingState(tab);
-    const viewport = target ?? (tab.mode === 'source'
+    const viewport = target ?? (this.viewerRequest?.tabId === tab.id ? this.viewerRequest.target : tab.mode === 'source'
       ? this.viewport.read(tab.id) ?? reading.source : reading.viewer ?? reading.source);
     this.options.desktop.sendPreviewCommand(previewId, {
       command: 'marktex:prime-review', bounds: { ...this.bounds },
@@ -595,6 +650,7 @@ export class SourceControlController {
   }
 
   private invalidatePreview(tab: GitDiffTabState): void {
+    this.cancelViewerRequest(tab.id);
     if (this.activeTab()?.id === tab.id) this.presentation.cancel();
     tab.previewDirty = !!tab.diff && this.renderable(tab.diff);
     // An edit must not reset the maximum-wait checkpoint for Markdown.
@@ -648,7 +704,10 @@ export class SourceControlController {
       } else if (!rendered.supported) {
         this.options.desktop.destroyPreview(candidateId);
         this.preparedPreviews.delete(candidateId);
-        if (tab.mode === 'rendered' && this.activeTab()?.id === tab.id) this.showSource(this.readingState(tab).source);
+        if (this.viewerRequest?.tabId === tab.id) {
+          this.cancelViewerRequest(tab.id);
+          project.gitDiffTransitionError = 'Rendered comparison is unavailable. Continue editing or press Esc to retry.';
+        } else if (tab.mode === 'rendered' && this.activeTab()?.id === tab.id) this.showSource(this.readingState(tab).source);
       } else {
         tab.previewDirty = false;
         this.preparedPreviews.set(candidateId, { diff, revision: rendered.revision, themeId: requestedTheme });
@@ -675,7 +734,13 @@ export class SourceControlController {
         const superseded = !!latest && (!sameReviewContent(latest, diff) || requestedTheme !== this.themeId);
         if (this.activeTab()?.id === tab.id) {
           this.copyPreviewState(tab);
-          if (!superseded) project.error = error instanceof Error ? error.message : String(error);
+          if (!superseded) {
+            project.error = error instanceof Error ? error.message : String(error);
+            if (this.viewerRequest?.tabId === tab.id) {
+              this.cancelViewerRequest(tab.id);
+              project.gitDiffTransitionError = project.error;
+            }
+          }
         }
         // Never spin on the same failing input. Only a genuinely newer request
         // gets the immediate retry; current failures still require user retry.
@@ -685,6 +750,7 @@ export class SourceControlController {
   }
 
   private disposeTab(tab: GitDiffTabState): void {
+    this.cancelViewerRequest(tab.id);
     if (this.pendingPreviewPosition?.tabId === tab.id) this.pendingPreviewPosition = null;
     if (this.activeTab()?.id === tab.id) this.presentation.cancel();
     for (const id of this.previewIds(tab)) this.preparedPreviews.delete(id);
@@ -757,6 +823,7 @@ export class SourceControlController {
   }
 
   private async freezePreview(): Promise<void> {
+    this.cancelViewerRequest();
     this.presentation.cancel();
     this.overlayDepth += 1;
     if (this.overlayDepth > 1) return;

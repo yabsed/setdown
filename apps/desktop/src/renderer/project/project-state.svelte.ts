@@ -100,6 +100,8 @@ export const project = $state({
   gitDiffMode: 'rendered' as 'rendered' | 'source',
   gitDiffPreviewLoading: false,
   gitDiffPreviewReady: false,
+  gitDiffSwitchPending: false,
+  gitDiffTransitionError: '',
   gitDiffFrozen: false,
   gitDiffSnapshot: '',
   gitDiffLine: 1,

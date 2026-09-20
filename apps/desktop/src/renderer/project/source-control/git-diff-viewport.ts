@@ -10,6 +10,7 @@ export class GitDiffViewportPort {
   private reader: Reader | null = null;
   private readonly sourceTargets = new Map<string, ReviewViewport>();
   private readonly listeners = new Set<() => void>();
+  private readonly interactions = new Set<(tabId: string) => void>();
 
   register(reader: Reader): () => void {
     this.reader = reader;
@@ -20,6 +21,12 @@ export class GitDiffViewportPort {
     this.listeners.add(listener);
     return () => { this.listeners.delete(listener); };
   }
+  // Deliberate input is distinct from delayed scroll/layout/prewarming notices.
+  onInteraction(listener: (tabId: string) => void): () => void {
+    this.interactions.add(listener);
+    return () => { this.interactions.delete(listener); };
+  }
+  interact(tabId: string): void { for (const listener of this.interactions) listener(tabId); }
   changed(): void { for (const listener of this.listeners) listener(); }
   read(tabId: string): ReviewViewport | null { return this.reader?.(tabId) ?? null; }
   requestSource(tabId: string, target: ReviewViewport): void { this.sourceTargets.set(tabId, target); }
