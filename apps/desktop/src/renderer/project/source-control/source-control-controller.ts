@@ -1,4 +1,5 @@
 import { textDiffHunks } from '../../../core/diff/text-diff';
+import { isMarkdownDocument } from '../../../core/document/document-profile';
 import type { PreviewThemeId } from '../../../core/preview/preview-preferences';
 import { PreviewCheckpoints } from '../../../core/preview/preview-checkpoints';
 import { sameReviewBaseline, sameReviewContent } from '../../../core/preview/review-render-request';
@@ -113,7 +114,6 @@ export class SourceControlController {
   documentSaved = async (document: DocumentSnapshot): Promise<void> => {
     const tabs = project.gitDiffTabs.filter((tab) => !tab.staged && tab.filePath === document.path);
     await Promise.all(tabs.map((tab) => this.reloadTab(tab)));
-    // The badge must update even when this document has never opened a review.
     await this.refresh();
   };
 
@@ -180,8 +180,7 @@ export class SourceControlController {
   };
 
   layoutDiff = (bounds: PreviewBounds | null): void => {
-    // Both surfaces share a live box. Source mode no longer destroys CURRENT
-    // geometry; hiding/unmounting the entire review still invalidates it.
+    // Both surfaces share a live box; hiding the entire review invalidates it.
     this.bounds = bounds && [bounds.x, bounds.y, bounds.width, bounds.height].every(Number.isFinite)
       && bounds.width > 0 && bounds.height > 0 ? bounds : null;
     if (project.gitDiffActive) {
@@ -198,7 +197,7 @@ export class SourceControlController {
   };
 
   toggleDiffMode = (): void => {
-    if (!project.gitDiff) return;
+    if (!project.gitDiff || !this.renderable(project.gitDiff)) return;
     if (project.gitDiffMode === 'rendered') {
       const tab = this.activeTab();
       if (tab) this.showSource(this.readingState(tab).viewer ?? this.readingState(tab).source);
@@ -212,7 +211,7 @@ export class SourceControlController {
     if (!this.renderable(diff)) return;
     const reading = this.readingState(tab);
     reading.source = this.viewport.read(tab.id) ?? reviewViewport(tab.line);
-    reading.viewer = null; // Esc is navigation, not tab resume.
+    reading.viewer = null;
     reading.observationId = null;
     reading.observedId = null;
     tab.mode = 'rendered';
@@ -221,7 +220,6 @@ export class SourceControlController {
     project.gitDiffMode = 'rendered';
     this.copyPreviewState(tab);
     this.syncPreview('source');
-    // Repeated demand is not a content change. Share work already in flight.
     if (!tab.previewLoading && (tab.previewDirty || !tab.previewId)) this.schedulePreview(tab, 0);
     this.publishReview();
   };
@@ -259,12 +257,13 @@ export class SourceControlController {
       const bookmark = readReviewBookmark(message.anchor);
       if (bookmark) this.showSource(bookmark);
     }
-    return true; // Never route review messages into ordinary document state.
+    return true;
   };
 
   applyTheme = async (themeId: PreviewThemeId): Promise<void> => {
     this.themeId = themeId;
-    const previews = project.gitDiffTabs.flatMap((tab) => this.previewIds(tab));
+    const previews = project.gitDiffTabs.filter((tab) => isMarkdownDocument(tab.filePath))
+      .flatMap((tab) => this.previewIds(tab));
     if (!previews.length) return;
     const assets = await this.options.desktop.getPreviewThemeAssets(themeId);
     if (this.themeId !== themeId) return;
@@ -291,8 +290,11 @@ export class SourceControlController {
     if (!tab || !diff || diff.staged || diff.originalText === null || diff.modifiedText === null) return;
     this.options.workingTreeChanged(diff.filePath, text, edits);
     tab.diff = { ...diff, modifiedText: text, modifiedLabel: 'WORKTREE' };
-    this.invalidatePreview(tab);
-    this.schedulePreview(tab);
+    // Source-only formats never enter the preview scheduler, even temporarily.
+    if (this.renderable(tab.diff)) {
+      this.invalidatePreview(tab);
+      this.schedulePreview(tab);
+    }
   };
 
   clear = (): void => {
@@ -315,8 +317,9 @@ export class SourceControlController {
 
   private createTab(filePath: string, staged: boolean,
     mode: GitDiffTabState['mode'] = 'source', line = 0): GitDiffTabState {
-    return { id: crypto.randomUUID(), filePath, staged, mode, line, diff: null, loading: false,
-      previewId: null, pendingPreviewId: null, previewLoading: false, previewDirty: true };
+    const markdown = isMarkdownDocument(filePath);
+    return { id: crypto.randomUUID(), filePath, staged, mode: markdown ? mode : 'source', line, diff: null, loading: false,
+      previewId: null, pendingPreviewId: null, previewLoading: false, previewDirty: markdown };
   }
 
   private activeTab(): GitDiffTabState | null {
@@ -445,7 +448,6 @@ export class SourceControlController {
     this.options.desktop.sendPreviewCommand(reading.observedId, {
       command: 'marktex:observe-viewport', observationId: null,
     });
-    // Retain the token for the final scroll sample after deactivation.
   }
 
   private syncPreview(intent?: 'source' | 'resume'): void {
@@ -460,7 +462,6 @@ export class SourceControlController {
     const previewId = project.gitDiffMode === 'rendered' ? tab?.previewId : null;
     const shownId = this.bounds ? previewId : null;
     this.options.desktop.showPreview(shownId ?? null, shownId ? this.bounds : null);
-    // Cold paths still require valid current geometry. No render/position await.
     if (!tab || !shownId || !this.bounds) return;
     const reading = this.readingState(tab);
     if (this.pendingPreviewPosition?.tabId !== tab.id) {
@@ -481,7 +482,6 @@ export class SourceControlController {
       this.options.desktop.sendPreviewCommand(shownId, reviewPositionCommand(
         pending.intent === 'source' ? reading.source : reading.viewer ?? reading.source));
     }
-    // Same-page tab resume deliberately sends NO scroll command.
     reading.presentedId = shownId;
     reading.presentedBounds = { ...this.bounds };
     reading.observedId = shownId;
@@ -493,12 +493,15 @@ export class SourceControlController {
   }
 
   private schedulePrime(): void {
+    const active = this.activeTab();
+    if (!active?.diff || !this.renderable(active.diff)) return;
     if (!project.gitDiffActive || project.gitDiffMode !== 'source' || this.primeFrame !== null
       || typeof requestAnimationFrame !== 'function') return;
     this.primeFrame = requestAnimationFrame(() => {
       this.primeFrame = null;
       const tab = this.activeTab();
-      if (!tab || !project.gitDiffActive || project.gitDiffMode !== 'source' || !this.bounds) return;
+      if (!tab?.diff || !this.renderable(tab.diff)
+        || !project.gitDiffActive || project.gitDiffMode !== 'source' || !this.bounds) return;
       const reading = this.readingState(tab);
       reading.source = this.viewport.read(tab.id) ?? reading.source;
       for (const id of new Set([tab.previewId, tab.pendingPreviewId])) {
@@ -514,6 +517,7 @@ export class SourceControlController {
   }
 
   private primePreview(tab: GitDiffTabState, previewId: string, target?: ReviewViewport): void {
+    if (!tab.diff || !this.renderable(tab.diff)) return;
     if (!this.bounds || !project.gitDiffActive || this.activeTab()?.id !== tab.id) return;
     const reading = this.readingState(tab);
     const viewport = target ?? (tab.mode === 'source'
@@ -528,11 +532,12 @@ export class SourceControlController {
   }
 
   private invalidatePreview(tab: GitDiffTabState): void {
-    tab.previewDirty = true;
-    // An edit must not reset the maximum-wait checkpoint.
+    tab.previewDirty = !!tab.diff && this.renderable(tab.diff);
+    // An edit must not reset the maximum-wait checkpoint for Markdown.
   }
 
   private schedulePreview(tab: GitDiffTabState, delay?: number): void {
+    if (!tab.diff || !this.renderable(tab.diff)) return;
     this.checkpoints.schedule(tab.id, delay === 0);
   }
 
@@ -545,14 +550,11 @@ export class SourceControlController {
   }
 
   private async preparePreview(tab: GitDiffTabState): Promise<void> {
-    // A duplicate request is NOT an edit. Guard before any whole-document work.
     if (!this.tabExists(tab) || tab.previewLoading || (!tab.previewDirty && tab.previewId)) return;
     const current = tab.diff;
     if (!current || !this.renderable(current)) return;
     const text = tab.staged ? current.modifiedText
       : this.options.workingTreeBuffer(tab.filePath) ?? current.modifiedText;
-    // Rendered alignment does not consume source hunks. Do not compute them in
-    // the renderer just because a background preview checkpoint has fired.
     const diff: GitDiff = { ...current, modifiedText: text, patch: '', hunks: [] };
     if (text !== current.modifiedText) tab.diff = { ...current, modifiedText: text };
     const [a, b] = this.previewIds(tab);
@@ -574,8 +576,6 @@ export class SourceControlController {
         this.options.desktop.destroyPreview(candidateId);
         if (!tab.previewId && tab.mode === 'rendered') tab.mode = 'source';
       } else if (tab.diff && sameReviewBaseline(tab.diff, diff) && requestedTheme === this.themeId) {
-        // A complete snapshot is useful even when newer input is queued. Never
-        // promote a result belonging to an obsolete Index/HEAD/theme.
         tab.previewDirty = !sameReviewContent(tab.diff, diff);
         this.pauseObservation(tab);
         const reading = this.readingState(tab);
@@ -614,7 +614,9 @@ export class SourceControlController {
     this.viewport.forget(tab.id);
     this.loadGenerations.set(tab.id, (this.loadGenerations.get(tab.id) ?? 0) + 1);
     this.checkpoints.cancel(tab.id);
-    for (const id of this.previewIds(tab)) this.options.desktop.destroyPreview(id);
+    if (isMarkdownDocument(tab.filePath)) {
+      for (const id of this.previewIds(tab)) this.options.desktop.destroyPreview(id);
+    }
     this.loadGenerations.delete(tab.id);
   }
 
@@ -673,8 +675,7 @@ export class SourceControlController {
     return first ? Math.max(1, first.newStart || first.oldStart || 1) : 1;
   }
   private renderable(diff: GitDiff): boolean {
-    return diff.originalText !== null && diff.modifiedText !== null
-      && /\.(?:md|markdown|mdown|mkdn|mkd|rmd|qmd|mdx)$/i.test(diff.filePath);
+    return diff.originalText !== null && diff.modifiedText !== null && isMarkdownDocument(diff.filePath);
   }
 
   private async freezePreview(): Promise<void> {

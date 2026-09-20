@@ -1,10 +1,11 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { canonicalPath } from '../../documents/file-system';
+import { MAX_TEXT_FILE_BYTES } from '../../../core/document/text-codec';
 
 const exec = promisify(execFile);
 
-/** Narrow adapter around Git itself; policy stays in GitService, Git behavior does not. */
+/** Narrow adapter around Git; binary-safe reads are decoded by document policy. */
 export class GitCli {
   private constructor(
     readonly workingDirectory: string,
@@ -26,6 +27,15 @@ export class GitCli {
 
   run(args: string[], timeout?: number): Promise<string> {
     return run(this.workingDirectory, args, timeout);
+  }
+
+  async runBytes(args: string[], timeout = 10_000): Promise<Buffer> {
+    const { stdout } = await exec('git', args, {
+      cwd: this.workingDirectory, encoding: 'buffer', timeout,
+      maxBuffer: MAX_TEXT_FILE_BYTES + 1,
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+    });
+    return stdout;
   }
 }
 

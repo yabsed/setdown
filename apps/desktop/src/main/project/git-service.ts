@@ -1,4 +1,3 @@
-import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { shell } from 'electron';
 import type {
@@ -11,6 +10,7 @@ import type {
 import type { WindowState } from '../windows/window-state';
 import { GitCli } from './engines/git-cli';
 import { ProjectPaths } from './project-paths';
+import { readGitDocument, readWorkingDocument } from './git-text';
 
 const CONFLICTS = new Set(['DD', 'AU', 'UD', 'UA', 'DU', 'AA', 'UU']);
 const EMPTY: GitSnapshot = {
@@ -81,7 +81,7 @@ export function parseGitStatus(output: string): ParsedStatus {
       const unmerged = /^u (\S{2}) \S+ \S+ \S+ \S+ \S+ \S+ \S+ \S+ ([\s\S]*)$/.exec(record);
       const match = ordinary ?? renamed ?? unmerged;
       if (match) parsed.changes.push(change(match[1], match[2]));
-      if (renamed) index += 1; // The original path is the following NUL record.
+      if (renamed) index += 1;
     }
   }
   return parsed;
@@ -118,8 +118,7 @@ export class GitService {
     const root = this.paths.root(state);
     const repository = await this.repository(root);
     if (!repository) return { ...EMPTY, changes: [] };
-    // A normal `git status` may refresh and rewrite .git/index. The project watcher sees that
-    // write and requests another status, creating a self-sustaining refresh loop.
+    // Read without rewriting .git/index and retriggering the project watcher.
     const parsed = parseGitStatus(await repository.run([
       '--no-optional-locks', 'status', '--porcelain=v2', '-z', '--branch', '--ahead-behind',
       '--untracked-files=all', '--', '.',
@@ -129,11 +128,7 @@ export class GitService {
       ...parsed,
       changes: parsed.changes.map((change) => {
         const filePath = path.join(repository.repositoryRoot, change.path);
-        return {
-          ...change,
-          path: path.relative(root, filePath),
-          filePath,
-        };
+        return { ...change, path: path.relative(root, filePath), filePath };
       }),
     };
   }
@@ -155,33 +150,22 @@ export class GitService {
     const change = (await this.status(state)).changes.find((item) => item.filePath === filePath);
     let patch: string;
     if (!staged && change?.indexStatus === '?' && change.workingTreeStatus === '?') {
-      const contents = await fs.readFile(filePath).catch(() => null);
-      if (!contents || contents.includes(0)) patch = 'Binary or unreadable file.';
+      const text = await readWorkingDocument(filePath);
+      if (text === null) patch = 'Binary or unreadable file.';
       else {
-        const lines = contents.toString('utf8').split(/\r\n|\r|\n/);
+        const lines = text.split(/\r\n|\r|\n/);
         patch = `--- /dev/null\n+++ b/${relative}\n@@ -0,0 +1,${lines.length} @@\n${lines.map((line) => `+${line}`).join('\n')}`;
       }
     } else {
       patch = await this.run(root, ['diff', '--no-ext-diff', '--no-color',
         ...(staged ? ['--cached'] : []), '--', relative]);
     }
-    const fromGit = async (specification: string): Promise<string | null> => {
-      try {
-        const contents = await repository.run(['show', specification]);
-        return contents.includes('\0') ? null : contents;
-      } catch {
-        return '';
-      }
-    };
-    const fromDisk = async (): Promise<string | null> => {
-      const contents = await fs.readFile(filePath).catch(() => null);
-      if (!contents) return '';
-      return contents.includes(0) ? null : contents.toString('utf8');
-    };
     const originalText = staged
-      ? await fromGit(`HEAD:${repositoryRelative}`)
-      : change?.indexStatus === '?' ? '' : await fromGit(`:${repositoryRelative}`);
-    const modifiedText = staged ? await fromGit(`:${repositoryRelative}`) : await fromDisk();
+      ? await readGitDocument(repository, `HEAD:${repositoryRelative}`, filePath)
+      : change?.indexStatus === '?' ? '' : await readGitDocument(repository, `:${repositoryRelative}`, filePath);
+    const modifiedText = staged
+      ? await readGitDocument(repository, `:${repositoryRelative}`, filePath)
+      : await readWorkingDocument(filePath);
     return {
       path: relative,
       filePath,
@@ -225,9 +209,7 @@ export class GitService {
       if (change.indexStatus === '?' && change.workingTreeStatus === '?') await this.trash(filePath);
       else tracked.push(this.paths.relative(state, filePath));
     }
-    if (tracked.length) {
-      await this.run(this.paths.root(state), ['restore', '--worktree', '--', ...tracked]);
-    }
+    if (tracked.length) await this.run(this.paths.root(state), ['restore', '--worktree', '--', ...tracked]);
     return this.status(state);
   }
 

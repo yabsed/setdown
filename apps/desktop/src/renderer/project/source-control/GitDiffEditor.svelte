@@ -2,6 +2,7 @@
   import { onDestroy, untrack } from 'svelte';
   import type * as Monaco from 'monaco-editor';
   import { normalizePreviewTheme } from '../../../core/preview/preview-preferences';
+  import { documentLanguage } from '../../../core/document/document-profile';
   import type { GitDiff } from '../../../protocol/desktop-api';
   import type { AppActions } from '../../view-state.svelte';
   import { monacoThemeName, registerMonacoThemes } from '../../theme';
@@ -26,7 +27,6 @@
   };
 
   let { actions }: { actions: AppActions } = $props();
-
   let host = $state<HTMLDivElement>();
   let loading = $state(true);
   let error = $state('');
@@ -55,7 +55,7 @@
     if (!editor || !api || shownId !== tabId || !project.gitDiffActive
       || project.gitDiffMode !== 'source') return null;
     const cached = models.get(tabId);
-    if (!cached) return null;
+    if (!cached || !isMarkdownPath(cached.filePath)) return null;
     const original = editor.getOriginalEditor();
     // Inline mode's original is hidden; otherwise honor the side last used.
     const sourceSide = cached.sourceSide === 'before' && original.getLayoutInfo().width > 0
@@ -69,15 +69,6 @@
     const cached = shownId ? models.get(shownId) : null;
     if (cached) cached.sourceSide = side;
   }
-
-  const language = (filePath: string) => {
-    const extension = filePath.split('.').at(-1)?.toLowerCase();
-    return ['md', 'markdown', 'mdown', 'mkdn', 'mkd', 'rmd', 'qmd', 'mdx'].includes(extension ?? '')
-      ? 'markdown' : extension === 'json' ? 'json'
-        : ['js', 'mjs', 'cjs'].includes(extension ?? '') ? 'javascript'
-          : ['ts', 'mts', 'cts'].includes(extension ?? '') ? 'typescript'
-            : extension === 'css' ? 'css' : ['html', 'htm'].includes(extension ?? '') ? 'html' : 'plaintext';
-  };
 
   function loadApi(): Promise<typeof Monaco> {
     if (api) return Promise.resolve(api);
@@ -157,9 +148,7 @@
   function saveShownView() {
     if (!shownId || !editor) return;
     const cached = models.get(shownId);
-    if (cached && editor.getModel()?.modified === cached.modified) {
-      cached.viewState = editor.saveViewState();
-    }
+    if (cached && editor.getModel()?.modified === cached.modified) cached.viewState = editor.saveViewState();
   }
 
   function disposeModels(id: string) {
@@ -175,28 +164,22 @@
 
   function createModels(monaco: typeof Monaco, id: string, diff: GitDiff): CachedModels | null {
     if (diff.originalText === null || diff.modifiedText === null) return null;
-    const syntax = language(diff.filePath);
+    const syntax = documentLanguage(diff.filePath, monaco.languages.getLanguages(),
+      diff.modifiedText.split(/[\r\n]/, 1)[0]);
     const modelId = crypto.randomUUID();
     const original = monaco.editor.createModel(diff.originalText, syntax,
       monaco.Uri.parse(`inmemory://setdown-diff/${id}/${modelId}/original`));
     const modified = monaco.editor.createModel(diff.modifiedText, syntax,
       monaco.Uri.parse(`inmemory://setdown-diff/${id}/${modelId}/modified`));
     const cached: CachedModels = {
-      original,
-      modified,
-      originalText: diff.originalText,
-      modifiedText: diff.modifiedText,
-      sourceSide: 'after',
-      staged: diff.staged,
-      filePath: diff.filePath,
-      listener: { dispose() {} },
-      viewState: null,
+      original, modified, originalText: diff.originalText, modifiedText: diff.modifiedText,
+      sourceSide: 'after', staged: diff.staged, filePath: diff.filePath,
+      listener: { dispose() {} }, viewState: null,
     };
     cached.listener = modified.onDidChangeContent((event) => {
       if (!cached.staged && project.activeGitDiffId === id) {
         cached.modifiedText = modified.getValue();
-        // Keep every ordered edit (including composition updates) in the shared
-        // document. Never discard intermediate ranges or normalize the user's text.
+        // Keep every ordered edit, including IME composition updates.
         untrack(() => actions.changeProjectGitWorkingTree(cached.modifiedText, event.changes));
       }
     });
@@ -204,14 +187,10 @@
   }
 
   function ensureModels(monaco: typeof Monaco, id: string, diff: GitDiff): CachedModels | null {
-    if (diff.originalText === null || diff.modifiedText === null) {
-      disposeModels(id);
-      return null;
-    }
+    if (diff.originalText === null || diff.modifiedText === null) { disposeModels(id); return null; }
     const existing = models.get(id);
     if (existing && existing.originalText === diff.originalText
-      && (existing.modifiedText === diff.modifiedText
-        || existing.modified.getValue() === diff.modifiedText)
+      && (existing.modifiedText === diff.modifiedText || existing.modified.getValue() === diff.modifiedText)
       && existing.staged === diff.staged && existing.filePath === diff.filePath) {
       existing.modifiedText = diff.modifiedText;
       return existing;
@@ -220,19 +199,11 @@
     const viewState = existing?.viewState ?? null;
     disposeModels(id);
     const created = createModels(monaco, id, diff);
-    if (created) {
-      created.viewState = viewState;
-      models.set(id, created);
-    }
+    if (created) { created.viewState = viewState; models.set(id, created); }
     return created;
   }
 
-  function revealFirstChangeWhenReady(
-    monaco: typeof Monaco,
-    id: string,
-    cached: CachedModels,
-    line: number,
-  ) {
+  function revealFirstChangeWhenReady(monaco: typeof Monaco, id: string, cached: CachedModels, line: number) {
     if (!editor) return;
     pendingFirstReveal?.dispose();
     pendingFirstReveal = null;
@@ -244,15 +215,10 @@
         || editor !== expectedEditor || shownId !== id
         || expectedEditor.getModel()?.modified !== cached.modified
         || cached.modified.getVersionId() !== version) return;
-      // The initial synchronous reveal already chose the cursor. A late diff
-      // calculation must never reset the caret/selection of a user who started typing.
       expectedEditor.getModifiedEditor().revealLineInCenter(line, monaco.editor.ScrollType.Immediate);
     };
     if (expectedEditor.getLineChanges() !== null) {
-      const frame = requestAnimationFrame(() => {
-        pendingFirstReveal = null;
-        reveal();
-      });
+      const frame = requestAnimationFrame(() => { pendingFirstReveal = null; reveal(); });
       pendingFirstReveal = { dispose: () => cancelAnimationFrame(frame) };
       return;
     }
@@ -264,24 +230,13 @@
     pendingFirstReveal = listener;
   }
 
-  function applySnapshots(
-    monaco: typeof Monaco,
-    snapshots: Array<{ id: string; diff: GitDiff | null }>,
-    activeId: string | null,
-    line: number,
-    visible: boolean,
-  ) {
-    // Reconcile the latest project snapshot after compositionend, not an
-    // intermediate echo while the IME owns this model's selection and range.
+  function applySnapshots(monaco: typeof Monaco, snapshots: Array<{ id: string; diff: GitDiff | null }>,
+    activeId: string | null, line: number, visible: boolean) {
     if (input.active) return;
     ensureEditor(monaco);
     const retained = new Set(snapshots.map((snapshot) => snapshot.id));
-    for (const id of models.keys()) {
-      if (!retained.has(id)) disposeModels(id);
-    }
-    for (const snapshot of snapshots) {
-      if (snapshot.diff) ensureModels(monaco, snapshot.id, snapshot.diff);
-    }
+    for (const id of models.keys()) if (!retained.has(id)) disposeModels(id);
+    for (const snapshot of snapshots) if (snapshot.diff) ensureModels(monaco, snapshot.id, snapshot.diff);
     const active = activeId ? snapshots.find((snapshot) => snapshot.id === activeId) : null;
     const cached = activeId ? models.get(activeId) : null;
     if (!active?.diff || !cached || !editor) return;
@@ -291,20 +246,15 @@
       saveShownView();
       editor.setModel({ original: cached.original, modified: cached.modified });
       shownId = activeId;
-      editor.updateOptions({
-        readOnly: active.diff.staged,
-        originalEditable: false,
-        renderMarginRevertIcon: !active.diff.staged,
-      });
+      editor.updateOptions({ readOnly: active.diff.staged, originalEditable: false,
+        renderMarginRevertIcon: !active.diff.staged });
       if (cached.viewState) editor.restoreViewState(cached.viewState);
       layout = true;
     }
     const originalAriaLabel = active.diff.staged ? `${active.diff.originalLabel} version`
       : active.diff.originalLabel === 'EMPTY' ? 'Empty staged version' : 'Staged version';
     editor.getOriginalEditor().updateOptions({ ariaLabel: originalAriaLabel });
-    editor.getModifiedEditor().updateOptions({
-      ariaLabel: active.diff.staged ? 'Staged version' : 'Current document',
-    });
+    editor.getModifiedEditor().updateOptions({ ariaLabel: active.diff.staged ? 'Staged version' : 'Current document' });
     const revealKey = `${activeId}:${line}:${visible}`;
     const requested = visible ? gitDiffViewport.takeSourceTarget(active.id) : null;
     if (visible && (requested || revealKey !== lastRevealKey)) {
@@ -312,12 +262,10 @@
       if (requested) {
         interruptReveal();
         cached.sourceSide = requested.sourceSide;
-        const targetEditor = requested.sourceSide === 'before'
-          ? editor.getOriginalEditor() : editor.getModifiedEditor();
+        const targetEditor = requested.sourceSide === 'before' ? editor.getOriginalEditor() : editor.getModifiedEditor();
         const targetModel = requested.sourceSide === 'before' ? cached.original : cached.modified;
-        const position = targetModel.validatePosition({
-          lineNumber: requested.anchor.sourceLine, column: requested.anchor.sourceColumn ?? 1,
-        });
+        const position = targetModel.validatePosition({ lineNumber: requested.anchor.sourceLine,
+          column: requested.anchor.sourceColumn ?? 1 });
         targetEditor.setPosition(position);
         targetEditor.setScrollTop(targetEditor.getTopForPosition(position.lineNumber, position.column)
           - targetEditor.getLayoutInfo().height * requested.anchor.yRatio, monaco.editor.ScrollType.Immediate);
@@ -334,40 +282,26 @@
       } else {
         (cached.sourceSide === 'before' ? editor.getOriginalEditor() : editor.getModifiedEditor()).focus();
       }
-      // Ordinary tab resume keeps Monaco's saved caret/scroll state. Only an
-      // explicit Viewer -> Source request is allowed to reposition it.
       layout = true;
     }
     if (layout) requestAnimationFrame(() => layoutEditor());
   }
 
-  // While the tab is hidden the host is 0x0 (display:none). Laying the diff
-  // editor out at zero width makes Monaco's useInlineViewWhenSpaceIsLimited
-  // flip it into inline mode, which permanently clears word wrap on the
-  // original (left) editor. Skip layout while hidden so the flip never
-  // happens; the ResizeObserver below relayouts on the next real size.
+  // Do not lay out the hidden 0x0 host: Monaco's inline transition otherwise
+  // clears wrapping in the original pane. Preserve this Markdown regression fix.
   function layoutEditor() {
     if (!editor || !host || host.clientWidth === 0 || host.clientHeight === 0) return;
     editor.layout();
   }
 
-  async function reconcile(
-    snapshots: Array<{ id: string; diff: GitDiff | null }>,
-    activeId: string | null,
-    line: number,
-    visible: boolean,
-  ) {
+  async function reconcile(snapshots: Array<{ id: string; diff: GitDiff | null }>,
+    activeId: string | null, line: number, visible: boolean) {
     if (!host || !snapshots.some((snapshot) => snapshot.diff)) return;
     const current = ++request;
     error = '';
     if (api) {
-      try {
-        applySnapshots(api, snapshots, activeId, line, visible);
-        loading = false;
-      } catch (cause) {
-        loading = false;
-        error = cause instanceof Error ? cause.message : String(cause);
-      }
+      try { applySnapshots(api, snapshots, activeId, line, visible); loading = false; }
+      catch (cause) { loading = false; error = cause instanceof Error ? cause.message : String(cause); }
       return;
     }
     loading = true;
@@ -377,10 +311,7 @@
       applySnapshots(monaco, snapshots, activeId, line, visible);
       loading = false;
     } catch (cause) {
-      if (current === request) {
-        loading = false;
-        error = cause instanceof Error ? cause.message : String(cause);
-      }
+      if (current === request) { loading = false; error = cause instanceof Error ? cause.message : String(cause); }
     }
   }
 
@@ -389,8 +320,6 @@
     const activeId = project.activeGitDiffId;
     const line = project.gitDiffLine;
     const visible = project.gitDiffActive && project.gitDiffMode === 'source';
-    // Track only explicit input state. Reads performed inside Monaco callbacks
-    // must not accidentally become dependencies of this Svelte effect.
     if (host) untrack(() => void reconcile(snapshots, activeId, line, visible));
   }
   $effect(reconcileCurrent);
@@ -404,10 +333,7 @@
       frame = requestAnimationFrame(() => layoutEditor());
     });
     observer.observe(target);
-    return () => {
-      cancelAnimationFrame(frame);
-      observer.disconnect();
-    };
+    return () => { cancelAnimationFrame(frame); observer.disconnect(); };
   });
 
   onDestroy(() => {
