@@ -1,6 +1,8 @@
 import { REVIEW_SOURCE_ATTRIBUTES, shiftedReviewAttribute,
   type ReviewRowsPatch, type ReviewTreePatch } from '../core/preview/review-row-patch';
 
+import { prepareReviewMathRow } from './review-math-dom';
+
 const SOURCE_SELECTOR = REVIEW_SOURCE_ATTRIBUTES.map((name) => `[${name}]`).join(',');
 const integer = (value: number) => Number.isSafeInteger(value) && value >= 0;
 function shiftCell(cell: Element, delta: number): void {
@@ -26,6 +28,8 @@ function prepareTree(root: Element, patch: ReviewTreePatch, split: boolean) {
   }
   const removed = new Set<number>(); let edge = 0; let length = children.length;
   const inserts: Element[] = [];
+  const mathPlans: ReturnType<typeof prepareReviewMathRow>[] = [];
+  const usedMath = new Set<Element>();
   const operations = patch.splices.map((splice, operationIndex) => {
     if (!splice || !integer(splice.from) || !integer(splice.removeCount)
       || (operationIndex > 0 && splice.from <= edge) || splice.from + splice.removeCount > children.length
@@ -35,8 +39,15 @@ function prepareTree(root: Element, patch: ReviewTreePatch, split: boolean) {
     edge = splice.from + splice.removeCount;
     for (let index = splice.from; index < edge; index++) removed.add(index);
     const fragment = document.createDocumentFragment();
-    for (const html of splice.rows) {
-      const holder = document.createElement('template'); holder.innerHTML = html;
+    const oldRows = children.slice(splice.from, edge);
+    for (const [rowIndex, html] of splice.rows.entries()) {
+      // Bound cross-row matching on restructures; an ordinary replacement only
+      // inspects its own row, not the entire document or other live panes.
+      const candidates = splice.rows.length === oldRows.length ? [oldRows[rowIndex]]
+        : oldRows.length <= 8 && splice.rows.length <= 8 ? oldRows : [];
+      const plan = prepareReviewMathRow(html, candidates, usedMath);
+      const holder = plan.holder;
+      mathPlans.push(plan);
       const row = holder.content.firstElementChild;
       if (holder.content.children.length !== 1 || !row?.matches(selector)) {
         throw new Error('Invalid rendered review row.');
@@ -65,8 +76,10 @@ function prepareTree(root: Element, patch: ReviewTreePatch, split: boolean) {
       }
     }
   }
-  return { inserts, replacedRows: removed.size, retainedRows: children.length - removed.size,
+  return { inserts, reusedMath: mathPlans.reduce((sum, plan) => sum + plan.reusedMath, 0), replacedRows: removed.size, retainedRows: children.length - removed.size,
     apply() {
+      // Both trees have passed validation. Until this point no live math moved.
+      for (const plan of mathPlans) plan.commit();
       // Never reparent unchanged rows. Preserve DOM identity and local UI state.
       for (const splice of [...operations].reverse()) {
         const anchor = children[splice.from + splice.removeCount] ?? null;
@@ -93,7 +106,7 @@ export function applyReviewRowsPatch(root: HTMLElement, patch: ReviewRowsPatch, 
   const unified = prepareTree(wrappers[0], patch.unified, false);
   const split = prepareTree(wrappers[1], patch.split, true);
   unified.apply(); split.apply();
-  return { inserted: [...unified.inserts, ...split.inserts],
+  return { reusedMath: unified.reusedMath + split.reusedMath, inserted: [...unified.inserts, ...split.inserts],
     replacedRows: unified.replacedRows + split.replacedRows,
     retainedRows: unified.retainedRows + split.retainedRows };
 }
