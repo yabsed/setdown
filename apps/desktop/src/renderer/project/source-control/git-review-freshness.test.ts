@@ -139,3 +139,22 @@ test('duplicate Escape while rendering does not duplicate the render', async () 
     assert.equal(f.shows.filter(Boolean).length, 1);
   } finally { f.close(); }
 });
+
+test('unsupported stale work cannot cancel a newer Escape request', async () => {
+  const f = fixture(); try {
+    const work = f.run(); await tick(); f.controller.changeWorkingTree('v2'); f.controller.showRendered();
+    f.calls[0].resolve({ revision: 1, url: null, themeId: 'paper', supported: false });
+    await work; await tick();
+    assert.equal(project.gitDiffMode, 'rendered'); assert.equal(f.calls.length, 2);
+    await f.finish(1); f.ack(); assert.equal(f.shows.filter(Boolean).length, 1);
+  } finally { f.close(); }
+});
+test('failure of stale work retries latest without reporting an obsolete error', async () => {
+  const f = fixture(); try {
+    const work = f.run(); await tick(); f.controller.changeWorkingTree('v2'); f.controller.showRendered();
+    f.calls[0].reject(new Error('obsolete render failed'));
+    await work; await tick();
+    assert.equal(project.error, ''); assert.equal(f.calls.length, 2);
+    await f.finish(1); f.ack(); assert.equal(f.shows.filter(Boolean).length, 1);
+  } finally { f.close(); }
+});
