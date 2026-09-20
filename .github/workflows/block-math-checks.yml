@@ -35,8 +35,18 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Full project typecheck
         run: npm run typecheck
-      - name: Actual Vitest and Crossnote integration
+      - name: Full Vitest suite including Crossnote integration
         working-directory: apps/desktop
-        run: npm test -- src/main/preview/fast-block-math.test.ts src/main/preview/deferred-math.test.ts src/main/preview/block-math-integration.test.ts
+        run: npm test -- --maxWorkers=2
       - name: Build
         run: npm run build
+      - name: Actual Crossnote warm typesetting benchmark
+        working-directory: apps/desktop
+        run: |
+          node scripts/benchmark-block-math.cjs > block-math-benchmark.json
+          cat block-math-benchmark.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: block-math-benchmark
+          path: apps/desktop/block-math-benchmark.json
+          retention-days: 14
