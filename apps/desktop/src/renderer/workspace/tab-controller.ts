@@ -16,6 +16,7 @@ import { restoredOutlineOpen } from '../shell/layout-session';
 type Options = {
   desktop: DesktopPort; workspace: WorkspaceState; session: TabSession; shell: HTMLElement;
   editor: MonacoEditor; reader: ReaderController; preview: PreviewSession; surfaces: SurfaceController;
+  capturePosition?(tab?: WorkspaceTab): void;
   shouldSchedulePreview(): boolean;
   confirmClose(names: string[]): Promise<CloseDecision>;
   workspaceChanged(): void;
@@ -105,6 +106,7 @@ export class TabController {
   private saveActiveState(): void {
     const tab = this.options.workspace.active;
     if (!tab || !this.options.session.document) return;
+    this.options.capturePosition?.(tab);
     this.options.editor.saveView(tab);
     if (hasMarkdownPreview(tab.document) && this.options.preview.readyRevision !== null) {
       tab.previewRevision = this.options.preview.readyRevision;
@@ -114,7 +116,7 @@ export class TabController {
     if (tab.id === this.options.workspace.activeId) this.saveActiveState();
     const markdown = hasMarkdownPreview(tab.document);
     return { id: tab.id, document: tab.document, text: this.text(tab), revision: tab.revision,
-      surface: documentSurface(tab.document.path, tab.surface), anchor: tab.anchor,
+      surface: documentSurface(tab.document.path, tab.surface), anchor: tab.anchor, readingPosition: tab.readingPosition,
       editorViewState: this.options.editor.exportView(tab.id), viewerScrollRatio: markdown ? tab.viewerScrollRatio : null,
       previewUrl: markdown ? tab.previewUrl : null, previewRevision: markdown ? tab.previewRevision : null,
       previewTheme: markdown ? tab.previewTheme : null, tocOpen: markdown && tab.tocOpen };
@@ -124,6 +126,11 @@ export class TabController {
     const summaries = workspace.tabs.map((tab) => ({ id: tab.id, name: tab.document.name,
       path: tab.document.path, active: tab.id === workspace.activeId, dirty: this.dirty(tab) }));
     view.tabs = summaries;
+    const active = workspace.active;
+    if (active?.document.kind === 'pdf') {
+      if (view.pdfDocument?.id !== active.id || view.pdfDocument.document !== active.document)
+        view.pdfDocument = { id: active.id, document: active.document, position: active.readingPosition };
+    } else view.pdfDocument = null;
     shell.dataset.tabs = summaries.length > 0 ? 'true' : 'false';
     shell.dataset.dirtyTabs = String(summaries.filter((tab) => tab.dirty).length);
     desktop.updateTabState(workspace.tabs.map((tab) => ({ name: tab.document.name, path: tab.document.path,
@@ -159,6 +166,8 @@ export class TabController {
       return;
     }
     const activation = ++this.activation;
+    const restoreAnchor = next.readingPosition?.kind === 'text' ? { ...next.anchor } : null;
+    next.restoringPosition = !!restoreAnchor;
     if (next.surface === 'editor') await editor.load();
     if (activation !== this.activation || !workspace.find(next.id)) return;
     this.saveActiveState();
@@ -176,12 +185,17 @@ export class TabController {
     surfaces.set(next.surface);
     if (hasMarkdownPreview(next.document)) reader.send(next.id, { command: 'marktex:collect-headings' });
     await desktop.activateDocument(next.document, this.text(next), session.revision);
-    if (activation !== this.activation || workspace.activeId !== next.id || !hasMarkdownPreview(next.document)) return;
-    if (preview.readyRevision === session.revision) { preview.updateUi(); return; }
+    if (activation !== this.activation || workspace.activeId !== next.id) return;
+    if (!hasMarkdownPreview(next.document)) {
+      if (restoreAnchor && next.surface === 'editor' && !(next.readingPosition?.kind === 'text' && next.readingPosition.editorView)) editor.reveal(restoreAnchor);
+      next.restoringPosition = false; return;
+    }
+    if (preview.readyRevision === session.revision) { next.restoringPosition = false; preview.updateUi(); return; }
     const ready = await preview.ensure(session.revision);
     if (ready && next.surface === 'viewer' && activation === this.activation) {
-      await preview.position(session.anchor, session.revision);
+      await preview.position(restoreAnchor ?? session.anchor, session.revision);
     }
+    next.restoringPosition = false;
   };
 
   close = async (tabId: string, confirmed = false): Promise<boolean> => {
@@ -202,6 +216,7 @@ export class TabController {
     if (tab.document.isUntitled) await desktop.discardDocument(tab.document);
     index = workspace.tabs.findIndex((candidate) => candidate.id === tabId);
     if (index < 0) return true;
+    if (workspace.activeId === tab.id) this.saveActiveState();
     const removed = workspace.remove(tab.id);
     if (!removed) return true;
     if (hasMarkdownPreview(tab.document)) reader.destroy(tab.id);
@@ -242,12 +257,12 @@ export class TabController {
     if (wasMarkdown && !markdown) reader.destroy(tab.id);
     if (!wasMarkdown && markdown) reader.create(tab.id);
     Object.assign(tab, { previewUrl: null, previewRevision: null, previewTheme: null });
-    if (!markdown) Object.assign(tab, { surface: 'editor', tocOpen: false, headings: [], activeHeadingId: null,
+    if (!markdown) Object.assign(tab, { surface: documentSurface(tab.document.path), tocOpen: false, headings: [], activeHeadingId: null,
       viewerScrollRatio: null, find: { open: false, query: '', activeMatch: 0, matches: 0 } });
     editor.retarget(tab);
     if (workspace.activeId !== tab.id) return;
     if (wasMarkdown || markdown) preview.reset();
-    if (!markdown && !editor.loaded) await editor.load();
+    if (!markdown && tab.document.kind !== 'pdf' && !editor.loaded) await editor.load();
     if (workspace.activeId !== tab.id || !workspace.find(tab.id)) return;
     surfaces.set(tab.surface);
     await desktop.activateDocument(tab.document, this.text(tab), tab.revision);
@@ -318,23 +333,28 @@ export class TabController {
     const tab = this.options.workspace.active;
     if (tab) this.options.editor.replace(tab, documentSnapshot);
   };
-  show = async (documentSnapshot: DocumentSnapshot, initialSurface: 'viewer' | 'editor' = 'viewer'): Promise<void> => {
+  show = async (documentSnapshot: DocumentSnapshot, initialSurface: 'viewer' | 'editor' | 'pdf' = 'viewer'): Promise<void> => {
     const { editor, reader, workspace } = this.options;
     if (!documentSnapshot.isUntitled) {
       const existing = workspace.tabs.find((tab) => !tab.document.isUntitled && tab.document.path === documentSnapshot.path);
       if (existing) return void await this.activate(existing.id);
     }
-    initialSurface = documentSurface(documentSnapshot.path, initialSurface);
+    const saved = documentSnapshot.readingPosition;
+    initialSurface = documentSurface(documentSnapshot.path, saved?.kind === 'text' ? saved.surface : initialSurface);
     const id = crypto.randomUUID();
     if (hasMarkdownPreview(documentSnapshot)) reader.create(id);
     const created = createWorkspaceTab(id, documentSnapshot, initialSurface, {
       sourceLine: 1, yRatio: GOLDEN_TOP_RATIO, reason: 'empty-document', confidence: 'fallback',
     });
+    if (saved?.kind === 'text') {
+      created.anchor = { ...saved.anchor, sourceLine: Math.min(saved.anchor.sourceLine, this.countLines(created.text)) };
+      if (saved.editorView) editor.importView(id, saved.editorView);
+    }
     created.tocOpen = hasMarkdownPreview(documentSnapshot) && restoredOutlineOpen();
     workspace.add(created);
     this.render();
     await this.activate(id);
-    if (initialSurface === 'viewer') window.setTimeout(() => {
+    if (initialSurface === 'viewer' && hasMarkdownPreview(documentSnapshot)) window.setTimeout(() => {
       void editor.load().catch((error) => console.error('Failed to load editor', error));
     }, 0);
   };
@@ -355,6 +375,7 @@ export class TabController {
     const restored = createWorkspaceTab(incoming.id, restoredDocument, incoming.surface, incoming.anchor as ViewportAnchor);
     if (markdown) Object.assign(restored, { previewUrl: incoming.previewUrl, previewRevision: incoming.previewRevision,
       previewTheme: incoming.previewTheme, tocOpen: incoming.tocOpen === true, viewerScrollRatio: incoming.viewerScrollRatio });
+    restored.readingPosition = incoming.readingPosition;
     editor.importView(restored.id, incoming.editorViewState);
     workspace.add(restored);
     this.render();

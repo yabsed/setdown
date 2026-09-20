@@ -1,6 +1,6 @@
 import { statSync } from 'node:fs';
 import path from 'node:path';
-import { isTextCandidate } from '../../core/document/document-profile';
+import { isOpenableDocument } from '../../core/document/document-profile';
 
 /** Skip the executable/app entry, including extensionless packaged executables. */
 export function documentPathFromArgs(args: string[], packaged: boolean,
@@ -9,7 +9,7 @@ export function documentPathFromArgs(args: string[], packaged: boolean,
   for (const argument of args.slice(packaged ? 1 : 2)) {
     if (argument === '--') { positional = true; continue; }
     if (!positional && argument.startsWith('-')) continue;
-    if (!isTextCandidate(argument)) continue;
+    if (!isOpenableDocument(argument)) continue;
     const resolved = path.resolve(argument);
     try { if (isFile(resolved)) return resolved; } catch { /* Try the next file argument. */ }
   }

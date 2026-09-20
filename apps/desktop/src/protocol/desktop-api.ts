@@ -143,7 +143,8 @@ export type TransferableTab = {
   document: DocumentSnapshot;
   text: string;
   revision: number;
-  surface: 'viewer' | 'editor';
+  surface: 'viewer' | 'editor' | 'pdf';
+  readingPosition?: import('../core/reading/reading-position').ReadingPosition;
   anchor: {
     sourceLine: number;
     sourceColumn?: number;
@@ -210,6 +211,9 @@ export type AppCommand =
   | 'toggle-surface';
 
 export type MarkTexApi = {
+  saveReadingPosition(record: import('../core/reading/reading-position').ReadingRecord): void;
+  flushReadingPositions(): void;
+  readPdfRange(path: string, begin: number, end: number, version: DiskVersion): Promise<Uint8Array>;
   terminal: import('./terminal').TerminalApi;
   initialTheme: ThemeSnapshot;
   getDocument(): Promise<DocumentSnapshot | null>;

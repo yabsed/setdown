@@ -16,6 +16,7 @@ type Options = {
   host: HTMLElement; tabs: () => WorkspaceTab[]; active: () => WorkspaceTab | null;
   theme: () => PreviewThemeId; status: (status: 'loading' | 'ready' | 'error') => void;
   changed: (tab: WorkspaceTab, text: string) => void;
+  viewChanged?: () => void;
   scrolled: () => void; escape: () => void; insertLink: () => void; insertTable: () => void;
 };
 type SearchTarget = { line: number; column: number; ordinal: number };
@@ -35,7 +36,7 @@ export class MonacoEditor {
   constructor(private readonly options: Options) {
     this.unregisterModels = liveDocumentModels.register((path, api) => {
       const tab = options.tabs().find((candidate) => candidate.document.path === path);
-      if (!tab) return null;
+      if (!tab || tab.document.kind === 'pdf') return null;
       // A diff can be the first source surface opened from an ordinary Viewer.
       // Use its already-loaded Monaco module without creating an ordinary editor.
       this.ensureModel(tab, api);
@@ -79,7 +80,7 @@ export class MonacoEditor {
       });
       this.projectDecorations = this.editorValue.createDecorationsCollection();
       this.installBindings(api, this.editorValue);
-      for (const tab of this.options.tabs()) this.ensureModel(tab);
+      for (const tab of this.options.tabs()) if (tab.document.kind !== 'pdf') this.ensureModel(tab);
       const active = this.options.active();
       if (active) this.activate(active);
       this.options.status('ready');
@@ -88,6 +89,7 @@ export class MonacoEditor {
   }
   activate(tab: WorkspaceTab): void {
     if (!this.editorValue) return;
+    if (tab.document.kind === 'pdf') { this.editorValue.setModel(null); return; }
     this.editorValue.setModel(this.ensureModel(tab));
     this.owners.get(tab.id)?.beginEditing(`document:${tab.id}`);
     const view = this.views.get(tab.id);
@@ -238,7 +240,9 @@ export class MonacoEditor {
       const tab = this.options.active();
       if (tab && editor.getModel() === this.models.get(tab.id)) this.owners.get(tab.id)?.beginEditing(`document:${tab.id}`);
     });
+    editor.onDidChangeCursorSelection(() => this.options.viewChanged?.());
     editor.onDidScrollChange((event) => {
+      if (event.scrollTopChanged || event.scrollLeftChanged) this.options.viewChanged?.();
       if (event.scrollTopChanged && hasMarkdownPreview(this.options.active()?.document)) this.options.scrolled();
     });
     installMarkdownEditorActions(api, editor, this.options, () => hasMarkdownPreview(this.options.active()?.document));

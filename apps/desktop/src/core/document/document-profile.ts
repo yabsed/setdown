@@ -6,19 +6,23 @@ const BINARY = new Set(('pdf png jpg jpeg gif webp avif bmp ico icns tif tiff he
   + 'exe dll so dylib bin class pyc pyo wasm sqlite sqlite3 db woff woff2 ttf otf eot '
   + 'mp3 mp4 m4a wav ogg flac avi mov mkv webm psd ai sketch').split(' '));
 
-export type DocumentProfile = { readonly kind: 'markdown' | 'text'; readonly preview: 'markdown' | null };
+export type DocumentSurface = 'viewer' | 'editor' | 'pdf';
+export type DocumentProfile = { readonly kind: 'markdown' | 'text' | 'pdf'; readonly preview: 'markdown' | 'pdf' | null };
+const pdf: DocumentProfile = Object.freeze({ kind: 'pdf', preview: 'pdf' });
+export const isPdfDocument = (filePath: string): boolean => /\.pdf$/i.test(filePath);
+export const isOpenableDocument = (filePath: string): boolean => isPdfDocument(filePath) || isTextCandidate(filePath);
 const markdown: DocumentProfile = Object.freeze({ kind: 'markdown', preview: 'markdown' });
 const text: DocumentProfile = Object.freeze({ kind: 'text', preview: null });
 export const isMarkdownDocument = (filePath: string): boolean => MARKDOWN.test(filePath);
-export const documentProfile = (filePath: string): DocumentProfile => isMarkdownDocument(filePath) ? markdown : text;
+export const documentProfile = (filePath: string): DocumentProfile => isMarkdownDocument(filePath) ? markdown : isPdfDocument(filePath) ? pdf : text;
 export const fileName = (filePath: string): string => filePath.split(/[\\/]/).at(-1) ?? filePath;
 /** A cheap navigation/search filter, NOT proof that bytes are editable text. */
 export function isTextCandidate(filePath: string): boolean {
   const name = fileName(filePath);
   return !BINARY.has(name.includes('.') ? name.split('.').at(-1)!.toLowerCase() : '');
 }
-export function documentSurface(filePath: string, preferred: 'viewer' | 'editor' = 'viewer'): 'viewer' | 'editor' {
-  return isMarkdownDocument(filePath) ? preferred : 'editor';
+export function documentSurface(filePath: string, preferred: DocumentSurface = 'viewer'): DocumentSurface {
+  return isPdfDocument(filePath) ? 'pdf' : isMarkdownDocument(filePath) ? (preferred === 'pdf' ? 'viewer' : preferred) : 'editor';
 }
 export type RegisteredLanguage = {
   id: string; extensions?: readonly string[]; filenames?: readonly string[];

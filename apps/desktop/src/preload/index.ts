@@ -33,6 +33,9 @@ function initialThemeSnapshot(): ThemeSnapshot {
 }
 
 const api: MarkTexApi = {
+  saveReadingPosition: (record) => ipcRenderer.send('reading:save', record),
+  flushReadingPositions: () => ipcRenderer.sendSync('reading:flush'),
+  readPdfRange: (path, begin, end, version) => ipcRenderer.invoke('pdf:range', path, begin, end, version),
   terminal: {
     create: (id, size) => ipcRenderer.invoke('terminal:create', id, size),
     write: (id, data) => ipcRenderer.send('terminal:write', id, data),

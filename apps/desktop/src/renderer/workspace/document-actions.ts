@@ -26,7 +26,7 @@ export class DocumentActions {
   }
   async save(saveAs = false) {
     const tab = this.options.active();
-    if (!tab) return false;
+    if (!tab || tab.document.kind === 'pdf') return false;
     try {
       const text = this.options.text(tab);
       const result = saveAs

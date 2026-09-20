@@ -1,4 +1,6 @@
 /** Electron main process composition root. */
+import { ReadingPositionStore } from './reading/reading-position-store';
+import { installReadingIpc } from './reading/reading-ipc';
 import { app, BrowserWindow, dialog, net, protocol } from 'electron';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -40,7 +42,8 @@ renderer = new PreviewRenderer({ previews,
   roots: () => Array.from(registry.values).flatMap((state) => [state.activeRoot, state.projectRoot])
     .filter((root): root is string => !!root),
   theme: () => themes.id, workerPath: path.join(__dirname, 'render-worker.cjs') });
-const documents = new DocumentManager(() => renderer.forgetNotebooks());
+const positions = new ReadingPositionStore(path.join(app.getPath('userData'), 'reading-positions.json'));
+const documents = new DocumentManager(() => renderer.forgetNotebooks(), positions);
 const projectSearchRenderer = new ProjectSearchRenderer(path.join(__dirname, 'render-worker.cjs'), () => themes.id);
 const projects = new ProjectService((documentPath, text, query, limit, root) =>
   projectSearchRenderer.search(documentPath, text, query, limit, root));
@@ -86,6 +89,8 @@ else {
   app.whenReady().then(async () => {
     installProtocols(); themes.load();
     installIpc({ channels, documents, previews, projects, renderer, themes, transfers });
+    installReadingIpc(channels, positions, (id) => registry.stateForWebContents(id));
+    app.on('will-quit', () => positions.flush());
     const terminals = installTerminalIpc(channels);
     app.on('before-quit', () => terminals.dispose());
     installApplicationMenu({ focusedState: () => registry.focused(), createWindow: windows.create,

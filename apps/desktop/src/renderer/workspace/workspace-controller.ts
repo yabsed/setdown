@@ -1,3 +1,4 @@
+import { ReadingPositionController } from '../reading/reading-position-controller';
 import { toggleTerminal, terminalOwnsInput } from '../terminal/terminal-state.svelte';
 import { GOLDEN_TOP_RATIO, type ViewportAnchor } from '../../core/preview/viewport-anchor';
 import { normalizePreviewTheme } from '../../core/preview/preview-preferences';
@@ -94,7 +95,8 @@ export function startWorkspace(desktop: DesktopPort) {
     reloadExternalChange: () => void documents.reloadExternalChange(),
     showRenderError: () => void surfaces.enterEditor(),
   };
-  mount(App, { target: document.querySelector<HTMLDivElement>('#app')!, props: { actions, terminalApi: desktop.terminal } });
+  mount(App, { target: document.querySelector<HTMLDivElement>('#app')!, props: { actions, terminalApi: desktop.terminal, desktop,
+    pdfPosition: (id: string, position: import('../../core/reading/reading-position').PdfReadingPosition) => { const tab = workspace.find(id); if (tab && workspace.activeId === id && !project.gitDiffActive) positions.remember(tab, position); } } });
   const shell = document.querySelector<HTMLElement>('.shell')!;
   restorePanelWidths(shell);
   const previewFrames = document.querySelector<HTMLElement>('.preview-frames')!;
@@ -106,21 +108,25 @@ export function startWorkspace(desktop: DesktopPort) {
   const closePrompt = new ClosePromptController();
   let surfaces: SurfaceController;
   let tabs: TabController;
+  let positions: ReadingPositionController;
   let projects: ProjectController;
   let projectContextChanged = () => {};
   const reader = new ReaderController({ desktop, shell, frames: previewFrames, tabs: workspace.tabs, active,
     activeId: () => workspace.activeId, initialTheme,
     applyProductTheme: (themeId) => { applyShellTheme(themeId); editor.setTheme(themeId); },
-    edit: (anchor) => void surfaces.enterEditor(anchor), anchorChanged: () => surfaces.publishAnchor() });
+    edit: (anchor) => void surfaces.enterEditor(anchor), anchorChanged: () => { surfaces.publishAnchor(); positions?.schedule(); } });
   const preview = new PreviewSession({ desktop, tabs: workspace.tabs, active,
     activeId: () => workspace.activeId, text: () => tabs.currentText(), lineCount: () => tabs.lineCount(), reader });
   const editor = new MonacoEditor({ host: editorHost, tabs: () => workspace.tabs, active,
     theme: () => reader.themeId, status: (status) => shell.dataset.editorRuntime = status,
+    viewChanged: () => positions?.schedule(),
     changed: (tab, text) => tabs.editorChanged(tab, text), scrolled: () => surfaces.editorScrolled(),
     escape: () => void surfaces.enterViewer(), insertLink: () => insertions.openLink(), insertTable: () => insertions.openTable() });
   surfaces = new SurfaceController({ workspace, session, shell, editor, reader, preview,
-    changed: () => projectContextChanged() });
+    changed: () => { projectContextChanged(); positions?.schedule(); } });
+  positions = new ReadingPositionController({ desktop, editor, active, suspended: () => project.gitDiffActive });
   tabs = new TabController({ desktop, workspace, session, shell, editor, reader, preview, surfaces,
+    capturePosition: (tab) => positions.capture(tab),
     shouldSchedulePreview: () => !project.gitDiffActive,
     confirmClose: (names) => closePrompt.request('tab', names), workspaceChanged: () => projectContextChanged() });
   const tabDrag = createTabDrag({ desktop, shell, strip: tabStrip, tabs: workspace.tabs,
@@ -133,8 +139,8 @@ export function startWorkspace(desktop: DesktopPort) {
     reload: tabs.reload, saved: (document) => projects.documentSaved(document),
     renderTabs: tabs.render, updateChrome: tabs.updateChrome });
   projects = new ProjectController({ desktop,
-    searchDocuments: (query) => workspace.tabs.map((tab) => ({ path: tab.document.path, text: tabs.text(tab),
-      surface: tab.surface, matches: tab.surface === 'editor' ? editor.projectMatches(tab, query.trim()) : undefined })),
+    searchDocuments: (query) => workspace.tabs.filter((tab) => tab.surface !== 'pdf').map((tab) => ({ path: tab.document.path, text: tabs.text(tab),
+      surface: tab.surface === 'viewer' ? 'viewer' : 'editor', matches: tab.surface === 'editor' ? editor.projectMatches(tab, query.trim()) : undefined })),
     showDocument: async (path) => {
       const documentSnapshot = await desktop.openProjectFile(path);
       if (!documentSnapshot) return false;
@@ -148,7 +154,7 @@ export function startWorkspace(desktop: DesktopPort) {
     reviewChanged: (open, activeReview) => {
       shell.dataset.gitDiff = String(open);
       reader.setSuspended(activeReview);
-      if (activeReview) preview.cancelSchedule();
+      if (activeReview) { positions.capture(); preview.cancelSchedule(); }
     },
     highlight: (query, target) => {
       const editing = workspace.active?.surface === 'editor';
@@ -175,7 +181,7 @@ export function startWorkspace(desktop: DesktopPort) {
   };
   const insertions = createEditorInsertions({ ...editorContext, save: () => documents.save(false) });
   const removeImagePaste = installEditorImagePaste(editorContext);
-  window.addEventListener('beforeunload', () => { insertions.dispose(); removeImagePaste(); }, { once: true });
+  window.addEventListener('beforeunload', () => { positions.flush(); insertions.dispose(); removeImagePaste(); }, { once: true });
   function toggleToc() {
     const tab = workspace.active;
     if (!tab || !hasMarkdownPreview(tab.document)) return;
@@ -249,7 +255,8 @@ export function startWorkspace(desktop: DesktopPort) {
       if (command === 'next-tab') cycleTab(1);
       if (command === 'previous-tab') cycleTab(-1);
       if (command === 'open-find' && !project.gitDiffActive) {
-        if (session.surface === 'editor') editor.find(); else reader.openFind();
+        if (session.surface === 'pdf') window.dispatchEvent(new Event('setdown:pdf-find'));
+        else if (session.surface === 'editor') editor.find(); else reader.openFind();
       }
       if (command === 'escape' && project.gitDiffActive) {
         if (renderedReview() && project.gitDiffMode === 'source') projects.showRenderedGitDiff();
@@ -271,6 +278,9 @@ export function startWorkspace(desktop: DesktopPort) {
         event.preventDefault(); toggleTerminal(); return;
       }
       if (terminalOwnsInput(event.target)) return;
+      if (session.surface === 'pdf' && !project.gitDiffActive && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+        event.preventDefault(); window.dispatchEvent(new Event('setdown:pdf-find')); return;
+      }
       if (event.key === 'Escape' && insertions.dismissOnEscape('dom')) {
         event.preventDefault(); event.stopImmediatePropagation(); return;
       }

@@ -2,7 +2,7 @@ import { ipcMain, shell } from 'electron';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { normalizePreviewTheme } from '../../core/preview/preview-preferences';
-import { isMarkdownDocument, isTextCandidate } from '../../core/document/document-profile';
+import { isMarkdownDocument, isOpenableDocument, isPdfDocument } from '../../core/document/document-profile';
 import { retainUnsavedRevision } from '../../core/document/document-save';
 import type { ApplicationMenuEntry, CloseDecision, DocumentSnapshot, GitRemoteAction, GitReviewState,
   ProjectEntryKind, ProjectSearchRequest, SaveResult, TabStateSummary, ThemeSnapshot } from '../../protocol/desktop-api';
@@ -39,7 +39,8 @@ export function installIpc(options: Options): void {
   channels.handle('menu:get', (state, menuId: unknown) => {
     const review = state.rendererGitReview?.active === true;
     const filePath = review ? state.rendererGitReview!.path : state.currentDocument?.path ?? '';
-    return documentMenus(applicationMenuEntries(menuId), isMarkdownDocument(filePath), review);
+    return documentMenus(applicationMenuEntries(menuId), isMarkdownDocument(filePath), review).map((item) =>
+      isPdfDocument(filePath) && ['save', 'menu-save-as'].includes(item.id) ? { ...item, enabled: false } : item);
   });
   channels.on('menu:execute', (state, itemId: unknown) => executeApplicationMenu(itemId, state.window));
   channels.handle('theme:get', (): ThemeSnapshot => themes.snapshot);
@@ -122,10 +123,14 @@ export function installIpc(options: Options): void {
   channels.handle('project:read-directory', (state, directoryPath: string) => projects.readDirectory(state, directoryPath));
   channels.handle('project:create-entry', (state, request: { parentPath: string; name: string; kind: ProjectEntryKind }) =>
     projects.createEntry(state, request.parentPath, request.name, request.kind));
-  channels.handle('project:rename-entry', (state, request: { entryPath: string; name: string }) =>
-    projects.renameEntry(state, request.entryPath, request.name));
-  channels.handle('project:move-entry', (state, request: { entryPath: string; targetDirectory: string }) =>
-    projects.moveEntry(state, request.entryPath, request.targetDirectory));
+  channels.handle('project:rename-entry', async (state, request: { entryPath: string; name: string }) => {
+    const moved = await projects.renameEntry(state, request.entryPath, request.name);
+    documents.positions?.move(moved.from, moved.to); return moved;
+  });
+  channels.handle('project:move-entry', async (state, request: { entryPath: string; targetDirectory: string }) => {
+    const moved = await projects.moveEntry(state, request.entryPath, request.targetDirectory);
+    documents.positions?.move(moved.from, moved.to); return moved;
+  });
   channels.handle('project:trash-entry', (state, entryPath: string) => projects.trashEntry(state, entryPath));
   channels.handle('project:open-file', (state, filePath: string) => documents.open(state, projects.assertDocument(state, filePath), false));
   channels.handle('project:search', (state, request: ProjectSearchRequest) => projects.search(state, request));
@@ -156,8 +161,9 @@ async function openLink(documents: DocumentManager, state: Parameters<DocumentMa
   if (localPath) {
     const checked = canonicalPath(localPath);
     try { if (!(await fs.stat(checked)).isFile()) return; } catch { return; }
-    if (isTextCandidate(checked)) {
-      if (state.currentDocument && canonicalPath(state.currentDocument.path) === checked) return;
+    if (isOpenableDocument(checked)) {
+      if (state.currentDocument && canonicalPath(state.currentDocument.path) === checked
+        && state.rendererTabs.some((tab) => canonicalPath(tab.path) === checked)) return;
       const document = await documents.open(state, checked, false);
       state.window.webContents.send('document:opened', document);
     } else await shell.openPath(checked);

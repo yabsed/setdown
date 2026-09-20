@@ -10,8 +10,10 @@ import type {
   SaveResult,
 } from '../../protocol/desktop-api';
 import { applyTextRevision } from '../../core/document/document-state';
-import { isMarkdownDocument, MARKDOWN_EXTENSIONS } from '../../core/document/document-profile';
+import { isMarkdownDocument, isPdfDocument, MARKDOWN_EXTENSIONS } from '../../core/document/document-profile';
 import { prepareDocumentSave, retainUnsavedRevision } from '../../core/document/document-save';
+import type { ReadingPositionStore } from '../reading/reading-position-store';
+import { readPdfMetadata } from './pdf-file';
 import { readTextFile } from './text-file';
 import { discardDraftBundle, saveDraftBundle } from './draft-assets';
 import { isSupportedImagePath, savePastedImageFile, savePastedPng } from './pasted-image';
@@ -27,13 +29,13 @@ const saveFilters = (filePath: string) => isMarkdownDocument(filePath)
 export class DocumentManager {
   private untitledSequence = 0;
 
-  constructor(private readonly resetPreviewCache: () => void) {}
+  constructor(private readonly resetPreviewCache: () => void, readonly positions?: ReadingPositionStore) {}
 
   async read(filePath: string): Promise<DocumentSnapshot> {
     const absolute = canonicalPath(filePath);
     // Preserve Markdown's existing unbounded read policy. New text formats use
     // the bounded, strict decoder and retain their BOM/EOL metadata.
-    const loaded = isMarkdownDocument(absolute)
+    const loaded = isPdfDocument(absolute) ? await readPdfMetadata(absolute) : isMarkdownDocument(absolute)
       ? { text: await fs.readFile(absolute, 'utf8'), diskVersion: diskVersion(absolute) }
       : await readTextFile(absolute);
     return {
@@ -41,6 +43,7 @@ export class DocumentManager {
       path: absolute,
       name: path.basename(absolute),
       savedText: loaded.text,
+      readingPosition: this.positions?.get(absolute, loaded.diskVersion),
       revision: 0,
       savedRevision: 0,
       isUntitled: false,
@@ -98,7 +101,7 @@ export class DocumentManager {
 
   async chooseAndOpen(state: WindowState, notify = true) {
     const result = await dialog.showOpenDialog(state.window, {
-      properties: ['openFile'], filters: [MARKDOWN_FILTER, ALL_FILES_FILTER],
+      properties: ['openFile'], filters: [{ name: 'Documents', extensions: [...MARKDOWN_EXTENSIONS, 'pdf', 'txt'] }, MARKDOWN_FILTER, { name: 'PDF', extensions: ['pdf'] }, ALL_FILES_FILTER],
     });
     if (result.canceled || !result.filePaths[0]) return null;
     return this.open(state, result.filePaths[0], notify);
@@ -136,6 +139,7 @@ export class DocumentManager {
   }
 
   async saveSnapshot(state: WindowState, document: DocumentSnapshot, text: string, revision: number): Promise<SaveResult> {
+    if (document.kind === 'pdf' || isPdfDocument(document.path)) throw new Error('PDF documents are read-only.');
     const updated = applyTextRevision(document, text, revision);
     if (updated.isUntitled) {
       const selected = await dialog.showSaveDialog(state.window, {
@@ -187,6 +191,7 @@ export class DocumentManager {
   async saveAs(state: WindowState, text: string, revision: number): Promise<SaveResult> {
     const document = state.currentDocument;
     if (!document) return { canceled: true };
+    if (document.kind === 'pdf' || isPdfDocument(document.path)) return { canceled: true };
     if (document.isUntitled) return this.saveCurrent(state, text, revision);
     const selected = await dialog.showSaveDialog(state.window, {
       defaultPath: document.path, filters: saveFilters(document.path),

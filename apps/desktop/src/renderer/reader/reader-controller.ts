@@ -219,7 +219,7 @@ export class ReaderController {
       return;
     }
     if (message.type === 'marktex:viewport-state') {
-      if (message.revision !== tab.revision || tab.surface !== 'viewer') return;
+      if (message.revision !== tab.revision || tab.surface !== 'viewer' || tab.restoringPosition) return;
       tab.anchor = clampAnchor(
         this.messageAnchor(message.anchor),
         Math.max(1, tab.text.split(/\r\n|\r|\n/).length),

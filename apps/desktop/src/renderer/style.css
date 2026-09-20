@@ -1151,3 +1151,7 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
   .link-popover { right: 8px; }
   .toc-panel { flex-basis: min(220px, 46vw); }
 }
+
+.shell[data-surface="pdf"] .viewer-surface,
+.shell[data-surface="pdf"] .editor-surface,
+.shell[data-document-kind="pdf"] .mode-toggle { display: none; }

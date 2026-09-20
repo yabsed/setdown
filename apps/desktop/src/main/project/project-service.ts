@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { dialog } from 'electron';
 import type { GitRemoteAction, ProjectEntryKind, ProjectFolder, ProjectSearchRequest } from '../../protocol/desktop-api';
-import { isTextCandidate } from '../../core/document/document-profile';
+import { isOpenableDocument } from '../../core/document/document-profile';
 import { canonicalPath } from '../documents/file-system';
 import type { WindowState } from '../windows/window-state';
 import { ExplorerService } from './explorer-service';
@@ -57,7 +57,7 @@ export class ProjectService {
   runGitRemote = (state: WindowState, action: GitRemoteAction) => this.git.remote(state, action);
   assertDocument(state: WindowState, candidate: string): string {
     const filePath = this.assertProjectFile(state, candidate);
-    if (!isTextCandidate(filePath)) throw new Error('This binary format cannot be edited as text.');
+    if (!isOpenableDocument(filePath)) throw new Error('This binary format cannot be edited as text.');
     return filePath;
   }
   assertProjectFile(state: WindowState, candidate: string): string { return this.paths.inside(state, candidate); }

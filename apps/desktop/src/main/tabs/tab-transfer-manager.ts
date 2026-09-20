@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
 import type { TransferableTab } from '../../protocol/desktop-api';
-import { isMarkdownDocument } from '../../core/document/document-profile';
+import { isMarkdownDocument, documentSurface } from '../../core/document/document-profile';
 import { previewThemeBackground, type PreviewThemeId } from '../../core/preview/preview-preferences';
 import type { BandLine } from '../../core/preview/viewport-anchor';
 import type { WindowState } from '../windows/window-state';
@@ -37,7 +37,7 @@ export class TabTransferManager {
     if (typeof transferId !== 'string' || !incoming || typeof incoming.id !== 'string'
       || typeof incoming.document?.path !== 'string') return;
     const markdown = isMarkdownDocument(incoming.document.path);
-    const tab: TransferableTab = markdown ? incoming : { ...incoming, surface: 'editor',
+    const tab: TransferableTab = markdown ? incoming : { ...incoming, surface: documentSurface(incoming.document.path),
       previewUrl: null, previewRevision: null, previewTheme: null, viewerScrollRatio: null,
       viewerBand: [], tocOpen: false };
     const ownedPreview = markdown ? this.options.previews.views.get(tab.id) : undefined;

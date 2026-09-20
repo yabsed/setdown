@@ -3,7 +3,7 @@ import path from 'node:path';
 import { shell } from 'electron';
 import type { ProjectEntry, ProjectEntryKind, ProjectEntryMove } from '../../protocol/desktop-api';
 import type { WindowState } from '../windows/window-state';
-import { isTextCandidate, isMarkdownDocument } from '../../core/document/document-profile';
+import { isOpenableDocument, isMarkdownDocument } from '../../core/document/document-profile';
 import { readTextFile } from '../documents/text-file';
 import { ProjectPaths } from './project-paths';
 const HIDDEN_DIRECTORIES = new Set(['.git', '.hg', '.svn']);
@@ -32,7 +32,7 @@ export class ExplorerService {
     if (to === from) return { from, to };
     await this.ensureMissing(to);
     // A new text interpretation must be safe before a Markdown file is renamed.
-    if (isMarkdownDocument(from) && !isMarkdownDocument(to) && isTextCandidate(to)
+    if (isMarkdownDocument(from) && !isMarkdownDocument(to) && isOpenableDocument(to)
       && (await fs.stat(from)).isFile()) await readTextFile(from);
     await fs.rename(from, to);
     return { from, to };
@@ -56,7 +56,7 @@ export class ExplorerService {
   }
   private entry(entryPath: string, directory: boolean): ProjectEntry {
     return { path: entryPath, name: path.basename(entryPath),
-      kind: directory ? 'directory' : isTextCandidate(entryPath) ? 'document' : 'file' };
+      kind: directory ? 'directory' : isOpenableDocument(entryPath) ? 'document' : 'file' };
   }
   private async ensureMissing(candidate: string): Promise<void> {
     if (await fs.stat(candidate).catch(() => null)) throw new Error(`“${path.basename(candidate)}” already exists.`);
