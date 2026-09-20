@@ -56,7 +56,7 @@ test('Esc during the first render does not dirty, discard or duplicate it', asyn
     await f.run(); assert.equal(f.calls.length, 1);
   } finally { f.close(); }
 });
-test('completed snapshot remains usable while newer input requests one followup', async () => {
+test('superseded snapshot remains hidden while newest input starts one immediate followup', async () => {
   vi.useFakeTimers();
   const f = fixture();
   try {
@@ -65,27 +65,29 @@ test('completed snapshot remains usable while newer input requests one followup'
     f.controller.changeWorkingTree('revision 3');
     await f.run(); assert.equal(f.calls.length, 1);
     f.finish(0); await work;
-    assert.equal(f.tab.previewId, 'git-diff:r:a');
+    assert.equal(f.tab.previewId, null);
     assert.equal(f.tab.diff?.modifiedText, 'revision 3');
-    assert.equal(f.tab.previewDirty, true);
-    await vi.advanceTimersByTimeAsync(0); assert.equal(f.calls.length, 2);
-    assert.equal(f.calls[1].id, 'git-diff:r:b');
+    assert.equal(f.tab.previewLoading, true);
+    assert.equal(f.calls.length, 2, 'no extra timer is needed for the latest work');
+    assert.equal(f.calls[1].id, 'git-diff:r:a');
     f.finish(1); await tick();
     assert.equal(f.tab.previewDirty, false);
+    assert.equal(f.tab.previewId, 'git-diff:r:a');
     await vi.advanceTimersByTimeAsync(1000); assert.equal(f.calls.length, 2);
   } finally { f.close(); vi.useRealTimers(); }
 });
-test('Esc shows the existing front while the new result is held', async () => {
+test('Esc withholds the stale front while the new result is held', async () => {
   const f = fixture(true);
   try {
     f.controller.layoutDiff({ x: 20, y: 80, width: 900, height: 700 });
     const work = f.run(); await tick();
     f.controller.showRendered();
-    assert.equal(f.shows.at(-1), 'git-diff:r:a');
+    assert.equal(f.shows.at(-1), null);
     assert.equal(project.gitDiffMode, 'rendered');
     assert.equal(f.calls.length, 1);
     f.finish(0); await work;
     assert.equal(f.tab.previewId, 'git-diff:r:b');
+    assert.equal(f.shows.filter(Boolean).length, 0, 'final hidden position must acknowledge before showing');
   } finally { f.close(); }
 });
 test('a result from an obsolete Index is not promoted', async () => {
@@ -97,7 +99,8 @@ test('a result from an obsolete Index is not promoted', async () => {
     f.tab.previewDirty = true;
     f.finish(0); await work;
     assert.equal(f.tab.previewId, 'git-diff:r:a');
-    assert.equal(f.tab.previewDirty, true);
+    assert.equal(f.tab.previewLoading, true);
+    assert.equal(f.calls.length, 2);
   } finally { f.close(); vi.useRealTimers(); }
 });
 test('closing the review while rendering cannot resurrect it', async () => {
