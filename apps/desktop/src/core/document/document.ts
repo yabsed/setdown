@@ -1,3 +1,5 @@
+import type { TextEncoding, TextEol } from './text-codec';
+
 export type DiskVersion = {
   mtimeMs: number;
   size: number;
@@ -13,4 +15,7 @@ export type DocumentSnapshot = {
   savedRevision: number;
   diskVersion: DiskVersion;
   isUntitled: boolean;
+  /** Absent on legacy Markdown snapshots. Owned by the document, not the window. */
+  encoding?: TextEncoding;
+  eol?: TextEol;
 };
