@@ -145,7 +145,7 @@ test('unsupported stale work cannot cancel a newer Escape request', async () => 
     const work = f.run(); await tick(); f.controller.changeWorkingTree('v2'); f.controller.showRendered();
     f.calls[0].resolve({ revision: 1, url: null, themeId: 'paper', supported: false });
     await work; await tick();
-    assert.equal(project.gitDiffMode, 'rendered'); assert.equal(f.calls.length, 2);
+    assert.equal(project.gitDiffMode, 'source'); assert.equal(project.gitDiffTransitionPending, true); assert.equal(f.calls.length, 2);
     await f.finish(1); f.ack(); assert.equal(f.shows.filter(Boolean).length, 1);
   } finally { f.close(); }
 });
