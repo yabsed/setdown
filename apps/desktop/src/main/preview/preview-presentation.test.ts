@@ -13,6 +13,7 @@ vi.mock('electron', () => {
     webContents = {
       id: ++id, isDestroyed: () => this.dead, isFocused: () => false,
       on() {}, once() {}, send() {}, close: () => { this.dead = true; },
+      getURL: () => 'marktex-preview://document/review', enableDeviceEmulation() {},
       loadURL: async (_url: string) => {},
     };
     setVisible(value: boolean) { this.visible = value; }
@@ -161,4 +162,44 @@ test('hiding a focused front returns keyboard focus to the owner', () => {
   f.front.view.webContents.isFocused = () => true;
   f.manager.show(1, 'git-diff:doc:b', bounds);
   assert.equal(f.focusCount(), 1);
+});
+
+test('hidden review viewport uses the same clipped box as its first presentation', () => {
+  const f = fixture();
+  const sizes: unknown[] = [];
+  f.back.view.webContents.enableDeviceEmulation = (value) => { sizes.push(value.viewSize); };
+  const oversized = { x: 300, y: 76, width: 600, height: 625 };
+  f.manager.applyBounds(f.back, oversized);
+  assert.equal(f.back.view.getVisible(), false);
+  assert.equal(f.focusCount(), 0);
+  assert.deepEqual(sizes, [{ width: 600, height: 624 }]);
+  f.manager.show(1, 'git-diff:doc:b', oversized);
+  assert.deepEqual(f.back.view.getBounds(), { ...oversized, height: 624 });
+  assert.equal(sizes.length, 1, 'show must not invalidate the precomputed viewport');
+});
+
+test('navigation reapplies the hidden viewport before the loaded page is prepared', async () => {
+  const f = fixture();
+  let size: unknown;
+  f.back.view.webContents.enableDeviceEmulation = (value) => { size = value.viewSize; };
+  f.back.view.webContents.getURL = () => '';
+  f.manager.applyBounds(f.back, bounds);
+  assert.equal(size, undefined);
+  f.back.view.webContents.loadURL = async () => {
+    f.back.view.webContents.getURL = () => 'marktex-preview://document/new';
+  };
+  await f.manager.loadURL(f.back.view, 'marktex-preview://document/new', 1);
+  assert.deepEqual(size, { width: bounds.width, height: bounds.height });
+  assert.equal(f.back.view.getVisible(), false);
+});
+
+test('a failed renderer viewport update can retry without changing native visibility', () => {
+  const f = fixture();
+  f.back.view.webContents.enableDeviceEmulation = () => { throw new Error('renderer unavailable'); };
+  assert.throws(() => f.manager.applyBounds(f.back, bounds), /renderer unavailable/);
+  let retried = false;
+  f.back.view.webContents.enableDeviceEmulation = () => { retried = true; };
+  f.manager.applyBounds(f.back, bounds);
+  assert.equal(retried, true);
+  assert.equal(f.back.view.getVisible(), false);
 });

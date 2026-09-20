@@ -58,6 +58,10 @@ export class ViewportController {
   private publish = (): void => {
     this.frame = null;
     if (!this.layoutReady) return;
+    // Git only consumes bookmarks for an active observation. A hidden A/B page
+    // must not scan the math tree to report a viewport the shell will discard.
+    // Ordinary documents still publish their unscoped reading position.
+    if (this.observationId === null && document.querySelector('.setdown-rendered-diff-split')) return;
     const scrollTop = document.documentElement.scrollTop || document.body.scrollTop || 0;
     const maximum = Math.max(
       0,

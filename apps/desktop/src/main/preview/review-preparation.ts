@@ -46,10 +46,12 @@ export class ReviewPreparation {
         ? Math.max(0, Math.min(1, value.blockOffset)) : undefined,
     };
     const bounds = {
-      x: Math.max(0, Math.min(100_000, Math.round(raw.x!))),
-      y: Math.max(0, Math.min(100_000, Math.round(raw.y!))),
-      width: Math.max(1, Math.min(100_000, Math.round(raw.width!))),
-      height: Math.max(1, Math.min(100_000, Math.round(raw.height!))),
+      // These are CSS pixels. Round once, after workspace zoom conversion, in
+      // PreviewManager just as presentation does; early rounding changes size.
+      x: Math.max(0, Math.min(100_000, raw.x!)),
+      y: Math.max(0, Math.min(100_000, raw.y!)),
+      width: Math.max(1, Math.min(100_000, raw.width!)),
+      height: Math.max(1, Math.min(100_000, raw.height!)),
     };
     // A late source-prewarming event may not reposition the visible front.
     if (preview.view.getVisible()) return true;

@@ -1,0 +1,3114 @@
+{
+  "baseCommit": "b79a775",
+  "fixture": "apps/desktop/test/fixtures/sample.md",
+  "idleBeforeFirstEscapeMs": 3000,
+  "unit": "ms",
+  "endpoint": "shell keydown capture -> native show request or capturePage completion",
+  "notes": [
+    "Capture includes polling, IPC and readback; not physical presentation latency.",
+    "Edited runs use toolbar source-return after timing; no-edit runs use browser double-click.",
+    "Each group has three fresh apps; traces are off.",
+    "Failed gesture runs excluded."
+  ],
+  "groups": {
+    "beforeEdits": {
+      "summary": [
+        {
+          "cycle": 1,
+          "showMedianMs": 140,
+          "captureMedianMs": 836,
+          "captureRangeMs": [
+            823,
+            852
+          ]
+        },
+        {
+          "cycle": 2,
+          "showMedianMs": 122,
+          "captureMedianMs": 816,
+          "captureRangeMs": [
+            796,
+            834
+          ]
+        },
+        {
+          "cycle": 3,
+          "showMedianMs": 175,
+          "captureMedianMs": 226,
+          "captureRangeMs": [
+            225,
+            228
+          ]
+        },
+        {
+          "cycle": 4,
+          "showMedianMs": 163,
+          "captureMedianMs": 216,
+          "captureRangeMs": [
+            213,
+            229
+          ]
+        },
+        {
+          "cycle": 5,
+          "showMedianMs": 151,
+          "captureMedianMs": 209,
+          "captureRangeMs": [
+            172,
+            216
+          ]
+        }
+      ],
+      "runs": [
+        {
+          "returnMethod": "button",
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789928116748,
+              "showMs": 134,
+              "captureMs": 823,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789928117707,
+              "showMs": 120,
+              "captureMs": 796,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789928118643,
+              "showMs": 170,
+              "captureMs": 226,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789928118968,
+              "showMs": 163,
+              "captureMs": 216,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789928119299,
+              "showMs": 151,
+              "captureMs": 209,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            }
+          ]
+        },
+        {
+          "returnMethod": "button",
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789928124494,
+              "showMs": 152,
+              "captureMs": 836,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789928125479,
+              "showMs": 122,
+              "captureMs": 816,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789928126426,
+              "showMs": 176,
+              "captureMs": 225,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789928126758,
+              "showMs": 161,
+              "captureMs": 213,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789928127059,
+              "showMs": 157,
+              "captureMs": 216,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            }
+          ]
+        },
+        {
+          "returnMethod": "button",
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789928108993,
+              "showMs": 140,
+              "captureMs": 852,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789928109994,
+              "showMs": 130,
+              "captureMs": 834,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789928110979,
+              "showMs": 175,
+              "captureMs": 228,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789928111329,
+              "showMs": 167,
+              "captureMs": 229,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789928111670,
+              "showMs": 121,
+              "captureMs": 172,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "afterEdits": {
+      "summary": [
+        {
+          "cycle": 1,
+          "showMedianMs": 182,
+          "captureMedianMs": 241,
+          "captureRangeMs": [
+            232,
+            244
+          ]
+        },
+        {
+          "cycle": 2,
+          "showMedianMs": 151,
+          "captureMedianMs": 187,
+          "captureRangeMs": [
+            185,
+            188
+          ]
+        },
+        {
+          "cycle": 3,
+          "showMedianMs": 139,
+          "captureMedianMs": 182,
+          "captureRangeMs": [
+            169,
+            184
+          ]
+        },
+        {
+          "cycle": 4,
+          "showMedianMs": 129,
+          "captureMedianMs": 172,
+          "captureRangeMs": [
+            172,
+            176
+          ]
+        },
+        {
+          "cycle": 5,
+          "showMedianMs": 131,
+          "captureMedianMs": 171,
+          "captureRangeMs": [
+            168,
+            175
+          ]
+        }
+      ],
+      "runs": [
+        {
+          "returnMethod": "button",
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789928307010,
+              "showMs": 182,
+              "captureMs": 232,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789928307359,
+              "showMs": 149,
+              "captureMs": 185,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789928307666,
+              "showMs": 142,
+              "captureMs": 184,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789928307960,
+              "showMs": 125,
+              "captureMs": 172,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789928308246,
+              "showMs": 143,
+              "captureMs": 175,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            }
+          ]
+        },
+        {
+          "returnMethod": "button",
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789928313331,
+              "showMs": 185,
+              "captureMs": 244,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789928313706,
+              "showMs": 151,
+              "captureMs": 188,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789928314015,
+              "showMs": 139,
+              "captureMs": 182,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789928314328,
+              "showMs": 129,
+              "captureMs": 172,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789928314630,
+              "showMs": 131,
+              "captureMs": 168,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            }
+          ]
+        },
+        {
+          "returnMethod": "button",
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789928300603,
+              "showMs": 168,
+              "captureMs": 241,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789928300973,
+              "showMs": 158,
+              "captureMs": 187,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789928301280,
+              "showMs": 131,
+              "captureMs": 169,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789928301561,
+              "showMs": 147,
+              "captureMs": 176,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789928301828,
+              "showMs": 124,
+              "captureMs": 171,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "afterNoEdits": {
+      "summary": [
+        {
+          "cycle": 1,
+          "showMedianMs": 8,
+          "captureMedianMs": 49,
+          "captureRangeMs": [
+            45,
+            51
+          ]
+        },
+        {
+          "cycle": 2,
+          "showMedianMs": 0,
+          "captureMedianMs": 27,
+          "captureRangeMs": [
+            19,
+            28
+          ]
+        },
+        {
+          "cycle": 3,
+          "showMedianMs": 1,
+          "captureMedianMs": 21,
+          "captureRangeMs": [
+            17,
+            22
+          ]
+        },
+        {
+          "cycle": 4,
+          "showMedianMs": 1,
+          "captureMedianMs": 18,
+          "captureRangeMs": [
+            18,
+            20
+          ]
+        },
+        {
+          "cycle": 5,
+          "showMedianMs": 1,
+          "captureMedianMs": 32,
+          "captureRangeMs": [
+            18,
+            33
+          ]
+        }
+      ],
+      "runs": [
+        {
+          "returnMethod": "double-click",
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789928352012,
+              "showMs": 9,
+              "captureMs": 51,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789928352211,
+              "showMs": 0,
+              "captureMs": 27,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789928352322,
+              "showMs": 1,
+              "captureMs": 17,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789928352403,
+              "showMs": 1,
+              "captureMs": 18,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789928352505,
+              "showMs": 1,
+              "captureMs": 32,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            }
+          ]
+        },
+        {
+          "returnMethod": "double-click",
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789928357382,
+              "showMs": 8,
+              "captureMs": 49,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789928357576,
+              "showMs": 0,
+              "captureMs": 28,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789928357687,
+              "showMs": 0,
+              "captureMs": 21,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789928357770,
+              "showMs": 0,
+              "captureMs": 18,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789928357871,
+              "showMs": 1,
+              "captureMs": 33,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            }
+          ]
+        },
+        {
+          "returnMethod": "double-click",
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1789928346701,
+              "showMs": 3,
+              "captureMs": 45,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1789928346890,
+              "showMs": 1,
+              "captureMs": 19,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1789928346970,
+              "showMs": 1,
+              "captureMs": 22,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1789928347054,
+              "showMs": 1,
+              "captureMs": 20,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1789928347153,
+              "showMs": 1,
+              "captureMs": 18,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 744,
+                "dpr": 1.3333333730697632
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "trace": {
+    "hiddenGeometry": [
+      {
+        "id": 2,
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "visible": false,
+        "zoom": 1,
+        "document": {
+          "width": 0,
+          "height": 0,
+          "dpr": 1.3333333730697632,
+          "review": false,
+          "fonts": "loaded",
+          "visibility": "visible"
+        }
+      },
+      {
+        "id": 3,
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "visible": false,
+        "zoom": 1,
+        "document": {
+          "width": 0,
+          "height": 0,
+          "dpr": 1.3333333730697632,
+          "review": false,
+          "fonts": "loaded",
+          "visibility": "visible"
+        }
+      },
+      {
+        "id": 5,
+        "bounds": {
+          "x": 300,
+          "y": 76,
+          "width": 780,
+          "height": 744
+        },
+        "visible": false,
+        "zoom": 1,
+        "document": {
+          "width": 780,
+          "height": 744,
+          "dpr": 1.3333333730697632,
+          "review": true,
+          "fonts": "loaded",
+          "visibility": "visible"
+        }
+      },
+      {
+        "id": 6,
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "visible": false,
+        "zoom": 1,
+        "document": {
+          "width": 0,
+          "height": 0,
+          "dpr": 1.3333333730697632,
+          "review": false,
+          "fonts": "loaded",
+          "visibility": "visible"
+        }
+      },
+      {
+        "id": 4,
+        "bounds": {
+          "x": 300,
+          "y": 76,
+          "width": 780,
+          "height": 744
+        },
+        "visible": false,
+        "zoom": 1,
+        "document": {
+          "width": 780,
+          "height": 744,
+          "dpr": 1.3333333730697632,
+          "review": true,
+          "fonts": "loaded",
+          "visibility": "visible"
+        }
+      }
+    ],
+    "samples": [
+      {
+        "cycle": 1,
+        "escapeAt": 1789928479363,
+        "showMs": 9,
+        "captureMs": 53,
+        "viewId": 5,
+        "geometry": {
+          "width": 780,
+          "height": 744,
+          "dpr": 1.3333333730697632
+        }
+      },
+      {
+        "cycle": 2,
+        "escapeAt": 1789928479557,
+        "showMs": 1,
+        "captureMs": 28,
+        "viewId": 5,
+        "geometry": {
+          "width": 780,
+          "height": 744,
+          "dpr": 1.3333333730697632
+        }
+      },
+      {
+        "cycle": 3,
+        "escapeAt": 1789928479670,
+        "showMs": 1,
+        "captureMs": 19,
+        "viewId": 5,
+        "geometry": {
+          "width": 780,
+          "height": 744,
+          "dpr": 1.3333333730697632
+        }
+      },
+      {
+        "cycle": 4,
+        "escapeAt": 1789928479751,
+        "showMs": 1,
+        "captureMs": 34,
+        "viewId": 5,
+        "geometry": {
+          "width": 780,
+          "height": 744,
+          "dpr": 1.3333333730697632
+        }
+      },
+      {
+        "cycle": 5,
+        "escapeAt": 1789928479852,
+        "showMs": 1,
+        "captureMs": 20,
+        "viewId": 5,
+        "geometry": {
+          "width": 780,
+          "height": 744,
+          "dpr": 1.3333333730697632
+        }
+      }
+    ],
+    "escapeTraceTimestampUs": 7801621994,
+    "first100msEvents": [
+      {
+        "args": {
+          "beginData": {
+            "frame": "AF43337C1B44419DB7A8553D40580F5F"
+          },
+          "elementCount": 1
+        },
+        "cat": "blink,devtools.timeline",
+        "dur": 113,
+        "name": "UpdateLayoutTree",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 109,
+        "tid": 129202,
+        "ts": 7801622387,
+        "tts": 706179
+      },
+      {
+        "args": {
+          "data": {
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "isMainFrame": true,
+            "isOutermostMainFrame": true,
+            "page": "AF43337C1B44419DB7A8553D40580F5F"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 16,
+        "name": "PrePaint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 9,
+        "tid": 129202,
+        "ts": 7801622682,
+        "tts": 706418
+      },
+      {
+        "args": {
+          "beginData": {
+            "frame": "AF43337C1B44419DB7A8553D40580F5F"
+          },
+          "elementCount": 356
+        },
+        "cat": "blink,devtools.timeline",
+        "dur": 3570,
+        "name": "UpdateLayoutTree",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 3536,
+        "tid": 129202,
+        "ts": 7801623804,
+        "tts": 707519
+      },
+      {
+        "args": {
+          "beginData": {
+            "dirtyObjects": 16,
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "partialLayout": false,
+            "totalObjects": 1392
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 266,
+        "name": "Layout",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 262,
+        "tid": 129202,
+        "ts": 7801627381,
+        "tts": 711061
+      },
+      {
+        "args": {
+          "data": {
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "isMainFrame": true,
+            "isOutermostMainFrame": true,
+            "page": "AF43337C1B44419DB7A8553D40580F5F"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 269,
+        "name": "PrePaint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 262,
+        "tid": 129202,
+        "ts": 7801628368,
+        "tts": 712004
+      },
+      {
+        "args": {
+          "data": {
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "isMainFrame": true,
+            "isOutermostMainFrame": true,
+            "page": "AF43337C1B44419DB7A8553D40580F5F"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 8,
+        "name": "PrePaint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 2,
+        "tid": 129202,
+        "ts": 7801628736,
+        "tts": 712349
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              0.0,
+              0.0,
+              1440.0,
+              0.0,
+              1440.0,
+              1094.0,
+              0.0,
+              1094.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 14,
+            "nodeName": "#document"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 633,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 595,
+        "tid": 129202,
+        "ts": 7801628857,
+        "tts": 712460
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              0.0,
+              -48.0,
+              1440.0,
+              -48.0,
+              1440.0,
+              1046.0,
+              0.0,
+              1046.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 27,
+            "nodeName": "SECTION class='shell'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 38,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 39,
+        "tid": 129202,
+        "ts": 7801628887,
+        "tts": 712489
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              0.0,
+              0.0,
+              375.0,
+              0.0,
+              375.0,
+              2.0,
+              0.0,
+              2.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 346,
+            "nodeName": "DIV class='native-edit-context'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 8,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 8,
+        "tid": 129202,
+        "ts": 7801628937,
+        "tts": 712539
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              0.0,
+              0.0,
+              229.0,
+              0.0,
+              229.0,
+              49.0,
+              0.0,
+              49.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 347,
+            "nodeName": "TEXTAREA class='ime-text-area'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 4,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 3,
+        "tid": 129202,
+        "ts": 7801628946,
+        "tts": 712547
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              0.0,
+              -1.0,
+              426.0,
+              -1.0,
+              426.0,
+              29.0,
+              0.0,
+              29.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 41,
+            "nodeName": "DIV class='native-edit-context'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 15,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 11,
+        "tid": 129202,
+        "ts": 7801628951,
+        "tts": 712550
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              0.0,
+              0.0,
+              229.0,
+              0.0,
+              229.0,
+              49.0,
+              0.0,
+              49.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 348,
+            "nodeName": "TEXTAREA class='ime-text-area'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 3,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 3,
+        "tid": 129202,
+        "ts": 7801628967,
+        "tts": 712561
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              -400.0,
+              -101.0,
+              1040.0,
+              -101.0,
+              1040.0,
+              993.0,
+              -400.0,
+              993.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 349,
+            "nodeName": "DIV class='editor original'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 4,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 4,
+        "tid": 129202,
+        "ts": 7801628973,
+        "tts": 712566
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              -400.0,
+              -101.0,
+              1040.0,
+              -101.0,
+              1040.0,
+              993.0,
+              -400.0,
+              993.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 350,
+            "nodeName": "DIV class='monaco-editor original-in-monaco-diff-editor no-user-select showUnused showDeprecated vs'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 3,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 3,
+        "tid": 129202,
+        "ts": 7801628978,
+        "tts": 712570
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              0.0,
+              0.0,
+              474.0,
+              0.0,
+              474.0,
+              993.0,
+              0.0,
+              993.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 42,
+            "nodeName": "DIV class='overflow-guard'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 3,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 2,
+        "tid": 129202,
+        "ts": 7801628982,
+        "tts": 712573
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              0.0,
+              35793.0,
+              99.0,
+              35793.0,
+              99.0,
+              42120.0,
+              0.0,
+              42120.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 48,
+            "nodeName": "DIV class='margin'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 60,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 54,
+        "tid": 129202,
+        "ts": 7801628986,
+        "tts": 712575
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              -1.0,
+              0.0,
+              375.0,
+              0.0,
+              375.0,
+              993.0,
+              -1.0,
+              993.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 351,
+            "nodeName": "DIV class='monaco-scrollable-element editor-scrollable vs'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 2,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 2,
+        "tid": 129202,
+        "ts": 7801629048,
+        "tts": 712629
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              0.0,
+              35793.0,
+              5708.0,
+              35793.0,
+              5708.0,
+              47452.0,
+              0.0,
+              47452.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 44,
+            "nodeName": "DIV class='lines-content monaco-editor-background'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 143,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 143,
+        "tid": 129202,
+        "ts": 7801629051,
+        "tts": 712631
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              0.0,
+              0.0,
+              19.0,
+              0.0,
+              19.0,
+              993.0,
+              0.0,
+              993.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 50,
+            "nodeName": "CANVAS class='decorationsOverviewRuler'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 13,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 12,
+        "tid": 129202,
+        "ts": 7801629196,
+        "tts": 712775
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              0.0,
+              0.0,
+              474.0,
+              0.0,
+              474.0,
+              993.0,
+              0.0,
+              993.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 352,
+            "nodeName": "DIV class='scroll-decoration'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 6,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 5,
+        "tid": 129202,
+        "ts": 7801629210,
+        "tts": 712788
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              0.0,
+              0.0,
+              474.0,
+              0.0,
+              474.0,
+              993.0,
+              0.0,
+              993.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 353,
+            "nodeName": "DIV class='overlayWidgets'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 3,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 2,
+        "tid": 129202,
+        "ts": 7801629217,
+        "tts": 712793
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              -920.0,
+              -101.0,
+              520.0,
+              -101.0,
+              520.0,
+              993.0,
+              -920.0,
+              993.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 354,
+            "nodeName": "DIV class='editor modified'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 3,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 2,
+        "tid": 129202,
+        "ts": 7801629221,
+        "tts": 712796
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              -921.0,
+              -101.0,
+              519.0,
+              -101.0,
+              519.0,
+              993.0,
+              -921.0,
+              993.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 355,
+            "nodeName": "DIV class='monaco-editor modified-in-monaco-diff-editor no-user-select showUnused showDeprecated vs focused'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 3,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 3,
+        "tid": 129202,
+        "ts": 7801629225,
+        "tts": 712798
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              0.0,
+              0.0,
+              519.0,
+              0.0,
+              519.0,
+              993.0,
+              0.0,
+              993.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 43,
+            "nodeName": "DIV class='overflow-guard'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 3,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 2,
+        "tid": 129202,
+        "ts": 7801629228,
+        "tts": 712801
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              0.0,
+              35793.0,
+              70.0,
+              35793.0,
+              70.0,
+              42120.0,
+              0.0,
+              42120.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 52,
+            "nodeName": "DIV class='margin'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 75,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 75,
+        "tid": 129202,
+        "ts": 7801629232,
+        "tts": 712804
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              0.0,
+              0.0,
+              450.0,
+              0.0,
+              450.0,
+              993.0,
+              0.0,
+              993.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 356,
+            "nodeName": "DIV class='monaco-scrollable-element editor-scrollable vs'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 3,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 2,
+        "tid": 129202,
+        "ts": 7801629308,
+        "tts": 712879
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              0.0,
+              35793.0,
+              5783.0,
+              35793.0,
+              5783.0,
+              47452.0,
+              0.0,
+              47452.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 45,
+            "nodeName": "DIV class='lines-content monaco-editor-background'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 148,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 148,
+        "tid": 129202,
+        "ts": 7801629312,
+        "tts": 712881
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              0.0,
+              0.0,
+              19.0,
+              0.0,
+              19.0,
+              993.0,
+              0.0,
+              993.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 54,
+            "nodeName": "CANVAS class='decorationsOverviewRuler'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 3,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 3,
+        "tid": 129202,
+        "ts": 7801629462,
+        "tts": 713030
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              0.0,
+              0.0,
+              519.0,
+              0.0,
+              519.0,
+              993.0,
+              0.0,
+              993.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 357,
+            "nodeName": "DIV class='scroll-decoration'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 3,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 3,
+        "tid": 129202,
+        "ts": 7801629467,
+        "tts": 713034
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              0.0,
+              0.0,
+              519.0,
+              0.0,
+              519.0,
+              993.0,
+              0.0,
+              993.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 358,
+            "nodeName": "DIV class='overlayWidgets'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 2,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 2,
+        "tid": 129202,
+        "ts": 7801629471,
+        "tts": 713037
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              -400.0,
+              -101.0,
+              1040.0,
+              -101.0,
+              1040.0,
+              993.0,
+              -400.0,
+              993.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 359,
+            "nodeName": "DIV class='git-diff-preview-host is-active'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 3,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 2,
+        "tid": 129202,
+        "ts": 7801629474,
+        "tts": 713040
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              -400.0,
+              -101.0,
+              1040.0,
+              -101.0,
+              1040.0,
+              993.0,
+              -400.0,
+              993.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 360,
+            "nodeName": "DIV class='git-review-state'"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 9,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 9,
+        "tid": 129202,
+        "ts": 7801629478,
+        "tts": 713043
+      },
+      {
+        "args": {
+          "data": {
+            "frame": "5E55DFC80A9AD950D482A995D7495927",
+            "isMainFrame": true,
+            "isOutermostMainFrame": true,
+            "page": "5E55DFC80A9AD950D482A995D7495927"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 20,
+        "name": "PrePaint",
+        "ph": "X",
+        "pid": 129368,
+        "tdur": 12,
+        "tid": 129368,
+        "ts": 7801630997,
+        "tts": 1280217
+      },
+      {
+        "args": {
+          "beginData": {
+            "frame": "5E55DFC80A9AD950D482A995D7495927"
+          },
+          "elementCount": 0
+        },
+        "cat": "blink,devtools.timeline",
+        "dur": 59,
+        "name": "UpdateLayoutTree",
+        "ph": "X",
+        "pid": 129368,
+        "tdur": 55,
+        "tid": 129368,
+        "ts": 7801631805,
+        "tts": 1280879
+      },
+      {
+        "args": {
+          "beginData": {
+            "frame": "AF43337C1B44419DB7A8553D40580F5F"
+          },
+          "elementCount": 0
+        },
+        "cat": "blink,devtools.timeline",
+        "dur": 60,
+        "name": "UpdateLayoutTree",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 57,
+        "tid": 129202,
+        "ts": 7801637381,
+        "tts": 714645
+      },
+      {
+        "args": {
+          "beginData": {
+            "dirtyObjects": 8,
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "partialLayout": false,
+            "totalObjects": 1389
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 227,
+        "name": "Layout",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 222,
+        "tid": 129202,
+        "ts": 7801637450,
+        "tts": 714708
+      },
+      {
+        "args": {
+          "beginData": {
+            "frame": "5E55DFC80A9AD950D482A995D7495927"
+          },
+          "elementCount": 0
+        },
+        "cat": "blink,devtools.timeline",
+        "dur": 58,
+        "name": "UpdateLayoutTree",
+        "ph": "X",
+        "pid": 129368,
+        "tdur": 55,
+        "tid": 129368,
+        "ts": 7801637474,
+        "tts": 1281179
+      },
+      {
+        "args": {
+          "data": {
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "isMainFrame": true,
+            "isOutermostMainFrame": true,
+            "page": "AF43337C1B44419DB7A8553D40580F5F"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 138,
+        "name": "PrePaint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 121,
+        "tid": 129202,
+        "ts": 7801637892,
+        "tts": 715133
+      },
+      {
+        "args": {
+          "data": {
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "isMainFrame": true,
+            "isOutermostMainFrame": true,
+            "page": "AF43337C1B44419DB7A8553D40580F5F"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 10,
+        "name": "PrePaint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 3,
+        "tid": 129202,
+        "ts": 7801638201,
+        "tts": 715406
+      },
+      {
+        "args": {
+          "data": {
+            "clip": [
+              0.0,
+              0.0,
+              1440.0,
+              0.0,
+              1440.0,
+              1094.0,
+              0.0,
+              1094.0
+            ],
+            "frame": "AF43337C1B44419DB7A8553D40580F5F",
+            "layerId": 0,
+            "nodeId": 14,
+            "nodeName": "#document"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 99,
+        "name": "Paint",
+        "ph": "X",
+        "pid": 129202,
+        "tdur": 99,
+        "tid": 129202,
+        "ts": 7801638325,
+        "tts": 715521
+      },
+      {
+        "args": {
+          "data": {
+            "frame": "5E55DFC80A9AD950D482A995D7495927",
+            "isMainFrame": true,
+            "isOutermostMainFrame": true,
+            "page": "5E55DFC80A9AD950D482A995D7495927"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 15,
+        "name": "PrePaint",
+        "ph": "X",
+        "pid": 129368,
+        "tdur": 10,
+        "tid": 129368,
+        "ts": 7801639058,
+        "tts": 1282722
+      },
+      {
+        "args": {
+          "data": {
+            "frame": "5E55DFC80A9AD950D482A995D7495927",
+            "isMainFrame": true,
+            "isOutermostMainFrame": true,
+            "page": "5E55DFC80A9AD950D482A995D7495927"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 18,
+        "name": "PrePaint",
+        "ph": "X",
+        "pid": 129368,
+        "tdur": 13,
+        "tid": 129368,
+        "ts": 7801640460,
+        "tts": 1284027
+      },
+      {
+        "args": {
+          "data": {
+            "frame": "5E55DFC80A9AD950D482A995D7495927",
+            "isMainFrame": true,
+            "isOutermostMainFrame": true,
+            "page": "5E55DFC80A9AD950D482A995D7495927"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 24,
+        "name": "PrePaint",
+        "ph": "X",
+        "pid": 129368,
+        "tdur": 17,
+        "tid": 129368,
+        "ts": 7801689982,
+        "tts": 1288549
+      },
+      {
+        "args": {
+          "data": {
+            "frame": "5E55DFC80A9AD950D482A995D7495927",
+            "isMainFrame": true,
+            "isOutermostMainFrame": true,
+            "page": "5E55DFC80A9AD950D482A995D7495927"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 15,
+        "name": "PrePaint",
+        "ph": "X",
+        "pid": 129368,
+        "tdur": 9,
+        "tid": 129368,
+        "ts": 7801704240,
+        "tts": 1288900
+      },
+      {
+        "args": {
+          "data": {
+            "frame": "5E55DFC80A9AD950D482A995D7495927",
+            "isMainFrame": true,
+            "isOutermostMainFrame": true,
+            "page": "5E55DFC80A9AD950D482A995D7495927"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 14,
+        "name": "PrePaint",
+        "ph": "X",
+        "pid": 129368,
+        "tdur": 7,
+        "tid": 129368,
+        "ts": 7801720797,
+        "tts": 1289428
+      },
+      {
+        "args": {
+          "data": {
+            "frame": "5E55DFC80A9AD950D482A995D7495927",
+            "isMainFrame": true,
+            "isOutermostMainFrame": true,
+            "page": "5E55DFC80A9AD950D482A995D7495927"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 12,
+        "name": "PrePaint",
+        "ph": "X",
+        "pid": 129368,
+        "tdur": 4,
+        "tid": 129368,
+        "ts": 7801721157,
+        "tts": 1289760
+      },
+      {
+        "args": {
+          "data": {
+            "frame": "5E55DFC80A9AD950D482A995D7495927",
+            "isMainFrame": true,
+            "isOutermostMainFrame": true,
+            "page": "5E55DFC80A9AD950D482A995D7495927"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 12,
+        "name": "PrePaint",
+        "ph": "X",
+        "pid": 129368,
+        "tdur": 4,
+        "tid": 129368,
+        "ts": 7801721497,
+        "tts": 1290021
+      },
+      {
+        "args": {
+          "data": {
+            "frame": "5E55DFC80A9AD950D482A995D7495927",
+            "isMainFrame": true,
+            "isOutermostMainFrame": true,
+            "page": "5E55DFC80A9AD950D482A995D7495927"
+          }
+        },
+        "cat": "devtools.timeline",
+        "dur": 17,
+        "name": "PrePaint",
+        "ph": "X",
+        "pid": 129368,
+        "tdur": 9,
+        "tid": 129368,
+        "ts": 7801721624,
+        "tts": 1290132
+      }
+    ]
+  },
+  "immediateNoIdle": {
+    "note": "One fresh run, no initial idle, no edits, real double-click. Not a median or paired baseline comparison.",
+    "result": {
+      "idle": 0,
+      "returnMethod": "double-click",
+      "edits": false,
+      "samples": [
+        {
+          "cycle": 1,
+          "escapeAt": 1789928547012,
+          "showMs": 1073,
+          "captureMs": 1126,
+          "viewId": 4,
+          "trace": [
+            {
+              "t": 1789928547014,
+              "kind": "show",
+              "tabId": null,
+              "sinceEscape": 2
+            },
+            {
+              "t": 1789928547312,
+              "kind": "loaded",
+              "id": 4,
+              "sinceEscape": 300
+            },
+            {
+              "t": 1789928547313,
+              "kind": "command",
+              "id": 4,
+              "command": "marktex:prepare-review",
+              "revision": 1,
+              "requestId": 1,
+              "sourceLine": 11,
+              "sinceEscape": 301
+            },
+            {
+              "t": 1789928548023,
+              "kind": "ack",
+              "id": 4,
+              "type": "marktex:review-prepared",
+              "revision": 1,
+              "requestId": 1,
+              "sinceEscape": 1011
+            },
+            {
+              "t": 1789928548024,
+              "kind": "visible",
+              "id": 5,
+              "value": false,
+              "bounds": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0
+              },
+              "sinceEscape": 1012
+            },
+            {
+              "t": 1789928548026,
+              "kind": "visible",
+              "id": 6,
+              "value": false,
+              "bounds": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0
+              },
+              "sinceEscape": 1014
+            },
+            {
+              "t": 1789928548028,
+              "kind": "command",
+              "id": 4,
+              "command": "marktex:prime-position",
+              "sourceLine": 406,
+              "sinceEscape": 1016
+            },
+            {
+              "t": 1789928548028,
+              "kind": "command",
+              "id": 4,
+              "command": "marktex:prepare-review",
+              "revision": 1,
+              "requestId": "present:1",
+              "sourceLine": 406,
+              "sinceEscape": 1016
+            },
+            {
+              "t": 1789928548084,
+              "kind": "ack",
+              "id": 4,
+              "type": "marktex:review-prepared",
+              "revision": 1,
+              "requestId": "present:1",
+              "sinceEscape": 1072
+            },
+            {
+              "t": 1789928548085,
+              "kind": "visible",
+              "id": 4,
+              "value": true,
+              "bounds": {
+                "x": 300,
+                "y": 76,
+                "width": 780,
+                "height": 744
+              },
+              "sinceEscape": 1073
+            },
+            {
+              "t": 1789928548085,
+              "kind": "command",
+              "id": 4,
+              "command": "marktex:resume-hydration",
+              "sinceEscape": 1073
+            },
+            {
+              "t": 1789928548085,
+              "kind": "show",
+              "tabId": "git-diff:e846ed33-087c-44cb-88bb-8ec7a22e2dd3:a",
+              "sinceEscape": 1073
+            },
+            {
+              "t": 1789928548085,
+              "kind": "command",
+              "id": 4,
+              "command": "marktex:observe-viewport",
+              "sinceEscape": 1073
+            },
+            {
+              "t": 1789928548085,
+              "kind": "command",
+              "id": 4,
+              "command": "marktex:verify-review-position",
+              "revision": 1,
+              "requestId": "present:1",
+              "sinceEscape": 1073
+            },
+            {
+              "t": 1789928548089,
+              "kind": "loaded",
+              "id": 6,
+              "sinceEscape": 1077
+            }
+          ],
+          "geometry": {
+            "width": 780,
+            "height": 744,
+            "dpr": 1.3333333730697632
+          }
+        },
+        {
+          "cycle": 2,
+          "escapeAt": 1789928548304,
+          "showMs": 1,
+          "captureMs": 30,
+          "viewId": 4,
+          "trace": [
+            {
+              "t": 1789928548305,
+              "kind": "visible",
+              "id": 4,
+              "value": true,
+              "bounds": {
+                "x": 300,
+                "y": 76,
+                "width": 780,
+                "height": 744
+              },
+              "sinceEscape": 1
+            },
+            {
+              "t": 1789928548305,
+              "kind": "command",
+              "id": 4,
+              "command": "marktex:resume-hydration",
+              "sinceEscape": 1
+            },
+            {
+              "t": 1789928548305,
+              "kind": "show",
+              "tabId": "git-diff:e846ed33-087c-44cb-88bb-8ec7a22e2dd3:a",
+              "sinceEscape": 1
+            },
+            {
+              "t": 1789928548305,
+              "kind": "command",
+              "id": 4,
+              "command": "marktex:position-preview",
+              "sourceLine": 397,
+              "sinceEscape": 1
+            },
+            {
+              "t": 1789928548305,
+              "kind": "command",
+              "id": 4,
+              "command": "marktex:observe-viewport",
+              "sinceEscape": 1
+            }
+          ],
+          "geometry": {
+            "width": 780,
+            "height": 744,
+            "dpr": 1.3333333730697632
+          }
+        },
+        {
+          "cycle": 3,
+          "escapeAt": 1789928548422,
+          "showMs": 1,
+          "captureMs": 28,
+          "viewId": 4,
+          "trace": [
+            {
+              "t": 1789928548415,
+              "kind": "command",
+              "id": 4,
+              "command": "marktex:prime-position",
+              "sourceLine": 397,
+              "sinceEscape": -7
+            },
+            {
+              "t": 1789928548423,
+              "kind": "visible",
+              "id": 4,
+              "value": true,
+              "bounds": {
+                "x": 300,
+                "y": 76,
+                "width": 780,
+                "height": 744
+              },
+              "sinceEscape": 1
+            },
+            {
+              "t": 1789928548423,
+              "kind": "command",
+              "id": 4,
+              "command": "marktex:resume-hydration",
+              "sinceEscape": 1
+            },
+            {
+              "t": 1789928548423,
+              "kind": "show",
+              "tabId": "git-diff:e846ed33-087c-44cb-88bb-8ec7a22e2dd3:a",
+              "sinceEscape": 1
+            },
+            {
+              "t": 1789928548423,
+              "kind": "command",
+              "id": 4,
+              "command": "marktex:position-preview",
+              "sourceLine": 397,
+              "sinceEscape": 1
+            },
+            {
+              "t": 1789928548423,
+              "kind": "command",
+              "id": 4,
+              "command": "marktex:observe-viewport",
+              "sinceEscape": 1
+            }
+          ],
+          "geometry": {
+            "width": 780,
+            "height": 744,
+            "dpr": 1.3333333730697632
+          }
+        },
+        {
+          "cycle": 4,
+          "escapeAt": 1789928548535,
+          "showMs": 1,
+          "captureMs": 32,
+          "viewId": 4,
+          "trace": [
+            {
+              "t": 1789928548532,
+              "kind": "command",
+              "id": 4,
+              "command": "marktex:prime-position",
+              "sourceLine": 397,
+              "sinceEscape": -3
+            },
+            {
+              "t": 1789928548536,
+              "kind": "visible",
+              "id": 4,
+              "value": true,
+              "bounds": {
+                "x": 300,
+                "y": 76,
+                "width": 780,
+                "height": 744
+              },
+              "sinceEscape": 1
+            },
+            {
+              "t": 1789928548536,
+              "kind": "command",
+              "id": 4,
+              "command": "marktex:resume-hydration",
+              "sinceEscape": 1
+            },
+            {
+              "t": 1789928548536,
+              "kind": "show",
+              "tabId": "git-diff:e846ed33-087c-44cb-88bb-8ec7a22e2dd3:a",
+              "sinceEscape": 1
+            },
+            {
+              "t": 1789928548536,
+              "kind": "command",
+              "id": 4,
+              "command": "marktex:position-preview",
+              "sourceLine": 397,
+              "sinceEscape": 1
+            },
+            {
+              "t": 1789928548536,
+              "kind": "command",
+              "id": 4,
+              "command": "marktex:observe-viewport",
+              "sinceEscape": 1
+            }
+          ],
+          "geometry": {
+            "width": 780,
+            "height": 744,
+            "dpr": 1.3333333730697632
+          }
+        },
+        {
+          "cycle": 5,
+          "escapeAt": 1789928548638,
+          "showMs": 1,
+          "captureMs": 29,
+          "viewId": 4,
+          "trace": [
+            {
+              "t": 1789928548639,
+              "kind": "visible",
+              "id": 4,
+              "value": true,
+              "bounds": {
+                "x": 300,
+                "y": 76,
+                "width": 780,
+                "height": 744
+              },
+              "sinceEscape": 1
+            },
+            {
+              "t": 1789928548639,
+              "kind": "command",
+              "id": 4,
+              "command": "marktex:resume-hydration",
+              "sinceEscape": 1
+            },
+            {
+              "t": 1789928548639,
+              "kind": "show",
+              "tabId": "git-diff:e846ed33-087c-44cb-88bb-8ec7a22e2dd3:a",
+              "sinceEscape": 1
+            },
+            {
+              "t": 1789928548639,
+              "kind": "command",
+              "id": 4,
+              "command": "marktex:position-preview",
+              "sourceLine": 397,
+              "sinceEscape": 1
+            },
+            {
+              "t": 1789928548640,
+              "kind": "command",
+              "id": 4,
+              "command": "marktex:observe-viewport",
+              "sinceEscape": 2
+            }
+          ],
+          "geometry": {
+            "width": 780,
+            "height": 744,
+            "dpr": 1.3333333730697632
+          }
+        }
+      ],
+      "trace": [
+        {
+          "t": 1789928546248,
+          "kind": "visible",
+          "id": 3,
+          "value": false,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          }
+        },
+        {
+          "t": 1789928546248,
+          "kind": "visible",
+          "id": 3,
+          "value": false,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          }
+        },
+        {
+          "t": 1789928546248,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928546248,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928546248,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928546248,
+          "kind": "command",
+          "id": 3,
+          "command": "marktex:collect-headings"
+        },
+        {
+          "t": 1789928546251,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928546261,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928546263,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928546328,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928546328,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928546396,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928546396,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928546482,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928546482,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928546482,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928546482,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928546488,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928546489,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928546518,
+          "kind": "visible",
+          "id": 4,
+          "value": false,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          }
+        },
+        {
+          "t": 1789928546518,
+          "kind": "visible",
+          "id": 4,
+          "value": false,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          }
+        },
+        {
+          "t": 1789928546521,
+          "kind": "visible",
+          "id": 5,
+          "value": false,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          }
+        },
+        {
+          "t": 1789928546645,
+          "kind": "loaded",
+          "id": 5
+        },
+        {
+          "t": 1789928546672,
+          "kind": "loaded",
+          "id": 2
+        },
+        {
+          "t": 1789928546683,
+          "kind": "loaded",
+          "id": 3
+        },
+        {
+          "t": 1789928546896,
+          "kind": "command",
+          "id": 3,
+          "command": "marktex:collect-headings"
+        },
+        {
+          "t": 1789928546897,
+          "kind": "command",
+          "id": 3,
+          "command": "marktex:stop-find"
+        },
+        {
+          "t": 1789928546897,
+          "kind": "command",
+          "id": 3,
+          "command": "marktex:position-preview",
+          "requestId": 1,
+          "sourceLine": 1
+        },
+        {
+          "t": 1789928547014,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928547312,
+          "kind": "loaded",
+          "id": 4
+        },
+        {
+          "t": 1789928547313,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:prepare-review",
+          "revision": 1,
+          "requestId": 1,
+          "sourceLine": 11
+        },
+        {
+          "t": 1789928548023,
+          "kind": "ack",
+          "id": 4,
+          "type": "marktex:review-prepared",
+          "revision": 1,
+          "requestId": 1
+        },
+        {
+          "t": 1789928548024,
+          "kind": "visible",
+          "id": 5,
+          "value": false,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          }
+        },
+        {
+          "t": 1789928548026,
+          "kind": "visible",
+          "id": 6,
+          "value": false,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          }
+        },
+        {
+          "t": 1789928548028,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:prime-position",
+          "sourceLine": 406
+        },
+        {
+          "t": 1789928548028,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:prepare-review",
+          "revision": 1,
+          "requestId": "present:1",
+          "sourceLine": 406
+        },
+        {
+          "t": 1789928548084,
+          "kind": "ack",
+          "id": 4,
+          "type": "marktex:review-prepared",
+          "revision": 1,
+          "requestId": "present:1"
+        },
+        {
+          "t": 1789928548085,
+          "kind": "visible",
+          "id": 4,
+          "value": true,
+          "bounds": {
+            "x": 300,
+            "y": 76,
+            "width": 780,
+            "height": 744
+          }
+        },
+        {
+          "t": 1789928548085,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:resume-hydration"
+        },
+        {
+          "t": 1789928548085,
+          "kind": "show",
+          "tabId": "git-diff:e846ed33-087c-44cb-88bb-8ec7a22e2dd3:a"
+        },
+        {
+          "t": 1789928548085,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:observe-viewport"
+        },
+        {
+          "t": 1789928548085,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:verify-review-position",
+          "revision": 1,
+          "requestId": "present:1"
+        },
+        {
+          "t": 1789928548089,
+          "kind": "loaded",
+          "id": 6
+        },
+        {
+          "t": 1789928548257,
+          "kind": "ack",
+          "id": 4,
+          "type": "edit-at-anchor"
+        },
+        {
+          "t": 1789928548258,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:observe-viewport"
+        },
+        {
+          "t": 1789928548258,
+          "kind": "visible",
+          "id": 4,
+          "value": false,
+          "bounds": {
+            "x": 300,
+            "y": 76,
+            "width": 780,
+            "height": 744
+          }
+        },
+        {
+          "t": 1789928548258,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928548278,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:prime-position",
+          "sourceLine": 397
+        },
+        {
+          "t": 1789928548305,
+          "kind": "visible",
+          "id": 4,
+          "value": true,
+          "bounds": {
+            "x": 300,
+            "y": 76,
+            "width": 780,
+            "height": 744
+          }
+        },
+        {
+          "t": 1789928548305,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:resume-hydration"
+        },
+        {
+          "t": 1789928548305,
+          "kind": "show",
+          "tabId": "git-diff:e846ed33-087c-44cb-88bb-8ec7a22e2dd3:a"
+        },
+        {
+          "t": 1789928548305,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:position-preview",
+          "sourceLine": 397
+        },
+        {
+          "t": 1789928548305,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:observe-viewport"
+        },
+        {
+          "t": 1789928548397,
+          "kind": "ack",
+          "id": 4,
+          "type": "edit-at-anchor"
+        },
+        {
+          "t": 1789928548398,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:observe-viewport"
+        },
+        {
+          "t": 1789928548398,
+          "kind": "visible",
+          "id": 4,
+          "value": false,
+          "bounds": {
+            "x": 300,
+            "y": 76,
+            "width": 780,
+            "height": 744
+          }
+        },
+        {
+          "t": 1789928548398,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928548415,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:prime-position",
+          "sourceLine": 397
+        },
+        {
+          "t": 1789928548423,
+          "kind": "visible",
+          "id": 4,
+          "value": true,
+          "bounds": {
+            "x": 300,
+            "y": 76,
+            "width": 780,
+            "height": 744
+          }
+        },
+        {
+          "t": 1789928548423,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:resume-hydration"
+        },
+        {
+          "t": 1789928548423,
+          "kind": "show",
+          "tabId": "git-diff:e846ed33-087c-44cb-88bb-8ec7a22e2dd3:a"
+        },
+        {
+          "t": 1789928548423,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:position-preview",
+          "sourceLine": 397
+        },
+        {
+          "t": 1789928548423,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:observe-viewport"
+        },
+        {
+          "t": 1789928548513,
+          "kind": "ack",
+          "id": 4,
+          "type": "edit-at-anchor"
+        },
+        {
+          "t": 1789928548514,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:observe-viewport"
+        },
+        {
+          "t": 1789928548514,
+          "kind": "visible",
+          "id": 4,
+          "value": false,
+          "bounds": {
+            "x": 300,
+            "y": 76,
+            "width": 780,
+            "height": 744
+          }
+        },
+        {
+          "t": 1789928548514,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928548532,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:prime-position",
+          "sourceLine": 397
+        },
+        {
+          "t": 1789928548536,
+          "kind": "visible",
+          "id": 4,
+          "value": true,
+          "bounds": {
+            "x": 300,
+            "y": 76,
+            "width": 780,
+            "height": 744
+          }
+        },
+        {
+          "t": 1789928548536,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:resume-hydration"
+        },
+        {
+          "t": 1789928548536,
+          "kind": "show",
+          "tabId": "git-diff:e846ed33-087c-44cb-88bb-8ec7a22e2dd3:a"
+        },
+        {
+          "t": 1789928548536,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:position-preview",
+          "sourceLine": 397
+        },
+        {
+          "t": 1789928548536,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:observe-viewport"
+        },
+        {
+          "t": 1789928548613,
+          "kind": "ack",
+          "id": 4,
+          "type": "edit-at-anchor"
+        },
+        {
+          "t": 1789928548614,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:observe-viewport"
+        },
+        {
+          "t": 1789928548614,
+          "kind": "visible",
+          "id": 4,
+          "value": false,
+          "bounds": {
+            "x": 300,
+            "y": 76,
+            "width": 780,
+            "height": 744
+          }
+        },
+        {
+          "t": 1789928548614,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928548620,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:prime-position",
+          "sourceLine": 397
+        },
+        {
+          "t": 1789928548639,
+          "kind": "visible",
+          "id": 4,
+          "value": true,
+          "bounds": {
+            "x": 300,
+            "y": 76,
+            "width": 780,
+            "height": 744
+          }
+        },
+        {
+          "t": 1789928548639,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:resume-hydration"
+        },
+        {
+          "t": 1789928548639,
+          "kind": "show",
+          "tabId": "git-diff:e846ed33-087c-44cb-88bb-8ec7a22e2dd3:a"
+        },
+        {
+          "t": 1789928548639,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:position-preview",
+          "sourceLine": 397
+        },
+        {
+          "t": 1789928548640,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:observe-viewport"
+        },
+        {
+          "t": 1789928548713,
+          "kind": "ack",
+          "id": 4,
+          "type": "edit-at-anchor"
+        },
+        {
+          "t": 1789928548714,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:observe-viewport"
+        },
+        {
+          "t": 1789928548714,
+          "kind": "visible",
+          "id": 4,
+          "value": false,
+          "bounds": {
+            "x": 300,
+            "y": 76,
+            "width": 780,
+            "height": 744
+          }
+        },
+        {
+          "t": 1789928548714,
+          "kind": "show",
+          "tabId": null
+        },
+        {
+          "t": 1789928548720,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:prime-position",
+          "sourceLine": 397
+        }
+      ]
+    }
+  }
+}

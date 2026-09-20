@@ -37,6 +37,8 @@ export class PreviewManager {
   private readonly spares = new Map<number, { view: WebContentsView; ready: boolean }>();
   private readonly navigating = new Map<WebContentsView, symbol>();
   private readonly themes = new Map<number, PreviewThemeId>();
+  private readonly reviewViews = new WeakSet<WebContentsView>();
+  private readonly reviewViewports = new WeakMap<WebContentsView, { width: number; height: number }>();
   private readonly reviews = new ReviewPreparation({
     views: this.views,
     applyBounds: (preview, bounds) => this.applyBounds(preview,
@@ -129,6 +131,7 @@ export class PreviewManager {
     const owner = this.options.stateFor(ownerId);
     if (!owner) return;
     const view = this.takeSpare(ownerId) ?? this.createView();
+    if (/^git-diff:.*:[ab]$/.test(tabId)) this.reviewViews.add(view);
     view.setBackgroundColor(previewThemeBackground(this.options.theme()));
     view.setVisible(false);
     // A fresh view is attached only after its initial navigation has completed.
@@ -162,6 +165,7 @@ export class PreviewManager {
     if (!owner || owner.isDestroyed() || view.webContents.isDestroyed()) throw new Error('The preview owner was closed.');
     const token = Symbol('preview-navigation');
     this.navigating.set(view, token);
+    this.reviewViewports.delete(view);
     const hidden = !view.getVisible();
     if (hidden && owner.contentView.children.includes(view)) owner.contentView.removeChildView(view);
     try {
@@ -171,6 +175,9 @@ export class PreviewManager {
       if (this.navigating.get(view) !== token || !stillOwned || view.webContents.isDestroyed()
         || owner.isDestroyed() || this.options.stateFor(ownerId)?.window !== owner) return;
       if (hidden && !owner.contentView.children.includes(view)) owner.contentView.addChildView(view);
+      this.navigating.delete(view);
+      const preview = Array.from(this.views.values()).find((entry) => entry.view === view);
+      if (preview?.appliedBounds) this.prepareRendererViewport(preview, preview.appliedBounds);
     } finally {
       if (this.navigating.get(view) === token) this.navigating.delete(view);
     }
@@ -191,14 +198,8 @@ export class PreviewManager {
       && /^git-diff:.*:[ab]$/.test(tabId) ? tabId.slice(0, -1) : null;
 
     if (ready && bounds) {
-      const [width, height] = owner.getContentSize();
       const native = nativeZoomBounds(bounds, owner.webContents.getZoomFactor?.() ?? 1);
-      const x = Math.max(0, native.x);
-      const y = Math.max(0, native.y);
-      this.applyBounds(ready, { x, y,
-        width: Math.max(1, Math.min(native.width, width - x)),
-        height: Math.max(1, Math.min(native.height, height - y)),
-      });
+      this.applyBounds(ready, native);
       if (!ready.view.getVisible()) {
         ready.view.setBackgroundColor(previewThemeBackground(this.options.theme()));
         // Preserve the warm view's native identity and hierarchy on Esc.
@@ -224,11 +225,41 @@ export class PreviewManager {
   }
 
   applyBounds(preview: PreviewViewState, bounds: Rectangle) {
+    // Hidden preparation and presentation must use the same clipped DIP box.
+    // Even a one-pixel height change invalidates styles throughout a math page.
+    bounds = { ...bounds, x: Math.max(0, bounds.x), y: Math.max(0, bounds.y) };
+    const owner = this.options.stateFor(preview.ownerWebContentsId)?.window;
+    if (owner && !owner.isDestroyed()) {
+      const [width, height] = owner.getContentSize();
+      bounds = { ...bounds, width: Math.max(1, Math.min(bounds.width, width - bounds.x)),
+        height: Math.max(1, Math.min(bounds.height, height - bounds.y)) };
+    }
     const previous = preview.appliedBounds;
     if (previous && previous.x === bounds.x && previous.y === bounds.y
-      && previous.width === bounds.width && previous.height === bounds.height) return;
+      && previous.width === bounds.width && previous.height === bounds.height) {
+      this.prepareRendererViewport(preview, bounds);
+      return;
+    }
     preview.view.setBounds(bounds);
     preview.appliedBounds = bounds;
+    this.prepareRendererViewport(preview, bounds);
+  }
+
+  private prepareRendererViewport(preview: PreviewViewState, bounds: Rectangle) {
+    const contents = preview.view.webContents;
+    if (!this.reviewViews.has(preview.view) || this.navigating.has(preview.view)
+      || contents.isDestroyed() || !contents.getURL().startsWith('marktex-preview://document/')) return;
+    const previous = this.reviewViewports.get(preview.view);
+    if (previous?.width === bounds.width && previous.height === bounds.height) return;
+    // A never-shown native view can retain a 0x0 Blink viewport despite setBounds.
+    // Set its desktop viewport without exposing it or disturbing Monaco/IME focus.
+    // Keep this override when shown: removing it would invalidate the prepared
+    // layout again. Bounds/resize updates keep it aligned with the native view.
+    // DIP size, natural display scale and page zoom are preserved by Chromium.
+    contents.enableDeviceEmulation({ screenPosition: 'desktop', screenSize: { width: 0, height: 0 },
+      viewPosition: { x: 0, y: 0 }, deviceScaleFactor: 0,
+      viewSize: { width: bounds.width, height: bounds.height }, scale: 1 });
+    this.reviewViewports.set(preview.view, { width: bounds.width, height: bounds.height });
   }
 
   prepareReviewViewport(ownerId: number, tabId: string, revision: number): Promise<void> {

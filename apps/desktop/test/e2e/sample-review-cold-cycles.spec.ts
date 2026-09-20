@@ -2,6 +2,7 @@
  * SETDOWN_TRACE_CYCLES=1 records Chromium work; SETDOWN_CYCLES_IDLE_MS controls
  * the delay before the first Esc (default 0). Captures are not presentation fences.
  * SETDOWN_CYCLES_EDIT=1 inserts a new paragraph immediately before each Esc.
+ * SETDOWN_CYCLES_RETURN=button isolates Esc timing from native double-click delivery.
  */
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -78,8 +79,9 @@ test('sample math cold Esc and real double-click cycles', async () => {
       ? await app.evaluate(async ({ BrowserWindow }) => Promise.all(
         BrowserWindow.getAllWindows()[0].contentView.children.map(async view => {
           if (!('webContents' in view)) return null;
-          return { id: view.webContents.id, bounds: view.getBounds(), visible: view.getVisible(),
+          return { id: view.webContents.id, bounds: view.getBounds(), visible: view.getVisible(), zoom: view.webContents.getZoomFactor(),
             document: await view.webContents.executeJavaScript(`({ width: innerWidth, height: innerHeight,
+              dpr: devicePixelRatio,
               review: !!document.querySelector('.setdown-rendered-diff-split'),
               fonts: document.fonts.status, visibility: document.visibilityState })`).catch(() => null) };
         }))) : undefined;
@@ -114,22 +116,30 @@ test('sample math cold Esc and real double-click cycles', async () => {
       console.log(JSON.stringify(sample));
       const content = await app.evaluate(({ webContents }, id) => webContents.fromId(id)!
         .executeJavaScript(`({ math: document.querySelectorAll('.katex').length,
+          width: innerWidth, height: innerHeight, dpr: devicePixelRatio,
           text: document.querySelector('.setdown-rendered-diff-split')?.textContent })`), capture.id);
       expect(content.math).toBeGreaterThan(100);
+      Object.assign(sample, { geometry: { width: content.width, height: content.height, dpr: content.dpr } });
       if (process.env.SETDOWN_CYCLES_EDIT === '1') expect(content.text).toContain(`cycle-edit-${cycle}`);
       // Browser input uses CSS coordinates and does not depend on OS window focus.
       // Attach only after timing; do not dispatch a synthetic DOM dblclick event.
-      await app.evaluate(async ({ webContents }, id) => {
+      if (process.env.SETDOWN_CYCLES_RETURN === 'button') {
+        await page.getByRole('button', { name: 'View Source Diff' }).click();
+      } else await app.evaluate(async ({ webContents }, id) => {
         const contents = webContents.fromId(id)!;
+        // The timed capture may precede the final source-position paint. Let
+        // that settle before hit testing the next gesture (outside Esc timing).
+        await contents.executeJavaScript('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
         const point = await contents.executeJavaScript(
           '({ x: Math.round(innerWidth * .75), y: Math.round(innerHeight * .4) })');
         contents.debugger.attach('1.3');
         try {
+          await contents.debugger.sendCommand('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
           for (const clickCount of [1, 2]) {
             await contents.debugger.sendCommand('Input.dispatchMouseEvent', {
-              type: 'mousePressed', button: 'left', clickCount, ...point });
+              type: 'mousePressed', button: 'left', buttons: 1, clickCount, ...point });
             await contents.debugger.sendCommand('Input.dispatchMouseEvent', {
-              type: 'mouseReleased', button: 'left', clickCount, ...point });
+              type: 'mouseReleased', button: 'left', buttons: 0, clickCount, ...point });
           }
         } finally { contents.debugger.detach(); }
       }, capture.id);
@@ -145,6 +155,7 @@ test('sample math cold Esc and real double-click cycles', async () => {
     if (process.env.SETDOWN_TRACE_CYCLES === '1') await app.evaluate(({ contentTracing }, file) =>
       contentTracing.stopRecording(file), test.info().outputPath('cycles-trace.json'));
     await writeFile(test.info().outputPath('cycles.json'), JSON.stringify({ idle,
+      returnMethod: process.env.SETDOWN_CYCLES_RETURN === 'button' ? 'button' : 'double-click',
       edits: process.env.SETDOWN_CYCLES_EDIT === '1', hiddenGeometry, samples,
       trace: await app.evaluate(() => (globalThis as any).cycleTrace) }, null, 2));
   } finally {

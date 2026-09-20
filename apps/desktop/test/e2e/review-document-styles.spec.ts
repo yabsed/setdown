@@ -52,6 +52,24 @@ test('review document styles preserve real math geometry across widths and zoom'
     await page.getByRole('button', { name: 'Source Control', exact: true }).click();
     await page.locator('.scm-group').filter({ has: page.getByText('CHANGES', { exact: true }) }).locator('.git-change-open').click();
     await expect.poll(async () => (await reviews(app!)).length, { timeout: 30_000 }).toBe(2);
+    // Both A/B pages must have real layout before either is ever shown. Merely
+    // setting native bounds leaves a cold Blink viewport at 0x0 on Electron 38.
+    const hidden = await app.evaluate(async ({ BrowserWindow }) => Promise.all(
+      BrowserWindow.getAllWindows()[0].contentView.children.map(async view => {
+        if (!('webContents' in view)) return null;
+        const geometry = await view.webContents.executeJavaScript(`(() => {
+          if (!document.querySelector('.setdown-rendered-diff-split')) return null;
+          return { width: innerWidth, height: innerHeight };
+        })()`).catch(() => null);
+        return geometry ? { geometry, native: view.getBounds(), visible: view.getVisible(),
+          zoom: view.webContents.getZoomFactor() } : null;
+      })));
+    expect(hidden.filter(Boolean)).toHaveLength(2);
+    for (const view of hidden) if (view) {
+      expect(view.visible).toBe(false);
+      expect(Math.abs(view.geometry.width - view.native.width / view.zoom)).toBeLessThanOrEqual(1);
+      expect(Math.abs(view.geometry.height - view.native.height / view.zoom)).toBeLessThanOrEqual(1);
+    }
     await page.getByRole('button', { name: 'View Rendered Diff', exact: true }).click();
     await expect.poll(async () => (await reviews(app!)).some(v => v.visible)).toBe(true);
     for (const [width, zoom] of [[1100, 1], [680, 1], [1100, 1.25]]) {
@@ -60,7 +78,7 @@ test('review document styles preserve real math geometry across widths and zoom'
       const result = await app.evaluate(async ({ webContents }, { id, zoom }) => {
         const contents = webContents.fromId(id)!;
         contents.setZoomFactor(zoom);
-        return contents.executeJavaScript(`(async () => {
+        const result = await contents.executeJavaScript(`(async () => {
           await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
           const source = document.querySelector('link[href*="/styles/preview.css"]');
           if (!source) throw Error('Missing document stylesheet');
@@ -76,6 +94,8 @@ test('review document styles preserve real math geometry across widths and zoom'
               typography: [s.fontFamily,s.fontSize,s.fontWeight,s.lineHeight,s.color,s.textAlign],
               display: s.display, visibility: s.visibility };
           });
+          window.__reviewGeometry = () => ({ width: innerWidth, height: innerHeight,
+            dpr: devicePixelRatio, nodes: snapshot() });
           await document.fonts.ready;
           const optimized = snapshot();
           const link = document.createElement('link'); link.rel='stylesheet'; link.href=uiUrl;
@@ -88,7 +108,15 @@ test('review document styles preserve real math geometry across widths and zoom'
             math: root.querySelectorAll('.katex').length,
             differences: original.flatMap((old, i) => JSON.stringify(old) === JSON.stringify(optimized[i]) ? [] : [{old, optimized: optimized[i]}]).slice(0,10) };
         })()`);
+        const prepared = await contents.executeJavaScript('window.__reviewGeometry()');
+        // The viewport override must preserve natural desktop layout, zoom and
+        // display scale. Compare every math rectangle against native presentation.
+        contents.disableDeviceEmulation();
+        const natural = await contents.executeJavaScript(`new Promise(resolve =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve(window.__reviewGeometry()))))`);
+        return { ...result, prepared, natural };
       }, { id: visible.id, zoom });
+      expect(result.prepared).toEqual(result.natural);
       expect(result.math).toBeGreaterThan(700);
       expect(result.differences, JSON.stringify({ width, zoom, ...result })).toEqual([]);
     }

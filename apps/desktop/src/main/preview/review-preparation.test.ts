@@ -29,6 +29,13 @@ test('hidden prime sets bounds then position without focus or visibility changes
 test('a visible front rejects late prime commands', () => {
   const f = fixture(); f.show(); f.prime(); assert.equal(f.calls.length, 0);
 });
+test('fractional CSS bounds survive until the native zoom conversion', () => {
+  const f = fixture();
+  const bounds = { x: 10.4, y: 80.6, width: 899.6, height: 599.4 };
+  f.manager.command(7, 'r', { command: 'marktex:prime-review', bounds,
+    position: { sourceLine: 120 } });
+  assert.deepEqual(f.calls[0], { command: 'bounds', ...bounds });
+});
 test('ready requires the matching revision and preparation token', async () => {
   const f = fixture(); f.prime();
   let completed = false;

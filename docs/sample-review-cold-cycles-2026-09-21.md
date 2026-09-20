@@ -36,9 +36,10 @@ Working Tree 비교를 열었다. 제품 코드는 수정하지 않았다.
 
 페이지의 `document.visibilityState`도 이때 `visible`이었다. native view의
 `getVisible()`과 DOM visibility/viewport를 같은 상태로 취급하면 안 된다.
-표시 시 native 크기는 780 × 744, Chromium trace의 CSS viewport는 1040 × 992였다
-(앱의 기본 zoom 0.75). 1px의 native 높이 변화와 별개로 폭이 0에서 실제 폭으로
-바뀌는 것이 중요하다.
+표시 시 native 크기는 780 × 744였다. 후속 수정 검증에서 `getZoomFactor()=1`,
+`devicePixelRatio≈1.3333`을 직접 확인했다. 따라서 trace의 1040 × 992 좌표를
+CSS viewport와 앱 zoom 0.75로 해석했던 최초 기록은 정정한다.
+후속 대조 실험에서는 1px의 native 높이 차이도 전체 스타일 재계산을 유발했다.
 
 `rendered-diff.ts`의 720px breakpoint 때문에 숨겨진 페이지에서는 unified가,
 처음 표시될 때는 split이 활성화된다. 실제 첫 표시 때 수식 트리의 스타일과
