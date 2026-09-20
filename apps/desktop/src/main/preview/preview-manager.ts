@@ -178,43 +178,57 @@ export class PreviewManager {
 
   show(ownerId: number, tabId: unknown, bounds: PreviewBounds | null) {
     const owner = this.options.stateFor(ownerId)?.window;
-    if (!owner) return;
+    if (!owner || owner.isDestroyed()) return;
     const target = typeof tabId === 'string' ? this.views.get(tabId) : undefined;
-    const shown = target?.ownerWebContentsId === ownerId ? target : undefined;
-    let hiddenFocusedView = false;
-    for (const preview of this.views.values()) {
-      if (preview.ownerWebContentsId === ownerId && preview !== shown && preview.view.getVisible()) {
-        hiddenFocusedView ||= preview.view.webContents.isFocused();
-        preview.view.setVisible(false);
+    const shown = target?.ownerWebContentsId === ownerId && !target.view.webContents.isDestroyed()
+      ? target : undefined;
+    const validBounds = !!bounds && [bounds.x, bounds.y, bounds.width, bounds.height].every(Number.isFinite)
+      && bounds.width > 0 && bounds.height > 0;
+    const ready = shown && validBounds && !this.navigating.has(shown.view) ? shown : undefined;
+    // Only retain the same review's front while its A/B sibling is navigating.
+    // A tab switch, Source mode, invalid bounds or a foreign owner must hide it.
+    const pendingReview = shown && validBounds && !ready && typeof tabId === 'string'
+      && /^git-diff:.*:[ab]$/.test(tabId) ? tabId.slice(0, -1) : null;
+
+    if (ready && bounds) {
+      const [width, height] = owner.getContentSize();
+      const native = nativeZoomBounds(bounds, owner.webContents.getZoomFactor?.() ?? 1);
+      const x = Math.max(0, native.x);
+      const y = Math.max(0, native.y);
+      this.applyBounds(ready, { x, y,
+        width: Math.max(1, Math.min(native.width, width - x)),
+        height: Math.max(1, Math.min(native.height, height - y)),
+      });
+      if (!ready.view.getVisible()) {
+        ready.view.setBackgroundColor(previewThemeBackground(this.options.theme()));
+        // Preserve the warm view's native identity and hierarchy on Esc.
+        if (!owner.contentView.children.includes(ready.view)) owner.contentView.addChildView(ready.view);
+        ready.view.setVisible(true);
       }
     }
-    if (hiddenFocusedView && owner.isFocused() && !owner.webContents.isDestroyed()) owner.webContents.focus();
-    if (!shown || !bounds || this.navigating.has(shown.view)) return;
-    const [width, height] = owner.getContentSize();
-    const native = nativeZoomBounds(bounds, owner.webContents.getZoomFactor?.() ?? 1);
-    const x = Math.max(0, native.x);
-    const y = Math.max(0, native.y);
-    this.applyBounds(shown, { x, y,
-      width: Math.max(1, Math.min(native.width, width - x)),
-      height: Math.max(1, Math.min(native.height, height - y)),
-    });
-    if (!shown.view.getVisible()) {
-      shown.view.setBackgroundColor(previewThemeBackground(this.options.theme()));
-      // Prepared hidden views normally remain attached. Avoid mutating the
-      // native child hierarchy again on the warm Esc hot path.
-      if (!owner.contentView.children.includes(shown.view)) owner.contentView.addChildView(shown.view);
-      shown.view.setVisible(true);
+
+    // Request the replacement before hiding the old native view. This removes
+    // the hide-first gap, but is NOT a Chromium paint/presentation fence.
+    let hiddenFocusedView = false;
+    for (const [id, preview] of this.views) {
+      if (preview.ownerWebContentsId !== ownerId || preview === ready
+        || preview.view.webContents.isDestroyed() || !preview.view.getVisible()) continue;
+      if (pendingReview && /^git-diff:.*:[ab]$/.test(id) && id.slice(0, -1) === pendingReview) continue;
+      hiddenFocusedView ||= preview.view.webContents.isFocused();
+      preview.view.setVisible(false);
     }
-    this.restoreScroll(shown);
-    shown.view.webContents.send('preview:command', { command: 'marktex:resume-hydration' });
+    if (hiddenFocusedView && owner.isFocused() && !owner.webContents.isDestroyed()) owner.webContents.focus();
+    if (!ready) return;
+    this.restoreScroll(ready);
+    ready.view.webContents.send('preview:command', { command: 'marktex:resume-hydration' });
   }
 
   applyBounds(preview: PreviewViewState, bounds: Rectangle) {
     const previous = preview.appliedBounds;
     if (previous && previous.x === bounds.x && previous.y === bounds.y
       && previous.width === bounds.width && previous.height === bounds.height) return;
-    preview.appliedBounds = bounds;
     preview.view.setBounds(bounds);
+    preview.appliedBounds = bounds;
   }
 
   prepareReviewViewport(ownerId: number, tabId: string, revision: number): Promise<void> {
