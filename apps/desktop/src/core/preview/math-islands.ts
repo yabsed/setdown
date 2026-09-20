@@ -5,30 +5,22 @@ const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input'
 const RAW_TEXT = /^(?:script|style|textarea|title|xmp|iframe|noembed|noframes|plaintext)$/;
 
 /** Return null rather than guessing about malformed/raw-text HTML. */
-export function mathIslands(html: string): MathIsland[] | null {
+export function mathIslands(html: string, known?: (offset: number) => string | undefined): MathIsland[] | null {
+  if (!html.includes('katex')) return [];
   const result: MathIsland[] = [];
   let cursor = 0;
   let start = -1;
   const stack: string[] = [];
-  while (cursor < html.length) {
-    const open = html.indexOf('<', cursor);
-    if (open < 0) break;
-    if (html.startsWith('<!--', open)) {
-      const end = html.indexOf('-->', open + 4);
-      if (end < 0) return null;
-      cursor = end + 3; continue;
-    }
-    let end = open + 1;
-    let quote = '';
-    for (; end < html.length; end++) {
-      const c = html[end];
-      if (quote) { if (c === quote) quote = ''; }
-      else if (c === '"' || c === "'") quote = c;
-      else if (c === '>') break;
-    }
-    if (end === html.length) return null;
-    cursor = end + 1;
-    const tag = html.slice(open, cursor);
+  // Native regexp scanning skips text/quoted attributes in chunks instead of
+  // visiting every character of multi-megabyte KaTeX HTML in JavaScript.
+  const tags = /<!--[\s\S]*?-->|<\/?[A-Za-z][^"'<>]*(?:(?:"[^"]*"|'[^']*')[^"'<>]*)*>/g;
+  let token: RegExpExecArray | null;
+  while ((token = tags.exec(html)) !== null) {
+    const open = token.index;
+    if (html.slice(cursor, open).includes('<')) return null;
+    const tag = token[0];
+    cursor = tags.lastIndex;
+    if (tag.startsWith('<!--')) continue;
     const match = /^<\s*(\/?)\s*([a-zA-Z][\w:-]*)\b/.exec(tag);
     if (!match) { if (start >= 0) return null; continue; }
     const name = match[2].toLowerCase();
@@ -58,9 +50,16 @@ export function mathIslands(html: string): MathIsland[] | null {
         break;
       }
     }
-    if (katex) { start = open; stack.push(name); }
+    if (katex) {
+      // Only previously validated exact output is eligible for this byte skip.
+      const cached = known?.(open);
+      if (cached && html.startsWith(cached, open)) {
+        cursor = open + cached.length; tags.lastIndex = cursor;
+        result.push({ start: open, end: cursor, html: cached });
+      } else { start = open; stack.push(name); }
+    }
   }
-  return start >= 0 ? null : result;
+  return start >= 0 || html.slice(cursor).includes('<') ? null : result;
 }
 
 /** Copy untouched slices verbatim; never decode/re-encode authored HTML. */
