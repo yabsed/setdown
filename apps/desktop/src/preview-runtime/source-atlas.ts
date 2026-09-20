@@ -3,6 +3,7 @@ import {
   type BandLine, type SourceCandidate, type ViewportAnchor,
 } from '../core/preview/viewport-anchor';
 import type { ReviewSourceSide } from '../core/preview/review-viewport';
+import { ReviewPositionProof } from '../core/preview/review-position-proof';
 
 export const ANCHOR_SELECTOR = '[data-source-line], [data-source-start], [data-source-lines]';
 export const PREVIEW_SELECTOR = '.markdown-preview[data-for="preview"]';
@@ -52,9 +53,21 @@ export class SourceAtlas {
   private before: Entry[] = [];
   private after: Entry[] = [];
   private beforeLineCount = 1;
+  private layoutGeneration = 0;
+  private readonly positionProof = new ReviewPositionProof();
 
   constructor(private readonly options: AtlasOptions) {}
-  invalidate() { this.stale = true; }
+  invalidate() {
+    this.stale = true;
+    this.layoutGeneration += 1;
+    this.positionProof.invalidate();
+  }
+
+  private positionState(revision: number) {
+    return { revision, layoutGeneration: this.layoutGeneration, width: innerWidth, height: innerHeight,
+      scale: devicePixelRatio, scrollTop: document.documentElement.scrollTop || 0,
+      scrollLeft: document.documentElement.scrollLeft || 0 };
+  }
 
   private read() {
     // Rectangles are document-relative: scrolling does not invalidate them.
@@ -92,7 +105,14 @@ export class SourceAtlas {
   }
 
   position(sourceLine: number, topRatio: number, band: BandLine[] = [],
-    sourceSide?: ReviewSourceSide, blockOffset = 0) {
+    sourceSide?: ReviewSourceSide, blockOffset = 0, revision?: number) {
+    const positionRequest = sourceSide ? { sourceSide, sourceLine, topRatio, band, blockOffset } : null;
+    // The current page, not the shell's delayed ACK record, owns this decision.
+    // A warm hit performs no anchor scan, weighted solve, or scroll write.
+    const stableFonts = document.fonts?.status !== 'loading';
+    if (positionRequest && revision !== undefined && !this.stale && stableFonts
+      && this.positionProof.matches(positionRequest, this.positionState(revision))) return;
+    this.positionProof.invalidate();
     // Preserve ordinary Markdown's behavior; Git primes a side-aware cache.
     if (!sourceSide) this.invalidate();
     if (sourceSide) this.reviewSide = sourceSide;
@@ -116,6 +136,10 @@ export class SourceAtlas {
     const scrollTop = Math.min(Math.max(0, documentHeight - height), Math.max(0, target));
     document.documentElement.scrollTop = scrollTop;
     document.body.scrollTop = scrollTop;
+    // Empty/unsized first-load fallbacks must NEVER become a prepared proof.
+    if (positionRequest && revision !== undefined && entries.length && stableFonts) {
+      this.positionProof.remember(positionRequest, this.positionState(revision));
+    }
   }
 
   private fromElement(element: Element, order: number): SourceCandidate | null {

@@ -7,7 +7,9 @@ type Options = {
   send(message: Record<string, unknown>): void;
 };
 
-/** Prepare the hidden document; no animation-frame/settle timer gates Esc. */
+/** Hidden preparation does not authorize skipping a later Esc navigation.
+ * The same SourceAtlas validates its page-local proof on the final command.
+ */
 export function installReviewPreparation(options: Options): void {
   let generation = 0;
   const invalidate = () => options.sourceAtlas.invalidate();
@@ -26,46 +28,39 @@ export function installReviewPreparation(options: Options): void {
     if (event.source !== window && event.source !== window.parent) return;
     const command = event.data as Record<string, unknown> | null;
     if (!command) return;
-    if (['marktex:position-preview', 'marktex:update-html', 'marktex:patch-blocks', 'marktex:patch-review-rows'].includes(String(command.command))) {
+    if (['marktex:position-preview', 'marktex:update-html', 'marktex:patch-blocks',
+      'marktex:patch-review-rows', 'marktex:apply-theme'].includes(String(command.command))) {
       generation += 1;
       return;
     }
     if (command.command !== 'marktex:prepare-review' && command.command !== 'marktex:prime-position') return;
     const current = ++generation;
-    const revision = command.revision;
+    const revision = options.revision();
+    const prepare = command.command === 'marktex:prepare-review';
     const reply = (error?: string) => {
-      options.send({ type: 'marktex:review-prepared', requestId: command.requestId,
-        revision, ...(error ? { error } : {}) });
-      if (!error && Number.isSafeInteger(Number(command.primeId)) && Number(command.primeId) > 0) {
-        options.send({ type: 'marktex:review-primed', primeId: Number(command.primeId), revision });
-      }
+      if (prepare) options.send({ type: 'marktex:review-prepared', requestId: command.requestId,
+        revision: command.revision, ...(error ? { error } : {}) });
     };
-    const position = () => {
-      const side = command.sourceSide === 'before' ? 'before' : 'after';
-      const line = Math.min(options.sourceAtlas.lineCount(side), Math.max(1, Number(command.sourceLine) || 1));
-      options.sourceAtlas.position(line, Number(command.topRatio) || 0,
-        options.sourceAtlas.readBand(command.band, side), side, Number(command.blockOffset) || 0);
-    };
-    if (command.command === 'marktex:prime-position') {
-      options.hydrate();
-      position();
-      if (Number.isSafeInteger(Number(command.primeId)) && Number(command.primeId) > 0) {
-        options.send({ type: 'marktex:review-primed', primeId: Number(command.primeId),
-          revision: options.revision() });
-      }
-      return; // No rAF/settle wait for continuous source prewarming.
-    }
+    if (prepare && command.revision !== revision) { reply('Obsolete preview preparation.'); return; }
+    // Capture immutable input before awaiting fonts. Never relabel old work with
+    // a newer cursor or geometry, and never publish a positional success ACK.
+    options.hydrate();
+    const side = command.sourceSide === 'before' ? 'before' : 'after';
+    const line = Math.min(options.sourceAtlas.lineCount(side), Math.max(1, Number(command.sourceLine) || 1));
+    const ratio = Number.isFinite(command.topRatio) ? Number(command.topRatio) : .372;
+    const band = options.sourceAtlas.readBand(command.band, side);
+    const offset = Number.isFinite(command.blockOffset) ? Number(command.blockOffset) : 0;
+    const position = () => options.sourceAtlas.position(line, ratio, band, side, offset, revision);
     void (async () => {
-      if (revision !== options.revision()) return reply('Obsolete preview preparation.');
-      options.hydrate();
-      position(); // Force layout so document.fonts.ready includes fonts used here.
+      position();
+      if (!prepare) return;
       if (document.fonts?.status === 'loading') {
         await document.fonts.ready;
         if (revision !== options.revision()) return reply('Preview changed while fonts were loading.');
         if (generation === current) { invalidate(); position(); }
       }
-      // A more recent position request owns the viewport; never overwrite it
-      // after an asynchronous font load. This acknowledgment only covers layout.
+      // This ACK means install/layout finished, not that this old target owns
+      // the current viewport. A newer navigation must never be overwritten.
       reply();
     })().catch((error) => reply(error instanceof Error ? error.message : String(error)));
   });

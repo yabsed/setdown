@@ -6,6 +6,7 @@ import { sameReviewBaseline, sameReviewContent } from '../../../core/preview/rev
 import { readReviewBookmark, reviewViewport, reviewPositionCommand, type ReviewViewport }
   from '../../../core/preview/review-viewport';
 import { gitDiffViewport, type GitDiffViewportPort } from './git-diff-viewport';
+import { liveDocumentModels, type LiveDocumentModelPort } from '../../editor/live-document-model';
 import type {
   DocumentSnapshot, GitDiff, GitRemoteAction, GitReviewState, GitSnapshot,
   PreviewBounds, PreviewMessage,
@@ -17,6 +18,7 @@ import { project, type GitDiffTabState } from '../project-state.svelte';
 type Options = {
   desktop: DesktopPort;
   viewport?: GitDiffViewportPort;
+  models?: LiveDocumentModelPort;
   openWorkingTree(path: string): Promise<boolean>;
   activateWorkingTree(path: string): boolean;
   workingTreeBuffer(path: string): string | null;
@@ -31,11 +33,6 @@ type ReviewReadingState = {
   observationId: number | null;
   observedId: string | null;
   sequence: number;
-  primeRequestId: number;
-  primeTargetId: string | null;
-  primedId: string | null;
-  primedBounds: PreviewBounds | null;
-  primedSourceKey: string;
 };
 
 export class SourceControlController {
@@ -52,7 +49,7 @@ export class SourceControlController {
   private pendingPreviewPosition: { tabId: string; intent: 'source' | 'resume' } | null = null;
   private readonly readingStates = new Map<string, ReviewReadingState>();
   private observationSequence = 0;
-  private primeSequence = 0;
+  private unsubscribeModels: (() => void) | null = null;
   private get viewport(): GitDiffViewportPort { return this.options.viewport ?? gitDiffViewport; }
   private themeId: PreviewThemeId | null = null;
   private overlayDepth = 0;
@@ -68,6 +65,7 @@ export class SourceControlController {
   }
 
   restore = async (): Promise<void> => {
+    this.observeDocuments();
     const saved = await this.options.desktop.getGitReviewState();
     if (!saved || !project.folder || project.gitDiffTabs.length) return;
     if (!saved.staged && !this.options.activateWorkingTree(saved.path)
@@ -118,6 +116,7 @@ export class SourceControlController {
   };
 
   review = async (filePath: string, staged: boolean): Promise<void> => {
+    this.observeDocuments();
     if (!staged && !this.options.activateWorkingTree(filePath)
       && !await this.options.openWorkingTree(filePath)) return;
     let tab = project.gitDiffTabs.find((candidate) => candidate.filePath === filePath && candidate.staged === staged);
@@ -160,6 +159,7 @@ export class SourceControlController {
   };
 
   activateDiff = async (id = project.activeGitDiffId): Promise<void> => {
+    this.observeDocuments();
     const tab = project.gitDiffTabs.find((candidate) => candidate.id === id);
     if (!tab) return;
     if (!tab.staged && !this.options.activateWorkingTree(tab.filePath)
@@ -229,15 +229,8 @@ export class SourceControlController {
     if (!tab) return false;
     const message = payload.message;
     const reading = this.readingState(tab);
-    if (message.type === 'marktex:review-primed') {
-      if (payload.tabId === reading.primeTargetId
-        && Number(message.primeId) === reading.primeRequestId) {
-        reading.primedId = payload.tabId;
-        reading.primedBounds = this.bounds ? { ...this.bounds } : null;
-        reading.primedSourceKey = this.viewportKey(reading.source);
-      }
-      return true;
-    }
+    // An out-of-process ACK is not proof that a page is STILL at that point.
+    // Exact no-op eligibility is validated atomically by the page's SourceAtlas.
     if (message.type === 'marktex:viewport-state') {
       if (tab.mode !== 'rendered' || message.observationId !== reading.observationId
         || reading.observationId === null || payload.tabId !== reading.observedId
@@ -289,6 +282,7 @@ export class SourceControlController {
     const diff = tab?.diff;
     if (!tab || !diff || diff.staged || diff.originalText === null || diff.modifiedText === null) return;
     this.options.workingTreeChanged(diff.filePath, text, edits);
+    if (tab.diff?.modifiedText === text) return; // Document event already handled it.
     tab.diff = { ...diff, modifiedText: text, modifiedLabel: 'WORKTREE' };
     // Source-only formats never enter the preview scheduler, even temporarily.
     if (this.renderable(tab.diff)) {
@@ -298,6 +292,8 @@ export class SourceControlController {
   };
 
   clear = (): void => {
+    this.unsubscribeModels?.();
+    this.unsubscribeModels = null;
     this.statusGeneration += 1;
     this.refreshRequested = false;
     this.checkpoints.clear();
@@ -314,6 +310,27 @@ export class SourceControlController {
     this.options.reviewChanged(false, false);
     project.commitMessage = '';
   };
+
+  private observeDocuments(): void {
+    if (this.unsubscribeModels) return;
+    this.unsubscribeModels = (this.options.models ?? liveDocumentModels).subscribe((event) => {
+      if (event.type !== 'changed') {
+        // A moved/closed document must not stay editable under an obsolete Git path.
+        this.closeWorkingTreeReviews(event.path);
+        return;
+      }
+      for (const tab of project.gitDiffTabs) {
+        const diff = tab.diff;
+        if (tab.staged || tab.filePath !== event.path || !diff
+          || diff.originalText === null || diff.modifiedText === null || diff.modifiedText === event.text) continue;
+        tab.diff = { ...diff, modifiedText: event.text, modifiedLabel: 'WORKTREE' };
+        if (this.renderable(tab.diff)) {
+          this.invalidatePreview(tab);
+          this.schedulePreview(tab);
+        }
+      }
+    });
+  }
 
   private createTab(filePath: string, staged: boolean,
     mode: GitDiffTabState['mode'] = 'source', line = 0): GitDiffTabState {
@@ -434,9 +451,7 @@ export class SourceControlController {
     let state = this.readingStates.get(tab.id);
     if (!state) {
       state = { source: reviewViewport(tab.line), viewer: null, presentedId: null,
-        presentedBounds: null, observationId: null, observedId: null, sequence: 0,
-        primeRequestId: 0, primeTargetId: null, primedId: null,
-        primedBounds: null, primedSourceKey: '' };
+        presentedBounds: null, observationId: null, observedId: null, sequence: 0 };
       this.readingStates.set(tab.id, state);
     }
     return state;
@@ -473,12 +488,10 @@ export class SourceControlController {
     const samePage = reading.presentedId === shownId;
     const sameSize = reading.presentedBounds?.width === this.bounds.width
       && reading.presentedBounds?.height === this.bounds.height;
-    const sourceAlreadyPrimed = pending.intent === 'source'
-      && reading.primedId === shownId
-      && reading.primedSourceKey === this.viewportKey(reading.source)
-      && reading.primedBounds?.width === this.bounds.width
-      && reading.primedBounds?.height === this.bounds.height;
-    if (!sourceAlreadyPrimed && (pending.intent === 'source' || !samePage || !sameSize)) {
+    // Always deliver the final intent. The page skips actual position/layout
+    // work only against its own revision, layout generation and scroll state.
+    // No render, IPC reply, or fixed settle delay is awaited on Esc.
+    if (pending.intent === 'source' || !samePage || !sameSize) {
       this.options.desktop.sendPreviewCommand(shownId, reviewPositionCommand(
         pending.intent === 'source' ? reading.source : reading.viewer ?? reading.source));
     }
@@ -510,23 +523,14 @@ export class SourceControlController {
     });
   }
 
-  private viewportKey(viewport: ReviewViewport): string {
-    return JSON.stringify([viewport.sourceSide, viewport.anchor.sourceLine,
-      viewport.anchor.sourceColumn ?? 0, viewport.anchor.yRatio,
-      viewport.blockOffset ?? -1, viewport.band.map((line) => [line.sourceLine, line.yRatio])]);
-  }
-
   private primePreview(tab: GitDiffTabState, previewId: string, target?: ReviewViewport): void {
     if (!tab.diff || !this.renderable(tab.diff)) return;
     if (!this.bounds || !project.gitDiffActive || this.activeTab()?.id !== tab.id) return;
     const reading = this.readingState(tab);
     const viewport = target ?? (tab.mode === 'source'
       ? this.viewport.read(tab.id) ?? reading.source : reading.viewer ?? reading.source);
-    const primeId = ++this.primeSequence;
-    reading.primeRequestId = primeId;
-    reading.primeTargetId = previewId;
     this.options.desktop.sendPreviewCommand(previewId, {
-      command: 'marktex:prime-review', primeId, bounds: { ...this.bounds },
+      command: 'marktex:prime-review', bounds: { ...this.bounds },
       position: reviewPositionCommand(viewport),
     });
   }

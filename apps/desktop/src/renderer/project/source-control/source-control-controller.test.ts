@@ -4,6 +4,7 @@ import type { GitDiff, GitDiffPreviewResult, PreviewBounds } from '../../../prot
 import type { DesktopPort } from '../../ports/desktop-port';
 import { project, type GitDiffTabState } from '../project-state.svelte';
 import { SourceControlController } from './source-control-controller';
+import { LiveDocumentModelPort } from '../../editor/live-document-model';
 
 // Exercise controller ordering without mounting Svelte or native Electron views.
 vi.mock('../project-state.svelte', () => ({ project: {} }));
@@ -34,6 +35,8 @@ afterEach(() => {
 
 function fixture(staged = false, prepared = true) {
   const calls: Call[] = [];
+  const models = new LiveDocumentModelPort();
+  let buffer = 'after';
   const diff: GitDiff = {
     path: 'notes.md', filePath: '/project/notes.md', staged, patch: '',
     originalText: 'before', modifiedText: 'after',
@@ -67,17 +70,18 @@ function fixture(staged = false, prepared = true) {
     prepareGitDiffPreview() { announceStart(); return rendered; },
   } as unknown as DesktopPort;
   const controller = new SourceControlController({
-    desktop,
+    desktop, models,
     openWorkingTree: async () => true,
     activateWorkingTree: () => true,
-    workingTreeBuffer: () => diff.modifiedText,
+    workingTreeBuffer: () => buffer,
     workingTreeChanged() {},
     reviewChanged() {},
   });
   controllers.push(controller);
   project.gitDiffTabs.push(tab);
   return {
-    controller, tab, calls, started,
+    controller, tab, calls, started, models,
+    edit(text: string) { buffer = text; models.publish({ type: 'changed', path: tab.filePath, text }); },
     positions: () => calls.filter((call) => call.kind === 'position'),
     async finishPreview() {
       finish({ revision: 0, url: 'marktex-preview://document/test', themeId: 'paper', supported: true });
@@ -194,7 +198,7 @@ test('a late layout after switching tabs does not position the old preview', asy
   assert.deepEqual(f.positions(), [{ kind: 'position', id: second.previewId, line: 70 }]);
 });
 
-test('acknowledged source prewarm makes warm Esc a show-only native transition', async () => {
+test('a prewarm ACK cannot suppress the final navigation intent', async () => {
   vi.useFakeTimers();
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) =>
     window.setTimeout(() => callback(performance.now()), 0));
@@ -208,15 +212,61 @@ test('acknowledged source prewarm makes warm Esc a show-only native transition',
     assert.ok(prime);
     assert.equal(f.controller.previewMessage({
       tabId: prime.id,
-      message: { type: 'marktex:review-primed', primeId: prime.primeId },
+      message: { type: 'marktex:review-primed', primeId: 123, revision: 0 },
     }), true);
     f.calls.length = 0;
     f.controller.showRendered();
-    assert.deepEqual(f.calls.filter((call) => call.kind === 'position'), []);
+    assert.deepEqual(f.positions(), [{ kind: 'position', id: f.tab.previewId, line: 120 }]);
     assert.deepEqual(f.calls.find((call) => call.kind === 'show'), {
       kind: 'show', id: f.tab.previewId, bounds,
     });
   } finally {
     vi.useRealTimers();
   }
+});
+
+
+for (const revision of [0, 1, 99]) test(`obsolete ACK revision ${revision} never suppresses current line`, async () => {
+  const f = fixture();
+  await f.controller.activateDiff(f.tab.id);
+  f.controller.layoutDiff(bounds);
+  f.controller.previewMessage({ tabId: f.tab.previewId!, message: {
+    type: 'marktex:review-primed', primeId: 1, revision, sourceLine: 1,
+  } });
+  f.controller.updateSourceLine(170);
+  f.controller.showRendered();
+  assert.deepEqual(f.positions().at(-1), { kind: 'position', id: f.tab.previewId, line: 170 });
+});
+
+test('edits and Undo from either surface update the same review snapshot once, not the Index', async () => {
+  const f = fixture();
+  await f.controller.activateDiff(f.tab.id);
+  const index = { ...f.tab, id: 'index', staged: true, diff: { ...f.tab.diff!, staged: true } };
+  project.gitDiffTabs.push(index);
+  f.edit('new live text');
+  assert.equal(f.tab.diff?.modifiedText, 'new live text');
+  assert.equal(index.diff.modifiedText, 'after');
+  f.edit('after');
+  assert.equal(f.tab.diff?.modifiedText, 'after');
+});
+
+test('first edit and Esc during initial rendering retain the source intent when the page arrives', async () => {
+  const f = fixture(false, false);
+  await f.controller.activateDiff(f.tab.id);
+  await f.started;
+  f.edit('first user edit');
+  f.controller.updateSourceLine(180);
+  f.controller.layoutDiff(bounds);
+  f.controller.showRendered();
+  await f.finishPreview();
+  assert.deepEqual(f.positions()[0], { kind: 'position', id: 'git-diff:review:a', line: 180 });
+});
+
+test('closing the document closes its borrowed Working Tree, not unrelated Index snapshots', async () => {
+  const f = fixture();
+  await f.controller.activateDiff(f.tab.id);
+  const index = { ...f.tab, id: 'index', staged: true, diff: { ...f.tab.diff!, staged: true } };
+  project.gitDiffTabs.push(index);
+  f.models.publish({ type: 'closed', path: f.tab.filePath });
+  assert.deepEqual(project.gitDiffTabs.map(tab => tab.id), ['index']);
 });

@@ -153,6 +153,8 @@ export function installCommandRouter(options: Options): void {
   const positionPreview = (command: PreviewCommand) => {
     const side = command.sourceSide === 'before' || command.sourceSide === 'after'
       ? command.sourceSide : undefined;
+    // Resolve Git coordinates only after its complete before/after DOM exists.
+    if (side) options.content.hydrateAll();
     const sourceLine = Math.min(
       options.sourceAtlas.lineCount(side),
       Math.max(1, Number(command.sourceLine) || 1),
@@ -161,7 +163,8 @@ export function installCommandRouter(options: Options): void {
       ? Number(command.topRatio) : GOLDEN_TOP_RATIO;
     const band = options.sourceAtlas.readBand(command.band, side);
     if (!options.content.includesSourceLine(sourceLine, band)) options.content.hydrateAll();
-    const apply = () => options.sourceAtlas.position(sourceLine, ratio, band, side, command.blockOffset);
+    const apply = () => options.sourceAtlas.position(sourceLine, ratio, band, side, command.blockOffset,
+      side ? options.config.revision : undefined);
     const done = () => acknowledge('marktex:preview-positioned', command.requestId);
     if (command.settle === false || options.content.pendingCount > 0) {
       apply();

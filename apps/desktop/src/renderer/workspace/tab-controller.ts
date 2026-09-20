@@ -303,13 +303,14 @@ export class TabController {
     if (next) void this.activate(next.id);
   }
   editorChanged = (tab: WorkspaceTab, text: string): void => {
-    const { desktop, preview, session, workspace } = this.options;
-    if (tab.id !== workspace.activeId || !session.document) return;
+    const { desktop, preview, workspace } = this.options;
+    if (!workspace.find(tab.id)) return;
     tab.text = text;
     tab.revision += 1;
-    desktop.updateText(text, tab.revision);
+    const active = tab.id === workspace.activeId;
+    if (active) desktop.updateText(text, tab.revision);
     this.updateChrome();
-    if (hasMarkdownPreview(tab.document) && tab.surface === 'editor' && this.options.shouldSchedulePreview()) {
+    if (active && hasMarkdownPreview(tab.document) && tab.surface === 'editor' && this.options.shouldSchedulePreview()) {
       preview.schedule(tab.revision);
     }
   };

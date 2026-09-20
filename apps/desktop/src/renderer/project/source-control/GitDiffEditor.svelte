@@ -7,6 +7,7 @@
   import type { AppActions } from '../../view-state.svelte';
   import { monacoThemeName, registerMonacoThemes } from '../../theme';
   import { CompositionGuard } from '../../editor/composition-guard';
+  import { liveDocumentModels, type ModelLease } from '../../editor/live-document-model';
   import { project } from '../project-state.svelte';
   import { readEditorViewport } from '../../editor/editor-viewport';
   import { reviewViewport, type ReviewSourceSide } from '../../../core/preview/review-viewport';
@@ -17,6 +18,7 @@
   type CachedModels = {
     original: Monaco.editor.ITextModel;
     modified: Monaco.editor.ITextModel;
+    lease: ModelLease<Monaco.editor.ITextModel> | null;
     originalText: string;
     modifiedText: string;
     sourceSide: ReviewSourceSide;
@@ -124,7 +126,10 @@
         insertLink: actions.openLink, insertTable: actions.openTable,
       }, () => writableMarkdown() !== null),
       editor.getOriginalEditor().onDidFocusEditorText(() => rememberSourceSide('before')),
-      modifiedEditor.onDidFocusEditorText(() => rememberSourceSide('after')),
+      modifiedEditor.onDidFocusEditorText(() => {
+        rememberSourceSide('after');
+        if (shownId && !input.active) models.get(shownId)?.lease?.beginEditing(`review:${shownId}`);
+      }),
       modifiedEditor.onDidCompositionStart(() => {
         interruptReveal();
         input.start();
@@ -157,7 +162,8 @@
     if (editor?.getModel()?.modified === cached.modified) editor.setModel(null);
     cached.listener.dispose();
     cached.original.dispose();
-    cached.modified.dispose();
+    if (cached.lease) cached.lease.release();
+    else cached.modified.dispose();
     models.delete(id);
     if (shownId === id) shownId = null;
   }
@@ -167,22 +173,26 @@
     const syntax = documentLanguage(diff.filePath, monaco.languages.getLanguages(),
       diff.modifiedText.split(/[\r\n]/, 1)[0]);
     const modelId = crypto.randomUUID();
-    const original = monaco.editor.createModel(diff.originalText, syntax,
-      monaco.Uri.parse(`inmemory://setdown-diff/${id}/${modelId}/original`));
-    const modified = monaco.editor.createModel(diff.modifiedText, syntax,
-      monaco.Uri.parse(`inmemory://setdown-diff/${id}/${modelId}/modified`));
+    // The ordinary document owns the editable model, including its entire
+    // undo/redo stack. HEAD/INDEX snapshots remain independent and read-only.
+    const lease = diff.staged ? null : liveDocumentModels.acquire(diff.filePath, monaco);
+    if (!diff.staged && !lease) throw new Error('Open the document before editing its Working Tree.');
+    let original: Monaco.editor.ITextModel | null = null;
+    let modified: Monaco.editor.ITextModel;
+    try {
+      original = monaco.editor.createModel(diff.originalText, syntax,
+        monaco.Uri.parse(`inmemory://setdown-diff/${id}/${modelId}/original`));
+      modified = lease?.model ?? monaco.editor.createModel(diff.modifiedText, syntax,
+        monaco.Uri.parse(`inmemory://setdown-diff/${id}/${modelId}/modified`));
+    } catch (cause) { original?.dispose(); lease?.release(); throw cause; }
     const cached: CachedModels = {
-      original, modified, originalText: diff.originalText, modifiedText: diff.modifiedText,
+      original, modified, lease, originalText: diff.originalText, modifiedText: modified.getValue(),
       sourceSide: 'after', staged: diff.staged, filePath: diff.filePath,
       listener: { dispose() {} }, viewState: null,
     };
-    cached.listener = modified.onDidChangeContent((event) => {
-      if (!cached.staged && project.activeGitDiffId === id) {
-        cached.modifiedText = modified.getValue();
-        // Keep every ordered edit, including IME composition updates.
-        untrack(() => actions.changeProjectGitWorkingTree(cached.modifiedText, event.changes));
-      }
-    });
+    // Borrowed models have exactly one document-state listener, in the owner.
+    // No edit mirroring, echo suppression or second full-string read is needed.
+    if (!lease) cached.listener = modified.onDidChangeContent(() => { cached.modifiedText = modified.getValue(); });
     return cached;
   }
 
@@ -190,16 +200,20 @@
     if (diff.originalText === null || diff.modifiedText === null) { disposeModels(id); return null; }
     const existing = models.get(id);
     if (existing && existing.originalText === diff.originalText
-      && (existing.modifiedText === diff.modifiedText || existing.modified.getValue() === diff.modifiedText)
+      && (!!existing.lease || existing.modifiedText === diff.modifiedText)
       && existing.staged === diff.staged && existing.filePath === diff.filePath) {
-      existing.modifiedText = diff.modifiedText;
+      if (!existing.lease) existing.modifiedText = diff.modifiedText;
       return existing;
     }
     if (shownId === id) saveShownView();
     const viewState = existing?.viewState ?? null;
     disposeModels(id);
     const created = createModels(monaco, id, diff);
-    if (created) { created.viewState = viewState; models.set(id, created); }
+    if (created) {
+      created.viewState = viewState;
+      created.sourceSide = existing?.sourceSide ?? 'after';
+      models.set(id, created);
+    }
     return created;
   }
 
