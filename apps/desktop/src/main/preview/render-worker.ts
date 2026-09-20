@@ -25,6 +25,8 @@ import {
 } from '../../core/preview/preview-preferences';
 import { lineCount } from '../../core/document/document-state';
 import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
+import { DeferredMath } from './deferred-math';
+import { installFastBlockMath, type BlockMathParser, type BlockMathConfig } from './fast-block-math';
 import { previewRelativeReference } from './preview-resources';
 import { resourceUrl } from './resource-url';
 import { canonicalPath, isInside } from '../documents/file-system';
@@ -113,6 +115,11 @@ const notebookCaches = new Map<string, NotebookInstance>();
 /** 탭마다 설치된 블록과 browser runtime. 다음 갱신과 capability 전환의 기준이다. */
 const installedPreviews = new Map<string, InstalledPreview>();
 const crossnoteOut = path.resolve(path.dirname(require.resolve('crossnote')), '..');
+const crossnoteVersion: string = (() => {
+  try { return JSON.parse(readFileSync(path.join(crossnoteOut, '..', 'package.json'), 'utf8')).version; }
+  catch { return ''; } // Keep the upstream parser if package metadata is unavailable.
+})();
+const deferredMath = new DeferredMath();
 let allowedRoots: string[] = [];
 let activeRoot: string | null = null;
 
@@ -220,73 +227,13 @@ async function getNotebook(
   notebook.previewScriptsEnabled = false;
   // 순서가 중요하다. 지연 삽입이 안쪽(원래 KaTeX renderer)을 감싸고,
   // source anchor가 그 바깥을 감싸야 자리표시자에 행·열이 붙는다.
-  installDeferredMath(notebook.md as unknown as MarkdownItLike);
+  installFastBlockMath(notebook.md as unknown as BlockMathParser,
+    () => notebook.config as unknown as BlockMathConfig, crossnoteVersion);
+  deferredMath.install(notebook.md as unknown as MarkdownItLike,
+    () => notebook.config.mathRenderingOption === 'KaTeX' && !notebook.config.katexConfig?.trust);
   installSourceAnchors(notebook.md as unknown as MarkdownItLike);
   notebookCaches.set(cacheKey, notebook);
   return notebook;
-}
-
-/**
- * 수식을 cheerio 뒤로 미룬다.
- *
- * crossnote의 `parseMD`는 조판된 HTML을 통째로 `cheerio.load`로 DOM에 올린
- * 뒤 enhancer 일곱 개를 돌린다. 수식 문서에서 그 HTML은 1.3MB이고 **91%가
- * KaTeX 마크업**인데, enhancer 중 어느 것도 그걸 쳐다보지 않는다. 측정으로
- * cheerio 왕복만 90ms였다.
- *
- * 그래서 markdown-it 단계에서는 빈 자리표시자만 남기고, crossnote가 다 지나간
- * 뒤에 KaTeX HTML을 되돌려 넣는다. KaTeX 출력 자체는 손대지 않으므로 결과는
- * 같고, cheerio가 다루는 문서만 10배 작아진다.
- */
-const MATH_PLACEHOLDER = /<span\b[^>]*\bdata-marktex-math="(\d+)"[^>]*><\/span>/g;
-/**
- * template 안에서 본문은 `data-html` 속성에 엔티티 인코딩되어 들어간다.
- * 그쪽은 인코딩된 자리표시자를 인코딩된 KaTeX로 바꿔야 한다.
- */
-const ENCODED_MATH_PLACEHOLDER =
-  /&lt;span data-marktex-math=&quot;(\d+)&quot;&gt;&lt;\/span&gt;/g;
-let deferredMath: string[] = [];
-
-/** `previewFragmentFromTemplate`의 디코딩과 짝이 되는 인코딩. */
-function encodeForTemplateAttribute(html: string): string {
-  return html
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function installDeferredMath(md: MarkdownItLike) {
-  const marked = md as MarkdownItLike & { __marktexDeferredMath?: boolean };
-  if (marked.__marktexDeferredMath) return;
-  marked.__marktexDeferredMath = true;
-  const rules = (md as unknown as { renderer: { rules: Record<string, unknown> } }).renderer.rules;
-  const original = rules.math as ((...args: unknown[]) => string) | undefined;
-  if (!original) return;
-  rules.math = (...args: unknown[]) => {
-    const slot = deferredMath.push(original(...args)) - 1;
-    return `<span data-marktex-math="${slot}"></span>`;
-  };
-}
-
-function restoreDeferredMath(html: string): string {
-  if (deferredMath.length === 0) return html;
-  return html.replace(MATH_PLACEHOLDER, (whole, slot: string) =>
-    deferredMath[Number(slot)] ?? whole,
-  );
-}
-
-function restoreDeferredMathInTemplate(template: string): string {
-  if (deferredMath.length === 0) return template;
-  const encoded: string[] = [];
-  return template.replace(ENCODED_MATH_PLACEHOLDER, (whole, slot: string) => {
-    const index = Number(slot);
-    const source = deferredMath[index];
-    if (source === undefined) return whole;
-    encoded[index] ??= encodeForTemplateAttribute(source);
-    return encoded[index];
-  });
 }
 
 let bridgeSourceCache: string | null = null;
@@ -395,7 +342,7 @@ utility.useExternalAddFileProtocolFunction((filePath: string) =>
 
 async function render(request: Extract<RenderWorkerRequest, { kind: 'render' }>) {
   allowedRoots = Array.isArray(request.roots) ? request.roots.filter(Boolean) : [];
-  deferredMath = [];
+  deferredMath.reset();
   const themeId = normalizePreviewTheme(request.themeId);
   const renderPath = request.documentPath;
   const notebook = await getNotebook(renderPath, themeId);
@@ -425,7 +372,7 @@ async function render(request: Extract<RenderWorkerRequest, { kind: 'render' }>)
     styles: previewStyles(themeId),
   });
   // crossnote가 다 지나간 뒤에 수식을 되돌려 넣는다.
-  const html = restoreDeferredMath(previewFragmentFromTemplate(template));
+  const html = deferredMath.restore(previewFragmentFromTemplate(template));
   // Crossnote's placeholder template is still needed to obtain sanitized HTML.
   // Expanded page templates and block work are lazy and omitted for fragments.
   const output = buildRenderOutput({
@@ -435,7 +382,7 @@ async function render(request: Extract<RenderWorkerRequest, { kind: 'render' }>)
     diff: diffPreviewBlocks,
     requiresCrossnote: requiresCrossnoteInstall,
     leanTemplate: () => createLeanPreviewTemplate(template, html, bridgeScripts, request.deferOffscreenHtml !== false),
-    fullTemplate: () => restoreDeferredMathInTemplate(template).replace(
+    fullTemplate: () => deferredMath.restoreTemplate(template).replace(
       /<body\b/i, '<body data-setdown-preview-runtime="crossnote"',
     ),
   });
