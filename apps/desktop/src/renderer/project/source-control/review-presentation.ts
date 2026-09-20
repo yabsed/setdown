@@ -55,7 +55,15 @@ export class ReviewPresentation {
     this.cancel();
     if (!request.accept()) return true;
     if (typeof message.error === 'string') request.fail(message.error);
-    else request.commit();
+    else {
+      request.commit();
+      // Native bounds may reach Blink only when this cold view is shown. The
+      // runtime retains the exact source target and revalidates it at that size.
+      // This is fire-and-forget, only for a new presentation; warm Esc is intact.
+      if (request.accept()) this.port.sendPreviewCommand(request.id, {
+        command: 'marktex:verify-review-position', revision: request.revision, requestId: request.requestId,
+      });
+    }
     return true;
   }
 
