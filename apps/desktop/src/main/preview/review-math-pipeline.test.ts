@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { responsiveRenderedDiff } from './rendered-diff';
-import { ReviewRowCache } from '../../main/preview/review-row-cache';
+import { responsiveRenderedDiff } from '../../core/preview/rendered-diff';
+import { ReviewRowCache } from './review-row-cache';
 
 const math = (value: string) => `<span class="katex"><span class="katex-mathml"><math><mi>${value}</mi></math></span><span class="katex-html">${value}</span></span>`;
 const paragraph = (text: string, formula = math('x'), line = 200) =>
