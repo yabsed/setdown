@@ -8,6 +8,7 @@ import {
 } from '../../core/preview/preview-preferences';
 import { DEFERRED_HTML_SCRIPT_ID, INITIAL_HTML_TEMPLATE_ID } from '../../core/preview/preview-install';
 import type { WindowState } from '../windows/window-state';
+import { WorkspaceZoom, nativeZoomBounds } from '../windows/workspace-zoom';
 import { ReviewPreparation } from './review-preparation';
 
 export type PreviewViewState = {
@@ -30,6 +31,7 @@ const DEFERRED_HTML = new RegExp(`(<script type="application/json" id="${DEFERRE
 
 export class PreviewManager {
   readonly views = new Map<string, PreviewViewState>();
+  readonly zoom = new WorkspaceZoom();
   private readonly documents = new Map<string, string>();
   private readonly waiters = new Map<string, (error?: string) => void>();
   private readonly spares = new Map<number, { view: WebContentsView; ready: boolean }>();
@@ -37,7 +39,8 @@ export class PreviewManager {
   private readonly themes = new Map<number, PreviewThemeId>();
   private readonly reviews = new ReviewPreparation({
     views: this.views,
-    applyBounds: (preview, bounds) => this.applyBounds(preview, bounds),
+    applyBounds: (preview, bounds) => this.applyBounds(preview,
+      nativeZoomBounds(bounds, this.options.stateFor(preview.ownerWebContentsId)?.window.webContents.getZoomFactor?.() ?? 1)),
     navigating: (preview) => this.navigating.has(preview.view),
   });
   private warmup: { url: string; themeId: PreviewThemeId } | null = null;
@@ -55,7 +58,7 @@ export class PreviewManager {
   }
 
   private rememberWarmup(template: string, themeId: PreviewThemeId) {
-    const blank = template.replace(INITIAL_HTML, '$1$2').replace(DEFERRED_HTML, '$1[]$2')
+    const blank = template.replace(INITIAL_HTML, '$1$2').replace(DEFERRED_HTML, '$1$2')
       .replace(/(<body\b[^>]*\bdata-html=")[^"]*(")/i, '$1$2');
     if (blank === template) return;
     const token = `warmup-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -67,6 +70,7 @@ export class PreviewManager {
     const view = new WebContentsView({ webPreferences: {
       preload: this.options.preload, contextIsolation: true, nodeIntegration: false, sandbox: true,
     } });
+    this.zoom.track(view.webContents);
     view.setBackgroundColor(previewThemeBackground(this.options.theme()));
     view.setVisible(false);
     view.webContents.on('focus', () => this.returnFocusFromHiddenView(view));
@@ -135,6 +139,11 @@ export class PreviewManager {
       const preview = this.views.get(tabId);
       const state = preview && this.options.stateFor(preview.ownerWebContentsId);
       if (!state || input.type !== 'keyDown' || input.isComposing) return;
+      if (input.control && !input.alt && !input.meta && !input.shift && input.key === '0') {
+        event.preventDefault();
+        this.zoom.change(0);
+        return;
+      }
       if (input.key === 'Escape') {
         event.preventDefault();
         state.window.webContents.focus();
@@ -182,11 +191,12 @@ export class PreviewManager {
     if (hiddenFocusedView && owner.isFocused() && !owner.webContents.isDestroyed()) owner.webContents.focus();
     if (!shown || !bounds || this.navigating.has(shown.view)) return;
     const [width, height] = owner.getContentSize();
-    const x = Math.max(0, Math.round(Number(bounds.x) || 0));
-    const y = Math.max(0, Math.round(Number(bounds.y) || 0));
+    const native = nativeZoomBounds(bounds, owner.webContents.getZoomFactor?.() ?? 1);
+    const x = Math.max(0, native.x);
+    const y = Math.max(0, native.y);
     this.applyBounds(shown, { x, y,
-      width: Math.max(1, Math.min(Math.round(Number(bounds.width) || 1), width - x)),
-      height: Math.max(1, Math.min(Math.round(Number(bounds.height) || 1), height - y)),
+      width: Math.max(1, Math.min(native.width, width - x)),
+      height: Math.max(1, Math.min(native.height, height - y)),
     });
     if (!shown.view.getVisible()) {
       shown.view.setBackgroundColor(previewThemeBackground(this.options.theme()));
@@ -331,6 +341,15 @@ export class PreviewManager {
   }
 
   registerIpc() {
+    ipcMain.on('workspace:zoom', (event, steps: unknown) => {
+      if (event.sender.isDestroyed() || event.senderFrame !== event.sender.mainFrame) return;
+      const direct = this.options.stateFor(event.sender.id);
+      const visible = direct ? null : Array.from(this.views.values()).find((preview) =>
+        preview.view.webContents === event.sender && preview.view.getVisible());
+      const state = direct ?? (visible ? this.options.stateFor(visible.ownerWebContentsId) : null);
+      if (!state || state.window.isDestroyed() || !state.window.isVisible()) return;
+      this.zoom.change(steps);
+    });
     ipcMain.on('preview:create', (event, tabId) => this.create(event.sender.id, tabId));
     ipcMain.on('preview:show', (event, { tabId, bounds }) => this.show(event.sender.id, tabId, bounds));
     ipcMain.handle('preview:capture', (event, tabId) => this.capture(event.sender.id, tabId));

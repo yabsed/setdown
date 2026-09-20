@@ -70,8 +70,19 @@ export class WindowManager {
     };
     const webContentsId = window.webContents.id;
     this.options.registry.add(state, showWhenReady);
+    this.options.previews.zoom.track(window.webContents, () => {
+      if (!window.isDestroyed()) window.setTitleBarOverlay({
+        height: Math.round(36 * this.options.previews.zoom.factor),
+      });
+    });
     window.setMenuBarVisibility(false);
-    window.webContents.on('before-input-event', (_event, input) => {
+    window.webContents.on('before-input-event', (event, input) => {
+      if (input.type === 'keyDown' && !input.isComposing && input.control
+        && !input.alt && !input.meta && !input.shift && input.key === '0') {
+        event.preventDefault();
+        this.options.previews.zoom.change(0);
+        return;
+      }
       if (input.type === 'keyDown' && input.key === 'Escape' && !input.isComposing) {
         window.webContents.send('app:command', 'escape');
       }
