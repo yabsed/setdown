@@ -24,13 +24,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Source snapshot for reproducible review
-        run: git archive --format=tar.gz HEAD > "$RUNNER_TEMP/review-source.tgz"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: review-source
-          path: ${{ runner.temp }}/review-source.tgz
-          retention-days: 3
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -43,7 +36,27 @@ jobs:
         run: npm run typecheck
       - name: Review regressions
         working-directory: apps/desktop
-        run: npm test -- src/renderer/project/source-control/git-review-latency.test.ts src/renderer/project/source-control/git-review-viewport.test.ts src/renderer/project/source-control/git-review-freshness.test.ts src/renderer/project/source-control/review-presentation.test.ts
+        run: >
+          npm test -- src/renderer/project/source-control/git-review-transition.test.ts
+          src/renderer/project/source-control/review-transition.test.ts
+          src/renderer/project/source-control/git-review-latency.test.ts
+          src/renderer/project/source-control/git-review-viewport.test.ts
+          src/renderer/project/source-control/git-review-freshness.test.ts
+          src/renderer/project/source-control/review-presentation.test.ts --maxWorkers=2
       - name: Build
+        id: build
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run build
+      - name: Native Electron and Monaco handoff
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: apps/desktop
+        run: xvfb-run -a npx playwright test test/e2e/review-transition.spec.ts --workers=1 --trace=retain-on-failure
+      - name: Full unit suite
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm test -- --maxWorkers=2
+      - uses: actions/upload-artifact@v4
+        if: ${{ failure() && !cancelled() }}
+        with:
+          name: review-transition-failure
+          path: apps/desktop/test-results
+          retention-days: 7
