@@ -76,14 +76,15 @@ test('superseded snapshot remains hidden while newest input starts one immediate
     await vi.advanceTimersByTimeAsync(1000); assert.equal(f.calls.length, 2);
   } finally { f.close(); vi.useRealTimers(); }
 });
-test('Esc withholds the stale front while the new result is held', async () => {
+test('Esc keeps Source while the new result is held', async () => {
   const f = fixture(true);
   try {
     f.controller.layoutDiff({ x: 20, y: 80, width: 900, height: 700 });
     const work = f.run(); await tick();
     f.controller.showRendered();
     assert.equal(f.shows.at(-1), null);
-    assert.equal(project.gitDiffMode, 'rendered');
+    assert.equal(project.gitDiffMode, 'source');
+    assert.equal(project.gitDiffTransitionPending, true);
     assert.equal(f.calls.length, 1);
     f.finish(0); await work;
     assert.equal(f.tab.previewId, 'git-diff:r:b');
