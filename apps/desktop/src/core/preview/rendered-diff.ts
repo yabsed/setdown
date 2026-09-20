@@ -1,10 +1,21 @@
 import { splitPreviewBlocks, type PreviewBlock } from './preview-blocks';
 import { alignPreviewBlocks } from './rendered-diff-alignment';
+import { ExactPairCache } from './exact-pair-cache';
 
 type RenderedDiffHunk = { oldStart: number; oldLines: number; newStart: number; newLines: number };
 type HtmlToken = { value: string; part: number; changed: boolean };
 type DiffCell = { html: string; change: 'equal' | 'added' | 'removed' | 'empty'; whole: boolean };
 type DiffRow = { before: DiffCell; after: DiffCell; equal: boolean };
+
+// Only completed, byte-exact HTML is memoized. KaTeX output, source anchors,
+// attributes and macro-dependent differences remain part of the key.
+const blockCache = new ExactPairCache<PreviewBlock[]>(4, 16 * 1024 * 1024);
+type Highlight = { before: string; after: string; inline: boolean };
+const highlightCache = new ExactPairCache<Highlight>(64, 8 * 1024 * 1024);
+function preparedBlocks(html: string): PreviewBlock[] {
+  return blockCache.getOrCreate(html, '', () => splitPreviewBlocks(html),
+    (blocks) => blocks.reduce((bytes, block) => bytes + 2 * (block.html.length + block.key.length) + 128, 0));
+}
 
 const TOKEN = /\s+|&(?:#\d+|#x[\da-f]+|\w+);|[\p{L}\p{N}_]+|[^\s\p{L}\p{N}_]+/giu;
 const UNSAFE_TAG = /^(?:script|style|svg|math)$/i;
@@ -37,7 +48,13 @@ function tokenizeHtml(html: string) {
   return { parts, tokens, structure: structure.join('') };
 }
 
-function markChangedTokens(originalHtml: string, modifiedHtml: string) {
+function markChangedTokens(originalHtml: string, modifiedHtml: string): Highlight {
+  return highlightCache.getOrCreate(originalHtml, modifiedHtml,
+    () => calculateChangedTokens(originalHtml, modifiedHtml),
+    (result) => 2 * (result.before.length + result.after.length));
+}
+
+function calculateChangedTokens(originalHtml: string, modifiedHtml: string) {
   const original = tokenizeHtml(originalHtml);
   const modified = tokenizeHtml(modifiedHtml);
   const left = original.tokens;
@@ -98,7 +115,7 @@ function cell(block: PreviewBlock | null, change: DiffCell['change'], whole = fa
 }
 
 function analyze(originalHtml: string, modifiedHtml: string): DiffRow[] {
-  return alignPreviewBlocks(splitPreviewBlocks(originalHtml), splitPreviewBlocks(modifiedHtml)).map((row) => {
+  return alignPreviewBlocks(preparedBlocks(originalHtml), preparedBlocks(modifiedHtml)).map((row) => {
     if (row.kind === 'equal') return { before: cell(row.before, 'equal'), after: cell(row.after, 'equal'), equal: true };
     const before = cell(row.before, 'removed', true);
     const after = cell(row.after, 'added', true);
