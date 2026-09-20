@@ -43,8 +43,23 @@ function fixture(staged = false) {
     viewport, openWorkingTree: async () => true, activateWorkingTree: () => true,
     workingTreeBuffer: () => buffer, workingTreeChanged(_path, text) { buffer = text; }, reviewChanged() {},
   });
+  // Model the completed page explicitly; a previewId alone is not proof that
+  // its content matches the current buffer. Native presentation is ACKed below.
+  const state = controller as unknown as {
+    themeId: string;
+    preparedPreviews: Map<string, { diff: GitDiff; revision: number; themeId: string }>;
+  };
+  state.themeId = 'paper';
+  state.preparedPreviews.set(tab.previewId!, { diff, revision: 0, themeId: 'paper' });
   controllers.push(controller); project.gitDiffTabs.push(tab);
-  const positions = () => commands.filter((command) => command.message.command === 'marktex:position-preview');
+  const positions = () => commands.filter((command) =>
+    ['marktex:position-preview', 'marktex:prepare-review'].includes(String(command.message.command)));
+  const ack = () => {
+    const request = commands.filter((command) => command.message.command === 'marktex:prepare-review').at(-1);
+    if (request) controller.previewMessage({ tabId: request.id, message: {
+      type: 'marktex:review-prepared', requestId: request.message.requestId, revision: request.message.revision,
+    } });
+  };
   const token = () => commands.filter((command) => command.message.command === 'marktex:observe-viewport'
     && typeof command.message.observationId === 'number').at(-1)!.message.observationId as number;
   const sample = (line: number, extra: Record<string, unknown> = {}, id = tab.previewId!, observationId = token()) => {
@@ -52,10 +67,10 @@ function fixture(staged = false) {
       source: 'crossnote', observationId, sequence: 1,
       anchor: { sourceLine: line, yRatio: .6, sourceSide: 'after', blockOffset: .4 }, ...extra } });
   };
-  return { controller, tab, viewport, commands, shows, positions, token, sample, started,
-    async open() { await controller.activateDiff(tab.id); controller.showRendered(); controller.layoutDiff(bounds); },
+  return { controller, tab, viewport, commands, shows, positions, token, sample, started, ack,
+    async open() { await controller.activateDiff(tab.id); controller.showRendered(); controller.layoutDiff(bounds); ack(); },
     async finish() { resolveRender({ revision: 0, url: 'marktex-preview://document/new', themeId: 'paper', supported: true });
-      await render; await Promise.resolve(); },
+      await render; for (let i = 0; i < 8; i++) await Promise.resolve(); ack(); },
   };
 }
 
@@ -98,7 +113,7 @@ test('first Esc retains intent until both page and bounds are ready', async () =
   const f = fixture(); await f.controller.activateDiff(f.tab.id);
   f.controller.showRendered(); assert.equal(f.positions().length, 0);
   f.controller.layoutDiff({ ...bounds, width: 0 }); assert.equal(f.positions().length, 0);
-  f.controller.layoutDiff(bounds); assert.equal(f.positions().length, 1);
+  f.controller.layoutDiff(bounds); assert.equal(f.positions().length, 1); f.ack();
   f.controller.layoutDiff({ ...bounds, width: 500 }); assert.equal(f.positions().length, 1);
 });
 
