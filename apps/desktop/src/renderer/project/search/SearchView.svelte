@@ -8,6 +8,13 @@
   let input = $state<HTMLInputElement>();
   let groups = $derived(groupSearchResults(project.searchResults));
   $effect(() => { queueMicrotask(() => input?.focus()); });
+
+  function selectScope(scope: 'markdown' | 'text') {
+    if (scope === searchScope.value) return;
+    searchScope.value = scope;
+    project.expandedSearchGroups = [];
+    actions.searchProject(project.searchQuery);
+  }
 </script>
 <header class="side-view-title"><span>SEARCH</span></header>
 {#if !project.folder}
@@ -15,13 +22,18 @@
     <button type="button" onclick={actions.chooseProjectFolder}>Open Folder</button></div>
 {:else}
   <div class="project-search-box">
-    <select aria-label="Search scope" value={searchScope.value} onchange={(event) => {
-      searchScope.value = event.currentTarget.value === 'text' ? 'text' : 'markdown';
-      project.expandedSearchGroups = [];
-      actions.searchProject(project.searchQuery);
-    }}>
-      <option value="markdown">Markdown</option><option value="text">All Text Files</option>
-    </select>
+    <div class="search-scope" role="group" aria-label="Search scope">
+      <button type="button" class:is-active={searchScope.value === 'markdown'}
+        aria-pressed={searchScope.value === 'markdown'} onclick={() => selectScope('markdown')}>
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2.5h7l3 3v8H3zM10 2.5v3h3"/><path d="m5 10 1.5-2 1.5 2 1.5-2v3.5"/></svg>
+        Markdown
+      </button>
+      <button type="button" class:is-active={searchScope.value === 'text'}
+        aria-pressed={searchScope.value === 'text'} onclick={() => selectScope('text')}>
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2.5h7l3 3v8H3zM10 2.5v3h3M5 8h6M5 10.5h6"/></svg>
+        All text
+      </button>
+    </div>
     <input bind:this={input} type="search" autocomplete="off" spellcheck="false"
       value={project.searchQuery} placeholder={searchScope.value === 'markdown' ? 'Search Markdown files' : 'Search text files'}
       aria-label="Search in folder" oninput={(event) => actions.searchProject(event.currentTarget.value)} />
@@ -62,6 +74,51 @@
   </div>
 {/if}
 <style>
-  select { width: 100%; margin-bottom: 6px; color: var(--app-text); background: var(--app-surface);
-    border: 1px solid var(--app-border); padding: 4px; font: inherit; }
+  .search-scope {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    margin-bottom: 7px;
+    padding: 2px;
+    border: 1px solid var(--app-border);
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--app-chrome) 72%, var(--app-surface));
+  }
+  .search-scope button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    height: 25px;
+    padding: 0 7px;
+    gap: 5px;
+    overflow: hidden;
+    color: var(--app-muted-text);
+    border: 0;
+    border-radius: 3px;
+    outline: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 10px;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .search-scope button:hover { color: var(--app-text); background: color-mix(in srgb, var(--app-hover) 72%, transparent); }
+  .search-scope button:focus-visible { box-shadow: inset 0 0 0 1px var(--app-focus-ring); }
+  .search-scope button.is-active {
+    color: var(--app-text);
+    background: var(--app-raised-surface);
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--app-shadow) 55%, transparent);
+    font-weight: 600;
+  }
+  .search-scope svg {
+    flex: 0 0 13px;
+    width: 13px;
+    height: 13px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.15;
+  }
 </style>

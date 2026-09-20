@@ -5,7 +5,7 @@ export function installMarkdownEditorActions(api: typeof Monaco,
   editor: Monaco.editor.IStandaloneCodeEditor,
   actions: { insertLink(): void; insertTable(): void },
   canEdit: () => boolean = () => true): Monaco.IDisposable {
-  const capability = editor.createContextKey('setdownMarkdownDocument', false);
+  const capability = editor.createContextKey<boolean>('setdownMarkdownDocument', false);
   const update = () => capability.set(editor.getModel()?.getLanguageId() === 'markdown');
   const precondition = 'setdownMarkdownDocument && !editorReadonly && !compositionInProgress';
   const installed = [editor.onDidChangeModel(update), editor.onDidChangeModelLanguage(update),

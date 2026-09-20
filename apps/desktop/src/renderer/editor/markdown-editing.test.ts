@@ -245,7 +245,14 @@ test('port lifecycle and Markdown eligibility', () => {
 });
 test('shared editor actions preserve IDs, shortcut, readonly and composition preconditions', () => {
   const descriptors: Monaco.editor.IActionDescriptor[] = []; let links = 0; let tables = 0; let allowed = false; let removed = 0;
-  const editor = { addAction(action: Monaco.editor.IActionDescriptor) { descriptors.push(action); return { dispose() { removed++; } }; } } as unknown as Monaco.editor.IStandaloneCodeEditor;
+  const editor = {
+    getModel: () => ({ getLanguageId: () => 'markdown' }),
+    createContextKey: (_key: string, initial: boolean) => ({
+      value: initial, set(value: boolean) { this.value = value; }, get() { return this.value; }, reset() { this.value = initial; },
+    }),
+    onDidChangeModel: () => ({ dispose() {} }), onDidChangeModelLanguage: () => ({ dispose() {} }),
+    addAction(action: Monaco.editor.IActionDescriptor) { descriptors.push(action); return { dispose() { removed++; } }; },
+  } as unknown as Monaco.editor.IStandaloneCodeEditor;
   const handle = installMarkdownEditorActions(monaco, editor, { insertLink() { links++; }, insertTable() { tables++; } }, () => allowed);
   assert.deepEqual(descriptors.map((action) => action.id), ['setdown.insertLink', 'setdown.insertTable']);
   assert.equal(descriptors[0].keybindings?.[0], 2048 | 41);
