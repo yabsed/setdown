@@ -215,8 +215,8 @@ test('a late layout after switching tabs does not position the old preview', asy
 test('a prewarm ACK cannot suppress the final navigation intent', async () => {
   vi.useFakeTimers();
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) =>
-    window.setTimeout(() => callback(performance.now()), 0));
-  vi.stubGlobal('cancelAnimationFrame', (id: number) => window.clearTimeout(id));
+    globalThis.setTimeout(() => callback(performance.now()), 0));
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => globalThis.clearTimeout(id));
   const f = fixture();
   try {
     await f.controller.activateDiff(f.tab.id);
