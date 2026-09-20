@@ -20,13 +20,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      # Tracked source only; no .git, credentials or installed dependencies.
-      - run: git archive --format=tar HEAD > review-handoff-source.tar
-      - uses: actions/upload-artifact@v4
-        with:
-          name: review-handoff-source
-          path: review-handoff-source.tar
-          retention-days: 1
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -37,9 +30,23 @@ jobs:
           node node_modules/electron/install.js
       - name: Project TypeScript and Svelte checks
         run: npm run typecheck
+      - name: Handoff and source-input regression tests
+        working-directory: apps/desktop
+        run: npm test -- src/renderer/project/source-control/git-review-handoff.test.ts src/renderer/project/source-control/review-source-interactions.test.ts
       - name: Full unit suite
         working-directory: apps/desktop
         run: npm test -- --maxWorkers=2
       - name: Production build
+        id: build
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run build
+      - name: Native Electron retained-editor handoff
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: apps/desktop
+        run: xvfb-run --auto-servernum npx --no-install playwright test test/e2e/review-handoff.spec.ts --workers=1
+      - uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        with:
+          name: review-handoff-test-results
+          path: apps/desktop/test-results
+          retention-days: 7
