@@ -630,21 +630,26 @@ export class SourceControlController {
     tab.previewLoading = true;
     tab.previewDirty = false;
     if (this.activeTab()?.id === tab.id) this.copyPreviewState(tab);
+    let requestedTheme = this.themeId;
     try {
       if (!this.themeId) this.themeId = (await this.options.desktop.getTheme()).id;
       if (!this.tabExists(tab)) return;
-      const requestedTheme = this.themeId;
+      requestedTheme = this.themeId;
       this.primePreview(tab, candidateId);
       const rendered = await this.options.desktop.prepareGitDiffPreview(candidateId, diff, requestedTheme);
       if (!this.tabExists(tab)) return;
       tab.pendingPreviewId = null;
       tab.previewLoading = false;
-      if (!rendered.supported) {
+      const latest = this.latestDiff(tab);
+      if (!latest || !sameReviewContent(latest, diff) || requestedTheme !== this.themeId
+        || rendered.themeId !== requestedTheme) {
+        // An obsolete failure/unsupported result cannot cancel a newer Escape.
+        tab.previewDirty = true;
+      } else if (!rendered.supported) {
         this.options.desktop.destroyPreview(candidateId);
         this.preparedPreviews.delete(candidateId);
         if (tab.mode === 'rendered' && this.activeTab()?.id === tab.id) this.showSource(this.readingState(tab).source);
-      } else if (this.latestDiff(tab) && sameReviewContent(this.latestDiff(tab)!, diff)
-        && requestedTheme === this.themeId && rendered.themeId === requestedTheme) {
+      } else {
         tab.previewDirty = false;
         this.preparedPreviews.set(candidateId, { diff, revision: rendered.revision, themeId: requestedTheme });
         tab.previewId = candidateId;
@@ -656,19 +661,25 @@ export class SourceControlController {
           this.schedulePrime();
           this.publishReview();
         }
-      } else tab.previewDirty = true;
+      }
       if (this.activeTab()?.id === tab.id) this.copyPreviewState(tab);
       if (tab.previewDirty) this.schedulePreview(tab, 0);
     } catch (error) {
       this.options.desktop.destroyPreview(candidateId);
+      this.preparedPreviews.delete(candidateId);
       if (this.tabExists(tab)) {
         tab.pendingPreviewId = null;
         tab.previewLoading = false;
         tab.previewDirty = true;
+        const latest = this.latestDiff(tab);
+        const superseded = !!latest && (!sameReviewContent(latest, diff) || requestedTheme !== this.themeId);
         if (this.activeTab()?.id === tab.id) {
           this.copyPreviewState(tab);
-          project.error = error instanceof Error ? error.message : String(error);
+          if (!superseded) project.error = error instanceof Error ? error.message : String(error);
         }
+        // Never spin on the same failing input. Only a genuinely newer request
+        // gets the immediate retry; current failures still require user retry.
+        if (superseded) this.schedulePreview(tab, 0);
       }
     }
   }
@@ -689,7 +700,6 @@ export class SourceControlController {
 
   private async mutate(action: () => Promise<GitSnapshot>, afterAction?: () => Promise<void>): Promise<void> {
     if (project.gitBusy) return;
-    this.statusGeneration += 1;
     project.gitBusy = true;
     try {
       await this.perform(action);
