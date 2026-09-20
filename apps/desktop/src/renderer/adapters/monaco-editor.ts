@@ -74,7 +74,7 @@ export class MonacoEditor {
         wordWrap: 'on', wrappingIndent: 'same', lineNumbers: 'on', minimap: { enabled: false },
         scrollBeyondLastLine: false, smoothScrolling: true, cursorSmoothCaretAnimation: 'on',
         fontFamily: "'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
-        fontSize: 15, lineHeight: 24, padding: { top: 26, bottom: 60 },
+        fontSize: 14, lineHeight: 22, padding: { top: 26, bottom: 60 },
         renderWhitespace: 'selection', bracketPairColorization: { enabled: true }, stickyScroll: { enabled: false },
       });
       this.projectDecorations = this.editorValue.createDecorationsCollection();

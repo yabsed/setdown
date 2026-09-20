@@ -325,12 +325,17 @@ function previewFragmentFromTemplate(template: string): string {
     .replace(/&amp;/g, '&');
 }
 
-function previewStyles(themeId: PreviewThemeId): string {
+function previewStyles(themeId: PreviewThemeId, screenTypography: boolean): string {
+  const screenTypographyStyles = screenTypography ? `
+      /* Keep reading and editing surfaces in proportion with the 12px app chrome. */
+      html { font-size: 14px !important; }
+      .markdown-preview { font-size: 14px !important; }` : '';
   return `<style>
       /* theme stylesheet가 적용되기 전 첫 frame이 흰색으로 칠해지지 않게
          한다. 새 문서를 열 때 보이던 흰 섬광의 원인이다. bridge가 theme을
          바꿀 때 이 값을 함께 갱신한다. */
       html, body { background: ${previewThemeBackground(themeId)}; }
+      ${screenTypographyStyles}
       html[data-setdown-folder-drop] body::after {
         content: 'Open Folder';
         position: fixed;
@@ -422,7 +427,7 @@ async function render(request: Extract<RenderWorkerRequest, { kind: 'render' }>)
     vscodePreviewPanel: {} as never,
     head: `<base href="${baseHref}">`,
     scripts: bridgeScripts,
-    styles: previewStyles(themeId),
+    styles: previewStyles(themeId, !request.tabId.startsWith('export:')),
   });
   // crossnote가 다 지나간 뒤에 수식을 되돌려 넣는다.
   const html = restoreDeferredMath(previewFragmentFromTemplate(template));
