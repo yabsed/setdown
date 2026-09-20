@@ -28,16 +28,15 @@ import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
 import { previewRelativeReference } from './preview-resources';
 import { resourceUrl } from './resource-url';
 import { canonicalPath, isInside } from '../documents/file-system';
+import { buildRenderOutput, type InstalledPreview } from './render-output';
 import {
   diffPreviewBlocks,
   splitPreviewBlocks,
-  type PreviewBlock,
   type PreviewBlockPatch,
 } from '../../core/preview/preview-blocks';
 import {
   createLeanPreviewTemplate,
   requiresCrossnoteInstall,
-  type PreviewRuntime,
 } from '../../core/preview/preview-install';
 import {
   indexVisibleHtml,
@@ -62,6 +61,8 @@ export type RenderWorkerRequest =
     hasPage: boolean;
     /** PDF처럼 첫 paint보다 완성된 DOM이 먼저 필요한가. */
     deferOffscreenHtml?: boolean;
+    /** Comparison/search needs complete HTML, not a browser page or block patch. */
+    htmlOnly?: boolean;
   }
   | {
     kind: 'search';
@@ -110,10 +111,7 @@ type NotebookInstance = Awaited<ReturnType<CrossnoteModule['Notebook']['init']>>
 
 const notebookCaches = new Map<string, NotebookInstance>();
 /** 탭마다 설치된 블록과 browser runtime. 다음 갱신과 capability 전환의 기준이다. */
-const installedPreviews = new Map<string, {
-  blocks: PreviewBlock[];
-  runtime: PreviewRuntime;
-}>();
+const installedPreviews = new Map<string, InstalledPreview>();
 const crossnoteOut = path.resolve(path.dirname(require.resolve('crossnote')), '..');
 let allowedRoots: string[] = [];
 let activeRoot: string | null = null;
@@ -428,43 +426,20 @@ async function render(request: Extract<RenderWorkerRequest, { kind: 'render' }>)
   });
   // crossnote가 다 지나간 뒤에 수식을 되돌려 넣는다.
   const html = restoreDeferredMath(previewFragmentFromTemplate(template));
-  const blocks = splitPreviewBlocks(html);
-  const previous = installedPreviews.get(request.tabId);
-  const leanTemplate = createLeanPreviewTemplate(
-    template,
-    html,
-    bridgeScripts,
-    request.deferOffscreenHtml !== false,
-  );
-  const fullTemplate = () => restoreDeferredMathInTemplate(template).replace(
-    /<body\b/i,
-    '<body data-setdown-preview-runtime="crossnote"',
-  );
-
-  const common = { totalLineCount: lineCount(request.text), baseHref, themeId };
-  if (!request.hasPage) {
-    // 첫 로드. 일반 문서는 CSS와 bridge만 가진 lean page를 쓴다. 브라우저에서
-    // 그리는 도해나 안전하게 carrier에 넣을 수 없는 본문만 full runtime으로 간다.
-    const runtime: PreviewRuntime = leanTemplate ? 'lean' : 'crossnote';
-    installedPreviews.set(request.tabId, { blocks, runtime });
-    const page = leanTemplate ?? fullTemplate();
-    return { ...common, template: page, html };
-  }
-
-  // lean page에서 편집 중 Mermaid 같은 client-rendered 도해가 생기면 그 page에는
-  // renderer가 없다. 현재 내용을 full Crossnote page로 한 번 navigate해 capability를
-  // 올린다. 반대 방향은 불필요한 navigation을 피하려고 현재 runtime을 유지한다.
-  const runtime = previous?.runtime ?? 'lean';
-  if (runtime === 'lean' && requiresCrossnoteInstall(html)) {
-    installedPreviews.set(request.tabId, { blocks, runtime: 'crossnote' });
-    return { ...common, template: fullTemplate(), html };
-  }
-  installedPreviews.set(request.tabId, { blocks, runtime });
-  if (!previous) {
-    // 예비 view를 넘겨받은 경우처럼 페이지는 있으나 기록이 없다.
-    return { ...common, html };
-  }
-  return { ...common, patch: diffPreviewBlocks(previous.blocks, blocks) };
+  // Crossnote's placeholder template is still needed to obtain sanitized HTML.
+  // Expanded page templates and block work are lazy and omitted for fragments.
+  const output = buildRenderOutput({
+    tabId: request.tabId, html, hasPage: request.hasPage, htmlOnly: request.htmlOnly,
+  }, installedPreviews, {
+    split: splitPreviewBlocks,
+    diff: diffPreviewBlocks,
+    requiresCrossnote: requiresCrossnoteInstall,
+    leanTemplate: () => createLeanPreviewTemplate(template, html, bridgeScripts, request.deferOffscreenHtml !== false),
+    fullTemplate: () => restoreDeferredMathInTemplate(template).replace(
+      /<body\b/i, '<body data-setdown-preview-runtime="crossnote"',
+    ),
+  });
+  return { totalLineCount: lineCount(request.text), baseHref, themeId, ...output };
 }
 
 async function search(request: Extract<RenderWorkerRequest, { kind: 'search' }>) {
@@ -482,11 +457,12 @@ async function search(request: Extract<RenderWorkerRequest, { kind: 'search' }>)
       roots: request.roots,
       hasPage: false,
       deferOffscreenHtml: true,
+      htmlOnly: true,
     });
     installedPreviews.delete(tabId);
     cached = {
       text: request.text,
-      index: indexVisibleHtml('html' in rendered ? rendered.html : ''),
+      index: indexVisibleHtml(rendered.html ?? ''),
     };
   }
   visibleIndexes.delete(request.documentPath);

@@ -76,13 +76,13 @@ export class PreviewRenderer {
   }
 
   private render(tabId: string, text: string, revision: number, documentPath: string,
-    themeId: PreviewThemeId, hasPage: boolean, deferOffscreenHtml = true) {
+    themeId: PreviewThemeId, hasPage: boolean, deferOffscreenHtml = true, htmlOnly = false) {
     const worker = this.ensureWorker();
     const id = ++this.requestId;
     return new Promise<WorkerResult>((resolve, reject) => {
       this.waiters.set(id, { resolve, reject });
       worker.postMessage({ kind: 'render', id, tabId, text, revision, documentPath, themeId,
-        roots: this.options.roots(), hasPage, deferOffscreenHtml });
+        roots: this.options.roots(), hasPage, deferOffscreenHtml, htmlOnly });
     });
   }
 
@@ -130,24 +130,32 @@ export class PreviewRenderer {
     const cacheId = tabId.replace(/:[ab]$/, '');
     const context = JSON.stringify([diff.filePath, themeId, this.options.roots(), this.baselineEpoch]);
     const epoch = this.baselineEpoch;
+    // Decide what the worker must produce before crossing its IPC boundary.
+    // A URL/page snapshot prevents fragment-only results being used after a
+    // navigation, overlapping preparation, or promotion of this hidden view.
+    const currentUrl = contents.getURL();
+    const page = this.reviewPages.get(contents);
+    const reusable = !!page && page.url === currentUrl;
+    const checkPreparation = () => {
+      check();
+      if (contents.getURL() !== currentUrl || this.reviewPages.get(contents) !== page
+        || preview.view.getVisible()) throw new Error('The Git preview changed during preparation.');
+    };
     try {
       const cached = this.baselines.get(cacheId, diff.originalText, context);
       const [original, modified] = await Promise.all([
         cached === undefined
-          ? this.render(originalId, diff.originalText, revision, diff.filePath, themeId, false, false)
+          ? this.render(originalId, diff.originalText, revision, diff.filePath, themeId, false, false, true)
           : Promise.resolve({ html: cached }),
-        this.render(modifiedId, diff.modifiedText, revision, diff.filePath, themeId, false, false),
+        this.render(modifiedId, diff.modifiedText, revision, diff.filePath, themeId, false, false, reusable),
       ]);
-      check();
+      checkPreparation();
       if (typeof original.html !== 'string' || typeof modified.html !== 'string'
-        || typeof modified.template !== 'string') return unsupported();
+        || (!reusable && typeof modified.template !== 'string')) return unsupported();
       if (cached === undefined && epoch === this.baselineEpoch) {
         this.baselines.set(cacheId, diff.originalText, context, original.html,
           2 * (original.html.length + diff.originalText.length + context.length));
       }
-      const currentUrl = contents.getURL();
-      const page = this.reviewPages.get(contents);
-      const reusable = !!page && page.url === currentUrl;
       const pageKey = page?.pageKey ?? `${senderId}:${contents.id}:${tabId}`;
       const input = {
         originalHtml: original.html, modifiedHtml: modified.html,
@@ -156,16 +164,13 @@ export class PreviewRenderer {
         pageKey, baseRevision: reusable ? page!.revision : null, revision,
       };
       const assembled = await this.reviews.assemble(input);
-      check();
+      checkPreparation();
       if (!assembled.supported || (!assembled.patch && typeof assembled.html !== 'string')) return unsupported();
       preview.view.setBackgroundColor(previewThemeBackground(themeId));
       let url: string;
       if (reusable) {
         const install = async (update: ReviewAssemblyResult) => {
-          check();
-          if (contents.getURL() !== currentUrl || preview.view.getVisible()) {
-            throw new Error('The Git preview changed during preparation.');
-          }
+          checkPreparation();
           if (update.patch && (update.patch.baseRevision !== page!.revision || update.patch.revision !== revision)) {
             throw new Error('The comparison worker returned a mismatched row patch.');
           }
@@ -179,6 +184,7 @@ export class PreviewRenderer {
               ? { command: 'marktex:patch-review-rows', patch: update.patch, ...common }
               : { command: 'marktex:update-html', html: update.html, markdown: diff.modifiedText, ...common });
             await installed;
+            checkPreparation();
           } catch (error) {
             void installed.catch(() => {});
             throw error;
@@ -189,8 +195,7 @@ export class PreviewRenderer {
           await install(assembled);
         } catch (error) {
           if (!assembled.patch) throw error;
-          check();
-          if (contents.getURL() !== currentUrl || preview.view.getVisible()) throw error;
+          checkPreparation();
           // Cache loss or an unexpected DOM base gets a same-page reset. Use a
           // NEW revision so a late ACK of a timed-out patch cannot complete it.
           revision = ++this.reviewRevision;
@@ -203,6 +208,9 @@ export class PreviewRenderer {
         url = previews.storeDocument(assembled.template, themeId);
         await previews.loadURL(preview.view, url, senderId);
         check();
+        if (contents.getURL() !== url || this.reviewPages.get(contents) !== page || preview.view.getVisible()) {
+          throw new Error('The Git preview changed during preparation.');
+        }
         previews.markTheme(contents, themeId);
         setImmediate(() => previews.ensureSpare(senderId));
       }
