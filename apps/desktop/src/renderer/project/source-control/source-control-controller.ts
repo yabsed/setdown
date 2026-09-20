@@ -15,6 +15,7 @@ import type { DesktopPort } from '../../ports/desktop-port';
 import type { WorkingTreeEdit } from '../../view-state.svelte';
 import { project, type GitDiffTabState } from '../project-state.svelte';
 import { ReviewPresentation } from './review-presentation';
+import { ReviewTransition } from './review-transition';
 
 type Options = {
   desktop: DesktopPort;
@@ -45,6 +46,7 @@ export class SourceControlController {
   }, 32, 120);
   private readonly preparedPreviews = new Map<string, { diff: GitDiff; revision: number; themeId: PreviewThemeId }>();
   private readonly presentation: ReviewPresentation;
+  private readonly transition: ReviewTransition;
   private primeFrame: number | null = null;
   private refreshRequested = false;
   private refreshTask: Promise<void> | null = null;
@@ -62,11 +64,18 @@ export class SourceControlController {
 
   constructor(private readonly options: Options) {
     this.presentation = new ReviewPresentation(options.desktop);
+    this.transition = new ReviewTransition(({ pending, notice, error }) => {
+      Object.assign(project, { gitDiffTransitionPending: pending,
+        gitDiffTransitionNotice: notice, gitDiffTransitionError: error });
+    });
     window.addEventListener('setdown:native-overlay-visibility', ((event: CustomEvent<boolean>) => {
       if (event.detail) void this.freezePreview();
       else this.unfreezePreview();
     }) as EventListener);
     this.viewport.onChange?.(() => this.schedulePrime());
+    this.viewport.onInteraction?.(() => {
+      if (project.gitDiffActive && project.gitDiffMode === 'source') this.cancelViewerRequest();
+    });
   }
 
   restore = async (): Promise<void> => {
@@ -174,6 +183,7 @@ export class SourceControlController {
   };
 
   deactivateDiff = (): void => {
+    this.cancelViewerRequest();
     this.presentation.cancel();
     if (!project.gitDiffActive) return;
     this.rememberActiveTab();
@@ -204,6 +214,7 @@ export class SourceControlController {
 
   toggleDiffMode = (): void => {
     if (!project.gitDiff || !this.renderable(project.gitDiff)) return;
+    if (this.cancelViewerRequest()) return;
     if (project.gitDiffMode === 'rendered') {
       const tab = this.activeTab();
       if (tab) this.showSource(this.readingState(tab).viewer ?? this.readingState(tab).source);
@@ -212,22 +223,23 @@ export class SourceControlController {
 
   showRendered = (): void => {
     const tab = this.activeTab();
-    if (!tab?.diff || project.gitDiffMode === 'rendered') return;
+    if (!project.gitDiffActive || !tab?.diff || project.gitDiffMode === 'rendered'
+      || this.transition.forTab(tab.id)) return;
     const diff = this.latestDiff(tab)!;
     if (!this.renderable(diff)) return;
     if (!sameReviewContent(tab.diff, diff)) { tab.diff = diff; this.invalidatePreview(tab); }
     const reading = this.readingState(tab);
-    reading.source = this.viewport.read(tab.id) ?? reviewViewport(tab.line);
+    const source = this.viewport.read(tab.id) ?? reading.source;
+    reading.source = { ...source, anchor: { ...source.anchor }, band: source.band.map((sample) => ({ ...sample })) };
     reading.viewer = null;
     reading.observationId = null;
     reading.observedId = null;
-    tab.mode = 'rendered';
-    project.gitDiffLine = tab.line || 1;
+    // Request the destination without hiding or disabling the live editor.
+    this.transition.begin(tab.id);
     project.gitDiff = diff;
-    project.gitDiffMode = 'rendered';
     this.copyPreviewState(tab);
     this.syncPreview('source');
-    if (!tab.previewLoading && (tab.previewDirty || !tab.previewId)) this.schedulePreview(tab, 0);
+    if (!tab.previewLoading && !this.latestPreview(tab)) this.schedulePreview(tab, 0);
     this.publishReview();
   };
 
@@ -263,6 +275,7 @@ export class SourceControlController {
   };
 
   applyTheme = async (themeId: PreviewThemeId): Promise<void> => {
+    this.cancelViewerRequest();
     this.presentation.cancel();
     this.themeId = themeId;
     const previews = project.gitDiffTabs.filter((tab) => isMarkdownDocument(tab.filePath))
@@ -305,6 +318,7 @@ export class SourceControlController {
   };
 
   clear = (): void => {
+    this.transition.cancel();
     this.presentation.cancel();
     this.unsubscribeModels?.();
     this.unsubscribeModels = null;
@@ -320,7 +334,6 @@ export class SourceControlController {
     this.options.desktop.showPreview(null, null);
     this.overlayFrozen = false;
     this.resetActiveState();
-    this.options.desktop.updateGitReviewState(null);
     this.options.reviewChanged(false, false);
     project.commitMessage = '';
   };
@@ -384,6 +397,7 @@ export class SourceControlController {
   }
 
   private showSource(target: ReviewViewport): void {
+    this.cancelViewerRequest();
     this.presentation.cancel();
     const tab = this.activeTab();
     if (!tab) return;
@@ -443,6 +457,7 @@ export class SourceControlController {
   }
 
   private rememberActiveTab(): void {
+    this.cancelViewerRequest();
     this.presentation.cancel();
     const tab = this.activeTab();
     if (!tab || !project.gitDiffActive) return;
@@ -455,7 +470,8 @@ export class SourceControlController {
     this.pendingPreviewPosition = null;
     Object.assign(project, { gitDiff: null, gitDiffTarget: null, gitDiffActive: false,
       gitDiffLoading: false, gitDiffPreviewLoading: false, gitDiffPreviewReady: false,
-      gitDiffFrozen: false, gitDiffSnapshot: '', gitDiffLine: 1 });
+      gitDiffFrozen: false, gitDiffSnapshot: '', gitDiffLine: 1,
+      gitDiffTransitionPending: false, gitDiffTransitionNotice: false, gitDiffTransitionError: '' });
   }
 
   private copyPreviewState(tab: GitDiffTabState): void {
@@ -481,16 +497,53 @@ export class SourceControlController {
     });
   }
 
+  private cancelViewerRequest(): boolean {
+    const tab = this.activeTab();
+    if (!tab || !this.transition.forTab(tab.id)) return false;
+    this.presentation.cancel();
+    this.transition.cancel();
+    this.pendingPreviewPosition = null;
+    this.copyPreviewState(tab);
+    return true;
+  }
+
+  private wantsViewer(tab: GitDiffTabState): boolean {
+    return project.gitDiffMode === 'rendered' || this.transition.forTab(tab.id);
+  }
+
+  private presentationFailed(tab: GitDiffTabState, error: string): void {
+    if (this.activeTab()?.id !== tab.id || !project.gitDiffActive) return;
+    project.error = error;
+    if (this.transition.forTab(tab.id)) {
+      this.cancelViewerRequest(); // Leave cursor, selection, focus and scroll alone.
+      this.transition.fail(error);
+    } else if (tab.mode === 'rendered') this.showSource(this.readingState(tab).source);
+    this.copyPreviewState(tab);
+  }
+
+  private commitPresentation(tab: GitDiffTabState, id: string, revision: number, bounds: PreviewBounds): void {
+    // Request the native surface first. The Svelte layer also retains Source as
+    // an inert backing surface while the native show crosses the IPC boundary.
+    this.options.desktop.showPreview(id, bounds);
+    tab.mode = 'rendered';
+    project.gitDiffMode = 'rendered';
+    this.pendingPreviewPosition = null;
+    this.transition.complete();
+    this.didPresent(tab, id, revision, bounds);
+    this.copyPreviewState(tab);
+    this.publishReview();
+  }
+
   private syncPreview(intent?: 'source' | 'resume'): void {
     const tab = this.activeTab();
     if (intent) {
-      if (!project.gitDiffActive || project.gitDiffMode !== 'rendered' || !tab) this.pendingPreviewPosition = null;
+      if (!project.gitDiffActive || !tab || !this.wantsViewer(tab)) this.pendingPreviewPosition = null;
       else if (intent === 'source' || this.pendingPreviewPosition?.tabId !== tab.id) {
         this.pendingPreviewPosition = { tabId: tab.id, intent };
       }
     }
     if (!project.gitDiffActive || this.overlayFrozen || this.overlayDepth > 0) return;
-    const shownId = project.gitDiffMode === 'rendered' && tab && this.latestPreview(tab) ? tab.previewId : null;
+    const shownId = tab && this.wantsViewer(tab) && this.latestPreview(tab) ? tab.previewId : null;
     if (!tab || !shownId || !this.bounds) {
       this.presentation.cancel();
       this.options.desktop.showPreview(null, null);
@@ -506,34 +559,35 @@ export class SourceControlController {
     if (!samePage) {
       const bounds = { ...this.bounds };
       const themeId = this.themeId;
+      const generation = this.transition.generation;
       const position = reviewPositionCommand(target);
       this.presentation.present({ id: shownId, revision: ready.revision, bounds, position },
-        () => project.gitDiffActive && project.activeGitDiffId === tab.id && tab.mode === 'rendered'
-          && project.gitDiffMode === 'rendered' && !this.overlayFrozen && this.overlayDepth === 0
+        () => project.gitDiffActive && project.activeGitDiffId === tab.id && this.wantsViewer(tab)
+          && this.transition.generation === generation && !this.overlayFrozen && this.overlayDepth === 0
           && this.themeId === themeId && tab.previewId === shownId && this.latestPreview(tab)
           && this.preparedPreviews.get(shownId) === ready && JSON.stringify(this.bounds) === JSON.stringify(bounds),
         () => {
-          this.pendingPreviewPosition = null;
-          // Exact latest content and final hidden position are both accepted.
-          // No extra position command or fixed frame delay follows this show.
-          this.options.desktop.showPreview(shownId, bounds);
-          this.didPresent(tab, shownId, ready.revision, bounds);
-          this.copyPreviewState(tab);
+          try { this.commitPresentation(tab, shownId, ready.revision, bounds); }
+          catch (error) { this.presentationFailed(tab, error instanceof Error ? error.message : String(error)); }
         },
-        (error) => { project.error = error; this.showSource(reading.source); this.copyPreviewState(tab); });
+        (error) => this.presentationFailed(tab, error));
       this.copyPreviewState(tab);
       return;
     }
     // Preserve the no-edit warm route: the page validates its local position
     // proof, without another preparation ACK or timer on Escape.
     this.presentation.cancel();
-    this.options.desktop.showPreview(shownId, this.bounds);
-    if (!pending) { reading.presentedBounds = { ...this.bounds }; return; }
-    this.pendingPreviewPosition = null;
-    if (pending.intent === 'source' || !sameSize) {
-      this.options.desktop.sendPreviewCommand(shownId, reviewPositionCommand(target));
-    }
-    this.didPresent(tab, shownId, ready.revision, this.bounds);
+    try {
+      if (!pending) {
+        this.options.desktop.showPreview(shownId, this.bounds);
+        reading.presentedBounds = { ...this.bounds };
+        return;
+      }
+      this.commitPresentation(tab, shownId, ready.revision, this.bounds);
+      if (pending.intent === 'source' || !sameSize) {
+        this.options.desktop.sendPreviewCommand(shownId, reviewPositionCommand(target));
+      }
+    } catch (error) { this.presentationFailed(tab, error instanceof Error ? error.message : String(error)); }
   }
 
   private didPresent(tab: GitDiffTabState, id: string, revision: number, bounds: PreviewBounds): void {
@@ -567,13 +621,13 @@ export class SourceControlController {
   private schedulePrime(): void {
     const active = this.activeTab();
     if (!active?.diff || !this.renderable(active.diff)) return;
-    if (!project.gitDiffActive || project.gitDiffMode !== 'source' || this.primeFrame !== null
+    if (!project.gitDiffActive || project.gitDiffMode !== 'source' || this.transition.forTab(active.id) || this.primeFrame !== null
       || typeof requestAnimationFrame !== 'function') return;
     this.primeFrame = requestAnimationFrame(() => {
       this.primeFrame = null;
       const tab = this.activeTab();
       if (!tab?.diff || !this.renderable(tab.diff)
-        || !project.gitDiffActive || project.gitDiffMode !== 'source' || !this.bounds) return;
+        || !project.gitDiffActive || project.gitDiffMode !== 'source' || this.transition.forTab(tab.id) || !this.bounds) return;
       const reading = this.readingState(tab);
       reading.source = this.viewport.read(tab.id) ?? reading.source;
       for (const id of new Set([tab.previewId, tab.pendingPreviewId])) {
@@ -586,7 +640,7 @@ export class SourceControlController {
     if (!tab.diff || !this.renderable(tab.diff)) return;
     if (!this.bounds || !project.gitDiffActive || this.activeTab()?.id !== tab.id) return;
     const reading = this.readingState(tab);
-    const viewport = target ?? (tab.mode === 'source'
+    const viewport = target ?? (this.transition.forTab(tab.id) ? reading.source : tab.mode === 'source'
       ? this.viewport.read(tab.id) ?? reading.source : reading.viewer ?? reading.source);
     this.options.desktop.sendPreviewCommand(previewId, {
       command: 'marktex:prime-review', bounds: { ...this.bounds },
@@ -595,7 +649,7 @@ export class SourceControlController {
   }
 
   private invalidatePreview(tab: GitDiffTabState): void {
-    if (this.activeTab()?.id === tab.id) this.presentation.cancel();
+    if (this.activeTab()?.id === tab.id) { this.cancelViewerRequest(); this.presentation.cancel(); }
     tab.previewDirty = !!tab.diff && this.renderable(tab.diff);
     // An edit must not reset the maximum-wait checkpoint for Markdown.
   }
@@ -648,7 +702,7 @@ export class SourceControlController {
       } else if (!rendered.supported) {
         this.options.desktop.destroyPreview(candidateId);
         this.preparedPreviews.delete(candidateId);
-        if (tab.mode === 'rendered' && this.activeTab()?.id === tab.id) this.showSource(this.readingState(tab).source);
+        this.presentationFailed(tab, 'Rendered comparison is unavailable. Source has been kept.');
       } else {
         tab.previewDirty = false;
         this.preparedPreviews.set(candidateId, { diff, revision: rendered.revision, themeId: requestedTheme });
@@ -675,7 +729,7 @@ export class SourceControlController {
         const superseded = !!latest && (!sameReviewContent(latest, diff) || requestedTheme !== this.themeId);
         if (this.activeTab()?.id === tab.id) {
           this.copyPreviewState(tab);
-          if (!superseded) project.error = error instanceof Error ? error.message : String(error);
+          if (!superseded) this.presentationFailed(tab, error instanceof Error ? error.message : String(error));
         }
         // Never spin on the same failing input. Only a genuinely newer request
         // gets the immediate retry; current failures still require user retry.
@@ -686,7 +740,7 @@ export class SourceControlController {
 
   private disposeTab(tab: GitDiffTabState): void {
     if (this.pendingPreviewPosition?.tabId === tab.id) this.pendingPreviewPosition = null;
-    if (this.activeTab()?.id === tab.id) this.presentation.cancel();
+    if (this.activeTab()?.id === tab.id) { this.cancelViewerRequest(); this.presentation.cancel(); }
     for (const id of this.previewIds(tab)) this.preparedPreviews.delete(id);
     this.readingStates.delete(tab.id);
     this.viewport.forget(tab.id);
@@ -757,6 +811,7 @@ export class SourceControlController {
   }
 
   private async freezePreview(): Promise<void> {
+    this.cancelViewerRequest();
     this.presentation.cancel();
     this.overlayDepth += 1;
     if (this.overlayDepth > 1) return;
