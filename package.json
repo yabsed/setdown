@@ -4,6 +4,8 @@
   "private": true,
   "workspaces": ["apps/*"],
   "scripts": {
+    "test:preview-contract": "npm run test:preview-contract --workspace @setdown/desktop",
+    "bench:preview": "npm run bench:preview --workspace @setdown/desktop --",
     "dev": "npm run dev --workspace @setdown/desktop",
     "build": "npm run build --workspace @setdown/desktop",
     "typecheck": "npm run typecheck --workspace @setdown/desktop",

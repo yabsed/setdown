@@ -1,3 +1,4 @@
+import type { PrimeDocumentCommand } from '../../protocol/preview-preparation';
 import type { PreviewHeading, ThemeSnapshot } from '../../protocol/desktop-api';
 import {
   normalizePreviewTheme,
@@ -271,7 +272,7 @@ export class ReaderController {
         const rect = this.options.frames.getBoundingClientRect();
         this.send(tab.id, { command: 'marktex:prime-document', bounds: {
           x: rect.left, y: rect.top, width: rect.width, height: rect.height,
-        } });
+        } } satisfies PrimeDocumentCommand);
       }
       return;
     }

@@ -1,4 +1,4 @@
-import type { PreviewBounds } from '../../protocol/desktop-api';
+import { readPreviewBounds, type PreviewBounds, type PreparationPosition, type RuntimePreparationCommand } from '../../protocol/preview-preparation';
 import type { PreviewViewState } from './preview-manager';
 
 type Options = {
@@ -6,7 +6,7 @@ type Options = {
   applyBounds(preview: PreviewViewState, bounds: PreviewBounds): void;
   navigating(preview: PreviewViewState): boolean;
 };
-type Primed = { bounds: PreviewBounds; position: Record<string, unknown>; primeId: number };
+type Primed = { bounds: PreviewBounds; position: PreparationPosition; primeId: number };
 
 /** Hidden preparation never changes native visibility or keyboard focus. */
 export class ReviewPreparation {
@@ -21,9 +21,8 @@ export class ReviewPreparation {
     if (message.command !== 'marktex:prime-review') return false;
     const preview = this.options.views.get(tabId);
     if (!preview || preview.ownerWebContentsId !== ownerId || preview.view.webContents.isDestroyed()) return true;
-    const raw = message.bounds as Partial<PreviewBounds> | null;
-    if (!raw || ![raw.x, raw.y, raw.width, raw.height].every((n) => typeof n === 'number' && Number.isFinite(n))
-      || raw.width! <= 0 || raw.height! <= 0) {
+    const bounds = readPreviewBounds(message.bounds);
+    if (!bounds) {
       this.primed.delete(tabId);
       return true;
     }
@@ -37,21 +36,13 @@ export class ReviewPreparation {
     }) : [];
     const primeId = Number.isSafeInteger(Number(message.primeId)) && Number(message.primeId) > 0
       ? Number(message.primeId) : 0;
-    const position = {
-      command: 'marktex:position-preview', sourceLine: Math.max(1, Math.round(value.sourceLine)),
+    const position: PreparationPosition = {
+      sourceLine: Math.max(1, Math.round(value.sourceLine)),
       topRatio: typeof value.topRatio === 'number' && Number.isFinite(value.topRatio)
         ? Math.max(0, Math.min(1, value.topRatio)) : .372,
-      sourceSide: value.sourceSide === 'before' ? 'before' : 'after', band, settle: false,
+      sourceSide: value.sourceSide === 'before' ? 'before' : 'after', band,
       blockOffset: typeof value.blockOffset === 'number' && Number.isFinite(value.blockOffset)
         ? Math.max(0, Math.min(1, value.blockOffset)) : undefined,
-    };
-    const bounds = {
-      // These are CSS pixels. Round once, after workspace zoom conversion, in
-      // PreviewManager just as presentation does; early rounding changes size.
-      x: Math.max(0, Math.min(100_000, raw.x!)),
-      y: Math.max(0, Math.min(100_000, raw.y!)),
-      width: Math.max(1, Math.min(100_000, raw.width!)),
-      height: Math.max(1, Math.min(100_000, raw.height!)),
     };
     // A late source-prewarming event may not reposition the visible front.
     if (preview.view.getVisible()) return true;
@@ -60,7 +51,7 @@ export class ReviewPreparation {
     if (!this.options.navigating(preview) && preview.view.webContents.getURL().startsWith('marktex-preview://document/')) {
       preview.view.webContents.send('preview:command', {
         ...position, command: 'marktex:prime-position', primeId,
-      });
+      } satisfies RuntimePreparationCommand);
     }
     return true;
   }
@@ -86,7 +77,7 @@ export class ReviewPreparation {
         preview.view.webContents.send('preview:command', {
           ...primed.position, command: 'marktex:prepare-review', requestId: id,
           revision, primeId: primed.primeId,
-        });
+        } satisfies RuntimePreparationCommand);
       } catch (error) { finish(error instanceof Error ? error : new Error(String(error))); }
     });
   }

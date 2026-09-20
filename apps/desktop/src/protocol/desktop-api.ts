@@ -2,6 +2,7 @@ import type { PreviewThemeAssets, PreviewThemeId } from '../core/preview/preview
 import type { DiskVersion, DocumentSnapshot } from '../core/document/document';
 import type { RenderResult } from '../core/preview/preview-state';
 import type { ThemeSnapshot } from '../core/theme/theme-state';
+import type { PreviewBounds } from './preview-preparation';
 
 export type { DiskVersion, DocumentSnapshot } from '../core/document/document';
 export type { PreviewHeading, RenderResult } from '../core/preview/preview-state';
@@ -178,7 +179,7 @@ export type ClaimedTabTransfer = {
   tab: TransferableTab;
 };
 
-export type PreviewBounds = { x: number; y: number; width: number; height: number };
+export type { PreviewBounds } from './preview-preparation';
 export type PreviewMessage = { tabId: string; message: Record<string, unknown> };
 
 export type ApplicationMenuEntry = {

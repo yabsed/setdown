@@ -1,4 +1,5 @@
-/** Cold Esc/double-click diagnostics. No timing gate or hidden DOM measurement.
+/** Cold Esc/double-click measurements; bench:preview applies the timing gate.
+ * No hidden DOM measurement.
  * SETDOWN_TRACE_CYCLES=1 records Chromium work; SETDOWN_CYCLES_IDLE_MS controls
  * the delay before the first Esc (default 0). Captures are not presentation fences.
  * SETDOWN_CYCLES_EDIT=1 inserts a new paragraph immediately before each Esc.
@@ -11,9 +12,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { _electron as electron, expect, test } from '@playwright/test';
 import { disposeApplication } from './electron-app';
+import { cycleElectronExecutable, cycleSampleFixture, doubleClickPreview } from './preview-cycle-input';
 
 const exec = promisify(execFile);
-test('sample math cold Esc and real double-click cycles', async () => {
+const matrix = process.env.SETDOWN_BENCH_MATRIX === '1'
+  ? [0, 3000].flatMap(idle => [false, true].map(edits => ({ idle, edits })))
+  : [{ idle: Number(process.env.SETDOWN_CYCLES_IDLE_MS || 0), edits: process.env.SETDOWN_CYCLES_EDIT === '1' }];
+for (const { idle, edits } of matrix) test(`sample math cold Esc cycles idle=${idle} edits=${edits}`, async () => {
   test.setTimeout(120_000);
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-cold-cycles-'));
   const config = await mkdtemp(path.join(os.tmpdir(), 'setdown-cold-cycles-config-'));
@@ -22,14 +27,14 @@ test('sample math cold Esc and real double-click cycles', async () => {
     await exec('git', ['init'], { cwd: root });
     await exec('git', ['config', 'user.email', 'setdown@example.test'], { cwd: root });
     await exec('git', ['config', 'user.name', 'Setdown Test'], { cwd: root });
-    const text = await readFile(path.resolve('test/fixtures/sample.md'), 'utf8');
+    const text = await readFile(cycleSampleFixture, 'utf8');
     const file = path.join(root, 'sample.md');
     await writeFile(file, text);
     await exec('git', ['add', '.'], { cwd: root });
     await exec('git', ['commit', '-m', 'base'], { cwd: root });
     await writeFile(file, text + '\nWorking tree\n');
     const { ELECTRON_RUN_AS_NODE: _ignored, ...environment } = process.env;
-    app = await electron.launch({ args: ['.', file], env: { ...environment, XDG_CONFIG_HOME: config } });
+    app = await electron.launch({ executablePath: cycleElectronExecutable, args: ['.', file], env: { ...environment, XDG_CONFIG_HOME: config } });
     const page = await app.firstWindow();
     await page.evaluate(async folder => (window as any).marktex.restoreProjectFolder(folder), root);
     await page.addInitScript(() => window.addEventListener('keydown', event => {
@@ -72,7 +77,6 @@ test('sample math cold Esc and real double-click cycles', async () => {
       .locator('.git-change-open').click();
     const editor = page.locator('.git-diff-editor').getByRole('textbox').nth(1);
     await expect(editor).toBeEditable();
-    const idle = Number(process.env.SETDOWN_CYCLES_IDLE_MS || 0);
     if (idle) await page.waitForTimeout(idle);
     // Optional geometry probe is kept out of the ordinary latency runs.
     const hiddenGeometry = process.env.SETDOWN_TRACE_CYCLES === '1'
@@ -87,7 +91,7 @@ test('sample math cold Esc and real double-click cycles', async () => {
         }))) : undefined;
     const samples = [];
     for (let cycle = 1; cycle <= 5; cycle++) {
-      if (process.env.SETDOWN_CYCLES_EDIT === '1') {
+      if (edits) {
         await editor.press('Control+End');
         await page.keyboard.insertText(`\n\ncycle-edit-${cycle}`);
       }
@@ -98,19 +102,27 @@ test('sample math cold Esc and real double-click cycles', async () => {
       await expect.poll(() => app!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]
         .contentView.children.some(v => 'webContents' in v && v.getVisible())),
       { timeout: 30_000, intervals: [10, 20, 50] }).toBe(true);
-      const capture = await app.evaluate(async ({ BrowserWindow }) => {
+      const viewId = await app.evaluate(({ BrowserWindow }) => {
         const view = BrowserWindow.getAllWindows()[0].contentView.children.find(v =>
           'webContents' in v && v.getVisible()) as Electron.WebContentsView;
-        const start = Date.now();
-        const image = await view.webContents.capturePage();
-        return { id: view.webContents.id, start, end: Date.now(), empty: image.isEmpty() };
+        return view.webContents.id;
       });
+      if (edits) await expect.poll(() => app!.evaluate(({ webContents }, id) =>
+        webContents.fromId(id)!.executeJavaScript(
+          "document.querySelector('.setdown-rendered-diff-split')?.textContent || ''"), viewId),
+      { timeout: 30_000, intervals: [10, 20, 50] }).toContain(`cycle-edit-${cycle}`);
+      const capture = await app.evaluate(async ({ webContents }, id) => {
+        const contents = webContents.fromId(id)!;
+        const start = Date.now();
+        const image = await contents.capturePage();
+        return { id, start, end: Date.now(), empty: image.isEmpty() };
+      }, viewId);
       expect(capture.empty).toBe(false);
       const trace = await app.evaluate(() => (globalThis as any).cycleTrace);
       const afterEscape = trace.slice(traceStart);
       const show = afterEscape.find((e: any) => e.kind === 'show' && e.tabId);
       const sample = { cycle, escapeAt, showMs: show?.t - escapeAt,
-        captureMs: capture.end - escapeAt, viewId: capture.id,
+        captureMs: capture.end - escapeAt, captureRequiresLatestContent: edits, viewId: capture.id,
         trace: afterEscape.map((e: any) => ({ ...e, sinceEscape: e.t - escapeAt })) };
       samples.push(sample);
       console.log(JSON.stringify(sample));
@@ -120,43 +132,29 @@ test('sample math cold Esc and real double-click cycles', async () => {
           text: document.querySelector('.setdown-rendered-diff-split')?.textContent })`), capture.id);
       expect(content.math).toBeGreaterThan(100);
       Object.assign(sample, { geometry: { width: content.width, height: content.height, dpr: content.dpr } });
-      if (process.env.SETDOWN_CYCLES_EDIT === '1') expect(content.text).toContain(`cycle-edit-${cycle}`);
+      if (edits) expect(content.text).toContain(`cycle-edit-${cycle}`);
       // Browser input uses CSS coordinates and does not depend on OS window focus.
       // Attach only after timing; do not dispatch a synthetic DOM dblclick event.
+      let input: Awaited<ReturnType<typeof doubleClickPreview>> | undefined;
       if (process.env.SETDOWN_CYCLES_RETURN === 'button') {
         await page.getByRole('button', { name: 'View Source Diff' }).click();
-      } else await app.evaluate(async ({ webContents }, id) => {
-        const contents = webContents.fromId(id)!;
-        // The timed capture may precede the final source-position paint. Let
-        // that settle before hit testing the next gesture (outside Esc timing).
-        await contents.executeJavaScript('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
-        const point = await contents.executeJavaScript(
-          '({ x: Math.round(innerWidth * .75), y: Math.round(innerHeight * .4) })');
-        contents.debugger.attach('1.3');
-        try {
-          await contents.debugger.sendCommand('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
-          for (const clickCount of [1, 2]) {
-            await contents.debugger.sendCommand('Input.dispatchMouseEvent', {
-              type: 'mousePressed', button: 'left', buttons: 1, clickCount, ...point });
-            await contents.debugger.sendCommand('Input.dispatchMouseEvent', {
-              type: 'mouseReleased', button: 'left', buttons: 0, clickCount, ...point });
-          }
-        } finally { contents.debugger.detach(); }
-      }, capture.id);
+      } else input = await doubleClickPreview(app, capture.id, true);
       try {
         await expect(page.getByRole('button', { name: 'View Rendered Diff' })).toBeVisible();
       } catch (error) {
-        await writeFile(test.info().outputPath('failed-cycle.json'), JSON.stringify({ samples,
+        await writeFile(test.info().outputPath('failed-cycle.json'), JSON.stringify({ samples, input,
+          delivered: await app.evaluate(({ webContents }, id) => webContents.fromId(id)!.executeJavaScript('window.__cycleInput'), capture.id),
           trace: await app.evaluate(() => (globalThis as any).cycleTrace) }, null, 2));
         throw error;
       }
       await expect(editor).toBeEditable();
+      if (input) Object.assign(sample, { doubleClickToEditorMs: Date.now() - input.at });
     }
     if (process.env.SETDOWN_TRACE_CYCLES === '1') await app.evaluate(({ contentTracing }, file) =>
       contentTracing.stopRecording(file), test.info().outputPath('cycles-trace.json'));
     await writeFile(test.info().outputPath('cycles.json'), JSON.stringify({ idle,
       returnMethod: process.env.SETDOWN_CYCLES_RETURN === 'button' ? 'button' : 'double-click',
-      edits: process.env.SETDOWN_CYCLES_EDIT === '1', hiddenGeometry, samples,
+      edits, hiddenGeometry, samples,
       trace: await app.evaluate(() => (globalThis as any).cycleTrace) }, null, 2));
   } finally {
     if (app) await disposeApplication(app);

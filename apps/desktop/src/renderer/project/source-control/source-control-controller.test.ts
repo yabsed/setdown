@@ -6,20 +6,20 @@ import { project, type GitDiffTabState } from '../project-state.svelte';
 import { SourceControlController } from './source-control-controller';
 import { LiveDocumentModelPort } from '../../editor/live-document-model';
 
-// Exercise controller ordering without mounting Svelte or native Electron views.
 vi.mock('../project-state.svelte', () => ({ project: {} }));
-
 const bounds: PreviewBounds = { x: 260, y: 84, width: 850, height: 650 };
 type Call = { kind: 'show'; id: string | null; bounds: PreviewBounds | null }
   | { kind: 'position'; id: string; line: number }
-  | { kind: 'prime'; id: string; primeId: number };
+  | { kind: 'prime'; id: string }
+  | { kind: 'prepare'; id: string; line: number; revision: number; requestId: string };
 const controllers: SourceControlController[] = [];
+const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
 
 beforeEach(() => {
   vi.stubGlobal('window', {
     addEventListener() {},
-    setTimeout: globalThis.setTimeout,
-    clearTimeout: globalThis.clearTimeout,
+    setTimeout: (callback: () => void, ms: number) => globalThis.setTimeout(callback, ms),
+    clearTimeout: (id: ReturnType<typeof setTimeout>) => globalThis.clearTimeout(id),
   });
   Object.assign(project, {
     gitDiffTabs: [], activeGitDiffId: null, gitDiff: null, gitDiffActive: false,
@@ -27,244 +27,214 @@ beforeEach(() => {
     gitLoading: false, gitBusy: false, error: '',
   });
 });
-
 afterEach(() => {
   for (const controller of controllers.splice(0)) controller.clear();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
-function fixture(staged = false, prepared = true) {
+/** Populate readiness through the public rendering response, never a fabricated
+ * previewId. Native preparation ACKs are explicit and can be delayed/superseded.
+ */
+function fixture(staged = false, automaticRendering = true) {
   const calls: Call[] = [];
   const models = new LiveDocumentModelPort();
   let buffer = 'after';
   const diff: GitDiff = {
     path: 'notes.md', filePath: '/project/notes.md', staged, patch: '',
     originalText: 'before', modifiedText: 'after',
-    originalLabel: staged ? 'HEAD' : 'INDEX',
-    modifiedLabel: staged ? 'INDEX' : 'WORKTREE',
+    originalLabel: staged ? 'HEAD' : 'INDEX', modifiedLabel: staged ? 'INDEX' : 'WORKTREE',
     hunks: [{ oldStart: 120, oldLines: 1, newStart: 120, newLines: 1 }],
   };
   const tab: GitDiffTabState = {
     id: 'review', filePath: diff.filePath, staged, mode: 'source', line: 120,
-    diff, loading: false, previewId: prepared ? 'git-diff:review:a' : null,
-    pendingPreviewId: null, previewLoading: false, previewDirty: !prepared,
+    diff, loading: false, previewId: null, pendingPreviewId: null,
+    previewLoading: false, previewDirty: true,
   };
-  let announceStart!: () => void;
-  let finish!: (result: GitDiffPreviewResult) => void;
-  const started = new Promise<void>((resolve) => { announceStart = resolve; });
-  const rendered = new Promise<GitDiffPreviewResult>((resolve) => { finish = resolve; });
+  const pendingRenders: Array<() => void> = [];
+  let revision = 0;
   const desktop = {
     showPreview(id: string | null, geometry: PreviewBounds | null) {
       calls.push({ kind: 'show', id, bounds: geometry });
     },
     sendPreviewCommand(id: string, message: Record<string, unknown>) {
-      if (message.command === 'marktex:position-preview') {
+      if (message.command === 'marktex:position-preview')
         calls.push({ kind: 'position', id, line: Number(message.sourceLine) });
-      } else if (message.command === 'marktex:prime-review') {
-        calls.push({ kind: 'prime', id, primeId: Number(message.primeId) });
-      }
+      else if (message.command === 'marktex:prime-review') calls.push({ kind: 'prime', id });
+      else if (message.command === 'marktex:prepare-review') calls.push({ kind: 'prepare', id,
+        line: Number(message.sourceLine), revision: Number(message.revision), requestId: String(message.requestId) });
     },
-    updateGitReviewState() {},
-    destroyPreview() {},
+    updateGitReviewState() {}, destroyPreview() {},
     getTheme: async () => ({ id: 'paper', revision: 0 }),
-    prepareGitDiffPreview() { announceStart(); return rendered; },
+    prepareGitDiffPreview() {
+      const result: GitDiffPreviewResult = { revision: ++revision,
+        url: 'marktex-preview://document/test', themeId: 'paper', supported: true };
+      return automaticRendering ? Promise.resolve(result)
+        : new Promise<GitDiffPreviewResult>(resolve => pendingRenders.push(() => resolve(result)));
+    },
   } as unknown as DesktopPort;
-  const controller = new SourceControlController({
-    desktop, models,
-    openWorkingTree: async () => true,
-    activateWorkingTree: () => true,
-    workingTreeBuffer: () => buffer,
-    workingTreeChanged() {},
-    reviewChanged() {},
+  const controller = new SourceControlController({ desktop, models,
+    openWorkingTree: async () => true, activateWorkingTree: () => true,
+    workingTreeBuffer: () => buffer, workingTreeChanged() {}, reviewChanged() {},
   });
   controllers.push(controller);
   project.gitDiffTabs.push(tab);
+  const preparations = () => calls.filter((call): call is Extract<Call, { kind: 'prepare' }> => call.kind === 'prepare');
   return {
-    controller, tab, calls, started, models,
+    controller, tab, calls, models, preparations,
+    async activate(id = tab.id) { await controller.activateDiff(id); await flush(); },
     edit(text: string) { buffer = text; models.publish({ type: 'changed', path: tab.filePath, text }); },
-    positions: () => calls.filter((call) => call.kind === 'position'),
+    shown: () => calls.filter(call => call.kind === 'show' && call.id !== null),
+    positions: () => calls.filter(call => call.kind === 'position'),
+    ack(request = preparations().at(-1)!, override: Record<string, unknown> = {}) {
+      assert.ok(request, 'a final preparation must have been requested');
+      controller.previewMessage({ tabId: request.id, message: { type: 'marktex:review-prepared',
+        requestId: request.requestId, revision: request.revision, ...override } });
+    },
     async finishPreview() {
-      finish({ revision: 0, url: 'marktex-preview://document/test', themeId: 'paper', supported: true });
-      await rendered;
-      await Promise.resolve();
+      const finish = pendingRenders.shift();
+      assert.ok(finish, 'the application must actually request a render');
+      finish(); await flush();
     },
   };
 }
 
-for (const staged of [false, true]) {
-  test(`cold first Esc waits for layout (${staged ? 'staged' : 'working tree'})`, async () => {
-    const f = fixture(staged);
-    await f.controller.activateDiff(f.tab.id);
-    f.controller.showRendered();
-    assert.equal(f.positions().length, 0, 'must not measure an unsized native preview');
-    f.controller.layoutDiff(bounds);
-    assert.deepEqual(f.calls.slice(-2), [
-      { kind: 'show', id: f.tab.previewId, bounds },
-      { kind: 'position', id: f.tab.previewId, line: 120 },
-    ]);
-    f.controller.showRendered(); // duplicate DOM / IPC Escape must be idempotent
-    assert.equal(f.positions().length, 1);
-  });
-}
-
-test('null, zero-sized and non-finite bounds do not consume the position request', async () => {
-  const f = fixture();
-  await f.controller.activateDiff(f.tab.id);
+for (const staged of [false, true]) test(`cold first Esc waits for bounds and ACK (${staged ? 'staged' : 'working tree'})`, async () => {
+  const f = fixture(staged); await f.activate();
   f.controller.showRendered();
-  for (const invalid of [null, { ...bounds, width: 0 }, { ...bounds, height: 0 },
-    { ...bounds, x: Number.NaN }, { ...bounds, width: Number.POSITIVE_INFINITY }]) {
-    f.controller.layoutDiff(invalid);
-    assert.equal(f.positions().length, 0);
-  }
+  assert.equal(f.preparations().length, 0, 'never position an unsized preview');
   f.controller.layoutDiff(bounds);
-  assert.equal(f.positions().length, 1);
+  assert.equal(f.preparations().length, 1);
+  assert.equal(f.preparations()[0].line, 120);
+  assert.deepEqual(f.shown(), [], 'latest HTML alone cannot authorize first presentation');
+  f.ack();
+  assert.deepEqual(f.shown(), [{ kind: 'show', id: f.tab.previewId, bounds }]);
+  assert.deepEqual(f.positions(), [], 'no redundant positioning after the final ACK');
+  f.controller.showRendered();
+  assert.equal(f.preparations().length, 1, 'duplicate Esc is idempotent');
 });
 
-test('ordinary resize does not repeatedly snap back to the source cursor', async () => {
-  const f = fixture();
-  await f.controller.activateDiff(f.tab.id);
-  f.controller.showRendered();
-  f.controller.layoutDiff(bounds);
+test('invalid bounds do not consume the final position request', async () => {
+  const f = fixture(); await f.activate(); f.controller.showRendered();
+  for (const invalid of [null, { ...bounds, width: 0 }, { ...bounds, height: 0 },
+    { ...bounds, x: NaN }, { ...bounds, width: Infinity }]) {
+    f.controller.layoutDiff(invalid);
+    assert.equal(f.preparations().length, 0);
+    assert.equal(f.shown().length, 0);
+  }
+  f.controller.layoutDiff(bounds); f.ack();
+  assert.equal(f.shown().length, 1);
+});
+
+test('ordinary resize does not snap back or restart preparation after presentation', async () => {
+  const f = fixture(); await f.activate(); f.controller.showRendered();
+  f.controller.layoutDiff(bounds); f.ack();
   f.controller.layoutDiff({ ...bounds, width: 700 });
   f.controller.layoutDiff({ ...bounds, width: 600 });
-  assert.equal(f.positions().length, 1);
-});
-
-test('warm Esc also waits for current layout and keeps the user-selected source line', async () => {
-  const f = fixture();
-  await f.controller.activateDiff(f.tab.id);
-  f.controller.showRendered();
-  f.controller.layoutDiff(bounds);
-  f.calls.length = 0;
-  f.controller.toggleDiffMode(); // rendered -> source
-  f.controller.layoutDiff(null);
-  f.controller.updateSourceLine(175);
-  f.controller.showRendered();
-  assert.equal(f.positions().length, 0, 'old bounds must not authorize a new positioning request');
-  const resized = { ...bounds, width: 620 };
-  f.controller.layoutDiff(resized);
-  assert.deepEqual(f.calls.slice(-2), [
-    { kind: 'show', id: f.tab.previewId, bounds: resized },
-    { kind: 'position', id: f.tab.previewId, line: 175 },
-  ]);
-});
-
-for (const layoutFirst of [false, true]) {
-  test(`Esc before render completes: ${layoutFirst ? 'layout' : 'render'} arrives first`, async () => {
-    const f = fixture(false, false);
-    await f.controller.activateDiff(f.tab.id);
-    f.controller.showRendered();
-    await f.started;
-    assert.equal(f.positions().length, 0);
-    if (layoutFirst) f.controller.layoutDiff(bounds);
-    await f.finishPreview();
-    if (!layoutFirst) {
-      assert.equal(f.positions().length, 0, 'a ready page still needs native bounds');
-      f.controller.layoutDiff(bounds);
-    }
-    assert.deepEqual(f.calls.slice(-2), [
-      { kind: 'show', id: 'git-diff:review:a', bounds },
-      { kind: 'position', id: 'git-diff:review:a', line: 120 },
-    ]);
-    assert.equal(f.positions().length, 1);
-  });
-}
-
-for (const leave of ['source', 'close', 'deactivate'] as const) {
-  test(`pending first position is cancelled on ${leave}`, async () => {
-    const f = fixture();
-    await f.controller.activateDiff(f.tab.id);
-    f.controller.showRendered();
-    if (leave === 'source') f.controller.toggleDiffMode();
-    else if (leave === 'close') f.controller.closeDiff();
-    else f.controller.deactivateDiff();
-    f.controller.layoutDiff(bounds);
-    assert.equal(f.positions().length, 0);
-  });
-}
-
-test('a late layout after switching tabs does not position the old preview', async () => {
-  const f = fixture();
-  await f.controller.activateDiff(f.tab.id);
-  f.controller.showRendered();
-  const second: GitDiffTabState = {
-    ...f.tab, id: 'second', mode: 'source', line: 70, previewId: 'git-diff:second:a',
-  };
-  project.gitDiffTabs.push(second);
-  await f.controller.activateDiff(second.id);
-  f.controller.layoutDiff(bounds);
+  assert.equal(f.preparations().length, 1);
   assert.equal(f.positions().length, 0);
+});
+
+test('warm Esc uses current layout and source line without another preparation ACK', async () => {
+  const f = fixture(); await f.activate(); f.controller.showRendered();
+  f.controller.layoutDiff(bounds); f.ack(); f.calls.length = 0;
+  f.controller.toggleDiffMode(); f.controller.layoutDiff(null);
+  f.controller.updateSourceLine(175); f.controller.showRendered();
+  assert.equal(f.positions().length, 0);
+  const resized = { ...bounds, width: 620 }; f.controller.layoutDiff(resized);
+  assert.deepEqual(f.shown(), [{ kind: 'show', id: f.tab.previewId, bounds: resized }]);
+  assert.deepEqual(f.positions(), [{ kind: 'position', id: f.tab.previewId, line: 175 }]);
+  assert.equal(f.preparations().length, 0);
+});
+
+for (const layoutFirst of [false, true]) test(`Esc before rendering: ${layoutFirst ? 'layout' : 'render'} arrives first`, async () => {
+  const f = fixture(false, false); await f.activate(); f.controller.showRendered();
+  if (layoutFirst) f.controller.layoutDiff(bounds);
+  await f.finishPreview();
+  if (!layoutFirst) {
+    assert.equal(f.preparations().length, 0);
+    f.controller.layoutDiff(bounds);
+  }
+  assert.equal(f.preparations().length, 1);
+  assert.equal(f.preparations()[0].line, 120);
+  assert.equal(f.shown().length, 0);
+  f.ack();
+  assert.deepEqual(f.shown(), [{ kind: 'show', id: 'git-diff:review:a', bounds }]);
+});
+
+for (const leave of ['source', 'close', 'deactivate'] as const) test(`late preparation ACK cannot reveal after ${leave}`, async () => {
+  const f = fixture(); await f.activate(); f.controller.showRendered(); f.controller.layoutDiff(bounds);
+  const request = f.preparations()[0]; assert.ok(request);
+  if (leave === 'source') f.controller.toggleDiffMode();
+  else if (leave === 'close') f.controller.closeDiff();
+  else f.controller.deactivateDiff();
+  f.controller.layoutDiff(bounds); f.ack(request);
+  assert.equal(f.shown().length, 0);
+});
+
+test('late layout and ACK after a tab switch cannot present the old preview', async () => {
+  const f = fixture(); await f.activate(); f.controller.showRendered(); f.controller.layoutDiff(bounds);
+  const old = f.preparations()[0];
+  const second: GitDiffTabState = { ...f.tab, id: 'second', mode: 'source', line: 70,
+    previewId: null, previewDirty: true };
+  project.gitDiffTabs.push(second); await f.activate(second.id);
+  f.controller.layoutDiff(bounds); f.ack(old);
+  assert.equal(f.shown().length, 0);
   f.controller.showRendered();
-  assert.deepEqual(f.positions(), [{ kind: 'position', id: second.previewId, line: 70 }]);
+  assert.equal(f.preparations().at(-1)?.line, 70);
+  f.ack();
+  assert.deepEqual(f.shown(), [{ kind: 'show', id: second.previewId, bounds }]);
 });
 
 test('a prewarm ACK cannot suppress the final navigation intent', async () => {
   vi.useFakeTimers();
-  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) =>
-    window.setTimeout(() => callback(performance.now()), 0));
-  vi.stubGlobal('cancelAnimationFrame', (id: number) => window.clearTimeout(id));
-  const f = fixture();
-  try {
-    await f.controller.activateDiff(f.tab.id);
-    f.controller.layoutDiff(bounds);
-    await vi.advanceTimersByTimeAsync(0);
-    const prime = f.calls.find((call): call is Extract<Call, { kind: 'prime' }> => call.kind === 'prime');
-    assert.ok(prime);
-    assert.equal(f.controller.previewMessage({
-      tabId: prime.id,
-      message: { type: 'marktex:review-primed', primeId: 123, revision: 0 },
-    }), true);
-    f.calls.length = 0;
-    f.controller.showRendered();
-    assert.deepEqual(f.positions(), [{ kind: 'position', id: f.tab.previewId, line: 120 }]);
-    assert.deepEqual(f.calls.find((call) => call.kind === 'show'), {
-      kind: 'show', id: f.tab.previewId, bounds,
-    });
-  } finally {
-    vi.useRealTimers();
-  }
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => setTimeout(() => callback(0), 0));
+  vi.stubGlobal('cancelAnimationFrame', clearTimeout);
+  const f = fixture(); await f.activate(); f.controller.layoutDiff(bounds);
+  await vi.advanceTimersByTimeAsync(0);
+  assert.ok(f.calls.some(call => call.kind === 'prime'));
+  f.controller.previewMessage({ tabId: f.tab.previewId!,
+    message: { type: 'marktex:review-primed', primeId: 123, revision: 1 } });
+  f.calls.length = 0; f.controller.showRendered();
+  assert.equal(f.preparations().length, 1);
+  assert.equal(f.preparations()[0].line, 120);
+  assert.equal(f.shown().length, 0);
+  f.ack(); assert.equal(f.shown().length, 1);
 });
 
-
-for (const revision of [0, 1, 99]) test(`obsolete ACK revision ${revision} never suppresses current line`, async () => {
-  const f = fixture();
-  await f.controller.activateDiff(f.tab.id);
-  f.controller.layoutDiff(bounds);
-  f.controller.previewMessage({ tabId: f.tab.previewId!, message: {
-    type: 'marktex:review-primed', primeId: 1, revision, sourceLine: 1,
-  } });
-  f.controller.updateSourceLine(170);
-  f.controller.showRendered();
-  assert.deepEqual(f.positions().at(-1), { kind: 'position', id: f.tab.previewId, line: 170 });
+for (const revision of [0, 2, 99]) test(`wrong ACK revision ${revision} cannot commit the current line`, async () => {
+  const f = fixture(); await f.activate(); f.controller.layoutDiff(bounds);
+  f.controller.updateSourceLine(170); f.controller.showRendered();
+  const request = f.preparations()[0];
+  assert.equal(request.line, 170); assert.equal(request.revision, 1);
+  f.ack(request, { revision }); assert.equal(f.shown().length, 0);
+  f.ack(request); assert.equal(f.shown().length, 1);
 });
 
-test('edits and Undo from either surface update the same review snapshot once, not the Index', async () => {
-  const f = fixture();
-  await f.controller.activateDiff(f.tab.id);
+test('edits and Undo update the same Working Tree snapshot, not the Index', async () => {
+  const f = fixture(); await f.activate();
   const index = { ...f.tab, id: 'index', staged: true, diff: { ...f.tab.diff!, staged: true } };
   project.gitDiffTabs.push(index);
   f.edit('new live text');
-  assert.equal(f.tab.diff?.modifiedText, 'new live text');
-  assert.equal(index.diff.modifiedText, 'after');
-  f.edit('after');
-  assert.equal(f.tab.diff?.modifiedText, 'after');
+  assert.equal(f.tab.diff?.modifiedText, 'new live text'); assert.equal(index.diff.modifiedText, 'after');
+  f.edit('after'); assert.equal(f.tab.diff?.modifiedText, 'after');
 });
 
-test('first edit and Esc during initial rendering retain the source intent when the page arrives', async () => {
-  const f = fixture(false, false);
-  await f.controller.activateDiff(f.tab.id);
-  await f.started;
-  f.edit('first user edit');
-  f.controller.updateSourceLine(180);
-  f.controller.layoutDiff(bounds);
-  f.controller.showRendered();
+test('first edit during initial rendering waits for latest content and retains Esc intent', async () => {
+  const f = fixture(false, false); await f.activate();
+  f.edit('first user edit'); f.controller.updateSourceLine(180);
+  f.controller.layoutDiff(bounds); f.controller.showRendered();
   await f.finishPreview();
-  assert.deepEqual(f.positions()[0], { kind: 'position', id: 'git-diff:review:a', line: 180 });
+  assert.equal(f.preparations().length, 0, 'obsolete HTML cannot be prepared for presentation');
+  assert.equal(f.shown().length, 0);
+  await f.finishPreview();
+  assert.equal(f.preparations()[0].line, 180);
+  assert.equal(f.preparations()[0].revision, 2);
+  f.ack(); assert.equal(f.shown().length, 1);
 });
 
-test('closing the document closes its borrowed Working Tree, not unrelated Index snapshots', async () => {
-  const f = fixture();
-  await f.controller.activateDiff(f.tab.id);
+test('closing a document closes its Working Tree, not unrelated Index snapshots', async () => {
+  const f = fixture(); await f.activate();
   const index = { ...f.tab, id: 'index', staged: true, diff: { ...f.tab.diff!, staged: true } };
   project.gitDiffTabs.push(index);
   f.models.publish({ type: 'closed', path: f.tab.filePath });

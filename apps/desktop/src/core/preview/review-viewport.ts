@@ -38,7 +38,7 @@ export function readReviewBookmark(value: unknown): ReviewViewport | null {
   return result;
 }
 
-export function reviewPositionCommand(viewport: ReviewViewport): Record<string, unknown> {
+export function reviewPositionCommand(viewport: ReviewViewport) {
   return {
     command: 'marktex:position-preview', sourceLine: viewport.anchor.sourceLine,
     topRatio: viewport.anchor.yRatio, band: viewport.band,

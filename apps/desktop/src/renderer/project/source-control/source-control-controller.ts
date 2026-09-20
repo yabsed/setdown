@@ -1,3 +1,4 @@
+import type { PrimeReviewCommand } from '../../../protocol/preview-preparation';
 import { textDiffHunks } from '../../../core/diff/text-diff';
 import { isMarkdownDocument } from '../../../core/document/document-profile';
 import type { PreviewThemeId } from '../../../core/preview/preview-preferences';
@@ -591,7 +592,7 @@ export class SourceControlController {
     this.options.desktop.sendPreviewCommand(previewId, {
       command: 'marktex:prime-review', bounds: { ...this.bounds },
       position: reviewPositionCommand(viewport),
-    });
+    } satisfies PrimeReviewCommand);
   }
 
   private invalidatePreview(tab: GitDiffTabState): void {

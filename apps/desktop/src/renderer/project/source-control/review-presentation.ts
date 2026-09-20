@@ -1,3 +1,4 @@
+import type { PreparationPosition, PrimeReviewCommand, RuntimePreparationCommand } from '../../../protocol/preview-preparation';
 import type { PreviewBounds } from '../../../protocol/desktop-api';
 
 type Port = { sendPreviewCommand(id: string, message: Record<string, unknown>): void };
@@ -5,7 +6,7 @@ type Target = {
   id: string;
   revision: number;
   bounds: PreviewBounds;
-  position: Record<string, unknown>;
+  position: PreparationPosition;
 };
 
 /** Final hidden layout acknowledgment, NOT a Chromium pixel-presentation fence. */
@@ -25,7 +26,7 @@ export class ReviewPresentation {
     if (this.pending?.key === key) return;
     this.cancel();
     // String IDs cannot collide with PreviewManager's numeric preparation IDs.
-    const requestId = `present:${++this.sequence}`;
+    const requestId = `present:${++this.sequence}` as const;
     const timeout = setTimeout(() => {
       if (this.pending?.requestId !== requestId) return;
       this.cancel();
@@ -36,10 +37,10 @@ export class ReviewPresentation {
       // The prime command applies native bounds while the view is still hidden.
       this.port.sendPreviewCommand(target.id, {
         command: 'marktex:prime-review', bounds: target.bounds, position: target.position,
-      });
+      } satisfies PrimeReviewCommand);
       this.port.sendPreviewCommand(target.id, {
         ...target.position, command: 'marktex:prepare-review', revision: target.revision, requestId,
-      });
+      } satisfies RuntimePreparationCommand);
     } catch (error) {
       this.cancel();
       if (accept()) fail(error instanceof Error ? error.message : String(error));

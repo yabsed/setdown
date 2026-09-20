@@ -1,0 +1,93 @@
+name: Preview performance contract
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-contract-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    name: preview-contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # Ubuntu restricts unprivileged user namespaces; Electron's installed
+      # sandbox helper needs the same ownership/mode as packaged Electron.
+      - name: Enable Electron sandbox
+        run: |
+          sudo chown root:root node_modules/electron/dist/chrome-sandbox
+          sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
+      - run: xvfb-run -a npm run test:preview-contract
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: preview-contract-failure
+          path: apps/desktop/test-results
+
+  latency:
+    name: preview-latency
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: candidate
+          fetch-depth: 2
+      - name: Select baseline
+        id: base
+        working-directory: candidate
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BASE: ${{ github.event.before }}
+        run: |
+          baseline="$PR_BASE"
+          if [ -z "$baseline" ]; then baseline="$PUSH_BASE"; fi
+          if [ -z "$baseline" ] || [ "$baseline" = 0000000000000000000000000000000000000000 ]; then
+            baseline=$(git rev-parse HEAD^)
+          fi
+          echo "sha=$baseline" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          path: baseline
+          ref: ${{ steps.base.outputs.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            candidate/package-lock.json
+            baseline/package-lock.json
+      - run: npm ci
+        working-directory: candidate
+      - run: npm ci
+        working-directory: baseline
+      - run: npx playwright install --with-deps chromium
+        working-directory: candidate
+      - name: Enable Electron sandboxes
+        run: |
+          sudo chown root:root candidate/node_modules/electron/dist/chrome-sandbox baseline/node_modules/electron/dist/chrome-sandbox
+          sudo chmod 4755 candidate/node_modules/electron/dist/chrome-sandbox baseline/node_modules/electron/dist/chrome-sandbox
+      # Same VM, display, harness and fixture; serial AB/BA runs, no retries.
+      - name: Compare all eight scenarios
+        working-directory: candidate
+        run: xvfb-run -a npm run bench:preview -- --baseline "$GITHUB_WORKSPACE/baseline" --output "$GITHUB_WORKSPACE/preview-benchmark" --runs 5
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: preview-latency-comparison
+          path: preview-benchmark

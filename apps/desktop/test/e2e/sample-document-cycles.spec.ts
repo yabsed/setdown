@@ -1,4 +1,4 @@
-/** Ordinary Markdown Esc diagnostics, without timing gates. Each test launches
+/** Ordinary Markdown Esc measurements; bench:preview applies the timing gate. Each test launches
  * a fresh app. Capture includes polling/IPC/readback, not monitor presentation.
  * The ordinary document opens in reader mode before the first source edit.
  * SETDOWN_DOCUMENT_READER_IDLE_MS waits in that reader before entering source.
@@ -9,6 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { _electron as electron, expect, test } from '@playwright/test';
 import { disposeApplication } from './electron-app';
+import { cycleElectronExecutable, cycleSampleFixture, doubleClickPreview } from './preview-cycle-input';
 
 for (const idle of [0, 3000]) for (const edits of [false, true]) {
   test(`ordinary sample math cycles idle=${idle} edits=${edits}`, async () => {
@@ -19,9 +20,9 @@ for (const idle of [0, 3000]) for (const edits of [false, true]) {
     const readerIdle = Number(process.env.SETDOWN_DOCUMENT_READER_IDLE_MS || 0);
     try {
       const file = path.join(root, 'sample.md');
-      await writeFile(file, await readFile(path.resolve('test/fixtures/sample.md')));
+      await writeFile(file, await readFile(cycleSampleFixture));
       const { ELECTRON_RUN_AS_NODE: _ignored, ...environment } = process.env;
-      app = await electron.launch({ args: ['.', file],
+      app = await electron.launch({ executablePath: cycleElectronExecutable, args: ['.', file],
         env: { ...environment, XDG_CONFIG_HOME: path.join(root, 'config') } });
       const page = await app.firstWindow();
       await page.evaluate(() => window.addEventListener('keydown', event => {
@@ -111,28 +112,10 @@ for (const idle of [0, 3000]) for (const edits of [false, true]) {
         samples.push(sample);
 
         // Deliver browser mouse input after measurement, without a synthetic DOM event.
-        const doubleClickAt = await app.evaluate(async ({ webContents }, id) => {
-          const contents = webContents.fromId(id)!;
-          await contents.executeJavaScript('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
-          const point = await contents.executeJavaScript(
-            '({ x: Math.round(innerWidth * .5), y: Math.round(innerHeight * .4) })');
-          contents.debugger.attach('1.3');
-          let at = 0;
-          try {
-            await contents.debugger.sendCommand('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
-            for (const clickCount of [1, 2]) {
-              if (clickCount === 2) at = Date.now();
-              await contents.debugger.sendCommand('Input.dispatchMouseEvent', {
-                type: 'mousePressed', button: 'left', buttons: 1, clickCount, ...point });
-              await contents.debugger.sendCommand('Input.dispatchMouseEvent', {
-                type: 'mouseReleased', button: 'left', buttons: 0, clickCount, ...point });
-            }
-          } finally { contents.debugger.detach(); }
-          return at;
-        }, capture.id);
+        const input = await doubleClickPreview(app, capture.id, false);
         await expect(editor).toBeEditable();
         await expect(page.locator('.editor-surface')).toBeVisible();
-        Object.assign(sample, { doubleClickToEditorMs: Date.now() - doubleClickAt });
+        Object.assign(sample, { doubleClickToEditorMs: Date.now() - input.at });
         console.log(JSON.stringify({ ...sample, trace: undefined }));
       }
       if (process.env.SETDOWN_TRACE_DOCUMENT_CYCLES === '1') await app.evaluate(({ contentTracing }, file) =>

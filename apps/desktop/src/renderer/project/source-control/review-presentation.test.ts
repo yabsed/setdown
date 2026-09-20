@@ -9,7 +9,7 @@ function fixture() {
   let commits = 0;
   const errors: string[] = [];
   const target = { id: 'git-diff:r:b', revision: 2, bounds: { x: 20, y: 80, width: 800, height: 600 },
-    position: { sourceLine: 40, topRatio: .372, sourceSide: 'after', settle: false } };
+    position: { sourceLine: 40, topRatio: .372, sourceSide: 'after' as const, settle: false } };
   const present = (value = target) => gate.present(value, () => valid, () => { commits++; }, (e) => errors.push(e));
   const ack = (index = sent.length - 1, override: Record<string, unknown> = {}) => gate.receive(sent[index].id, {
     type: 'marktex:review-prepared', revision: sent[index].message.revision,

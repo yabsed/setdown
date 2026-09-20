@@ -1,4 +1,5 @@
 import type { SourceAtlas } from './source-atlas';
+import { isRuntimePreparationCommand } from '../protocol/preview-preparation';
 
 type Options = {
   sourceAtlas: SourceAtlas;
@@ -73,6 +74,7 @@ export function installReviewPreparation(options: Options): void {
       cancelReveal();
       return;
     }
+    if (!isRuntimePreparationCommand(command)) return;
     if (command.command !== 'marktex:prepare-review' && command.command !== 'marktex:prime-position') return;
     cancelReveal();
     const current = ++generation;

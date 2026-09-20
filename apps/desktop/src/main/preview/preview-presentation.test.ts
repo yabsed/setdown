@@ -28,10 +28,10 @@ vi.mock('../../core/preview/preview-preferences', () => ({ previewThemeBackgroun
 vi.mock('../../core/preview/preview-install', () => ({
   DEFERRED_HTML_SCRIPT_ID: 'deferred', INITIAL_HTML_TEMPLATE_ID: 'initial',
 }));
-vi.mock('../windows/workspace-zoom', () => ({
-  WorkspaceZoom: class { track() {} }, nativeZoomBounds: (bounds: unknown) => bounds,
+vi.mock('../windows/workspace-zoom', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../windows/workspace-zoom')>(),
+  WorkspaceZoom: class { track() {} },
 }));
-vi.mock('./review-preparation', () => ({ ReviewPreparation: class {} }));
 
 const bounds = { x: 20, y: 40, width: 600, height: 450 };
 function fixture() {
@@ -43,7 +43,7 @@ function fixture() {
       addChildView(view: WebContentsView) { if (!children.includes(view)) children.push(view); },
       removeChildView(view: WebContentsView) { const i = children.indexOf(view); if (i >= 0) children.splice(i, 1); },
     },
-    webContents: { isDestroyed: () => false, focus() { focusCount += 1; } },
+    webContents: { isDestroyed: () => false, getZoomFactor: () => 1, focus() { focusCount += 1; } },
     isDestroyed: () => false, isFocused: () => true, isVisible: () => true,
     getContentSize: () => [900, 700],
   };
@@ -71,6 +71,28 @@ test('ordinary document preparation sizes a hidden view without exposing or focu
   assert.deepEqual(commands, [{command:'marktex:prepare-document'}]);
 });
 
+for (const kind of ['document', 'review'] as const) test(`${kind} prepare/show share fractional CSS conversion and clipped DIP bounds`, () => {
+  const f = fixture();
+  const id = kind === 'document' ? 'document' : 'git-diff:doc:b';
+  if (kind === 'document') f.manager.create(1, id);
+  f.owner.webContents.getZoomFactor = () => 1.25;
+  const preview = f.manager.views.get(id)!;
+  const sizes: unknown[] = [];
+  const events: string[] = [];
+  preview.view.webContents.enableDeviceEmulation = value => { events.push('viewport'); sizes.push(value.viewSize); };
+  preview.view.webContents.send = () => { events.push('prepare'); };
+  // Rounding CSS before zoom would produce x=25 and clipped height=650.
+  const css = { x: 20.49, y: 40.49, width: 650.49, height: 600.49 };
+  f.manager.command(1, id, { command: kind === 'document' ? 'marktex:prime-document' : 'marktex:prime-review',
+    bounds: css, position: { sourceLine: 1 } });
+  assert.deepEqual(preview.appliedBounds, { x: 26, y: 51, width: 813, height: 649 });
+  assert.deepEqual(events, ['viewport', 'prepare']);
+  f.manager.show(1, id, css);
+  assert.deepEqual(sizes, [{ width: 813, height: 649 }]);
+  assert.equal(preview.view.getVisible(), true);
+  assert.equal(f.focusCount(), 0);
+});
+
 test('hidden document preparation is replayed after navigation, and cannot cross ownership', async () => {
   const f = fixture(); f.manager.create(1, 'document');
   const preview = f.manager.views.get('document')!;
@@ -88,6 +110,20 @@ test('hidden document preparation is replayed after navigation, and cannot cross
   complete(); await loading;
   assert.deepEqual(commands,[{command:'marktex:prepare-document'}]);
   assert.equal(preview.view.getVisible(),false);
+});
+
+test('warm show adds no background preparation; navigation replays it without another prime', async () => {
+  const f = fixture(); f.manager.create(1, 'document');
+  const preview = f.manager.views.get('document')!;
+  const commands: string[] = [];
+  preview.view.webContents.send = (_channel, message) => { commands.push(message.command); };
+  f.manager.command(1, 'document', { command: 'marktex:prime-document', bounds });
+  f.manager.show(1, 'document', bounds);
+  assert.deepEqual(commands, ['marktex:prepare-document', 'marktex:resume-hydration']);
+  f.manager.show(1, null, null);
+  commands.length = 0;
+  await f.manager.loadURL(preview.view, 'marktex-preview://document/replaced', 1);
+  assert.deepEqual(commands, ['marktex:prepare-document']);
 });
 
 test('replacement bounds and visibility precede hiding the old native front', () => {

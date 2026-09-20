@@ -302,7 +302,13 @@ npm run typecheck
 npm test
 npm run build
 npm run test:e2e
+npm run test:preview-contract
 ```
+
+Preview, layout, CSS and dependency changes must preserve the
+[preview performance contract](docs/preview-performance-contract.md). Its focused
+gate includes real Electron checks; `npm run bench:preview -- --baseline /path/to/base`
+compares cold and warm math-document cycles against a separate installed checkout.
 
 If the environment sets `ELECTRON_RUN_AS_NODE=1`, remove that variable only for the
 Electron command.
