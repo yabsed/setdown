@@ -4,6 +4,7 @@
   import { project } from '../project-state.svelte';
   import GitDiffEditor from './GitDiffEditor.svelte';
   import { gitDiffViewport } from './git-diff-viewport';
+  import { listenForReviewInteraction } from './review-source-interaction';
 
   let { actions }: { actions: AppActions } = $props();
   let previewHost = $state<HTMLDivElement>();
@@ -41,7 +42,11 @@
     const changed = () => gitDiffViewport.changed();
     const events = ['scroll', 'wheel', 'keyup', 'pointerup', 'input'];
     for (const event of events) source.addEventListener(event, changed, { capture: true, passive: true });
-    return () => { for (const event of events) source.removeEventListener(event, changed, true); };
+    const stopInteraction = listenForReviewInteraction(source, () => gitDiffViewport.interact());
+    return () => {
+      stopInteraction();
+      for (const event of events) source.removeEventListener(event, changed, true);
+    };
   });
   onDestroy(() => {
     observer?.disconnect();
@@ -54,6 +59,9 @@
     aria-hidden={!project.gitDiffActive} aria-label="Git diff review">
     <div class="git-review-body">
       <div class="git-diff-source-layer"
+        class:is-retained={project.gitDiffActive && project.gitDiffMode === 'rendered'}
+        aria-hidden={!project.gitDiffActive || project.gitDiffMode !== 'source'}
+        inert={!project.gitDiffActive || project.gitDiffMode !== 'source'}
         class:is-active={project.gitDiffActive && project.gitDiffMode === 'source'
           && project.gitDiff?.originalText !== null && project.gitDiff?.modifiedText !== null}>
         <GitDiffEditor {actions} />
@@ -63,14 +71,25 @@
         class:is-frozen={project.gitDiffFrozen}
         style:background-image={project.gitDiffSnapshot
           ? `url("${project.gitDiffSnapshot}")` : undefined} bind:this={previewHost}>
-        {#if project.gitDiffActive && project.gitDiffPreviewLoading && !project.gitDiffPreviewReady}
+        {#if project.gitDiffActive && project.gitDiffMode === 'rendered'
+          && project.gitDiffPreviewLoading && !project.gitDiffPreviewReady}
           <div class="git-review-state">Typesetting changes…</div>
         {/if}
-        {#if project.gitDiffActive && !project.gitDiffPreviewLoading
+        {#if project.gitDiffActive && project.gitDiffMode === 'rendered' && !project.gitDiffPreviewLoading
           && !project.gitDiffPreviewReady && project.gitDiff}
           <div class="git-review-state">Rendered comparison is unavailable. Press the edit button for source.</div>
         {/if}
       </div>
+      {#if project.gitDiffActive && project.gitDiffMode === 'source'
+        && (project.gitDiffTransitionNotice || project.gitDiffTransitionError)}
+        <div class="review-transition-status" role="status" aria-live="polite">
+          <span>{project.gitDiffTransitionError
+            ? `${project.gitDiffTransitionError} Press Esc to retry.` : 'Preparing Viewer…'}</span>
+          {#if project.gitDiffTransitionPending}
+            <button type="button" onclick={() => gitDiffViewport.interact()}>Keep editing</button>
+          {/if}
+        </div>
+      {/if}
       {#if project.gitDiffActive && project.gitDiffLoading && !project.gitDiff}
         <div class="git-review-state">Reading versions…</div>
       {:else if project.gitDiffActive
@@ -80,3 +99,18 @@
     </div>
   </section>
 {/if}
+
+<style>
+  /* Native views cover this backing surface. Do not clear Monaco one renderer
+     frame before the main process can execute showPreview. No screenshot copy. */
+  .git-diff-source-layer.is-retained { visibility: visible; pointer-events: none; }
+  .review-transition-status {
+    position: absolute; right: 10px; bottom: 8px; z-index: 1;
+    display: flex; align-items: center; gap: 8px;
+    max-width: min(480px, calc(100% - 20px)); padding: 5px 8px;
+    border: 1px solid var(--app-strong-border); border-radius: 4px;
+    color: var(--app-subtle-text); background: var(--app-editor-background);
+    font-size: 11px;
+  }
+  .review-transition-status button { flex-shrink: 0; font: inherit; }
+</style>
