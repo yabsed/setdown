@@ -38,10 +38,10 @@ export class TabController {
     const tab = this.options.workspace.tabs.find((candidate) => !candidate.document.isUntitled && candidate.document.path === path);
     return tab ? this.text(tab) : null;
   };
-  activateDocumentPath = (path: string): boolean => {
+  activateWorkingTreePath = async (path: string): Promise<boolean> => {
     const tab = this.options.workspace.tabs.find((candidate) => !candidate.document.isUntitled && candidate.document.path === path);
     if (!tab) return false;
-    void this.activate(tab.id);
+    await this.activate(tab.id, 'review');
     return true;
   };
   acceptWorkingTreeBuffer = (path: string, text: string, edits?: WorkingTreeEdit[]): void => {
@@ -144,13 +144,24 @@ export class TabController {
     this.render();
   };
 
-  activate = async (tabId: string): Promise<void> => {
+  activate = async (tabId: string, presentation: 'document' | 'review' = 'document'): Promise<void> => {
     const { desktop, editor, preview, reader, session, surfaces, workspace } = this.options;
     const next = workspace.find(tabId);
     if (!next) return;
+    const reviewing = presentation === 'review';
+    // Review needs the live document/session, not its ordinary reader. Suspend
+    // before resetting sessions or updating UI, which can otherwise show it.
+    if (reviewing) reader.setSuspended(true);
     next.surface = documentSurface(next.document.path, next.surface);
     if (tabId === workspace.activeId) {
       const activation = ++this.activation;
+      if (reviewing) return;
+      // A review may be this document's first source surface. Its shared model
+      // does not imply that the ordinary editor has been mounted yet.
+      if (next.surface === 'editor') {
+        await editor.load();
+        if (activation !== this.activation || workspace.activeId !== next.id) return;
+      }
       surfaces.set(next.surface);
       this.updateChrome();
       if (next.surface !== 'viewer' || !hasMarkdownPreview(next.document)) {
@@ -167,7 +178,7 @@ export class TabController {
     const activation = ++this.activation;
     const restoreAnchor = next.readingPosition?.kind === 'text' ? { ...next.anchor } : null;
     next.restoringPosition = !!restoreAnchor;
-    if (next.surface === 'editor') await editor.load();
+    if (!reviewing && next.surface === 'editor') await editor.load();
     if (activation !== this.activation || !workspace.find(next.id)) return;
     this.saveActiveState();
     // Cancel outgoing work but retain its native page, model and cached revision.
@@ -181,10 +192,11 @@ export class TabController {
       preview.readyRevision = session.revision;
     }
     this.updateChrome();
-    surfaces.set(next.surface);
-    if (hasMarkdownPreview(next.document)) reader.send(next.id, { command: 'marktex:collect-headings' });
+    if (!reviewing) surfaces.set(next.surface);
+    if (!reviewing && hasMarkdownPreview(next.document)) reader.send(next.id, { command: 'marktex:collect-headings' });
     await desktop.activateDocument(next.document, this.text(next), session.revision);
     if (activation !== this.activation || workspace.activeId !== next.id) return;
+    if (reviewing) { next.restoringPosition = false; return; }
     if (!hasMarkdownPreview(next.document)) {
       if (restoreAnchor && next.surface === 'editor' && !(next.readingPosition?.kind === 'text' && next.readingPosition.editorView)) editor.reveal(restoreAnchor);
       next.restoringPosition = false; return;
@@ -332,11 +344,12 @@ export class TabController {
     const tab = this.options.workspace.active;
     if (tab) this.options.editor.replace(tab, documentSnapshot);
   };
-  show = async (documentSnapshot: DocumentSnapshot, initialSurface: 'viewer' | 'editor' | 'pdf' | 'image' = 'viewer'): Promise<void> => {
+  show = async (documentSnapshot: DocumentSnapshot, initialSurface: 'viewer' | 'editor' | 'pdf' | 'image' = 'viewer',
+    presentation: 'document' | 'review' = 'document'): Promise<void> => {
     const { editor, reader, workspace } = this.options;
     if (!documentSnapshot.isUntitled) {
       const existing = workspace.tabs.find((tab) => !tab.document.isUntitled && tab.document.path === documentSnapshot.path);
-      if (existing) return void await this.activate(existing.id);
+      if (existing) return void await this.activate(existing.id, presentation);
     }
     const saved = documentSnapshot.readingPosition;
     initialSurface = documentSurface(documentSnapshot.path, saved?.kind === 'text' ? saved.surface : initialSurface);
@@ -352,8 +365,8 @@ export class TabController {
     created.tocOpen = hasMarkdownPreview(documentSnapshot) && restoredOutlineOpen();
     workspace.add(created);
     this.render();
-    await this.activate(id);
-    if (initialSurface === 'viewer' && hasMarkdownPreview(documentSnapshot)) window.setTimeout(() => {
+    await this.activate(id, presentation);
+    if (presentation === 'document' && initialSurface === 'viewer' && hasMarkdownPreview(documentSnapshot)) window.setTimeout(() => {
       void editor.load().catch((error) => console.error('Failed to load editor', error));
     }, 0);
   };

@@ -69,6 +69,13 @@ Shared preparation command types live in `src/protocol/preview-preparation.ts`.
 Call sites use `satisfies`; IPC inputs still require runtime validation. Core
 document algorithms must not import Electron or the protocol layer.
 
+Opening a Working Tree review binds its live document without presenting or
+awaiting the ordinary Markdown reader. New reviews start in Monaco source mode;
+ordinary rendering and reading-position settlement must not gate first opening.
+The document retains its own surface, position, unsaved text and shared undo
+history. `text-workspace.test.ts` and `git-review-first-open.spec.ts` cover first
+opening without an ordinary preview and returning to the shared document.
+
 ## Required deterministic and browser checks
 
 From the repository root:

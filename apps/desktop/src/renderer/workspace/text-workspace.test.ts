@@ -38,7 +38,7 @@ function fixture() {
       retarget() { calls.push('retarget'); }, replace() { calls.push('replace'); },
       setText: (tab: { text: string }, text: string) => { tab.text = text; return false; }, lineCount: () => 2 },
     reader: { themeId: 'paper', create() { calls.push('create'); }, destroy() { calls.push('destroy'); },
-      send() { calls.push('send'); }, syncView() {}, awaiting: false },
+      send() { calls.push('send'); }, syncView() {}, setSuspended(value: boolean) { calls.push(`suspended:${value}`); }, awaiting: false },
     surfaces: { set(surface: 'viewer' | 'editor') { session.surface = surface; }, publishAnchor() {} },
     confirmClose: async () => 'discard', shouldSchedulePreview: () => true, workspaceChanged() {},
   };
@@ -125,4 +125,50 @@ test('text Esc, scroll and explicit preview calls do no Markdown work', async ()
   assert.equal(await preview.ensure(0), false);
   assert.equal(await preview.position(anchor, 0), false);
   assert.deepEqual(calls, []);
+});
+
+test('first Working Tree activation binds the document without ordinary preview work', async () => {
+  const f = fixture();
+  const present = vi.spyOn(f.options.surfaces, 'set');
+  const loadEditor = vi.spyOn(f.options.editor, 'load');
+  await f.controller.show(snapshot('/project/review.md'), 'viewer', 'review');
+  assert.equal(f.session.document?.path, '/project/review.md');
+  assert.equal(f.workspace.active!.surface, 'viewer');
+  assert.ok(calls.includes('suspended:true'));
+  assert.equal(present.mock.calls.length, 0);
+  assert.equal(loadEditor.mock.calls.length, 0);
+  for (const operation of ['ensure', 'position', 'timer', 'send']) assert.ok(!calls.includes(operation), operation);
+  f.controller.acceptWorkingTreeBuffer('/project/review.md', 'unsaved review edit');
+  assert.equal(f.controller.currentText(), 'unsaved review edit');
+  await f.controller.activate(f.workspace.activeId!);
+  assert.ok(calls.includes('ensure'), 'ordinary reader prepares only when explicitly opened');
+});
+
+test('review activation preserves an existing document surface, position and unsaved text', async () => {
+  const f = fixture();
+  await f.controller.show(snapshot('/project/review.md'), 'editor');
+  const tab = f.workspace.active!;
+  tab.text = 'unsaved';
+  tab.anchor = { ...anchor, sourceLine: 2 };
+  await f.controller.show(snapshot('/project/other.txt'));
+  calls.length = 0;
+  const present = vi.spyOn(f.options.surfaces, 'set');
+  assert.equal(await f.controller.activateWorkingTreePath(tab.document.path), true);
+  assert.equal(f.workspace.activeId, tab.id);
+  assert.equal(tab.surface, 'editor');
+  assert.equal(tab.anchor.sourceLine, 2);
+  assert.equal(f.controller.currentText(), 'unsaved');
+  assert.equal(present.mock.calls.length, 0);
+  assert.ok(!calls.includes('ensure'));
+  assert.ok(!calls.includes('position'));
+});
+
+test('returning from a first review to a saved editor surface loads the ordinary editor', async () => {
+  const f = fixture();
+  const load = vi.spyOn(f.options.editor, 'load');
+  await f.controller.show(snapshot('/project/review.md'), 'editor', 'review');
+  assert.equal(load.mock.calls.length, 0);
+  await f.controller.activate(f.workspace.activeId!);
+  assert.equal(load.mock.calls.length, 1);
+  assert.equal(f.session.surface, 'editor');
 });

@@ -15,7 +15,8 @@ type Options = {
   desktop: DesktopPort;
   searchDocuments(query: string): ProjectSearchDocument[];
   showDocument(path: string): Promise<boolean>;
-  activateDocument(path: string): boolean;
+  openWorkingTree(path: string): Promise<boolean>;
+  activateWorkingTree(path: string): Promise<boolean>;
   workingTreeBuffer(path: string): string | null;
   workingTreeChanged(path: string, text: string, edits?: WorkingTreeEdit[]): void;
   reloadDocuments(paths: string[]): Promise<void>;
@@ -39,7 +40,7 @@ export class ProjectController {
       // The composition root deactivates the old review only after a successful read.
       open: (path) => this.explorer.open(path), highlight: options.highlight });
     this.sourceControl = new SourceControlController({ desktop: options.desktop,
-      openWorkingTree: options.showDocument, activateWorkingTree: options.activateDocument,
+      openWorkingTree: options.openWorkingTree, activateWorkingTree: options.activateWorkingTree,
       workingTreeBuffer: options.workingTreeBuffer, workingTreeChanged: options.workingTreeChanged,
       reviewChanged: options.reviewChanged });
   }

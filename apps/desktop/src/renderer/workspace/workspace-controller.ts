@@ -148,13 +148,25 @@ export function startWorkspace(desktop: DesktopPort) {
       await tabs.show(documentSnapshot);
       return true;
     },
-    activateDocument: tabs.activateDocumentPath, workingTreeBuffer: tabs.documentBuffer,
+    openWorkingTree: async (path) => {
+      const documentSnapshot = await desktop.openProjectFile(path);
+      if (!documentSnapshot) return false;
+      await tabs.show(documentSnapshot, 'viewer', 'review');
+      return true;
+    },
+    activateWorkingTree: tabs.activateWorkingTreePath, workingTreeBuffer: tabs.documentBuffer,
     workingTreeChanged: tabs.acceptWorkingTreeBuffer, reloadDocuments: tabs.reloadDocumentPaths,
     pathMoved: tabs.relocatePath, prepareRemove: tabs.prepareRemove,
     reviewChanged: (open, activeReview) => {
+      const wasOpen = shell.dataset.gitDiff === 'true';
       shell.dataset.gitDiff = String(open);
       reader.setSuspended(activeReview);
       if (activeReview) { positions.capture(); preview.cancelSchedule(); }
+      else if (wasOpen && !open && workspace.activeId) {
+        // A first-open review may never have prepared the ordinary document.
+        // Closing the last review is an explicit return to that document.
+        void tabs.activate(workspace.activeId);
+      }
     },
     highlight: (query, target) => {
       const editing = workspace.active?.surface === 'editor';

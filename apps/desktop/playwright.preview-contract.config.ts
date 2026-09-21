@@ -5,6 +5,7 @@ export default defineConfig(base, {
   retries: 0,
   testMatch: [
     'document-preparation.spec.ts',
+    'git-review-first-open.spec.ts',
     'reading-positions.spec.ts',
     'image-reader.spec.ts',
     'media-tabs.spec.ts',

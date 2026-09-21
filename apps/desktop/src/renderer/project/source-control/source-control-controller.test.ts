@@ -240,3 +240,26 @@ test('closing a document closes its Working Tree, not unrelated Index snapshots'
   f.models.publish({ type: 'closed', path: f.tab.filePath });
   assert.deepEqual(project.gitDiffTabs.map(tab => tab.id), ['index']);
 });
+
+test('restoring an inactive Working Tree review does not activate or suspend its ordinary document', async () => {
+  project.folder = { path: '/project', name: 'project' };
+  const activate = vi.fn(() => true);
+  const open = vi.fn(async () => true);
+  const changed = vi.fn();
+  const desktop = {
+    getGitReviewState: async () => ({ name: 'notes.md', path: '/project/notes.md', dirty: false,
+      isUntitled: false, staged: false, active: false, mode: 'source', line: 1 }),
+    getGitDiff: () => new Promise(() => {}),
+    showPreview() {}, updateGitReviewState() {}, destroyPreview() {},
+  } as unknown as DesktopPort;
+  const controller = new SourceControlController({ desktop,
+    activateWorkingTree: activate, openWorkingTree: open, workingTreeBuffer: () => null,
+    workingTreeChanged() {}, reviewChanged: changed });
+  controllers.push(controller);
+  await controller.restore();
+  assert.equal(project.gitDiffTabs.length, 1);
+  assert.equal(project.gitDiffActive, false);
+  assert.equal(activate.mock.calls.length, 0);
+  assert.equal(open.mock.calls.length, 0);
+  assert.deepEqual(changed.mock.calls, [[true, false]]);
+});

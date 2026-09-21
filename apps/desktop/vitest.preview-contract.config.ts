@@ -6,6 +6,7 @@ export default defineConfig({
   test: { ...base.test, include: [
     'src/architecture-boundaries.test.ts',
     'src/renderer/workspace/media-cache.test.ts',
+    'src/renderer/workspace/text-workspace.test.ts',
     'src/main/documents/image-file.test.ts',
     'src/main/reading/reading-position-store.test.ts',
     'src/protocol/preview-preparation.test.ts',

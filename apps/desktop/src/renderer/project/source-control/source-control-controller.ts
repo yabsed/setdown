@@ -22,7 +22,7 @@ type Options = {
   viewport?: GitDiffViewportPort;
   models?: LiveDocumentModelPort;
   openWorkingTree(path: string): Promise<boolean>;
-  activateWorkingTree(path: string): boolean;
+  activateWorkingTree(path: string): boolean | Promise<boolean>;
   workingTreeBuffer(path: string): string | null;
   workingTreeChanged(path: string, text: string, edits?: WorkingTreeEdit[]): void;
   reviewChanged(open: boolean, active: boolean): void;
@@ -74,7 +74,7 @@ export class SourceControlController {
     this.observeDocuments();
     const saved = await this.options.desktop.getGitReviewState();
     if (!saved || !project.folder || project.gitDiffTabs.length) return;
-    if (!saved.staged && !this.options.activateWorkingTree(saved.path)
+    if (saved.active && !saved.staged && !await this.options.activateWorkingTree(saved.path)
       && !await this.options.openWorkingTree(saved.path)) return;
     const created = this.createTab(saved.path, saved.staged, saved.mode, saved.line);
     project.gitDiffTabs.push(created);
@@ -123,7 +123,7 @@ export class SourceControlController {
 
   review = async (filePath: string, staged: boolean): Promise<void> => {
     this.observeDocuments();
-    if (!staged && !this.options.activateWorkingTree(filePath)
+    if (!staged && !await this.options.activateWorkingTree(filePath)
       && !await this.options.openWorkingTree(filePath)) return;
     let tab = project.gitDiffTabs.find((candidate) => candidate.filePath === filePath && candidate.staged === staged);
     if (!tab) {
@@ -168,7 +168,7 @@ export class SourceControlController {
     this.observeDocuments();
     const tab = project.gitDiffTabs.find((candidate) => candidate.id === id);
     if (!tab) return;
-    if (!tab.staged && !this.options.activateWorkingTree(tab.filePath)
+    if (!tab.staged && !await this.options.activateWorkingTree(tab.filePath)
       && !await this.options.openWorkingTree(tab.filePath)) return;
     this.activateTabState(tab);
     if (!tab.diff && !tab.loading) void this.reloadTab(tab);
