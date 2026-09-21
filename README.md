@@ -19,8 +19,9 @@ you need file navigation, search, Git review, or a terminal.
 
 <table>
   <tr>
-    <td><img src="docs/assets/setdown-tabs.png" alt="Markdown with equations in the Paper theme, with multiple document tabs"></td>
-    <td><img src="docs/assets/setdown-editor.png" alt="Markdown source in the One Dark editor theme"></td>
+    <td><img src="docs/assets/image1.png" alt="Rendered Markdown with equations and Git changes in a dark theme"></td>
+    <td><img src="docs/assets/image2.png" alt="Markdown source with Git changes in the editor"></td>
+    <td><img src="docs/assets/image3.png" alt="Markdown search results and the integrated terminal"></td>
   </tr>
 </table>
 
