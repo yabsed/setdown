@@ -5,7 +5,7 @@
   import type { DesktopPort } from '../ports/desktop-port';
   import { PdfRuntime, type OutlineItem } from './pdf-runtime';
 
-  let { document, initialPosition, desktop, onposition }: { document: DocumentSnapshot;
+  let { document, initialPosition, desktop, onposition, active }: { document: DocumentSnapshot; active: boolean;
     initialPosition?: ReadingPosition; desktop: DesktopPort; onposition(position: PdfReadingPosition): void } = $props();
   let host: HTMLDivElement;
   let runtime: PdfRuntime;
@@ -24,17 +24,18 @@
 
   onMount(() => {
     runtime = new PdfRuntime({ host, document, desktop,
-      initial: initialPosition?.kind === 'pdf' ? initialPosition : undefined,
+      initial: initialPosition?.kind === 'pdf' ? initialPosition : undefined, active: () => active,
       changed: (position) => { zoom = String(position.zoom); onposition(position); },
       status: (current, total) => { page = current; count = total; passwordPrompt = ''; },
       outline: (items) => outline = items, matches: (current, total) => matches = `${current} / ${total}`,
       password: (update, incorrect) => { unlock = update; passwordPrompt = incorrect ? 'Incorrect password. Try again.' : 'This PDF requires a password.'; },
       error: (message) => error = message });
     void runtime.open();
-    const focusFind = () => { searchInput?.focus(); searchInput?.select(); };
+    const focusFind = () => { if (active) { searchInput?.focus(); searchInput?.select(); } };
     window.addEventListener('setdown:pdf-find', focusFind);
     return () => { window.removeEventListener('setdown:pdf-find', focusFind); runtime.dispose(); };
   });
+  $effect(() => { if (active) runtime?.resume(); });
 
   function findKey(event: KeyboardEvent) {
     if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); runtime.find(query, event.shiftKey, true); }
@@ -42,22 +43,22 @@
   }
 </script>
 
-<section class="pdf-surface" aria-label="PDF reader" data-pdf-page={page} data-pdf-pages={count}>
+<section class="pdf-surface" class:inactive={!active} inert={!active} aria-hidden={!active} aria-label="PDF reader" data-pdf-page={page} data-pdf-pages={count}>
   <div class="pdf-toolbar">
-    <button type="button" aria-label="PDF outline" aria-expanded={outlineOpen} onclick={() => outlineOpen = !outlineOpen}>☷</button>
+    <button type="button" aria-label="PDF outline" disabled={!count} aria-expanded={outlineOpen} onclick={() => outlineOpen = !outlineOpen}>☷</button>
     <button type="button" aria-label="Previous PDF page" disabled={page <= 1} onclick={() => runtime.page(page - 1)}>‹</button>
-    <input type="number" aria-label="PDF page number" min="1" max={count || 1} value={page}
+    <input type="number" aria-label="PDF page number" disabled={!count} min="1" max={count || 1} value={page}
       onchange={(event) => runtime.page(Number(event.currentTarget.value))} />
     <span>/ {count || '…'}</span>
     <button type="button" aria-label="Next PDF page" disabled={!count || page >= count} onclick={() => runtime.page(page + 1)}>›</button>
-    <select aria-label="PDF zoom" value={zoom} onchange={(event) => {
+    <select aria-label="PDF zoom" disabled={!count} value={zoom} onchange={(event) => {
       const value = event.currentTarget.value; runtime.zoom(Number(value) || value as PdfReadingPosition['zoom']);
     }}>
       <option value="page-width">Fit width</option><option value="page-fit">Fit page</option><option value="auto">Automatic</option>
       {#each [.5, .75, 1, 1.25, 1.5, 2, 3, 4] as scale}<option value={String(scale)}>{scale * 100}%</option>{/each}
     </select>
-    <button type="button" aria-label="Rotate PDF" onclick={() => runtime.rotate()}>↻</button>
-    <input class="pdf-search" type="search" placeholder="Find in PDF…" aria-label="Find in PDF" bind:this={searchInput}
+    <button type="button" aria-label="Rotate PDF" disabled={!count} onclick={() => runtime.rotate()}>↻</button>
+    <input class="pdf-search" type="search" placeholder="Find in PDF…" disabled={!count} aria-label="Find in PDF" bind:this={searchInput}
       bind:value={query} oninput={() => runtime.find(query)} onkeydown={findKey} />
     <span class="pdf-matches" aria-live="polite">{query ? matches : ''}</span>
     <button type="button" aria-label="Previous PDF match" disabled={!query} onclick={() => runtime.find(query, true, true)}>↑</button>
@@ -85,6 +86,7 @@
 
 <style>
   .pdf-surface { grid-column: 2; grid-row: 3; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--app-canvas); }
+  .inactive { visibility: hidden; pointer-events: none; }
   .pdf-toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 6px 10px; border-bottom: 1px solid var(--app-border); font-size: 12px; background: var(--app-chrome); }
   button, input, select { color: var(--app-text); background: var(--app-surface); border: 1px solid var(--app-border); border-radius: 3px; padding: 4px 6px; font: inherit; }
   button { cursor: pointer; }

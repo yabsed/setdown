@@ -96,7 +96,7 @@ export function startWorkspace(desktop: DesktopPort) {
     showRenderError: () => void surfaces.enterEditor(),
   };
   mount(App, { target: document.querySelector<HTMLDivElement>('#app')!, props: { actions, terminalApi: desktop.terminal, desktop,
-    pdfPosition: (id: string, position: import('../../core/reading/reading-position').PdfReadingPosition) => { const tab = workspace.find(id); if (tab && workspace.activeId === id && !project.gitDiffActive) positions.remember(tab, position); } } });
+    mediaPosition: (id: string, position: import('../../core/reading/reading-position').ReadingPosition) => { const tab = workspace.find(id); if (tab && workspace.activeId === id && !project.gitDiffActive) positions.remember(tab, position); } } });
   const shell = document.querySelector<HTMLElement>('.shell')!;
   restorePanelWidths(shell);
   const previewFrames = document.querySelector<HTMLElement>('.preview-frames')!;
@@ -139,7 +139,7 @@ export function startWorkspace(desktop: DesktopPort) {
     reload: tabs.reload, saved: (document) => projects.documentSaved(document),
     renderTabs: tabs.render, updateChrome: tabs.updateChrome });
   projects = new ProjectController({ desktop,
-    searchDocuments: (query) => workspace.tabs.filter((tab) => tab.surface !== 'pdf').map((tab) => ({ path: tab.document.path, text: tabs.text(tab),
+    searchDocuments: (query) => workspace.tabs.filter((tab) => !tab.document.kind).map((tab) => ({ path: tab.document.path, text: tabs.text(tab),
       surface: tab.surface === 'viewer' ? 'viewer' : 'editor', matches: tab.surface === 'editor' ? editor.projectMatches(tab, query.trim()) : undefined })),
     showDocument: async (path) => {
       const documentSnapshot = await desktop.openProjectFile(path);

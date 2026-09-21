@@ -17,17 +17,20 @@ describe('durable reading positions', () => {
     const store = new ReadingPositionStore(file);
     store.save(record('/docs/a.txt'));
     store.save({ ...record('/docs/b.pdf'), position: { kind: 'pdf', page: 37, left: 12, top: 401, zoom: 'page-width', rotation: 90 } });
+    store.save({ ...record('/docs/c.png'), position: { kind: 'image', zoom: 2, rotation: 90, centerX: .3, centerY: .7 } });
     store.move('/docs', '/renamed'); store.flush();
     const reopened = new ReadingPositionStore(file);
     expect(reopened.get('/docs/a.txt', { mtimeMs: 3, size: 100 })).toBeUndefined();
     expect(reopened.get('/renamed/a.txt', { mtimeMs: 3, size: 100 })).toEqual(record('').position);
     expect(reopened.get('/renamed/b.pdf', { mtimeMs: 3, size: 100 })).toMatchObject({ page: 37, top: 401, rotation: 90 });
+    expect(reopened.get('/renamed/c.png', { mtimeMs: 3, size: 100 })).toMatchObject({ kind: 'image', zoom: 2, rotation: 90, centerX: .3, centerY: .7 });
   }));
   it('rejects delayed older observations and invalid data', () => run((file) => {
     const store = new ReadingPositionStore(file);
     expect(store.save(record('/a.txt', 200))).toBe(true);
     expect(store.save(record('/a.txt', 199))).toBe(false);
     expect(store.save({ ...record('/a.pdf'), position: { kind: 'pdf', page: 0 } })).toBe(false);
+    expect(store.save({ ...record('/a.png'), position: { kind: 'image', zoom: 2, rotation: 90, centerX: 2, centerY: .5 } })).toBe(false);
     const cyclic: { self?: unknown } = {}; cyclic.self = cyclic;
     expect(store.save({ ...record('/a.txt'), position: { ...record('').position, editorView: cyclic } })).toBe(false);
     store.flush();

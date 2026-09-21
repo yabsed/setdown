@@ -2,7 +2,7 @@ import { ipcMain, shell } from 'electron';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { normalizePreviewTheme } from '../../core/preview/preview-preferences';
-import { isMarkdownDocument, isOpenableDocument, isPdfDocument } from '../../core/document/document-profile';
+import { isMarkdownDocument, isOpenableDocument, isReadOnlyDocument } from '../../core/document/document-profile';
 import { retainUnsavedRevision } from '../../core/document/document-save';
 import type { ApplicationMenuEntry, CloseDecision, DocumentSnapshot, GitRemoteAction, GitReviewState,
   ProjectEntryKind, ProjectSearchRequest, SaveResult, TabStateSummary, ThemeSnapshot } from '../../protocol/desktop-api';
@@ -40,7 +40,7 @@ export function installIpc(options: Options): void {
     const review = state.rendererGitReview?.active === true;
     const filePath = review ? state.rendererGitReview!.path : state.currentDocument?.path ?? '';
     return documentMenus(applicationMenuEntries(menuId), isMarkdownDocument(filePath), review).map((item) =>
-      isPdfDocument(filePath) && ['save', 'menu-save-as'].includes(item.id) ? { ...item, enabled: false } : item);
+      isReadOnlyDocument(filePath) && ['save', 'menu-save-as'].includes(item.id) ? { ...item, enabled: false } : item);
   });
   channels.on('menu:execute', (state, itemId: unknown) => executeApplicationMenu(itemId, state.window));
   channels.handle('theme:get', (): ThemeSnapshot => themes.snapshot);

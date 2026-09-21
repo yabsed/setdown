@@ -1,6 +1,16 @@
-import { _electron as electron } from '@playwright/test';
+import { _electron as electron, expect } from '@playwright/test';
 
 export type TestApplication = Awaited<ReturnType<typeof electron.launch>>;
+
+/** CDP input can precede ready-to-show and does not establish native focus. */
+export async function focusApplication(application: TestApplication): Promise<void> {
+  await application.firstWindow();
+  await expect.poll(() => application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.isVisible())).toBe(true);
+  await application.evaluate(({ BrowserWindow }) => {
+    const window = BrowserWindow.getAllWindows()[0]; window.focus(); window.webContents.focus();
+  });
+  await expect.poll(() => application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.isFocused())).toBe(true);
+}
 
 /**
  * 테스트 정리는 사용자 종료 흐름이 아니다. 창을 파괴해 저장 확인 UI를 우회하고

@@ -1,20 +1,30 @@
 /** Shared policy: no Monaco, filesystem, renderer or worker dependency. */
 export const MARKDOWN_EXTENSIONS = ['md', 'markdown', 'mdown', 'mkdn', 'mkd', 'rmd', 'qmd', 'mdx'];
+export const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'avif', 'svg'];
+const IMAGE_TYPES: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+  webp: 'image/webp', gif: 'image/gif', avif: 'image/avif', svg: 'image/svg+xml' };
+export function imageMimeType(filePath: string): string | undefined {
+  const extension = /\.([a-z0-9]+)$/i.exec(filePath)?.[1].toLowerCase() ?? '';
+  return Object.hasOwn(IMAGE_TYPES, extension) ? IMAGE_TYPES[extension] : undefined;
+}
+export const isImageDocument = (filePath: string): boolean => !!imageMimeType(filePath);
+export const isReadOnlyDocument = (filePath: string): boolean => isPdfDocument(filePath) || isImageDocument(filePath);
 const MARKDOWN = /\.(?:md|markdown|mdown|mkdn|mkd|rmd|qmd|mdx)$/i;
 const BINARY = new Set(('pdf png jpg jpeg gif webp avif bmp ico icns tif tiff heic '
   + 'zip gz bz2 xz zst 7z rar tar tgz jar war doc docx xls xlsx ppt pptx odt ods odp '
   + 'exe dll so dylib bin class pyc pyo wasm sqlite sqlite3 db woff woff2 ttf otf eot '
   + 'mp3 mp4 m4a wav ogg flac avi mov mkv webm psd ai sketch').split(' '));
 
-export type DocumentSurface = 'viewer' | 'editor' | 'pdf';
-export type DocumentProfile = { readonly kind: 'markdown' | 'text' | 'pdf'; readonly preview: 'markdown' | 'pdf' | null };
+export type DocumentSurface = 'viewer' | 'editor' | 'pdf' | 'image';
+export type DocumentProfile = { readonly kind: 'markdown' | 'text' | 'pdf' | 'image'; readonly preview: 'markdown' | 'pdf' | 'image' | null };
 const pdf: DocumentProfile = Object.freeze({ kind: 'pdf', preview: 'pdf' });
+const image: DocumentProfile = Object.freeze({ kind: 'image', preview: 'image' });
 export const isPdfDocument = (filePath: string): boolean => /\.pdf$/i.test(filePath);
-export const isOpenableDocument = (filePath: string): boolean => isPdfDocument(filePath) || isTextCandidate(filePath);
+export const isOpenableDocument = (filePath: string): boolean => isReadOnlyDocument(filePath) || isTextCandidate(filePath);
 const markdown: DocumentProfile = Object.freeze({ kind: 'markdown', preview: 'markdown' });
 const text: DocumentProfile = Object.freeze({ kind: 'text', preview: null });
 export const isMarkdownDocument = (filePath: string): boolean => MARKDOWN.test(filePath);
-export const documentProfile = (filePath: string): DocumentProfile => isMarkdownDocument(filePath) ? markdown : isPdfDocument(filePath) ? pdf : text;
+export const documentProfile = (filePath: string): DocumentProfile => isMarkdownDocument(filePath) ? markdown : isPdfDocument(filePath) ? pdf : isImageDocument(filePath) ? image : text;
 export const fileName = (filePath: string): string => filePath.split(/[\\/]/).at(-1) ?? filePath;
 /** A cheap navigation/search filter, NOT proof that bytes are editable text. */
 export function isTextCandidate(filePath: string): boolean {
@@ -22,7 +32,8 @@ export function isTextCandidate(filePath: string): boolean {
   return !BINARY.has(name.includes('.') ? name.split('.').at(-1)!.toLowerCase() : '');
 }
 export function documentSurface(filePath: string, preferred: DocumentSurface = 'viewer'): DocumentSurface {
-  return isPdfDocument(filePath) ? 'pdf' : isMarkdownDocument(filePath) ? (preferred === 'pdf' ? 'viewer' : preferred) : 'editor';
+  return isPdfDocument(filePath) ? 'pdf' : isImageDocument(filePath) ? 'image'
+    : isMarkdownDocument(filePath) ? (preferred === 'editor' ? 'editor' : 'viewer') : 'editor';
 }
 export type RegisteredLanguage = {
   id: string; extensions?: readonly string[]; filenames?: readonly string[];

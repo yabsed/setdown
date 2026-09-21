@@ -9,7 +9,10 @@ export type PdfReadingPosition = {
   kind: 'pdf'; page: number; left: number; top: number;
   zoom: number | 'page-width' | 'page-fit' | 'auto'; rotation: number;
 };
-export type ReadingPosition = TextReadingPosition | PdfReadingPosition;
+export type ImageReadingPosition = {
+  kind: 'image'; zoom: number | 'fit'; rotation: number; centerX: number; centerY: number;
+};
+export type ReadingPosition = TextReadingPosition | PdfReadingPosition | ImageReadingPosition;
 export type ReadingRecord = {
   version: 1; path: string; diskVersion: DiskVersion; position: ReadingPosition; observedAt: number;
 };
@@ -22,6 +25,10 @@ export function validReadingRecord(value: unknown): value is ReadingRecord {
     || !r.diskVersion || !Number.isFinite(r.diskVersion.mtimeMs)
     || !Number.isFinite(r.diskVersion.size) || r.diskVersion.size < 0 || !r.position) return false;
   const p = r.position;
+  if (p.kind === 'image') return [0, 90, 180, 270].includes(p.rotation)
+    && (p.zoom === 'fit' || (typeof p.zoom === 'number' && Number.isFinite(p.zoom) && p.zoom >= .1 && p.zoom <= 8))
+    && Number.isFinite(p.centerX) && p.centerX >= 0 && p.centerX <= 1
+    && Number.isFinite(p.centerY) && p.centerY >= 0 && p.centerY <= 1;
   if (p.kind === 'pdf') return Number.isInteger(p.page) && p.page >= 1 && p.page <= 1_000_000
     && Number.isFinite(p.left) && Number.isFinite(p.top) && Math.abs(p.left) < 1e8 && Math.abs(p.top) < 1e8
     && [0, 90, 180, 270].includes(p.rotation)

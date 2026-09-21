@@ -12,6 +12,7 @@ import type { PreviewSession } from '../reader/preview-session';
 import type { ReaderController } from '../reader/reader-controller';
 import { view, type WorkingTreeEdit } from '../view-state.svelte';
 import { restoredOutlineOpen } from '../shell/layout-session';
+import { MediaCache } from './media-cache';
 
 type Options = {
   desktop: DesktopPort; workspace: WorkspaceState; session: TabSession; shell: HTMLElement;
@@ -25,6 +26,7 @@ const TRANSFER_ANNOUNCE_GRACE_MS = 150;
 
 export class TabController {
   private activation = 0;
+  private readonly media = new MediaCache();
   constructor(private readonly options: Options) {}
   text = (tab: WorkspaceTab): string => this.options.editor.text(tab);
   dirty = (tab: WorkspaceTab): boolean => hasUnsavedText(tab.document, this.text(tab));
@@ -126,11 +128,8 @@ export class TabController {
     const summaries = workspace.tabs.map((tab) => ({ id: tab.id, name: tab.document.name,
       path: tab.document.path, active: tab.id === workspace.activeId, dirty: this.dirty(tab) }));
     view.tabs = summaries;
-    const active = workspace.active;
-    if (active?.document.kind === 'pdf') {
-      if (view.pdfDocument?.id !== active.id || view.pdfDocument.document !== active.document)
-        view.pdfDocument = { id: active.id, document: active.document, position: active.readingPosition };
-    } else view.pdfDocument = null;
+    view.mediaTabs = this.media.sync(workspace.tabs, workspace.activeId);
+    view.activeMediaId = workspace.active?.document.kind ? workspace.activeId : null;
     shell.dataset.tabs = summaries.length > 0 ? 'true' : 'false';
     shell.dataset.dirtyTabs = String(summaries.filter((tab) => tab.dirty).length);
     desktop.updateTabState(workspace.tabs.map((tab) => ({ name: tab.document.name, path: tab.document.path,
@@ -262,7 +261,7 @@ export class TabController {
     editor.retarget(tab);
     if (workspace.activeId !== tab.id) return;
     if (wasMarkdown || markdown) preview.reset();
-    if (!markdown && tab.document.kind !== 'pdf' && !editor.loaded) await editor.load();
+    if (!markdown && tab.document.kind === undefined && !editor.loaded) await editor.load();
     if (workspace.activeId !== tab.id || !workspace.find(tab.id)) return;
     surfaces.set(tab.surface);
     await desktop.activateDocument(tab.document, this.text(tab), tab.revision);
@@ -333,7 +332,7 @@ export class TabController {
     const tab = this.options.workspace.active;
     if (tab) this.options.editor.replace(tab, documentSnapshot);
   };
-  show = async (documentSnapshot: DocumentSnapshot, initialSurface: 'viewer' | 'editor' | 'pdf' = 'viewer'): Promise<void> => {
+  show = async (documentSnapshot: DocumentSnapshot, initialSurface: 'viewer' | 'editor' | 'pdf' | 'image' = 'viewer'): Promise<void> => {
     const { editor, reader, workspace } = this.options;
     if (!documentSnapshot.isUntitled) {
       const existing = workspace.tabs.find((tab) => !tab.document.isUntitled && tab.document.path === documentSnapshot.path);

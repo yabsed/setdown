@@ -97,8 +97,9 @@ export type AppActions = {
 export const view = $state({
   tabs: [] as TabView[],
   draggedTabId: null as string | null,
-  surface: 'empty' as 'empty' | 'viewer' | 'editor' | 'pdf',
-  pdfDocument: null as { id: string; document: import('../core/document/document').DocumentSnapshot; position?: import('../core/reading/reading-position').ReadingPosition } | null,
+  surface: 'empty' as 'empty' | 'viewer' | 'editor' | 'pdf' | 'image',
+  mediaTabs: [] as import('./workspace/media-cache').MediaTab[],
+  activeMediaId: null as string | null,
   notice: false,
   tocOpen: false,
   headings: [] as HeadingView[],

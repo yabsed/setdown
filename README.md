@@ -86,6 +86,18 @@ across every open window. Changing it does not reload the Preview URL or re-rend
 Markdown, so search results and reading positions remain intact. The preference is
 restored on the next launch.
 
+### PDFs and images
+
+Open PDFs alongside Markdown with page navigation, searchable/selectable text,
+an outline, zoom and rotation. Recent PDF tabs retain their rendered pages when
+you switch away, so returning does not reconstruct the viewer.
+
+PNG, JPEG, WebP, GIF, AVIF and SVG open in an image reader with fit, zoom, rotation
+and drag-to-pan controls. PDFs and images are read-only, and their reading
+positions survive closing a tab or restarting the app. Images up to 64 MiB are
+supported. The three most recently visited PDF/image views stay in memory;
+older views reload at their saved position when revisited.
+
 ### Small helpers for repetitive Markdown
 
 The Editor keeps Markdown visible and editable while handling the structures that

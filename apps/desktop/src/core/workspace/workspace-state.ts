@@ -9,7 +9,7 @@ export type WorkspaceTab = {
   document: DocumentSnapshot;
   text: string;
   revision: number;
-  surface: 'viewer' | 'editor' | 'pdf';
+  surface: 'viewer' | 'editor' | 'pdf' | 'image';
   readingPosition?: import('../reading/reading-position').ReadingPosition;
   restoringPosition?: boolean;
   anchor: ViewportAnchor;
@@ -82,8 +82,8 @@ export function createTabSession(active: () => WorkspaceTab | null, emptyAnchor:
       const tab = active();
       if (tab) tab.revision = value;
     },
-    get surface(): 'empty' | 'viewer' | 'editor' | 'pdf' { return active()?.surface ?? 'empty'; },
-    set surface(value: 'empty' | 'viewer' | 'editor' | 'pdf') {
+    get surface(): 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' { return active()?.surface ?? 'empty'; },
+    set surface(value: 'empty' | 'viewer' | 'editor' | 'pdf' | 'image') {
       const tab = active();
       if (tab && value !== 'empty') tab.surface = documentSurface(tab.document.path, value);
     },

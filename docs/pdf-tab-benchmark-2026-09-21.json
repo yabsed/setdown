@@ -1,0 +1,219 @@
+{
+  "startedAt": "2026-09-21T04:46:35.673Z",
+  "runs": 3,
+  "machine": {
+    "platform": "linux",
+    "cpu": "AMD Ryzen 7 8845HS w/ Radeon 780M Graphics",
+    "display": ":97"
+  },
+  "measurement": "Tab click through current-page canvas/text verification and one nonempty native capture; includes automation, polling, IPC and capture readback, not monitor presentation.",
+  "fixtureHash": "2845ff541287abed078352cd144b2cb4e366bb655dd2c82243c27ace2759dbf7",
+  "harnessHash": "37920f8de3de966d67b625b6cbec9e17561e3fbbaef5739d2d400e55d1b2370e",
+  "versions": {
+    "baseline": {
+      "root": "/tmp/setdown-media-base",
+      "commit": "62544a8b2668b14cebdf82a76b78233c4fc83239",
+      "electron": "38.8.6",
+      "buildHash": "5ab9543ecad47ce9603a262fc9592f3da4f102164993c52f481cafcb6ed6125f"
+    },
+    "candidate": {
+      "root": "/home/yabsed/Documents/fall26/work/better-markdown-viewer",
+      "commit": "62544a8b2668b14cebdf82a76b78233c4fc83239",
+      "electron": "38.8.6",
+      "buildHash": "c0cf1375a46361b151394d5906add52d98a1069a39f926a1d48c712041f9de95"
+    }
+  },
+  "samples": [
+    {
+      "repetition": 1,
+      "label": "baseline",
+      "scenario": "markdown",
+      "initialMs": 413.927768,
+      "cycles": [
+        301.60084400000005,
+        305.7737299999999,
+        300.11826100000053,
+        297.85141099999964,
+        298.335607
+      ]
+    },
+    {
+      "repetition": 1,
+      "label": "candidate",
+      "scenario": "markdown",
+      "initialMs": 403.35171400000036,
+      "cycles": [
+        120.47811999999976,
+        114.76133599999957,
+        113.85384900000008,
+        114.33177299999988,
+        113.8245939999997
+      ]
+    },
+    {
+      "repetition": 1,
+      "label": "baseline",
+      "scenario": "pdf",
+      "initialMs": 287.9391200000009,
+      "cycles": [
+        301.49914499999977,
+        305.41572200000155,
+        284.97907199999827,
+        289.1401050000004,
+        298.49514499999896
+      ]
+    },
+    {
+      "repetition": 1,
+      "label": "candidate",
+      "scenario": "pdf",
+      "initialMs": 296.6259289999998,
+      "cycles": [
+        109.965956,
+        101.77403299999969,
+        102.21780199999921,
+        111.73361300000033,
+        116.09015300000101
+      ]
+    },
+    {
+      "repetition": 2,
+      "label": "candidate",
+      "scenario": "markdown",
+      "initialMs": 392.30596200000036,
+      "cycles": [
+        118.0894530000005,
+        113.66828199999873,
+        114.82391400000051,
+        114.41794500000105,
+        113.32542099999773
+      ]
+    },
+    {
+      "repetition": 2,
+      "label": "baseline",
+      "scenario": "markdown",
+      "initialMs": 405.0413750000007,
+      "cycles": [
+        306.3541069999992,
+        288.1749299999974,
+        295.76948600000105,
+        304.3814280000006,
+        299.4844359999988
+      ]
+    },
+    {
+      "repetition": 2,
+      "label": "candidate",
+      "scenario": "pdf",
+      "initialMs": 280.5006030000004,
+      "cycles": [
+        108.40748100000201,
+        95.25955600000088,
+        99.02038200000243,
+        107.37029099999927,
+        96.40272499999992
+      ]
+    },
+    {
+      "repetition": 2,
+      "label": "baseline",
+      "scenario": "pdf",
+      "initialMs": 289.5996950000008,
+      "cycles": [
+        292.305558,
+        282.67074400000274,
+        275.8344959999995,
+        288.92625500000213,
+        277.5619169999991
+      ]
+    },
+    {
+      "repetition": 3,
+      "label": "baseline",
+      "scenario": "markdown",
+      "initialMs": 404.10194799999954,
+      "cycles": [
+        307.5183340000003,
+        302.47960899999816,
+        299.69680399999925,
+        294.78006599999935,
+        289.9953860000023
+      ]
+    },
+    {
+      "repetition": 3,
+      "label": "candidate",
+      "scenario": "markdown",
+      "initialMs": 394.0253479999992,
+      "cycles": [
+        122.93406500000128,
+        113.99076500000228,
+        115.56746399999975,
+        113.74745999999868,
+        113.85963999999876
+      ]
+    },
+    {
+      "repetition": 3,
+      "label": "baseline",
+      "scenario": "pdf",
+      "initialMs": 285.669001000002,
+      "cycles": [
+        301.6134790000069,
+        277.9547220000022,
+        293.7721410000013,
+        298.6269820000016,
+        277.1889200000005
+      ]
+    },
+    {
+      "repetition": 3,
+      "label": "candidate",
+      "scenario": "pdf",
+      "initialMs": 291.86977200000547,
+      "cycles": [
+        120.06446699999651,
+        110.63863500000298,
+        99.57742300000245,
+        110.80932400000165,
+        118.01502299999993
+      ]
+    }
+  ],
+  "summary": [
+    {
+      "scenario": "markdown",
+      "label": "baseline",
+      "initial": 405.0413750000007,
+      "first": 306.3541069999992,
+      "second": 302.47960899999816,
+      "warm": 298.335607
+    },
+    {
+      "scenario": "markdown",
+      "label": "candidate",
+      "initial": 394.0253479999992,
+      "first": 120.47811999999976,
+      "second": 113.99076500000228,
+      "warm": 113.85963999999876
+    },
+    {
+      "scenario": "pdf",
+      "label": "baseline",
+      "initial": 287.9391200000009,
+      "first": 301.49914499999977,
+      "second": 282.67074400000274,
+      "warm": 289.1401050000004
+    },
+    {
+      "scenario": "pdf",
+      "label": "candidate",
+      "initial": 291.86977200000547,
+      "first": 109.965956,
+      "second": 101.77403299999969,
+      "warm": 110.80932400000165
+    }
+  ],
+  "complete": true
+}

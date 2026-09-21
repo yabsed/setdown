@@ -11,6 +11,7 @@ import { readPdfBytes } from './pdf-range';
 export type OutlineItem = { title: string; depth: number; dest: string | unknown[] | null };
 type Options = {
   host: HTMLElement; document: DocumentSnapshot; initial?: PdfReadingPosition; desktop: DesktopPort;
+  active(): boolean;
   changed(position: PdfReadingPosition): void;
   status(page: number, pages: number): void;
   outline(items: OutlineItem[]): void;
@@ -31,6 +32,7 @@ export class PdfRuntime {
   private dead = false;
   private restoring = true;
   private position?: PdfReadingPosition;
+  private needsResize = false;
   constructor(private readonly options: Options) {}
 
   async open(): Promise<void> {
@@ -66,14 +68,16 @@ export class PdfRuntime {
           event.preventDefault(); void this.options.desktop.openLink(link.href);
         }
       }, { capture: true, signal: this.abort.signal });
-      bus.on('pagechanging', ({ pageNumber }: { pageNumber: number }) => this.options.status(pageNumber, this.pdf?.numPages ?? 0));
+      bus.on('pagechanging', ({ pageNumber }: { pageNumber: number }) => {
+        if (!this.restoring && !this.dead) this.options.status(pageNumber, this.pdf?.numPages ?? 0);
+      });
       bus.on('updatefindmatchescount', ({ matchesCount }: { matchesCount: { current: number; total: number } }) =>
         this.options.matches(matchesCount.current, matchesCount.total));
       bus.on('updatefindcontrolstate', ({ matchesCount }: { matchesCount: { current: number; total: number } }) => {
         if (matchesCount) this.options.matches(matchesCount.current, matchesCount.total);
       });
       bus.on('updateviewarea', ({ location }: { location: { pageNumber: number; left: number; top: number } }) => {
-        if (this.restoring || this.dead) return;
+        if (this.restoring || this.dead || !this.options.active()) return;
         const raw = viewer.currentScaleValue;
         const zoom = ['page-width', 'page-fit', 'auto'].includes(raw) ? raw as PdfReadingPosition['zoom'] : viewer.currentScale;
         this.position = { kind: 'pdf', page: location.pageNumber, left: location.left || 0, top: location.top || 0,
@@ -132,12 +136,19 @@ export class PdfRuntime {
       }).catch(() => {});
       this.observer = new ResizeObserver(() => {
         if (this.dead || this.restoring) return;
-        const scale = viewer.currentScaleValue;
-        if (['page-width', 'page-fit', 'auto'].includes(scale)) viewer.currentScaleValue = scale;
-        viewer.update();
+        this.needsResize = true;
+        if (this.options.active()) this.resume();
       });
       this.observer.observe(container);
     } catch (error) { if (!this.dead) this.options.error(error instanceof Error ? error.message : String(error)); }
+  }
+  resume(): void {
+    const viewer = this.viewer;
+    if (!viewer || this.dead || this.restoring || !this.needsResize) return;
+    this.needsResize = false;
+    const scale = viewer.currentScaleValue;
+    if (['page-width', 'page-fit', 'auto'].includes(scale)) viewer.currentScaleValue = scale;
+    viewer.update();
   }
   page(number: number): void {
     if (this.viewer && this.pdf && Number.isFinite(number)) this.viewer.currentPageNumber = Math.max(1, Math.min(this.pdf.numPages, Math.round(number)));
@@ -153,7 +164,6 @@ export class PdfRuntime {
   destination(dest: OutlineItem['dest']): void { if (dest) void this.links?.goToDestination(dest); }
   dispose(): void {
     if (this.dead) return;
-    if (this.position) this.options.changed(this.position);
     this.dead = true; this.abort.abort(); this.observer?.disconnect();
     // setDocument(null) cancels rendering, destroys page views and observers.
     this.viewer?.setDocument(null as unknown as PDFDocumentProxy);

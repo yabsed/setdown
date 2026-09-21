@@ -1,0 +1,28 @@
+{
+  "startedAt": "2026-09-21T04:35:49.076Z",
+  "runs": 3,
+  "machine": {
+    "platform": "linux",
+    "cpu": "AMD Ryzen 7 8845HS w/ Radeon 780M Graphics",
+    "display": ":97"
+  },
+  "measurement": "Tab click through current-page canvas/text verification and one nonempty native capture; includes automation, polling, IPC and capture readback, not monitor presentation.",
+  "fixtureHash": "2845ff541287abed078352cd144b2cb4e366bb655dd2c82243c27ace2759dbf7",
+  "harnessHash": "186ef02250cf25666a8b9d89c896040fd7ec351092b0a2456afde33b20b47ff8",
+  "versions": {
+    "baseline": {
+      "root": "/tmp/setdown-media-base",
+      "commit": "62544a8b2668b14cebdf82a76b78233c4fc83239",
+      "electron": "38.8.6",
+      "buildHash": "5ab9543ecad47ce9603a262fc9592f3da4f102164993c52f481cafcb6ed6125f"
+    },
+    "candidate": {
+      "root": "/home/yabsed/Documents/fall26/work/better-markdown-viewer/",
+      "commit": "62544a8b2668b14cebdf82a76b78233c4fc83239",
+      "electron": "38.8.6",
+      "buildHash": "c0cf1375a46361b151394d5906add52d98a1069a39f926a1d48c712041f9de95"
+    }
+  },
+  "samples": [],
+  "error": "Error: expect(received).toMatchObject(expected)\n\nMatcher error: received value must be a non-null object\n\nReceived has value: undefined\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate"
+}

@@ -18,7 +18,7 @@ export class ReadingPositionController {
   capture(tab = this.options.active()): void {
     clearTimeout(this.timer);
     if (!tab || tab.restoringPosition || this.options.suspended()) return;
-    if (tab.surface === 'pdf') return;
+    if (tab.surface === 'pdf' || tab.surface === 'image') return;
     const { editor } = this.options;
     if (tab.surface === 'editor') {
       editor.saveView(tab);

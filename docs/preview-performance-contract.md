@@ -23,6 +23,17 @@ even if no preview TypeScript changes.
 | Use local authored anchors for double-click hit testing; retain full-search fallback for whitespace. Skip hidden unobserved review viewport scans, but preserve active final flush and ordinary reporting. | `src/preview-runtime/source-atlas.ts`, `viewport-controller.ts` | `source-atlas.test.ts`, `viewport-controller.test.ts`, `source-atlas-review.spec.ts` |
 | Preparation acknowledgments belong to their exact revision/request. Reuse of hidden work must not discard a new Esc position, survive an invalidating resize, or overwrite source position from a background viewport event. Warm transitions keep native view identity. | `src/renderer/project/source-control/review-presentation.ts`, main/runtime `review-preparation.ts`, `src/renderer/reader/reader-controller.ts` | `source-control-controller.test.ts`, `review-presentation.test.ts`, `reader-preparation.test.ts`, `review-preparation-layout.spec.ts`, `verified-review-position.spec.ts`, `zero-latency-architecture.spec.ts` |
 
+PDF and image tabs use a separate shell-rendered surface cache (not native
+Markdown views). `renderer/workspace/media-cache.ts` retains the three most
+recently visited surfaces, keyed by tab, path, kind and disk version. Warm PDF
+returns preserve canvas/worker/scroll identity; closed, evicted or superseded
+surfaces release their resources. Inactive surfaces are inert, cannot focus
+find controls or publish reading positions, and preserve nonzero layout. Hidden
+resizes are reconciled on activation. This does not promise instant cold opens
+or instant returns after eviction. `media-tabs.spec.ts`, `image-reader.spec.ts`,
+`reading-positions.spec.ts` and the cache/file/history unit tests cover these
+guarantees and are included in the focused gate.
+
 The common native lifecycle is: validate CSS bounds → convert/clip once → apply
 native bounds → synchronize Blink viewport → prepare hidden content. Navigation
 invalidates the viewport cache and replays that sequence after current ownership

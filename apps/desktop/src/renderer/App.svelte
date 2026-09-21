@@ -13,10 +13,10 @@
 
   import type { TerminalApi } from '../protocol/terminal';
   import type { DesktopPort } from './ports/desktop-port';
-  import type { PdfReadingPosition } from '../core/reading/reading-position';
+  import type { ReadingPosition } from '../core/reading/reading-position';
   import { project } from './project/project-state.svelte';
-  let { actions, terminalApi, desktop, pdfPosition }: { actions: AppActions; terminalApi: TerminalApi; desktop: DesktopPort;
-    pdfPosition(id: string, position: PdfReadingPosition): void } = $props();
+  let { actions, terminalApi, desktop, mediaPosition }: { actions: AppActions; terminalApi: TerminalApi; desktop: DesktopPort;
+    mediaPosition(id: string, position: ReadingPosition): void } = $props();
 </script>
 
 <TitleBar {actions} />
@@ -34,15 +34,20 @@
   <EmptyState {actions} />
   <ReaderSurface {actions} />
   <GitDiffSurface {actions} />
-  {#if view.surface === 'pdf' && view.pdfDocument && !project.gitDiffActive}
-    {@const pdfTab = view.pdfDocument}
-    {#key `${pdfTab.id}:${pdfTab.document.path}:${pdfTab.document.diskVersion.mtimeMs}:${pdfTab.document.diskVersion.size}`}
+  {#each view.mediaTabs as tab (tab.key)}
+    {@const active = view.activeMediaId === tab.id && view.surface === tab.document.kind && !project.gitDiffActive}
+    {#if tab.document.kind === 'pdf'}
       {#await import('./pdf/PdfSurface.svelte') then module}
-        <module.default document={pdfTab.document} initialPosition={pdfTab.position}
-          {desktop} onposition={(position) => pdfPosition(pdfTab.id, position)} />
-      {:catch error}<div class="pdf-load-error" role="alert">Could not load the PDF reader: {String(error)}</div>{/await}
-    {/key}
-  {/if}
+        <module.default document={tab.document} initialPosition={tab.position} {active}
+          {desktop} onposition={(position) => mediaPosition(tab.id, position)} />
+      {:catch error}{#if active}<div role="alert">Could not load the PDF reader: {String(error)}</div>{/if}{/await}
+    {:else}
+      {#await import('./image/ImageSurface.svelte') then module}
+        <module.default document={tab.document} initialPosition={tab.position} {active}
+          {desktop} onposition={(position) => mediaPosition(tab.id, position)} />
+      {:catch error}{#if active}<div role="alert">Could not load the image reader: {String(error)}</div>{/if}{/await}
+    {/if}
+  {/each}
   {#if terminal.loaded}
     {#await import('./terminal/TerminalPanel.svelte') then module}
       <module.default api={terminalApi} />

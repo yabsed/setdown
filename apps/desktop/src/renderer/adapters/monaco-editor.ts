@@ -36,7 +36,7 @@ export class MonacoEditor {
   constructor(private readonly options: Options) {
     this.unregisterModels = liveDocumentModels.register((path, api) => {
       const tab = options.tabs().find((candidate) => candidate.document.path === path);
-      if (!tab || tab.document.kind === 'pdf') return null;
+      if (!tab || tab.document.kind !== undefined) return null;
       // A diff can be the first source surface opened from an ordinary Viewer.
       // Use its already-loaded Monaco module without creating an ordinary editor.
       this.ensureModel(tab, api);
@@ -80,7 +80,7 @@ export class MonacoEditor {
       });
       this.projectDecorations = this.editorValue.createDecorationsCollection();
       this.installBindings(api, this.editorValue);
-      for (const tab of this.options.tabs()) if (tab.document.kind !== 'pdf') this.ensureModel(tab);
+      for (const tab of this.options.tabs()) if (tab.document.kind === undefined) this.ensureModel(tab);
       const active = this.options.active();
       if (active) this.activate(active);
       this.options.status('ready');
@@ -89,7 +89,7 @@ export class MonacoEditor {
   }
   activate(tab: WorkspaceTab): void {
     if (!this.editorValue) return;
-    if (tab.document.kind === 'pdf') { this.editorValue.setModel(null); return; }
+    if (tab.document.kind !== undefined) { this.editorValue.setModel(null); return; }
     this.editorValue.setModel(this.ensureModel(tab));
     this.owners.get(tab.id)?.beginEditing(`document:${tab.id}`);
     const view = this.views.get(tab.id);

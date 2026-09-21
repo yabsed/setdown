@@ -2,13 +2,15 @@ import { _electron as electron, expect, test, type Page } from '@playwright/test
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { disposeApplication } from './electron-app';
+import { disposeApplication, focusApplication } from './electron-app';
 import { pdfFixture } from './pdf-fixture';
 import { previews } from './preview-view';
 
-const launch = (file: string, config: string) => {
+const launch = async (file: string, config: string) => {
   const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
-  return electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: config } });
+  const app = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: config } });
+  await focusApplication(app);
+  return app;
 };
 async function snapshotOnFailure(page: Page) {
   await page.screenshot({ path: test.info().outputPath('reading.png') }).catch(() => {});
@@ -108,14 +110,17 @@ test('a PDF beyond the initial byte range keeps its position across Markdown tab
     await page.getByRole('spinbutton', { name: 'PDF page number' }).press('Enter');
     await expect(pdf.locator('[data-page-number="98"] canvas')).toBeVisible();
     await expect.poll(() => page.evaluate(async () => (await window.marktex.reloadDocument())?.readingPosition)).toMatchObject({ kind: 'pdf', page: 98 });
+    const originalCanvas = await pdf.locator('[data-page-number="98"] canvas').elementHandle();
     await page.evaluate((file) => window.marktex.openLink(`marktex-resource://file${file}`), markdown);
     await expect.poll(previews(app).hasVisible).toBe(true);
     await expect.poll(() => previews(app).evaluate('document.body.innerText')).toContain('Markdown remains readable.');
-    await expect(pdf).toHaveCount(0);
+    await expect(pdf).toBeHidden();
     await page.getByRole('tab').filter({ hasText: 'large.pdf' }).click();
     await expect(pdf).toHaveAttribute('data-pdf-page', '98');
     await expect(pdf.locator('[data-page-number="98"] canvas')).toBeVisible();
     await expect.poll(previews(app).hasVisible).toBe(false);
+    expect(await originalCanvas!.evaluate((canvas) => canvas.isConnected
+      && canvas === document.querySelector('.pdf-host')?.shadowRoot?.querySelector('[data-page-number="98"] canvas'))).toBe(true);
     await page.getByRole('tab').filter({ hasText: 'large.pdf' }).getByTitle('Close tab', { exact: true }).click();
     await expect.poll(previews(app).hasVisible).toBe(true);
     expect(await readFile(file)).toEqual(bytes);

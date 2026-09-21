@@ -26,7 +26,7 @@ export class SurfaceController {
     view.surface = next;
     // A capability attribute drives Markdown-only shell controls without adding
     // format dispatch or language initialization to the Markdown hot path.
-    this.options.shell.dataset.documentKind = this.options.session.document?.kind === 'pdf' ? 'pdf' : hasMarkdownPreview(this.options.session.document) ? 'markdown' : 'text';
+    this.options.shell.dataset.documentKind = this.options.session.document?.kind ?? (hasMarkdownPreview(this.options.session.document) ? 'markdown' : 'text');
     this.options.shell.dataset.surface = next;
     this.options.reader.syncUi();
     this.options.preview.updateUi();
@@ -38,11 +38,11 @@ export class SurfaceController {
   enterEditor = async (next: ViewportAnchor = this.options.session.anchor): Promise<void> => {
     this.anchorRequest += 1;
     const targetTabId = this.options.workspace.activeId;
-    if (!targetTabId || this.options.workspace.active?.document.kind === 'pdf') return;
+    if (!targetTabId || this.options.workspace.active?.document.kind !== undefined) return;
     await this.options.editor.load();
     if (this.options.workspace.activeId !== targetTabId) return;
     const tab = this.options.workspace.active;
-    if (!tab || tab.document.kind === 'pdf') return;
+    if (!tab || tab.document.kind !== undefined) return;
     this.options.editor.activate(tab);
     if (tab.find.open) this.options.reader.closeFind(false);
     this.options.session.anchor = clampAnchor(next, this.options.editor.lineCount(tab));

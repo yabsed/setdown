@@ -62,7 +62,7 @@ describe('project service', () => {
     expect(await service.readDirectory(state, root)).toEqual([
       { path: path.join(root, 'chapter'), name: 'chapter', kind: 'directory' },
       { path: path.join(root, 'node_modules'), name: 'node_modules', kind: 'directory' },
-      { path: path.join(root, 'image.png'), name: 'image.png', kind: 'file' },
+      { path: path.join(root, 'image.png'), name: 'image.png', kind: 'document' },
       { path: path.join(root, 'notes.md'), name: 'notes.md', kind: 'document' },
     ]);
     await writeFile(path.join(root, '.hidden.md'), 'hidden needle\n', 'utf8');

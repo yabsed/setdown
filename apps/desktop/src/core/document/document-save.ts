@@ -1,15 +1,16 @@
 import type { DocumentSnapshot } from './document';
-import { isMarkdownDocument, isTextCandidate } from './document-profile';
+import { isMarkdownDocument, isTextCandidate, isReadOnlyDocument } from './document-profile';
 import { decodeTextBytes, encodedText } from './text-codec';
 
 /** Validate a newly selected text destination before any disk/state mutation. */
 export function prepareDocumentSave(document: DocumentSnapshot, text: string, destination: string) {
+  if (document.kind) throw new Error('PDF and image documents are read-only.');
   if (isMarkdownDocument(destination)) {
     // Existing Markdown accepts its existing encodings/EOL policy unchanged.
     return { text, encoding: document.encoding, eol: document.eol,
       bytes: encodedText(text, document.encoding) };
   }
-  if (!isTextCandidate(destination)) throw new Error('Choose a text file extension, not a binary format.');
+  if (!isTextCandidate(destination) || isReadOnlyDocument(destination)) throw new Error('Choose a text file extension, not a binary format.');
   const decoded = decodeTextBytes(new TextEncoder().encode(encodedText(text, document.encoding)));
   return { ...decoded, bytes: encodedText(decoded.text, decoded.encoding) };
 }
