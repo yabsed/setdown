@@ -13,15 +13,26 @@ source. Press `Esc` to return to reading with your place preserved.
 Keep related text files, PDFs, and images in the same window. Open a folder when
 you need file navigation, search, Git review, or a terminal.
 
-<p align="center">
-  <img src="live_demo.gif" width="900" alt="Editing Markdown from the Setdown Viewer and returning to the reading position">
-</p>
-
-<table>
+<table width="100%">
   <tr>
-    <td><img src="docs/assets/image1.png" alt="Rendered Markdown with equations and Git changes in a dark theme"></td>
-    <td><img src="docs/assets/image2.png" alt="Markdown source with Git changes in the editor"></td>
-    <td><img src="docs/assets/image3.png" alt="Markdown search results and the integrated terminal"></td>
+    <th width="33%">Terminal</th>
+    <th width="33%">Git Diff Editing</th>
+    <th width="33%">Search</th>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/video1.gif" width="100%" alt="Using the integrated terminal"></td>
+    <td><img src="docs/assets/video2.gif" width="100%" alt="Editing a Git diff"></td>
+    <td><img src="docs/assets/video3.gif" width="100%" alt="Searching documents"></td>
+  </tr>
+  <tr>
+    <th width="33%">Editing</th>
+    <th width="33%">PDF and Images</th>
+    <th width="33%">Table Insertion</th>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/video4.gif" width="100%" alt="Editing Markdown"></td>
+    <td><img src="docs/assets/video5.gif" width="100%" alt="Viewing PDF and image files"></td>
+    <td><img src="docs/assets/video6.gif" width="100%" alt="Inserting a Markdown table"></td>
   </tr>
 </table>
 
@@ -51,6 +62,12 @@ Markdown links: web images retain their URLs, copied image files retain their
 format, and screenshots become PNG assets. Local assets go in
 `<document name>.assets/`; untitled documents keep them in a draft bundle until
 Save As succeeds.
+
+The demo below shows Setdown's reading and editing flow in action.
+
+<p align="center">
+  <img src="live_demo.gif" width="900" alt="Editing Markdown from the Setdown Viewer and returning to the reading position">
+</p>
 
 ## Work with more than Markdown
 
