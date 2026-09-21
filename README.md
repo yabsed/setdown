@@ -330,6 +330,13 @@ Preview, layout, CSS and dependency changes must preserve the
 gate includes real Electron checks; `npm run bench:preview -- --baseline /path/to/base`
 compares cold and warm math-document cycles against a separate installed checkout.
 
+PRs and main pushes run the preview contract gate automatically. The full latency
+comparison is manual: select **Run workflow** in **Preview performance contract**
+and enable `run_latency`, or run
+`gh workflow run preview-contract.yml -f run_latency=true`. It compares the selected
+ref against its parent commit. Local performance-path changes still require the
+full benchmark described in the contract.
+
 If the environment sets `ELECTRON_RUN_AS_NODE=1`, remove that variable only for the
 Electron command.
 

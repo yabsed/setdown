@@ -5,12 +5,17 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      run_latency:
+        description: Run the full comparative latency benchmark (80 app launches)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: preview-contract-${{ github.workflow }}-${{ github.ref }}
+  group: preview-contract-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -41,6 +46,8 @@ jobs:
 
   latency:
     name: preview-latency
+    # Keep the full benchmark available without making noisy timing runs a PR gate.
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_latency }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
