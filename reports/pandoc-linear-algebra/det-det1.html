@@ -1,0 +1,3103 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>det1</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+  </style>
+  <script
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js"
+  type="text/javascript"></script>
+</head>
+<body>
+<h1 id="determinants">Determinants</h1>
+<p>In the first chapter we highlighted the special case of linear
+systems with the same number of equations as unknowns, those of the form
+<span class="math inline">\(T\vec{x}=\vec{b}\)</span> where <span
+class="math inline">\(T\)</span> is a square matrix. We noted that there
+are only two kinds of <span class="math inline">\(T\)</span>’s. If <span
+class="math inline">\(T\)</span> is associated with a unique solution
+for any <span class="math inline">\(\vec{b}\)</span>, such as for the
+homogeneous system <span class="math inline">\(T\vec{x}=\zero\)</span>,
+then <span class="math inline">\(T\)</span> is associated with a unique
+solution for every such <span class="math inline">\(\vec{b}\)</span>. We
+call such a matrix nonsingular. The other kind of <span
+class="math inline">\(T\)</span>, where every linear system for which it
+is the matrix of coefficients has either no solution or infinitely many
+solutions, we call singular.</p>
+<p>In our work since then this distinction has been a theme. For
+instance, we now know that an <span
+class="math inline">\(\nbyn{n}\)</span> matrix <span
+class="math inline">\(T\)</span> is nonsingular if and only if each of
+these holds:</p>
+<ul>
+<li><p>any system <span class="math inline">\(T\vec{x}=\vec{b}\)</span>
+has a solution and that solution is unique;</p></li>
+<li><p>Gauss-Jordan reduction of <span class="math inline">\(T\)</span>
+yields an identity matrix;</p></li>
+<li><p>the rows of <span class="math inline">\(T\)</span> form a
+linearly independent set;</p></li>
+<li><p>the columns of <span class="math inline">\(T\)</span> form a
+linearly independent set, a basis for <span
+class="math inline">\(\Re^n\)</span>;</p></li>
+<li><p>any map that <span class="math inline">\(T\)</span> represents is
+an isomorphism;</p></li>
+<li><p>an inverse matrix <span class="math inline">\(T^{-1}\)</span>
+exists.</p></li>
+</ul>
+<p>So when we look at a square matrix, one of the first things that we
+ask is whether it is nonsingular.</p>
+<p>This chapter develops a formula that determines whether <span
+class="math inline">\(T\)</span> is nonsingular. More precisely, we will
+develop a formula for <span
+class="math inline">\(\nbyn{1}\)</span> matrices, one for <span
+class="math inline">\(\nbyn{2}\)</span> matrices, etc. These are
+naturally related; that is, we will develop a family of formulas, a
+scheme that describes the formula for each size.</p>
+<p>Since we will restrict the discussion to square matrices, in this
+chapter we will often simply say ‘matrix’ in place of ‘square
+matrix’.</p>
+<h2 id="definition">Definition</h2>
+<p>Determining nonsingularity is trivial for <span
+class="math inline">\(\nbyn{1}\)</span> matrices. <span
+class="math display">\[\begin{mat}
+       a
+  \end{mat}
+  \quad\text{is nonsingular iff}\quad
+  a \neq 0\]</span> Corollary Three.IV.<a href="#cor:TwoByTwoInv"
+data-reference-type="ref"
+data-reference="cor:TwoByTwoInv">[cor:TwoByTwoInv]</a> gives the <span
+class="math inline">\(\nbyn{2}\)</span> formula. <span
+class="math display">\[\begin{mat}
+           a  &amp;b  \\
+           c  &amp;d
+      \end{mat}  
+   \quad\text{is nonsingular iff}\quad
+   ad-bc \neq 0\]</span> We can produce the <span
+class="math inline">\(\nbyn{3}\)</span> formula as we did the prior one,
+although the computation is intricate (see ). <span
+class="math display">\[\begin{mat}
+           a  &amp;b  &amp;c  \\
+           d  &amp;e  &amp;f  \\
+           g  &amp;h  &amp;i
+     \end{mat}
+  \quad\text{is nonsingular iff}\quad
+    aei+bfg+cdh-hfa-idb-gec \neq 0\]</span> With these cases in mind, we
+posit a family of formulas: <span class="math inline">\(a\)</span>,
+<span class="math inline">\(ad-bc\)</span>, etc. For each <span
+class="math inline">\(n\)</span> the formula defines a function <span
+class="math inline">\(\map{\det_{\nbyn{n}}}{\matspace_{\nbyn{n}}}{\Re}\)</span>
+such that an <span class="math inline">\(\nbyn{n}\)</span> matrix <span
+class="math inline">\(T\)</span> is nonsingular if and only if <span
+class="math inline">\(\det_{\nbyn{n}}(T)\neq 0\)</span>. (We usually
+omit the subscript <span class="math inline">\(\nbyn{n}\)</span> because
+the size of <span class="math inline">\(T\)</span> describes which
+determinant function we mean.)</p>
+<p><em>This subsection is an optional motivation and development of the
+general definition. The definition is in the next subsection.</em></p>
+<p>Above, in each case the matrix is nonsingular if and only if some
+formula is nonzero. But the three formulas don’t show an obvious
+pattern. We may spot that the <span
+class="math inline">\(\nbyn{1}\)</span> term <span
+class="math inline">\(a\)</span> has one letter, that the <span
+class="math inline">\(\nbyn{2}\)</span> terms <span
+class="math inline">\(ad\)</span> and <span
+class="math inline">\(bc\)</span> have two letters, and that the <span
+class="math inline">\(\nbyn{3}\)</span> terms each have three letters.
+We may even spot that in those terms there is a letter from each row and
+column of the matrix, e.g., in the <span
+class="math inline">\(cdh\)</span> term one letter comes from each row
+and from each column. <span class="math display">\[\begin{mat}
+          &amp;    &amp;c \\
+      d           \\
+          &amp;h
+   \end{mat}\]</span> But these observations are perhaps more puzzling
+than enlightening. For instance, we might wonder why some terms are
+added but some are subtracted.</p>
+<p>A good strategy for solving problems is to explore which properties
+the solution must have, and then search for something with those
+properties. So we shall start by asking what properties we’d like the
+determinant formulas to have.</p>
+<p>At this point, our main way to decide whether a matrix is singular or
+not is to do Gaussian reduction and then check whether the diagonal of
+the echelon form matrix has any zeroes, that is, whether the product
+down the diagonal is zero. So we could guess that whatever determinant
+formula we find, the proof that it is right may involve applying Gauss’s
+Method to the matrix to show that in the end the product down the
+diagonal is zero if and only if our formula gives zero.</p>
+<p>This suggests a plan: we will look for a family of determinant
+formulas that are unaffected by row operations and such that the
+determinant of an echelon form matrix is the product of its diagonal
+entries. In the rest of this subsection we will test this plan against
+the <span class="math inline">\(\nbyn{2}\)</span> and <span
+class="math inline">\(\nbyn{3}\)</span> formulas. In the end we will
+have to modify the “unaffected by row operations” part, but not by
+much.</p>
+<p>First we check whether the <span
+class="math inline">\(\nbyn{2}\)</span> and <span
+class="math inline">\(\nbyn{3}\)</span> formulas are unaffected by the
+row operation of combining: if <span class="math display">\[T
+\grstep{k\rho_i+\rho_j} \hat{T}\]</span> then is <span
+class="math inline">\(\det(\hat{T})=\det(T)\)</span>? This check of the
+<span class="math inline">\(\nbyn{2}\)</span> determinant after the
+<span class="math inline">\(k\rho_1+\rho_2\)</span> operation <span
+class="math display">\[\det(
+       \begin{mat}
+         a     &amp;b       \\
+         ka+c  &amp;kb+d    \\
+      \end{mat}
+   )
+   = a(kb+d)-(ka+c)b = ad-bc\]</span> shows that it is indeed unchanged,
+and the other <span class="math inline">\(\nbyn{2}\)</span> combination
+<span class="math inline">\(k\rho_2+\rho_1\)</span> gives the same
+result. Likewise, the <span class="math inline">\(\nbyn{3}\)</span>
+combination <span class="math inline">\(k\rho_3+\rho_2\)</span> leaves
+the determinant unchanged <span class="math display">\[\begin{aligned}
+    \det(
+      \begin{mat}
+         a    &amp;b    &amp;c    \\
+         kg+d &amp;kh+e &amp;ki+f \\
+         g    &amp;h    &amp;i
+      \end{mat}
+    )
+    &amp;=\begin{array}[t]{@{}l@{}}
+         a(kh+e)i+b(ki+f)g+c(kg+d)h \\
+         \ \hbox{}-h(ki+f)a-i(kg+d)b-g(kh+e)c  
+    \end{array}                                 \\
+     &amp;=aei + bfg + cdh - hfa - idb - gec
+  
+\end{aligned}\]</span> as do the other <span
+class="math inline">\(\nbyn{3}\)</span> row combination operations.</p>
+<p>So there seems to be promise in the plan. Of course, perhaps if we
+had worked out the <span class="math inline">\(\nbyn{4}\)</span>
+determinant formula and tested it then we might have found that it is
+affected by row combinations. This is an exploration and we do not yet
+have all the facts. Nonetheless, so far, so good.</p>
+<p>Next we compare <span class="math inline">\(\det(\hat{T})\)</span>
+with <span class="math inline">\(\det(T)\)</span> for row swaps. Here we
+hit a snag: the <span class="math inline">\(\nbyn{2}\)</span> row swap
+<span class="math inline">\(\rho_1\leftrightarrow\rho_2\)</span> does
+not yield <span class="math inline">\(ad-bc\)</span>. <span
+class="math display">\[\det(
+       \begin{mat}
+         c  &amp;d \\
+         a  &amp;b
+       \end{mat}
+     )
+     = bc - ad\]</span> And this <span
+class="math inline">\(\rho_1\leftrightarrow\rho_3\)</span> swap inside
+of a <span class="math inline">\(\nbyn{3}\)</span> matrix <span
+class="math display">\[\det(
+     \begin{mat}
+        g  &amp;h  &amp;i \\
+        d  &amp;e  &amp;f \\
+        a  &amp;b  &amp;c
+     \end{mat}
+   )
+   = gec + hfa + idb - bfg - cdh - aei\]</span> also does not give the
+same determinant as before the swap since again there is a sign change.
+Trying a different <span class="math inline">\(\nbyn{3}\)</span> swap
+<span class="math inline">\(\rho_1\leftrightarrow\rho_2\)</span> <span
+class="math display">\[\det(
+     \begin{mat}
+        d  &amp;e  &amp;f \\
+        a  &amp;b  &amp;c \\
+        g  &amp;h  &amp;i
+     \end{mat}
+   )
+   = dbi + ecg + fah - hcd - iae - gbf\]</span> also gives a change of
+sign.</p>
+<p>So row swaps appear in this experiment to change the sign of a
+determinant. This does not wreck our plan entirely. We hope to decide
+nonsingularity by considering only whether the formula gives zero, not
+by considering its sign. Therefore, instead of expecting determinant
+formulas to be entirely unaffected by row operations we modify our plan
+so that on a swap they will change sign.</p>
+<p>Obviously we finish by comparing <span
+class="math inline">\(\det(\hat{T})\)</span> with <span
+class="math inline">\(\det(T)\)</span> for the operation of multiplying
+a row by a scalar. This <span class="math display">\[\det(
+    \begin{mat}
+      a   &amp;b   \\
+      kc  &amp;kd
+    \end{mat}
+  )
+  = a(kd) - (kc)b
+  =k\cdot (ad-bc)\]</span> ends with the entire determinant multiplied
+by <span class="math inline">\(k\)</span>, and the other <span
+class="math inline">\(\nbyn{2}\)</span> case has the same result. This
+<span class="math inline">\(\nbyn{3}\)</span> case ends the same way
+<span class="math display">\[\begin{aligned}
+  \det(
+  \begin{mat}
+    a    &amp;b    &amp;c   \\
+    d    &amp;e    &amp;f   \\
+    kg   &amp;kh   &amp;ki
+  \end{mat}
+  )
+   &amp;= \begin{array}[t]{@{}l@{}}
+         ae(ki) + bf(kg) + cd(kh)                \\
+         \&gt;- (kh)fa - (ki)db - (kg)ec  
+      \end{array}                                      \\
+   &amp;= k\cdot(aei + bfg + cdh - hfa - idb - gec)
+\end{aligned}\]</span> as do the other two <span
+class="math inline">\(\nbyn{3}\)</span> cases. These make us suspect
+that multiplying a row by <span class="math inline">\(k\)</span>
+multiplies the determinant by <span class="math inline">\(k\)</span>. As
+before, this modifies our plan but does not wreck it. We are asking only
+that the zero-ness of the determinant formula be unchanged, not focusing
+on the its sign or magnitude.</p>
+<p>So in this exploration our plan got modified in some inessential ways
+and is now: we will look for <span
+class="math inline">\(\nbyn{n}\)</span> determinant functions that
+remain unchanged under the operation of row combination, that change
+sign on a row swap, that rescale on the rescaling of a row, and such
+that the determinant of an echelon form matrix is the product down the
+diagonal. In the next two subsections we will see that for each <span
+class="math inline">\(n\)</span> there is one and only one such
+function.</p>
+<p>Finally, for the next subsection note that factoring out scalars is a
+row-wise operation: here <span class="math display">\[\det(
+      \begin{mat}[r]
+        3  &amp;3  &amp;9  \\
+        2  &amp;1  &amp;1  \\
+        5  &amp;11 &amp;-5
+     \end{mat}
+    )
+    =3 \cdot \det(
+               \begin{mat}[r]
+                 1  &amp;1  &amp;3  \\
+                 2  &amp;1  &amp;1  \\
+                 5  &amp;11 &amp;-5
+               \end{mat}
+             )\]</span> the <span class="math inline">\(3\)</span> comes
+only out of the top row only, leaving the other rows unchanged.
+Consequently in the definition of determinant we will write it as a
+function of the rows <span class="math inline">\(\det
+(\vec{\rho}_1,\vec{\rho}_2,\dots\vec{\rho}_n)\)</span>, rather than as
+<span class="math inline">\(\det(T)\)</span> or as a function of the
+entries <span
+class="math inline">\(\det(t_{1,1},\dots,t_{n,n})\)</span>.</p>
+<div class="exercises">
+<p>Evaluate the determinant of each.</p>
+<div class="exparts*">
+<p><span class="math inline">\(\begin{mat}[r]
+                3    &amp;1   \\
+               -1    &amp;1
+            \end{mat}\)</span> <span
+class="math inline">\(\begin{mat}[r]
+                2    &amp;0   &amp;1  \\
+                3    &amp;1   &amp;1 \\
+               -1    &amp;0   &amp;1
+            \end{mat}\)</span> <span
+class="math inline">\(\begin{mat}[r]
+                4    &amp;0   &amp;1  \\
+                0    &amp;0   &amp;1 \\
+                1    &amp;3   &amp;-1
+            \end{mat}\)</span></p>
+</div>
+<div class="answer">
+<div class="exparts*">
+<p><span class="math inline">\(4\)</span> <span
+class="math inline">\(3\)</span> <span
+class="math inline">\(-12\)</span></p>
+</div>
+</div>
+<p>Evaluate the determinant of each.</p>
+<div class="exparts*">
+<p><span class="math inline">\(\begin{mat}[r]
+                    2  &amp;0  \\
+                   -1  &amp;3
+                 \end{mat}\)</span> <span
+class="math inline">\(\begin{mat}[r]
+                    2  &amp;1  &amp;1  \\
+                    0  &amp;5  &amp;-2 \\
+                    1  &amp;-3 &amp;4
+                 \end{mat}\)</span> <span
+class="math inline">\(\begin{mat}[r]
+                    2  &amp;3  &amp;4  \\
+                    5  &amp;6  &amp;7  \\
+                    8  &amp;9  &amp;1
+                 \end{mat}\)</span></p>
+</div>
+<div class="answer">
+<div class="exparts*">
+<p><span class="math inline">\(6\)</span> <span
+class="math inline">\(21\)</span> <span
+class="math inline">\(27\)</span></p>
+</div>
+</div>
+<p>Verify that the determinant of an upper-triangular <span
+class="math inline">\(\nbyn{3}\)</span> matrix is the product down the
+diagonal. <span class="math display">\[\det(
+       \begin{mat}
+           a    &amp;b   &amp;c    \\
+           0    &amp;e   &amp;f    \\
+           0    &amp;0   &amp;i
+       \end{mat}
+       )
+       =aei\]</span> Do lower-triangular matrices work the same way?</p>
+<div class="answer">
+<p>For the first, apply the formula in this section, note that any term
+with a <span class="math inline">\(d\)</span>, <span
+class="math inline">\(g\)</span>, or <span
+class="math inline">\(h\)</span> is zero, and simplify. Lower-triangular
+matrices work the same way.</p>
+</div>
+<p>Use the determinant to decide if each is singular or nonsingular.</p>
+<div class="exparts*">
+<p><span class="math inline">\(\begin{mat}[r]
+                2    &amp;1   \\
+                3    &amp;1
+            \end{mat}\)</span> <span
+class="math inline">\(\begin{mat}[r]
+                0    &amp;1   \\
+                1    &amp;-1
+            \end{mat}\)</span> <span
+class="math inline">\(\begin{mat}[r]
+                4    &amp;2   \\
+                2    &amp;1
+            \end{mat}\)</span></p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>Nonsingular, the determinant is <span
+class="math inline">\(-1\)</span>. Nonsingular, the determinant is <span
+class="math inline">\(-1\)</span>. Singular, the determinant is <span
+class="math inline">\(0\)</span>.</p>
+</div>
+</div>
+<p>Singular or nonsingular? Use the determinant to decide.</p>
+<div class="exparts*">
+<p><span class="math inline">\(\begin{mat}[r]
+                2    &amp;1   &amp;1  \\
+                3    &amp;2   &amp;2 \\
+                0    &amp;1   &amp;4
+            \end{mat}\)</span> <span
+class="math inline">\(\begin{mat}[r]
+                1    &amp;0   &amp;1  \\
+                2    &amp;1   &amp;1 \\
+                4    &amp;1   &amp;3
+            \end{mat}\)</span> <span
+class="math inline">\(\begin{mat}[r]
+                2    &amp;1   &amp;0  \\
+                3    &amp;-2  &amp;0 \\
+                1    &amp;0   &amp;0
+            \end{mat}\)</span></p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>Nonsingular, the determinant is <span
+class="math inline">\(3\)</span>. Singular, the determinant is <span
+class="math inline">\(0\)</span>. Singular, the determinant is <span
+class="math inline">\(0\)</span>.</p>
+</div>
+</div>
+<p>Each pair of matrices differ by one row operation. Use this operation
+to compare <span class="math inline">\(\det(A)\)</span> with <span
+class="math inline">\(\det(B)\)</span>.</p>
+<div class="exparts">
+<p><span class="math inline">\(A=\begin{mat}[r]
+                      1  &amp;2  \\
+                      2  &amp;3
+                   \end{mat}\)</span>, <span
+class="math inline">\(B=\begin{mat}[r]
+                      1  &amp;2  \\
+                      0  &amp;-1
+                   \end{mat}\)</span> <span
+class="math inline">\(A=\begin{mat}[r]
+                      3  &amp;1  &amp;0  \\
+                      0  &amp;0  &amp;1  \\
+                      0  &amp;1  &amp;2
+                   \end{mat}\)</span>, <span
+class="math inline">\(B=\begin{mat}[r]
+                      3  &amp;1  &amp;0  \\
+                      0  &amp;1  &amp;2  \\
+                      0  &amp;0  &amp;1
+                   \end{mat}\)</span> <span
+class="math inline">\(A=\begin{mat}[r]
+                      1  &amp;-1 &amp;3  \\
+                      2  &amp;2  &amp;-6 \\
+                      1  &amp;0  &amp;4
+                   \end{mat}\)</span>, <span
+class="math inline">\(B=\begin{mat}[r]
+                      1  &amp;-1 &amp;3  \\
+                      1  &amp;1  &amp;-3 \\
+                      1  &amp;0  &amp;4
+                   \end{mat}\)</span></p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p><span class="math inline">\(\det(B)=\det(A)\)</span> via <span
+class="math inline">\(-2\rho_1+\rho_2\)</span> <span
+class="math inline">\(\det(B)=-\det(A)\)</span> via <span
+class="math inline">\(\rho_2\leftrightarrow\rho_3\)</span> <span
+class="math inline">\(\det(B)=(1/2)\cdot \det(A)\)</span> via <span
+class="math inline">\((1/2)\rho_2\)</span></p>
+</div>
+</div>
+<p>Find the determinant of this <span
+class="math inline">\(\nbyn{4}\)</span> matrix by following the
+plan: perform Gauss’s Method and look for the determinant to remain
+unchanged on a row combination, to change sign on a row swap, to rescale
+on the rescaling of a row, and such that the determinant of the echelon
+form matrix is the product down its diagonal. <span
+class="math display">\[\begin{mat}
+        1 &amp;2 &amp;0  &amp;2 \\
+        2 &amp;4 &amp;1  &amp;0 \\
+        0 &amp;0 &amp;-1 &amp;3 \\
+        3 &amp;-1 &amp;1 &amp;4
+      \end{mat}\]</span></p>
+<div class="answer">
+<p>Gauss’s Method does this. <span class="math display">\[\begin{mat}
+          1 &amp;2 &amp;0  &amp;2 \\
+          2 &amp;4 &amp;1  &amp;0 \\
+          0 &amp;0 &amp;-1 &amp;3 \\
+          3 &amp;-1 &amp;1 &amp;4
+        \end{mat}
+        \grstep[-3\rho_1+\rho_4]{-2\rho_1+\rho_2}
+        \grstep{\rho_2\leftrightarrow\rho_4}
+        \grstep{\rho_3+\rho_4}      
+        \begin{mat}
+          1 &amp;2 &amp;0  &amp;2 \\
+          0 &amp;-7 &amp;1  &amp;-2 \\
+          0 &amp;0 &amp;-1 &amp;3 \\
+          0 &amp;0 &amp;0 &amp;-1
+        \end{mat}\]</span> The echelon form matrix has a product down
+the diagonal of <span
+class="math inline">\(1\cdot(-7)\cdot(-1)\cdot(-1)=-7\)</span>. In the
+course of Gauss’s Method no rows got rescaled but there was a row swap,
+so to get the determinant we change the sign, giving <span
+class="math inline">\(+7\)</span>.</p>
+</div>
+<p>Show this. <span class="math display">\[\det(
+         \begin{mat}
+             1    &amp;1   &amp;1    \\
+             a    &amp;b   &amp;c    \\
+             a^2  &amp;b^2 &amp;c^2
+         \end{mat}
+         )
+         =(b-a)(c-a)(c-b)\]</span></p>
+<div class="answer">
+<p>Using the formula for the determinant of a <span
+class="math inline">\(\nbyn{3}\)</span> matrix we expand the left side
+<span class="math display">\[1\cdot b\cdot c^2+1\cdot c\cdot a^2+1\cdot
+a\cdot b^2
+          -b^2\cdot c\cdot 1 -c^2\cdot a\cdot 1-a^2\cdot b\cdot
+1\]</span> and by distributing we expand the right side. <span
+class="math display">\[(bc-ba-ac+a^2)\cdot(c-b)
+         =c^2b-b^2c-bac+b^2a-ac^2+acb+a^2c-a^2b\]</span> Now we can just
+check that the two are equal. (<em>Remark</em>. This is the <span
+class="math inline">\(\nbyn{3}\)</span> case of which arises in
+applications).</p>
+</div>
+<p>Which real numbers <span class="math inline">\(x\)</span> make this
+matrix singular? <span class="math display">\[\begin{mat}
+            12-x  &amp;4  \\
+            8    &amp;8-x
+         \end{mat}\]</span></p>
+<div class="answer">
+<p>This equation <span class="math display">\[0=
+           \det(
+             \begin{mat}
+                12-x  &amp;4  \\
+                8    &amp;8-x
+             \end{mat}
+           )
+           =64-20x+x^2
+           =(x-16)(x-4)\]</span> has roots <span
+class="math inline">\(x=16\)</span> and <span
+class="math inline">\(x=4\)</span>.</p>
+</div>
+<p><span id="exer:ThreeByThreeDetForm"
+data-label="exer:ThreeByThreeDetForm"></span> Do the Gaussian reduction
+to check the formula for <span class="math inline">\(\nbyn{3}\)</span>
+matrices stated in the preamble to this section.</p>
+<div class="center">
+<p><span class="math inline">\(\begin{mat}
+               a  &amp;b  &amp;c  \\
+               d  &amp;e  &amp;f  \\
+               g  &amp;h  &amp;i
+         \end{mat}\)</span> is nonsingular iff <span
+class="math inline">\(aei+bfg+cdh-hfa-idb-gec \neq 0\)</span></p>
+</div>
+<div class="answer">
+<p>We first reduce the matrix to echelon form. To begin, assume that
+<span class="math inline">\(a\neq 0\)</span> and that <span
+class="math inline">\(ae-bd\neq 0\)</span>. <span
+class="math display">\[\begin{gathered}
+        \grstep{(1/a)\rho_1}
+        \begin{mat}
+           1   &amp;b/a   &amp;c/a   \\
+           d   &amp;e     &amp;f     \\
+           g   &amp;h     &amp;i
+         \end{mat}                                           
+        \grstep[-g\rho_1+\rho_3]{-d\rho_1+\rho_2}
+        \begin{mat}
+           1   &amp;b/a           &amp;c/a           \\
+           0   &amp;(ae-bd)/a     &amp;(af-cd)/a     \\
+           0   &amp;(ah-bg)/a     &amp;(ai-cg)/a
+         \end{mat}                                            \\
+        \grstep{(a/(ae-bd))\rho_2}
+        \begin{mat}
+           1   &amp;b/a           &amp;c/a             \\
+           0   &amp;1             &amp;(af-cd)/(ae-bd) \\
+           0   &amp;(ah-bg)/a     &amp;(ai-cg)/a
+         \end{mat}
+      
+\end{gathered}\]</span> This step finishes the calculation. <span
+class="math display">\[\grstep{((ah-bg)/a)\rho_2+\rho_3}
+        \begin{mat}
+           1   &amp;b/a    &amp;c/a             \\
+           0   &amp;1      &amp;(af-cd)/(ae-bd)      \\
+           0   &amp;0      &amp;(aei+bgf+cdh-hfa-idb-gec)/(ae-bd)
+         \end{mat}\]</span> Now assuming that <span
+class="math inline">\(a\neq 0\)</span> and <span
+class="math inline">\(ae-bd\neq 0\)</span>, the original matrix is
+nonsingular if and only if the <span class="math inline">\(3,3\)</span>
+entry above is nonzero. That is, under the assumptions, the original
+matrix is nonsingular if and only if <span
+class="math inline">\(aei+bgf+cdh-hfa-idb-gec\neq 0\)</span>, as
+required.</p>
+<p>We finish by running down what happens if the assumptions that were
+taken for convenience in the prior paragraph do not hold. First, if
+<span class="math inline">\(a\neq 0\)</span> but <span
+class="math inline">\(ae-bd=0\)</span> then we can swap <span
+class="math display">\[\begin{mat}
+           1   &amp;b/a           &amp;c/a           \\
+           0   &amp;0             &amp;(af-cd)/a     \\
+           0   &amp;(ah-bg)/a     &amp;(ai-cg)/a
+         \end{mat}                                  
+        \grstep{\rho_2\leftrightarrow\rho_3}
+        \begin{mat}
+           1   &amp;b/a           &amp;c/a           \\
+           0   &amp;(ah-bg)/a     &amp;(ai-cg)/a     \\
+           0   &amp;0             &amp;(af-cd)/a
+         \end{mat}\]</span> and conclude that the matrix is nonsingular
+if and only if either <span class="math inline">\(ah-bg=0\)</span> or
+<span class="math inline">\(af-cd=0\)</span>. The condition ‘<span
+class="math inline">\(ah-bg=0\)</span> or <span
+class="math inline">\(af-cd=0\)</span>’ is equivalent to the condition
+‘<span class="math inline">\((ah-bg)(af-cd)=0\)</span>’. Multiplying out
+and using the case assumption that <span
+class="math inline">\(ae-bd=0\)</span> to substitute <span
+class="math inline">\(ae\)</span> for <span
+class="math inline">\(bd\)</span> gives this. <span
+class="math display">\[\begin{gathered}
+         0=ahaf-ahcd-bgaf+bgcd
+          =ahaf-ahcd-bgaf+aegc            \\
+          =a(haf-hcd-bgf+egc)
+      
+\end{gathered}\]</span> Since <span class="math inline">\(a\neq
+0\)</span>, we have that the matrix is nonsingular if and only if <span
+class="math inline">\(haf-hcd-bgf+egc=0\)</span>. Therefore, in this
+<span class="math inline">\(a\neq 0\)</span> and <span
+class="math inline">\(ae-bd=0\)</span> case, the matrix is nonsingular
+when <span
+class="math inline">\(haf-hcd-bgf+egc-i(ae-bd)=0\)</span>.</p>
+<p>The remaining cases are routine. Do the <span
+class="math inline">\(a=0\)</span> but <span class="math inline">\(d\neq
+0\)</span> case and the <span class="math inline">\(a=0\)</span> and
+<span class="math inline">\(d=0\)</span> but <span
+class="math inline">\(g\neq 0\)</span> case by first swapping rows and
+then going on as above. The <span class="math inline">\(a=0\)</span>,
+<span class="math inline">\(d=0\)</span>, and <span
+class="math inline">\(g=0\)</span> case is easythat matrix is singular
+since the columns form a linearly dependent set, and the determinant
+comes out to be zero.</p>
+</div>
+<p>Show that the equation of a line in <span
+class="math inline">\(\Re^2\)</span> through <span
+class="math inline">\((x_1,y_1)\)</span> and <span
+class="math inline">\((x_2,y_2)\)</span> is given by this determinant.
+<span class="math display">\[\det(
+        \begin{mat}
+           x   &amp;y   &amp;1  \\
+           x_1 &amp;y_1 &amp;1  \\
+           x_2 &amp;y_2 &amp;1
+        \end{mat})=0 \qquad x_1\neq x_2\]</span></p>
+<div class="answer">
+<p>Figuring the determinant and doing some algebra gives this. <span
+class="math display">\[\begin{aligned}
+          0
+          &amp;=y_1x+x_2y+x_1y_2-y_2x-x_1y-x_2y_1     \\
+          (x_2-x_1)\cdot y
+          &amp;=(y_2-y_1)\cdot x+x_2y_1-x_1y_2              \\
+          y
+          &amp;=\frac{y_2-y_1}{x_2-x_1}\cdot
+x+\frac{x_2y_1-x_1y_2}{x_2-x_1}
+       
+\end{aligned}\]</span> Note that this is the equation of a line (in
+particular, in contains the familiar expression for the slope), and note
+that <span class="math inline">\((x_1,y_1)\)</span> and <span
+class="math inline">\((x_2,y_2)\)</span> satisfy it.</p>
+</div>
+<p>Many people have learned this mnemonic for the determinant of a <span
+class="math inline">\(\nbyn{3}\)</span> matrix: copy the first two
+columns to the right side of the matrix, then take the products down the
+forward diagonals and add them together, and then take the products on
+the backward diagonals and subtract them. That is, first write <span
+class="math display">\[\begin{pmat}{ccc|cc}
+          h_{1,1} &amp;h_{1,2} &amp;h_{1,3} &amp;h_{1,1} &amp;h_{1,2} \\
+          h_{2,1} &amp;h_{2,2} &amp;h_{2,3} &amp;h_{2,1} &amp;h_{2,2} \\
+          h_{3,1} &amp;h_{3,2} &amp;h_{3,3} &amp;h_{3,1} &amp;h_{3,2}
+        \end{pmat}\]</span> and then calculate this. <span
+class="math display">\[\begin{array}{l}
+      h_{1,1}h_{2,2}h_{3,3}+h_{1,2}h_{2,3}h_{3,1}+h_{1,3}h_{2,1}h_{3,2}
+\\
+      \&gt;-h_{3,1}h_{2,2}h_{1,3}-h_{3,2}h_{2,3}h_{1,1}
+        -h_{3,3}h_{2,1}h_{1,2}
+      \end{array}\]</span></p>
+<div class="exparts">
+<p>Check that this agrees with the formula given in the preamble to this
+section. Does it extend to other-sized determinants?</p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>The comparison with the formula given in the preamble to this section
+is easy. While it holds for <span
+class="math inline">\(\nbyn{2}\)</span> matrices <span
+class="math display">\[\begin{aligned}
+            \begin{pmat}{cc|c}
+              h_{1,1} &amp;h_{1,2} &amp;h_{1,1} \\
+              h_{2,1} &amp;h_{2,2} &amp;h_{2,1}
+            \end{pmat}
+            &amp;=\begin{array}[t]{@{}l@{}}
+              h_{1,1}h_{2,2}+h_{1,2}h_{2,1}  \\
+              \&gt;-h_{2,1}h_{1,2}-h_{2,2}h_{1,1}
+            \end{array}                                     \\
+            &amp;=h_{1,1}h_{2,2}-h_{1,2}h_{2,1}
+          
+\end{aligned}\]</span> it does not hold for <span
+class="math inline">\(\nbyn{4}\)</span> matrices. An example is that
+this matrix is singular because the second and third rows are equal
+<span class="math display">\[\begin{mat}[r]  
+              1  &amp;0  &amp;0  &amp;1   \\
+              0  &amp;1  &amp;1  &amp;0   \\
+              0  &amp;1  &amp;1  &amp;0   \\
+             -1  &amp;0  &amp;0  &amp;1  
+            \end{mat}\]</span> but following the scheme of the mnemonic
+does not give zero. <span class="math display">\[\begin{pmat}{rrrr|rrr}
+                       1  &amp;0  &amp;0  &amp;1  &amp;1  &amp;0  &amp;0  \\
+                       0  &amp;1  &amp;1  &amp;0  &amp;0  &amp;1  &amp;1  \\
+                       0  &amp;1  &amp;1  &amp;0  &amp;0  &amp;1  &amp;1  \\
+                      -1  &amp;0  &amp;0  &amp;1  &amp;-1 &amp;0  &amp;0
+            \end{pmat}
+            =\begin{array}[t]{@{}l@{}}
+               1+0+0+0 \\
+               \&gt;-(-1)-0-0-0
+              \end{array}\]</span></p>
+</div>
+</div>
+<p>The of the vectors <span class="math display">\[\vec{x}=\colvec{x_1
+\\ x_2 \\ x_3}
+      \qquad
+      \vec{y}=\colvec{y_1 \\ y_2 \\ y_3}\]</span> is the vector computed
+as this determinant. <span class="math display">\[\vec{x}\times\vec{y}=
+      \det(\begin{mat}
+        \vec{e}_1  &amp;\vec{e}_2  &amp;\vec{e}_3  \\
+        x_1        &amp;x_2        &amp;x_3        \\
+        y_1        &amp;y_2        &amp;y_3
+      \end{mat})\]</span> Note that the first row’s entries are vectors,
+the vectors from the standard basis for <span
+class="math inline">\(\Re^3\)</span>. Show that the cross product of two
+vectors is perpendicular to each vector.</p>
+<div class="answer">
+<p>The determinant is <span
+class="math inline">\((x_2y_3-x_3y_2)\vec{e}_1
+          +(x_3y_1-x_1y_3)\vec{e}_2
+          +(x_1y_2-x_2y_1)\vec{e}_3\)</span>. To check perpendicularity,
+we check that the dot product with the first vector is zero <span
+class="math display">\[\colvec{x_1 \\ x_2 \\ x_3}
+        \dotprod
+        \colvec{x_2y_3-x_3y_2 \\ x_3y_1-x_1y_3 \\ x_1y_2-x_2y_1}
+        =x_1x_2y_3-x_1x_3y_2+x_2x_3y_1-x_1x_2y_3+x_1x_3y_2-x_2x_3y_1=0\]</span>
+and the dot product with the second vector is also zero. <span
+class="math display">\[\colvec{y_1 \\ y_2 \\ y_3}
+        \dotprod
+        \colvec{x_2y_3-x_3y_2 \\ x_3y_1-x_1y_3 \\ x_1y_2-x_2y_1}
+        =x_2y_1y_3-x_3y_1y_2+x_3y_1y_2-x_1y_2y_3+x_1y_2y_3-x_2y_1y_3=0\]</span></p>
+</div>
+<p>Prove that each statement holds for <span
+class="math inline">\(\nbyn{2}\)</span> matrices.</p>
+<div class="exparts">
+<p>The determinant of a product is the product of the determinants <span
+class="math inline">\(\det(ST)=\det(S)\cdot\det(T)\)</span>. If <span
+class="math inline">\(T\)</span> is invertible then the determinant of
+the inverse is the inverse of the determinant <span
+class="math inline">\(\det(T^{-1})=(\,\det(T)\,)^{-1}\)</span>.</p>
+</div>
+<p>Matrices <span class="math inline">\(T\)</span> and <span
+class="math inline">\(T^\prime\)</span> are if there is a nonsingular
+matrix <span class="math inline">\(P\)</span> such that <span
+class="math inline">\(T^\prime=PTP^{-1}\)</span>. (We shall look at this
+relationship in Chapter Five.) Show that similar <span
+class="math inline">\(\nbyn{2}\)</span> matrices have the same
+determinant.</p>
+<div class="answer">
+<div class="exparts">
+<p>Plug and chug: the determinant of the product is this <span
+class="math display">\[\begin{aligned}
+             \det(\begin{mat}
+                       a  &amp;b  \\
+                       c  &amp;d
+                    \end{mat}
+                    \begin{mat}
+                       w  &amp;x  \\
+                       y  &amp;z
+                    \end{mat}  )
+             &amp;=
+             \det(\begin{mat}
+                 aw+by  &amp;ax+bz  \\
+                 cw+dy  &amp;cx+dz
+              \end{mat} )                 \\
+             &amp;=
+             \begin{array}[t]{@{}l@{}}
+                 acwx+adwz+bcxy+bdyz  \\
+                 \&gt; -acwx-bcwz-adxy-bdyz
+              \end{array}
+          
+\end{aligned}\]</span> while the product of the determinants is this.
+<span class="math display">\[\det(\begin{mat}
+                a  &amp;b  \\
+                c  &amp;d
+             \end{mat})
+             \cdot\det(\begin{mat}
+                w  &amp;x  \\
+                y  &amp;z
+             \end{mat})
+             =
+             (ad-bc)\cdot (wz-xy)\]</span> Verification that they are
+equal is easy. Use the prior item.</p>
+</div>
+<p>That similar matrices have the same determinant is immediate from the
+above two: <span
+class="math inline">\(\det(PTP^{-1})=\det(P)\cdot\det(T)\cdot\det(P^{-1})\)</span>.</p>
+</div>
+<p>Prove that the area of this region in the plane</p>
+<div class="center">
+<p><img src="det/mp/ch4.30" alt="image" /></p>
+</div>
+<p>is equal to the value of this determinant. <span
+class="math display">\[\det(
+       \begin{mat}
+          x_1  &amp;x_2  \\
+          y_1  &amp;y_2
+       \end{mat})\]</span> Compare with this. <span
+class="math display">\[\det(
+       \begin{mat}
+          x_2  &amp;x_1  \\
+          y_2  &amp;y_1
+       \end{mat})\]</span></p>
+<div class="answer">
+<p>One way is to count these areas</p>
+<div class="center">
+<p><img src="det/mp/ch4.31" alt="image" /></p>
+</div>
+<p>by taking the area of the entire rectangle and subtracting the area
+of <span class="math inline">\(A\)</span> the upper-left rectangle,
+<span class="math inline">\(B\)</span> the upper-middle triangle, <span
+class="math inline">\(D\)</span> the upper-right triangle, <span
+class="math inline">\(C\)</span> the lower-left triangle, <span
+class="math inline">\(E\)</span> the lower-middle triangle, and <span
+class="math inline">\(F\)</span> the lower-right rectangle <span
+class="math inline">\((x_1+x_2)(y_1+y_2)-x_2y_1-(1/2)x_1y_1-(1/2)x_2y_2
+              -(1/2)x_2y_2-(1/2)x_1y_1-x_2y_1\)</span>. Simplification
+gives the determinant formula.</p>
+<p>This determinant is the negative of the one above; the formula
+distinguishes whether the second column is counterclockwise from the
+first.</p>
+</div>
+<p>Prove that for <span class="math inline">\(\nbyn{2}\)</span>
+matrices, the determinant of a matrix equals the determinant of its
+transpose. Does that also hold for <span
+class="math inline">\(\nbyn{3}\)</span> matrices?</p>
+<div class="answer">
+<p>The computation for <span class="math inline">\(\nbyn{2}\)</span>
+matrices, using the formula quoted in the preamble, is easy. It does
+also hold for <span class="math inline">\(\nbyn{3}\)</span> matrices;
+the computation is routine.</p>
+</div>
+<p>Is the determinant function linear is <span
+class="math inline">\(\det(x\cdot T+y\cdot S)=x\cdot \det(T)+y\cdot
+\det(S)\)</span>?</p>
+<div class="answer">
+<p>No. We illustrate with the <span
+class="math inline">\(\nbyn{2}\)</span> determinant. Recall that
+constants come out one row at a time. <span class="math display">\[\det(
+         \begin{mat}[r]
+            2  &amp;4  \\
+            2  &amp;6  \\
+         \end{mat})
+         =
+         2\cdot\det(\begin{mat}[r]
+            1  &amp;2  \\
+            2  &amp;6  \\
+         \end{mat})
+         =
+         2\cdot 2\cdot \det(\begin{mat}[r]
+            1  &amp;2  \\
+            1  &amp;3  \\
+         \end{mat})\]</span> This contradicts linearity (here we didn’t
+need <span class="math inline">\(S\)</span>, i.e., we can take <span
+class="math inline">\(S\)</span> to be the matrix of zeros).</p>
+</div>
+<p>Show that if <span class="math inline">\(A\)</span> is <span
+class="math inline">\(\nbyn{3}\)</span> then <span
+class="math inline">\(\det(c\cdot A)=c^3\cdot \det(A)\)</span> for any
+scalar <span class="math inline">\(c\)</span>.</p>
+<div class="answer">
+<p>Bring out the <span class="math inline">\(c\)</span>’s one row at a
+time.</p>
+</div>
+<p>Which real numbers <span class="math inline">\(\theta\)</span> make
+<span class="math display">\[\begin{mat}
+          \cos\theta  &amp;-\sin\theta  \\
+          \sin\theta  &amp;\cos\theta
+       \end{mat}\]</span> singular? Explain geometrically.</p>
+<div class="answer">
+<p>There are no real numbers <span class="math inline">\(\theta\)</span>
+that make the matrix singular because the determinant of the matrix
+<span class="math inline">\(\cos^2\theta+\sin^2\theta\)</span> is never
+<span class="math inline">\(0\)</span>, it equals <span
+class="math inline">\(1\)</span> for all <span
+class="math inline">\(\theta\)</span>. Geometrically, with respect to
+the standard basis, this matrix represents a rotation of the plane
+through an angle of <span class="math inline">\(\theta\)</span>. Each
+such map is one-to-one for one thing, it is invertible.</p>
+</div>
+<p><span class="citation" data-cites="Monthly55p257"></span> If a third
+order determinant has elements <span class="math inline">\(1\)</span>,
+<span class="math inline">\(2\)</span>, …, <span
+class="math inline">\(9\)</span>, what is the maximum value it may
+have?</p>
+<div class="answer">
+<p>Let <span class="math inline">\(P\)</span> be the sum of the three
+positive terms of the determinant and <span
+class="math inline">\(-N\)</span> the sum of the three negative terms.
+The maximum value of <span class="math inline">\(P\)</span> is <span
+class="math display">\[9\cdot 8\cdot 7 +6\cdot 5\cdot 4 +3\cdot 2\cdot
+1=630.\]</span> The minimum value of <span
+class="math inline">\(N\)</span> consistent with <span
+class="math inline">\(P\)</span> is <span class="math display">\[9\cdot
+6\cdot 1 +8\cdot 5\cdot 2 +7\cdot 4\cdot 3=218.\]</span> Any change in
+<span class="math inline">\(P\)</span> would result in lowering that sum
+by more than <span class="math inline">\(4\)</span>. Therefore <span
+class="math inline">\(412\)</span> the maximum value for the determinant
+and one form for the determinant is <span
+class="math display">\[\begin{vmat}[r]
+            9  &amp;4  &amp;2  \\
+            3  &amp;8  &amp;6  \\
+            5  &amp;1  &amp;7
+         \end{vmat}.\]</span></p>
+</div>
+</div>
+<h3 id="properties-of-determinants">Properties of Determinants</h3>
+<p>We want a formula to determine whether an <span
+class="math inline">\(\nbyn{n}\)</span> matrix is nonsingular. We will
+not begin by stating such a formula. Instead we will begin by
+considering, for each <span class="math inline">\(n\)</span>, the
+function that such a formula calculates. We will define this function by
+a list of properties. We will then prove that a function with these
+properties exists and is unique, and also describe how to compute it.
+(Because we will eventually prove this, from the start we will just say
+‘<span class="math inline">\(\det(T)\)</span>’ instead of ‘if there is a
+unique determinant function then <span
+class="math inline">\(\det(T)\)</span>’.)</p>
+<div class="definition">
+<p><span id="def:Det" data-label="def:Det"></span> A <span
+class="math inline">\(\nbyn{n}\)</span> is a function <span
+class="math inline">\(\map{\det}{\matspace_{\nbyn{n}}}{\Re}\)</span>
+such that</p>
+<ol>
+<li><p><span class="math inline">\(\det
+(\vec{\rho}_1,\dots,k\cdot\vec{\rho}_i
+                                    + \vec{\rho}_j,\dots,\vec{\rho}_n)
+       =\det
+(\vec{\rho}_1,\dots,\vec{\rho}_j,\dots,\vec{\rho}_n)\)</span> for <span
+class="math inline">\(i\ne j\)</span></p></li>
+<li><p><span class="math inline">\(\det
+(\vec{\rho}_1,\ldots,\vec{\rho}_j,
+               \dots,\vec{\rho}_i,\dots,\vec{\rho}_n)
+       = -\det (\vec{\rho}_1,\dots,\vec{\rho}_i,\dots,\vec{\rho}_j,
+                \dots,\vec{\rho}_n)\)</span> for <span
+class="math inline">\(i\ne j\)</span></p></li>
+<li><p><span class="math inline">\(\det
+(\vec{\rho}_1,\dots,k\vec{\rho}_i,\dots,\vec{\rho}_n)
+       = k\cdot \det
+(\vec{\rho}_1,\dots,\vec{\rho}_i,\dots,\vec{\rho}_n)\)</span> for any
+scalar <span class="math inline">\(k\)</span></p></li>
+<li><p><span class="math inline">\(\det(I)=1\)</span> where <span
+class="math inline">\(I\)</span> is an identity matrix</p></li>
+</ol>
+<p>(the <span class="math inline">\(\vec{\rho}\,\)</span>’s are the rows
+of the matrix). We often write <span
+class="math inline">\(\deter{T}\)</span> for <span
+class="math inline">\(\det (T)\)</span>.</p>
+</div>
+<div class="remark">
+<p><span id="rem:SwapRowsRedun" data-label="rem:SwapRowsRedun"></span>
+Condition (2) is redundant since <span
+class="math display">\[T\grstep{\rho_i+\rho_j}
+    \repeatedgrstep{-\rho_j+\rho_i}
+    \repeatedgrstep{\rho_i+\rho_j}
+    \repeatedgrstep{-\rho_i}
+    \hat{T}\]</span> swaps rows <span class="math inline">\(i\)</span>
+and <span class="math inline">\(j\)</span>. We have listed it for
+consistency with the Gauss’s Method presentation in earlier
+chapters.</p>
+</div>
+<div class="remark">
+<p>Condition (3) does not have a <span class="math inline">\(k\neq
+0\)</span> restriction, although the Gauss’s Method operation of
+multiplying a row by <span class="math inline">\(k\)</span> does have
+it. The next result shows that we do not need that restriction here.</p>
+</div>
+<div class="lemma">
+<p><span id="le:IdenRowsDetZero" data-label="le:IdenRowsDetZero"></span>
+A matrix with two identical rows has a determinant of zero. A matrix
+with a zero row has a determinant of zero. A matrix is nonsingular if
+and only if its determinant is nonzero. The determinant of an echelon
+form matrix is the product down its diagonal.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> To verify the first sentence swap the two equal rows.
+The sign of the determinant changes but the matrix is the same and so
+its determinant is the same. Thus the determinant is zero.</p>
+<p>For the second sentence multiply the zero row by two. That doubles
+the determinant but it also leaves the row unchanged, and hence leaves
+the determinant unchanged. Thus the determinant must be zero.</p>
+<p>Do Gauss-Jordan reduction for the third sentence, <span
+class="math inline">\(T \rightarrow\cdots\rightarrow\hat{T}\)</span>. By
+the first three properties the determinant of <span
+class="math inline">\(T\)</span> is zero if and only if the determinant
+of <span class="math inline">\(\hat{T}\)</span> is zero (although the
+two could differ in sign or magnitude). A nonsingular matrix <span
+class="math inline">\(T\)</span> Gauss-Jordan reduces to an identity
+matrix and so has a nonzero determinant. A singular <span
+class="math inline">\(T\)</span> reduces to a <span
+class="math inline">\(\hat{T}\)</span> with a zero row; by the second
+sentence of this lemma its determinant is zero.</p>
+<p>The fourth sentence has two cases. If the echelon form matrix is
+singular then it has a zero row. Thus it has a zero on its diagonal and
+the product down its diagonal is zero. By the third sentence of this
+result the determinant is zero and therefore this matrix’s determinant
+equals the product down its diagonal.</p>
+<p>If the echelon form matrix is nonsingular then none of its diagonal
+entries is zero. This means that we can divide by those entries and use
+condition (3) to get <span class="math inline">\(1\)</span>’s on the
+diagonal. <span class="math display">\[\begin{vmat}
+    t_{1,1}  &amp;t_{1,2}  &amp;     &amp;t_{1,n}  \\
+    0        &amp;t_{2,2}  &amp;     &amp;t_{2,n}  \\
+             &amp;         &amp;\ddots         \\
+    0        &amp;         &amp;     &amp;t_{n,n}
+  \end{vmat}
+  =
+  t_{1,1}\cdot t_{2,2}\cdots t_{n,n}\cdot
+  \begin{vmat}
+    1        &amp;t_{1,2}/t_{1,1}  &amp;     &amp;t_{1,n}/t_{1,1}  \\
+    0        &amp;1                &amp;     &amp;t_{2,n}/t_{2,2}  \\
+             &amp;                 &amp;\ddots         \\
+    0        &amp;                 &amp;     &amp;1
+  \end{vmat}\]</span> Then the Jordan half of Gauss-Jordan elimination
+leaves the identity matrix. <span class="math display">\[=
+  t_{1,1}\cdot t_{2,2}\cdots t_{n,n}\cdot
+  \begin{vmat}
+    1        &amp;0                &amp;     &amp;0                \\
+    0        &amp;1                &amp;     &amp;0                \\
+             &amp;                 &amp;\ddots         \\
+    0        &amp;                 &amp;     &amp;1
+  \end{vmat}
+  =
+  t_{1,1}\cdot t_{2,2}\cdots t_{n,n}\cdot 1\]</span> So in this case
+also, the determinant is the product down the diagonal. ◻</p>
+</div>
+<p>That gives us a way to compute the value of a determinant function on
+a matrix: do Gaussian reduction, keeping track of any changes of sign
+caused by row swaps and any scalars that we factor out, and finish by
+multiplying down the diagonal of the echelon form result. This algorithm
+is as fast as Gauss’s Method and so is practical on all of the matrices
+that we will see.</p>
+<div class="example">
+<p>Doing <span class="math inline">\(\nbyn{2}\)</span> determinants with
+Gauss’s Method <span class="math display">\[\begin{vmat}[r]
+      2  &amp;4  \\
+      -1 &amp;3
+   \end{vmat}
+   =
+   \begin{vmat}[r]
+      2  &amp;4  \\
+      0  &amp;5
+   \end{vmat}
+   =10\]</span> doesn’t give a big time savings because the <span
+class="math inline">\(\nbyn{2}\)</span> determinant formula is easy.
+However, a <span class="math inline">\(\nbyn{3}\)</span> determinant is
+often easier to calculate with Gauss’s Method than with its formula.
+<span class="math display">\[\begin{vmat}[r]
+     2  &amp;2  &amp;6  \\
+     4  &amp;4  &amp;3  \\
+     0  &amp;-3 &amp;5
+   \end{vmat}
+   =
+   \begin{vmat}[r]
+     2  &amp;2  &amp;6  \\
+     0  &amp;0  &amp;-9 \\
+     0  &amp;-3 &amp;5
+   \end{vmat}
+   =
+   -\begin{vmat}[r]
+     2  &amp;2  &amp;6  \\
+     0  &amp;-3 &amp;5  \\
+     0  &amp;0  &amp;-9
+   \end{vmat}
+   =-54\]</span></p>
+</div>
+<div class="example">
+<p>Determinants bigger than <span
+class="math inline">\(\nbyn{3}\)</span> go quickly with the Gauss’s
+Method procedure. <span class="math display">\[\begin{vmat}[r]
+      1  &amp;0  &amp;1  &amp;3  \\
+      0  &amp;1  &amp;1  &amp;4  \\
+      0  &amp;0  &amp;0  &amp;5  \\
+      0  &amp;1  &amp;0  &amp;1
+   \end{vmat}
+   =
+   \begin{vmat}[r]
+      1  &amp;0  &amp;1  &amp;3  \\
+      0  &amp;1  &amp;1  &amp;4  \\
+      0  &amp;0  &amp;0  &amp;5  \\
+      0  &amp;0  &amp;-1 &amp;-3
+   \end{vmat}
+   =
+   -\begin{vmat}[r]
+      1  &amp;0  &amp;1  &amp;3  \\
+      0  &amp;1  &amp;1  &amp;4  \\
+      0  &amp;0  &amp;-1 &amp;-3 \\
+      0  &amp;0  &amp;0  &amp;5
+   \end{vmat}
+   =-(-5)=5\]</span></p>
+</div>
+<p>That example raises an important point. This chapter’s introduction
+gives formulas for <span class="math inline">\(\nbyn{2}\)</span> and
+<span class="math inline">\(\nbyn{3}\)</span> determinants, so we know
+that they exist, but not for determinant functions on matrices that are
+<span class="math inline">\(\nbyn{4}\)</span> or larger. Instead, gives
+properties that a determinant function should have and leads to
+computing determinants by Gauss’s Method.</p>
+<p>However, for any matrix we can reduce it to echelon form by Gauss’s
+Method in multiple ways. For example, given a reduction we could change
+it by inserting a first step that multiplies the top row by <span
+class="math inline">\(2\)</span> and then a second step that multiplies
+it by <span class="math inline">\(1/2\)</span>. So we have to worry that
+two different Gauss’s Method reductions could lead to two different
+computed values for the determinant.</p>
+<p>That is, we must verify that gives a well-defined function. The next
+two subsections do this, showing that there exists a well-defined
+function satisfying the definition.</p>
+<p>But first we show that if there is such a function then there is no
+more than one. The example above illustrates the idea: we got <span
+class="math inline">\(5\)</span> by following the properties of the
+definition. So while we have not yet proved that <span
+class="math inline">\(\det_{\nbyn{4}}\)</span> exists, that there is a
+function with properties (1) – (4), if such a function satisfying them
+does exist then we know what value it gives on the above matrix.</p>
+<div class="lemma">
+<p><span id="lm:DetFcnIsUnique" data-label="lm:DetFcnIsUnique"></span>
+For each <span class="math inline">\(n\)</span>, if there is an <span
+class="math inline">\(\nbyn{n}\)</span> determinant function then it is
+unique.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> Suppose that there are two functions <span
+class="math inline">\(\map{\det_1,\det_2}{\matspace_{\nbyn{n}}}{\Re}\)</span>
+satisfying the properties of and its consequence . Given a square
+matrix <span class="math inline">\(M\)</span>, fix some way of
+performing Gauss’s Method to bring the matrix to echelon form (it does
+not matter that there are multiple ways, just fix one of them). By using
+this fixed reduction as in the above examples keeping track of
+row-scaling factors and how the sign alternates on row swaps, and then
+multiplying down the diagonal of the echelon form result we can compute
+the value that these two functions must return on <span
+class="math inline">\(M\)</span>, and they must return the same value.
+Since they give the same output on every input, they are the same
+function. ◻</p>
+</div>
+<p>The ‘if there is an <span class="math inline">\(\nbyn{n}\)</span>
+determinant function’ emphasizes that, although we can use Gauss’s
+Method to compute the only value that a determinant function could
+possibly return, we haven’t yet shown that such a function exists for
+all <span class="math inline">\(n\)</span>. The rest of this section
+does that.</p>
+<div class="exercises">
+<p>Find each determinant by performing one row operation.</p>
+<div class="exparts*">
+<p><span class="math inline">\(\begin{vmat}[r]
+                 1  &amp;-2  &amp;1  &amp;2 \\
+                 2  &amp;-4  &amp;1  &amp;0 \\
+                 0  &amp;0  &amp;-1  &amp;0 \\
+                 0  &amp;0  &amp;0  &amp;5
+               \end{vmat}\)</span> <span
+class="math inline">\(\begin{vmat}[r]
+                 1  &amp;1  &amp;-2  \\
+                 0  &amp;0  &amp;4  \\
+                 0  &amp;3  &amp;-6
+               \end{vmat}\)</span></p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>Do <span class="math inline">\(2\rho_1+\rho_2\)</span> to get echelon
+form, and then multiply down the diagonal. The determinant is <span
+class="math inline">\(0\)</span>. Swapping the second and third rows
+brings the system to echelon form (and changes the sign of the
+determinant). Multiplying down the diagonal gives <span
+class="math inline">\(12\)</span>, so the determinant of the given
+matrix is <span class="math inline">\(-12\)</span>.</p>
+</div>
+</div>
+<p>Use Gauss’s Method to find each determinant.</p>
+<div class="exparts*">
+<p><span class="math inline">\(\begin{vmat}[r]
+                 3  &amp;1  &amp;2  \\
+                 3  &amp;1  &amp;0  \\
+                 0  &amp;1  &amp;4
+               \end{vmat}\)</span> <span
+class="math inline">\(\begin{vmat}[r]
+                 1  &amp;0  &amp;0  &amp;1 \\
+                 2  &amp;1  &amp;1  &amp;0 \\
+                -1  &amp;0  &amp;1  &amp;0 \\
+                 1  &amp;1  &amp;1  &amp;0
+               \end{vmat}\)</span></p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p><span class="math inline">\(\begin{vmat}[r]
+                 3  &amp;1  &amp;2  \\
+                 3  &amp;1  &amp;0  \\
+                 0  &amp;1  &amp;4
+               \end{vmat}
+               =
+               \begin{vmat}[r]
+                 3  &amp;1  &amp;2  \\
+                 0  &amp;0  &amp;-2 \\
+                 0  &amp;1  &amp;4
+               \end{vmat}
+               =
+               -\begin{vmat}[r]
+                 3  &amp;1  &amp;2  \\
+                 0  &amp;1  &amp;4  \\
+                 0  &amp;0  &amp;-2
+               \end{vmat}
+               =6\)</span> <span class="math inline">\(\begin{vmat}[r]
+                 1  &amp;0  &amp;0  &amp;1 \\
+                 2  &amp;1  &amp;1  &amp;0 \\
+                -1  &amp;0  &amp;1  &amp;0 \\
+                 1  &amp;1  &amp;1  &amp;0
+               \end{vmat}
+               =
+               \begin{vmat}[r]
+                 1  &amp;0  &amp;0  &amp;1 \\
+                 0  &amp;1  &amp;1  &amp;-2\\
+                 0  &amp;0  &amp;1  &amp;1 \\
+                 0  &amp;1  &amp;1  &amp;-1
+               \end{vmat}
+               =
+               \begin{vmat}[r]
+                 1  &amp;0  &amp;0  &amp;1 \\
+                 0  &amp;1  &amp;1  &amp;-2\\
+                 0  &amp;0  &amp;1  &amp;1 \\
+                 0  &amp;0  &amp;0  &amp;1
+               \end{vmat}
+               =1\)</span></p>
+</div>
+</div>
+<p>Use Gauss’s Method to find each.</p>
+<div class="exparts*">
+<p><span class="math inline">\(\begin{vmat}[r]
+                 2  &amp;-1  \\
+                 -1 &amp;-1
+               \end{vmat}\)</span> <span
+class="math inline">\(\begin{vmat}[r]
+                 1  &amp;1  &amp;0  \\
+                 3  &amp;0  &amp;2  \\
+                 5  &amp;2  &amp;2
+               \end{vmat}\)</span></p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p><span class="math inline">\(\begin{vmat}[r]
+                 2  &amp;-1  \\
+                 -1 &amp;-1
+               \end{vmat}
+             =\begin{vmat}[r]
+                 2  &amp;-1  \\
+                 0  &amp;-3/2
+               \end{vmat}=-3\)</span>; <span
+class="math inline">\(\begin{vmat}[r]
+                 1  &amp;1  &amp;0  \\
+                 3  &amp;0  &amp;2  \\
+                 5  &amp;2  &amp;2
+               \end{vmat}
+              =\begin{vmat}[r]
+                 1  &amp;1  &amp;0  \\
+                 0  &amp;-3 &amp;2  \\
+                 0  &amp;-3 &amp;2
+               \end{vmat}
+              =\begin{vmat}[r]
+                 1  &amp;1  &amp;0  \\
+                 0  &amp;-3 &amp;2  \\
+                 0  &amp;0  &amp;0
+               \end{vmat}
+              =0\)</span></p>
+</div>
+</div>
+<p>For which values of <span class="math inline">\(k\)</span> does this
+system have a unique solution? <span
+class="math display">\[\begin{linsys}{4}
+          x  &amp;  &amp;  &amp;+
+&amp;z  &amp;-  &amp;w  &amp;=  &amp;2  \\
+             &amp;  &amp;y &amp;- &amp;2z
+&amp;   &amp;   &amp;=  &amp;3  \\
+          x  &amp;  &amp;  &amp;+ &amp;kz
+&amp;   &amp;   &amp;=  &amp;4  \\
+             &amp;  &amp;  &amp;  &amp;z  &amp;-  &amp;w  &amp;=  &amp;2
+        \end{linsys}\]</span></p>
+<div class="answer">
+<p>When is the determinant not zero? <span
+class="math display">\[\begin{vmat}
+           1  &amp;0  &amp;1  &amp;-1  \\
+           0  &amp;1  &amp;-2 &amp;0   \\
+           1  &amp;0  &amp;k  &amp;0   \\
+           0  &amp;0  &amp;1  &amp;-1
+         \end{vmat}
+         =
+         \begin{vmat}
+           1  &amp;0  &amp;1  &amp;-1  \\
+           0  &amp;1  &amp;-2 &amp;0   \\
+           0  &amp;0  &amp;k-1&amp;1   \\
+           0  &amp;0  &amp;1  &amp;-1
+         \end{vmat}\]</span> Obviously, <span
+class="math inline">\(k=1\)</span> gives nonsingularity and hence a
+nonzero determinant. If <span class="math inline">\(k\neq 1\)</span>
+then we get echelon form with a <span
+class="math inline">\((-1/k-1)\rho_3+\rho_4\)</span> combination. <span
+class="math display">\[=
+         \begin{vmat}
+           1  &amp;0  &amp;1  &amp;-1  \\
+           0  &amp;1  &amp;-2 &amp;0   \\
+           0  &amp;0  &amp;k-1&amp;1   \\
+           0  &amp;0  &amp;0  &amp;-1-(1/k-1)
+         \end{vmat}\]</span> Multiplying down the diagonal gives <span
+class="math inline">\((k-1)(-1-(1/k-1))=-(k-1)-1=-k\)</span>. Thus the
+matrix has a nonzero determinant, and so the system has a unique
+solution, if and only if <span class="math inline">\(k\neq
+0\)</span>.</p>
+</div>
+<p>Express each of these in terms of <span
+class="math inline">\(\deter{H}\)</span>.</p>
+<div class="exparts">
+<p><span class="math inline">\(\begin{vmat}
+            h_{3,1}  &amp;h_{3,2} &amp;h_{3,3} \\
+            h_{2,1}  &amp;h_{2,2} &amp;h_{2,3} \\
+            h_{1,1}  &amp;h_{1,2} &amp;h_{1,3}
+          \end{vmat}\)</span> <span class="math inline">\(\begin{vmat}
+           -h_{1,1}   &amp;-h_{1,2}  &amp;-h_{1,3} \\
+           -2h_{2,1}  &amp;-2h_{2,2} &amp;-2h_{2,3} \\
+           -3h_{3,1}  &amp;-3h_{3,2} &amp;-3h_{3,3}
+          \end{vmat}\)</span> <span class="math inline">\(\begin{vmat}
+            h_{1,1}+h_{3,1}  &amp;h_{1,2}+h_{3,2} &amp;h_{1,3}+h_{3,3}
+\\
+            h_{2,1}          &amp;h_{2,2}         &amp;h_{2,3} \\
+            5h_{3,1}         &amp;5h_{3,2}        &amp;5h_{3,3}
+          \end{vmat}\)</span></p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>Condition (2) of the definition of determinants applies via the swap
+<span class="math inline">\(\rho_1\leftrightarrow\rho_3\)</span>. <span
+class="math display">\[\begin{vmat}
+              h_{3,1}  &amp;h_{3,2} &amp;h_{3,3} \\
+              h_{2,1}  &amp;h_{2,2} &amp;h_{2,3} \\
+              h_{1,1}  &amp;h_{1,2} &amp;h_{1,3}
+            \end{vmat}
+            =
+            -\begin{vmat}
+              h_{1,1}  &amp;h_{1,2} &amp;h_{1,3} \\
+              h_{2,1}  &amp;h_{2,2} &amp;h_{2,3} \\
+              h_{3,1}  &amp;h_{3,2} &amp;h_{3,3}
+            \end{vmat}\]</span> Condition (3) applies. <span
+class="math display">\[\begin{gathered}
+            \begin{vmat}
+             -h_{1,1}   &amp;-h_{1,2}  &amp;-h_{1,3} \\
+             -2h_{2,1}  &amp;-2h_{2,2} &amp;-2h_{2,3} \\
+             -3h_{3,1}  &amp;-3h_{3,2} &amp;-3h_{3,3}
+            \end{vmat}
+            =
+            (-1)\cdot(-2)\cdot(-3)\cdot
+            \begin{vmat}
+             h_{1,1}   &amp;h_{1,2}  &amp;h_{1,3} \\
+             h_{2,1}   &amp;h_{2,2}  &amp;h_{2,3} \\
+             h_{3,1}   &amp;h_{3,2}  &amp;h_{3,3}
+            \end{vmat}                                  \\
+            =
+            (-6)\cdot
+            \begin{vmat}
+             h_{1,1}   &amp;h_{1,2}  &amp;h_{1,3} \\
+             h_{2,1}   &amp;h_{2,2}  &amp;h_{2,3} \\
+             h_{3,1}   &amp;h_{3,2}  &amp;h_{3,3}
+            \end{vmat}
+          
+\end{gathered}\]</span> <span class="math display">\[\begin{gathered}
+          \begin{vmat}
+            h_{1,1}+h_{3,1}  &amp;h_{1,2}+h_{3,2} &amp;h_{1,3}+h_{3,3}
+\\
+            h_{2,1}          &amp;h_{2,2}         &amp;h_{2,3} \\
+            5h_{3,1}         &amp;5h_{3,2}        &amp;5h_{3,3}
+          \end{vmat}                                                 \\
+          \begin{aligned}
+          &amp;=
+          5\cdot     
+          \begin{vmat}
+            h_{1,1}+h_{3,1}  &amp;h_{1,2}+h_{3,2} &amp;h_{1,3}+h_{3,3}
+\\
+            h_{2,1}          &amp;h_{2,2}         &amp;h_{2,3} \\
+            h_{3,1}          &amp;h_{3,2}         &amp;h_{3,3}
+          \end{vmat}                                     \\
+          &amp;=5\cdot
+          \begin{vmat}
+            h_{1,1}          &amp;h_{1,2}         &amp;h_{1,3} \\
+            h_{2,1}          &amp;h_{2,2}         &amp;h_{2,3} \\
+            h_{3,1}          &amp;h_{3,2}         &amp;h_{3,3}
+          \end{vmat}
+          \end{aligned}
+          
+\end{gathered}\]</span></p>
+</div>
+</div>
+<p>Find the determinant of a diagonal matrix.</p>
+<div class="answer">
+<p>A diagonal matrix is in echelon form, so the determinant is the
+product down the diagonal.</p>
+</div>
+<p>Describe the solution set of a homogeneous linear system if the
+determinant of the matrix of coefficients is nonzero.</p>
+<div class="answer">
+<p>It is the trivial subspace.</p>
+</div>
+<p>Show that this determinant is zero. <span
+class="math display">\[\begin{vmat}
+        y+z  &amp;x+z  &amp;x+y  \\
+        x    &amp;y    &amp;z    \\
+        1    &amp;1    &amp;1
+      \end{vmat}\]</span></p>
+<div class="answer">
+<p>Adding the second row to the first gives a matrix whose first row is
+<span class="math inline">\(x+y+z\)</span> times its third row.</p>
+</div>
+<div class="exparts">
+<p>Find the <span class="math inline">\(\nbyn{1}\)</span>, <span
+class="math inline">\(\nbyn{2}\)</span>, and <span
+class="math inline">\(\nbyn{3}\)</span> matrices with <span
+class="math inline">\(i,j\)</span> entry given by <span
+class="math inline">\((-1)^{i+j}\)</span>. Find the determinant of the
+square matrix with <span class="math inline">\(i,j\)</span> entry <span
+class="math inline">\((-1)^{i+j}\)</span>.</p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p><span class="math inline">\(\begin{mat}[r]
+            1
+          \end{mat}\)</span>, <span class="math inline">\(\begin{mat}[r]
+            1  &amp;-1  \\
+            -1  &amp;1
+          \end{mat}\)</span>, <span class="math inline">\(\begin{mat}[r]
+            1   &amp;-1  &amp;1   \\
+            -1  &amp;1   &amp;-1  \\
+            1   &amp;-1  &amp;1
+          \end{mat}\)</span> The determinant in the <span
+class="math inline">\(\nbyn{1}\)</span> case is <span
+class="math inline">\(1\)</span>. In every other case the second row is
+the negative of the first, and so matrix is singular and the determinant
+is zero.</p>
+</div>
+</div>
+<div class="exparts">
+<p>Find the <span class="math inline">\(\nbyn{1}\)</span>, <span
+class="math inline">\(\nbyn{2}\)</span>, and <span
+class="math inline">\(\nbyn{3}\)</span> matrices with <span
+class="math inline">\(i,j\)</span> entry given by <span
+class="math inline">\(i+j\)</span>. Find the determinant of the square
+matrix with <span class="math inline">\(i,j\)</span> entry <span
+class="math inline">\(i+j\)</span>.</p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p><span class="math inline">\(\begin{mat}[r]
+            2
+          \end{mat}\)</span>, <span class="math inline">\(\begin{mat}[r]
+            2  &amp;3  \\
+            3  &amp;4
+          \end{mat}\)</span>, <span class="math inline">\(\begin{mat}[r]
+            2  &amp;3  &amp;4  \\
+            3  &amp;4  &amp;5  \\
+            4  &amp;5  &amp;6
+          \end{mat}\)</span> The <span
+class="math inline">\(\nbyn{1}\)</span> and <span
+class="math inline">\(\nbyn{2}\)</span> cases yield these. <span
+class="math display">\[\begin{vmat}[r]
+              2
+            \end{vmat}
+            =2
+            \qquad
+            \begin{vmat}[r]
+              2  &amp;3  \\
+              3  &amp;4
+            \end{vmat}=-1\]</span> And <span
+class="math inline">\(\nbyn{n}\)</span> matrices with <span
+class="math inline">\(n\geq 3\)</span> are singular, e.g., <span
+class="math display">\[\begin{vmat}[r]
+              2  &amp;3  &amp;4  \\
+              3  &amp;4  &amp;5  \\
+              4  &amp;5  &amp;6
+            \end{vmat}=0\]</span> because twice the second row minus the
+first row equals the third row. Checking this is routine.</p>
+</div>
+</div>
+<p>Show that determinant functions are not linear by giving a case where
+<span
+class="math inline">\(\deter{A+B}\neq\deter{A}+\deter{B}\)</span>.</p>
+<div class="answer">
+<p>This one <span class="math display">\[A=B=
+         \begin{mat}[r]
+           1  &amp;2  \\
+           3  &amp;4
+         \end{mat}\]</span> is easy to check. <span
+class="math display">\[\deter{A+B}
+         =
+         \begin{vmat}[r]
+           2  &amp;4  \\
+           6  &amp;8
+         \end{vmat}
+         =-8
+         \qquad
+         \deter{A}+\deter{B}
+         =
+         -2-2
+         =-4\]</span> By the way, this also gives an example where
+scalar multiplication is not preserved <span
+class="math inline">\(\deter{2\cdot A}\neq 2\cdot\deter{A}\)</span>.</p>
+</div>
+<p>The second condition in the definition, that row swaps change the
+sign of a determinant, is somewhat annoying. It means we have to keep
+track of the number of swaps, to compute how the sign alternates. Can we
+get rid of it? Can we replace it with the condition that row swaps leave
+the determinant unchanged? (If so then we would need new <span
+class="math inline">\(\nbyn{1}\)</span>, <span
+class="math inline">\(\nbyn{2}\)</span>, and <span
+class="math inline">\(\nbyn{3}\)</span> formulas, but that would be a
+minor matter.)</p>
+<div class="answer">
+<p>No, we cannot replace it. shows that the four conditions after the
+replacement would conflict no function satisfies all four.</p>
+</div>
+<p>Prove that the determinant of any triangular matrix, upper or lower,
+is the product down its diagonal.</p>
+<div class="answer">
+<p>A upper-triangular matrix is in echelon form.</p>
+<p>A lower-triangular matrix is either singular or nonsingular. If it is
+singular then it has a zero on its diagonal and so its determinant
+(namely, zero) is indeed the product down its diagonal. If it is
+nonsingular then it has no zeroes on its diagonal, and we can reduce it
+by Gauss’s Method to echelon form without changing the diagonal.</p>
+</div>
+<p>Refer to the definition of elementary matrices in the Mechanics of
+Matrix Multiplication subsection.</p>
+<div class="exparts">
+<p>What is the determinant of each kind of elementary matrix? Prove that
+if <span class="math inline">\(E\)</span> is any elementary matrix then
+<span class="math inline">\(\deter{ES}=\deter{E}\deter{S}\)</span> for
+any appropriately sized <span class="math inline">\(S\)</span>.
+<em>(This question doesn’t involve determinants.)</em> Prove that if
+<span class="math inline">\(T\)</span> is singular then a product <span
+class="math inline">\(TS\)</span> is also singular. Show that <span
+class="math inline">\(\deter{TS}=\deter{T}\deter{S}\)</span>. Show that
+if <span class="math inline">\(T\)</span> is nonsingular then <span
+class="math inline">\(\deter{T^{-1}}=\deter{T}^{-1}\)</span>.</p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>The properties in the definition of determinant show that <span
+class="math inline">\(\deter{M_i(k)}=k\)</span>, <span
+class="math inline">\(\deter{P_{i,j}}=-1\)</span>, and <span
+class="math inline">\(\deter{C_{i,j}(k)}=1\)</span>. The three cases are
+easy to check by recalling the action of left multiplication by each
+type of matrix. If <span class="math inline">\(TS\)</span> is invertible
+<span class="math inline">\((TS)M=I\)</span> then the associative
+property of matrix multiplication <span
+class="math inline">\(T(SM)=I\)</span> shows that <span
+class="math inline">\(T\)</span> is invertible. So if <span
+class="math inline">\(T\)</span> is not invertible then neither is <span
+class="math inline">\(TS\)</span>. If <span
+class="math inline">\(T\)</span> is singular then apply the prior
+answer: <span class="math inline">\(\deter{TS}=0\)</span> and <span
+class="math inline">\(\deter{T}\cdot\deter{S}=0\cdot\deter{S}=0\)</span>.
+If <span class="math inline">\(T\)</span> is not singular then we can
+write it as a product of elementary matrices <span
+class="math inline">\(\deter{TS}=\deter{E_r\cdots E_1S}=
+            \deter{E_r}\cdots\deter{E_1}\cdot\deter{S}=
+            \deter{E_r\cdots E_1}\deter{S}=\deter{T}\deter{S}\)</span>.
+<span class="math inline">\(1=\deter{I}=\deter{T\cdot T^{-1}}
+                     =\deter{T}\deter{T^{-1}}\)</span></p>
+</div>
+</div>
+<p>Prove that the determinant of a product is the product of the
+determinants <span
+class="math inline">\(\deter{TS}=\deter{T}\,\deter{S}\)</span> in this
+way. Fix the <span class="math inline">\(\nbyn{n}\)</span> matrix <span
+class="math inline">\(S\)</span> and consider the function <span
+class="math inline">\(\map{d}{\matspace_{\nbyn{n}}}{\Re}\)</span> given
+by <span class="math inline">\(T\mapsto
+\deter{TS}/\deter{S}\)</span>.</p>
+<div class="exparts">
+<p>Check that <span class="math inline">\(d\)</span> satisfies
+condition (1) in the definition of a determinant function. Check
+condition (2). Check condition (3). Check condition (4). Conclude the
+determinant of a product is the product of the determinants.</p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>We must show that if <span
+class="math display">\[T\grstep{k\rho_i+\rho_j}\hat{T}\]</span> then
+<span class="math inline">\(d(T)=\deter{TS}/\deter{S}
+          =\deter{\hat{T}S}/\deter{S}=d(\hat{T})\)</span>. We will be
+done if we show that combining rows first and then multiplying to get
+<span class="math inline">\(\hat{T}S\)</span> gives the same result as
+multiplying first to get <span class="math inline">\(TS\)</span> and
+then combining (because the determinant <span
+class="math inline">\(\deter{TS}\)</span> is unaffected by the
+combination so we’ll then have <span
+class="math inline">\(\deter{\hat{T}S}=\deter{TS}\)</span>, and hence
+<span class="math inline">\(d(\hat{T})=d(T)\)</span>). That argument
+runs: after adding <span class="math inline">\(k\)</span> times
+row <span class="math inline">\(i\)</span> of <span
+class="math inline">\(TS\)</span> to row <span
+class="math inline">\(j\)</span> of <span
+class="math inline">\(TS\)</span>, the <span
+class="math inline">\(j,p\)</span> entry is <span
+class="math inline">\((kt_{i,1}+t_{j,1})s_{1,p}+\dots+(kt_{i,r}+t_{j,r})s_{r,p}\)</span>,
+which is the <span class="math inline">\(j,p\)</span> entry of <span
+class="math inline">\(\hat{T}S\)</span>. We need only show that swapping
+<span
+class="math inline">\(T\smash[b]{\grstep{\rho_i\swap\rho_j}}\hat{T}\)</span>
+and then multiplying to get <span
+class="math inline">\(\hat{T}S\)</span> gives the same result as
+multiplying <span class="math inline">\(T\)</span> by <span
+class="math inline">\(S\)</span> and then swapping (because, as the
+determinant <span class="math inline">\(\deter{TS}\)</span> changes sign
+on the row swap, we’ll then have <span
+class="math inline">\(\deter{\hat{T}S}=-\deter{TS}\)</span>, and so
+<span class="math inline">\(d(\hat{T})=-d(T)\)</span>). That argument
+runs just like the prior one. Not surprisingly by now, we need only show
+that multiplying a row by a scalar <span
+class="math inline">\(T\smash[b]{\grstep{k\rho_i}}\hat{T}\)</span> and
+then computing <span class="math inline">\(\hat{T}S\)</span> gives the
+same result as first computing <span class="math inline">\(TS\)</span>
+and then multiplying the row by <span class="math inline">\(k\)</span>
+(as the determinant <span class="math inline">\(\deter{TS}\)</span> is
+rescaled by <span class="math inline">\(k\)</span> the multiplication,
+we’ll have <span
+class="math inline">\(\deter{\hat{T}S}=k\deter{TS}\)</span>, so <span
+class="math inline">\(d(\hat{T})=k\,d(T)\)</span>). The argument runs
+just as above. Clear. Because we’ve shown that <span
+class="math inline">\(d(T)\)</span> is a determinant and that
+determinant functions (if they exist) are unique, we have that so <span
+class="math inline">\(\deter{T}=d(T)=\deter{TS}/\deter{S}\)</span>.</p>
+</div>
+</div>
+<p>A of a given matrix <span class="math inline">\(A\)</span> is one
+that we get by deleting some of the rows and columns of <span
+class="math inline">\(A\)</span>. Thus, the first matrix here is a
+submatrix of the second. <span class="math display">\[\begin{mat}[r]
+        3  &amp;1  \\
+        2  &amp;5
+      \end{mat}
+      \qquad
+      \begin{mat}[r]
+        3  &amp;4  &amp;1  \\
+        0  &amp;9  &amp;-2 \\
+        2  &amp;-1 &amp;5
+      \end{mat}\]</span> Prove that for any square matrix, the rank of
+the matrix is <span class="math inline">\(r\)</span> if and only if
+<span class="math inline">\(r\)</span> is the largest integer such that
+there is an <span class="math inline">\(\nbyn{r}\)</span> submatrix with
+a nonzero determinant.</p>
+<div class="answer">
+<p>We will first argue that a rank <span
+class="math inline">\(r\)</span> matrix has a <span
+class="math inline">\(\nbyn{r}\)</span> submatrix with nonzero
+determinant. A rank <span class="math inline">\(r\)</span> matrix has a
+linearly independent set of <span class="math inline">\(r\)</span> rows.
+A matrix made from those rows will have row rank <span
+class="math inline">\(r\)</span> and thus has column rank <span
+class="math inline">\(r\)</span>. Conclusion: from those <span
+class="math inline">\(r\)</span> rows we can extract a linearly
+independent set of <span class="math inline">\(r\)</span> columns, and
+so the original matrix has a <span
+class="math inline">\(\nbyn{r}\)</span> submatrix of rank <span
+class="math inline">\(r\)</span>.</p>
+<p>We finish by showing that if <span class="math inline">\(r\)</span>
+is the largest such integer then the rank of the matrix is <span
+class="math inline">\(r\)</span>. We need only show, by the maximality
+of <span class="math inline">\(r\)</span>, that if a matrix has a <span
+class="math inline">\(\nbyn{k}\)</span> submatrix of nonzero determinant
+then the rank of the matrix is at least <span
+class="math inline">\(k\)</span>. Consider such a <span
+class="math inline">\(\nbyn{k}\)</span> submatrix. Its rows are parts of
+the rows of the original matrix, clearly the set of whole rows is
+linearly independent. Thus the row rank of the original matrix is at
+least <span class="math inline">\(k\)</span>, and the row rank of a
+matrix equals its rank.</p>
+</div>
+<p>Prove that a matrix with rational entries has a rational
+determinant.</p>
+<div class="answer">
+<p>A matrix with only rational entries reduces with Gauss’s Method to an
+echelon form matrix using only rational arithmetic. Thus the entries on
+the diagonal must be rationals, and so the product down the diagonal is
+rational.</p>
+</div>
+<p><span class="citation" data-cites="Monthly53p115"></span> Find the
+element of likeness in (a) simplifying a fraction, (b) powdering the
+nose, (c) building new steps on the church, (d) keeping emeritus
+professors on campus, (e) putting <span
+class="math inline">\(B\)</span>, <span
+class="math inline">\(C\)</span>, <span class="math inline">\(D\)</span>
+in the determinant <span class="math display">\[\begin{vmat}
+         1   &amp;a   &amp;a^2  &amp;a^3  \\
+         a^3 &amp;1   &amp;a    &amp;a^2  \\
+         B   &amp;a^3 &amp;1    &amp;a    \\
+         C   &amp;D   &amp;a^3  &amp;1
+       \end{vmat}.\]</span></p>
+<div class="answer">
+<p>The value <span class="math inline">\((1-a^4)^3\)</span> of the
+determinant is independent of the values <span
+class="math inline">\(B\)</span>, <span
+class="math inline">\(C\)</span>, <span
+class="math inline">\(D\)</span>. Hence operation (e) does not change
+the value of the determinant but merely changes its appearance. Thus the
+element of likeness in (a), (b), (c), (d), and (e) is only that the
+appearance of the principle entity is changed. The same element appears
+in (f) changing the name-label of a rose, (g) writing a decimal integer
+in the scale of <span class="math inline">\(12\)</span>, (h) gilding the
+lily, (i) whitewashing a politician, and (j) granting an honorary
+degree.</p>
+</div>
+</div>
+<h3 id="the-permutation-expansion">The Permutation Expansion</h3>
+<p>The prior subsection defines a function to be a determinant if it
+satisfies four conditions and shows that there is at most one <span
+class="math inline">\(\nbyn{n}\)</span> determinant function for each
+<span class="math inline">\(n\)</span>. What is left is to show that for
+each <span class="math inline">\(n\)</span> such a function exists.</p>
+<p>But, we easily compute determinants: we use Gauss’s Method, keeping
+track of the sign changes from row swaps, and end by multiplying down
+the diagonal. How could they not exist?</p>
+<p>The difficulty is to show that the computation gives a
+well-definedthat is, uniqueresult. Consider these two Gauss’s Method
+reductions of the same matrix, the first without any row swap <span
+class="math display">\[\begin{mat}[r]
+    1  &amp;2  \\
+    3  &amp;4
+  \end{mat}
+  \grstep{-3\rho_1+\rho_2}
+  \begin{mat}[r]
+    1  &amp;2  \\
+    0  &amp;-2
+  \end{mat}\]</span> and the second with one. <span
+class="math display">\[\begin{mat}[r]
+    1  &amp;2  \\
+    3  &amp;4
+  \end{mat}
+  \grstep{\rho_1\leftrightarrow\rho_2}
+  \begin{mat}[r]
+    3  &amp;4  \\
+    1  &amp;2
+  \end{mat}
+  \grstep{-(1/3)\rho_1+\rho_2}
+  \begin{mat}[r]
+    3  &amp;4  \\
+    0  &amp;2/3
+  \end{mat}\]</span> Both yield the determinant <span
+class="math inline">\(-2\)</span> since in the second one we note that
+the row swap changes the sign of the result we get by multiplying down
+the diagonal. The fact that we are able to proceed in two ways opens the
+possibility that the two give different answers. That is, the way that
+we have given to compute determinant values does not plainly eliminate
+the possibility that there might be, say, two reductions of some <span
+class="math inline">\(\nbyn{7}\)</span> matrix that lead to different
+determinant values. In that case we would not have a function, since the
+definition of a function is that for each input there must be exactly
+associated one output. The rest of this section shows that the
+definition  never leads to a conflict.</p>
+<p>To do this we will define an alternative way to find the value of a
+determinant. (This alternative is less useful in practice because it is
+slow. But it is very useful for theory.) The key idea is that
+condition (3) of shows that the determinant function is not linear.</p>
+<div class="example">
+<p>With condition (3) scalars come out of each row separately, <span
+class="math display">\[\begin{vmat}[r]
+       4  &amp;2  \\
+      -2  &amp;6
+     \end{vmat}
+  =2\cdot\begin{vmat}[r]
+       2  &amp;1  \\
+      -2  &amp;6
+     \end{vmat}
+  =4\cdot\begin{vmat}[r]
+       2  &amp;1  \\
+      -1  &amp;3
+     \end{vmat}\]</span> not from the entire matrix at once. So, where
+<span class="math display">\[A=\begin{mat}[r]
+       2  &amp;1  \\
+      -1  &amp;3
+     \end{mat}\]</span> then <span class="math inline">\(\det(2A) \neq
+2\cdot\det(A)\)</span> (instead, <span class="math inline">\(\det(2A)
+=  4\cdot\det(A)\)</span>).</p>
+</div>
+<p>Since scalars come out a row at a time we might guess that
+determinants are linear a row at a time.</p>
+<div class="definition">
+<p><span id="def:multilinear" data-label="def:multilinear"></span> Let
+<span class="math inline">\(V\)</span> be a vector space. A map <span
+class="math inline">\(\map{f}{V^n}{\Re}\)</span> is if</p>
+<ol>
+<li><p><span class="math inline">\(f(\vec{\rho}_1,\dots,\vec{v}+\vec{w},
+      \ldots,\vec{\rho}_n)
+      =f(\vec{\rho}_1,\dots,\vec{v},\dots,\vec{\rho}_n)
+      +f(\vec{\rho}_1,\dots,\vec{w},\dots,\vec{\rho}_n)\)</span></p></li>
+<li><p><span
+class="math inline">\(f(\vec{\rho}_1,\dots,k\vec{v},\dots,\vec{\rho}_n)
+      =k\cdot
+f(\vec{\rho}_1,\dots,\vec{v},\dots,\vec{\rho}_n)\)</span></p></li>
+</ol>
+<p>for <span class="math inline">\(\vec{v}, \vec{w}\in V\)</span> and
+<span class="math inline">\(k\in\Re\)</span>.</p>
+</div>
+<div class="lemma">
+<p><span id="lem:DetsMultilinear"
+data-label="lem:DetsMultilinear"></span> Determinants are
+multilinear.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> Property (2) here is just ’s condition (3) so we need
+only verify property (1).</p>
+<p>There are two cases. If the set of other rows <span
+class="math inline">\(\set{\vec{\rho}_1,\dots,\vec{\rho}_{i-1},\vec{\rho}_{i+1},
+       \dots,\vec{\rho}_n}\)</span> is linearly dependent then all three
+matrices are singular and so all three determinants are zero and the
+equality is trivial.</p>
+<p>Therefore assume that the set of other rows is linearly independent.
+We can make a basis by adding one more vector <span
+class="math inline">\(\sequence{\vec{\rho}_1,\dots,\vec{\rho}_{i-1},\vec{\beta},
+               \vec{\rho}_{i+1},\dots,\vec{\rho}_n}\)</span>. Express
+<span class="math inline">\(\vec{v}\)</span> and <span
+class="math inline">\(\vec{w}\)</span> with respect to this basis <span
+class="math display">\[\begin{aligned}
+  \vec{v}
+&amp;=v_1\vec{\rho}_1+\dots+v_{i-1}\vec{\rho}_{i-1}+v_i\vec{\beta}
+            +v_{i+1}\vec{\rho}_{i+1}+\dots+v_n\vec{\rho}_n                \\
+  \vec{w} &amp;=
+w_1\vec{\rho}_1+\dots+w_{i-1}\vec{\rho}_{i-1}+w_i\vec{\beta}
+            +w_{i+1}\vec{\rho}_{i+1}+\dots+w_n\vec{\rho}_n
+\end{aligned}\]</span> and add. <span
+class="math display">\[\vec{v}+\vec{w}
+  =
+  (v_1+w_1)\vec{\rho}_1+\dots+(v_i+w_i)\vec{\beta}
+            +\dots+(v_n+w_n)\vec{\rho}_n\]</span> Consider the left side
+of (1) and expand <span class="math inline">\(\vec{v}+\vec{w}\)</span>.
+<span class="math display">\[\det
+(\vec{\rho}_1,\dots,\,(v_1+w_1)\vec{\rho}_1+\dots+(v_i+w_i)\vec{\beta}
+            +\dots+(v_n+w_n)\vec{\rho}_n,\,\dots,\vec{\rho}_n)
+   \tag{$*$}\]</span> By the definition of determinant’s condition (1),
+the value of (<span class="math inline">\(*\)</span>) is unchanged by
+the operation of adding <span
+class="math inline">\(-(v_1+w_1)\vec{\rho}_1\)</span> to the <span
+class="math inline">\(i\)</span>-th row <span
+class="math inline">\(\vec{v}+\vec{w}\)</span>. The <span
+class="math inline">\(i\)</span>-th row becomes this. <span
+class="math display">\[\vec{v}+\vec{w}-(v_1+w_1)\vec{\rho}_1
+  =
+  (v_2+w_2)\vec{\rho}_2+\cdots+(v_i+w_i)\vec{\beta}
+            +\dots+(v_n+w_n)\vec{\rho}_n\]</span> Next add <span
+class="math inline">\(-(v_2+w_2)\vec{\rho}_2\)</span>, etc., to
+eliminate all of the terms from the other rows. Apply condition (3) from
+the definition of determinant. <span
+class="math display">\[\begin{gathered}
+  \det
+(\vec{\rho}_1,\dots,\vec{v}+\vec{w},\dots,\vec{\rho}_n)          \\
+  \begin{aligned}
+    &amp;=\det
+(\vec{\rho}_1,\dots,(v_i+w_i)\cdot\vec{\beta},\dots,\vec{\rho}_n) \\
+    &amp;=(v_i+w_i)\cdot\det
+(\vec{\rho}_1,\dots,\vec{\beta},\dots,\vec{\rho}_n) \\
+    &amp;=v_i\cdot \det
+(\vec{\rho}_1,\dots,\vec{\beta},\dots,\vec{\rho}_n)  
+     +w_i\cdot \det (\vec{\rho}_1,\dots,\vec{\beta},\dots,\vec{\rho}_n)
+  \end{aligned}
+\end{gathered}\]</span> Now this is a sum of two determinants. To
+finish, bring <span class="math inline">\(v_i\)</span> and <span
+class="math inline">\(w_i\)</span> back inside in front of the <span
+class="math inline">\(\vec{\beta}\)</span>’s and use row combinations
+again, this time to reconstruct the expressions of <span
+class="math inline">\(\vec{v}\)</span> and <span
+class="math inline">\(\vec{w}\)</span> in terms of the basis. That is,
+start with the operations of adding <span
+class="math inline">\(v_1\vec{\rho}_1\)</span> to <span
+class="math inline">\(v_i\vec{\beta}\)</span> and <span
+class="math inline">\(w_1\vec{\rho}_1\)</span> to <span
+class="math inline">\(w_i\vec{\rho}_1\)</span>, etc., to get the
+expansions of <span class="math inline">\(\vec{v}\)</span> and <span
+class="math inline">\(\vec{w}\)</span>. ◻</p>
+</div>
+<p>Multilinearity allows us to expand a determinant into a sum of
+determinants, each of which involves a simple matrix.</p>
+<div class="example">
+<p>Use property (1) of multilinearity to break up the first row <span
+class="math display">\[\begin{vmat}[r]
+     2  &amp;1  \\
+     4  &amp;3
+  \end{vmat}
+  =
+  \begin{vmat}[r]
+     2  &amp;0  \\
+     4  &amp;3
+  \end{vmat}
+  +
+  \begin{vmat}[r]
+     0  &amp;1  \\
+     4  &amp;3
+  \end{vmat}\]</span> and then use (1) again to break each along the
+second row. <span class="math display">\[=\begin{vmat}[r]
+     2  &amp;0  \\
+     4  &amp;0
+  \end{vmat}
+  +
+  \begin{vmat}[r]
+     2  &amp;0  \\
+     0  &amp;3
+  \end{vmat}
+  +
+  \begin{vmat}[r]
+     0  &amp;1  \\
+     4  &amp;0
+  \end{vmat}
+  +
+  \begin{vmat}[r]
+     0  &amp;1  \\
+     0  &amp;3
+  \end{vmat}\]</span> The result is four determinants. In each row of
+each of the four there is a single entry from the original matrix.</p>
+</div>
+<div class="example">
+<p>In the same way, a <span class="math inline">\(\nbyn{3}\)</span>
+determinant separates into a sum of many simpler determinants. Splitting
+along the first row produces three determinants (we have highlighted the
+zero in the <span class="math inline">\(1,3\)</span> position to set it
+off visually from the zeroes that appear as part of the splitting).
+<span class="math display">\[\begin{vmat}[r]
+     2              &amp;1  &amp;-1  \\
+     4              &amp;3  &amp;\highlight{0}  \\
+     2              &amp;1  &amp;5
+  \end{vmat}
+  =
+  \begin{vmat}[r]
+     2              &amp;0  &amp;0   \\
+     4              &amp;3  &amp;\highlight{0}  \\
+     2              &amp;1  &amp;5
+  \end{vmat}
+  +
+  \begin{vmat}[r]
+     0              &amp;1  &amp;0   \\
+     4              &amp;3  &amp;\highlight{0}   \\
+     2              &amp;1  &amp;5
+  \end{vmat}
+  +
+  \begin{vmat}[r]
+     0              &amp;0  &amp;-1  \\
+     4              &amp;3  &amp;\highlight{0}  \\
+     2  &amp;1  &amp;5
+  \end{vmat}\]</span> In turn, each of the above splits in three along
+the second row. Then each of the nine splits in three along the third
+row. The result is twenty seven determinants, such that each row
+contains a single entry from the starting matrix. <span
+class="math display">\[=
+  \begin{vmat}[r]
+     2              &amp;0  &amp;0   \\
+     4              &amp;0  &amp;0   \\
+     2              &amp;0  &amp;0
+  \end{vmat}
+  +
+  \begin{vmat}[r]
+     2  &amp;0  &amp;0   \\
+     4  &amp;0  &amp;0   \\
+     0  &amp;1  &amp;0
+  \end{vmat}
+  +
+  \begin{vmat}[r]
+     2  &amp;0  &amp;0   \\
+     4  &amp;0  &amp;0   \\
+     0  &amp;0  &amp;5
+  \end{vmat}
+  +
+  \begin{vmat}[r]
+     2  &amp;0  &amp;0   \\
+     0  &amp;3  &amp;0   \\
+     2  &amp;0  &amp;0
+  \end{vmat}
+  +\dots+
+  \begin{vmat}[r]
+     0  &amp;0  &amp;-1  \\
+     0  &amp;0  &amp;\highlight{0}  \\
+     0  &amp;0  &amp;5
+  \end{vmat}\]</span></p>
+</div>
+<p>So multilinearity will expand an <span
+class="math inline">\(\nbyn{n}\)</span> determinant into a sum of <span
+class="math inline">\(n^n\)</span>-many determinants, where each row of
+each determinant contains a single entry from the starting matrix.</p>
+<p>In this expansion, although there are lots of terms, most of them
+have a determinant of zero.</p>
+<div class="example">
+<p><span id="ex:SamplePermExp" data-label="ex:SamplePermExp"></span> In
+each of these examples from the prior expansion, two of the entries from
+the original matrix are in the same column. <span
+class="math display">\[\begin{vmat}[r]
+     2               &amp;0  &amp;0   \\
+     4               &amp;0  &amp;0  \\
+     0               &amp;1  &amp;0
+  \end{vmat}
+  \qquad
+  \begin{vmat}[r]
+     0               &amp;0  &amp;-1  \\
+     0               &amp;3  &amp;0  \\
+     0               &amp;0  &amp;5
+  \end{vmat}
+  \qquad\
+  \begin{vmat}[r]
+     0               &amp;1  &amp;0   \\
+     0               &amp;0  &amp;\highlight{0}  \\
+     0               &amp;0  &amp;5
+  \end{vmat}\]</span> For instance, in the first matrix the <span
+class="math inline">\(2\)</span> and the <span
+class="math inline">\(4\)</span> both come from the first column of the
+original matrix. In the second matrix the <span
+class="math inline">\(-1\)</span> and <span
+class="math inline">\(5\)</span> both come from the third column. And in
+the third matrix the <span class="math inline">\(0\)</span> and <span
+class="math inline">\(5\)</span> both come from the third column. Any
+such matrix is singular because one row is a multiple of the other. Thus
+any such determinant is zero, by .</p>
+<p>With that observation the above expansion of the <span
+class="math inline">\(\nbyn{3}\)</span> determinant into the sum of the
+twenty seven determinants simplifies to the sum of these six where the
+entries from the original matrix come one per row, and also one per
+column. <span class="math display">\[\begin{aligned}
+  \begin{vmat}[r]
+     2  &amp;1  &amp;-1  \\
+     4  &amp;3  &amp;\highlight{0}  \\
+     2  &amp;1  &amp;5
+  \end{vmat}
+  &amp;=\begin{vmat}[r]
+     2  &amp;0  &amp;0   \\
+     0  &amp;3  &amp;0   \\
+     0  &amp;0  &amp;5
+  \end{vmat}
+  +
+   \begin{vmat}[r]
+     2  &amp;0  &amp;0   \\
+     0  &amp;0  &amp;\highlight{0}   \\
+     0  &amp;1  &amp;0
+  \end{vmat}                      \\
+  &amp;\quad\hbox{}+\begin{vmat}[r]
+     0  &amp;1  &amp;0   \\
+     4  &amp;0  &amp;0   \\
+     0  &amp;0  &amp;5
+  \end{vmat}
+  +
+   \begin{vmat}[r]
+     0  &amp;1  &amp;0   \\
+     0  &amp;0  &amp;\highlight{0}   \\
+     2  &amp;0  &amp;0
+  \end{vmat}                      \\
+  &amp;\quad\hbox{}+\begin{vmat}[r]
+     0  &amp;0  &amp;-1  \\
+     4  &amp;0  &amp;0   \\
+     0  &amp;1  &amp;0
+  \end{vmat}
+  +
+   \begin{vmat}[r]
+     0  &amp;0  &amp;-1  \\
+     0  &amp;3  &amp;0    \\
+     2  &amp;0  &amp;0
+  \end{vmat}                      
+\end{aligned}\]</span> In that expansion we can bring out the scalars.
+<span class="math display">\[\begin{aligned}
+  &amp;=(2)(3)(5)\begin{vmat}[r]
+               1  &amp;0  &amp;0  \\
+               0  &amp;1  &amp;0  \\
+               0  &amp;0  &amp;1
+            \end{vmat}
+  +(2)(\highlight{0})(1)\begin{vmat}[r]
+               1  &amp;0  &amp;0  \\
+               0  &amp;0  &amp;1  \\
+               0  &amp;1  &amp;0
+            \end{vmat}                     \\
+  &amp;\quad\hbox{}+(1)(4)(5)\begin{vmat}[r]
+               0  &amp;1  &amp;0  \\
+               1  &amp;0  &amp;0  \\
+               0  &amp;0  &amp;1
+            \end{vmat}
+  +(1)(\highlight{0})(2)\begin{vmat}[r]
+               0  &amp;1  &amp;0  \\
+               0  &amp;0  &amp;1  \\
+               1  &amp;0  &amp;0
+            \end{vmat}                       \\
+  &amp;\quad\hbox{}+(-1)(4)(1)\begin{vmat}[r]
+               0  &amp;0  &amp;1  \\
+               1  &amp;0  &amp;0  \\
+               0  &amp;1  &amp;0
+            \end{vmat}
+  +(-1)(3)(2)\begin{vmat}[r]
+               0  &amp;0  &amp;1  \\
+               0  &amp;1  &amp;0  \\
+               1  &amp;0  &amp;0
+            \end{vmat}                       
+\end{aligned}\]</span> To finish, evaluate those six determinants by
+row-swapping them to the identity matrix, keeping track of the sign
+changes. <span class="math display">\[\begin{aligned}
+  &amp;=30\cdot (+1)+0\cdot (-1)  \\
+  &amp;\quad\hbox{}+20\cdot (-1)+0\cdot (+1) \\
+  &amp;\quad \hbox{}-4\cdot (+1)-6\cdot (-1)=12
+\end{aligned}\]</span></p>
+</div>
+<p>That example captures this subsection’s new calculation scheme.
+Multilinearity expands a determinant into many separate determinants,
+each with one entry from the original matrix per row. Most of these have
+one row that is a multiple of another so we omit them. We are left with
+the determinants that have one entry per row and column from the
+original matrix. Factoring out the scalars further reduces the
+determinants that we must compute to the one-entry-per-row-and-column
+matrices where all entries are <span
+class="math inline">\(1\)</span>’s.</p>
+<p>Recall Definition Three.IV.<a href="#df:PermutationMatrix"
+data-reference-type="ref"
+data-reference="df:PermutationMatrix">[df:PermutationMatrix]</a>, that a
+is square, with entries <span class="math inline">\(0\)</span>’s except
+for a single <span class="math inline">\(1\)</span> in each row and
+column. We now introduce a notation for permutation matrices.</p>
+<div class="definition">
+<p><span id="df:permutation" data-label="df:permutation"></span> An is a
+function on the first <span class="math inline">\(n\)</span> positive
+integers <span
+class="math inline">\(\map{\phi}{\set{1,\ldots,n}}{\set{1,\ldots,n}}\)</span>
+that is one-to-one and onto.</p>
+</div>
+<p>In a permutation each number <span class="math inline">\(1\)</span>,
+…, <span class="math inline">\(n\)</span> appears as output for one and
+only one input. We can denote a permutation as a sequence <span
+class="math inline">\(\phi=\sequence{\phi(1),\phi(2),\ldots,\phi(n)}\)</span>.</p>
+<div class="example">
+<p><span id="ex:AllTwoThreePerms"
+data-label="ex:AllTwoThreePerms"></span> The <span
+class="math inline">\(2\)</span>-permutations are the functions <span
+class="math inline">\(\map{\phi_1}{\set{1,2}}{\set{1,2}}\)</span> given
+by <span class="math inline">\(\phi_1(1)=1\)</span>, <span
+class="math inline">\(\phi_1(2)=2\)</span>, and <span
+class="math inline">\(\map{\phi_2}{\set{1,2}}{\set{1,2}}\)</span> given
+by <span class="math inline">\(\phi_2(1)=2\)</span>, <span
+class="math inline">\(\phi_2(2)=1\)</span>. The sequence notation is
+shorter: <span class="math inline">\(\phi_1=\sequence{1,2}\)</span> and
+<span class="math inline">\(\phi_2=\sequence{2,1}\)</span>.</p>
+</div>
+<div class="example">
+<p><span id="ex:AllThreePerms" data-label="ex:AllThreePerms"></span> In
+the sequence notation the <span
+class="math inline">\(3\)</span>-permutations are <span
+class="math inline">\(\phi_1=\sequence{1,2,3}\)</span>, <span
+class="math inline">\(\phi_2=\sequence{1,3,2}\)</span>, <span
+class="math inline">\(\phi_3=\sequence{2,1,3}\)</span>, <span
+class="math inline">\(\phi_4=\sequence{2,3,1}\)</span>, <span
+class="math inline">\(\phi_5=\sequence{3,1,2}\)</span>, and <span
+class="math inline">\(\phi_6=\sequence{3,2,1}\)</span>.</p>
+</div>
+<p>We denote the row vector that is all <span
+class="math inline">\(0\)</span>’s except for a <span
+class="math inline">\(1\)</span> in entry <span
+class="math inline">\(j\)</span> with <span
+class="math inline">\(\iota_j\)</span> so that the four-wide <span
+class="math inline">\(\iota_2\)</span> is <span
+class="math inline">\(\rowvec{0 &amp;1 &amp;0 &amp;0}\)</span>. Now our
+notation for permutation matrices is: with any <span
+class="math inline">\(\phi=\sequence{\phi(1),\ldots,\phi(n)}\)</span>
+associate the matrix whose rows are <span
+class="math inline">\(\iota_{\phi(1)}\)</span>, …, <span
+class="math inline">\(\iota_{\phi(n)}\)</span>. For instance, associated
+with the <span class="math inline">\(4\)</span>-permutation <span
+class="math inline">\(\phi=\sequence{3,2,1,4}\)</span> is the matrix
+whose rows are the corresponding <span
+class="math inline">\(\iota\)</span>’s. <span
+class="math display">\[P_{\phi}=
+   \begin{mat}
+      \iota_{3} \\
+      \iota_{2} \\
+      \iota_{1} \\
+      \iota_{4}
+   \end{mat}=
+  \begin{mat}[r]
+     0  &amp;0  &amp;1  &amp;0  \\
+     0  &amp;1  &amp;0  &amp;0  \\
+     1  &amp;0  &amp;0  &amp;0  \\
+     0  &amp;0  &amp;0  &amp;1
+  \end{mat}\]</span></p>
+<div class="example">
+<p><span id="ex:TwoThreePermsAndMatrices"
+data-label="ex:TwoThreePermsAndMatrices"></span> These are the
+permutation matrices for the <span
+class="math inline">\(2\)</span>-permutations listed in . <span
+class="math display">\[P_{\phi_1}
+  =\begin{mat}
+      \iota_1 \\
+      \iota_2
+   \end{mat}
+  =\begin{mat}[r]
+    1  &amp;0         \\
+    0  &amp;1   
+  \end{mat}
+  \qquad
+  P_{\phi_2}
+   =\begin{mat}
+      \iota_2 \\
+      \iota_1
+   \end{mat}
+   =\begin{mat}[r]
+    0  &amp;1         \\
+    1  &amp;0   
+  \end{mat}\]</span> For instance, <span
+class="math inline">\(P_{\phi_2}\)</span>’s first row is <span
+class="math inline">\(\iota_{\phi_2(1)}=\iota_2\)</span> and its second
+is <span class="math inline">\(\iota_{\phi_2(2)}=\iota_1\)</span>.</p>
+</div>
+<div class="example">
+<p>Consider the <span class="math inline">\(3\)</span>-permutation <span
+class="math inline">\(\phi_5=\sequence{3,1,2}\)</span>. The permutation
+matrix <span class="math inline">\(P_{\phi_5}\)</span> has rows <span
+class="math inline">\(\iota_{\phi_5(1)}=\iota_3\)</span>, <span
+class="math inline">\(\iota_{\phi_5(2)}=\iota_1\)</span>, and <span
+class="math inline">\(\iota_{\phi_5(3)}=\iota_2\)</span>.<span
+class="math display">\[% P_{\phi_2}
+  %  =\begin{mat}
+  %     \iota_1 \\
+  %     \iota_3 \\
+  %     \iota_2
+  %  \end{mat}
+  % =\begin{mat}[r]
+  %    1      &amp;0        &amp;0        \\
+  %    0      &amp;0        &amp;1        \\
+  %    0      &amp;1        &amp;0
+  % \end{mat}
+  % \qquad
+  P_{\phi_5}
+   % =\begin{mat}
+   %    \iota_3 \\
+   %    \iota_1 \\
+   %    \iota_2
+   % \end{mat}
+  =\begin{mat}[r]
+     0      &amp;0        &amp;1        \\
+     1      &amp;0        &amp;0        \\
+     0      &amp;1        &amp;0
+  \end{mat}\]</span></p>
+</div>
+<div class="definition">
+<p><span id="df:PermutationExpansion"
+data-label="df:PermutationExpansion"></span> The for determinants is
+<span class="math display">\[\begin{vmat}
+      t_{1,1}  &amp;t_{1,2}  &amp;\ldots  &amp;t_{1,n}  \\
+      t_{2,1}  &amp;t_{2,2}  &amp;\ldots  &amp;t_{2,n}  \\
+               &amp;\vdots                      \\
+      t_{n,1}  &amp;t_{n,2}  &amp;\ldots  &amp;t_{n,n}
+   \end{vmat}
+   =
+   \begin{array}[t]{l}
+      t_{1,\phi_1(1)}t_{2,\phi_1(2)}\cdots
+           t_{n,\phi_1(n)}\deter{P_{\phi_1}}       \\[.5ex]
+      \&gt;\hbox{}+t_{1,\phi_2(1)}t_{2,\phi_2(2)}\cdots
+           t_{n,\phi_2(n)}\deter{P_{\phi_2}}       \\
+      \&gt;\vdotswithin{+}                              \\
+      \&gt;\hbox{}+t_{1,\phi_k(1)}t_{2,\phi_k(2)}\cdots
+           t_{n,\phi_k(n)}\deter{P_{\phi_k}}
+   \end{array}\]</span> where <span
+class="math inline">\(\phi_1,\ldots,\phi_k\)</span> are all of the <span
+class="math inline">\(n\)</span>-permutations.</p>
+</div>
+<p>We can restate the formula in <span
+class="math display">\[\deter{T}=\!\!
+  \sum_{\text{permutations\ }\phi}\!\!\!\!
+     t_{1,\phi(1)}t_{2,\phi(2)}\cdots t_{n,\phi(n)}
+                                 \deter{P_{\phi}}\]</span> read aloud
+as, “the sum, over all permutations <span
+class="math inline">\(\phi\)</span>, of terms having the form <span
+class="math inline">\(t_{1,\phi(1)}t_{2,\phi(2)}\cdots t_{n,\phi(n)}
+\deter{P_{\phi}}\)</span>.”</p>
+<div class="example">
+<p>The familiar <span class="math inline">\(\nbyn{2}\)</span>
+determinant formula follows from the above <span
+class="math display">\[\begin{aligned}
+  \begin{vmat}
+    t_{1,1}  &amp;t_{1,2} \\
+    t_{2,1}  &amp;t_{2,2}
+  \end{vmat}
+  &amp;=
+  t_{1,1}t_{2,2}\cdot\deter{P_{\phi_1}}
+  +
+  t_{1,2}t_{2,1}\cdot\deter{P_{\phi_2}}      \\[-1.5ex]     
+  &amp;=
+  t_{1,1}t_{2,2}\cdot\begin{vmat}[r]
+           1  &amp;0 \\
+           0  &amp;1
+         \end{vmat}
+  +
+  t_{1,2}t_{2,1}\cdot\begin{vmat}[r]
+            0  &amp;1 \\
+            1  &amp;0
+          \end{vmat}               \\
+  &amp;=t_{1,1}t_{2,2}-t_{1,2}t_{2,1}
+\end{aligned}\]</span> as does the <span
+class="math inline">\(\nbyn{3}\)</span> formula. <span
+class="math display">\[\begin{aligned}
+  \begin{vmat}
+    t_{1,1}  &amp;t_{1,2}  &amp;t_{1,3} \\
+    t_{2,1}  &amp;t_{2,2}  &amp;t_{2,3} \\
+    t_{3,1}  &amp;t_{3,2}  &amp;t_{3,3}
+  \end{vmat}
+  &amp;=
+  \begin{aligned}[t]
+    &amp;t_{1,1}t_{2,2}t_{3,3}\deter{P_{\phi_1}}
+     +t_{1,1}t_{2,3}t_{3,2}\deter{P_{\phi_2}}
+     +t_{1,2}t_{2,1}t_{3,3}\deter{P_{\phi_3}} \\
+    &amp;\hspace*{0em}
+     +t_{1,2}t_{2,3}t_{3,1}\deter{P_{\phi_4}}
+     +t_{1,3}t_{2,1}t_{3,2}\deter{P_{\phi_5}}
+     +t_{1,3}t_{2,2}t_{3,1}\deter{P_{\phi_6}}
+  \end{aligned}                                      \\
+  &amp;=
+  \begin{aligned}[t]
+    &amp;t_{1,1}t_{2,2}t_{3,3}
+     -t_{1,1}t_{2,3}t_{3,2}
+     -t_{1,2}t_{2,1}t_{3,3}  \\
+    &amp;\hspace*{0em}
+     +t_{1,2}t_{2,3}t_{3,1}
+     +t_{1,3}t_{2,1}t_{3,2}
+     -t_{1,3}t_{2,2}t_{3,1}
+  \end{aligned}
+\end{aligned}\]</span></p>
+</div>
+<p>Computing a determinant with the permutation expansion typically
+takes longer than with Gauss’s Method. However, we will use it to prove
+that the determinant function exists. The proof is long so we will just
+state the result here and defer the proof to the following
+subsection.</p>
+<div class="theorem">
+<p><span id="th:DetsExist" data-label="th:DetsExist"></span> For each
+<span class="math inline">\(n\)</span> there is an <span
+class="math inline">\(\nbyn{n}\)</span> determinant function.</p>
+</div>
+<p>Also in the next subsection is the proof of the next result (they are
+together because the two proofs overlap).</p>
+<div class="theorem">
+<p><span id="th:DeterminantOfAMatrixEqualsDeterminantOfTranspose"
+data-label="th:DeterminantOfAMatrixEqualsDeterminantOfTranspose"></span>
+The determinant of a matrix equals the determinant of its transpose.</p>
+</div>
+<p>Because of this theorem, while we have so far stated determinant
+results in terms of rows, all of the results also hold in terms of
+columns.</p>
+<div class="corollary">
+<p><span id="cor:ColSwapChgSign" data-label="cor:ColSwapChgSign"></span>
+<span id="cor:DetsMultiInCols" data-label="cor:DetsMultiInCols"></span>
+A matrix with two equal columns is singular. Column swaps change the
+sign of a determinant. Determinants are multilinear in their
+columns.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> For the first statement, transposing the matrix
+results in a matrix with the same determinant, and with two equal rows,
+and hence a determinant of zero. Prove the other two in the same
+way. ◻</p>
+</div>
+<p>We finish this subsection with a summary: determinant functions
+exist, are unique, and we know how to compute them. As for what
+determinants are about, perhaps these lines <span class="citation"
+data-cites="Kemp"></span> help make it memorable.</p>
+<blockquote>
+<p>Determinant none,<br />
+*  Solution: lots or none.<br />
+* Determinant some,<br />
+*  Solution: just one.</p>
+</blockquote>
+<p><em>This subsection contains proofs of two results from the prior
+subsection. It is optional. We will use the material developed here only
+in the Jordan Canonical Form subsection, which is also
+optional.</em></p>
+<p>We wish to show that for any size <span
+class="math inline">\(n\)</span>, the determinant function on <span
+class="math inline">\(\nbyn{n}\)</span> matrices is well-defined. The
+prior subsection develops the permutation expansion formula. <span
+class="math display">\[\begin{aligned}
+   %\deter{T}
+   %=
+   \begin{vmat}
+      t_{1,1}  &amp;t_{1,2}  &amp;\ldots  &amp;t_{1,n}  \\
+      t_{2,1}  &amp;t_{2,2}  &amp;\ldots  &amp;t_{2,n}  \\
+               &amp;\vdots                      \\
+      t_{n,1}  &amp;t_{n,2}  &amp;\ldots  &amp;t_{n,n}
+   \end{vmat}
+   &amp;=
+   \begin{array}[t]{l}
+      t_{1,\phi_1(1)}t_{2,\phi_1(2)}\cdots
+           t_{n,\phi_1(n)}\deter{P_{\phi_1}}       \\[.75ex]
+      \&gt;\hbox{}+t_{1,\phi_2(1)}t_{2,\phi_2(2)}\cdots
+           t_{n,\phi_2(n)}\deter{P_{\phi_2}}       \\[.75ex]
+      \&gt;\alignedvdots                              \\
+      \&gt;\hbox{}+t_{1,\phi_k(1)}t_{2,\phi_k(2)}\cdots
+           t_{n,\phi_k(n)}\deter{P_{\phi_k}}
+   \end{array}                                                 \\[1ex]
+   &amp;=\!\!\sum_{\text{permutations\ }\phi}\!\!\!\!
+     t_{1,\phi(1)}t_{2,\phi(2)}\cdots t_{n,\phi(n)}
+                                 \deter{P_{\phi}}
+\end{aligned}\]</span> This reduces the problem of showing that the
+determinant is well-defined to only showing that the determinant is
+well-defined on the set of permutation matrices.</p>
+<p>A permutation matrix can be row-swapped to the identity matrix. So
+one way that we can calculate its determinant is by keeping track of the
+number of swaps. However, we still must show that the result is
+well-defined. Recall what the difficulty is: the determinant of <span
+class="math display">\[P_{\phi}=
+   \begin{mat}[r]
+      0  &amp;1  &amp;0  &amp;0 \\
+      1  &amp;0  &amp;0  &amp;0 \\
+      0  &amp;0  &amp;1  &amp;0 \\
+      0  &amp;0  &amp;0  &amp;1
+   \end{mat}\]</span> could be computed with one swap <span
+class="math display">\[P_{\phi}
+   \grstep{\rho_1\leftrightarrow\rho_2}
+   \begin{mat}[r]
+      1  &amp;0  &amp;0  &amp;0 \\
+      0  &amp;1  &amp;0  &amp;0 \\
+      0  &amp;0  &amp;1  &amp;0 \\
+      0  &amp;0  &amp;0  &amp;1
+   \end{mat}\]</span> or with three. <span
+class="math display">\[P_{\phi}
+   \grstep{\rho_3\leftrightarrow\rho_1}
+   % \begin{mat}[r]
+   %    0  &amp;0  &amp;1  &amp;0 \\
+   %    1  &amp;0  &amp;0  &amp;0 \\
+   %    0  &amp;1  &amp;0  &amp;0 \\
+   %    0  &amp;0  &amp;0  &amp;1
+   % \end{mat}
+   \repeatedgrstep{\rho_2\leftrightarrow\rho_3}
+   % \begin{mat}[r]
+   %    0  &amp;0  &amp;1  &amp;0 \\
+   %    0  &amp;1  &amp;0  &amp;0 \\
+   %    1  &amp;0  &amp;0  &amp;0 \\
+   %    0  &amp;0  &amp;0  &amp;1
+   % \end{mat}
+   \repeatedgrstep{\rho_1\leftrightarrow\rho_3}
+   \begin{mat}[r]
+      1  &amp;0  &amp;0  &amp;0 \\
+      0  &amp;1  &amp;0  &amp;0 \\
+      0  &amp;0  &amp;1  &amp;0 \\
+      0  &amp;0  &amp;0  &amp;1
+   \end{mat}\]</span> Both reductions have an odd number of swaps so in
+this case we figure that <span
+class="math inline">\(\deter{P_{\phi}}=-1\)</span> but if there were
+some way to do it with an even number of swaps then we would have the
+determinant giving two different outputs from a single input. Below,
+proves that this cannot happen there is no permutation matrix that can
+be row-swapped to an identity matrix in two ways, one with an even
+number of swaps and the other with an odd number of swaps.</p>
+<div class="definition">
+<p><span id="df:Inversion" data-label="df:Inversion"></span> In a
+permutation <span
+class="math inline">\(\phi=\sequence{\ldots,k,\ldots,j,\ldots}\)</span>,
+elements such that <span class="math inline">\(k&gt;j\)</span> are in an
+of their natural order. Similarly, in a permutation matrix two rows
+<span class="math display">\[P_{\phi}=
+  \begin{mat}
+    \vdots          \\
+    \iota_{k} \\
+    \vdots          \\
+    \iota_{j} \\
+    \vdots
+  \end{mat}\]</span> such that <span
+class="math inline">\(k&gt;j\)</span> are in an .</p>
+</div>
+<div class="example">
+<p>This permutation matrix <span class="math display">\[\begin{mat}[r]
+    1  &amp;0  &amp;0  &amp;0 \\
+    0  &amp;0  &amp;1  &amp;0 \\
+    0  &amp;1  &amp;0  &amp;0 \\
+    0  &amp;0  &amp;0  &amp;1
+  \end{mat}
+  =
+  \begin{mat}
+    \iota_1  \\
+    \iota_3  \\
+    \iota_2  \\
+    \iota_4
+  \end{mat}\]</span> has a single inversion, that <span
+class="math inline">\(\iota_3\)</span> precedes <span
+class="math inline">\(\iota_2\)</span>.</p>
+</div>
+<div class="example">
+<p><span id="ex:ThreeInversions" data-label="ex:ThreeInversions"></span>
+There are three inversions here: <span
+class="math display">\[\begin{mat}[r]
+    0  &amp;0  &amp;1  \\
+    0  &amp;1  &amp;0  \\
+    1  &amp;0  &amp;0
+  \end{mat}
+  =
+  \begin{mat}
+    \iota_3  \\
+    \iota_2  \\
+    \iota_1
+  \end{mat}\]</span> <span class="math inline">\(\iota_3\)</span>
+precedes <span class="math inline">\(\iota_1\)</span>, <span
+class="math inline">\(\iota_3\)</span> precedes <span
+class="math inline">\(\iota_2\)</span>, and <span
+class="math inline">\(\iota_2\)</span> precedes <span
+class="math inline">\(\iota_1\)</span>.</p>
+</div>
+<div class="lemma">
+<p><span id="le:SwapsChangeSgn" data-label="le:SwapsChangeSgn"></span> A
+row-swap in a permutation matrix changes the number of inversions from
+even to odd, or from odd to even.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> Consider a swap of rows <span
+class="math inline">\(j\)</span> and <span
+class="math inline">\(k\)</span>, where <span
+class="math inline">\(k&gt;j\)</span>.</p>
+<p>If the two rows are adjacent <span class="math display">\[P_{\phi}=
+   \begin{mat}
+     \vdots           \\
+     \iota_{\phi(j)}  \\
+     \iota_{\phi(k)}  \\
+     \vdots
+   \end{mat}
+\grstep{\rho_k\leftrightarrow\rho_j}
+   \begin{mat}
+     \vdots           \\
+     \iota_{\phi(k)}  \\
+     \iota_{\phi(j)}  \\
+     \vdots
+   \end{mat}\]</span> then since inversions involving rows not in this
+pair are not affected, the swap changes the total number of inversions
+by one, either removing or producing one inversion depending on whether
+<span class="math inline">\(\phi(j)&gt;\phi(k)\)</span> or not.
+Consequently, the total number of inversions changes from odd to even or
+from even to odd.</p>
+<p>If the rows are not adjacent then we can swap them via a sequence of
+adjacent swaps, first bringing row <span
+class="math inline">\(k\)</span> up <span
+class="math display">\[\begin{mat}
+     \vdots             \\
+     \iota_{\phi(j)}    \\
+     \iota_{\phi(j+1)}  \\
+     \iota_{\phi(j+2)}  \\
+     \vdots             \\
+     \iota_{\phi(k)}    \\
+     \vdots
+   \end{mat}
+  \grstep{\rho_k\swap\rho_{k-1}}
+  \repeatedgrstep{\rho_{k-1}\swap\rho_{k-2}}
+  \cdots
+  \grstep{\rho_{j+1}\swap\rho_j}
+   \begin{mat}
+     \vdots             \\
+     \iota_{\phi(k)}    \\
+     \iota_{\phi(j)}    \\
+     \iota_{\phi(j+1)}  \\
+     \vdots             \\
+     \iota_{\phi(k-1)}  \\
+     \vdots
+   \end{mat}\]</span> and then bringing row <span
+class="math inline">\(j\)</span> down. <span
+class="math display">\[\grstep{\rho_{j+1}\swap\rho_{j+2}}
+  \repeatedgrstep{\rho_{j+2}\swap\rho_{j+3}}
+  \cdots
+  \grstep{\rho_{k-1}\swap\rho_k}
+   \begin{mat}
+     \vdots             \\
+     \iota_{\phi(k)}    \\
+     \iota_{\phi(j+1)}  \\
+     \iota_{\phi(j+2)}  \\
+     \vdots             \\
+     \iota_{\phi(j)}    \\
+     \vdots
+   \end{mat}\]</span> Each of these adjacent swaps changes the number of
+inversions from odd to even or from even to odd. The total number of
+swaps <span class="math inline">\((k-j)+(k-j-1)\)</span> is odd. Thus,
+in aggregate, the number of inversions changes from even to odd, or from
+odd to even. ◻</p>
+</div>
+<div class="corollary">
+<p><span id="cor:ParityInversEqParitySwaps"
+data-label="cor:ParityInversEqParitySwaps"></span> If a permutation
+matrix has an odd number of inversions then swapping it to the identity
+takes an odd number of swaps. If it has an even number of inversions
+then swapping to the identity takes an even number.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> The identity matrix has zero inversions. To change an
+odd number to zero requires an odd number of swaps, and to change an
+even number to zero requires an even number of swaps. ◻</p>
+</div>
+<div class="example">
+<p>The matrix in can be brought to the identity with one swap <span
+class="math inline">\(\rho_1\leftrightarrow\rho_3\)</span>. (So the
+number of swaps needn’t be the same as the number of inversions, but the
+oddness or evenness of the two numbers is the same.)</p>
+</div>
+<div class="definition">
+<p><span id="df:Signum" data-label="df:Signum"></span> The of a
+permutation <span class="math inline">\(\sgn(\phi)\)</span> is <span
+class="math inline">\(-1\)</span> if the number of inversions in <span
+class="math inline">\(\phi\)</span> is odd and is <span
+class="math inline">\(+1\)</span> if the number of inversions is
+even.</p>
+</div>
+<div class="example">
+<p>Using the notation for the <span
+class="math inline">\(3\)</span>-permutations from we have <span
+class="math display">\[P_{\phi_1}=
+  \begin{mat}
+    1  &amp;0  &amp;0  \\
+    0  &amp;1  &amp;0  \\
+    0  &amp;0  &amp;1
+  \end{mat}
+  \qquad
+  P_{\phi_2}=
+  \begin{mat}
+    1  &amp;0  &amp;0  \\
+    0  &amp;0  &amp;1  \\
+    0  &amp;1  &amp;0  
+  \end{mat}\]</span> so <span
+class="math inline">\(\sgn(\phi_1)=1\)</span> because there are no
+inversions, while <span class="math inline">\(\sgn(\phi_2)=-1\)</span>
+because there is one.</p>
+</div>
+<p>We still have not shown that the determinant function is well-defined
+because we have not considered row operations on permutation matrices
+other than row swaps. We will finesse this issue. Define a function
+<span class="math inline">\(\map{d}{\matspace_{\nbyn{n}}}{\Re}\)</span>
+by altering the permutation expansion formula, replacing <span
+class="math inline">\(\deter{P_\phi}\)</span> with <span
+class="math inline">\(\sgn(\phi)\)</span>. <span
+class="math display">\[d(T)=
+  \sum_{\text{permutations\ }\phi}t_{1,\phi(1)}t_{2,\phi(2)}\cdots
+t_{n,\phi(n)}
+                                 \cdot\sgn(\phi)\]</span> The advantage
+of this formula is that the number of inversions is clearly
+well-definedjust count them. Therefore, we will be finished showing that
+an <span class="math inline">\(\nbyn{n}\)</span> determinant function
+exists when we show that <span class="math inline">\(d\)</span>
+satisfies the conditions in the definition of a determinant.</p>
+<div class="lemma">
+<p><span id="lm:DeterminantsExist"
+data-label="lm:DeterminantsExist"></span> The function <span
+class="math inline">\(d\)</span> above is a determinant. Hence
+determinant functions <span
+class="math inline">\(\det_{\nbyn{n}}\)</span> exist for every <span
+class="math inline">\(n\)</span>.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> We must check that it satisfies the four conditions
+from the definition of determinant, .</p>
+<p>Condition (4) is easy: where <span class="math inline">\(I\)</span>
+is the <span class="math inline">\(\nbyn{n}\)</span> identity, in <span
+class="math display">\[d(I)=
+  \sum_{\text{perm\ }\phi}
+    \iota_{1,\phi(1)}\iota_{2,\phi(2)}\cdots \iota_{n,\phi(n)}
+                                 \sgn(\phi)\]</span> all of the terms in
+the summation are zero except for the one where the permutation <span
+class="math inline">\(\phi\)</span> is the identity, which gives the
+product down the diagonal, which is one.</p>
+<p>For condition (3) suppose that <span
+class="math inline">\(T\smash[b]{\grstep{k\rho_i}}\hat{T}\)</span> and
+consider <span class="math inline">\(d(\hat{T})\)</span>. <span
+class="math display">\[\begin{gathered}
+  \sum_{\text{perm\ }\phi}\!\!
+    \hat{t}_{1,\phi(1)}
+     \cdots\hat{t}_{i,\phi(i)}\cdots\hat{t}_{n,\phi(n)}
+                                 \sgn(\phi)   \\
+  =\sum_{\phi}
+     t_{1,\phi(1)}\cdots kt_{i,\phi(i)}\cdots t_{n,\phi(n)}
+                                 \sgn(\phi)
+\end{gathered}\]</span> Factor out <span
+class="math inline">\(k\)</span> to get the desired equality. <span
+class="math display">\[=k\cdot\sum_{\phi}
+     t_{1,\phi(1)}\cdots t_{i,\phi(i)}\cdots t_{n,\phi(n)}
+                                 \sgn(\phi)                 
+  =k\cdot d(T)\]</span></p>
+<p>For (2) suppose that <span
+class="math inline">\(T\smash[b]{\grstep{\rho_i\swap\rho_j}}\hat{T}\)</span>.
+We must show that <span class="math inline">\(d(\hat{T})\)</span> is the
+negative of <span class="math inline">\(d(T)\)</span>. <span
+class="math display">\[d(\hat{T})=
+  \sum_{\text{perm\ }\phi}\!\!
+    \hat{t}_{1,\phi(1)}
+    \cdots\hat{t}_{i,\phi(i)}
+    \cdots\hat{t}_{j,\phi(j)}
+    \cdots \hat{t}_{n,\phi(n)}
+                                 \sgn(\phi)
+    \tag{$*$}\]</span> We will show that each term in (<span
+class="math inline">\(*\)</span>) is associated with a term in <span
+class="math inline">\(d(T)\)</span>, and that the two terms are
+negatives of each other. Consider the matrix from the multilinear
+expansion of <span class="math inline">\(d(\hat{T})\)</span> giving the
+term <span class="math inline">\(\hat{t}_{1,\phi(1)}
+    \cdots\hat{t}_{i,\phi(i)}
+    \cdots\hat{t}_{j,\phi(j)}
+    \cdots \hat{t}_{n,\phi(n)}
+                                 \sgn(\phi)\)</span>. <span
+class="math display">\[\begin{mat}
+     \ &amp;                  &amp;\vdots
+&amp;               &amp;     \\
+       &amp;\hat{t}_{i,\phi(i)}  &amp;       &amp;               &amp;    \\
+       &amp;                &amp;\vdots &amp;                 &amp;  \\
+       &amp;                &amp;       &amp;\hat{t}_{j,\phi(j)}
+&amp;  \\
+       &amp;                &amp;\vdots                   &amp;
+  \end{mat}\]</span> It is the result of the <span
+class="math inline">\(\rho_i\swap\rho_j\)</span> operation performed on
+this matrix. <span class="math display">\[\begin{mat}
+       \ &amp;              &amp;\vdots &amp;           &amp;        \\
+         &amp;              &amp;       &amp;t_{i,\phi(j)} &amp;  \\
+         &amp;              &amp;\vdots &amp;           &amp;       \\
+         &amp;t_{j,\phi(i)}    &amp;       &amp;          &amp;        \\
+         &amp;              &amp;\vdots &amp;          &amp;
+  \end{mat}\]</span> That is, the term with hatted <span
+class="math inline">\(t\)</span>’s is associated with this term from the
+<span class="math inline">\(d(T)\)</span> expansion: <span
+class="math inline">\(t_{1,\sigma(1)}
+       \cdots t_{j,\sigma(j)}
+       \cdots t_{i,\sigma(i)}
+       \cdots t_{n,\sigma(n)} \sgn(\sigma)\)</span>, where the
+permutation <span class="math inline">\(\sigma\)</span> equals <span
+class="math inline">\(\phi\)</span> but with the <span
+class="math inline">\(i\)</span>-th and <span
+class="math inline">\(j\)</span>-th numbers interchanged, <span
+class="math inline">\(\sigma(i)=\phi(j)\)</span> and <span
+class="math inline">\(\sigma(j)=\phi(i)\)</span>. The two terms have the
+same multiplicands <span
+class="math inline">\(\hat{t}_{1,\phi(1)}=t_{1,\sigma(1)}\)</span>, …,
+including the entries from the swapped rows <span
+class="math inline">\(\hat{t}_{i,\phi(i)}=t_{j,\phi(i)}=t_{j,\sigma(j)}\)</span>
+and <span
+class="math inline">\(\hat{t}_{j,\phi(j)}=t_{i,\phi(j)}=t_{i,\sigma(i)}\)</span>.
+But the two terms are negatives of each other since <span
+class="math inline">\(\sgn(\phi)=-\sgn(\sigma)\)</span> by .</p>
+<p>Now, any permutation <span class="math inline">\(\phi\)</span> can be
+derived from some other permutation <span
+class="math inline">\(\sigma\)</span> by such a swap, in one and only
+one way. Therefore the summation in (<span
+class="math inline">\(*\)</span>) is in fact a sum over all
+permutations, taken once and only once. <span
+class="math display">\[\begin{aligned}
+  d(\hat{T})
+  &amp;=
+  \sum_{\text{perm\ }\phi}\!\!
+    \hat{t}_{1,\phi(1)}
+    \cdots\hat{t}_{i,\phi(i)}
+    \cdots\hat{t}_{j,\phi(j)}
+    \cdots \hat{t}_{n,\phi(n)}
+                                 \sgn(\phi)   \\
+  &amp;=\sum_{\text{perm\ }\sigma}\!\!
+     t_{1,\sigma(1)}
+    \cdots t_{j,\sigma(j)}
+    \cdots t_{i,\sigma(i)}
+    \cdots t_{n,\sigma(n)}
+                                 \cdot\bigl(-\sgn(\sigma)\bigr)        
+\end{aligned}\]</span> Thus <span
+class="math inline">\(d(\hat{T})=-d(T)\)</span>.</p>
+<p>Finally, for condition (1) suppose that <span
+class="math inline">\(T\smash[b]{\grstep{k\rho_i+\rho_j}}\hat{T}\)</span>.
+<span class="math display">\[\begin{aligned}
+  d(\hat{T})
+  &amp;=\sum_{\text{perm\ }\phi}
+    \hat{t}_{1,\phi(1)}\cdots\hat{t}_{i,\phi(i)}
+    \cdots\hat{t}_{j,\phi(j)}\cdots\hat{t}_{n,\phi(n)}
+                                 \sgn(\phi)                \\
+  &amp;=\sum_{\phi}
+    t_{1,\phi(1)}\cdots t_{i,\phi(i)}
+    \cdots (kt_{i,\phi(j)}+t_{j,\phi(j)})\cdots t_{n,\phi(n)}
+                                 \sgn(\phi)
+\end{aligned}\]</span> Distribute over the addition in <span
+class="math inline">\(kt_{i,\phi(j)}+t_{j,\phi(j)}\)</span>. <span
+class="math display">\[=
+      \begin{aligned}[t]
+        &amp;\smash[b]{\sum_{\smash{\phi}}}\big[t_{1,\phi(1)}\cdots
+t_{i,\phi(i)}
+          \cdots kt_{i,\phi(j)}\cdots t_{n,\phi(n)}
+                                 \sgn(\phi)         \\ % [-1ex]
+        &amp;\hbox{}\qquad\quad\hbox{}
+           +t_{1,\phi(1)}\cdots t_{i,\phi(i)}
+           \cdots t_{j,\phi(j)}\cdots t_{n,\phi(n)}
+                                 \sgn(\phi)\big]
+      \end{aligned}\]</span> Break it into two summations. <span
+class="math display">\[=\begin{aligned}[t]
+         &amp;\smash[b]{\sum_{\smash{\phi}}} \:t_{1,\phi(1)}\cdots
+t_{i,\phi(i)}
+            \cdots kt_{i,\phi(j)}\cdots t_{n,\phi(n)}
+                                 \sgn(\phi)           \\ %
+[-1ex]               
+         &amp;\hbox{}\qquad\quad\hbox{}
+            +\smash[b]{\sum_{\phi}}\:
+            t_{1,\phi(1)}\cdots t_{i,\phi(i)}
+            \cdots t_{j,\phi(j)}\cdots t_{n,\phi(n)}
+                                 \sgn(\phi)        
+     \end{aligned}\]</span> Recognize the second one. <span
+class="math display">\[=\begin{aligned}[t]
+       &amp;k\cdot \smash[b]{\sum_{\smash{\phi}}}\:
+            t_{1,\phi(1)}\cdots t_{i,\phi(i)}
+            \cdots t_{i,\phi(j)}\cdots t_{n,\phi(n)}
+                                 \sgn(\phi)          \\  % [-.75ex]
+       &amp;\hbox{}\qquad\quad\hbox{}
+             +d(T)          
+     \end{aligned}\]</span> Consider the terms <span
+class="math inline">\(t_{1,\phi(1)}\cdots t_{i,\phi(i)} \cdots
+t_{i,\phi(j)}\cdots t_{n,\phi(n)}
+   \sgn(\phi)\)</span>. Notice the subscripts; the entry is <span
+class="math inline">\(t_{i,\phi(j)}\)</span>, not <span
+class="math inline">\(t_{j,\phi(j)}\)</span>. The sum of these terms is
+the determinant of a matrix <span class="math inline">\(S\)</span> that
+is equal to <span class="math inline">\(T\)</span> except that row <span
+class="math inline">\(j\)</span> of <span
+class="math inline">\(S\)</span> is a copy of row <span
+class="math inline">\(i\)</span> of <span
+class="math inline">\(T\)</span>, that is, <span
+class="math inline">\(S\)</span> has two equal rows. In the same way
+that we proved we can see that <span
+class="math inline">\(d(S)=0\)</span>: a swap of <span
+class="math inline">\(S\)</span>’s equal rows will change the sign of
+<span class="math inline">\(d(S)\)</span> but since the matrix is
+unchanged by that swap the value of <span
+class="math inline">\(d(S)\)</span> must also be unchanged, and so that
+value must be zero. ◻</p>
+</div>
+<p>We have now proved that determinant functions exist for each
+size <span class="math inline">\(\nbyn{n}\)</span>. We already know that
+for each size there is at most one determinant. Therefore, for each size
+there is one and only one determinant function.</p>
+<p>We end this subsection by proving the other result remaining from the
+prior subsection.</p>
+<div class="theorem">
+<p><span id="th:DetMatrixEqualsDetTrans"
+data-label="th:DetMatrixEqualsDetTrans"></span> The determinant of a
+matrix equals the determinant of its transpose.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> The proof is best understood by doing the general
+<span class="math inline">\(\nbyn{3}\)</span> case. That the argument
+applies to the <span class="math inline">\(\nbyn{n}\)</span> case will
+be clear.</p>
+<p>Compare the permutation expansion of the matrix <span
+class="math inline">\(T\)</span> <span
+class="math display">\[\begin{aligned}
+  \begin{vmat}
+    t_{1,1}  &amp;t_{1,2}  &amp;t_{1,3}  \\
+    t_{2,1}  &amp;t_{2,2}  &amp;t_{2,3}  \\
+    t_{3,1}  &amp;t_{3,2}  &amp;t_{3,3}  
+  \end{vmat}
+  &amp;=
+  t_{1,1}t_{2,2}t_{3,3}
+  \begin{vmat}
+    1 &amp;0 &amp;0 \\
+    0 &amp;1 &amp;0 \\
+    0 &amp;0 &amp;1
+  \end{vmat}
+  +t_{1,1}t_{2,3}t_{3,2}
+  \begin{vmat}
+    1 &amp;0 &amp;0 \\
+    0 &amp;0 &amp;1 \\
+    0 &amp;1 &amp;0
+  \end{vmat}            \\
+  &amp;\quad+
+  t_{1,2}t_{2,1}t_{3,3}
+  \begin{vmat}
+    0 &amp;1 &amp;0 \\
+    1 &amp;0 &amp;0 \\
+    0 &amp;0 &amp;1
+  \end{vmat}
+  +t_{1,2}t_{2,3}t_{3,1}
+  \begin{vmat}
+    0 &amp;1 &amp;0 \\
+    0 &amp;0 &amp;1 \\
+    1 &amp;0 &amp;0
+  \end{vmat}           \\
+  &amp;\quad+
+  t_{1,3}t_{2,1}t_{3,2}
+  \begin{vmat}
+    0 &amp;0 &amp;1 \\
+    1 &amp;0 &amp;0 \\
+    0 &amp;1 &amp;0
+  \end{vmat}
+  +t_{1,3}t_{2,2}t_{3,1}
+  \begin{vmat}
+    0 &amp;0 &amp;1 \\
+    0 &amp;1 &amp;0 \\
+    1 &amp;0 &amp;0
+  \end{vmat}
+\end{aligned}\]</span> with the permutation expansion of its transpose.
+<span class="math display">\[\begin{aligned}
+  \begin{vmat}
+    t_{1,1}  &amp;t_{2,1}  &amp;t_{3,1}  \\
+    t_{1,2}  &amp;t_{2,2}  &amp;t_{3,2}  \\
+    t_{1,3}  &amp;t_{2,3}  &amp;t_{3,3}  
+  \end{vmat}
+  &amp;=
+  t_{1,1}t_{2,2}t_{3,3}
+  \begin{vmat}
+    1 &amp;0 &amp;0 \\
+    0 &amp;1 &amp;0 \\
+    0 &amp;0 &amp;1
+  \end{vmat}
+  +t_{1,1}t_{3,2}t_{2,3}
+  \begin{vmat}
+    1 &amp;0 &amp;0 \\
+    0 &amp;0 &amp;1 \\
+    0 &amp;1 &amp;0
+  \end{vmat}            \\
+  &amp;\quad+
+  t_{2,1}t_{1,2}t_{3,3}
+  \begin{vmat}
+    0 &amp;1 &amp;0 \\
+    1 &amp;0 &amp;0 \\
+    0 &amp;0 &amp;1
+  \end{vmat}
+  +t_{2,1}t_{3,2}t_{1,3}
+  \begin{vmat}
+    0 &amp;1 &amp;0 \\
+    0 &amp;0 &amp;1 \\
+    1 &amp;0 &amp;0
+  \end{vmat}           \\
+  &amp;\quad+
+  t_{3,1}t_{1,2}t_{2,3}
+  \begin{vmat}
+    0 &amp;0 &amp;1 \\
+    1 &amp;0 &amp;0 \\
+    0 &amp;1 &amp;0
+  \end{vmat}
+  +t_{3,1}t_{2,2}t_{1,3}
+  \begin{vmat}
+    0 &amp;0 &amp;1 \\
+    0 &amp;1 &amp;0 \\
+    1 &amp;0 &amp;0
+  \end{vmat}
+\end{aligned}\]</span> Compare first the six products of <span
+class="math inline">\(t\)</span>’s. The ones in the expansion of <span
+class="math inline">\(T\)</span> are the same as the ones in the
+expansion of the transpose; for instance, <span
+class="math inline">\(t_{1,2}t_{2,3}t_{3,1}\)</span> is in the top and
+<span class="math inline">\(t_{3,1}t_{1,2}t_{2,3}\)</span> is in the
+bottom. That’s perfectly sensiblethe six in the top arise from all of
+the ways of picking one entry of <span class="math inline">\(T\)</span>
+from each row and column while the six in the bottom are all of the ways
+of picking one entry of <span class="math inline">\(T\)</span> from each
+column and row, so of course they are the same set.</p>
+<p>Next observe that in the two expansions, each <span
+class="math inline">\(t\)</span>-product expression is not necessarily
+associated with the same permutation matrix. For instance, on the top
+<span class="math inline">\(t_{1,2}t_{2,3}t_{3,1}\)</span> is associated
+with the matrix for the map <span class="math inline">\(1\mapsto
+2\)</span>, <span class="math inline">\(2\mapsto 3\)</span>, <span
+class="math inline">\(3\mapsto 1\)</span>. On the bottom <span
+class="math inline">\(t_{3,1}t_{1,2}t_{2,3}\)</span> is associated with
+the matrix for the map <span class="math inline">\(1\mapsto 3\)</span>,
+<span class="math inline">\(2\mapsto 1\)</span>, <span
+class="math inline">\(3\mapsto 2\)</span>. The second map is inverse to
+the first. This is also perfectly sensibleboth the matrix transpose and
+the map inverse flip the <span class="math inline">\(1,2\)</span> to
+<span class="math inline">\(2,1\)</span>, flip the <span
+class="math inline">\(2,3\)</span> to <span
+class="math inline">\(3,2\)</span>, and flip <span
+class="math inline">\(3,1\)</span> to <span
+class="math inline">\(1,3\)</span>.</p>
+<p>We finish by noting that the determinant of <span
+class="math inline">\(P_{\phi}\)</span> equals the determinant of <span
+class="math inline">\(P_{\phi^{-1}}\)</span>, as shows. ◻</p>
+</div>
+</body>
+</html>

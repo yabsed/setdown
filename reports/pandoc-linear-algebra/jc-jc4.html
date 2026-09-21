@@ -1,0 +1,4151 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>jc4</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+  </style>
+  <script
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js"
+  type="text/javascript"></script>
+</head>
+<body>
+<h1 id="jordan-form">Jordan Form</h1>
+<p><em>This section uses material from three optional
+subsections: Combining Subspaces, Determinants Exist, and Laplace’s
+Expansion.</em></p>
+<p>We began this chapter by recalling that every linear map <span
+class="math inline">\(\map{h}{V}{W}\)</span> can be represented with
+respect to some bases <span class="math inline">\(B\subset V\)</span>
+and <span class="math inline">\(D\subset W\)</span> by a partial
+identity matrix. Restated, the partial identity form is a canonical form
+for matrix equivalence. This chapter considers the case where the
+codomain equals the domain so we naturally ask what is possible when the
+two bases are equal, when we have <span
+class="math inline">\(\rep{t}{B,B}\)</span>. In short, we want a
+canonical form for matrix similarity.</p>
+<p>We noted that in the <span class="math inline">\(B,B\)</span> case a
+partial identity matrix is not always possible. We therefore extended
+the matrix forms of interest to the natural generalization, diagonal
+matrices, and showed that a transformation or square matrix can be
+diagonalized if its eigenvalues are distinct. But we also gave an
+example of a square matrix that cannot be diagonalized because it is
+nilpotent, and thus diagonal form won’t suffice as the canonical form
+for matrix similarity.</p>
+<p>The prior section developed that example to get a canonical form for
+nilpotent matrices, subdiagonal ones.</p>
+<p>This section finishes our program by showing that for any linear
+transformation there is a basis <span class="math inline">\(B\)</span>
+such that the matrix representation <span
+class="math inline">\(\rep{t}{B,B}\)</span> is the sum of a diagonal
+matrix and a nilpotent matrix. This is Jordan canonical form.</p>
+<p>Recall that the set of square matrices <span
+class="math inline">\(\matspace_{\nbyn{n}}\)</span> is a vector space
+under entry-by-entry addition and scalar multiplication, and that this
+space has dimension <span class="math inline">\(n^2\)</span>. Thus for
+any <span class="math inline">\(\nbyn{n}\)</span> matrix <span
+class="math inline">\(T\)</span> the <span
+class="math inline">\(n^2+1\)</span>-member set <span
+class="math inline">\(\set{I,T,T^2,\dots,T^{n^2} }\)</span> is linearly
+dependent and so there are scalars <span
+class="math inline">\(c_0,\dots,c_{n^2}\)</span>, not all zero, such
+that <span
+class="math display">\[c_{n^2}T^{n^2}+\dots+c_1T+c_0I\]</span> is the
+zero matrix. Therefore every transformation has a sort of generalized
+nilpotencythe powers of a square matrix cannot climb forever without a
+kind of repeat.</p>
+<div class="definition">
+<p>Let <span class="math inline">\(t\)</span> be a linear transformation
+of a vector space <span class="math inline">\(V\)</span>. Where <span
+class="math inline">\(f(x)=c_nx^n+\dots+c_1x+c_0\)</span> is a
+polynomial, <span class="math inline">\(f(t)\)</span> is the
+transformation <span
+class="math inline">\(c_nt^n+\dots+c_1t+c_0(\identity)\)</span> on <span
+class="math inline">\(V\)</span>. In the same way, if <span
+class="math inline">\(T\)</span> is a square matrix then <span
+class="math inline">\(f(T)\)</span> is the matrix <span
+class="math inline">\(c_nT^n+\dots+c_1T+c_0I\)</span>.</p>
+</div>
+<p>The polynomial of the matrix represents the polynomial of the map: if
+<span class="math inline">\(T=\rep{t}{B,B}\)</span> then <span
+class="math inline">\(f(T)=\rep{f(t)}{B,B}\)</span>. This is because
+<span class="math inline">\(T^j=\rep{t^j}{B,B}\)</span>, and <span
+class="math inline">\(cT=\rep{ct}{B,B}\)</span>, and <span
+class="math inline">\(T_1+T_2 =\rep{t_1+t_2}{B,B}\)</span>.</p>
+<div class="remark">
+<p>We shall write the matrix polynomial slightly differently than the
+map polynomial. For instance, if <span
+class="math inline">\(f(x)=x-3\)</span> then we shall write the identity
+matrix, as in <span class="math inline">\(f(T)=T-3I\)</span>, but not
+write the identity map, as in <span
+class="math inline">\(f(t)=t-3\)</span>.</p>
+</div>
+<div class="example">
+<p><span id="ex:PolySendRotMatToZ"
+data-label="ex:PolySendRotMatToZ"></span> Rotation of plane vectors
+<span class="math inline">\(\pi/3\)</span> radians counterclockwise is
+represented with respect to the standard basis by <span
+class="math display">\[T=
+  \begin{mat}[r]
+     \cos(\pi/3)  &amp;-\sin(\pi/3)  \\
+     \sin(\pi/3)   &amp;\cos(\pi/3)
+  \end{mat}
+  =
+  \begin{mat}[r]
+     1/2        &amp;-\sqrt{3}/2  \\
+     \sqrt{3}/2  &amp;1/2
+  \end{mat}\]</span> and verifying that <span
+class="math inline">\(T^2-T+I=Z\)</span> is routine. (Geometrically,
+<span class="math inline">\(T^2\)</span> rotates by <span
+class="math inline">\(2\pi/3\)</span>. On the standard basis
+vector <span class="math inline">\(\vec{e}_1\)</span>, the action of
+<span class="math inline">\(T^2-T\)</span> is to give the difference
+between the unit vector with angle <span
+class="math inline">\(2\pi/3\)</span> and the unit vector with angle
+<span class="math inline">\(\pi/3\)</span>, which is <span
+class="math inline">\(\binom{-1}{0}\)</span>. On <span
+class="math inline">\(\vec{e}_2\)</span> it gives <span
+class="math inline">\(\binom{0}{-1}\)</span>. So <span
+class="math inline">\(T^2-T=-I\)</span>.)</p>
+</div>
+<p>The space <span class="math inline">\(\matspace_{\nbyn{2}}\)</span>
+has dimension four so we know that for any <span
+class="math inline">\(\nbyn{2}\)</span> matrix <span
+class="math inline">\(T\)</span> there is a fourth degree polynomial
+<span class="math inline">\(f\)</span> such that <span
+class="math inline">\(f(T)=Z\)</span>. But in that example we exhibited
+a degree two polynomial that works. So while degree <span
+class="math inline">\(n^2\)</span> always suffices, in some cases a
+smaller-degree polynomial is enough.</p>
+<div class="definition">
+<p>The <span class="math inline">\(m(x)\)</span> of a transformation
+<span class="math inline">\(t\)</span> or a square matrix <span
+class="math inline">\(T\)</span> is the non-zero polynomial of least
+degree and with leading coefficient <span
+class="math inline">\(1\)</span> such that <span
+class="math inline">\(m(t)\)</span> is the zero map or <span
+class="math inline">\(m(T)\)</span> is the zero matrix.</p>
+</div>
+<p>A minimal polynomial cannot be a constant polynomial because of the
+restriction on the leading coefficient. So a minimal polynomial must
+have degree at least one. The zero matrix has minimal polynomial <span
+class="math inline">\(p(x)=x\)</span> while the identity matrix has
+minimal polynomial <span
+class="math inline">\(\hat{p}(x)=x-1\)</span>.</p>
+<div class="lemma">
+<p>Any transformation or square matrix has a unique minimal
+polynomial.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> First we prove existence. By the earlier observation
+that degree <span class="math inline">\(n^2\)</span> suffices, there is
+at least one nonzero polynomial <span
+class="math inline">\(p(x)=c_kx^k+\cdots+c_0\)</span> that takes the map
+or matrix to zero. From among all such polynomials take one with the
+smallest degree. Divide this polynomial by its leading coefficient <span
+class="math inline">\(c_k\)</span> to get a leading <span
+class="math inline">\(1\)</span>. Hence any map or matrix has at least
+one minimal polynomial.</p>
+<p>Now for uniqueness. Suppose that <span
+class="math inline">\(m(x)\)</span> and <span
+class="math inline">\(\hat{m}(x)\)</span> both take the map or matrix to
+zero, are both of minimal degree and are thus of equal degree, and both
+have a leading <span class="math inline">\(1\)</span>. Consider the
+difference, <span class="math inline">\(m(x)-\hat{m}(x)\)</span>. If it
+is not the zero polynomial then it has a nonzero leading coefficient.
+Dividing through by that leading coefficient would make it a polynomial
+that takes the map or matrix to zero, has leading coefficient <span
+class="math inline">\(1\)</span>, and is of smaller degree than <span
+class="math inline">\(m\)</span> and <span
+class="math inline">\(\hat{m}\)</span> (because in the subtraction the
+leading <span class="math inline">\(1\)</span>’s cancel). That would
+contradict the minimality of the degree of <span
+class="math inline">\(m\)</span> and <span
+class="math inline">\(\hat{m}\)</span>. Thus <span
+class="math inline">\(m(x)-\hat{m}(x)\)</span> is the zero polynomial
+and the two are equal. ◻</p>
+</div>
+<div class="example">
+<p><span id="ex:MinPolyForRotMat"
+data-label="ex:MinPolyForRotMat"></span> One way to compute the minimal
+polynomial for the matrix of is to find the powers of <span
+class="math inline">\(T\)</span> up to <span
+class="math inline">\(n^2=4\)</span>. <span class="math display">\[T^2=
+   \begin{mat}[r]
+      -1/2         &amp;-\sqrt{3}/2  \\
+      \sqrt{3}/2   &amp;-1/2
+   \end{mat}
+   \quad
+   T^3=
+   \begin{mat}[r]
+      -1    &amp;0           \\
+       0    &amp;-1
+   \end{mat}
+   \quad
+   T^4=
+   \begin{mat}[r]
+      -1/2         &amp;\sqrt{3}/2  \\
+      -\sqrt{3}/2  &amp;-1/2
+   \end{mat}\]</span> Put <span
+class="math inline">\(c_4T^4+c_3T^3+c_2T^2+c_1T+c_0I\)</span> equal to
+the zero matrix. <span class="math display">\[\begin{linsys}{5}
+     -(1/2)c_4  
+         &amp;-  &amp;c_3           
+         &amp;- &amp;(1/2)c_2
+         &amp;+ &amp;(1/2)c_1  
+         &amp;+  &amp;c_0  &amp;=  &amp;0      \\
+      (\sqrt{3}/2)c_4  
+         &amp;  &amp;   
+         &amp;- &amp;(\sqrt{3}/2)c_2
+         &amp;- &amp;(\sqrt{3}/2)c_1  
+         &amp;   &amp;     &amp;=  &amp;0        \\
+     -(\sqrt{3}/2)c_4  
+         &amp;   &amp;    
+         &amp;+ &amp;(\sqrt{3}/2)c_2
+         &amp;+ &amp;(\sqrt{3}/2)c_1  
+        &amp;   &amp;            &amp;=  &amp;0      \\
+     -(1/2)c_4  
+         &amp;-  &amp;c_3             
+         &amp;- &amp;(1/2)c_2
+         &amp;+ &amp;(1/2)c_1  
+         &amp;+  &amp;c_0  &amp;=  &amp;0
+   \end{linsys}\]</span> Apply Gauss’ Method. <span
+class="math display">\[\begin{linsys}{5}
+     -(1/2)c_4  
+         &amp;- &amp;c_3             
+         &amp;- &amp;(1/2)c_2
+         &amp;+ &amp;(1/2)c_1  
+         &amp;+  &amp;c_0  &amp;=  &amp;0      \\
+         &amp;  &amp;-(\sqrt{3})c_3
+         &amp;- &amp;\sqrt{3}c_2
+         &amp;  &amp;    
+         &amp;+ &amp;\sqrt{3}c_0 &amp;=  &amp;0
+   \end{linsys}\]</span> With an eye toward making the degree of the
+polynomial as small as possible, note that setting <span
+class="math inline">\(c_4\)</span>, <span
+class="math inline">\(c_3\)</span>, and <span
+class="math inline">\(c_2\)</span> to zero forces <span
+class="math inline">\(c_1\)</span> and <span
+class="math inline">\(c_0\)</span> to also come out as zero so the
+equations won’t allow a degree one minimal polynomial. Instead, set
+<span class="math inline">\(c_4\)</span> and <span
+class="math inline">\(c_3\)</span> to zero. The system <span
+class="math display">\[\begin{linsys}{3}           
+         -(1/2)c_2
+         &amp;+ &amp;(1/2)c_1  
+         &amp;+  &amp;c_0  &amp;=  &amp;0      \\
+         -\sqrt{3}c_2
+         &amp;  &amp;    
+         &amp;+ &amp;\sqrt{3}c_0 &amp;=  &amp;0
+   \end{linsys}\]</span> has the solution set <span
+class="math inline">\(c_1=-c_0\)</span> and <span
+class="math inline">\(c_2=c_0\)</span>. Taking the leading coefficient
+to be <span class="math inline">\(c_2=1\)</span> gives the minimal
+polynomial <span class="math inline">\(x^2-x+1\)</span>.</p>
+</div>
+<p>That computation is ungainly. We shall develop an alternative.</p>
+<div class="lemma">
+<p><span id="le:PolyMapsFactor" data-label="le:PolyMapsFactor"></span>
+Suppose that the polynomial <span
+class="math inline">\(f(x)=c_nx^n+\dots+c_1x+c_0\)</span> factors as
+<span
+class="math inline">\(k(x-\lambda_1)^{q_1}\cdots(x-\lambda_z)^{q_z}\)</span>.
+If <span class="math inline">\(t\)</span> is a linear transformation
+then these two are equal maps. <span
+class="math display">\[c_nt^n+\dots+c_1t+c_0
+  =
+  k\cdot\composed{\composed{(t-\lambda_1)^{q_1}}{\cdots}}{
+      (t-\lambda_z)^{q_z}}\]</span> Consequently, if <span
+class="math inline">\(T\)</span> is a square matrix then <span
+class="math inline">\(f(T)\)</span> and <span
+class="math inline">\(k\cdot(T-\lambda_1I)^{q_1}\cdots(T-\lambda_z
+I)^{q_z}\)</span> are equal matrices.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> We use induction on the degree of the polynomial. The
+cases where the polynomial is of degree zero and degree one are clear.
+The full induction argument is but we will give its sense with the
+degree two case.</p>
+<p>A quadratic polynomial factors into two linear terms <span
+class="math inline">\(f(x)=k(x-\lambda_1)\cdot(x-\lambda_2)
+                    =k(x^2+(-\lambda_1-\lambda_2)x+\lambda_1\lambda_2)\)</span>.
+Substituting <span class="math inline">\(t\)</span> for <span
+class="math inline">\(x\)</span> in the factored and unfactored versions
+gives the same map. <span class="math display">\[\begin{aligned}
+   \bigl(k\cdot\composed{(t-\lambda_1)}{(t-\lambda_2)}\bigr)\&gt;(\vec{v})
+   &amp;=\bigl(k\cdot(t-\lambda_1)\bigr)\,(t(\vec{v})-\lambda_2\vec{v})    \\
+   &amp;=k\cdot\bigl(t(t(\vec{v}))-t(\lambda_2\vec{v})
+      -\lambda_1 t(\vec{v})+\lambda_1\lambda_2\vec{v}\bigr)    \\
+   &amp;=k\cdot
+\bigl(\composed{t}{t}\,(\vec{v})-(\lambda_1+\lambda_2)t(\vec{v})
+          +\lambda_1\lambda_2\vec{v}\bigr)                    \\
+   &amp;=k\cdot(t^2-(\lambda_1+\lambda_2)t+\lambda_1\lambda_2)\&gt;(\vec{v})
+\end{aligned}\]</span> The third equality uses linearity of <span
+class="math inline">\(t\)</span> to bring <span
+class="math inline">\(\lambda_2\)</span> out of the second term. ◻</p>
+</div>
+<p>The next result is that every root of the minimal polynomial is an
+eigenvalue and that every eigenvalue is a root of the minimal
+polynomial. (That is, the result says ‘<span class="math inline">\(1\leq
+q_i\)</span>’ and not just ‘<span class="math inline">\(0\leq
+q_i\)</span>’.) For that, recall that to find eigenvalues we solve <span
+class="math inline">\(\deter{T-xI}=0\)</span> and this determinant gives
+a polynomial in <span class="math inline">\(x\)</span>, the
+characteristic polynomial, whose roots are the eigenvalues.</p>
+<div class="theorem">
+<p><span id="th:CayHam" data-label="th:CayHam"></span> If the
+characteristic polynomial of a transformation or square matrix factors
+into <span class="math display">\[k\cdot
+(x-\lambda_1)^{p_1}(x-\lambda_2)^{p_2}\cdots(x-\lambda_z)^{p_z}\]</span>
+then its minimal polynomial factors into <span
+class="math display">\[(x-\lambda_1)^{q_1}(x-\lambda_2)^{q_2}\cdots(x-\lambda_z)^{q_z}\]</span>
+where <span class="math inline">\(1\leq q_i \leq p_i\)</span> for each
+<span class="math inline">\(i\)</span> between <span
+class="math inline">\(1\)</span> and <span
+class="math inline">\(z\)</span>.</p>
+</div>
+<p>The proof takes up the next three lemmas. We will state them in
+matrix terms because that version is convenient for the first proof but
+they apply equally well to maps.</p>
+<p>The first result is the key. For the proof, observe that we can view
+a matrix of polynomials as a polynomial with matrix coefficients. <span
+class="math display">\[\begin{mat}
+     2x^2+3x-1  &amp;x^2+2    \\
+     3x^2+4x+1  &amp;4x^2+x+1
+   \end{mat}
+= \begin{mat}[r]
+    2  &amp;1  \\
+    3  &amp;4
+  \end{mat}x^2
++ \begin{mat}[r]
+    3  &amp;0  \\
+    4  &amp;1
+  \end{mat}x
++ \begin{mat}[r]
+   -1  &amp;2  \\
+    1  &amp;1
+  \end{mat}\]</span></p>
+<div class="lemma">
+<p><span id="le:MatSatItsCharPoly"
+data-label="le:MatSatItsCharPoly"></span> If <span
+class="math inline">\(T\)</span> is a square matrix with characteristic
+polynomial <span class="math inline">\(c(x)\)</span> then <span
+class="math inline">\(c(T)\)</span> is the zero matrix.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> Let <span class="math inline">\(C\)</span> be <span
+class="math inline">\(T-xI\)</span>, the matrix whose determinant is the
+characteristic polynomial <span
+class="math inline">\(c(x)=c_nx^n+\dots+c_1x+c_0\)</span>. <span
+class="math display">\[C=\begin{mat}
+    t_{1,1}-x        &amp;t_{1,2}   &amp;\ldots        \\
+    t_{2,1}          &amp;t_{2,2}-x               \\
+    \vdots           &amp;          &amp;\ddots       \\
+                     &amp;          &amp;       &amp;t_{n,n}-x
+  \end{mat}\]</span> Recall Theorem Four.III.<a
+href="#th:MatTimesAdjEqDiagDets" data-reference-type="ref"
+data-reference="th:MatTimesAdjEqDiagDets">[th:MatTimesAdjEqDiagDets]</a>,
+that the product of a matrix with its adjoint equals the determinant of
+the matrix times the identity. <span class="math display">\[c(x)\cdot I
+  =\adj (C)C
+  =\adj (C)(T-xI)
+  =\adj (C)T- \adj(C)\cdot x
+\tag*{($*$)}\]</span> The left side of (<span
+class="math inline">\(*\)</span>) is <span
+class="math inline">\(c_nIx^n+c_{n-1}Ix^{n-1}+\cdots+c_1Ix+c_0I\)</span>.
+For the right side, the entries of <span class="math inline">\(\adj
+(C)\)</span> are polynomials, each of degree at most <span
+class="math inline">\(n-1\)</span> since the minors of a matrix drop a
+row and column. As suggested before the proof, rewrite it as a
+polynomial with matrix coefficients: <span class="math inline">\(\adj
+(C)=C_{n-1}x^{n-1}+\cdots+C_1x+C_0\)</span> where each <span
+class="math inline">\(C_i\)</span> is a matrix of scalars. Now this is
+the right side of (<span class="math inline">\(*\)</span>). <span
+class="math display">\[[(C_{n-1}T)x^{n-1}+\cdots+(C_1T)x+C_0T]  
+   -[C_{n-1}x^n+C_{n-2}x^{n-1}+\cdots+C_0x]\]</span> Equate the left and
+right side of (<span class="math inline">\(*\)</span>)’s coefficients of
+<span class="math inline">\(x^n\)</span>, of <span
+class="math inline">\(x^{n-1}\)</span>, etc. <span
+class="math display">\[\begin{aligned}
+  c_nI
+  &amp;=-C_{n-1}    \\
+  c_{n-1}I
+  &amp;=-C_{n-2}+C_{n-1}T    \\
+  &amp;\vdotswithin{=}             \\
+  c_{1}I
+  &amp;=-C_{0}+C_{1}T    \\
+  c_{0}I
+  &amp;=C_{0}T
+\end{aligned}\]</span> Multiply, from the right, both sides of the first
+equation by <span class="math inline">\(T^n\)</span>, both sides of the
+second equation by <span class="math inline">\(T^{n-1}\)</span>, etc.
+<span class="math display">\[\begin{aligned}
+  c_nT^n
+  &amp;=-C_{n-1}T^n    \\
+  c_{n-1}T^{n-1}
+  &amp;=-C_{n-2}T^{n-1}+C_{n-1}T^n    \\
+  &amp;\vdotswithin{=}             \\
+  c_{1}T
+  &amp;=-C_{0}T+C_{1}T^2    \\
+  c_{0}I
+  &amp;=C_{0}T
+\end{aligned}\]</span> Add. The left is <span
+class="math inline">\(c_nT^n+c_{n-1}T^{n-1}+\cdots+c_0I\)</span>. The
+right telescopes; for instance, <span
+class="math inline">\(-C_{n-1}T^n\)</span> from the first line combines
+with the <span class="math inline">\(C_{n-1}T^n\)</span> half of the
+second line. The total on the right is the zero matrix. ◻</p>
+</div>
+<p>We refer to that result by saying that a matrix or map its
+characteristic polynomial.</p>
+<div class="lemma">
+<p><span id="le:tSatisImpMinPolyDivides"
+data-label="le:tSatisImpMinPolyDivides"></span> Any polynomial that is
+satisfied by <span class="math inline">\(T\)</span> is divisible by
+<span class="math inline">\(T\)</span>’s minimal polynomial. That is,
+for a polynomial <span class="math inline">\(f(x)\)</span>, if <span
+class="math inline">\(f(T)\)</span> is the zero matrix then <span
+class="math inline">\(f(x)\)</span> is divisible by the minimal
+polynomial of <span class="math inline">\(T\)</span>.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> Let <span class="math inline">\(m(x)\)</span> be
+minimal for <span class="math inline">\(T\)</span>. The Division Theorem
+for Polynomials gives <span class="math inline">\(f(x)=q(x)\cdot
+m(x)+r(x)\)</span> where the degree of <span
+class="math inline">\(r\)</span> is strictly less than the degree of
+<span class="math inline">\(m\)</span>. Because <span
+class="math inline">\(T\)</span> satisfies both <span
+class="math inline">\(f\)</span> and <span
+class="math inline">\(m\)</span>, plugging <span
+class="math inline">\(T\)</span> into that equation gives that <span
+class="math inline">\(r(T)\)</span> is the zero matrix. That contradicts
+the minimality of <span class="math inline">\(m\)</span> unless <span
+class="math inline">\(r\)</span> is the zero polynomial. ◻</p>
+</div>
+<p>Combining the prior two lemmas shows that the minimal polynomial
+divides the characteristic polynomial. Thus any root of the minimal
+polynomial is also a root of the characteristic polynomial.</p>
+<p>Thus so far we have that if the minimal polynomial factors as <span
+class="math inline">\(m(x)=(x-\lambda_1)^{q_1}\cdots(x-\lambda_i)^{q_i}\)</span>
+then the characteristic polynomial also has the roots <span
+class="math inline">\(\lambda_1\)</span>, …, <span
+class="math inline">\(\lambda_i\)</span>. But as far as what we have
+established to this point, the characteristic polynomial might have
+additional roots: <span
+class="math inline">\(c(x)=(x-\lambda_1)^{p_1}\cdots(x-\lambda_i)^{p_i}
+     (x-\lambda_{i+1})^{p_{i+1}}\cdots(x-\lambda_z)^{p_z}\)</span>,
+where <span class="math inline">\(1\leq q_j\leq p_j\)</span> for <span
+class="math inline">\(1\leq j \leq i\)</span>. We finish the proof of
+the Cayley-Hamilton Theorem by showing that the characteristic
+polynomial has no additional roots so that there are no <span
+class="math inline">\(\lambda_{i+1}\)</span>, <span
+class="math inline">\(\lambda_{i+2}\)</span>, etc.</p>
+<div class="lemma">
+<p>Each linear factor of the characteristic polynomial of a square
+matrix is also a linear factor of the minimal polynomial.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> Let <span class="math inline">\(T\)</span> be a
+square matrix with minimal polynomial <span
+class="math inline">\(m(x)\)</span> of degree <span
+class="math inline">\(n\)</span> and assume that <span
+class="math inline">\(x-\lambda\)</span> is a factor of the
+characteristic polynomial of <span class="math inline">\(T\)</span>, so
+that <span class="math inline">\(\lambda\)</span> is an eigenvalue of
+<span class="math inline">\(T\)</span>. We will show that <span
+class="math inline">\(m(\lambda)=0\)</span>, i.e., that <span
+class="math inline">\(x-\lambda\)</span> is a factor of <span
+class="math inline">\(m\)</span>.</p>
+<p>Assume that <span class="math inline">\(\lambda\)</span> is
+associated with the eigenvector <span
+class="math inline">\(\vec{v}\)</span> and consider the powers <span
+class="math inline">\(T^2(\vec{v})\)</span>, …, <span
+class="math inline">\(T^n(\vec{v})\)</span>. We have <span
+class="math inline">\(T^2(\vec{v})
+=T\cdot\lambda\vec{v}=\lambda\cdot T\vec{v}=\lambda^2\vec{v}\)</span>.
+The same happens for all of the powers: <span
+class="math inline">\(T^i\vec{v}=\lambda^i\vec{v}\,\)</span> for <span
+class="math inline">\(1\leq i \leq n\)</span>. Thus for any polynomial
+function <span class="math inline">\(p(x)\)</span>, application of the
+matrix <span class="math inline">\(p(T)\)</span> to <span
+class="math inline">\(\vec{v}\)</span> equals the result of multiplying
+<span class="math inline">\(\vec{v}\)</span> by the scalar <span
+class="math inline">\(p(\lambda)\)</span>. <span
+class="math display">\[\begin{gathered}
+  p(T)\,\vec{v}
+  =(c_kT^k+\dots+c_1T+c_0I)\,\vec{v}
+  =c_kT^k\vec{v}+\dots+c_1T\vec{v}+c_0\vec{v}  \\
+  =c_k\lambda^k\vec{v}+\dots+c_1\lambda\vec{v}+c_0\vec{v}
+  =p(\lambda)\cdot\vec{v}
+\end{gathered}\]</span> Since <span class="math inline">\(m(T)\)</span>
+is the zero matrix, <span
+class="math inline">\(\zero=m(T)(\vec{v})=m(\lambda)\cdot\vec{v}\)</span>
+and hence <span class="math inline">\(m(\lambda)=0\)</span>, as <span
+class="math inline">\(\vec{v}\neq\zero\)</span> because it is an
+eigenvector. ◻</p>
+</div>
+<p>That concludes the proof of the Cayley-Hamilton Theorem.</p>
+<div class="example">
+<p><span id="ex:MinPolyUsingCH" data-label="ex:MinPolyUsingCH"></span>
+We can use the Cayley-Hamilton Theorem to find the minimal polynomial of
+this matrix. <span class="math display">\[T=
+   \begin{mat}[r]
+      2  &amp;0  &amp;0  &amp;1  \\
+      1  &amp;2  &amp;0  &amp;2  \\
+      0  &amp;0  &amp;2  &amp;-1 \\
+      0  &amp;0  &amp;0  &amp;1
+   \end{mat}\]</span> First we find its characteristic polynomial <span
+class="math inline">\(c(x)=(x-1)(x-2)^3\)</span> with the usual
+determinant <span class="math inline">\(\deter{T-xI}\)</span>. With
+that, the Cayley-Hamilton Theorem says that <span
+class="math inline">\(T\)</span>’s minimal polynomial is either <span
+class="math inline">\((x-1)(x-2)\)</span> or <span
+class="math inline">\((x-1)(x-2)^2\)</span> or <span
+class="math inline">\((x-1)(x-2)^3\)</span>. We can decide among the
+choices just by computing <span class="math display">\[(T-1I)(T-2I)=\!
+   \begin{mat}[r]
+      1  &amp;0  &amp;0  &amp;1  \\
+      1  &amp;1  &amp;0  &amp;2  \\
+      0  &amp;0  &amp;1  &amp;-1 \\
+      0  &amp;0  &amp;0  &amp;0
+   \end{mat}
+   \begin{mat}[r]
+      0  &amp;0  &amp;0  &amp;1  \\
+      1  &amp;0  &amp;0  &amp;2  \\
+      0  &amp;0  &amp;0  &amp;-1 \\
+      0  &amp;0  &amp;0  &amp;-1
+   \end{mat}
+   =
+   \begin{mat}[r]
+      0  &amp;0  &amp;0  &amp;0  \\
+      1  &amp;0  &amp;0  &amp;1  \\
+      0  &amp;0  &amp;0  &amp;0  \\
+      0  &amp;0  &amp;0  &amp;0
+   \end{mat}\]</span> and <span class="math display">\[(T-1I)(T-2I)^2=
+   \begin{mat}[r]
+      0  &amp;0  &amp;0  &amp;0  \\
+      1  &amp;0  &amp;0  &amp;1  \\
+      0  &amp;0  &amp;0  &amp;0  \\
+      0  &amp;0  &amp;0  &amp;0
+   \end{mat}
+   \begin{mat}[r]
+      0  &amp;0  &amp;0  &amp;1  \\
+      1  &amp;0  &amp;0  &amp;2  \\
+      0  &amp;0  &amp;0  &amp;-1 \\
+      0  &amp;0  &amp;0  &amp;-1
+   \end{mat}
+   =
+   \begin{mat}[r]
+      0  &amp;0  &amp;0  &amp;0  \\
+      0  &amp;0  &amp;0  &amp;0  \\
+      0  &amp;0  &amp;0  &amp;0  \\
+      0  &amp;0  &amp;0  &amp;0
+   \end{mat}\]</span> and so <span
+class="math inline">\(m(x)=(x-1)(x-2)^2\)</span>.</p>
+</div>
+<div class="exercises">
+<p>What are the possible minimal polynomials if a matrix has the given
+characteristic polynomial?</p>
+<div class="exparts*">
+<p><span class="math inline">\((x-3)^4\)</span> <span
+class="math inline">\((x+1)^3(x-4)\)</span> <span
+class="math inline">\((x-2)^2(x-5)^2\)</span> <span
+class="math inline">\((x+3)^2(x-1)(x-2)^2\)</span></p>
+</div>
+<p>What is the degree of each possibility?</p>
+<div class="answer">
+<p>The Cayley-Hamilton Theorem says that the minimal polynomial must
+contain the same linear factors as the characteristic polynomial,
+although possibly of lower degree but not of zero degree.</p>
+<div class="exparts">
+<p>The possibilities are <span
+class="math inline">\(m_1(x)=x-3\)</span>, <span
+class="math inline">\(m_2(x)=(x-3)^2\)</span>, <span
+class="math inline">\(m_3(x)=(x-3)^3\)</span>, and <span
+class="math inline">\(m_4(x)=(x-3)^4\)</span>. The first is a degree one
+polynomial, the second is degree two, the third is degree three, and the
+fourth is degree four. The possibilities are <span
+class="math inline">\(m_1(x)=(x+1)(x-4)\)</span>, <span
+class="math inline">\(m_2(x)=(x+1)^2(x-4)\)</span>, and <span
+class="math inline">\(m_3(x)=(x+1)^3(x-4)\)</span>. The first is a
+quadratic polynomial, that is, it has degree two. The second has degree
+three, and the third has degree four. We have <span
+class="math inline">\(m_1(x)=(x-2)(x-5)\)</span>, <span
+class="math inline">\(m_2(x)=(x-2)^2(x-5)\)</span>, <span
+class="math inline">\(m_3(x)=(x-2)(x-5)^2\)</span>, and <span
+class="math inline">\(m_4(x)=(x-2)^2(x-5)^2\)</span>. They are
+polynomials of degree two, three, three, and four. The possibilities are
+<span class="math inline">\(m_1(x)=(x+3)(x-1)(x-2)\)</span>, <span
+class="math inline">\(m_2(x)=(x+3)^2(x-1)(x-2)\)</span>, <span
+class="math inline">\(m_3(x)=(x+3)(x-1)(x-2)^2\)</span>, and <span
+class="math inline">\(m_4(x)=(x+3)^2(x-1)(x-2)^2\)</span>. The degree of
+<span class="math inline">\(m_1\)</span> is three, the degree of <span
+class="math inline">\(m_2\)</span> is four, the degree of <span
+class="math inline">\(m_3\)</span> is four, and the degree of <span
+class="math inline">\(m_4\)</span> is five.</p>
+</div>
+</div>
+<p>For this matrix <span class="math display">\[\begin{mat}
+        0 &amp;1 &amp;0 &amp;1 \\
+        1 &amp;0 &amp;1 &amp;0 \\
+        0 &amp;1 &amp;0 &amp;1 \\
+        1 &amp;0 &amp;1 &amp;0 \\
+      \end{mat}\]</span> find the characteristic polynomial and the
+minimal polynomial.</p>
+<div class="answer">
+<p>The characteristic polynomial <span
+class="math display">\[\deter{T-xI}=
+      \begin{vmat}
+        -x &amp;1  &amp;0  &amp;1 \\
+         1 &amp;-x &amp;1  &amp;0 \\
+         0 &amp;1  &amp;-x &amp;1 \\
+         1 &amp;0  &amp;1  &amp;-x \\
+      \end{vmat}\]</span> is <span
+class="math inline">\(x^2(x^2-4)\)</span>.</p>
+<p>By the Caley-Hamilton Theorem, all of the distinct roots of the
+characteristic polynomial are also roots of the minimal polynomial so
+the minimal polynomial has roots <span class="math inline">\(0\)</span>,
+<span class="math inline">\(2\)</span>, and <span
+class="math inline">\(-2\)</span>. Thus the minimal polynomial is either
+<span class="math inline">\(x(x^2-4)\)</span> or <span
+class="math inline">\(x^2(x^2-4)\)</span>.</p>
+<p>One way to find the minimal polynomial is to try the matrix in the
+two expressions until we find the zero matrix. <span
+class="math display">\[T(T^2-4I)=
+      \begin{mat}
+        0 &amp;1 &amp;0 &amp;1 \\
+        1 &amp;0 &amp;1 &amp;0 \\
+        0 &amp;1 &amp;0 &amp;1 \\
+        1 &amp;0 &amp;1 &amp;0 \\
+      \end{mat}
+      \begin{mat}
+        -2 &amp;0  &amp;1  &amp;0 \\
+        0  &amp;-2 &amp;0  &amp;2 \\
+        2  &amp;0  &amp;-2 &amp;0 \\
+        0  &amp;2  &amp;0  &amp;-2 \\
+      \end{mat}
+      =
+      \begin{mat}
+        0 &amp;0 &amp;0 &amp;0 \\
+        0 &amp;0 &amp;0 &amp;0 \\
+        0 &amp;0 &amp;0 &amp;0 \\
+        0 &amp;0 &amp;0 &amp;0 \\
+      \end{mat}\]</span> So the minimal polynomial is <span
+class="math inline">\(x(x^2-4)\)</span>.</p>
+</div>
+<p>Find the minimal polynomial of this matrix. <span
+class="math display">\[\begin{mat}[r]
+           0  &amp;1  &amp;0  \\
+           0  &amp;0  &amp;1  \\
+           1  &amp;0  &amp;0
+        \end{mat}\]</span></p>
+<div class="answer">
+<p>Its characteristic polynomial has complex roots. <span
+class="math display">\[\begin{vmat}
+                   -x  &amp;1  &amp;0  \\
+                    0  &amp;-x &amp;1  \\
+                    1  &amp;0  &amp;-x
+          \end{vmat}
+          =(1-x)\cdot (x-(-\frac{1}{2}+\frac{\sqrt{3}}{2}i))
+                \cdot (x-(-\frac{1}{2}-\frac{\sqrt{3}}{2}i))\]</span> As
+the roots are distinct, the characteristic polynomial equals the minimal
+polynomial.</p>
+</div>
+<p>Find the minimal polynomial of each matrix.</p>
+<div class="exparts*">
+<p><span class="math inline">\(\begin{mat}[r]
+                   3  &amp;0  &amp;0  \\
+                   1  &amp;3  &amp;0  \\
+                   0  &amp;0  &amp;4
+                \end{mat}\)</span> <span
+class="math inline">\(\begin{mat}[r]
+                   3  &amp;0  &amp;0  \\
+                   1  &amp;3  &amp;0  \\
+                   0  &amp;0  &amp;3
+                \end{mat}\)</span> <span
+class="math inline">\(\begin{mat}[r]
+                   3  &amp;0  &amp;0  \\
+                   1  &amp;3  &amp;0  \\
+                   0  &amp;1  &amp;3
+                \end{mat}\)</span> <span
+class="math inline">\(\begin{mat}[r]
+                   2  &amp;0  &amp;1  \\
+                   0  &amp;6  &amp;2  \\
+                   0  &amp;0  &amp;2
+                \end{mat}\)</span> <span
+class="math inline">\(\begin{mat}[r]
+                   2  &amp;2  &amp;1  \\
+                   0  &amp;6  &amp;2  \\
+                   0  &amp;0  &amp;2
+                \end{mat}\)</span> <span
+class="math inline">\(\begin{mat}[r]
+                   -1 &amp;4  &amp;0  &amp;0  &amp;0  \\
+                    0 &amp;3  &amp;0  &amp;0  &amp;0  \\
+                    0 &amp;-4 &amp;-1 &amp;0  &amp;0  \\
+                    3 &amp;-9 &amp;-4 &amp;2  &amp;-1 \\
+                    1 &amp;5  &amp;4  &amp;1  &amp;4
+                \end{mat}\)</span></p>
+</div>
+<div class="answer">
+<p>In each case we will use the method of .</p>
+<div class="exparts">
+<p>Because <span class="math inline">\(T\)</span> is triangular, <span
+class="math inline">\(T-xI\)</span> is also triangular <span
+class="math display">\[T-xI=
+           \begin{mat}
+             3-x  &amp;0    &amp;0   \\
+             1    &amp;3-x  &amp;0   \\
+             0    &amp;0    &amp;4-x
+           \end{mat}\]</span> the characteristic polynomial is easy
+<span class="math inline">\(c(x)=\deter{T-xI}=(3-x)^2(4-x)=-1\cdot
+(x-3)^2(x-4)\)</span>. There are only two possibilities for the minimal
+polynomial, <span class="math inline">\(m_1(x)=(x-3)(x-4)\)</span> and
+<span class="math inline">\(m_2(x)=(x-3)^2(x-4)\)</span>. (Note that the
+characteristic polynomial has a negative sign but the minimal polynomial
+does not since it must have a leading coefficient of one). Because <span
+class="math inline">\(m_1(T)\)</span> is not the zero matrix <span
+class="math display">\[(T-3I)(T-4I)
+           =
+           \begin{mat}[r]
+             0  &amp;0  &amp;0  \\
+             1  &amp;0  &amp;0  \\
+             0  &amp;0  &amp;1
+           \end{mat}
+           \begin{mat}[r]
+             -1  &amp;0  &amp;0  \\
+              1  &amp;-1 &amp;0  \\
+              0  &amp;0  &amp;0
+           \end{mat}
+           =
+           \begin{mat}[r]
+             0  &amp;0  &amp;0  \\
+            -1  &amp;0  &amp;0  \\
+             0  &amp;0  &amp;0
+           \end{mat}\]</span> the minimal polynomial is <span
+class="math inline">\(m(x)=m_2(x)\)</span>. <span
+class="math display">\[\begin{gathered}
+           (T-3I)^2(T-4I)
+           =(T-3I)\cdot\bigl((T-3I)(T-4I)\bigr)              \\
+           =
+           \begin{mat}
+             0  &amp;0  &amp;0  \\
+             1  &amp;0  &amp;0  \\
+             0  &amp;0  &amp;1
+           \end{mat}
+           \begin{mat}[r]
+              0  &amp;0  &amp;0  \\
+             -1  &amp;0  &amp;0  \\
+              0  &amp;0  &amp;0
+           \end{mat}
+           =
+           \begin{mat}[r]
+             0  &amp;0  &amp;0  \\
+             0  &amp;0  &amp;0  \\
+             0  &amp;0  &amp;0
+           \end{mat}
+         
+\end{gathered}\]</span> As in the prior item, the fact that the matrix
+is triangular makes computation of the characteristic polynomial easy.
+<span class="math display">\[c(x)=\deter{T-xI}
+              =
+              \begin{vmat}
+                3-x  &amp;0   &amp;0   \\
+                1    &amp;3-x &amp;0   \\
+                0    &amp;0   &amp;3-x
+              \end{vmat}
+              =(3-x)^3=-1\cdot (x-3)^3\]</span> There are three
+possibilities for the minimal polynomial <span
+class="math inline">\(m_1(x)=(x-3)\)</span>, <span
+class="math inline">\(m_2(x)=(x-3)^2\)</span>, and <span
+class="math inline">\(m_3(x)=(x-3)^3\)</span>. We settle the question by
+computing <span class="math inline">\(m_1(T)\)</span> <span
+class="math display">\[T-3I=
+          \begin{mat}[r]
+            0  &amp;0  &amp;0  \\
+            1  &amp;0  &amp;0  \\
+            0  &amp;0  &amp;0
+          \end{mat}\]</span> and <span
+class="math inline">\(m_2(T)\)</span>. <span
+class="math display">\[(T-3I)^2=
+          \begin{mat}[r]
+            0  &amp;0  &amp;0  \\
+            1  &amp;0  &amp;0  \\
+            0  &amp;0  &amp;0
+          \end{mat}
+          \begin{mat}[r]
+            0  &amp;0  &amp;0  \\
+            1  &amp;0  &amp;0  \\
+            0  &amp;0  &amp;0
+          \end{mat}
+          =          
+          \begin{mat}[r]
+            0  &amp;0  &amp;0  \\
+            0  &amp;0  &amp;0  \\
+            0  &amp;0  &amp;0
+          \end{mat}\]</span> Because <span
+class="math inline">\(m_2(T)\)</span> is the zero matrix, <span
+class="math inline">\(m_2(x)\)</span> is the minimal polynomial. Again,
+the matrix is triangular. <span class="math display">\[c(x)=\deter{T-xI}
+              =
+              \begin{vmat}
+                3-x  &amp;0   &amp;0   \\
+                1    &amp;3-x &amp;0   \\
+                0    &amp;1   &amp;3-x
+              \end{vmat}
+              =(3-x)^3=-1\cdot (x-3)^3\]</span> Again, there are three
+possibilities for the minimal polynomial <span
+class="math inline">\(m_1(x)=(x-3)\)</span>, <span
+class="math inline">\(m_2(x)=(x-3)^2\)</span>, and <span
+class="math inline">\(m_3(x)=(x-3)^3\)</span>. We compute <span
+class="math inline">\(m_1(T)\)</span> <span class="math display">\[T-3I=
+          \begin{mat}[r]
+            0  &amp;0  &amp;0  \\
+            1  &amp;0  &amp;0  \\
+            0  &amp;1  &amp;0
+          \end{mat}\]</span> and <span
+class="math inline">\(m_2(T)\)</span> <span
+class="math display">\[(T-3I)^2=
+          \begin{mat}[r]
+            0  &amp;0  &amp;0  \\
+            1  &amp;0  &amp;0  \\
+            0  &amp;1  &amp;0
+          \end{mat}
+          \begin{mat}[r]
+            0  &amp;0  &amp;0  \\
+            1  &amp;0  &amp;0  \\
+            0  &amp;1  &amp;0
+          \end{mat}
+          =          
+          \begin{mat}[r]
+            0  &amp;0  &amp;0  \\
+            0  &amp;0  &amp;0  \\
+            1  &amp;0  &amp;0
+          \end{mat}\]</span> and <span
+class="math inline">\(m_3(T)\)</span>. <span
+class="math display">\[(T-3I)^3
+          =(T-3I)^2(T-3I)
+          =
+          \begin{mat}[r]
+            0  &amp;0  &amp;0  \\
+            0  &amp;0  &amp;0  \\
+            1  &amp;0  &amp;0
+          \end{mat}
+          \begin{mat}[r]
+            0  &amp;0  &amp;0  \\
+            1  &amp;0  &amp;0  \\
+            0  &amp;1  &amp;0
+          \end{mat}
+          =          
+          \begin{mat}[r]
+            0  &amp;0  &amp;0  \\
+            0  &amp;0  &amp;0  \\
+            0  &amp;0  &amp;0
+          \end{mat}\]</span> Therefore, the minimal polynomial is <span
+class="math inline">\(m(x)=m_3(x)=(x-3)^3\)</span>. This case is also
+triangular, here upper triangular. <span
+class="math display">\[c(x)=\deter{T-xI}=
+           \begin{vmat}
+             2-x  &amp;0   &amp;1     \\
+             0    &amp;6-x &amp;2     \\
+             0    &amp;0   &amp;2-x
+           \end{vmat}
+           =(2-x)^2(6-x)=-(x-2)^2(x-6)\]</span> There are two
+possibilities for the minimal polynomial, <span
+class="math inline">\(m_1(x)=(x-2)(x-6)\)</span> and <span
+class="math inline">\(m_2(x)=(x-2)^2(x-6)\)</span>. Computation shows
+that the minimal polynomial isn’t <span
+class="math inline">\(m_1(x)\)</span>. <span
+class="math display">\[(T-2I)(T-6I)=
+           \begin{mat}[r]
+             0  &amp;0  &amp;1  \\
+             0  &amp;4  &amp;2  \\
+             0  &amp;0  &amp;0  
+           \end{mat}
+           \begin{mat}[r]
+             -4  &amp;0  &amp;1  \\
+              0  &amp;0  &amp;2  \\
+              0  &amp;0  &amp;-4
+           \end{mat}
+           =
+           \begin{mat}[r]
+             0  &amp;0  &amp;-4  \\
+             0  &amp;0  &amp;0   \\
+             0  &amp;0  &amp;0
+           \end{mat}\]</span> It therefore must be that <span
+class="math inline">\(m(x)=m_2(x)=(x-2)^2(x-6)\)</span>. Here is a
+verification. <span class="math display">\[\begin{gathered}
+           (T-2I)^2(T-6I)=(T-2I)\cdot\bigl((T-2I)(T-6I)\bigr)             \\
+           =
+           \begin{mat}[r]
+             0  &amp;0  &amp;1  \\
+             0  &amp;4  &amp;2  \\
+             0  &amp;0  &amp;0  
+           \end{mat}
+           \begin{mat}[r]
+              0  &amp;0  &amp;-4   \\
+              0  &amp;0  &amp;0   \\
+              0  &amp;0  &amp;0
+           \end{mat}
+           =
+           \begin{mat}[r]
+             0  &amp;0  &amp;0  \\
+             0  &amp;0  &amp;0   \\
+             0  &amp;0  &amp;0
+           \end{mat}
+         
+\end{gathered}\]</span> The characteristic polynomial is <span
+class="math display">\[c(x)=\deter{T-xI}=
+           \begin{vmat}
+             2-x  &amp;2   &amp;1     \\
+             0    &amp;6-x &amp;2     \\
+             0    &amp;0   &amp;2-x
+           \end{vmat}
+           =(2-x)^2(6-x)=-(x-2)^2(x-6)\]</span> and there are two
+possibilities for the minimal polynomial, <span
+class="math inline">\(m_1(x)=(x-2)(x-6)\)</span> and <span
+class="math inline">\(m_2(x)=(x-2)^2(x-6)\)</span>. Checking the first
+one <span class="math display">\[(T-2I)(T-6I)=
+           \begin{mat}[r]
+             0  &amp;2  &amp;1  \\
+             0  &amp;4  &amp;2  \\
+             0  &amp;0  &amp;0  
+           \end{mat}
+           \begin{mat}[r]
+             -4  &amp;2  &amp;1  \\
+              0  &amp;0  &amp;2  \\
+              0  &amp;0  &amp;-4
+           \end{mat}
+           =
+           \begin{mat}[r]
+             0  &amp;0  &amp;0  \\
+             0  &amp;0  &amp;0   \\
+             0  &amp;0  &amp;0
+           \end{mat}\]</span> shows that the minimal polynomial is <span
+class="math inline">\(m(x)=m_1(x)=(x-2)(x-6)\)</span>. The
+characteristic polynomial is this. <span
+class="math display">\[c(x)=\deter{T-xI}=
+           \begin{vmat}
+              -1-x &amp;4    &amp;0    &amp;0    &amp;0    \\
+               0   &amp;3-x  &amp;0    &amp;0    &amp;0    \\
+               0   &amp;-4   &amp;-1-x &amp;0    &amp;0    \\
+               3   &amp;-9   &amp;-4   &amp;2-x  &amp;-1   \\
+               1   &amp;5    &amp;4    &amp;1    &amp;4-x
+           \end{vmat}     
+           =(x-3)^3(x+1)^2\]</span> Here are the possibilities for the
+minimal polynomial, listed here by ascending degree: <span
+class="math inline">\(m_1(x)=(x-3)(x+1)\)</span>, <span
+class="math inline">\(m_1(x)=(x-3)^2(x+1)\)</span>, <span
+class="math inline">\(m_1(x)=(x-3)(x+1)^2\)</span>, <span
+class="math inline">\(m_1(x)=(x-3)^3(x+1)\)</span>, <span
+class="math inline">\(m_1(x)=(x-3)^2(x+1)^2\)</span>, and <span
+class="math inline">\(m_1(x)=(x-3)^3(x+1)^2\)</span>. The first one
+doesn’t pan out <span class="math display">\[\begin{aligned}
+           (T-3I)(T+1I)
+           &amp;=
+           \begin{mat}[r]
+              -4   &amp;4    &amp;0    &amp;0    &amp;0    \\
+               0   &amp;0    &amp;0    &amp;0    &amp;0    \\
+               0   &amp;-4   &amp;-4   &amp;0    &amp;0    \\
+               3   &amp;-9   &amp;-4   &amp;-1   &amp;-1   \\
+               1   &amp;5    &amp;4    &amp;1    &amp;1  
+           \end{mat}     
+           \begin{mat}[r]
+               0   &amp;4    &amp;0    &amp;0    &amp;0    \\
+               0   &amp;4    &amp;0    &amp;0    &amp;0    \\
+               0   &amp;-4   &amp;0    &amp;0    &amp;0    \\
+               3   &amp;-9   &amp;-4   &amp;3    &amp;-1   \\
+               1   &amp;5    &amp;4    &amp;1    &amp;5  
+           \end{mat}                           \\     
+           &amp;=
+           \begin{mat}[r]
+               0   &amp;0    &amp;0    &amp;0    &amp;0    \\
+               0   &amp;0    &amp;0    &amp;0    &amp;0    \\
+               0   &amp;0    &amp;0    &amp;0    &amp;0    \\
+              -4   &amp;-4   &amp;0    &amp;-4   &amp;-4   \\
+               4   &amp;4    &amp;0    &amp;4    &amp;4  
+           \end{mat}           
+         
+\end{aligned}\]</span> but the second one does. <span
+class="math display">\[\begin{gathered}
+           (T-3I)^2(T+1I)=(T-3I)\bigl((T-3I)(T+1I)\bigr) \\
+           \begin{aligned}
+           &amp;=
+           \begin{mat}[r]
+              -4   &amp;4    &amp;0    &amp;0    &amp;0    \\
+               0   &amp;0    &amp;0    &amp;0    &amp;0    \\
+               0   &amp;-4   &amp;-4   &amp;0    &amp;0    \\
+               3   &amp;-9   &amp;-4   &amp;-1   &amp;-1   \\
+               1   &amp;5    &amp;4    &amp;1    &amp;1  
+           \end{mat}     
+           \begin{mat}[r]
+               0   &amp;0    &amp;0    &amp;0    &amp;0    \\
+               0   &amp;0    &amp;0    &amp;0    &amp;0    \\
+               0   &amp;0    &amp;0    &amp;0    &amp;0    \\
+              -4   &amp;-4   &amp;0    &amp;-4   &amp;-4   \\
+               4   &amp;4    &amp;0    &amp;4    &amp;4  
+           \end{mat}                          \\          
+           &amp;=
+           \begin{mat}[r]
+               0   &amp;0    &amp;0    &amp;0    &amp;0    \\
+               0   &amp;0    &amp;0    &amp;0    &amp;0    \\
+               0   &amp;0    &amp;0    &amp;0    &amp;0    \\
+               0   &amp;0    &amp;0    &amp;0    &amp;0    \\
+               0   &amp;0    &amp;0    &amp;0    &amp;0  
+           \end{mat}  
+           \end{aligned}         
+         
+\end{gathered}\]</span> The minimal polynomial is <span
+class="math inline">\(m(x)=(x-3)^2(x+1)\)</span>.</p>
+</div>
+</div>
+<p>What is the minimal polynomial of the differentiation operator <span
+class="math inline">\(d/dx\)</span> on <span
+class="math inline">\(\polyspace_n\)</span>?</p>
+<div class="answer">
+<p>We know that <span class="math inline">\(\polyspace_n\)</span> is a
+dimension <span class="math inline">\(n+1\)</span> space and that the
+differentiation operator is nilpotent of index <span
+class="math inline">\(n+1\)</span> (for instance, taking <span
+class="math inline">\(n=3\)</span>, <span
+class="math inline">\(\polyspace_3=\set{c_3x^3+c_2x^2+c_1x+c_0\suchthat
+c_3,\ldots,c_0\in\C}\)</span> and the fourth derivative of a cubic is
+the zero polynomial). Represent this operator using the canonical form
+for nilpotent transformations. <span class="math display">\[\begin{mat}
+           0  &amp;0  &amp;0  &amp;\ldots &amp;  &amp;0  \\
+           1  &amp;0  &amp;0  &amp;       &amp;  &amp;0  \\
+           0  &amp;1  &amp;0  &amp;       &amp;  &amp;   \\
+              &amp;   &amp;\ddots            \\
+           0  &amp;0  &amp;0  &amp;       &amp;1 &amp;0
+         \end{mat}\]</span> This is an <span
+class="math inline">\(\nbyn{(n+1)}\)</span> matrix with an easy
+characteristic polynomial, <span
+class="math inline">\(c(x)=x^{n+1}\)</span>. (<em>Remark:</em> this
+matrix is <span class="math inline">\(\rep{d/dx}{B,B}\)</span> where
+<span
+class="math inline">\(B=\sequence{x^n,nx^{n-1},n(n-1)x^{n-2},\ldots,n!}\)</span>.)
+To find the minimal polynomial as in we consider the powers of <span
+class="math inline">\(T-0I=T\)</span>. But, of course, the first power
+of <span class="math inline">\(T\)</span> that is the zero matrix is the
+power <span class="math inline">\(n+1\)</span>. So the minimal
+polynomial is also <span class="math inline">\(x^{n+1}\)</span>.</p>
+</div>
+<p>Find the minimal polynomial of matrices of this form <span
+class="math display">\[\begin{mat}
+        \lambda  &amp;0        &amp;0          &amp;\ldots  &amp;        &amp;0  \\
+        1        &amp;\lambda  &amp;0          &amp;        &amp;        &amp;0  \\
+        0        &amp;1        &amp;\lambda                          \\
+                 &amp;         &amp;           &amp;\ddots                \\
+                 &amp;         &amp;           &amp;        &amp;\lambda
+&amp;0   \\
+        0        &amp;0        &amp;\ldots     &amp;        &amp;1       &amp;\lambda
+      \end{mat}\]</span> where the scalar <span
+class="math inline">\(\lambda\)</span> is fixed (i.e., is not a
+variable).</p>
+<div class="answer">
+<p>Call the matrix <span class="math inline">\(T\)</span> and suppose
+that it is <span class="math inline">\(\nbyn{n}\)</span>. Because <span
+class="math inline">\(T\)</span> is triangular, and so <span
+class="math inline">\(T-xI\)</span> is triangular, the characteristic
+polynomial is <span class="math inline">\(c(x)=(x-\lambda)^n\)</span>.
+To see that the minimal polynomial is the same, consider <span
+class="math inline">\(T-\lambda I\)</span>. <span
+class="math display">\[\begin{mat}
+          0        &amp;0        &amp;0          &amp;\ldots  &amp;0  \\
+          1        &amp;0        &amp;0          &amp;\ldots  &amp;0  \\
+          0        &amp;1        &amp;0                       \\
+                   &amp;         &amp;\ddots                  \\
+          0        &amp;0        &amp;\ldots     &amp;1       &amp;0      
+        \end{mat}\]</span> Recognize it as the canonical form for a
+transformation that is nilpotent of degree <span
+class="math inline">\(n\)</span>; the power <span
+class="math inline">\((T-\lambda I)^j\)</span> is zero first when <span
+class="math inline">\(j\)</span> is <span
+class="math inline">\(n\)</span>.</p>
+</div>
+<p>What is the minimal polynomial of the transformation of <span
+class="math inline">\(\polyspace_n\)</span> that sends <span
+class="math inline">\(p(x)\)</span> to <span
+class="math inline">\(p(x+1)\)</span>?</p>
+<div class="answer">
+<p>The <span class="math inline">\(n=3\)</span> case provides a hint. A
+natural basis for <span class="math inline">\(\polyspace_3\)</span> is
+<span class="math inline">\(B=\sequence{1,x,x^2,x^3}\)</span>. The
+action of the transformation is <span class="math display">\[1\mapsto 1
+        \quad
+        x\mapsto x+1
+        \quad
+        x^2\mapsto x^2+2x+1
+        \quad
+        x^3\mapsto x^3+3x^2+3x+1\]</span> and so the representation
+<span class="math inline">\(\rep{t}{B,B}\)</span> is this upper
+triangular matrix. <span class="math display">\[\begin{mat}[r]
+          1  &amp;1  &amp;1  &amp;1  \\
+          0  &amp;1  &amp;2  &amp;3  \\
+          0  &amp;0  &amp;1  &amp;3  \\
+          0  &amp;0  &amp;0  &amp;1
+        \end{mat}\]</span> Because it is triangular, the fact that the
+characteristic polynomial is <span
+class="math inline">\(c(x)=(x-1)^4\)</span> is clear. For the minimal
+polynomial, the candidates are <span
+class="math inline">\(m_1(x)=(x-1)\)</span>, <span
+class="math display">\[T-1I=
+        \begin{mat}[r]
+          0  &amp;1  &amp;1  &amp;1  \\
+          0  &amp;0  &amp;2  &amp;3  \\
+          0  &amp;0  &amp;0  &amp;3  \\
+          0  &amp;0  &amp;0  &amp;0
+        \end{mat}\]</span> <span
+class="math inline">\(m_2(x)=(x-1)^2\)</span>, <span
+class="math display">\[(T-1I)^2=
+        \begin{mat}[r]
+          0  &amp;0  &amp;2  &amp;6  \\
+          0  &amp;0  &amp;0  &amp;6  \\
+          0  &amp;0  &amp;0  &amp;0  \\
+          0  &amp;0  &amp;0  &amp;0
+        \end{mat}\]</span> <span
+class="math inline">\(m_3(x)=(x-1)^3\)</span>, <span
+class="math display">\[(T-1I)^3=
+        \begin{mat}[r]
+          0  &amp;0  &amp;0  &amp;6  \\
+          0  &amp;0  &amp;0  &amp;0  \\
+          0  &amp;0  &amp;0  &amp;0  \\
+          0  &amp;0  &amp;0  &amp;0
+        \end{mat}\]</span> and <span
+class="math inline">\(m_4(x)=(x-1)^4\)</span>. Because <span
+class="math inline">\(m_1\)</span>, <span
+class="math inline">\(m_2\)</span>, and <span
+class="math inline">\(m_3\)</span> are not right, <span
+class="math inline">\(m_4\)</span> must be right, as is easily
+verified.</p>
+<p>In the case of a general <span class="math inline">\(n\)</span>, the
+representation is an upper triangular matrix with ones on the diagonal.
+Thus the characteristic polynomial is <span
+class="math inline">\(c(x)=(x-1)^{n+1}\)</span>. One way to verify that
+the minimal polynomial equals the characteristic polynomial is argue
+something like this: say that an upper triangular matrix is <span
+class="math inline">\(0\)</span>-upper triangular if there are nonzero
+entries on the diagonal, that it is <span
+class="math inline">\(1\)</span>-upper triangular if the diagonal
+contains only zeroes and there are nonzero entries just above the
+diagonal, etc. As the above example illustrates, an induction argument
+will show that, where <span class="math inline">\(T\)</span> has only
+nonnegative entries, <span class="math inline">\(T^j\)</span> is <span
+class="math inline">\(j\)</span>-upper triangular.</p>
+</div>
+<p>What is the minimal polynomial of the map <span
+class="math inline">\(\map{\pi}{\C^3}{\C^3}\)</span> projecting onto the
+first two coordinates?</p>
+<div class="answer">
+<p>The map twice is the same as the map once: <span
+class="math inline">\(\composed{\pi}{\pi}=\pi\)</span>, that is, <span
+class="math inline">\(\pi^2=\pi\)</span> and so the minimal polynomial
+is of degree at most two since <span
+class="math inline">\(m(x)=x^2-x\)</span> will do. The fact that no
+linear polynomial will do follows from applying the maps on the left and
+right side of <span class="math inline">\(c_1\cdot \pi+c_0\cdot
+\identity=z\)</span> (where <span class="math inline">\(z\)</span> is
+the zero map) to these two vectors. <span
+class="math display">\[\colvec[r]{0 \\ 0 \\ 1}
+          \qquad
+          \colvec[r]{1 \\ 0 \\ 0}\]</span> Thus the minimal polynomial
+is <span class="math inline">\(m\)</span>.</p>
+</div>
+<p>Find a <span class="math inline">\(\nbyn{3}\)</span> matrix whose
+minimal polynomial is <span class="math inline">\(x^2\)</span>.</p>
+<div class="answer">
+<p>This is one answer. <span class="math display">\[\begin{mat}[r]
+              0  &amp;0  &amp;0  \\
+              1  &amp;0  &amp;0  \\
+              0  &amp;0  &amp;0
+            \end{mat}\]</span></p>
+</div>
+<p>What is wrong with this claimed proof of : “if <span
+class="math inline">\(c(x)=\deter{T-xI}\)</span> then <span
+class="math inline">\(c(T)=\deter{T-TI}=0 \,\)</span>” ? <span
+class="citation" data-cites="Cullen"></span></p>
+<div class="answer">
+<p>The <span class="math inline">\(x\)</span> must be a scalar, not a
+matrix.</p>
+</div>
+<p>Verify for <span class="math inline">\(\nbyn{2}\)</span> matrices by
+direct calculation.</p>
+<div class="answer">
+<p>The characteristic polynomial of <span
+class="math display">\[T=\begin{mat}
+              a  &amp;b  \\
+              c  &amp;d
+           \end{mat}\]</span> is <span
+class="math inline">\((a-x)(d-x)-bc=x^2-(a+d)x+(ad-bc)\)</span>.
+Substitute <span class="math display">\[\begin{gathered}
+         \begin{mat}
+              a  &amp;b  \\
+              c  &amp;d
+         \end{mat}^2
+         -
+         (a+d)\begin{mat}
+            a  &amp;b  \\
+            c  &amp;d
+         \end{mat}
+         +
+         (ad-bc)\begin{mat}[r]
+            1  &amp;0  \\
+            0  &amp;1
+         \end{mat}                            \\
+         =                     
+         \begin{mat}
+            a^2+bc  &amp;ab+bd  \\
+            ac+cd   &amp;bc+d^2
+         \end{mat}
+         -
+         \begin{mat}
+            a^2+ad  &amp;ab+bd   \\
+            ac+cd   &amp;ad+d^2
+         \end{mat}
+         +
+         \begin{mat}
+            ad-bc  &amp;0      \\
+            0      &amp;ad-bc
+         \end{mat}
+      
+\end{gathered}\]</span> and just check each entry sum to see that the
+result is the zero matrix.</p>
+</div>
+<p>Prove that the minimal polynomial of an <span
+class="math inline">\(\nbyn{n}\)</span> matrix has degree at most <span
+class="math inline">\(n\)</span> (not <span
+class="math inline">\(n^2\)</span> as a person might guess from this
+subsection’s opening). Verify that this maximum, <span
+class="math inline">\(n\)</span>, can happen.</p>
+<div class="answer">
+<p>By the Cayley-Hamilton theorem the degree of the minimal polynomial
+is less than or equal to the degree of the characteristic polynomial,
+<span class="math inline">\(n\)</span>. shows that <span
+class="math inline">\(n\)</span> can happen.</p>
+</div>
+<p>Show that, on a nontrivial vector space, a linear transformation is
+nilpotent if and only if its only eigenvalue is zero.</p>
+<div class="answer">
+<p>Let the linear transformation be <span
+class="math inline">\(\map{t}{V}{V}\)</span>. If <span
+class="math inline">\(t\)</span> is nilpotent then there is an <span
+class="math inline">\(n\)</span> such that <span
+class="math inline">\(t^n\)</span> is the zero map, so <span
+class="math inline">\(t\)</span> satisfies the polynomial <span
+class="math inline">\(p(x)=x^n=(x-0)^n\)</span>. By the minimal
+polynomial of <span class="math inline">\(t\)</span> divides <span
+class="math inline">\(p\)</span>, so the minimal polynomial has only
+zero for a root. By Cayley-Hamilton, , the characteristic polynomial has
+only zero for a root. Thus the only eigenvalue of <span
+class="math inline">\(t\)</span> is zero.</p>
+<p>Conversely, if a transformation <span
+class="math inline">\(t\)</span> on an <span
+class="math inline">\(n\)</span>-dimensional space has only the single
+eigenvalue of zero then its characteristic polynomial is <span
+class="math inline">\(x^n\)</span>. The Cayley-Hamilton Theorem says
+that a map satisfies its characteristic polynomial so <span
+class="math inline">\(t^n\)</span> is the zero map. Thus <span
+class="math inline">\(t\)</span> is nilpotent.</p>
+</div>
+<p>What is the minimal polynomial of a zero map or matrix? Of an
+identity map or matrix?</p>
+<div class="answer">
+<p>A minimal polynomial must have leading coefficient <span
+class="math inline">\(1\)</span>, and so if the minimal polynomial of a
+map or matrix were to be a degree zero polynomial then it would be <span
+class="math inline">\(m(x)=1\)</span>. But the identity map or matrix
+equals the zero map or matrix only on a trivial vector space.</p>
+<p>So in the nontrivial case the minimal polynomial must be of degree at
+least one. A zero map or matrix has minimal polynomial <span
+class="math inline">\(m(x)=x\)</span>, and an identity map or matrix has
+minimal polynomial <span class="math inline">\(m(x)=x-1\)</span>.</p>
+</div>
+<p>What is the minimal polynomial of a diagonal matrix?</p>
+<div class="answer">
+<p>For a diagonal matrix <span class="math display">\[T=
+          \begin{mat}
+             t_{1,1}   &amp;0        \\
+             0         &amp;t_{2,2}  \\
+                       &amp;        &amp;\ddots  \\
+                       &amp;        &amp;      &amp;t_{n,n}
+          \end{mat}\]</span> the characteristic polynomial is <span
+class="math inline">\((t_{1,1}-x)(t_{2,2}-x)\cdots (t_{n,n}-x)\)</span>.
+Of course, some of those factors may be repeated, e.g., the matrix might
+have <span class="math inline">\(t_{1,1}=t_{2,2}\)</span>. For instance,
+the characteristic polynomial of <span class="math display">\[D=
+          \begin{mat}[r]
+             3 &amp;0 &amp;0  \\
+             0 &amp;3 &amp;0  \\
+             0 &amp;0 &amp;1
+          \end{mat}\]</span> is <span
+class="math inline">\((3-x)^2(1-x)=-1\cdot (x-3)^2(x-1)\)</span>.</p>
+<p>To form the minimal polynomial, take the terms <span
+class="math inline">\(x-t_{i,i}\)</span>, throw out repeats, and
+multiply them together. For instance, the minimal polynomial of <span
+class="math inline">\(D\)</span> is <span
+class="math inline">\((x-3)(x-1)\)</span>. To check this, note first
+that , the Cayley-Hamilton theorem, requires that each linear factor in
+the characteristic polynomial appears at least once in the minimal
+polynomial. One way to check the other directionthat in the case of a
+diagonal matrix, each linear factor need appear at most onceis to use a
+matrix argument. A diagonal matrix, multiplying from the left, rescales
+rows by the entry on the diagonal. But in a product <span
+class="math inline">\((T-t_{1,1}I)\cdots\hbox{}\)</span>, even without
+any repeat factors, every row is zero in at least one of the
+factors.</p>
+<p>For instance, in the product <span
+class="math display">\[(D-3I)(D-1I)=(D-3I)(D-1I)I=
+         \begin{mat}[r]
+           0  &amp;0  &amp;0  \\
+           0  &amp;0  &amp;0  \\
+           0  &amp;0  &amp;-2        
+         \end{mat}
+         \begin{mat}[r]
+           2  &amp;0  &amp;0  \\
+           0  &amp;2  &amp;0  \\
+           0  &amp;0  &amp;0
+         \end{mat}
+         \begin{mat}[r]
+           1  &amp;0  &amp;0  \\
+           0  &amp;1  &amp;0  \\
+           0  &amp;0  &amp;1
+         \end{mat}\]</span> because the first and second rows of the
+first matrix <span class="math inline">\(D-3I\)</span> are zero, the
+entire product will have a first row and second row that are zero. And
+because the third row of the middle matrix <span
+class="math inline">\(D-1I\)</span> is zero, the entire product has a
+third row of zero.</p>
+</div>
+<p>A is any transformation <span class="math inline">\(t\)</span> such
+that <span class="math inline">\(t^2=t\)</span>. (For instance, consider
+the transformation of the plane <span
+class="math inline">\(\Re^2\)</span> projecting each vector onto its
+first coordinate. If we project twice then we get the same result as if
+we project just once.) What is the minimal polynomial of a
+projection?</p>
+<div class="answer">
+<p>This subsection starts with the observation that the powers of a
+linear transformation cannot climb forever without a “repeat”, that is,
+that for some power <span class="math inline">\(n\)</span> there is a
+linear relationship <span class="math inline">\(c_n\cdot
+t^n+\dots+c_1\cdot t+c_0\cdot \identity=z\)</span> where <span
+class="math inline">\(z\)</span> is the zero transformation. The
+definition of projection is that for such a map one linear relationship
+is quadratic, <span class="math inline">\(t^2-t=z\)</span>. To finish,
+we need only consider whether this relationship might not be minimal,
+that is, are there projections for which the minimal polynomial is
+constant or linear?</p>
+<p>For the minimal polynomial to be constant, the map would have to
+satisfy that <span class="math inline">\(c_0\cdot\identity=z\)</span>,
+where <span class="math inline">\(c_0=1\)</span> since the leading
+coefficient of a minimal polynomial is <span
+class="math inline">\(1\)</span>. This is only satisfied by the zero
+transformation on a trivial space. This is a projection, but not an
+interesting one.</p>
+<p>For the minimal polynomial of a transformation to be linear would
+give <span class="math inline">\(c_1\cdot t+c_0\cdot\identity=z\)</span>
+where <span class="math inline">\(c_1=1\)</span>. This equation gives
+<span class="math inline">\(t=-c_0\cdot \identity\)</span>. Coupling it
+with the requirement that <span class="math inline">\(t^2=t\)</span>
+gives <span
+class="math inline">\(t^2=(-c_0)^2\cdot\identity=-c_0\cdot\identity\)</span>,
+which gives that <span class="math inline">\(c_0=0\)</span> and <span
+class="math inline">\(t\)</span> is the zero transformation or that
+<span class="math inline">\(c_0=1\)</span> and <span
+class="math inline">\(t\)</span> is the identity.</p>
+<p>Thus, except in the cases where the projection is a zero map or an
+identity map, the minimal polynomial is <span
+class="math inline">\(m(x)=x^2-x\)</span>.</p>
+</div>
+<p><span id="exer:SomeRootsMinPolyAreEigs"
+data-label="exer:SomeRootsMinPolyAreEigs"></span> <em>The first two
+items of this question are review.</em></p>
+<div class="exparts">
+<p>Prove that the composition of one-to-one maps is one-to-one. Prove
+that if a linear map is not one-to-one then at least one nonzero vector
+from the domain maps to the zero vector in the codomain. Verify the
+statement, excerpted here, that precedes .</p>
+<blockquote>
+<p>… if a minimal polynomial <span class="math inline">\(m(x)\)</span>
+for a transformation <span class="math inline">\(t\)</span> factors as
+<span class="math inline">\(m(x)=(x-\lambda_1)^{q_1}\cdots
+(x-\lambda_z)^{q_z}\)</span> then <span
+class="math inline">\(m(t)=\composed{\composed{(t-\lambda_1)^{q_1}}{\cdots}}{
+                                                        (t-\lambda_z)^{q_z}}\)</span>
+is the zero map. Since <span class="math inline">\(m(t)\)</span> sends
+every vector to zero, at least one of the maps <span
+class="math inline">\(t-\lambda_i\)</span> sends some nonzero vectors to
+zero. … That is, … at least some of the <span
+class="math inline">\(\lambda_i\)</span> are eigenvalues.</p>
+</blockquote>
+</div>
+<div class="answer">
+<div class="exparts">
+<p><em>This is a property of functions in general, not just of linear
+functions.</em> Suppose that <span class="math inline">\(f\)</span> and
+<span class="math inline">\(g\)</span> are one-to-one functions such
+that <span class="math inline">\(\composed{f}{g}\)</span> is defined.
+Let <span
+class="math inline">\(\composed{f}{g}(x_1)=\composed{f}{g}(x_2)\)</span>,
+so that <span class="math inline">\(f(g(x_1))=f(g(x_2))\)</span>.
+Because <span class="math inline">\(f\)</span> is one-to-one this
+implies that <span class="math inline">\(g(x_1)=g(x_2)\)</span>. Because
+<span class="math inline">\(g\)</span> is also one-to-one, this in turn
+implies that <span class="math inline">\(x_1=x_2\)</span>. Thus, in
+summary, <span
+class="math inline">\(\composed{f}{g}(x_1)=\composed{f}{g}(x_2)\)</span>
+implies that <span class="math inline">\(x_1=x_2\)</span> and so <span
+class="math inline">\(\composed{f}{g}\)</span> is one-to-one. If the
+linear map <span class="math inline">\(h\)</span> is not one-to-one then
+there are unequal vectors <span
+class="math inline">\(\vec{v}_1\)</span>, <span
+class="math inline">\(\vec{v}_2\)</span> that map to the same value
+<span class="math inline">\(h(\vec{v}_1)=h(\vec{v}_2)\)</span>. Because
+<span class="math inline">\(h\)</span> is linear, we have <span
+class="math inline">\(\zero=h(\vec{v}_1)-h(\vec{v}_2)=h(\vec{v}_1-\vec{v}_2)\)</span>
+and so <span class="math inline">\(\vec{v}_1-\vec{v}_2\)</span> is a
+nonzero vector from the domain that <span
+class="math inline">\(h\)</span> maps to the zero vector of the codomain
+(<span class="math inline">\(\vec{v}_1-\vec{v}_2\)</span> does not equal
+the zero vector of the domain because <span
+class="math inline">\(\vec{v}_1\)</span> does not equal <span
+class="math inline">\(\vec{v}_2\)</span>). The minimal polynomial <span
+class="math inline">\(m(t)\)</span> sends every vector in the domain to
+zero and so it is not one-to-one (except in a trivial space, which we
+ignore). By the first item of this question, since the composition <span
+class="math inline">\(m(t)\)</span> is not one-to-one, at least one of
+the components <span class="math inline">\(t-\lambda_i\)</span> is not
+one-to-one. By the second item, <span
+class="math inline">\(t-\lambda_i\)</span> has a nontrivial null space.
+Because <span
+class="math inline">\((t-\lambda_i)(\vec{v})=\zero\)</span> holds if and
+only if <span
+class="math inline">\(t(\vec{v})=\lambda_i\cdot\vec{v}\)</span>, the
+prior sentence gives that <span class="math inline">\(\lambda_i\)</span>
+is an eigenvalue (recall that the definition of eigenvalue requires that
+the relationship hold for at least one nonzero <span
+class="math inline">\(\vec{v}\)</span>).</p>
+</div>
+</div>
+<p>True or false: for a transformation on an <span
+class="math inline">\(n\)</span> dimensional space, if the minimal
+polynomial has degree <span class="math inline">\(n\)</span> then the
+map is diagonalizable.</p>
+<div class="answer">
+<p>This is false. The natural example of a non-diagonalizable
+transformation works here. Consider the transformation of <span
+class="math inline">\(\C^2\)</span> represented with respect to the
+standard basis by this matrix. <span class="math display">\[N=
+        \begin{mat}[r]
+          0  &amp;1  \\
+          0  &amp;0
+        \end{mat}\]</span> The characteristic polynomial is <span
+class="math inline">\(c(x)=x^2\)</span>. Thus the minimal polynomial is
+either <span class="math inline">\(m_1(x)=x\)</span> or <span
+class="math inline">\(m_2(x)=x^2\)</span>. The first is not right since
+<span class="math inline">\(N-0\cdot I\)</span> is not the zero matrix,
+thus in this example the minimal polynomial has degree equal to the
+dimension of the underlying space, and, as mentioned, we know this
+matrix is not diagonalizable because it is nilpotent.</p>
+</div>
+<p>Let <span class="math inline">\(f(x)\)</span> be a polynomial. Prove
+that if <span class="math inline">\(A\)</span> and <span
+class="math inline">\(B\)</span> are similar matrices then <span
+class="math inline">\(f(A)\)</span> is similar to <span
+class="math inline">\(f(B)\)</span>.</p>
+<div class="exparts">
+<p>Now show that similar matrices have the same characteristic
+polynomial. Show that similar matrices have the same minimal polynomial.
+Decide if these are similar. <span class="math display">\[\begin{mat}[r]
+              1  &amp;3  \\
+              2  &amp;3
+            \end{mat}
+            \qquad
+            \begin{mat}[r]
+              4  &amp;-1 \\
+              1  &amp;1
+            \end{mat}\]</span></p>
+</div>
+<div class="answer">
+<p>Let <span class="math inline">\(A\)</span> and <span
+class="math inline">\(B\)</span> be similar <span
+class="math inline">\(A=PBP^{-1}\)</span>. From the facts that <span
+class="math display">\[\begin{gathered}
+           A^n=(PBP^{-1})^n=(PBP^{-1})(PBP^{-1})\cdots(PBP^{-1})   \\
+                           =PB(P^{-1}P)B(P^{-1}P)\cdots (P^{-1}P)BP^{-1}
+                           =PB^nP^{-1}
+       
+\end{gathered}\]</span> and <span class="math inline">\(c\cdot
+A=c\cdot(PBP^{-1})=P(c\cdot B)P^{-1}\)</span> follows the required fact
+that for any polynomial function <span class="math inline">\(f\)</span>
+we have <span class="math inline">\(f(A)=P\,f(B)\,P^{-1}\)</span>. For
+instance, if <span class="math inline">\(f(x)=x^2+2x+3\)</span> then
+<span class="math display">\[\begin{gathered}
+         A^2+2A+3I=(PBP^{-1})^2+2\cdot PBP^{-1}+3\cdot I           \\
+                  =(PBP^{-1})(PBP^{-1})+P(2B)P^{-1}+3\cdot PP^{-1}
+                  =P(B^2+2B+3I)P^{-1}
+       
+\end{gathered}\]</span> shows that <span
+class="math inline">\(f(A)\)</span> is similar to <span
+class="math inline">\(f(B)\)</span>.</p>
+<div class="exparts">
+<p>Taking <span class="math inline">\(f\)</span> to be a linear
+polynomial we have that <span class="math inline">\(A-xI\)</span> is
+similar to <span class="math inline">\(B-xI\)</span>. Similar matrices
+have equal determinants (since <span
+class="math inline">\(\deter{A}=\deter{PBP^{-1}}
+               =\deter{P}\cdot\deter{B}\cdot\deter{P^{-1}}
+               =1\cdot\deter{B}\cdot 1=\deter{B}\)</span>). Thus the
+characteristic polynomials are equal. As <span
+class="math inline">\(P\)</span> and <span
+class="math inline">\(P^{-1}\)</span> are invertible, <span
+class="math inline">\(f(A)\)</span> is the zero matrix when, and only
+when, <span class="math inline">\(f(B)\)</span> is the zero matrix. They
+cannot be similar since they don’t have the same characteristic
+polynomial. The characteristic polynomial of the first one is <span
+class="math inline">\(x^2-4x-3\)</span> while the characteristic
+polynomial of the second is <span
+class="math inline">\(x^2-5x+5\)</span>.</p>
+</div>
+</div>
+<div class="exparts">
+<p>Show that a matrix is invertible if and only if the constant term in
+its minimal polynomial is not <span class="math inline">\(0\)</span>.
+Show that if a square matrix <span class="math inline">\(T\)</span> is
+not invertible then there is a nonzero matrix <span
+class="math inline">\(S\)</span> such that <span
+class="math inline">\(ST\)</span> and <span
+class="math inline">\(TS\)</span> both equal the zero matrix.</p>
+</div>
+<div class="answer">
+<p>Suppose that <span
+class="math inline">\(m(x)=x^n+m_{n-1}x^{n-1}+\dots+m_1x+m_0\)</span> is
+minimal for <span class="math inline">\(T\)</span>.</p>
+<div class="exparts">
+<p>For the ‘if’ argument, because <span
+class="math inline">\(T^n+\dots+m_1T+m_0I\)</span> is the zero matrix we
+have that <span class="math inline">\(I=(T^n+\dots+m_1T)/(-m_0)=
+         T\cdot (T^{n-1}+\dots+m_1I)/(-m_0)\)</span> and so the matrix
+<span class="math inline">\((-1/m_0)\cdot (T^{n-1}+\dots+m_1I)\)</span>
+is the inverse of <span class="math inline">\(T\)</span>. For ‘only if’,
+suppose that <span class="math inline">\(m_0=0\)</span> (we put the
+<span class="math inline">\(n=1\)</span> case aside but it is easy) so
+that <span
+class="math inline">\(T^n+\dots+m_1T=(T^{n-1}+\dots+m_1I)T\)</span> is
+the zero matrix. Note that <span
+class="math inline">\(T^{n-1}+\dots+m_1I\)</span> is not the zero matrix
+because the degree of the minimal polynomial is <span
+class="math inline">\(n\)</span>. If <span
+class="math inline">\(T^{-1}\)</span> exists then multiplying both <span
+class="math inline">\((T^{n-1}+\dots+m_1I)T\)</span> and the zero matrix
+from the right by <span class="math inline">\(T^{-1}\)</span> gives a
+contradiction. If <span class="math inline">\(T\)</span> is not
+invertible then the constant term in its minimal polynomial is zero.
+Thus, <span
+class="math display">\[T^n+\dots+m_1T=(T^{n-1}+\dots+m_1I)T=T(T^{n-1}+\dots+m_1I)\]</span>
+is the zero matrix.</p>
+</div>
+</div>
+<p><span id="exer:PolyMapsFactor"
+data-label="exer:PolyMapsFactor"></span></p>
+<div class="exparts">
+<p>Finish the proof of . Give an example to show that the result does
+not hold if <span class="math inline">\(t\)</span> is not linear.</p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>For the inductive step, assume that is true for polynomials of degree
+<span class="math inline">\(i,\ldots,k-1\)</span> and consider a
+polynomial <span class="math inline">\(f(x)\)</span> of degree <span
+class="math inline">\(k\)</span>. Factor <span
+class="math inline">\(f(x)=k(x-\lambda_1)^{q_1}\cdots(x-\lambda_z)^{q_z}\)</span>
+and let <span
+class="math inline">\(k(x-\lambda_1)^{q_1-1}\cdots(x-\lambda_z)^{q_z}\)</span>
+be <span class="math inline">\(c_{n-1}x^{n-1}+\cdots+c_1x+c_0\)</span>.
+Substitute: <span class="math display">\[\begin{aligned}
+               k\composed{\composed{(t-\lambda_1)^{q_1}}{\cdots}}{
+                                            (t-\lambda_z)^{q_z}}(\vec{v})
+               &amp;=
+               \composed{(t-\lambda_1)}{
+                  \composed{\composed{(t-\lambda_1)^{q_1}}{\cdots}}{
+                  (t-\lambda_z)^{q_z}} }
+                          (\vec{v})    \\
+               &amp;=
+               (t-\lambda_1)\,(c_{n-1}t^{n-1}(\vec{v})+\cdots+c_0\vec{v})
+\\
+               &amp;=
+               f(t)(\vec{v})
+            
+\end{aligned}\]</span> (the second equality follows from the inductive
+hypothesis and the third from the linearity of <span
+class="math inline">\(t\)</span>). One example is to consider the
+squaring map <span class="math inline">\(\map{s}{\Re}{\Re}\)</span>
+given by <span class="math inline">\(s(x)=x^2\)</span>. It is nonlinear.
+The action defined by the polynomial <span
+class="math inline">\(f(t)=t^2-1\)</span> changes <span
+class="math inline">\(s\)</span> to <span
+class="math inline">\(f(s)=s^2-1\)</span>, which is this map. <span
+class="math display">\[x\mapsunder{s^2-1}
+\composed{s}{s}(x)-1=x^4-1\]</span> Observe that this map differs from
+the map <span class="math inline">\(\composed{(s-1)}{(s+1)}\)</span>;
+for instance, the first map takes <span
+class="math inline">\(x=5\)</span> to <span
+class="math inline">\(624\)</span> while the second one takes <span
+class="math inline">\(x=5\)</span> to <span
+class="math inline">\(675\)</span>.</p>
+</div>
+</div>
+</div>
+<p>We are looking for a canonical form for matrix similarity. This
+subsection completes this program by moving from the canonical form for
+the classes of nilpotent matrices to the canonical form for all
+classes.</p>
+<div class="lemma">
+<p><span id="le:NilIffOnlyEigenZero"
+data-label="le:NilIffOnlyEigenZero"></span> A linear transformation on a
+nontrivial vector space is nilpotent if and only if its only eigenvalue
+is zero.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> If the linear transformation <span
+class="math inline">\(t\)</span> on a nontrivial vector space is
+nilpotent then there is an <span class="math inline">\(n\)</span> such
+that <span class="math inline">\(t^n\)</span> is the zero map, so <span
+class="math inline">\(t\)</span> satisfies the polynomial <span
+class="math inline">\(p(x)=x^n=(x-0)^n\)</span>. By the minimal
+polynomial of <span class="math inline">\(t\)</span> divides <span
+class="math inline">\(p\)</span>, so the minimal polynomial’s only root
+is zero. By Cayley-Hamilton, , the characteristic polynomial’s only root
+is zero. Thus <span class="math inline">\(t\)</span>’s only eigenvalue
+is zero.</p>
+<p>Conversely, if a transformation <span
+class="math inline">\(t\)</span> on an <span
+class="math inline">\(n\)</span>-dimensional space has only the single
+eigenvalue of zero then its characteristic polynomial is <span
+class="math inline">\(x^n\)</span>. says that a map satisfies its
+characteristic polynomial so <span class="math inline">\(t^n\)</span> is
+the zero map. Thus <span class="math inline">\(t\)</span> is
+nilpotent. ◻</p>
+</div>
+<p>The ‘nontrivial vector space’ is in the statement of that lemma
+because on a trivial space <span
+class="math inline">\(\set{\zero}\)</span> the only transformation is
+the zero map, which has no eigenvalues because there are no associated
+nonzero eigenvectors.</p>
+<div class="corollary">
+<p><span id="cor:tMinLambdaNilpotent"
+data-label="cor:tMinLambdaNilpotent"></span> The transformation <span
+class="math inline">\(t-\lambda\)</span> is nilpotent if and only if
+<span class="math inline">\(t\)</span>’s only eigenvalue is <span
+class="math inline">\(\lambda\)</span>.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> The transformation <span
+class="math inline">\(t-\lambda\)</span> is nilpotent if and only if
+<span class="math inline">\(t-\lambda\)</span>’s only eigenvalue is
+<span class="math inline">\(0\)</span>. That holds if and only if <span
+class="math inline">\(t\)</span>’s only eigenvalue is <span
+class="math inline">\(\lambda\)</span>, because <span
+class="math inline">\(t(\vec{v})=\lambda\vec{v} \,\)</span> if and only
+if <span
+class="math inline">\((t-\lambda)\,(\vec{v})=0\cdot\vec{v}\)</span>. ◻</p>
+</div>
+<div class="lemma">
+<p><span id="le:SimRespAddScalar"
+data-label="le:SimRespAddScalar"></span> If the matrices <span
+class="math inline">\(T-\lambda I\)</span> and <span
+class="math inline">\(N\)</span> are similar then <span
+class="math inline">\(T\)</span> and <span
+class="math inline">\(N+\lambda I\)</span> are also similar, via the
+same change of basis matrices.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> With <span class="math inline">\(N=P(T-\lambda
+I)P^{-1}=PTP^{-1}-P(\lambda I)P^{-1}\)</span> we have <span
+class="math inline">\(N=PTP^{-1}-PP^{-1}(\lambda I)\)</span> because the
+diagonal matrix <span class="math inline">\(\lambda I\)</span> commutes
+with anything. Thus <span class="math inline">\(N=PTP^{-1}-\lambda
+I\)</span>, and therefore <span class="math inline">\(N+\lambda
+I=PTP^{-1}\)</span>. ◻</p>
+</div>
+<p>We already have the canonical form for the case of nilpotent
+matrices, that is, for the case of matrices whose only eigenvalue is
+zero. By Corollary III.<a href="#cor:NilpotentMatCanonForm"
+data-reference-type="ref"
+data-reference="cor:NilpotentMatCanonForm">[cor:NilpotentMatCanonForm]</a>,
+each such matrix is similar to one that is all zeroes except for blocks
+of subdiagonal ones. The prior results let us extend this to all
+matrices that have a single eigenvalue <span
+class="math inline">\(\lambda\)</span>. In the new form, besides blocks
+of subdiagonal ones, all of the entries on the diagonal are <span
+class="math inline">\(\lambda\)</span>. (See below.)</p>
+<div class="example">
+<p><span id="ex:SingJordBlock" data-label="ex:SingJordBlock"></span> The
+characteristic polynomial of <span
+class="math display">\[T=\begin{mat}[r]
+      2  &amp;-1  \\
+      1  &amp;4
+    \end{mat}\]</span> is <span class="math inline">\((x-3)^2\)</span>
+and so <span class="math inline">\(T\)</span> has a single eigenvalue,
+<span class="math inline">\(3\)</span>.</p>
+<p>Because <span class="math inline">\(3\)</span> is the only
+eigenvalue, <span class="math inline">\(T-3I\)</span> has the single
+eigenvalue of <span class="math inline">\(0\)</span> and is therefore
+nilpotent. To get the canonical form of <span
+class="math inline">\(T\)</span>, start by finding a string basis for
+<span class="math inline">\(T-3I\)</span> as in the prior section,
+computing the powers of this matrix and the null spaces of those
+powers.</p>
+<div class="center">
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><em>power</em> <span
+class="math inline">\(p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\((T-3I)^p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\(\nullspace{(T-3I)^p}\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><span
+class="math inline">\(1\)</span></td>
+<td style="text-align: center;"><span
+class="math inline">\(\matrixvenlarge{\begin{mat}[r]
+         -1  &amp;-1 \\
+         1   &amp;1   \\
+       \end{mat}}\)</span></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">y</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;"><span
+class="math inline">\(2\)</span></td>
+<td style="text-align: center;"><span
+class="math inline">\(\matrixvenlarge{\begin{mat}[r]
+         0  &amp;0  \\
+         0  &amp;0   \\
+       \end{mat}}\)</span></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">y</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The null space of <span class="math inline">\(t-3\)</span> has
+dimension one and the null space of <span
+class="math inline">\((t-3)^2\)</span> has dimension two. So this is the
+canonical representation matrix and the form of the associated string
+basis <span class="math inline">\(B\)</span> for <span
+class="math inline">\(t-3\)</span>. <span
+class="math display">\[\rep{t-3}{B,B}
+  =N=
+  \begin{mat}[r]
+      0  &amp;0   \\
+      1  &amp;0
+  \end{mat}
+  \qquad
+  \begin{array}{r}
+    \vec{\beta}_1\xmapsto{t-3}\vec{\beta}_2\xmapsto{t-3}\zero  \\
+  \end{array}\]</span> Find such a basis by first picking a <span
+class="math inline">\(\vec{\beta}_2\)</span> that is mapped to <span
+class="math inline">\(\zero\)</span> by <span
+class="math inline">\(t-3\)</span> (that is, pick an element of the null
+space <span class="math inline">\(\nullspace{t-3}\)</span> given in the
+table). Then choose a <span class="math inline">\(\vec{\beta}_1\)</span>
+that is mapped to <span class="math inline">\(\zero\)</span> by <span
+class="math inline">\((t-3)^2\)</span>. The only restriction on the
+choice, besides membership in the null space, is that <span
+class="math inline">\(\vec{\beta}_1\)</span> and <span
+class="math inline">\(\vec{\beta}_2\)</span> need to form a linearly
+independent set. Here is one possible choice. <span
+class="math display">\[\vec{\beta}_1=\colvec[r]{1 \\ 1}
+  \quad
+  \vec{\beta}_2=\colvec[r]{-2 \\ 2}\]</span> With that, says that <span
+class="math inline">\(T\)</span> is similar to this matrix. <span
+class="math display">\[\rep{t}{B,B}=
+  N+3I=
+  \begin{mat}[r]
+     3  &amp;0  \\
+     1  &amp;3
+  \end{mat}\]</span></p>
+<p>We can exhibit the similarity computation. Take <span
+class="math inline">\(T\)</span> to represent a transformation <span
+class="math inline">\(\map{t}{\C^2}{\C^2}\)</span> with respect to the
+standard basis (as we shall do for the rest of the chapter). The
+similarity diagram <span class="math display">\[\begin{CD}
+    \C^2_{\wrt{\stdbasis_2}}      @&gt;t-3&gt;T-3I&gt;      \C^2_{\wrt{\stdbasis_2}}     \\
+    @V\scriptstyle\identity V\scriptstyle PV  
+                                 @V\scriptstyle\identity V\scriptstyle
+PV \\
+    \C^2_{\wrt{B}}                 @&gt;t-3&gt;N&gt;         \C^2_{\wrt{B}}
+  \end{CD}\]</span> describes that to move from the lower left to the
+upper left we multiply by <span
+class="math display">\[P^{-1}=\bigl(\rep{\identity}{\stdbasis_2,B}\bigr)^{-1}
+    =\rep{\identity}{B,\stdbasis_2}
+    =\begin{mat}[r]
+        1  &amp;-2  \\
+        1  &amp;2
+     \end{mat}\]</span> and to move from the upper right to the lower
+right we multiply by this matrix. <span
+class="math display">\[P=\begin{mat}[r]
+      1  &amp;-2  \\
+      1  &amp;2
+     \end{mat}^{-1}\!\!
+   =\begin{mat}[r]
+      1/2  &amp;1/2  \\
+      -1/4 &amp;1/4
+   \end{mat}\]</span> So this equation shows the similarity. <span
+class="math display">\[\begin{mat}[r]
+      1/2  &amp;1/2  \\
+      -1/4 &amp;1/4
+   \end{mat}
+   \begin{mat}[r]
+      2  &amp;-1  \\
+      1  &amp;4
+    \end{mat}
+    \begin{mat}[r]
+        1  &amp;-2  \\
+        1  &amp;2
+     \end{mat}
+  =
+  \begin{mat}[r]
+     3  &amp;0  \\
+     1  &amp;3
+  \end{mat}\]</span></p>
+</div>
+<div class="example">
+<p><span id="ex:FullNilpotentCase"
+data-label="ex:FullNilpotentCase"></span> This matrix <span
+class="math display">\[T=
+  \begin{mat}[r]
+    4  &amp;1  &amp;0  &amp;-1  \\
+    0  &amp;3  &amp;0  &amp;1   \\
+    0  &amp;0  &amp;4  &amp;0   \\
+    1  &amp;0  &amp;0  &amp;5
+   \end{mat}\]</span> has characteristic polynomial <span
+class="math inline">\((x-4)^4\)</span> and so has the single
+eigenvalue <span class="math inline">\(4\)</span>.</p>
+<div class="center">
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><em>power</em> <span
+class="math inline">\(p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\((T-4I)^p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\(\nullspace{(T-4I)^p}\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><span
+class="math inline">\(1\)</span></td>
+<td style="text-align: center;"><span
+class="math inline">\(\matrixvenlarge{\begin{mat}[r]
+         0  &amp;1  &amp;0  &amp;-1  \\
+         0  &amp;-1 &amp;0  &amp;1   \\
+         0  &amp;0  &amp;0  &amp;0   \\
+         1  &amp;0  &amp;0  &amp;1
+       \end{mat}}\)</span></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">w</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">z</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">w</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;"><span
+class="math inline">\(2\)</span></td>
+<td style="text-align: center;"><span
+class="math inline">\(\matrixvenlarge{\begin{mat}[r]
+         -1  &amp;-1 &amp;0  &amp;0  \\
+          1  &amp;1  &amp;0  &amp;0   \\
+          0  &amp;0  &amp;0  &amp;0   \\
+          1  &amp;1  &amp;0  &amp;0
+       \end{mat}}\)</span></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">y</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">z</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">w</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;"><span
+class="math inline">\(3\)</span></td>
+<td style="text-align: center;"><span
+class="math inline">\(\matrixvenlarge{\begin{mat}[r]
+          0  &amp;0   &amp;0  &amp;0  \\
+          0  &amp;0  &amp;0  &amp;0   \\
+          0  &amp;0  &amp;0  &amp;0   \\
+          0  &amp;0  &amp;0  &amp;0   \\
+       \end{mat}}\)</span></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">y</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">z</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">w</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The null space of <span class="math inline">\(t-4\)</span> has
+dimension two, the null space of <span
+class="math inline">\((t-4)^2\)</span> has dimension three, and the null
+space of <span class="math inline">\((t-4)^3\)</span> has dimension
+four. This gives the canonical form for <span
+class="math inline">\(t-4\)</span>. <span
+class="math display">\[N=\rep{t-4}{B,B}=
+  \begin{mat}[r]
+    0  &amp;0  &amp;0  &amp;0   \\
+    1  &amp;0  &amp;0  &amp;0   \\
+    0  &amp;1  &amp;0  &amp;0   \\
+    0  &amp;0  &amp;0  &amp;0
+   \end{mat}
+   \qquad
+  \begin{array}{r}
+    \vec{\beta}_{1}\xmapsto{t-4}\vec{\beta}_{2}
+       \xmapsto{t-4}\vec{\beta}_{3}\xmapsto{t-4}\zero \\
+   \vec{\beta}_{4}\xmapsto{t-4}\zero \\
+  \end{array}\]</span> To produce such a basis, choose a <span
+class="math inline">\(\vec{\beta}_3\)</span> and <span
+class="math inline">\(\vec{\beta}_4\)</span> that are mapped to <span
+class="math inline">\(\zero\)</span> by <span
+class="math inline">\(t-4\)</span>. Also choose a <span
+class="math inline">\(\vec{\beta}_2\)</span> that is mapped to <span
+class="math inline">\(\zero\)</span> by <span
+class="math inline">\((t-4)^2\)</span> and a <span
+class="math inline">\(\vec{\beta}_1\)</span> is mapped to <span
+class="math inline">\(\zero\)</span> by <span
+class="math inline">\((t-4)^3\)</span>. <span
+class="math display">\[\vec{\beta}_1=\colvec{1 \\ 0 \\ 0 \\ 0}
+  \quad
+  \vec{\beta}_2=\colvec{-1 \\ 1 \\ 0 \\ 0}
+  \quad
+  \vec{\beta}_3=\colvec{-1 \\ 1 \\ 0 \\ 1}
+  \quad
+  \vec{\beta}_4=\colvec{0 \\ 0 \\ 1 \\ 0}\]</span> Note that these four
+were chosen to not have any linear dependences. This is the canonical
+form matrix similar to <span class="math inline">\(T\)</span>. <span
+class="math display">\[\rep{t}{B,B}
+  =N+4I=
+  \begin{mat}[r]
+    4  &amp;0  &amp;0  &amp;0   \\
+    1  &amp;4  &amp;0  &amp;0   \\
+    0  &amp;1  &amp;4  &amp;0   \\
+    0  &amp;0  &amp;0  &amp;4
+   \end{mat}\]</span></p>
+</div>
+<div class="definition">
+<p><span id="def:JordanBlock" data-label="def:JordanBlock"></span> A is
+a square matrix, or a square block of entries inside of a matrix, that
+is all zeroes except that there is a number <span
+class="math inline">\(\lambda\in\C\)</span> such that every diagonal
+entry is <span class="math inline">\(\lambda\)</span>, and that every
+subdiagonal entry is <span class="math inline">\(1\)</span>. (If the
+block is <span class="math inline">\(\nbyn{1}\)</span> then it has no
+subdiagonal <span class="math inline">\(1\)</span>’s.)</p>
+</div>
+<p>The strings in the associated basis are or .</p>
+<p>The above examples illustrate that for single-eigenvalue matrices,
+the Jordan block matrices are canonical representatives of the
+similarity classes. We can make this matrix form unique by arranging the
+basis elements so that the blocks of subdiagonal ones go from longest to
+shortest, reading left to right.</p>
+<div class="example">
+<p>The <span class="math inline">\(\nbyn{3}\)</span> matrices whose only
+eigenvalue is <span class="math inline">\(1/2\)</span> separate into
+three similarity classes. The three classes have these canonical
+representatives. <span class="math display">\[\begin{mat}[r]
+     1/2  &amp;0    &amp;0  \\
+     0    &amp;1/2  &amp;0  \\
+     0    &amp;0    &amp;1/2
+   \end{mat}
+   \qquad
+   \begin{mat}[r]
+     1/2  &amp;0    &amp;0  \\
+     1    &amp;1/2  &amp;0  \\
+     0    &amp;0    &amp;1/2
+   \end{mat}
+   \qquad
+   \begin{mat}[r]
+     1/2  &amp;0    &amp;0  \\
+     1    &amp;1/2  &amp;0  \\
+     0    &amp;1    &amp;1/2
+   \end{mat}\]</span> In particular, this matrix <span
+class="math display">\[\begin{mat}[r]
+     1/2  &amp;0    &amp;0    \\
+     0    &amp;1/2  &amp;0    \\
+     0    &amp;1    &amp;1/2
+   \end{mat}\]</span> belongs to the similarity class represented by the
+middle one, because of the convention of ordering the blocks of
+subdiagonal ones.</p>
+</div>
+<p>We are now set up to finish the program of this chapter. First we
+review of what we have so far about transformations <span
+class="math inline">\(\map{t}{\C^n}{\C^n}\)</span>.</p>
+<p>The diagonalizable case is where <span
+class="math inline">\(t\)</span> has <span
+class="math inline">\(n\)</span> distinct eigenvalues <span
+class="math inline">\(\lambda_1\)</span>, …, <span
+class="math inline">\(\lambda_n\)</span>, that is, where the number of
+eigenvalues equals the dimension of the space. In this case there is a
+basis <span
+class="math inline">\(\sequence{\vec{\beta}_1,\ldots,\vec{\beta}_n}\)</span>
+where <span class="math inline">\(\vec{\beta}_i\)</span> is an
+eigenvector associated with the eigenvalue <span
+class="math inline">\(\lambda_i\)</span>. The example below has <span
+class="math inline">\(n=3\)</span> and the three eigenvalues are <span
+class="math inline">\(\lambda_1=1\)</span>, <span
+class="math inline">\(\lambda_2=3\)</span>, and <span
+class="math inline">\(\lambda_3=-1\)</span>. It shows the canonical
+representative matrix and the associated basis. <span
+class="math display">\[T_1=\begin{mat}
+    1  &amp;0  &amp;0  \\
+    0  &amp;3  &amp;0  \\
+    0  &amp;0  &amp;-1
+  \end{mat}
+  \qquad
+    \begin{array}{r}
+    \vec{\beta}_1\mapsunder{t-1}\zero  \\
+    \vec{\beta}_2\mapsunder{t-3}\zero  \\
+    \vec{\beta}_3\mapsunder{t+1}\zero
+    \end{array}\]</span> One diagonalization example is Five.II.<a
+href="#ex:SummaryOfDiagonalizable" data-reference-type="ref"
+data-reference="ex:SummaryOfDiagonalizable">[ex:SummaryOfDiagonalizable]</a>.</p>
+<p>The case where <span class="math inline">\(t\)</span> has a single
+eigenvalue leverages the results on nilpotency to get a basis of
+associated eigenvectors that form disjoint strings. This example has
+<span class="math inline">\(n=10\)</span>, a single eigenvalue <span
+class="math inline">\(\lambda=2\)</span>, and five Jordan blocks. <span
+class="math display">\[T_2=\begin{mat}
+    2  &amp;0  &amp;0  &amp;0 &amp;0 &amp;0 &amp;0 &amp;0 &amp;0 &amp;0
+\\
+    1  &amp;2  &amp;0  &amp;0 &amp;0 &amp;0 &amp;0 &amp;0 &amp;0 &amp;0
+\\
+    0  &amp;1  &amp;2  &amp;0 &amp;0 &amp;0 &amp;0 &amp;0 &amp;0 &amp;0
+\\
+    0  &amp;0  &amp;0  &amp;2 &amp;0 &amp;0 &amp;0 &amp;0 &amp;0 &amp;0
+\\
+    0  &amp;0  &amp;0  &amp;1 &amp;2 &amp;0 &amp;0 &amp;0 &amp;0 &amp;0
+\\
+    0  &amp;0  &amp;0  &amp;0 &amp;1 &amp;2 &amp;0 &amp;0 &amp;0 &amp;0
+\\
+    0  &amp;0  &amp;0  &amp;0 &amp;0 &amp;0 &amp;2 &amp;0 &amp;0 &amp;0
+\\
+    0  &amp;0  &amp;0  &amp;0 &amp;0 &amp;0 &amp;1 &amp;2 &amp;0 &amp;0
+\\
+    0  &amp;0  &amp;0  &amp;0 &amp;0 &amp;0 &amp;0 &amp;0 &amp;2 &amp;0
+\\
+    0  &amp;0  &amp;0  &amp;0 &amp;0 &amp;0 &amp;0 &amp;0 &amp;0 &amp;2
+\\
+  \end{mat}
+  \qquad
+  {\renewcommand{\arraystretch}{1.75}
+    \begin{array}{r}
+    \vec{\beta}_1\mapsunder{t-2}\vec{\beta}_2\mapsunder{t-2}\vec{\beta}_3\mapsunder{t-2}\zero  \\
+    \vec{\beta}_4\mapsunder{t-2}\vec{\beta}_5\mapsunder{t-2}\vec{\beta}_6\mapsunder{t-2}\zero  \\
+    \vec{\beta}_7\mapsunder{t-2}\vec{\beta}_8\mapsunder{t-2}\zero  \\
+    \vec{\beta}_9\mapsunder{t-2}\zero  \\
+    \vec{\beta}_{10}\mapsunder{t-2}\zero
+    \end{array}}\]</span> We saw a full example as .</p>
+<p>below extends these two to any transformation <span
+class="math inline">\(\map{t}{\C^n}{\C^n}\)</span>. The canonical form
+consists of Jordan blocks containing the eigenvalues. This illustrates
+such a matrix for <span class="math inline">\(n=6\)</span> with
+eigenvalues <span class="math inline">\(3\)</span>, <span
+class="math inline">\(2\)</span>, and <span
+class="math inline">\(-1\)</span> (examples with full compuations are
+after the theorem). <span class="math display">\[T_3=\begin{mat}
+    3  &amp;0  &amp;0  &amp;0 &amp;0 &amp;0 \\
+    1  &amp;3  &amp;0  &amp;0 &amp;0 &amp;0  \\
+    0  &amp;0  &amp;3  &amp;0 &amp;0 &amp;0  \\
+    0  &amp;0  &amp;0  &amp;2 &amp;0 &amp;0  \\
+    0  &amp;0  &amp;0  &amp;1 &amp;2 &amp;0  \\
+    0  &amp;0  &amp;0  &amp;0 &amp;0 &amp;-1  \\
+  \end{mat}
+  \qquad
+  {\renewcommand{\arraystretch}{1.5}
+    \begin{array}{r}
+    \vec{\beta}_1\mapsunder{t-3}\vec{\beta}_2\mapsunder{t-3}\zero  \\
+    \vec{\beta}_3\mapsunder{t-3}\zero  \\
+    \vec{\beta}_4\mapsunder{t-2}\vec{\beta}_5\mapsunder{t-2}\zero  \\
+    \vec{\beta}_6\mapsunder{t+1}\zero  \\
+    \end{array}}\]</span> It has four blocks, two associated with the
+eigenvalue <span class="math inline">\(3\)</span>, and one each with
+<span class="math inline">\(2\)</span> and <span
+class="math inline">\(-1\)</span>.</p>
+<div class="theorem">
+<p><span id="th:JordanForm" data-label="th:JordanForm"></span> Any
+transformation <span class="math inline">\(\map{t}{\C^n}{\C^n}\)</span>
+can be represented in , where each <span
+class="math inline">\(J_{\lambda}\)</span> is a Jordan block. <span
+class="math display">\[\begin{mat}
+    J_{\lambda_1}  &amp;            &amp;\text{\textit{--zeroes--}}                 \\
+               &amp;J_{\lambda_2}                                              \\
+               &amp;     &amp;\ddots                                     \\
+             %    &amp;     &amp;                           &amp;J_{\lambda_{k-1}}
+&amp;     \\
+               &amp;     &amp;\text{\textit{--zeroes--}}
+&amp;            &amp;J_{\lambda_{k}}
+  \end{mat}\]</span> Restated, any <span
+class="math inline">\(\nbyn{n}\)</span> matrix is similar to one in this
+form.</p>
+</div>
+<p>In the prior example, if we apply <span
+class="math inline">\(t-3\)</span> to the basis then it will send two
+elements, <span class="math inline">\(\vec{\beta}_2\)</span> and <span
+class="math inline">\(\vec{\beta}_3\)</span>, to <span
+class="math inline">\(\zero\)</span>. This suggests doing the proof by
+induction since the dimension of the range space <span
+class="math inline">\(\rangespace{t-3}\)</span> is less than that of the
+starting space.</p>
+<div class="proof">
+<p><em>Proof.</em> We will do induction on <span
+class="math inline">\(n\)</span>. The <span
+class="math inline">\(n=1\)</span> base case is trivial since any <span
+class="math inline">\(\nbyn{1}\)</span> matrix is in Jordan form. For
+the inductive step assume that every transformation of <span
+class="math inline">\(\C^1\)</span>, …, <span
+class="math inline">\(\C^{n-1}\)</span> has a Jordan form representation
+and fix <span class="math inline">\(\map{t}{\C^n}{\C^n}\)</span>.</p>
+<p>Any transformation has at least one eigenvalue <span
+class="math inline">\(\lambda_1\)</span> because it has a minimal
+polynomial, which has at least one root over the complex numbers. That
+eigenvalue has a nonzero eigenvector <span
+class="math inline">\(\vec{v}\)</span>, so that <span
+class="math inline">\((t-\lambda_1)(\vec{v})=\zero\)</span>. Thus the
+dimension of <span
+class="math inline">\(\nullspace{t-\lambda_1}\)</span>, the map’s
+nullity, is greater than zero. Since the rank plus the nullity equals
+the dimension of the domain, the rank of <span
+class="math inline">\(t-\lambda_1\)</span> is strictly less than <span
+class="math inline">\(n\)</span>. Write <span
+class="math inline">\(W\)</span> for the range space <span
+class="math inline">\(\rangespace{t-\lambda_1}\)</span> and write <span
+class="math inline">\(r\)</span> for the rank, its dimension.</p>
+<p>If <span class="math inline">\(\vec{w}\in
+W=\rangespace{t-\lambda_1}\)</span> then <span
+class="math inline">\(\vec{w}\in\C^n\)</span> and so <span
+class="math inline">\((t-\lambda_1)(\vec{w})\in\rangespace{t-\lambda_1}\)</span>.
+Thus the restriction of <span class="math inline">\(t-\lambda_1\)</span>
+to <span class="math inline">\(W\)</span> induces a transformation
+of <span class="math inline">\(W\)</span>, which we shall also call
+<span class="math inline">\(t-\lambda_1\)</span>. The dimension of <span
+class="math inline">\(W\)</span> is less than <span
+class="math inline">\(n\)</span> and so the inductive hypothesis applies
+and we get a basis for <span class="math inline">\(W\)</span> consisting
+of disjoint strings that are associated with the eigenvalues of <span
+class="math inline">\(t-\lambda_1\)</span> on <span
+class="math inline">\(W\)</span>. For any <span
+class="math inline">\(\lambda\)</span> that is an eigenvalue of <span
+class="math inline">\(t-\lambda_1\)</span>, the transformation of the
+basis elements will be <span
+class="math inline">\((t-\lambda_1)-\lambda=t-(\lambda_1-\lambda)\)</span>,
+which we will write as <span class="math inline">\(t-\lambda_s\)</span>.
+This diagram shows some strings for <span
+class="math inline">\(t-\lambda_1\)</span>, that is, where <span
+class="math inline">\(\lambda=0\)</span>; the argument remains valid if
+there are no such strings. <span
+class="math display">\[\begin{strings}{*{10}{l}}
+  \vec{w}_{1,n_1} &amp;\xmapsto{t-\lambda_1} &amp;\cdots
+     &amp;\xmapsto{t-\lambda_1} &amp;\vec{w}_{1,1}
+&amp;\xmapsto{t-\lambda_1} &amp;\zero \\
+     \vdotswithin{\xmapsto{t-\lambda_1}}                   \\
+  \vec{w}_{q,n_q} &amp;\xmapsto{t-\lambda_1} &amp;\cdots
+     &amp;\xmapsto{t-\lambda_1} &amp;\vec{w}_{q,1}
+&amp;\xmapsto{t-\lambda_1} &amp;\zero \\
+  \vec{w}_{q+1,n_{q+1}} &amp;\xmapsto{t-\lambda_2} &amp;\cdots
+     &amp;\xmapsto{t-\lambda_2} &amp;\vec{w}_{q+1,1}
+&amp;\xmapsto{t-\lambda_2} &amp;\zero \\
+     \vdotswithin{\xmapsto{t-\lambda_1}}                              \\
+  \vec{w}_{k,n_k} &amp;\xmapsto{t-\lambda_i} &amp;\cdots
+     &amp;\xmapsto{t-\lambda_i} &amp;\vec{w}_{k,1}
+&amp;\xmapsto{t-\lambda_i} &amp;\zero \\
+\end{strings}\]</span> These strings may have differing lengths; for
+instance, perhaps <span class="math inline">\(n_1\neq n_k\)</span>.</p>
+<p>The rightmost non-<span class="math inline">\(\zero\)</span> vectors
+<span class="math inline">\(\vec{w}_{1,1}\)</span>, …, <span
+class="math inline">\(\vec{w}_{k,1}\)</span> are in the null space of
+the associated maps, <span
+class="math inline">\((t-\lambda_1)(\vec{w}_{1,1})=\zero\)</span>, …,
+<span class="math inline">\((t-\lambda_i)(\vec{w}_{k,1})=\zero\)</span>.
+Thus the number of strings associated with <span
+class="math inline">\(t-\lambda_1\)</span>, denoted <span
+class="math inline">\(q\)</span> in the above diagram, is equal to the
+dimension of <span
+class="math inline">\(W\cap\nullspace{t-\lambda_1}\)</span>.</p>
+<p>The string basis above is for the space <span
+class="math inline">\(W=\rangespace{t-\lambda_1}\)</span>. We now expand
+it to make it a basis for all of <span
+class="math inline">\(\C^n\)</span>. First, because each of the vectors
+<span class="math inline">\(\vec{w}_{1,n_1}\)</span>, …, <span
+class="math inline">\(\vec{w}_{q,n_q}\)</span> is an element of <span
+class="math inline">\(\rangespace{t-\lambda_1}\)</span>, each is the
+image of some vector from <span class="math inline">\(\C^n\)</span>.
+Prefix each string with one such vector, <span
+class="math inline">\(\vec{x}_1\)</span>, …, <span
+class="math inline">\(\vec{x}_q\)</span>, as shown below. Second, the
+dimension of <span
+class="math inline">\(W\cap\nullspace{t-\lambda_1}\)</span> is <span
+class="math inline">\(q\)</span>, and the dimension of <span
+class="math inline">\(W\)</span> is <span
+class="math inline">\(r\)</span>, so the bookkeeping requires that there
+be a subspace <span
+class="math inline">\(Y\subseteq\nullspace{t-\lambda_1}\)</span> with
+dimension <span class="math inline">\(r-q\)</span> whose intersection
+with <span class="math inline">\(W\)</span> is <span
+class="math inline">\(\set{\zero}\)</span>. Consequently, pick <span
+class="math inline">\(r-q\)</span> linearly independent vectors <span
+class="math inline">\(\vec{y}_1\)</span>, …, <span
+class="math inline">\(\vec{y}_{r-q}\in\nullspace{t-\lambda_1}\)</span>
+and incorporate them into the list of strings, again as shown below.
+<span class="math display">\[\begin{strings}{*{10}{c}}
+  \vec{x}_1  &amp;\xmapsto{t-\lambda_1}
+     &amp;\vec{w}_{1,n_1} &amp;\xmapsto{t-\lambda_1} &amp;\cdots
+     &amp;\xmapsto{t-\lambda_1} &amp;\vec{w}_{1,1}
+&amp;\xmapsto{t-\lambda_1} &amp;\zero \\
+     \vdotswithin{\xmapsto{t-\lambda_1}}                   \\
+  \vec{x}_q  &amp;\xmapsto{t-\lambda_1}  
+     &amp;\vec{w}_{q,n_q} &amp;\xmapsto{t-\lambda_1} &amp;\cdots
+     &amp;\xmapsto{t-\lambda_1} &amp;\vec{w}_{q,1}
+&amp;\xmapsto{t-\lambda_1} &amp;\zero \\
+  &amp;&amp;\vec{w}_{q+1,n_{q+1}} &amp;\xmapsto{t-\lambda_2} &amp;\cdots
+     &amp;\xmapsto{t-\lambda_2} &amp;\vec{w}_{q+1,1}
+&amp;\xmapsto{t-\lambda_2} &amp;\zero \\
+     &amp;&amp;\vdotswithin{\xmapsto{t-\lambda_1}}                              \\
+  &amp;&amp;\vec{w}_{k,n_k} &amp;\xmapsto{t-\lambda_i} &amp;\cdots
+     &amp;\xmapsto{t-\lambda_i} &amp;\vec{w}_{k,1}
+&amp;\xmapsto{t-\lambda_i} &amp;\zero \\
+     &amp;&amp;&amp;&amp;&amp;&amp;\vec{y}_1  &amp;\xmapsto{t-\lambda_1}
+&amp;\zero \\
+     &amp;&amp;&amp;&amp;&amp;&amp;\vdotswithin{\xmapsto{t-\lambda_1}}                              \\
+     &amp;&amp;&amp;&amp;&amp;&amp;\vec{y}_{r-q}  &amp;\xmapsto{t-\lambda_1}
+&amp;\zero \\
+\end{strings}\]</span> We will show that this is the desired basis
+for <span class="math inline">\(\C^n\)</span>.</p>
+<p>Because of the bookkeeping the number of vectors in the set is equal
+to the dimension of the space, so we will be done if we verify that its
+elements are linearly independent. Assume that this is equal to <span
+class="math inline">\(\zero\)</span>. <span
+class="math display">\[a_1\vec{x}_1+\cdots+a_q\vec{x}_q   
+    +b_{1,n_1}\vec{w}_{1,n_1}+\cdots+b_{k,1}\vec{w}_{k,1}
+    +c_1\vec{y}_1+\cdots+c_{r-q}\vec{y}_{r-q}
+  \tag{$*$}\]</span> We first show that that therefore all of the <span
+class="math inline">\(a\)</span>’s are zero. Apply <span
+class="math inline">\(t-\lambda_1\)</span> to (<span
+class="math inline">\(*\)</span>). The vectors <span
+class="math inline">\(\vec{y}_1\)</span>, …, <span
+class="math inline">\(\vec{y}_{r-q}\)</span> go to <span
+class="math inline">\(\zero\)</span>. Each of the vectors <span
+class="math inline">\(\vec{x}_i\)</span> is sent to <span
+class="math inline">\(\vec{w}_{i,n_i}\)</span>. As to the <span
+class="math inline">\(\vec{w}\)</span>’s, they have the property that
+<span
+class="math inline">\((t-\lambda_k)\,\vec{w}_{i,j}=\vec{w}_{i,j-1}\)</span>
+for some <span class="math inline">\(\lambda_k\)</span>. Write <span
+class="math inline">\(\hat{\lambda}\)</span> for <span
+class="math inline">\(\lambda_1-\lambda_k\)</span> to get this. <span
+class="math display">\[(t-\lambda_1)(\vec{w}_{i,j})
+    =(t-(\lambda_1-\hat{\lambda})+\hat{\lambda})(\vec{w}_{i,j})
+    =\vec{w}_{i,j-1}+\hat{\lambda}\cdot\vec{w}_{i,j}
+  \tag{$**$}\]</span> Thus, applying <span
+class="math inline">\(t-\lambda_1\)</span> to (<span
+class="math inline">\(*\)</span>) ends with a linear combination of
+<span class="math inline">\(\vec{w}\)</span>’s. These vectors are
+linearly independent because they form a basis for <span
+class="math inline">\(W\)</span> and so in this linear combination the
+coefficients are <span class="math inline">\(0\)</span>. We will be done
+showing that <span class="math inline">\(a_i=0\)</span> for <span
+class="math inline">\(i=1,\ldots,q\)</span> are zero if we verify that
+after we apply <span class="math inline">\(t-\lambda_1\)</span>
+to (<span class="math inline">\(*\)</span>) then the coefficient of
+<span class="math inline">\(\vec{w}_{i,n_i}\)</span> is <span
+class="math inline">\(a_i\)</span>. But that’s true because for <span
+class="math inline">\(i=1,\ldots,q\)</span>, equation (<span
+class="math inline">\(**\)</span>) has <span
+class="math inline">\(\hat{\lambda}=0\)</span> and so <span
+class="math inline">\(\vec{w}_{i,n_i}\)</span> is the image of <span
+class="math inline">\(x_{i}\)</span> alone.</p>
+<p>With the <span class="math inline">\(a\)</span>’s equal to zero, what
+remains of (<span class="math inline">\(*\)</span>) is this. <span
+class="math display">\[\zero
+  =
+    b_{1,n_1}\vec{w}_{1,n_1}+\cdots+b_{k,1}\vec{w}_{k,1}
+    +c_1\vec{y}_1+\cdots+c_{r-q}\vec{y}_{r-q}\]</span> Rewrite as <span
+class="math inline">\(-(b_{1,n_1}\vec{w}_{1,n_1}+\cdots+b_{k,1}\vec{w}_{k,1})=
+    c_1\vec{y}_1+\cdots+c_{r-q}\vec{y}_{r-q}\)</span>. The <span
+class="math inline">\(\vec{w}\)</span>’s are from <span
+class="math inline">\(W\)</span> while the <span
+class="math inline">\(\vec{y}\)</span>’s are from <span
+class="math inline">\(Y\)</span> and the two spaces have only a trivial
+intersection. Consequently <span
+class="math inline">\(b_{1,n_1}\vec{w}_{1,n_1}+\cdots+b_{k,1}\vec{w}_{k,1}=\zero\)</span>
+and <span
+class="math inline">\(c_1\vec{y}_1+\cdots+c_{r-q}\vec{y}_{r-q}=\zero\)</span>,
+and the <span class="math inline">\(b\)</span>’s and <span
+class="math inline">\(c\)</span>’s are all zero. ◻</p>
+</div>
+<div class="remark">
+<p>Technically, to be a canonical form for matrix similarity, Jordan
+form must be unique. That is, for any square matrix there should be one
+and only one matrix similar to it that is in Jordan form. We could make
+the theorem’s form unique by arranging the Jordan blocks so the
+eigenvalues are in some specified order, and then arranging the blocks
+of subdiagonal ones from longest to shortest. In the examples below, we
+won’t address that.</p>
+</div>
+<p>The examples to follow start with a matrix and calculate a Jordan
+form matrix similar to it. Before those we will make one more point. For
+instance, in the first example below we find that the eigenvalues are
+<span class="math inline">\(2\)</span> and <span
+class="math inline">\(6\)</span>. To pick the basis elements related
+to <span class="math inline">\(2\)</span> we find the null spaces of
+<span class="math inline">\(t-2\)</span>, <span
+class="math inline">\((t-2)^2\)</span> and <span
+class="math inline">\((t-2)^3\)</span>. That is, to find the elements of
+this example’s basis we will look in the generalized null spaces <span
+class="math inline">\(\gennullspace{t-2}\)</span> and <span
+class="math inline">\(\gennullspace{t-6}\)</span>. But we need to be
+sure that the calculation for each map does not affect the calculation
+for the other.</p>
+<div class="definition">
+<p><span id="def:invariant" data-label="def:invariant"></span> Let <span
+class="math inline">\(\map{t}{V}{V}\)</span> be a transformation. A
+subspace <span class="math inline">\(M\subseteq V\)</span> is if
+whenever <span class="math inline">\(\vec{m}\in M\)</span> then <span
+class="math inline">\(t(\vec{m})\in M\)</span> (shorter: <span
+class="math inline">\(t(M)\subseteq M\)</span>).</p>
+</div>
+<div class="lemma">
+<p><span id="le:tInvIfftMinLambdaInv"
+data-label="le:tInvIfftMinLambdaInv"></span> A subspace is <span
+class="math inline">\(t\)</span> invariant if and only if it is <span
+class="math inline">\(t-\lambda\)</span> invariant for all scalars <span
+class="math inline">\(\lambda\)</span>. In particular, if <span
+class="math inline">\(\lambda_i,\lambda_j\in\C\)</span> are unequal
+eigenvalues of <span class="math inline">\(t\)</span> then the spaces
+<span class="math inline">\(\gennullspace{t-\lambda_i}\)</span> and
+<span class="math inline">\(\genrangespace{t-\lambda_i}\)</span> are
+<span class="math inline">\(t-\lambda_j\)</span> invariant.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> The right-to-left half of the first sentence is
+trivial: if the subspace is <span
+class="math inline">\(t-\lambda\)</span> invariant for all scalars <span
+class="math inline">\(\lambda\)</span> then taking <span
+class="math inline">\(\lambda=0\)</span> shows that it is <span
+class="math inline">\(t\)</span> invariant. For the other half suppose
+that the subspace is <span class="math inline">\(t\)</span> invariant,
+so that if <span class="math inline">\(\vec{m}\in M\)</span> then <span
+class="math inline">\(t(\vec{m})\in M\)</span>, and let <span
+class="math inline">\(\lambda\)</span> be a scalar. The subspace <span
+class="math inline">\(M\)</span> is closed under linear combinations and
+so if <span class="math inline">\(t(\vec{m})\in M\)</span> then <span
+class="math inline">\(t(\vec{m})-\lambda\vec{m}\in M\)</span>. Thus if
+<span class="math inline">\(\vec{m}\in M\)</span> then <span
+class="math inline">\((t-\lambda)\,(\vec{m})\in M\)</span>.</p>
+<p>The second sentence follows from the first. The two spaces are <span
+class="math inline">\(t-\lambda_i\)</span> invariant, so they are <span
+class="math inline">\(t\)</span> invariant. Applying the first sentence
+again gives that they are also <span
+class="math inline">\(t-\lambda_j\)</span> invariant. ◻</p>
+</div>
+<div class="example">
+<p><span id="ex:FirstJordForm" data-label="ex:FirstJordForm"></span>
+This matrix <span class="math display">\[T=
+   \begin{mat}[r]
+     2  &amp;0  &amp;1  \\
+     0  &amp;6  &amp;2  \\
+     0  &amp;0  &amp;2
+   \end{mat}\]</span> has the characteristic polynomial <span
+class="math inline">\((x-2)^2(x-6)\)</span>. <span
+class="math display">\[|T-xI|=
+   \begin{vmat}
+     2-x  &amp;0    &amp;1  \\
+     0    &amp;6-x  &amp;2  \\
+     0    &amp;0    &amp;2-x
+   \end{vmat}
+   =(x-2)^2(x-6)\]</span> First we do the eigenvalue <span
+class="math inline">\(2\)</span>. Computation of the powers of <span
+class="math inline">\(T-2I\)</span>, and of the null spaces and
+nullities, is routine. (Recall our convention of taking <span
+class="math inline">\(T\)</span> to represent a transformation <span
+class="math inline">\(\map{t}{\C^3}{\C^3}\)</span> with respect to the
+standard basis.)</p>
+<div class="center">
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><span
+class="math inline">\(p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\((T-2I)^p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\(\nullspace{(t-2)^p}\)</span></th>
+<th style="text-align: center;"><em>nullity</em></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;"><span
+class="math inline">\(1\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;">0</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;">0</td>
+<td style="text-align: center;"><span
+class="math inline">\(1\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;"><span
+class="math inline">\(2\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;">-z/2</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;">z</td>
+<td style="text-align: center;"><span
+class="math inline">\(2\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;"><span
+class="math inline">\(3\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"><em>–same–</em></td>
+<td style="text-align: center;"><em>–same–</em></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>So the generalized null space <span
+class="math inline">\(\gennullspace{t-2}\)</span> has dimension two. We
+know that the restriction of <span class="math inline">\(t-2\)</span> is
+nilpotent on this subspace. From the way that the nullities grow we know
+that the action of <span class="math inline">\(t-2\)</span> on a string
+basis is <span
+class="math inline">\(\vec{\beta}_1\mapsto\vec{\beta}_2\mapsto\zero\)</span>.
+Thus we can represent the restriction in the canonical form <span
+class="math display">\[N_2=
+  \begin{mat}[r]
+    0  &amp;0  \\
+    1  &amp;0  
+  \end{mat}
+  =\rep{t-2}{B,B}
+  \qquad
+   B_2=\sequence{\colvec[r]{1 \\ 1 \\ -2},
+                 \colvec[r]{-2 \\ 0 \\ 0}}\]</span> (other choices of
+basis are possible). Consequently, the action of the restriction of
+<span class="math inline">\(t\)</span> to <span
+class="math inline">\(\gennullspace{t-2}\)</span> is represented by this
+Jordan block. <span class="math display">\[J_2=N_2+2I=\rep{t}{B_2,B_2}=
+  \begin{mat}[r]
+    2  &amp;0  \\
+    1  &amp;2
+  \end{mat}\]</span></p>
+<p>The second eigenvalue is <span class="math inline">\(6\)</span>. Its
+computations are easier. Because the power of <span
+class="math inline">\(x-6\)</span> in the characteristic polynomial is
+one, the restriction of <span class="math inline">\(t-6\)</span> to
+<span class="math inline">\(\gennullspace{t-6}\)</span> must be
+nilpotent, of index one (it can’t be of index less than one and since
+<span class="math inline">\(x-6\)</span> is a factor of the
+characteristic polynomial with the exponent one it can’t be of index
+more than one either). Its action on a string basis must be <span
+class="math inline">\(\vec{\beta}_3\mapsto\zero\)</span> and since it is
+the zero map, its canonical form <span
+class="math inline">\(N_6\)</span> is the <span
+class="math inline">\(\nbyn{1}\)</span> zero matrix. Consequently, the
+canonical form <span class="math inline">\(J_6\)</span> for the action
+of <span class="math inline">\(t\)</span> on <span
+class="math inline">\(\gennullspace{t-6}\)</span> is the <span
+class="math inline">\(\nbyn{1}\)</span> Jordan block matrix with the
+single entry <span class="math inline">\(6\)</span>. For the basis we
+can use any nonzero vector from the generalized null space. <span
+class="math display">\[B_6=\sequence{\colvec[r]{0 \\ 1 \\
+0}}\]</span></p>
+<p>Taken together, these two give that the Jordan form of <span
+class="math inline">\(T\)</span> is <span
+class="math display">\[\rep{t}{B,B}=
+   \begin{mat}[r]
+      2  &amp;0  &amp;0  \\
+      1  &amp;2  &amp;0  \\
+      0  &amp;0  &amp;6
+   \end{mat}\]</span> where <span class="math inline">\(B\)</span> is
+the concatenation of <span class="math inline">\(B_2\)</span> and <span
+class="math inline">\(B_6\)</span>. (If we want to be careful about
+getting a unique Jordan form then we could, for instance, rearrange the
+basis elements to have the eigenvalues in descending order. But,
+ascending order is fine also.)</p>
+</div>
+<div class="example">
+<p><span id="SecJordanForm" data-label="SecJordanForm"></span> This
+matrix has the same characteristic polynomial as the prior example,
+<span class="math inline">\((x-2)^2(x-6)\)</span>. <span
+class="math display">\[T=
+   \begin{mat}[r]
+     2  &amp;2  &amp;1  \\
+     0  &amp;6  &amp;2  \\
+     0  &amp;0  &amp;2
+   \end{mat}\]</span> But here the action of <span
+class="math inline">\(t-2\)</span> is stable after only one
+applicationthe restriction of <span class="math inline">\(t-2\)</span>
+to <span class="math inline">\(\gennullspace{t-2}\)</span> is nilpotent
+of index one.</p>
+<div class="center">
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><span
+class="math inline">\(p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\((T-2I)^p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\(\nullspace{(t-2)^p}\)</span></th>
+<th style="text-align: center;"><em>nullity</em></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;"><span
+class="math inline">\(1\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;">(-1/2)z</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;">z</td>
+<td style="text-align: center;"><span
+class="math inline">\(2\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;"><span
+class="math inline">\(2\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"><em>–same–</em></td>
+<td style="text-align: center;"><em>–same–</em></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>So the restriction of <span class="math inline">\(t-2\)</span> to the
+generalized null space acts on a string basis via the two strings <span
+class="math inline">\(\vec{\beta}_1\mapsto\zero\)</span> and <span
+class="math inline">\(\vec{\beta}_2\mapsto\zero\)</span>. We have this
+Jordan block associated with the eigenvalue <span
+class="math inline">\(2\)</span>. <span class="math display">\[J_2=
+  \begin{mat}[r]
+    2  &amp;0  \\
+    0  &amp;2  
+  \end{mat}\]</span></p>
+<p>Thus, the contrast with the prior example is that while the
+characteristic polynomial tells us to look at the action of <span
+class="math inline">\(t-2\)</span> on its generalized null space, the
+characteristic polynomial does not completely describe <span
+class="math inline">\(t-2\)</span>’s action. We must do some
+computations to find that the minimal polynomial is <span
+class="math inline">\((x-2)(x-6)\)</span>.</p>
+<p>For the eigenvalue <span class="math inline">\(6\)</span>, the
+arguments for the second eigenvalue of the prior example apply
+again: because the power of <span class="math inline">\(x-6\)</span> in
+the characteristic polynomial is one, the restriction of <span
+class="math inline">\(t-6\)</span> to <span
+class="math inline">\(\gennullspace{t-6}\)</span> must be nilpotent of
+index one. Alternatively, we can just compute it.</p>
+<div class="center">
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><span
+class="math inline">\(p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\((T-6I)^p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\(\nullspace{(t-6)^p}\)</span></th>
+<th style="text-align: center;"><em>nullity</em></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;"><span
+class="math inline">\(1\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;">2x</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;">0</td>
+<td style="text-align: center;"><span
+class="math inline">\(1\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;"><span
+class="math inline">\(2\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"><em>–same–</em></td>
+<td style="text-align: center;"><em>–same–</em></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Either way, on <span
+class="math inline">\(\gennullspace{t-6}\)</span> the restriction <span
+class="math inline">\(t-6\)</span>’s canonical form <span
+class="math inline">\(N_6\)</span> is the <span
+class="math inline">\(\nbyn{1}\)</span> zero matrix. The Jordan block
+<span class="math inline">\(J_6\)</span> is the <span
+class="math inline">\(\nbyn{1}\)</span> matrix with entry <span
+class="math inline">\(6\)</span>.</p>
+<p>Therefore the Jordan form for <span class="math inline">\(T\)</span>
+is a diagonal matrix and so <span class="math inline">\(t\)</span> is a
+diagonalizable transformation. <span
+class="math display">\[\rep{t}{B,B}=
+  \begin{mat}[r]
+    2  &amp;0  &amp;0  \\
+    0  &amp;2  &amp;0  \\
+    0  &amp;0  &amp;6
+  \end{mat}
+  \qquad
+  B=\cat{B_2}{B_6}
+   =\sequence{\colvec[r]{1 \\ 0 \\ 0},
+              \colvec[r]{0 \\ 1 \\ -2},
+              \colvec[r]{1 \\ 2 \\ 0}}\]</span> Of the three basis
+vectors, the first two come from the nullspace of <span
+class="math inline">\(t-2\)</span> and the third is from the nullspace
+of <span class="math inline">\(t-6\)</span>.</p>
+</div>
+<div class="example">
+<p><span id="ThirdJordanForm" data-label="ThirdJordanForm"></span> A bit
+of computing with <span class="math display">\[T=
+   \begin{mat}[r]
+     -1  &amp;4  &amp;0  &amp;0  &amp;0  \\
+      0  &amp;3  &amp;0  &amp;0  &amp;0  \\
+      0  &amp;-4 &amp;-1 &amp;0  &amp;0  \\
+      3  &amp;-9 &amp;-4 &amp;2  &amp;-1 \\
+      1  &amp;5  &amp;4  &amp;1  &amp;4
+   \end{mat}\]</span> shows that its characteristic polynomial is <span
+class="math inline">\((x-3)^3(x+1)^2\)</span>. This table</p>
+<div class="center">
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><span
+class="math inline">\(p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\((T-3I)^p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\(\nullspace{(t-3)^p}\)</span></th>
+<th style="text-align: center;"><em>nullity</em></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;"><span
+class="math inline">\(1\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;">-(u+v)/2</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;">(u+v)/2</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;">u</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;">v</td>
+<td style="text-align: center;"><span
+class="math inline">\(2\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;"><span
+class="math inline">\(2\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;">-z</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;">z</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;">u</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;">v</td>
+<td style="text-align: center;"><span
+class="math inline">\(3\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;"><span
+class="math inline">\(3\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"><em>–same–</em></td>
+<td style="text-align: center;"><em>–same–</em></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>shows that the restriction of <span
+class="math inline">\(t-3\)</span> to <span
+class="math inline">\(\gennullspace{t-3}\)</span> acts on a string basis
+via the two strings <span
+class="math inline">\(\vec{\beta}_1\mapsto\vec{\beta}_2\mapsto\zero\)</span>
+and <span class="math inline">\(\vec{\beta}_3\mapsto\zero\)</span>.</p>
+<p>A similar calculation for the other eigenvalue</p>
+<div class="center">
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><span
+class="math inline">\(p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\((T+1I)^p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\(\nullspace{(t+1)^p}\)</span></th>
+<th style="text-align: center;"><em>nullity</em></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;"><span
+class="math inline">\(1\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;">0</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;">-v</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;">u</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;">v</td>
+<td style="text-align: center;"><span
+class="math inline">\(2\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: right;"><span
+class="math inline">\(2\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"><em>–same–</em></td>
+<td style="text-align: center;"><em>–same–</em></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>gives that the restriction of <span
+class="math inline">\(t+1\)</span> to its generalized null space acts on
+a string basis via the two separate strings <span
+class="math inline">\(\vec{\beta}_4\mapsto\zero\)</span> and <span
+class="math inline">\(\vec{\beta}_5\mapsto\zero\)</span>.</p>
+<p>Therefore <span class="math inline">\(T\)</span> is similar to this
+Jordan form matrix. <span class="math display">\[\begin{mat}[r]
+     -1  &amp;0  &amp;0  &amp;0  &amp;0  \\
+      0  &amp;-1 &amp;0  &amp;0  &amp;0  \\    
+      0  &amp;0  &amp;3  &amp;0  &amp;0  \\
+      0  &amp;0  &amp;1  &amp;3  &amp;0  \\
+      0  &amp;0  &amp;0  &amp;0  &amp;3  
+   \end{mat}\]</span></p>
+</div>
+<div class="exercises">
+<p>Do the check for .</p>
+<div class="answer">
+<p>We must check that <span class="math display">\[\begin{mat}[r]
+           3  &amp;0  \\
+           1  &amp;3
+         \end{mat}
+         =
+         N+3I=PTP^{-1}
+         =
+         \begin{mat}[r]
+           1/2  &amp;1/2  \\
+          -1/4 &amp;1/4
+         \end{mat}
+         \begin{mat}[r]
+           2  &amp;-1  \\
+           1  &amp;4
+         \end{mat}
+         \begin{mat}[r]
+           1  &amp;-2  \\
+           1  &amp;2
+         \end{mat}\]</span> That calculation is easy.</p>
+</div>
+<p>Each matrix is in Jordan form. State its characteristic polynomial
+and its minimal polynomial.</p>
+<div class="exparts*">
+<p><span class="math inline">\(\begin{mat}[r]
+           3  &amp;0  \\
+           1  &amp;3        
+         \end{mat}\)</span> <span class="math inline">\(\begin{mat}[r]
+           -1  &amp;0  \\
+            0  &amp;-1
+         \end{mat}\)</span> <span class="math inline">\(\begin{mat}[r]
+           2  &amp;0  &amp;0  \\
+           1  &amp;2  &amp;0  \\
+           0  &amp;0  &amp;-1/2
+         \end{mat}\)</span> <span class="math inline">\(\begin{mat}[r]
+           3  &amp;0  &amp;0  \\
+           1  &amp;3  &amp;0  \\
+           0  &amp;1  &amp;3  \\
+         \end{mat}\)</span> <span class="math inline">\(\begin{mat}[r]
+           3  &amp;0  &amp;0  &amp;0  \\
+           1  &amp;3  &amp;0  &amp;0  \\
+           0  &amp;0  &amp;3  &amp;0  \\
+           0  &amp;0  &amp;1  &amp;3
+         \end{mat}\)</span> <span class="math inline">\(\begin{mat}[r]
+           4  &amp;0  &amp;0  &amp;0  \\
+           1  &amp;4  &amp;0  &amp;0  \\
+           0  &amp;0  &amp;-4 &amp;0  \\
+           0  &amp;0  &amp;1  &amp;-4
+         \end{mat}\)</span> <span class="math inline">\(\begin{mat}[r]
+           5  &amp;0  &amp;0  \\
+           0  &amp;2  &amp;0  \\
+           0  &amp;0  &amp;3  
+         \end{mat}\)</span> <span class="math inline">\(\begin{mat}[r]
+           5  &amp;0  &amp;0  &amp;0  \\
+           0  &amp;2  &amp;0  &amp;0  \\
+           0  &amp;0  &amp;2  &amp;0  \\
+           0  &amp;0  &amp;0  &amp;3
+         \end{mat}\)</span> <span class="math inline">\(\begin{mat}[r]
+           5  &amp;0  &amp;0  &amp;0  \\
+           0  &amp;2  &amp;0  &amp;0  \\
+           0  &amp;1  &amp;2  &amp;0  \\
+           0  &amp;0  &amp;0  &amp;3
+         \end{mat}\)</span></p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>The characteristic polynomial is <span
+class="math inline">\(c(x)=(x-3)^2\)</span> and the minimal polynomial
+is the same. The characteristic polynomial is <span
+class="math inline">\(c(x)=(x+1)^2\)</span>. The minimal polynomial is
+<span class="math inline">\(m(x)=x+1\)</span>. The characteristic
+polynomial is <span class="math inline">\(c(x)=(x+(1/2))(x-2)^2\)</span>
+and the minimal polynomial is the same. The characteristic polynomial is
+<span class="math inline">\(c(x)=(x-3)^3\)</span> The minimal polynomial
+is the same. The characteristic polynomial is <span
+class="math inline">\(c(x)=(x-3)^4\)</span>. The minimal polynomial is
+<span class="math inline">\(m(x)=(x-3)^2\)</span>. The characteristic
+polynomial is <span class="math inline">\(c(x)=(x+4)^2(x-4)^2\)</span>
+and the minimal polynomial is the same. The characteristic polynomial is
+<span class="math inline">\(c(x)=(x-2)^2(x-3)(x-5)\)</span> and the
+minimal polynomial is <span
+class="math inline">\(m(x)=(x-2)(x-3)(x-5)\)</span>. The characteristic
+polynomial is <span
+class="math inline">\(c(x)=(x-2)^2(x-3)(x-5)\)</span> and the minimal
+polynomial is the same.</p>
+</div>
+</div>
+<p>Find the Jordan form from the given data.</p>
+<div class="exparts">
+<p>The matrix <span class="math inline">\(T\)</span> is <span
+class="math inline">\(\nbyn{5}\)</span> with the single eigenvalue <span
+class="math inline">\(3\)</span>. The nullities of the powers are: <span
+class="math inline">\(T-3I\)</span> has nullity two, <span
+class="math inline">\((T-3I)^2\)</span> has nullity three, <span
+class="math inline">\((T-3I)^3\)</span> has nullity four, and <span
+class="math inline">\((T-3I)^4\)</span> has nullity five. The matrix
+<span class="math inline">\(S\)</span> is <span
+class="math inline">\(\nbyn{5}\)</span> with two eigenvalues. For the
+eigenvalue <span class="math inline">\(2\)</span> the nullities are:
+<span class="math inline">\(S-2I\)</span> has nullity two, and <span
+class="math inline">\((S-2I)^2\)</span> has nullity four. For the
+eigenvalue <span class="math inline">\(-1\)</span> the nullities are:
+<span class="math inline">\(S+1I\)</span> has nullity one.</p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>The transformation <span class="math inline">\(t-3\)</span> is
+nilpotent (that is, <span
+class="math inline">\(\gennullspace{t-3}\)</span> is the entire space)
+and it acts on a string basis via two strings, <span
+class="math inline">\(\vec{\beta}_1\mapsto\vec{\beta}_2\mapsto\vec{\beta}_3
+            \mapsto\vec{\beta}_4\mapsto\zero\)</span> and <span
+class="math inline">\(\vec{\beta}_5\mapsto\zero\)</span>. Consequently,
+<span class="math inline">\(t-3\)</span> can be represented in this
+canonical form. <span class="math display">\[N_3=
+            \begin{mat}[r]
+               0  &amp;0  &amp;0  &amp;0  &amp;0  \\
+               1  &amp;0  &amp;0  &amp;0  &amp;0  \\
+               0  &amp;1  &amp;0  &amp;0  &amp;0  \\
+               0  &amp;0  &amp;1  &amp;0  &amp;0  \\
+               0  &amp;0  &amp;0  &amp;0  &amp;0
+             \end{mat}\]</span> and therefore <span
+class="math inline">\(T\)</span> is similar to this canonical form
+matrix. <span class="math display">\[J_3=N_3+3I=
+           \begin{mat}[r]
+               3  &amp;0  &amp;0  &amp;0  &amp;0  \\
+               1  &amp;3  &amp;0  &amp;0  &amp;0  \\
+               0  &amp;1  &amp;3  &amp;0  &amp;0  \\
+               0  &amp;0  &amp;1  &amp;3  &amp;0  \\
+               0  &amp;0  &amp;0  &amp;0  &amp;3
+             \end{mat}\]</span> The restriction of the transformation
+<span class="math inline">\(s+1\)</span> is nilpotent on the subspace
+<span class="math inline">\(\gennullspace{s+1}\)</span>, and the action
+on a string basis is <span
+class="math inline">\(\vec{\beta}_1\mapsto\zero\)</span>. The
+restriction of the transformation <span
+class="math inline">\(s-2\)</span> is nilpotent on the subspace <span
+class="math inline">\(\gennullspace{s-2}\)</span>, having the action on
+a string basis of <span
+class="math inline">\(\vec{\beta}_2\mapsto\vec{\beta}_3\mapsto\zero\)</span>
+and <span
+class="math inline">\(\vec{\beta}_4\mapsto\vec{\beta}_5\mapsto\zero\)</span>.
+Consequently the Jordan form is this. <span
+class="math display">\[\begin{mat}[r]
+              -1  &amp;0  &amp;0  &amp;0  &amp;0  \\
+               0  &amp;2  &amp;0  &amp;0  &amp;0  \\
+               0  &amp;1  &amp;2  &amp;0  &amp;0  \\
+               0  &amp;0  &amp;0  &amp;2  &amp;0  \\
+               0  &amp;0  &amp;0  &amp;1  &amp;2
+             \end{mat}\]</span></p>
+</div>
+</div>
+<p>Find the change of basis matrices for each example.</p>
+<div class="exparts*">
+
+</div>
+<div class="answer">
+<p>For each, because many choices of basis are possible, many other
+answers are possible. Of course, the calculation to check if an answer
+gives that <span class="math inline">\(PTP^{-1}\)</span> is in Jordan
+form is the arbiter of what’s correct.</p>
+<div class="exparts">
+<p>Here is the arrow diagram. <span class="math display">\[\begin{CD}
+              \C^3_{\wrt{\stdbasis_3}}      @&gt;t&gt;T&gt;    \C^3_{\wrt{\stdbasis_3}}   \\
+                @V\scriptstyle\identity V\scriptstyle PV  
+                                    @V\scriptstyle\identity
+V\scriptstyle PV \\
+              \C^3_{\wrt{B}}                 @&gt;t&gt;J&gt;         \C^3_{\wrt{B}}
+            \end{CD}\]</span> The matrix to move from the lower left to
+the upper left is this. <span
+class="math display">\[P^{-1}=\bigl(\rep{\identity}{\stdbasis_3,B}\bigr)^{-1}
+                  =\rep{\identity}{B,\stdbasis_3}   
+                  =\begin{mat}[r]
+                     1  &amp;-2   &amp;0 \\
+                     1  &amp;0   &amp;1 \\
+                    -2  &amp;0   &amp;0
+                   \end{mat}\]</span> The matrix <span
+class="math inline">\(P\)</span> to move from the upper right to the
+lower right is the inverse of <span
+class="math inline">\(P^{-1}\)</span>. We want this matrix and its
+inverse. <span class="math display">\[P^{-1}=
+            \begin{mat}[r]
+              1  &amp;0  &amp;3  \\
+              0  &amp;1  &amp;4  \\
+              0  &amp;-2 &amp;0
+            \end{mat}\]</span> The concatenation of these bases for the
+generalized null spaces will do for the basis for the entire space.
+<span class="math display">\[B_{-1}=\sequence{\colvec[r]{-1\\ 0 \\  0 \\
+1 \\ 0},
+                 \colvec[r]{-1\\ 0 \\ -1 \\ 0 \\ 1}}
+            \qquad
+             B_3=\sequence{\colvec[r]{1 \\ 1 \\ -1 \\ 0 \\ 0},
+                 \colvec[r]{0 \\ 0 \\  0 \\-2 \\ 2},
+                 \colvec[r]{-1\\-1 \\  1 \\ 2 \\ 0}}\]</span> The change
+of basis matrices are this one and its inverse. <span
+class="math display">\[P^{-1}=
+            \begin{mat}[r]
+              -1  &amp;-1  &amp;1  &amp;0  &amp;-1  \\
+              0   &amp;0   &amp;1  &amp;0  &amp;-1  \\
+              0   &amp;-1  &amp;-1 &amp;0  &amp;1   \\
+              1   &amp;0   &amp;0  &amp;-2 &amp;2   \\
+              0   &amp;1   &amp;0  &amp;2  &amp;0   \\
+            \end{mat}\]</span></p>
+</div>
+</div>
+<p>Find the Jordan form and a Jordan basis for each matrix.</p>
+<div class="exparts*">
+<p><span class="math inline">\(\begin{mat}[r]
+          -10  &amp;4  \\
+          -25  &amp;10
+        \end{mat}\)</span> <span class="math inline">\(\begin{mat}[r]
+           5   &amp;-4 \\
+           9   &amp;-7
+        \end{mat}\)</span> <span class="math inline">\(\begin{mat}[r]
+           4   &amp;0    &amp;0  \\
+           2   &amp;1    &amp;3  \\
+           5   &amp;0    &amp;4
+        \end{mat}\)</span> <span class="math inline">\(\begin{mat}[r]
+           5   &amp;4    &amp;3  \\
+          -1   &amp;0    &amp;-3 \\
+           1   &amp;-2   &amp;1
+        \end{mat}\)</span> <span class="math inline">\(\begin{mat}[r]
+           9   &amp;7    &amp;3  \\
+          -9   &amp;-7   &amp;-4 \\
+           4   &amp;4    &amp;4
+        \end{mat}\)</span> <span class="math inline">\(\begin{mat}[r]
+           2   &amp;2    &amp;-1 \\
+          -1   &amp;-1   &amp;1  \\
+          -1   &amp;-2   &amp;2
+        \end{mat}\)</span> <span class="math inline">\(\begin{mat}[r]
+           7   &amp;1    &amp;2   &amp;2 \\
+           1   &amp;4    &amp;-1  &amp;-1\\
+          -2   &amp;1    &amp;5   &amp;-1\\
+           1   &amp;1    &amp;2   &amp;8
+        \end{mat}\)</span></p>
+</div>
+<div class="answer">
+<p>The general procedure is to factor the characteristic polynomial
+<span
+class="math inline">\(c(x)=(x-\lambda_1)^{p_1}(x-\lambda_2)^{p_2}\cdots\)</span>
+to get the eigenvalues <span class="math inline">\(\lambda_1\)</span>,
+<span class="math inline">\(\lambda_2\)</span>, etc. Then, for each
+<span class="math inline">\(\lambda_i\)</span> we find a string basis
+for the action of the transformation <span
+class="math inline">\(t-\lambda_i\)</span> when restricted to <span
+class="math inline">\(\gennullspace{t-\lambda_i}\)</span>, by computing
+the powers of the matrix <span
+class="math inline">\(T-\lambda_iI\)</span> and finding the associated
+null spaces, until these null spaces settle down (do not change), at
+which point we have the generalized null space. The dimensions of those
+null spaces (the nullities) tell us the action of <span
+class="math inline">\(t-\lambda_i\)</span> on a string basis for the
+generalized null space, and so we can write the pattern of subdiagonal
+ones to have <span class="math inline">\(N_{\lambda_i}\)</span>. From
+this matrix, the Jordan block <span
+class="math inline">\(J_{\lambda_i}\)</span> associated with <span
+class="math inline">\(\lambda_i\)</span> is immediate <span
+class="math inline">\(J_{\lambda_i}=N_{\lambda_i}+\lambda_iI\)</span>.
+Finally, after we have done this for each eigenvalue, we put them
+together into the canonical form.</p>
+<div class="exparts">
+<p>The characteristic polynomial of this matrix is <span
+class="math inline">\(c(x)=(-10-x)(10-x)+100=x^2\)</span>, so it has
+only the single eigenvalue <span
+class="math inline">\(\lambda=0\)</span>.</p>
+<div class="center">
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><em>power</em> <span
+class="math inline">\(p\)</span></th>
+<th style="text-align: center;"><span class="math inline">\((T+0\cdot
+I)^p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\(\nullspace{(t-0)^p}\)</span></th>
+<th style="text-align: center;"><em>nullity</em></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;"><span
+class="math inline">\(1\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"><span
+class="math inline">\(\set{\matrixvenlarge{\colvec{2y/5 \\ y}}
+                                     \suchthat
+                                     y\in\C}\)</span></td>
+<td style="text-align: center;"><span
+class="math inline">\(1\)</span></td>
+</tr>
+<tr>
+<td style="text-align: right;"><span
+class="math inline">\(2\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"><span
+class="math inline">\(\C^2\)</span></td>
+<td style="text-align: center;"><span
+class="math inline">\(2\)</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>(Thus, this transformation is nilpotent: <span
+class="math inline">\(\gennullspace{t-0}\)</span> is the entire space).
+From the nullities we know that <span class="math inline">\(t\)</span>’s
+action on a string basis is <span
+class="math inline">\(\vec{\beta}_1\mapsto\vec{\beta}_2\mapsto\zero\)</span>.
+This is the canonical form matrix for the action of <span
+class="math inline">\(t-0\)</span> on <span
+class="math inline">\(\gennullspace{t-0}=\C^2\)</span> <span
+class="math display">\[N_0=
+             \begin{mat}[r]
+               0  &amp;0  \\
+               1  &amp;0
+            \end{mat}\]</span> and this is the Jordan form of the
+matrix. <span class="math display">\[J_0=N_0+0\cdot I=
+             \begin{mat}[r]
+               0  &amp;0  \\
+               1  &amp;0
+            \end{mat}\]</span> Note that if a matrix is nilpotent then
+its canonical form equals its Jordan form.</p>
+<p>We can find such a string basis using the techniques of the prior
+section. <span class="math display">\[B=\sequence{\colvec[r]{1 \\ 0},
+                             \colvec[r]{-10 \\ -25}}\]</span> We took
+the first basis vector so that it is in the null space of <span
+class="math inline">\(t^2\)</span> but is not in the null space of <span
+class="math inline">\(t\)</span>. The second basis vector is the image
+of the first under <span class="math inline">\(t\)</span>. The
+characteristic polynomial of this matrix is <span
+class="math inline">\(c(x)=(x+1)^2\)</span>, so it is a
+single-eigenvalue matrix. (That is, the generalized null space of <span
+class="math inline">\(t+1\)</span> is the entire space.) We have <span
+class="math display">\[\nullspace{t+1}=\set{\colvec{2y/3 \\ y}\suchthat
+                                     y\in\C}
+             \qquad
+             \nullspace{(t+1)^2}=\C^2\]</span> and so the action of
+<span class="math inline">\(t+1\)</span> on an associated string basis
+is <span
+class="math inline">\(\vec{\beta}_1\mapsto\vec{\beta}_2\mapsto\zero\)</span>.
+Thus, <span class="math display">\[N_{-1}
+             =
+             \begin{mat}[r]
+                0  &amp;0  \\
+                1  &amp;0
+             \end{mat}\]</span> the Jordan form of T is <span
+class="math display">\[J_{-1}=N_{-1}+-1\cdot I
+             =
+             \begin{mat}[r]
+               -1  &amp;0  \\
+                1  &amp;-1
+             \end{mat}\]</span> and choosing vectors from the above null
+spaces gives this string basis (other choices are possible). <span
+class="math display">\[B=\sequence{\colvec[r]{1 \\ 0},
+                         \colvec[r]{6 \\ 9}}\]</span> The characteristic
+polynomial <span class="math inline">\(c(x)=(1-x)(4-x)^2=-1\cdot
+(x-1)(x-4)^2\)</span> has two roots and they are the eigenvalues <span
+class="math inline">\(\lambda_1=1\)</span> and <span
+class="math inline">\(\lambda_2=4\)</span>.</p>
+<p>We handle the two eigenvalues separately. For <span
+class="math inline">\(\lambda_1\)</span>, the calculation of the powers
+of <span class="math inline">\(T-1I\)</span> yields <span
+class="math display">\[\nullspace{t-1}=\set{\colvec{0 \\ y \\ 0}
+                                      \suchthat y\in\C}\]</span> and the
+null space of <span class="math inline">\((t-1)^2\)</span> is the same.
+Thus this set is the generalized null space <span
+class="math inline">\(\gennullspace{t-1}\)</span>. The nullities show
+that the action of the restriction of <span
+class="math inline">\(t-1\)</span> to the generalized null space on a
+string basis is <span
+class="math inline">\(\vec{\beta}_1\mapsto\zero\)</span>.</p>
+<p>A similar calculation for <span
+class="math inline">\(\lambda_2=4\)</span> gives these null spaces.
+<span class="math display">\[\nullspace{t-4}=\set{\colvec{0 \\ z \\ z}
+                                      \suchthat z\in\C}
+              \qquad
+              \nullspace{(t-4)^2}=\set{\colvec{z-y \\ y \\ z}
+                                          \suchthat y,z\in\C}\]</span>
+(The null space of <span class="math inline">\((t-4)^3\)</span> is the
+same, as it must be because the power of the term associated with <span
+class="math inline">\(\lambda_2=4\)</span> in the characteristic
+polynomial is two, and so the restriction of <span
+class="math inline">\(t-2\)</span> to the generalized null space <span
+class="math inline">\(\gennullspace{t-2}\)</span> is nilpotent of index
+at most twoit takes at most two applications of <span
+class="math inline">\(t-2\)</span> for the null space to settle down.)
+The pattern of how the nullities rise tells us that the action of <span
+class="math inline">\(t-4\)</span> on an associated string basis for
+<span class="math inline">\(\gennullspace{t-4}\)</span> is <span
+class="math inline">\(\vec{\beta}_2\mapsto\vec{\beta}_3\mapsto\zero\)</span>.</p>
+<p>Putting the information for the two eigenvalues together gives the
+Jordan form of the transformation <span
+class="math inline">\(t\)</span>. <span
+class="math display">\[\begin{mat}[r]
+                1  &amp;0  &amp;0  \\
+                0  &amp;4  &amp;0  \\
+                0  &amp;1  &amp;4
+              \end{mat}\]</span> We can take elements of the null spaces
+to get an appropriate basis. <span
+class="math display">\[B=\cat{B_{1}}{B_4}=
+               \sequence{\colvec[r]{0 \\ 1 \\ 0},
+                          \colvec[r]{1 \\ 0 \\ 1},
+                          \colvec[r]{0 \\ 5 \\ 5}}\]</span> The
+characteristic polynomial is <span
+class="math inline">\(c(x)=(-2-x)(4-x)^2=-1\cdot
+(x+2)(x-4)^2\)</span>.</p>
+<p>For the eigenvalue <span class="math inline">\(\lambda_{-2}\)</span>
+(the subscript there is <span class="math inline">\(-2\)</span>),
+calculation of the powers of <span class="math inline">\(T+2I\)</span>
+yields this. <span class="math display">\[\nullspace{t+2}=\set{\colvec{z
+\\ z \\ z}
+                                      \suchthat z\in\C}\]</span> The
+null space of <span class="math inline">\((t+2)^2\)</span> is the same,
+and so this is the generalized null space <span
+class="math inline">\(\gennullspace{t+2}\)</span>. Thus the action of
+the restriction of <span class="math inline">\(t+2\)</span> to <span
+class="math inline">\(\gennullspace{t+2}\)</span> on an associated
+string basis is <span
+class="math inline">\(\vec{\beta}_1\mapsto\zero\)</span>.</p>
+<p>For <span class="math inline">\(\lambda_2=4\)</span>, computing the
+powers of <span class="math inline">\(T-4I\)</span> yields <span
+class="math display">\[\nullspace{t-4}=\set{\colvec{z \\ -z \\ z}
+                                      \suchthat z\in\C}
+              \qquad
+              \nullspace{(t-4)^2}=\set{\colvec{x \\ -z \\ z}
+                                           \suchthat x,z\in\C}\]</span>
+and so the action of <span class="math inline">\(t-4\)</span> on a
+string basis for <span class="math inline">\(\gennullspace{t-4}\)</span>
+is <span
+class="math inline">\(\vec{\beta}_2\mapsto\vec{\beta}_3\mapsto\zero\)</span>.</p>
+<p>Therefore the Jordan form is <span
+class="math display">\[\begin{mat}[r]
+                -2  &amp;0  &amp;0  \\
+                 0  &amp;4  &amp;0  \\
+                 0  &amp;1  &amp;4
+              \end{mat}\]</span> and a suitable basis is this. <span
+class="math display">\[B=\cat{B_{-2}}{B_4}=
+                \sequence{\colvec[r]{1 \\ 1 \\ 1},
+                          \colvec[r]{0 \\ -1 \\ 1},
+                          \colvec[r]{-1 \\ 1 \\ -1}}\]</span> The
+characteristic polynomial of this matrix is <span
+class="math inline">\(c(x)=(2-x)^3=-1\cdot (x-2)^3\)</span>. This matrix
+has only a single eigenvalue, <span
+class="math inline">\(\lambda=2\)</span>. By finding the powers of <span
+class="math inline">\(T-2I\)</span> we have <span
+class="math display">\[\nullspace{t-2}=\set{\colvec{-y \\ y \\ 0}
+                                      \suchthat y\in\C}
+              \qquad
+              \nullspace{(t-2)^2}=\set{\colvec{-y-(1/2)z \\ y \\ z}
+                                          \suchthat y,z\in\C}\]</span>
+and <span class="math display">\[\nullspace{(t-2)^3}=\C^3\]</span> and
+so the action of <span class="math inline">\(t-2\)</span> on an
+associated string basis is <span
+class="math inline">\(\vec{\beta}_1\mapsto\vec{\beta}_2\mapsto
+                   \vec{\beta}_3\mapsto\zero\)</span>. The Jordan form
+is this <span class="math display">\[\begin{mat}[r]
+                    2  &amp;0  &amp;0  \\
+                    1  &amp;2  &amp;0  \\
+                    0  &amp;1  &amp;2
+                  \end{mat}\]</span> and one choice of basis is this.
+<span class="math display">\[B=\sequence{\colvec[r]{0 \\ 1 \\ 0},
+                          \colvec[r]{7 \\ -9 \\ 4},
+                          \colvec[r]{-2 \\ 2 \\ 0}}\]</span> The
+characteristic polynomial <span
+class="math inline">\(c(x)=(1-x)^3=-(x-1)^3\)</span> has only a single
+root, so the matrix has only a single eigenvalue <span
+class="math inline">\(\lambda=1\)</span>. Finding the powers of <span
+class="math inline">\(T-1I\)</span> and calculating the null spaces
+<span class="math display">\[\nullspace{t-1}=\set{\colvec{-2y+z \\ y \\
+z}
+                                      \suchthat y,z\in\C}
+               \qquad
+               \nullspace{(t-1)^2}=\C^3\]</span> shows that the action
+of the nilpotent map <span class="math inline">\(t-1\)</span> on a
+string basis is <span
+class="math inline">\(\vec{\beta}_1\mapsto\vec{\beta}_2\mapsto\zero\)</span>
+and <span class="math inline">\(\vec{\beta}_3\mapsto\zero\)</span>.
+Therefore the Jordan form is <span class="math display">\[J=
+                  \begin{mat}[r]
+                    1  &amp;0  &amp;0  \\
+                    1  &amp;1  &amp;0  \\
+                    0  &amp;0  &amp;1
+                  \end{mat}\]</span> and an appropriate basis (a string
+basis associated with <span class="math inline">\(t-1\)</span>) is this.
+<span class="math display">\[B=\sequence{\colvec[r]{0 \\ 1 \\ 0},
+                          \colvec[r]{2 \\ -2 \\ -2},
+                          \colvec[r]{1 \\ 0 \\ 1}}\]</span> The
+characteristic polynomial is a bit large for by-hand calculation, but
+just manageable <span
+class="math inline">\(c(x)=x^4-24x^3+216x^2-864x+1296=(x-6)^4\)</span>.
+This is a single-eigenvalue map, so the transformation <span
+class="math inline">\(t-6\)</span> is nilpotent. The null spaces <span
+class="math display">\[\nullspace{t-6}=\set{\colvec{-z-w \\ -z-w \\ z \\
+w}
+                                      \suchthat z,w\in\C}
+               \qquad
+               \nullspace{(t-6)^2}=\set{\colvec{x \\ -z-w \\ z \\ w}
+                                      \suchthat x,z,w\in\C}\]</span> and
+<span class="math display">\[\nullspace{(t-6)^3}=\C^4\]</span> and the
+nullities show that the action of <span
+class="math inline">\(t-6\)</span> on a string basis is <span
+class="math inline">\(\vec{\beta}_1\mapsto\vec{\beta}_2\mapsto
+                   \vec{\beta}_3\mapsto\zero\)</span> and <span
+class="math inline">\(\vec{\beta}_4\mapsto\zero\)</span>. The Jordan
+form is <span class="math display">\[\begin{mat}[r]
+                6  &amp;0  &amp;0  &amp;0  \\
+                1  &amp;6  &amp;0  &amp;0  \\
+                0  &amp;1  &amp;6  &amp;0  \\
+                0  &amp;0  &amp;0  &amp;6  \\
+              \end{mat}\]</span> and finding a suitable string basis is
+routine. <span class="math display">\[B=\sequence{\colvec[r]{0 \\ 0 \\ 0
+\\ 1},
+                          \colvec[r]{2 \\ -1 \\ -1 \\ 2},
+                          \colvec[r]{3 \\ 3 \\ -6 \\ 3},
+                          \colvec[r]{-1 \\ -1 \\ 1 \\ 0}}\]</span></p>
+</div>
+</div>
+<p>Find all possible Jordan forms of a transformation with
+characteristic polynomial <span
+class="math inline">\((x-1)^2(x+2)^2\)</span>.</p>
+<div class="answer">
+<p>There are two eigenvalues, <span
+class="math inline">\(\lambda_1=-2\)</span> and <span
+class="math inline">\(\lambda_2=1\)</span>. The restriction of <span
+class="math inline">\(t+2\)</span> to <span
+class="math inline">\(\gennullspace{t+2}\)</span> could have either of
+these actions on an associated string basis. <span
+class="math display">\[\vec{\beta}_1\mapsto\vec{\beta}_2\mapsto\zero
+        \qquad
+        \begin{array}[t]{l}
+          \vec{\beta}_1\mapsto\zero  \\
+          \vec{\beta}_2\mapsto\zero
+        \end{array}\]</span> The restriction of <span
+class="math inline">\(t-1\)</span> to <span
+class="math inline">\(\gennullspace{t-1}\)</span> could have either of
+these actions on an associated string basis. <span
+class="math display">\[\vec{\beta}_3\mapsto\vec{\beta}_4\mapsto\zero
+        \qquad
+        \begin{array}[t]{l}
+          \vec{\beta}_3\mapsto\zero  \\
+          \vec{\beta}_4\mapsto\zero
+        \end{array}\]</span> In combination, that makes four possible
+Jordan forms, the two first actions, the second and first, the first and
+second, and the two second actions. <span
+class="math display">\[\begin{mat}[r]
+          -2  &amp;0  &amp;0  &amp;0  \\
+           1  &amp;-2 &amp;0  &amp;0  \\
+           0  &amp;0  &amp;1  &amp;0  \\
+           0  &amp;0  &amp;1  &amp;1
+        \end{mat}
+        \quad
+        \begin{mat}[r]
+          -2  &amp;0  &amp;0  &amp;0  \\
+           0  &amp;-2 &amp;0  &amp;0  \\
+           0  &amp;0  &amp;1  &amp;0  \\
+           0  &amp;0  &amp;1  &amp;1
+        \end{mat}
+        \quad
+        \begin{mat}[r]
+          -2  &amp;0  &amp;0  &amp;0  \\
+           1  &amp;-2 &amp;0  &amp;0  \\
+           0  &amp;0  &amp;1  &amp;0  \\
+           0  &amp;0  &amp;0  &amp;1
+        \end{mat}
+        \quad
+        \begin{mat}[r]
+          -2  &amp;0  &amp;0  &amp;0  \\
+           0  &amp;-2 &amp;0  &amp;0  \\
+           0  &amp;0  &amp;1  &amp;0  \\
+           0  &amp;0  &amp;0  &amp;1
+        \end{mat}\]</span></p>
+</div>
+<p>Find all possible Jordan forms of a transformation with
+characteristic polynomial <span
+class="math inline">\((x-1)^3(x+2)\)</span>.</p>
+<div class="answer">
+<p>The restriction of <span class="math inline">\(t+2\)</span> to <span
+class="math inline">\(\gennullspace{t+2}\)</span> can have only the
+action <span class="math inline">\(\vec{\beta}_1\mapsto\zero\)</span>.
+The restriction of <span class="math inline">\(t-1\)</span> to <span
+class="math inline">\(\gennullspace{t-1}\)</span> could have any of
+these three actions on an associated string basis. <span
+class="math display">\[\vec{\beta}_2\mapsto\vec{\beta}_3\mapsto\vec{\beta}_4\mapsto\zero
+        \qquad
+        \begin{array}[t]{l}
+          \vec{\beta}_2\mapsto\vec{\beta}_3\mapsto\zero  \\
+          \vec{\beta}_4\mapsto\zero
+        \end{array}
+        \qquad
+        \begin{array}[t]{l}
+          \vec{\beta}_2\mapsto\zero  \\
+          \vec{\beta}_3\mapsto\zero  \\
+          \vec{\beta}_4\mapsto\zero
+        \end{array}\]</span> Taken together there are three possible
+Jordan forms, the one arising from the first action by <span
+class="math inline">\(t-1\)</span> (along with the only action from
+<span class="math inline">\(t+2\)</span>), the one arising from the
+second action, and the one arising from the third action. <span
+class="math display">\[\begin{mat}[r]
+         -2  &amp;0  &amp;0  &amp;0  \\
+          0  &amp;1  &amp;0  &amp;0  \\
+          0  &amp;1  &amp;1  &amp;0  \\
+          0  &amp;0  &amp;1  &amp;1
+       \end{mat}
+       \quad
+       \begin{mat}[r]
+         -2  &amp;0  &amp;0  &amp;0  \\
+          0  &amp;1  &amp;0  &amp;0  \\
+          0  &amp;1  &amp;1  &amp;0  \\
+          0  &amp;0  &amp;0  &amp;1
+       \end{mat}
+       \quad
+       \begin{mat}[r]
+         -2  &amp;0  &amp;0  &amp;0  \\
+          0  &amp;1  &amp;0  &amp;0  \\
+          0  &amp;0  &amp;1  &amp;0  \\
+          0  &amp;0  &amp;0  &amp;1
+       \end{mat}\]</span></p>
+</div>
+<p>Find all possible Jordan forms of a transformation with
+characteristic polynomial <span
+class="math inline">\((x-2)^3(x+1)\)</span> and minimal polynomial <span
+class="math inline">\((x-2)^2(x+1)\)</span>.</p>
+<div class="answer">
+<p>The action of <span class="math inline">\(t+1\)</span> on a string
+basis for <span class="math inline">\(\gennullspace{t+1}\)</span> must
+be <span class="math inline">\(\vec{\beta}_1\mapsto\zero\)</span>.
+Because of the power of <span class="math inline">\(x-2\)</span> in the
+minimal polynomial, a string basis for <span
+class="math inline">\(t-2\)</span> has length two and so the action of
+<span class="math inline">\(t-2\)</span> on <span
+class="math inline">\(\gennullspace{t-2}\)</span> must be of this form.
+<span class="math display">\[\begin{array}[t]{l}
+          \vec{\beta}_2\mapsto\vec{\beta}_3\mapsto\zero  \\
+          \vec{\beta}_4\mapsto\zero
+        \end{array}\]</span> Therefore there is only one Jordan form
+that is possible. <span class="math display">\[\begin{mat}[r]
+            -1  &amp;0  &amp;0  &amp;0  \\
+             0  &amp;2  &amp;0  &amp;0  \\
+             0  &amp;1  &amp;2  &amp;0  \\
+             0  &amp;0  &amp;0  &amp;2
+          \end{mat}\]</span></p>
+</div>
+<p>Find all possible Jordan forms of a transformation with
+characteristic polynomial <span
+class="math inline">\((x-2)^4(x+1)\)</span> and minimal polynomial <span
+class="math inline">\((x-2)^2(x+1)\)</span>.</p>
+<div class="answer">
+<p>There are two possible Jordan forms. The action of <span
+class="math inline">\(t+1\)</span> on a string basis for <span
+class="math inline">\(\gennullspace{t+1}\)</span> must be <span
+class="math inline">\(\vec{\beta}_1\mapsto\zero\)</span>. There are two
+actions for <span class="math inline">\(t-2\)</span> on a string basis
+for <span class="math inline">\(\gennullspace{t-2}\)</span> that are
+possible with this characteristic polynomial and minimal polynomial.
+<span class="math display">\[\begin{array}[t]{l}
+          \vec{\beta}_2\mapsto\vec{\beta}_3\mapsto\zero  \\
+          \vec{\beta}_4\mapsto\vec{\beta}_5\mapsto\zero  
+        \end{array}        
+        \qquad
+        \begin{array}[t]{l}
+          \vec{\beta}_2\mapsto\vec{\beta}_3\mapsto\zero  \\
+          \vec{\beta}_4\mapsto\zero                      \\
+          \vec{\beta}_5\mapsto\zero                      
+        \end{array}\]</span> The resulting Jordan form matrices are
+these. <span class="math display">\[\begin{mat}[r]
+          -1  &amp;0  &amp;0  &amp;0  &amp;0  \\
+           0  &amp;2  &amp;0  &amp;0  &amp;0  \\
+           0  &amp;1  &amp;2  &amp;0  &amp;0  \\
+           0  &amp;0  &amp;0  &amp;2  &amp;0  \\
+           0  &amp;0  &amp;0  &amp;1  &amp;2
+        \end{mat}
+        \qquad
+        \begin{mat}[r]
+          -1  &amp;0  &amp;0  &amp;0  &amp;0  \\
+           0  &amp;2  &amp;0  &amp;0  &amp;0  \\
+           0  &amp;1  &amp;2  &amp;0  &amp;0  \\
+           0  &amp;0  &amp;0  &amp;2  &amp;0  \\
+           0  &amp;0  &amp;0  &amp;0  &amp;2
+        \end{mat}\]</span></p>
+</div>
+<p>Diagonalize these.</p>
+<div class="exparts*">
+<p><span class="math inline">\(\begin{mat}[r]
+                  1  &amp;1  \\
+                  0  &amp;0
+                \end{mat}\)</span> <span
+class="math inline">\(\begin{mat}[r]
+                  0  &amp;1  \\
+                  1  &amp;0
+                \end{mat}\)</span></p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>The characteristic polynomial is <span
+class="math inline">\(c(x)=x(x-1)\)</span>. For <span
+class="math inline">\(\lambda_1=0\)</span> we have <span
+class="math display">\[\nullspace{t-0}=\set{\colvec{-y \\ y}
+                                 \suchthat y\in\C }\]</span> (of course,
+the null space of <span class="math inline">\(t^2\)</span> is the same).
+For <span class="math inline">\(\lambda_2=1\)</span>, <span
+class="math display">\[\nullspace{t-1}=\set{\colvec{x \\ 0}
+                                     \suchthat x\in\C }\]</span> (and
+the null space of <span class="math inline">\((t-1)^2\)</span> is the
+same). We can take this basis <span
+class="math display">\[B=\sequence{\colvec[r]{1 \\ -1},\colvec[r]{1 \\
+0}}\]</span> to get the diagonalization. <span
+class="math display">\[\begin{mat}[r]
+              1  &amp;1  \\
+             -1  &amp;0
+            \end{mat}^{-1}
+            \begin{mat}[r]
+              1  &amp;1  \\
+              0  &amp;0
+            \end{mat}
+            \begin{mat}[r]
+              1  &amp;1  \\
+             -1  &amp;0
+            \end{mat}
+            =
+            \begin{mat}[r]
+              0  &amp;0  \\
+              0  &amp;1
+            \end{mat}\]</span> The characteristic polynomial is <span
+class="math inline">\(c(x)=x^2-1=(x+1)(x-1)\)</span>. For <span
+class="math inline">\(\lambda_1=-1\)</span>, <span
+class="math display">\[\nullspace{t+1}=\set{\colvec{-y \\ y}
+                                    \suchthat y\in\C }\]</span> and the
+null space of <span class="math inline">\((t+1)^2\)</span> is the same.
+For <span class="math inline">\(\lambda_2=1\)</span> <span
+class="math display">\[\nullspace{t-1}=\set{\colvec{y \\ y}
+                                    \suchthat y\in\C }\]</span> and the
+null space of <span class="math inline">\((t-1)^2\)</span> is the same.
+We can take this basis <span
+class="math display">\[B=\sequence{\colvec[r]{1 \\ -1},\colvec[r]{1 \\
+1}}\]</span> to get a diagonalization. <span
+class="math display">\[\begin{mat}[r]
+              1  &amp;1  \\
+              1  &amp;-1
+            \end{mat}^{-1}
+            \begin{mat}[r]
+              0  &amp;1  \\
+              1  &amp;0
+            \end{mat}
+            \begin{mat}[r]
+              1   &amp;1  \\
+              -1  &amp;1
+            \end{mat}
+            =
+            \begin{mat}[r]
+              -1  &amp;0  \\
+              0   &amp;1
+            \end{mat}\]</span></p>
+</div>
+</div>
+<p>Find the Jordan matrix representing the differentiation operator on
+<span class="math inline">\(\polyspace_3\)</span>.</p>
+<div class="answer">
+<p>The transformation <span
+class="math inline">\(\map{d/dx}{\polyspace_3}{\polyspace_3}\)</span> is
+nilpotent. Its action on the basis <span
+class="math inline">\(B=\sequence{x^3,3x^2,6x,6}\)</span> is <span
+class="math inline">\(x^3\mapsto 3x^2\mapsto 6x\mapsto 6\mapsto
+0\)</span>. Its Jordan form is its canonical form as a nilpotent matrix.
+<span class="math display">\[J=
+         \begin{mat}[r]
+           0  &amp;0  &amp;0  &amp;0  \\
+           1  &amp;0  &amp;0  &amp;0  \\
+           0  &amp;1  &amp;0  &amp;0  \\
+           0  &amp;0  &amp;1  &amp;0
+         \end{mat}\]</span></p>
+</div>
+<p>Decide if these two are similar. <span
+class="math display">\[\begin{mat}[r]
+            1  &amp;-1 \\
+            4  &amp;-3 \\
+         \end{mat}
+         \qquad
+         \begin{mat}[r]
+           -1  &amp;0  \\
+            1  &amp;-1 \\
+         \end{mat}\]</span></p>
+<div class="answer">
+<p>Yes. Each has the characteristic polynomial <span
+class="math inline">\((x+1)^2\)</span>. Calculations of the powers of
+<span class="math inline">\(T_1+1\cdot I\)</span> and <span
+class="math inline">\(T_2+1\cdot I\)</span> gives these two. <span
+class="math display">\[\nullspace{t_1+1}=\set{\colvec{y/2 \\ y}
+\suchthat y\in\C}
+          \qquad
+          \nullspace{t_2+1}=\set{\colvec{0 \\ y} \suchthat
+y\in\C}\]</span> (Of course, for each the null space of the square is
+the entire space.) The way that the nullities rise shows that each is
+similar to this Jordan form matrix <span
+class="math display">\[\begin{mat}[r]
+             -1  &amp;0  \\
+              1  &amp;-1 \\
+           \end{mat}\]</span> and they are therefore similar to each
+other.</p>
+</div>
+<p>Find the Jordan form of this matrix. <span
+class="math display">\[\begin{mat}[r]
+           0  &amp;-1  \\
+           1  &amp;0
+        \end{mat}\]</span> Also give a Jordan basis.</p>
+<div class="answer">
+<p>Its characteristic polynomial is <span
+class="math inline">\(c(x)=x^2+1\)</span> which has complex roots <span
+class="math inline">\(x^2+1=(x+i)(x-i)\)</span>. Because the roots are
+distinct, the matrix is diagonalizable and its Jordan form is that
+diagonal matrix. <span class="math display">\[\begin{mat}[r]
+           -i  &amp;0  \\
+            0  &amp;i
+         \end{mat}\]</span> To find an associated basis we compute the
+null spaces. <span
+class="math display">\[\nullspace{t+i}=\set{\colvec{-iy \\ y}
+                                        \suchthat y\in\C}
+         \qquad
+         \nullspace{t-i}=\set{\colvec{iy \\ y}
+                                        \suchthat y\in\C}\]</span> For
+instance, <span class="math display">\[T+i\cdot I=
+         \begin{mat}[r]
+           i  &amp;-1  \\
+           1  &amp;i
+         \end{mat}\]</span> and so we get a description of the null
+space of <span class="math inline">\(t+i\)</span> by solving this linear
+system. <span class="math display">\[\begin{linsys}{2}
+           ix  &amp;-  &amp;y  &amp;=  &amp;0  \\
+            x  &amp;+  &amp;iy &amp;=  &amp;0
+         \end{linsys}
+         \grstep{i\rho_1+\rho_2}
+         \begin{linsys}{2}
+           ix  &amp;-  &amp;y  &amp;=  &amp;0  \\
+               &amp;   &amp;0  &amp;=  &amp;0
+         \end{linsys}\]</span> (To change the relation <span
+class="math inline">\(ix=y\)</span> so that the leading variable <span
+class="math inline">\(x\)</span> is expressed in terms of the free
+variable <span class="math inline">\(y\)</span>, we can multiply both
+sides by <span class="math inline">\(-i\)</span>.)</p>
+<p>As a result, one such basis is this. <span
+class="math display">\[B=\sequence{\colvec[r]{-i \\ 1},
+                     \colvec[r]{i \\ 1}}\]</span></p>
+</div>
+<p>How many similarity classes are there for <span
+class="math inline">\(\nbyn{3}\)</span> matrices whose only eigenvalues
+are <span class="math inline">\(-3\)</span> and <span
+class="math inline">\(4\)</span>?</p>
+<div class="answer">
+<p>We can count the possible classes by counting the possible canonical
+representatives, that is, the possible Jordan form matrices. The
+characteristic polynomial must be either <span
+class="math inline">\(c_1(x)=(x+3)^2(x-4)\)</span> or <span
+class="math inline">\(c_2(x)=(x+3)(x-4)^2\)</span>. In the <span
+class="math inline">\(c_1\)</span> case there are two possible actions
+of <span class="math inline">\(t+3\)</span> on a string basis for <span
+class="math inline">\(\gennullspace{t+3}\)</span>. <span
+class="math display">\[\vec{\beta}_1\mapsto\vec{\beta}_2\mapsto \zero
+       \qquad
+       \begin{array}[t]{l}
+         \vec{\beta}_1\mapsto\zero \\
+         \vec{\beta}_2\mapsto\zero
+       \end{array}\]</span> There are two associated Jordan form
+matrices. <span class="math display">\[\begin{mat}[r]
+          -3  &amp;0  &amp;0  \\
+           1  &amp;-3 &amp;0  \\
+           0  &amp;0  &amp;4
+        \end{mat}
+        \qquad
+        \begin{mat}[r]
+          -3  &amp;0  &amp;0  \\
+           0  &amp;-3 &amp;0  \\
+           0  &amp;0  &amp;4
+        \end{mat}\]</span> Similarly there are two Jordan form matrices
+that could arise out of <span class="math inline">\(c_2\)</span>. <span
+class="math display">\[\begin{mat}[r]
+          -3  &amp;0  &amp;0  \\
+           0  &amp;4  &amp;0  \\
+           0  &amp;1  &amp;4
+        \end{mat}
+        \qquad
+        \begin{mat}[r]
+          -3  &amp;0  &amp;0  \\
+           0  &amp;4  &amp;0  \\
+           0  &amp;0  &amp;4
+        \end{mat}\]</span> So in total there are four possible Jordan
+forms.</p>
+</div>
+<p>Prove that a matrix is diagonalizable if and only if its minimal
+polynomial has only linear factors.</p>
+<div class="answer">
+<p>Jordan form is unique. A diagonal matrix is in Jordan form. Thus the
+Jordan form of a diagonalizable matrix is its diagonalization. If the
+minimal polynomial has factors to some power higher than one then the
+Jordan form has subdiagonal <span class="math inline">\(1\)</span>’s,
+and so is not diagonal.</p>
+</div>
+<p>Give an example of a linear transformation on a vector space that has
+no non-trivial invariant subspaces.</p>
+<div class="answer">
+<p>One example is the transformation of <span
+class="math inline">\(\C\)</span> that sends <span
+class="math inline">\(x\)</span> to <span
+class="math inline">\(-x\)</span>.</p>
+</div>
+<p>Show that a subspace is <span
+class="math inline">\(t-\lambda_1\)</span> invariant if and only if it
+is <span class="math inline">\(t-\lambda_2\)</span> invariant.</p>
+<div class="answer">
+<p>Apply twice; the subspace is <span
+class="math inline">\(t-\lambda_1\)</span> invariant if and only if it
+is <span class="math inline">\(t\)</span> invariant, which in turn holds
+if and only if it is <span
+class="math inline">\(t-\lambda_2\)</span> invariant.</p>
+</div>
+<p>Prove or disprove: two <span class="math inline">\(\nbyn{n}\)</span>
+matrices are similar if and only if they have the same characteristic
+and minimal polynomials.</p>
+<div class="answer">
+<p>False; these two <span class="math inline">\(\nbyn{4}\)</span>
+matrices each have <span class="math inline">\(c(x)=(x-3)^4\)</span> and
+<span class="math inline">\(m(x)=(x-3)^2\)</span>. <span
+class="math display">\[\begin{mat}[r]
+             3  &amp;0  &amp;0  &amp;0  \\
+             1  &amp;3  &amp;0  &amp;0  \\
+             0  &amp;0  &amp;3  &amp;0  \\
+             0  &amp;0  &amp;1  &amp;3
+          \end{mat}
+          \quad
+          \begin{mat}[r]
+             3  &amp;0  &amp;0  &amp;0  \\
+             1  &amp;3  &amp;0  &amp;0  \\
+             0  &amp;0  &amp;3  &amp;0  \\
+             0  &amp;0  &amp;0  &amp;3
+          \end{mat}\]</span></p>
+</div>
+<p>The of a square matrix is the sum of its diagonal entries.</p>
+<div class="exparts">
+<p>Find the formula for the characteristic polynomial of a <span
+class="math inline">\(\nbyn{2}\)</span> matrix. Show that trace is
+invariant under similarity, and so we can sensibly speak of the ‘trace
+of a map’. (<em>Hint:</em> see the prior item.) Is trace invariant under
+matrix equivalence? Show that the trace of a map is the sum of its
+eigenvalues (counting multiplicities). Show that the trace of a
+nilpotent map is zero. Does the converse hold?</p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>The characteristic polynomial is this. <span
+class="math display">\[\begin{vmat}
+               a-x  &amp;b  \\
+               c  &amp;d-x
+             \end{vmat}
+             =(a-x)(d-x)-bc=ad-(a+d)x+x^2-bc
+             =x^2-(a+d)x+(ad-bc)\]</span> Note that the determinant
+appears as the constant term. Recall that the characteristic polynomial
+<span class="math inline">\(\deter{T-xI}\)</span> is invariant under
+similarity. Use the permutation expansion formula to show that the trace
+is the negative of the coefficient of <span
+class="math inline">\(x^{n-1}\)</span>. No, there are matrices <span
+class="math inline">\(T\)</span> and <span
+class="math inline">\(S\)</span> that are equivalent <span
+class="math inline">\(S=PTQ\)</span> (for some nonsingular <span
+class="math inline">\(P\)</span> and <span
+class="math inline">\(Q\)</span>) but that have different traces. An
+easy example is this. <span class="math display">\[PTQ=
+               \begin{mat}[r]
+                  2  &amp;0  \\
+                  0  &amp;1
+               \end{mat}
+               \begin{mat}[r]
+                  1  &amp;0  \\
+                  0  &amp;1
+               \end{mat}
+               \begin{mat}[r]
+                  1  &amp;0  \\
+                  0  &amp;1
+               \end{mat}
+               =
+               \begin{mat}[r]
+                  2  &amp;0  \\
+                  0  &amp;1
+               \end{mat}\]</span> Even easier examples using <span
+class="math inline">\(\nbyn{1}\)</span> matrices are possible. Put the
+matrix in Jordan form. By the first item, the trace is unchanged. The
+first part is easy; use the third item. The converse does not hold: this
+matrix <span class="math display">\[\begin{mat}[r]
+                  1  &amp;0  \\
+                  0  &amp;-1
+               \end{mat}\]</span> has a trace of zero but is not
+nilpotent.</p>
+</div>
+</div>
+<p>To use to check whether a subspace is <span
+class="math inline">\(t\)</span> invariant, we seemingly have to check
+all of the infinitely many vectors in a (nontrivial) subspace to see if
+they satisfy the condition. Prove that a subspace is <span
+class="math inline">\(t\)</span> invariant if and only if its subbasis
+has the property that for all of its elements, <span
+class="math inline">\(t(\vec{\beta})\)</span> is in the subspace.</p>
+<div class="answer">
+<p>Suppose that <span class="math inline">\(B_M\)</span> is a basis for
+a subspace <span class="math inline">\(M\)</span> of some vector space.
+Implication one way is clear; if <span class="math inline">\(M\)</span>
+is <span class="math inline">\(t\)</span> invariant then in particular,
+if <span class="math inline">\(\vec{m}\in B_M\)</span> then <span
+class="math inline">\(t(\vec{m})\in M\)</span>. For the other
+implication, let <span
+class="math inline">\(B_M=\sequence{\vec{\beta}_1,\dots,\vec{\beta}_q}\)</span>
+and note that <span
+class="math inline">\(t(\vec{m})=t(m_1\vec{\beta}_1+\dots+m_q\vec{\beta}_q)
+                   =m_1t(\vec{\beta}_1)+\dots+m_qt(\vec{\beta}_q)\)</span>
+is in <span class="math inline">\(M\)</span> as any subspace is closed
+under linear combinations.</p>
+</div>
+<p>Is <span class="math inline">\(t\)</span> invariance preserved under
+intersection? Under union? Complementation? Sums of subspaces?</p>
+<div class="answer">
+<p>Yes, the intersection of <span class="math inline">\(t\)</span>
+invariant subspaces is <span class="math inline">\(t\)</span> invariant.
+Assume that <span class="math inline">\(M\)</span> and <span
+class="math inline">\(N\)</span> are <span
+class="math inline">\(t\)</span> invariant. If <span
+class="math inline">\(\vec{v}\in M\intersection N\)</span> then <span
+class="math inline">\(t(\vec{v})\in M\)</span> by the invariance of
+<span class="math inline">\(M\)</span> and <span
+class="math inline">\(t(\vec{v})\in N\)</span> by the invariance of
+<span class="math inline">\(N\)</span>.</p>
+<p>Of course, the union of two subspaces need not be a subspace
+(remember that the <span class="math inline">\(x\)</span>- and <span
+class="math inline">\(y\)</span>-axes are subspaces of the plane <span
+class="math inline">\(\Re^2\)</span> but the union of the two axes fails
+to be closed under vector addition; for instance it does not contain
+<span class="math inline">\(\vec{e}_1+\vec{e}_2\)</span>.) However, the
+union of invariant subsets is an invariant subset; if <span
+class="math inline">\(\vec{v}\in M\union N\)</span> then <span
+class="math inline">\(\vec{v}\in M\)</span> or <span
+class="math inline">\(\vec{v}\in N\)</span> so <span
+class="math inline">\(t(\vec{v})\in M\)</span> or <span
+class="math inline">\(t(\vec{v})\in N\)</span>.</p>
+<p>No, the complement of an invariant subspace need not be invariant.
+Consider the subspace <span class="math display">\[\set{\colvec{x \\
+0}\suchthat x\in\C}\]</span> of <span
+class="math inline">\(\C^2\)</span> under the zero transformation.</p>
+<p>Yes, the sum of two invariant subspaces is invariant. The check is
+easy.</p>
+</div>
+<p><span id="exer:OrderC" data-label="exer:OrderC"></span> Give a way to
+order the Jordan blocks if some of the eigenvalues are complex numbers.
+That is, suggest a reasonable ordering for the complex numbers.</p>
+<div class="answer">
+<p>One such ordering is the . Order by the real component first, then by
+the coefficient of <span class="math inline">\(i\)</span>. For instance,
+<span class="math inline">\(3+2i&lt;4+1i\)</span> but <span
+class="math inline">\(4+1i&lt;4+2i\)</span>.</p>
+</div>
+<p>Let <span class="math inline">\(\polyspace_j(\Re)\)</span> be the
+vector space over the reals of degree <span
+class="math inline">\(j\)</span> polynomials. Show that if <span
+class="math inline">\(j\le k\)</span> then <span
+class="math inline">\(\polyspace_j(\Re)\)</span> is an invariant
+subspace of <span class="math inline">\(\polyspace_k(\Re)\)</span> under
+the differentiation operator. In <span
+class="math inline">\(\polyspace_7(\Re)\)</span>, does any of <span
+class="math inline">\(\polyspace_0(\Re)\)</span>, …, <span
+class="math inline">\(\polyspace_6(\Re)\)</span> have an invariant
+complement?</p>
+<div class="answer">
+<p>The first half is easythe derivative of any real polynomial is a real
+polynomial of lower degree. The answer to the second half is ‘no’; any
+complement of <span class="math inline">\(\polyspace_j(\Re)\)</span>
+must include a polynomial of degree <span
+class="math inline">\(j+1\)</span>, and the derivative of that
+polynomial is in <span
+class="math inline">\(\polyspace_j(\Re)\)</span>.</p>
+</div>
+<p>In <span class="math inline">\(\polyspace_n(\Re)\)</span>, the vector
+space (over the reals) of degree <span class="math inline">\(n\)</span>
+polynomials, <span class="math display">\[\mathcal{E}=
+      \set{p(x)\in\polyspace_n(\Re)\suchthat p(-x)=p(x) \text{\ for all\
+}x}\]</span> and <span class="math display">\[\mathcal{O}=
+      \set{p(x)\in\polyspace_n(\Re)\suchthat p(-x)=-p(x) \text{\ for
+all\ }x}\]</span> are the and the polynomials; <span
+class="math inline">\(p(x)=x^2\)</span> is even while <span
+class="math inline">\(p(x)=x^3\)</span> is odd. Show that they are
+subspaces. Are they complementary? Are they invariant under the
+differentiation transformation?</p>
+<div class="answer">
+<p>For the first half, show that each is a subspace and then observe
+that any polynomial can be uniquely written as the sum of even-powered
+and odd-powered terms (the zero polynomial is both). The answer to the
+second half is ‘no’: <span class="math inline">\(x^2\)</span> is even
+while <span class="math inline">\(2x\)</span> is odd.</p>
+</div>
+<p>A matrix <span class="math inline">\(S\)</span> is the of another
+<span class="math inline">\(T\)</span> if <span
+class="math inline">\(S^2=T\)</span>. Show that any nonsingular matrix
+has a square root.</p>
+<div class="answer">
+<p>Put the matrix in Jordan form. By non-singularity, there are no zero
+eigenvalues on the diagonal. Ape this example: <span
+class="math display">\[\begin{mat}[r]
+                9  &amp;0  &amp;0 \\
+                1  &amp;9  &amp;0 \\
+                0  &amp;0  &amp;4
+             \end{mat}
+             =
+             \begin{mat}[r]
+                3  &amp;0  &amp;0 \\
+               1/6 &amp;3  &amp;0 \\
+                0  &amp;0  &amp;2
+             \end{mat}^2\]</span> to construct a square root. Show that
+it holds up under similarity: if <span
+class="math inline">\(S^2=T\)</span> then <span
+class="math inline">\((PSP^{-1})(PSP^{-1})=PTP^{-1}\)</span>.</p>
+</div>
+</div>
+</body>
+</html>

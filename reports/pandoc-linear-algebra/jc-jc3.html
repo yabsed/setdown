@@ -1,0 +1,2188 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>jc3</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+  </style>
+  <script
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js"
+  type="text/javascript"></script>
+</head>
+<body>
+<h1 id="nilpotence">Nilpotence</h1>
+<p>This chapter shows that every square matrix is similar to one that is
+a sum of two kinds of simple matrices. The prior section focused on the
+first simple kind, diagonal matrices. We now consider the other
+kind.</p>
+<p>Because a linear transformation <span
+class="math inline">\(\map{t}{V}{V}\)</span> has the same domain as
+codomain, we can compose <span class="math inline">\(t\)</span> with
+itself: <span class="math inline">\(t^2=\composed{t}{t}\)</span>, and
+<span class="math inline">\(t^3=\composed{t}{\composed{t}{t}}\)</span>,
+etc.</p>
+<div class="center">
+<p><img src="jc/mp/ch5.1" alt="image" /></p>
+</div>
+<p>The superscript power notation <span
+class="math inline">\(t^j\)</span> for iterates of the transformations
+fits with the notation that we’ve used for their square matrix
+representations because if <span
+class="math inline">\(\rep{t}{B,B}=T\)</span> then <span
+class="math inline">\(\rep{t^j}{B,B}=T^j\)</span>.</p>
+<div class="example">
+<p><span id="ex:DerivIter" data-label="ex:DerivIter"></span> For the
+derivative map <span
+class="math inline">\(\map{d/dx}{\polyspace_3}{\polyspace_3}\)</span>
+given by <span class="math display">\[a+bx+cx^2+dx^3\xmapsunder{d/dx}
+b+2cx+3dx^2\]</span> the second power is the second derivative, <span
+class="math display">\[a+bx+cx^2+dx^3\xmapsunder{d^2/dx^2}
+2c+6dx\]</span> the third power is the third derivative, <span
+class="math display">\[a+bx+cx^2+dx^3\xmapsunder{d^3/dx^3} 6d\]</span>
+and any higher power is the zero map.</p>
+</div>
+<div class="example">
+<p>This transformation of the space <span
+class="math inline">\(\matspace_{\nbyn{2}}\)</span> of <span
+class="math inline">\(\nbyn{2}\)</span> matrices <span
+class="math display">\[\begin{mat}
+    a  &amp;b  \\
+    c  &amp;d
+  \end{mat}
+  \mapsunder{t}
+  \begin{mat}
+    b  &amp;a  \\
+    d  &amp;0
+  \end{mat}\]</span> has this second power <span
+class="math display">\[\begin{mat}
+    a  &amp;b  \\
+    c  &amp;d
+  \end{mat}
+  \mapsunder{t^2}
+  \begin{mat}
+    a  &amp;b  \\
+    0  &amp;0
+  \end{mat}\]</span> and this third power. <span
+class="math display">\[\begin{mat}
+    a  &amp;b  \\
+    c  &amp;d
+  \end{mat}
+  \mapsunder{t^3}
+  \begin{mat}
+    b  &amp;a  \\
+    0  &amp;0
+  \end{mat}\]</span> After that, <span
+class="math inline">\(t^4=t^2\)</span> and <span
+class="math inline">\(t^5=t^3\)</span>, etc.</p>
+</div>
+<div class="example">
+<p>Consider the shift transformation <span
+class="math inline">\(\map{t}{\C^3}{\C^3}\)</span>. <span
+class="math display">\[\colvec{x \\ y \\ z} \mapsunder{t} \colvec{0 \\ x
+\\ y}\]</span> We have that <span class="math display">\[\colvec{x \\ y
+\\ z} \mapsunder{t} \colvec{0 \\ x \\ y}
+                       \mapsunder{t} \colvec{0 \\ 0 \\ x}
+                       \mapsunder{t} \colvec{0 \\ 0 \\ 0}\]</span> so
+the range spaces descend to the trivial subspace. <span
+class="math display">\[\rangespace{t}=\set{\colvec{0 \\ a \\ b}\suchthat
+a,b\in\C}
+  \qquad
+  \rangespace{t^2}=\set{\colvec{0 \\ 0 \\ c}\suchthat c\in\C}
+  \qquad
+  \rangespace{t^3}=\set{\colvec{0 \\ 0 \\ 0}}\]</span></p>
+</div>
+<p>These examples suggest that after some number of iterations the map
+settles down.</p>
+<div class="lemma">
+<p><span id="le:RangeAndNullChains"
+data-label="le:RangeAndNullChains"></span> For any transformation <span
+class="math inline">\(\map{t}{V}{V}\)</span>, the range spaces of the
+powers form a descending chain <span class="math display">\[V\supseteq
+\rangespace{t}\supseteq\rangespace{t^2}\supseteq\cdots\]</span> and the
+null spaces form an ascending chain. <span
+class="math display">\[\set{\vec{0}}\subseteq\nullspace{t}\subseteq\nullspace{t^2}\subseteq\cdots\]</span>
+Further, there is a <span class="math inline">\(k&gt;0\)</span> such
+that for powers less than <span class="math inline">\(k\)</span> the
+subsets are proper: if <span class="math inline">\(j&lt;k\)</span> then
+<span
+class="math inline">\(\rangespace{t^j}\supset\rangespace{t^{j+1}}\)</span>
+and <span
+class="math inline">\(\nullspace{t^j}\subset\nullspace{t^{j+1}}\)</span>,
+while if <span class="math inline">\(j\geq k\)</span> then <span
+class="math inline">\(\rangespace{t^j}=\rangespace{t^{j+1}}\)</span> and
+<span
+class="math inline">\(\nullspace{t^j}=\nullspace{t^{j+1}}\)</span>).</p>
+</div>
+<p>(The <span class="math inline">\(k=1\)</span> case can happen, for
+instance if <span class="math inline">\(t\)</span> is the identity map,
+so that in the chains none of the subsets are proper subsets.)</p>
+<div class="proof">
+<p><em>Proof.</em> First recall that for any map the dimension of its
+range space plus the dimension of its null space equals the dimension of
+its domain. So if the dimensions of the range spaces shrink then the
+dimensions of the null spaces must rise. We will do the range space half
+here and leave the rest for .</p>
+<p>We start by showing that the range spaces form a chain. If <span
+class="math inline">\(\vec{w}\in\rangespace{t^{j+1}}\)</span>, so that
+<span class="math inline">\(\vec{w}=t^{j+1}(\vec{v})\)</span> for some
+<span class="math inline">\(\vec{v}\)</span>, then <span
+class="math inline">\(\vec{w}=t^{j}(\,t(\vec{v})\,)\)</span>. Thus <span
+class="math inline">\(\vec{w}\in\rangespace{t^{j}}\)</span>.</p>
+<p>Next we verify the “further” property: in the chain the subsets
+containments are proper initially, and then from some power <span
+class="math inline">\(k\)</span> onward the range spaces are equal. We
+first show that if any pair of adjacent range spaces in the chain are
+equal <span
+class="math inline">\(\rangespace{t^{k}}=\rangespace{t^{k+1}}\)</span>
+then all later ones are also equal: <span
+class="math inline">\(\rangespace{t^{k+1}}=\rangespace{t^{k+2}}\)</span>,
+etc. This holds because <span
+class="math inline">\(\map{t}{\rangespace{t^{k+1}}}{\rangespace{t^{k+2}}}\)</span>
+is the same map, with the same domain, as <span
+class="math inline">\(\map{t}{\rangespace{t^{k}}}{\rangespace{t^{k+1}}}\)</span>,
+and it therefore has the same range <span
+class="math inline">\(\rangespace{t^{k+1}}=\rangespace{t^{k+2}}\)</span>
+(it holds for all higher powers by induction). So if the chain of range
+spaces ever stops strictly decreasing then from that point onward it is
+stable.</p>
+<p>We end by showing that the chain must eventually stop decreasing.
+Each range space is a subspace of the one before it. For it to be a
+proper subspace, it must be of strictly lower dimension (see ). These
+spaces are finite-dimensional and so the chain can fall for only
+finitely many steps. That is, the power <span
+class="math inline">\(k\)</span> is at most the dimension of <span
+class="math inline">\(V\)</span>. ◻</p>
+</div>
+<div class="example">
+<p>The derivative map <span
+class="math inline">\(a+bx+cx^2+dx^3\xmapsunder{d/dx}
+b+2cx+3dx^2\)</span> on <span
+class="math inline">\(\polyspace_3\)</span> has this chain of range
+spaces. <span class="math display">\[\rangespace{t^0}=\polyspace_3
+    \:\supset\:\rangespace{t^1}=\polyspace_2
+    \:\supset\:\rangespace{t^2}=\polyspace_1
+    \:\supset\:\rangespace{t^3}=\polyspace_0
+    \:\supset\:\rangespace{t^4}=\set{\zero}
+    % =\rangespace{t^5}=\set{\zero}=
+    % \,=\,\cdots\]</span> All later elements of the chain are the
+trivial space. It has this chain of null spaces. <span
+class="math display">\[\nullspace{t^0}=\set{\zero}
+  \:\subset\: \nullspace{t^1}=\polyspace_0
+  \:\subset\:\nullspace{t^2}=\polyspace_1
+  \:\subset\:\nullspace{t^3}=\polyspace_2
+  \:\subset\:\nullspace{t^4}=\polyspace_3\]</span> Later elements are
+the entire space.</p>
+</div>
+<div class="example">
+<p><span id="exam:PolyRankFalls" data-label="exam:PolyRankFalls"></span>
+Let <span
+class="math inline">\(\map{t}{\polyspace_2}{\polyspace_2}\)</span> be
+the map <span class="math inline">\(d_0+d_1x+d_2x^2 \mapsto
+2d_0+d_2x.\)</span> As the lemma describes, on iteration the range space
+shrinks <span class="math display">\[\rangespace{t^0}=\polyspace_2
+    \quad
+  \rangespace{t}=\set{a_0+a_1x\suchthat a_0,a_1\in\C}
+    \quad
+  \rangespace{t^2}=\set{a_0\suchthat a_0\in\C}\]</span> and then
+stabilizes, so that <span
+class="math inline">\(\rangespace{t^2}=\rangespace{t^3}=\cdots\)</span>.
+The null space grows <span
+class="math display">\[\nullspace{t^0}=\set{0}
+    \quad
+  \nullspace{t}=\set{b_1x\suchthat b_1\in\C}
+    \quad
+  \nullspace{t^2}=\set{b_1x+b_2x^2\suchthat b_1,b_2\in\C}\]</span> and
+then stabilizes <span
+class="math inline">\(\nullspace{t^2}=\nullspace{t^3}=\cdots\)</span>.</p>
+</div>
+<div class="example">
+<p>The transformation <span
+class="math inline">\(\map{\pi}{\C^3}{\C^3}\)</span> projecting onto the
+first two coordinates <span class="math display">\[\colvec{c_1 \\ c_2 \\
+c_3}
+     \mapsunder{\pi}
+   \colvec{c_1 \\ c_2 \\ 0}\]</span> has <span
+class="math inline">\(\C^3\supset\rangespace{\pi}=\rangespace{\pi^2}=\cdots\)</span>
+and <span
+class="math inline">\(\set{\zero}\subset\nullspace{\pi}=\nullspace{\pi^2}=\cdots\,\)</span>
+where this is the range space and the null space. <span
+class="math display">\[\rangespace{\pi}=\set{\colvec{a \\ b \\
+0}\suchthat a,b\in\C}
+  \qquad
+  \nullspace{\pi}=\set{\colvec{0 \\ 0 \\ c}\suchthat
+c\in\C}\]</span></p>
+</div>
+<div class="definition">
+<p>Let <span class="math inline">\(t\)</span> be a transformation on an
+<span class="math inline">\(n\)</span>-dimensional space. The (or ) is
+<span class="math inline">\(\genrangespace{t}=\rangespace{t^n}\)</span>.
+The (or ) is <span
+class="math inline">\(\gennullspace{t}=\nullspace{t^n}\)</span>.</p>
+</div>
+<p>This graph illustrates. The horizontal axis gives the power <span
+class="math inline">\(j\)</span> of a transformation. The vertical axis
+gives the dimension of the range space of <span
+class="math inline">\(t^j\)</span> as the distance above zero, and thus
+also shows the dimension of the null space because the two add to the
+dimension <span class="math inline">\(n\)</span> of the domain.</p>
+<div class="center">
+<p><img src="jc/mp/ch5.8" alt="image" /></p>
+</div>
+<p>On iteration the rank falls and the nullity rises until there is some
+<span class="math inline">\(k\)</span> such that the map reaches a
+steady state <span
+class="math inline">\(\rangespace{t^k}=\rangespace{t^{k+1}}=\genrangespace{t}\)</span>
+and <span
+class="math inline">\(\nullspace{t^k}=\nullspace{t^{k+1}}=\gennullspace{t}\)</span>.
+This must happen by the <span class="math inline">\(n\)</span>-th
+iterate.</p>
+<div class="exercises">
+<p>Give the chains of range spaces and null spaces for the zero and
+identity transformations.</p>
+<div class="answer">
+<p>For the zero transformation, no matter what the space, the chain of
+range spaces is <span
+class="math inline">\(V\supset\set{\vec{0}}=\set{\vec{0}}=\cdots\,\)</span>
+and the chain of null spaces is <span
+class="math inline">\(\set{\vec{0}}\subset V=V=\cdots\,\)</span>. For
+the identity transformation the chains are <span
+class="math inline">\(V=V=V=\cdots\)</span> and <span
+class="math inline">\(\set{\vec{0}}=\set{\vec{0}}=\cdots\,\)</span>.</p>
+</div>
+<p>For each map, give the chain of range spaces and the chain of null
+spaces, and the generalized range space and the generalized null
+space.</p>
+<div class="exparts">
+<p><span
+class="math inline">\(\map{t_0}{\polyspace_2}{\polyspace_2}\)</span>,
+<span class="math inline">\(a+bx+cx^2\mapsto b+cx^2\)</span> <span
+class="math inline">\(\map{t_1}{\Re^2}{\Re^2}\)</span>, <span
+class="math display">\[\colvec{a \\ b}\mapsto\colvec{0 \\ a}\]</span>
+<span
+class="math inline">\(\map{t_2}{\polyspace_2}{\polyspace_2}\)</span>,
+<span class="math inline">\(a+bx+cx^2\mapsto b+cx+ax^2\)</span> <span
+class="math inline">\(\map{t_3}{\Re^3}{\Re^3}\)</span>, <span
+class="math display">\[\colvec{a \\ b \\ c}\mapsto\colvec{a \\ a \\
+b}\]</span></p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>Iterating <span class="math inline">\(t_0\)</span> twice <span
+class="math inline">\(a+bx+cx^2\mapsto b+cx^2\mapsto cx^2\)</span> gives
+<span class="math display">\[a+bx+cx^2\mapsunder{t_0^2}cx^2\]</span> and
+any higher iterate is the same map. Thus, while <span
+class="math inline">\(\rangespace{t_0}\)</span> is the space of
+quadratic polynomials with no linear term <span
+class="math inline">\(\set{p+rx^2\suchthat p,r\in \C}\)</span>, and
+<span class="math inline">\(\rangespace{t_0^2}\)</span> is the space of
+purely-quadratic polynomials <span
+class="math inline">\(\set{rx^2\suchthat r\in \C}\)</span>, this is
+where the chain stabilizes <span
+class="math inline">\(\genrangespace{t_0}=\set{rx^2\suchthat r\in
+\C}\)</span>.</p>
+<p>As for null spaces, <span
+class="math inline">\(\nullspace{t_0}\)</span> is the space of
+purely-linear quadratic polynomials <span
+class="math inline">\(\set{qx\suchthat q\in \C}\)</span>, and <span
+class="math inline">\(\nullspace{t_0^2}\)</span> is the space of linear
+polynomials <span class="math inline">\(\set{p+qx\suchthat p,q\in
+\C}\)</span>. This is the end: <span
+class="math inline">\(\gennullspace{t_0}=\nullspace{t_0^2}\)</span>. The
+second power <span class="math display">\[\colvec{a \\ b}
+              \mapsunder{t_1}\colvec{0 \\ a}
+              \mapsunder{t_1}\colvec{0 \\ 0}\]</span> is the zero map.
+Consequently, the chain of range spaces <span
+class="math display">\[\Re^2
+               \supset\set{\colvec{0 \\ p}\suchthat p\in\C}
+               \supset\set{\zero}
+               =\cdots\]</span> and the chain of null spaces <span
+class="math display">\[\set{\zero}
+               \subset\set{\colvec{q \\ 0}\suchthat q\in\C}
+               \subset\Re^2
+               =\cdots\]</span> each has length two. The generalized
+range space is the trivial subspace and the generalized null space is
+the entire space. Iterates of this map cycle around <span
+class="math display">\[a+bx+cx^2
+               \mapsunder{t_2} b+cx+ax^2            
+               \mapsunder{t_2} c+ax+bx^2            
+               \mapsunder{t_2} a+bx+cx^2
+               \;\cdots\]</span> and the chains of range spaces and null
+spaces are trivial. <span
+class="math display">\[\polyspace_2=\polyspace_2=\cdots
+              \qquad
+              \set{\zero}=\set{\zero}=\cdots\]</span> Thus, obviously,
+generalized spaces are <span
+class="math inline">\(\genrangespace{t_2}=\polyspace_2\)</span> and
+<span class="math inline">\(\gennullspace{t_2}=\set{\zero}\)</span>. We
+have <span class="math display">\[\colvec{a \\ b \\ c}
+                \mapsto\colvec{a \\ a \\ b}
+                \mapsto\colvec{a \\ a \\ a}
+                \mapsto\colvec{a \\ a \\ a}
+                \mapsto\cdots\]</span> and so the chain of range spaces
+<span class="math display">\[\Re^3
+               \supset\set{\colvec{p \\ p \\ r}\suchthat p,r\in\C}
+               \supset\set{\colvec{p \\ p \\ p}\suchthat p\in\C}
+               =\cdots\]</span> and the chain of null spaces <span
+class="math display">\[\set{\zero}
+                \subset\set{\colvec{0 \\ 0 \\ r}\suchthat r\in \C}
+                \subset\set{\colvec{0 \\ q \\ r}\suchthat q,r\in \C}
+                =\cdots\]</span> each has length two. The generalized
+spaces are the final ones shown above in each chain.</p>
+</div>
+</div>
+<p>Prove that function composition is associative <span
+class="math inline">\(\composed{(\composed{t}{t})}{t}=\composed{t}{(\composed{t}{t})}\)</span>
+and so we can write <span class="math inline">\(t^3\)</span> without
+specifying a grouping.</p>
+<div class="answer">
+<p>Each maps <span class="math inline">\(x\mapsto
+t(t(t(x)))\)</span>.</p>
+</div>
+<p><span id="exer:PropSubspStrictLowerDimen"
+data-label="exer:PropSubspStrictLowerDimen"></span> Check that a
+subspace must be of dimension less than or equal to the dimension of its
+superspace. Check that if the subspace is proper (the subspace does not
+equal the superspace) then the dimension is strictly less. <em>(This is
+used in the proof of .)</em></p>
+<div class="answer">
+<p>Recall that if <span class="math inline">\(W\)</span> is a subspace
+of <span class="math inline">\(V\)</span> then we can enlarge any basis
+<span class="math inline">\(B_W\)</span> for <span
+class="math inline">\(W\)</span> to make a basis <span
+class="math inline">\(B_V\)</span> for <span
+class="math inline">\(V\)</span>. From this the first sentence is
+immediate. The second sentence is also not hard: <span
+class="math inline">\(W\)</span> is the span of <span
+class="math inline">\(B_W\)</span> and if <span
+class="math inline">\(W\)</span> is a proper subspace then <span
+class="math inline">\(V\)</span> is not the span of <span
+class="math inline">\(B_W\)</span>, and so <span
+class="math inline">\(B_V\)</span> must have at least one vector more
+than does <span class="math inline">\(B_W\)</span>.</p>
+</div>
+<p>Prove that the generalized range space <span
+class="math inline">\(\genrangespace{t}\)</span> is the entire space,
+and the generalized null space <span
+class="math inline">\(\gennullspace{t}\)</span> is trivial, if the
+transformation <span class="math inline">\(t\)</span> is nonsingular. Is
+this ‘only if’ also?</p>
+<div class="answer">
+<p>It is both ‘if’ and ‘only if’. A linear map is nonsingular if and
+only if it preserves dimension, that is, if the dimension of its range
+equals the dimension of its domain. With a transformation <span
+class="math inline">\(\map{t}{V}{V}\)</span> that means that the map is
+nonsingular if and only if it is onto: <span
+class="math inline">\(\rangespace{t}=V\)</span> (and thus <span
+class="math inline">\(\rangespace{t^2}=V\)</span>, etc).</p>
+</div>
+<p><span id="exer:RangeAndNullChains"
+data-label="exer:RangeAndNullChains"></span> Verify the null space half
+of .</p>
+<div class="answer">
+<p>The null spaces form chains because because if <span
+class="math inline">\(\vec{v}\in\nullspace{t^j}\)</span> then <span
+class="math inline">\(t^j(\vec{v})=\zero\)</span> and <span
+class="math inline">\(t^{j+1}(\vec{v})=t(\,t^j(\vec{v})\,)=t(\zero)=\zero\)</span>
+and so <span
+class="math inline">\(\vec{v}\in\nullspace{t^{j+1}}\)</span>.</p>
+<p>Now, the “further” property for null spaces follows from that fact
+that it holds for range spaces, along with the prior exercise. Because
+the dimension of <span class="math inline">\(\rangespace{t^j}\)</span>
+plus the dimension of <span
+class="math inline">\(\nullspace{t^j}\)</span> equals the
+dimension <span class="math inline">\(n\)</span> of the starting
+space <span class="math inline">\(V\)</span>, when the dimensions of the
+range spaces stop decreasing, so do the dimensions of the null spaces.
+The prior exercise shows that from this point <span
+class="math inline">\(k\)</span> on, the containments in the chain are
+not properthe null spaces are equal.</p>
+</div>
+<p>Give an example of a transformation on a three dimensional space
+whose range has dimension two. What is its null space? Iterate your
+example until the range space and null space stabilize.</p>
+<div class="answer">
+<p>(Many examples are correct but here is one.) An example is the shift
+operator on triples of reals <span class="math inline">\((x,y,z)\mapsto
+(0,x,y)\)</span>. The null space is all triples that start with two
+zeros. The map stabilizes after three iterations.</p>
+</div>
+<p>Show that the range space and null space of a linear transformation
+need not be disjoint. Are they ever disjoint?</p>
+<div class="answer">
+<p>The differentiation operator <span
+class="math inline">\(\map{d/dx}{\polyspace_1}{\polyspace_1}\)</span>
+has the same range space as null space. For an example of where they are
+disjoint except for the zero vectorconsider an identity map, or any
+nonsingular map.</p>
+</div>
+</div>
+<p><em>This requires material from the optional Combining Subspaces
+subsection.</em></p>
+<p>The prior subsection shows that as <span
+class="math inline">\(j\)</span> increases the dimensions of the <span
+class="math inline">\(\rangespace{t^j}\)</span>’s fall while the
+dimensions of the <span class="math inline">\(\nullspace{t^j}\)</span>’s
+rise, in such a way that this rank and nullity split between them the
+dimension of <span class="math inline">\(V\)</span>. Can we say more; do
+the two split a basisis <span
+class="math inline">\(V=\rangespace{t^j}\directsum\nullspace{t^j}\)</span>?</p>
+<p>The answer is yes for the smallest power <span
+class="math inline">\(j=0\)</span> since <span
+class="math inline">\(V=\rangespace{t^0}\directsum\nullspace{t^0}=V\directsum\set{\zero}\)</span>.
+The answer is also yes at the other extreme.</p>
+<div class="lemma">
+<p><span id="lem:RestONeToOne" data-label="lem:RestONeToOne"></span> For
+any linear <span class="math inline">\(\map{t}{V}{V}\)</span> the
+function <span
+class="math inline">\(\map{t}{\genrangespace{t}}{\genrangespace{t}}\)</span>
+is one-to-one.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> Let the dimension of <span
+class="math inline">\(V\)</span> be <span
+class="math inline">\(n\)</span>. Because <span
+class="math inline">\(\rangespace{t^n}=\rangespace{t^{n+1}}\)</span>,
+the map <span
+class="math inline">\(\map{t}{\genrangespace{t}}{\genrangespace{t}}\)</span>
+is a dimension-preserving homomorphism. Therefore, by
+Theorem Three.II.<a href="#th:OOHomoEquivalence"
+data-reference-type="ref"
+data-reference="th:OOHomoEquivalence">[th:OOHomoEquivalence]</a> it is
+one-to-one. ◻</p>
+</div>
+<div class="corollary">
+<p><span id="GenRngNullDirSumToSp"
+data-label="GenRngNullDirSumToSp"></span> Where <span
+class="math inline">\(\map{t}{V}{V}\)</span> is a linear transformation,
+the space is the direct sum <span
+class="math inline">\(V=\genrangespace{t}\directsum\gennullspace{t}\)</span>.
+That is, both (1) <span
+class="math inline">\(\dim(V)=\dim(\genrangespace{t})+\dim(\gennullspace{t})\)</span>
+and (2) <span
+class="math inline">\(\genrangespace{t}\intersection\gennullspace{t}=\set{\zero}\)</span>.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> Let the dimension of <span
+class="math inline">\(V\)</span> be <span
+class="math inline">\(n\)</span>. We will verify the second sentence,
+which is equivalent to the first. Clause (1) is true because any
+transformation satisfies that its rank plus its nullity equals the
+dimension of the space, and in particular this holds for the
+transformation <span class="math inline">\(t^n\)</span>.</p>
+<p>For clause (2), assume that <span
+class="math inline">\(\vec{v}\in\genrangespace{t}\intersection\gennullspace{t}\)</span>
+to prove that <span class="math inline">\(\vec{v}=\zero\)</span>.
+Because <span class="math inline">\(\vec{v}\)</span> is in the
+generalized null space, <span
+class="math inline">\(t^n(\vec{v})=\zero\)</span>. On the other hand, by
+the lemma <span
+class="math inline">\(\map{t}{\genrangespace{t}}{\genrangespace{t}}\)</span>
+is one-to-one and a composition of one-to-one maps is one-to-one, so
+<span
+class="math inline">\(\map{t^n}{\genrangespace{t}}{\genrangespace{t}}\)</span>
+is one-to-one. Only <span class="math inline">\(\zero\)</span> is sent
+by a one-to-one linear map to <span class="math inline">\(\zero\)</span>
+so the fact that <span class="math inline">\(t^n(\vec{v})=\zero\)</span>
+implies that <span class="math inline">\(\vec{v}=\zero\)</span>. ◻</p>
+</div>
+<div class="remark">
+<p>Technically there is a difference between the map <span
+class="math inline">\(\map{t}{V}{V}\)</span> and the map on the subspace
+<span
+class="math inline">\(\map{t}{\genrangespace{t}}{\genrangespace{t}}\)</span>
+if the generalized range space is not equal to <span
+class="math inline">\(V\)</span>, because the domains are different. But
+the difference is small because the second is the restriction of the
+first to <span class="math inline">\(\genrangespace{t}\)</span>.</p>
+</div>
+<p>For powers between <span class="math inline">\(j=0\)</span> and <span
+class="math inline">\(j=n\)</span>, the space <span
+class="math inline">\(V\)</span> might not be the direct sum of <span
+class="math inline">\(\rangespace{t^j}\)</span> and <span
+class="math inline">\(\nullspace{t^j}\)</span>. The next example shows
+that the two can have a nontrivial intersection.</p>
+<div class="example">
+<p><span id="FirstNilMap" data-label="FirstNilMap"></span> Consider the
+transformation of <span class="math inline">\(\C^2\)</span> defined by
+this action on the elements of the standard basis. <span
+class="math display">\[\colvec[r]{1 \\ 0}
+    \mapsunder{n}
+    \colvec[r]{0 \\ 1}
+  \quad
+  \colvec[r]{0 \\ 1}
+    \mapsunder{n}
+    \colvec[r]{0 \\ 0}
+  \qquad
+  N=\rep{n}{\stdbasis_2,\stdbasis_2}=\begin{mat}[r]
+    0  &amp;0  \\
+    1  &amp;0
+  \end{mat}\]</span> This is a because it shifts the entries down, with
+the bottom entry shifting entirely out of the vector. <span
+class="math display">\[\colvec{x \\ y}\mapsto \colvec{0 \\ x}\]</span>
+On the basis, this map’s action gives a . <span
+class="math display">\[\begin{strings}{ccccc}
+     \colvec{1 \\ 0} &amp;\mapsto &amp;\colvec{0 \\ 1} &amp;\mapsto
+&amp;\colvec{0 \\ 0}
+  \end{strings}
+  \qquad\text{that is}\qquad
+  \begin{strings}{ccccc}
+     \vec{e}_1 &amp;\mapsto &amp;\vec{e}_2 &amp;\mapsto &amp;\zero
+  \end{strings}\]</span> This map is a natural way to have a vector in
+both the range space and null space; the string depiction shows that
+this is one such vector. <span
+class="math display">\[\vec{e}_2=\colvec[r]{0 \\ 1}\]</span> Observe
+also that although <span class="math inline">\(n\)</span> is not the
+zero map, the function <span
+class="math inline">\(n^2=\composed{n}{n}\)</span> is the zero map.</p>
+</div>
+<div class="example">
+<p><span id="NilIndexFourOnCFour"
+data-label="NilIndexFourOnCFour"></span> A linear function <span
+class="math inline">\(\map{\hat{n}}{\C^4}{\C^4}\)</span> whose action on
+<span class="math inline">\(\stdbasis_4\)</span> is given by the string
+<span class="math display">\[\begin{strings}{ccccccccc}
+     \vec{e}_1 &amp;\mapsto &amp;\vec{e}_2
+          &amp;\mapsto &amp;\vec{e}_3
+          &amp;\mapsto &amp;\vec{e}_4
+          &amp;\mapsto &amp;\zero
+  \end{strings}\]</span> has <span
+class="math inline">\(\rangespace{\hat{n}}\intersection\nullspace{\hat{n}}\)</span>
+equal to the span <span
+class="math inline">\(\spanof{\set{\vec{e}_4}}\)</span>, has <span
+class="math inline">\(\rangespace{\hat{n}^2}\intersection\nullspace{\hat{n}^2}=
+  \spanof{\set{\vec{e}_3,\vec{e}_4}}\)</span>, and has <span
+class="math inline">\(\rangespace{\hat{n}^3}\intersection\nullspace{\hat{n}^3}=
+    \spanof{\set{\vec{e}_4}}\)</span>. The matrix representation is all
+zeros except for some subdiagonal ones. <span
+class="math display">\[\hat{N}=\rep{\hat{n}}{\stdbasis_4,\stdbasis_4}
+  =\begin{mat}[r]
+    0  &amp;0  &amp;0  &amp;0 \\
+    1  &amp;0  &amp;0  &amp;0 \\
+    0  &amp;1  &amp;0  &amp;0 \\
+    0  &amp;0  &amp;1  &amp;0 \
+  \end{mat}\]</span> Although <span
+class="math inline">\(\hat{n}\)</span> is not the zero map, and neither
+is <span class="math inline">\(\hat{n}^2\)</span> or <span
+class="math inline">\(\hat{n}^3\)</span>, the function <span
+class="math inline">\(\hat{n}^4\)</span> is the zero function.</p>
+</div>
+<div class="example">
+<p><span id="ThirdNilMap" data-label="ThirdNilMap"></span>
+Transformations can act via more than one string. The transformation
+<span class="math inline">\(t\)</span> acting on a basis <span
+class="math inline">\(B=\sequence{\vec{\beta}_1,\dots,\vec{\beta}_5}\)</span>
+by <span class="math display">\[\begin{strings}{ccccccc}
+    \vec{\beta}_1 &amp;\mapsto &amp;\vec{\beta}_2 &amp;\mapsto
+&amp;\vec{\beta}_3
+        &amp;\mapsto &amp;\zero \\
+    \vec{\beta}_4 &amp;\mapsto &amp;\vec{\beta}_5 &amp;\mapsto
+&amp;\zero
+  \end{strings}\]</span> will have, for instance, <span
+class="math inline">\(\vec{\beta}_3\)</span> in the intersection of its
+range space and null space. The strings make clear that <span
+class="math inline">\(t^3\)</span> is the zero map. This map is
+represented by a matrix that is all zeros except for blocks of
+subdiagonal ones <span class="math display">\[\rep{t}{B,B}=
+  \begin{pmat}{rrr|rr}
+     0  &amp;0  &amp;0  &amp;0  &amp;0  \\
+     1  &amp;0  &amp;0  &amp;0  &amp;0  \\
+     0  &amp;1  &amp;0  &amp;0  &amp;0  \\ \hline
+     0  &amp;0  &amp;0  &amp;0  &amp;0  \\
+     0  &amp;0  &amp;0  &amp;1  &amp;0
+  \end{pmat}\]</span> (the lines just visually organize the blocks).</p>
+</div>
+<p>In those examples all vectors are eventually transformed to zero.</p>
+<div class="definition">
+<p><span id="def:nilpotent" data-label="def:nilpotent"></span> A
+transformation is one with a power that is the zero map. A is one with a
+power that is the zero matrix. In either case, the least such power is
+the .</p>
+</div>
+<div class="example">
+<p>In the index of nilpotency is two. In it is four. In it is three.</p>
+</div>
+<div class="example">
+<p>The differentiation map <span
+class="math inline">\(\map{d/dx}{\polyspace_2}{\polyspace_2}\)</span> is
+nilpotent of index three since the third derivative of any quadratic
+polynomial is zero. This map’s action is described by the string <span
+class="math inline">\(x^2\mapsto 2x\mapsto 2\mapsto 0\)</span> and
+taking the basis <span
+class="math inline">\(B=\sequence{x^2,2x,2}\)</span> gives this
+representation. <span class="math display">\[\rep{d/dx}{B,B}=
+  \begin{mat}[r]
+     0  &amp;0  &amp;0  \\
+     1  &amp;0  &amp;0  \\
+     0  &amp;1  &amp;0
+  \end{mat}\]</span></p>
+</div>
+<p>Not all nilpotent matrices are all zeros except for blocks of
+subdiagonal ones.</p>
+<div class="example">
+<p><span id="ex:NilMatNotCanon" data-label="ex:NilMatNotCanon"></span>
+With the matrix <span class="math inline">\(\hat{N}\)</span> from , and
+this four-vector basis <span
+class="math display">\[D=\sequence{\colvec[r]{1 \\ 0 \\ 1 \\ 0},
+              \colvec[r]{0 \\ 2 \\ 1 \\ 0},
+              \colvec[r]{1 \\ 1 \\ 1 \\ 0},
+              \colvec[r]{0 \\ 0 \\ 0 \\ 1}}\]</span> a change of basis
+operation produces this representation with respect to <span
+class="math inline">\(D,D\)</span>. <span
+class="math display">\[\begin{mat}[r]
+    1  &amp;0  &amp;1 &amp;0 \\
+    0  &amp;2  &amp;1 &amp;0 \\
+    1  &amp;1  &amp;1 &amp;0 \\
+    0  &amp;0  &amp;0 &amp;1
+  \end{mat}
+  \begin{mat}[r]
+    0  &amp;0  &amp;0 &amp;0 \\
+    1  &amp;0  &amp;0 &amp;0 \\
+    0  &amp;1  &amp;0 &amp;0 \\
+    0  &amp;0  &amp;1 &amp;0
+  \end{mat}
+  \begin{mat}[r]
+    1  &amp;0  &amp;1 &amp;0 \\
+    0  &amp;2  &amp;1 &amp;0 \\
+    1  &amp;1  &amp;1 &amp;0 \\
+    0  &amp;0  &amp;0 &amp;1
+  \end{mat}^{-1}\!\!
+  =
+  \begin{mat}[r]
+   -1  &amp;0  &amp;1   &amp;0 \\
+   -3  &amp;-2 &amp;5   &amp;0 \\
+   -2  &amp;-1  &amp;3  &amp;0 \\
+    2  &amp;1   &amp;-2 &amp;0
+  \end{mat}\]</span> The new matrix is nilpotent; its fourth power is
+the zero matrix. We could verify this with a tedious computation or we
+can instead just observe that it is nilpotent since its fourth power is
+similar to <span class="math inline">\(\hat{N}^4\)</span>, the zero
+matrix, and the only matrix similar to the zero matrix is itself. <span
+class="math display">\[(P\hat{N}P^{-1})^4
+   =P\hat{N}P^{-1}\cdot P\hat{N}P^{-1}\cdot P\hat{N}P^{-1}\cdot
+P\hat{N}P^{-1}
+   =P\hat{N}^4P^{-1}\]</span></p>
+</div>
+<p>The goal of this subsection is to show that the prior example is
+prototypical in that every nilpotent matrix is similar to one that is
+all zeros except for blocks of subdiagonal ones.</p>
+<div class="definition">
+<p>Let <span class="math inline">\(t\)</span> be a nilpotent
+transformation on <span class="math inline">\(V\)</span>. A is a
+sequence <span
+class="math inline">\(\sequence{\vec{v},t(\vec{v}),\ldots,t^{k-1}(\vec{v})}\)</span>
+such that <span class="math inline">\(t^k(\vec{v})=\zero\)</span>. A is
+a basis that is a concatenation of <span
+class="math inline">\(t\)</span>-strings.</p>
+</div>
+<p>(The strings cannot form a basis under concatenation unless they are
+disjoint because a basis cannot have a repeated vector.)</p>
+<div class="example">
+<p>This linear map <span
+class="math inline">\(\map{t}{\C^3}{\C^3}\)</span> <span
+class="math display">\[\colvec{x \\ y \\ z}\mapsunder{t}\colvec{y \\ z
+\\ 0}\]</span> is nilpotent, of index <span
+class="math inline">\(3\)</span>. <span class="math display">\[\colvec{x
+\\ y \\ z}
+  \mapsunder{t}\colvec{y \\ z \\ 0}
+  \mapsunder{t}\colvec{z \\ 0 \\ 0}
+  \mapsunder{t}\colvec{0 \\ 0 \\ 0}\]</span> This is a <span
+class="math inline">\(t\)</span>-string. <span
+class="math display">\[\sequence{\colvec{0 \\ 0 \\ 1},
+            \colvec{0 \\ 1 \\ 0},
+            \colvec{1 \\ 0 \\ 0}}\]</span> Because that sequence is a
+basis, it is a <span class="math inline">\(t\)</span>-string basis for
+the space <span class="math inline">\(\C^3\)</span>.</p>
+</div>
+<p>Where the sequence of the prior example is <span
+class="math inline">\(\sequence{\vec{\beta}_1,
+             \vec{\beta}_2,
+             \vec{\beta}_3}\)</span>, another <span
+class="math inline">\(t\)</span>-string is <span
+class="math inline">\(\sequence{\vec{\beta}_2,
+             \vec{\beta}_3}\)</span>. But of course the second sequence
+is not a basis for <span class="math inline">\(\C^3\)</span>. In that
+sense, the <span class="math inline">\(t\)</span>-strings in a <span
+class="math inline">\(t\)</span>-string basis must be maximal.</p>
+<div class="example">
+<p>The linear map of differentiation <span
+class="math inline">\(\map{d/dx}{\polyspace_2}{\polyspace_2}\)</span> is
+nilpotent. The sequence <span class="math inline">\(\sequence{x^2, 2x,
+2}\)</span> is a <span class="math inline">\(d/dx\)</span>-string of
+length <span class="math inline">\(3\)</span>; in particular, this
+string satisfies the requirement that <span
+class="math inline">\(d/dx(2)=0\)</span>. Because it is a basis, that
+sequence is a <span class="math inline">\(d/dx\)</span>-string basis for
+<span class="math inline">\(\polyspace_2\)</span>.</p>
+</div>
+<div class="example">
+<p>In , we can concatenate the <span
+class="math inline">\(t\)</span>-strings <span
+class="math inline">\(\sequence{\vec{\beta}_1,\vec{\beta}_2,\vec{\beta}_3}\)</span>
+and <span
+class="math inline">\(\sequence{\vec{\beta}_4,\vec{\beta}_5}\)</span> to
+make a basis for the domain of <span
+class="math inline">\(t\)</span>.</p>
+</div>
+<div class="lemma">
+<p><span id="le:LongestTowerIsIndex"
+data-label="le:LongestTowerIsIndex"></span> If a space has a <span
+class="math inline">\(t\)</span>-string basis then the index of
+nilpotency of <span class="math inline">\(t\)</span> equals the length
+of the longest string in that basis.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> Let the space have a <span
+class="math inline">\(t\)</span>-string basis and let <span
+class="math inline">\(t\)</span>’s index of nilpotency be <span
+class="math inline">\(k\)</span>. Then <span
+class="math inline">\(t^k\)</span> sends any vector to <span
+class="math inline">\(\zero\)</span>. That must include the vector
+starting any string, so each string in the string basis has length at
+most <span class="math inline">\(k\)</span>.</p>
+<p>Now instead suppose that the space has a <span
+class="math inline">\(t\)</span>-string basis <span
+class="math inline">\(B\)</span> where all of the strings are shorter
+than length <span class="math inline">\(k\)</span>. Because <span
+class="math inline">\(t\)</span> has the index of nilpotency <span
+class="math inline">\(k\)</span>, there is a <span
+class="math inline">\(\vec{v}\)</span> such that <span
+class="math inline">\(t^{k-1}(\vec{v})\neq\zero\)</span>. Represent
+<span class="math inline">\(\vec{v}\)</span> as a linear combination of
+elements from <span class="math inline">\(B\)</span> and apply <span
+class="math inline">\(t^{k-1}\)</span>. We are supposing that <span
+class="math inline">\(t^{k-1}\)</span> maps each element of <span
+class="math inline">\(B\)</span> to <span
+class="math inline">\(\zero\)</span>. It therefore maps each term in the
+linear combination to <span class="math inline">\(\zero\)</span>,
+contradicting that it does not map <span
+class="math inline">\(\vec{v}\)</span> to <span
+class="math inline">\(\zero\)</span>. ◻</p>
+</div>
+<p>We shall show that each nilpotent map has an associated string basis,
+a basis of disjoint strings.</p>
+<p>To see the main idea of the argument, imagine that we want to
+construct a counterexample, a map that is nilpotent but without an
+associated basis of disjoint strings. We might think to make something
+like the map <span class="math inline">\(\map{t}{\C^5}{\C^5}\)</span>
+with this action.</p>
+<div class="center">
+<div class="minipage">
+<p><span class="math inline">\(\begin{strings}{ccccc}
+     \begin{picture}(4,15)
+       \put(0,14){$\vec{e}_1$}
+       \put(0,-12){$\vec{e}_2$}
+     \end{picture}
+     &amp;\begin{picture}(8,10)
+       \put(0,8){\rotatebox{-30}{$\mapsto$}}%  
+       \put(0,-8){\rotatebox{30}{$\mapsto$}}
+     \end{picture}
+     &amp;\vec{e}_3 &amp;\mapsto &amp;\zero  \\[4ex]
+     \vec{e}_4 &amp;\mapsto &amp;\vec{e}_5 &amp;\mapsto &amp;\zero  
+  \end{strings}\)</span></p>
+</div>
+<p><span class="math inline">\(\rep{t}{\stdbasis_5,\stdbasis_5}=
+  \begin{mat}[r]
+    0  &amp;0  &amp;0  &amp;0  &amp;0  \\
+    0  &amp;0  &amp;0  &amp;0  &amp;0  \\
+    1  &amp;1  &amp;0  &amp;0  &amp;0  \\
+    0  &amp;0  &amp;0  &amp;0  &amp;0  \\
+    0  &amp;0  &amp;0  &amp;1  &amp;0
+  \end{mat}\)</span></p>
+</div>
+<p>But, the fact that the shown basis isn’t disjoint doesn’t mean that
+there isn’t another basis that consists of disjoint strings.</p>
+<p>To produce such a basis for this map we will first find the number
+and lengths of its strings. Observe that <span
+class="math inline">\(t\)</span>’s index of nilpotency is two. says that
+in a disjoint string basis at least one string has length two. There are
+five basis elements so if there is a disjoint string basis then the map
+must act in one of these ways. <span
+class="math display">\[\begin{strings}{ccccc}
+    \vec{\beta}_1 &amp;\mapsto &amp;\vec{\beta}_2 &amp;\mapsto
+&amp;\zero  \\
+    \vec{\beta}_3 &amp;\mapsto &amp;\vec{\beta}_4 &amp;\mapsto
+&amp;\zero  \\
+    \vec{\beta}_5 &amp;\mapsto &amp;\zero
+  \end{strings}
+  \hspace*{3em}
+  \begin{strings}{ccccc}
+    \vec{\beta}_1 &amp;\mapsto &amp;\vec{\beta}_2 &amp;\mapsto
+&amp;\zero  \\
+    \vec{\beta}_3 &amp;\mapsto &amp;\zero   \\
+    \vec{\beta}_4 &amp;\mapsto &amp;\zero   \\
+    \vec{\beta}_5 &amp;\mapsto &amp;\zero
+  \end{strings}\]</span> Now, the key point. A transformation with the
+left-hand action has a null space of dimension three since that’s how
+many basis vectors are mapped to zero. A transformation with the
+right-hand action has a null space of dimension four. With the matrix
+representation above we can determine which of the two possible shapes
+is right. <span class="math display">\[\nullspace{t}=
+  \set{\colvec{x \\ -x \\ z \\ 0 \\ r}\suchthat x,z,r\in\C }\]</span>
+This is three-dimensional, meaning that of the two disjoint string basis
+forms above, <span class="math inline">\(t\)</span>’s basis has the
+left-hand one.</p>
+<p>To produce a string basis for <span class="math inline">\(t\)</span>,
+first pick <span class="math inline">\(\vec{\beta}_2\)</span> and <span
+class="math inline">\(\vec{\beta}_4\)</span> from <span
+class="math inline">\(\rangespace{t}\intersection\nullspace{t}\)</span>.
+<span class="math display">\[\vec{\beta}_2=\colvec[r]{0 \\ 0 \\ 1 \\ 0
+\\ 0}\qquad
+  \vec{\beta}_4=\colvec[r]{0 \\ 0 \\ 0 \\ 0 \\ 1}\]</span> (Other
+choices are possible, just be sure that the set <span
+class="math inline">\(\set{\vec{\beta}_2,\vec{\beta}_4}\)</span> is
+linearly independent.) For <span
+class="math inline">\(\vec{\beta}_5\)</span> pick a vector from <span
+class="math inline">\(\nullspace{t}\)</span> that is not in the span of
+<span class="math inline">\(\set{ \vec{\beta}_2,\vec{\beta}_4
+}\)</span>. <span class="math display">\[\vec{\beta}_5=\colvec[r]{1 \\
+-1 \\ 0 \\ 0 \\ 0}\]</span> Finally, take <span
+class="math inline">\(\vec{\beta}_1\)</span> and <span
+class="math inline">\(\vec{\beta}_3\)</span> such that <span
+class="math inline">\(t(\vec{\beta}_1)=\vec{\beta}_2\)</span> and <span
+class="math inline">\(t(\vec{\beta}_3)=\vec{\beta}_4\)</span>. <span
+class="math display">\[\vec{\beta}_1=\colvec[r]{0 \\ 1 \\ 0 \\ 0 \\
+0}\qquad
+  \vec{\beta}_3=\colvec[r]{0 \\ 0 \\ 0 \\ 1 \\ 0}\]</span> Therefore, we
+have a string basis <span
+class="math inline">\(B=\sequence{\vec{\beta}_1,\ldots,\vec{\beta}_5}\)</span>
+and with respect to that basis the matrix of <span
+class="math inline">\(t\)</span> has blocks of subdiagonal <span
+class="math inline">\(1\)</span>’s. <span
+class="math display">\[\rep{t}{B,B}=
+  \begin{pmat}{rr|rr|r}
+    0  &amp;0  &amp;0  &amp;0  &amp;0  \\
+    1  &amp;0  &amp;0  &amp;0  &amp;0  \\  \hline
+    0  &amp;0  &amp;0  &amp;0  &amp;0  \\
+    0  &amp;0  &amp;1  &amp;0  &amp;0  \\  \hline
+    0  &amp;0  &amp;0  &amp;0  &amp;0
+  \end{pmat}\]</span></p>
+<div class="theorem">
+<p><span id="th:NilMapHasStrBas" data-label="th:NilMapHasStrBas"></span>
+Any nilpotent transformation <span class="math inline">\(t\)</span> is
+associated with a <span class="math inline">\(t\)</span>-string basis.
+While the basis is not unique, the number and the length of the strings
+is determined by <span class="math inline">\(t\)</span>.</p>
+</div>
+<p>This illustrates the proof, which describes three kinds of basis
+vectors. They are in squares if they are members of the null space and
+in circles if they are not. <span
+class="math display">\[\begin{strings}{ccccccccccccccccccc}
+     \digitincirc{3}
+         &amp;\mapsto &amp;\digitincirc{1} &amp;\mapsto
+         &amp;\cdots
+&amp;  &amp;  &amp;  &amp;  &amp;  &amp;  &amp;  &amp;\cdots
+         &amp;\mapsto &amp;\digitincirc{1}
+         &amp;\mapsto &amp;\digitinsq{1} &amp;\mapsto
+&amp;\zero  \\[.75ex]
+     \digitincirc{3}
+         &amp;\mapsto &amp;\digitincirc{1} &amp;\mapsto
+         &amp;\cdots
+&amp;  &amp;  &amp;  &amp;  &amp;  &amp;  &amp;  &amp;\cdots
+         &amp;\mapsto &amp;\digitincirc{1}
+         &amp;\mapsto &amp;\digitinsq{1} &amp;\mapsto
+&amp;\zero  \\[.75ex]
+         &amp;\smash{\vdotswithin{\mapsto}}  \\
+     \digitincirc{3}
+         &amp;\mapsto &amp;\digitincirc{1} &amp;\mapsto
+         &amp;\cdots &amp;
+         &amp;\mapsto &amp;\digitincirc{1}
+         &amp;\mapsto &amp;\digitinsq{1} &amp;\mapsto
+&amp;\zero  \\[1ex]
+     \digitinsq{2} &amp;\mapsto &amp;\zero \\[.75ex]
+         &amp;\smash{\vdotswithin{\mapsto}}  \\
+     \digitinsq{2} &amp;\mapsto &amp;\zero
+   \end{strings}\]</span></p>
+<div class="proof">
+<p><em>Proof.</em> Fix a vector space <span
+class="math inline">\(V\)</span>. We will argue by induction on the
+index of nilpotency. If the map <span
+class="math inline">\(\map{t}{V}{V}\)</span> has index of
+nilpotency <span class="math inline">\(1\)</span> then it is the zero
+map and any basis is a string basis, <span
+class="math inline">\(\vec{\beta}_1\mapsto\zero\)</span>, …, <span
+class="math inline">\(\vec{\beta}_n\mapsto\zero\)</span>.</p>
+<p>For the inductive step, assume that the theorem holds for any
+transformation <span class="math inline">\(\map{t}{V}{V}\)</span> with
+an index of nilpotency from <span class="math inline">\(1\)</span> up to
+and including <span class="math inline">\(k-1\)</span> (with <span
+class="math inline">\(k&gt;1\)</span>), and consider the index <span
+class="math inline">\(k\)</span> case.</p>
+<p>What gets the induction going is the observaton that the restriction
+of <span class="math inline">\(t\)</span> to the range space <span
+class="math inline">\(\rangespace{t}\)</span> is also nilpotent, of
+index <span class="math inline">\(k-1\)</span>. So apply the inductive
+hypothesis to get a string basis for <span
+class="math inline">\(\rangespace{t}\)</span>, where the number and
+length of the strings is determined by <span
+class="math inline">\(t\)</span>. <span
+class="math display">\[B=\cat{\cat{\sequence{\vec{\beta}_1,t(\vec{\beta}_1),\dots,
+     t^{h_1}(\vec{\beta}_1)}}{
+  \cat{\sequence{\vec{\beta}_2,\ldots,t^{h_2}(\vec{\beta}_2)}}}{\cdots}}{
+  \sequence{\vec{\beta}_i,\ldots,t^{h_i}(\vec{\beta}_i)} }\]</span> We
+write <span class="math inline">\(i\)</span> for the number of strings.
+In the illustration above, these are the vectors of kind <span
+class="math inline">\(1\)</span>.</p>
+<p>Taking the final vector in each string gives a basis <span
+class="math inline">\(C=\sequence{t^{h_1}(\vec{\beta}_1),\dots,t^{h_i}(\vec{\beta}_i)}\)</span>
+for the intersection <span
+class="math inline">\(\rangespace{t}\intersection\nullspace{t}\)</span>.
+This is because a member of <span
+class="math inline">\(\rangespace{t}\)</span> maps to zero if and only
+if it is a linear combination of basis vectors that map to zero. The
+illustration shows these as <span class="math inline">\(1\)</span>’s in
+squares.</p>
+<p>Now extend <span class="math inline">\(C\)</span> to a basis for the
+entire nullspace, <span class="math inline">\(\nullspace{t}\)</span>.
+<span
+class="math display">\[\hat{C}=\cat{C}{\sequence{\vec{\xi}_1,\dots,\vec{\xi}_p}}\]</span>
+While the <span class="math inline">\(\vec{\xi}\)</span>’s aren’t
+uniquely determined by <span class="math inline">\(t\)</span>, what is
+uniquely determined is the number of them: it is the dimension of <span
+class="math inline">\(\nullspace{t}\)</span> minus the dimension of
+<span
+class="math inline">\(\rangespace{t}\intersection\nullspace{t}\)</span>.
+In the illustration, the <span
+class="math inline">\(\vec{\xi}\)</span>’s are the vectors of kind <span
+class="math inline">\(2\)</span>, and so <span
+class="math inline">\(\hat{C}\)</span> is the set of vectors in
+squares.</p>
+<p>Finally, <span
+class="math inline">\(\cat{B}{\sequence{\vec{\xi}_1,\dots,\vec{\xi}_p}}\)</span>
+is a basis for <span
+class="math inline">\(\rangespace{t}+\nullspace{t}\)</span>. This is
+because a sum of something in the range space with something in the null
+space can be represented using elements of <span
+class="math inline">\(B\)</span> for the range space part along with
+<span class="math inline">\(\xi\)</span>’s for any part from <span
+class="math inline">\(\nullspace{t}-\rangespace{t}\)</span>. Note that
+<span class="math display">\[\begin{aligned}
+  \dim\big(\rangespace{t}+\nullspace{t}\big)
+  &amp;=
+  \dim (\rangespace{t})+\dim (\nullspace{t})
+    -\dim\big(\rangespace{t}\intersection\nullspace{t}\big)  \\
+  &amp;=
+  \rank (t)+\nullity (t)-i          \\
+  &amp;=
+  \dim (V)-i
+\end{aligned}\]</span> and so we can extend the basis <span
+class="math inline">\(\cat{B}{\sequence{\vec{\xi}_1,\dots,\vec{\xi}_p}}\)</span>
+to a <span class="math inline">\(t\)</span>-string basis for the
+entirety of <span class="math inline">\(V\)</span> with the addition
+of <span class="math inline">\(i\)</span> more vectors. To produce
+those, recall that each of <span
+class="math inline">\(\vec{\beta}_1,\dots,\vec{\beta}_i\)</span> is in
+the range space, <span class="math inline">\(\rangespace{t}\)</span>,
+and so use vectors <span
+class="math inline">\(\vec{v}_1,\dots,\vec{v}_i\in V\)</span> such that
+<span
+class="math inline">\(t(\vec{v}_1)=\vec{\beta}_1,\dots,t(\vec{v}_i)=\vec{\beta}_i\)</span>.
+The check that this extension preserves linear independence is . In the
+illustration, <span
+class="math inline">\(\vec{v}_1,\dots,\vec{v}_i\)</span> are the <span
+class="math inline">\(3\)</span>’s. ◻</p>
+</div>
+<div class="corollary">
+<p><span id="cor:NilpotentMatCanonForm"
+data-label="cor:NilpotentMatCanonForm"></span> Every nilpotent matrix is
+similar to a matrix that is all zeros except for blocks of subdiagonal
+ones. That is, every nilpotent map is represented with respect to some
+basis by such a matrix.</p>
+</div>
+<p>This form is unique in the sense that if a nilpotent matrix is
+similar to two such matrices then those two simply have their blocks
+ordered differently. Thus this is a canonical form for the similarity
+classes of nilpotent matrices provided that we order the blocks, say,
+from longest to shortest.</p>
+<div class="example">
+<p>The matrix <span class="math display">\[M=\begin{mat}[r]
+      1  &amp;-1  \\
+      1  &amp;-1
+    \end{mat}\]</span> has an index of nilpotency of two, as this
+calculation shows.</p>
+<div class="center">
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><em>power</em> <span
+class="math inline">\(p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\(M^p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\(\nullspace{M^p}\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><span
+class="math inline">\(1\)</span></td>
+<td style="text-align: center;"><span
+class="math inline">\(M=\matrixvenlarge{\begin{mat}[r]
+         1  &amp;-1  \\
+         1  &amp;-1
+       \end{mat}}\)</span></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">x</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;"><span
+class="math inline">\(2\)</span></td>
+<td style="text-align: center;"><span
+class="math inline">\(M^2=\matrixvenlarge{\begin{mat}[r]
+         0  &amp;0   \\
+         0  &amp;0
+       \end{mat}}\)</span></td>
+<td style="text-align: center;"><span
+class="math inline">\(\C^2\)</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Because the matrix is <span class="math inline">\(\nbyn{2}\)</span>,
+any transformation that it represents is on a space of dimension two.
+The nullspace of one application of the map <span
+class="math inline">\(\nullspace{m}\)</span> has dimension one, and the
+nullspace of two applications <span
+class="math inline">\(\nullspace{m^2}\)</span> has dimension two. Thus
+the action of <span class="math inline">\(m\)</span> on a string basis
+is <span
+class="math inline">\(\vec{\beta}_1\mapsto\vec{\beta}_2\mapsto\zero\)</span>
+and the canonical form of the matrix is this. <span
+class="math display">\[N=\begin{mat}[r]
+    0  &amp;0  \\
+    1  &amp;0
+  \end{mat}\]</span></p>
+<p>We can exhibit such a string basis, and also the change of basis
+matrices witnessing the matrix similarity between <span
+class="math inline">\(M\)</span> and <span
+class="math inline">\(N\)</span>. Suppose that <span
+class="math inline">\(\map{m}{\C^2}{\C^2}\)</span> is such that <span
+class="math inline">\(M\)</span> represents it with respect to the
+standard bases. (We could take <span class="math inline">\(M\)</span> to
+be a representation with respect to some other basis but the standard
+one is convenient.) Pick <span
+class="math inline">\(\vec{\beta}_2\in\nullspace{m}\)</span>. Also pick
+<span class="math inline">\(\vec{\beta}_1\)</span> so that <span
+class="math inline">\(m(\vec{\beta}_1)=\vec{\beta}_2\)</span>. <span
+class="math display">\[\vec{\beta}_2=\colvec[r]{1 \\ 1}
+  \qquad
+  \vec{\beta}_1=\colvec[r]{1 \\ 0}\]</span> For the change of basis
+matrices, recall the similarity diagram. <span
+class="math display">\[\begin{CD}
+    \C^2_{\wrt{\stdbasis_2}}      @&gt;m&gt;M&gt;        \C^2_{\wrt{\stdbasis_2}}     \\
+    @V\scriptstyle\identity V\scriptstyle PV  @V\scriptstyle\identity
+V\scriptstyle PV \\
+    \C^2_{\wrt{B}}                 @&gt;m&gt;N&gt;         \C^2_{\wrt{B}}
+  \end{CD}\]</span> The canonical form is <span
+class="math inline">\(\rep{m}{B,B}=PMP^{-1}\)</span>, where <span
+class="math display">\[P^{-1}
+%=\bigl(\rep{\identity}{\stdbasis_2,B}\bigr)^{-1}
+         =\rep{\identity}{B,\stdbasis_2}
+         =\begin{mat}[r]
+            1  &amp;1  \\
+            0  &amp;1
+          \end{mat}
+   \qquad
+   P=(P^{-1})^{-1}
+         =\begin{mat}[r]
+            1  &amp;-1  \\
+            0  &amp;1
+          \end{mat}\]</span> and the verification of the matrix
+calculation is routine. <span class="math display">\[\begin{mat}[r]
+    1  &amp;-1  \\
+    0  &amp;1
+  \end{mat}
+  \begin{mat}[r]
+    1  &amp;-1  \\
+    1  &amp;-1
+  \end{mat}
+  \begin{mat}[r]
+    1  &amp;1  \\
+    0  &amp;1
+  \end{mat}=
+  \begin{mat}[r]
+    0  &amp;0  \\
+    1  &amp;0
+  \end{mat}\]</span></p>
+</div>
+<div class="example">
+<p><span id="ex:FiveByNilStrBas" data-label="ex:FiveByNilStrBas"></span>
+This matrix <span class="math display">\[\begin{mat}[r]
+     0  &amp;0  &amp;0  &amp;0  &amp;0  \\
+     1  &amp;0  &amp;0  &amp;0  &amp;0  \\
+     -1 &amp;1  &amp;1  &amp;-1 &amp;1  \\
+     0  &amp;1  &amp;0  &amp;0  &amp;0  \\
+     1  &amp;0  &amp;-1 &amp;1  &amp;-1
+  \end{mat}\]</span> is nilpotent, of index <span
+class="math inline">\(3\)</span>.</p>
+<div class="center">
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><em>power</em> <span
+class="math inline">\(p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\(N^p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\(\nullspace{N^p}\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><span
+class="math inline">\(1\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">u-v</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">u</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">v</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;"><span
+class="math inline">\(2\)</span></td>
+<td style="text-align: center;"><span
+class="math inline">\(\matrixvenlarge{\begin{mat}[r]
+         0  &amp;0  &amp;0  &amp;0  &amp;0  \\
+         0  &amp;0  &amp;0  &amp;0  &amp;0  \\
+         1  &amp;0  &amp;0  &amp;0  &amp;0  \\
+         1  &amp;0  &amp;0  &amp;0  &amp;0  \\
+         0  &amp;0  &amp;0  &amp;0  &amp;0
+       \end{mat}}\)</span></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">y</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">z</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">u</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">v</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;"><span
+class="math inline">\(3\)</span></td>
+<td style="text-align: center;"><em>–zero matrix–</em></td>
+<td style="text-align: center;"><span
+class="math inline">\(\C^5\)</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The table tells us this about any string basis: the null space after
+one map application has dimension two so two basis vectors map directly
+to zero, the null space after the second application has dimension four
+so two additional basis vectors map to zero by the second iteration, and
+the null space after three applications is of dimension five so the
+remaining one basis vector maps to zero in three hops. <span
+class="math display">\[\begin{strings}{ccccccc}
+    \vec{\beta}_1 &amp;\mapsto &amp;\vec{\beta}_2 &amp;\mapsto
+&amp;\vec{\beta}_3
+       &amp;\mapsto &amp;\zero  \\
+    \vec{\beta}_4 &amp;\mapsto &amp;\vec{\beta}_5 &amp;\mapsto
+&amp;\zero
+  \end{strings}\]</span> To produce such a basis, first pick two vectors
+from <span class="math inline">\(\nullspace{n}\)</span> that form a
+linearly independent set. <span
+class="math display">\[\vec{\beta}_3=\colvec[r]{0 \\ 0 \\ 1 \\ 1 \\ 0}
+\quad
+   \vec{\beta}_5=\colvec[r]{0 \\ 0 \\ 0 \\ 1 \\ 1}\]</span> Then add
+<span
+class="math inline">\(\vec{\beta}_2,\vec{\beta}_4\in\nullspace{n^2}\)</span>
+such that <span
+class="math inline">\(n(\vec{\beta}_2)=\vec{\beta}_3\)</span> and <span
+class="math inline">\(n(\vec{\beta}_4)=\vec{\beta}_5\)</span>. <span
+class="math display">\[\vec{\beta}_2=\colvec[r]{0 \\ 1 \\ 0 \\ 0 \\ 0}
+\quad
+   \vec{\beta}_4=\colvec[r]{0 \\ 1 \\ 0 \\ 1 \\ 0}\]</span> Finish by
+adding <span class="math inline">\(\vec{\beta}_1\)</span> such that
+<span class="math inline">\(n(\vec{\beta}_1)=\vec{\beta}_2\)</span>.
+<span class="math display">\[\vec{\beta}_1=\colvec[r]{1 \\ 0 \\ 1 \\ 0
+\\ 0}\]</span></p>
+</div>
+<div class="exercises">
+<p><span id="exer:IndNilLftShift"
+data-label="exer:IndNilLftShift"></span> What is the index of nilpotency
+of the operator, here acting on the space of triples of reals? <span
+class="math display">\[(x,y,z)\mapsto(0,x,y)\]</span></p>
+<div class="answer">
+<p>Three. It is at least three because <span
+class="math inline">\(\ell^2(\,(1,1,1)\,)=(0,0,1)\neq \zero\)</span>. It
+is at most three because <span class="math inline">\((x,y,z)\mapsto
+(0,x,y)\mapsto (0,0,x)\mapsto (0,0,0)\)</span>.</p>
+</div>
+<p>For each string basis state the index of nilpotency and give the
+dimension of the range space and null space of each iteration of the
+nilpotent map.</p>
+<div class="exparts">
+<p><span class="math inline">\(\begin{strings}{ccccccc}
+           \vec{\beta}_1 &amp;\mapsto &amp;\vec{\beta}_2 &amp;\mapsto
+&amp;\zero  \\
+           \vec{\beta}_3 &amp;\mapsto &amp;\vec{\beta}_4 &amp;\mapsto
+&amp;\zero  
+         \end{strings}\)</span> <span
+class="math inline">\(\begin{strings}{ccccccc}
+           \vec{\beta}_1 &amp;\mapsto &amp;\vec{\beta}_2 &amp;\mapsto
+&amp;\vec{\beta}_3
+                &amp;\mapsto &amp;\zero  \\
+           \vec{\beta}_4 &amp;\mapsto &amp;\zero \\
+           \vec{\beta}_5 &amp;\mapsto &amp;\zero \\
+           \vec{\beta}_6 &amp;\mapsto &amp;\zero
+         \end{strings}\)</span> <span
+class="math inline">\(\begin{strings}{ccccccccc}
+           \vec{\beta}_1 &amp;\mapsto &amp;\vec{\beta}_2 &amp;\mapsto
+&amp;\vec{\beta}_3
+                &amp;\mapsto &amp;\zero  
+         \end{strings}\)</span></p>
+</div>
+<p>Also give the canonical form of the matrix.</p>
+<div class="answer">
+<div class="exparts">
+<p>The domain has dimension four. The map’s action is that any vector in
+the space <span class="math inline">\(c_1\cdot \vec{\beta}_1+c_2\cdot
+\vec{\beta}_2
+            +c_3\cdot \vec{\beta}_3+c_4\cdot \vec{\beta}_4\)</span> goes
+to <span class="math inline">\(c_1\cdot \vec{\beta}_2+c_2\cdot \zero
+            +c_3\cdot \vec{\beta}_4+c_4\cdot \zero
+           =c_1\cdot \vec{\beta}_3+c_3\cdot\vec{\beta}_4\)</span>. The
+first application of the map sends two basis vectors <span
+class="math inline">\(\vec{\beta}_2\)</span> and <span
+class="math inline">\(\vec{\beta}_4\)</span> to zero, and therefore the
+null space has dimension two and the range space has dimension two. With
+a second application, all four basis vectors go to zero and so the null
+space of the second power has dimension four while the range space of
+the second power has dimension zero. Thus the index of nilpotency is
+two. This is the canonical form. <span
+class="math display">\[\begin{mat}[r]
+              0  &amp;0  &amp;0  &amp;0  \\
+              1  &amp;0  &amp;0  &amp;0  \\
+              0  &amp;0  &amp;0  &amp;0  \\
+              0  &amp;0  &amp;1  &amp;0
+            \end{mat}\]</span> The dimension of the domain of this map
+is six. For the first power the dimension of the null space is four and
+the dimension of the range space is two. For the second power the
+dimension of the null space is five and the dimension of the range space
+is one. Then the third iteration results in a null space of dimension
+six and a range space of dimension zero. The index of nilpotency is
+three, and this is the canonical form. <span
+class="math display">\[\begin{mat}[r]
+              0  &amp;0  &amp;0  &amp;0  &amp;0  &amp;0  \\
+              1  &amp;0  &amp;0  &amp;0  &amp;0  &amp;0  \\
+              0  &amp;1  &amp;0  &amp;0  &amp;0  &amp;0  \\
+              0  &amp;0  &amp;0  &amp;0  &amp;0  &amp;0  \\              
+              0  &amp;0  &amp;0  &amp;0  &amp;0  &amp;0  \\              
+              0  &amp;0  &amp;0  &amp;0  &amp;0  &amp;0  
+            \end{mat}\]</span> The dimension of the domain is three, and
+the index of nilpotency is three. The first power’s null space has
+dimension one and its range space has dimension two. The second power’s
+null space has dimension two and its range space has dimension one.
+Finally, the third power’s null space has dimension three and its range
+space has dimension zero. Here is the canonical form matrix. <span
+class="math display">\[\begin{mat}[r]
+              0  &amp;0  &amp;0  \\
+              1  &amp;0  &amp;0  \\
+              0  &amp;1  &amp;0
+            \end{mat}\]</span></p>
+</div>
+</div>
+<p>Decide which of these matrices are nilpotent.</p>
+<div class="exparts*">
+<p><span class="math inline">\(\begin{mat}[r]
+           -2  &amp;4  \\
+           -1  &amp;2
+        \end{mat}\)</span> <span class="math inline">\(\begin{mat}[r]
+          3  &amp;1  \\
+          1  &amp;3
+        \end{mat}\)</span> <span class="math inline">\(\begin{mat}[r]
+          -3  &amp;2  &amp;1  \\
+          -3  &amp;2  &amp;1  \\
+          -3  &amp;2  &amp;1
+        \end{mat}\)</span> <span class="math inline">\(\begin{mat}[r]
+           1  &amp;1  &amp;4  \\
+           3  &amp;0  &amp;-1 \\
+           5  &amp;2  &amp;7
+        \end{mat}\)</span> <span class="math inline">\(\begin{mat}[r]
+           45  &amp;-22  &amp;-19  \\
+           33  &amp;-16  &amp;-14  \\
+           69  &amp;-34  &amp;-29
+        \end{mat}\)</span></p>
+</div>
+<div class="answer">
+<p>By the nullity has grown as large as possible by the <span
+class="math inline">\(n\)</span>-th iteration where <span
+class="math inline">\(n\)</span> is the dimension of the domain. Thus,
+for the <span class="math inline">\(\nbyn{2}\)</span> matrices, we need
+only check whether the square is the zero matrix. For the <span
+class="math inline">\(\nbyn{3}\)</span> matrices, we need only check the
+cube.</p>
+<div class="exparts">
+<p>Yes, this matrix is nilpotent because its square is the zero matrix.
+No, the square is not the zero matrix. <span
+class="math display">\[\begin{mat}[r]
+               3  &amp;1  \\
+               1  &amp;3
+            \end{mat}^2
+            =\begin{mat}[r]
+               10  &amp;6  \\
+               6   &amp;10
+            \end{mat}\]</span> Yes, the cube is the zero matrix. In
+fact, the square is zero. No, the third power is not the zero matrix.
+<span class="math display">\[\begin{mat}[r]
+              1  &amp;1  &amp;4  \\
+              3  &amp;0  &amp;-1 \\
+              5  &amp;2  &amp;7
+            \end{mat}^3
+            =\begin{mat}[r]
+              206  &amp;86  &amp;304  \\
+               26  &amp;8   &amp;26   \\
+              438  &amp;180 &amp;634
+            \end{mat}\]</span> Yes, the cube of this matrix is the zero
+matrix.</p>
+</div>
+<p>Another way to see that the second and fourth matrices are not
+nilpotent is to note that they are nonsingular.</p>
+</div>
+<p>Find the canonical form of this matrix. <span
+class="math display">\[\begin{mat}[r]
+        0  &amp;1  &amp;1  &amp;0  &amp;1  \\
+        0  &amp;0  &amp;1  &amp;1  &amp;1  \\
+        0  &amp;0  &amp;0  &amp;0  &amp;0  \\
+        0  &amp;0  &amp;0  &amp;0  &amp;0  \\
+        0  &amp;0  &amp;0  &amp;0  &amp;0
+      \end{mat}\]</span></p>
+<div class="answer">
+<p>The table of calculations</p>
+<div class="center">
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><span
+class="math inline">\(p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\(N^p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\(\nullspace{N^p}\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><span
+class="math inline">\(1\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">u</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">-u-v</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">u</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">v</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;"><span
+class="math inline">\(2\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">s</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">-u-v</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">u</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">v</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;"><span
+class="math inline">\(2\)</span></td>
+<td style="text-align: center;"><em>–zero matrix–</em></td>
+<td style="text-align: center;"><span
+class="math inline">\(\C^5\)</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>gives these requirements of the string basis: three basis vectors map
+directly to zero, one more basis vector maps to zero by a second
+application, and the final basis vector maps to zero by a third
+application. Thus, the string basis has this form. <span
+class="math display">\[\begin{strings}{ccccccc}
+            \vec{\beta}_1 &amp;\mapsto &amp;\vec{\beta}_2 &amp;\mapsto
+              &amp;\vec{\beta}_3 &amp;\mapsto
+&amp;\zero               \\
+            \vec{\beta}_4 &amp;\mapsto &amp;\zero                  \\
+            \vec{\beta}_5 &amp;\mapsto &amp;\zero  
+          \end{strings}\]</span> From that the canonical form is
+immediate. <span class="math display">\[\begin{mat}[r]
+            0  &amp;0  &amp;0  &amp;0  &amp;0  \\
+            1  &amp;0  &amp;0  &amp;0  &amp;0  \\
+            0  &amp;1  &amp;0  &amp;0  &amp;0  \\
+            0  &amp;0  &amp;0  &amp;0  &amp;0  \\
+            0  &amp;0  &amp;0  &amp;0  &amp;0
+          \end{mat}\]</span></p>
+</div>
+<p>Consider the matrix from .</p>
+<div class="exparts">
+<p>Use the action of the map on the string basis to give the canonical
+form. Find the change of basis matrices that bring the matrix to
+canonical form. Use the answer in the prior item to check the answer in
+the first item.</p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>The canonical form has a <span
+class="math inline">\(\nbyn{3}\)</span> block and a <span
+class="math inline">\(\nbyn{2}\)</span> block <span
+class="math display">\[\begin{pmat}{rrr|rr}
+              0  &amp;0  &amp;0  &amp;0  &amp;0  \\
+              1  &amp;0  &amp;0  &amp;0  &amp;0  \\
+              0  &amp;1  &amp;0  &amp;0  &amp;0  \\ \hline
+              0  &amp;0  &amp;0  &amp;0  &amp;0  \\
+              0  &amp;0  &amp;0  &amp;1  &amp;0  \\
+            \end{pmat}\]</span> corresponding to the length three string
+and the length two string in the basis. Assume that <span
+class="math inline">\(N\)</span> is the representation of the underlying
+map with respect to the standard basis. Let <span
+class="math inline">\(B\)</span> be the basis to which we will change.
+By the similarity diagram <span class="math display">\[\begin{CD}
+              \C^2_{\wrt{\stdbasis_2}}      
+                  @&gt;n&gt;N&gt;        
+                  \C^2_{\wrt{\stdbasis_2}}     \\
+             @V\scriptstyle\identity V\scriptstyle PV  
+                 @V\scriptstyle\identity V\scriptstyle PV \\
+             C^2_{\wrt{B}}                 
+                 @&gt;n&gt;&gt;         
+             \C^2_{\wrt{B}}
+           \end{CD}\]</span> we have that the canonical form matrix is
+<span class="math inline">\(PNP^{-1}\)</span> where <span
+class="math display">\[P^{-1}
+           =\rep{\identity}{B,\stdbasis_5}
+           =\begin{mat}[r]
+              1 &amp;0 &amp;0 &amp;0 &amp;0 \\              
+              0 &amp;1 &amp;0 &amp;1 &amp;0 \\
+              1 &amp;0 &amp;1 &amp;0 &amp;0 \\
+              0 &amp;0 &amp;1 &amp;1 &amp;1 \\
+              0 &amp;0 &amp;0 &amp;0 &amp;1
+            \end{mat}\]</span> and <span
+class="math inline">\(P\)</span> is the inverse of that. <span
+class="math display">\[P=\rep{\identity}{\stdbasis_5,B}
+            =(P^{-1})^{-1}
+           =\begin{mat}[r]
+              1 &amp;0 &amp;0 &amp;0 &amp;0 \\              
+             -1 &amp;1 &amp;1 &amp;-1&amp;1 \\
+             -1 &amp;0 &amp;1 &amp;0 &amp;0 \\
+              1 &amp;0 &amp;-1&amp;1 &amp;-1\\
+              0 &amp;0 &amp;0 &amp;0 &amp;1
+            \end{mat}\]</span> The calculation to check this is
+routine.</p>
+</div>
+</div>
+<p>Each of these matrices is nilpotent.</p>
+<div class="exparts*">
+<p><span class="math inline">\(\begin{mat}[r]
+          1/2  &amp;-1/2  \\
+          1/2  &amp;-1/2
+        \end{mat}\)</span> <span class="math inline">\(\begin{mat}[r]
+          0  &amp;0  &amp;0  \\
+          0  &amp;-1 &amp;1  \\
+          0  &amp;-1 &amp;1
+        \end{mat}\)</span> <span class="math inline">\(\begin{mat}[r]
+         -1  &amp;1  &amp;-1 \\
+          1  &amp;0  &amp;1  \\
+          1  &amp;-1 &amp;1
+        \end{mat}\)</span></p>
+</div>
+<p>Put each in canonical form.</p>
+<div class="answer">
+<div class="exparts">
+<p>The calculation</p>
+<div class="center">
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><span
+class="math inline">\(p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\(N^p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\(\nullspace{N^p}\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><span
+class="math inline">\(1\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">u</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;"><span
+class="math inline">\(2\)</span></td>
+<td style="text-align: center;"><em>–zero matrix–</em></td>
+<td style="text-align: center;"><span
+class="math inline">\(\C^2\)</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>shows that any map represented by the matrix must act on the string
+basis in this way <span class="math display">\[\begin{strings}{ccccccc}
+            \vec{\beta}_1 &amp;\mapsto &amp;\vec{\beta}_2  &amp;\mapsto
+&amp;\zero  
+          \end{strings}\]</span> because the null space after one
+application has dimension one and exactly one basis vector, <span
+class="math inline">\(\vec{\beta}_2\)</span>, maps to zero. Therefore,
+this representation with respect to <span
+class="math inline">\(\sequence{\vec{\beta}_1,\vec{\beta}_2}\)</span> is
+the canonical form. <span class="math display">\[\begin{mat}[r]
+            0    &amp;0   \\
+            1    &amp;0
+          \end{mat}\]</span> The calculation here is similar to the
+prior one.</p>
+<div class="center">
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><span
+class="math inline">\(p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\(N^p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\(\nullspace{N^p}\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><span
+class="math inline">\(1\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">v</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">v</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;"><span
+class="math inline">\(2\)</span></td>
+<td style="text-align: center;"><em>–zero matrix–</em></td>
+<td style="text-align: center;"><span
+class="math inline">\(\C^3\)</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The table shows that the string basis is of the form <span
+class="math display">\[\begin{strings}{ccccccc}
+            \vec{\beta}_1 &amp;\mapsto &amp;\vec{\beta}_2 &amp;\mapsto
+&amp;\zero  \\
+            \vec{\beta}_3 &amp;\mapsto &amp;\zero
+          \end{strings}\]</span> because the null space after one
+application of the map has dimension two <span
+class="math inline">\(\vec{\beta}_2\)</span> and <span
+class="math inline">\(\vec{\beta}_3\)</span> are both sent to zeroand
+one more iteration results in the additional vector going to zero. The
+calculation</p>
+<div class="center">
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><span
+class="math inline">\(p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\(N^p\)</span></th>
+<th style="text-align: center;"><span
+class="math inline">\(\nullspace{N^p}\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><span
+class="math inline">\(1\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">-u</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;"><span
+class="math inline">\(2\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">v</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">-u</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: center;"><span
+class="math inline">\(3\)</span></td>
+<td style="text-align: center;"><em>–zero matrix–</em></td>
+<td style="text-align: center;"><span
+class="math inline">\(\C^3\)</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>shows that any map represented by this basis must act on a string
+basis in this way. <span class="math display">\[\begin{strings}{ccccccc}
+            \vec{\beta}_1 &amp;\mapsto &amp;\vec{\beta}_2 &amp;\mapsto
+              &amp;\vec{\beta}_3 &amp;\mapsto &amp;\zero  
+          \end{strings}\]</span> Therefore, this is the canonical form.
+<span class="math display">\[\begin{mat}[r]
+            0    &amp;0   &amp;0   \\
+            1    &amp;0   &amp;0   \\
+            0    &amp;1   &amp;0
+          \end{mat}\]</span></p>
+</div>
+</div>
+<p>Describe the effect of left or right multiplication by a matrix that
+is in the canonical form for nilpotent matrices.</p>
+<div class="answer">
+<p>A couple of examples <span class="math display">\[\begin{mat}[r]
+          0  &amp;0  \\
+          1  &amp;0
+        \end{mat}
+        \begin{mat}
+          a  &amp;b  \\
+          c  &amp;d
+        \end{mat}
+        =
+        \begin{mat}
+          0  &amp;0  \\
+          a  &amp;b  
+        \end{mat}
+        \qquad
+        \begin{mat}[r]
+          0  &amp;0  &amp;0 \\
+          1  &amp;0  &amp;0 \\
+          0  &amp;1  &amp;0
+        \end{mat}
+        \begin{mat}
+          a  &amp;b  &amp;c \\
+          d  &amp;e  &amp;f \\
+          g  &amp;h  &amp;i
+        \end{mat}
+        =
+        \begin{mat}
+          0  &amp;0  &amp;0 \\
+          a  &amp;b  &amp;c \\
+          d  &amp;e  &amp;f
+        \end{mat}\]</span> suggest that left multiplication by a block
+of subdiagonal ones shifts the rows of a matrix downward. Distinct
+blocks <span class="math display">\[\begin{mat}[r]
+          0  &amp;0  &amp;0  &amp;0  \\
+          1  &amp;0  &amp;0  &amp;0  \\
+          0  &amp;0  &amp;0  &amp;0  \\
+          0  &amp;0  &amp;1  &amp;0
+        \end{mat}
+        \begin{mat}
+          a  &amp;b  &amp;c  &amp;d  \\
+          e  &amp;f  &amp;g  &amp;h  \\
+          i  &amp;j  &amp;k  &amp;l  \\
+          m  &amp;n  &amp;o  &amp;p
+        \end{mat}
+        =
+        \begin{mat}
+          0  &amp;0  &amp;0  &amp;0  \\
+          a  &amp;b  &amp;c  &amp;d  \\       
+          0  &amp;0  &amp;0  &amp;0  \\
+          i  &amp;j  &amp;k  &amp;l  
+        \end{mat}\]</span> act to shift down distinct parts of the
+matrix.</p>
+<p>Right multiplication does an analogous thing to columns. See .</p>
+</div>
+<p>Is nilpotence invariant under similarity? That is, must a matrix
+similar to a nilpotent matrix also be nilpotent? If so, with the same
+index?</p>
+<div class="answer">
+<p>Yes. Generalize the last sentence in . As to the index, that same
+last sentence shows that the index of the new matrix is less than or
+equal to the index of <span class="math inline">\(\hat{N}\)</span>, and
+reversing the roles of the two matrices gives inequality in the other
+direction.</p>
+<p>Another answer to this question is to show that a matrix is nilpotent
+if and only if any associated map is nilpotent, and with the same index.
+Then, because similar matrices represent the same map, the conclusion
+follows. This is below.</p>
+</div>
+<p>Show that the only eigenvalue of a nilpotent matrix is zero.</p>
+<div class="answer">
+<p>Observe that a canonical form nilpotent matrix has only zero
+eigenvalues; e.g., the determinant of this lower-triangular matrix <span
+class="math display">\[\begin{mat}
+           -x  &amp;0  &amp;0  \\
+            1  &amp;-x &amp;0  \\
+            0  &amp;1  &amp;-x
+         \end{mat}\]</span> is <span
+class="math inline">\((-x)^3\)</span>, the only root of which is zero.
+But similar matrices have the same eigenvalues and every nilpotent
+matrix is similar to one in canonical form.</p>
+<p>Another way to see this is to observe that a nilpotent matrix sends
+all vectors to zero after some number of iterations, but that conflicts
+with an action on an eigenspace <span
+class="math inline">\(\vec{v}\mapsto \lambda\vec{v}\)</span> unless
+<span class="math inline">\(\lambda\)</span> is zero.</p>
+</div>
+<p>Is there a nilpotent transformation of index three on a
+two-dimensional space?</p>
+<div class="answer">
+<p>No, by for a map on a two-dimensional space, the nullity has grown as
+large as possible by the second iteration.</p>
+</div>
+<p>In the proof of , why isn’t the proof’s base case that the index of
+nilpotency is zero?</p>
+<div class="answer">
+<p>The index of nilpotency of a transformation can be zero only when the
+vector starting the string must be <span
+class="math inline">\(\zero\)</span>, that is, only when <span
+class="math inline">\(V\)</span> is a trivial space.</p>
+</div>
+<p>Let <span class="math inline">\(\map{t}{V}{V}\)</span> be a linear
+transformation and suppose <span class="math inline">\(\vec{v}\in
+V\)</span> is such that <span
+class="math inline">\(t^k(\vec{v})=\zero\)</span> but <span
+class="math inline">\(t^{k-1}(\vec{v})\neq\zero\)</span>. Consider the
+<span class="math inline">\(t\)</span>-string <span
+class="math inline">\(\sequence{\vec{v},t(\vec{v}),\dots,t^{k-1}(\vec{v})}\)</span>.</p>
+<div class="exparts">
+<p>Prove that <span class="math inline">\(t\)</span> is a transformation
+on the span of the set of vectors in the string, that is, prove that
+<span class="math inline">\(t\)</span> restricted to the span has a
+range that is a subset of the span. We say that the span is a subspace.
+Prove that the restriction is nilpotent. Prove that the <span
+class="math inline">\(t\)</span>-string is linearly independent and so
+is a basis for its span. Represent the restriction map with respect to
+the <span class="math inline">\(t\)</span>-string basis.</p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>Any member <span class="math inline">\(\vec{w}\)</span> of the span
+is a linear combination <span class="math inline">\(\vec{w}=c_0\cdot
+\vec{v}+c_1\cdot t(\vec{v})+\dots
+           +c_{k-1}\cdot t^{k-1}(\vec{v})\)</span>. But then, by the
+linearity of the map, <span class="math inline">\(t(\vec{w})=c_0\cdot
+t(\vec{v})+c_1\cdot t^2(\vec{v})+\dots
+           +c_{k-2}\cdot t^{k-1}(\vec{v})+c_{k-1}\cdot \zero\)</span> is
+also in the span. The operation in the prior item, when iterated <span
+class="math inline">\(k\)</span> times, will result in a linear
+combination of zeros. If <span
+class="math inline">\(\vec{v}=\zero\)</span> then the set is empty and
+so is linearly independent by definition. Otherwise write <span
+class="math inline">\(c_1\vec{v}+\dots+c_{k-1}t^{k-1}(\vec{v})=\zero\)</span>
+and apply <span class="math inline">\(t^{k-1}\)</span> to both sides.
+The right side gives <span class="math inline">\(\zero\)</span> while
+the left side gives <span
+class="math inline">\(c_1t^{k-1}(\vec{v})\)</span>; conclude that <span
+class="math inline">\(c_1=0\)</span>. Continue in this way by applying
+<span class="math inline">\(t^{k-2}\)</span> to both sides, etc. Of
+course, <span class="math inline">\(t\)</span> acts on the span by
+acting on this basis as a single, <span
+class="math inline">\(k\)</span>-long, <span
+class="math inline">\(t\)</span>-string. <span
+class="math display">\[\begin{mat}
+              0 &amp;0 &amp;0 &amp;0 &amp;\ldots &amp;0 &amp;0 \\
+              1 &amp;0 &amp;0 &amp;0 &amp;\ldots &amp;0 &amp;0 \\
+              0 &amp;1 &amp;0 &amp;0 &amp;\ldots &amp;0 &amp;0 \\
+              0 &amp;0 &amp;1 &amp;0 &amp;       &amp;0 &amp;0 \\
+                &amp;  &amp;  &amp;\ddots          \\
+              0 &amp;0 &amp;0 &amp;0 &amp;       &amp;1 &amp;0 \\
+            \end{mat}\]</span></p>
+</div>
+</div>
+<p><span id="exer:NilMapWillHaveStrBas"
+data-label="exer:NilMapWillHaveStrBas"></span> Finish the proof of .</p>
+<div class="answer">
+<p>We must check that <span
+class="math inline">\(B\union\hat{C}\union\set{\vec{v}_1,\dots,\vec{v}_j}\)</span>
+is linearly independent where <span class="math inline">\(B\)</span> is
+a <span class="math inline">\(t\)</span>-string basis for <span
+class="math inline">\(\rangespace{t}\)</span>, where <span
+class="math inline">\(\hat{C}\)</span> is a basis for <span
+class="math inline">\(\nullspace{t}\)</span>, and where <span
+class="math inline">\(t(\vec{v}_1)=\vec{\beta}_1,\dots,t(\vec{v}_i)=\vec{\beta}_i\)</span>.
+Write <span
+class="math display">\[\zero=c_{1,-1}\vec{v}_1+c_{1,0}\vec{\beta}_1
+               +c_{1,1}t(\vec{\beta}_1)+\dots+
+               c_{1,{h_1}}t^{h_1}(\vec{\vec{\beta}}_1)
+               +c_{2,-1}\vec{v}_2+\dots+c_{j,h_i}t^{h_i}(\vec{\beta_i})\]</span>
+and apply <span class="math inline">\(t\)</span>. <span
+class="math display">\[\begin{gathered}
+        \zero=c_{1,-1}\vec{\beta}_1+c_{1,0}t(\vec{\beta}_1)
+               +\dots+
+               c_{1,h_1-1}t^{h_1}(\vec{\vec{\beta}}_1)+c_{1,h_1}\zero      \\
+            +c_{2,-1}\vec{\beta}_2+\cdots+c_{i,h_i-1}t^{h_i}(\vec{\beta_i})
+            +c_{i,h_i}\zero
+      
+\end{gathered}\]</span> Conclude that the coefficients <span
+class="math inline">\(c_{1,-1},\dots,c_{1,h_i-1},
+      c_{2,-1},\dots,c_{i,h_i-1}\)</span> are all zero as <span
+class="math inline">\(B\union\hat{C}\)</span> is a basis. Substitute
+back into the first displayed equation to conclude that the remaining
+coefficients are zero also.</p>
+</div>
+<p><span id="exer:MatNilIffMapNil"
+data-label="exer:MatNilIffMapNil"></span> Show that the terms ‘nilpotent
+transformation’ and ‘nilpotent matrix’, as given in , fit with each
+other: a map is nilpotent if and only if it is represented by a
+nilpotent matrix. (Is it that a transformation is nilpotent if an only
+if there is a basis such that the map’s representation with respect to
+that basis is a nilpotent matrix, or that any representation is a
+nilpotent matrix?)</p>
+<div class="answer">
+<p>For any basis <span class="math inline">\(B\)</span>, a
+transformation <span class="math inline">\(n\)</span> is nilpotent if
+and only if <span class="math inline">\(N=\rep{n}{B,B}\)</span> is a
+nilpotent matrix. This is because only the zero matrix represents the
+zero map and so <span class="math inline">\(n^j\)</span> is the zero map
+if and only if <span class="math inline">\(N^j\)</span> is the zero
+matrix.</p>
+</div>
+<p>Let <span class="math inline">\(T\)</span> be nilpotent of index
+four. How big can the range space of <span
+class="math inline">\(T^3\)</span> be?</p>
+<div class="answer">
+<p>It can be of any size greater than or equal to one. To have a
+transformation that is nilpotent of index four, whose cube has range
+space of dimension <span class="math inline">\(k\)</span>, take a vector
+space, a basis for that space, and a transformation that acts on that
+basis in this way. <span
+class="math display">\[\begin{strings}{ccccccccc}
+            \vec{\beta}_1 &amp;\mapsto &amp;\vec{\beta}_2 &amp;\mapsto
+&amp;\vec{\beta}_3
+              &amp;\mapsto &amp;\vec{\beta}_4 &amp;\mapsto
+&amp;\zero  \\
+            \vec{\beta}_5 &amp;\mapsto &amp;\vec{\beta}_6 &amp;\mapsto
+&amp;\vec{\beta}_7
+              &amp;\mapsto &amp;\vec{\beta}_8 &amp;\mapsto
+&amp;\zero  \\
+            &amp;\vdotswithin{\vec{\beta}_{4k-3}}                       \\
+            \vec{\beta}_{4k-3} &amp;\mapsto &amp;\vec{\beta}_{4k-2}
+              &amp;\mapsto &amp;\vec{\beta}_{4k-1}
+              &amp;\mapsto &amp;\vec{\beta}_{4k} &amp;\mapsto
+&amp;\zero  \\
+            &amp;\vdotswithin{\vec{\beta}_{4k-3}}              \\
+            \multicolumn{8}{l}{%
+              \text{\textit{--possibly other, shorter, strings--}}}
+         \end{strings}\]</span> So the dimension of the range space of
+<span class="math inline">\(T^3\)</span> can be as large as desired. The
+smallest that it can be is onethere must be at least one string or else
+the map’s index of nilpotency would not be four.</p>
+</div>
+<p>Recall that similar matrices have the same eigenvalues. Show that the
+converse does not hold.</p>
+<div class="answer">
+<p>These two have only zero for eigenvalues <span
+class="math display">\[\begin{mat}
+          0  &amp;0  \\
+          0  &amp;0
+        \end{mat}
+        \qquad
+        \begin{mat}
+          0  &amp;0  \\
+          1  &amp;0
+        \end{mat}\]</span> but are not similar (they have different
+canonical representatives, namely, themselves).</p>
+</div>
+<p>shows that any for any linear transformation <span
+class="math inline">\(\map{t}{V}{V}\)</span> the restriction <span
+class="math inline">\(\map{t}{\genrangespace{t}}{\genrangespace{t}}\)</span>
+is one-to-one. Show that it is also onto, so it is an automorphism. Must
+it be the identity map?</p>
+<div class="answer">
+<p>It is onto by . It need not be the identity: consider this map <span
+class="math inline">\(\map{t}{\Re^2}{\Re^2}\)</span>. <span
+class="math display">\[\colvec{x \\ y}\mapsunder{t}\colvec{y \\
+x}\]</span> For that map <span
+class="math inline">\(\genrangespace{t}=\Re^2\)</span>, and <span
+class="math inline">\(t\)</span> is not the identity.</p>
+</div>
+<p>Prove that a nilpotent matrix is similar to one that is all zeros
+except for blocks of super-diagonal ones.</p>
+<div class="answer">
+<p>A simple reordering of the string basis will do. For instance, a map
+that is associated with this string basis <span
+class="math display">\[\begin{strings}{ccccccc}
+            \vec{\beta}_1 &amp;\mapsto &amp;\vec{\beta}_2 &amp;\mapsto
+&amp;\zero  
+         \end{strings}\]</span> is represented with respect to <span
+class="math inline">\(B=\sequence{\vec{\beta}_1,\vec{\beta}_2}\)</span>
+by this matrix <span class="math display">\[\begin{mat}
+          0  &amp;0  \\
+          1  &amp;0          
+        \end{mat}\]</span> but is represented with respect to <span
+class="math inline">\(B=\sequence{\vec{\beta}_2,\vec{\beta}_1}\)</span>
+in this way. <span class="math display">\[\begin{mat}
+          0  &amp;1  \\
+          0  &amp;0          
+        \end{mat}\]</span></p>
+</div>
+<p>Prove that if a transformation has the same range space as null
+space. then the dimension of its domain is even.</p>
+<div class="answer">
+<p>Let <span class="math inline">\(\map{t}{V}{V}\)</span> be the
+transformation. If <span class="math inline">\(\rank (t)=\nullity
+(t)\)</span> then the equation <span
+class="math inline">\(\rank(t)+\nullity(t)=\dim (V)\)</span> shows that
+<span class="math inline">\(\dim (V)\)</span> is even.</p>
+</div>
+<p>Prove that if two nilpotent matrices commute then their product and
+sum are also nilpotent.</p>
+<div class="answer">
+<p>For the matrices to be nilpotent they must be square. For them to
+commute they must be the same size. Thus their product and sum are
+defined.</p>
+<p>Call the matrices <span class="math inline">\(A\)</span> and <span
+class="math inline">\(B\)</span>. To see that <span
+class="math inline">\(AB\)</span> is nilpotent, multiply <span
+class="math inline">\((AB)^2=ABAB=AABB=A^2B^2\)</span>, and <span
+class="math inline">\((AB)^3=A^3B^3\)</span>, etc., and, as <span
+class="math inline">\(A\)</span> is nilpotent, that product is
+eventually zero.</p>
+<p>The sum is similar; use the Binomial Theorem.</p>
+</div>
+</div>
+</body>
+</html>

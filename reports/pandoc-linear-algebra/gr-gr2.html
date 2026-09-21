@@ -1,0 +1,1918 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>gr2</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+  </style>
+  <script
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js"
+  type="text/javascript"></script>
+</head>
+<body>
+<h1 id="linear-geometry">Linear Geometry</h1>
+<p><em>If you have seen the elements of vectors then this section is an
+optional review. However, later work will refer to this material so if
+this is not a review then it is not optional.</em></p>
+<p>In the first section we had to do a bit of work to show that there
+are only three types of solution setssingleton, empty, and infinite. But
+this is easy to see geometrically in the case of systems with two
+equations and two unknowns. Draw each two-unknowns equation as a line in
+the plane and then the two lines could have a unique intersection, be
+parallel, or be the same line.</p>
+<div class="center">
+<div class="minipage">
+<p>[8pt][0pt]</p>
+<table>
+<tbody>
+<tr>
+<td style="text-align: left;"><em>Unique solution</em></td>
+</tr>
+</tbody>
+</table>
+<div class="center">
+<p><img src="gr/mp/ch1.3" alt="image" /><br />
+<span class="math inline">\(\begin{linsys}{2}
+                         3x  &amp;+  &amp;2y  &amp;=  &amp;7   \\
+                         x   &amp;-  &amp;y   &amp;=  &amp;-1
+                       \end{linsys}\)</span></p>
+</div>
+</div>
+<div class="minipage">
+<p>[8pt][0pt]</p>
+<table>
+<tbody>
+<tr>
+<td style="text-align: left;"><em>No solutions</em></td>
+</tr>
+</tbody>
+</table>
+<div class="center">
+<p><img src="gr/mp/ch1.4" alt="image" /><br />
+<span class="math inline">\(\begin{linsys}{2}
+                         3x  &amp;+  &amp;2y  &amp;=  &amp;7   \\
+                         3x  &amp;+  &amp;2y  &amp;=  &amp;4
+                       \end{linsys}\)</span></p>
+</div>
+</div>
+<div class="minipage">
+<p>[8pt][0pt]</p>
+<table>
+<tbody>
+<tr>
+<td style="text-align: left;"><em>Infinitely many</em></td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>solutions</em></td>
+</tr>
+</tbody>
+</table>
+<div class="center">
+<p><img src="gr/mp/ch1.5" alt="image" /><br />
+<span class="math inline">\(\begin{linsys}{2}
+                         3x  &amp;+  &amp;2y  &amp;=  &amp;7   \\
+                         6x  &amp;+  &amp;4y  &amp;=  &amp;14
+                       \end{linsys}\)</span></p>
+</div>
+</div>
+</div>
+<p>These pictures aren’t a short way to prove the results from the prior
+section, because those results apply to linear systems with any number
+of variables. But they do provide a visual insight, another way of
+seeing those results.</p>
+<p>This section develops what we need to express our results
+geometrically. In particular, while the two-dimensional case is
+familiar, to extend to systems with more than two unknowns we shall need
+some higher-dimensional geometry.</p>
+<p>“Higher-dimensional geometry” sounds exotic. It is exoticinteresting
+and eye-opening. But it isn’t distant or unreachable.</p>
+<p>We begin by defining one-dimensional space to be <span
+class="math inline">\(\Re\)</span>. To see that the definition is
+reasonable, picture a one-dimensional space</p>
+<div class="center">
+<p><img src="gr/mp/ch1.6" alt="image" /></p>
+</div>
+<p>and pick a point to label <span class="math inline">\(0\)</span> and
+another to label <span class="math inline">\(1\)</span>.</p>
+<div class="center">
+<p><img src="gr/mp/ch1.7" alt="image" /></p>
+</div>
+<p>Now, with a scale and a direction, we have a correspondence with
+<span class="math inline">\(\Re\)</span>. For instance, to find the
+point matching <span class="math inline">\(+2.17\)</span>, start at
+<span class="math inline">\(0\)</span> and head in the direction of
+<span class="math inline">\(1\)</span>, and go <span
+class="math inline">\(2.17\)</span> times as far.</p>
+<p>The basic idea here, combining magnitude with direction, is the key
+to extending to higher dimensions.</p>
+<p>An object in an <span class="math inline">\(\Re^n\)</span> that is
+comprised of a magnitude and a direction is a (we use the same word as
+in the prior section because we shall show below how to describe such an
+object with a column vector). We can draw a vector as having some length
+and pointing in some direction.</p>
+<div class="center">
+<p><img src="gr/mp/ch1.8" alt="image" /></p>
+</div>
+<p>There is a subtlety involved in the definition of a vector as
+consisting of a magnitude and a directionthese</p>
+<div class="center">
+<p><img src="gr/mp/ch1.9" alt="image" /></p>
+</div>
+<p>are equal, even though they start in different places They are equal
+because they have equal lengths and equal directions. Again: those
+vectors are not just alike, they are equal.</p>
+<p>How can things that are in different places be equal? Think of a
+vector as representing a displacement (the word ‘vector’ is Latin for
+“carrier” or “traveler”). These two squares undergo displacements that
+are equal despite that they start in different places.</p>
+<div class="center">
+<p><img src="gr/mp/ch1.10" alt="image" /></p>
+</div>
+<p>When we want to emphasize this property vectors have of not being
+anchored we refer to them as vectors. Thus, these free vectors are
+equal, as each is a displacement of one over and two up.</p>
+<div class="center">
+<p><img src="gr/mp/ch1.12" alt="image" /></p>
+</div>
+<p>More generally, vectors in the plane are the same if and only if they
+have the same change in first components and the same change in second
+components: the vector extending from <span
+class="math inline">\((a_1,a_2)\)</span> to <span
+class="math inline">\((b_1,b_2)\)</span> equals the vector from <span
+class="math inline">\((c_1,c_2)\)</span> to <span
+class="math inline">\((d_1,d_2)\)</span> if and only if <span
+class="math inline">\(b_1-a_1=d_1-c_1\)</span> and <span
+class="math inline">\(b_2-a_2=d_2-c_2\)</span>.</p>
+<p>Saying ‘the vector that, were it to start at <span
+class="math inline">\((a_1,a_2)\)</span>, would extend to <span
+class="math inline">\((b_1,b_2)\)</span>’ would be unwieldy. We instead
+describe that vector as <span class="math display">\[\colvec{b_1-a_1 \\
+b_2-a_2}\]</span> so that we represent the ‘one over and two up’ arrows
+shown above in this way. <span class="math display">\[\colvec[r]{1 \\
+2}\]</span> We often draw the arrow as starting at the origin, and we
+then say it is in the (or or ). When <span
+class="math display">\[\vec{v}=\colvec{v_1 \\ v_2}\]</span> is in
+canonical position then it extends from the origin to the endpoint <span
+class="math inline">\((v_1,v_2)\)</span>.</p>
+<p>We will typically say “the point <span
+class="math display">\[\colvec[r]{1 \\ 2}\text{&#39;&#39;}\]</span>
+rather than “the endpoint of the canonical position of” that vector.
+Thus, we will call each of these <span
+class="math inline">\(\Re^2\)</span>. <span
+class="math display">\[\set{(x_1,x_2)\suchthat x_1,x_2\in\Re}
+   \qquad
+   \set{\colvec{x_1 \\ x_2}\suchthat x_1,x_2\in\Re}\]</span></p>
+<p>In the prior section we defined vectors and vector operations with an
+algebraic motivation; <span class="math display">\[r\cdot\colvec{v_1 \\
+v_2}
+   =
+   \colvec{rv_1 \\ rv_2}
+  \qquad
+   \colvec{v_1 \\  v_2}
+   +
+   \colvec{w_1 \\ w_2}
+   =
+   \colvec{v_1+w_1 \\ v_2+w_2}\]</span> we can now understand those
+operations geometrically. For instance, if <span
+class="math inline">\(\vec{v}\)</span> represents a displacement then
+<span class="math inline">\(3\vec{v}\,\)</span> represents a
+displacement in the same direction but three times as far and <span
+class="math inline">\(-1\vec{v}\,\)</span> represents a displacement of
+the same distance as <span class="math inline">\(\vec{v}\,\)</span> but
+in the opposite direction.</p>
+<div class="center">
+<p><img src="gr/mp/ch1.13" alt="image" /></p>
+</div>
+<p>And, where <span class="math inline">\(\vec{v}\)</span> and <span
+class="math inline">\(\vec{w}\)</span> represent displacements, <span
+class="math inline">\(\vec{v}+\vec{w}\/\)</span> represents those
+displacements combined.</p>
+<div class="center">
+<p><img src="gr/mp/ch1.14" alt="image" /></p>
+</div>
+<p>The long arrow is the combined displacement in this sense: imagine
+that you are walking on a ship’s deck. Suppose that in one minute the
+ship’s motion gives it a displacement relative to the sea of <span
+class="math inline">\(\vec{v}\)</span>, and in the same minute your
+walking gives you a displacement relative to the ship’s deck of <span
+class="math inline">\(\vec{w}\)</span>. Then <span
+class="math inline">\(\vec{v}+\vec{w}\/\)</span> is your displacement
+relative to the sea.</p>
+<p>Another way to understand the vector sum is with the . Draw the
+parallelogram formed by the vectors <span
+class="math inline">\(\vec{v}\)</span> and <span
+class="math inline">\(\vec{w}\)</span>. Then the sum <span
+class="math inline">\(\vec{v}+\vec{w}\)</span> extends along the
+diagonal to the far corner.</p>
+<div class="center">
+<p><img src="gr/mp/ch1.15" alt="image" /></p>
+</div>
+<p>The above drawings show how vectors and vector operations behave in
+<span class="math inline">\(\Re^2\)</span>. We can extend to <span
+class="math inline">\(\Re^3\)</span>, or to even higher-dimensional
+spaces where we have no pictures, with the obvious generalization: the
+free vector that, if it starts at <span
+class="math inline">\((a_1,\ldots,a_n)\)</span>, ends at <span
+class="math inline">\((b_1,\ldots,b_n)\)</span>, is represented by this
+column. <span class="math display">\[\colvec{b_1-a_1 \\
+\vdotswithin{b_1-a_1} \\ b_n-a_n}\]</span> Vectors are equal if they
+have the same representation. We aren’t too careful about distinguishing
+between a point and the vector whose canonical representation ends at
+that point. <span class="math display">\[\Re^n=
+  \set{\colvec{v_1 \\ \vdotswithin{v_1} \\ v_n}\suchthat
+v_1,\ldots,v_n\in\Re}\]</span> And, we do addition and scalar
+multiplication component-wise.</p>
+<p>Having considered points, we next turn to lines. In <span
+class="math inline">\(\Re^2\)</span>, the line through <span
+class="math inline">\((1,2)\)</span> and <span
+class="math inline">\((3,1)\)</span> is comprised of (the endpoints of)
+the vectors in this set.</p>
+<div class="center">
+<p><img src="gr/mp/ch1.16" alt="image" /></p>
+</div>
+<p>In the description the vector that is associated with the
+parameter <span class="math inline">\(t\)</span> <span
+class="math display">\[\colvec[r]{2 \\ -1}=\colvec[r]{3 \\
+1}-\colvec[r]{1 \\ 2}\]</span> is the one shown in the picture as having
+its whole body in the lineit is a for the line. Note that points on the
+line to the left of <span class="math inline">\(x=1\)</span> are
+described using negative values of <span
+class="math inline">\(t\)</span>.</p>
+<p>In <span class="math inline">\(\Re^3\)</span>, the line through <span
+class="math inline">\((1,2,1)\)</span> and <span
+class="math inline">\((0,3,2)\)</span> is the set of (endpoints of)
+vectors of this form</p>
+<div class="center">
+<p><img src="gr/mp/ch1.17" alt="image" /></p>
+</div>
+<p>and lines in even higher-dimensional spaces work in the same way.</p>
+<p>In <span class="math inline">\(\Re^3\)</span>, a line uses one
+parameter so that a particle on that line would be free to move back and
+forth in one dimension. A plane involves two parameters. For example,
+the plane through the points <span
+class="math inline">\((1,0,5)\)</span>, <span
+class="math inline">\((2,1,-3)\)</span>, and <span
+class="math inline">\((-2,4,0.5)\)</span> consists of (endpoints of) the
+vectors in this set. <span class="math display">\[\set{ \colvec[r]{1 \\
+0 \\ 5}
+         +t\colvec[r]{1 \\ 1 \\ -8}
+         +s\colvec[r]{-3 \\ 4 \\ -4.5}
+       \suchthat t,s\in\Re      }\]</span> The column vectors associated
+with the parameters come from these calculations. <span
+class="math display">\[\colvec[r]{1 \\ 1 \\ -8}
+  =
+  \colvec[r]{2 \\ 1 \\ -3}
+  -
+  \colvec[r]{1 \\ 0 \\ 5}
+  \qquad
+  \colvec[r]{-3 \\ 4 \\ -4.5}
+  =
+  \colvec[r]{-2 \\ 4 \\ 0.5}
+  -
+  \colvec[r]{1 \\ 0 \\ 5}\]</span> As with the line, note that we
+describe some points in this plane with negative <span
+class="math inline">\(t\)</span>’s or negative <span
+class="math inline">\(s\)</span>’s or both.</p>
+<p>Calculus books often describe a plane by using a single linear
+equation. <span class="math display">\[% \usebox{\jhscratchbox}
+  \vcenteredhbox{\includegraphics{gr/mp/ch1.18}}\]</span> To translate
+from this to the vector description, think of this as a one-equation
+linear system and parametrize: <span
+class="math inline">\(x=2-y/2-z/2\)</span>. <span
+class="math display">\[\vcenteredhbox{\includegraphics{gr/mp/ch1.19}}\]</span>
+Shown in grey are the vectors associated with <span
+class="math inline">\(y\)</span> and <span
+class="math inline">\(z\)</span>, offset from the origin by <span
+class="math inline">\(2\)</span> units along the <span
+class="math inline">\(x\)</span>-axis, so that their entire body lies in
+the plane. Thus the vector sum of the two, shown in black, has its
+entire body in the plane along with the rest of the parallelogram.</p>
+<p>Generalizing, a set of the form <span
+class="math inline">\(\set{\vec{p}+t_1\vec{v}_1+t_2\vec{v}_2+\cdots+t_k\vec{v}_k
+             \suchthat t_1,\ldots ,t_k\in\Re}\)</span> where <span
+class="math inline">\(\vec{v}_1,\ldots,\vec{v}_k\in\Re^n\)</span> and
+<span class="math inline">\(k\leq n\)</span> is a (or ). For example, in
+<span class="math inline">\(\Re^4\)</span> <span
+class="math display">\[\set{\colvec[r]{2 \\ \pi \\ 3 \\ -0.5}
+       +t\colvec[r]{1 \\ 0 \\ 0 \\ 0}
+       \suchthat t\in\Re}\]</span> is a line, <span
+class="math display">\[\set{
+       \colvec[r]{0 \\ 0 \\ 0 \\ 0}
+       +t\colvec[r]{1 \\ 1 \\ 0 \\ -1}
+       +s\colvec[r]{2 \\ 0 \\ 1 \\ 0}
+       \suchthat t,s\in\Re}\]</span> is a plane, and <span
+class="math display">\[\set{
+       \colvec[r]{3 \\ 1 \\ -2 \\ 0.5}
+       +r\colvec[r]{0 \\ 0 \\ 0 \\ -1}
+       +s\colvec[r]{1 \\ 0 \\ 1 \\ 0}
+       +t\colvec[r]{2 \\ 0 \\ 1 \\ 0}
+       \suchthat r,s,t\in\Re}\]</span> is a three-dimensional linear
+surface. Again, the intuition is that a line permits motion in one
+direction, a plane permits motion in combinations of two directions,
+etc. When the dimension of the linear surface is one less than the
+dimension of the space, that is, when in <span
+class="math inline">\(\Re^n\)</span> we have an <span
+class="math inline">\((n-1)\)</span>-flat, the surface is called a .</p>
+<p>A description of a linear surface can be misleading about the
+dimension. For example, this <span class="math display">\[L=\set{
+       \colvec[r]{1 \\ 0 \\ -1 \\ -2}
+       +t\colvec[r]{1 \\ 1 \\ 0 \\ -1}
+       +s\colvec[r]{2 \\ 2 \\ 0 \\ -2}
+       \suchthat t,s\in\Re}\]</span> is a plane because it is actually a
+line, since the vectors are multiples of each other and we can omit one.
+<span class="math display">\[L=\set{
+       \colvec[r]{1 \\ 0 \\ -1 \\ -2}
+       +r\colvec[r]{1 \\ 1 \\ 0 \\ -1}
+       \suchthat r\in\Re}\]</span> We shall see in the Linear
+Independence section of Chapter Two what relationships among vectors
+causes the linear surface they generate to be degenerate.</p>
+<p>We now can restate in geometric terms our conclusions from earlier.
+First, the solution set of a linear system with <span
+class="math inline">\(n\)</span> unknowns is a linear surface in <span
+class="math inline">\(\Re^n\)</span>. Specifically, it is a <span
+class="math inline">\(k\)</span>-dimensional linear surface, where <span
+class="math inline">\(k\)</span> is the number of free variables in an
+echelon form version of the system. For instance, in the single equation
+case the solution set is an <span
+class="math inline">\(n-1\)</span>-dimensional hyperplane in <span
+class="math inline">\(\Re^n\)</span>, where <span
+class="math inline">\(n\geq 1\)</span>. Second, the solution set of a
+homogeneous linear system is a linear surface passing through the
+origin. Finally, we can view the general solution set of any linear
+system as being the solution set of its associated homogeneous system
+offset from the origin by a vector, namely by any particular
+solution.</p>
+<div class="exercises">
+<p>Find the canonical name for each vector.</p>
+<div class="exparts">
+<p>the vector from <span class="math inline">\((2,1)\)</span> to <span
+class="math inline">\((4,2)\)</span> in <span
+class="math inline">\(\Re^2\)</span> the vector from <span
+class="math inline">\((3,3)\)</span> to <span
+class="math inline">\((2,5)\)</span> in <span
+class="math inline">\(\Re^2\)</span> the vector from <span
+class="math inline">\((1,0,6)\)</span> to <span
+class="math inline">\((5,0,3)\)</span> in <span
+class="math inline">\(\Re^3\)</span> the vector from <span
+class="math inline">\((6,8,8)\)</span> to <span
+class="math inline">\((6,8,8)\)</span> in <span
+class="math inline">\(\Re^3\)</span></p>
+</div>
+<div class="answer">
+<div class="exparts*">
+<p><span class="math inline">\(\colvec[r]{2 \\ 1}\)</span> <span
+class="math inline">\(\colvec[r]{-1 \\ 2}\)</span> <span
+class="math inline">\(\colvec[r]{4 \\ 0 \\ -3}\)</span> <span
+class="math inline">\(\colvec[r]{0 \\ 0 \\ 0}\)</span></p>
+</div>
+</div>
+<p>Decide if the two vectors are equal.</p>
+<div class="exparts">
+<p>the vector from <span class="math inline">\((5,3)\)</span> to <span
+class="math inline">\((6,2)\)</span> and the vector from <span
+class="math inline">\((1,-2)\)</span> to <span
+class="math inline">\((1,1)\)</span> the vector from <span
+class="math inline">\((2,1,1)\)</span> to <span
+class="math inline">\((3,0,4)\)</span> and the vector from <span
+class="math inline">\((5,1,4)\)</span> to <span
+class="math inline">\((6,0,7)\)</span></p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>No, their canonical positions are different. <span
+class="math display">\[\colvec[r]{1 \\ -1}
+            \qquad
+            \colvec[r]{0 \\ 3}\]</span> Yes, their canonical positions
+are the same. <span class="math display">\[\colvec[r]{1 \\ -1 \\
+3}\]</span></p>
+</div>
+</div>
+<p>Does <span class="math inline">\((1,0,2,1)\)</span> lie on the line
+through <span class="math inline">\((-2,1,1,0)\)</span> and <span
+class="math inline">\((5,10,-1,4)\)</span>?</p>
+<div class="answer">
+<p>That line is this set. <span
+class="math display">\[\set{\colvec[r]{-2 \\ 1 \\ 1 \\ 0}
+             +\colvec[r]{7 \\ 9 \\ -2 \\ 4}t \suchthat t\in\Re
+}\]</span> Note that this system <span
+class="math display">\[\begin{linsys}{2}
+          -2  &amp;+  &amp;7t  &amp;=  &amp;1  \\
+           1  &amp;+  &amp;9t  &amp;=  &amp;0  \\
+           1  &amp;-  &amp;2t  &amp;=  &amp;2  \\
+           0  &amp;+  &amp;4t  &amp;=  &amp;1  
+        \end{linsys}\]</span> has no solution. Thus the given point is
+not in the line.</p>
+</div>
+<div class="exparts">
+<p>Describe the plane through <span
+class="math inline">\((1,1,5,-1)\)</span>, <span
+class="math inline">\((2,2,2,0)\)</span>, and <span
+class="math inline">\((3,1,0,4)\)</span>. Is the origin in that
+plane?</p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>Note that <span class="math display">\[\colvec[r]{2 \\ 2 \\ 2 \\ 0}
+            -\colvec[r]{1 \\ 1 \\ 5 \\ -1}
+            =\colvec[r]{1 \\ 1 \\ -3 \\ 1}
+            \qquad
+            \colvec[r]{3 \\ 1 \\ 0 \\ 4}
+            -\colvec[r]{1 \\ 1 \\ 5 \\ -1}
+            =\colvec[r]{2 \\ 0 \\ -5 \\ 5}\]</span> and so the plane is
+this set. <span class="math display">\[\set{\colvec[r]{1 \\ 1 \\ 5 \\
+-1}
+                 +\colvec[r]{1 \\ 1 \\ -3 \\ 1}t
+                 +\colvec[r]{2 \\ 0 \\ -5 \\ 5}s
+                \suchthat t,s\in\Re}\]</span> No; this system <span
+class="math display">\[\begin{linsys}{3}
+              1  &amp;+  &amp;1t  &amp;+  &amp;2s  &amp;=  &amp;0  \\
+              1  &amp;+  &amp;1t  &amp;   &amp;    &amp;=  &amp;0  \\
+              5  &amp;-  &amp;3t  &amp;-  &amp;5s  &amp;=  &amp;0  \\
+             -1  &amp;+  &amp;1t  &amp;+  &amp;5s  &amp;=  &amp;0  
+            \end{linsys}\]</span> has no solution.</p>
+</div>
+</div>
+<p>Give a vector description of each.</p>
+<div class="exparts">
+<p>the plane subset of <span class="math inline">\(\Re^3\)</span> with
+equation <span class="math inline">\(x-2y+z=4\)</span></p>
+<p>the plane in <span class="math inline">\(\Re^3\)</span> with equation
+<span class="math inline">\(2x+y+4z=-1\)</span></p>
+<p>the hyperplane subset of <span class="math inline">\(\Re^4\)</span>
+with equation <span class="math inline">\(x+y+z+w=10\)</span></p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>Think of <span class="math inline">\(x-2y+z=4\)</span> as a
+one-equation linear system and parametrize with the variables <span
+class="math inline">\(y\)</span> and <span
+class="math inline">\(z\)</span> to get <span
+class="math inline">\(x=4+2y-z\)</span>. That gives this vector
+description of the plane. <span class="math display">\[\set{\colvec{x \\
+y \\ z}=\colvec{4 \\ 0 \\ 0}
+                                       +\colvec{2 \\ 1 \\ 0}\cdot y
+                                       +\colvec{-1 \\ 0 \\ 1}\cdot z
+                             \suchthat y,z\in\Re}\]</span></p>
+<p>Parametrizing gives <span
+class="math inline">\(x=-(1/2)-(1/2)y-2z\)</span>, so this is the vector
+description. <span class="math display">\[\colvec{x \\ y \\
+z}=\colvec{-1/2 \\ 0 \\ 0}
+                                       +\colvec{-1/2 \\ 1 \\ 0}\cdot y
+                                       +\colvec{-2 \\ 0 \\ 1}\cdot
+z\]</span></p>
+<p>Here <span class="math inline">\(x=10-y-z-w\)</span> and so we get a
+vector description with three parameters. <span
+class="math display">\[\colvec{x \\ y \\ z \\ w}=\colvec{10 \\ 0 \\ 0 \\
+0}
+                                       +\colvec{-1 \\ 1 \\ 0 \\ 0}\cdot
+y
+                                       +\colvec{-1 \\ 0 \\ 1 \\ 0}\cdot
+z
+                                       +\colvec{-1 \\ 0 \\ 0 \\ 1}\cdot
+w\]</span></p>
+</div>
+</div>
+<p>Describe the plane that contains this point and line. <span
+class="math display">\[\colvec[r]{2 \\ 0 \\ 3}
+      \qquad
+      \set{\colvec[r]{-1 \\ 0 \\ -4}
+           +\colvec[r]{1 \\ 1 \\ 2}t
+           \suchthat t\in\Re}\]</span></p>
+<div class="answer">
+<p>The vector <span class="math display">\[\colvec[r]{2 \\ 0 \\
+3}\]</span> is not in the line. Because <span
+class="math display">\[\colvec[r]{2 \\ 0 \\ 3}
+        -\colvec[r]{-1 \\ 0 \\ -4}
+        =\colvec[r]{3 \\ 0 \\ 7}\]</span> we can describe that plane in
+this way. <span class="math display">\[\set{\colvec[r]{-1 \\ 0 \\ -4}
+             +m\colvec[r]{1 \\ 1 \\ 2}
+             +n\colvec[r]{3 \\ 0 \\ 7}
+            \suchthat m,n\in\Re}\]</span></p>
+</div>
+<p>Intersect these planes. <span
+class="math display">\[\set{\colvec[r]{1 \\ 1 \\ 1}t+
+           \colvec[r]{0 \\ 1 \\ 3}s
+           \suchthat t,s\in\Re}
+      \qquad
+      \set{\colvec[r]{1 \\ 1 \\ 0}
+           +\colvec[r]{0 \\ 3 \\ 0}k+
+           \colvec[r]{2 \\ 0 \\ 4}m
+           \suchthat k,m\in\Re}\]</span></p>
+<div class="answer">
+<p>The points of coincidence are solutions of this system. <span
+class="math display">\[\begin{aligned}
+         t    &amp;= 1+2m      \\
+         t+s  &amp;= 1+3k      \\
+         t+3s &amp;= 4m
+      
+\end{aligned}\]</span> Move the unknowns to the left and do Gauss’s
+Method. <span class="math display">\[\begin{aligned}
+        \begin{amat}{4}
+          1  &amp;0  &amp;0  &amp;-2  &amp;1  \\
+          1  &amp;1  &amp;-3 &amp;0   &amp;1  \\
+          1  &amp;3  &amp;0  &amp;-4  &amp;0
+        \end{amat}
+        &amp;\grstep[-\rho_1+\rho_3]{-\rho_1+\rho_2}
+        \begin{amat}{4}
+          1  &amp;0  &amp;0  &amp;-2  &amp;1  \\
+          0  &amp;1  &amp;-3 &amp;2   &amp;0  \\
+          0  &amp;3  &amp;0  &amp;-2  &amp;-1
+        \end{amat}                       \\                         
+        &amp;\grstep{-3\rho_2+\rho_3}
+        \begin{amat}{4}
+          1  &amp;0  &amp;0  &amp;-2  &amp;1  \\
+          0  &amp;1  &amp;-3 &amp;2   &amp;0  \\
+          0  &amp;0  &amp;9  &amp;-8  &amp;-1
+        \end{amat}
+      
+\end{aligned}\]</span> The result is <span
+class="math inline">\(k=-(1/9)+(8/9)m\)</span>, so <span
+class="math inline">\(s=-(1/3)+(2/3)m\)</span> and <span
+class="math inline">\(t=1+2m\)</span>. The intersection is this. <span
+class="math display">\[\set{\colvec[r]{1 \\ 1 \\ 0}+
+             \colvec[r]{0 \\ 3 \\ 0}(-\frac{1}{9}+\frac{8}{9}m)+
+             \colvec[r]{2 \\ 0 \\ 4}m
+             \suchthat m\in\Re}
+        =\set{\colvec[r]{1 \\ 2/3 \\ 0}
+             +\colvec[r]{2 \\ 8/3 \\ 4}m
+             \suchthat m\in\Re}\]</span></p>
+</div>
+<p>Intersect each pair, if possible.</p>
+<div class="exparts">
+<p><span class="math inline">\(\set{\colvec[r]{1 \\ 1 \\
+2}+t\colvec[r]{0 \\ 1 \\ 1}
+                     \suchthat t\in\Re}\)</span>,  <span
+class="math inline">\(\set{\colvec[r]{1 \\ 3 \\ -2}+s\colvec[r]{0 \\ 1
+\\ 2}
+                     \suchthat s\in\Re}\)</span> <span
+class="math inline">\(\set{\colvec[r]{2 \\ 0 \\ 1}+t\colvec[r]{1 \\ 1 \\
+-1}
+                     \suchthat t\in\Re}\)</span>,  <span
+class="math inline">\(\set{s\colvec[r]{0 \\ 1 \\ 2}
+                     +w\colvec[r]{0 \\ 4 \\ 1}
+                     \suchthat s,w\in\Re}\)</span></p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>The system <span class="math display">\[\begin{linsys}{1}
+              1     &amp;= &amp;1\hfill         \\
+              1+t   &amp;= &amp;3+s\hfill         \\
+              2+t   &amp;= &amp;-2+2s\hfill
+            \end{linsys}\]</span> gives <span
+class="math inline">\(s=6\)</span> and <span
+class="math inline">\(t=8\)</span>, so this is the solution set. <span
+class="math display">\[\set{\colvec[r]{1 \\ 9 \\ 10}     }\]</span> This
+system <span class="math display">\[\begin{linsys}{1}
+            2+t   &amp;=  &amp;0 \hfill        \\
+            t     &amp;=  &amp;s+4w\hfill        \\
+            1-t   &amp;=  &amp;2s+w\hfill
+            \end{linsys}\]</span> gives <span
+class="math inline">\(t=-2\)</span>, <span
+class="math inline">\(w=-1\)</span>, and <span
+class="math inline">\(s=2\)</span> so their intersection is this point.
+<span class="math display">\[\colvec[r]{0 \\ -2 \\ 3}\]</span></p>
+</div>
+</div>
+<p>How should we define <span class="math inline">\(\Re^0\)</span>?</p>
+<div class="answer">
+<p>We shall later define it to be a set with one elementan “origin”.</p>
+</div>
+<p><span class="citation" data-cites="MathMag57p173"></span> A person
+traveling eastward at a rate of <span class="math inline">\(3\)</span>
+miles per hour finds that the wind appears to blow directly from the
+north. On doubling his speed it appears to come from the north east.
+What was the wind’s velocity?</p>
+<div class="answer">
+<p>The vector triangle is as follows, so <span
+class="math inline">\(\vec{w}=3\sqrt{2}\)</span> from the north
+west.</p>
+<div class="center">
+<div class="picture">
+<p>(20,12)(0,0) (0,10)<span>(1,0)<span>20</span> </span>
+(0,10)<span>(1,-1)<span>10</span> </span>
+(3.8,5)<span>(0,0)[r]<span><span
+class="math inline">\(\vec{w}\)</span></span> </span>
+(10,0)<span>(1,1)<span>10</span> </span>
+(10,0)<span>(0,1)<span>10</span> </span></p>
+</div>
+</div>
+</div>
+<p><span id="exer:Euclid" data-label="exer:Euclid"></span> Euclid
+describes a plane as “a surface which lies evenly with the straight
+lines on itself”. Commentators such as Heron have interpreted this to
+mean, “(A plane surface is) such that, if a straight line pass through
+two points on it, the line coincides wholly with it at every spot, all
+ways”. (Translations from <span class="citation"
+data-cites="Heath"></span>, pp. 171-172.) Do planes, as described in
+this section, have that property? Does this description adequately
+define planes?</p>
+<div class="answer">
+<p>Euclid no doubt is picturing a plane inside of <span
+class="math inline">\(\Re^3\)</span>. Observe, however, that both <span
+class="math inline">\(\Re^1\)</span> and <span
+class="math inline">\(\Re^2\)</span> also satisfy that definition.</p>
+</div>
+</div>
+<p>We’ve translated the first section’s results about solution sets into
+geometric terms, to better understand those sets. But we must be careful
+not to be misled by our own terms labeling subsets of <span
+class="math inline">\(\Re^k\)</span> of the forms <span
+class="math inline">\(\set{\vec{p}+t\vec{v}\suchthat t\in\Re}\)</span>
+and <span class="math inline">\(\set{\vec{p}+t\vec{v}+s\vec{w}\suchthat
+t,s\in\Re}\)</span> as ‘lines’ and ‘planes’ doesn’t make them act like
+the lines and planes of our past experience. Rather, we must ensure that
+the names suit the sets. While we can’t prove that the sets satisfy our
+intuitionwe can’t prove anything about intuitionin this subsection we’ll
+observe that a result familiar from <span
+class="math inline">\(\Re^2\)</span> and <span
+class="math inline">\(\Re^3\)</span>, when generalized to arbitrary
+<span class="math inline">\(\Re^n\)</span>, supports the idea that a
+line is straight and a plane is flat. Specifically, we’ll see how to do
+Euclidean geometry in a ‘plane’ by giving a definition of the angle
+between two <span class="math inline">\(\Re^n\)</span> vectors, in the
+plane that they generate.</p>
+<div class="definition">
+<p><span id="df:Length" data-label="df:Length"></span> The of a vector
+<span class="math inline">\(\vec{v}\in\Re^n\)</span> is the square root
+of the sum of the squares of its components. <span
+class="math display">\[\absval{\vec{v}\,}=\sqrt{v_1^2+\cdots+v_n^2}\]</span></p>
+</div>
+<div class="remark">
+<p>This is a natural generalization of the Pythagorean Theorem. A
+classic motivating discussion is in <span class="citation"
+data-cites="MathematicsPlausReason"></span>.</p>
+</div>
+<p>For any nonzero <span class="math inline">\(\vec{v}\)</span>, the
+vector <span class="math inline">\(\vec{v}/\absval{\vec{v}}\)</span> has
+length one. We say that the second <span
+class="math inline">\(\vec{v}\)</span> to length one.</p>
+<p>We can use that to get a formula for the angle between two vectors.
+Consider two vectors in <span class="math inline">\(\Re^3\)</span> where
+neither is a multiple of the other</p>
+<div class="center">
+<p><img src="gr/mp/ch1.21" alt="image" /></p>
+</div>
+<p>(the special case of multiples will turn out below not to be an
+exception). They determine a two-dimensional plane for instance, put
+them in canonical position and take the plane formed by the origin and
+the endpoints. In that plane consider the triangle with sides <span
+class="math inline">\(\vec{u}\)</span>, <span
+class="math inline">\(\vec{v}\)</span>, and <span
+class="math inline">\(\vec{u}-\vec{v}\)</span>.</p>
+<div class="center">
+<p><img src="gr/mp/ch1.22" alt="image" /></p>
+</div>
+<p>Apply the Law of Cosines: <span
+class="math inline">\(\absval{\vec{u}-\vec{v}\,}^2
+  =
+  \absval{\vec{u}\,}^2+\absval{\vec{v}\,}^2-
+    2\,\absval{\vec{u}\,}\,\absval{\vec{v}\,}\cos\theta\)</span> where
+<span class="math inline">\(\theta\)</span> is the angle between the
+vectors. The left side gives <span
+class="math display">\[\begin{gathered}
+(u_1-v_1)^2+(u_2-v_2)^2+(u_3-v_3)^2  \\
+     =(u_1^2-2u_1v_1+v_1^2)+(u_2^2-2u_2v_2+v_2^2)+(u_3^2-2u_3v_3+v_3^2)
+\end{gathered}\]</span> while the right side gives this. <span
+class="math display">\[(u_1^2+u_2^2+u_3^2)+(v_1^2+v_2^2+v_3^2)-
+     2\,\absval{\vec{u}\,}\,\absval{\vec{v}\,}\cos\theta\]</span>
+Canceling squares <span class="math inline">\(u_1^2\)</span>, …, <span
+class="math inline">\(v_3^2\)</span> and dividing by <span
+class="math inline">\(2\)</span> gives a formula for the angle. <span
+class="math display">\[\theta
+  =
+  \arccos(\,\frac{u_1v_1+u_2v_2+u_3v_3}{
+         \absval{\vec{u}\,}\,\absval{\vec{v}\,} }\,)\]</span></p>
+<p>In higher dimensions we cannot draw pictures as above but we can
+instead make the argument analytically. First, the form of the numerator
+is clear; it comes from the middle terms of <span
+class="math inline">\((u_i-v_i)^2\)</span>.</p>
+<div class="definition">
+<p><span id="df:DotProduct" data-label="df:DotProduct"></span> The (or
+or ) of two <span class="math inline">\(n\)</span>-component real
+vectors is the linear combination of their components. <span
+class="math display">\[\vec{u}\dotprod\vec{v}=\lincombo{u}{v}\]</span></p>
+</div>
+<p>Note that the dot product of two vectors is a real number, not a
+vector, and that the dot product is only defined if the two vectors have
+the same number of components. Note also that dot product is related to
+length: <span
+class="math inline">\(\vec{u}\dotprod\vec{u}=u_1u_1+\cdots+u_nu_n=\absval{\vec{u}\,}^2\)</span>.</p>
+<div class="remark">
+<p>Some authors require that the first vector be a row vector and that
+the second vector be a column vector. We shall not be that strict and
+will allow the dot product operation between two column vectors.</p>
+</div>
+<p>Still reasoning analytically but guided by the pictures, we use the
+next theorem to argue that the triangle formed by the line segments
+making the bodies of <span class="math inline">\(\vec{u}\)</span>, <span
+class="math inline">\(\vec{v}\)</span>, and <span
+class="math inline">\(\vec{u}+\vec{v}\)</span> in <span
+class="math inline">\(\Re^n\)</span> lies in the planar subset of <span
+class="math inline">\(\Re^n\)</span> generated by <span
+class="math inline">\(\vec{u}\)</span> and <span
+class="math inline">\(\vec{v}\)</span> (see the figure below).</p>
+<div class="theorem">
+<p><span id="th:TriangleInequality"
+data-label="th:TriangleInequality"></span> For any <span
+class="math inline">\(\vec{u},\vec{v}\in\Re^n\)</span>, <span
+class="math display">\[\absval{\vec{u}+\vec{v}\,}\leq\absval{\vec{u}\,}+\absval{\vec{v}\,}\]</span>
+with equality if and only if one of the vectors is a nonnegative scalar
+multiple of the other one.</p>
+</div>
+<p>This is the source of the familiar saying, “The shortest distance
+between two points is in a straight line.”</p>
+<div class="center">
+<p><img src="gr/mp/ch1.23" alt="image" /></p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> (We’ll use some algebraic properties of dot product
+that we have not yet checked, for instance that <span
+class="math inline">\(\vec{u}\dotprod(\vec{a}+\vec{b})
+  =\vec{u}\dotprod\vec{a}+\vec{u}\dotprod\vec{b}\)</span> and that <span
+class="math inline">\(\vec{u}\dotprod\vec{v}=\vec{v}\dotprod\vec{u}\)</span>.
+See .) Since all the numbers are positive, the inequality holds if and
+only if its square holds. <span class="math display">\[\begin{aligned}
+  \absval{\vec{u}+\vec{v}\,}^2
+  &amp;\leq(\,\absval{\vec{u}\,}+\absval{\vec{v}\,}\,)^2                            \\
+  (\,\vec{u}+\vec{v}\,)\dotprod(\,\vec{u}+\vec{v}\,)
+  &amp;\leq\absval{\vec{u}\,}^2+2\,\absval{\vec{u}\,}\,\absval{\vec{v}\,}
+     +\absval{\vec{v}\,}^2                                         \\
+  \vec{u}\dotprod\vec{u}+\vec{u}\dotprod\vec{v}
+     +\vec{v}\dotprod\vec{u}+\vec{v}\dotprod\vec{v}
+  &amp;\leq\vec{u}\dotprod\vec{u}+2\,\absval{\vec{u}\,}\,\absval{\vec{v}\,}
+    +\vec{v}\dotprod\vec{v}                                          \\
+  2\,\vec{u}\dotprod\vec{v}
+  &amp;\leq 2\,\absval{\vec{u}\,}\,\absval{\vec{v}\,}
+\end{aligned}\]</span> That, in turn, holds if and only if the
+relationship obtained by multiplying both sides by the nonnegative
+numbers <span class="math inline">\(\absval{\vec{u}\,}\)</span> and
+<span class="math inline">\(\absval{\vec{v}\,}\)</span> <span
+class="math display">\[2\,(\,\absval{\vec{v}\,}\,\vec{u}\,)\dotprod(\,\absval{\vec{u}\,}\,\vec{v}\,)
+  \leq
+  2\,\absval{\vec{u}\,}^2\,\absval{\vec{v}\,}^2\]</span> and rewriting
+<span class="math display">\[0
+  \leq
+  \absval{\vec{u}\,}^2\,\absval{\vec{v}\,}^2
+   -2\,(\,\absval{\vec{v}\,}\,\vec{u}\,)\dotprod(\,\absval{\vec{u}\,}\,\vec{v}\,)
+  +\absval{\vec{u}\,}^2\,\absval{\vec{v}\,}^2\]</span> is true. But
+factoring shows that it is true <span class="math display">\[0\leq
+  (\,\absval{\vec{u}\,}\,\vec{v}-\absval{\vec{v}\,}\,\vec{u}\,)\dotprod
+  (\,\absval{\vec{u}\,}\,\vec{v}-\absval{\vec{v}\,}\,\vec{u}\,)\]</span>
+since it only says that the square of the length of the vector <span
+class="math inline">\(\absval{\vec{u}\,}\,\vec{v}-\absval{\vec{v}\,}\,\vec{u}\,\)</span>
+is not negative. As for equality, it holds when, and only when, <span
+class="math inline">\(\absval{\vec{u}\,}\,\vec{v}-\absval{\vec{v}\,}\,\vec{u}\)</span>
+is <span class="math inline">\(\zero\)</span>. The check that <span
+class="math inline">\(\absval{\vec{u}\,}\,\vec{v}=\absval{\vec{v}\,}\,\vec{u}\,\)</span>
+if and only if one vector is a nonnegative real scalar multiple of the
+other is easy. ◻</p>
+</div>
+<p>This result supports the intuition that even in higher-dimensional
+spaces, lines are straight and planes are flat. We can easily check from
+the definition that linear surfaces have the property that for any two
+points in that surface, the line segment between them is contained in
+that surface. But if the linear surface were not flat then that would
+allow for a shortcut.</p>
+<div class="center">
+<p><img src="gr/mp/ch1.24" alt="image" /></p>
+</div>
+<p>Because the Triangle Inequality says that in any <span
+class="math inline">\(\Re^n\)</span> the shortest cut between two
+endpoints is simply the line segment connecting them, linear surfaces
+have no bends.</p>
+<p>Back to the definition of angle measure. The heart of the Triangle
+Inequality’s proof is the <span
+class="math inline">\(\vec{u}\dotprod\vec{v}\leq
+\absval{\vec{u}\,}\,\absval{\vec{v}\,}\)</span> line. We might wonder if
+some pairs of vectors satisfy the inequality in this way: while <span
+class="math inline">\(\vec{u}\dotprod\vec{v}\)</span> is a large number,
+with absolute value bigger than the right-hand side, it is a negative
+large number. The next result says that does not happen.</p>
+<div class="corollary">
+<p><span id="th:CauchySchwarz" data-label="th:CauchySchwarz"></span> For
+any <span class="math inline">\(\vec{u},\vec{v}\in\Re^n\)</span>, <span
+class="math display">\[\absval{\,\vec{u}\dotprod\vec{v}\,}
+   \leq
+   \absval{\,\vec{u}\,}\,\absval{\vec{v}\,}\]</span> with equality if
+and only if one vector is a scalar multiple of the other.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> The Triangle Inequality’s proof shows that <span
+class="math inline">\(\vec{u}\dotprod\vec{v}\leq
+\absval{\vec{u}\,}\,\absval{\vec{v}\,}\)</span> so if <span
+class="math inline">\(\vec{u}\dotprod\vec{v}\)</span> is positive or
+zero then we are done. If <span
+class="math inline">\(\vec{u}\dotprod\vec{v}\)</span> is negative then
+this holds. <span
+class="math display">\[\absval{\,\vec{u}\dotprod\vec{v}\,}
+   =-(\,\vec{u}\dotprod\vec{v}\,)
+   =(-\vec{u}\,)\dotprod\vec{v}
+   \leq
+   \absval{-\vec{u}\,}\,\absval{\vec{v}\,}
+   =\absval{\vec{u}\,}\,\absval{\vec{v}\,}\]</span> The equality
+condition is . ◻</p>
+</div>
+<p>The Cauchy-Schwarz inequality assures us that the next definition
+makes sense because the fraction has absolute value less than or equal
+to one.</p>
+<div class="definition">
+<p><span id="def:VectorAngle" data-label="def:VectorAngle"></span> The
+between two nonzero vectors <span
+class="math inline">\(\vec{u},\vec{v}\in\Re^n\)</span> is <span
+class="math display">\[\theta
+  =
+  \arccos(\,\frac{\vec{u}\dotprod\vec{v}}{
+                  \absval{\vec{u}\,}\,\absval{\vec{v}\,} }\,)\]</span>
+(if either is the zero vector then we take the angle to be a right
+angle).</p>
+</div>
+<div class="corollary">
+<p><span id="co:VectorsOrthogonalIffDoTProductZero"
+data-label="co:VectorsOrthogonalIffDoTProductZero"></span> Vectors from
+<span class="math inline">\(\Re^n\)</span> are orthogonal, that is,
+perpendicular, if and only if their dot product is zero. They are
+parallel if and only if their dot product equals the product of their
+lengths.</p>
+</div>
+<div class="example">
+<p>These vectors are orthogonal.</p>
+<div class="center">
+<div class="minipage">
+<p><img src="gr/mp/ch1.25" alt="image" /></p>
+</div>
+<p><span class="math inline">\(\colvec[r]{1 \\ -1}\dotprod\colvec[r]{1
+\\ 1}=0\)</span></p>
+</div>
+<p>We’ve drawn the arrows away from canonical position but nevertheless
+the vectors are orthogonal.</p>
+</div>
+<div class="example">
+<p>The <span class="math inline">\(\Re^3\)</span> angle formula given at
+the start of this subsection is a special case of the definition.
+Between these two</p>
+<div class="center">
+<p><img src="gr/mp/ch1.26" alt="image" /></p>
+</div>
+<p>the angle is <span
+class="math display">\[\arccos(\frac{(1)(0)+(1)(3)+(0)(2)}{\sqrt{1^2+1^2+0^2}\sqrt{0^2+3^2+2^2}})
+   =\arccos(\frac{3}{\sqrt{2}\sqrt{13}})\]</span> approximately <span
+class="math inline">\(0.94~\text{radians}\)</span>. Notice that these
+vectors are not orthogonal. Although the <span
+class="math inline">\(yz\)</span>-plane may appear to be perpendicular
+to the <span class="math inline">\(xy\)</span>-plane, in fact the two
+planes are that way only in the weak sense that there are vectors in
+each orthogonal to all vectors in the other. Not every vector in each is
+orthogonal to all vectors in the other.</p>
+</div>
+<div class="exercises">
+<p>Find the length of each vector.</p>
+<div class="exparts*">
+<p><span class="math inline">\(\colvec[r]{3 \\ 1}\)</span> <span
+class="math inline">\(\colvec[r]{-1 \\ 2}\)</span> <span
+class="math inline">\(\colvec[r]{4 \\ 1 \\ 1}\)</span> <span
+class="math inline">\(\colvec[r]{0 \\ 0 \\ 0}\)</span> <span
+class="math inline">\(\colvec[r]{1 \\ -1 \\ 1 \\ 0}\)</span></p>
+</div>
+<div class="answer">
+<div class="exparts*">
+<p><span class="math inline">\(\sqrt{3^2+1^2}=\sqrt{10}\)</span> <span
+class="math inline">\(\sqrt{5}\)</span> <span
+class="math inline">\(\sqrt{18}\)</span> <span
+class="math inline">\(0\)</span> <span
+class="math inline">\(\sqrt{3}\)</span></p>
+</div>
+</div>
+<p>Find the angle between each two, if it is defined.</p>
+<div class="exparts*">
+<p><span class="math inline">\(\colvec[r]{1 \\ 2}, \colvec[r]{1 \\
+4}\)</span> <span class="math inline">\(\colvec[r]{1 \\ 2 \\ 0},
+\colvec[r]{0 \\ 4 \\ 1}\)</span> <span
+class="math inline">\(\colvec[r]{1 \\ 2}, \colvec[r]{1 \\ 4 \\
+-1}\)</span></p>
+</div>
+<div class="answer">
+<div class="exparts*">
+<p><span class="math inline">\(\arccos(9/\sqrt{85})\approx 0.22\mbox{\
+radians}\)</span> <span
+class="math inline">\(\arccos(8/\sqrt{85})\approx 0.52\mbox{\
+radians}\)</span> Not defined.</p>
+</div>
+</div>
+<p><span class="citation" data-cites="Ohanian"></span> During maneuvers
+preceding the Battle of Jutland, the British battle cruiser
+<em>Lion</em> moved as follows (in nautical miles): <span
+class="math inline">\(1.2\)</span> miles north, <span
+class="math inline">\(6.1\)</span> miles <span
+class="math inline">\(38\)</span> degrees east of south, <span
+class="math inline">\(4.0\)</span> miles at <span
+class="math inline">\(89\)</span> degrees east of north, and <span
+class="math inline">\(6.5\)</span> miles at <span
+class="math inline">\(31\)</span> degrees east of north. Find the
+distance between starting and ending positions. (Ignore the earth’s
+curvature.)</p>
+<div class="answer">
+<p>We express each displacement as a vector, rounded to one decimal
+place because that’s the accuracy of the problem’s statement, and add to
+find the total displacement (ignoring the curvature of the earth). <span
+class="math display">\[\colvec[r]{0.0 \\ 1.2}
+        +\colvec[r]{3.8 \\ -4.8}
+        +\colvec[r]{4.0 \\ 0.1}
+        +\colvec[r]{3.3 \\ 5.6}
+        =\colvec[r]{11.1 \\ 2.1}\]</span> The distance is <span
+class="math inline">\(\sqrt{11.1^2+2.1^2}\approx 11.3\)</span>.</p>
+</div>
+<p>Find <span class="math inline">\(k\)</span> so that these two vectors
+are perpendicular. <span class="math display">\[\colvec{k \\ 1}
+       \qquad
+       \colvec[r]{4 \\ 3}\]</span></p>
+<div class="answer">
+<p>Solve <span class="math inline">\((k)(4)+(1)(3)=0\)</span> to get
+<span class="math inline">\(k=-3/4\)</span>.</p>
+</div>
+<p>Describe the set of vectors in <span
+class="math inline">\(\Re^3\)</span> orthogonal to the one with entries
+<span class="math inline">\(1\)</span>, <span
+class="math inline">\(3\)</span>, and <span
+class="math inline">\(-1\)</span>.</p>
+<div class="answer">
+<p>We could describe the set <span class="math display">\[\set{\colvec{x
+\\ y \\ z}\suchthat 1x+3y-1z=0}\]</span> with parameters in this way.
+<span class="math display">\[\set{\colvec[r]{-3 \\ 1 \\ 0}y+\colvec[r]{1
+\\ 0 \\ 1}z
+               \suchthat y,z\in\Re}\]</span></p>
+</div>
+<div class="exparts">
+<p>Find the angle between the diagonal of the unit square in <span
+class="math inline">\(\Re^2\)</span> and any one of the axes. Find the
+angle between the diagonal of the unit cube in <span
+class="math inline">\(\Re^3\)</span> and one of the axes. Find the angle
+between the diagonal of the unit cube in <span
+class="math inline">\(\Re^n\)</span> and one of the axes. What is the
+limit, as <span class="math inline">\(n\)</span> goes to <span
+class="math inline">\(\infty\)</span>, of the angle between the diagonal
+of the unit cube in <span class="math inline">\(\Re^n\)</span> and any
+one of the axes?</p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>We can use the <span class="math inline">\(x\)</span>-axis. <span
+class="math display">\[\arccos (\frac{(1)(1)+(0)(1)}{\sqrt{1}\sqrt{2}})
+            \approx 0.79~\text{radians}\]</span> Again, use the <span
+class="math inline">\(x\)</span>-axis. <span
+class="math display">\[\arccos
+(\frac{(1)(1)+(0)(1)+(0)(1)}{\sqrt{1}\sqrt{3}})
+            \approx 0.96~\text{radians}\]</span> The <span
+class="math inline">\(x\)</span>-axis worked before and it will work
+again. <span class="math display">\[\arccos
+(\frac{(1)(1)+\cdots+(0)(1)}{\sqrt{1}\sqrt{n}})
+            =\arccos (\frac{1}{\sqrt{n}})\]</span> Using the formula
+from the prior item, <span class="math inline">\(\lim_{n\to\infty}
+\arccos(1/\sqrt{n})
+              =\pi/2\text{\ radians}\)</span>.</p>
+</div>
+</div>
+<p>Is there any vector in <span class="math inline">\(\Re^n\)</span>
+that is perpendicular to itself?</p>
+<div class="answer">
+<p>Definition <a href="#def:VectorAngle" data-reference-type="ref"
+data-reference="def:VectorAngle">[def:VectorAngle]</a> stipulates that
+the angle between two vectors is a right angle if either is the zero
+vector. (It stipulates that separately since we cannot rely on the
+formula because the fraction’s denominator is <span
+class="math inline">\(0\)</span>.) Thus, by definition, the zero vector
+is perpendicular to itself.</p>
+<p>It is the only such member of <span
+class="math inline">\(\Re^n\)</span> since <span
+class="math inline">\(u_1u_1+\cdots+u_nu_n\)</span> is <span
+class="math inline">\(0\)</span> if and only if each <span
+class="math inline">\(u_i\)</span> is <span
+class="math inline">\(0\)</span>.</p>
+</div>
+<p><span id="exer:AlgPropsDotProd"
+data-label="exer:AlgPropsDotProd"></span> Describe the algebraic
+properties of dot product.</p>
+<div class="exparts">
+<p>Is it right-distributive over addition: <span
+class="math inline">\((\vec{u}+\vec{v})\dotprod\vec{w}
+           =
+           \vec{u}\dotprod\vec{w}+\vec{v}\dotprod\vec{w}\)</span>? Is it
+left-distributive (over addition)? Does it commute? Associate? How does
+it interact with scalar multiplication?</p>
+</div>
+<p>As always, you must back any assertion with a suitable argument.</p>
+<div class="answer">
+<p>In each item below, assume that the vectors <span
+class="math inline">\(\vec{u},\vec{v},\vec{w}\in\Re^n\)</span> have
+components <span
+class="math inline">\(u_1,\ldots,u_n,v_1,\ldots,w_n\)</span>.</p>
+<div class="exparts">
+<p>Dot product is right-distributive. <span
+class="math display">\[\begin{aligned}
+              (\vec{u}+\vec{v})\dotprod\vec{w}
+              &amp;=[\colvec{u_1 \\ \vdotswithin{u_1} \\ u_n}
+                +\colvec{v_1 \\ \vdotswithin{v_1} \\ v_n}]\dotprod
+                \colvec{w_1 \\ \vdotswithin{w_1} \\
+w_n}               \\
+              &amp;=
+              \colvec{u_1+v_1 \\ \vdotswithin{u_1+v_1} \\
+u_n+v_n}\dotprod
+                \colvec{w_1 \\ \vdotswithin{w_1} \\
+w_n}               \\
+              &amp;=
+              (u_1+v_1)w_1+\cdots+(u_n+v_n)w_n              \\
+              &amp;=
+              (u_1w_1+\cdots+u_nw_n)+(v_1w_1+\cdots+v_nw_n)  \\
+              &amp;=
+              \vec{u}\dotprod\vec{w}+\vec{v}\dotprod\vec{w}
+           
+\end{aligned}\]</span> Dot product is also left distributive: <span
+class="math inline">\(\vec{w}\dotprod(\vec{u}+\vec{v})=
+              \vec{w}\dotprod\vec{u}+\vec{w}\dotprod\vec{v}\)</span>.
+The proof is just like the prior one. Dot product commutes. <span
+class="math display">\[\colvec{u_1 \\ \vdotswithin{u_1} \\ u_n}\dotprod
+              \colvec{v_1 \\ \vdotswithin{v_1} \\ v_n}
+            =u_1v_1+\cdots+u_nv_n   
+            =v_1u_1+\cdots+v_nu_n   
+            =\colvec{v_1 \\ \vdotswithin{v_1} \\ v_n}\dotprod
+              \colvec{u_1 \\ \vdotswithin{u_1} \\ u_n}\]</span> Because
+<span class="math inline">\(\vec{u}\dotprod\vec{v}\)</span> is a scalar,
+not a vector, the expression <span
+class="math inline">\((\vec{u}\dotprod\vec{v})\dotprod\vec{w}\)</span>
+makes no sense; the dot product of a scalar and a vector is not defined.
+This is a vague question so it has many answers. Some are (1) <span
+class="math inline">\(k(\vec{u}\dotprod\vec{v})=(k\vec{u})\dotprod\vec{v}\)</span>
+and <span
+class="math inline">\(k(\vec{u}\dotprod\vec{v})=\vec{u}\dotprod(k\vec{v})\)</span>,
+(2) <span class="math inline">\(k(\vec{u}\dotprod\vec{v})\neq
+(k\vec{u})\dotprod(k\vec{v})\)</span> (in general; an example is easy to
+produce), and (3) <span class="math inline">\(\absval{k\vec{v}\,}=\lvert
+k\rvert\absval{\vec{v}\,}\)</span> (the connection between length and
+dot product is that the square of the length is the dot product of a
+vector with itself).</p>
+</div>
+</div>
+<p><span id="exer:EqOfCauchySchwarz"
+data-label="exer:EqOfCauchySchwarz"></span> Verify the equality
+condition in , the Cauchy-Schwarz Inequality.</p>
+<div class="exparts">
+<p>Show that if <span class="math inline">\(\vec{u}\)</span> is a
+negative scalar multiple of <span class="math inline">\(\vec{v}\)</span>
+then <span class="math inline">\(\vec{u}\dotprod\vec{v}\)</span> and
+<span class="math inline">\(\vec{v}\dotprod\vec{u}\)</span> are less
+than or equal to zero. Show that <span
+class="math inline">\(\absval{\vec{u}\dotprod\vec{v}}=
+                            \absval{\vec{u}\,}\,\absval{\vec{v}\,}\)</span>
+if and only if one vector is a scalar multiple of the other.</p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>Verifying that <span
+class="math inline">\((k\vec{x})\dotprod\vec{y}=k(\vec{x}\dotprod\vec{y})
+           =\vec{x}\dotprod(k\vec{y})\)</span> for <span
+class="math inline">\(k\in\Re\)</span> and <span
+class="math inline">\(\vec{x},\vec{y}\in\Re^n\)</span> is easy. Now, for
+<span class="math inline">\(k\in\Re\)</span> and <span
+class="math inline">\(\vec{v},\vec{w}\in\Re^n\)</span>, if <span
+class="math inline">\(\vec{u}=k\vec{v}\)</span> then <span
+class="math inline">\(\vec{u}\dotprod\vec{v}=(k\vec{v})\dotprod\vec{v}
+             =k(\vec{v}\dotprod\vec{v})\)</span>, which is <span
+class="math inline">\(k\)</span> times a nonnegative real.</p>
+<p>The <span class="math inline">\(\vec{v}=k\vec{u}\)</span> half is
+similar (actually, taking the <span class="math inline">\(k\)</span> in
+this paragraph to be the reciprocal of the <span
+class="math inline">\(k\)</span> above gives that we need only worry
+about the <span class="math inline">\(k=0\)</span> case). We first
+consider the <span class="math inline">\(\vec{u}\dotprod\vec{v}\geq
+0\)</span> case. From the Triangle Inequality we know that <span
+class="math inline">\(\vec{u}\dotprod\vec{v}=\absval{\vec{u}\,}\,\absval{\vec{v}\,}\)</span>
+if and only if one vector is a nonnegative scalar multiple of the other.
+But that’s all we need because the first part of this exercise shows
+that, in a context where the dot product of the two vectors is positive,
+the two statements ‘one vector is a scalar multiple of the other’ and
+‘one vector is a nonnegative scalar multiple of the other’, are
+equivalent.</p>
+<p>We finish by considering the <span
+class="math inline">\(\vec{u}\dotprod\vec{v}&lt; 0\)</span> case.
+Because <span
+class="math inline">\(0&lt;\absval{\vec{u}\dotprod\vec{v}}=-(\vec{u}\dotprod\vec{v})
+            =(-\vec{u})\dotprod\vec{v}\)</span> and <span
+class="math inline">\(\absval{\vec{u}\,}\,\absval{\vec{v}\,}
+              =\absval{-\vec{u}\,}\,\absval{\vec{v}\,}\)</span>, we have
+that <span
+class="math inline">\(0&lt;(-\vec{u})\dotprod\vec{v}=\absval{-\vec{u}\,}\,\absval{\vec{v}\,}\)</span>.
+Now the prior paragraph applies to give that one of the two vectors
+<span class="math inline">\(-\vec{u}\)</span> and <span
+class="math inline">\(\vec{v}\)</span> is a scalar multiple of the
+other. But that’s equivalent to the assertion that one of the two
+vectors <span class="math inline">\(\vec{u}\)</span> and <span
+class="math inline">\(\vec{v}\)</span> is a scalar multiple of the
+other, as desired.</p>
+</div>
+</div>
+<p>Suppose that <span
+class="math inline">\(\vec{u}\dotprod\vec{v}=\vec{u}\dotprod\vec{w}\)</span>
+and <span class="math inline">\(\vec{u}\neq\vec{0}\)</span>. Must <span
+class="math inline">\(\vec{v}=\vec{w}\)</span>?</p>
+<div class="answer">
+<p>No. These give an example. <span
+class="math display">\[\vec{u}=\colvec[r]{1 \\ 0}
+        \quad
+        \vec{v}=\colvec[r]{1 \\ 0}
+        \quad
+        \vec{w}=\colvec[r]{1 \\ 1}\]</span></p>
+</div>
+<p>Does any vector have length zero except a zero vector? (If “yes”,
+produce an example. If “no”, prove it.)</p>
+<div class="answer">
+<p>We prove that a vector has length zero if and only if all its
+components are zero.</p>
+<p>Let <span class="math inline">\(\vec{u}\in\Re^n\)</span> have
+components <span class="math inline">\(u_1,\ldots,u_n\)</span>. Recall
+that the square of any real number is greater than or equal to zero,
+with equality only when that real is zero. Thus <span
+class="math inline">\(\absval{\vec{u}\,}^2={u_1}^2+\cdots+{u_n}^2\)</span>
+is a sum of numbers greater than or equal to zero, and so is itself
+greater than or equal to zero, with equality if and only if each <span
+class="math inline">\(u_i\)</span> is zero. Hence <span
+class="math inline">\(\absval{\vec{u}\,}=0\)</span> if and only if all
+the components of <span class="math inline">\(\vec{u}\)</span> are
+zero.</p>
+</div>
+<p>Find the midpoint of the line segment connecting <span
+class="math inline">\((x_1,y_1)\)</span> with <span
+class="math inline">\((x_2,y_2)\)</span> in <span
+class="math inline">\(\Re^2\)</span>. Generalize to <span
+class="math inline">\(\Re^n\)</span>.</p>
+<div class="answer">
+<p>We can easily check that <span class="math display">\[\bigl(
+\frac{x_1+x_2}{2},\frac{y_1+y_2}{2}  \bigr)\]</span> is on the line
+connecting the two, and is equidistant from both. The generalization is
+obvious.</p>
+</div>
+<p>Show that if <span class="math inline">\(\vec{v}\neq\zero\)</span>
+then <span class="math inline">\(\vec{v}/\absval{\vec{v}\,}\)</span> has
+length one. What if <span
+class="math inline">\(\vec{v}=\zero\)</span>?</p>
+<div class="answer">
+<p>Assume that <span class="math inline">\(\vec{v}\in\Re^n\)</span> has
+components <span class="math inline">\(v_1,\ldots,v_n\)</span>. If <span
+class="math inline">\(\vec{v}\neq \zero\)</span> then we have this.
+<span class="math display">\[\begin{gathered}
+        \sqrt{\left(\frac{v_1}{\sqrt{{v_1}^2+\cdots+{v_n}^2}}\right)^2+
+              \dots+\left(\frac{v_n}{\sqrt{{v_1}^2+\cdots+{v_n}^2}}\right)^2}
+        \\
+        \begin{aligned}
+          &amp;=\sqrt{\left(\frac{{v_1}^2}{{v_1}^2+\cdots+{v_n}^2}\right)+
+              \dots+\left(\frac{{v_n}^2}{{v_1}^2+\cdots+{v_n}^2}\right)}   \\
+          &amp;=1
+        \end{aligned}
+      
+\end{gathered}\]</span> If <span
+class="math inline">\(\vec{v}=\zero\)</span> then <span
+class="math inline">\(\vec{v}/\absval{\vec{v}\,}\)</span> is not
+defined.</p>
+</div>
+<p>Show that if <span class="math inline">\(r\geq 0\)</span> then <span
+class="math inline">\(r\vec{v}\)</span> is <span
+class="math inline">\(r\)</span> times as long as <span
+class="math inline">\(\vec{v}\)</span>. What if <span
+class="math inline">\(r&lt; 0\)</span>?</p>
+<div class="answer">
+<p>For the first question, assume that <span
+class="math inline">\(\vec{v}\in\Re^n\)</span> and <span
+class="math inline">\(r\geq 0\)</span>, take the root, and factor. <span
+class="math display">\[\absval{r\vec{v}\,}
+        =\sqrt{(rv_1)^2+\cdots+(rv_n)^2}     
+        =\sqrt{r^2({v_1}^2+\cdots+{v_n}^2}     
+        =r\absval{\vec{v}\,}\]</span> For the second question, the
+result is <span class="math inline">\(r\)</span> times as long, but it
+points in the opposite direction in that <span
+class="math inline">\(r\vec{v}+(-r)\vec{v}=\zero\)</span>.</p>
+</div>
+<p>A vector <span class="math inline">\(\vec{v}\in\Re^n\)</span> of
+length one is a vector. Show that the dot product of two unit vectors
+has absolute value less than or equal to one. Can ‘less than’ happen?
+Can ‘equal to’?</p>
+<div class="answer">
+<p>Assume that <span
+class="math inline">\(\vec{u},\vec{v}\in\Re^n\)</span> both have length
+<span class="math inline">\(1\)</span>. Apply Cauchy-Schwarz: <span
+class="math inline">\(\absval{\vec{u}\dotprod\vec{v}}
+             \leq\absval{\vec{u}\,}\,\absval{\vec{v}\,}=1\)</span>.</p>
+<p>To see that ‘less than’ can happen, in <span
+class="math inline">\(\Re^2\)</span> take <span
+class="math display">\[\vec{u}=\colvec[r]{1 \\ 0}
+        \qquad
+        \vec{v}=\colvec[r]{0 \\ 1}\]</span> and note that <span
+class="math inline">\(\vec{u}\dotprod\vec{v}=0\)</span>. For ‘equal to’,
+note that <span
+class="math inline">\(\vec{u}\dotprod\vec{u}=1\)</span>.</p>
+</div>
+<p>When a plane does not pass through the origin, performing operations
+on vectors whose bodies lie in it is more complicated than when the
+plane does pass through the origin. Consider the picture in this
+subsection of the plane <span class="math display">\[\set{\colvec[r]{2
+\\ 0 \\ 0}
+            +\colvec[r]{-0.5 \\ 1 \\ 0} y
+            +\colvec[r]{-0.5 \\ 0 \\ 1} z
+            \suchthat y,z\in\Re}\]</span> and the three vectors with
+endpoints <span class="math inline">\((2,0,0)\)</span>, <span
+class="math inline">\((1.5,1,0)\)</span>, and <span
+class="math inline">\((1.5,0,1)\)</span>.</p>
+<div class="exparts">
+<p>Redraw the picture, including the vector starting at <span
+class="math inline">\((2,0,0)\)</span> whose body is in the plane, and
+that is twice as long as the vector shown in the plane whose endpoint is
+<span class="math inline">\((1.5,1,0)\)</span>. The endpoint of this
+vector is not <span class="math inline">\((3,2,0)\)</span>; what is it?
+Redraw the picture, including the parallelogram in the plane that shows
+the sum of the vectors ending at <span
+class="math inline">\((1.5,0,1)\)</span> and <span
+class="math inline">\((1.5,1,0)\)</span>. The endpoint of the sum, on
+the diagonal, is not <span class="math inline">\((3,1,1)\)</span>; what
+is it?</p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>The vector shown</p>
+<div class="center">
+<p><img src="gr/mp/ch1.32" alt="image" /></p>
+</div>
+<p>is not the result of doubling <span
+class="math display">\[\colvec[r]{2 \\ 0 \\ 0}
+              +\colvec[r]{-0.5 \\ 1 \\ 0}\cdot 1
+            =\colvec[r]{1.5 \\ 1 \\ 0}\]</span> instead it is the result
+of doubling the parameter. <span class="math display">\[\colvec[r]{2 \\
+0 \\ 0}
+              +\colvec[r]{-0.5 \\ 1 \\ 0}\cdot 2
+            =\colvec[r]{1 \\ 2 \\ 0}\]</span> This compares the lengths.
+<span class="math display">\[\sqrt{1^2+2^2+0^2}
+            =\sqrt{(2\cdot 0.5)^2 + (2\cdot 1)^2+ (2\cdot 0)^2}
+            =\sqrt{2^2\cdot(0.5^2+1^2+0^2)}
+            =2\cdot\sqrt{0.5^2+1^2+0^2}\]</span> The vector</p>
+<div class="center">
+<p><img src="gr/mp/ch1.19" alt="image" /></p>
+</div>
+<p>is not the result of adding <span
+class="math display">\[(\colvec[r]{2 \\ 0 \\ 0}
+              +\colvec[r]{-0.5 \\ 1 \\ 0}\cdot 1)
+            +
+            (\colvec[r]{2 \\ 0 \\ 0}
+              +\colvec[r]{-0.5 \\ 0 \\ 1}\cdot 1)\]</span> instead it is
+<span class="math display">\[\colvec[r]{2 \\ 0 \\ 0}
+              +\colvec[r]{-0.5 \\ 1 \\ 0}\cdot 1
+              +\colvec[r]{-0.5 \\ 0 \\ 1}\cdot 1
+            =\colvec[r]{1 \\ 1 \\ 1}\]</span> which adds the
+parameters.</p>
+</div>
+</div>
+<p>Show that the line segments <span
+class="math inline">\(\overline{(a_1,a_2)(b_1,b_2)}\)</span> and <span
+class="math inline">\(\overline{(c_1,c_2)(d_1,d_2)}\)</span> have the
+same lengths and slopes if <span
+class="math inline">\(b_1-a_1=d_1-c_1\)</span> and <span
+class="math inline">\(b_2-a_2=d_2-c_2\)</span>. Is that only if?</p>
+<div class="answer">
+<p>The “if” half is straightforward. If <span
+class="math inline">\(b_1-a_1=d_1-c_1\)</span> and <span
+class="math inline">\(b_2-a_2=d_2-c_2\)</span> then <span
+class="math display">\[\sqrt{(b_1-a_1)^2+(b_2-a_2)^2}
+        =\sqrt{(d_1-c_1)^2+(d_2-c_2)^2}\]</span> so they have the same
+lengths, and the slopes are just as easy: <span
+class="math display">\[\frac{b_2-a_2}{b_1-a_1}
+        =\frac{d_2-c_2}{d_1-a_1}\]</span> (if the denominators are <span
+class="math inline">\(0\)</span> they both have undefined slopes).</p>
+<p>For “only if”, assume that the two segments have the same length and
+slope (the case of undefined slopes is easy; we will do the case where
+both segments have a slope <span class="math inline">\(m\)</span>). Also
+assume, without loss of generality, that <span
+class="math inline">\(a_1&lt;b_1\)</span> and that <span
+class="math inline">\(c_1&lt;d_1\)</span>. The first segment is <span
+class="math inline">\(\overline{(a_1,a_2)(b_1,b_2)}=
+     \set{(x,y)\suchthat y=mx+n_1,\; x\in [a_1..b_1]}\)</span> (for some
+intercept <span class="math inline">\(n_1\)</span>) and the second
+segment is <span class="math inline">\(\overline{(c_1,c_2)(d_1,d_2)}=
+     \set{(x,y)\suchthat y=mx+n_2,\; x\in [c_1..d_1]}\)</span> (for some
+<span class="math inline">\(n_2\)</span>). Then the lengths of those
+segments are <span
+class="math display">\[\sqrt{(b_1-a_1)^2+((mb_1+n_1)-(ma_1+n_1))^2}
+       =\sqrt{(1+m^2)(b_1-a_1)^2}\]</span> and, similarly, <span
+class="math inline">\(\sqrt{(1+m^2)(d_1-c_1)^2}\)</span>. Therefore,
+<span class="math inline">\(\absval{b_1-a_1}=\absval{d_1-c_1}\)</span>.
+Thus, as we assumed that <span class="math inline">\(a_1&lt;b_1\)</span>
+and <span class="math inline">\(c_1&lt;d_1\)</span>, we have that <span
+class="math inline">\(b_1-a_1=d_1-c_1\)</span>.</p>
+<p>The other equality is similar.</p>
+</div>
+<p>Is <span class="math inline">\(\absval{\vec{u}_1+\cdots+\vec{u}_n}
+\leq
+         \absval{\vec{u}_1}+\cdots+\absval{\vec{u}_n}\)</span>? If it is
+true then it would generalize the Triangle Inequality.</p>
+<div class="answer">
+<p>Yes; we can prove this by induction.</p>
+<p>Assume that the vectors are in some <span
+class="math inline">\(\Re^k\)</span>. Clearly the statement applies to
+one vector. The Triangle Inequality is this statement applied to two
+vectors. For an inductive step assume the statement is true for <span
+class="math inline">\(n\)</span> or fewer vectors. Then this <span
+class="math display">\[\absval{\vec{u}_1+\cdots+\vec{u}_n+\vec{u}_{n+1}}
+         \leq
+         \absval{\vec{u}_1+\cdots+\vec{u}_n}+\absval{\vec{u}_{n+1}}\]</span>
+follows by the Triangle Inequality for two vectors. Now the inductive
+hypothesis, applied to the first summand on the right, gives that as
+less than or equal to <span
+class="math inline">\(\absval{\vec{u}_1}+\cdots+\absval{\vec{u}_n}+\absval{\vec{u}_{n+1}}\)</span>.</p>
+</div>
+<p>What is the ratio between the sides in the Cauchy-Schwarz
+inequality?</p>
+<div class="answer">
+<p>By definition <span
+class="math display">\[\frac{\vec{u}\dotprod\vec{v}}{
+            \absval{\vec{u}\,}\,\absval{\vec{v}\,}}=\cos\theta\]</span>
+where <span class="math inline">\(\theta\)</span> is the angle between
+the vectors. Thus the ratio is <span
+class="math inline">\(\absval{\cos\theta}\)</span>.</p>
+</div>
+<p>Describe the angle between two vectors in <span
+class="math inline">\(\Re^1\)</span>.</p>
+<div class="answer">
+<p>We can find the angle between <span
+class="math inline">\((a)\)</span> and <span
+class="math inline">\((b)\)</span> (for <span
+class="math inline">\(a,b\neq 0\)</span>) with <span
+class="math display">\[\arccos(\frac{ab}{\sqrt{a^2}\sqrt{b^2}}).\]</span>
+If <span class="math inline">\(a\)</span> or <span
+class="math inline">\(b\)</span> is zero then the angle is <span
+class="math inline">\(\pi/2\)</span> radians. Otherwise, if <span
+class="math inline">\(a\)</span> and <span
+class="math inline">\(b\)</span> are of opposite signs then the angle is
+<span class="math inline">\(\pi\)</span> radians, else the angle is
+zero radians.</p>
+</div>
+<p>Give a simple necessary and sufficient condition to determine whether
+the angle between two vectors is acute, right, or obtuse.</p>
+<div class="answer">
+<p>The angle between <span class="math inline">\(\vec{u}\)</span> and
+<span class="math inline">\(\vec{v}\)</span> is acute if <span
+class="math inline">\(\vec{u}\dotprod\vec{v}&gt; 0\)</span>, is right if
+<span class="math inline">\(\vec{u}\dotprod\vec{v}=0\)</span>, and is
+obtuse if <span
+class="math inline">\(\vec{u}\dotprod\vec{v}&lt;0\)</span>. That’s
+because, in the formula for the angle, the denominator is never
+negative.</p>
+</div>
+<p>Generalize to <span class="math inline">\(\Re^n\)</span> the converse
+of the Pythagorean Theorem, that if <span
+class="math inline">\(\vec{u}\)</span> and <span
+class="math inline">\(\vec{v}\)</span> are perpendicular then <span
+class="math inline">\(\absval{\vec{u}+\vec{v}\,}^2=\absval{\vec{u}\,}^2+\absval{\vec{v}\,}^2\)</span>.</p>
+<div class="answer">
+<p>Suppose that <span
+class="math inline">\(\vec{u},\vec{v}\in\Re^n\)</span>. If <span
+class="math inline">\(\vec{u}\)</span> and <span
+class="math inline">\(\vec{v}\)</span> are perpendicular then <span
+class="math display">\[\absval{\vec{u}+\vec{v}\,}^2
+        =(\vec{u}+\vec{v})\dotprod(\vec{u}+\vec{v})    
+        =\vec{u}\dotprod\vec{u}+2\,\vec{u}\dotprod\vec{v}
+               +\vec{v}\dotprod\vec{v}  
+        =\vec{u}\dotprod\vec{u}+\vec{v}\dotprod\vec{v}  
+        =\absval{\vec{u}\,}^2+\absval{\vec{v}\,}^2\]</span> (the third
+equality holds because <span
+class="math inline">\(\vec{u}\dotprod\vec{v}=0\)</span>).</p>
+</div>
+<p>Show that <span
+class="math inline">\(\absval{\vec{u}\,}=\absval{\vec{v}\,}\)</span> if
+and only if <span class="math inline">\(\vec{u}+\vec{v}\)</span> and
+<span class="math inline">\(\vec{u}-\vec{v}\)</span> are perpendicular.
+Give an example in <span class="math inline">\(\Re^2\)</span>.</p>
+<div class="answer">
+<p>Where <span class="math inline">\(\vec{u},\vec{v}\in\Re^n\)</span>,
+the vectors <span class="math inline">\(\vec{u}+\vec{v}\)</span> and
+<span class="math inline">\(\vec{u}-\vec{v}\)</span> are perpendicular
+if and only if <span
+class="math inline">\(0=(\vec{u}+\vec{v})\dotprod(\vec{u}-\vec{v})
+         =\vec{u}\dotprod\vec{u}-\vec{v}\dotprod\vec{v}\)</span>, which
+shows that those two are perpendicular if and only if <span
+class="math inline">\(\vec{u}\dotprod\vec{u}=\vec{v}\dotprod\vec{v}\)</span>.
+That holds if and only if <span
+class="math inline">\(\absval{\vec{u}\,}=\absval{\vec{v}\,}\)</span>.</p>
+</div>
+<p>Show that if a vector is perpendicular to each of two others then it
+is perpendicular to each vector in the plane they generate.
+(<em>Remark.</em> They could generate a degenerate planea line or a
+pointbut the statement remains true.)</p>
+<div class="answer">
+<p>Suppose <span class="math inline">\(\vec{u}\in\Re^n\)</span> is
+perpendicular to both <span
+class="math inline">\(\vec{v}\in\Re^n\)</span> and <span
+class="math inline">\(\vec{w}\in\Re^n\)</span>. Then, for any <span
+class="math inline">\(k,m\in\Re\)</span> we have this. <span
+class="math display">\[\vec{u}\dotprod(k\vec{v}+m\vec{w})
+        =k(\vec{u}\dotprod\vec{v})+m(\vec{u}\dotprod\vec{w})
+        =k(0)+m(0)=0\]</span></p>
+</div>
+<p>Prove that, where <span
+class="math inline">\(\vec{u},\vec{v}\in\Re^n\)</span> are nonzero
+vectors, the vector <span
+class="math display">\[\frac{\vec{u}}{\absval{\vec{u}\,}
+}+\frac{\vec{v}}{\absval{\vec{v}\,} }\]</span> bisects the angle between
+them. Illustrate in <span class="math inline">\(\Re^2\)</span>.</p>
+<div class="answer">
+<p>We will show something more general: if <span
+class="math inline">\(\absval{\vec{z}_1}=\absval{\vec{z}_2}\)</span> for
+<span class="math inline">\(\vec{z}_1,\vec{z}_2\in\Re^n\)</span>, then
+<span class="math inline">\(\vec{z}_1+\vec{z}_2\)</span> bisects the
+angle between <span class="math inline">\(\vec{z}_1\)</span> and <span
+class="math inline">\(\vec{z}_2\)</span></p>
+<div class="center">
+<div class="picture">
+<p>(37,12)(0,0) (0,0)</p>
+<div class="picture">
+<p>(12,12)(0,0) (0,0)<span>(2,1)<span>8</span> </span>
+(0,0)<span>(1,2)<span>4</span> </span> (0,0)<span>(1,1)<span>12</span>
+</span> (8,4)<span>(1,2)<span>4</span> </span>
+(4,8)<span>(2,1)<span>8</span> </span></p>
+</div>
+<p>(18.5,7)<span>(0,0)<span>gives</span> </span> (25,0)</p>
+<div class="picture">
+<p>(12,12)(0,0) (0,0)<span>(2,1)<span>8</span> </span>
+(0,0)<span>(1,2)<span>4</span> </span> (0,0)<span>(1,1)<span>12</span>
+</span> (8,4)<span>(1,2)<span>4</span> </span>
+(4,8)<span>(2,1)<span>8</span> </span></p>
+<p>(2,3.8)<span><span class="math inline">\(\prime\)</span></span>
+(4.2,1.5)<span><span class="math inline">\(\prime\)</span></span>
+(5.7,5.2)(0.5,0.5)<span>2</span><span><span
+class="math inline">\(\prime\)</span></span>
+(9.0,5.8)(0.5,1.0)<span>3</span><span><span
+class="math inline">\(\prime\)</span></span>
+(6.6,8.7)(0.6,0.3)<span>3</span><span><span
+class="math inline">\(\prime\)</span></span></p>
+</div>
+</div>
+</div>
+<p>(we ignore the case where <span
+class="math inline">\(\vec{z}_1\)</span> and <span
+class="math inline">\(\vec{z}_2\)</span> are the zero vector).</p>
+<p>The <span class="math inline">\(\vec{z}_1+\vec{z}_2=\zero\)</span>
+case is easy. For the rest, by the definition of angle, we will be
+finished if we show this. <span
+class="math display">\[\frac{\vec{z}_1\dotprod(\vec{z}_1+\vec{z}_2)}{
+              \absval{\vec{z}_1}\,\absval{\vec{z}_1+\vec{z}_2} }
+        =
+        \frac{\vec{z}_2\dotprod(\vec{z}_1+\vec{z}_2)}{
+              \absval{\vec{z}_2}\,\absval{\vec{z}_1+\vec{z}_2}
+}\]</span> But distributing inside each expression gives <span
+class="math display">\[\frac{\vec{z}_1\dotprod\vec{z}_1+\vec{z}_1\dotprod\vec{z}_2}{
+              \absval{\vec{z}_1}\,\absval{\vec{z}_1+\vec{z}_2} }
+        \qquad
+        \frac{\vec{z}_2\dotprod\vec{z}_1+\vec{z}_2\dotprod\vec{z}_2}{
+              \absval{\vec{z}_2}\,\absval{\vec{z}_1+\vec{z}_2}
+}\]</span> and <span
+class="math inline">\(\vec{z}_1\dotprod\vec{z}_1=\absval{\vec{z}_1}^2
+              =\absval{\vec{z}_2}^2=\vec{z}_2\dotprod\vec{z}_2\)</span>,
+so the two are equal.</p>
+</div>
+<p>Verify that the definition of angle is dimensionally correct: (1) if
+<span class="math inline">\(k&gt;0\)</span> then the cosine of the angle
+between <span class="math inline">\(k\vec{u}\)</span> and <span
+class="math inline">\(\vec{v}\)</span> equals the cosine of the angle
+between <span class="math inline">\(\vec{u}\)</span> and <span
+class="math inline">\(\vec{v}\)</span>, and (2) if <span
+class="math inline">\(k&lt;0\)</span> then the cosine of the angle
+between <span class="math inline">\(k\vec{u}\)</span> and <span
+class="math inline">\(\vec{v}\)</span> is the negative of the cosine of
+the angle between <span class="math inline">\(\vec{u}\)</span> and <span
+class="math inline">\(\vec{v}\)</span>.</p>
+<div class="answer">
+<p>We can show the two statements together. Let <span
+class="math inline">\(\vec{u}, \vec{v}\in\Re^n\)</span>, write <span
+class="math display">\[\vec{u}=\colvec{u_1 \\ \vdotswithin{u_1} \\ u_n}
+         \qquad
+         \vec{v}=\colvec{v_1 \\ \vdotswithin{v_1} \\ v_n}\]</span> and
+calculate. <span class="math display">\[\cos\theta=
+        \frac{ku_1v_1+\cdots+ku_nv_n}{
+             \sqrt{{(ku_1)}^2+\cdots+{(ku_n)}^2}\sqrt{{b_1}^2+\cdots+{b_n}^2}
+}
+        =\frac{k}{\absval{k}}
+        \frac{\vec{u}\cdot\vec{v}}{\absval{\vec{u}\,}\,\absval{\vec{v}\,}
+}
+        =\pm
+        \frac{\vec{u}\dotprod\vec{v}}{\absval{\vec{u}\,}\,\absval{\vec{v}\,}
+}\]</span></p>
+</div>
+<p>Show that the inner product operation is : for <span
+class="math inline">\(\vec{u},\vec{v},\vec{w}\in\Re^n\)</span> and <span
+class="math inline">\(k,m\in\Re\)</span>, <span
+class="math inline">\(\vec{u}\dotprod(k\vec{v}+m\vec{w})=
+       k(\vec{u}\dotprod\vec{v})+m(\vec{u}\dotprod\vec{w})\)</span>.</p>
+<div class="answer">
+<p>Let <span class="math display">\[\vec{u}=\colvec{u_1 \\
+\vdotswithin{u_1} \\ u_n},
+        \quad
+        \vec{v}=\colvec{v_1 \\ \vdotswithin{v_1} \\ v_n}
+        \quad
+        \vec{w}=\colvec{w_1 \\ \vdotswithin{w_1} \\ w_n}\]</span> and
+then <span class="math display">\[\begin{aligned}
+        \vec{u}\dotprod\bigl(k\vec{v}+m\vec{w}\bigr)
+        &amp;=\colvec{u_1 \\ \vdotswithin{u_1} \\ u_n}\dotprod
+         \bigl( \colvec{kv_1 \\ \vdotswithin{kv_1} \\ kv_n}
+               +\colvec{mw_1 \\ \vdotswithin{mw_1} \\ mw_n} \bigr)   \\
+        &amp;=\colvec{u_1 \\ \vdotswithin{u_1} \\ u_n}\dotprod
+         \colvec{kv_1+mw_1 \\ \vdotswithin{kv_1+mw_1} \\
+kv_n+mw_n}    \\
+        &amp;=u_1(kv_1+mw_1)+\cdots+u_n(kv_n+mw_n)    \\
+        &amp;=ku_1v_1+mu_1w_1+\cdots+ku_nv_n+mu_nw_n    \\
+        &amp;=(ku_1v_1+\cdots+ku_nv_n)+(mu_1w_1+\cdots+mu_nw_n)    \\
+        &amp;=k(\vec{u}\dotprod\vec{v})+m(\vec{u}\dotprod\vec{w})
+      
+\end{aligned}\]</span> as required.</p>
+</div>
+<p><span class="citation" data-cites="Cleary"></span> Astrologers claim
+that they can recognize trends in personality and fortune that depend on
+an individual’s birthday by incorporating where the stars were <span
+class="math inline">\(20\)</span> centuries ago. Suppose that instead of
+star-gazers coming up with stuff, math teachers who like linear algebra
+(we’ll call them vectologers) had come up with a similar system as
+follows: Consider your birthday as a row vector <span
+class="math inline">\(\rowvec{\text{month} &amp;\text{day}}\)</span>.
+For instance, I was born on July <span class="math inline">\(12\)</span>
+so my vector would be <span
+class="math inline">\(\rowvec{7  &amp;12}\)</span>. Vectologers assert
+that how well individuals get along with each other depends on the angle
+between vectors. The smaller the absolute value of that angle, the more
+harmonious the relationship.</p>
+<div class="exparts">
+<p>Find the angle between your vector and mine, in radians.</p>
+<p>Would you get along better with me, or with a professor born on
+September <span class="math inline">\(19\)</span>?</p>
+<p>For maximum harmony in a relationship, when should the other person
+be born?</p>
+<p>Is there a person with whom you have a “worst case” relationship,
+i.e., your vector and theirs are orthogonal? If so, what are the
+birthdate(s) for such people? If not, explain why not.</p>
+</div>
+<div class="answer">
+<div class="exparts">
+<p>My birthday of October <span class="math inline">\(12\)</span> gives
+this. <span class="math display">\[\theta
+            =
+            \arccos(\,\frac{\colvec[r]{7 \\ 12}\dotprod\colvec[r]{10 \\
+12}}{
+                  \absval{\colvec[r]{7 \\
+12}\,}\cdot\absval{\colvec[r]{10 \\ 12}\,} }\,)
+            =\arccos(\frac{214}{\sqrt{244}\sqrt{193}})
+            \approx \text{$0.17$~rad}\]</span></p>
+<p>Applying the same equation to <span class="math inline">\(\rowvec{9
+&amp;19}\)</span> gives about <span
+class="math inline">\(0.09\)</span> radians.</p>
+<p>The angle will measure <span class="math inline">\(0\)</span> radians
+if the other person is born on the same day. It will also measure <span
+class="math inline">\(0\)</span> if one birthday is a scalar multiple of
+the other. For instance, a person born on Mar <span
+class="math inline">\(6\)</span> would be harmonious with a person born
+on Feb <span class="math inline">\(4\)</span>.</p>
+<p>Given a birthday, we can get to plot the angle for other dates. This
+example shows the relationship of all dates with July 12.</p>
+<pre><code>  sage: plot3d(lambda x, y: math.acos((x*7+y*12)/(math.sqrt(7**2+12**2)*math.sqrt(x**2+y**2))),
+                                                                 (1,12),(1,31))</code></pre>
+<div class="center">
+<p><img src="gr/bin/rcbday.jpg" style="height:2in" alt="image" /></p>
+</div>
+<p>We want to maximize this. <span class="math display">\[\theta
+            =
+            \arccos(\,\frac{\colvec[r]{7 \\ 12}\dotprod\colvec{m \\ d}}{
+                  \absval{\colvec[r]{7 \\ 12}\,}\cdot\absval{\colvec{m
+\\ d}\,} }\,)\]</span> Of course, we cannot take <span
+class="math inline">\(m\)</span> or <span
+class="math inline">\(d\)</span> negative and so we cannot get a vector
+orthogonal to the given one. This Python script finds the largest angle
+by brute force.</p>
+<pre><code>  import math
+  days={1:31,  # Jan
+        2:29, 3:31, 4:30, 5:31, 6:30, 7:31, 8:31, 9:30, 10:31, 11:30, 12:31}
+  BDAY=(7,12)
+  max_res=0
+  max_res_date=(-1,-1)
+  for month in range(1,13):
+      for day in range(1,days[month]+1):
+          num=BDAY[0]*month+BDAY[1]*day
+          denom=math.sqrt(BDAY[0]**2+BDAY[1]**2)*math.sqrt(month**2+day**2)
+          if denom&gt;0:
+              res=math.acos(min(num*1.0/denom,1))
+              print &quot;day:&quot;,str(month),str(day),&quot; angle:&quot;,str(res)
+              if res&gt;max_res:
+                  max_res=res
+                  max_res_date=(month,day)
+  print &quot;For &quot;,str(BDAY),&quot;worst case&quot;,str(max_res),&quot;rads, date&quot;,str(max_res_date)
+  print &quot;  That is &quot;,180*max_res/math.pi,&quot;degrees&quot;</code></pre>
+<p>The result is</p>
+<pre><code>  For  (7, 12) worst case 0.95958064648 rads, date (12, 1)
+    That is  54.9799211457 degrees</code></pre>
+<p>A more conceptual approach is to consider the relation of all points
+<span class="math inline">\((\text{month},\text{day})\)</span> to the
+point <span class="math inline">\((7,12)\)</span>. The picture below
+makes clear that the answer is either Dec <span
+class="math inline">\(1\)</span> or Jan <span
+class="math inline">\(31\)</span>, depending on which is further from
+the birthdate. The dashed line bisects the angle between the line from
+the origin to Dec <span class="math inline">\(1\)</span>, and the line
+from the origin to Jan <span class="math inline">\(31\)</span>.
+Birthdays above the line are furthest from Dec <span
+class="math inline">\(1\)</span> and birthdays below the line are
+furthest from Jan <span class="math inline">\(31\)</span>.</p>
+<div class="center">
+<p><img src="gr/mp/ch1.54" alt="image" /></p>
+</div>
+</div>
+</div>
+<p><span class="citation" data-cites="Monthly33p118"></span> A ship is
+sailing with speed and direction <span
+class="math inline">\(\vec{v}_1\)</span>; the wind blows apparently
+(judging by the vane on the mast) in the direction of a vector <span
+class="math inline">\(\vec{a}\)</span>; on changing the direction and
+speed of the ship from <span class="math inline">\(\vec{v}_1\)</span> to
+<span class="math inline">\(\vec{v}_2\)</span> the apparent wind is in
+the direction of a vector <span
+class="math inline">\(\vec{b}\)</span>.</p>
+<p>Find the vector velocity of the wind.</p>
+<div class="answer">
+<p>The actual velocity <span class="math inline">\(\vec{v}\)</span> of
+the wind is the sum of the ship’s velocity and the apparent velocity of
+the wind. Without loss of generality we may assume <span
+class="math inline">\(\vec{a}\)</span> and <span
+class="math inline">\(\vec{b}\)</span> to be unit vectors, and may write
+<span
+class="math display">\[\vec{v}=\vec{v}_1+s\vec{a}=\vec{v}_2+t\vec{b}\]</span>
+where <span class="math inline">\(s\)</span> and <span
+class="math inline">\(t\)</span> are undetermined scalars. Take the dot
+product first by <span class="math inline">\(\vec{a}\)</span> and then
+by <span class="math inline">\(\vec{b}\)</span> to obtain <span
+class="math display">\[\begin{aligned}
+         s-t\vec{a}\dotprod\vec{b}
+         &amp;=\vec{a}\dotprod(\vec{v}_2-\vec{v}_1)    \\
+         s\vec{a}\dotprod\vec{b}-t
+         &amp;=\vec{b}\dotprod(\vec{v}_2-\vec{v}_1)
+      
+\end{aligned}\]</span> Multiply the second by <span
+class="math inline">\(\vec{a}\dotprod\vec{b}\)</span>, subtract the
+result from the first, and find <span class="math display">\[s=
+         \frac{[\vec{a}-(\vec{a}\dotprod\vec{b})\vec{b}]
+                   \dotprod(\vec{v}_2-\vec{v}_1)
+              }{1-(\vec{a}\dotprod\vec{b})^2}.\]</span> Substituting in
+the original displayed equation, we get <span
+class="math display">\[\vec{v}=\vec{v}_1+
+         \frac{[\vec{a}-(\vec{a}\dotprod\vec{b})\vec{b}]
+                  \dotprod(\vec{v}_2-\vec{v}_1)
+              \vec{a}}{1-(\vec{a}\dotprod\vec{b})^2}.\]</span></p>
+</div>
+<p>Verify the Cauchy-Schwarz inequality by first proving Lagrange’s
+identity: <span class="math display">\[\left(\sum_{1\leq j\leq n} a_jb_j
+\right)^2
+      =
+      \left(\sum_{1\leq j\leq n}a_j^2\right)
+      \left(\sum_{1\leq j\leq n}b_j^2\right)
+      -
+      \sum_{1\leq k &lt; j\leq n}(a_kb_j-a_jb_k)^2\]</span> and then
+noting that the final term is positive. This result is an improvement
+over Cauchy-Schwarz because it gives a formula for the difference
+between the two sides. Interpret that difference in <span
+class="math inline">\(\Re^2\)</span>.</p>
+<div class="answer">
+<p>We use induction on <span class="math inline">\(n\)</span>.</p>
+<p>In the <span class="math inline">\(n=1\)</span> base case the
+identity reduces to <span
+class="math display">\[(a_1b_1)^2=({a_1}^2)({b_1}^2)-0\]</span> and
+clearly holds.</p>
+<p>For the inductive step assume that the formula holds for the <span
+class="math inline">\(0\)</span>, …, <span
+class="math inline">\(n\)</span> cases. We will show that it then holds
+in the <span class="math inline">\(n+1\)</span> case. Start with the
+right-hand side <span class="math display">\[\begin{gathered}
+         \bigl( \sum_{1\leq j\leq n+1}{a_j}^2\bigr)
+         \bigl( \sum_{1\leq j\leq n+1}{b_j}^2\bigr)
+         -
+         \sum_{1\leq k&lt;j\leq n+1}\bigl(a_kb_j-a_jb_k\bigr)^2  \\
+       \begin{aligned}
+         &amp;=
+         \bigl[ (\sum_{1\leq j\leq n}{a_j}^2)+{a_{n+1}}^2\bigr]
+         \bigl[ (\sum_{1\leq j\leq
+n}{b_j}^2)+{b_{n+1}}^2\bigr]   \\     
+         &amp;\hbox{}\quad -
+         \bigl[\sum_{1\leq k&lt;j\leq n}\bigl(a_kb_j-a_jb_k\bigr)^2+
+         \sum_{1\leq k\leq n}\bigl(a_kb_{n+1}-a_{n+1}b_k\bigr)^2  \bigr]
+\\
+         &amp;=
+         \bigl( \sum_{1\leq j\leq n}{a_j}^2\bigr)
+         \bigl( \sum_{1\leq j\leq n}{b_j}^2\bigr)
+         +
+         \sum_{1\leq j\leq n}{b_j}^2{a_{n+1}}^2                 
+         +
+         \sum_{1\leq j\leq n}{a_j}^2{b_{n+1}}^2
+         +
+         {a_{n+1}}^2{b_{n+1}}^2                                 \\
+         &amp;\hbox{}\qquad\hbox{} -
+         \bigl[\sum_{1\leq k&lt;j\leq n}\bigl(a_kb_j-a_jb_k\bigr)^2+
+         \sum_{1\leq k\leq n}\bigl(a_kb_{n+1}-a_{n+1}b_k\bigr)^2  \bigr]
+\\
+         &amp;=
+         \bigl( \sum_{1\leq j\leq n}{a_j}^2\bigr)
+         \bigl( \sum_{1\leq j\leq n}{b_j}^2\bigr)
+         -\sum_{1\leq k&lt;j\leq n}\bigl(a_kb_j-a_jb_k\bigr)^2   \\   
+         &amp;\hbox{}\quad +
+         \sum_{1\leq j\leq n}{b_j}^2{a_{n+1}}^2
+         +
+         \sum_{1\leq j\leq n}{a_j}^2{b_{n+1}}^2
+         +
+         {a_{n+1}}^2{b_{n+1}}^2                                 \\
+         &amp;\hbox{}\qquad\hbox{} -
+         \sum_{1\leq k\leq n}\bigl(a_kb_{n+1}-a_{n+1}b_k\bigr)^2
+        \end{aligned}
+       
+\end{gathered}\]</span> and apply the inductive hypothesis. <span
+class="math display">\[\begin{aligned}
+         &amp;=
+         \bigl( \sum_{1\leq j\leq n}a_jb_j\bigr)^2              
+         +
+         \sum_{1\leq j\leq n}{b_j}^2{a_{n+1}}^2
+         +
+         \sum_{1\leq j\leq n}{a_j}^2{b_{n+1}}^2
+         +
+         {a_{n+1}}^2{b_{n+1}}^2                          \\              
+         &amp;\hbox{}\qquad\hbox{}-
+         \bigl[\sum_{1\leq k\leq n}{a_k}^2{b_{n+1}}^2
+           -2\sum_{1\leq k\leq n}a_kb_{n+1}a_{n+1}b_k
+           +\sum_{1\leq k\leq n}{a_{n+1}}^2{b_k}^2\bigr]        \\
+         &amp;=
+         \bigl( \sum_{1\leq j\leq n}a_jb_j\bigr)^2
+         +2\bigl(\sum_{1\leq k\leq n}a_kb_{n+1}a_{n+1}b_k\bigr)
+         +{a_{n+1}}^2{b_{n+1}}^2                                 \\
+         &amp;=
+         \bigl[\bigl(\sum_{1\leq j\leq
+n}a_jb_j\bigr)+a_{n+1}b_{n+1}\bigr]^2
+       
+\end{aligned}\]</span> to derive the left-hand side.</p>
+</div>
+</div>
+</body>
+</html>
