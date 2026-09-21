@@ -48,7 +48,7 @@ ROOT_CODE_FILES = {
     "apps/desktop/vitest.config.ts",
 }
 CODE_SUFFIXES = {
-    ".ts", ".tsx", ".js", ".mjs", ".cjs", ".css", ".html", ".sh", ".py"
+    ".ts", ".tsx", ".js", ".mjs", ".cjs", ".svelte", ".css", ".html", ".sh", ".py"
 }
 CODE_DIRECTORIES = (
     "src/", "test/", "scripts/",
