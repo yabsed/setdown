@@ -39,22 +39,26 @@ MARKER_EDGE = "#ffffff"
 
 ROOT_CODE_FILES = {
     "index.html",
-    "playwright.config.ts",
-    "vite.config.ts",
-    "vitest.config.ts",
     "apps/desktop/index.html",
-    "apps/desktop/playwright.config.ts",
-    "apps/desktop/vite.config.ts",
-    "apps/desktop/vitest.config.ts",
 }
 CODE_SUFFIXES = {
-    ".ts", ".tsx", ".js", ".mjs", ".cjs", ".svelte", ".css", ".html", ".sh", ".py"
+    ".ts",
+    ".tsx",
+    ".js",
+    ".mjs",
+    ".cjs",
+    ".svelte",
+    ".css",
+    ".html",
+    ".sh",
+    ".py",
 }
 CODE_DIRECTORIES = (
     "src/", "test/", "scripts/",
     "apps/desktop/src/", "apps/desktop/test/", "apps/desktop/scripts/",
     "apps/code-growth/",
 )
+CONFIG_DIRECTORIES = {Path("."), Path("apps/desktop")}
 
 
 def git(*args: str) -> str:
@@ -65,10 +69,12 @@ def git(*args: str) -> str:
 
 def is_code_file(path: str) -> bool:
     candidate = Path(path)
-    return (
-        path in ROOT_CODE_FILES
-        or path.startswith(CODE_DIRECTORIES)
-        and candidate.suffix in CODE_SUFFIXES
+    if path in ROOT_CODE_FILES:
+        return True
+    if candidate.suffix not in CODE_SUFFIXES:
+        return False
+    return path.startswith(CODE_DIRECTORIES) or (
+        candidate.parent in CONFIG_DIRECTORIES and ".config." in candidate.name
     )
 
 
@@ -214,7 +220,7 @@ def save_detailed(records: list[dict[str, object]]) -> None:
     )
 
     metrics = (
-        ("Development time", f"{hours}h {minutes}m"),
+        ("Elapsed time", f"{hours}h {minutes}m"),
         ("Commits", f"{len(records)}"),
         ("Final size", f"{lines[-1]:,} lines"),
     )
