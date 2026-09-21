@@ -13,8 +13,8 @@
     "test:e2e": "npm run test:e2e --workspace @setdown/desktop",
     "plot:code-growth": "npm run build --workspace @setdown/code-growth",
     "start": "npm start --workspace @setdown/desktop --",
-    "package:win": "npm run package:win --workspace @setdown/desktop",
-    "package:linux": "npm run package:linux --workspace @setdown/desktop",
+    "package:win": "npm run package:win --workspace @setdown/desktop --",
+    "package:linux": "npm run package:linux --workspace @setdown/desktop --",
     "install:linux": "npm run install:linux --workspace @setdown/desktop"
   },
   "overrides": {

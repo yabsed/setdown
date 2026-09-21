@@ -162,7 +162,9 @@ The installer places the application under
 sets Setdown as the default Markdown application. It uses
 `update-desktop-database` and `xdg-mime` and does not require administrator access.
 
-To produce AppImage and deb packages instead:
+To produce AppImage, deb, and rpm packages instead (requires `rpmbuild`, provided
+by `rpm` on Ubuntu/Debian or `rpm-build` on Fedora; the bundled FPM tool also
+requires `libcrypt.so.1`, supplied by `libcrypt1` on Ubuntu):
 
 ```bash
 npm run package:linux
@@ -181,6 +183,56 @@ shortcuts, and Markdown, PDF, and image file associations.
 
 Both packaging commands write their output to `apps/desktop/release/`.
 The repository currently defines packaging targets for Linux and Windows.
+
+### GitHub Releases
+
+The **Release** workflow builds Windows x64 on Windows 2022 and Linux x64 on
+Ubuntu 22.04. Download installers from [GitHub Releases](https://github.com/yabsed/setdown/releases).
+
+| Environment | Download |
+| --- | --- |
+| Windows x64 | `Setdown-<version>-win-x64.exe` |
+| Ubuntu / Debian x64 | `Setdown-<version>-linux-amd64.deb` |
+| Fedora / RPM-based Linux x64 | `Setdown-<version>-linux-x86_64.rpm` |
+| Other compatible Linux x64 desktops | `Setdown-<version>-linux-x86_64.AppImage` |
+
+AppImage files need executable permission (`chmod +x <file>.AppImage`). Linux
+runtime requirements still depend on the distribution; producing a package does
+not establish compatibility with every distribution or release. ARM64 and macOS
+are not part of this release workflow. Windows installers are currently unsigned
+and may trigger Windows security warnings. Git features require Git on `PATH`.
+
+For a build without publishing, select **Actions → Release → Run workflow**.
+Both jobs upload their installers as workflow artifacts, retained for 14 days.
+This also applies when manually selecting a tag.
+
+To publish, commit and push the workflow and app changes, then push a tag matching
+`apps/desktop/package.json`. The current version is `0.1.0`:
+
+```bash
+git tag -a v0.1.0 -m "Setdown 0.1.0"
+git push origin v0.1.0
+```
+
+For subsequent versions, update the desktop package and lockfile together before
+committing, for example:
+
+```bash
+npm version 0.1.1 --workspace @setdown/desktop --no-git-tag-version
+```
+
+The workspace root's version is independent; the desktop version determines the
+release tag and filenames. A mismatched tag or lockfile stops the workflow.
+After Linux unit tests and both OS builds/typechecks pass, the workflow publishes
+all four installers, generated release notes, and `SHA256SUMS`. Versions such as
+`0.2.0-beta.1` become GitHub prereleases. Use a new version/tag for an already
+published release; the workflow does not overwrite it.
+
+GitHub Actions must be enabled for the repository and permit the official
+`actions/*` actions. The release job requests `contents: write` and uses the
+automatically supplied `GITHUB_TOKEN`; no personal access token or additional
+secret is needed for unsigned releases. Code signing and in-app automatic
+updates are separate setup tasks.
 
 ## Keyboard reference
 
