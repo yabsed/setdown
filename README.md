@@ -362,5 +362,5 @@ Further documentation:
 Regenerate the repository growth chart with `npm run plot:code-growth`:
 
 <p align="center">
-  <img src="apps/code-growth/output/repository-code-growth.png" width="960" alt="Setdown repository code growth by commit">
+  <img src="apps/code-growth/output/repository-code-growth-detailed.png" width="960" alt="Setdown repository code growth by commit">
 </p>
