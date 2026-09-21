@@ -10,31 +10,11 @@ Setdown is a desktop Markdown reader and editor for local files. Read a typeset
 document, double-click the passage you want to change, and edit its Markdown
 source. Press `Esc` to return to reading with your place preserved.
 
-Keep related text files, PDFs, and images in the same window. Open a folder when
-you need file navigation, search, Git review, or a terminal.
+**Try Setdown:** [Download v0.1.0](https://github.com/yabsed/setdown/releases/tag/v0.1.0)
 
-<table width="100%">
-  <tr>
-    <th width="33%">Terminal</th>
-    <th width="33%">Git Diff Editing</th>
-    <th width="33%">Search</th>
-  </tr>
-  <tr>
-    <td><img src="docs/assets/video1.gif" width="100%" alt="Using the integrated terminal"></td>
-    <td><img src="docs/assets/video2.gif" width="100%" alt="Editing a Git diff"></td>
-    <td><img src="docs/assets/video3.gif" width="100%" alt="Searching documents"></td>
-  </tr>
-  <tr>
-    <th width="33%">Editing</th>
-    <th width="33%">PDF and Images</th>
-    <th width="33%">Table Insertion</th>
-  </tr>
-  <tr>
-    <td><img src="docs/assets/video4.gif" width="100%" alt="Editing Markdown"></td>
-    <td><img src="docs/assets/video5.gif" width="100%" alt="Viewing PDF and image files"></td>
-    <td><img src="docs/assets/video6.gif" width="100%" alt="Inserting a Markdown table"></td>
-  </tr>
-</table>
+<p align="center">
+  <img src="live_demo.gif" width="900" alt="Editing Markdown from the Setdown Viewer and returning to the reading position">
+</p>
 
 ## Read and edit in place
 
@@ -42,11 +22,6 @@ The Viewer renders Markdown with equations, tables, code blocks, and images.
 Double-click a paragraph, equation, image, or nearby whitespace to open the Editor
 at the corresponding source position. Switch back with `Esc` or toggle either
 view with `Ctrl/Cmd+E`.
-
-Open Markdown tabs keep their rendered views and editor state alive. While you
-edit, Setdown prepares updated content in the background and keeps the last
-completed preview available until the replacement is ready. Source anchors help
-preserve your place when switching views or changing the window width.
 
 - Navigate headings through the document outline and search with `Ctrl/Cmd+F`.
 - Export Markdown through **File → Export as PDF…**.
@@ -63,11 +38,33 @@ format, and screenshots become PNG assets. Local assets go in
 `<document name>.assets/`; untitled documents keep them in a draft bundle until
 Save As succeeds.
 
-The demo below shows Setdown's reading and editing flow in action.
+## Feature demos
 
-<p align="center">
-  <img src="live_demo.gif" width="900" alt="Editing Markdown from the Setdown Viewer and returning to the reading position">
-</p>
+Keep related text files, PDFs, and images in the same window. Open a folder when
+you need file navigation, search, Git review, or a terminal.
+
+<table width="100%">
+  <tr>
+    <th width="33%">Editing</th>
+    <th width="33%">Table Insertion</th>
+    <th width="33%">PDF and Images</th>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/video4.gif" width="100%" alt="Editing Markdown"></td>
+    <td><img src="docs/assets/video6.gif" width="100%" alt="Inserting a Markdown table"></td>
+    <td><img src="docs/assets/video5.gif" width="100%" alt="Viewing PDF and image files"></td>
+  </tr>
+  <tr>
+    <th width="33%">Search</th>
+    <th width="33%">Git Diff Editing</th>
+    <th width="33%">Terminal</th>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/video3.gif" width="100%" alt="Searching documents"></td>
+    <td><img src="docs/assets/video2.gif" width="100%" alt="Editing a Git diff"></td>
+    <td><img src="docs/assets/video1.gif" width="100%" alt="Using the integrated terminal"></td>
+  </tr>
+</table>
 
 ## Work with more than Markdown
 
@@ -300,6 +297,11 @@ Core code is independent of Electron and UI frameworks. Process entry points wir
 services to adapters, and architecture tests enforce dependency boundaries.
 Preview results carry revision identity so obsolete work cannot replace newer
 content or appear in another tab.
+
+Open Markdown tabs keep their rendered views and editor state alive. While you
+edit, Setdown prepares updated content in the background and keeps the last
+completed preview available until the replacement is ready. Source anchors help
+preserve your place when switching views or changing the window width.
 
 Markdown previews use a separate `marktex-preview:` origin with local resources
 restricted to the document directory and required rendering assets. Executable
