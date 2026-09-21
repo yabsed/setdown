@@ -35,7 +35,7 @@
       </button>
     </div>
     <input bind:this={input} type="search" autocomplete="off" spellcheck="false"
-      value={project.searchQuery} placeholder={searchScope.value === 'markdown' ? 'Search Markdown files' : 'Search text files'}
+      value={project.searchQuery} placeholder="Search files"
       aria-label="Search in folder" oninput={(event) => actions.searchProject(event.currentTarget.value)} />
   </div>
   <div class="search-summary">
@@ -77,25 +77,21 @@
   .search-scope {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 2px;
     margin-bottom: 7px;
-    padding: 2px;
-    border: 1px solid var(--app-border);
-    border-radius: 5px;
-    background: color-mix(in srgb, var(--app-chrome) 72%, var(--app-surface));
+    border-bottom: 1px solid var(--app-border);
   }
   .search-scope button {
     display: flex;
     align-items: center;
     justify-content: center;
     min-width: 0;
-    height: 25px;
+    height: 31px;
     padding: 0 7px;
     gap: 5px;
     overflow: hidden;
     color: var(--app-muted-text);
     border: 0;
-    border-radius: 3px;
+    border-bottom: 2px solid transparent;
     outline: 0;
     background: transparent;
     font: inherit;
@@ -103,12 +99,11 @@
     white-space: nowrap;
     cursor: pointer;
   }
-  .search-scope button:hover { color: var(--app-text); background: color-mix(in srgb, var(--app-hover) 72%, transparent); }
-  .search-scope button:focus-visible { box-shadow: inset 0 0 0 1px var(--app-focus-ring); }
+  .search-scope button:hover { color: var(--app-text); background: var(--app-hover); }
+  .search-scope button:focus-visible { outline: 1px solid var(--app-focus-ring); outline-offset: -1px; }
   .search-scope button.is-active {
     color: var(--app-text);
-    background: var(--app-raised-surface);
-    box-shadow: 0 1px 3px color-mix(in srgb, var(--app-shadow) 55%, transparent);
+    border-bottom-color: var(--app-text);
     font-weight: 600;
   }
   .search-scope svg {
