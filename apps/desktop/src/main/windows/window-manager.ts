@@ -1,3 +1,4 @@
+import { appZoomStep } from '../../core/zoom';
 import { BrowserWindow } from 'electron';
 import type { Event as ElectronEvent } from 'electron';
 import { unwatchFile } from 'node:fs';
@@ -77,10 +78,10 @@ export class WindowManager {
     });
     window.setMenuBarVisibility(false);
     window.webContents.on('before-input-event', (event, input) => {
-      if (input.type === 'keyDown' && !input.isComposing && input.control
-        && !input.alt && !input.meta && !input.shift && input.key === '0') {
+      const zoomStep = appZoomStep(input);
+      if (zoomStep !== undefined) {
         event.preventDefault();
-        this.options.previews.zoom.change(0);
+        this.options.previews.zoom.change(zoomStep);
         return;
       }
       if (input.type === 'keyDown' && input.key === 'Escape' && !input.isComposing) {

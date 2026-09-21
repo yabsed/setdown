@@ -54,9 +54,14 @@
     <select aria-label="PDF zoom" disabled={!count} value={zoom} onchange={(event) => {
       const value = event.currentTarget.value; runtime.zoom(Number(value) || value as PdfReadingPosition['zoom']);
     }}>
+      {#if Number(zoom) && ![.5, .75, 1, 1.25, 1.5, 2, 3, 4].includes(Number(zoom))}
+        <option value={zoom}>{Math.round(Number(zoom) * 100)}%</option>
+      {/if}
       <option value="page-width">Fit width</option><option value="page-fit">Fit page</option><option value="auto">Automatic</option>
       {#each [.5, .75, 1, 1.25, 1.5, 2, 3, 4] as scale}<option value={String(scale)}>{scale * 100}%</option>{/each}
     </select>
+    <button type="button" disabled={!count} onclick={() => runtime.zoom(1)}>100%</button>
+    <button type="button" disabled={!count} onclick={() => runtime.zoom('page-width')}>Fit width</button>
     <button type="button" aria-label="Rotate PDF" disabled={!count} onclick={() => runtime.rotate()}>↻</button>
     <input class="pdf-search" type="search" placeholder="Find in PDF…" disabled={!count} aria-label="Find in PDF" bind:this={searchInput}
       bind:value={query} oninput={() => runtime.find(query)} onkeydown={findKey} />

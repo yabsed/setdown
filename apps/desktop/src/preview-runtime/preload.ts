@@ -1,7 +1,8 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
-import { installWheelZoom } from '../preload/wheel-zoom';
+import { installAppZoom, installWheelZoom } from '../preload/wheel-zoom';
 
-installWheelZoom((steps) => ipcRenderer.send('workspace:zoom', steps));
+installAppZoom((steps) => ipcRenderer.send('workspace:zoom', steps));
+installWheelZoom((steps) => ipcRenderer.send('workspace:text-zoom', steps), true);
 
 contextBridge.exposeInMainWorld('marktexPreviewHost', {
   send: (message: Record<string, unknown>) => ipcRenderer.send('preview:message', message),

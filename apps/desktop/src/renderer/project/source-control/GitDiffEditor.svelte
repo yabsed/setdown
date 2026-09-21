@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onTextZoom, textZoomOptions } from "../../editor/text-zoom";
   import { onDestroy, untrack } from 'svelte';
   import type * as Monaco from 'monaco-editor';
   import { normalizePreviewTheme } from '../../../core/preview/preview-preferences';
@@ -33,6 +34,17 @@
   let loading = $state(true);
   let error = $state('');
   let editor: Monaco.editor.IStandaloneDiffEditor | null = null;
+  const unregisterZoom = onTextZoom(() => {
+    if (!editor || !api) return;
+    const original = editor.getOriginalEditor(), modified = editor.getModifiedEditor();
+    const originalLabel = original.getOption(api.editor.EditorOption.ariaLabel);
+    const modifiedLabel = modified.getOption(api.editor.EditorOption.ariaLabel);
+    editor.updateOptions(textZoomOptions());
+    // Diff option updates regenerate child accessibility labels. Preserve the
+    // active snapshot names established by applySnapshots.
+    original.updateOptions({ ariaLabel: originalLabel });
+    modified.updateOptions({ ariaLabel: modifiedLabel });
+  });
   let api: typeof Monaco | null = null;
   let apiPromise: Promise<typeof Monaco> | null = null;
   let request = 0;
@@ -116,8 +128,7 @@
       scrollBeyondLastLine: false,
       renderOverviewRuler: false,
       fontFamily: "'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
-      fontSize: 14,
-      lineHeight: 22,
+      ...textZoomOptions(),
       padding: { top: 16, bottom: 48 },
     });
     const modifiedEditor = editor.getModifiedEditor();
@@ -353,6 +364,7 @@
   onDestroy(() => {
     request += 1;
     unregisterViewport();
+    unregisterZoom();
     unregisterMarkdown();
     input.dispose();
     for (const listener of inputListeners) listener.dispose();

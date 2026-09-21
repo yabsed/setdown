@@ -10,7 +10,7 @@ export type PdfReadingPosition = {
   zoom: number | 'page-width' | 'page-fit' | 'auto'; rotation: number;
 };
 export type ImageReadingPosition = {
-  kind: 'image'; zoom: number | 'fit'; rotation: number; centerX: number; centerY: number;
+  kind: 'image'; zoom: number | 'fit' | 'fit-width'; rotation: number; centerX: number; centerY: number;
 };
 export type ReadingPosition = TextReadingPosition | PdfReadingPosition | ImageReadingPosition;
 export type ReadingRecord = {
@@ -26,7 +26,7 @@ export function validReadingRecord(value: unknown): value is ReadingRecord {
     || !Number.isFinite(r.diskVersion.size) || r.diskVersion.size < 0 || !r.position) return false;
   const p = r.position;
   if (p.kind === 'image') return [0, 90, 180, 270].includes(p.rotation)
-    && (p.zoom === 'fit' || (typeof p.zoom === 'number' && Number.isFinite(p.zoom) && p.zoom >= .1 && p.zoom <= 8))
+    && (p.zoom === 'fit' || p.zoom === 'fit-width' || (typeof p.zoom === 'number' && Number.isFinite(p.zoom) && p.zoom >= .1 && p.zoom <= 8))
     && Number.isFinite(p.centerX) && p.centerX >= 0 && p.centerX <= 1
     && Number.isFinite(p.centerY) && p.centerY >= 0 && p.centerY <= 1;
   if (p.kind === 'pdf') return Number.isInteger(p.page) && p.page >= 1 && p.page <= 1_000_000

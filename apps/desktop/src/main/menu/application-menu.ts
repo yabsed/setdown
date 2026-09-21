@@ -12,6 +12,7 @@ type MenuContext = {
   sendCommand: (command: AppCommand) => void;
   setTheme: (theme: PreviewThemeId) => void;
   theme: () => PreviewThemeId;
+  zoom: (steps: number, scope?: 'app' | 'text') => void;
 };
 
 const TOP_LEVEL_IDS = new Set([
@@ -65,7 +66,7 @@ export function installApplicationMenu(context: MenuContext) {
   const menu = Menu.buildFromTemplate([
     {
       id: 'application-menu-file', label: 'File', submenu: [
-        { id: 'menu-new-window', label: 'New Window', accelerator: 'CmdOrCtrl+Shift+N', click: context.createWindow },
+        { id: 'menu-new-window', label: 'New Window', accelerator: 'CmdOrCtrl+Shift+N', click: () => context.createWindow() },
         { id: 'menu-new-document', label: 'New', accelerator: 'CmdOrCtrl+N', click: () => command('new-document') },
         { id: 'menu-open-document', label: 'Open…', accelerator: 'CmdOrCtrl+O', click: () => {
           const current = state();
@@ -107,15 +108,10 @@ export function installApplicationMenu(context: MenuContext) {
         } },
         { id: 'menu-toggle-devtools', label: 'Toggle Developer Tools', accelerator: 'CmdOrCtrl+Shift+I', click: () => contents()?.toggleDevTools() },
         { type: 'separator' },
-        { id: 'menu-reset-zoom', label: 'Actual Size', accelerator: 'CmdOrCtrl+0', click: () => contents()?.setZoomLevel(0) },
-        { id: 'menu-zoom-in', label: 'Zoom In', accelerator: 'CmdOrCtrl+Plus', click: () => {
-          const target = contents();
-          if (target) target.setZoomLevel(target.getZoomLevel() + 0.5);
-        } },
-        { id: 'menu-zoom-out', label: 'Zoom Out', accelerator: 'CmdOrCtrl+-', click: () => {
-          const target = contents();
-          if (target) target.setZoomLevel(target.getZoomLevel() - 0.5);
-        } },
+        { id: 'menu-reset-zoom', label: 'Reset App Zoom', accelerator: 'CmdOrCtrl+0', click: () => context.zoom(0) },
+        { id: 'menu-zoom-in', label: 'Zoom In', accelerator: 'CmdOrCtrl+Plus', click: () => context.zoom(1) },
+        { id: 'menu-zoom-out', label: 'Zoom Out', accelerator: 'CmdOrCtrl+-', click: () => context.zoom(-1) },
+        { id: 'menu-reset-text-zoom', label: 'Reset Text Size', click: () => context.zoom(0, 'text') },
       ],
     },
     {

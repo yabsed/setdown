@@ -2,6 +2,11 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { WorkspaceZoom, nativeZoomBounds } from './workspace-zoom';
 import { WheelZoomAccumulator } from '../../preload/wheel-zoom';
+import { appZoomStep } from '../../core/zoom';
+import { installZoomSettings } from './zoom-settings';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 function target(id: number) {
   const listeners = new Map<string, () => void>();
@@ -82,4 +87,44 @@ test('huge or invalid deltas never flood the IPC channel', () => {
   const wheel = new WheelZoomAccumulator();
   assert.equal(wheel.consume({ deltaY: Infinity, deltaMode: 0 }, 0), 0);
   assert.equal(wheel.consume({ deltaY: -1e12, deltaMode: 0 }, 0), 4);
+});
+
+test('text zoom composes with app zoom only in text previews, including spares and reloads', () => {
+  const zoom = new WorkspaceZoom(), shell = target(1), front = target(2);
+  zoom.track(shell); zoom.track(front, undefined, true);
+  zoom.change(2, 'text'); zoom.change(1);
+  assert.equal(shell.factors.at(-1), 1.1);
+  assert.equal(front.factors.at(-1), 1.1 * 1.2);
+  const spare = target(3); zoom.track(spare, undefined, true); spare.emit('did-finish-load');
+  assert.equal(spare.factors.at(-1), 1.1 * 1.2);
+  zoom.change(0);
+  assert.equal(shell.factors.at(-1), 1);
+  assert.equal(front.factors.at(-1), 1.2);
+  assert.equal(spare.factors.at(-1), 1.2);
+});
+test('both preferences persist and malformed values are rejected independently', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'setdown-zoom-settings-'));
+  try {
+    const file = path.join(root, 'zoom.json');
+    const zoom = new WorkspaceZoom(); let updates = 0;
+    const flush = installZoomSettings(file, zoom, () => updates++);
+    zoom.change(2); zoom.change(-1, 'text'); flush();
+    assert.equal(updates, 2);
+    const restored = new WorkspaceZoom(); installZoomSettings(file, restored, () => {});
+    assert.equal(restored.factor, 1.2); assert.equal(restored.textFactor, .9);
+    assert.equal(JSON.parse(readFileSync(file, 'utf8')).app, 120);
+    writeFileSync(file, JSON.stringify({ app: 500, text: 80 }));
+    const invalid = new WorkspaceZoom(); installZoomSettings(file, invalid, () => {});
+    assert.equal(invalid.factor, 1); assert.equal(invalid.textFactor, .8);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+test('app shortcuts accept plus/equal/minus and reset, but leave composition and other modifiers alone', () => {
+  const input = { type: 'keyDown', control: true, key: '+' };
+  assert.equal(appZoomStep(input), 1);
+  assert.equal(appZoomStep({ ...input, key: '=' }), 1);
+  assert.equal(appZoomStep({ ...input, key: '-', shift: false }), -1);
+  assert.equal(appZoomStep({ ...input, key: '0' }), 0);
+  for (const extra of [{ isComposing: true }, { alt: true }, { meta: true }, { control: false }, { type: 'keyUp' }])
+    assert.equal(appZoomStep({ ...input, ...extra }), undefined);
+  assert.equal(appZoomStep({ ...input, key: '0', shift: true }), undefined);
 });

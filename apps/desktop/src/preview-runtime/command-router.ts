@@ -1,3 +1,4 @@
+import { ownScrollSettlement } from './scroll-settlement';
 import { GOLDEN_TOP_RATIO } from '../core/preview/viewport-anchor';
 import { applyBaseHref, PREVIEW_SELECTOR, type SourceAtlas } from './source-atlas';
 import type { ContentController } from './content-controller';
@@ -71,6 +72,7 @@ export function installCommandRouter(options: Options): void {
   };
 
   const settleMutations = (apply: () => void, done: () => void) => {
+    const position = ownScrollSettlement(() => [window.scrollX, window.scrollY], apply);
     const preview = document.querySelector(PREVIEW_SELECTOR);
     let timer: number | null = null;
     let observer: MutationObserver | null = null;
@@ -80,12 +82,12 @@ export function installCommandRouter(options: Options): void {
       finished = true;
       if (timer !== null) window.clearTimeout(timer);
       observer?.disconnect();
-      apply();
+      position();
       done();
     };
     const applyAndSettle = () => {
       if (finished) return;
-      apply();
+      position();
       if (timer !== null) window.clearTimeout(timer);
       timer = window.setTimeout(finish, 180);
     };

@@ -1,3 +1,4 @@
+import { WheelZoomAccumulator } from '../../core/wheel-zoom';
 import { getDocument, GlobalWorkerOptions, PDFDataRangeTransport, AnnotationMode,
   type PDFDocumentLoadingTask, type PDFDocumentProxy } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
@@ -62,6 +63,19 @@ export class PdfRuntime {
         maxCanvasPixels: 16 * 1024 * 1024 };
       const viewer = this.viewer = new PDFViewer(viewerOptions);
       links.setViewer(viewer);
+      const wheelZoom = new WheelZoomAccumulator();
+      container.addEventListener('wheel', (event) => {
+        if (!event.isTrusted || !event.ctrlKey || event.altKey || event.metaKey) return;
+        event.preventDefault(); event.stopPropagation();
+        if (this.restoring || this.dead || !this.options.active()) return;
+        const steps = wheelZoom.consume(event, performance.now());
+        if (!steps) return;
+        const next = Math.max(.1, Math.min(10, viewer.currentScale * 1.1 ** steps));
+        const rect = container.getBoundingClientRect();
+        viewer.updateScale({ scaleFactor: next / viewer.currentScale,
+          origin: [event.clientX - rect.left + container.offsetLeft,
+            event.clientY - rect.top + container.offsetTop], drawingDelay: 150 });
+      }, { passive: false, signal: this.abort.signal });
       shadow.addEventListener('click', (event) => {
         const link = (event.target as Element)?.closest?.('a');
         if (link && /^(https?:|mailto:)/i.test(link.href)) {

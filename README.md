@@ -98,6 +98,14 @@ positions survive closing a tab or restarting the app. Images up to 64 MiB are
 supported. The three most recently visited PDF/image views stay in memory;
 older views reload at their saved position when revisited.
 
+`Ctrl/Cmd + +/-` changes app zoom across windows; `Ctrl/Cmd + 0` resets only
+app zoom. `Ctrl + wheel` over text/Markdown changes the common text size in
+readers and editors, including Git review. Both preferences survive restart.
+Over PDFs or images, `Ctrl + wheel` zooms only that file around the cursor.
+Use the media toolbar's **100%** or **Fit width** buttons independently of app
+zoom. New PDFs start at fit width; previously read files restore their zoom and
+position. **View → Reset Text Size** resets the common text preference.
+
 ### Small helpers for repetitive Markdown
 
 The Editor keeps Markdown visible and editable while handling the structures that
@@ -225,7 +233,7 @@ enforce these boundaries.
 | Close tab | `Ctrl/Cmd+W` |
 | Next / previous tab | `Ctrl+Tab` / `Ctrl+Shift+Tab` |
 | Reorder or detach a tab | Drag the tab |
-| Actual size / zoom in / zoom out | `Ctrl/Cmd+0` / `Ctrl/Cmd++` / `Ctrl/Cmd+-` |
+| Reset app zoom / zoom in / zoom out | `Ctrl/Cmd+0` / `Ctrl/Cmd++` / `Ctrl/Cmd+-` |
 
 PDF export, theme selection, and window management are also available from the
 in-window `File · View · Edit · Window` menu. The commands remain accessible in full

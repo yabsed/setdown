@@ -216,6 +216,8 @@ export type MarkTexApi = {
   readPdfRange(path: string, begin: number, end: number, version: DiskVersion): Promise<Uint8Array>;
   readImageBytes(path: string, version: DiskVersion): Promise<Uint8Array>;
   terminal: import('./terminal').TerminalApi;
+  getZoom(): Promise<import('../core/zoom').ZoomSnapshot>;
+  onZoomChanged(listener: (zoom: import('../core/zoom').ZoomSnapshot) => void): () => void;
   initialTheme: ThemeSnapshot;
   getDocument(): Promise<DocumentSnapshot | null>;
   newDocument(): Promise<DocumentSnapshot | null>;

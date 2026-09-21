@@ -22,18 +22,31 @@ export function nativeZoomBounds(bounds: ZoomBounds, zoomFactor: number): ZoomBo
   };
 }
 
-/** App-wide zoom intentionally shares one factor across windows and preview origins.
- * This avoids Chromium's same-origin zoom policy splitting shell/front/back scales.
- * A newly created/spare/transferred view inherits the same value without reloading.
+/** App zoom is shared by every window; native text previews additionally inherit
+ * the common text factor. Shell geometry always uses app zoom alone. New, spare
+ * and transferred views inherit both factors without navigation or focus changes.
  */
 export class WorkspaceZoom {
   private percent = 100;
-  private readonly targets = new Map<number, { target: ZoomTarget; afterApply?: () => void }>();
+  private textPercent = 100;
+  private revision = 0;
+  onChange?: () => void;
+  private readonly targets = new Map<number, { target: ZoomTarget; afterApply?: () => void; text: boolean }>();
   get factor(): number { return this.percent / 100; }
+  get textFactor(): number { return this.textPercent / 100; }
+  get snapshot() { return { app: this.percent, text: this.textPercent, revision: this.revision }; }
 
-  track(target: ZoomTarget, afterApply?: () => void): void {
+  restore(value: unknown): void {
+    if (!value || typeof value !== 'object') return;
+    const saved = value as { app?: unknown; text?: unknown };
+    const valid = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 50 && v <= 300;
+    if (valid(saved.app)) this.percent = saved.app;
+    if (valid(saved.text)) this.textPercent = saved.text;
+  }
+
+  track(target: ZoomTarget, afterApply?: () => void, text = false): void {
     if (target.isDestroyed() || this.targets.has(target.id)) return;
-    const entry = { target, afterApply };
+    const entry = { target, afterApply, text };
     this.targets.set(target.id, entry);
     const apply = () => this.apply(entry);
     target.on('did-finish-load', apply);
@@ -42,19 +55,23 @@ export class WorkspaceZoom {
   }
 
   /** Only bounded integer steps from a validated window/visible preview sender. */
-  change(steps: unknown): boolean {
+  change(steps: unknown, scope: 'app' | 'text' = 'app'): boolean {
     if (typeof steps !== 'number' || !Number.isInteger(steps) || Math.abs(steps) > 4) return false;
-    const next = steps === 0 ? 100 : Math.max(50, Math.min(300, this.percent + steps * 10));
-    if (next === this.percent) return false;
-    this.percent = next;
+    const previous = scope === 'app' ? this.percent : this.textPercent;
+    const next = steps === 0 ? 100 : Math.max(50, Math.min(300, previous + steps * 10));
+    if (next === previous) return false;
+    if (scope === 'app') this.percent = next;
+    else this.textPercent = next;
+    this.revision++;
     for (const entry of this.targets.values()) this.apply(entry);
+    this.onChange?.();
     return true;
   }
 
-  private apply({ target, afterApply }: { target: ZoomTarget; afterApply?: () => void }): void {
+  private apply({ target, afterApply, text }: { target: ZoomTarget; afterApply?: () => void; text: boolean }): void {
     if (target.isDestroyed()) return;
     try {
-      target.setZoomFactor(this.factor);
+      target.setZoomFactor(this.factor * (text ? this.textFactor : 1));
       afterApply?.();
     } catch {
       // Closing/navigating targets can reject an update. The next load inherits

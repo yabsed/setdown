@@ -52,7 +52,7 @@ export class ThemeManager {
       state.window.setTitleBarOverlay({
         color: profile.palette.chrome,
         symbolColor: profile.palette.text,
-        height: 36,
+        height: Math.round(36 * state.window.webContents.getZoomFactor()),
       });
       state.window.webContents.send('theme:changed', this.snapshot);
     }

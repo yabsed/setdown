@@ -16,6 +16,7 @@ export default defineConfig({
     'src/preview-runtime/content-controller.test.ts',
     'src/preview-runtime/source-atlas.test.ts',
     'src/preview-runtime/viewport-controller.test.ts',
+    'src/preview-runtime/scroll-settlement.test.ts',
     'src/renderer/reader/reader-preparation.test.ts',
     'src/renderer/project/source-control/review-presentation.test.ts',
     'src/renderer/project/source-control/source-control-controller.test.ts',

@@ -34,6 +34,24 @@ or instant returns after eviction. `media-tabs.spec.ts`, `image-reader.spec.ts`,
 `reading-positions.spec.ts` and the cache/file/history unit tests cover these
 guarantees and are included in the focused gate.
 
+Zoom has three independent scopes. Ctrl+plus/minus and Ctrl+0 change/reset the
+persisted app factor in every window. Ctrl+wheel in text/Markdown changes the
+persisted common text factor: ordinary and Git Monaco editors scale typography,
+and native Markdown views use app × text zoom (including hidden/spare views).
+Native bounds still convert with **app zoom only**, never the text factor.
+Changing zoom must not navigate, replace models, discard undo history or focus
+hidden previews. `workspace-zoom.test.ts` and `workspace-zoom.spec.ts` cover scope,
+reset, inheritance and persistence. The View menu uses the same coordinator.
+
+PDF/image wheel zoom is per file and keeps the content point under the cursor,
+subject to the scroll range at content edges. It must not change either common
+factor. PDF starts at fit width; explicit fit modes recompute on viewport/app
+zoom changes, while numeric file zoom is retained. The media controls provide
+100% and fit actions; Ctrl+0 leaves file zoom untouched. PDF.js receives wheel
+origins in its container coordinate system, including the shadow host's offset.
+`workspace-zoom.spec.ts` checks real wheel input, cursor anchors, fit resizing,
+tab isolation and app reset; reading-position tests cover file-state persistence.
+
 The common native lifecycle is: validate CSS bounds → convert/clip once → apply
 native bounds → synchronize Blink viewport → prepare hidden content. Navigation
 invalidates the viewport cache and replays that sequence after current ownership
@@ -41,6 +59,11 @@ is checked. A pending document request is consumed once; repeated show does not
 enqueue more background hydration. Showing is still an explicit presentation decision; readiness never
 grants permission to change visibility. Review positioning has its own revision
 acknowledgment, so it is not collapsed into ordinary document hydration.
+
+Ordinary document position/scroll settlement owns only its last applied scroll
+offset. A later scroll or positioning request supersedes it; its delayed layout
+callback must not jump back to the old anchor. `scroll-settlement.test.ts` and
+the Markdown restart scenario in `reading-positions.spec.ts` cover this rule.
 
 Shared preparation command types live in `src/protocol/preview-preparation.ts`.
 Call sites use `satisfies`; IPC inputs still require runtime validation. Core

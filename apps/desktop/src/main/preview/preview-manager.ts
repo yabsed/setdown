@@ -1,3 +1,4 @@
+import { appZoomStep } from '../../core/zoom';
 import { ipcMain, WebContentsView } from 'electron';
 import type { Rectangle, WebContents } from 'electron';
 import type { AppCommand, PreviewBounds } from '../../protocol/desktop-api';
@@ -72,7 +73,7 @@ export class PreviewManager {
     const view = new WebContentsView({ webPreferences: {
       preload: this.options.preload, contextIsolation: true, nodeIntegration: false, sandbox: true,
     } });
-    this.zoom.track(view.webContents);
+    this.zoom.track(view.webContents, undefined, true);
     view.setBackgroundColor(previewThemeBackground(this.options.theme()));
     view.setVisible(false);
     view.webContents.on('focus', () => this.returnFocusFromHiddenView(view));
@@ -142,9 +143,10 @@ export class PreviewManager {
       const preview = this.views.get(tabId);
       const state = preview && this.options.stateFor(preview.ownerWebContentsId);
       if (!state || input.type !== 'keyDown' || input.isComposing) return;
-      if (input.control && !input.alt && !input.meta && !input.shift && input.key === '0') {
+      const zoomStep = appZoomStep(input);
+      if (zoomStep !== undefined) {
         event.preventDefault();
-        this.zoom.change(0);
+        this.zoom.change(zoomStep);
         return;
       }
       if (input.key === 'Escape') {
@@ -383,15 +385,21 @@ export class PreviewManager {
   }
 
   registerIpc() {
-    ipcMain.on('workspace:zoom', (event, steps: unknown) => {
-      if (event.sender.isDestroyed() || event.senderFrame !== event.sender.mainFrame) return;
-      const direct = this.options.stateFor(event.sender.id);
-      const visible = direct ? null : Array.from(this.views.values()).find((preview) =>
-        preview.view.webContents === event.sender && preview.view.getVisible());
-      const state = direct ?? (visible ? this.options.stateFor(visible.ownerWebContentsId) : null);
-      if (!state || state.window.isDestroyed() || !state.window.isVisible()) return;
-      this.zoom.change(steps);
+    ipcMain.handle('workspace:zoom-state', (event) => {
+      if (!this.options.stateFor(event.sender.id) || event.senderFrame !== event.sender.mainFrame) return;
+      return this.zoom.snapshot;
     });
+    for (const scope of ['app', 'text'] as const) {
+      ipcMain.on(scope === 'app' ? 'workspace:zoom' : 'workspace:text-zoom', (event, steps: unknown) => {
+        if (event.sender.isDestroyed() || event.senderFrame !== event.sender.mainFrame) return;
+        const direct = this.options.stateFor(event.sender.id);
+        const visible = direct ? null : Array.from(this.views.values()).find((preview) =>
+          preview.view.webContents === event.sender && preview.view.getVisible());
+        const state = direct ?? (visible ? this.options.stateFor(visible.ownerWebContentsId) : null);
+        if (!state || state.window.isDestroyed() || !state.window.isVisible()) return;
+        this.zoom.change(steps, scope);
+      });
+    }
     ipcMain.on('preview:create', (event, tabId) => this.create(event.sender.id, tabId));
     ipcMain.on('preview:show', (event, { tabId, bounds }) => this.show(event.sender.id, tabId, bounds));
     ipcMain.handle('preview:capture', (event, tabId) => this.capture(event.sender.id, tabId));

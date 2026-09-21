@@ -8,6 +8,7 @@ export default defineConfig(base, {
     'reading-positions.spec.ts',
     'image-reader.spec.ts',
     'media-tabs.spec.ts',
+    'workspace-zoom.spec.ts',
     'review-document-styles.spec.ts',
     'git-review-ime.spec.ts',
     'review-preparation-layout.spec.ts',

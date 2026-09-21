@@ -1,3 +1,4 @@
+import { onTextZoom, textZoomOptions } from '../editor/text-zoom';
 import type * as Monaco from 'monaco-editor';
 import type { DocumentSnapshot } from '../../core/document/document';
 import { documentLanguage } from '../../core/document/document-profile';
@@ -32,6 +33,7 @@ export class MonacoEditor {
   private readonly views = new Map<string, Monaco.editor.ICodeEditorViewState | null>();
   private readonly owners = new Map<string, DocumentModelOwner<Monaco.editor.ITextModel>>();
   private readonly replacing = new Set<string>();
+  private readonly unregisterZoom = onTextZoom(() => this.editorValue?.updateOptions(textZoomOptions()));
   private readonly unregisterModels: () => void;
   constructor(private readonly options: Options) {
     this.unregisterModels = liveDocumentModels.register((path, api) => {
@@ -45,6 +47,7 @@ export class MonacoEditor {
   }
   disposeWorkspace(): void {
     this.unregisterModels();
+    this.unregisterZoom();
     for (const id of [...this.models.keys()]) this.dispose(id);
     this.editorValue?.dispose();
     this.editorValue = null;
@@ -75,7 +78,7 @@ export class MonacoEditor {
         wordWrap: 'on', wrappingIndent: 'same', lineNumbers: 'on', minimap: { enabled: false },
         scrollBeyondLastLine: false, smoothScrolling: true, cursorSmoothCaretAnimation: 'on',
         fontFamily: "'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
-        fontSize: 14, lineHeight: 22, padding: { top: 26, bottom: 60 },
+        ...textZoomOptions(), padding: { top: 26, bottom: 60 },
         renderWhitespace: 'selection', bracketPairColorization: { enabled: true }, stickyScroll: { enabled: false },
       });
       this.projectDecorations = this.editorValue.createDecorationsCollection();

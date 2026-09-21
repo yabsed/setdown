@@ -1,3 +1,4 @@
+import { installZoomSettings } from './windows/zoom-settings';
 /** Electron main process composition root. */
 import { ReadingPositionStore } from './reading/reading-position-store';
 import { installReadingIpc } from './reading/reading-ipc';
@@ -88,6 +89,11 @@ else {
   });
   app.whenReady().then(async () => {
     installProtocols(); themes.load();
+    const flushZoom = installZoomSettings(path.join(app.getPath('userData'), 'zoom-settings.json'), previews.zoom, () => {
+      for (const state of registry.values) if (!state.window.isDestroyed())
+        state.window.webContents.send('workspace:zoom-changed', previews.zoom.snapshot);
+    });
+    app.on('will-quit', flushZoom);
     installIpc({ channels, documents, previews, projects, renderer, themes, transfers });
     installReadingIpc(channels, positions, (id) => registry.stateForWebContents(id));
     app.on('will-quit', () => positions.flush());
@@ -96,6 +102,7 @@ else {
     installApplicationMenu({ focusedState: () => registry.focused(), createWindow: windows.create,
       openDocument: (state) => documents.chooseAndOpen(state).catch(openError),
       reloadWindow: (state) => { previews.closeOwner(state.webContentsId); state.window.webContents.reload(); },
+      zoom: (steps, scope) => { previews.zoom.change(steps, scope); },
       sendCommand, setTheme: (theme) => themes.set(theme), theme: () => themes.id });
     const filePath = documentPathFromArgs(process.argv, app.isPackaged);
     // Keep Markdown's eager worker warmup; a source-only startup needs none.

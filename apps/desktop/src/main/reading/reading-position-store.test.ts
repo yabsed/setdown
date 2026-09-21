@@ -18,11 +18,13 @@ describe('durable reading positions', () => {
     store.save(record('/docs/a.txt'));
     store.save({ ...record('/docs/b.pdf'), position: { kind: 'pdf', page: 37, left: 12, top: 401, zoom: 'page-width', rotation: 90 } });
     store.save({ ...record('/docs/c.png'), position: { kind: 'image', zoom: 2, rotation: 90, centerX: .3, centerY: .7 } });
+    store.save({ ...record('/docs/width.svg'), position: { kind: 'image', zoom: 'fit-width', rotation: 0, centerX: .5, centerY: .3 } });
     store.move('/docs', '/renamed'); store.flush();
     const reopened = new ReadingPositionStore(file);
     expect(reopened.get('/docs/a.txt', { mtimeMs: 3, size: 100 })).toBeUndefined();
     expect(reopened.get('/renamed/a.txt', { mtimeMs: 3, size: 100 })).toEqual(record('').position);
     expect(reopened.get('/renamed/b.pdf', { mtimeMs: 3, size: 100 })).toMatchObject({ page: 37, top: 401, rotation: 90 });
+    expect(reopened.get('/renamed/width.svg', { mtimeMs: 3, size: 100 })).toMatchObject({ zoom: 'fit-width' });
     expect(reopened.get('/renamed/c.png', { mtimeMs: 3, size: 100 })).toMatchObject({ kind: 'image', zoom: 2, rotation: 90, centerX: .3, centerY: .7 });
   }));
   it('rejects delayed older observations and invalid data', () => run((file) => {

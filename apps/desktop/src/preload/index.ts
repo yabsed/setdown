@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
-import { installWheelZoom } from './wheel-zoom';
+import { installAppZoom, installWheelZoom } from './wheel-zoom';
 import type {
   AppCommand,
   CloseDecision,
@@ -15,7 +15,8 @@ import type {
 } from '../protocol/desktop-api';
 import { normalizePreviewTheme } from '../core/preview/preview-preferences';
 
-installWheelZoom((steps) => ipcRenderer.send('workspace:zoom', steps));
+installAppZoom((steps) => ipcRenderer.send('workspace:zoom', steps));
+installWheelZoom((steps) => ipcRenderer.send('workspace:text-zoom', steps));
 
 function subscribe<T>(channel: string, listener: (value: T) => void) {
   const handler = (_event: Electron.IpcRendererEvent, value: T) => listener(value);
@@ -33,6 +34,8 @@ function initialThemeSnapshot(): ThemeSnapshot {
 }
 
 const api: MarkTexApi = {
+  getZoom: () => ipcRenderer.invoke('workspace:zoom-state'),
+  onZoomChanged: (listener) => subscribe('workspace:zoom-changed', listener),
   saveReadingPosition: (record) => ipcRenderer.send('reading:save', record),
   flushReadingPositions: () => ipcRenderer.sendSync('reading:flush'),
   readPdfRange: (path, begin, end, version) => ipcRenderer.invoke('pdf:range', path, begin, end, version),
