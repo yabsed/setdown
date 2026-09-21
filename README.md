@@ -4,367 +4,291 @@
 
 <h1 align="center">Setdown</h1>
 
-<p align="center">
-  Write plain. Read beautifully.<br>
-  A finished document when you read; familiar Markdown when you edit.
-</p>
+<p align="center">Write plain. Read beautifully.</p>
+
+Setdown is a desktop Markdown reader and editor for local files. Read a typeset
+document, double-click the passage you want to change, and edit its Markdown
+source. Press `Esc` to return to reading with your place preserved.
+
+Keep related text files, PDFs, and images in the same window. Open a folder when
+you need file navigation, search, Git review, or a terminal.
 
 <p align="center">
-  <img src="live_demo.gif" width="900" alt="Editing a paragraph directly from the Setdown Viewer and returning to the same reading position">
+  <img src="live_demo.gif" width="900" alt="Editing Markdown from the Setdown Viewer and returning to the reading position">
 </p>
-
-Setdown is a desktop document app for local Markdown files. It presents equations,
-tables, and images as a typeset document. Double-click anything that needs work and
-the source opens at the corresponding position. The Viewer and Editor are two views
-of the same document, not separate workspaces.
 
 <table>
   <tr>
-    <td><img src="docs/assets/setdown-tabs.png" alt="Setdown Viewer rendering a math document in the Paper theme with several documents open in tabs"></td>
-    <td><img src="docs/assets/setdown-editor.png" alt="Setdown Editor showing the same document source in the One Dark theme"></td>
+    <td><img src="docs/assets/setdown-tabs.png" alt="Markdown with equations in the Paper theme, with multiple document tabs"></td>
+    <td><img src="docs/assets/setdown-editor.png" alt="Markdown source in the One Dark editor theme"></td>
   </tr>
 </table>
 
-## Core experience
+## Read and edit in place
 
-### Edit exactly where you were reading
+The Viewer renders Markdown with equations, tables, code blocks, and images.
+Double-click a paragraph, equation, image, or nearby whitespace to open the Editor
+at the corresponding source position. Switch back with `Esc` or toggle either
+view with `Ctrl/Cmd+E`.
 
-Double-click a paragraph, equation, image, or nearby whitespace in the Viewer to
-open the Editor at its corresponding source location. Press `Esc` to return to the
-same visual position. Setdown maps the viewport you were reading, not merely a
-single cursor coordinate.
+Open Markdown tabs keep their rendered views and editor state alive. While you
+edit, Setdown prepares updated content in the background and keeps the last
+completed preview available until the replacement is ready. Source anchors help
+preserve your place when switching views or changing the window width.
 
-```text
-page 5 → edit → page 5
-```
+- Navigate headings through the document outline and search with `Ctrl/Cmd+F`.
+- Export Markdown through **File → Export as PDF…**.
+- Reorder tabs, drag them into another Setdown window, or detach them into a new one.
+- Reopen saved files at their last reading or editing position, including after an
+  application restart.
+- Choose Paper, GitHub, One Dark, Dracula, Nord, Sepia, or Solarized Dark. Themes
+  apply to the reader, editor, and application chrome across windows.
 
-### Document tabs with zero switch latency
+The Monaco-based Editor includes a table-size picker, TSV-to-table conversion,
+link insertion, and URL pasting over selected text. Pasted images use ordinary
+Markdown links: web images retain their URLs, copied image files retain their
+format, and screenshots become PNG assets. Local assets go in
+`<document name>.assets/`; untitled documents keep them in a draft bundle until
+Save As succeeds.
 
-Every tab retains its live Viewer DOM and scroll position, Editor model and cursor,
-current mode, and save state. Switching tabs does not reload or re-typeset a document
-that is already open. Tabs can be reordered, detached into a new window, or moved to
-another Setdown window.
+## Work with more than Markdown
 
-While you edit, Setdown prepares the next Preview in the background and keeps the
-last completed Viewer visible until the new revision is ready. Even a math-heavy
-document never has to replace useful content with a blank or incomplete Preview.
+| File type | Experience |
+| --- | --- |
+| Markdown | Typeset Viewer and source Editor, including rendered Git comparisons |
+| Text, source, and configuration files | Source editing with Monaco syntax highlighting and text Git diffs |
+| PDF | Read-only viewer with continuous scrolling, page navigation, outline, text search and selection, zoom, rotation, and password entry |
+| PNG, JPEG, WebP, GIF, AVIF, SVG | Read-only image viewer with fit, zoom, rotation, and drag-to-pan controls |
 
-### Optional folder navigation
+Non-Markdown text editing supports UTF-8, with or without a BOM, up to 16 MiB.
+It preserves uniform LF or CRLF line endings and the final-newline state.
+Unsupported encodings, binary content, and mixed line endings are rejected.
+Unknown text languages fall back to plain text; language servers and compilers
+are not bundled.
 
-Setdown remains document-first: opening a Markdown file from the operating system
-opens that document without turning its parent directory into a project. When a
-folder is explicitly opened, a VS Code-inspired side bar adds an Explorer, Markdown
-search, and source control as optional navigation tools. The Explorer creates,
-renames, moves, and safely trashes entries; source control reviews diffs and supports
-staging, unstaging, discard, commit, fetch, pull, push, and sync. Reviews use an explicit
-three-stage Git model — HEAD, Staged Index, and the current document. A Changes review compares
-the Staged Index with the same live text used by the ordinary document tab, so edits on either
-surface are shared immediately. Staging saves the selected open documents before `git add`.
-Staged and unstaged comparisons for the same file can stay open in
-separate tabs. A clean document tab reloads Working Tree changes immediately; a dirty
-tab keeps its local edits and asks before replacing them. The folder does not own the
-open tabs, and closing the side bar never closes a document.
+PDF search uses the document's embedded text; scanned pages need an existing OCR
+text layer. Image files can be up to 64 MiB. PDF and image positions, zoom, and
+rotation persist across restarts. The three most recently visited PDF/image
+surfaces stay in memory per window; older surfaces reload at their saved position.
 
-The Setdown wordmark toggles the folder tools. Both the left folder panel and the
-right document outline can be resized by dragging their inner edge. Reloading the
-window restores their visibility, selected view, expanded folders, and widths.
+### Three zoom controls
 
-Directories load only when expanded, search runs outside the renderer after a short
-typing delay, and Git commands run in the main process on demand. None of these paths
-participate in tab switching or Viewer activation.
+| Scope | Control | Effect |
+| --- | --- | --- |
+| Application | `Ctrl/Cmd++`, `Ctrl/Cmd+-`, `Ctrl/Cmd+0` | Resize the application across windows; `0` resets app zoom |
+| Text | `Ctrl+wheel` over Markdown or text | Change the shared reader/editor text size, including Git review |
+| PDF or image | `Ctrl+wheel` over the file, or its toolbar | Zoom that file independently |
 
-### Reading tools
+App zoom and text size persist across restarts. Use **View → Reset Text Size** to
+reset text size. Media toolbars provide their own fit and 100% controls; new PDFs
+start at fit width.
 
-- A per-document outline built from the headings in the rendered result
-- Preview search with previous and next navigation via `Ctrl/Cmd+F`
-- PDF export
-- Paper, GitHub, One Dark, Dracula, Nord, Sepia, and Solarized Dark themes
-- Detection of external file changes
+## Optional folder tools
 
-The selected theme is applied to the Viewer, application chrome, and Monaco Editor
-across every open window. Changing it does not reload the Preview URL or re-render
-Markdown, so search results and reading positions remain intact. The preference is
-restored on the next launch.
+Opening a file does not automatically open its parent folder as a project.
+Choose **File → Open Folder…** for a sidebar with:
 
-### PDFs and images
+- **Explorer:** browse, create, rename, move, and trash files and folders.
+- **Search:** search Markdown by default, or opt into all text files.
+- **Source control:** inspect changes, stage, unstage, discard, commit, fetch,
+  pull, push, and sync using Git.
 
-Open PDFs alongside Markdown with page navigation, searchable/selectable text,
-an outline, zoom and rotation. Recent PDF tabs retain their rendered pages when
-you switch away, so returning does not reconstruct the viewer.
+Markdown changes can be reviewed as rendered documents or source diffs. Staged
+review compares **HEAD → Index**; unstaged review compares **Index → the current
+document**, including unsaved edits. The ordinary document tab and editable Git
+review share the same text and undo history. Staging saves the selected open
+documents before running `git add`. Staged and unstaged reviews can remain open
+in separate tabs.
 
-PNG, JPEG, WebP, GIF, AVIF and SVG open in an image reader with fit, zoom, rotation
-and drag-to-pan controls. PDFs and images are read-only, and their reading
-positions survive closing a tab or restarting the app. Images up to 64 MiB are
-supported. The three most recently visited PDF/image views stay in memory;
-older views reload at their saved position when revisited.
+Clean documents reload external file changes. Documents with unsaved edits keep
+those edits and ask before replacing them.
 
-`Ctrl/Cmd + +/-` changes app zoom across windows; `Ctrl/Cmd + 0` resets only
-app zoom. `Ctrl + wheel` over text/Markdown changes the common text size in
-readers and editors, including Git review. Both preferences survive restart.
-Over PDFs or images, `Ctrl + wheel` zooms only that file around the cursor.
-Use the media toolbar's **100%** or **Fit width** buttons independently of app
-zoom. New PDFs start at fit width; previously read files restore their zoom and
-position. **View → Reset Text Size** resets the common text preference.
+Click the Setdown wordmark to toggle folder tools. The sidebar and document
+outline are resizable, and their layout is restored on window reload. Closing
+folder tools leaves document tabs open.
 
-### Small helpers for repetitive Markdown
+### Integrated terminal
 
-The Editor keeps Markdown visible and editable while handling the structures that
-are tedious to type by hand:
+Press **Ctrl+`**, choose **View → Toggle Terminal**, or use the terminal button at
+the bottom of the activity bar. The resizable panel supports multiple shell
+sessions, scrollback, ANSI colors, and interactive programs.
 
-- Choose a table size from a compact 10 × 10 grid, or convert selected TSV data.
-- Insert an HTTP, HTTPS, mail, telephone, or portable local-file link.
-- Paste a URL over selected text to turn the selection into a link immediately.
+New sessions start in the open project folder, the active document's folder, or
+your home directory, in that order. Hiding the panel preserves sessions; closing
+or reloading the window terminates them. Sessions do not survive an app restart.
+Use `Ctrl+Shift+C/V` to copy and paste on Linux and Windows, or `Cmd+C/V` on macOS.
 
-The table and URL tools live in the Editor toolbar instead of a separate `Insert`
-menu. Their output is ordinary Markdown and can be undone in one step.
+## Run from source
 
-### Paste images, keep ordinary Markdown
+Use Node.js 22.12 or later in the Node 22 series and npm. CI uses Node 22. Git must
+be available on `PATH` for source-control operations. Native dependencies may
+require platform build tools when a suitable prebuilt binary is unavailable.
 
-Paste an image into the Editor and Setdown creates the appropriate Markdown and
-asset:
-
-- A web image keeps its original HTTP or HTTPS URL.
-- An image copied from a file manager is copied in its original format to
-  `<document name>.assets/`.
-- A screenshot or pixel image is stored as a PNG asset.
-
-Images pasted into an unsaved document live in an internal draft bundle. After a
-successful Save As operation, Setdown moves the Markdown and its assets to the final
-location as one transaction.
-
-## Install and run
-
-### From the repository
+From the repository root:
 
 ```bash
-npm install
+npm ci
 npm start
 ```
 
-You can also pass the document to open:
+`npm start` builds the application before launching Electron. To open a file at
+launch:
 
 ```bash
 npm start -- /absolute/path/to/document.md
 ```
 
-### Linux / GNOME user installation
+For development with the Vite server:
 
 ```bash
-npm install
+npm run dev
+```
+
+If your environment sets `ELECTRON_RUN_AS_NODE=1`, unset it for commands that
+launch Electron.
+
+## Install and package
+
+### Linux
+
+After installing dependencies, build and install for the current user:
+
+```bash
 npm run install:linux
 ```
 
-This installs Setdown for the current user without administrator privileges. Launch
-it from the GNOME application grid or open a Markdown file from the file manager.
-The application is installed under `~/.local/share/setdown` and its desktop entry is
-registered in the user application directory.
+The installer places the application under
+`${XDG_DATA_HOME:-~/.local/share}/setdown`, registers a desktop entry and icon, and
+sets Setdown as the default Markdown application. It uses
+`update-desktop-database` and `xdg-mime` and does not require administrator access.
 
-To build distribution artifacts without installing them:
+To produce AppImage and deb packages instead:
 
 ```bash
 npm run package:linux
 ```
 
-The AppImage and deb packages are written to `apps/desktop/release/`.
+### Windows
 
-### Windows installer
-
-Build the NSIS installer on Windows:
+Build the x64 NSIS installer on Windows after installing dependencies:
 
 ```powershell
-npm install
 npm run package:win
 ```
 
-The installer is per-user, allows the installation directory to be selected, and
-can create desktop and Start menu shortcuts together with Markdown file associations.
+The installer supports per-user installation, a selectable install directory,
+shortcuts, and Markdown, PDF, and image file associations.
 
-## Repository structure
+Both packaging commands write their output to `apps/desktop/release/`.
+The repository currently defines packaging targets for Linux and Windows.
 
-The repository is organized first by deployable application. Inside each app, code
-is divided by process boundary and responsibility. Future mobile or server products
-belong in their own workspaces under `apps/`. Code moves to `packages/` only when at
-least two applications actually share it.
+## Keyboard reference
+
+`Ctrl/Cmd` means `Ctrl` on Linux/Windows and `Cmd` on macOS.
+
+| Action | Shortcut |
+| --- | --- |
+| Edit at a location in the Markdown Viewer | Double-click |
+| Return from Markdown Editor to Viewer | `Esc` |
+| Toggle Markdown Viewer / Editor | `Ctrl/Cmd+E` |
+| Find | `Ctrl/Cmd+F` |
+| New document | `Ctrl/Cmd+N` |
+| New window | `Ctrl/Cmd+Shift+N` |
+| Open file | `Ctrl/Cmd+O` |
+| Save / Save As | `Ctrl/Cmd+S` / `Ctrl/Cmd+Shift+S` |
+| Insert a Markdown link | `Ctrl/Cmd+K` |
+| Close tab | `Ctrl/Cmd+W` |
+| Next / previous tab | `Ctrl+Tab` / `Ctrl+Shift+Tab` |
+| Toggle terminal | **Ctrl+`** |
+
+The in-window **File · View · Edit · Window** menus also expose folder tools,
+themes, PDF export, zoom, and window commands.
+
+## Architecture
+
+Setdown uses Electron, Svelte, TypeScript, Monaco, and Crossnote. Markdown
+rendering and math typesetting run in Electron utility processes. Isolated native
+`WebContentsView` instances host Markdown previews; PDF.js handles PDFs, and
+xterm.js with node-pty provides the terminal.
 
 ```text
 apps/
 ├── desktop/
 │   ├── src/
-│   │   ├── core/             Pure domain rules with no UI or Electron dependency
+│   │   ├── core/             Domain rules and document algorithms
 │   │   ├── protocol/         Serializable IPC contracts
-│   │   ├── main/             Electron system adapters and composition root
-│   │   │   └── project/      Isolated Explorer, search, Git, and path services
-│   │   ├── preload/          Safe renderer IPC boundary
-│   │   ├── preview-runtime/  Runtime for isolated Reader WebContents
-│   │   └── renderer/
-│   │       ├── application/  Input and surface-transition use cases
-│   │       ├── ports/        Interfaces required by the renderer
-│   │       ├── adapters/     Electron and Monaco implementations
-│   │       ├── project/
-│   │       │   ├── explorer/ File-tree UI and controller
-│   │       │   ├── search/   Mode-aware folder search
-│   │       │   └── source-control/ Git UI, diff review, and controller
-│   │       └── */            Remaining Svelte UI and feature controllers
-│   └── test/
-└── code-growth/              Repository growth graph app and generated output
+│   │   ├── main/             Files, windows, rendering, Git, and PTYs
+│   │   ├── preload/          Typed renderer IPC bridge
+│   │   ├── preview-runtime/  Markdown reader interactions and rendering updates
+│   │   └── renderer/         Svelte UI, Monaco, folder tools, and media viewers
+│   ├── scripts/              Build, installation, and benchmark tools
+│   └── test/                 Electron end-to-end tests and fixtures
+└── code-growth/              Repository code-growth chart generator
 ```
 
-Dependencies point inward. `core` knows nothing about the execution environment,
-and `protocol` contains only transferable data. Process entry points assemble
-objects; Electron globals remain isolated in adapters. Automated architecture tests
-enforce these boundaries.
+Core code is independent of Electron and UI frameworks. Process entry points wire
+services to adapters, and architecture tests enforce dependency boundaries.
+Preview results carry revision identity so obsolete work cannot replace newer
+content or appear in another tab.
 
-## Controls
+Markdown previews use a separate `marktex-preview:` origin with local resources
+restricted to the document directory and required rendering assets. Executable
+code chunks, document-local Crossnote scripts/configuration, and HTML5 embeds
+are disabled. PDF scripts are disabled, and SVG files are loaded as images.
 
-| Action | Mouse / keyboard |
-| --- | --- |
-| Edit a location from the Viewer | Double-click it |
-| Return from Editor to Viewer | `Esc` |
-| Toggle Viewer / Editor | `Ctrl/Cmd+E` or the icon on the right of the tab bar |
-| Find in the rendered document | `Ctrl/Cmd+F` |
-| New window | `Ctrl/Cmd+Shift+N` |
-| New document | `Ctrl/Cmd+N` |
-| Open file | `Ctrl/Cmd+O` |
-| Open folder | The left side-bar button or `File → Open Folder…` |
-| Toggle folder tools | Click `Setdown` or use `View → Toggle Folder Tools` |
-| Save / Save As | `Ctrl/Cmd+S` / `Ctrl/Cmd+Shift+S` |
-| Insert URL | `Ctrl/Cmd+K` or the Editor toolbar |
-| Insert table | Editor toolbar |
-| Close tab | `Ctrl/Cmd+W` |
-| Next / previous tab | `Ctrl+Tab` / `Ctrl+Shift+Tab` |
-| Reorder or detach a tab | Drag the tab |
-| Reset app zoom / zoom in / zoom out | `Ctrl/Cmd+0` / `Ctrl/Cmd++` / `Ctrl/Cmd+-` |
-
-PDF export, theme selection, and window management are also available from the
-in-window `File · View · Edit · Window` menu. The commands remain accessible in full
-screen without relying on a separate operating-system menu bar.
-
-## How it works
-
-Setdown uses the rendering engine from
-[Crossnote](https://github.com/shd101wyy/vscode-markdown-preview-enhanced) and the
-same [Monaco Editor](https://microsoft.github.io/monaco-editor/) used by VS Code.
-
-### Viewport-preserving transitions
-
-`ViewportAnchor` carries a source line and column, its relative vertical position in
-the viewport, and the evidence used to derive the mapping. When the cursor is visible
-in the Editor, the wrapped visual line is preferred. Otherwise, Setdown gathers all
-visible source lines into a band and uses a center of mass weighted by each rendered
-block's height. Long paragraphs and equations therefore cannot push all mapping error
-to one edge of the screen.
-
-- [`viewport-anchor.ts`](apps/desktop/src/core/preview/viewport-anchor.ts) always
-  resolves a valid viewport coordinate.
-- [`bridge.ts`](apps/desktop/src/preview-runtime/bridge.ts) connects rendered DOM
-  positions to source locations.
-- [`source-anchors.ts`](apps/desktop/src/main/preview/source-anchors.ts) preserves
-  source metadata for equations and raw HTML.
-
-### Revision-aware, live Previews
-
-Every render result has a revision number, and only the newest result that still
-matches its document can be installed. A late render can never appear in another
-tab. Each live Preview remains in its own `WebContentsView`, so tab switching is a
-visibility change rather than a reload.
-
-When a tab moves to a window with identical content geometry, Setdown preserves its
-pixel scroll position. If a different width changes line wrapping, source anchors
-and relative viewport positions recover the same content. Transfers use an internal,
-single-use ID rather than exposing a document path or URL.
-
-### A render pipeline that does not block the UI
-
-Markdown-it and KaTeX typesetting run in a dedicated Electron utility process, away
-from the main process. Windows, tabs, typing, and IPC remain responsive while a large
-math document renders.
-
-- Crossnote notebooks and KaTeX results are reused by document directory and theme.
-- Math markup is restored after Crossnote post-processing to avoid parsing an
-  unnecessarily large intermediate DOM.
-- Documents are split into source blocks so updates patch only the changed range.
-- A spare Preview `WebContentsView` is prewarmed to remove first-navigation cost.
-- The Editor and last completed Viewer remain alive while the next revision is built.
-
-Consequently, `Esc` and tab switching never wait for typesetting. The previous
-complete document stays visible until a complete new revision can replace it.
-
-### Safety for local documents
-
-The Viewer runs on a separate `marktex-preview:` origin. Local resource access is
-limited to the current document directory and the required Crossnote assets. Code
-chunks, per-document `.crossnote` scripts and configuration, and HTML5 embeds are
-disabled so untrusted documents can be opened safely.
-
-Unsaved documents use an isolated `<userData>/drafts/<UUID>/` bundle. Save As removes
-the draft only after both asset copying and Markdown link rewriting succeed.
-
-## Development and verification
-
-### Repository growth
-
-The graph below plots source, test, and build-code size against actual commit time.
-
-<p align="center">
-  <img src="apps/code-growth/output/repository-code-growth.png" width="960" alt="Setdown repository code growth by commit">
-</p>
-
-Regenerate it with:
-
-```bash
-npm run plot:code-growth
-```
-
-### Checks
-
-```bash
-npm run typecheck
-npm test
-npm run build
-npm run test:e2e
-npm run test:preview-contract
-```
-
-Preview, layout, CSS and dependency changes must preserve the
-[preview performance contract](docs/preview-performance-contract.md). Its focused
-gate includes real Electron checks; `npm run bench:preview -- --baseline /path/to/base`
-compares cold and warm math-document cycles against a separate installed checkout.
-
-PRs and main pushes run the preview contract gate automatically. The full latency
-comparison is manual: select **Run workflow** in **Preview performance contract**
-and enable `run_latency`, or run
-`gh workflow run preview-contract.yml -f run_latency=true`. It compares the selected
-ref against its parent commit. Local performance-path changes still require the
-full benchmark described in the contract.
-
-If the environment sets `ELECTRON_RUN_AS_NODE=1`, remove that variable only for the
-Electron command.
-
-The test suite covers document revisions, Preview races, Viewer-to-Editor coordinate
-mapping, detached tabs, theme propagation, outline and search behavior, image assets,
-and draft transactions.
-
-The repository includes upstream source as submodules for implementation comparison
-and specification checks. Normal builds use npm dependencies. To fetch the reference
-sources as well:
+Upstream reference sources live in `vendor/` as submodules. Normal builds use npm
+packages and do not require those checkouts. Fetch them when needed with:
 
 ```bash
 git submodule update --init --recursive
 ```
 
-- `vendor/vscode`: Monaco and VS Code behavior reference
-- `vendor/vscode-markdown-preview-enhanced`: Markdown Preview Enhanced integration reference
-- `vendor/commonmark-spec`: CommonMark behavior reference
+## Development checks
 
-## Design records
+Run commands from the repository root:
 
-- [Screen-first HTML↔Markdown position mapping](reports/2026_09_11_01_56_screen_first_html_markdown_position_mapping.md)
-- [Keeping the last Preview visible during math rendering](reports/2026_09_11_02_28_keep_last_preview_during_math_rendering.md)
-- [Revision-aware Preview prerendering](reports/2026_09_11_15_50_revision_aware_preview_prerender_strategy.md)
-- [Draft asset bundles for untitled documents](reports/2026_09_11_18_00_untitled_draft_asset_bundle_strategy.md)
-- [Tab detachment and WebContents ownership transfer](reports/2026_09_12_15_51_tab_detach_webcontents_reparenting_architecture.md)
-- [Preview outline, search, and theme plan](reports/2026_09_12_16_30_preview_toc_search_theme_plan.md)
-- [Separating Preview controls from theme state](reports/2026_09_12_17_27_preview_controls_and_theme_state_architecture.md)
-- [Preview iframe compositing experiment](reports/2026_09_12_18_20_preview_iframe_compositing_architecture.md)
-- [Unified product theming](reports/2026_09_12_18_38_unified_product_theme_architecture.md)
-- [Zero-wait Preview transitions](reports/2026_09_12_20_14_zero_wait_preview_transition_architecture.md)
+```bash
+npm run typecheck           # TypeScript and Svelte checks
+npm test                    # Unit and integration tests
+npm run build               # Typecheck and production build
+npm run test:e2e             # Build and run Electron end-to-end tests
+npm run test:preview-contract
+```
+
+Before running browser checks, install Chromium with
+`npx playwright install chromium`. On Linux without a display, use
+`xvfb-run -a npm run test:preview-contract`.
+
+Read the [preview performance contract](docs/preview-performance-contract.md)
+before changing preview preparation or presentation, native bounds, zoom,
+source/reader transitions, hydration, source-position lookup, themes/CSS, or
+Electron/Crossnote dependencies. Those changes require the contract suite and a
+comparison against a separate baseline checkout with installed dependencies:
+
+```bash
+npm run bench:preview -- --baseline /absolute/path/to/installed-baseline
+```
+
+The contract explains baseline setup and reporting. Report first, second, and
+warm cycles separately for ordinary Markdown and Git review, with and without
+edits and preparation time. Incomplete runs, stale-content captures, and failed
+checks are not successful benchmarks.
+
+CI runs the contract suite on pull requests and pushes to `main`. The full latency
+comparison is available manually through the **Preview performance contract**
+workflow with `run_latency` enabled; local performance-path changes still require
+the comparative benchmark.
+
+Further documentation:
+
+- [Preview guarantees, ownership, and benchmark procedure](docs/preview-performance-contract.md)
+- [Reading-position persistence, PDF and image viewers](docs/reading-positions-and-pdf.md)
+- [Integrated terminal behavior and implementation](docs/integrated-terminal.md)
+- [Text workspace support and acceptance scenarios](apps/desktop/test/TEXT-WORKSPACE.md)
+- [Design and implementation records](reports/)
+
+Regenerate the repository growth chart with `npm run plot:code-growth`:
+
+<p align="center">
+  <img src="apps/code-growth/output/repository-code-growth.png" width="960" alt="Setdown repository code growth by commit">
+</p>
