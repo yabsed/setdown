@@ -1,3 +1,4 @@
+import type { GitHistorySelection } from '../protocol/git-history';
 import type {
   ApplicationMenuEntry,
   CloseDecision,
@@ -64,6 +65,7 @@ export type AppActions = {
   toggleProjectSearchGroup(path: string): void;
   refreshProjectGit(): void;
   toggleProjectGitGroup(title: string): void;
+  reviewGitHistory(selection: GitHistorySelection): void;
   reviewProjectGitChange(path: string, staged: boolean): void;
   activateProjectGitDiff(id: string): void;
   closeProjectGitDiff(id: string): void;

@@ -57,6 +57,9 @@ const api: MarkTexApi = {
     ipcRenderer.invoke('document:activate', { document, text, revision }),
   updateTabState: (tabs: TabStateSummary[]) =>
     ipcRenderer.send('tabs:update-state', tabs),
+  requestGitGraph: (request) => ipcRenderer.invoke('project:git-graph', request),
+  cancelGitGraph: (id) => ipcRenderer.send('project:git-graph-cancel', id),
+  getGitHistoryDiff: (selection) => ipcRenderer.invoke('project:git-history-diff', selection),
   getGitReviewState: () => ipcRenderer.invoke('git-review:get-state'),
   updateGitReviewState: (review) => ipcRenderer.send('git-review:update-state', review),
   registerTabTransfer: (transferId: string, tab: TransferableTab) =>

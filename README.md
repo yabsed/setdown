@@ -115,6 +115,12 @@ review share the same text and undo history. Staging saves the selected open
 documents before running `git add`. Staged and unstaged reviews can remain open
 in separate tabs.
 
+The **Graph** below Changes shows branches and commit history. Drag its divider
+to resize it, or collapse its header. Select a commit and then a changed file to
+open a read-only source or rendered Markdown comparison. Historical reviews stay
+independent of current edits. The graph uses Web Git Graph's renderer and local
+Git backend; see [the integration notes](docs/git-history.md).
+
 Clean documents reload external file changes. Documents with unsaved edits keep
 those edits and ask before replacing them.
 

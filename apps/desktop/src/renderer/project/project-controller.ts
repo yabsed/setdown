@@ -1,3 +1,4 @@
+import type { GitHistorySelection } from '../../protocol/git-history';
 import type {
   DocumentSnapshot, GitRemoteAction, PreviewBounds, PreviewMessage, ProjectEntryKind,
   ProjectFolder, ProjectSearchDocument, ProjectSearchResult,
@@ -107,6 +108,7 @@ export class ProjectController {
       ? project.collapsedGitGroups.filter((candidate) => candidate !== title) : [...project.collapsedGitGroups, title];
     rememberProjectState();
   };
+  reviewGitHistory = (selection: GitHistorySelection): Promise<void> => this.sourceControl.reviewHistory(selection);
   reviewGitChange = (path: string, staged: boolean): Promise<void> => this.sourceControl.review(path, staged);
   activateGitDiff = (id: string): void => void this.sourceControl.activateDiff(id);
   deactivateGitDiff = (): void => this.sourceControl.deactivateDiff();

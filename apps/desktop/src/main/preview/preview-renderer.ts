@@ -219,7 +219,7 @@ export class PreviewRenderer {
       this.reviewPages.set(contents, { url, revision, pageKey });
       await previews.prepareReviewViewport(senderId, tabId, revision);
       check();
-      if (!reusable && !diff.staged) {
+      if (!reusable && !diff.staged && !diff.history) {
         try { this.seedReviewStandby(tabId, senderId, { url, revision, pageKey }, themeId); }
         catch { /* Optional warmup must never invalidate a ready front. */ }
       }

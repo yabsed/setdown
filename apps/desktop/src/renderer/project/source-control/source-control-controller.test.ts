@@ -263,3 +263,18 @@ test('restoring an inactive Working Tree review does not activate or suspend its
   assert.equal(open.mock.calls.length, 0);
   assert.deepEqual(changed.mock.calls, [[true, false]]);
 });
+
+test('immutable history ignores live document edits, saves and closes', async () => {
+  const f = fixture();
+  f.tab.history = { root: '/project', head: 'a'.repeat(40), path: 'notes.md' };
+  f.tab.diff = { ...f.tab.diff!, history: f.tab.history };
+  await f.activate();
+  f.edit('unsaved working tree');
+  assert.equal(f.tab.diff.modifiedText, 'after');
+  assert.equal(project.gitDiff?.modifiedText, 'after');
+  f.controller.closeWorkingTreeReviews(f.tab.filePath);
+  assert.equal(project.gitDiffTabs.length, 1);
+  f.controller.showRendered();
+  await flush();
+  assert.equal(project.gitDiff?.modifiedText, 'after');
+});

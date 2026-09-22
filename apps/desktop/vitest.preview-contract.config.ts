@@ -21,6 +21,8 @@ export default defineConfig({
     'src/renderer/reader/reader-preparation.test.ts',
     'src/renderer/project/source-control/review-presentation.test.ts',
     'src/renderer/project/source-control/source-control-controller.test.ts',
+    'src/renderer/project/source-control/git-graph-provider.test.ts',
+    'src/main/project/git-history-service.test.ts',
     'src/renderer/project/source-control/git-review-latency.test.ts',
   ] },
 });

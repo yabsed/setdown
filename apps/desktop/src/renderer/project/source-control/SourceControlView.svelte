@@ -2,6 +2,7 @@
   import type { AppActions } from '../../view-state.svelte';
   import { project } from '../project-state.svelte';
   import SideViewMenu from '../SideViewMenu.svelte';
+  import GitHistoryPane from './GitHistoryPane.svelte';
   import ChangeGroup from './ChangeGroup.svelte';
   import { gitChangeGroups } from './git-change-groups';
 
@@ -51,6 +52,8 @@
   <div class="scm-empty"><p>The open folder is not a Git repository.</p>
     <button type="button" disabled={project.gitBusy} onclick={actions.initializeProjectGit}>Initialize Repository</button></div>
 {:else}
+  <div class="scm-split">
+  <div class="scm-changes-pane">
   <div class="git-branch">
     <svg viewBox="0 0 16 16"><circle cx="4" cy="3" r="1.5"/><circle cx="4" cy="13" r="1.5"/><circle cx="12" cy="5" r="1.5"/><path d="M4 4.5v7M5.5 4c3 0 2 3 5 2.5"/></svg>
     <strong>{project.git.branch}</strong>
@@ -79,4 +82,12 @@
       review={(path) => actions.reviewProjectGitChange(path, false)} open={actions.openProjectFile} />
     {#if project.git.changes.length === 0}<p class="side-view-message">No changes.</p>{/if}
   </div>
+  </div>
+  {#key project.folder.path}<GitHistoryPane {actions} root={project.folder.path} />{/key}
+  </div>
 {/if}
+
+<style>
+  .scm-split { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+  .scm-changes-pane { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: auto; }
+</style>

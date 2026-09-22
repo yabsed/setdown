@@ -1,3 +1,5 @@
+import { GitHistoryService } from '../project/git-history-service';
+import type { GitGraphRequest, GitHistorySelection } from '../../protocol/git-history';
 import { ipcMain, shell } from 'electron';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
@@ -35,6 +37,10 @@ function documentMenus(items: ApplicationMenuEntry[], markdown: boolean, review:
 }
 export function installIpc(options: Options): void {
   const { channels, documents, previews, projects, renderer, themes, transfers } = options;
+  const history = new GitHistoryService();
+  channels.handle('project:git-graph', (state, request: GitGraphRequest) => history.request(state, request));
+  channels.on('project:git-graph-cancel', (state, id: unknown) => history.cancel(state, id));
+  channels.handle('project:git-history-diff', (state, selection: GitHistorySelection) => history.diff(state, selection));
   previews.registerIpc(); transfers.registerIpc();
   channels.handle('menu:get', (state, menuId: unknown) => {
     const review = state.rendererGitReview?.active === true;
@@ -57,7 +63,7 @@ export function installIpc(options: Options): void {
   channels.handle('git-review:get-state', (state) => state.rendererGitReview);
   channels.on('git-review:update-state', (state, review: GitReviewState | null) => {
     state.rendererGitReview = review ? { name: String(review.name), path: String(review.path),
-      dirty: Boolean(review.dirty), isUntitled: false, staged: Boolean(review.staged), active: Boolean(review.active),
+      history: review.history, dirty: Boolean(review.dirty), isUntitled: false, staged: Boolean(review.staged), active: Boolean(review.active),
       mode: review.mode === 'source' || !isMarkdownDocument(review.path) ? 'source' : 'rendered',
       line: Math.max(1, Number(review.line) || 1) } : null;
   });
