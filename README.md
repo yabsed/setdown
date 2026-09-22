@@ -359,8 +359,11 @@ Further documentation:
 - [Text workspace support and acceptance scenarios](apps/desktop/test/TEXT-WORKSPACE.md)
 - [Design and implementation records](reports/)
 
-Regenerate the repository growth chart with `npm run plot:code-growth`:
+Regenerate the repository growth charts with `npm run plot:code-growth`:
+
+The component chart shows how code in each part of Setdown grew over the
+repository's history:
 
 <p align="center">
-  <img src="apps/code-growth/output/repository-code-growth-detailed.png" width="960" alt="Setdown repository code growth by commit">
+  <img src="apps/code-growth/output/repository-component-growth-line.png" width="960" alt="Setdown component lines of code growth over time for tests, renderer, main, core, preview runtime, tooling, protocol, and preload">
 </p>
