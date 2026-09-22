@@ -44,7 +44,12 @@ test('Graph resizes, refreshes and opens immutable Markdown revisions in existin
     await window.getByRole('button', { name: 'Toggle Folder Tools' }).click();
     await window.getByRole('button', { name: 'Source Control', exact: true }).click();
     const graph = window.locator('web-git-graph');
-    await expect(graph.locator('.row')).toHaveCount(2);
+    await expect.poll(async () => ({
+      rows: await graph.locator('.row').count(),
+      busy: await graph.getAttribute('aria-busy'),
+      graphErrors: await window.locator('.history-error').allTextContents(),
+      appErrors: await window.locator('.project-error').allTextContents()
+    })).toEqual({ rows: 2, busy: 'false', graphErrors: [], appErrors: [] });
     const pane = window.getByRole('region', { name: 'Git history', exact: true });
     const separator = window.getByRole('button', { name: 'Resize Git Graph' });
     // The pinned shadow adapter must survive theme changes and expose the
@@ -149,6 +154,22 @@ test('Graph resizes, refreshes and opens immutable Markdown revisions in existin
         .filter(Number.isFinite).sort((a, b) => a - b)
     )).toEqual(expect.arrayContaining([30, 46]));
     await window.screenshot({ path: test.info().outputPath('graph-bend.png') });
+    const longBranch = 'topic/room-for-branch-labels';
+    await git('checkout', '-b', longBranch);
+    await git('commit', '--allow-empty', '-m', 'A long commit subject that yields its space to the branch label');
+    const newest = (await git('rev-parse', 'HEAD')).stdout.trim();
+    await pane.getByRole('button', { name: 'Refresh Git Graph' }).click();
+    const newestRow = graph.locator(`.row[data-oid="${newest}"]`);
+    await expect(newestRow.locator('.ref:visible')).toContainText(longBranch);
+    await expect.poll(() => newestRow.evaluate((row) => {
+      const badge = row.querySelector<HTMLElement>('.ref');
+      const message = row.querySelector<HTMLElement>('.message');
+      return badge && message ? {
+        fullBranch: badge.scrollWidth <= badge.clientWidth + 1,
+        clippedMessage: message.scrollWidth > message.clientWidth + 1
+      } : null;
+    })).toEqual({ fullBranch: true, clippedMessage: true });
+    await window.screenshot({ path: test.info().outputPath('graph-long-branch.png') });
     expect(errors).toEqual([]);
   } finally {
     if (app) await disposeApplication(app);

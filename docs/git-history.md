@@ -61,8 +61,11 @@ section heading. Upstream still owns layout and interactions; no vendor files
 are changed. The same adapter gives each subject an inset computed from the
 upstream package's exported `layoutGitGraph` result. It accounts for lanes
 crossing a row, including curves, so a distant bend does not create empty
-space beside every other commit. A shadow-root observer reapplies insets only
-to visible virtual rows. Check these selectors, palette attributes, row geometry,
+space beside every other commit. Within that space, a branch badge takes its
+full readable width before the commit subject yields and ellipsises; a badge
+itself ellipsises only if badges alone exceed the row. A shadow-root observer
+reapplies insets only to visible virtual rows. Check these selectors, palette
+attributes, row geometry,
 light/dark themes and branch/menu behavior when updating the pinned package.
 The public comfortable row density keeps virtualization and row heights in
 agreement.

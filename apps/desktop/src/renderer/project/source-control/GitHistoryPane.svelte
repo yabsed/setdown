@@ -26,6 +26,7 @@
   let host = $state<HTMLDivElement>();
   let graph: WebGitGraphElement | undefined;
   let autoMode = true;
+  let updateBadgeFilter: (() => void) | undefined;
   let error = $state('');
   let mounted = $state(false);
   let refreshTimer: ReturnType<typeof setTimeout> | undefined;
@@ -104,6 +105,7 @@
           ? `.row .ref${names.map((name) => `:not([title=${CSS.escape(name)}])`).join('')} { display: none; }`
           : '';
       };
+      updateBadgeFilter = setBadgeFilter;
       element.setAttribute('hosted', '');
       const applyTheme = () => {
         if (element) element.theme = themeProfile(normalizePreviewTheme(document.documentElement.dataset.theme)).appearance;
@@ -197,7 +199,7 @@
       clearTimeout(refreshTimer);
       cancelAnimationFrame(frame);
       resizeObserver?.disconnect(); themeObserver?.disconnect(); rowObserver?.disconnect();
-      provider.dispose(); element?.remove(); graph = undefined;
+      provider.dispose(); element?.remove(); graph = undefined; updateBadgeFilter = undefined;
     };
   });
   $effect(() => {
@@ -206,6 +208,7 @@
     const snapshot = project.git;
     if (snapshot && expanded && mounted && project.open && project.visible && graph) {
       if (autoMode) {
+        updateBadgeFilter?.();
         const next = autoGraphRefs(snapshot);
         if (!sameRefs(graph.refs, next)) { graph.refs = next; return; }
       }
