@@ -81,19 +81,34 @@ test('detaching a tab restores its preview iframe at the same semantic position'
           screenY: 420,
         }));
         const types = [...dataTransfer.types];
+        element.dispatchEvent(new DragEvent('dragleave', {
+          clientX: 120,
+          clientY: 80,
+          bubbles: true,
+          cancelable: true,
+          dataTransfer,
+          relatedTarget: null,
+        }));
+        // VS Code and Firefox can accept the OS drag as a move even though the
+        // drop did not happen in another Setdown window.
+        Object.defineProperty(dataTransfer, 'dropEffect', { value: 'move', configurable: true });
         element.dispatchEvent(new DragEvent('dragend', {
-          clientX: -10, // Outside the workspace; an in-window drop now joins/splits groups.
+          // Chromium can retain the last in-window client coordinates when the
+          // OS drag ends outside the BrowserWindow.
+          clientX: 120,
+          clientY: 80,
           bubbles: true,
           cancelable: true,
           dataTransfer,
           screenX: 640,
           screenY: 420,
         }));
-        return types;
+        return { types, dropEffect: dataTransfer.dropEffect };
       });
 
-    expect(draggedTypes).toContain('application/x-setdown-tab');
-    expect(draggedTypes).not.toContain('text/plain');
+    expect(draggedTypes.types).toContain('application/x-setdown-tab');
+    expect(draggedTypes.types).not.toContain('text/plain');
+    expect(draggedTypes.dropEffect).toBe('move');
     await expect.poll(async () => (await shellWindows(application)).length).toBe(2);
 
     await expect(sourceWindow.locator('.tab-name')).toHaveText(['Untitled.md']);
@@ -121,8 +136,15 @@ test('detaching a tab restores its preview iframe at the same semantic position'
       return Number(covering && covering.dataset.sourceLine) || 0;
     })()`)).toBe(anchorLine);
 
-    await expect.poll(() => application.evaluate(({ BrowserWindow }) =>
-      BrowserWindow.getFocusedWindow()?.getTitle() ?? '')).toContain('sample.md');
+    // Some Wayland/compositor sessions report no focused BrowserWindow even
+    // after Electron's explicit focus(). Verify ownership where focus reporting
+    // is available, as in the multi-tab detach case below.
+    const reportsFocus = await application.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows().some((window) => window.isFocused()));
+    if (reportsFocus) {
+      await expect.poll(() => application.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getFocusedWindow()?.getTitle() ?? '')).toContain('sample.md');
+    }
   } finally {
     await disposeApplication(application);
     await rm(configRoot, { recursive: true, force: true });
@@ -155,8 +177,17 @@ test('detaching the middle tab leaves documents one and three in the original wi
           screenX: 680,
           screenY: 460,
         }));
+        element.dispatchEvent(new DragEvent('dragleave', {
+          clientX: 120,
+          clientY: 80,
+          bubbles: true,
+          cancelable: true,
+          dataTransfer,
+          relatedTarget: null,
+        }));
         element.dispatchEvent(new DragEvent('dragend', {
-          clientX: -10, // Outside the workspace; an in-window drop now joins/splits groups.
+          clientX: 120,
+          clientY: 80,
           bubbles: true,
           cancelable: true,
           dataTransfer,

@@ -14,6 +14,7 @@ import { view, type WorkingTreeEdit } from '../view-state.svelte';
 import { restoredOutlineOpen } from '../shell/layout-session';
 import { tick } from 'svelte';
 import { MediaCache } from './media-cache';
+import type { EditorGroupPlacement } from '../../core/workspace/editor-groups';
 
 type Options = {
   desktop: DesktopPort; workspace: WorkspaceState; session: TabSession; shell: HTMLElement;
@@ -355,11 +356,18 @@ export class TabController {
     if (tab) this.options.editor.replace(tab, documentSnapshot);
   };
   show = async (documentSnapshot: DocumentSnapshot, initialSurface: 'viewer' | 'editor' | 'pdf' | 'image' = 'viewer',
-    presentation: 'document' | 'review' = 'document'): Promise<void> => {
+    presentation: 'document' | 'review' = 'document', placement?: EditorGroupPlacement): Promise<void> => {
     const { editor, reader, workspace } = this.options;
     if (!documentSnapshot.isUntitled) {
       const existing = workspace.tabs.find((tab) => !tab.document.isUntitled && tab.document.path === documentSnapshot.path);
-      if (existing) return void await this.activate(existing.id, presentation);
+      if (existing) {
+        if (placement) {
+          if (existing.id === workspace.activeId) this.saveActiveState(); else editor.saveView(existing);
+          workspace.groups.move(existing.id, placement.groupId, placement.direction, placement.index);
+          this.render();
+        }
+        return void await this.activate(existing.id, presentation);
+      }
     }
     const saved = documentSnapshot.readingPosition;
     initialSurface = documentSurface(documentSnapshot.path, saved?.kind === 'text' ? saved.surface : initialSurface);
@@ -374,13 +382,14 @@ export class TabController {
     }
     created.tocOpen = hasMarkdownPreview(documentSnapshot) && restoredOutlineOpen();
     workspace.add(created);
+    if (placement) workspace.groups.move(id, placement.groupId, placement.direction, placement.index);
     this.render();
     await this.activate(id, presentation);
     if (presentation === 'document' && initialSurface === 'viewer' && hasMarkdownPreview(documentSnapshot)) window.setTimeout(() => {
       void editor.load().catch((error) => console.error('Failed to load editor', error));
     }, 0);
   };
-  installTransferred = async (transfer: ClaimedTabTransfer): Promise<void> => {
+  installTransferred = async (transfer: ClaimedTabTransfer, placement?: EditorGroupPlacement): Promise<void> => {
     const { desktop, editor, preview, reader, shell, surfaces, workspace } = this.options;
     const incoming = transfer.tab;
     const markdown = hasMarkdownPreview(incoming.document);
@@ -400,6 +409,7 @@ export class TabController {
     restored.readingPosition = incoming.readingPosition;
     editor.importView(restored.id, incoming.editorViewState);
     workspace.add(restored);
+    if (placement) workspace.groups.move(restored.id, placement.groupId, placement.direction, placement.index);
     this.render();
     await this.activate(restored.id);
     reader.syncView();

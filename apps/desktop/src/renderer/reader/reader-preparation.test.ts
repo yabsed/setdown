@@ -12,7 +12,8 @@ function fixture(path = '/sample.md') {
   const shown: unknown[] = [];
   const controller = new ReaderController({
     active:()=>tab,activeId:()=>tab.id,tabs:[tab],initialTheme:{id:'github-light',revision:0},
-    desktop:{sendPreviewCommand:(_id:string,m:unknown)=>commands.push(m),showPreview:(id:unknown)=>shown.push(id)},
+    desktop:{sendPreviewCommand:(_id:string,m:unknown)=>commands.push(m),showPreview:(id:unknown)=>shown.push(id),
+      setBackgroundPreviews() {}},
     frames:{getBoundingClientRect:()=>({left:12,top:76,width:800,height:744})},
     anchorChanged() {},
   } as unknown as ConstructorParameters<typeof ReaderController>[0]);

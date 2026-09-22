@@ -10,7 +10,6 @@
     const handle = event.currentTarget as HTMLElement;
     const area = handle.parentElement!.getBoundingClientRect();
     handle.setPointerCapture(event.pointerId);
-    window.dispatchEvent(new CustomEvent('setdown:group-resize', { detail: true }));
     const move = (e: PointerEvent) => {
       const extent = sash.axis === 'x' ? area.width * sash.width / 100 : area.height * sash.height / 100;
       const offset = sash.axis === 'x' ? e.clientX - area.left - area.width * sash.x / 100
@@ -21,7 +20,6 @@
     const end = () => {
       handle.removeEventListener('pointermove', move);
       handle.removeEventListener('lostpointercapture', end);
-      window.dispatchEvent(new CustomEvent('setdown:group-resize', { detail: false }));
     };
     handle.addEventListener('pointermove', move);
     handle.addEventListener('lostpointercapture', end);

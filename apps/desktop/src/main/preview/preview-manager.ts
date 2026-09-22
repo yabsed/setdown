@@ -197,6 +197,12 @@ export class PreviewManager {
   }
 
   setBackgrounds(ownerId: number, value: unknown) {
+    this.updateBackgrounds(ownerId, value);
+    const foreground = this.foregrounds.get(ownerId);
+    this.show(ownerId, foreground?.tabId ?? null, foreground?.bounds ?? null);
+  }
+
+  private updateBackgrounds(ownerId: number, value: unknown) {
     if (!Array.isArray(value)) return;
     const entries = value.slice(0, 64).flatMap(entry => {
       const bounds = readPreviewBounds(entry?.bounds);
@@ -204,8 +210,11 @@ export class PreviewManager {
       return bounds && preview?.ownerWebContentsId === ownerId ? [{ tabId: entry.tabId as string, bounds }] : [];
     });
     this.backgrounds.set(ownerId, entries);
-    const foreground = this.foregrounds.get(ownerId);
-    this.show(ownerId, foreground?.tabId ?? null, foreground?.bounds ?? null);
+  }
+
+  layout(ownerId: number, tabId: unknown, bounds: PreviewBounds | null, backgrounds: unknown) {
+    this.updateBackgrounds(ownerId, backgrounds);
+    this.show(ownerId, tabId, bounds);
   }
 
   show(ownerId: number, tabId: unknown, bounds: PreviewBounds | null) {
@@ -441,7 +450,10 @@ export class PreviewManager {
     }
     ipcMain.on('preview:create', (event, tabId) => this.create(event.sender.id, tabId));
     ipcMain.on('preview:backgrounds', (event, entries) => this.setBackgrounds(event.sender.id, entries));
-    ipcMain.on('preview:show', (event, { tabId, bounds }) => this.show(event.sender.id, tabId, bounds));
+    ipcMain.on('preview:show', (event, { tabId, bounds, backgrounds }) => {
+      if (backgrounds === undefined) this.show(event.sender.id, tabId, bounds);
+      else this.layout(event.sender.id, tabId, bounds, backgrounds);
+    });
     ipcMain.handle('preview:capture', (event, tabId) => this.capture(event.sender.id, tabId));
     ipcMain.on('preview:command', (event, { tabId, message }) => this.command(event.sender.id, tabId, message));
     ipcMain.on('preview:destroy', (event, tabId) => this.destroy(event.sender.id, tabId));

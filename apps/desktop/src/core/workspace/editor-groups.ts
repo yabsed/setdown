@@ -1,5 +1,6 @@
 /** Editor groups own selection; the workspace owns documents and command focus. */
 export type SplitDirection = 'left' | 'right' | 'up' | 'down';
+export type EditorGroupPlacement = { groupId: string; direction: SplitDirection | null; index?: number };
 export type Group = { id: string; tabs: string[]; activeId: string | null };
 export type GroupTree = { kind: 'group'; id: string } | {
   kind: 'split'; id: string; axis: 'x' | 'y'; ratio: number; first: GroupTree; second: GroupTree;

@@ -6,10 +6,17 @@ export type TestApplication = Awaited<ReturnType<typeof electron.launch>>;
 export async function focusApplication(application: TestApplication): Promise<void> {
   await application.firstWindow();
   await expect.poll(() => application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.isVisible())).toBe(true);
-  await application.evaluate(({ BrowserWindow }) => {
-    const window = BrowserWindow.getAllWindows()[0]; window.focus(); window.webContents.focus();
-  });
-  await expect.poll(() => application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.isFocused())).toBe(true);
+  // Wayland may ignore the first focus request while the window is still being
+  // admitted by the compositor. Repeat the native request instead of merely
+  // polling stale focus state; CDP keyboard/mouse input depends on this fence.
+  await expect.poll(() => application.evaluate(({ app, BrowserWindow }) => {
+    const window = BrowserWindow.getAllWindows()[0];
+    if (!window?.isFocused()) {
+      app.focus({ steal: true });
+      window?.show(); window?.moveTop(); window?.focus(); window?.webContents.focus();
+    }
+    return window?.isFocused();
+  })).toBe(true);
 }
 
 /**

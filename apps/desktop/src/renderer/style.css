@@ -1165,6 +1165,11 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 .editor-group > .tab-strip { height: 40px; }
 .editor-group:not(.focused) .document-tab[aria-selected="true"] { background: var(--app-hover); }
 .group-body { position: absolute; inset: 40px 0 0; }
+.group-body[data-native-preview-frozen="true"] {
+  background-repeat: no-repeat;
+  background-position: top left;
+  background-size: 100% 100%;
+}
 .group-editor-host, .group-monaco-instance { width: 100%; height: 100%; }
 .group-content { position: absolute; padding-top: 40px; pointer-events: none; min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); overflow: hidden; }
 .group-content > * { grid-column: 1; grid-row: 2; min-width: 0; min-height: 0; pointer-events: auto; }

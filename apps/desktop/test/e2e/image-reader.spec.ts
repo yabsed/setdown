@@ -44,6 +44,10 @@ test('opens every supported image format, preserves the bitmap across tab switch
     expect(await page.locator('.image-surface').count()).toBe(3);
     const image = await reader.getByRole('img').elementHandle();
     const url = await reader.getByRole('img').getAttribute('src');
+    // Generating and opening every codec can outlive the compositor's initial
+    // focus grant. Reading-position IPC deliberately ignores background
+    // windows, so establish native focus again before the input under test.
+    await focusApplication(app);
     await reader.getByRole('combobox', { name: 'Image zoom' }).selectOption('2');
     await reader.getByRole('button', { name: 'Rotate image' }).click();
     await reader.getByRole('region', { name: 'Image canvas' }).evaluate((node) => { node.scrollTop = 300; node.scrollLeft = 150; });

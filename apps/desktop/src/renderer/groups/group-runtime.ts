@@ -9,14 +9,16 @@ export function createGroupRuntime(options: {
   workspace: WorkspaceState; desktop: DesktopPort; editor: MonacoEditor;
   reader: ReaderController; activate(id: string): void;
 }) {
-  let dragging = false, resizing = false, overlayDepth = 0, hadBackgrounds = false;
-  let signature = '';
+  type BackgroundEntry = { tabId: string; bounds: { x: number; y: number; width: number; height: number } };
+  let dragging = false, overlayDepth = 0, overlayToken = 0;
+  let backgroundEntries: BackgroundEntry[] = [];
+  let frozenBackgrounds = new Set<string>();
   const preparing = new Set<string>();
   const failedPreparations = new Map<string, string>();
   const { workspace, desktop, editor, reader } = options;
   const area = document.querySelector<HTMLElement>('.editor-area')!;
-  function backgrounds(frozen = false) {
-    const entries = dragging || resizing || overlayDepth > 0 || frozen ? [] : workspace.groups.groups.flatMap(group => {
+  function backgrounds() {
+    const available = workspace.groups.groups.flatMap(group => {
       if (group.id === workspace.groups.focusedId) return [];
       const tab = group.activeId ? workspace.find(group.activeId) : null;
       const host = area.querySelector<HTMLElement>(`.group-body[data-group-id="${group.id}"]`);
@@ -39,22 +41,19 @@ export function createGroupRuntime(options: {
           failedPreparations.set(tab.id, preparationKey);
           console.error('Could not prepare editor group', error);
         }).finally(() => {
-          preparing.delete(tab.id); backgrounds();
+          preparing.delete(tab.id); reader.syncView();
         });
       }
       if (!tab.previewUrl || tab.previewTheme !== reader.themeId) return [];
       return [{ tabId: tab.id, bounds: { x: rect.x, y: rect.y, width: rect.width, height: rect.height } }];
     });
-    const next = JSON.stringify(entries);
-    if ((!hadBackgrounds && !entries.length) || signature === next) return;
-    hadBackgrounds = entries.length > 0;
-    signature = next;
-    desktop.setBackgroundPreviews(entries);
+    backgroundEntries = available;
+    const entries = available.filter(entry => !frozenBackgrounds.has(entry.tabId));
+    return entries;
   }
   function sync() {
     editor.syncGroups(workspace.groups.groups, workspace.groups.focusedId);
-    backgrounds();
-    if (!dragging && !resizing) reader.syncView();
+    if (!dragging) reader.syncView();
   }
   function focusSurface(event: Event) {
     const element = event.target as HTMLElement;
@@ -70,25 +69,53 @@ export function createGroupRuntime(options: {
   area.addEventListener('focusin', focusSurface);
   const observer = new ResizeObserver(sync);
   observer.observe(area);
+  async function freezeBackgroundPreviews() {
+    overlayDepth += 1;
+    if (overlayDepth > 1) return;
+    const token = ++overlayToken;
+    const captures = await Promise.all(backgroundEntries.map(async entry => {
+      const body = area.querySelector<HTMLElement>(`.group-body[data-group-id="${workspace.groups.owner(entry.tabId)?.id ?? ''}"]`);
+      const image = await desktop.capturePreview(entry.tabId).catch(() => null);
+      return image && body ? { tabId: entry.tabId, body, image } : null;
+    }));
+    if (token !== overlayToken || overlayDepth === 0) return;
+    const captured = captures.filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+    for (const { body, image } of captured) {
+      body.style.backgroundImage = `url("${image}")`;
+      body.dataset.nativePreviewFrozen = 'true';
+    }
+    if (captured.length) await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    if (token !== overlayToken || overlayDepth === 0) return;
+    frozenBackgrounds = new Set(captured.map(entry => entry.tabId));
+    reader.syncView();
+  }
+  function unfreezeBackgroundPreviews() {
+    if (overlayDepth === 0 || --overlayDepth > 0) return;
+    overlayToken += 1;
+    frozenBackgrounds = new Set();
+    // Restore native views before removing the painted replacement.
+    reader.syncView();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (overlayDepth > 0) return;
+      for (const body of area.querySelectorAll<HTMLElement>('.group-body[data-native-preview-frozen="true"]')) {
+        body.style.backgroundImage = '';
+        delete body.dataset.nativePreviewFrozen;
+      }
+    }));
+  }
   window.addEventListener('setdown:native-overlay-visibility', ((event: CustomEvent<boolean>) => {
-    overlayDepth = Math.max(0, overlayDepth + (event.detail ? 1 : -1)); backgrounds();
+    if (event.detail) void freezeBackgroundPreviews(); else unfreezeBackgroundPreviews();
   }) as EventListener);
   function manipulationChanged(previous: boolean) {
-    const hidden = dragging || resizing;
+    const hidden = dragging;
     reader.layoutHidden = hidden;
     // Reuse the readers' balanced snapshot/freeze lifecycle, including Git review.
     // A canceled drag must restore whichever surface owned the native foreground.
     if (hidden !== previous) window.dispatchEvent(new CustomEvent('setdown:native-overlay-visibility', { detail: hidden }));
-    backgrounds();
-    if (hidden) desktop.showPreview(null, null); else sync();
+    if (!hidden) sync();
   }
-  window.addEventListener('setdown:group-resize', ((event: CustomEvent<boolean>) => {
-    const previous = dragging || resizing;
-    resizing = event.detail;
-    manipulationChanged(previous);
-  }) as EventListener);
   return { sync, backgrounds, drag(active: boolean) {
-    const previous = dragging || resizing;
+    const previous = dragging;
     dragging = active;
     manipulationChanged(previous);
   } };

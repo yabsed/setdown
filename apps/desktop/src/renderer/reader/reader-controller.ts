@@ -1,5 +1,5 @@
 import type { PrimeDocumentCommand } from '../../protocol/preview-preparation';
-import type { PreviewHeading, ThemeSnapshot } from '../../protocol/desktop-api';
+import type { PreviewBounds, PreviewHeading, ThemeSnapshot } from '../../protocol/desktop-api';
 import {
   normalizePreviewTheme,
   type PreviewThemeAssets,
@@ -27,7 +27,7 @@ type Options = {
   applyProductTheme: (theme: PreviewThemeId) => void;
   edit: (anchor: ViewportAnchor) => void;
   anchorChanged: () => void;
-  syncBackgrounds?: (hidden: boolean) => void;
+  syncBackgrounds?: () => Array<{ tabId: string; bounds: PreviewBounds }>;
 };
 
 type SearchTarget = { line: number; lineOccurrence: number; ordinal: number };
@@ -256,10 +256,13 @@ export class ReaderController {
   }
 
   syncView = () => {
-    this.options.syncBackgrounds?.(this.frozen);
+    const backgrounds = this.options.syncBackgrounds?.() ?? [];
     // Git review owns the shared native preview layer while it is active.
     // Document resize/overlay callbacks must not hide that view afterward.
-    if (this.suspended) return;
+    if (this.suspended) {
+      this.options.desktop.setBackgroundPreviews(backgrounds);
+      return;
+    }
     const tab = this.options.active();
     const visible = !!tab
       && tab.surface === 'viewer'
@@ -270,7 +273,7 @@ export class ReaderController {
       && !this.frozen
       && !this.awaiting;
     if (!visible || !tab) {
-      this.options.desktop.showPreview(null, null);
+      this.options.desktop.showPreview(null, null, backgrounds);
       if (tab?.surface === 'editor' && hasMarkdownPreview(tab.document)) {
         // The reader keeps its layout while the source editor covers it. Prepare
         // at that size without showing/focusing the native preview.
@@ -288,7 +291,7 @@ export class ReaderController {
       y: rect.top + reserved,
       width: rect.width,
       height: Math.max(0, rect.height - reserved),
-    });
+    }, backgrounds);
   };
 
   setSuspended(value: boolean) {

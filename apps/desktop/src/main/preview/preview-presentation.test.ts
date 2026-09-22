@@ -287,3 +287,17 @@ test('editor groups show independent native views; foreground changes retain onl
   assert.equal(left.view.getVisible(), false);
   assert.equal(f.focusCount(), 0);
 });
+
+test('a group layout updates foreground and backgrounds in one presentation', () => {
+  const f = fixture();
+  f.manager.create(1, 'left'); f.manager.create(1, 'right');
+  const show = vi.spyOn(f.manager, 'show');
+  const foreground = { ...bounds, x: 420, width: 300 };
+  const background = { ...bounds, width: 380 };
+  f.manager.layout(1, 'right', foreground, [{ tabId: 'left', bounds: background }]);
+  assert.equal(show.mock.calls.length, 1);
+  assert.deepEqual(f.manager.views.get('right')!.view.getBounds(), foreground);
+  assert.deepEqual(f.manager.views.get('left')!.view.getBounds(), background);
+  assert.equal(f.manager.views.get('right')!.view.getVisible(), true);
+  assert.equal(f.manager.views.get('left')!.view.getVisible(), true);
+});

@@ -27,9 +27,10 @@ async function drop(page: Page, name: string, groupIndex: number, side: 'right' 
 test('wheel scrolls without selection; nested groups retain live native readers and collapse on close', async () => {
   test.setTimeout(90_000);
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-editor-groups-'));
-  const first = path.join(root, 'first.md'), second = path.join(root, 'second.md');
+  const first = path.join(root, 'first.md'), second = path.join(root, 'second.md'), third = path.join(root, 'third.md');
   await writeFile(first, '# First reader\n\nKeep this visible.\n');
   await writeFile(second, '# Second reader\n\nIndependent native reader.\n');
+  await writeFile(third, '# Third reader\n\nOpen directly in the drop target.\n');
   const image = path.join(root, 'picture.png');
   await copyFile(path.resolve('../../docs/assets/image2.png'), image);
   const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
@@ -49,6 +50,78 @@ test('wheel scrolls without selection; nested groups retain live native readers 
       BrowserWindow.getAllWindows()[0].contentView.children.filter(view => view.getVisible())
         .map(view => (view as WebContentsView).webContents.executeJavaScript('document.body.innerText')),
     ))).toEqual(expect.arrayContaining([expect.stringContaining('First reader'), expect.stringContaining('Second reader')]));
+    await page.evaluate(folder => window.marktex.restoreProjectFolder(folder), root);
+
+    // Terminal and BrowserWindow resizing must leave both native readers inside
+    // their current DOM group boxes. In particular, no stale foreground bounds
+    // may extend across the terminal while background bounds are being updated.
+    await page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-toggle-terminal'));
+    const terminal = page.getByRole('region', { name: 'Integrated terminal' });
+    await expect(terminal).toBeVisible();
+    const nativeLayoutMatches = async () => {
+      const bodies = await page.locator('.group-body').evaluateAll(nodes => nodes.map(node => {
+        const box = node.getBoundingClientRect();
+        return { x: box.x, y: box.y, width: box.width, height: box.height };
+      }).sort((a, b) => a.x - b.x || a.y - b.y));
+      const native = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children
+        .filter(view => view.getVisible()).map(view => view.getBounds())
+        .sort((a, b) => a.x - b.x || a.y - b.y));
+      const panel = await terminal.boundingBox();
+      return !!panel && bodies.length === native.length && bodies.every((body, index) => {
+        const view = native[index];
+        return Math.abs(body.x - view.x) <= 1 && Math.abs(body.y - view.y) <= 1
+          && Math.abs(body.width - view.width) <= 1 && Math.abs(body.height - view.height) <= 1
+          && view.y + view.height <= panel.y + 1;
+      });
+    };
+    await expect.poll(nativeLayoutMatches).toBe(true);
+    for (const [width, height] of [[980, 720], [1220, 840], [1080, 760]]) {
+      await app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0].setSize(size[0], size[1]), [width, height]);
+      await expect.poll(nativeLayoutMatches).toBe(true);
+      await expect.poll(visibleReaders).toBe(2);
+    }
+    await terminal.getByRole('button', { name: 'Hide Terminal' }).click();
+    await expect(terminal).toBeHidden();
+
+    // Opening a project file by dropping it in group 2 must never first paint a
+    // tab in the focused/default group and move it on the next task.
+    await page.evaluate(() => {
+      const observed: string[] = [];
+      const record = () => document.querySelectorAll<HTMLElement>('.editor-group').forEach(group => {
+        if ([...group.querySelectorAll('.tab-name')].some(tab => tab.textContent === 'third.md')) {
+          const id = group.dataset.groupId ?? '';
+          if (observed.at(-1) !== id) observed.push(id);
+        }
+      });
+      new MutationObserver(record).observe(document.querySelector('.editor-area')!, { subtree: true, childList: true, characterData: true });
+      (window as typeof window & { __thirdTabGroups?: string[] }).__thirdTabGroups = observed;
+    });
+    const targetGroupId = await page.locator('.editor-group').nth(1).getAttribute('data-group-id');
+    const targetBody = page.locator('.group-body').nth(1);
+    const targetBox = (await targetBody.boundingBox())!;
+    const fileTransfer = await page.evaluateHandle(file => {
+      const transfer = new DataTransfer(); transfer.setData('application/x-setdown-project-file', file); return transfer;
+    }, third);
+    const filePoint = { clientX: targetBox.x + targetBox.width / 2, clientY: targetBox.y + targetBox.height / 2,
+      dataTransfer: fileTransfer };
+    await targetBody.dispatchEvent('dragover', filePoint);
+    await targetBody.dispatchEvent('drop', filePoint);
+    await expect(page.getByRole('tab', { name: /third\.md/ })).toHaveAttribute('aria-selected', 'true');
+    await expect.poll(() => page.evaluate(() =>
+      (window as typeof window & { __thirdTabGroups?: string[] }).__thirdTabGroups ?? [])).toEqual([targetGroupId]);
+    await page.getByRole('tab', { name: /third\.md/ }).getByTitle('Close tab', { exact: true }).click();
+    await fileTransfer.dispose();
+
+    // DOM menus cover native readers only after every visible group has a
+    // painted replacement, so neither the focused nor background group blanks.
+    await page.getByRole('button', { name: 'View', exact: true }).click();
+    await expect(page.locator('.preview-frames[data-frozen="true"]')).toBeVisible();
+    await expect(page.locator('.group-body[data-native-preview-frozen="true"]')).toHaveCount(1);
+    expect(await page.locator('.group-body[data-native-preview-frozen="true"]').evaluate(node =>
+      getComputedStyle(node).backgroundImage)).not.toBe('none');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.group-body[data-native-preview-frozen="true"]')).toHaveCount(0);
+    await expect.poll(visibleReaders).toBe(2);
     await open(page, image);
     await drop(page, 'picture.png', 1, 'down');
     await expect(page.locator('.editor-group')).toHaveCount(3);
@@ -70,8 +143,19 @@ test('wheel scrolls without selection; nested groups retain live native readers 
     const sash = page.locator('.group-sash.vertical');
     // Grab the vertical boundary away from its intersection with the horizontal sash.
     const sashBox = (await sash.boundingBox())!;
+    const nativeWidths = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children
+      .filter(view => view.getVisible()).map(view => view.getBounds()).sort((a, b) => a.x - b.x).map(box => box.width));
+    const widthsBeforeResize = await nativeWidths();
     await page.mouse.move(sashBox.x + sashBox.width / 2, sashBox.y + sashBox.height * .3);
-    await page.mouse.down(); await page.mouse.move(sashBox.x + 75, sashBox.y + sashBox.height * .3); await page.mouse.up();
+    await page.mouse.down();
+    await expect(page.locator('.group-body[data-native-preview-frozen="true"]')).toHaveCount(0);
+    await page.mouse.move(sashBox.x + 75, sashBox.y + sashBox.height * .3);
+    // The live native readers follow the boundary before pointer-up. A stretched
+    // capture cannot satisfy this because its WebContentsView keeps the old box.
+    await expect.poll(async () => (await nativeWidths())[0]).toBeGreaterThan(widthsBeforeResize[0] + 30);
+    await expect.poll(visibleReaders).toBe(2);
+    await page.mouse.up();
+    await expect(page.locator('.group-body[data-native-preview-frozen="true"]')).toHaveCount(0);
     await expect.poll(async () => (await page.locator('.editor-group').first().boundingBox())!.width).toBeGreaterThan(boxes[0].width + 30);
     await expect.poll(visibleReaders).toBe(2);
     await sash.dblclick({ position: { x: 2, y: 10 } });

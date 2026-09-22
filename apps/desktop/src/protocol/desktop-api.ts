@@ -251,7 +251,11 @@ export type MarkTexApi = {
     themeId: PreviewThemeId,
   ): Promise<RenderResult>;
   setBackgroundPreviews(previews: Array<{ tabId: string; bounds: PreviewBounds }>): void;
-  showPreview(tabId: string | null, bounds: PreviewBounds | null): void;
+  showPreview(
+    tabId: string | null,
+    bounds: PreviewBounds | null,
+    backgrounds?: Array<{ tabId: string; bounds: PreviewBounds }>,
+  ): void;
   /**
    * 지금 보이는 Preview를 PNG data URL로 얻는다. DOM overlay가 native view
    * 위에 그려질 수 없으므로, overlay가 열린 동안 이 정지 화면으로 갈음한다.

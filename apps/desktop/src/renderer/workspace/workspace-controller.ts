@@ -120,7 +120,7 @@ export function startWorkspace(desktop: DesktopPort) {
   let groups: ReturnType<typeof createGroupRuntime> | undefined;
   const reader = new ReaderController({ desktop, shell, frames: previewFrames, tabs: workspace.tabs, active,
     activeId: () => workspace.activeId, initialTheme,
-    syncBackgrounds: (hidden) => groups?.backgrounds(hidden),
+    syncBackgrounds: () => groups?.backgrounds() ?? [],
     applyProductTheme: (themeId) => { applyShellTheme(themeId); editor.setTheme(themeId); },
     edit: (anchor) => void surfaces.enterEditor(anchor), anchorChanged: () => { surfaces.publishAnchor(); positions?.schedule(); } });
   const preview = new PreviewSession({ desktop, tabs: workspace.tabs, active,
@@ -141,15 +141,15 @@ export function startWorkspace(desktop: DesktopPort) {
   groups = createGroupRuntime({ workspace, desktop, editor, reader, activate: id => actions.activateTab(id) });
   const tabDrag = createTabDrag({ desktop, shell, tabs: workspace.tabs, groups: workspace.groups,
     dragging: (active) => groups?.drag(active),
-    openFile: async (path) => {
+    openFile: async (path, placement) => {
       const opened = await desktop.openProjectFile(path);
-      if (!opened) return null;
-      projects.deactivateGitDiff(); await tabs.show(opened);
-      return workspace.activeId;
+      if (!opened) return;
+      projects.deactivateGitDiff(); await tabs.show(opened, 'viewer', 'document', placement);
     },
     activeId: () => workspace.activeId,
     activate: (id) => { projects.deactivateGitDiff(); void tabs.activate(id); },
-    serialize: tabs.transferable, render: tabs.render, install: (transfer) => tabs.installTransferred(transfer) });
+    serialize: tabs.transferable, render: tabs.render,
+    install: (transfer, placement) => tabs.installTransferred(transfer, placement) });
   const documents = new DocumentActions({ desktop, tabs: workspace.tabs, active, text: tabs.text, dirty: tabs.dirty,
     preview, installModel: tabs.installModel, acceptSaved: tabs.acceptSaved,
     show: (document, surface) => { projects.deactivateGitDiff(); return tabs.show(document, surface); },
@@ -346,5 +346,4 @@ export function startWorkspace(desktop: DesktopPort) {
   });
   const previewResizeObserver = new ResizeObserver(reader.syncView);
   previewResizeObserver.observe(previewFrames);
-  window.addEventListener('resize', reader.syncView);
 }

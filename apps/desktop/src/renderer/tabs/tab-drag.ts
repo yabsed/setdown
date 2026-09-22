@@ -1,5 +1,5 @@
 import type { ClaimedTabTransfer, TransferableTab } from '../../protocol/desktop-api';
-import { splitDirection, type EditorGroups, type SplitDirection } from '../../core/workspace/editor-groups';
+import { splitDirection, type EditorGroupPlacement, type EditorGroups } from '../../core/workspace/editor-groups';
 import { view } from '../view-state.svelte';
 import type { WorkspaceTab } from '../../core/workspace/workspace-state';
 import type { DesktopPort } from '../ports/desktop-port';
@@ -8,22 +8,22 @@ type Options = {
   desktop: DesktopPort; shell: HTMLElement; tabs: WorkspaceTab[]; groups: EditorGroups;
   activeId(): string | null; activate(id: string): void;
   serialize(tab: WorkspaceTab): TransferableTab; render(): void;
-  install(transfer: ClaimedTabTransfer): Promise<void>;
-  openFile(path: string): Promise<string | null>;
+  install(transfer: ClaimedTabTransfer, placement: EditorGroupPlacement): Promise<void>;
+  openFile(path: string, placement: EditorGroupPlacement): Promise<void>;
   dragging(active: boolean): void;
 };
-type Target = { groupId: string; direction: SplitDirection | null; index?: number };
+type Target = EditorGroupPlacement;
 const MIME = 'application/x-setdown-tab';
 const FILE = 'application/x-setdown-project-file';
 
 export function createTabDrag(options: Options) {
   let tabId: string | null = null, transferId: string | null = null;
-  let canceled = false;
+  let canceled = false, leftWindow = false;
   const overlay = document.createElement('div');
   overlay.className = 'group-drop-overlay'; overlay.hidden = true;
   options.shell.append(overlay);
   const reset = () => {
-    tabId = transferId = null; canceled = false; view.draggedTabId = null;
+    tabId = transferId = null; canceled = false; leftWindow = false; view.draggedTabId = null;
     overlay.hidden = true; options.shell.classList.remove('is-tab-dragging');
     options.dragging(false);
   };
@@ -68,6 +68,7 @@ export function createTabDrag(options: Options) {
   });
   window.addEventListener('dragover', event => {
     if (!supported(event)) return;
+    leftWindow = false;
     const destination = target(event);
     if (!destination) return;
     event.preventDefault();
@@ -97,20 +98,22 @@ export function createTabDrag(options: Options) {
     } else if (incoming) {
       void options.desktop.claimTabTransfer(incoming).then(async transfer => {
         if (!transfer) return;
-        await options.install(transfer); move(transfer.tab.id, destination);
+        await options.install(transfer, destination);
       });
     } else if (path) {
-      void options.openFile(path).then(id => { if (id) move(id, destination); }).catch(error => console.error('Could not open dropped file', error));
+      void options.openFile(path, destination).catch(error => console.error('Could not open dropped file', error));
     }
   }, true);
-  window.addEventListener('dragleave', event => { if (!event.relatedTarget) overlay.hidden = true; });
+  window.addEventListener('dragleave', event => {
+    if (!event.relatedTarget) { leftWindow = true; overlay.hidden = true; }
+  });
   window.addEventListener('dragend', () => { overlay.hidden = true; options.dragging(false); options.shell.classList.remove('is-tab-dragging'); });
   return {
     start(id: string, event: DragEvent) {
       const tab = options.tabs.find(tab => tab.id === id);
       if (!tab) return;
       // Do not change selection until the drop succeeds.
-      tabId = id; transferId = crypto.randomUUID(); canceled = false;
+      tabId = id; transferId = crypto.randomUUID(); canceled = false; leftWindow = false;
       view.draggedTabId = id;
       options.shell.classList.add('is-tab-dragging'); options.dragging(true);
       event.dataTransfer?.setData(MIME, transferId);
@@ -119,12 +122,21 @@ export function createTabDrag(options: Options) {
     },
     end(event: DragEvent) {
       const id = transferId;
-      const outside = event.clientX < 0 || event.clientY < 0 || event.clientX >= innerWidth || event.clientY >= innerHeight;
-      const wasCanceled = canceled;
-      const detach = id && !canceled && outside && event.dataTransfer?.dropEffect !== 'move';
+      const clientOutside = event.clientX < 0 || event.clientY < 0
+        || event.clientX >= innerWidth || event.clientY >= innerHeight;
+      const screenOutside = event.screenX < window.screenX || event.screenY < window.screenY
+        || event.screenX >= window.screenX + window.outerWidth || event.screenY >= window.screenY + window.outerHeight;
+      // Chromium may report (0, 0) or the last in-window client coordinate for a
+      // real OS dragend. The top-level dragleave is the reliable signal that the
+      // pointer crossed the window boundary.
+      const outside = leftWindow || clientOutside || screenOutside;
+      // An external application may accept the OS drag with dropEffect "move".
+      // A Setdown drop consumes and resets this transfer before dragend, so an
+      // unconsumed transfer outside this window is always a detach.
+      const detach = id && !canceled && outside;
       reset();
       if (detach) options.desktop.detachTabToWindow(id, event.screenX, event.screenY);
-      else if (id && (wasCanceled || event.dataTransfer?.dropEffect !== 'move')) options.desktop.cancelTabTransfer(id);
+      else if (id) options.desktop.cancelTabTransfer(id);
     },
     cancel() { canceled = true; overlay.hidden = true; }, reset,
   };
