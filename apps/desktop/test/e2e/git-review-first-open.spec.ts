@@ -66,6 +66,16 @@ test('first Working Tree opens directly in Monaco without an ordinary Viewer', a
 
     await window.locator('.git-change-open').click();
     await expect(modified.locator('.view-lines')).toContainText('Shared edit');
+    await window.getByRole('button', { name: 'View Rendered Diff' }).click();
+    await expect.poll(previews(application).hasVisible).toBe(true);
+    const ordinaryTab = window.locator('.document-tab:not(.git-diff-tab)');
+    const drag = await window.evaluateHandle(() => new DataTransfer());
+    await ordinaryTab.dispatchEvent('dragstart', { dataTransfer: drag });
+    await expect.poll(previews(application).hasVisible).toBe(false);
+    await ordinaryTab.dispatchEvent('dragend', { dataTransfer: drag, clientX: 100, clientY: 100 });
+    await drag.dispose();
+    await expect(window.locator('.git-diff-tab')).toHaveAttribute('aria-selected', 'true');
+    await expect.poll(previews(application).hasVisible).toBe(true);
   } finally {
     await disposeApplication(application);
     await rm(root, { recursive: true, force: true });

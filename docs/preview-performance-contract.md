@@ -194,3 +194,24 @@ Historical measurements and explanations remain in
 `sample-review-viewport-2026-09-21.md` and
 `sample-document-optimization-2026-09-21.md`; they are evidence, not portable
 hardcoded millisecond budgets.
+
+## Editor groups
+
+Document command focus and presentation are separate: each editor group selects
+one document, and several groups may remain visible. The focused group owns the
+existing source/reader command session. `renderer/groups/group-runtime.ts` owns
+background group geometry; `core/workspace/editor-groups.ts` owns placement and
+selection. `PreviewManager.setBackgrounds` validates native-view ownership and
+retains visible background groups during foreground changes. Backgrounds use the
+same hidden preparation and fractional CSS-to-DIP boundary as foreground readers.
+They must not be focused by preparation, lose their current revision, or cover the
+shell's split resize handles. Native focus explicitly activates its owning group.
+
+Media cache capacity applies to hidden readers: every visible group's media surface
+is pinned until it becomes hidden. `active` on a media surface means visible;
+PDF search commands additionally require command focus. Splitting, moving and
+collapsing groups must preserve Monaco models and Undo histories.
+
+`editor-groups.spec.ts`, `editor-groups.test.ts`, `preview-presentation.test.ts`, and
+`media-cache.test.ts` cover these guarantees. Keep ordinary single-group preview
+and Git-review cycles in the same 48-bucket performance comparison.

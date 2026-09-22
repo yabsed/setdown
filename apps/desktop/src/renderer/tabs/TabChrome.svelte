@@ -1,8 +1,25 @@
 <script lang="ts">
+  import { tabScroll } from './tab-scroll';
+  import { tick } from 'svelte';
   import { view, type AppActions } from '../view-state.svelte';
   import { project } from '../project/project-state.svelte';
   import { isMarkdownPath } from '../editor/markdown-editor-port';
-  let { actions }: { actions: AppActions } = $props();
+  let { actions, groupId = 'group-0' }: { actions: AppActions; groupId?: string } = $props();
+  let list: HTMLDivElement;
+  const group = $derived(view.groups.find(g => g.id === groupId));
+  const selected = $derived(group?.activeId);
+  const focused = $derived(view.focusedGroupId === groupId);
+  const tabs = $derived((group?.tabs ?? []).flatMap(id => view.tabs.find(tab => tab.id === id) ?? []));
+  $effect(() => {
+    const id = selected;
+    void tick().then(() => {
+      const tab = Array.from(list?.querySelectorAll<HTMLElement>('[data-tab-id]') ?? []).find(el => el.dataset.tabId === id);
+      if (!tab || !list) return;
+      const rect = tab.getBoundingClientRect(), bounds = list.getBoundingClientRect();
+      if (rect.left < bounds.left) list.scrollLeft += rect.left - bounds.left;
+      else if (rect.right > bounds.right) list.scrollLeft += rect.right - bounds.right;
+    });
+  });
 
   let markdown = $derived(isMarkdownPath(view.tabs.find((tab) => tab.active)?.path ?? ''));
   let canRender = $derived(project.gitDiffActive
@@ -18,11 +35,11 @@
   const base = (candidate: string) => candidate.split(/[\\/]/).at(-1) ?? candidate;
 </script>
 
-<nav class="tab-strip" aria-label="Open documents">
-  <div class="tab-list" role="tablist">
-    {#each view.tabs as tab (tab.id)}
+<nav class="tab-strip" data-group-id={groupId} aria-label="Open documents">
+  <div class="tab-list" role="tablist" bind:this={list} use:tabScroll>
+    {#each tabs as tab (tab.id)}
       <button class="document-tab" class:is-dragging={view.draggedTabId === tab.id}
-        type="button" role="tab" aria-selected={tab.active && !project.gitDiffActive}
+        type="button" role="tab" aria-selected={tab.id === selected && !(focused && project.gitDiffActive)}
         title={tab.path} draggable="true" data-tab-id={tab.id}
         onclick={() => actions.activateTab(tab.id)}
         ondragstart={(event) => actions.startTabDrag(tab.id, event)} ondragend={actions.endTabDrag}>
@@ -36,7 +53,7 @@
           }}>×</span>
       </button>
     {/each}
-    {#each project.gitDiffTabs as diffTab (diffTab.id)}
+    {#each (focused ? project.gitDiffTabs : []) as diffTab (diffTab.id)}
       <button class="document-tab git-diff-tab" type="button" role="tab"
         aria-selected={project.gitDiffActive && project.activeGitDiffId === diffTab.id}
         title={diffTab.filePath} onclick={() => actions.activateProjectGitDiff(diffTab.id)}>
@@ -50,8 +67,8 @@
       </button>
     {/each}
   </div>
-  <div class="tab-actions">
-    <button class="new-tab-button" type="button" title="New document (Ctrl/Cmd+N)" aria-label="New document" onclick={actions.newDocument}>+</button>
+  <div class="tab-actions" class:unfocused={!focused}>
+    <button class="new-tab-button" type="button" title="New document (Ctrl/Cmd+N)" aria-label="New document" onclick={() => { actions.focusGroup(groupId); actions.newDocument(); }}>+</button>
     <button class="editor-action insert-table-button" class:review-editor-action={project.gitDiffActive} type="button" hidden={!canInsert}
       title="Insert table" aria-label="Insert table" onclick={actions.openTable}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.75A1.75 1.75 0 0 1 5.75 3h12.5A1.75 1.75 0 0 1 20 4.75v14.5A1.75 1.75 0 0 1 18.25 21H5.75A1.75 1.75 0 0 1 4 19.25V4.75Zm1.5 3.75h4.75v-4H5.75a.25.25 0 0 0-.25.25V8.5Zm6.25 0h6.75V4.75a.25.25 0 0 0-.25-.25h-6.5v4Zm-6.25 1.5v4h4.75v-4H5.5Zm6.25 0v4h6.75v-4h-6.75ZM5.5 15.5v3.75c0 .14.11.25.25.25h4.5v-4H5.5Zm6.25 4h6.5a.25.25 0 0 0 .25-.25V15.5h-6.75v4Z"/></svg>
@@ -85,6 +102,7 @@
 </nav>
 
 <style>
+  .unfocused > :not(.new-tab-button) { display: none !important; }
   :global(.shell) .review-editor-action:not([hidden]) { display: grid; }
   :global(.shell) .editor-action[hidden] { display: none; }
 </style>

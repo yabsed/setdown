@@ -1,135 +1,131 @@
 import type { ClaimedTabTransfer, TransferableTab } from '../../protocol/desktop-api';
+import { splitDirection, type EditorGroups, type SplitDirection } from '../../core/workspace/editor-groups';
 import { view } from '../view-state.svelte';
 import type { WorkspaceTab } from '../../core/workspace/workspace-state';
 import type { DesktopPort } from '../ports/desktop-port';
 
 type Options = {
-  desktop: DesktopPort;
-  shell: HTMLElement;
-  strip: HTMLElement;
-  tabs: WorkspaceTab[];
-  activeId: () => string | null;
-  activate: (id: string) => void;
-  serialize: (tab: WorkspaceTab) => TransferableTab;
-  render: () => void;
-  install: (transfer: ClaimedTabTransfer) => void;
+  desktop: DesktopPort; shell: HTMLElement; tabs: WorkspaceTab[]; groups: EditorGroups;
+  activeId(): string | null; activate(id: string): void;
+  serialize(tab: WorkspaceTab): TransferableTab; render(): void;
+  install(transfer: ClaimedTabTransfer): Promise<void>;
+  openFile(path: string): Promise<string | null>;
+  dragging(active: boolean): void;
 };
+type Target = { groupId: string; direction: SplitDirection | null; index?: number };
+const MIME = 'application/x-setdown-tab';
+const FILE = 'application/x-setdown-project-file';
 
 export function createTabDrag(options: Options) {
-  let tabId: string | null = null;
-  let transferId: string | null = null;
+  let tabId: string | null = null, transferId: string | null = null;
   let canceled = false;
-
+  const overlay = document.createElement('div');
+  overlay.className = 'group-drop-overlay'; overlay.hidden = true;
+  options.shell.append(overlay);
   const reset = () => {
-    tabId = null;
-    transferId = null;
-    canceled = false;
-    view.draggedTabId = null;
-    options.strip.classList.remove('is-drop-target');
-    options.shell.classList.remove('is-tab-dragging', 'is-window-drop-target');
+    tabId = transferId = null; canceled = false; view.draggedTabId = null;
+    overlay.hidden = true; options.shell.classList.remove('is-tab-dragging');
+    options.dragging(false);
   };
-  const transferFrom = (event: DragEvent) =>
-    event.dataTransfer?.getData('application/x-setdown-tab') || null;
-  const isTabDrag = (event: DragEvent) =>
-    Array.from(event.dataTransfer?.types ?? []).includes('application/x-setdown-tab') || !!transferId;
-  const isStrip = (event: DragEvent) =>
-    event.target instanceof Element && event.target.closest('.tab-strip') !== null;
-  const claim = (id: string) => void options.desktop.claimTabTransfer(id).then((transfer) => {
-    if (transfer) options.install(transfer);
-  });
-
-  function reorder(event: DragEvent, id: string) {
-    const from = options.tabs.findIndex((tab) => tab.id === id);
-    if (from < 0) return;
-    const element = (event.target as Element | null)?.closest<HTMLElement>('.document-tab');
-    let to = options.tabs.length - 1;
-    if (element?.dataset.tabId) {
-      const hovered = options.tabs.findIndex((tab) => tab.id === element.dataset.tabId);
-      if (hovered >= 0) {
-        const rect = element.getBoundingClientRect();
-        to = hovered + (event.clientX > rect.left + rect.width / 2 ? 1 : 0);
+  const supported = (event: DragEvent) => !!transferId || Array.from(event.dataTransfer?.types ?? []).some(type => type === MIME || type === FILE);
+  function target(event: DragEvent): Target | null {
+    const area = document.querySelector('.editor-area')!;
+    const point = { x: event.clientX, y: event.clientY };
+    for (const element of area.querySelectorAll<HTMLElement>('.editor-group')) {
+      const box = element.getBoundingClientRect();
+      if (point.x < box.left || point.x > box.right || point.y < box.top || point.y > box.bottom) continue;
+      const groupId = element.dataset.groupId!;
+      const strip = element.querySelector<HTMLElement>('.tab-strip')!;
+      if (point.y < strip.getBoundingClientRect().bottom) {
+        const tabs = Array.from(strip.querySelectorAll<HTMLElement>('[data-tab-id]'));
+        const index = tabs.findIndex(tab => { const rect = tab.getBoundingClientRect(); return point.x < rect.left + rect.width / 2; });
+        overlay.hidden = true;
+        return { groupId, direction: null, index: index < 0 ? tabs.length : index };
       }
+      const body = element.querySelector('.group-body')!.getBoundingClientRect();
+      const direction = splitDirection(point.x - body.left, point.y - body.top, body.width, body.height);
+      const source = tabId ? options.groups.owner(tabId) : null;
+      const split = source?.id === groupId && source.tabs.length === 1 ? null : direction;
+      const left = body.left + (split === 'right' ? body.width / 2 : 0);
+      const top = body.top + (split === 'down' ? body.height / 2 : 0);
+      Object.assign(overlay.style, { left: `${left}px`, top: `${top}px`,
+        width: `${body.width / (split === 'left' || split === 'right' ? 2 : 1)}px`,
+        height: `${body.height / (split === 'up' || split === 'down' ? 2 : 1)}px` });
+      overlay.hidden = false;
+      return { groupId, direction: split };
     }
-    const [moved] = options.tabs.splice(from, 1);
-    if (from < to) to -= 1;
-    options.tabs.splice(Math.max(0, Math.min(to, options.tabs.length)), 0, moved);
-    options.render();
+    overlay.hidden = true;
+    return null;
   }
-
-  options.strip.addEventListener('dragover', (event) => {
-    if (!isTabDrag(event)) return;
+  function move(id: string, destination: Target) {
+    const tab = options.tabs.find(tab => tab.id === id);
+    if (tab) options.serialize(tab); // Capture the visible source group before reparenting its editor.
+    options.groups.move(id, destination.groupId, destination.direction, destination.index);
+    options.render(); options.activate(id);
+  }
+  window.addEventListener('dragstart', event => {
+    if (supported(event)) { options.dragging(true); options.shell.classList.add('is-tab-dragging'); }
+  });
+  window.addEventListener('dragover', event => {
+    if (!supported(event)) return;
+    const destination = target(event);
+    if (!destination) return;
     event.preventDefault();
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
-    options.strip.classList.add('is-drop-target');
-  });
-  options.strip.addEventListener('dragleave', (event) => {
-    if (!options.strip.contains(event.relatedTarget as Node | null)) {
-      options.strip.classList.remove('is-drop-target');
+    // A native Markdown view otherwise intercepts the next dragover/drop.
+    options.dragging(true);
+    options.shell.classList.add('is-tab-dragging');
+    const list = (event.target as Element)?.closest<HTMLElement>('.tab-list');
+    if (list) {
+      const rect = list.getBoundingClientRect();
+      if (event.clientX < rect.left + 24) list.scrollLeft -= 24;
+      else if (event.clientX > rect.right - 24) list.scrollLeft += 24;
     }
-  });
-  options.strip.addEventListener('drop', (event) => {
-    const incoming = transferFrom(event);
-    if (!incoming) return;
-    event.preventDefault();
-    event.stopPropagation();
-    options.strip.classList.remove('is-drop-target');
-    if (!tabId) {
-      claim(incoming);
-      return;
-    }
-    reorder(event, tabId);
-    options.desktop.cancelTabTransfer(incoming);
+  }, true);
+  window.addEventListener('drop', event => {
+    if (!supported(event)) return;
+    const destination = target(event);
+    if (!destination) { reset(); return; }
+    event.preventDefault(); event.stopPropagation();
+    const localId = tabId;
+    const incoming = event.dataTransfer?.getData(MIME);
+    const path = event.dataTransfer?.getData(FILE);
     reset();
-  });
-
-  window.addEventListener('dragover', (event) => {
-    if (isStrip(event) || !isTabDrag(event)) return;
-    event.preventDefault();
-    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
-    options.shell.classList.add('is-window-drop-target');
-  }, { capture: true });
-  window.addEventListener('dragleave', (event) => {
-    if (event.relatedTarget === null) options.shell.classList.remove('is-window-drop-target');
-  });
-  window.addEventListener('drop', (event) => {
-    if (isStrip(event)) return;
-    const incoming = transferFrom(event);
-    if (!incoming) return;
-    event.preventDefault();
-    event.stopPropagation();
-    options.shell.classList.remove('is-window-drop-target');
-    if (!tabId) {
-      claim(incoming);
-      return;
+    if (localId) {
+      if (incoming) options.desktop.cancelTabTransfer(incoming);
+      move(localId, destination);
+    } else if (incoming) {
+      void options.desktop.claimTabTransfer(incoming).then(async transfer => {
+        if (!transfer) return;
+        await options.install(transfer); move(transfer.tab.id, destination);
+      });
+    } else if (path) {
+      void options.openFile(path).then(id => { if (id) move(id, destination); }).catch(error => console.error('Could not open dropped file', error));
     }
-    reset();
-    options.desktop.detachTabToWindow(incoming, event.screenX, event.screenY);
-  }, { capture: true });
-
+  }, true);
+  window.addEventListener('dragleave', event => { if (!event.relatedTarget) overlay.hidden = true; });
+  window.addEventListener('dragend', () => { overlay.hidden = true; options.dragging(false); options.shell.classList.remove('is-tab-dragging'); });
   return {
     start(id: string, event: DragEvent) {
-      const tab = options.tabs.find((candidate) => candidate.id === id);
+      const tab = options.tabs.find(tab => tab.id === id);
       if (!tab) return;
-      if (id !== options.activeId()) options.activate(id);
-      tabId = id;
-      transferId = crypto.randomUUID();
-      canceled = false;
+      // Do not change selection until the drop succeeds.
+      tabId = id; transferId = crypto.randomUUID(); canceled = false;
       view.draggedTabId = id;
-      options.shell.classList.add('is-tab-dragging');
-      event.dataTransfer?.setData('application/x-setdown-tab', transferId);
+      options.shell.classList.add('is-tab-dragging'); options.dragging(true);
+      event.dataTransfer?.setData(MIME, transferId);
       if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
       options.desktop.registerTabTransfer(transferId, options.serialize(tab));
     },
     end(event: DragEvent) {
       const id = transferId;
-      const shouldDetach = id && !canceled && event.dataTransfer?.dropEffect !== 'move';
+      const outside = event.clientX < 0 || event.clientY < 0 || event.clientX >= innerWidth || event.clientY >= innerHeight;
+      const wasCanceled = canceled;
+      const detach = id && !canceled && outside && event.dataTransfer?.dropEffect !== 'move';
       reset();
-      if (shouldDetach) options.desktop.detachTabToWindow(id, event.screenX, event.screenY);
-      else if (id && canceled) options.desktop.cancelTabTransfer(id);
+      if (detach) options.desktop.detachTabToWindow(id, event.screenX, event.screenY);
+      else if (id && (wasCanceled || event.dataTransfer?.dropEffect !== 'move')) options.desktop.cancelTabTransfer(id);
     },
-    cancel() {
-      if (tabId) canceled = true;
-    },
-    reset,
+    cancel() { canceled = true; overlay.hidden = true; }, reset,
   };
 }

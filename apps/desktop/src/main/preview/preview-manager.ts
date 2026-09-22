@@ -33,6 +33,8 @@ const INITIAL_HTML = new RegExp(`(<template id="${INITIAL_HTML_TEMPLATE_ID}">)[\
 const DEFERRED_HTML = new RegExp(`(<script type="application/json" id="${DEFERRED_HTML_SCRIPT_ID}">)[\\s\\S]*?(</script>)`, 'i');
 
 export class PreviewManager {
+  private readonly backgrounds = new Map<number, Array<{ tabId: string; bounds: PreviewBounds }>>();
+  private readonly foregrounds = new Map<number, { tabId: unknown; bounds: PreviewBounds | null }>();
   readonly views = new Map<string, PreviewViewState>();
   readonly zoom = new WorkspaceZoom();
   private readonly documents = new Map<string, string>();
@@ -76,7 +78,14 @@ export class PreviewManager {
     this.zoom.track(view.webContents, undefined, true);
     view.setBackgroundColor(previewThemeBackground(this.options.theme()));
     view.setVisible(false);
-    view.webContents.on('focus', () => this.returnFocusFromHiddenView(view));
+    view.webContents.on('focus', () => {
+      this.returnFocusFromHiddenView(view);
+      if (!view.getVisible()) return;
+      const entry = Array.from(this.views.entries()).find(([, preview]) => preview.view === view);
+      if (entry) this.options.stateFor(entry[1].ownerWebContentsId)?.window.webContents.send('preview:message', {
+        tabId: entry[0], message: { source: 'crossnote', type: 'marktex:focus' },
+      });
+    });
     return view;
   }
 
@@ -187,7 +196,20 @@ export class PreviewManager {
     }
   }
 
+  setBackgrounds(ownerId: number, value: unknown) {
+    if (!Array.isArray(value)) return;
+    const entries = value.slice(0, 64).flatMap(entry => {
+      const bounds = readPreviewBounds(entry?.bounds);
+      const preview = this.views.get(entry?.tabId);
+      return bounds && preview?.ownerWebContentsId === ownerId ? [{ tabId: entry.tabId as string, bounds }] : [];
+    });
+    this.backgrounds.set(ownerId, entries);
+    const foreground = this.foregrounds.get(ownerId);
+    this.show(ownerId, foreground?.tabId ?? null, foreground?.bounds ?? null);
+  }
+
   show(ownerId: number, tabId: unknown, bounds: PreviewBounds | null) {
+    this.foregrounds.set(ownerId, { tabId, bounds });
     const owner = this.options.stateFor(ownerId)?.window;
     if (!owner || owner.isDestroyed()) return;
     const target = typeof tabId === 'string' ? this.views.get(tabId) : undefined;
@@ -210,11 +232,26 @@ export class PreviewManager {
       }
     }
 
+    const retained = new Set<PreviewViewState>();
+    for (const entry of this.backgrounds.get(ownerId) ?? []) {
+      const preview = this.views.get(entry.tabId);
+      if (!preview || preview === ready || preview.ownerWebContentsId !== ownerId
+        || preview.view.webContents.isDestroyed() || this.navigating.has(preview.view)) continue;
+      this.applyCssBounds(preview, entry.bounds);
+      if (!owner.contentView.children.includes(preview.view)) owner.contentView.addChildView(preview.view);
+      if (!preview.view.getVisible()) {
+        preview.view.setVisible(true);
+        preview.view.webContents.send('preview:command', { command: 'marktex:resume-hydration' });
+      }
+      retained.add(preview);
+      this.restoreScroll(preview);
+    }
+
     // Request the replacement before hiding the old native view. This removes
     // the hide-first gap, but is NOT a Chromium paint/presentation fence.
     let hiddenFocusedView = false;
     for (const [id, preview] of this.views) {
-      if (preview.ownerWebContentsId !== ownerId || preview === ready
+      if (preview.ownerWebContentsId !== ownerId || preview === ready || retained.has(preview)
         || preview.view.webContents.isDestroyed() || !preview.view.getVisible()) continue;
       if (pendingReview && /^git-diff:.*:[ab]$/.test(id) && id.slice(0, -1) === pendingReview) continue;
       hiddenFocusedView ||= preview.view.webContents.isFocused();
@@ -374,6 +411,8 @@ export class PreviewManager {
   }
 
   closeOwner(ownerId: number) {
+    this.backgrounds.delete(ownerId);
+    this.foregrounds.delete(ownerId);
     this.discardSpare(ownerId);
     for (const [tabId, preview] of this.views) {
       if (preview.ownerWebContentsId !== ownerId) continue;
@@ -401,6 +440,7 @@ export class PreviewManager {
       });
     }
     ipcMain.on('preview:create', (event, tabId) => this.create(event.sender.id, tabId));
+    ipcMain.on('preview:backgrounds', (event, entries) => this.setBackgrounds(event.sender.id, entries));
     ipcMain.on('preview:show', (event, { tabId, bounds }) => this.show(event.sender.id, tabId, bounds));
     ipcMain.handle('preview:capture', (event, tabId) => this.capture(event.sender.id, tabId));
     ipcMain.on('preview:command', (event, { tabId, message }) => this.command(event.sender.id, tabId, message));

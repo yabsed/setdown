@@ -28,3 +28,10 @@ it('invalidates closed, replaced and renamed surfaces without mounting unvisited
   cache.sync(tabs, 'b');
   expect(cache.sync([tabs[0]], null)).toEqual([]);
 });
+
+it('pins every visible group even beyond cache capacity and evicts hidden readers first', () => {
+  const tabs = ['a', 'b', 'c', 'd', 'e'].map(tab), cache = new MediaCache();
+  const pinned = ['a', 'b', 'c', 'd'];
+  expect(cache.sync(tabs, 'd', pinned).map(entry => entry.id)).toEqual(pinned);
+  expect(cache.sync(tabs, 'e', ['a', 'b', 'e']).map(entry => entry.id)).toEqual(['a', 'b', 'e']);
+});

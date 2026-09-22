@@ -250,6 +250,7 @@ export type MarkTexApi = {
     documentPath: string,
     themeId: PreviewThemeId,
   ): Promise<RenderResult>;
+  setBackgroundPreviews(previews: Array<{ tabId: string; bounds: PreviewBounds }>): void;
   showPreview(tabId: string | null, bounds: PreviewBounds | null): void;
   /**
    * 지금 보이는 Preview를 PNG data URL로 얻는다. DOM overlay가 native view

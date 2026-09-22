@@ -72,8 +72,16 @@ test('restores image zoom, rotation and pan after restart; reloads changed conte
     expect(await page.title()).not.toBe('SVG SCRIPT EXECUTED');
     await reader().getByRole('combobox', { name: 'Image zoom' }).selectOption('2');
     await reader().getByRole('button', { name: 'Rotate image' }).click();
-    await reader().getByRole('region', { name: 'Image canvas' }).evaluate((node) => { node.scrollLeft = 220; node.scrollTop = 350; });
-    await expect.poll(() => page.evaluate(async () => (await window.marktex.reloadDocument())?.readingPosition)).toMatchObject({ kind: 'image', zoom: 2, rotation: 90 });
+    const center = await reader().getByRole('region', { name: 'Image canvas' }).evaluate((node) => {
+      node.scrollLeft = 220; node.scrollTop = 350;
+      const stage = node.querySelector<HTMLElement>('.image-stage')!;
+      return { centerX: (node.scrollLeft + node.clientWidth / 2) / parseFloat(stage.style.width),
+        centerY: (node.scrollTop + node.clientHeight / 2) / parseFloat(stage.style.height) };
+    });
+    // Scroll events persist asynchronously. Wait for the actual pan, not the
+    // preceding rotation's centered position, before comparing a restart.
+    await expect.poll(() => page.evaluate(async () => (await window.marktex.reloadDocument())?.readingPosition))
+      .toMatchObject({ kind: 'image', zoom: 2, rotation: 90, ...center });
     const position = await page.evaluate(async () => (await window.marktex.reloadDocument())!.readingPosition);
     await app.close();
     app = await launch(file, config); page = await app.firstWindow();

@@ -12,6 +12,7 @@ import type { PreviewSession } from '../reader/preview-session';
 import type { ReaderController } from '../reader/reader-controller';
 import { view, type WorkingTreeEdit } from '../view-state.svelte';
 import { restoredOutlineOpen } from '../shell/layout-session';
+import { tick } from 'svelte';
 import { MediaCache } from './media-cache';
 
 type Options = {
@@ -21,6 +22,7 @@ type Options = {
   shouldSchedulePreview(): boolean;
   confirmClose(names: string[]): Promise<CloseDecision>;
   workspaceChanged(): void;
+  groupsChanged?(): void;
 };
 const TRANSFER_ANNOUNCE_GRACE_MS = 150;
 
@@ -116,6 +118,7 @@ export class TabController {
   }
   transferable = (tab: WorkspaceTab): TransferableTab => {
     if (tab.id === this.options.workspace.activeId) this.saveActiveState();
+    else this.options.editor.saveView(tab);
     const markdown = hasMarkdownPreview(tab.document);
     return { id: tab.id, document: tab.document, text: this.text(tab), revision: tab.revision,
       surface: documentSurface(tab.document.path, tab.surface), anchor: tab.anchor, readingPosition: tab.readingPosition,
@@ -127,8 +130,12 @@ export class TabController {
     const { desktop, shell, workspace } = this.options;
     const summaries = workspace.tabs.map((tab) => ({ id: tab.id, name: tab.document.name,
       path: tab.document.path, active: tab.id === workspace.activeId, dirty: this.dirty(tab) }));
+    view.groups = workspace.groups.groups.map(group => ({ ...group, tabs: [...group.tabs] }));
+    view.groupTree = structuredClone(workspace.groups.tree);
+    view.focusedGroupId = workspace.groups.focusedId;
     view.tabs = summaries;
-    view.mediaTabs = this.media.sync(workspace.tabs, workspace.activeId);
+    void tick().then(() => this.options.groupsChanged?.());
+    view.mediaTabs = this.media.sync(workspace.tabs, workspace.activeId, workspace.groups.groups.flatMap(g => g.activeId ? [g.activeId] : []));
     view.activeMediaId = workspace.active?.document.kind ? workspace.activeId : null;
     shell.dataset.tabs = summaries.length > 0 ? 'true' : 'false';
     shell.dataset.dirtyTabs = String(summaries.filter((tab) => tab.dirty).length);
@@ -162,6 +169,8 @@ export class TabController {
         await editor.load();
         if (activation !== this.activation || workspace.activeId !== next.id) return;
       }
+      editor.selectGroup(workspace.groups.focusedId);
+      editor.activate(next);
       surfaces.set(next.surface);
       this.updateChrome();
       if (next.surface !== 'viewer' || !hasMarkdownPreview(next.document)) {
@@ -184,6 +193,7 @@ export class TabController {
     // Cancel outgoing work but retain its native page, model and cached revision.
     preview.newSession();
     workspace.activeId = next.id;
+    editor.selectGroup(workspace.groups.focusedId);
     editor.activate(next);
     if (hasMarkdownPreview(next.document)) surfaces.publishAnchor();
     view.notice = false;

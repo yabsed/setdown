@@ -27,6 +27,7 @@ type Options = {
   applyProductTheme: (theme: PreviewThemeId) => void;
   edit: (anchor: ViewportAnchor) => void;
   anchorChanged: () => void;
+  syncBackgrounds?: (hidden: boolean) => void;
 };
 
 type SearchTarget = { line: number; lineOccurrence: number; ordinal: number };
@@ -34,6 +35,7 @@ type SearchTarget = { line: number; lineOccurrence: number; ordinal: number };
 export class ReaderController {
   themeId: PreviewThemeId;
   awaiting = false;
+  layoutHidden = false;
   private appliedThemeRevision: number;
   private transitionTabId: string | null = null;
   private projectQuery = '';
@@ -184,8 +186,9 @@ export class ReaderController {
       this.acceptAppliedTheme(payload.tabId, message.themeId);
       return;
     }
-    const tab = this.options.active();
-    if (!tab || payload.tabId !== tab.id) return;
+    const tab = this.options.tabs.find(tab => tab.id === payload.tabId);
+    if (!tab) return;
+    const active = tab.id === this.options.activeId();
     if (message.type === 'marktex:headings') {
       if (message.revision !== tab.revision || !Array.isArray(message.headings)) return;
       tab.headings = message.headings.slice(0, 500).flatMap((candidate) => {
@@ -229,7 +232,7 @@ export class ReaderController {
       this.options.anchorChanged();
       return;
     }
-    if (message.type === 'edit-at-anchor') {
+    if (message.type === 'edit-at-anchor' && active) {
       this.options.edit(this.messageAnchor(message.anchor));
       return;
     }
@@ -253,6 +256,7 @@ export class ReaderController {
   }
 
   syncView = () => {
+    this.options.syncBackgrounds?.(this.frozen);
     // Git review owns the shared native preview layer while it is active.
     // Document resize/overlay callbacks must not hide that view afterward.
     if (this.suspended) return;
@@ -262,6 +266,7 @@ export class ReaderController {
       && !!tab.previewUrl
       && (tab.previewTheme === this.themeId || tab.id === this.transitionTabId)
       && !this.suspended
+      && !this.layoutHidden
       && !this.frozen
       && !this.awaiting;
     if (!visible || !tab) {
@@ -297,7 +302,7 @@ export class ReaderController {
     const token = ++this.freezeToken;
     if (this.suspended) return;
     const tab = this.options.active();
-    if (!tab || tab.surface !== 'viewer' || !tab.previewUrl) return;
+    if (!tab || tab.surface !== 'viewer' || !tab.previewUrl) { this.frozen = true; this.syncView(); return; }
     const image = await this.options.desktop.capturePreview(tab.id).catch(() => null);
     if (token !== this.freezeToken || this.freezeDepth === 0) return;
     if (image) {

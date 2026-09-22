@@ -1,3 +1,4 @@
+import { createGroupRuntime } from '../groups/group-runtime';
 import { ReadingPositionController } from '../reading/reading-position-controller';
 import { toggleTerminal, terminalOwnsInput } from '../terminal/terminal-state.svelte';
 import { GOLDEN_TOP_RATIO, type ViewportAnchor } from '../../core/preview/viewport-anchor';
@@ -42,6 +43,11 @@ export function startWorkspace(desktop: DesktopPort) {
   };
   applyShellTheme(initialTheme.id);
   const actions: AppActions = {
+    focusGroup: (id) => {
+      const group = workspace.groups.groups.find(group => group.id === id);
+      if (group?.activeId) { projects.deactivateGitDiff(); void tabs.activate(group.activeId); }
+    },
+    resizeGroup: (id, ratio) => { workspace.groups.resize(id, ratio); tabs.render(); },
     loadMenu: (id) => desktop.getApplicationMenu(id),
     executeMenuItem: (id) => desktop.executeApplicationMenuItem(id),
     resolveClosePrompt: (decision) => closePrompt.resolve(decision),
@@ -97,12 +103,11 @@ export function startWorkspace(desktop: DesktopPort) {
     showRenderError: () => void surfaces.enterEditor(),
   };
   mount(App, { target: document.querySelector<HTMLDivElement>('#app')!, props: { actions, terminalApi: desktop.terminal, desktop,
-    mediaPosition: (id: string, position: import('../../core/reading/reading-position').ReadingPosition) => { const tab = workspace.find(id); if (tab && workspace.activeId === id && !project.gitDiffActive) positions.remember(tab, position); } } });
+    mediaPosition: (id: string, position: import('../../core/reading/reading-position').ReadingPosition) => { const tab = workspace.find(id); if (tab && workspace.groups.groups.some(group => group.activeId === id) && !(workspace.activeId === id && project.gitDiffActive)) positions.remember(tab, position); } } });
   const shell = document.querySelector<HTMLElement>('.shell')!;
   restorePanelWidths(shell);
   const previewFrames = document.querySelector<HTMLElement>('.preview-frames')!;
   const editorHost = document.querySelector<HTMLElement>('.editor-host')!;
-  const tabStrip = document.querySelector<HTMLElement>('.tab-strip')!;
   const workspace = new WorkspaceState();
   const active = () => workspace.active;
   const session = createTabSession(active, EMPTY_ANCHOR);
@@ -112,8 +117,10 @@ export function startWorkspace(desktop: DesktopPort) {
   let positions: ReadingPositionController;
   let projects: ProjectController;
   let projectContextChanged = () => {};
+  let groups: ReturnType<typeof createGroupRuntime> | undefined;
   const reader = new ReaderController({ desktop, shell, frames: previewFrames, tabs: workspace.tabs, active,
     activeId: () => workspace.activeId, initialTheme,
+    syncBackgrounds: (hidden) => groups?.backgrounds(hidden),
     applyProductTheme: (themeId) => { applyShellTheme(themeId); editor.setTheme(themeId); },
     edit: (anchor) => void surfaces.enterEditor(anchor), anchorChanged: () => { surfaces.publishAnchor(); positions?.schedule(); } });
   const preview = new PreviewSession({ desktop, tabs: workspace.tabs, active,
@@ -121,6 +128,7 @@ export function startWorkspace(desktop: DesktopPort) {
   const editor = new MonacoEditor({ host: editorHost, tabs: () => workspace.tabs, active,
     theme: () => reader.themeId, status: (status) => shell.dataset.editorRuntime = status,
     viewChanged: () => positions?.schedule(),
+    focusTab: (id) => actions.activateTab(id),
     changed: (tab, text) => tabs.editorChanged(tab, text), scrolled: () => surfaces.editorScrolled(),
     escape: () => void surfaces.enterViewer(), insertLink: () => insertions.openLink(), insertTable: () => insertions.openTable() });
   surfaces = new SurfaceController({ workspace, session, shell, editor, reader, preview,
@@ -129,11 +137,19 @@ export function startWorkspace(desktop: DesktopPort) {
   tabs = new TabController({ desktop, workspace, session, shell, editor, reader, preview, surfaces,
     capturePosition: (tab) => positions.capture(tab),
     shouldSchedulePreview: () => !project.gitDiffActive,
-    confirmClose: (names) => closePrompt.request('tab', names), workspaceChanged: () => projectContextChanged() });
-  const tabDrag = createTabDrag({ desktop, shell, strip: tabStrip, tabs: workspace.tabs,
+    confirmClose: (names) => closePrompt.request('tab', names), workspaceChanged: () => projectContextChanged(), groupsChanged: () => groups?.sync() });
+  groups = createGroupRuntime({ workspace, desktop, editor, reader, activate: id => actions.activateTab(id) });
+  const tabDrag = createTabDrag({ desktop, shell, tabs: workspace.tabs, groups: workspace.groups,
+    dragging: (active) => groups?.drag(active),
+    openFile: async (path) => {
+      const opened = await desktop.openProjectFile(path);
+      if (!opened) return null;
+      projects.deactivateGitDiff(); await tabs.show(opened);
+      return workspace.activeId;
+    },
     activeId: () => workspace.activeId,
     activate: (id) => { projects.deactivateGitDiff(); void tabs.activate(id); },
-    serialize: tabs.transferable, render: tabs.render, install: (transfer) => void tabs.installTransferred(transfer) });
+    serialize: tabs.transferable, render: tabs.render, install: (transfer) => tabs.installTransferred(transfer) });
   const documents = new DocumentActions({ desktop, tabs: workspace.tabs, active, text: tabs.text, dirty: tabs.dirty,
     preview, installModel: tabs.installModel, acceptSaved: tabs.acceptSaved,
     show: (document, surface) => { projects.deactivateGitDiff(); return tabs.show(document, surface); },
@@ -218,7 +234,7 @@ export function startWorkspace(desktop: DesktopPort) {
     if (await tabs.close(id) && path) projects.closeWorkingTreeReviews(path);
   }
   function cycleTab(direction: -1 | 1) {
-    const all = [...workspace.tabs.map((tab) => ({ id: tab.id, diff: false })),
+    const all = [...workspace.groups.focused.tabs.flatMap(id => workspace.find(id) ?? []).map((tab) => ({ id: tab.id, diff: false })),
       ...project.gitDiffTabs.map((tab) => ({ id: tab.id, diff: true }))];
     if (all.length < 2) return;
     const activeId = project.gitDiffActive ? project.activeGitDiffId : workspace.activeId;
@@ -230,6 +246,10 @@ export function startWorkspace(desktop: DesktopPort) {
   const renderedReview = () => !!project.gitDiff && isMarkdownDocument(project.gitDiff.filePath);
   installWorkspaceEvents(desktop, {
     previewMessage: (payload) => {
+      if (payload.message.type === 'marktex:focus' && payload.tabId !== workspace.activeId
+        && workspace.groups.groups.some(group => group.activeId === payload.tabId)) {
+        actions.activateTab(payload.tabId); return;
+      }
       if (payload.message.type === 'marktex:folder-drop' && typeof payload.message.path === 'string') {
         void projects.openFolderPath(payload.message.path); return;
       }

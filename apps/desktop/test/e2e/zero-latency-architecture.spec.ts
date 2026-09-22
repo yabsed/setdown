@@ -80,6 +80,7 @@ test('keeps one live preview WebContents through Esc and window transfer', async
         screenY: 460,
       }));
       element.dispatchEvent(new DragEvent('dragend', {
+        clientX: -10, // Detach outside the workspace, not into an editor group.
         bubbles: true,
         cancelable: true,
         dataTransfer,

@@ -18,6 +18,7 @@ type Options = {
   theme: () => PreviewThemeId; status: (status: 'loading' | 'ready' | 'error') => void;
   changed: (tab: WorkspaceTab, text: string) => void;
   viewChanged?: () => void;
+  focusTab?: (id: string) => void;
   scrolled: () => void; escape: () => void; insertLink: () => void; insertTable: () => void;
 };
 type SearchTarget = { line: number; column: number; ordinal: number };
@@ -26,6 +27,8 @@ type ProjectMatch = NonNullable<ProjectSearchDocument['matches']>[number];
 export class MonacoEditor {
   private apiValue: typeof Monaco | null = null;
   private editorValue: Monaco.editor.IStandaloneCodeEditor | null = null;
+  private groupId = 'group-0';
+  private readonly groupEditors = new Map<string, { host: HTMLDivElement; editor: Monaco.editor.IStandaloneCodeEditor }>();
   private loading: Promise<void> | null = null;
   private projectDecorations: Monaco.editor.IEditorDecorationsCollection | null = null;
   private readonly models = new Map<string, Monaco.editor.ITextModel>();
@@ -33,7 +36,7 @@ export class MonacoEditor {
   private readonly views = new Map<string, Monaco.editor.ICodeEditorViewState | null>();
   private readonly owners = new Map<string, DocumentModelOwner<Monaco.editor.ITextModel>>();
   private readonly replacing = new Set<string>();
-  private readonly unregisterZoom = onTextZoom(() => this.editorValue?.updateOptions(textZoomOptions()));
+  private readonly unregisterZoom = onTextZoom(() => { for (const entry of this.groupEditors.values()) entry.editor.updateOptions(textZoomOptions()); });
   private readonly unregisterModels: () => void;
   constructor(private readonly options: Options) {
     this.unregisterModels = liveDocumentModels.register((path, api) => {
@@ -49,7 +52,8 @@ export class MonacoEditor {
     this.unregisterModels();
     this.unregisterZoom();
     for (const id of [...this.models.keys()]) this.dispose(id);
-    this.editorValue?.dispose();
+    for (const entry of this.groupEditors.values()) { entry.editor.dispose(); entry.host.remove(); }
+    this.groupEditors.clear();
     this.editorValue = null;
   }
   get api() { return this.apiValue; }
@@ -73,16 +77,7 @@ export class MonacoEditor {
       registerMonacoThemes(api);
       // Keep Markdown's complete editor configuration unchanged. Syntax selection
       // lives on each model; introducing text tabs cannot leak different wrapping.
-      this.editorValue = api.editor.create(this.options.host, {
-        automaticLayout: true, language: 'markdown', theme: monacoThemeName(this.options.theme()),
-        wordWrap: 'on', wrappingIndent: 'same', lineNumbers: 'on', minimap: { enabled: false },
-        scrollBeyondLastLine: false, smoothScrolling: true, cursorSmoothCaretAnimation: 'on',
-        fontFamily: "'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
-        ...textZoomOptions(), padding: { top: 26, bottom: 60 },
-        renderWhitespace: 'selection', bracketPairColorization: { enabled: true }, stickyScroll: { enabled: false },
-      });
-      this.projectDecorations = this.editorValue.createDecorationsCollection();
-      this.installBindings(api, this.editorValue);
+      this.selectGroup(this.groupId);
       for (const tab of this.options.tabs()) if (tab.document.kind === undefined) this.ensureModel(tab);
       const active = this.options.active();
       if (active) this.activate(active);
@@ -90,11 +85,75 @@ export class MonacoEditor {
     }).catch((error) => { this.loading = null; this.options.status('error'); throw error; });
     return this.loading;
   }
+  selectGroup(id: string): void {
+    this.groupId = id;
+    const api = this.apiValue;
+    if (!api || (!this.loading && !this.editorValue)) return;
+    let entry = this.groupEditors.get(id);
+    if (!entry) {
+      const host = document.createElement('div');
+      host.className = 'group-monaco-instance';
+      this.options.host.append(host);
+      const editor = api.editor.create(host, {
+        automaticLayout: true, language: 'markdown', theme: monacoThemeName(this.options.theme()),
+        wordWrap: 'on', wrappingIndent: 'same', lineNumbers: 'on', minimap: { enabled: false },
+        scrollBeyondLastLine: false, smoothScrolling: true, cursorSmoothCaretAnimation: 'on',
+        fontFamily: "'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
+        ...textZoomOptions(), padding: { top: 26, bottom: 60 },
+        renderWhitespace: 'selection', bracketPairColorization: { enabled: true }, stickyScroll: { enabled: false },
+      });
+
+      this.installBindings(api, editor);
+      editor.onDidFocusEditorText(() => {
+        const tab = this.options.tabs().find(t => this.models.get(t.id) === editor.getModel());
+        if (tab && tab.id !== this.options.active()?.id) this.options.focusTab?.(tab.id);
+      });
+      entry = { host, editor };
+      this.groupEditors.set(id, entry);
+    }
+    if (this.editorValue !== entry.editor) {
+      this.projectDecorations?.clear();
+      this.editorValue = entry.editor;
+      this.projectDecorations = entry.editor.createDecorationsCollection();
+    }
+    if (entry.host.parentElement !== this.options.host) {
+      const focused = entry.editor.hasTextFocus();
+      this.options.host.append(entry.host);
+      // DOM reparenting blurs Monaco. Preserve a click into a background editor.
+      if (focused) entry.editor.focus();
+    }
+  }
+  syncGroups(groups: readonly { id: string; activeId: string | null }[], focusedId: string): void {
+    if (!this.editorValue) return;
+    for (const [id, entry] of this.groupEditors) {
+      if (!groups.some(group => group.id === id)) {
+        entry.editor.dispose(); entry.host.remove(); this.groupEditors.delete(id); continue;
+      }
+      const tab = this.options.tabs().find(tab => tab.id === groups.find(g => g.id === id)?.activeId);
+      if (id === focusedId) continue;
+      const host = document.querySelector<HTMLElement>(`.group-editor-host[data-group-id="${id}"]`);
+      if (host && entry.host.parentElement !== host) host.append(entry.host);
+      entry.host.style.visibility = tab?.surface === 'editor' ? 'visible' : 'hidden';
+      const model = tab?.surface === 'editor' ? this.ensureModel(tab) : null;
+      if (entry.editor.getModel() !== model) {
+        entry.editor.setModel(model);
+        const state = tab ? this.views.get(tab.id) : null;
+        if (state) entry.editor.restoreViewState(state);
+      }
+      entry.editor.layout();
+    }
+    this.selectGroup(focusedId);
+    const entry = this.groupEditors.get(focusedId);
+    if (entry) { entry.host.style.visibility = ''; entry.editor.layout(); }
+  }
   activate(tab: WorkspaceTab): void {
     if (!this.editorValue) return;
     if (tab.document.kind !== undefined) { this.editorValue.setModel(null); return; }
-    this.editorValue.setModel(this.ensureModel(tab));
+    const model = this.ensureModel(tab);
+    const sameModel = this.editorValue.getModel() === model;
+    if (!sameModel) this.editorValue.setModel(model);
     this.owners.get(tab.id)?.beginEditing(`document:${tab.id}`);
+    if (sameModel) return; // Keep the caret placed by the click that focused this group.
     const view = this.views.get(tab.id);
     if (view) this.editorValue.restoreViewState(view);
   }
@@ -109,7 +168,7 @@ export class MonacoEditor {
     if (previousPath) liveDocumentModels.publish({ type: 'retargeted', path: previousPath, nextPath: tab.document.path });
   }
   saveView(tab: WorkspaceTab): void {
-    const editor = this.editorValue;
+    const editor = [...this.groupEditors.values()].find(entry => entry.editor.getModel() === this.models.get(tab.id))?.editor;
     if (editor && editor.getModel() === this.models.get(tab.id)) this.views.set(tab.id, editor.saveViewState());
     tab.text = this.text(tab);
   }
@@ -150,7 +209,7 @@ export class MonacoEditor {
   dispose(tabId: string): void {
     const model = this.models.get(tabId);
     const path = this.modelPaths.get(tabId);
-    if (model && this.editorValue?.getModel() === model) this.editorValue.setModel(null);
+    for (const entry of this.groupEditors.values()) if (model && entry.editor.getModel() === model) entry.editor.setModel(null);
     const owner = this.owners.get(tabId);
     this.models.delete(tabId); this.owners.delete(tabId);
     this.modelPaths.delete(tabId); this.views.delete(tabId);
@@ -246,7 +305,7 @@ export class MonacoEditor {
     editor.onDidChangeCursorSelection(() => this.options.viewChanged?.());
     editor.onDidScrollChange((event) => {
       if (event.scrollTopChanged || event.scrollLeftChanged) this.options.viewChanged?.();
-      if (event.scrollTopChanged && hasMarkdownPreview(this.options.active()?.document)) this.options.scrolled();
+      if (editor === this.editorValue && event.scrollTopChanged && hasMarkdownPreview(this.options.active()?.document)) this.options.scrolled();
     });
     installMarkdownEditorActions(api, editor, this.options, () => hasMarkdownPreview(this.options.active()?.document));
     editor.addCommand(api.KeyCode.Escape, this.options.escape,

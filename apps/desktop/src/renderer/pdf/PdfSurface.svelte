@@ -5,7 +5,7 @@
   import type { DesktopPort } from '../ports/desktop-port';
   import { PdfRuntime, type OutlineItem } from './pdf-runtime';
 
-  let { document, initialPosition, desktop, onposition, active }: { document: DocumentSnapshot; active: boolean;
+  let { document, initialPosition, desktop, onposition, active, focused = active }: { focused?: boolean; document: DocumentSnapshot; active: boolean;
     initialPosition?: ReadingPosition; desktop: DesktopPort; onposition(position: PdfReadingPosition): void } = $props();
   let host: HTMLDivElement;
   let runtime: PdfRuntime;
@@ -31,7 +31,7 @@
       password: (update, incorrect) => { unlock = update; passwordPrompt = incorrect ? 'Incorrect password. Try again.' : 'This PDF requires a password.'; },
       error: (message) => error = message });
     void runtime.open();
-    const focusFind = () => { if (active) { searchInput?.focus(); searchInput?.select(); } };
+    const focusFind = () => { if (active && focused) { searchInput?.focus(); searchInput?.select(); } };
     window.addEventListener('setdown:pdf-find', focusFind);
     return () => { window.removeEventListener('setdown:pdf-find', focusFind); runtime.dispose(); };
   });

@@ -82,6 +82,7 @@ test('detaching a tab restores its preview iframe at the same semantic position'
         }));
         const types = [...dataTransfer.types];
         element.dispatchEvent(new DragEvent('dragend', {
+          clientX: -10, // Outside the workspace; an in-window drop now joins/splits groups.
           bubbles: true,
           cancelable: true,
           dataTransfer,
@@ -155,6 +156,7 @@ test('detaching the middle tab leaves documents one and three in the original wi
           screenY: 460,
         }));
         element.dispatchEvent(new DragEvent('dragend', {
+          clientX: -10, // Outside the workspace; an in-window drop now joins/splits groups.
           bubbles: true,
           cancelable: true,
           dataTransfer,

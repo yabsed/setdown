@@ -270,3 +270,20 @@ test('a failed renderer viewport update can retry without changing native visibi
   assert.equal(retried, true);
   assert.equal(f.back.view.getVisible(), false);
 });
+
+test('editor groups show independent native views; foreground changes retain only owned background views', () => {
+  const f = fixture();
+  f.manager.create(1, 'left'); f.manager.create(1, 'right'); f.manager.create(2, 'foreign');
+  const left = f.manager.views.get('left')!, right = f.manager.views.get('right')!;
+  f.manager.setBackgrounds(1, [{ tabId: 'left', bounds }, { tabId: 'foreign', bounds }]);
+  f.manager.show(1, 'right', { ...bounds, x: 620, width: 200 });
+  assert.equal(left.view.getVisible(), true);
+  assert.equal(right.view.getVisible(), true);
+  assert.equal(f.manager.views.get('foreign')!.view.getVisible(), false);
+  f.manager.show(1, null, null);
+  assert.equal(left.view.getVisible(), true);
+  assert.equal(right.view.getVisible(), false);
+  f.manager.setBackgrounds(1, []);
+  assert.equal(left.view.getVisible(), false);
+  assert.equal(f.focusCount(), 0);
+});

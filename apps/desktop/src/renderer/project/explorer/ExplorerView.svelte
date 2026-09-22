@@ -105,6 +105,7 @@
 
   function startDrag(event: DragEvent, entry: VisibleProjectEntry) {
     event.dataTransfer?.setData('application/x-setdown-project-entry', entry.path);
+    if (entry.kind !== 'directory') event.dataTransfer?.setData('application/x-setdown-project-file', entry.path);
     if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
   }
 

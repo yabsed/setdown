@@ -1,3 +1,4 @@
+import { EditorGroups } from './editor-groups';
 import type { DocumentSnapshot } from '../document/document';
 import { documentSurface } from '../document/document-profile';
 import type { PreviewHeading } from '../preview/preview-state';
@@ -50,19 +51,23 @@ export function createWorkspaceTab(
 
 export class WorkspaceState {
   readonly tabs: WorkspaceTab[] = [];
-  activeId: string | null = null;
+  readonly groups = new EditorGroups();
+  private activeTabId: string | null = null;
+  get activeId() { return this.activeTabId; }
+  set activeId(id: string | null) { this.activeTabId = id; if (id) this.groups.activate(id); }
   get active(): WorkspaceTab | null { return this.tabs.find((tab) => tab.id === this.activeId) ?? null; }
   find(id: string): WorkspaceTab | null { return this.tabs.find((tab) => tab.id === id) ?? null; }
-  add(tab: WorkspaceTab): void { this.tabs.push(tab); }
+  add(tab: WorkspaceTab): void { this.tabs.push(tab); this.groups.add(tab.id); }
   remove(id: string): { tab: WorkspaceTab; index: number; wasActive: boolean } | null {
     const index = this.tabs.findIndex((tab) => tab.id === id);
     if (index < 0) return null;
     const [tab] = this.tabs.splice(index, 1);
+    this.groups.remove(id);
     const wasActive = id === this.activeId;
     if (wasActive) this.activeId = null;
     return { tab, index, wasActive };
   }
-  replacement(index: number): WorkspaceTab | null { return this.tabs[Math.min(index, this.tabs.length - 1)] ?? null; }
+  replacement(index: number): WorkspaceTab | null { return this.find(this.groups.focused.activeId ?? '') ?? this.tabs[Math.min(index, this.tabs.length - 1)] ?? null; }
   cycle(direction: -1 | 1): WorkspaceTab | null {
     if (this.tabs.length < 2 || !this.activeId) return null;
     const current = this.tabs.findIndex((tab) => tab.id === this.activeId);

@@ -39,6 +39,8 @@ export type WorkingTreeEdit = {
 };
 
 export type AppActions = {
+  focusGroup(id: string): void;
+  resizeGroup(id: string, ratio: number): void;
   loadMenu(id: string): Promise<ApplicationMenuEntry[]>;
   executeMenuItem(id: string): void;
   resolveClosePrompt(decision: CloseDecision): void;
@@ -97,6 +99,9 @@ export type AppActions = {
 };
 
 export const view = $state({
+  groups: [{ id: 'group-0', tabs: [], activeId: null }] as import('../core/workspace/editor-groups').Group[],
+  groupTree: { kind: 'group', id: 'group-0' } as import('../core/workspace/editor-groups').GroupTree,
+  focusedGroupId: 'group-0',
   tabs: [] as TabView[],
   draggedTabId: null as string | null,
   surface: 'empty' as 'empty' | 'viewer' | 'editor' | 'pdf' | 'image',
