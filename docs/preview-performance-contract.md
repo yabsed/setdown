@@ -76,6 +76,13 @@ The document retains its own surface, position, unsaved text and shared undo
 history. `text-workspace.test.ts` and `git-review-first-open.spec.ts` cover first
 opening without an ordinary preview and returning to the shared document.
 
+Git history reviews carry an immutable commit selection. Their source models
+are read-only and must never borrow a Working Tree model or receive its unsaved
+text. Source/rendered transitions use the same review preparation guarantees.
+The lazily mounted history graph must not take ownership of document focus or
+trigger history reads on unsaved keystrokes. `git-history.spec.ts` and the
+history/provider/controller unit tests cover the integration.
+
 ## Required deterministic and browser checks
 
 From the repository root:

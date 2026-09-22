@@ -24,6 +24,7 @@
   let host: HTMLDivElement;
   let dead = false;
   let adjusting = false;
+  let restoring = true;
   let layoutRequest = 0;
   let needsResize = false;
   let drag: { x: number; y: number; left: number; top: number } | undefined;
@@ -35,7 +36,7 @@
   const stageHeight = $derived(Math.max(viewportHeight, rotatedHeight * scale + 32));
 
   function remember() {
-    if (!active || !src || adjusting || dead) return;
+    if (!active || !src || adjusting || restoring || dead) return;
     centerX = (host.scrollLeft + host.clientWidth / 2) / stageWidth;
     centerY = (host.scrollTop + host.clientHeight / 2) / stageHeight;
     onposition({ kind: 'image', zoom, rotation, centerX, centerY });
@@ -44,12 +45,17 @@
     if (!host || dead) return;
     const request = ++layoutRequest;
     adjusting = true;
-    viewportWidth = host.clientWidth; viewportHeight = host.clientHeight;
+    // A shrinking pane can briefly show scrollbars for the old image size.
+    // Measure the stable outer viewport, not the scrollbar-reduced client box,
+    // or fit zoom undershoots and then grows again on the next resize callback.
+    const bounds = host.getBoundingClientRect();
+    viewportWidth = bounds.width; viewportHeight = bounds.height;
     await tick();
     if (dead || request !== layoutRequest) return;
     host.scrollLeft = centerX * stageWidth - host.clientWidth / 2;
     host.scrollTop = centerY * stageHeight - host.clientHeight / 2;
     adjusting = false;
+    if (src) restoring = false;
     remember();
   }
   function changeZoom(value: string) {

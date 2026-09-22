@@ -69,6 +69,7 @@ export function startWorkspace(desktop: DesktopPort) {
     toggleProjectSearchGroup: (path) => projects.toggleSearchGroup(path),
     refreshProjectGit: () => void projects.refreshGit(),
     toggleProjectGitGroup: (title) => projects.toggleGitGroup(title),
+    reviewGitHistory: (selection) => void projects.reviewGitHistory(selection),
     reviewProjectGitChange: (path, staged) => void projects.reviewGitChange(path, staged),
     activateProjectGitDiff: (id) => projects.activateGitDiff(id),
     closeProjectGitDiff: (id) => projects.closeGitDiff(id),
@@ -258,8 +259,8 @@ export function startWorkspace(desktop: DesktopPort) {
       if (command === 'escape' && insertions.dismissOnEscape('native')) return;
       if (command === 'new-document') { projects.deactivateGitDiff(); void documents.create(); }
       if (command === 'open-folder') void projects.chooseFolder();
-      if (command === 'save' && (!project.gitDiffActive || !project.gitDiff?.staged)) void documents.save(false);
-      if (command === 'save-as' && (!project.gitDiffActive || !project.gitDiff?.staged)) void documents.save(true);
+      if (command === 'save' && (!project.gitDiffActive || (!project.gitDiff?.staged && !project.gitDiff?.history))) void documents.save(false);
+      if (command === 'save-as' && (!project.gitDiffActive || (!project.gitDiff?.staged && !project.gitDiff?.history))) void documents.save(true);
       if (command === 'export-pdf' && !project.gitDiffActive) void documents.exportPdf();
       if (command === 'close-tab') {
         if (project.gitDiffActive) projects.closeGitDiff(); else if (workspace.activeId) void closeDocumentTab(workspace.activeId);
@@ -290,6 +291,8 @@ export function startWorkspace(desktop: DesktopPort) {
         event.preventDefault(); toggleTerminal(); return;
       }
       if (terminalOwnsInput(event.target)) return;
+      // Shadow-DOM inputs and graph navigation own Escape/Find themselves.
+      if (event.composedPath().some((node) => node instanceof HTMLElement && node.localName === 'web-git-graph')) return;
       if (session.surface === 'pdf' && !project.gitDiffActive && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
         event.preventDefault(); window.dispatchEvent(new Event('setdown:pdf-find')); return;
       }
@@ -298,7 +301,7 @@ export function startWorkspace(desktop: DesktopPort) {
       }
       if (event.key.toLowerCase() === 's' && (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey) {
         event.preventDefault(); event.stopPropagation();
-        if (!project.gitDiffActive || !project.gitDiff?.staged) void documents.save(false);
+        if (!project.gitDiffActive || (!project.gitDiff?.staged && !project.gitDiff?.history)) void documents.save(false);
         return;
       }
       if (event.key === 'Escape') tabDrag.cancel();

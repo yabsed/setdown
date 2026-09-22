@@ -1,3 +1,4 @@
+import type { GitHistorySelection } from '../../protocol/git-history';
 import type {
   GitDiff,
   GitSnapshot,
@@ -13,6 +14,7 @@ export type VisibleProjectEntry = ProjectEntry & {
   loading: boolean;
 };
 export type GitDiffTabState = {
+  history?: GitHistorySelection;
   id: string;
   filePath: string;
   staged: boolean;

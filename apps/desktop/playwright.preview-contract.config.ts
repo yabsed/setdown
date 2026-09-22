@@ -6,8 +6,10 @@ export default defineConfig(base, {
   testMatch: [
     'document-preparation.spec.ts',
     'git-review-first-open.spec.ts',
+    'git-history.spec.ts',
     'reading-positions.spec.ts',
     'image-reader.spec.ts',
+    'image-terminal-layout.spec.ts',
     'media-tabs.spec.ts',
     'workspace-zoom.spec.ts',
     'review-document-styles.spec.ts',

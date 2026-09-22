@@ -1,3 +1,4 @@
+import type { GitGraphReply, GitGraphRequest, GitHistorySelection } from './git-history';
 import type { PreviewThemeAssets, PreviewThemeId } from '../core/preview/preview-preferences';
 import type { DiskVersion, DocumentSnapshot } from '../core/document/document';
 import type { RenderResult } from '../core/preview/preview-state';
@@ -109,15 +110,16 @@ export type GitDiffHunk = {
 };
 
 export type GitDiff = {
+  history?: GitHistorySelection;
   path: string;
   filePath: string;
   staged: boolean;
   patch: string;
   originalText: string | null;
   modifiedText: string | null;
-  originalLabel: 'EMPTY' | 'HEAD' | 'INDEX';
+  originalLabel: string;
   /** Right-hand side. WORKTREE may be the live ordinary document buffer. */
-  modifiedLabel: 'INDEX' | 'WORKTREE';
+  modifiedLabel: string;
   hunks: GitDiffHunk[];
 };
 
@@ -132,6 +134,7 @@ export type TabStateSummary = {
 
 /** Renderer-owned Git review state retained by the window across a renderer reload. */
 export type GitReviewState = TabStateSummary & {
+  history?: GitHistorySelection;
   staged: boolean;
   active: boolean;
   mode: 'rendered' | 'source';
@@ -283,6 +286,9 @@ export type MarkTexApi = {
   openProjectFile(filePath: string): Promise<DocumentSnapshot | null>;
   searchProject(request: ProjectSearchRequest): Promise<ProjectSearchResult[]>;
   getGitStatus(): Promise<GitSnapshot>;
+  requestGitGraph(request: GitGraphRequest): Promise<GitGraphReply>;
+  cancelGitGraph(id: string): void;
+  getGitHistoryDiff(selection: GitHistorySelection): Promise<GitDiff>;
   getGitDiff(filePath: string, staged: boolean): Promise<GitDiff>;
   prepareGitDiffPreview(
     tabId: string,

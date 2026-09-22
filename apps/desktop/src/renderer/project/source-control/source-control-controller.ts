@@ -1,3 +1,4 @@
+import type { GitHistorySelection } from '../../../protocol/git-history';
 import type { PrimeReviewCommand } from '../../../protocol/preview-preparation';
 import { textDiffHunks } from '../../../core/diff/text-diff';
 import { isMarkdownDocument } from '../../../core/document/document-profile';
@@ -50,6 +51,7 @@ export class SourceControlController {
   private refreshRequested = false;
   private refreshTask: Promise<void> | null = null;
   private statusGeneration = 0;
+  private historyOpenGeneration = 0;
   private bounds: PreviewBounds | null = null;
   private pendingPreviewPosition: { tabId: string; intent: 'source' | 'resume' } | null = null;
   private readonly readingStates = new Map<string, ReviewReadingState>();
@@ -74,9 +76,10 @@ export class SourceControlController {
     this.observeDocuments();
     const saved = await this.options.desktop.getGitReviewState();
     if (!saved || !project.folder || project.gitDiffTabs.length) return;
-    if (saved.active && !saved.staged && !await this.options.activateWorkingTree(saved.path)
+    if (saved.active && !saved.staged && !saved.history && !await this.options.activateWorkingTree(saved.path)
       && !await this.options.openWorkingTree(saved.path)) return;
     const created = this.createTab(saved.path, saved.staged, saved.mode, saved.line);
+    created.history = saved.history;
     project.gitDiffTabs.push(created);
     const tab = project.gitDiffTabs.find((candidate) => candidate.id === created.id)!;
     if (saved.active) this.activateTabState(tab);
@@ -116,16 +119,17 @@ export class SourceControlController {
   }
 
   documentSaved = async (document: DocumentSnapshot): Promise<void> => {
-    const tabs = project.gitDiffTabs.filter((tab) => !tab.staged && tab.filePath === document.path);
+    const tabs = project.gitDiffTabs.filter((tab) => !tab.staged && !tab.history && tab.filePath === document.path);
     await Promise.all(tabs.map((tab) => this.reloadTab(tab)));
     await this.refresh();
   };
 
   review = async (filePath: string, staged: boolean): Promise<void> => {
+    this.historyOpenGeneration += 1;
     this.observeDocuments();
     if (!staged && !await this.options.activateWorkingTree(filePath)
       && !await this.options.openWorkingTree(filePath)) return;
-    let tab = project.gitDiffTabs.find((candidate) => candidate.filePath === filePath && candidate.staged === staged);
+    let tab = project.gitDiffTabs.find((candidate) => !candidate.history && candidate.filePath === filePath && candidate.staged === staged);
     if (!tab) {
       const created = this.createTab(filePath, staged);
       project.gitDiffTabs.push(created);
@@ -135,7 +139,32 @@ export class SourceControlController {
     if (!tab.diff && !tab.loading) void this.reloadTab(tab);
   };
 
+  reviewHistory = async (selection: GitHistorySelection): Promise<void> => {
+    const generation = ++this.historyOpenGeneration;
+    if (selection.root !== project.folder?.path) return;
+    const key = JSON.stringify(selection);
+    let tab = project.gitDiffTabs.find((candidate) => candidate.history && JSON.stringify(candidate.history) === key);
+    if (!tab) {
+      try {
+        const diff = await this.options.desktop.getGitHistoryDiff(selection);
+        if (selection.root !== project.folder?.path || generation !== this.historyOpenGeneration) return;
+        const created = this.createTab(diff.filePath, false);
+        created.history = selection;
+        created.diff = diff;
+        created.line = this.firstChangedLine(diff);
+        // A double click may finish the same request twice.
+        tab = project.gitDiffTabs.find((candidate) => candidate.history && JSON.stringify(candidate.history) === key);
+        if (!tab) { project.gitDiffTabs.push(created); tab = project.gitDiffTabs.at(-1)!; }
+      } catch (error) {
+        if (selection.root === project.folder?.path && generation === this.historyOpenGeneration) project.error = error instanceof Error ? error.message : String(error);
+        return;
+      }
+    }
+    this.activateTabState(tab);
+  };
+
   closeDiff = (id = project.activeGitDiffId): void => {
+    this.historyOpenGeneration += 1;
     if (!id) return;
     const index = project.gitDiffTabs.findIndex((tab) => tab.id === id);
     if (index < 0) return;
@@ -160,21 +189,23 @@ export class SourceControlController {
   };
 
   closeWorkingTreeReviews = (filePath: string): void => {
-    const ids = project.gitDiffTabs.filter((tab) => !tab.staged && tab.filePath === filePath).map((tab) => tab.id);
+    const ids = project.gitDiffTabs.filter((tab) => !tab.staged && !tab.history && tab.filePath === filePath).map((tab) => tab.id);
     for (const id of ids) this.closeDiff(id);
   };
 
   activateDiff = async (id = project.activeGitDiffId): Promise<void> => {
+    this.historyOpenGeneration += 1;
     this.observeDocuments();
     const tab = project.gitDiffTabs.find((candidate) => candidate.id === id);
     if (!tab) return;
-    if (!tab.staged && !await this.options.activateWorkingTree(tab.filePath)
+    if (!tab.staged && !tab.history && !await this.options.activateWorkingTree(tab.filePath)
       && !await this.options.openWorkingTree(tab.filePath)) return;
     this.activateTabState(tab);
     if (!tab.diff && !tab.loading) void this.reloadTab(tab);
   };
 
   deactivateDiff = (): void => {
+    this.historyOpenGeneration += 1;
     this.presentation.cancel();
     if (!project.gitDiffActive) return;
     this.rememberActiveTab();
@@ -294,7 +325,7 @@ export class SourceControlController {
   changeWorkingTree = (text: string, edits?: WorkingTreeEdit[]): void => {
     const tab = this.activeTab();
     const diff = tab?.diff;
-    if (!tab || !diff || diff.staged || diff.originalText === null || diff.modifiedText === null) return;
+    if (!tab || !diff || diff.staged || diff.history || diff.originalText === null || diff.modifiedText === null) return;
     this.options.workingTreeChanged(diff.filePath, text, edits);
     if (tab.diff?.modifiedText === text) return; // Document event already handled it.
     tab.diff = { ...diff, modifiedText: text, modifiedLabel: 'WORKTREE' };
@@ -306,6 +337,7 @@ export class SourceControlController {
   };
 
   clear = (): void => {
+    this.historyOpenGeneration += 1;
     this.presentation.cancel();
     this.unsubscribeModels?.();
     this.unsubscribeModels = null;
@@ -336,7 +368,7 @@ export class SourceControlController {
       }
       for (const tab of project.gitDiffTabs) {
         const diff = tab.diff;
-        if (tab.staged || tab.filePath !== event.path || !diff
+        if (tab.staged || tab.history || tab.filePath !== event.path || !diff
           || diff.originalText === null || diff.modifiedText === null || diff.modifiedText === event.text) continue;
         tab.diff = { ...diff, modifiedText: event.text, modifiedLabel: 'WORKTREE' };
         if (this.renderable(tab.diff)) {
@@ -414,7 +446,8 @@ export class SourceControlController {
     tab.loading = true;
     if (this.activeTab()?.id === tab.id) project.gitDiffLoading = true;
     try {
-      const stored = await this.options.desktop.getGitDiff(tab.filePath, tab.staged);
+      const stored = tab.history ? await this.options.desktop.getGitHistoryDiff({ ...tab.history })
+        : await this.options.desktop.getGitDiff(tab.filePath, tab.staged);
       if (!this.isCurrentLoad(tab, generation)) return;
       const diff = this.effectiveDiff(stored);
       const changed = this.diffSignature(tab.diff) !== this.diffSignature(diff);
@@ -553,7 +586,7 @@ export class SourceControlController {
 
   private latestDiff(tab: GitDiffTabState): GitDiff | null {
     const diff = tab.diff;
-    if (!diff || tab.staged) return diff;
+    if (!diff || tab.staged || tab.history) return diff;
     const modifiedText = this.options.workingTreeBuffer(tab.filePath) ?? diff.modifiedText;
     return modifiedText === diff.modifiedText ? diff : { ...diff, modifiedText, modifiedLabel: 'WORKTREE' };
   }
@@ -621,9 +654,11 @@ export class SourceControlController {
     if (!this.tabExists(tab) || tab.previewLoading || (!tab.previewDirty && this.latestPreview(tab))) return;
     const current = tab.diff;
     if (!current || !this.renderable(current)) return;
-    const text = tab.staged ? current.modifiedText
+    const text = tab.staged || tab.history ? current.modifiedText
       : this.options.workingTreeBuffer(tab.filePath) ?? current.modifiedText;
-    const diff: GitDiff = { ...current, modifiedText: text, patch: '', hunks: [] };
+    const diff: GitDiff = { ...current, modifiedText: text, patch: '', hunks: [],
+      // Nested Svelte state proxies must not cross Electron's clone boundary.
+      ...(current.history ? { history: { ...current.history } } : {}) };
     if (text !== current.modifiedText) tab.diff = { ...current, modifiedText: text };
     const [a, b] = this.previewIds(tab);
     const candidateId = tab.previewId === a ? b : a;
@@ -721,16 +756,18 @@ export class SourceControlController {
   }
 
   private async refreshOpenDiffs(): Promise<void> {
-    await Promise.all([...project.gitDiffTabs].map((tab) => this.reloadTab(tab)));
+    await Promise.all(project.gitDiffTabs.filter((tab) => !tab.history).map((tab) => this.reloadTab(tab)));
   }
 
   private publishReview(): void {
     const target = project.gitDiffTarget;
     if (!target) return this.options.desktop.updateGitReviewState(null);
     const name = target.filePath.split(/[\\/]/).at(-1) ?? target.filePath;
-    const side = target.staged ? 'Index' : 'Working Tree';
+    const history = this.activeTab()?.history;
+    const side = history ? history.head.slice(0, 8) : target.staged ? 'Index' : 'Working Tree';
     const state: GitReviewState = {
       name: `${name} (${side})`, path: target.filePath, dirty: false, isUntitled: false,
+      ...(history ? { history: { ...history } } : {}),
       staged: target.staged, active: project.gitDiffActive, mode: project.gitDiffMode,
       line: project.gitDiffMode === 'rendered'
         ? this.readingStates.get(project.activeGitDiffId ?? '')?.viewer?.anchor.sourceLine ?? project.gitDiffLine
@@ -740,7 +777,7 @@ export class SourceControlController {
   }
 
   private effectiveDiff(diff: GitDiff): GitDiff {
-    if (diff.staged || diff.originalText === null || diff.modifiedText === null) return diff;
+    if (diff.staged || diff.history || diff.originalText === null || diff.modifiedText === null) return diff;
     const modifiedText = this.options.workingTreeBuffer(diff.filePath) ?? diff.modifiedText;
     return { ...diff, modifiedText, modifiedLabel: 'WORKTREE', hunks: textDiffHunks(diff.originalText, modifiedText) };
   }

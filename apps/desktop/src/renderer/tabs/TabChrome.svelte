@@ -10,7 +10,7 @@
       && project.gitDiff.originalText !== null && project.gitDiff.modifiedText !== null
     : markdown);
   let canInsert = $derived(project.gitDiffActive
-    ? project.gitDiffMode === 'source' && !!project.gitDiff && !project.gitDiff.staged
+    ? project.gitDiffMode === 'source' && !!project.gitDiff && !project.gitDiff.staged && !project.gitDiff.history
       && project.gitDiff.originalText !== null && project.gitDiff.modifiedText !== null
       && isMarkdownPath(project.gitDiff.filePath)
     : markdown && view.surface === 'editor');
@@ -40,7 +40,7 @@
       <button class="document-tab git-diff-tab" type="button" role="tab"
         aria-selected={project.gitDiffActive && project.activeGitDiffId === diffTab.id}
         title={diffTab.filePath} onclick={() => actions.activateProjectGitDiff(diffTab.id)}>
-        <span class="tab-name">{base(diffTab.filePath)} ({diffTab.staged ? 'Index' : 'Working Tree'})</span>
+        <span class="tab-name">{base(diffTab.filePath)} ({diffTab.history ? diffTab.history.head.slice(0, 8) : diffTab.staged ? 'Index' : 'Working Tree'})</span>
         <span class="tab-close" title="Close diff" role="button" tabindex="0"
           onclick={(event) => { event.stopPropagation(); actions.closeProjectGitDiff(diffTab.id); }}
           onkeydown={(event) => {

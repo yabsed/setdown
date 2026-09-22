@@ -23,7 +23,7 @@
     originalText: string;
     modifiedText: string;
     sourceSide: ReviewSourceSide;
-    staged: boolean;
+    readOnly: boolean;
     filePath: string;
     listener: Monaco.IDisposable;
     viewState: Monaco.editor.IDiffEditorViewState | null;
@@ -57,9 +57,9 @@
   function writableMarkdown() {
     if (!editor || !api || !shownId || shownId !== project.activeGitDiffId
       || !project.gitDiffActive || project.gitDiffMode !== 'source' || input.active
-      || project.gitDiff?.staged) return null;
+      || (project.gitDiff?.staged || project.gitDiff?.history)) return null;
     const cached = models.get(shownId);
-    if (!cached || cached.staged || !isMarkdownPath(cached.filePath)
+    if (!cached || cached.readOnly || !isMarkdownPath(cached.filePath)
       || editor.getModel()?.modified !== cached.modified) return null;
     return { identity: `review:${shownId}`, filePath: cached.filePath,
       editor: editor.getModifiedEditor(), monaco: api, model: cached.modified };
@@ -186,8 +186,8 @@
     const modelId = crypto.randomUUID();
     // The ordinary document owns the editable model, including its entire
     // undo/redo stack. HEAD/INDEX snapshots remain independent and read-only.
-    const lease = diff.staged ? null : liveDocumentModels.acquire(diff.filePath, monaco);
-    if (!diff.staged && !lease) throw new Error('Open the document before editing its Working Tree.');
+    const lease = (diff.staged || diff.history) ? null : liveDocumentModels.acquire(diff.filePath, monaco);
+    if (!diff.staged && !diff.history && !lease) throw new Error('Open the document before editing its Working Tree.');
     let original: Monaco.editor.ITextModel | null = null;
     let modified: Monaco.editor.ITextModel;
     try {
@@ -198,7 +198,7 @@
     } catch (cause) { original?.dispose(); lease?.release(); throw cause; }
     const cached: CachedModels = {
       original, modified, lease, originalText: diff.originalText, modifiedText: modified.getValue(),
-      sourceSide: 'after', staged: diff.staged, filePath: diff.filePath,
+      sourceSide: 'after', readOnly: Boolean(diff.staged || diff.history), filePath: diff.filePath,
       listener: { dispose() {} }, viewState: null,
     };
     // Borrowed models have exactly one document-state listener, in the owner.
@@ -212,7 +212,7 @@
     const existing = models.get(id);
     if (existing && existing.originalText === diff.originalText
       && (!!existing.lease || existing.modifiedText === diff.modifiedText)
-      && existing.staged === diff.staged && existing.filePath === diff.filePath) {
+      && existing.readOnly === Boolean(diff.staged || diff.history) && existing.filePath === diff.filePath) {
       if (!existing.lease) existing.modifiedText = diff.modifiedText;
       return existing;
     }
@@ -271,15 +271,15 @@
       saveShownView();
       editor.setModel({ original: cached.original, modified: cached.modified });
       shownId = activeId;
-      editor.updateOptions({ readOnly: active.diff.staged, originalEditable: false,
-        renderMarginRevertIcon: !active.diff.staged });
+      editor.updateOptions({ readOnly: Boolean(active.diff.staged || active.diff.history), originalEditable: false,
+        renderMarginRevertIcon: !active.diff.staged && !active.diff.history });
       if (cached.viewState) editor.restoreViewState(cached.viewState);
       layout = true;
     }
-    const originalAriaLabel = active.diff.staged ? `${active.diff.originalLabel} version`
+    const originalAriaLabel = active.diff.staged || active.diff.history ? `${active.diff.originalLabel} version`
       : active.diff.originalLabel === 'EMPTY' ? 'Empty staged version' : 'Staged version';
     editor.getOriginalEditor().updateOptions({ ariaLabel: originalAriaLabel });
-    editor.getModifiedEditor().updateOptions({ ariaLabel: active.diff.staged ? 'Staged version' : 'Current document' });
+    editor.getModifiedEditor().updateOptions({ ariaLabel: active.diff.history ? `${active.diff.modifiedLabel} version` : active.diff.staged ? 'Staged version' : 'Current document' });
     const revealKey = `${activeId}:${line}:${visible}`;
     const requested = visible ? gitDiffViewport.takeSourceTarget(active.id) : null;
     if (visible && (requested || revealKey !== lastRevealKey)) {
@@ -303,7 +303,7 @@
         const first = active.diff.hunks[0];
         const firstChangedLine = first ? Math.max(1, first.newStart || first.oldStart || 1) : 1;
         if (target === firstChangedLine) revealFirstChangeWhenReady(monaco, active.id, cached, target);
-        if (!active.diff.staged) modifiedEditor.focus();
+        if (!active.diff.staged && !active.diff.history) modifiedEditor.focus();
       } else {
         (cached.sourceSide === 'before' ? editor.getOriginalEditor() : editor.getModifiedEditor()).focus();
       }

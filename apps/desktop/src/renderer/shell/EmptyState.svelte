@@ -7,7 +7,7 @@
   <img class="empty-mark" src="./setdown-mark.svg" alt="Setdown" />
   <div class="wordmark">Setdown</div>
   <h1>Write plain. Read beautifully.</h1>
-  <p>Read Markdown beautifully, then double-click anywhere to edit it.</p>
+  <p>Read Markdown beautifully, <br> then double-click anywhere to edit it.</p>
   <div class="empty-actions">
     <button class="primary-button empty-new" type="button" onclick={actions.newDocument}>New Document</button>
     <button class="secondary-button empty-open" type="button" onclick={actions.openDocument}>Open File</button>

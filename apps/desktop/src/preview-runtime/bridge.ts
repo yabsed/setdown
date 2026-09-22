@@ -98,7 +98,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 if (document.body.dataset.setdownPreviewRuntime === 'lean') content.installInitial();
 const observer = new MutationObserver(() => {
-  sourceAtlas.invalidate(); viewport.schedule(); reader.scheduleHeadings();
+  sourceAtlas.invalidate();
+  // Hydration appends several blocks in separate tasks. Publishing a reading
+  // position for every append repeatedly measures the growing math document.
+  // The final batch publishes once; explicit scroll/resize events still do so.
+  if (content.pendingCount === 0) viewport.schedule();
+  reader.scheduleHeadings();
 });
 observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true,
   attributeFilter: ['style', 'class', 'data-source-line', 'data-processed'] });
