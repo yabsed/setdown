@@ -15,6 +15,8 @@ export type GitGraphRequest = { [M in keyof GitGraphMethods]: {
   id: string; root: string; method: M; params: GitGraphMethods[M]['params'];
 } }[keyof GitGraphMethods];
 export type GitGraphResult = GitGraphMethods[keyof GitGraphMethods]['result'];
+/** A canceled IPC request resolves without a graph result. */
+export type GitGraphReply = GitGraphResult | null;
 
 /** Immutable comparison. Omitted base means the selected commit's first parent. */
 export type GitHistorySelection = { root: string; head: string; base?: string; path: string };

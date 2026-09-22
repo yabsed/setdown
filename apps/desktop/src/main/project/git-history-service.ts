@@ -82,6 +82,11 @@ export class GitHistoryService {
           return await backend.getFileDiff('current', request.params.base, request.params.head, request.params.path, 3, controller.signal);
         default: throw new Error('Unknown graph operation.');
       }
+    } catch (error) {
+      // Upstream currently turns an aborted Git child process into git_unavailable.
+      // A canceled IPC request has no result to deliver, regardless of that error.
+      if (controller.signal.aborted) return null;
+      throw error;
     } finally { session.requests.delete(request.id); }
   }
 

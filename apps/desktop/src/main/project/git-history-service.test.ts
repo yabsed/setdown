@@ -2,8 +2,9 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { EventEmitter } from 'node:events';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, expect, test } from 'vitest';
-import type { GitGraphPage } from '@web-git-graph/protocol';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { LocalGitBackend } from '@web-git-graph/node';
+import { GitGraphProtocolError, type GitGraphPage } from '@web-git-graph/protocol';
 import type { WindowState } from '../windows/window-state';
 import { GitCli } from './engines/git-cli';
 import { GitHistoryService } from './git-history-service';
@@ -18,7 +19,7 @@ beforeEach(async () => {
   await git('config', 'user.name', 'Graph Test');
   await git('config', 'user.email', 'graph@example.test');
 });
-afterEach(async () => { state.window.emit('closed'); await rm(root, { recursive: true, force: true }); });
+afterEach(async () => { vi.restoreAllMocks(); state.window.emit('closed'); await rm(root, { recursive: true, force: true }); });
 async function commit(message: string) { await git('add', '-A'); await git('commit', '-m', message); return (await git('rev-parse', 'HEAD')).trim(); }
 const history = (cursor?: string) => service.request(state, { id: crypto.randomUUID(), root, method: 'history', params: { limit: 1, cursor } }) as Promise<GitGraphPage>;
 
@@ -65,6 +66,26 @@ test('unborn repositories are empty and binary files are not passed to the Markd
   await writeFile(path.join(root, 'binary.md'), Buffer.from([0, 1, 2]));
   const head = await commit('binary');
   expect((await service.diff(state, { root, head, path: 'binary.md' })).modifiedText).toBeNull();
+});
+
+test('canceled Git processes resolve quietly while real Git failures still reject', async () => {
+  await history(); // Resolve the real backend before controlling its next Git request.
+  let entered!: () => void;
+  const started = new Promise<void>((resolve) => { entered = resolve; });
+  const backend = vi.spyOn(LocalGitBackend.prototype, 'getHistory').mockImplementationOnce((_id, _query, signal) => {
+    return new Promise<GitGraphPage>((_resolve, reject) => {
+      signal?.addEventListener('abort', () => reject(new GitGraphProtocolError('git_unavailable', 'Git command failed.')), { once: true });
+      entered();
+    });
+  });
+  const id = 'canceled-history';
+  const pending = service.request(state, { id, root, method: 'history', params: {} });
+  await started;
+  service.cancel(state, id);
+  expect(await pending).toBeNull();
+
+  backend.mockRejectedValueOnce(new GitGraphProtocolError('git_unavailable', 'Actual Git failure.'));
+  await expect(history()).rejects.toThrow('Actual Git failure.');
 });
 
 test('merged branches retain both parents and review uses the first-parent change list', async () => {

@@ -16,3 +16,9 @@ test('disposing a graph cancels in-flight requests and discards late replies', a
   await expect(provider.getHistory()).rejects.toMatchObject({ name: 'AbortError' });
   expect(requestGitGraph).toHaveBeenCalledTimes(1);
 });
+
+test('a main-process cancellation reply remains an AbortError for the graph', async () => {
+  const requestGitGraph = vi.fn().mockResolvedValue(null);
+  const provider = new ElectronGitGraphProvider({ requestGitGraph, cancelGitGraph: vi.fn() } as unknown as DesktopPort, '/project');
+  await expect(provider.getHistory()).rejects.toMatchObject({ name: 'AbortError' });
+});

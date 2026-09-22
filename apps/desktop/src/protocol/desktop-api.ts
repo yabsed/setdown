@@ -1,4 +1,4 @@
-import type { GitGraphRequest, GitGraphResult, GitHistorySelection } from './git-history';
+import type { GitGraphReply, GitGraphRequest, GitHistorySelection } from './git-history';
 import type { PreviewThemeAssets, PreviewThemeId } from '../core/preview/preview-preferences';
 import type { DiskVersion, DocumentSnapshot } from '../core/document/document';
 import type { RenderResult } from '../core/preview/preview-state';
@@ -286,7 +286,7 @@ export type MarkTexApi = {
   openProjectFile(filePath: string): Promise<DocumentSnapshot | null>;
   searchProject(request: ProjectSearchRequest): Promise<ProjectSearchResult[]>;
   getGitStatus(): Promise<GitSnapshot>;
-  requestGitGraph(request: GitGraphRequest): Promise<GitGraphResult>;
+  requestGitGraph(request: GitGraphRequest): Promise<GitGraphReply>;
   cancelGitGraph(id: string): void;
   getGitHistoryDiff(selection: GitHistorySelection): Promise<GitDiff>;
   getGitDiff(filePath: string, staged: boolean): Promise<GitDiff>;

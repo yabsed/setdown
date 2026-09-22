@@ -20,7 +20,11 @@ export class ElectronGitGraphProvider implements GitGraphProvider {
       };
       combined.addEventListener('abort', abort, { once: true });
       this.desktop.requestGitGraph({ id, root: this.root, method, params } as GitGraphRequest)
-        .then((result) => { if (!combined.aborted) resolve(result as GitGraphMethods[M]['result']); }, reject)
+        .then((result) => {
+          if (combined.aborted) return;
+          if (result === null) reject(new DOMException('Graph request canceled.', 'AbortError'));
+          else resolve(result as GitGraphMethods[M]['result']);
+        }, reject)
         .finally(() => combined.removeEventListener('abort', abort));
     });
   }
