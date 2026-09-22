@@ -42,14 +42,26 @@ The 1.0.7 component defaults to a 420px minimum height. The host overrides this
 to zero and supplies a bounded height. It has no public `layout()` or container
 resize observer. A host `ResizeObserver` reapplies its public `density` property
 on an animation frame, which redraws the visible rows without reloading Git or
-resetting selection. No private fields or shadow selectors are used in product
-code. Revisit this adapter when upstream adds a layout method.
+resetting selection. Revisit this adapter when upstream adds a layout method.
+
+`git-graph-theme.css` is the sole presentation adapter for the open shadow root.
+Version 1.0.7 has no CSS parts or configurable lane palette: the adapter styles
+its toolbar, rows, refs, menus and seven SVG palette attributes. It uses Setdown
+surface/selection tokens, subdued distinguishable lane colors and the shared SCM
+section heading. Upstream still owns layout and interactions; no vendor files
+are changed. Check these selectors, palette attributes, light/dark themes and
+branch/menu behavior when updating the pinned package. The public comfortable
+row density keeps virtualization and actual row heights in agreement.
 
 Graph avatars stay disabled. Theme selection is owned by Setdown. Graph
 keyboard input owns its own Escape/Find behavior instead of triggering the
 document's source/reader shortcuts. Checkout/cherry-pick/branch creation are not
 provided by this read-only integration; existing Source Control mutations keep
-their existing UI.
+their existing UI. The Graph heading also exposes Fetch (`fetch --all --prune`),
+Pull (`pull --ff-only`), Push (`push`) and Refresh through those existing actions.
+Remote operations share Source Control's busy lock and error display; Refresh
+updates repository status and graph history. No force push or implicit merge is
+introduced.
 
 ## Validation
 

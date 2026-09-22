@@ -11,6 +11,8 @@ const exec = promisify(execFile);
 test('Graph resizes, refreshes and opens immutable Markdown revisions in existing review', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-history-'));
   const configRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-history-config-'));
+  const remote = await mkdtemp(path.join(os.tmpdir(), 'setdown-history-remote-'));
+  const peer = await mkdtemp(path.join(os.tmpdir(), 'setdown-history-peer-'));
   const file = path.join(root, 'note.md');
   const git = (...args: string[]) => exec('git', args, { cwd: root });
   let app: Awaited<ReturnType<typeof electron.launch>> | undefined;
@@ -24,6 +26,9 @@ test('Graph resizes, refreshes and opens immutable Markdown revisions in existin
     await writeFile(file, '# Second revision\n\n$$x^2 + y^2$$\n');
     await git('commit', '-am', 'Revise document');
     const second = (await git('rev-parse', 'HEAD')).stdout.trim();
+    await exec('git', ['init', '--bare', remote]);
+    await git('remote', 'add', 'origin', remote);
+    await git('push', '-u', 'origin', 'main');
     await writeFile(file, '# Working document\n');
     const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
     app = await electron.launch({ args: ['.'], env: { ...env, XDG_CONFIG_HOME: configRoot } });
@@ -41,6 +46,23 @@ test('Graph resizes, refreshes and opens immutable Markdown revisions in existin
     await expect(graph.locator('.row')).toHaveCount(2);
     const pane = window.getByRole('region', { name: 'Git history', exact: true });
     const separator = window.getByRole('button', { name: 'Resize Git Graph' });
+    // The pinned shadow adapter must survive theme changes and expose the
+    // upstream branch picker, without the standalone table/duplicate toolbar.
+    await expect(graph.locator('.header')).toBeHidden();
+    await expect(graph.locator('.refresh')).toBeHidden();
+    await expect(graph.locator('.row').first()).toHaveCSS('font-size', '11px');
+    await expect(graph.locator('.row').first()).toHaveCSS('height', '24px');
+    await graph.getByRole('button', { name: 'Select branches and tags' }).click();
+    await expect(graph.locator('.menu')).toBeVisible();
+    await graph.getByRole('button', { name: 'Select branches and tags' }).click();
+    await expect(graph.locator('.menu')).toHaveCount(0);
+    await window.screenshot({ path: test.info().outputPath('graph-light.png') });
+    await app.evaluate(({ Menu }) => { Menu.getApplicationMenu()?.getMenuItemById('preview-theme-night')?.click(); });
+    await expect(graph).toHaveAttribute('theme', 'dark');
+    await window.screenshot({ path: test.info().outputPath('graph-dark.png') });
+    await app.evaluate(({ Menu }) => { Menu.getApplicationMenu()?.getMenuItemById('preview-theme-github-light')?.click(); });
+    await expect(graph).toHaveAttribute('theme', 'light');
+
     const before = (await pane.boundingBox())!;
     const handle = (await separator.boundingBox())!;
     await window.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
@@ -49,6 +71,8 @@ test('Graph resizes, refreshes and opens immutable Markdown revisions in existin
     await separator.press('ArrowDown');
     const toggle = pane.getByRole('button', { name: 'Graph', exact: true });
     await toggle.click(); await expect(graph).toHaveCount(0);
+    await expect(pane.getByRole('button')).toHaveCount(1);
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await toggle.click(); await expect(graph.locator('.row')).toHaveCount(2);
     await graph.locator(`.row[data-oid="${second}"]`).click();
     await graph.locator('.tree-file').click();
@@ -80,10 +104,34 @@ test('Graph resizes, refreshes and opens immutable Markdown revisions in existin
     await expect(graph.locator('.row')).toHaveCount(3);
     await expect(modified.locator('.view-lines')).toContainText('First revision');
     expect(Math.abs((await pane.boundingBox())!.height - height)).toBeLessThan(2);
+    // Exercise the toolbar against a local bare remote, never a real server.
+    await exec('git', ['clone', '-b', 'main', remote, peer]);
+    await exec('git', ['config', 'user.name', 'Peer'], { cwd: peer });
+    await exec('git', ['config', 'user.email', 'peer@example.test'], { cwd: peer });
+    await pane.getByRole('button', { name: 'Push', exact: true }).click();
+    await expect.poll(async () => (await exec('git', ['rev-parse', 'refs/heads/main'], { cwd: remote })).stdout.trim())
+      .toBe((await git('rev-parse', 'HEAD')).stdout.trim());
+    await exec('git', ['pull', '--ff-only'], { cwd: peer });
+    await writeFile(path.join(peer, 'remote.md'), '# From remote\n');
+    await exec('git', ['add', '.'], { cwd: peer });
+    await exec('git', ['commit', '-m', 'Remote addition'], { cwd: peer });
+    await exec('git', ['push'], { cwd: peer });
+    await expect(pane.getByRole('button', { name: 'Fetch', exact: true })).toBeEnabled();
+    await pane.getByRole('button', { name: 'Fetch', exact: true }).click();
+    await expect(graph.locator('.row').filter({ hasText: 'Remote addition' })).toHaveCount(1);
+    await expect(pane.getByRole('button', { name: 'Pull', exact: true })).toBeEnabled();
+    await pane.getByRole('button', { name: 'Pull', exact: true }).click();
+    await expect.poll(async () => (await git('log', '-1', '--format=%s')).stdout.trim()).toBe('Remote addition');
+    expect(await readFile(path.join(root, 'remote.md'), 'utf8')).toBe('# From remote\n');
+    await expect(pane.getByRole('button', { name: 'Refresh Git Graph' })).toBeEnabled();
+    await pane.getByRole('button', { name: 'Refresh Git Graph' }).click();
+    await expect(graph.locator('.row').filter({ hasText: 'Remote addition' })).toHaveCount(1);
     expect(errors).toEqual([]);
   } finally {
     if (app) await disposeApplication(app);
     await rm(root, { recursive: true, force: true });
     await rm(configRoot, { recursive: true, force: true });
+    await rm(remote, { recursive: true, force: true });
+    await rm(peer, { recursive: true, force: true });
   }
 });

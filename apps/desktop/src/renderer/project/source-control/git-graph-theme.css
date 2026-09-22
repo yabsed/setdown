@@ -1,0 +1,67 @@
+/* Presentation adapter for @web-git-graph/web 1.0.7's open shadow root.
+   Keep upstream history, virtualization, lane geometry and interaction intact.
+   Recheck these selectors and SVG palette values when upgrading the package. */
+:host([theme]) {
+  --wgg-bg: var(--app-chrome);
+  --wgg-panel: var(--app-chrome);
+  --wgg-panel-raised: var(--app-raised-surface);
+  --wgg-ink: var(--app-text);
+  --wgg-muted: var(--app-muted-text);
+  --wgg-faint: var(--app-subtle-text);
+  --wgg-line: var(--app-border);
+  --wgg-hover: var(--app-hover);
+  --wgg-selected: color-mix(in srgb, var(--app-focus-ring) 14%, var(--app-hover));
+  --wgg-accent: var(--app-focus-ring);
+  --wgg-warning: var(--app-warning-text);
+  --lane-0: color-mix(in srgb, var(--app-focus-ring) 75%, var(--app-muted-text));
+  --lane-1: #88779f;
+  --lane-2: #648b75;
+  --lane-3: #aa8455;
+  --lane-4: #ac768b;
+  --lane-5: #598f99;
+  --lane-6: #8c9060;
+  height: 100%; min-height: 0; border: 0; font-family: inherit;
+}
+:host([theme="dark"]) {
+  --lane-1: #ab98c1; --lane-2: #8bae98; --lane-3: #c3a070;
+  --lane-4: #ca93a8; --lane-5: #80afb8; --lane-6: #acaf83;
+}
+/* A small filter line, followed directly by the history. */
+.toolbar { min-height: 26px; padding: 2px 8px; gap: 4px; border-bottom: 0; font-size: 10px; }
+.branch-control { flex: 1; min-width: 0; }
+.branch-control > strong, .remote-control, .repository-name, .tools { display: none; }
+.ref-select { flex: 1; height: 22px; max-width: none; padding: 0 5px; gap: 6px; border: 0; background: transparent; color: var(--app-muted-text); font: inherit; text-align: left; }
+.ref-select::before { content: ''; width: 12px; height: 12px; flex: 0 0 12px; background: currentColor; mask: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"%3E%3Cg fill="none" stroke="black" stroke-width="1.5"%3E%3Ccircle cx="4" cy="3" r="1.5"/%3E%3Ccircle cx="4" cy="13" r="1.5"/%3E%3Ccircle cx="12" cy="4" r="1.5"/%3E%3Cpath d="M4 4.5v7M12 5.5c0 4-8 1-8 5"/%3E%3C/g%3E%3C/svg%3E') center / contain no-repeat; }
+.ref-select-label { flex: 1; }
+.history { grid-template-rows: minmax(0, 1fr); }
+.header { display: none; }
+.row { font-size: 11px; border-bottom: 0; padding-right: 8px; }
+.subject { gap: 5px; }
+/* Keep a commit title readable even when local and remote refs share a row.
+   Full ref names remain available through upstream's title and branch menu. */
+.message { order: 0; }
+.refs { order: 1; flex: 0 1 auto; min-width: 0; max-width: 50%; overflow: hidden; }
+.ref { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ref { font-size: 9px; line-height: 14px; padding: 0 4px; font-weight: 500; }
+.ref, .ref.remote, .ref.tag, .ref.stash { color: var(--app-muted-text); border-color: var(--app-border); background: var(--app-hover); }
+.ref.current { color: var(--app-text); border-color: color-mix(in srgb, var(--lane-0) 40%, var(--app-border)); background: color-mix(in srgb, var(--lane-0) 12%, var(--app-chrome)); }
+.graph path { stroke-width: 1.5; }
+[stroke="#e3008c"] { stroke: var(--lane-0); }
+[stroke="#007acc"] { stroke: var(--lane-1); }
+[stroke="#00c853"] { stroke: var(--lane-2); }
+[stroke="#ff8c00"] { stroke: var(--lane-3); }
+[stroke="#b180d7"] { stroke: var(--lane-4); }
+[stroke="#00b7c3"] { stroke: var(--lane-5); }
+[stroke="#dcdcaa"] { stroke: var(--lane-6); }
+[fill="#e3008c"] { fill: var(--lane-0); }
+[fill="#007acc"] { fill: var(--lane-1); }
+[fill="#00c853"] { fill: var(--lane-2); }
+[fill="#ff8c00"] { fill: var(--lane-3); }
+[fill="#b180d7"] { fill: var(--lane-4); }
+[fill="#00b7c3"] { fill: var(--lane-5); }
+[fill="#dcdcaa"] { fill: var(--lane-6); }
+.inline-details, .menu { font-size: 11px; }
+.menu { background: var(--app-raised-surface); border-color: var(--app-border); box-shadow: 0 4px 14px var(--app-shadow); }
+button:focus-visible, input:focus-visible { outline: 1px solid var(--app-focus-ring); outline-offset: -1px; }
+.action.primary { color: var(--app-surface); background: var(--app-text); border-color: var(--app-text); }
+* { scrollbar-width: thin; scrollbar-color: var(--app-strong-border) transparent; }

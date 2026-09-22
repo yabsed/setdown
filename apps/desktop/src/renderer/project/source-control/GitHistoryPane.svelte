@@ -8,6 +8,7 @@
   import { normalizePreviewTheme } from '../../../core/preview/preview-preferences';
   import { project } from '../project-state.svelte';
   import { ElectronGitGraphProvider } from './git-graph-provider';
+  import graphStyles from './git-graph-theme.css?inline';
 
   let { actions, root }: { actions: AppActions; root: string } = $props();
   const storageKey = 'setdown:git-graph-panel';
@@ -72,10 +73,14 @@
       if (disposed) return;
       defineWebGitGraph();
       element = document.createElement('web-git-graph') as WebGitGraphElement;
-      element.density = 'compact';
+      element.density = 'comfortable';
       element.columns = '';
       element.avatars = false;
-      element.style.cssText = 'height:100%;min-height:0;border:0;--wgg-bg:var(--app-chrome);--wgg-panel:var(--app-chrome);--wgg-panel-raised:var(--app-chrome);--wgg-ink:var(--app-text);--wgg-muted:var(--app-muted-text);--wgg-line:var(--app-border);--wgg-hover:var(--app-hover);--wgg-accent:var(--app-focus-ring)';
+      // Upstream exposes theme tokens but no CSS parts for its toolbar/rows.
+      // Keep this pinned-version presentation adapter separate from its engine.
+      const style = document.createElement('style');
+      style.textContent = graphStyles;
+      element.shadowRoot!.append(style);
       element.setAttribute('hosted', '');
       const applyTheme = () => {
         if (element) element.theme = themeProfile(normalizePreviewTheme(document.documentElement.dataset.theme)).appearance;
@@ -106,7 +111,7 @@
           // 1.0.7 has no public layout() or container observer. Reapplying its
           // public density setting redraws the visible window without fetching,
           // resetting selection, or reaching into the component's shadow DOM.
-          if (!disposed && element) element.density = 'compact';
+          if (!disposed && element) element.density = 'comfortable';
         });
       });
       resizeObserver.observe(container);
@@ -131,18 +136,33 @@
 </script>
 
 <section class="git-history-pane" aria-label="Git history" bind:this={pane}
-  style:flex-basis={expanded ? `${ratio * 100}%` : '30px'}>
+  style:flex-basis={expanded ? `${ratio * 100}%` : '24px'}>
   {#if expanded}
     <button type="button" class="history-resize" aria-label="Resize Git Graph"
       title="Drag to resize Graph; use arrow keys when focused"
       onpointerdown={resize} onkeydown={resizeKey}></button>
   {/if}
-  <header>
-    <button type="button" class="history-toggle" aria-expanded={expanded} onclick={toggle}>
-      <span aria-hidden="true">{expanded ? '⌄' : '›'}</span> Graph
+  <header class="scm-heading">
+    <button type="button" class="scm-heading-toggle" aria-label="Graph" aria-expanded={expanded} onclick={toggle}>
+      <svg class:is-open={expanded} viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg><strong>GRAPH</strong>
+    </button>
+    {#if expanded}
+    <button type="button" class="history-action" aria-label="Fetch" title="Fetch from all remotes"
+      disabled={!project.git?.repository || project.gitBusy} aria-busy={project.gitBusy}
+      onclick={() => actions.runProjectGitRemote('fetch')}>
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v7" stroke-dasharray="1 2" /><path d="m5 6 3 3 3-3M3 10v3h10v-3" /></svg>
+    </button>
+    <button type="button" class="history-action" aria-label="Pull" title="Pull (fast-forward only)"
+      disabled={!project.git?.repository || project.gitBusy} onclick={() => actions.runProjectGitRemote('pull')}>
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m-3-3 3 3 3-3M3 11v2h10v-2" /></svg>
+    </button>
+    <button type="button" class="history-action" aria-label="Push" title="Push"
+      disabled={!project.git?.repository || project.gitBusy} onclick={() => actions.runProjectGitRemote('push')}>
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 10V2M5 5l3-3 3 3M3 11v2h10v-2" /></svg>
     </button>
     <button type="button" class="history-refresh" aria-label="Refresh Git Graph" title="Refresh Graph"
-      disabled={!expanded} onclick={() => { error = ''; graph?.refresh(); }}>↻</button>
+      disabled={!expanded || project.gitBusy} onclick={() => { error = ''; actions.refreshProjectGit(); graph?.refresh(); }}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 6a5 5 0 1 0 .1 4M13 2v4H9" /></svg></button>
+    {/if}
   </header>
   {#if expanded}
     <div class="history-graph" bind:this={host}></div>
@@ -151,12 +171,8 @@
 </section>
 
 <style>
-  .git-history-pane { position: relative; display: flex; flex-direction: column; flex-grow: 0; flex-shrink: 0; min-height: 30px; min-width: 0; border-top: 1px solid var(--app-border); }
-  header { display: flex; align-items: center; flex: 0 0 29px; padding: 0 8px; }
-  header button { color: var(--app-text); background: transparent; border: 0; font: inherit; font-size: 12px; cursor: pointer; }
-  .history-toggle { flex: 1; text-align: left; font-weight: 600; }
-  .history-toggle span { display: inline-block; width: 14px; }
-  .history-refresh { font-size: 18px; }
+  .git-history-pane { position: relative; display: flex; flex-direction: column; flex-grow: 0; flex-shrink: 0; min-height: 24px; min-width: 0; }
+  .history-refresh svg, .history-action svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.5; }
   .history-refresh:disabled { opacity: .4; }
   .history-resize { position: absolute; top: -3px; left: 0; right: 0; height: 6px; padding: 0; border: 0; background: transparent; cursor: row-resize; touch-action: none; z-index: 2; }
   .history-resize:hover, .history-resize:focus-visible { background: var(--app-focus-ring); }
