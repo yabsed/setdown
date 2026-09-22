@@ -124,8 +124,11 @@ export function createTabDrag(options: Options) {
       const id = transferId;
       const clientOutside = event.clientX < 0 || event.clientY < 0
         || event.clientX >= innerWidth || event.clientY >= innerHeight;
-      const screenOutside = event.screenX < window.screenX || event.screenY < window.screenY
-        || event.screenX >= window.screenX + window.outerWidth || event.screenY >= window.screenY + window.outerHeight;
+      const screenPositionKnown = event.screenX !== 0 || event.screenY !== 0;
+      const screenOutside = screenPositionKnown
+        && (event.screenX < window.screenX || event.screenY < window.screenY
+          || event.screenX >= window.screenX + window.outerWidth
+          || event.screenY >= window.screenY + window.outerHeight);
       // Chromium may report (0, 0) or the last in-window client coordinate for a
       // real OS dragend. The top-level dragleave is the reliable signal that the
       // pointer crossed the window boundary.

@@ -10,6 +10,7 @@ import type { PreviewManager } from '../preview/preview-manager';
 type Transfer = {
   sourceWebContentsId: number; tab: TransferableTab; claimedByWebContentsId: number | null;
   expiresAt: number; detachPosition: { x: number; y: number } | null; previewAdopted: boolean;
+  detachTimer: ReturnType<typeof setTimeout> | null;
   preparedWindow: BrowserWindow | null; previewScrollPosition: Promise<{ x: number; y: number }>;
   previewBand: Promise<BandLine[]>; sourceContentSize: { width: number; height: number } | null;
 };
@@ -18,6 +19,8 @@ type Options = {
   createWindow: (position: { x: number; y: number } | null, initialDocument: null,
     showWhenReady: boolean, contentSize: { width: number; height: number } | null) => BrowserWindow;
 };
+const DETACH_CLAIM_GRACE_MS = 120;
+
 export class TabTransferManager {
   private readonly transfers = new Map<string, Transfer>();
   constructor(private readonly options: Options) {}
@@ -44,7 +47,7 @@ export class TabTransferManager {
     const preview = ownedPreview?.ownerWebContentsId === sourceId ? ownedPreview.view.webContents : undefined;
     const transfer: Transfer = {
       sourceWebContentsId: sourceId, tab, claimedByWebContentsId: null, expiresAt: Date.now() + 60_000,
-      detachPosition: null, previewAdopted: false,
+      detachPosition: null, detachTimer: null, previewAdopted: false,
       preparedWindow: this.options.createWindow(null, null, false, this.contentSize(sourceId)),
       sourceContentSize: this.contentSize(sourceId),
       previewScrollPosition: preview?.executeJavaScript('({ x: window.scrollX, y: window.scrollY })')
@@ -68,6 +71,7 @@ export class TabTransferManager {
     setTimeout(() => {
       const pending = this.transfers.get(transferId);
       if (!pending || pending.expiresAt > Date.now()) return;
+      if (pending.detachTimer) clearTimeout(pending.detachTimer);
       if (pending.preparedWindow && !pending.preparedWindow.isDestroyed()) pending.preparedWindow.destroy();
       this.transfers.delete(transferId);
     }, 60_500);
@@ -106,6 +110,8 @@ export class TabTransferManager {
     const transfer = this.transfers.get(transferId);
     if (!transfer || transfer.expiresAt < Date.now()) { this.transfers.delete(transferId); return null; }
     if (transfer.sourceWebContentsId === destinationId || transfer.claimedByWebContentsId !== null) return null;
+    if (transfer.detachTimer) clearTimeout(transfer.detachTimer);
+    transfer.detachTimer = null;
     transfer.claimedByWebContentsId = destinationId;
     if (transfer.preparedWindow && !transfer.preparedWindow.isDestroyed()
       && transfer.preparedWindow.webContents.id !== destinationId) {
@@ -117,6 +123,7 @@ export class TabTransferManager {
   private release(sourceId: number, transferId: string) {
     const transfer = this.transfers.get(transferId);
     if (!transfer || transfer.sourceWebContentsId !== sourceId) return;
+    if (transfer.detachTimer) clearTimeout(transfer.detachTimer);
     const destination = transfer.claimedByWebContentsId === null ? null : this.options.stateFor(transfer.claimedByWebContentsId)?.window;
     this.transfers.delete(transferId);
     if (!destination || destination.isDestroyed()) return;
@@ -134,7 +141,21 @@ export class TabTransferManager {
   private detach(sourceId: number, transferId: string, x: unknown, y: unknown) {
     const transfer = this.transfers.get(transferId);
     if (!transfer || transfer.sourceWebContentsId !== sourceId || transfer.claimedByWebContentsId !== null) return;
-    transfer.detachPosition = { x: Math.round(Number(x) - 120), y: Math.round(Number(y) - 18) };
+    const screenX = Number(x), screenY = Number(y);
+    if (!Number.isFinite(screenX) || !Number.isFinite(screenY)) return;
+    transfer.detachPosition = { x: Math.round(screenX - 120), y: Math.round(screenY - 18) };
+    if (transfer.detachTimer) clearTimeout(transfer.detachTimer);
+    // A drop in another Setdown renderer and source dragend are delivered over
+    // different IPC queues. Give the destination claim one bounded turn before
+    // the hidden prepared window may claim the transfer.
+    transfer.detachTimer = setTimeout(() => this.commitDetach(sourceId, transferId), DETACH_CLAIM_GRACE_MS);
+  }
+
+  private commitDetach(sourceId: number, transferId: string) {
+    const transfer = this.transfers.get(transferId);
+    if (!transfer || transfer.sourceWebContentsId !== sourceId || transfer.claimedByWebContentsId !== null
+      || !transfer.detachPosition) return;
+    transfer.detachTimer = null;
     const destination = transfer.preparedWindow && !transfer.preparedWindow.isDestroyed()
       ? transfer.preparedWindow : this.options.createWindow(transfer.detachPosition, null, false, this.contentSize(sourceId));
     transfer.preparedWindow = destination;
@@ -165,6 +186,7 @@ export class TabTransferManager {
     ipcMain.on('tabs:cancel-transfer', (event, id) => {
       const transfer = this.transfers.get(id);
       if (transfer?.sourceWebContentsId !== event.sender.id || transfer.claimedByWebContentsId !== null) return;
+      if (transfer.detachTimer) clearTimeout(transfer.detachTimer);
       if (transfer.preparedWindow && !transfer.preparedWindow.isDestroyed()) transfer.preparedWindow.destroy();
       this.transfers.delete(id);
     });

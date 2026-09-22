@@ -212,6 +212,9 @@ is pinned until it becomes hidden. `active` on a media surface means visible;
 PDF search commands additionally require command focus. Splitting, moving and
 collapsing groups must preserve Monaco models and Undo histories.
 
-`editor-groups.spec.ts`, `editor-groups.test.ts`, `preview-presentation.test.ts`, and
-`media-cache.test.ts` cover these guarantees. Keep ordinary single-group preview
-and Git-review cycles in the same 48-bucket performance comparison.
+`editor-groups.spec.ts`, `tab-detach.spec.ts`, `editor-groups.test.ts`,
+`preview-presentation.test.ts`, and `media-cache.test.ts` cover these guarantees.
+The detach test forces source `dragend` to reach main before an existing window's
+drop claim and verifies that the existing window still receives the live native
+preview. Keep ordinary single-group preview and Git-review cycles in the same
+48-bucket performance comparison.

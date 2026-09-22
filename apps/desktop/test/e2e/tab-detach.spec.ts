@@ -8,7 +8,7 @@ import { disposeApplication } from './electron-app';
 async function shellWindows(application: Awaited<ReturnType<typeof electron.launch>>) {
   const candidates = application.windows();
   const matches = await Promise.all(candidates.map(async (page) =>
-    await page.locator('#app').count() > 0 ? page : null));
+    await page.locator('#app').count().catch(() => 0) > 0 ? page : null));
   return matches.filter((page): page is NonNullable<typeof page> => page !== null);
 }
 
@@ -145,6 +145,47 @@ test('detaching a tab restores its preview iframe at the same semantic position'
       await expect.poll(() => application.evaluate(({ BrowserWindow }) =>
         BrowserWindow.getFocusedWindow()?.getTitle() ?? '')).toContain('sample.md');
     }
+
+    // Move the tab back to the original window. Force source dragend to reach
+    // main before the destination drop claim, reproducing the cross-renderer
+    // IPC order seen in the screencast.
+    const transferId = await detachedWindow!.locator('.document-tab', { hasText: 'sample.md' })
+      .evaluate((element) => {
+        const dataTransfer = new DataTransfer();
+        element.dispatchEvent(new DragEvent('dragstart', {
+          bubbles: true, cancelable: true, dataTransfer, screenX: 640, screenY: 420,
+        }));
+        return dataTransfer.getData('application/x-setdown-tab');
+      });
+    expect(transferId).not.toBe('');
+    const destinationTransfer = await sourceWindow.evaluateHandle((id) => {
+      const dataTransfer = new DataTransfer();
+      dataTransfer.setData('application/x-setdown-tab', id);
+      return dataTransfer;
+    }, transferId);
+    const target = sourceWindow.locator('.group-body').first();
+    const targetBox = (await target.boundingBox())!;
+    const point = { clientX: targetBox.x + targetBox.width / 2,
+      clientY: targetBox.y + targetBox.height / 2, dataTransfer: destinationTransfer };
+    await target.dispatchEvent('dragover', point);
+    await expect(sourceWindow.locator('.group-drop-overlay')).toBeVisible();
+    await detachedWindow!.locator('.document-tab', { hasText: 'sample.md' }).evaluate((element) => {
+      const dataTransfer = new DataTransfer();
+      element.dispatchEvent(new DragEvent('dragleave', {
+        bubbles: true, cancelable: true, dataTransfer, relatedTarget: null,
+      }));
+      element.dispatchEvent(new DragEvent('dragend', {
+        bubbles: true, cancelable: true, dataTransfer,
+        clientX: -1, clientY: 80, screenX: 640, screenY: 420,
+      }));
+    });
+    await sourceWindow.waitForTimeout(20);
+    await target.dispatchEvent('drop', point);
+    await destinationTransfer.dispose();
+
+    await expect.poll(async () => (await shellWindows(application)).length).toBe(1);
+    await expect(sourceWindow.locator('.tab-name')).toHaveText(['Untitled.md', 'sample.md']);
+    await expect.poll(sourcePreview.visibleUrl).toBe(activePreviewUrl);
   } finally {
     await disposeApplication(application);
     await rm(configRoot, { recursive: true, force: true });

@@ -31,6 +31,12 @@ test('first Working Tree opens directly in Monaco without an ordinary Viewer', a
     }, root);
     await Promise.all([window.waitForEvent('load'), window.reload()]);
     await focusApplication(application);
+    // A synthetic/native dragend may report screen (0, 0). Keep the window
+    // away from the screen origin so that an in-window cancel cannot be
+    // mistaken for a detach based on that sentinel coordinate.
+    await application.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows().find((candidate) => !candidate.isDestroyed())?.setPosition(120, 80);
+    });
     await window.getByRole('button', { name: 'Toggle Folder Tools' }).click();
     await window.getByRole('button', { name: 'Source Control', exact: true }).click();
     await application.evaluate(({ ipcMain }) => {

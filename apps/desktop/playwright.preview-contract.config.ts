@@ -18,6 +18,7 @@ export default defineConfig(base, {
     'review-preparation-layout.spec.ts',
     'verified-review-position.spec.ts',
     'source-atlas-review.spec.ts',
+    'tab-detach.spec.ts',
     'zero-latency-architecture.spec.ts',
   ],
 });
