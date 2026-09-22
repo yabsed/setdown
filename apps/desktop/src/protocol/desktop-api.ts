@@ -80,6 +80,13 @@ export type ProjectSearchRequest = {
   documents: ProjectSearchDocument[];
 };
 
+/** Responsive native-view geometry owned by the renderer's editor-group layout. */
+export type PreviewLayoutGuide = {
+  viewport: { width: number; height: number };
+  area: PreviewBounds;
+  previews: Array<{ tabId: string; bounds: PreviewBounds; group: PreviewBounds }>;
+};
+
 export type GitChange = {
   path: string;
   filePath: string;
@@ -255,6 +262,7 @@ export type MarkTexApi = {
     tabId: string | null,
     bounds: PreviewBounds | null,
     backgrounds?: Array<{ tabId: string; bounds: PreviewBounds }>,
+    layout?: PreviewLayoutGuide,
   ): void;
   /**
    * 지금 보이는 Preview를 PNG data URL로 얻는다. DOM overlay가 native view

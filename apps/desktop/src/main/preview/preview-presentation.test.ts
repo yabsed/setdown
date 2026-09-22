@@ -37,6 +37,7 @@ const bounds = { x: 20, y: 40, width: 600, height: 450 };
 function fixture() {
   const children: WebContentsView[] = [];
   let focusCount = 0;
+  let contentSize: [number, number] = [900, 700];
   const owner = {
     contentView: {
       children,
@@ -45,7 +46,7 @@ function fixture() {
     },
     webContents: { isDestroyed: () => false, getZoomFactor: () => 1, focus() { focusCount += 1; } },
     isDestroyed: () => false, isFocused: () => true, isVisible: () => true,
-    getContentSize: () => [900, 700],
+    getContentSize: () => contentSize,
   };
   const manager = new PreviewManager({
     preload: '', stateFor: () => ({ window: owner } as unknown as WindowState),
@@ -56,7 +57,8 @@ function fixture() {
   const front = manager.views.get('git-diff:doc:a')!;
   const back = manager.views.get('git-diff:doc:b')!;
   manager.show(1, 'git-diff:doc:a', bounds);
-  return { manager, front, back, owner, children, focusCount: () => focusCount };
+  return { manager, front, back, owner, children, focusCount: () => focusCount,
+    setContentSize: (width: number, height: number) => { contentSize = [width, height]; } };
 }
 
 test('ordinary document preparation sizes a hidden view without exposing or focusing it', () => {
@@ -300,4 +302,23 @@ test('a group layout updates foreground and backgrounds in one presentation', ()
   assert.deepEqual(f.manager.views.get('left')!.view.getBounds(), background);
   assert.equal(f.manager.views.get('right')!.view.getVisible(), true);
   assert.equal(f.manager.views.get('left')!.view.getVisible(), true);
+});
+
+test('owner resize preserves group ratios, fixed chrome and terminal inset', () => {
+  const f = fixture();
+  f.manager.create(1, 'left'); f.manager.create(1, 'right');
+  const left = { x: 100, y: 40, width: 400, height: 460 };
+  const right = { x: 500, y: 40, width: 400, height: 460 };
+  f.manager.layout(1, 'right', right, [{ tabId: 'left', bounds: left }], {
+    viewport: { width: 900, height: 700 },
+    area: { x: 100, y: 0, width: 800, height: 500 },
+    previews: [
+      { tabId: 'left', bounds: left, group: { x: 100, y: 0, width: 400, height: 500 } },
+      { tabId: 'right', bounds: right, group: { x: 500, y: 0, width: 400, height: 500 } },
+    ],
+  });
+  f.setContentSize(1100, 800);
+  f.manager.resizeOwner(1, 1100, 800);
+  assert.deepEqual(f.manager.views.get('left')!.view.getBounds(), { x: 100, y: 40, width: 500, height: 560 });
+  assert.deepEqual(f.manager.views.get('right')!.view.getBounds(), { x: 600, y: 40, width: 500, height: 560 });
 });

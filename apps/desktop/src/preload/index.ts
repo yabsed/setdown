@@ -72,8 +72,8 @@ const api: MarkTexApi = {
   releaseTabTransferSource: (transferId) => ipcRenderer.send('tabs:release-source', transferId),
   createPreview: (tabId) => ipcRenderer.send('preview:create', tabId),
   setBackgroundPreviews: (previews) => ipcRenderer.send('preview:backgrounds', previews),
-  showPreview: (tabId, bounds, backgrounds) =>
-    ipcRenderer.send('preview:show', { tabId, bounds, backgrounds }),
+  showPreview: (tabId, bounds, backgrounds, layout) =>
+    ipcRenderer.send('preview:show', { tabId, bounds, backgrounds, layout }),
   capturePreview: (tabId) => ipcRenderer.invoke('preview:capture', tabId),
   sendPreviewCommand: (tabId, message) => ipcRenderer.send('preview:command', { tabId, message }),
   destroyPreview: (tabId) => ipcRenderer.send('preview:destroy', tabId),

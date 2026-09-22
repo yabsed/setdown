@@ -11,7 +11,7 @@ import { gitDiffViewport, type GitDiffViewportPort } from './git-diff-viewport';
 import { liveDocumentModels, type LiveDocumentModelPort } from '../../editor/live-document-model';
 import type {
   DocumentSnapshot, GitDiff, GitRemoteAction, GitReviewState, GitSnapshot,
-  PreviewBounds, PreviewMessage,
+  PreviewBounds, PreviewLayoutGuide, PreviewMessage,
 } from '../../../protocol/desktop-api';
 import type { DesktopPort } from '../../ports/desktop-port';
 import type { WorkingTreeEdit } from '../../view-state.svelte';
@@ -550,7 +550,7 @@ export class SourceControlController {
           this.pendingPreviewPosition = null;
           // Exact latest content and final hidden position are both accepted.
           // No extra position command or fixed frame delay follows this show.
-          this.options.desktop.showPreview(shownId, bounds);
+          this.showPreview(shownId, bounds);
           this.didPresent(tab, shownId, ready.revision, bounds);
           this.copyPreviewState(tab);
         },
@@ -561,13 +561,23 @@ export class SourceControlController {
     // Preserve the no-edit warm route: the page validates its local position
     // proof, without another preparation ACK or timer on Escape.
     this.presentation.cancel();
-    this.options.desktop.showPreview(shownId, this.bounds);
+    this.showPreview(shownId, this.bounds);
     if (!pending) { reading.presentedBounds = { ...this.bounds }; return; }
     this.pendingPreviewPosition = null;
     if (pending.intent === 'source' || !sameSize) {
       this.options.desktop.sendPreviewCommand(shownId, reviewPositionCommand(target));
     }
     this.didPresent(tab, shownId, ready.revision, this.bounds);
+  }
+
+  private showPreview(id: string, bounds: PreviewBounds): void {
+    const area = { ...bounds };
+    const layout: PreviewLayoutGuide = {
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      area,
+      previews: [{ tabId: id, bounds: { ...bounds }, group: { ...area } }],
+    };
+    this.options.desktop.showPreview(id, bounds, undefined, layout);
   }
 
   private didPresent(tab: GitDiffTabState, id: string, revision: number, bounds: PreviewBounds): void {

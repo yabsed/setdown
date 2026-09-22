@@ -75,6 +75,27 @@ test('wheel scrolls without selection; nested groups retain live native readers 
       });
     };
     await expect.poll(nativeLayoutMatches).toBe(true);
+    const terminalTop = (await terminal.boundingBox())!.y;
+    const liveResizeSamples = await app.evaluate(async ({ BrowserWindow }) => {
+      const owner = BrowserWindow.getAllWindows()[0];
+      const [startWidth, height] = owner.getSize();
+      const samples: Array<Array<{ x: number; y: number; width: number; height: number }>> = [];
+      const sample = () => samples.push(owner.contentView.children.filter(view => view.getVisible())
+        .map(view => view.getBounds()).sort((a, b) => a.x - b.x || a.y - b.y));
+      owner.on('resize', sample);
+      for (const width of [startWidth + 180, startWidth - 140, startWidth + 60]) {
+        owner.setSize(width, height);
+        await new Promise(resolve => setTimeout(resolve, 80));
+      }
+      owner.off('resize', sample);
+      return samples;
+    });
+    expect(liveResizeSamples.length).toBeGreaterThan(0);
+    for (const sample of liveResizeSamples) {
+      expect(sample).toHaveLength(2);
+      expect(sample[0].x + sample[0].width).toBeLessThanOrEqual(sample[1].x + 1);
+      expect(sample.every(box => box.y + box.height <= terminalTop + 1)).toBe(true);
+    }
     for (const [width, height] of [[980, 720], [1220, 840], [1080, 760]]) {
       await app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0].setSize(size[0], size[1]), [width, height]);
       await expect.poll(nativeLayoutMatches).toBe(true);

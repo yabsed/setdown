@@ -21,6 +21,11 @@ export type PreviewViewState = {
   pendingScrollRatio: number | null;
   appliedBounds: Rectangle | null;
 };
+type ResponsiveOwnerLayout = {
+  viewport: Rectangle;
+  area: Rectangle;
+  previews: Map<string, { bounds: Rectangle; group: Rectangle }>;
+};
 type Options = {
   preload: string;
   stateFor: (id: number) => WindowState | null;
@@ -35,6 +40,7 @@ const DEFERRED_HTML = new RegExp(`(<script type="application/json" id="${DEFERRE
 export class PreviewManager {
   private readonly backgrounds = new Map<number, Array<{ tabId: string; bounds: PreviewBounds }>>();
   private readonly foregrounds = new Map<number, { tabId: unknown; bounds: PreviewBounds | null }>();
+  private readonly responsiveLayouts = new Map<number, ResponsiveOwnerLayout>();
   readonly views = new Map<string, PreviewViewState>();
   readonly zoom = new WorkspaceZoom();
   private readonly documents = new Map<string, string>();
@@ -212,9 +218,45 @@ export class PreviewManager {
     this.backgrounds.set(ownerId, entries);
   }
 
-  layout(ownerId: number, tabId: unknown, bounds: PreviewBounds | null, backgrounds: unknown) {
+  layout(ownerId: number, tabId: unknown, bounds: PreviewBounds | null, backgrounds: unknown, guide: unknown = undefined) {
     this.updateBackgrounds(ownerId, backgrounds);
+    this.updateResponsiveLayout(ownerId, guide);
     this.show(ownerId, tabId, bounds);
+    const owner = this.options.stateFor(ownerId)?.window;
+    if (owner && !owner.isDestroyed()) {
+      const [width, height] = owner.getContentSize();
+      this.resizeOwner(ownerId, width, height);
+    }
+  }
+
+  private updateResponsiveLayout(ownerId: number, value: unknown) {
+    if (!value || typeof value !== 'object') { this.responsiveLayouts.delete(ownerId); return; }
+    const candidate = value as { viewport?: { width?: unknown; height?: unknown }; area?: unknown; previews?: unknown };
+    const viewportWidth = Number(candidate.viewport?.width);
+    const viewportHeight = Number(candidate.viewport?.height);
+    const area = readPreviewBounds(candidate.area);
+    const owner = this.options.stateFor(ownerId)?.window;
+    if (!owner || !Number.isFinite(viewportWidth) || viewportWidth <= 0
+      || !Number.isFinite(viewportHeight) || viewportHeight <= 0 || !area
+      || !Array.isArray(candidate.previews)) {
+      this.responsiveLayouts.delete(ownerId);
+      return;
+    }
+    const factor = owner.webContents.getZoomFactor?.() ?? 1;
+    const previews = new Map<string, { bounds: Rectangle; group: Rectangle }>();
+    for (const entry of candidate.previews.slice(0, 64)) {
+      const tabId = typeof entry?.tabId === 'string' ? entry.tabId : null;
+      const bounds = readPreviewBounds(entry?.bounds);
+      const group = readPreviewBounds(entry?.group);
+      const preview = tabId ? this.views.get(tabId) : null;
+      if (!tabId || !bounds || !group || preview?.ownerWebContentsId !== ownerId) continue;
+      previews.set(tabId, { bounds: nativeZoomBounds(bounds, factor), group: nativeZoomBounds(group, factor) });
+    }
+    this.responsiveLayouts.set(ownerId, {
+      viewport: nativeZoomBounds({ x: 0, y: 0, width: viewportWidth, height: viewportHeight }, factor),
+      area: nativeZoomBounds(area, factor),
+      previews,
+    });
   }
 
   show(ownerId: number, tabId: unknown, bounds: PreviewBounds | null) {
@@ -410,11 +452,38 @@ export class PreviewManager {
   setTheme(themeId: PreviewThemeId) { for (const spare of this.spares.values()) this.syncTheme(spare.view, themeId); }
 
   resizeOwner(ownerId: number, contentWidth: number, contentHeight: number) {
-    for (const preview of this.views.values()) {
-      if (preview.ownerWebContentsId !== ownerId || !preview.view.getVisible()) continue;
-      const bounds = preview.view.getBounds();
-      this.applyBounds(preview, { ...bounds,
-        width: Math.max(1, contentWidth - bounds.x), height: Math.max(1, contentHeight - bounds.y),
+    const layout = this.responsiveLayouts.get(ownerId);
+    if (!layout || layout.area.width <= 0 || layout.area.height <= 0) return;
+    const rightInset = Math.max(0, layout.viewport.width - layout.area.x - layout.area.width);
+    const bottomInset = Math.max(0, layout.viewport.height - layout.area.y - layout.area.height);
+    const area = {
+      x: layout.area.x,
+      y: layout.area.y,
+      width: Math.max(1, contentWidth - layout.area.x - rightInset),
+      height: Math.max(1, contentHeight - layout.area.y - bottomInset),
+    };
+    for (const [tabId, rule] of layout.previews) {
+      const preview = this.views.get(tabId);
+      if (!preview || preview.ownerWebContentsId !== ownerId || !preview.view.getVisible()) continue;
+      const leftRatio = (rule.group.x - layout.area.x) / layout.area.width;
+      const topRatio = (rule.group.y - layout.area.y) / layout.area.height;
+      const rightRatio = (rule.group.x + rule.group.width - layout.area.x) / layout.area.width;
+      const bottomRatio = (rule.group.y + rule.group.height - layout.area.y) / layout.area.height;
+      const group = {
+        x: Math.round(area.x + leftRatio * area.width),
+        y: Math.round(area.y + topRatio * area.height),
+        right: Math.round(area.x + rightRatio * area.width),
+        bottom: Math.round(area.y + bottomRatio * area.height),
+      };
+      const leftInset = rule.bounds.x - rule.group.x;
+      const topInset = rule.bounds.y - rule.group.y;
+      const rightInset = rule.group.x + rule.group.width - rule.bounds.x - rule.bounds.width;
+      const bottomInset = rule.group.y + rule.group.height - rule.bounds.y - rule.bounds.height;
+      const x = group.x + leftInset;
+      const y = group.y + topInset;
+      this.applyBounds(preview, { x, y,
+        width: Math.max(1, group.right - rightInset - x),
+        height: Math.max(1, group.bottom - bottomInset - y),
       });
     }
   }
@@ -422,6 +491,7 @@ export class PreviewManager {
   closeOwner(ownerId: number) {
     this.backgrounds.delete(ownerId);
     this.foregrounds.delete(ownerId);
+    this.responsiveLayouts.delete(ownerId);
     this.discardSpare(ownerId);
     for (const [tabId, preview] of this.views) {
       if (preview.ownerWebContentsId !== ownerId) continue;
@@ -450,9 +520,11 @@ export class PreviewManager {
     }
     ipcMain.on('preview:create', (event, tabId) => this.create(event.sender.id, tabId));
     ipcMain.on('preview:backgrounds', (event, entries) => this.setBackgrounds(event.sender.id, entries));
-    ipcMain.on('preview:show', (event, { tabId, bounds, backgrounds }) => {
-      if (backgrounds === undefined) this.show(event.sender.id, tabId, bounds);
-      else this.layout(event.sender.id, tabId, bounds, backgrounds);
+    ipcMain.on('preview:show', (event, { tabId, bounds, backgrounds, layout }) => {
+      if (backgrounds === undefined && layout === undefined) {
+        this.responsiveLayouts.delete(event.sender.id);
+        this.show(event.sender.id, tabId, bounds);
+      } else this.layout(event.sender.id, tabId, bounds, backgrounds, layout);
     });
     ipcMain.handle('preview:capture', (event, tabId) => this.capture(event.sender.id, tabId));
     ipcMain.on('preview:command', (event, { tabId, message }) => this.command(event.sender.id, tabId, message));

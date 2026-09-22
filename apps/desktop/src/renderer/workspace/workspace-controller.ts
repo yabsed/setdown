@@ -121,6 +121,7 @@ export function startWorkspace(desktop: DesktopPort) {
   const reader = new ReaderController({ desktop, shell, frames: previewFrames, tabs: workspace.tabs, active,
     activeId: () => workspace.activeId, initialTheme,
     syncBackgrounds: () => groups?.backgrounds() ?? [],
+    layoutGuide: (previews) => groups?.layoutGuide(previews),
     applyProductTheme: (themeId) => { applyShellTheme(themeId); editor.setTheme(themeId); },
     edit: (anchor) => void surfaces.enterEditor(anchor), anchorChanged: () => { surfaces.publishAnchor(); positions?.schedule(); } });
   const preview = new PreviewSession({ desktop, tabs: workspace.tabs, active,

@@ -1,5 +1,5 @@
 import type { PrimeDocumentCommand } from '../../protocol/preview-preparation';
-import type { PreviewBounds, PreviewHeading, ThemeSnapshot } from '../../protocol/desktop-api';
+import type { PreviewBounds, PreviewHeading, PreviewLayoutGuide, ThemeSnapshot } from '../../protocol/desktop-api';
 import {
   normalizePreviewTheme,
   type PreviewThemeAssets,
@@ -28,6 +28,7 @@ type Options = {
   edit: (anchor: ViewportAnchor) => void;
   anchorChanged: () => void;
   syncBackgrounds?: () => Array<{ tabId: string; bounds: PreviewBounds }>;
+  layoutGuide?: (previews: Array<{ tabId: string; bounds: PreviewBounds }>) => PreviewLayoutGuide | undefined;
 };
 
 type SearchTarget = { line: number; lineOccurrence: number; ordinal: number };
@@ -273,7 +274,7 @@ export class ReaderController {
       && !this.frozen
       && !this.awaiting;
     if (!visible || !tab) {
-      this.options.desktop.showPreview(null, null, backgrounds);
+      this.options.desktop.showPreview(null, null, backgrounds, this.options.layoutGuide?.(backgrounds));
       if (tab?.surface === 'editor' && hasMarkdownPreview(tab.document)) {
         // The reader keeps its layout while the source editor covers it. Prepare
         // at that size without showing/focusing the native preview.
@@ -286,12 +287,14 @@ export class ReaderController {
     }
     const rect = this.options.frames.getBoundingClientRect();
     const reserved = tab.find.open ? 60 : 0;
-    this.options.desktop.showPreview(tab.id, {
+    const bounds = {
       x: rect.left,
       y: rect.top + reserved,
       width: rect.width,
       height: Math.max(0, rect.height - reserved),
-    }, backgrounds);
+    };
+    this.options.desktop.showPreview(tab.id, bounds, backgrounds,
+      this.options.layoutGuide?.([...backgrounds, { tabId: tab.id, bounds }]));
   };
 
   setSuspended(value: boolean) {

@@ -1,4 +1,5 @@
 import type { WorkspaceState } from '../../core/workspace/workspace-state';
+import type { PreviewBounds, PreviewLayoutGuide } from '../../protocol/desktop-api';
 import type { MonacoEditor } from '../adapters/monaco-editor';
 import type { DesktopPort } from '../ports/desktop-port';
 import type { ReaderController } from '../reader/reader-controller';
@@ -50,6 +51,20 @@ export function createGroupRuntime(options: {
     backgroundEntries = available;
     const entries = available.filter(entry => !frozenBackgrounds.has(entry.tabId));
     return entries;
+  }
+  function layoutGuide(entries: Array<{ tabId: string; bounds: PreviewBounds }>): PreviewLayoutGuide {
+    const areaRect = area.getBoundingClientRect();
+    return {
+      viewport: { width: innerWidth, height: innerHeight },
+      area: { x: areaRect.x, y: areaRect.y, width: areaRect.width, height: areaRect.height },
+      previews: entries.flatMap(entry => {
+        const group = workspace.groups.owner(entry.tabId);
+        const element = group && area.querySelector<HTMLElement>(`.editor-group[data-group-id="${group.id}"]`);
+        if (!element) return [];
+        const rect = element.getBoundingClientRect();
+        return [{ ...entry, group: { x: rect.x, y: rect.y, width: rect.width, height: rect.height } }];
+      }),
+    };
   }
   function sync() {
     editor.syncGroups(workspace.groups.groups, workspace.groups.focusedId);
@@ -114,7 +129,7 @@ export function createGroupRuntime(options: {
     if (hidden !== previous) window.dispatchEvent(new CustomEvent('setdown:native-overlay-visibility', { detail: hidden }));
     if (!hidden) sync();
   }
-  return { sync, backgrounds, drag(active: boolean) {
+  return { sync, backgrounds, layoutGuide, drag(active: boolean) {
     const previous = dragging;
     dragging = active;
     manipulationChanged(previous);
