@@ -6,6 +6,14 @@ window session. The graph loads only while Folder Tools / Source Control /
 Graph are visible. History, refs, search, comparison, context menus and virtual
 rows belong to the upstream component, not a Setdown renderer fork.
 
+The default Auto filter follows the checked-out branch and its tracking remote
+branch (or detached HEAD). The upstream picker still offers Show All and manual
+ref selection; an Auto button restores the default. The choice persists for
+the project within the window session. Auto hides badges outside those refs,
+while the provider places selected refs first so the upstream component's
+four-badge cap cannot hide them. Setdown's status snapshot does not expose
+VS Code's optional base ref, so Auto uses the current branch and upstream.
+
 All three `@web-git-graph/{web,node,protocol}` packages are pinned to 1.0.7.
 `vendor/web-git-graph` is an upstream reference; production builds use npm and
 do not require submodule initialization. No React runtime or HTTP server is
@@ -44,14 +52,20 @@ resize observer. A host `ResizeObserver` reapplies its public `density` property
 on an animation frame, which redraws the visible rows without reloading Git or
 resetting selection. Revisit this adapter when upstream adds a layout method.
 
-`git-graph-theme.css` is the sole presentation adapter for the open shadow root.
+`git-graph-theme.css` and `git-graph-presentation.ts` are the isolated
+presentation adapters for the open shadow root.
 Version 1.0.7 has no CSS parts or configurable lane palette: the adapter styles
 its toolbar, rows, refs, menus and seven SVG palette attributes. It uses Setdown
 surface/selection tokens, subdued distinguishable lane colors and the shared SCM
 section heading. Upstream still owns layout and interactions; no vendor files
-are changed. Check these selectors, palette attributes, light/dark themes and
-branch/menu behavior when updating the pinned package. The public comfortable
-row density keeps virtualization and actual row heights in agreement.
+are changed. The same adapter gives each subject an inset computed from the
+upstream package's exported `layoutGitGraph` result. It accounts for lanes
+crossing a row, including curves, so a distant bend does not create empty
+space beside every other commit. A shadow-root observer reapplies insets only
+to visible virtual rows. Check these selectors, palette attributes, row geometry,
+light/dark themes and branch/menu behavior when updating the pinned package.
+The public comfortable row density keeps virtualization and row heights in
+agreement.
 
 Graph avatars stay disabled. Theme selection is owned by Setdown. Graph
 keyboard input owns its own Escape/Find behavior instead of triggering the

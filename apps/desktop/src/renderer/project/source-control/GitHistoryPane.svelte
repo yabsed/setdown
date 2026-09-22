@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import type { WebGitGraphElement } from '@web-git-graph/web';
   import type { GitGraphCommit } from '@web-git-graph/protocol';
   import type { AppActions } from '../../view-state.svelte';
@@ -8,6 +8,7 @@
   import { normalizePreviewTheme } from '../../../core/preview/preview-preferences';
   import { project } from '../project-state.svelte';
   import { ElectronGitGraphProvider } from './git-graph-provider';
+  import { autoGraphRefs, graphRowInsets, sameRefs } from './git-graph-presentation';
   import graphStyles from './git-graph-theme.css?inline';
 
   let { actions, root }: { actions: AppActions; root: string } = $props();
@@ -24,6 +25,7 @@
   let pane = $state<HTMLElement>();
   let host = $state<HTMLDivElement>();
   let graph: WebGitGraphElement | undefined;
+  let autoMode = true;
   let error = $state('');
   let mounted = $state(false);
   let refreshTimer: ReturnType<typeof setTimeout> | undefined;
@@ -67,9 +69,21 @@
     let element: WebGitGraphElement | undefined;
     let resizeObserver: ResizeObserver | undefined;
     let themeObserver: MutationObserver | undefined;
+    let rowObserver: MutationObserver | undefined;
     let frame = 0;
     error = '';
-    void import('@web-git-graph/web').then(({ defineWebGitGraph }) => {
+    const filterKey = `setdown:git-graph-filter:${folder}`;
+    let manualRefs: string[] = [];
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(filterKey) ?? '{}');
+      autoMode = saved.mode !== 'manual';
+      if (Array.isArray(saved.refs)) manualRefs = saved.refs.filter((ref: unknown): ref is string => typeof ref === 'string');
+    } catch { autoMode = true; }
+    const rememberFilter = () => {
+      try { sessionStorage.setItem(filterKey, JSON.stringify({ mode: autoMode ? 'auto' : 'manual', refs: manualRefs })); }
+      catch { /* Optional UI persistence. */ }
+    };
+    void import('@web-git-graph/web').then(({ defineWebGitGraph, layoutGitGraph }) => {
       if (disposed) return;
       defineWebGitGraph();
       element = document.createElement('web-git-graph') as WebGitGraphElement;
@@ -81,6 +95,15 @@
       const style = document.createElement('style');
       style.textContent = graphStyles;
       element.shadowRoot!.append(style);
+      const badges = document.createElement('style');
+      element.shadowRoot!.append(badges);
+      const setBadgeFilter = () => {
+        const names = autoGraphRefs(untrack(() => project.git))
+          .map((ref) => ref.replace(/^refs\/(heads|remotes)\//, ''));
+        badges.textContent = autoMode && names.length
+          ? `.row .ref${names.map((name) => `:not([title=${CSS.escape(name)}])`).join('')} { display: none; }`
+          : '';
+      };
       element.setAttribute('hosted', '');
       const applyTheme = () => {
         if (element) element.theme = themeProfile(normalizePreviewTheme(document.documentElement.dataset.theme)).appearance;
@@ -101,16 +124,69 @@
       element.addEventListener('gitgraph-error', (event) => {
         if (!disposed) error = event.detail.error instanceof Error ? event.detail.error.message : String(event.detail.error);
       });
-      // Assign before connecting: the component loads exactly once on mount.
+      // The public refs property owns history filtering. Its provider setter
+      // clears previous refs, so apply the restored filter after connecting.
       element.provider = provider;
       container.append(element);
       graph = element;
+      const autoButton = document.createElement('button');
+      autoButton.type = 'button';
+      autoButton.className = 'setdown-auto';
+      autoButton.textContent = 'Auto';
+      autoButton.title = 'Follow the current branch and its upstream';
+      autoButton.setAttribute('aria-label', 'Auto branch filter');
+      const updateAutoButton = () => {
+        autoButton.setAttribute('aria-pressed', String(autoMode));
+        element?.toggleAttribute('data-setdown-auto', autoMode);
+        element?.shadowRoot?.querySelector('.ref-select')?.setAttribute('aria-label',
+          autoMode ? 'Select branches and tags, Auto' : 'Select branches and tags');
+      };
+      autoButton.addEventListener('click', () => {
+        if (autoMode || !element) return;
+        autoMode = true;
+        updateAutoButton(); setBadgeFilter(); rememberFilter();
+        const next = autoGraphRefs(untrack(() => project.git));
+        if (!sameRefs(element.refs, next)) element.refs = next;
+      });
+      updateAutoButton();
+      element.shadowRoot!.querySelector('.toolbar')?.append(autoButton);
+      const onMenuClick = (event: Event) => {
+        const target = event.target;
+        if (!(target instanceof Element) || !target.closest('.menu[data-menu="refs"] .menu-item')) return;
+        autoMode = false;
+        updateAutoButton(); setBadgeFilter();
+        queueMicrotask(() => { if (element) manualRefs = [...element.refs]; rememberFilter(); });
+      };
+      element.shadowRoot!.addEventListener('click', onMenuClick, true);
+      if (autoMode) element.refs = autoGraphRefs(untrack(() => project.git));
+      else if (manualRefs.length) element.refs = manualRefs;
+      setBadgeFilter();
+      let renderedCommits: readonly GitGraphCommit[] | undefined;
+      let insets: number[] = [];
+      const placeRows = () => {
+        if (!element || disposed) return;
+        const commits = element.data.commits;
+        if (commits !== renderedCommits) {
+          renderedCommits = commits;
+          insets = graphRowInsets(commits, layoutGitGraph(commits));
+        }
+        for (const row of element.shadowRoot!.querySelectorAll<HTMLElement>('.row')) {
+          const index = Number(row.dataset.index);
+          row.style.setProperty('--setdown-graph-inset', `${insets[index] ?? 30}px`);
+        }
+      };
+      const windowElement = element.shadowRoot!.querySelector('.window');
+      if (windowElement) {
+        rowObserver = new MutationObserver(placeRows);
+        rowObserver.observe(windowElement, { childList: true });
+      }
+      placeRows();
       resizeObserver = new ResizeObserver(() => {
         cancelAnimationFrame(frame);
         frame = requestAnimationFrame(() => {
           // 1.0.7 has no public layout() or container observer. Reapplying its
           // public density setting redraws the visible window without fetching,
-          // resetting selection, or reaching into the component's shadow DOM.
+          // resetting selection. The presentation adapter then updates rows.
           if (!disposed && element) element.density = 'comfortable';
         });
       });
@@ -120,7 +196,7 @@
       disposed = true;
       clearTimeout(refreshTimer);
       cancelAnimationFrame(frame);
-      resizeObserver?.disconnect(); themeObserver?.disconnect();
+      resizeObserver?.disconnect(); themeObserver?.disconnect(); rowObserver?.disconnect();
       provider.dispose(); element?.remove(); graph = undefined;
     };
   });
@@ -129,6 +205,10 @@
     // never for unsaved editor keystrokes. Coalesce watcher bursts.
     const snapshot = project.git;
     if (snapshot && expanded && mounted && project.open && project.visible && graph) {
+      if (autoMode) {
+        const next = autoGraphRefs(snapshot);
+        if (!sameRefs(graph.refs, next)) { graph.refs = next; return; }
+      }
       clearTimeout(refreshTimer);
       refreshTimer = setTimeout(() => graph?.refresh(), 300);
     }

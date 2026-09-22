@@ -29,6 +29,7 @@ test('Graph resizes, refreshes and opens immutable Markdown revisions in existin
     await exec('git', ['init', '--bare', remote]);
     await git('remote', 'add', 'origin', remote);
     await git('push', '-u', 'origin', 'main');
+    for (const name of ['extra-one', 'extra-two', 'extra-three']) await git('branch', name);
     await writeFile(file, '# Working document\n');
     const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
     app = await electron.launch({ args: ['.'], env: { ...env, XDG_CONFIG_HOME: configRoot } });
@@ -52,10 +53,19 @@ test('Graph resizes, refreshes and opens immutable Markdown revisions in existin
     await expect(graph.locator('.refresh')).toBeHidden();
     await expect(graph.locator('.row').first()).toHaveCSS('font-size', '11px');
     await expect(graph.locator('.row').first()).toHaveCSS('height', '24px');
+    await expect(graph.locator('.setdown-auto')).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => graph.evaluate((element) => (element as unknown as { refs: string[] }).refs))
+      .toEqual(['refs/heads/main', 'refs/remotes/origin/main']);
+    await expect(graph.locator(`.row[data-oid="${second}"] .ref:visible`)).toHaveCount(2);
     await graph.getByRole('button', { name: 'Select branches and tags' }).click();
     await expect(graph.locator('.menu')).toBeVisible();
+    await graph.getByRole('menuitem', { name: 'Show All' }).click();
+    await expect(graph.locator('.setdown-auto')).toHaveAttribute('aria-pressed', 'false');
+    await expect(graph.locator(`.row[data-oid="${second}"] .ref:visible`)).toHaveCount(4);
     await graph.getByRole('button', { name: 'Select branches and tags' }).click();
     await expect(graph.locator('.menu')).toHaveCount(0);
+    await graph.getByRole('button', { name: 'Auto branch filter' }).click();
+    await expect(graph.locator(`.row[data-oid="${second}"] .ref:visible`)).toHaveCount(2);
     await window.screenshot({ path: test.info().outputPath('graph-light.png') });
     await app.evaluate(({ Menu }) => { Menu.getApplicationMenu()?.getMenuItemById('preview-theme-night')?.click(); });
     await expect(graph).toHaveAttribute('theme', 'dark');
@@ -126,6 +136,19 @@ test('Graph resizes, refreshes and opens immutable Markdown revisions in existin
     await expect(pane.getByRole('button', { name: 'Refresh Git Graph' })).toBeEnabled();
     await pane.getByRole('button', { name: 'Refresh Git Graph' }).click();
     await expect(graph.locator('.row').filter({ hasText: 'Remote addition' })).toHaveCount(1);
+    await git('checkout', '-b', 'feature');
+    await writeFile(path.join(root, 'feature.md'), 'feature\n');
+    await git('add', 'feature.md'); await git('commit', '-m', 'Feature');
+    await git('checkout', 'main');
+    await writeFile(path.join(root, 'main.md'), 'main\n');
+    await git('add', 'main.md'); await git('commit', '-m', 'Main work');
+    await git('merge', '--no-ff', 'feature', '-m', 'Merge feature');
+    await expect(graph.locator('.row').filter({ hasText: 'Merge feature' })).toHaveCount(1);
+    await expect.poll(async () => graph.locator('.row').evaluateAll((rows) =>
+      [...rows].map((row) => parseInt((row as HTMLElement).style.getPropertyValue('--setdown-graph-inset'), 10))
+        .filter(Number.isFinite).sort((a, b) => a - b)
+    )).toEqual(expect.arrayContaining([30, 46]));
+    await window.screenshot({ path: test.info().outputPath('graph-bend.png') });
     expect(errors).toEqual([]);
   } finally {
     if (app) await disposeApplication(app);

@@ -25,9 +25,16 @@ export class ElectronGitGraphProvider implements GitGraphProvider {
     });
   }
   getCapabilities(signal?: AbortSignal) { return this.call('capabilities', {}, signal); }
-  getHistory(request: GitGraphHistoryRequest = {}) {
+  async getHistory(request: GitGraphHistoryRequest = {}) {
     const { signal, repositoryId: _repositoryId, ...query } = request;
-    return this.call('history', { ...query, limit: Math.min(query.limit ?? 100, 100), includeWorkingTree: false }, signal);
+    const page = await this.call('history', { ...query, limit: Math.min(query.limit ?? 100, 100), includeWorkingTree: false }, signal);
+    if (!request.refs?.length) return page;
+    // The web component caps badges before painting. Put selected refs first
+    // so the Auto pair remains visible even at a tip with many other refs.
+    const priority = new Map(request.refs.map((ref, index) => [ref, index]));
+    return { ...page, refs: [...page.refs].sort((left, right) =>
+      (priority.get(left.name) ?? (left.kind === 'current' ? -1 : Infinity)) -
+      (priority.get(right.name) ?? (right.kind === 'current' ? -1 : Infinity))) };
   }
   getCommitDetails(_repository: string | undefined, revision: GitGraphRevision, signal?: AbortSignal) {
     return this.call('details', { revision }, signal);

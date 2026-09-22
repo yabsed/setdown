@@ -33,10 +33,18 @@
 .ref-select { flex: 1; height: 22px; max-width: none; padding: 0 5px; gap: 6px; border: 0; background: transparent; color: var(--app-muted-text); font: inherit; text-align: left; }
 .ref-select::before { content: ''; width: 12px; height: 12px; flex: 0 0 12px; background: currentColor; mask: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"%3E%3Cg fill="none" stroke="black" stroke-width="1.5"%3E%3Ccircle cx="4" cy="3" r="1.5"/%3E%3Ccircle cx="4" cy="13" r="1.5"/%3E%3Ccircle cx="12" cy="4" r="1.5"/%3E%3Cpath d="M4 4.5v7M12 5.5c0 4-8 1-8 5"/%3E%3C/g%3E%3C/svg%3E') center / contain no-repeat; }
 .ref-select-label { flex: 1; }
+:host([data-setdown-auto]) .ref-select-label { font-size: 0; }
+:host([data-setdown-auto]) .ref-select-label::after { content: 'Auto'; font-size: 10px; }
+.setdown-auto { flex: 0 0 auto; height: 20px; padding: 0 6px; color: var(--app-muted-text); border: 1px solid transparent; border-radius: 2px; background: transparent; font: inherit; cursor: default; }
+.setdown-auto:hover, .setdown-auto:focus-visible { background: var(--app-hover); }
+:host([data-setdown-auto]) .setdown-auto { display: none; }
 .history { grid-template-rows: minmax(0, 1fr); }
 .header { display: none; }
-.row { font-size: 11px; border-bottom: 0; padding-right: 8px; }
-.subject { gap: 5px; }
+.spacer { min-width: 100%; }
+.row { grid-template-columns: 0 minmax(0, 1fr) !important; font-size: 11px; border-bottom: 0; padding-right: 8px; }
+.row .date, .row .author, .row .oid { display: none; }
+.subject { gap: 5px; padding-left: var(--setdown-graph-inset, 30px); }
+.inline-details { padding-left: 18px; }
 /* Keep a commit title readable even when local and remote refs share a row.
    Full ref names remain available through upstream's title and branch menu. */
 .message { order: 0; }
