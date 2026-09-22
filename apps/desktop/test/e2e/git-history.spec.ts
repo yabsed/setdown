@@ -38,6 +38,7 @@ test('Graph resizes, refreshes and opens immutable Markdown revisions in existin
     window.on('pageerror', (error) => errors.push(error.message));
     await window.evaluate(async (folder) => {
       await (window as unknown as { marktex: { restoreProjectFolder(root: string): Promise<unknown> } }).marktex.restoreProjectFolder(folder);
+      sessionStorage.setItem('setdown:git-graph-panel', JSON.stringify({ expanded: true, ratio: .55 }));
     }, root);
     await Promise.all([window.waitForEvent('load'), window.reload()]);
     await focusApplication(app);
