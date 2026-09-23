@@ -1,7 +1,19 @@
 import { basename } from 'node:path';
 import { homedir } from 'node:os';
+import { statSync } from 'node:fs';
 import type { IPty, IPtyForkOptions } from 'node-pty';
 import type { TerminalEvent, TerminalSize } from '../../protocol/terminal';
+
+function isDirectory(candidate: string | null): candidate is string {
+  if (!candidate) return false;
+  try { return statSync(candidate).isDirectory(); } catch { return false; }
+}
+
+/** Untitled documents live in a drafts folder that does not exist until save, so a missing directory falls back. */
+export function launchDirectory(...candidates: (string | null)[]): string {
+  for (const candidate of candidates) if (isDirectory(candidate)) return candidate;
+  return homedir();
+}
 
 type Spawn = (shell: string, args: string[], options: IPtyForkOptions) => IPty;
 type Session = { owner: number; pty: IPty; pending: number; paused: boolean; dispose(): void };
@@ -30,7 +42,7 @@ export class TerminalManager {
     const env: NodeJS.ProcessEnv = { ...process.env, TERM_PROGRAM: 'Setdown', COLORTERM: 'truecolor' };
     delete env.ELECTRON_RUN_AS_NODE;
     delete env.NODE_OPTIONS;
-    const directory = cwd || homedir();
+    const directory = isDirectory(cwd) ? cwd : homedir();
     const pty = this.spawn(shell, process.platform === 'win32' ? ['-NoLogo'] : ['-i'], {
       ...size, cwd: directory, env, name: 'xterm-256color',
     });

@@ -1,6 +1,11 @@
+import { app } from 'electron';
 import type { WindowIpc } from '../ipc/window-ipc';
 import type { TerminalSize } from '../../protocol/terminal';
-import { TerminalManager } from './terminal-manager';
+import { launchDirectory, TerminalManager } from './terminal-manager';
+
+function documentsDirectory(): string | null {
+  try { return app.getPath('documents'); } catch { return null; }
+}
 
 export function installTerminalIpc(channels: WindowIpc): TerminalManager {
   const terminals = new TerminalManager();
@@ -15,7 +20,8 @@ export function installTerminalIpc(channels: WindowIpc): TerminalManager {
       });
       contents.once('destroyed', () => { terminals.closeOwner(owner); owners.delete(owner); });
     }
-    return terminals.create(owner, id, size, state.projectRoot || state.activeRoot, (event) => {
+    return terminals.create(owner, id, size,
+      launchDirectory(state.projectRoot, state.activeRoot, documentsDirectory()), (event) => {
       if (!contents.isDestroyed()) contents.send('terminal:event', event);
     });
   });

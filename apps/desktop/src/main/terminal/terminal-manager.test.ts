@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
 import type { IPty } from 'node-pty';
-import { TerminalManager } from './terminal-manager';
+import { launchDirectory, TerminalManager } from './terminal-manager';
 
 function fixture() {
   let output = (_data: string) => {};
@@ -18,6 +22,16 @@ function fixture() {
   return { manager, pty, spawn, send, create, output: (text: string) => output(text),
     exit: () => exit({ exitCode: 7 }), dataDispose, exitDispose };
 }
+
+describe('launch directory', () => {
+  it('uses the first existing directory and falls back to the home directory', () => {
+    const existing = mkdtempSync(join(tmpdir(), 'terminal-cwd-'));
+    try {
+      expect(launchDirectory(null, existing, '/definitely/missing')).toBe(existing);
+      expect(launchDirectory('/definitely/missing', null)).toBe(homedir());
+    } finally { rmSync(existing, { recursive: true, force: true }); }
+  });
+});
 
 describe('window-owned terminals', () => {
   it('uses the requested working directory and rejects invalid launches before spawning', () => {
