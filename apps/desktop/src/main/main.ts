@@ -16,6 +16,7 @@ import { DocumentManager } from './documents/document-manager';
 import { installIpc } from './ipc/install-ipc';
 import { windowIpc } from './ipc/window-ipc';
 import { installApplicationMenu } from './menu/application-menu';
+import { AutoSaveStore } from './settings/auto-save-store';
 import { PreviewManager } from './preview/preview-manager';
 import { PreviewRenderer } from './preview/preview-renderer';
 import { ProjectService } from './project/project-service';
@@ -47,6 +48,7 @@ renderer = new PreviewRenderer({ previews,
     .filter((root): root is string => !!root),
   theme: () => themes.id, workerPath: path.join(__dirname, 'render-worker.cjs') });
 const positions = new ReadingPositionStore(path.join(app.getPath('userData'), 'reading-positions.json'));
+const autoSave = new AutoSaveStore(path.join(app.getPath('userData'), 'auto-save.json'));
 const documents = new DocumentManager(() => renderer.forgetNotebooks(), positions);
 const projectSearchRenderer = new ProjectSearchRenderer(path.join(__dirname, 'render-worker.cjs'), () => themes.id);
 const projects = new ProjectService((documentPath, text, query, limit, root) =>
@@ -122,13 +124,13 @@ else {
     state?.window.show(); state?.window.focus();
   });
   app.whenReady().then(async () => {
-    installProtocols(); themes.load();
+    installProtocols(); themes.load(); autoSave.load();
     const flushZoom = installZoomSettings(path.join(app.getPath('userData'), 'zoom-settings.json'), previews.zoom, () => {
       for (const state of registry.values) if (!state.window.isDestroyed())
         state.window.webContents.send('workspace:zoom-changed', previews.zoom.snapshot);
     });
     app.on('will-quit', flushZoom);
-    installIpc({ channels, documents, previews, projects, renderer, themes, transfers });
+    installIpc({ channels, documents, previews, projects, renderer, themes, transfers, autoSave });
     installReadingIpc(channels, positions, (id) => registry.stateForWebContents(id));
     app.on('will-quit', () => positions.flush());
     const terminals = installTerminalIpc(channels);
@@ -137,7 +139,14 @@ else {
       openDocument: (state) => documents.chooseAndOpen(state).catch(openError),
       reloadWindow: (state) => { previews.closeOwner(state.webContentsId); state.window.webContents.reload(); },
       zoom: (steps, scope) => { previews.zoom.change(steps, scope); },
-      sendCommand, setTheme: (theme) => themes.set(theme), theme: () => themes.id });
+      sendCommand, setTheme: (theme) => themes.set(theme), theme: () => themes.id,
+      autoSave: () => autoSave.enabled,
+      toggleAutoSave: () => {
+        autoSave.set(!autoSave.enabled);
+        for (const state of registry.values) if (!state.window.isDestroyed())
+          state.window.webContents.send('auto-save:changed', autoSave.enabled);
+        return autoSave.enabled;
+      } });
     const filePath = documentPathFromArgs(process.argv, app.isPackaged);
     // Keep Markdown's eager worker warmup; a source-only startup needs none.
     if (!filePath || isMarkdownDocument(filePath)) renderer.warmup();

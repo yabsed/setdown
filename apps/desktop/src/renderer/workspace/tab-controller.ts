@@ -24,6 +24,7 @@ type Options = {
   confirmClose(names: string[]): Promise<CloseDecision>;
   workspaceChanged(): void;
   groupsChanged?(): void;
+  autoSave?: { schedule(tab: WorkspaceTab): void; cancel(tabId?: string): void };
 };
 const TRANSFER_ANNOUNCE_GRACE_MS = 150;
 
@@ -191,6 +192,8 @@ export class TabController {
     if (!reviewing && next.surface === 'editor') await editor.load();
     if (activation !== this.activation || !workspace.find(next.id)) return;
     this.saveActiveState();
+    // A pending auto save targets the tab being deactivated; it could never fire.
+    this.options.autoSave?.cancel();
     // Cancel outgoing work but retain its native page, model and cached revision.
     preview.newSession();
     workspace.activeId = next.id;
@@ -241,6 +244,7 @@ export class TabController {
     if (workspace.activeId === tab.id) this.saveActiveState();
     const removed = workspace.remove(tab.id);
     if (!removed) return true;
+    this.options.autoSave?.cancel(tab.id);
     if (hasMarkdownPreview(tab.document)) reader.destroy(tab.id);
     editor.dispose(tab.id);
     if (!removed.wasActive) { this.render(); return true; }
@@ -350,6 +354,7 @@ export class TabController {
     if (active && hasMarkdownPreview(tab.document) && tab.surface === 'editor' && this.options.shouldSchedulePreview()) {
       preview.schedule(tab.revision);
     }
+    this.options.autoSave?.schedule(tab);
   };
   installModel = (documentSnapshot: DocumentSnapshot): void => {
     const tab = this.options.workspace.active;

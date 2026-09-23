@@ -17,12 +17,14 @@ import type { PreviewRenderer } from '../preview/preview-renderer';
 import type { ProjectService } from '../project/project-service';
 import { pathFromResourceUrl } from '../preview/resource-url';
 import type { TabTransferManager } from '../tabs/tab-transfer-manager';
+import type { AutoSaveStore } from '../settings/auto-save-store';
 import type { ThemeManager } from '../theme/theme-manager';
 import type { WindowIpc } from './window-ipc';
 
 type Options = {
   channels: WindowIpc; documents: DocumentManager; previews: PreviewManager;
   renderer: PreviewRenderer; projects: ProjectService; themes: ThemeManager; transfers: TabTransferManager;
+  autoSave: AutoSaveStore;
 };
 function assertMarkdown(filePath: string): void {
   if (!isMarkdownDocument(filePath)) throw new Error('This text document has no Markdown preview.');
@@ -36,7 +38,7 @@ function documentMenus(items: ApplicationMenuEntry[], markdown: boolean, review:
   }));
 }
 export function installIpc(options: Options): void {
-  const { channels, documents, previews, projects, renderer, themes, transfers } = options;
+  const { channels, documents, previews, projects, renderer, themes, transfers, autoSave } = options;
   const history = new GitHistoryService();
   channels.handle('project:git-graph', (state, request: GitGraphRequest) => history.request(state, request));
   channels.on('project:git-graph-cancel', (state, id: unknown) => history.cancel(state, id));
@@ -50,6 +52,7 @@ export function installIpc(options: Options): void {
   });
   channels.on('menu:execute', (state, itemId: unknown) => executeApplicationMenu(itemId, state.window));
   channels.handle('theme:get', (): ThemeSnapshot => themes.snapshot);
+  channels.handle('settings:get-auto-save', () => autoSave.enabled);
   channels.handle('preview:theme-assets', (_state, themeId: unknown) => themes.assets(themeId));
   channels.handle('document:get', (state) => state.currentDocument);
   channels.handle('document:new', (state) => documents.newDocument(state));
@@ -81,14 +84,14 @@ export function installIpc(options: Options): void {
     return renderer.prepare(state, String(request.tabId), request.text, request.revision,
       request.documentPath, normalizePreviewTheme(request.themeId), state.window.webContents.id);
   });
-  channels.handle('document:save', (state, { text, revision }: { text: string; revision: number }): Promise<SaveResult> =>
-    documents.saveCurrent(state, text, revision));
+  channels.handle('document:save', (state, { text, revision, auto }: { text: string; revision: number; auto?: boolean }): Promise<SaveResult> =>
+    documents.saveCurrent(state, text, revision, auto === true));
   channels.handle('document:save-as', (state, { text, revision }: { text: string; revision: number }): Promise<SaveResult> =>
     documents.saveAs(state, text, revision));
-  channels.handle('document:save-tab', async (state, { document, text, revision }: {
-    document: DocumentSnapshot; text: string; revision: number;
+  channels.handle('document:save-tab', async (state, { document, text, revision, auto }: {
+    document: DocumentSnapshot; text: string; revision: number; auto?: boolean;
   }): Promise<SaveResult> => {
-    const result = await documents.saveSnapshot(state, document, text, revision);
+    const result = await documents.saveSnapshot(state, document, text, revision, auto === true);
     const current = state.currentDocument;
     // Recheck after IO/dialogs; a background save must never select another tab.
     if (current?.path === document.path && !result.canceled && result.document) {

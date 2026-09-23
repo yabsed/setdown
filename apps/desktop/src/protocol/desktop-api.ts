@@ -278,9 +278,11 @@ export type MarkTexApi = {
   getPreviewThemeAssets(themeId: PreviewThemeId): Promise<PreviewThemeAssets>;
   closeEmptyWindow(): void;
   updateText(text: string, revision: number): void;
-  saveDocument(text: string, revision: number): Promise<SaveResult>;
+  getAutoSave(): Promise<boolean>;
+  onAutoSaveChanged(listener: (enabled: boolean) => void): () => void;
+  saveDocument(text: string, revision: number, auto?: boolean): Promise<SaveResult>;
   saveDocumentAs(text: string, revision: number): Promise<SaveResult>;
-  saveTabDocument(document: DocumentSnapshot, text: string, revision: number): Promise<SaveResult>;
+  saveTabDocument(document: DocumentSnapshot, text: string, revision: number, auto?: boolean): Promise<SaveResult>;
   discardDocument(document: DocumentSnapshot): Promise<void>;
   resolveWindowClose(decision: CloseDecision): void;
   finishWindowClose(saved: boolean): void;

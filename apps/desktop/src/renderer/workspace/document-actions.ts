@@ -15,6 +15,7 @@ type Options = {
   reload: (document: DocumentSnapshot) => Promise<void>;
   saved: (document: DocumentSnapshot) => void | Promise<void>;
   renderTabs: () => void; updateChrome: () => void;
+  autoSave?: { cancel(tabId?: string): void };
 };
 export class DocumentActions {
   constructor(private readonly options: Options) {}
@@ -33,6 +34,7 @@ export class DocumentActions {
         ? await this.options.desktop.saveDocumentAs(text, tab.revision)
         : await this.options.desktop.saveDocument(text, tab.revision);
       if (result.canceled || !result.document) return false;
+      this.options.autoSave?.cancel(tab.id);
       await this.accept(tab, result.document);
       await this.options.saved(result.document);
       this.options.updateChrome();

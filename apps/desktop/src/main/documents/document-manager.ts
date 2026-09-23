@@ -129,9 +129,13 @@ export class DocumentManager {
     if (state.currentDocument) state.currentDocument = applyTextRevision(state.currentDocument, text, revision);
   }
 
-  private async confirmOverwrite(state: WindowState, document: DocumentSnapshot) {
-    try { if (sameDiskVersion(diskVersion(document.path), document.diskVersion)) return true; }
+  private unchangedOnDisk(document: DocumentSnapshot): boolean {
+    try { return sameDiskVersion(diskVersion(document.path), document.diskVersion); }
     catch { return true; }
+  }
+
+  private async confirmOverwrite(state: WindowState, document: DocumentSnapshot) {
+    if (this.unchangedOnDisk(document)) return true;
     const { response } = await dialog.showMessageBox(state.window, {
       type: 'warning', message: 'This file was changed by another application.',
       detail: 'Do you want to overwrite it with your current changes?',
@@ -140,10 +144,12 @@ export class DocumentManager {
     return response === 1;
   }
 
-  async saveSnapshot(state: WindowState, document: DocumentSnapshot, text: string, revision: number): Promise<SaveResult> {
+  async saveSnapshot(state: WindowState, document: DocumentSnapshot, text: string, revision: number, auto = false): Promise<SaveResult> {
     if (document.kind !== undefined || isReadOnlyDocument(document.path)) throw new Error('PDF and image documents are read-only.');
     const updated = applyTextRevision(document, text, revision);
     if (updated.isUntitled) {
+      // Auto save never opens a dialog; untitled drafts stay in the drafts folder.
+      if (auto) return { canceled: true };
       const selected = await dialog.showSaveDialog(state.window, {
         defaultPath: path.join(app.getPath('documents'), updated.name), filters: saveFilters(updated.path),
       });
@@ -164,7 +170,9 @@ export class DocumentManager {
         revision, savedRevision: revision, diskVersion: diskVersion(absolute), isUntitled: false } };
     }
     const output = prepareDocumentSave(updated, text, updated.path);
-    if (!(await this.confirmOverwrite(state, updated))) return { canceled: true };
+    // Auto save silently skips an externally changed file; the external-change
+    // banner already tells the user. Manual saves still ask before overwriting.
+    if (auto ? !this.unchangedOnDisk(updated) : !(await this.confirmOverwrite(state, updated))) return { canceled: true };
     await fs.mkdir(path.dirname(updated.path), { recursive: true });
     await atomicWrite(updated.path, output.bytes);
     const absolute = canonicalPath(updated.path);
@@ -184,10 +192,10 @@ export class DocumentManager {
     return result;
   }
 
-  async saveCurrent(state: WindowState, text: string, revision: number) {
+  async saveCurrent(state: WindowState, text: string, revision: number, auto = false) {
     const document = state.currentDocument;
     if (!document) return { canceled: true } as SaveResult;
-    return this.acceptSaved(state, await this.saveSnapshot(state, document, text, revision), document.path);
+    return this.acceptSaved(state, await this.saveSnapshot(state, document, text, revision, auto), document.path);
   }
 
   async saveAs(state: WindowState, text: string, revision: number): Promise<SaveResult> {

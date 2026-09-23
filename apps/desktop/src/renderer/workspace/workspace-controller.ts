@@ -29,6 +29,7 @@ import { restorePanelWidths } from '../shell/panel-resize';
 import { rememberOutlineOpen } from '../shell/layout-session';
 import { view, type AppActions } from '../view-state.svelte';
 import { DocumentActions } from './document-actions';
+import { AutoSaveController } from './auto-save';
 import { TabController } from './tab-controller';
 import '../style.css';
 
@@ -114,6 +115,7 @@ export function startWorkspace(desktop: DesktopPort) {
   const closePrompt = new ClosePromptController();
   let surfaces: SurfaceController;
   let tabs: TabController;
+  let autoSave: AutoSaveController;
   let positions: ReadingPositionController;
   let projects: ProjectController;
   let projectContextChanged = () => {};
@@ -138,7 +140,8 @@ export function startWorkspace(desktop: DesktopPort) {
   tabs = new TabController({ desktop, workspace, session, shell, editor, reader, preview, surfaces,
     capturePosition: (tab) => positions.capture(tab),
     shouldSchedulePreview: () => !project.gitDiffActive,
-    confirmClose: (names) => closePrompt.request('tab', names), workspaceChanged: () => projectContextChanged(), groupsChanged: () => groups?.sync() });
+    confirmClose: (names) => closePrompt.request('tab', names), workspaceChanged: () => projectContextChanged(), groupsChanged: () => groups?.sync(),
+    autoSave: { schedule: (tab) => autoSave.schedule(tab), cancel: (tabId) => autoSave.cancel(tabId) } });
   groups = createGroupRuntime({ workspace, desktop, editor, reader, activate: id => actions.activateTab(id) });
   const tabDrag = createTabDrag({ desktop, shell, tabs: workspace.tabs, groups: workspace.groups,
     dragging: (active) => groups?.drag(active),
@@ -151,11 +154,14 @@ export function startWorkspace(desktop: DesktopPort) {
     activate: (id) => { projects.deactivateGitDiff(); void tabs.activate(id); },
     serialize: tabs.transferable, render: tabs.render,
     install: (transfer, placement) => tabs.installTransferred(transfer, placement) });
+  autoSave = new AutoSaveController({ desktop, tabs: workspace.tabs, activeId: () => workspace.activeId,
+    text: tabs.text, dirty: tabs.dirty, acceptSaved: tabs.acceptSaved,
+    saved: (document) => projects.documentSaved(document) });
   const documents = new DocumentActions({ desktop, tabs: workspace.tabs, active, text: tabs.text, dirty: tabs.dirty,
     preview, installModel: tabs.installModel, acceptSaved: tabs.acceptSaved,
     show: (document, surface) => { projects.deactivateGitDiff(); return tabs.show(document, surface); },
     reload: tabs.reload, saved: (document) => projects.documentSaved(document),
-    renderTabs: tabs.render, updateChrome: tabs.updateChrome });
+    renderTabs: tabs.render, updateChrome: tabs.updateChrome, autoSave });
   projects = new ProjectController({ desktop,
     searchDocuments: (query) => workspace.tabs.filter((tab) => !tab.document.kind).map((tab) => ({ path: tab.document.path, text: tabs.text(tab),
       surface: tab.surface === 'viewer' ? 'viewer' : 'editor', matches: tab.surface === 'editor' ? editor.projectMatches(tab, query.trim()) : undefined })),
@@ -211,7 +217,9 @@ export function startWorkspace(desktop: DesktopPort) {
   };
   const insertions = createEditorInsertions({ ...editorContext, save: () => documents.save(false) });
   const removeImagePaste = installEditorImagePaste(editorContext);
-  window.addEventListener('beforeunload', () => { positions.flush(); insertions.dispose(); removeImagePaste(); }, { once: true });
+  void desktop.getAutoSave().then((enabled) => autoSave.setEnabled(enabled));
+  const unsubscribeAutoSave = desktop.onAutoSaveChanged((enabled) => autoSave.setEnabled(enabled));
+  window.addEventListener('beforeunload', () => { positions.flush(); insertions.dispose(); removeImagePaste(); unsubscribeAutoSave(); }, { once: true });
   function toggleToc() {
     const tab = workspace.active;
     if (!tab || !hasMarkdownPreview(tab.document)) return;

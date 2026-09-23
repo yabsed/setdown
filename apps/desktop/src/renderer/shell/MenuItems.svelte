@@ -38,8 +38,8 @@
           type="button"
           data-menu-item-id={entry.id}
           disabled={!entry.enabled}
-          role={entry.type === 'radio' ? 'menuitemradio' : 'menuitem'}
-          aria-checked={entry.type === 'radio' ? !!entry.checked : undefined}
+          role={entry.type === 'radio' ? 'menuitemradio' : entry.type === 'checkbox' ? 'menuitemcheckbox' : 'menuitem'}
+          aria-checked={entry.type === 'radio' || entry.type === 'checkbox' ? !!entry.checked : undefined}
           onclick={(event) => entry.submenu?.length
             ? onsubmenu(entry, event.currentTarget)
             : onexecute(entry.id)}
@@ -47,7 +47,7 @@
             ? onsubmenu(entry, event.currentTarget)
             : undefined}
         >
-          <span class="product-menu-marker">{entry.type === 'radio' && entry.checked ? '•' : ''}</span>
+          <span class="product-menu-marker">{entry.type === 'radio' && entry.checked ? '•' : entry.type === 'checkbox' && entry.checked ? '✓' : ''}</span>
           <span class="product-menu-label">{entry.label}</span>
           <span class="product-menu-accelerator">{accelerator(entry.accelerator)}</span>
           <span class="product-menu-arrow">{entry.submenu?.length ? '›' : ''}</span>

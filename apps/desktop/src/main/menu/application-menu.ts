@@ -12,6 +12,8 @@ type MenuContext = {
   sendCommand: (command: AppCommand) => void;
   setTheme: (theme: PreviewThemeId) => void;
   theme: () => PreviewThemeId;
+  autoSave: () => boolean;
+  toggleAutoSave: () => boolean;
   zoom: (steps: number, scope?: 'app' | 'text') => void;
 };
 
@@ -124,6 +126,9 @@ export function installApplicationMenu(context: MenuContext) {
         { id: 'menu-paste', label: 'Paste', accelerator: 'CmdOrCtrl+V', click: () => contents()?.paste() },
         { type: 'separator' },
         { id: 'menu-select-all', label: 'Select All', accelerator: 'CmdOrCtrl+A', click: () => contents()?.selectAll() },
+        { type: 'separator' },
+        { id: 'menu-auto-save', label: 'Auto Save', type: 'checkbox', checked: context.autoSave(),
+          click: (item) => { item.checked = context.toggleAutoSave(); } },
       ],
     },
     {
