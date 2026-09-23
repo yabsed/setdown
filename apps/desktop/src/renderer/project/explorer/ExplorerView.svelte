@@ -72,6 +72,12 @@
     }
   }
 
+  function clearSelection(event: MouseEvent) {
+    if (event.target !== event.currentTarget) return;
+    selected = '';
+    menu = null;
+  }
+
   function activate(entry: VisibleProjectEntry) {
     selected = entry.path;
     if (entry.kind === 'directory') void actions.toggleProjectDirectory(entry.path);
@@ -172,7 +178,8 @@
     <strong>{project.folder.name.toLocaleUpperCase()}</strong>
   </div>
   {#if project.explorerRootExpanded}
-  <div id="project-explorer-tree" class="explorer-tree" role="tree" tabindex="-1" aria-label={project.folder.name}>
+  <div id="project-explorer-tree" class="explorer-tree" role="tree" tabindex="-1" aria-label={project.folder.name}
+    onclick={clearSelection} onkeydown={(event) => { if (event.key === 'Escape') selected = ''; }}>
     {#if editing?.mode === 'create' && editing.parent === project.folder.path}
       <ExplorerEditRow kind={editing.kind} depth={editing.depth} initial={editing.value}
         label={`New ${editing.kind} name`} submit={(value) => void submitEdit(value)} cancel={() => editing = null} />
