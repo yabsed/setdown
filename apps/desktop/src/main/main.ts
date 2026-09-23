@@ -117,6 +117,14 @@ function installProtocols(): void {
 }
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
+  // macOS Finder delivers files through open-file, not argv, including while running.
+  const queuedOpenFiles: string[] = [];
+  app.on('open-file', (event, filePath) => {
+    event.preventDefault();
+    const state = registry.focused();
+    if (state) void documents.open(state, filePath).catch(openError);
+    else queuedOpenFiles.push(filePath);
+  });
   app.on('second-instance', (_event, argv) => {
     const filePath = documentPathFromArgs(argv, app.isPackaged);
     const state = registry.focused();
@@ -155,6 +163,10 @@ else {
       try { initialDocument = await documents.read(filePath); } catch (error) { openError(error); }
     }
     windows.create(null, initialDocument);
+    const state = registry.focused();
+    for (const filePath of queuedOpenFiles.splice(0)) {
+      if (state) void documents.open(state, filePath).catch(openError);
+    }
   });
   app.on('before-quit', () => { windows.disposeWatchers(); void projects.dispose(); });
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

@@ -39,6 +39,8 @@ chmod 0755 "$applications_dir/setdown.desktop"
 update-desktop-database "$applications_dir"
 xdg-mime default setdown.desktop text/markdown
 xdg-mime default setdown.desktop text/x-markdown
+xdg-mime default setdown.desktop text/plain
+xdg-mime default setdown.desktop application/pdf
 
 echo "Setdown was installed successfully."
 echo "Application directory: $app_dir"
