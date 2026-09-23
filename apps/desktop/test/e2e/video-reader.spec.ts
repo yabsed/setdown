@@ -40,6 +40,24 @@ test('opens video files, streams them with range requests and prevents text save
         && Math.abs((s.left + s.right) / 2 - (v.left + v.right) / 2) <= 1;
     });
     expect(centered).toBe(true);
+    const initialVideoHeight = await video.evaluate((node) => node.getBoundingClientRect().height);
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1080, 520));
+    await page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
+    await page.getByRole('button', { name: 'Terminal', exact: true }).click();
+    const terminal = page.getByRole('region', { name: 'Integrated terminal' });
+    await expect(terminal).toBeVisible();
+    const resize = terminal.getByRole('button', { name: 'Resize Terminal' });
+    await resize.focus();
+    for (let index = 0; index < 6; index += 1) await page.keyboard.press('ArrowUp');
+    await expect.poll(async () => video.evaluate((node) => {
+      const bounds = node.getBoundingClientRect();
+      const terminal = document.querySelector('[aria-label="Integrated terminal"]')!.getBoundingClientRect();
+      return {
+        shrank: bounds.height < node.videoHeight,
+        clear: bounds.bottom <= terminal.top + 1,
+      };
+    })).toEqual({ shrank: true, clear: true });
+    expect(await video.evaluate((node) => node.getBoundingClientRect().height)).toBeLessThan(initialVideoHeight);
     // Seeking is answered by explicit partial responses, not a buffered file.
     const range = await page.evaluate(async (url) => {
       const response = await fetch(url!, { headers: { Range: 'bytes=0-99' } });

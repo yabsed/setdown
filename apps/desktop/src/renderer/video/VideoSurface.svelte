@@ -55,8 +55,8 @@
   .inactive { visibility: hidden; pointer-events: none; }
   .video-toolbar { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-bottom: 1px solid var(--app-border); font-size: 12px; background: var(--app-chrome); }
   .video-toolbar > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .video-stage { flex: 1; min-height: 0; display: grid; place-items: center; position: relative; }
-  video { max-width: 100%; max-height: 100%; outline: none; }
+  .video-stage { flex: 1; min-height: 0; position: relative; overflow: hidden; }
+  video { position: absolute; inset: 0; width: auto; height: auto; max-width: 100%; max-height: 100%; margin: auto; outline: none; }
   p { padding: 24px; }
   p[role="status"] { position: absolute; }
 </style>
