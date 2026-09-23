@@ -1,11 +1,15 @@
 {
   "name": "@setdown/desktop",
   "productName": "Setdown",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "author": "Setdown Contributors",
   "homepage": "https://github.com/yabsed/setdown",
-  "repository": { "type": "git", "url": "https://github.com/yabsed/setdown.git", "directory": "apps/desktop" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yabsed/setdown.git",
+    "directory": "apps/desktop"
+  },
   "description": "A document-first Markdown reader and editor for beautifully typeset local documents",
   "type": "module",
   "main": "dist-electron/main.cjs",
@@ -62,19 +66,38 @@
     "appId": "app.setdown.desktop",
     "productName": "Setdown",
     "artifactName": "Setdown-${version}-${os}-${arch}.${ext}",
-    "files": ["dist/**/*", "dist-electron/**/*", "package.json"],
-    "asarUnpack": ["node_modules/node-pty/**/*"],
-    "directories": { "output": "release" },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/node-pty/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
     "linux": {
-      "target": ["AppImage", "deb", "rpm"],
+      "target": [
+        "AppImage",
+        "deb",
+        "rpm"
+      ],
       "maintainer": "Setdown Contributors <yabsed@snu.ac.kr>",
       "category": "Office",
       "executableName": "setdown",
       "icon": "build/icon.png"
     },
-    "deb": { "packageName": "setdown" },
-    "rpm": { "packageName": "setdown" },
-    "win": { "target": "nsis", "icon": "build/icon.ico" },
+    "deb": {
+      "packageName": "setdown"
+    },
+    "rpm": {
+      "packageName": "setdown"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
@@ -82,34 +105,64 @@
       "createDesktopShortcut": "always",
       "createStartMenuShortcut": true
     },
-    "fileAssociations": [{
-      "ext": ["md", "markdown", "mdown", "mkdn", "mkd", "rmd", "qmd", "mdx"],
-      "name": "Markdown document",
-      "description": "Markdown document",
-      "role": "Editor",
-      "mimeType": "text/markdown"
-    }, {
-      "ext": ["pdf"],
-      "name": "PDF document",
-      "description": "PDF document",
-      "role": "Viewer",
-      "mimeType": "application/pdf"
-    }, {
-      "ext": ["txt"],
-      "name": "Plain text",
-      "description": "Plain text document",
-      "role": "Editor",
-      "mimeType": "text/plain"
-    }, {
-      "ext": ["png", "jpg", "jpeg", "webp", "gif", "avif", "svg"],
-      "name": "Image",
-      "description": "Image",
-      "role": "Viewer"
-    }, {
-      "ext": ["mp4", "webm"],
-      "name": "Video",
-      "description": "Video",
-      "role": "Viewer"
-    }]
+    "fileAssociations": [
+      {
+        "ext": [
+          "md",
+          "markdown",
+          "mdown",
+          "mkdn",
+          "mkd",
+          "rmd",
+          "qmd",
+          "mdx"
+        ],
+        "name": "Markdown document",
+        "description": "Markdown document",
+        "role": "Editor",
+        "mimeType": "text/markdown"
+      },
+      {
+        "ext": [
+          "pdf"
+        ],
+        "name": "PDF document",
+        "description": "PDF document",
+        "role": "Viewer",
+        "mimeType": "application/pdf"
+      },
+      {
+        "ext": [
+          "txt"
+        ],
+        "name": "Plain text",
+        "description": "Plain text document",
+        "role": "Editor",
+        "mimeType": "text/plain"
+      },
+      {
+        "ext": [
+          "png",
+          "jpg",
+          "jpeg",
+          "webp",
+          "gif",
+          "avif",
+          "svg"
+        ],
+        "name": "Image",
+        "description": "Image",
+        "role": "Viewer"
+      },
+      {
+        "ext": [
+          "mp4",
+          "webm"
+        ],
+        "name": "Video",
+        "description": "Video",
+        "role": "Viewer"
+      }
+    ]
   }
 }
