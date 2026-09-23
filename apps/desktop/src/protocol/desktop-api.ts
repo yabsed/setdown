@@ -153,7 +153,7 @@ export type TransferableTab = {
   document: DocumentSnapshot;
   text: string;
   revision: number;
-  surface: 'viewer' | 'editor' | 'pdf' | 'image';
+  surface: 'viewer' | 'editor' | 'pdf' | 'image' | 'video';
   readingPosition?: import('../core/reading/reading-position').ReadingPosition;
   anchor: {
     sourceLine: number;
@@ -225,6 +225,7 @@ export type MarkTexApi = {
   flushReadingPositions(): void;
   readPdfRange(path: string, begin: number, end: number, version: DiskVersion): Promise<Uint8Array>;
   readImageBytes(path: string, version: DiskVersion): Promise<Uint8Array>;
+  mediaUrl(path: string): string;
   terminal: import('./terminal').TerminalApi;
   getZoom(): Promise<import('../core/zoom').ZoomSnapshot>;
   onZoomChanged(listener: (zoom: import('../core/zoom').ZoomSnapshot) => void): () => void;

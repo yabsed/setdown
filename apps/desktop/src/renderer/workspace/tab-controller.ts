@@ -355,7 +355,7 @@ export class TabController {
     const tab = this.options.workspace.active;
     if (tab) this.options.editor.replace(tab, documentSnapshot);
   };
-  show = async (documentSnapshot: DocumentSnapshot, initialSurface: 'viewer' | 'editor' | 'pdf' | 'image' = 'viewer',
+  show = async (documentSnapshot: DocumentSnapshot, initialSurface: 'viewer' | 'editor' | 'pdf' | 'image' | 'video' = 'viewer',
     presentation: 'document' | 'review' = 'document', placement?: EditorGroupPlacement): Promise<void> => {
     const { editor, reader, workspace } = this.options;
     if (!documentSnapshot.isUntitled) {

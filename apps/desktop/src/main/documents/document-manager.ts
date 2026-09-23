@@ -10,11 +10,12 @@ import type {
   SaveResult,
 } from '../../protocol/desktop-api';
 import { applyTextRevision } from '../../core/document/document-state';
-import { isMarkdownDocument, isPdfDocument, isImageDocument, isReadOnlyDocument, IMAGE_EXTENSIONS, MARKDOWN_EXTENSIONS } from '../../core/document/document-profile';
+import { isMarkdownDocument, isPdfDocument, isImageDocument, isVideoDocument, isReadOnlyDocument, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS, MARKDOWN_EXTENSIONS } from '../../core/document/document-profile';
 import { prepareDocumentSave, retainUnsavedRevision } from '../../core/document/document-save';
 import type { ReadingPositionStore } from '../reading/reading-position-store';
 import { readImageMetadata } from './image-file';
 import { readPdfMetadata } from './pdf-file';
+import { readVideoMetadata } from './video-file';
 import { readTextFile } from './text-file';
 import { discardDraftBundle, saveDraftBundle } from './draft-assets';
 import { isSupportedImagePath, savePastedImageFile, savePastedPng } from './pasted-image';
@@ -36,7 +37,7 @@ export class DocumentManager {
     const absolute = canonicalPath(filePath);
     // Preserve Markdown's existing unbounded read policy. New text formats use
     // the bounded, strict decoder and retain their BOM/EOL metadata.
-    const loaded = isImageDocument(absolute) ? await readImageMetadata(absolute) : isPdfDocument(absolute) ? await readPdfMetadata(absolute) : isMarkdownDocument(absolute)
+    const loaded = isVideoDocument(absolute) ? await readVideoMetadata(absolute) : isImageDocument(absolute) ? await readImageMetadata(absolute) : isPdfDocument(absolute) ? await readPdfMetadata(absolute) : isMarkdownDocument(absolute)
       ? { text: await fs.readFile(absolute, 'utf8'), diskVersion: diskVersion(absolute) }
       : await readTextFile(absolute);
     return {
@@ -102,7 +103,7 @@ export class DocumentManager {
 
   async chooseAndOpen(state: WindowState, notify = true) {
     const result = await dialog.showOpenDialog(state.window, {
-      properties: ['openFile'], filters: [{ name: 'Documents', extensions: [...MARKDOWN_EXTENSIONS, ...IMAGE_EXTENSIONS, 'pdf', 'txt'] }, MARKDOWN_FILTER, { name: 'PDF', extensions: ['pdf'] }, { name: 'Images', extensions: IMAGE_EXTENSIONS }, ALL_FILES_FILTER],
+      properties: ['openFile'], filters: [{ name: 'Documents', extensions: [...MARKDOWN_EXTENSIONS, ...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS, 'pdf', 'txt'] }, MARKDOWN_FILTER, { name: 'PDF', extensions: ['pdf'] }, { name: 'Images', extensions: IMAGE_EXTENSIONS }, { name: 'Videos', extensions: VIDEO_EXTENSIONS }, ALL_FILES_FILTER],
     });
     if (result.canceled || !result.filePaths[0]) return null;
     return this.open(state, result.filePaths[0], notify);

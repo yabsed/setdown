@@ -104,7 +104,7 @@ export const view = $state({
   focusedGroupId: 'group-0',
   tabs: [] as TabView[],
   draggedTabId: null as string | null,
-  surface: 'empty' as 'empty' | 'viewer' | 'editor' | 'pdf' | 'image',
+  surface: 'empty' as 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video',
   mediaTabs: [] as import('./workspace/media-cache').MediaTab[],
   activeMediaId: null as string | null,
   notice: false,

@@ -14,6 +14,7 @@ import type {
   TransferableTab,
 } from '../protocol/desktop-api';
 import { normalizePreviewTheme } from '../core/preview/preview-preferences';
+import { resourceUrl } from '../core/preview/media-url';
 
 installAppZoom((steps) => ipcRenderer.send('workspace:zoom', steps));
 installWheelZoom((steps) => ipcRenderer.send('workspace:text-zoom', steps));
@@ -40,6 +41,7 @@ const api: MarkTexApi = {
   flushReadingPositions: () => ipcRenderer.sendSync('reading:flush'),
   readPdfRange: (path, begin, end, version) => ipcRenderer.invoke('pdf:range', path, begin, end, version),
   readImageBytes: (path, version) => ipcRenderer.invoke('image:read', path, version),
+  mediaUrl: (path) => resourceUrl(path),
   terminal: {
     create: (id, size) => ipcRenderer.invoke('terminal:create', id, size),
     write: (id, data) => ipcRenderer.send('terminal:write', id, data),

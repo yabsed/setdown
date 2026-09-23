@@ -3,10 +3,13 @@ import { installZoomSettings } from './windows/zoom-settings';
 import { ReadingPositionStore } from './reading/reading-position-store';
 import { installReadingIpc } from './reading/reading-ipc';
 import { app, BrowserWindow, dialog, net, protocol } from 'electron';
+import { createReadStream } from 'node:fs';
+import { promises as fs } from 'node:fs';
+import { Readable } from 'node:stream';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { AppCommand, DocumentSnapshot } from '../protocol/desktop-api';
-import { isMarkdownDocument } from '../core/document/document-profile';
+import { isMarkdownDocument, isVideoDocument, videoMimeType } from '../core/document/document-profile';
 import { documentPathFromArgs } from './documents/document-args';
 import { canonicalPath, isInside } from './documents/file-system';
 import { DocumentManager } from './documents/document-manager';
@@ -26,7 +29,7 @@ import { WindowRegistry } from './windows/window-registry';
 
 app.setName('Setdown');
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'marktex-resource', privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  { scheme: 'marktex-resource', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } },
   { scheme: 'marktex-preview', privileges: { standard: true, secure: true, supportFetchAPI: true } },
 ]);
 const registry = new WindowRegistry();
@@ -58,12 +61,38 @@ function openError(error: unknown): void {
 }
 function readableResource(candidate: string): string {
   const resolved = canonicalPath(candidate);
-  const roots = [crossnoteRoot, ...Array.from(registry.values).flatMap((state) => [state.activeRoot, state.projectRoot])]
+  const states = Array.from(registry.values);
+  const roots = [crossnoteRoot, ...states.flatMap((state) => [state.activeRoot, state.projectRoot])]
     .filter((root): root is string => !!root);
-  if (!roots.some((root) => isInside(canonicalPath(root), resolved))) {
-    throw new Error('The preview attempted to read outside the document folder.');
+  if (roots.some((root) => isInside(canonicalPath(root), resolved))) return resolved;
+  // An open video tab keeps streaming even after the active document moves away
+  // from its folder; the same ownership rule as the reading IPC applies.
+  if (isVideoDocument(resolved) && states.some((state) => state.currentDocument?.path === resolved
+    || state.rendererTabs.some((tab) => !tab.isUntitled && tab.path === resolved))) return resolved;
+  throw new Error('The preview attempted to read outside the document folder.');
+}
+async function videoResponse(request: Request, filePath: string): Promise<Response> {
+  const { size } = await fs.stat(filePath);
+  const headers = { 'content-type': videoMimeType(filePath) ?? 'application/octet-stream', 'accept-ranges': 'bytes' };
+  const range = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get('range') ?? '');
+  if (!range || (!range[1] && !range[2])) {
+    return new Response(Readable.toWeb(createReadStream(filePath)) as ReadableStream,
+      { headers: { ...headers, 'content-length': String(size) } });
   }
-  return resolved;
+  let start: number;
+  let end = size - 1;
+  if (range[1]) {
+    start = parseInt(range[1], 10);
+    if (range[2]) end = Math.min(parseInt(range[2], 10), size - 1);
+  } else {
+    start = Math.max(0, size - parseInt(range[2], 10));
+  }
+  if (start > end || start >= size) {
+    return new Response(null, { status: 416, headers: { 'content-range': `bytes */${size}` } });
+  }
+  return new Response(Readable.toWeb(createReadStream(filePath, { start, end })) as ReadableStream,
+    { status: 206, headers: { ...headers, 'content-length': String(end - start + 1),
+      'content-range': `bytes ${start}-${end}/${size}` } });
 }
 function installProtocols(): void {
   protocol.handle('marktex-preview', (request) => {
@@ -75,8 +104,13 @@ function installProtocols(): void {
   protocol.handle('marktex-resource', (request) => {
     const filePath = pathFromResourceUrl(request.url);
     if (!filePath) return new Response('Bad resource URL', { status: 400 });
-    try { return net.fetch(pathToFileURL(readableResource(filePath)).href); }
+    let resolved: string;
+    try { resolved = readableResource(filePath); }
     catch { return new Response('Resource is outside the allowed roots', { status: 403 }); }
+    // Media elements seek with Range requests; answer them from an explicit
+    // stream instead of buffering the whole file through net.fetch.
+    if (isVideoDocument(resolved)) return videoResponse(request, resolved);
+    return net.fetch(pathToFileURL(resolved).href);
   });
 }
 if (!app.requestSingleInstanceLock()) app.quit();

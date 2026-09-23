@@ -51,6 +51,11 @@
         <module.default document={tab.document} initialPosition={tab.position} {active}
           focused={group?.id === view.focusedGroupId} {desktop} onposition={(position) => mediaPosition(tab.id, position)} />
       {:catch error}{#if active}<div role="alert">Could not load the PDF reader: {String(error)}</div>{/if}{/await}
+    {:else if tab.document.kind === 'video'}
+      {#await import('./video/VideoSurface.svelte') then module}
+        <module.default document={tab.document} initialPosition={tab.position} {active}
+          {desktop} onposition={(position) => mediaPosition(tab.id, position)} />
+      {:catch error}{#if active}<div role="alert">Could not load the video player: {String(error)}</div>{/if}{/await}
     {:else}
       {#await import('./image/ImageSurface.svelte') then module}
         <module.default document={tab.document} initialPosition={tab.position} {active}

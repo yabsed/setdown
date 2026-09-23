@@ -19,6 +19,7 @@ describe('durable reading positions', () => {
     store.save({ ...record('/docs/b.pdf'), position: { kind: 'pdf', page: 37, left: 12, top: 401, zoom: 'page-width', rotation: 90 } });
     store.save({ ...record('/docs/c.png'), position: { kind: 'image', zoom: 2, rotation: 90, centerX: .3, centerY: .7 } });
     store.save({ ...record('/docs/width.svg'), position: { kind: 'image', zoom: 'fit-width', rotation: 0, centerX: .5, centerY: .3 } });
+    store.save({ ...record('/docs/clip.mp4'), position: { kind: 'video', time: 42.5 } });
     store.move('/docs', '/renamed'); store.flush();
     const reopened = new ReadingPositionStore(file);
     expect(reopened.get('/docs/a.txt', { mtimeMs: 3, size: 100 })).toBeUndefined();
@@ -26,6 +27,7 @@ describe('durable reading positions', () => {
     expect(reopened.get('/renamed/b.pdf', { mtimeMs: 3, size: 100 })).toMatchObject({ page: 37, top: 401, rotation: 90 });
     expect(reopened.get('/renamed/width.svg', { mtimeMs: 3, size: 100 })).toMatchObject({ zoom: 'fit-width' });
     expect(reopened.get('/renamed/c.png', { mtimeMs: 3, size: 100 })).toMatchObject({ kind: 'image', zoom: 2, rotation: 90, centerX: .3, centerY: .7 });
+    expect(reopened.get('/renamed/clip.mp4', { mtimeMs: 3, size: 100 })).toEqual({ kind: 'video', time: 42.5 });
   }));
   it('rejects delayed older observations and invalid data', () => run((file) => {
     const store = new ReadingPositionStore(file);
@@ -33,6 +35,7 @@ describe('durable reading positions', () => {
     expect(store.save(record('/a.txt', 199))).toBe(false);
     expect(store.save({ ...record('/a.pdf'), position: { kind: 'pdf', page: 0 } })).toBe(false);
     expect(store.save({ ...record('/a.png'), position: { kind: 'image', zoom: 2, rotation: 90, centerX: 2, centerY: .5 } })).toBe(false);
+    expect(store.save({ ...record('/a.mp4'), position: { kind: 'video', time: -1 } })).toBe(false);
     const cyclic: { self?: unknown } = {}; cyclic.self = cyclic;
     expect(store.save({ ...record('/a.txt'), position: { ...record('').position, editorView: cyclic } })).toBe(false);
     store.flush();

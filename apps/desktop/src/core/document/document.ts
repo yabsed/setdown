@@ -6,8 +6,8 @@ export type DiskVersion = {
 };
 
 export type DocumentSnapshot = {
-  /** PDF and image snapshots carry metadata only; no text model is created. */
-  kind?: 'pdf' | 'image';
+  /** PDF, image and video snapshots carry metadata only; no text model is created. */
+  kind?: 'pdf' | 'image' | 'video';
   readingPosition?: import('../reading/reading-position').ReadingPosition;
   path: string;
   name: string;
