@@ -1174,7 +1174,7 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 .group-content { position: absolute; padding-top: 40px; pointer-events: none; min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); overflow: hidden; }
 .group-content > * { grid-column: 1; grid-row: 2; min-width: 0; min-height: 0; pointer-events: auto; }
 .group-content > .notice { grid-column: 1; grid-row: 1; }
-.editor-area .group-content > .git-review, .editor-area .group-content > .pdf-surface, .editor-area .group-content > .image-surface { grid-column: 1; grid-row: 2; }
+.editor-area .group-content > .git-review, .editor-area .group-content > .pdf-surface, .editor-area .group-content > .image-surface, .editor-area .group-content > .video-surface { grid-column: 1; grid-row: 2; }
 .media-content.inactive { visibility: hidden; pointer-events: none; }
 .media-content.inactive > * { pointer-events: none; }
 .shell[data-tabs="false"]:not([data-git-diff="true"]) .group-content { padding-top: 0; }

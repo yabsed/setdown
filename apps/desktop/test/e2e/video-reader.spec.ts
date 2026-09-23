@@ -29,6 +29,17 @@ test('opens video files, streams them with range requests and prevents text save
     expect(src).toMatch(/^marktex-resource:\/\/file\/.*clip\.mp4$/);
     expect(await video.evaluate((node: HTMLVideoElement) => [node.readyState, node.duration])).toEqual([4, 2]);
     expect(await previews(app).count()).toBe(0);
+    // The surface must fill its group-content cell so the stage centers the video;
+    // a surface that shrink-wraps into an implicit grid row would equal the video size.
+    const centered = await reader.evaluate((surface) => {
+      const stage = surface.querySelector('.video-stage')!;
+      const video = stage.querySelector('video')!;
+      const s = stage.getBoundingClientRect(), v = video.getBoundingClientRect();
+      return s.height > v.height * 1.5
+        && Math.abs((s.top + s.bottom) / 2 - (v.top + v.bottom) / 2) <= 1
+        && Math.abs((s.left + s.right) / 2 - (v.left + v.right) / 2) <= 1;
+    });
+    expect(centered).toBe(true);
     // Seeking is answered by explicit partial responses, not a buffered file.
     const range = await page.evaluate(async (url) => {
       const response = await fetch(url!, { headers: { Range: 'bytes=0-99' } });
