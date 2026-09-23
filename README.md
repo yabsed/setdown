@@ -10,8 +10,6 @@ Setdown is a desktop Markdown reader and editor for local files. Read a typeset
 document, double-click the passage you want to change, and edit its Markdown
 source. Press `Esc` to return to reading with your place preserved.
 
-**Try Setdown:** [Download v0.1.0](https://github.com/yabsed/setdown/releases/tag/v0.1.0)
-
 <p align="center">
   <img src="live_demo.gif" width="900" alt="Editing Markdown from the Setdown Viewer and returning to the reading position">
 </p>
