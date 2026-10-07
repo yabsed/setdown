@@ -218,3 +218,24 @@ The detach test forces source `dragend` to reach main before an existing window'
 drop claim and verifies that the existing window still receives the live native
 preview. Keep ordinary single-group preview and Git-review cycles in the same
 48-bucket performance comparison.
+
+## Preview tabs
+
+VS Code's editor-group preview policy applies to document tabs. Explorer single
+clicks open one replaceable preview per group; double-clicks (file or tab), middle
+clicks on files, Enter, explicit Open, native/external opens and new files keep
+their tabs. Preview labels are italic. Reopening an existing pinned document never
+demotes it. Editing ordinary or shared Working Tree text pins the document; Save
+and Undo do not make it replaceable again. Dragging/moving a preview also pins it.
+
+`core/workspace/editor-groups.ts` owns each group's preview identity. Replacing a
+preview preserves its group and split geometry, releases its Monaco/native/media
+resources, and never closes dirty text or activates a neighboring document on the
+way to the requested one. Failed reads preserve the current tab; superseded
+project-file reads cannot override a newer open request. These rules do not change
+the preparation, focus, revision or visual guarantees above.
+
+`editor-groups.test.ts`, `text-workspace.test.ts` and `preview-tabs.spec.ts` cover
+replacement, promotion, resource release, saved edits, independent groups and
+explicit opens. They are included in the focused gate; ordinary and Git review
+latency retain the same 48-bucket comparison.

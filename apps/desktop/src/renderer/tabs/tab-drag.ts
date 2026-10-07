@@ -112,6 +112,7 @@ export function createTabDrag(options: Options) {
     start(id: string, event: DragEvent) {
       const tab = options.tabs.find(tab => tab.id === id);
       if (!tab) return;
+      if (options.groups.pin(id)) options.render();
       // Do not change selection until the drop succeeds.
       tabId = id; transferId = crypto.randomUUID(); canceled = false; leftWindow = false;
       view.draggedTabId = id;

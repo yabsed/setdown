@@ -4,11 +4,12 @@ import type {
   ProjectFolder,
 } from '../../../protocol/desktop-api';
 import type { DesktopPort } from '../../ports/desktop-port';
+import type { EditorOpenOptions } from '../../../core/workspace/editor-groups';
 import { project, rememberProjectState, type VisibleProjectEntry } from '../project-state.svelte';
 
 type Options = {
   desktop: DesktopPort;
-  showDocument(path: string): Promise<boolean>;
+  showDocument(path: string, options?: EditorOpenOptions): Promise<boolean>;
   pathMoved(from: string, to: string): Promise<void>;
   prepareRemove(path: string): Promise<boolean>;
 };
@@ -51,10 +52,10 @@ export class ExplorerController {
     if (!this.children.has(directoryPath)) await this.load(directoryPath);
   };
 
-  open = async (filePath: string): Promise<boolean> => {
+  open = async (filePath: string, options?: EditorOpenOptions): Promise<boolean> => {
     try {
       project.error = '';
-      return await this.options.showDocument(filePath);
+      return await this.options.showDocument(filePath, options);
     } catch (error) {
       this.fail(error);
       return false;

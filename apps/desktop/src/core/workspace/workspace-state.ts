@@ -57,7 +57,15 @@ export class WorkspaceState {
   set activeId(id: string | null) { this.activeTabId = id; if (id) this.groups.activate(id); }
   get active(): WorkspaceTab | null { return this.tabs.find((tab) => tab.id === this.activeId) ?? null; }
   find(id: string): WorkspaceTab | null { return this.tabs.find((tab) => tab.id === id) ?? null; }
-  add(tab: WorkspaceTab): void { this.tabs.push(tab); this.groups.add(tab.id); }
+  add(tab: WorkspaceTab, pinned = true): WorkspaceTab | null {
+    const previousId = this.groups.add(tab.id, pinned);
+    const previous = previousId ? this.find(previousId) : null;
+    if (previous) {
+      this.tabs.splice(this.tabs.indexOf(previous), 1, tab);
+      if (this.activeTabId === previous.id) this.activeTabId = null;
+    } else this.tabs.push(tab);
+    return previous;
+  }
   remove(id: string): { tab: WorkspaceTab; index: number; wasActive: boolean } | null {
     const index = this.tabs.findIndex((tab) => tab.id === id);
     if (index < 0) return null;

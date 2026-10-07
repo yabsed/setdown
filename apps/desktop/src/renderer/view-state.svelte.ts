@@ -15,6 +15,7 @@ export type TabView = {
   path: string;
   active: boolean;
   dirty: boolean;
+  preview: boolean;
 };
 
 export type HeadingView = {
@@ -45,6 +46,7 @@ export type AppActions = {
   executeMenuItem(id: string): void;
   resolveClosePrompt(decision: CloseDecision): void;
   activateTab(id: string): void;
+  pinTab(id: string): void;
   closeTab(id: string): void;
   startTabDrag(id: string, event: DragEvent): void;
   endTabDrag(event: DragEvent): void;
@@ -57,7 +59,7 @@ export type AppActions = {
   collapseProjectExplorer(): void;
   toggleProjectExplorerRoot(): void;
   toggleProjectDirectory(path: string): void;
-  openProjectFile(path: string): void;
+  openProjectFile(path: string, options?: import('../core/workspace/editor-groups').EditorOpenOptions): void;
   createProjectEntry(parentPath: string, name: string, kind: ProjectEntryKind): Promise<void>;
   renameProjectEntry(path: string, name: string): Promise<void>;
   moveProjectEntry(path: string, targetDirectory: string): Promise<void>;
@@ -99,7 +101,7 @@ export type AppActions = {
 };
 
 export const view = $state({
-  groups: [{ id: 'group-0', tabs: [], activeId: null }] as import('../core/workspace/editor-groups').Group[],
+  groups: [{ id: 'group-0', tabs: [], activeId: null, previewId: null }] as import('../core/workspace/editor-groups').Group[],
   groupTree: { kind: 'group', id: 'group-0' } as import('../core/workspace/editor-groups').GroupTree,
   focusedGroupId: 'group-0',
   tabs: [] as TabView[],

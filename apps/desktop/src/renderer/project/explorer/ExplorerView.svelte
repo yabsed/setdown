@@ -78,16 +78,16 @@
     menu = null;
   }
 
-  function activate(entry: VisibleProjectEntry) {
+  function activate(entry: VisibleProjectEntry, pinned = false) {
     selected = entry.path;
     if (entry.kind === 'directory') void actions.toggleProjectDirectory(entry.path);
-    else if (entry.kind === 'document') actions.openProjectFile(entry.path);
+    else if (entry.kind === 'document') actions.openProjectFile(entry.path, { pinned });
   }
 
   function keyEntry(event: KeyboardEvent, entry: VisibleProjectEntry) {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      activate(entry);
+      activate(entry, true);
     } else if (event.key === 'F2') {
       event.preventDefault();
       beginRename(entry);
@@ -195,7 +195,10 @@
           aria-selected={selected === entry.path}
           aria-expanded={entry.kind === 'directory' ? entry.expanded : undefined}
           style:padding-left={`${8 + entry.depth * 13}px`} title={entry.path}
-          onclick={() => activate(entry)} onkeydown={(event) => keyEntry(event, entry)}
+          onclick={(event) => { if (event.detail !== 2) activate(entry); }}
+          ondblclick={() => { if (entry.kind === 'document') activate(entry, true); }}
+          onauxclick={(event) => { if (event.button === 1 && entry.kind === 'document') { event.preventDefault(); activate(entry, true); } }}
+          onkeydown={(event) => keyEntry(event, entry)}
           oncontextmenu={(event) => openMenu(event, entry)} ondragstart={(event) => startDrag(event, entry)}
           ondragend={() => dropTarget = ''}
           ondragover={(event) => entry.kind === 'directory' && dragOver(event, entry.path)}

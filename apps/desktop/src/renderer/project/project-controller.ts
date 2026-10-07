@@ -4,6 +4,7 @@ import type {
   ProjectFolder, ProjectSearchDocument, ProjectSearchResult,
 } from '../../protocol/desktop-api';
 import type { PreviewThemeId } from '../../core/preview/preview-preferences';
+import type { EditorOpenOptions } from '../../core/workspace/editor-groups';
 import type { DesktopPort } from '../ports/desktop-port';
 import type { WorkingTreeEdit } from '../view-state.svelte';
 import { ExplorerController } from './explorer/explorer-controller';
@@ -15,7 +16,7 @@ type SearchTarget = Pick<ProjectSearchResult, 'surface' | 'line' | 'column' | 'l
 type Options = {
   desktop: DesktopPort;
   searchDocuments(query: string): ProjectSearchDocument[];
-  showDocument(path: string): Promise<boolean>;
+  showDocument(path: string, options?: EditorOpenOptions): Promise<boolean>;
   openWorkingTree(path: string): Promise<boolean>;
   activateWorkingTree(path: string): Promise<boolean>;
   workingTreeBuffer(path: string): string | null;
@@ -87,7 +88,7 @@ export class ProjectController {
     project.explorerRootExpanded = !project.explorerRootExpanded; rememberProjectState();
   };
   toggleDirectory = (path: string): Promise<void> => this.explorer.toggle(path);
-  openFile = (path: string): Promise<boolean> => this.explorer.open(path);
+  openFile = (path: string, options?: EditorOpenOptions): Promise<boolean> => this.explorer.open(path, options);
   createEntry = (parent: string, name: string, kind: ProjectEntryKind): Promise<void> => this.explorer.create(parent, name, kind);
   renameEntry = (path: string, name: string): Promise<void> => this.explorer.rename(path, name);
   moveEntry = (path: string, target: string): Promise<void> => this.explorer.move(path, target);

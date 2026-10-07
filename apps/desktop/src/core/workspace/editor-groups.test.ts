@@ -48,4 +48,40 @@ describe('editor groups', () => {
     expect(splitDirection(50, 91, 100, 100)).toBe('down');
     expect(splitDirection(25, 1, 100, 100)).toBe('left');
   });
+  it('replaces only the group preview even when a pinned tab has focus', () => {
+    const groups = new EditorGroups();
+    groups.add('pinned'); groups.activate('pinned');
+    groups.add('preview', false); groups.activate('preview');
+    groups.activate('pinned');
+    expect(groups.add('next', false)).toBe('preview');
+    expect(groups.focused).toMatchObject({ tabs: ['pinned', 'next'], activeId: 'pinned', previewId: 'next' });
+    groups.pin('next'); groups.add('third', false);
+    expect(groups.focused.tabs).toEqual(['pinned', 'third', 'next']);
+    expect(groups.isPinned('next')).toBe(true);
+  });
+  it('keeps independent previews across splits and pins moved tabs', () => {
+    const groups = new EditorGroups();
+    groups.add('left'); groups.add('right'); groups.move('right', 'group-0', 'right');
+    const right = groups.focusedId;
+    groups.add('right-preview', false);
+    groups.activate('left'); groups.add('left-preview', false);
+    expect(groups.groups.map(group => group.previewId)).toEqual(['left-preview', 'right-preview']);
+    groups.move('left-preview', right, null);
+    expect(groups.groups.map(group => group.previewId)).toEqual([null, 'right-preview']);
+    expect(groups.isPinned('left-preview')).toBe(true);
+    groups.remove('right-preview');
+    expect(groups.groups.map(group => group.previewId)).toEqual([null, null]);
+  });
+  it('replacing a sole preview retains its group identity and split geometry', () => {
+    const groups = new EditorGroups();
+    groups.add('left'); groups.add('right'); groups.move('right', 'group-0', 'right');
+    groups.add('preview', false); groups.activate('preview');
+    groups.remove('right');
+    const id = groups.focusedId;
+    const tree = structuredClone(groups.tree);
+    expect(groups.add('next', false)).toBe('preview');
+    expect(groups.focused).toEqual({ id, tabs: ['next'], activeId: 'next', previewId: 'next' });
+    expect(groups.tree).toEqual(tree);
+    expect(groups.groups).toHaveLength(2);
+  });
 });

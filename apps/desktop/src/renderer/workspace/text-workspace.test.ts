@@ -45,6 +45,95 @@ function fixture() {
   const controller = new TabController(options as unknown as ConstructorParameters<typeof TabController>[0]);
   return { controller, workspace, session, preview, options };
 }
+const previewOpen = (controller: TabController, document: DocumentSnapshot) =>
+  controller.show(document, 'viewer', 'document', undefined, { pinned: false });
+
+test('Explorer browsing replaces its preview and releases the outgoing model and reader', async () => {
+  const f = fixture();
+  const dispose = vi.spyOn(f.options.editor, 'dispose');
+  await f.controller.show(snapshot('/project/keep.txt'));
+  const keep = f.workspace.active!;
+  await previewOpen(f.controller, snapshot('/project/first.md'));
+  const previous = f.workspace.active!;
+  await f.controller.activate(keep.id);
+  await previewOpen(f.controller, snapshot('/project/second.txt'));
+  assert.deepEqual(f.workspace.tabs.map(tab => tab.document.path), ['/project/keep.txt', '/project/second.txt']);
+  assert.equal(dispose.mock.calls.length, 1);
+  assert.deepEqual(dispose.mock.calls[0], [previous.id]);
+  assert.equal(calls.filter(call => call === 'destroy').length, 1);
+  assert.equal(f.workspace.groups.focused.previewId, f.workspace.activeId);
+  assert.ok(f.workspace.find(keep.id));
+});
+
+test('editing pins previews permanently through save and Undo', async () => {
+  const f = fixture();
+  await previewOpen(f.controller, snapshot('/project/edit.txt'));
+  const edited = f.workspace.active!;
+  f.controller.editorChanged(edited, 'changed');
+  await f.controller.acceptSaved(edited, { ...edited.document, text: 'changed', savedText: 'changed', revision: 1, savedRevision: 1 });
+  assert.equal(f.controller.dirty(edited), false);
+  await previewOpen(f.controller, snapshot('/project/undo.txt'));
+  const undone = f.workspace.active!;
+  f.controller.editorChanged(undone, 'changed');
+  f.controller.editorChanged(undone, undone.document.savedText);
+  assert.equal(f.controller.dirty(undone), false);
+  await previewOpen(f.controller, snapshot('/project/next.txt'));
+  assert.deepEqual(f.workspace.tabs.map(tab => tab.document.name), ['edit.txt', 'undo.txt', 'next.txt']);
+  assert.equal(f.workspace.groups.isPinned(edited.id), true);
+  assert.equal(f.workspace.groups.isPinned(undone.id), true);
+});
+
+test('explicit open promotes an existing preview and subsequent browsing never demotes it', async () => {
+  const f = fixture();
+  const doc = snapshot('/project/promote.txt');
+  await previewOpen(f.controller, doc);
+  const promoted = f.workspace.active!;
+  await f.controller.show(doc);
+  await previewOpen(f.controller, doc);
+  await previewOpen(f.controller, snapshot('/project/next.txt'));
+  assert.equal(f.workspace.tabs.length, 2);
+  assert.equal(f.workspace.find(promoted.id), promoted);
+  assert.equal(f.workspace.groups.isPinned(promoted.id), true);
+});
+
+test('shared Working Tree edits and dirty buffers cannot be replaced', async () => {
+  const f = fixture();
+  await previewOpen(f.controller, snapshot('/project/shared.txt'));
+  const shared = f.workspace.active!;
+  f.controller.acceptWorkingTreeBuffer(shared.document.path, 'review edit');
+  await previewOpen(f.controller, snapshot('/project/dirty.txt'));
+  const dirty = f.workspace.active!;
+  // Defend even when a borrowed model changed before its UI notification.
+  dirty.text = 'unreported edit';
+  const confirm = vi.spyOn(f.options, 'confirmClose');
+  await previewOpen(f.controller, snapshot('/project/next.txt'));
+  assert.equal(f.workspace.tabs.length, 3);
+  assert.equal(shared.text, 'review edit');
+  assert.equal(dirty.text, 'unreported edit');
+  assert.equal(confirm.mock.calls.length, 0);
+});
+
+test('replacing the only preview does not collapse its split or activate a neighbor', async () => {
+  const f = fixture();
+  await f.controller.show(snapshot('/project/left.txt'));
+  const left = f.workspace.active!;
+  await f.controller.show(snapshot('/project/right.txt'));
+  const right = f.workspace.active!;
+  f.workspace.groups.move(right.id, 'group-0', 'right');
+  await f.controller.activate(right.id);
+  await previewOpen(f.controller, snapshot('/project/first.txt'));
+  await f.controller.close(right.id);
+  const groupId = f.workspace.groups.focusedId;
+  const tree = structuredClone(f.workspace.groups.tree);
+  const activate = vi.spyOn(f.options.desktop, 'activateDocument');
+  await previewOpen(f.controller, snapshot('/project/next.txt'));
+  assert.equal(f.workspace.groups.groups.length, 2);
+  assert.equal(f.workspace.groups.focusedId, groupId);
+  assert.deepEqual(f.workspace.groups.tree, tree);
+  assert.equal(f.workspace.groups.groups[0].activeId, left.id);
+  assert.equal(activate.mock.calls.length, 1);
+});
+
 for (const extension of ['txt', 'cpp', 'json', 'custom']) test(`open/edit/transfer/close .${extension} never creates or schedules a preview`, async () => {
   const f = fixture();
   await f.controller.show(snapshot(`/project/file.${extension}`));

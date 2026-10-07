@@ -40,8 +40,10 @@
     {#each tabs as tab (tab.id)}
       <button class="document-tab" class:is-dragging={view.draggedTabId === tab.id}
         type="button" role="tab" aria-selected={tab.id === selected && !(focused && project.gitDiffActive)}
-        title={tab.path} draggable="true" data-tab-id={tab.id}
+        title={tab.preview ? `${tab.path}\nDouble-click to keep open` : tab.path}
+        draggable="true" data-tab-id={tab.id} data-preview={tab.preview}
         onclick={() => actions.activateTab(tab.id)}
+        ondblclick={() => actions.pinTab(tab.id)}
         ondragstart={(event) => actions.startTabDrag(tab.id, event)} ondragend={actions.endTabDrag}>
         <span class="tab-name">{tab.name}</span>
         {#if tab.dirty}<span class="tab-dirty" aria-label="Unsaved changes">•</span>{/if}
@@ -102,6 +104,7 @@
 </nav>
 
 <style>
+  .document-tab[data-preview="true"] .tab-name { font-style: italic; }
   .unfocused > :not(.new-tab-button) { display: none !important; }
   :global(.shell) .review-editor-action:not([hidden]) { display: grid; }
   :global(.shell) .editor-action[hidden] { display: none; }

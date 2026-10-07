@@ -1,7 +1,8 @@
 /** Editor groups own selection; the workspace owns documents and command focus. */
 export type SplitDirection = 'left' | 'right' | 'up' | 'down';
 export type EditorGroupPlacement = { groupId: string; direction: SplitDirection | null; index?: number };
-export type Group = { id: string; tabs: string[]; activeId: string | null };
+export type EditorOpenOptions = { pinned?: boolean };
+export type Group = { id: string; tabs: string[]; activeId: string | null; previewId: string | null };
 export type GroupTree = { kind: 'group'; id: string } | {
   kind: 'split'; id: string; axis: 'x' | 'y'; ratio: number; first: GroupTree; second: GroupTree;
 };
@@ -35,12 +36,34 @@ export function splitDirection(x: number, y: number, width: number, height: numb
 
 export class EditorGroups {
   private serial = 0;
-  readonly groups: Group[] = [{ id: 'group-0', tabs: [], activeId: null }];
+  readonly groups: Group[] = [{ id: 'group-0', tabs: [], activeId: null, previewId: null }];
   tree: GroupTree = { kind: 'group', id: 'group-0' };
   focusedId = 'group-0';
   get focused() { return this.groups.find(g => g.id === this.focusedId)!; }
   owner(tabId: string) { return this.groups.find(g => g.tabs.includes(tabId)); }
-  add(tabId: string) { if (!this.owner(tabId)) this.focused.tabs.push(tabId); }
+  /** VS Code EditorGroupModel: one replaceable preview per group; other tabs stay pinned. */
+  add(tabId: string, pinned = true): string | null {
+    if (this.owner(tabId)) return null;
+    const group = this.focused;
+    const previous = pinned ? null : group.previewId;
+    let at = group.activeId ? group.tabs.indexOf(group.activeId) + 1 : group.tabs.length;
+    if (previous) {
+      const index = group.tabs.indexOf(previous);
+      group.tabs.splice(index, 1);
+      if (at > index) at--;
+      if (group.activeId === previous) group.activeId = tabId;
+    }
+    group.tabs.splice(at, 0, tabId);
+    if (!pinned) group.previewId = tabId;
+    return previous;
+  }
+  isPinned(tabId: string): boolean { return this.owner(tabId)?.previewId !== tabId; }
+  pin(tabId: string): boolean {
+    const group = this.owner(tabId);
+    if (!group || group.previewId !== tabId) return false;
+    group.previewId = null;
+    return true;
+  }
   activate(tabId: string) {
     const group = this.owner(tabId);
     if (group) { group.activeId = tabId; this.focusedId = group.id; }
@@ -50,17 +73,19 @@ export class EditorGroups {
     if (!group) return;
     const index = group.tabs.indexOf(tabId);
     group.tabs.splice(index, 1);
+    if (group.previewId === tabId) group.previewId = null;
     if (group.activeId === tabId) group.activeId = group.tabs[Math.min(index, group.tabs.length - 1)] ?? null;
     this.prune();
   }
   move(tabId: string, targetId: string, direction: SplitDirection | null, index?: number) {
     const source = this.owner(tabId), target = this.groups.find(g => g.id === targetId);
     if (!source || !target) return;
+    this.pin(tabId);
     // Splitting a group's sole tab back into itself leaves exactly the same group.
     if (source === target && source.tabs.length === 1 && direction) return;
     let destination = target;
     if (direction) {
-      destination = { id: `group-${++this.serial}`, tabs: [], activeId: null };
+      destination = { id: `group-${++this.serial}`, tabs: [], activeId: null, previewId: null };
       this.groups.push(destination);
       const before = direction === 'left' || direction === 'up';
       const leaf: GroupTree = { kind: 'group', id: destination.id };

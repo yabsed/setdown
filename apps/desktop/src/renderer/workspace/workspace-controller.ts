@@ -43,8 +43,10 @@ export function startWorkspace(desktop: DesktopPort) {
     id: normalizePreviewTheme(desktop.initialTheme.id), revision: Math.max(0, desktop.initialTheme.revision),
   };
   applyShellTheme(initialTheme.id);
+  let projectOpenRequest = 0;
   const actions: AppActions = {
     focusGroup: (id) => {
+      projectOpenRequest++;
       const group = workspace.groups.groups.find(group => group.id === id);
       if (group?.activeId) { projects.deactivateGitDiff(); void tabs.activate(group.activeId); }
     },
@@ -52,7 +54,8 @@ export function startWorkspace(desktop: DesktopPort) {
     loadMenu: (id) => desktop.getApplicationMenu(id),
     executeMenuItem: (id) => desktop.executeApplicationMenuItem(id),
     resolveClosePrompt: (decision) => closePrompt.resolve(decision),
-    activateTab: (id) => { projects.deactivateGitDiff(); void tabs.activate(id); },
+    activateTab: (id) => { projectOpenRequest++; projects.deactivateGitDiff(); void tabs.activate(id); },
+    pinTab: (id) => tabs.pin(id),
     closeTab: (id) => void closeDocumentTab(id),
     startTabDrag: (id, event) => tabDrag.start(id, event),
     endTabDrag: (event) => tabDrag.end(event),
@@ -66,7 +69,7 @@ export function startWorkspace(desktop: DesktopPort) {
     collapseProjectExplorer: () => projects.collapseExplorer(),
     toggleProjectExplorerRoot: () => projects.toggleExplorerRoot(),
     toggleProjectDirectory: (path) => void projects.toggleDirectory(path),
-    openProjectFile: (path) => void projects.openFile(path),
+    openProjectFile: (path, options) => void projects.openFile(path, options),
     createProjectEntry: (parent, name, kind) => projects.createEntry(parent, name, kind),
     renameProjectEntry: (path, name) => projects.renameEntry(path, name),
     moveProjectEntry: (path, target) => projects.moveEntry(path, target),
@@ -146,8 +149,9 @@ export function startWorkspace(desktop: DesktopPort) {
   const tabDrag = createTabDrag({ desktop, shell, tabs: workspace.tabs, groups: workspace.groups,
     dragging: (active) => groups?.drag(active),
     openFile: async (path, placement) => {
+      const request = ++projectOpenRequest;
       const opened = await desktop.openProjectFile(path);
-      if (!opened) return;
+      if (!opened || request !== projectOpenRequest) return;
       projects.deactivateGitDiff(); await tabs.show(opened, 'viewer', 'document', placement);
     },
     activeId: () => workspace.activeId,
@@ -159,24 +163,26 @@ export function startWorkspace(desktop: DesktopPort) {
     saved: (document) => projects.documentSaved(document) });
   const documents = new DocumentActions({ desktop, tabs: workspace.tabs, active, text: tabs.text, dirty: tabs.dirty,
     preview, installModel: tabs.installModel, acceptSaved: tabs.acceptSaved,
-    show: (document, surface) => { projects.deactivateGitDiff(); return tabs.show(document, surface); },
+    show: (document, surface) => { projectOpenRequest++; projects.deactivateGitDiff(); return tabs.show(document, surface); },
     reload: tabs.reload, saved: (document) => projects.documentSaved(document),
     renderTabs: tabs.render, updateChrome: tabs.updateChrome, autoSave });
   projects = new ProjectController({ desktop,
     searchDocuments: (query) => workspace.tabs.filter((tab) => !tab.document.kind).map((tab) => ({ path: tab.document.path, text: tabs.text(tab),
       surface: tab.surface === 'viewer' ? 'viewer' : 'editor', matches: tab.surface === 'editor' ? editor.projectMatches(tab, query.trim()) : undefined })),
-    showDocument: async (path) => {
+    showDocument: async (path, options) => {
+      const request = ++projectOpenRequest;
       const documentSnapshot = await desktop.openProjectFile(path);
-      if (!documentSnapshot) return false;
+      if (!documentSnapshot || request !== projectOpenRequest) return false;
       projects.deactivateGitDiff();
-      await tabs.show(documentSnapshot);
-      return true;
+      await tabs.show(documentSnapshot, 'viewer', 'document', undefined, options);
+      return request === projectOpenRequest;
     },
     openWorkingTree: async (path) => {
+      const request = ++projectOpenRequest;
       const documentSnapshot = await desktop.openProjectFile(path);
-      if (!documentSnapshot) return false;
+      if (!documentSnapshot || request !== projectOpenRequest) return false;
       await tabs.show(documentSnapshot, 'viewer', 'review');
-      return true;
+      return request === projectOpenRequest;
     },
     activateWorkingTree: tabs.activateWorkingTreePath, workingTreeBuffer: tabs.documentBuffer,
     workingTreeChanged: tabs.acceptWorkingTreeBuffer, reloadDocuments: tabs.reloadDocumentPaths,
@@ -266,7 +272,7 @@ export function startWorkspace(desktop: DesktopPort) {
       preview.receive(payload); reader.handleMessage(payload);
     },
     previewFindRequested: (tabId) => { if (tabId === workspace.activeId && session.surface === 'viewer') reader.openFind(); },
-    documentOpened: (opened) => { projects.deactivateGitDiff(); void tabs.show(opened); },
+    documentOpened: (opened) => { projectOpenRequest++; projects.deactivateGitDiff(); void tabs.show(opened); },
     externalChange: (change) => {
       const active = workspace.active;
       if (!active || active.document.path !== change.path) return;
