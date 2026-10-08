@@ -5,7 +5,7 @@ const shared = {
   platform: 'node',
   target: 'node22',
   sourcemap: true,
-  external: ['electron', 'crossnote', '@parcel/watcher', '@vscode/ripgrep', 'node-pty'],
+  external: ['electron', 'crossnote', '@parcel/watcher', '@vscode/ripgrep', 'node-pty', 'electron-chrome-extensions'],
 };
 await Promise.all([
   build({ ...shared, entryPoints: ['src/main/main.ts'], outfile: 'dist-electron/main.cjs', format: 'cjs' }),
@@ -18,3 +18,5 @@ await Promise.all([
     entryPoints: ['src/preview-runtime/bridge.ts'], outfile: 'dist-electron/preview-bridge.js',
     sourcemap: false, legalComments: 'none' }),
 ]);
+
+await import('./build-browser.mjs');

@@ -148,7 +148,8 @@ export type GitReviewState = TabStateSummary & {
   line: number;
 };
 
-export type TransferableTab = {
+export type TransferableDocumentTab = {
+  kind?: 'document';
   id: string;
   document: DocumentSnapshot;
   text: string;
@@ -185,6 +186,8 @@ export type TransferableTab = {
   tocOpen: boolean;
 };
 
+export type TransferableTab = TransferableDocumentTab | { kind: 'web'; id: string; page: import('./browser').BrowserPage };
+
 export type ClaimedTabTransfer = {
   transferId: string;
   tab: TransferableTab;
@@ -206,6 +209,8 @@ export type ApplicationMenuEntry = {
 export type CloseDecision = 'cancel' | 'discard' | 'save';
 
 export type AppCommand =
+  | 'new-web-tab'
+  | 'focus-location'
   | 'toggle-terminal'
   | 'new-document'
   | 'open-folder'
@@ -221,6 +226,7 @@ export type AppCommand =
   | 'toggle-surface';
 
 export type MarkTexApi = {
+  browser: import('./browser').BrowserApi;
   saveReadingPosition(record: import('../core/reading/reading-position').ReadingRecord): void;
   flushReadingPositions(): void;
   readPdfRange(path: string, begin: number, end: number, version: DiskVersion): Promise<Uint8Array>;

@@ -27,7 +27,7 @@ function fixture() {
   };
   const controller = new AutoSaveController({
     desktop: desktop as unknown as DesktopPort,
-    tabs: workspace.tabs,
+    get tabs() { return workspace.documents; },
     activeId: () => workspace.activeId,
     text: (tab) => tab.text,
     dirty: (tab) => tab.text !== tab.document.savedText,

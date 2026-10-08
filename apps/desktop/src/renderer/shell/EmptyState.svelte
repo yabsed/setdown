@@ -12,6 +12,7 @@
     <button class="primary-button empty-new" type="button" onclick={actions.newDocument}>New Document</button>
     <button class="secondary-button empty-open" type="button" onclick={actions.openDocument}>Open File</button>
     <button class="secondary-button empty-folder" type="button" onclick={actions.chooseProjectFolder}>Open Folder</button>
+    <button class="secondary-button" type="button" onclick={() => actions.newWebTab()}>Open Web Page</button>
   </div>
   <span class="shortcut">Ctrl/Cmd+N · Ctrl/Cmd+O</span>
 </section>

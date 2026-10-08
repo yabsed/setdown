@@ -1,3 +1,5 @@
+import { createBrowserRuntime } from '../browser/browser-runtime';
+import { browser } from '../browser/browser-state.svelte';
 import { createGroupRuntime } from '../groups/group-runtime';
 import { ReadingPositionController } from '../reading/reading-position-controller';
 import { toggleTerminal, terminalOwnsInput } from '../terminal/terminal-state.svelte';
@@ -45,6 +47,25 @@ export function startWorkspace(desktop: DesktopPort) {
   applyShellTheme(initialTheme.id);
   let projectOpenRequest = 0;
   const actions: AppActions = {
+    newWebTab: (input, background) => { projects.deactivateGitDiff(); void tabs.openWeb(input, background).catch(error => { browser.error = String(error); }); },
+    navigateLocation: async (groupId, input) => {
+      const target = workspace.groups.groups.find(group => group.id === groupId);
+      if (target?.activeId) await tabs.activate(target.activeId);
+      projects.deactivateGitDiff();
+      if (/^(?:[/\\]|[a-z]:[\\/]|file:)/i.test(input)) {
+        const path = input.startsWith('file:') ? decodeURIComponent(new URL(input).pathname) : input;
+        const document = await desktop.openProjectFile(path);
+        if (document) await tabs.show(document);
+      } else if (workspace.active?.kind === 'web') await desktop.browser.navigate(workspace.active.id, input);
+      else await tabs.openWeb(input);
+    },
+    browserCommand: (id, command) => { void desktop.browser.command(id, command).catch(error => { browser.error = String(error); }); },
+    browserPlaces: (query, bookmarksOnly) => desktop.browser.places(query, bookmarksOnly),
+    browserBookmark: async (url, title, bookmarked) => {
+      try { await desktop.browser.bookmark(url, title, bookmarked); browser.revision++; }
+      catch (error) { browser.error = String(error); }
+    },
+    browserFind: (id, query, forward, next) => desktop.browser.find(id, query, forward, next),
     focusGroup: (id) => {
       projectOpenRequest++;
       const group = workspace.groups.groups.find(group => group.id === id);
@@ -107,14 +128,14 @@ export function startWorkspace(desktop: DesktopPort) {
     showRenderError: () => void surfaces.enterEditor(),
   };
   mount(App, { target: document.querySelector<HTMLDivElement>('#app')!, props: { actions, terminalApi: desktop.terminal, desktop,
-    mediaPosition: (id: string, position: import('../../core/reading/reading-position').ReadingPosition) => { const tab = workspace.find(id); if (tab && workspace.groups.groups.some(group => group.activeId === id) && !(workspace.activeId === id && project.gitDiffActive)) positions.remember(tab, position); } } });
+    mediaPosition: (id: string, position: import('../../core/reading/reading-position').ReadingPosition) => { const tab = workspace.find(id); if (tab && tab.kind !== 'web' && workspace.groups.groups.some(group => group.activeId === id) && !(workspace.activeId === id && project.gitDiffActive)) positions.remember(tab, position); } } });
   const shell = document.querySelector<HTMLElement>('.shell')!;
   restorePanelWidths(shell);
   const previewFrames = document.querySelector<HTMLElement>('.preview-frames')!;
   const editorHost = document.querySelector<HTMLElement>('.editor-host')!;
   const workspace = new WorkspaceState();
-  const active = () => workspace.active;
-  const session = createTabSession(active, EMPTY_ANCHOR);
+  const active = () => workspace.activeDocument;
+  const session = createTabSession(() => workspace.active, EMPTY_ANCHOR);
   const closePrompt = new ClosePromptController();
   let surfaces: SurfaceController;
   let tabs: TabController;
@@ -123,15 +144,16 @@ export function startWorkspace(desktop: DesktopPort) {
   let projects: ProjectController;
   let projectContextChanged = () => {};
   let groups: ReturnType<typeof createGroupRuntime> | undefined;
-  const reader = new ReaderController({ desktop, shell, frames: previewFrames, tabs: workspace.tabs, active,
+  let browsers: ReturnType<typeof createBrowserRuntime> | undefined;
+  const reader = new ReaderController({ desktop, shell, frames: previewFrames, get tabs() { return workspace.documents; }, active,
     activeId: () => workspace.activeId, initialTheme,
     syncBackgrounds: () => groups?.backgrounds() ?? [],
     layoutGuide: (previews) => groups?.layoutGuide(previews),
     applyProductTheme: (themeId) => { applyShellTheme(themeId); editor.setTheme(themeId); },
     edit: (anchor) => void surfaces.enterEditor(anchor), anchorChanged: () => { surfaces.publishAnchor(); positions?.schedule(); } });
-  const preview = new PreviewSession({ desktop, tabs: workspace.tabs, active,
+  const preview = new PreviewSession({ desktop, get tabs() { return workspace.documents; }, active,
     activeId: () => workspace.activeId, text: () => tabs.currentText(), lineCount: () => tabs.lineCount(), reader });
-  const editor = new MonacoEditor({ host: editorHost, tabs: () => workspace.tabs, active,
+  const editor = new MonacoEditor({ host: editorHost, tabs: () => workspace.documents, active,
     theme: () => reader.themeId, status: (status) => shell.dataset.editorRuntime = status,
     viewChanged: () => positions?.schedule(),
     focusTab: (id) => actions.activateTab(id),
@@ -143,9 +165,10 @@ export function startWorkspace(desktop: DesktopPort) {
   tabs = new TabController({ desktop, workspace, session, shell, editor, reader, preview, surfaces,
     capturePosition: (tab) => positions.capture(tab),
     shouldSchedulePreview: () => !project.gitDiffActive,
-    confirmClose: (names) => closePrompt.request('tab', names), workspaceChanged: () => projectContextChanged(), groupsChanged: () => groups?.sync(),
+    confirmClose: (names) => closePrompt.request('tab', names), workspaceChanged: () => projectContextChanged(), groupsChanged: () => { groups?.sync(); browsers?.sync(true); },
     autoSave: { schedule: (tab) => autoSave.schedule(tab), cancel: (tabId) => autoSave.cancel(tabId) } });
   groups = createGroupRuntime({ workspace, desktop, editor, reader, activate: id => actions.activateTab(id) });
+  browsers = createBrowserRuntime(workspace, desktop, tabs, actions.activateTab);
   const tabDrag = createTabDrag({ desktop, shell, tabs: workspace.tabs, groups: workspace.groups,
     dragging: (active) => groups?.drag(active),
     openFile: async (path, placement) => {
@@ -158,16 +181,16 @@ export function startWorkspace(desktop: DesktopPort) {
     activate: (id) => { projects.deactivateGitDiff(); void tabs.activate(id); },
     serialize: tabs.transferable, render: tabs.render,
     install: (transfer, placement) => tabs.installTransferred(transfer, placement) });
-  autoSave = new AutoSaveController({ desktop, tabs: workspace.tabs, activeId: () => workspace.activeId,
+  autoSave = new AutoSaveController({ desktop, get tabs() { return workspace.documents; }, activeId: () => workspace.activeId,
     text: tabs.text, dirty: tabs.dirty, acceptSaved: tabs.acceptSaved,
     saved: (document) => projects.documentSaved(document) });
-  const documents = new DocumentActions({ desktop, tabs: workspace.tabs, active, text: tabs.text, dirty: tabs.dirty,
+  const documents = new DocumentActions({ desktop, get tabs() { return workspace.documents; }, active, text: tabs.text, dirty: tabs.dirty,
     preview, installModel: tabs.installModel, acceptSaved: tabs.acceptSaved,
     show: (document, surface) => { projectOpenRequest++; projects.deactivateGitDiff(); return tabs.show(document, surface); },
     reload: tabs.reload, saved: (document) => projects.documentSaved(document),
     renderTabs: tabs.render, updateChrome: tabs.updateChrome, autoSave });
   projects = new ProjectController({ desktop,
-    searchDocuments: (query) => workspace.tabs.filter((tab) => !tab.document.kind).map((tab) => ({ path: tab.document.path, text: tabs.text(tab),
+    searchDocuments: (query) => workspace.documents.filter((tab) => !tab.document.kind).map((tab) => ({ path: tab.document.path, text: tabs.text(tab),
       surface: tab.surface === 'viewer' ? 'viewer' : 'editor', matches: tab.surface === 'editor' ? editor.projectMatches(tab, query.trim()) : undefined })),
     showDocument: async (path, options) => {
       const request = ++projectOpenRequest;
@@ -190,7 +213,7 @@ export function startWorkspace(desktop: DesktopPort) {
     reviewChanged: (open, activeReview) => {
       const wasOpen = shell.dataset.gitDiff === 'true';
       shell.dataset.gitDiff = String(open);
-      reader.setSuspended(activeReview);
+      reader.setSuspended(activeReview); browsers?.sync();
       if (activeReview) { positions.capture(); preview.cancelSchedule(); }
       else if (wasOpen && !open && workspace.activeId) {
         // A first-open review may never have prepared the ordinary document.
@@ -227,7 +250,7 @@ export function startWorkspace(desktop: DesktopPort) {
   const unsubscribeAutoSave = desktop.onAutoSaveChanged((enabled) => autoSave.setEnabled(enabled));
   window.addEventListener('beforeunload', () => { positions.flush(); insertions.dispose(); removeImagePaste(); unsubscribeAutoSave(); }, { once: true });
   function toggleToc() {
-    const tab = workspace.active;
+    const tab = workspace.activeDocument;
     if (!tab || !hasMarkdownPreview(tab.document)) return;
     tab.tocOpen = !tab.tocOpen;
     rememberOutlineOpen(tab.tocOpen);
@@ -245,7 +268,7 @@ export function startWorkspace(desktop: DesktopPort) {
     finally { stagingChanges = false; }
   }
   async function closeDocumentTab(id: string) {
-    const path = workspace.find(id)?.document.path;
+    const path = workspace.documents.find(tab => tab.id === id)?.document.path;
     if (await tabs.close(id) && path) projects.closeWorkingTreeReviews(path);
   }
   function cycleTab(direction: -1 | 1) {
@@ -274,7 +297,7 @@ export function startWorkspace(desktop: DesktopPort) {
     previewFindRequested: (tabId) => { if (tabId === workspace.activeId && session.surface === 'viewer') reader.openFind(); },
     documentOpened: (opened) => { projectOpenRequest++; projects.deactivateGitDiff(); void tabs.show(opened); },
     externalChange: (change) => {
-      const active = workspace.active;
+      const active = workspace.activeDocument;
       if (!active || active.document.path !== change.path) return;
       if (tabs.dirty(active)) { view.notice = true; return; }
       const revision = active.revision;
@@ -289,6 +312,12 @@ export function startWorkspace(desktop: DesktopPort) {
       void closePrompt.request('window', names).then((decision) => desktop.resolveWindowClose(decision));
     },
     command: (command) => {
+      if (command === 'new-web-tab') { actions.newWebTab(); return; }
+      if (command === 'focus-location') { window.dispatchEvent(new Event('setdown:focus-location')); return; }
+      if (workspace.active?.kind === 'web' && !project.gitDiffActive) {
+        if (command === 'open-find') { window.dispatchEvent(new Event('setdown:browser-find')); return; }
+        if (command === 'save' || command === 'save-as') { actions.browserCommand(workspace.active.id, 'save'); return; }
+      }
       if (command === 'toggle-terminal') { toggleTerminal(); return; }
       if (command === 'escape' && terminalOwnsInput()) return;
       if (command === 'escape' && insertions.dismissOnEscape('native')) return;
@@ -322,6 +351,17 @@ export function startWorkspace(desktop: DesktopPort) {
       tabDrag.reset(); void tabs.removeTransferred(tabId).finally(() => desktop.releaseTabTransferSource(transferId));
     },
     keydown: (event) => {
+      if (!event.isComposing && (event.ctrlKey || event.metaKey) && !event.altKey && ['l', 't'].includes(event.key.toLowerCase())) {
+        event.preventDefault();
+        if (event.key.toLowerCase() === 't') actions.newWebTab(); else window.dispatchEvent(new Event('setdown:focus-location'));
+        return;
+      }
+      if (workspace.active?.kind === 'web' && !project.gitDiffActive && (event.ctrlKey || event.metaKey) && ['f', 's'].includes(event.key.toLowerCase())) {
+        event.preventDefault();
+        if (event.key.toLowerCase() === 'f') window.dispatchEvent(new Event('setdown:browser-find'));
+        else actions.browserCommand(workspace.active.id, 'save');
+        return;
+      }
       if (event.ctrlKey && !event.altKey && !event.shiftKey && event.code === 'Backquote') {
         event.preventDefault(); toggleTerminal(); return;
       }
@@ -356,8 +396,11 @@ export function startWorkspace(desktop: DesktopPort) {
   void desktop.getTheme().then(async (snapshot) => {
     await reader.applyTheme(snapshot, true);
     const documentSnapshot = await desktop.getDocument();
-    if (documentSnapshot) void tabs.show(documentSnapshot);
+    if (documentSnapshot) await tabs.show(documentSnapshot);
     else if (workspace.tabs.length === 0) { surfaces.set('empty'); tabs.render(); }
+    const pages = await desktop.browser.restore();
+    for (const page of pages) await tabs.addWeb(page, true);
+    if (!workspace.activeId && pages.length) await tabs.activate(pages[0].id);
   });
   const previewResizeObserver = new ResizeObserver(reader.syncView);
   previewResizeObserver.observe(previewFrames);

@@ -10,6 +10,8 @@ import type {
 import type { ProjectView } from './project/project-state.svelte';
 
 export type TabView = {
+  kind?: 'document' | 'web';
+  page?: import('../protocol/browser').BrowserPage;
   id: string;
   name: string;
   path: string;
@@ -40,6 +42,12 @@ export type WorkingTreeEdit = {
 };
 
 export type AppActions = {
+  newWebTab(input?: string, background?: boolean): void;
+  navigateLocation(groupId: string, input: string): Promise<void>;
+  browserCommand(id: string, command: import('../protocol/browser').BrowserCommand): void;
+  browserPlaces(query: string, bookmarksOnly?: boolean): Promise<import('../protocol/browser').BrowserPlace[]>;
+  browserBookmark(url: string, title: string, bookmarked: boolean): Promise<void>;
+  browserFind(id: string, query: string, forward?: boolean, next?: boolean): void;
   focusGroup(id: string): void;
   resizeGroup(id: string, ratio: number): void;
   loadMenu(id: string): Promise<ApplicationMenuEntry[]>;
@@ -106,7 +114,7 @@ export const view = $state({
   focusedGroupId: 'group-0',
   tabs: [] as TabView[],
   draggedTabId: null as string | null,
-  surface: 'empty' as 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video',
+  surface: 'empty' as 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'web',
   mediaTabs: [] as import('./workspace/media-cache').MediaTab[],
   activeMediaId: null as string | null,
   notice: false,

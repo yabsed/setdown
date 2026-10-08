@@ -1,3 +1,4 @@
+import type { BrowserManager } from '../browser/browser-manager';
 import { GitHistoryService } from '../project/git-history-service';
 import type { GitGraphRequest, GitHistorySelection } from '../../protocol/git-history';
 import { ipcMain, shell } from 'electron';
@@ -24,7 +25,7 @@ import type { WindowIpc } from './window-ipc';
 type Options = {
   channels: WindowIpc; documents: DocumentManager; previews: PreviewManager;
   renderer: PreviewRenderer; projects: ProjectService; themes: ThemeManager; transfers: TabTransferManager;
-  autoSave: AutoSaveStore;
+  autoSave: AutoSaveStore; browsers: BrowserManager;
 };
 function assertMarkdown(filePath: string): void {
   if (!isMarkdownDocument(filePath)) throw new Error('This text document has no Markdown preview.');
@@ -161,9 +162,9 @@ export function installIpc(options: Options): void {
   channels.handle('project:git-commit', (state, message: string) => projects.commitGit(state, message));
   channels.handle('project:git-remote', (state, action: GitRemoteAction) => projects.runGitRemote(state, action));
   channels.handle('document:reload', (state) => documents.reload(state));
-  channels.handle('document:open-link', (state, href: string) => openLink(documents, state, href));
+  channels.handle('document:open-link', (state, href: string) => openLink(documents, state, href, options.browsers));
 }
-async function openLink(documents: DocumentManager, state: Parameters<DocumentManager['open']>[0], href: string): Promise<void> {
+async function openLink(documents: DocumentManager, state: Parameters<DocumentManager['open']>[0], href: string, browsers: BrowserManager): Promise<void> {
   let decodedHref: string;
   try { decodedHref = decodeURIComponent(String(href)); } catch { return; }
   const localPath = pathFromResourceUrl(decodedHref);
@@ -180,6 +181,7 @@ async function openLink(documents: DocumentManager, state: Parameters<DocumentMa
   }
   try {
     const url = new URL(decodedHref);
-    if (['http:', 'https:', 'mailto:', 'tel:'].includes(url.protocol)) await shell.openExternal(url.href);
+    if (['http:', 'https:'].includes(url.protocol)) await browsers.openLink(state.webContentsId, url.href);
+    else if (['mailto:', 'tel:'].includes(url.protocol)) await shell.openExternal(url.href);
   } catch { /* Unrecognised protocols are not opened. */ }
 }

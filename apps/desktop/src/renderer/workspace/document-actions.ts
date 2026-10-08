@@ -2,7 +2,7 @@ import type { DocumentSnapshot } from '../../protocol/desktop-api';
 import { hasMarkdownPreview } from '../../core/document/document-capabilities';
 import { retainUnsavedRevision } from '../../core/document/document-save';
 import type { PreviewSession } from '../reader/preview-session';
-import type { WorkspaceTab } from '../../core/workspace/workspace-state';
+import type { DocumentTab as WorkspaceTab } from '../../core/workspace/workspace-state';
 import type { DesktopPort } from '../ports/desktop-port';
 import { view } from '../view-state.svelte';
 

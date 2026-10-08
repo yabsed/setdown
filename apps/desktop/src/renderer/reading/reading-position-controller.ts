@@ -1,4 +1,4 @@
-import type { WorkspaceTab } from '../../core/workspace/workspace-state';
+import type { DocumentTab as WorkspaceTab } from '../../core/workspace/workspace-state';
 import type { ReadingPosition } from '../../core/reading/reading-position';
 import type { MonacoEditor } from '../adapters/monaco-editor';
 import type { DesktopPort } from '../ports/desktop-port';

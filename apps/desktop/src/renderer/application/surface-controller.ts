@@ -38,10 +38,10 @@ export class SurfaceController {
   enterEditor = async (next: ViewportAnchor = this.options.session.anchor): Promise<void> => {
     this.anchorRequest += 1;
     const targetTabId = this.options.workspace.activeId;
-    if (!targetTabId || this.options.workspace.active?.document.kind !== undefined) return;
+    if (!targetTabId || this.options.workspace.activeDocument?.document.kind !== undefined) return;
     await this.options.editor.load();
     if (this.options.workspace.activeId !== targetTabId) return;
-    const tab = this.options.workspace.active;
+    const tab = this.options.workspace.activeDocument;
     if (!tab || tab.document.kind !== undefined) return;
     this.options.editor.activate(tab);
     if (tab.find.open) this.options.reader.closeFind(false);
@@ -51,7 +51,7 @@ export class SurfaceController {
     this.options.editor.reveal(this.options.session.anchor);
   };
   enterViewer = async (): Promise<void> => {
-    const tab = this.options.workspace.active;
+    const tab = this.options.workspace.activeDocument;
     if (!this.options.editor.loaded || !tab || !hasMarkdownPreview(tab.document)) return;
     const startedAt = performance.now();
     const viewport = this.options.editor.viewport(this.options.session.anchor);
@@ -94,7 +94,7 @@ export class SurfaceController {
     if (this.editorPositionFrame !== null) window.cancelAnimationFrame(this.editorPositionFrame);
     this.editorPositionFrame = window.requestAnimationFrame(() => {
       this.editorPositionFrame = null;
-      const tab = workspace.active;
+      const tab = workspace.activeDocument;
       if (session.surface !== 'editor' || !tab || !workspace.activeId || !hasMarkdownPreview(tab.document)) return;
       const viewport = editor.viewport(session.anchor);
       session.anchor = viewport.anchor;

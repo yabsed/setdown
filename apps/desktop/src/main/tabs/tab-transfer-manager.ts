@@ -1,3 +1,4 @@
+import type { BrowserManager } from '../browser/browser-manager';
 import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
 import type { TransferableTab } from '../../protocol/desktop-api';
@@ -15,7 +16,7 @@ type Transfer = {
   previewBand: Promise<BandLine[]>; sourceContentSize: { width: number; height: number } | null;
 };
 type Options = {
-  previews: PreviewManager; stateFor: (id: number) => WindowState | null; theme: () => PreviewThemeId;
+  previews: PreviewManager; browsers?: BrowserManager; stateFor: (id: number) => WindowState | null; theme: () => PreviewThemeId;
   createWindow: (position: { x: number; y: number } | null, initialDocument: null,
     showWhenReady: boolean, contentSize: { width: number; height: number } | null) => BrowserWindow;
 };
@@ -38,9 +39,10 @@ export class TabTransferManager {
   private register(sourceId: number, transferId: unknown, candidate: unknown) {
     const incoming = candidate as TransferableTab | null;
     if (typeof transferId !== 'string' || !incoming || typeof incoming.id !== 'string'
-      || typeof incoming.document?.path !== 'string') return;
-    const markdown = isMarkdownDocument(incoming.document.path);
-    const tab: TransferableTab = markdown ? incoming : { ...incoming, surface: documentSurface(incoming.document.path),
+      || !this.options.stateFor(sourceId)
+      || (incoming.kind === 'web' ? !this.options.browsers?.owns(sourceId, incoming.id) : typeof incoming.document?.path !== 'string')) return;
+    const markdown = incoming.kind !== 'web' && isMarkdownDocument(incoming.document.path);
+    const tab: TransferableTab = incoming.kind === 'web' || markdown ? incoming : { ...incoming, surface: documentSurface(incoming.document.path),
       previewUrl: null, previewRevision: null, previewTheme: null, viewerScrollRatio: null,
       viewerBand: [], tocOpen: false };
     const ownedPreview = markdown ? this.options.previews.views.get(tab.id) : undefined;
@@ -81,6 +83,10 @@ export class TabTransferManager {
     if (!transfer || transfer.claimedByWebContentsId !== destinationId) return false;
     const destination = this.options.stateFor(destinationId)?.window;
     if (!destination || destination.isDestroyed()) return false;
+    if (transfer.tab.kind === 'web') {
+      transfer.previewAdopted = this.options.browsers?.adopt(transfer.sourceWebContentsId, destinationId, transfer.tab.id) ?? false;
+      return transfer.previewAdopted;
+    }
     // Text tabs transfer their document/model state; there is no native page to adopt.
     if (!isMarkdownDocument(transfer.tab.document.path)) {
       transfer.previewAdopted = true;

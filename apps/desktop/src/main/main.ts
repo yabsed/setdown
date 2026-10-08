@@ -1,3 +1,4 @@
+import { BrowserManager } from './browser/browser-manager';
 import { installZoomSettings } from './windows/zoom-settings';
 /** Electron main process composition root. */
 import { ReadingPositionStore } from './reading/reading-position-store';
@@ -54,7 +55,9 @@ const projectSearchRenderer = new ProjectSearchRenderer(path.join(__dirname, 're
 const projects = new ProjectService((documentPath, text, query, limit, root) =>
   projectSearchRenderer.search(documentPath, text, query, limit, root));
 const windows = new WindowManager({ registry, previews, themes });
-const transfers = new TabTransferManager({ previews, stateFor: (id) => registry.stateForWebContents(id),
+const browsers = new BrowserManager({ stateFor: id => registry.stateForWebContents(id), states: () => registry.values, zoom: previews.zoom,
+  openFile: (state, file) => documents.open(state, file) });
+const transfers = new TabTransferManager({ previews, browsers, stateFor: (id) => registry.stateForWebContents(id),
   theme: () => themes.id, createWindow: windows.create });
 const channels = windowIpc((id) => registry.stateForWebContents(id));
 function sendCommand(command: AppCommand): void { registry.focused()?.window.webContents.send('app:command', command); }
@@ -133,12 +136,16 @@ else {
   });
   app.whenReady().then(async () => {
     installProtocols(); themes.load(); autoSave.load();
+    app.on('browser-window-created', (_event, window) => window.once('closed', () => setImmediate(() => {
+      if (!Array.from(registry.values).length) browsers.dispose();
+    })));
     const flushZoom = installZoomSettings(path.join(app.getPath('userData'), 'zoom-settings.json'), previews.zoom, () => {
       for (const state of registry.values) if (!state.window.isDestroyed())
         state.window.webContents.send('workspace:zoom-changed', previews.zoom.snapshot);
     });
     app.on('will-quit', flushZoom);
-    installIpc({ channels, documents, previews, projects, renderer, themes, transfers, autoSave });
+    installIpc({ channels, documents, previews, projects, renderer, themes, transfers, autoSave, browsers });
+    browsers.registerIpc(channels);
     installReadingIpc(channels, positions, (id) => registry.stateForWebContents(id));
     app.on('will-quit', () => positions.flush());
     const terminals = installTerminalIpc(channels);
@@ -168,7 +175,8 @@ else {
       if (state) void documents.open(state, filePath).catch(openError);
     }
   });
-  app.on('before-quit', () => { windows.disposeWatchers(); void projects.dispose(); });
+  app.on('before-quit', () => { void browsers.flush(); browsers.dispose(); windows.disposeWatchers(); void projects.dispose(); });
+  app.on('will-quit', () => { try { browsers.flushOnExit(); } catch (error) { console.error('Could not save browser tabs', error); } });
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) windows.create(); });
 }

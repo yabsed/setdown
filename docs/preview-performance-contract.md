@@ -197,6 +197,27 @@ hardcoded millisecond budgets.
 
 ## Editor groups
 
+Web pages share the editor-group tab strip and its address/file-path bar. The bar
+occupies 34 CSS pixels below the tab strip; both document preparation and visible
+readers use the resulting group body. Existing viewport, IME, revision and timing
+guarantees still apply.
+
+`main/browser/browser-manager.ts` retains one sandboxed WebContentsView per live
+web tab, with a separate persistent browser session. Switching tabs and splitting
+groups keep page identity, forms and history. Browser layout uses app zoom once;
+remote pages receive neither Node nor the desktop bridge. Hidden initial loads
+stay detached. Library indexing/ranking runs in a separate, detached Places view.
+No periodic page captures or Markdown hydration are added to browser tabs.
+
+`browser.spec.ts` covers navigation, live state, native split visibility, bookmarks,
+fresh-profile extension startup, popup opener identity, and real uBlock network,
+scriptlet, frame cosmetic and response-header filtering. It is part of the focused
+gate. The full uBlock extension starts before remote navigation. Its adapter
+preserves native response-header events and targets styles to their actual frame.
+Electron 38 cannot remove user-origin webFrame styles; scoped user styles are
+disabled through root tokens and reused until navigation, preserving priority
+and allowing uBlock's cosmetic toggle without replacing page content.
+
 Document command focus and presentation are separate: each editor group selects
 one document, and several groups may remain visible. The focused group owns the
 existing source/reader command session. `renderer/groups/group-runtime.ts` owns

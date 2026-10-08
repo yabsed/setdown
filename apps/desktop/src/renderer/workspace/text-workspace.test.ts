@@ -52,12 +52,12 @@ test('Explorer browsing replaces its preview and releases the outgoing model and
   const f = fixture();
   const dispose = vi.spyOn(f.options.editor, 'dispose');
   await f.controller.show(snapshot('/project/keep.txt'));
-  const keep = f.workspace.active!;
+  const keep = f.workspace.activeDocument!;
   await previewOpen(f.controller, snapshot('/project/first.md'));
-  const previous = f.workspace.active!;
+  const previous = f.workspace.activeDocument!;
   await f.controller.activate(keep.id);
   await previewOpen(f.controller, snapshot('/project/second.txt'));
-  assert.deepEqual(f.workspace.tabs.map(tab => tab.document.path), ['/project/keep.txt', '/project/second.txt']);
+  assert.deepEqual(f.workspace.documents.map(tab => tab.document.path), ['/project/keep.txt', '/project/second.txt']);
   assert.equal(dispose.mock.calls.length, 1);
   assert.deepEqual(dispose.mock.calls[0], [previous.id]);
   assert.equal(calls.filter(call => call === 'destroy').length, 1);
@@ -68,17 +68,17 @@ test('Explorer browsing replaces its preview and releases the outgoing model and
 test('editing pins previews permanently through save and Undo', async () => {
   const f = fixture();
   await previewOpen(f.controller, snapshot('/project/edit.txt'));
-  const edited = f.workspace.active!;
+  const edited = f.workspace.activeDocument!;
   f.controller.editorChanged(edited, 'changed');
   await f.controller.acceptSaved(edited, { ...edited.document, text: 'changed', savedText: 'changed', revision: 1, savedRevision: 1 });
   assert.equal(f.controller.dirty(edited), false);
   await previewOpen(f.controller, snapshot('/project/undo.txt'));
-  const undone = f.workspace.active!;
+  const undone = f.workspace.activeDocument!;
   f.controller.editorChanged(undone, 'changed');
   f.controller.editorChanged(undone, undone.document.savedText);
   assert.equal(f.controller.dirty(undone), false);
   await previewOpen(f.controller, snapshot('/project/next.txt'));
-  assert.deepEqual(f.workspace.tabs.map(tab => tab.document.name), ['edit.txt', 'undo.txt', 'next.txt']);
+  assert.deepEqual(f.workspace.documents.map(tab => tab.document.name), ['edit.txt', 'undo.txt', 'next.txt']);
   assert.equal(f.workspace.groups.isPinned(edited.id), true);
   assert.equal(f.workspace.groups.isPinned(undone.id), true);
 });
@@ -87,7 +87,7 @@ test('explicit open promotes an existing preview and subsequent browsing never d
   const f = fixture();
   const doc = snapshot('/project/promote.txt');
   await previewOpen(f.controller, doc);
-  const promoted = f.workspace.active!;
+  const promoted = f.workspace.activeDocument!;
   await f.controller.show(doc);
   await previewOpen(f.controller, doc);
   await previewOpen(f.controller, snapshot('/project/next.txt'));
@@ -99,10 +99,10 @@ test('explicit open promotes an existing preview and subsequent browsing never d
 test('shared Working Tree edits and dirty buffers cannot be replaced', async () => {
   const f = fixture();
   await previewOpen(f.controller, snapshot('/project/shared.txt'));
-  const shared = f.workspace.active!;
+  const shared = f.workspace.activeDocument!;
   f.controller.acceptWorkingTreeBuffer(shared.document.path, 'review edit');
   await previewOpen(f.controller, snapshot('/project/dirty.txt'));
-  const dirty = f.workspace.active!;
+  const dirty = f.workspace.activeDocument!;
   // Defend even when a borrowed model changed before its UI notification.
   dirty.text = 'unreported edit';
   const confirm = vi.spyOn(f.options, 'confirmClose');
@@ -116,9 +116,9 @@ test('shared Working Tree edits and dirty buffers cannot be replaced', async () 
 test('replacing the only preview does not collapse its split or activate a neighbor', async () => {
   const f = fixture();
   await f.controller.show(snapshot('/project/left.txt'));
-  const left = f.workspace.active!;
+  const left = f.workspace.activeDocument!;
   await f.controller.show(snapshot('/project/right.txt'));
-  const right = f.workspace.active!;
+  const right = f.workspace.activeDocument!;
   f.workspace.groups.move(right.id, 'group-0', 'right');
   await f.controller.activate(right.id);
   await previewOpen(f.controller, snapshot('/project/first.txt'));
@@ -137,11 +137,13 @@ test('replacing the only preview does not collapse its split or activate a neigh
 for (const extension of ['txt', 'cpp', 'json', 'custom']) test(`open/edit/transfer/close .${extension} never creates or schedules a preview`, async () => {
   const f = fixture();
   await f.controller.show(snapshot(`/project/file.${extension}`));
-  const tab = f.workspace.active!;
+  const tab = f.workspace.activeDocument!;
   assert.equal(tab.surface, 'editor');
   f.controller.editorChanged(tab, 'changed\r\n');
   f.controller.acceptWorkingTreeBuffer(tab.document.path, 'working tree\r\n');
   const transfer = f.controller.transferable(tab);
+  assert.notEqual(transfer.kind, 'web');
+  if (transfer.kind === 'web') throw new Error('Expected a document transfer');
   assert.equal(transfer.document.encoding, 'utf8-bom');
   assert.equal(transfer.document.eol, 'crlf');
   assert.equal(transfer.previewUrl, null);
@@ -166,7 +168,7 @@ test('warm Markdown → text → Markdown preserves page identity without anothe
 test('Save As changes capabilities without replacing an unchanged model', async () => {
   const f = fixture();
   await f.controller.show(snapshot('/project/notes.txt'));
-  const tab = f.workspace.active!;
+  const tab = f.workspace.activeDocument!;
   calls.length = 0;
   await f.controller.acceptSaved(tab, { ...tab.document, path: '/project/notes.md', name: 'notes.md' });
   assert.equal(calls.filter(x => x === 'create').length, 1);
@@ -182,7 +184,7 @@ test('Save As changes capabilities without replacing an unchanged model', async 
 test('saving an older revision retains new input and a correct saved baseline', async () => {
   const f = fixture();
   await f.controller.show(snapshot('/project/note.txt'));
-  const tab = f.workspace.active!;
+  const tab = f.workspace.activeDocument!;
   tab.text = 'new\r\n'; tab.revision = 3;
   await f.controller.acceptSaved(tab, { ...tab.document, text: 'saved\r\n', savedText: 'saved\r\n', revision: 2, savedRevision: 2 });
   assert.equal(tab.text, 'new\r\n');
@@ -197,8 +199,8 @@ test('text transfer cannot reintroduce an advertised Viewer or a stale preview U
     text: doc.text, revision: 0, surface: 'viewer', anchor, editorViewState: {},
     viewerScrollRatio: .8, previewUrl: 'marktex-preview://document/stale', previewRevision: 0,
     previewTheme: 'paper', tocOpen: true } });
-  assert.equal(f.workspace.active!.surface, 'editor');
-  assert.equal(f.workspace.active!.previewUrl, null);
+  assert.equal(f.workspace.activeDocument!.surface, 'editor');
+  assert.equal(f.workspace.activeDocument!.previewUrl, null);
   assert.ok(!calls.includes('ensure'));
   assert.ok(!calls.includes('create'));
 });
@@ -222,7 +224,7 @@ test('first Working Tree activation binds the document without ordinary preview 
   const loadEditor = vi.spyOn(f.options.editor, 'load');
   await f.controller.show(snapshot('/project/review.md'), 'viewer', 'review');
   assert.equal(f.session.document?.path, '/project/review.md');
-  assert.equal(f.workspace.active!.surface, 'viewer');
+  assert.equal(f.workspace.activeDocument!.surface, 'viewer');
   assert.ok(calls.includes('suspended:true'));
   assert.equal(present.mock.calls.length, 0);
   assert.equal(loadEditor.mock.calls.length, 0);
@@ -236,7 +238,7 @@ test('first Working Tree activation binds the document without ordinary preview 
 test('review activation preserves an existing document surface, position and unsaved text', async () => {
   const f = fixture();
   await f.controller.show(snapshot('/project/review.md'), 'editor');
-  const tab = f.workspace.active!;
+  const tab = f.workspace.activeDocument!;
   tab.text = 'unsaved';
   tab.anchor = { ...anchor, sourceLine: 2 };
   await f.controller.show(snapshot('/project/other.txt'));

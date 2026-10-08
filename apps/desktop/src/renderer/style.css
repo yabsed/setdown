@@ -203,7 +203,7 @@ button { font: inherit; }
   line-height: 1;
 }
 .tab-close:hover { background: var(--app-hover); }
-.new-tab-button {
+.new-tab-button, .new-web-tab-button {
   flex: 0 0 28px;
   width: 28px;
   height: 28px;
@@ -217,7 +217,7 @@ button { font: inherit; }
   cursor: pointer;
   -webkit-app-region: no-drag;
 }
-.new-tab-button:hover { background: var(--app-hover); }
+.new-tab-button:hover, .new-web-tab-button:hover { background: var(--app-hover); }
 .tab-actions { display: flex; align-items: center; flex: 0 0 auto; height: 28px; margin-left: 4px; -webkit-app-region: no-drag; }
 .editor-action, .viewer-action {
   display: grid;
@@ -1164,14 +1164,14 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 .editor-group { position: absolute; min-width: 0; min-height: 0; overflow: hidden; background: var(--app-canvas); }
 .editor-group > .tab-strip { height: 40px; }
 .editor-group:not(.focused) .document-tab[aria-selected="true"] { background: var(--app-hover); }
-.group-body { position: absolute; inset: 40px 0 0; }
+.group-body { position: absolute; inset: 74px 0 0; }
 .group-body[data-native-preview-frozen="true"] {
   background-repeat: no-repeat;
   background-position: top left;
   background-size: 100% 100%;
 }
 .group-editor-host, .group-monaco-instance { width: 100%; height: 100%; }
-.group-content { position: absolute; padding-top: 40px; pointer-events: none; min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); overflow: hidden; }
+.group-content { position: absolute; padding-top: 74px; pointer-events: none; min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); overflow: hidden; }
 .group-content > * { grid-column: 1; grid-row: 2; min-width: 0; min-height: 0; pointer-events: auto; }
 .group-content > .notice { grid-column: 1; grid-row: 1; }
 .editor-area .group-content > .git-review, .editor-area .group-content > .pdf-surface, .editor-area .group-content > .image-surface, .editor-area .group-content > .video-surface { grid-column: 1; grid-row: 2; }
@@ -1189,3 +1189,13 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 /* Native WebContentsViews sit above the shell. Leave a real hit area for sashes. */
 .editor-area.split .group-body { left: 3px; right: 3px; bottom: 3px; }
 .editor-area.split .group-content { padding-left: 3px; padding-right: 3px; padding-bottom: 3px; }
+
+/* Location chrome shares exactly the same content origin with native views. */
+.shell[data-tabs="false"]:not([data-git-diff="true"]) .location-bar { display: none; }
+.shell[data-surface="web"] .viewer-surface,
+.shell[data-surface="web"] .editor-surface { display: none; }
+.group-body[data-browser-frozen="true"] { background-size: 100% 100%; background-repeat: no-repeat; }
+.browser-empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; color: var(--app-text); text-align: center; }
+.browser-empty h2 { font: 500 20px/1.4 sans-serif; }
+.browser-empty p { max-width: 460px; font: 13px/1.8 sans-serif; opacity: .6; }
+.browser-empty button { padding: 8px 14px; border: 1px solid var(--app-border); border-radius: 6px; color: inherit; background: var(--app-chrome); }

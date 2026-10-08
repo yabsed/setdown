@@ -4,6 +4,7 @@ import base from './playwright.config';
 export default defineConfig(base, {
   retries: 0,
   testMatch: [
+    'browser.spec.ts',
     'document-preparation.spec.ts',
     'editor-groups.spec.ts',
     'preview-tabs.spec.ts',

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { AppActions } from '../view-state.svelte';
   import { resizePanelWithKeyboard, startPanelResize } from '../shell/panel-resize';
+  import BrowserSidebar from '../browser/BrowserSidebar.svelte';
   import ExplorerView from './explorer/ExplorerView.svelte';
   import { project, type ProjectView } from './project-state.svelte';
   import SearchView from './search/SearchView.svelte';
@@ -41,6 +42,10 @@
       {#if gitGroups.badge > 0}<span class="scm-activity-badge" aria-hidden="true">{gitGroups.badge}</span>{/if}
       <span id="source-control-status" class="scm-status-description">{gitStatus}</span>
     </button>
+    <button type="button" class:is-active={project.open && project.activeView === 'browser'}
+      aria-label="Browser" aria-expanded={project.open && project.activeView === 'browser'} title="Browser" onclick={() => select('browser')}>
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="3.5" ry="8.5"/><path d="M3.5 12h17"/></svg>
+    </button>
     <button type="button" class="terminal-activity" class:is-active={terminal.open}
       aria-label="Terminal" aria-expanded={terminal.open} title="Terminal (Ctrl+`)" onclick={toggleTerminal}>
       <svg viewBox="0 0 24 24"><path d="m5 6 6 6-6 6M13 18h6"/></svg>
@@ -50,6 +55,7 @@
   <section class="side-view" aria-label={project.activeView} hidden={!project.open}>
     {#if project.activeView === 'explorer'}<ExplorerView {actions} />
     {:else if project.activeView === 'search'}<SearchView {actions} />
+    {:else if project.activeView === 'browser'}<BrowserSidebar {actions} />
     {:else}<SourceControlView {actions} />{/if}
     {#if project.error}<p class="project-error">{project.error}</p>{/if}
   </section>

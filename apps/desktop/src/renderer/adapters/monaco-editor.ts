@@ -5,7 +5,7 @@ import { documentLanguage } from '../../core/document/document-profile';
 import { hasMarkdownPreview } from '../../core/document/document-capabilities';
 import type { PreviewThemeId } from '../../core/preview/preview-preferences';
 import type { BandLine, ViewportAnchor } from '../../core/preview/viewport-anchor';
-import type { WorkspaceTab } from '../../core/workspace/workspace-state';
+import type { DocumentTab as WorkspaceTab } from '../../core/workspace/workspace-state';
 import type { ProjectSearchDocument } from '../../protocol/desktop-api';
 import type { WorkingTreeEdit } from '../view-state.svelte';
 import { readEditorViewport } from '../editor/editor-viewport';
@@ -219,6 +219,13 @@ export class MonacoEditor {
   clear(): void { this.editorValue?.setModel(null); }
   setTheme(theme: PreviewThemeId): void { this.apiValue?.editor.setTheme(monacoThemeName(theme)); }
   layout(): void { this.editorValue?.layout(); }
+  restoreView(tab: WorkspaceTab): void {
+    const editor = this.editorValue;
+    if (!editor || editor.getModel() !== this.models.get(tab.id)) return;
+    editor.layout();
+    const view = this.views.get(tab.id);
+    if (view) editor.restoreViewState(view);
+  }
   find(): void { void this.editorValue?.getAction('actions.find')?.run(); }
   viewport(fallback: ViewportAnchor): { anchor: ViewportAnchor; band: BandLine[] } {
     return readEditorViewport(this.editorValue, this.apiValue, this.model, fallback);

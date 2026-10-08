@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test, vi } from 'vitest';
 import type * as Monaco from 'monaco-editor';
-import type { WorkspaceTab } from '../../core/workspace/workspace-state';
+import type { DocumentTab as WorkspaceTab } from '../../core/workspace/workspace-state';
 import { MonacoEditor } from './monaco-editor';
 import { liveDocumentModels } from '../editor/live-document-model';
 

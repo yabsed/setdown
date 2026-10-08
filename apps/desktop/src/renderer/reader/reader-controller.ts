@@ -5,7 +5,7 @@ import {
   type PreviewThemeAssets,
   type PreviewThemeId,
 } from '../../core/preview/preview-preferences';
-import type { WorkspaceTab } from '../../core/workspace/workspace-state';
+import type { DocumentTab as WorkspaceTab } from '../../core/workspace/workspace-state';
 import { hasMarkdownPreview } from '../../core/document/document-capabilities';
 import type { DesktopPort } from '../ports/desktop-port';
 import { view } from '../view-state.svelte';

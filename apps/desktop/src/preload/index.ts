@@ -35,6 +35,19 @@ function initialThemeSnapshot(): ThemeSnapshot {
 }
 
 const api: MarkTexApi = {
+  browser: {
+    create: (id, input) => ipcRenderer.invoke('browser:create', id, input),
+    navigate: (id, input) => ipcRenderer.invoke('browser:navigate', id, input),
+    command: (id, command) => ipcRenderer.invoke('browser:command', id, command),
+    close: (id) => ipcRenderer.invoke('browser:close', id),
+    layout: (entries) => ipcRenderer.send('browser:layout', entries),
+    capture: (id) => ipcRenderer.invoke('browser:capture', id),
+    find: (id, text, forward, next) => ipcRenderer.send('browser:find', id, text, forward, next),
+    places: (query, bookmarksOnly) => ipcRenderer.invoke('browser:places', query, bookmarksOnly),
+    bookmark: (url, title, bookmarked) => ipcRenderer.invoke('browser:bookmark', url, title, bookmarked),
+    restore: () => ipcRenderer.invoke('browser:restore'),
+    onEvent: (listener) => subscribe('browser:event', listener),
+  },
   getZoom: () => ipcRenderer.invoke('workspace:zoom-state'),
   onZoomChanged: (listener) => subscribe('workspace:zoom-changed', listener),
   saveReadingPosition: (record) => ipcRenderer.send('reading:save', record),

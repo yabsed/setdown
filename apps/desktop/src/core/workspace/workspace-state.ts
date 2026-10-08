@@ -5,7 +5,8 @@ import type { PreviewHeading } from '../preview/preview-state';
 import type { PreviewThemeId } from '../preview/preview-preferences';
 import type { ViewportAnchor } from '../preview/viewport-anchor';
 
-export type WorkspaceTab = {
+export type DocumentTab = {
+  kind?: 'document';
   id: string;
   document: DocumentSnapshot;
   text: string;
@@ -24,12 +25,18 @@ export type WorkspaceTab = {
   find: { open: boolean; query: string; activeMatch: number; matches: number };
 };
 
+export type BrowserTab = { kind: 'web'; id: string; surface: 'web'; page: import('../browser/browser-state').BrowserPage };
+export type WorkspaceTab = DocumentTab | BrowserTab;
+export const isDocumentTab = (tab: WorkspaceTab): tab is DocumentTab => tab.kind !== 'web';
+export const tabTitle = (tab: WorkspaceTab): string => tab.kind === 'web' ? tab.page.title || 'New web tab' : tab.document.name;
+export const tabLocation = (tab: WorkspaceTab): string => tab.kind === 'web' ? tab.page.url : tab.document.path;
+
 export function createWorkspaceTab(
   id: string,
   document: DocumentSnapshot,
-  surface: WorkspaceTab['surface'],
+  surface: DocumentTab['surface'],
   anchor: ViewportAnchor,
-): WorkspaceTab {
+): DocumentTab {
   return {
     id,
     document,
@@ -55,6 +62,8 @@ export class WorkspaceState {
   private activeTabId: string | null = null;
   get activeId() { return this.activeTabId; }
   set activeId(id: string | null) { this.activeTabId = id; if (id) this.groups.activate(id); }
+  get documents(): DocumentTab[] { return this.tabs.filter(isDocumentTab); }
+  get activeDocument(): DocumentTab | null { const tab = this.active; return tab && isDocumentTab(tab) ? tab : null; }
   get active(): WorkspaceTab | null { return this.tabs.find((tab) => tab.id === this.activeId) ?? null; }
   find(id: string): WorkspaceTab | null { return this.tabs.find((tab) => tab.id === id) ?? null; }
   add(tab: WorkspaceTab, pinned = true): WorkspaceTab | null {
@@ -84,25 +93,26 @@ export class WorkspaceState {
 }
 
 export function createTabSession(active: () => WorkspaceTab | null, emptyAnchor: ViewportAnchor) {
+  const documentTab = () => { const tab = active(); return tab && isDocumentTab(tab) ? tab : null; };
   return {
-    get document() { return active()?.document ?? null; },
+    get document() { return documentTab()?.document ?? null; },
     set document(value: DocumentSnapshot | null) {
-      const tab = active();
+      const tab = documentTab();
       if (tab && value) tab.document = value;
     },
-    get revision() { return active()?.revision ?? 0; },
+    get revision() { return documentTab()?.revision ?? 0; },
     set revision(value: number) {
-      const tab = active();
+      const tab = documentTab();
       if (tab) tab.revision = value;
     },
-    get surface(): 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' { return active()?.surface ?? 'empty'; },
-    set surface(value: 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video') {
-      const tab = active();
-      if (tab && value !== 'empty') tab.surface = documentSurface(tab.document.path, value);
+    get surface(): 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'web' { return active()?.surface ?? 'empty'; },
+    set surface(value: 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'web') {
+      const tab = documentTab();
+      if (tab && value !== 'empty' && value !== 'web') tab.surface = documentSurface(tab.document.path, value);
     },
-    get anchor() { return active()?.anchor ?? emptyAnchor; },
+    get anchor() { return documentTab()?.anchor ?? emptyAnchor; },
     set anchor(value: ViewportAnchor) {
-      const tab = active();
+      const tab = documentTab();
       if (tab) tab.anchor = value;
     },
   };

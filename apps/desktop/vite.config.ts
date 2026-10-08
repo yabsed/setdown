@@ -32,6 +32,11 @@ export default defineConfig({
   optimizeDeps: {
     entries: ['index.html'],
   },
+  server: {
+    // Electron owns these pages/preloads. Rebuilding them must not reload the
+    // renderer while its native browser views and extension host stay alive.
+    watch: { ignored: ['**/dist-electron/**'] },
+  },
   build: {
     outDir: 'dist',
     sourcemap: true,

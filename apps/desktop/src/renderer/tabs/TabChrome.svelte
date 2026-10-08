@@ -21,7 +21,7 @@
     });
   });
 
-  let markdown = $derived(isMarkdownPath(view.tabs.find((tab) => tab.active)?.path ?? ''));
+  let markdown = $derived(view.tabs.find(tab => tab.active)?.kind !== 'web' && isMarkdownPath(view.tabs.find((tab) => tab.active)?.path ?? ''));
   let canRender = $derived(project.gitDiffActive
     ? !!project.gitDiff && isMarkdownPath(project.gitDiff.filePath)
       && project.gitDiff.originalText !== null && project.gitDiff.modifiedText !== null
@@ -45,7 +45,7 @@
         onclick={() => actions.activateTab(tab.id)}
         ondblclick={() => actions.pinTab(tab.id)}
         ondragstart={(event) => actions.startTabDrag(tab.id, event)} ondragend={actions.endTabDrag}>
-        <span class="tab-name">{tab.name}</span>
+        <span class="tab-name">{tab.page?.loading ? '◌ ' : tab.kind === 'web' ? '↗ ' : ''}{tab.name}</span>
         {#if tab.dirty}<span class="tab-dirty" aria-label="Unsaved changes">•</span>{/if}
         <span class="tab-close" title="Close tab" role="button" tabindex="0"
           onclick={(event) => { event.stopPropagation(); actions.closeTab(tab.id); }}
@@ -71,6 +71,7 @@
   </div>
   <div class="tab-actions" class:unfocused={!focused}>
     <button class="new-tab-button" type="button" title="New document (Ctrl/Cmd+N)" aria-label="New document" onclick={() => { actions.focusGroup(groupId); actions.newDocument(); }}>+</button>
+    <button class="new-web-tab-button" type="button" title="New web tab (Ctrl/Cmd+T)" aria-label="New web tab" onclick={() => { actions.focusGroup(groupId); actions.newWebTab(); }}>↗</button>
     <button class="editor-action insert-table-button" class:review-editor-action={project.gitDiffActive} type="button" hidden={!canInsert}
       title="Insert table" aria-label="Insert table" onclick={actions.openTable}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.75A1.75 1.75 0 0 1 5.75 3h12.5A1.75 1.75 0 0 1 20 4.75v14.5A1.75 1.75 0 0 1 18.25 21H5.75A1.75 1.75 0 0 1 4 19.25V4.75Zm1.5 3.75h4.75v-4H5.75a.25.25 0 0 0-.25.25V8.5Zm6.25 0h6.75V4.75a.25.25 0 0 0-.25-.25h-6.5v4Zm-6.25 1.5v4h4.75v-4H5.5Zm6.25 0v4h6.75v-4h-6.75ZM5.5 15.5v3.75c0 .14.11.25.25.25h4.5v-4H5.5Zm6.25 4h6.5a.25.25 0 0 0 .25-.25V15.5h-6.75v4Z"/></svg>

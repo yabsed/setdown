@@ -2,6 +2,7 @@
   import { view, type AppActions } from '../view-state.svelte';
   import { groupLayout, type SashBox } from '../../core/workspace/editor-groups';
   import TabChrome from '../tabs/TabChrome.svelte';
+  import LocationBar from '../browser/LocationBar.svelte';
   let { actions }: { actions: AppActions } = $props();
   const layout = $derived(groupLayout(view.groupTree));
   function resize(event: PointerEvent, sash: SashBox) {
@@ -27,11 +28,21 @@
 </script>
 
 {#each layout.groups as box (box.id)}
+    {@const tab = view.tabs.find(tab => tab.id === view.groups.find(group => group.id === box.id)?.activeId)}
+
   <section class="editor-group" data-group-id={box.id} class:focused={view.focusedGroupId === box.id}
     aria-label="Editor group" style:left={`${box.x}%`} style:top={`${box.y}%`}
     style:width={`${box.width}%`} style:height={`${box.height}%`}>
     <TabChrome {actions} groupId={box.id} />
+    <LocationBar {actions} groupId={box.id} />
     <div class="group-body" data-group-id={box.id}>
+      {#if tab?.kind === 'web' && (tab.page?.error || tab.page?.startPage)}
+        <div class="browser-empty" data-browser-tab={tab.id}>
+          <h2>{tab.page?.error ? 'This page could not be opened' : 'A place for the web'}</h2>
+          <p>{tab.page?.error || 'Enter an address above, or open a bookmark from the Browser panel.'}</p>
+          {#if tab.page?.error}<button onclick={() => actions.browserCommand(tab.id, 'reload')}>Reload page</button>{/if}
+        </div>
+      {/if}
       <div class="group-editor-host" data-group-id={box.id}></div>
     </div>
   </section>

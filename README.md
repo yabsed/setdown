@@ -72,6 +72,20 @@ you need file navigation, search, Git review, or a terminal.
 | Text, source, and configuration files | Source editing with Monaco syntax highlighting and text Git diffs |
 | PDF | Read-only viewer with continuous scrolling, page navigation, outline, text search and selection, zoom, rotation, and password entry |
 | PNG, JPEG, WebP, GIF, AVIF, SVG | Read-only image viewer with fit, zoom, rotation, and drag-to-pan controls |
+| HTTP and HTTPS pages | Browser tabs with back/forward navigation, bookmarks, history, search, and uBlock Origin |
+
+Open a web tab with `Ctrl/Cmd+T`, or enter a URL with `Ctrl/Cmd+L`. Every editor
+group has an address/file-path bar. Web links in documents open inside Setdown;
+web pages can sit beside documents in split groups. The star saves a bookmark in
+the left **Browser** panel. The **uBO** button opens the current site's controls.
+Browser cookies, bookmarks and history use a separate local profile, and saved
+web tabs restore lazily after a restart.
+
+The browser adapts [Min](https://github.com/minbrowser/min)'s native-view lifecycle
+and reuses its Places search/ranking code (Apache-2.0). It bundles the complete
+[uBlock Origin](https://github.com/gorhill/uBlock) extension and
+`electron-chrome-extensions` compatibility layer (GPL-3.0), with their license
+notices. This includes network filtering, cosmetic filtering and scriptlets.
 
 Non-Markdown text editing supports UTF-8, with or without a BOM, up to 16 MiB.
 It preserves uniform LF or CRLF line endings and the final-newline state.
@@ -157,11 +171,23 @@ launch:
 npm start -- /absolute/path/to/document.md
 ```
 
+The browser build initializes `vendor/ublock-origin` and its nested submodules if
+needed, then fetches the uAssets revisions pinned in
+`apps/desktop/scripts/build-browser.mjs`. The first build needs network access;
+subsequent builds reuse `node_modules/.cache/setdown-browser`. Packaged apps
+include the extension and initial filter lists. Restart Electron after changing
+main-process code or browser preloads; Vite's renderer refresh cannot apply them.
+
 For development with the Vite server:
 
 ```bash
 npm run dev
 ```
+
+The development command builds Electron before starting Vite, then waits for an
+HTTP response on port 5173 before launching the app. If that port is already in
+use, it exits instead of attaching Electron to another server. Generated files
+in `dist-electron` do not trigger renderer reloads.
 
 If your environment sets `ELECTRON_RUN_AS_NODE=1`, unset it for commands that
 launch Electron.

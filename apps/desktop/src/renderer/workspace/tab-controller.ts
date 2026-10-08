@@ -3,7 +3,7 @@ import { hasMarkdownPreview } from '../../core/document/document-capabilities';
 import { documentSurface, isMarkdownDocument } from '../../core/document/document-profile';
 import { retainUnsavedRevision } from '../../core/document/document-save';
 import { GOLDEN_TOP_RATIO, type ViewportAnchor } from '../../core/preview/viewport-anchor';
-import { createWorkspaceTab, type TabSession, type WorkspaceState, type WorkspaceTab } from '../../core/workspace/workspace-state';
+import { createWorkspaceTab, tabTitle, tabLocation, type DocumentTab, type TabSession, type WorkspaceState, type WorkspaceTab } from '../../core/workspace/workspace-state';
 import type { ClaimedTabTransfer, CloseDecision, DocumentSnapshot, TransferableTab } from '../../protocol/desktop-api';
 import type { MonacoEditor } from '../adapters/monaco-editor';
 import type { SurfaceController } from '../application/surface-controller';
@@ -19,12 +19,12 @@ import type { EditorGroupPlacement, EditorOpenOptions } from '../../core/workspa
 type Options = {
   desktop: DesktopPort; workspace: WorkspaceState; session: TabSession; shell: HTMLElement;
   editor: MonacoEditor; reader: ReaderController; preview: PreviewSession; surfaces: SurfaceController;
-  capturePosition?(tab?: WorkspaceTab): void;
+  capturePosition?(tab?: DocumentTab): void;
   shouldSchedulePreview(): boolean;
   confirmClose(names: string[]): Promise<CloseDecision>;
   workspaceChanged(): void;
   groupsChanged?(): void;
-  autoSave?: { schedule(tab: WorkspaceTab): void; cancel(tabId?: string): void };
+  autoSave?: { schedule(tab: DocumentTab): void; cancel(tabId?: string): void };
 };
 const TRANSFER_ANNOUNCE_GRACE_MS = 150;
 
@@ -32,18 +32,18 @@ export class TabController {
   private activation = 0;
   private readonly media = new MediaCache();
   constructor(private readonly options: Options) {}
-  text = (tab: WorkspaceTab): string => this.options.editor.text(tab);
-  dirty = (tab: WorkspaceTab): boolean => hasUnsavedText(tab.document, this.text(tab));
+  text = (tab: WorkspaceTab): string => tab.kind === 'web' ? '' : this.options.editor.text(tab);
+  dirty = (tab: WorkspaceTab): boolean => tab.kind !== 'web' && hasUnsavedText(tab.document, this.text(tab));
   currentText = (): string | null => {
     const tab = this.options.workspace.active;
     return tab ? this.text(tab) : this.options.session.document?.text ?? null;
   };
   documentBuffer = (path: string): string | null => {
-    const tab = this.options.workspace.tabs.find((candidate) => !candidate.document.isUntitled && candidate.document.path === path);
+    const tab = this.options.workspace.documents.find((candidate) => !candidate.document.isUntitled && candidate.document.path === path);
     return tab ? this.text(tab) : null;
   };
   activateWorkingTreePath = async (path: string): Promise<boolean> => {
-    const tab = this.options.workspace.tabs.find((candidate) => !candidate.document.isUntitled && candidate.document.path === path);
+    const tab = this.options.workspace.documents.find((candidate) => !candidate.document.isUntitled && candidate.document.path === path);
     if (!tab) return false;
     this.pin(tab.id);
     await this.activate(tab.id, 'review');
@@ -51,7 +51,7 @@ export class TabController {
   };
   acceptWorkingTreeBuffer = (path: string, text: string, edits?: WorkingTreeEdit[]): void => {
     const { desktop, editor, preview, workspace } = this.options;
-    const tab = workspace.tabs.find((candidate) => !candidate.document.isUntitled && candidate.document.path === path);
+    const tab = workspace.documents.find((candidate) => !candidate.document.isUntitled && candidate.document.path === path);
     if (!tab || this.text(tab) === text) return;
     workspace.groups.pin(tab.id);
     const notified = editor.setText(tab, text, edits);
@@ -70,7 +70,7 @@ export class TabController {
   reloadDocumentPaths = async (paths: string[]): Promise<void> => {
     const selected = new Set(paths);
     const { desktop, editor, preview, reader, session, workspace } = this.options;
-    const targets = workspace.tabs.filter((tab) => !tab.document.isUntitled && selected.has(tab.document.path));
+    const targets = workspace.documents.filter((tab) => !tab.document.isUntitled && selected.has(tab.document.path));
     let activeReloaded = false;
     for (const tab of targets) {
       let diskDocument: DocumentSnapshot | null = null;
@@ -93,7 +93,7 @@ export class TabController {
         activeReloaded = true;
       }
     }
-    const active = workspace.active;
+    const active = workspace.activeDocument;
     if (active) {
       await desktop.activateDocument(active.document, this.text(active), active.revision);
       if (activeReloaded && active.surface === 'viewer' && hasMarkdownPreview(active.document)) {
@@ -109,18 +109,30 @@ export class TabController {
   };
   lineCount = (): number => {
     const tab = this.options.workspace.active;
-    return tab ? this.options.editor.lineCount(tab) : this.countLines(this.currentText() ?? '');
+    return tab && tab.kind !== 'web' ? this.options.editor.lineCount(tab) : this.countLines(this.currentText() ?? '');
   };
   private saveActiveState(): void {
     const tab = this.options.workspace.active;
-    if (!tab || !this.options.session.document) return;
+    if (!tab || tab.kind === 'web' || !this.options.session.document) return;
     this.options.capturePosition?.(tab);
     this.options.editor.saveView(tab);
     if (hasMarkdownPreview(tab.document) && this.options.preview.readyRevision !== null) {
       tab.previewRevision = this.options.preview.readyRevision;
     }
   }
+  addWeb = async (page: import('../../protocol/browser').BrowserPage, background = false): Promise<void> => {
+    const { workspace } = this.options;
+    if (!workspace.find(page.id)) workspace.add({ kind: 'web', id: page.id, surface: 'web', page });
+    this.render();
+    if (!background) await this.activate(page.id);
+  };
+  openWeb = async (input = 'about:blank', background = false): Promise<void> => {
+    const page = await this.options.desktop.browser.create(crypto.randomUUID(), input);
+    await this.addWeb(page, background);
+    if (!background && page.url === 'about:blank') window.dispatchEvent(new Event('setdown:focus-location'));
+  };
   transferable = (tab: WorkspaceTab): TransferableTab => {
+    if (tab.kind === 'web') return { kind: 'web', id: tab.id, page: { ...tab.page } };
     if (tab.id === this.options.workspace.activeId) this.saveActiveState();
     else this.options.editor.saveView(tab);
     const markdown = hasMarkdownPreview(tab.document);
@@ -136,7 +148,8 @@ export class TabController {
       const dirty = this.dirty(tab);
       // Dirty documents never remain eligible for replacement, including shared models.
       if (dirty) workspace.groups.pin(tab.id);
-      return { id: tab.id, name: tab.document.name, path: tab.document.path,
+      return { id: tab.id, name: tabTitle(tab), path: tabLocation(tab), kind: tab.kind,
+        ...(tab.kind === 'web' ? { page: { ...tab.page } } : {}),
         active: tab.id === workspace.activeId, dirty, preview: !workspace.groups.isPinned(tab.id) };
     });
     view.groups = workspace.groups.groups.map(group => ({ ...group, tabs: [...group.tabs] }));
@@ -144,18 +157,18 @@ export class TabController {
     view.focusedGroupId = workspace.groups.focusedId;
     view.tabs = summaries;
     void tick().then(() => this.options.groupsChanged?.());
-    view.mediaTabs = this.media.sync(workspace.tabs, workspace.activeId, workspace.groups.groups.flatMap(g => g.activeId ? [g.activeId] : []));
-    view.activeMediaId = workspace.active?.document.kind ? workspace.activeId : null;
+    view.mediaTabs = this.media.sync(workspace.documents, workspace.activeId, workspace.groups.groups.flatMap(g => g.activeId ? [g.activeId] : []));
+    view.activeMediaId = workspace.activeDocument?.document.kind ? workspace.activeId : null;
     shell.dataset.tabs = summaries.length > 0 ? 'true' : 'false';
     shell.dataset.dirtyTabs = String(summaries.filter((tab) => tab.dirty).length);
-    desktop.updateTabState(workspace.tabs.map((tab) => ({ name: tab.document.name, path: tab.document.path,
+    desktop.updateTabState(workspace.documents.map((tab) => ({ name: tab.document.name, path: tab.document.path,
       dirty: this.dirty(tab), isUntitled: tab.document.isUntitled })));
     this.options.workspaceChanged();
   };
   pin = (tabId: string): void => { if (this.options.workspace.groups.pin(tabId)) this.render(); };
   updateChrome = (): void => {
     const { document: activeDocument } = this.options.session;
-    if (!activeDocument) { document.title = 'Setdown'; return; }
+    if (!activeDocument) { document.title = `${this.options.workspace.active ? tabTitle(this.options.workspace.active) + ' — ' : ''}Setdown`; this.render(); return; }
     const dirty = hasUnsavedText(activeDocument, this.currentText() ?? activeDocument.text);
     document.title = `${dirty ? '• ' : ''}${activeDocument.name} — Setdown`;
     this.render();
@@ -165,6 +178,22 @@ export class TabController {
     const { desktop, editor, preview, reader, session, surfaces, workspace } = this.options;
     const next = workspace.find(tabId);
     if (!next) return;
+    if (next.kind === 'web') {
+      const activation = ++this.activation;
+      if (workspace.activeId !== next.id) { this.saveActiveState(); this.options.autoSave?.cancel(); preview.newSession(); }
+      workspace.activeId = next.id;
+      editor.selectGroup(workspace.groups.focusedId);
+      surfaces.set('web'); view.notice = false; this.updateChrome();
+      try {
+        next.page = await desktop.browser.create(next.id, next.page.url);
+        this.render();
+        if (activation === this.activation && workspace.activeId === next.id) {
+          await tick(); this.options.groupsChanged?.();
+          await desktop.browser.command(next.id, 'focus');
+        }
+      } catch (error) { next.page.error = String(error); this.render(); }
+      return;
+    }
     const reviewing = presentation === 'review';
     // Review needs the live document/session, not its ordinary reader. Suspend
     // before resetting sessions or updating UI, which can otherwise show it.
@@ -220,8 +249,20 @@ export class TabController {
     if (activation !== this.activation || workspace.activeId !== next.id) return;
     if (reviewing) { next.restoringPosition = false; return; }
     if (!hasMarkdownPreview(next.document)) {
+      if (next.surface === 'editor' && next.readingPosition?.kind === 'text' && next.readingPosition.editorView) {
+        // The empty shell hides Monaco and removes its chrome inset. Restore
+        // only against the mounted group's final height, including its address
+        // bar, so a clamped hidden viewport cannot shift the saved first line.
+        await tick();
+        if (activation !== this.activation || workspace.activeId !== next.id) return;
+        editor.restoreView(next);
+      }
       if (restoreAnchor && next.surface === 'editor' && !(next.readingPosition?.kind === 'text' && next.readingPosition.editorView)) editor.reveal(restoreAnchor);
-      next.restoringPosition = false; return;
+      next.restoringPosition = false;
+      // Cursor/scroll events during activation are deliberately suppressed by
+      // the position recorder. Capture the final view once that fence opens.
+      if (next.surface === 'editor') this.options.capturePosition?.(next);
+      return;
     }
     if (preview.readyRevision === session.revision) { next.restoringPosition = false; preview.updateUi(); return; }
     const ready = await preview.ensure(session.revision);
@@ -236,7 +277,13 @@ export class TabController {
     let index = workspace.tabs.findIndex((tab) => tab.id === tabId);
     if (index < 0) return true;
     const tab = workspace.tabs[index];
-    if (this.dirty(tab) && !confirmed) {
+    if (tab.kind === 'web') {
+      if (!confirmed) {
+        try { if (!await desktop.browser.close(tab.id)) return false; }
+        catch (error) { tab.page.error = String(error); this.render(); return false; }
+      }
+    }
+    if (tab.kind !== 'web' && this.dirty(tab) && !confirmed) {
       const decision = await this.options.confirmClose([tab.document.name]);
       if (decision === 'cancel') return false;
       if (decision === 'save') {
@@ -246,7 +293,7 @@ export class TabController {
         if (this.dirty(tab)) return false;
       }
     }
-    if (tab.document.isUntitled) await desktop.discardDocument(tab.document);
+    if (tab.kind !== 'web' && tab.document.isUntitled) await desktop.discardDocument(tab.document);
     index = workspace.tabs.findIndex((candidate) => candidate.id === tabId);
     if (index < 0) return true;
     if (workspace.activeId === tab.id) this.saveActiveState();
@@ -265,7 +312,7 @@ export class TabController {
     return true;
   };
   prepareRemove = async (entryPath: string): Promise<boolean> => {
-    const affected = this.options.workspace.tabs.filter((tab) => this.pathUnder(tab.document.path, entryPath));
+    const affected = this.options.workspace.documents.filter((tab) => this.pathUnder(tab.document.path, entryPath));
     const dirty = affected.filter(this.dirty);
     if (dirty.length) {
       const decision = await this.options.confirmClose(dirty.map((tab) => tab.document.name));
@@ -282,7 +329,7 @@ export class TabController {
   };
 
   /** One path-change boundary for Save As and Explorer rename/move. */
-  private async retarget(tab: WorkspaceTab, previousPath: string): Promise<void> {
+  private async retarget(tab: DocumentTab, previousPath: string): Promise<void> {
     const { desktop, editor, preview, reader, surfaces, workspace } = this.options;
     const wasMarkdown = isMarkdownDocument(previousPath);
     const markdown = hasMarkdownPreview(tab.document);
@@ -303,7 +350,7 @@ export class TabController {
     else preview.schedule(tab.revision);
   }
 
-  acceptSaved = async (tab: WorkspaceTab, saved: DocumentSnapshot): Promise<void> => {
+  acceptSaved = async (tab: DocumentTab, saved: DocumentSnapshot): Promise<void> => {
     if (!this.options.workspace.find(tab.id)) return;
     this.options.workspace.groups.pin(tab.id);
     const oldPath = tab.document.path;
@@ -320,7 +367,7 @@ export class TabController {
 
   relocatePath = async (from: string, to: string): Promise<void> => {
     const { workspace } = this.options;
-    for (const tab of [...workspace.tabs]) {
+    for (const tab of workspace.documents) {
       if (!this.pathUnder(tab.document.path, from)) continue;
       const previousPath = tab.document.path;
       const nextPath = `${to}${previousPath.slice(from.length)}`;
@@ -350,7 +397,7 @@ export class TabController {
     const next = this.options.workspace.cycle(direction);
     if (next) void this.activate(next.id);
   }
-  editorChanged = (tab: WorkspaceTab, text: string): void => {
+  editorChanged = (tab: DocumentTab, text: string): void => {
     const { desktop, preview, workspace } = this.options;
     if (!workspace.find(tab.id)) return;
     workspace.groups.pin(tab.id);
@@ -366,13 +413,13 @@ export class TabController {
   };
   installModel = (documentSnapshot: DocumentSnapshot): void => {
     const tab = this.options.workspace.active;
-    if (tab) this.options.editor.replace(tab, documentSnapshot);
+    if (tab && tab.kind !== 'web') this.options.editor.replace(tab, documentSnapshot);
   };
   show = async (documentSnapshot: DocumentSnapshot, initialSurface: 'viewer' | 'editor' | 'pdf' | 'image' | 'video' = 'viewer',
     presentation: 'document' | 'review' = 'document', placement?: EditorGroupPlacement, openOptions: EditorOpenOptions = {}): Promise<void> => {
     const { editor, reader, workspace } = this.options;
     if (!documentSnapshot.isUntitled) {
-      const existing = workspace.tabs.find((tab) => !tab.document.isUntitled && tab.document.path === documentSnapshot.path);
+      const existing = workspace.documents.find((tab) => !tab.document.isUntitled && tab.document.path === documentSnapshot.path);
       if (existing) {
         // A preview request never demotes an already pinned editor.
         if (openOptions.pinned !== false || placement || presentation === 'review') this.pin(existing.id);
@@ -411,6 +458,7 @@ export class TabController {
     }, 0);
   };
   private release(tab: WorkspaceTab): void {
+    if (tab.kind === 'web') return;
     this.options.autoSave?.cancel(tab.id);
     if (hasMarkdownPreview(tab.document)) this.options.reader.destroy(tab.id);
     this.options.editor.dispose(tab.id);
@@ -418,6 +466,12 @@ export class TabController {
   installTransferred = async (transfer: ClaimedTabTransfer, placement?: EditorGroupPlacement): Promise<void> => {
     const { desktop, editor, preview, reader, shell, surfaces, workspace } = this.options;
     const incoming = transfer.tab;
+    if (incoming.kind === 'web') {
+      if (!await desktop.adoptTabTransfer(transfer.transferId)) return;
+      workspace.add({ kind: 'web', id: incoming.id, surface: 'web', page: incoming.page });
+      if (placement) workspace.groups.move(incoming.id, placement.groupId, placement.direction, placement.index);
+      this.render(); await this.activate(incoming.id); desktop.completeTabTransfer(transfer.transferId); return;
+    }
     const markdown = hasMarkdownPreview(incoming.document);
     const announce = markdown && workspace.tabs.length === 0;
     const finishAnnouncement = () => {
@@ -449,7 +503,7 @@ export class TabController {
   };
   reload = async (documentSnapshot: DocumentSnapshot): Promise<void> => {
     const { preview, session } = this.options;
-    const tab = this.options.workspace.active;
+    const tab = this.options.workspace.activeDocument;
     if (!tab) return;
     if (hasMarkdownPreview(tab.document)) preview.reset();
     session.document = documentSnapshot;

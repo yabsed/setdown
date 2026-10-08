@@ -1,6 +1,6 @@
 import type { DocumentSnapshot } from '../../core/document/document';
 import type { ReadingPosition } from '../../core/reading/reading-position';
-import type { WorkspaceTab } from '../../core/workspace/workspace-state';
+import type { DocumentTab as WorkspaceTab } from '../../core/workspace/workspace-state';
 
 export type MediaTab = { id: string; key: string; document: DocumentSnapshot; position?: ReadingPosition };
 export const mediaKey = (tab: Pick<WorkspaceTab, 'id' | 'document'>): string =>

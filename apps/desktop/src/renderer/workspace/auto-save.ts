@@ -1,5 +1,5 @@
 import type { DocumentSnapshot } from '../../protocol/desktop-api';
-import type { WorkspaceTab } from '../../core/workspace/workspace-state';
+import type { DocumentTab as WorkspaceTab } from '../../core/workspace/workspace-state';
 import type { DesktopPort } from '../ports/desktop-port';
 
 export const AUTO_SAVE_DELAY = 1000;
