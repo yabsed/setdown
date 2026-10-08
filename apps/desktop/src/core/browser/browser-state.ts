@@ -9,6 +9,7 @@ export type BrowserPage = {
   canGoForward: boolean;
   audible: boolean;
   muted: boolean;
+  zoomPercent: number;
   error: string | null;
   protection: 'starting' | 'ready' | 'error';
 };

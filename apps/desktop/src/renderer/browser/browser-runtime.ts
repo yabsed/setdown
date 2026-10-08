@@ -50,6 +50,8 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
   }
   const overlay = ((event: CustomEvent<boolean>) => { if (event.detail) void cover(); else uncover(); }) as EventListener;
   window.addEventListener('setdown:native-overlay-visibility', overlay);
+  let downloadsLoaded = false;
+  const changedDownloads = new Set<string>();
   const unsubscribe = desktop.browser.onEvent(event => {
     if (event.type === 'page') {
       const tab = workspace.find(event.page.id);
@@ -65,8 +67,21 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
       if (workspace.activeId !== event.id || project.gitDiffActive) activate(event.id);
     } else if (event.type === 'close') tabs.browserClosed(event.id);
     else if (event.type === 'places') browser.revision++;
+    else if (event.type === 'download') {
+      if (!downloadsLoaded) changedDownloads.add(event.download.id);
+      const index = browser.downloads.findIndex(item => item.id === event.download.id);
+      if (index < 0) browser.downloads.unshift(event.download); else browser.downloads[index] = event.download;
+    } else if (event.type === 'download-removed') {
+      if (!downloadsLoaded) changedDownloads.add(event.id);
+      browser.downloads = browser.downloads.filter(item => item.id !== event.id);
+    }
     else if (event.type === 'find' && browser.findId === event.id) { browser.active = event.active; browser.matches = event.matches; }
   });
+  void desktop.browser.downloads().then(rows => {
+    browser.downloads = [...browser.downloads, ...rows.filter(item => !changedDownloads.has(item.id))]
+      .sort((a, b) => b.startedAt - a.startedAt);
+    downloadsLoaded = true; changedDownloads.clear();
+  }).catch(error => { browser.error = String(error); });
   const observer = new ResizeObserver(() => sync()); observer.observe(area);
   const zoom = desktop.onZoomChanged(() => sync(true));
   window.addEventListener('beforeunload', () => { unsubscribe(); zoom(); observer.disconnect(); window.removeEventListener('setdown:native-overlay-visibility', overlay); }, { once: true });

@@ -1,5 +1,5 @@
 import { _electron as electron, expect, test } from '@playwright/test';
-import { createServer } from 'node:http';
+import { createServer, type ServerResponse } from 'node:http';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import os from 'node:os';
@@ -10,8 +10,19 @@ import { pdfFixture } from './pdf-fixture';
 async function fixture(document = true) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-browser-'));
   const requests: string[] = [];
+  const slowDownloads = new Set<ServerResponse>();
   const server = createServer((req, res) => {
     requests.push(req.url!);
+    if (req.url === '/download' || req.url === '/slow-download') {
+      res.setHeader('content-type', 'application/octet-stream');
+      res.setHeader('content-disposition', `attachment; filename="${req.url === '/download' ? 'report.txt' : 'slow.txt'}"`);
+      if (req.url === '/download') res.end('Downloaded by Setdown.');
+      else {
+        res.setHeader('content-length', 262144); res.write(Buffer.alloc(131072, 'a'));
+        slowDownloads.add(res); res.on('close', () => slowDownloads.delete(res));
+      }
+      return;
+    }
     if (req.url?.endsWith('.js')) {
       res.setHeader('content-type', 'application/javascript');
       res.end(req.url.includes('blocked') ? 'window.blockedScript=true' : 'window.allowedScript=true'); return;
@@ -32,15 +43,21 @@ async function fixture(document = true) {
   let app = await electron.launch(launchOptions);
   let page = await app.firstWindow();
   await focusApplication(app);
-  await app.evaluate(({ session, net }) => session.fromPartition('persist:setdown-browser').protocol.handle('https', request => {
+  // HTTPS is a built-in Chromium protocol: handle() does not intercept its
+  // browser navigation on Electron 38. Keep this fixture off the real network.
+  await app.evaluate(({ session, net }) => session.fromPartition('persist:setdown-browser').protocol.interceptBufferProtocol('https', (request, respond) => {
     if (new URL(request.url).hostname === 'www.google.com') {
-      return new Response('<!doctype html><title>Google</title><input aria-label="Search">', { headers: { 'content-type': 'text/html' } });
+      respond({ data: Buffer.from('<!doctype html><title>Google</title><input aria-label="Search">'), mimeType: 'text/html' });
+      return;
     }
-    return net.fetch(request.url, { bypassCustomProtocolHandlers: true });
+    void net.fetch(request.url, { bypassCustomProtocolHandlers: true }).then(async response => respond({
+      data: Buffer.from(await response.arrayBuffer()), headers: Object.fromEntries(response.headers), statusCode: response.status,
+    })).catch(() => respond({ error: -2 }));
   }));
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(String(error)));
   return { get app() { return app; }, get page() { return page; }, root, origin, requests, errors,
+    finishDownloads() { for (const res of slowDownloads) res.end(Buffer.alloc(131072, 'b')); },
     async restart() {
       await app.close();
       app = await electron.launch(launchOptions);
@@ -107,6 +124,7 @@ test('browser Ctrl+wheel zooms websites and frames independently of the app and 
     await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
     const firstTab = f.page.getByRole('tab', { name: /Research page/ });
     await expect(firstTab).toHaveAttribute('aria-selected', 'true');
+    await expect(f.page.getByRole('button', { name: 'Reset website zoom' })).toHaveText('100%');
     await expect.poll(() => f.app.evaluate(({ BrowserWindow }, origin) => BrowserWindow.getAllWindows()[0]
       .contentView.children.some(view => view.getVisible() && 'webContents' in view
         && (view as Electron.WebContentsView).webContents.getURL() === `${origin}/first`), f.origin)).toBe(true);
@@ -122,8 +140,11 @@ test('browser Ctrl+wheel zooms websites and frames independently of the app and 
         const page = webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/first`)!;
         const point = frame ? await page.executeJavaScript(`(()=>{
           const r=document.querySelector('iframe').getBoundingClientRect();
-          return {x:r.x+r.width/2,y:r.y+r.height/2};})()`) : { x: 100, y: 100 };
+          return {x:r.x+r.width/2,y:r.y+r.height/2};})()`) : { x: 100, y: 20 };
         const factor = page.getZoomFactor();
+        // Test the top-level surface first; (100,100) lands inside the iframe
+        // before its compositor input region is registered. The explicit frame
+        // case below separately verifies native wheel input inside the iframe.
         // Native input uses DIP; page wheel deltas are CSS pixels after zoom.
         const x = Math.round(point.x * factor), y = Math.round(point.y * factor);
         page.focus(); page.sendInputEvent({ type: 'mouseMove', x, y });
@@ -142,6 +163,7 @@ test('browser Ctrl+wheel zooms websites and frames independently of the app and 
     expect((await state()).factor).toBe(1);
     await wheel(120);
     await expect.poll(async () => (await state()).factor).toBeCloseTo(1.1, 4);
+    await expect(f.page.getByRole('button', { name: 'Reset website zoom' })).toHaveText('110%');
     await wheel(-120);
     await expect.poll(async () => (await state()).factor).toBeCloseTo(1, 4);
     await wheel(40);
@@ -169,15 +191,124 @@ test('browser Ctrl+wheel zooms websites and frames independently of the app and 
       .find(wc => wc.getURL() === 'https://www.google.com/')!.getZoomFactor())).toBeCloseTo(1, 4);
     await f.page.keyboard.press('Control+=');
     await expect.poll(async () => (await state()).factor).toBeCloseTo(1.21, 4);
+    await expect(f.page.getByRole('button', { name: 'Reset website zoom' })).toHaveText('100%');
     await f.page.keyboard.press('Control+0');
     await expect.poll(async () => (await state()).factor).toBeCloseTo(1.1, 4);
     await firstTab.click();
+    await expect(f.page.getByRole('button', { name: 'Reset website zoom' })).toHaveText('110%');
+    await f.page.getByRole('button', { name: 'Zoom website in', exact: true }).click();
+    await expect.poll(async () => (await state()).factor).toBeCloseTo(1.2, 4);
+    await expect(f.page.getByRole('button', { name: 'Reset website zoom' })).toHaveText('120%');
+    expect(await evaluatePage(f.app, `${f.origin}/first`, 'document.querySelector("#draft").value')).toBe('keep this');
+    await f.page.getByRole('button', { name: 'Reset website zoom' }).click();
+    await expect(f.page.getByRole('button', { name: 'Reset website zoom' })).toHaveText('100%');
+    await expect.poll(async () => (await state()).factor).toBeCloseTo(1, 4);
+    await f.page.getByRole('button', { name: 'Zoom website out', exact: true }).click();
+    await expect.poll(async () => (await state()).factor).toBeCloseTo(.9, 4);
+    await f.page.getByRole('button', { name: 'Reset website zoom' }).click();
     await f.page.getByRole('button', { name: 'Reload page', exact: true }).click();
-    await expect.poll(() => evaluatePage(f.app, f.origin, 'document.readyState')).toBe('complete');
-    expect((await state()).factor).toBeCloseTo(1.1, 4);
+    await expect.poll(() => evaluatePage(f.app, `${f.origin}/first`, 'document.readyState')).toBe('complete');
+    expect((await state()).factor).toBeCloseTo(1, 4);
     expect((await state()).id).toBe(original.id);
+    await f.page.getByRole('tab', { name: /Second page/ }).click();
+    await expect(f.page.getByRole('button', { name: 'Reset website zoom' })).toHaveText('100%');
     expect(f.errors).toEqual([]);
   } finally { await f.dispose(); }
+});
+
+test('history deletion updates persistent places while preserving bookmarks and page state', async () => {
+  const f = await fixture(false);
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible();
+    await f.page.getByRole('button', { name: 'Bookmark page', exact: true }).click();
+    await evaluatePage(f.app, f.origin, 'document.querySelector("#draft").value="retained";true');
+    await f.page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
+    await f.page.getByRole('button', { name: 'Browser', exact: true }).click();
+    await f.page.getByRole('button', { name: 'History', exact: true }).click();
+    await expect(f.page.locator('.browser-sidebar .place-title')).toContainText(['Research page']);
+    await f.page.getByRole('button', { name: 'Delete history: Research page', exact: true }).click();
+    await expect(f.page.locator('.browser-sidebar .place')).toHaveCount(0);
+    expect(await evaluatePage(f.app, f.origin, 'document.querySelector("#draft").value')).toBe('retained');
+    expect(await f.page.evaluate(() => window.marktex.browser.places('', 'history'))).toEqual([]);
+    await f.page.getByRole('button', { name: 'Bookmarks', exact: true }).click();
+    await expect(f.page.locator('.browser-sidebar .place-title')).toContainText(['Research page']);
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/second`);
+    await expect(f.page.getByRole('tab', { name: /Second page/ })).toBeVisible();
+    await f.page.getByRole('button', { name: 'History', exact: true }).click();
+    await expect(f.page.locator('.browser-sidebar .place-title')).toContainText(['Second page']);
+    await f.page.getByRole('button', { name: 'Clear history…', exact: true }).click();
+    await f.page.getByRole('group', { name: 'Confirm clear history' }).getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(f.page.locator('.browser-sidebar .place-title')).toContainText(['Second page']);
+    await f.page.getByRole('button', { name: 'Clear history…', exact: true }).click();
+    await f.page.getByRole('button', { name: 'Clear all history', exact: true }).click();
+    await expect(f.page.locator('.browser-sidebar .place')).toHaveCount(0);
+    const bookmark = await f.page.evaluate(() => window.marktex.browser.places('', 'bookmarks'));
+    expect(bookmark).toEqual([{ url: `${f.origin}/first`, title: 'Research page', bookmarked: true, lastVisit: 0, visits: 0 }]);
+    // Prevent restored tabs from creating genuinely new visits during this
+    // persistence check; reopening a page should normally record a new visit.
+    await f.page.evaluate(async () => {
+      for (const page of await window.marktex.browser.restore()) await window.marktex.browser.close(page.id);
+    });
+    await f.restart();
+    expect(await f.page.evaluate(() => window.marktex.browser.places('', 'history'))).toEqual([]);
+    expect(await f.page.evaluate(() => window.marktex.browser.places('', 'bookmarks'))).toEqual(bookmark);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('downloads expose native progress and controls, retain completed files across restart, and remove only records', async () => {
+  test.setTimeout(90_000);
+  const f = await fixture(false);
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible();
+    await f.app.evaluate(({ session, shell }, root) => {
+      session.fromPartition('persist:setdown-browser').on('will-download', (_event, item) => item.setSavePath(`${root}/${item.getFilename()}`));
+      // Exercise main's path handling without launching external apps/windows.
+      const calls: string[] = [];
+      (globalThis as { downloadCalls?: string[] }).downloadCalls = calls;
+      shell.openPath = async file => { calls.push(`open:${file}`); return ''; };
+      shell.showItemInFolder = file => { calls.push(`show:${file}`); };
+    }, f.root);
+    await f.page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
+    await f.page.getByRole('button', { name: 'Browser', exact: true }).click();
+    await f.page.getByRole('button', { name: 'Downloads', exact: true }).click();
+    await evaluatePage(f.app, f.origin, 'location.href="/download";true');
+    let report = f.page.locator('.download').filter({ hasText: 'report.txt' });
+    await expect(report).toHaveAttribute('data-state', 'completed');
+    expect(await readFile(path.join(f.root, 'report.txt'), 'utf8')).toBe('Downloaded by Setdown.');
+    await report.getByRole('button', { name: 'Open download: report.txt', exact: true }).click();
+    await report.getByRole('button', { name: 'Show download in folder: report.txt', exact: true }).click();
+    expect(await f.app.evaluate(() => (globalThis as { downloadCalls?: string[] }).downloadCalls))
+      .toEqual([`open:${f.root}/report.txt`, `show:${f.root}/report.txt`]);
+    await evaluatePage(f.app, f.origin, 'location.href="/slow-download";true');
+    const slow = f.page.locator('.download').filter({ hasText: 'slow.txt' });
+    await expect(slow).toHaveAttribute('data-state', 'progressing');
+    await expect.poll(() => f.page.evaluate(async () => (await window.marktex.browser.downloads()).find(item => item.name === 'slow.txt')?.received)).toBeGreaterThan(0);
+    await slow.getByRole('button', { name: 'Pause download: slow.txt', exact: true }).click();
+    await expect(slow.locator('.status')).toContainText('Paused');
+    await slow.getByRole('button', { name: 'Resume download: slow.txt', exact: true }).click();
+    await expect(slow.locator('.status')).toContainText('Downloading');
+    f.finishDownloads();
+    await expect(slow).toHaveAttribute('data-state', 'completed');
+    expect((await readFile(path.join(f.root, 'slow.txt'))).length).toBe(262144);
+    await evaluatePage(f.app, f.origin, 'location.href="/slow-download";true');
+    const progressing = f.page.locator('.download[data-state="progressing"]');
+    await progressing.getByRole('button', { name: 'Cancel download: slow.txt', exact: true }).click();
+    await expect(progressing).toHaveCount(0);
+    await expect(f.page.locator('.download[data-state="cancelled"]')).toHaveCount(1);
+    await f.restart();
+    await f.page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
+    await f.page.getByRole('button', { name: 'Browser', exact: true }).click();
+    await f.page.getByRole('button', { name: 'Downloads', exact: true }).click();
+    report = f.page.locator('.download').filter({ hasText: 'report.txt' });
+    await expect(report).toHaveAttribute('data-state', 'completed');
+    await report.getByRole('button', { name: 'Remove download: report.txt', exact: true }).click();
+    await expect(report).toHaveCount(0);
+    expect(await readFile(path.join(f.root, 'report.txt'), 'utf8')).toBe('Downloaded by Setdown.');
+    expect(f.errors).toEqual([]);
+  } finally { f.finishDownloads(); await f.dispose(); }
 });
 
 test('bundled uBlock blocks requests, scripts and frame cosmetics, and enforces response-header filters', async () => {

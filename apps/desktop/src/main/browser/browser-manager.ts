@@ -4,7 +4,7 @@ import { promises as fs, unwatchFile, writeFileSync, renameSync } from 'node:fs'
 import path from 'node:path';
 import { browserURL, isWebURL } from '../../core/browser/browser-url';
 import { appZoomStep } from '../../core/zoom';
-import type { BrowserCommand, BrowserEvent, BrowserPage } from '../../protocol/browser';
+import type { BrowserCommand, BrowserEvent, BrowserPage, BrowserPlaceScope, DownloadCommand } from '../../protocol/browser';
 import type { WebHistory } from '../../core/workspace/tab-navigation';
 import { readPreviewBounds, type PreviewBounds } from '../../protocol/preview-preparation';
 import type { WindowState } from '../windows/window-state';
@@ -12,19 +12,21 @@ import { nativeZoomBounds, type WorkspaceZoom } from '../windows/workspace-zoom'
 import type { WindowIpc } from '../ipc/window-ipc';
 import { BrowserExtensions } from './browser-extensions';
 import { BrowserPlaces } from './browser-places';
+import { BrowserDownloads } from './browser-downloads';
 
 type Entry = { owner: number; view: WebContentsView; page: BrowserPage; navigation: number; bounds?: Rectangle;
   historyUrls: string[]; historyIndex: number; canGoBack?: boolean; canGoForward?: boolean; closing?: (value: boolean) => void };
 type Options = { stateFor(id: number): WindowState | null; states(): Iterable<WindowState>; zoom: WorkspaceZoom;
   openFile(state: WindowState, file: string): Promise<unknown> };
 const blankPage = (id: string, url: string): BrowserPage => ({ id, url, title: url === 'about:blank' ? 'New web tab' : url,
-  startPage: url === 'about:blank', loading: false, canGoBack: false, canGoForward: false, audible: false, muted: false, error: null, protection: 'starting' });
+  startPage: url === 'about:blank', loading: false, canGoBack: false, canGoForward: false, audible: false, muted: false, zoomPercent: 100, error: null, protection: 'starting' });
 
 /** Adapted from Min's viewManager: persistent page identity, popup adoption,
  * and isolated browser sessions, with Setdown's per-group bounds and ownership. */
 export class BrowserManager {
   readonly views = new Map<string, Entry>();
   private readonly places = new BrowserPlaces();
+  private readonly downloads = new BrowserDownloads(event => this.broadcast(event));
   private profile?: Session;
   private extensions?: BrowserExtensions;
   private ready?: Promise<void>;
@@ -42,14 +44,16 @@ export class BrowserManager {
     return new URL(entry.view.webContents.getURL() || entry.page.url).hostname;
   }
   private pageZoom(entry: Entry): number { return (this.siteZoom.get(this.zoomSite(entry)) ?? 100) / 100; }
-  private zoomPage(entry: Entry, steps: unknown): void {
-    if (!entry.view.getVisible() || typeof steps !== 'number' || !Number.isInteger(steps) || !steps || Math.abs(steps) > 4) return;
+  private zoomPage(entry: Entry, steps: unknown, requireVisible = true): void {
+    if ((requireVisible && !entry.view.getVisible()) || typeof steps !== 'number' || !Number.isInteger(steps) || Math.abs(steps) > 4) return;
     const site = this.zoomSite(entry);
-    const percent = Math.max(50, Math.min(300, (this.siteZoom.get(site) ?? 100) + steps * 10));
+    const percent = steps === 0 ? 100 : Math.max(50, Math.min(300, (this.siteZoom.get(site) ?? 100) + steps * 10));
     this.siteZoom.set(site, percent);
     for (const page of this.views.values()) {
       const contents = page.view.webContents;
-      if (!contents.isDestroyed() && this.zoomSite(page) === site) contents.setZoomFactor(this.options.zoom.factor * percent / 100);
+      if (!contents.isDestroyed() && this.zoomSite(page) === site) {
+        contents.setZoomFactor(this.options.zoom.factor * percent / 100); this.publish(page);
+      }
     }
   }
   private get session() {
@@ -61,6 +65,7 @@ export class BrowserManager {
         if (!entry) { item.cancel(); return; }
         const owner = this.options.stateFor(entry.owner);
         item.setSaveDialogOptions({ title: 'Save download', defaultPath: path.join(app.getPath('downloads'), path.basename(item.getFilename())) });
+        this.downloads.track(item);
         item.once('done', (_event, result) => {
           if (result === 'completed' && item.getMimeType() === 'application/pdf' && owner && !owner.window.isDestroyed())
             void this.options.openFile(owner, item.getSavePath()).catch(error => this.error(entry, error));
@@ -108,11 +113,13 @@ export class BrowserManager {
     const state = this.options.stateFor(owner);
     if (state && !state.window.isDestroyed()) state.window.webContents.send('browser:event', event);
   }
+  private broadcast(event: BrowserEvent) { for (const state of this.options.states()) this.send(state.webContentsId, event); }
   private publish(entry: Entry) {
     if (entry.view.webContents.isDestroyed()) return;
     const wc = entry.view.webContents;
     entry.page = { ...entry.page, loading: wc.isLoading(), canGoBack: wc.navigationHistory.canGoBack(),
-      canGoForward: wc.navigationHistory.canGoForward(), audible: wc.isCurrentlyAudible(), muted: wc.isAudioMuted() };
+      canGoForward: wc.navigationHistory.canGoForward(), audible: wc.isCurrentlyAudible(), muted: wc.isAudioMuted(),
+      zoomPercent: Math.round(this.pageZoom(entry) * 100) };
     this.send(entry.owner, { type: 'page', page: entry.page });
   }
   private error(entry: Entry, error: unknown) {
@@ -136,6 +143,7 @@ export class BrowserManager {
     return this.saving;
   }
   flushOnExit() {
+    this.downloads.flushOnExit();
     // will-quit cannot await promises. Commit the small tab manifest using a
     // different temporary file from any in-flight debounced write.
     if (!this.restored && !this.saved.size) return;
@@ -169,7 +177,7 @@ export class BrowserManager {
       historyUrls: [], historyIndex: -1 };
     this.views.set(id, entry);
     const wc = view.webContents;
-    this.options.zoom.track(wc, undefined, () => this.pageZoom(entry));
+    this.options.zoom.track(wc, () => this.publish(entry), () => this.pageZoom(entry));
     wc.on('ipc-message', (_event, channel, steps) => { if (channel === 'browser:wheel-zoom') this.zoomPage(entry, steps); });
     wc.on('zoom-changed', (_event, direction) => this.zoomPage(entry, direction === 'in' ? 1 : -1));
     const register = () => this.extensions?.host?.addTab(wc, this.options.stateFor(entry.owner)!.window);
@@ -190,7 +198,8 @@ export class BrowserManager {
     wc.on('did-start-loading', () => this.publish(entry));
     wc.on('did-stop-loading', () => this.publish(entry));
     wc.on('did-finish-load', () => {
-      if (isWebURL(wc.getURL())) void this.places.update(wc.getURL(), wc.getTitle(), { visit: true }).catch(console.error);
+      if (isWebURL(wc.getURL())) void this.places.update(wc.getURL(), wc.getTitle(), { visit: true })
+        .then(() => this.broadcast({ type: 'places' })).catch(console.error);
     });
     wc.on('did-fail-load', (_event, code, description, _url, main) => {
       if (main && code !== -3) this.error(entry, description);
@@ -411,6 +420,9 @@ export class BrowserManager {
         this.extensions?.host?.selectTab(wc);
         if (entry.view.getVisible()) wc.focus();
       } else if (command === 'mute') { wc.setAudioMuted(!wc.isAudioMuted()); this.publish(entry); }
+      else if (command === 'zoom-in' || command === 'zoom-out' || command === 'zoom-reset') {
+        this.zoomPage(entry, command === 'zoom-reset' ? 0 : command === 'zoom-in' ? 1 : -1, false);
+      }
       else if (command === 'external') await this.external(entry, wc.getURL(), true);
       else if (command === 'save') {
         const result = await dialog.showSaveDialog(state.window, { title: 'Save web page', defaultPath: 'page.html', filters: [{ name: 'Web page', extensions: ['html'] }] });
@@ -425,12 +437,18 @@ export class BrowserManager {
       const wc = this.owned(state.webContentsId, id).view.webContents;
       if (text) wc.findInPage(String(text).slice(0, 1000), { forward, findNext: next }); else wc.stopFindInPage('clearSelection');
     });
-    channels.handle('browser:places', (_state, query: string, bookmarksOnly: boolean) => this.places.search(query, bookmarksOnly));
+    channels.handle('browser:places', (_state, query: string, scope?: BrowserPlaceScope) => this.places.search(query, scope));
     channels.handle('browser:bookmark', async (_state, url: string, title: string, bookmarked: boolean) => {
       if (!isWebURL(url)) throw Error('Only web pages can be bookmarked.');
       await this.places.update(url, String(title), { bookmarked: bookmarked === true });
-      for (const state of this.options.states()) this.send(state.webContentsId, { type: 'places' });
+      this.broadcast({ type: 'places' });
     });
+    channels.handle('browser:delete-history', async (_state, url?: string) => {
+      if (url !== undefined && !isWebURL(url)) throw Error('Invalid history URL.');
+      await this.places.deleteHistory(url); this.broadcast({ type: 'places' });
+    });
+    channels.handle('browser:downloads', () => this.downloads.list());
+    channels.handle('browser:download-command', (_state, id: string, command: DownloadCommand) => this.downloads.command(id, command));
     channels.handle('browser:restore', async state => {
       const own = [...this.views.values()].filter(e => e.owner === state.webContentsId).map(e => e.page);
       own.push(...[...this.dormant].filter(([, owner]) => owner === state.webContentsId).map(([id]) => this.saved.get(id)!));

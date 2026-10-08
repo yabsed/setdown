@@ -1,6 +1,6 @@
 import { WebContentsView, MessageChannelMain, ipcMain, type MessagePortMain } from 'electron';
 import path from 'node:path';
-import type { BrowserPlace } from '../../protocol/browser';
+import type { BrowserPlace, BrowserPlaceScope } from '../../protocol/browser';
 
 /** Min's isolated Places service: IndexedDB and ranking never run in the shell. */
 export class BrowserPlaces {
@@ -47,9 +47,11 @@ export class BrowserPlaces {
       port.postMessage({ id, action, input });
     });
   }
-  search(query: string, bookmarksOnly = false): Promise<BrowserPlace[]> {
-    return this.request('search', { query: String(query).slice(0, 500), bookmarksOnly: !!bookmarksOnly });
+  search(query: string, scope: BrowserPlaceScope = 'all'): Promise<BrowserPlace[]> {
+    if (!['all', 'bookmarks', 'history'].includes(scope)) throw Error('Invalid browser library scope.');
+    return this.request('search', { query: String(query).slice(0, 500), scope });
   }
+  deleteHistory(url?: string): Promise<void> { return this.request('delete-history', { url }); }
   update(url: string, title: string, options: { visit?: boolean; bookmarked?: boolean } = {}): Promise<void> {
     return this.request('update', { url, title: title.slice(0, 1000), ...options });
   }

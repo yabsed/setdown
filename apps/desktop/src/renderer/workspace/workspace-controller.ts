@@ -76,7 +76,9 @@ export function startWorkspace(desktop: DesktopPort) {
       if (command === 'back' || command === 'forward') { actions.navigateHistory(id, command === 'back' ? -1 : 1); return; }
       void desktop.browser.command(id, command).catch(error => { browser.error = String(error); });
     },
-    browserPlaces: (query, bookmarksOnly) => desktop.browser.places(query, bookmarksOnly),
+    browserPlaces: (query, scope) => desktop.browser.places(query, scope),
+    browserDeleteHistory: (url) => desktop.browser.deleteHistory(url),
+    browserDownloadCommand: (id, command) => desktop.browser.downloadCommand(id, command),
     browserBookmark: async (url, title, bookmarked) => {
       try { await desktop.browser.bookmark(url, title, bookmarked); browser.revision++; }
       catch (error) { browser.error = String(error); }

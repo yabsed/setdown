@@ -55,6 +55,12 @@ Zoom preserves the live page and forms. The custom content-factor target in
 guarantees. Wheel IPC is accepted only from a visible owned web contents, with
 bounded integer steps; no desktop API is exposed to remote pages.
 
+The web location bar always displays website zoom, including 100%, and provides
+decrease, increase and reset controls through the same hostname-scoped path.
+The percentage describes website zoom relative to the app factor. Updates in
+other tabs of the same hostname and app zoom changes retain this distinction;
+the indicator never adds native captures, navigation or layout polling.
+
 PDF/image wheel zoom is per file and keeps the content point under the cursor,
 subject to the scroll range at content edges. It must not change either common
 factor. PDF starts at fit width; explicit fit modes recompute on viewport/app
@@ -243,6 +249,17 @@ groups keep page identity, forms and history. Browser layout uses app zoom once;
 remote pages receive neither Node nor the desktop bridge. Hidden initial loads
 stay detached. Library indexing/ranking runs in a separate, detached Places view.
 No periodic page captures or Markdown hydration are added to browser tabs.
+
+Browser library history deletion serializes with visits/bookmark updates in the
+detached Places service. IndexedDB and its search cache change together; clearing
+visits preserves bookmarks, cookies and live page state. Downloads use native
+session DownloadItem events, coalesce progress updates, and immediately publish
+terminal states. Only serializable metadata crosses the desktop bridge. The
+library retains completed records across restart; an unfinished transfer from a
+previous process is shown as interrupted. Removing a download record keeps its
+file. `browser.spec.ts` checks deletion persistence and native download controls;
+`browser-downloads.test.ts` checks interrupted restoration, duplicate file paths
+and progress/completion ordering.
 
 `browser.spec.ts` covers navigation, live state, native split visibility, bookmarks,
 fresh-profile extension startup, popup opener identity, and real uBlock network,

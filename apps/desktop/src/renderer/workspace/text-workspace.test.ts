@@ -25,7 +25,7 @@ const snapshot = (path: string, text = 'body\r\n'): DocumentSnapshot => ({ path,
   encoding: 'utf8-bom', eol: 'crlf' });
 const browserPage = (id: string, url: string): BrowserPage => ({ id, url, title: 'Web page',
   startPage: url === 'about:blank', loading: false, canGoBack: false, canGoForward: false,
-  audible: false, muted: false, error: null, protection: 'ready' });
+  audible: false, muted: false, zoomPercent: 100, error: null, protection: 'ready' });
 function fixture() {
   const workspace = new WorkspaceState();
   const session = createTabSession(() => workspace.active, anchor);

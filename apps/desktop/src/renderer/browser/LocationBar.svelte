@@ -21,7 +21,7 @@
   $effect(() => {
     const url = web?.url; void browser.revision;
     bookmarked = false;
-    if (url?.startsWith('http')) void actions.browserPlaces(url, true).then(rows => { if (web?.url === url) bookmarked = rows.some(p => p.url === url); }).catch(() => {});
+    if (url?.startsWith('http')) void actions.browserPlaces(url, 'bookmarks').then(rows => { if (web?.url === url) bookmarked = rows.some(p => p.url === url); }).catch(() => {});
   });
   const suggesting = $derived(editing && suggestions.length > 0);
   $effect(() => {
@@ -85,6 +85,13 @@
         disabled={web.protection !== 'ready'} onclick={() => actions.browserCommand(tab!.id, 'protection')}>uBO</button>
     {/if}
   {/if}
+  {#if web}
+    <div class="page-zoom" role="group" aria-label="Website zoom">
+      <button aria-label="Zoom website out" title="Zoom website out" disabled={web.zoomPercent <= 50} onclick={() => actions.browserCommand(tab!.id, 'zoom-out')}>−</button>
+      <button class="zoom-percent" aria-label="Reset website zoom" title="Website zoom — click to reset to 100%" onclick={() => actions.browserCommand(tab!.id, 'zoom-reset')}>{web.zoomPercent}%</button>
+      <button aria-label="Zoom website in" title="Zoom website in" disabled={web.zoomPercent >= 300} onclick={() => actions.browserCommand(tab!.id, 'zoom-in')}>+</button>
+    </div>
+  {/if}
   {#if editing && suggestions.length}
     <div class="location-suggestions" role="listbox" aria-label="Bookmarks and history">
       {#each suggestions as item, index (item.url)}
@@ -109,6 +116,9 @@
   .protection { font: 600 10px/1 sans-serif; letter-spacing: -.3px; } .failed, .location-error { color: #b94f4f; }
   .bookmarked { color: var(--app-text); } .find-count { font: 11px sans-serif; }
   .loading { box-shadow: inset 0 -2px var(--app-muted-text); }
+  .page-zoom { display: flex; align-items: center; flex-shrink: 0; border-left: 1px solid var(--app-border); padding-left: 3px; }
+  .page-zoom button { min-width: 22px; }
+  .page-zoom .zoom-percent { min-width: 41px; padding: 0 3px; font: 11px/1 sans-serif; font-variant-numeric: tabular-nums; }
   .location-suggestions { position: absolute; top: 33px; left: 9px; right: 9px; padding: 5px; border: 1px solid var(--app-border); border-radius: 0 0 8px 8px; background: var(--app-chrome); box-shadow: 0 8px 24px #0002; }
   .location-suggestions button { display: flex; align-items: center; gap: 10px; text-align: left; width: 100%; height: auto; padding: 8px; }
   .location-suggestions .selected { background: var(--app-hover); }

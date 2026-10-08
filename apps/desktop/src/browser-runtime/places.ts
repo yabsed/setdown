@@ -21,18 +21,38 @@ window.addEventListener('message', function connected(event) {
       await loaded;
       if (action === 'search') {
         await mutations;
-        const result = searchMinPlaces(cache, input.query, { searchBookmarks: input.bookmarksOnly, limit: 100 }).map(expose);
-        port.postMessage({ id, result });
+        const candidates = input.scope === 'history' ? cache.filter(p => p.visitCount > 0) : cache;
+        const result = searchMinPlaces(candidates, input.query, { searchBookmarks: input.scope === 'bookmarks', limit: input.scope === 'history' ? Math.max(100, candidates.length) : 100 });
+        if (input.scope === 'history') result.sort((a, b) => b.lastVisit - a.lastVisit);
+        port.postMessage({ id, result: result.slice(0, 100).map(expose) });
       } else if (action === 'update') {
         mutations = mutations.catch(() => {}).then(async () => {
           const index = cache.findIndex(p => p.url === input.url);
           const previous = cache[index];
           const record: PlaceRecord = { url: input.url, title: input.title || previous?.title || input.url,
             isBookmarked: input.bookmarked ?? previous?.isBookmarked ?? false,
-            lastVisit: input.visit ? Date.now() : previous?.lastVisit ?? Date.now(),
+            lastVisit: input.visit ? Date.now() : previous?.lastVisit ?? 0,
             visitCount: (previous?.visitCount ?? 0) + (input.visit ? 1 : 0) };
+          if (!record.isBookmarked && !record.visitCount) {
+            await places.delete(record.url); if (index >= 0) cache.splice(index, 1); return;
+          }
           await places.put(record);
           if (index === -1) cache.push(record); else cache[index] = record;
+        });
+        await mutations;
+        port.postMessage({ id, result: null });
+      } else if (action === 'delete-history') {
+        // Serialize with visits/bookmarks, updating IndexedDB and Min's cache
+        // together. Erasing visits must never erase a saved bookmark.
+        mutations = mutations.catch(() => {}).then(async () => {
+          const removed = cache.filter(p => input.url === undefined || p.url === input.url);
+          const bookmarks = removed.filter(p => p.isBookmarked).map(p => ({ ...p, visitCount: 0, lastVisit: 0 }));
+          await db.transaction('rw', places, async () => {
+            await places.bulkDelete(removed.filter(p => !p.isBookmarked).map(p => p.url));
+            await places.bulkPut(bookmarks);
+          });
+          const urls = new Set(removed.map(p => p.url));
+          cache = cache.filter(p => !urls.has(p.url)).concat(bookmarks);
         });
         await mutations;
         port.postMessage({ id, result: null });

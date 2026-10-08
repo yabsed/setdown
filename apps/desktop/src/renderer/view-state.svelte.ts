@@ -48,8 +48,10 @@ export type AppActions = {
   navigateLocation(groupId: string, input: string): Promise<void>;
   navigateHistory(id: string, direction: -1 | 1): void;
   browserCommand(id: string, command: import('../protocol/browser').BrowserCommand): void;
-  browserPlaces(query: string, bookmarksOnly?: boolean): Promise<import('../protocol/browser').BrowserPlace[]>;
+  browserPlaces(query: string, scope?: import('../protocol/browser').BrowserPlaceScope): Promise<import('../protocol/browser').BrowserPlace[]>;
   browserBookmark(url: string, title: string, bookmarked: boolean): Promise<void>;
+  browserDeleteHistory(url?: string): Promise<void>;
+  browserDownloadCommand(id: string, command: import('../protocol/browser').DownloadCommand): Promise<void>;
   browserFind(id: string, query: string, forward?: boolean, next?: boolean): void;
   focusGroup(id: string): void;
   resizeGroup(id: string, ratio: number): void;

@@ -6,6 +6,7 @@ export default defineConfig({
   test: { ...base.test, include: [
     'src/architecture-boundaries.test.ts',
     'src/core/browser/browser-url.test.ts',
+    'src/main/browser/browser-downloads.test.ts',
     'src/core/document/file-location.test.ts',
     'src/core/workspace/editor-groups.test.ts',
     'src/core/workspace/tab-navigation.test.ts',
