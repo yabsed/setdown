@@ -1,3 +1,17 @@
+# GUI test execution
+
+- Run GUI/Electron tests and benchmarks on an isolated virtual display (Xvfb)
+  by default, even when the user's desktop display is available. Test windows
+  must not appear on the user's desktop or steal its focus.
+- For example: `xvfb-run -a npm run test:preview-contract`. Run benchmark
+  baseline and candidate on the same virtual display with identical settings.
+- If Xvfb is unavailable, prepare an equivalent isolated display, using a
+  temporary directory when needed. Do not silently fall back to the user's
+  desktop; use it only when the user explicitly requests visible testing.
+- Preserve real Electron/Chromium execution, required scenarios, focus/IME
+  checks, logs and artifacts. Hidden execution must not skip tests, add retries,
+  weaken assertions or relax performance tolerances.
+
 # Preview performance
 
 Read [the preview performance contract](docs/preview-performance-contract.md)
