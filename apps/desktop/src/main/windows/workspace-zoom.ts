@@ -25,13 +25,14 @@ export function nativeZoomBounds(bounds: ZoomBounds, zoomFactor: number): ZoomBo
 /** App zoom is shared by every window; native text previews additionally inherit
  * the common text factor. Shell geometry always uses app zoom alone. New, spare
  * and transferred views inherit both factors without navigation or focus changes.
+ * Browser targets supply their own content factor for website zoom.
  */
 export class WorkspaceZoom {
   private percent = 100;
   private textPercent = 100;
   private revision = 0;
   onChange?: () => void;
-  private readonly targets = new Map<number, { target: ZoomTarget; afterApply?: () => void; text: boolean }>();
+  private readonly targets = new Map<number, { target: ZoomTarget; afterApply?: () => void; contentFactor: () => number }>();
   get factor(): number { return this.percent / 100; }
   get textFactor(): number { return this.textPercent / 100; }
   get snapshot() { return { app: this.percent, text: this.textPercent, revision: this.revision }; }
@@ -44,9 +45,10 @@ export class WorkspaceZoom {
     if (valid(saved.text)) this.textPercent = saved.text;
   }
 
-  track(target: ZoomTarget, afterApply?: () => void, text = false): void {
+  track(target: ZoomTarget, afterApply?: () => void, content: boolean | (() => number) = false): void {
     if (target.isDestroyed() || this.targets.has(target.id)) return;
-    const entry = { target, afterApply, text };
+    const entry = { target, afterApply,
+      contentFactor: typeof content === 'function' ? content : () => content ? this.textFactor : 1 };
     this.targets.set(target.id, entry);
     const apply = () => this.apply(entry);
     target.on('did-finish-load', apply);
@@ -68,10 +70,10 @@ export class WorkspaceZoom {
     return true;
   }
 
-  private apply({ target, afterApply, text }: { target: ZoomTarget; afterApply?: () => void; text: boolean }): void {
+  private apply({ target, afterApply, contentFactor }: { target: ZoomTarget; afterApply?: () => void; contentFactor: () => number }): void {
     if (target.isDestroyed()) return;
     try {
-      target.setZoomFactor(this.factor * (text ? this.textFactor : 1));
+      target.setZoomFactor(this.factor * contentFactor());
       afterApply?.();
     } catch {
       // Closing/navigating targets can reject an update. The next load inherits

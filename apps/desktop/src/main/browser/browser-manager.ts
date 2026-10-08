@@ -33,9 +33,25 @@ export class BrowserManager {
   private saved = new Map<string, BrowserPage>();
   private dormant = new Map<string, number>();
   private transferring = new Set<number>();
+  private readonly siteZoom = new Map<string, number>();
   private saveTimer?: ReturnType<typeof setTimeout>;
   private saving = Promise.resolve();
   constructor(private readonly options: Options) {}
+  private zoomSite(entry: Entry): string {
+    // Chromium shares page zoom by hostname in this browser session.
+    return new URL(entry.view.webContents.getURL() || entry.page.url).hostname;
+  }
+  private pageZoom(entry: Entry): number { return (this.siteZoom.get(this.zoomSite(entry)) ?? 100) / 100; }
+  private zoomPage(entry: Entry, steps: unknown): void {
+    if (!entry.view.getVisible() || typeof steps !== 'number' || !Number.isInteger(steps) || !steps || Math.abs(steps) > 4) return;
+    const site = this.zoomSite(entry);
+    const percent = Math.max(50, Math.min(300, (this.siteZoom.get(site) ?? 100) + steps * 10));
+    this.siteZoom.set(site, percent);
+    for (const page of this.views.values()) {
+      const contents = page.view.webContents;
+      if (!contents.isDestroyed() && this.zoomSite(page) === site) contents.setZoomFactor(this.options.zoom.factor * percent / 100);
+    }
+  }
   private get session() {
     if (!this.profile) {
       this.profile = session.fromPartition('persist:setdown-browser');
@@ -153,7 +169,9 @@ export class BrowserManager {
       historyUrls: [], historyIndex: -1 };
     this.views.set(id, entry);
     const wc = view.webContents;
-    this.options.zoom.track(wc);
+    this.options.zoom.track(wc, undefined, () => this.pageZoom(entry));
+    wc.on('ipc-message', (_event, channel, steps) => { if (channel === 'browser:wheel-zoom') this.zoomPage(entry, steps); });
+    wc.on('zoom-changed', (_event, direction) => this.zoomPage(entry, direction === 'in' ? 1 : -1));
     const register = () => this.extensions?.host?.addTab(wc, this.options.stateFor(entry.owner)!.window);
     void this.ensureReady().then(() => { if (!wc.isDestroyed()) { register(); entry.page.protection = 'ready'; this.publish(entry); } })
       .catch(error => { if (!wc.isDestroyed()) { entry.page.protection = 'error'; this.error(entry, error); } });

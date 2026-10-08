@@ -1,4 +1,9 @@
 import { ipcRenderer, webFrame } from 'electron';
+import { installWheelZoom } from '../preload/wheel-zoom';
+
+// Capture trusted wheel input in every isolated frame, including fine trackpad
+// deltas that Chromium's native zoom request omits. No API reaches page scripts.
+installWheelZoom(steps => ipcRenderer.send('browser:wheel-zoom', steps), true);
 
 // Runs in each page's isolated, sandboxed frame. No API is exposed to page JS.
 // uBO's user-origin styles must target the sender's frame and be removable.

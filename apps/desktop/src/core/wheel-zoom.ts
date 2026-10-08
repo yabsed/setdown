@@ -10,9 +10,13 @@ export class WheelZoomAccumulator {
     if (now - this.lastTime > 250 || Math.sign(pixels) !== Math.sign(this.pending)) this.pending = 0;
     this.lastTime = now;
     this.pending += Math.max(-320, Math.min(320, pixels));
-    const notches = Math.trunc(this.pending / 80);
+    // Chromium stores native deltas as floats. A nominal 80 CSS pixels can
+    // arrive just below 80 after zoom conversion; retain subpixel accumulation
+    // while rounding away that input precision error at a notch boundary.
+    const epsilon = 1e-4;
+    const notches = Math.trunc((this.pending + Math.sign(this.pending) * epsilon) / 80);
     this.pending -= notches * 80;
+    if (Math.abs(this.pending) < epsilon) this.pending = 0;
     return -notches;
   }
 }
-

@@ -34,7 +34,7 @@ or instant returns after eviction. `media-tabs.spec.ts`, `image-reader.spec.ts`,
 `reading-positions.spec.ts` and the cache/file/history unit tests cover these
 guarantees and are included in the focused gate.
 
-Zoom has three independent scopes. Ctrl+plus/minus and Ctrl+0 change/reset the
+Zoom has four independent scopes. Ctrl+plus/minus and Ctrl+0 change/reset the
 persisted app factor in every window. Ctrl+wheel in text/Markdown changes the
 persisted common text factor: ordinary and Git Monaco editors scale typography,
 and native Markdown views use app × text zoom (including hidden/spare views).
@@ -42,6 +42,18 @@ Native bounds still convert with **app zoom only**, never the text factor.
 Changing zoom must not navigate, replace models, discard undo history or focus
 hidden previews. `workspace-zoom.test.ts` and `workspace-zoom.spec.ts` cover scope,
 reset, inheritance and persistence. The View menu uses the same coordinator.
+
+Browser Ctrl+wheel changes website zoom from 50% to 300% in 10-point steps.
+The isolated page preload reuses the bounded wheel accumulator in each frame;
+Electron's native `zoom-changed` event handles unconsumed requests. Ordinary
+scrolling and synthetic DOM wheel events do not request zoom. Website
+zoom is shared by hostname within the browser session, matching Chromium's zoom
+policy, and composes with app zoom without changing app/text preferences or native
+bounds. Reloads, tab switches and app zoom updates retain the website factor.
+Zoom preserves the live page and forms. The custom content-factor target in
+`workspace-zoom.test.ts` and native wheel input in `browser.spec.ts` cover these
+guarantees. Wheel IPC is accepted only from a visible owned web contents, with
+bounded integer steps; no desktop API is exposed to remote pages.
 
 PDF/image wheel zoom is per file and keeps the content point under the cursor,
 subject to the scroll range at content edges. It must not change either common

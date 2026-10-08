@@ -83,6 +83,13 @@ test('wheel direction reversal and idle reset discard residual motion', () => {
   wheel.consume({ deltaY: -60, deltaMode: 0 }, 30);
   assert.equal(wheel.consume({ deltaY: -20, deltaMode: 0 }, 400), 0);
 });
+test('native float rounding at a wheel notch boundary does not lose a zoom step', () => {
+  const wheel = new WheelZoomAccumulator();
+  assert.equal(wheel.consume({ deltaY: -(80 - 1e-5), deltaMode: 0 }, 0), 1);
+  assert.equal(wheel.consume({ deltaY: 80 - 1e-5, deltaMode: 0 }, 10), -1);
+  assert.equal(wheel.consume({ deltaY: -79.99, deltaMode: 0 }, 20), 0);
+  assert.equal(wheel.consume({ deltaY: -.01, deltaMode: 0 }, 30), 1);
+});
 test('huge or invalid deltas never flood the IPC channel', () => {
   const wheel = new WheelZoomAccumulator();
   assert.equal(wheel.consume({ deltaY: Infinity, deltaMode: 0 }, 0), 0);
@@ -102,6 +109,24 @@ test('text zoom composes with app zoom only in text previews, including spares a
   assert.equal(front.factors.at(-1), 1.2);
   assert.equal(spare.factors.at(-1), 1.2);
 });
+test('website zoom composes with app zoom, survives reloads, and stays independent of text zoom', () => {
+  const zoom = new WorkspaceZoom(), shell = target(1), text = target(2), page = target(3);
+  let pageFactor = 1.2;
+  zoom.track(shell); zoom.track(text, undefined, true); zoom.track(page, undefined, () => pageFactor);
+  zoom.change(1, 'text');
+  assert.equal(page.factors.at(-1), 1.2);
+  zoom.change(1);
+  assert.equal(page.factors.at(-1), 1.1 * 1.2);
+  assert.equal(text.factors.at(-1), 1.1 * 1.1);
+  pageFactor = .8;
+  page.emit('did-finish-load');
+  assert.equal(page.factors.at(-1), 1.1 * .8);
+  zoom.change(0);
+  assert.equal(page.factors.at(-1), .8);
+  assert.equal(shell.factors.at(-1), 1);
+  assert.equal(text.factors.at(-1), 1.1);
+});
+
 test('both preferences persist and malformed values are rejected independently', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'setdown-zoom-settings-'));
   try {

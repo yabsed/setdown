@@ -2,7 +2,7 @@ import { WheelZoomAccumulator } from '../core/wheel-zoom';
 import { appZoomStep } from '../core/zoom';
 export { WheelZoomAccumulator } from '../core/wheel-zoom';
 
-/** Installed in BOTH sandbox preloads, before Monaco or document handlers.
+/** Installed in sandbox preloads, before editor, document or page handlers.
  * Do not expose ipcRenderer to page scripts. Synthetic wheel events are ignored.
  */
 export function installWheelZoom(send: (steps: number) => void, nativeText = false): () => void {
