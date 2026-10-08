@@ -66,6 +66,9 @@
           return false;
         }
         if (event.code === 'KeyV') {
+          // Returning false only skips xterm's key handling; cancel Chromium's
+          // native paste so it cannot also feed the clipboard into the PTY.
+          event.preventDefault();
           if (event.type === 'keydown') void navigator.clipboard.readText().then((text) => term.paste(text)).catch(() => {});
           return false;
         }
