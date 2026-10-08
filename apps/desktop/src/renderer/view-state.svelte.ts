@@ -18,6 +18,8 @@ export type TabView = {
   active: boolean;
   dirty: boolean;
   preview: boolean;
+  canGoBack: boolean;
+  canGoForward: boolean;
 };
 
 export type HeadingView = {
@@ -44,6 +46,7 @@ export type WorkingTreeEdit = {
 export type AppActions = {
   newWebTab(input?: string, background?: boolean): void;
   navigateLocation(groupId: string, input: string): Promise<void>;
+  navigateHistory(id: string, direction: -1 | 1): void;
   browserCommand(id: string, command: import('../protocol/browser').BrowserCommand): void;
   browserPlaces(query: string, bookmarksOnly?: boolean): Promise<import('../protocol/browser').BrowserPlace[]>;
   browserBookmark(url: string, title: string, bookmarked: boolean): Promise<void>;

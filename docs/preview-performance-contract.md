@@ -211,6 +211,20 @@ during replacement cannot remove the retained tab. File URL encoding and the
 same-tab lifecycle are covered by `file-location.test.ts`,
 `text-workspace.test.ts`, and `browser.spec.ts` in the focused gate.
 
+Back/Forward spans file locations and web segments in each tab. Explorer preview
+replacement inherits that slot's journal, including forward-branch truncation.
+The journal retains up to 64 resource visits and moves with detached tabs. File
+visits restore their reading positions; canceled or failed navigation keeps the
+current resource and history cursor. Web segments retain Chromium's native
+navigation stack: capture it only when leaving a web surface, then restore it
+before initial navigation when returning. Historical visits do not keep native
+views, Monaco models, or media readers alive. Page navigation, toolbar actions,
+and Alt+Left/Right share the same route, including native reader/page focus.
+New web tabs open Google and select their address; ordinary mouse/keyboard
+address focus also selects the complete value. `tab-navigation.test.ts`,
+`text-workspace.test.ts`, `preview-tabs.spec.ts`, and `browser.spec.ts` cover this
+behavior in the focused gate.
+
 `main/browser/browser-manager.ts` retains one sandboxed WebContentsView per live
 web tab, with a separate persistent browser session. Switching tabs and splitting
 groups keep page identity, forms and history. Browser layout uses app zoom once;

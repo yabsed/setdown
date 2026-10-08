@@ -149,6 +149,7 @@ export type GitReviewState = TabStateSummary & {
 };
 
 export type TransferableDocumentTab = {
+  navigation?: import('../core/workspace/tab-navigation').TabNavigation;
   kind?: 'document';
   id: string;
   document: DocumentSnapshot;
@@ -186,7 +187,8 @@ export type TransferableDocumentTab = {
   tocOpen: boolean;
 };
 
-export type TransferableTab = TransferableDocumentTab | { kind: 'web'; id: string; page: import('./browser').BrowserPage };
+export type TransferableTab = TransferableDocumentTab | { kind: 'web'; id: string; page: import('./browser').BrowserPage;
+  navigation?: import('../core/workspace/tab-navigation').TabNavigation };
 
 export type ClaimedTabTransfer = {
   transferId: string;
@@ -211,6 +213,8 @@ export type CloseDecision = 'cancel' | 'discard' | 'save';
 export type AppCommand =
   | 'new-web-tab'
   | 'focus-location'
+  | 'navigate-back'
+  | 'navigate-forward'
   | 'toggle-terminal'
   | 'new-document'
   | 'open-folder'

@@ -15,6 +15,7 @@
   let editing = $state(false), draft = $state(''), suggestions = $state<BrowserPlace[]>([]), selected = $state(-1), bookmarked = $state(false);
   let generation = 0, composing = false, timer: ReturnType<typeof setTimeout>;
   let error = $state('');
+  let selectOnClick = false;
   const finding = $derived(!!web && browser.findId === tab?.id);
   $effect(() => { if (!editing) draft = location === 'about:blank' ? '' : location; });
   $effect(() => {
@@ -52,9 +53,9 @@
 </script>
 
 <div class="location-bar" data-group-id={groupId} class:loading={web?.loading}>
+  <button aria-label="Back" title="Back (Alt+Left)" disabled={!tab?.canGoBack || !!review} onclick={() => actions.navigateHistory(tab!.id, -1)}>←</button>
+  <button aria-label="Forward" title="Forward (Alt+Right)" disabled={!tab?.canGoForward || !!review} onclick={() => actions.navigateHistory(tab!.id, 1)}>→</button>
   {#if web}
-    <button aria-label="Back" title="Back (Alt+Left)" disabled={!web.canGoBack} onclick={() => actions.browserCommand(tab!.id, 'back')}>←</button>
-    <button aria-label="Forward" title="Forward (Alt+Right)" disabled={!web.canGoForward} onclick={() => actions.browserCommand(tab!.id, 'forward')}>→</button>
     <button aria-label={web.loading ? 'Stop loading' : 'Reload page'} title={web.loading ? 'Stop loading' : 'Reload page'}
       onclick={() => actions.browserCommand(tab!.id, web.loading ? 'stop' : 'reload')}>{web.loading ? '×' : '↻'}</button>
   {:else}<span class="location-kind" aria-hidden="true">{review ? '±' : '⌂'}</span>{/if}
@@ -66,7 +67,9 @@
     <button aria-label="Close web search" onclick={() => { browser.findId = null; actions.browserFind(tab!.id, ''); }}>×</button>
   {:else}
     <input bind:this={input} aria-label="Address or file path" placeholder="Search or enter an address" spellcheck="false" autocomplete="off"
-      bind:value={draft} title={location} onfocus={() => { editing = true; search(); }} onblur={blur}
+      bind:value={draft} title={location} onfocus={() => { editing = true; input?.select(); search(); }} onblur={blur}
+      onpointerdown={() => { selectOnClick = document.activeElement !== input; }}
+      onmouseup={event => { if (selectOnClick) { event.preventDefault(); input?.select(); selectOnClick = false; } }}
       oninput={search} oncompositionstart={() => { composing = true; clearTimeout(timer); generation++; }} oncompositionend={() => { composing = false; search(); }}
       onkeydown={event => {
         if (event.isComposing) return;

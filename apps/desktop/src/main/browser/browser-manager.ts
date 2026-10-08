@@ -5,6 +5,7 @@ import path from 'node:path';
 import { browserURL, isWebURL } from '../../core/browser/browser-url';
 import { appZoomStep } from '../../core/zoom';
 import type { BrowserCommand, BrowserEvent, BrowserPage } from '../../protocol/browser';
+import type { WebHistory } from '../../core/workspace/tab-navigation';
 import { readPreviewBounds, type PreviewBounds } from '../../protocol/preview-preparation';
 import type { WindowState } from '../windows/window-state';
 import { nativeZoomBounds, type WorkspaceZoom } from '../windows/workspace-zoom';
@@ -12,7 +13,8 @@ import type { WindowIpc } from '../ipc/window-ipc';
 import { BrowserExtensions } from './browser-extensions';
 import { BrowserPlaces } from './browser-places';
 
-type Entry = { owner: number; view: WebContentsView; page: BrowserPage; navigation: number; bounds?: Rectangle; closing?: (value: boolean) => void };
+type Entry = { owner: number; view: WebContentsView; page: BrowserPage; navigation: number; bounds?: Rectangle;
+  historyUrls: string[]; historyIndex: number; canGoBack?: boolean; canGoForward?: boolean; closing?: (value: boolean) => void };
 type Options = { stateFor(id: number): WindowState | null; states(): Iterable<WindowState>; zoom: WorkspaceZoom;
   openFile(state: WindowState, file: string): Promise<unknown> };
 const blankPage = (id: string, url: string): BrowserPage => ({ id, url, title: url === 'about:blank' ? 'New web tab' : url,
@@ -147,7 +149,8 @@ export class BrowserManager {
       ...(existing ? { webContents: existing } : {}) });
     view.setVisible(false);
     // Hidden initial navigation stays detached, preserving document IME focus.
-    const entry: Entry = { owner, view, page: blankPage(id, url), navigation: 0 };
+    const entry: Entry = { owner, view, page: blankPage(id, url), navigation: 0,
+      historyUrls: [], historyIndex: -1 };
     this.views.set(id, entry);
     const wc = view.webContents;
     this.options.zoom.track(wc);
@@ -155,6 +158,10 @@ export class BrowserManager {
     void this.ensureReady().then(() => { if (!wc.isDestroyed()) { register(); entry.page.protection = 'ready'; this.publish(entry); } })
       .catch(error => { if (!wc.isDestroyed()) { entry.page.protection = 'error'; this.error(entry, error); } });
     const navigation = (_event: Electron.Event, next: string) => {
+      const history = wc.navigationHistory, index = history.getActiveIndex();
+      if (index > entry.historyIndex && entry.historyUrls[index] !== next) this.send(entry.owner, { type: 'navigation', id });
+      entry.historyIndex = index;
+      entry.historyUrls = Array.from({ length: history.length() }, (_, i) => history.getEntryAtIndex(i).url);
       entry.page.url = next; entry.page.error = null;
       if (next !== 'about:blank') entry.page.startPage = false;
       this.saved.set(id, entry.page); this.persist(); this.publish(entry);
@@ -217,8 +224,9 @@ export class BrowserManager {
         : input.control && key === 'tab' ? input.shift ? 'previous-tab' : 'next-tab' : null;
       if (command) { event.preventDefault(); owner.window.webContents.focus(); owner.window.webContents.send('app:command', command); }
       else if ((modifier && key === 'r') || key === 'f5') { event.preventDefault(); wc.reload(); }
-      else if (input.alt && key === 'arrowleft' && wc.navigationHistory.canGoBack()) { event.preventDefault(); wc.navigationHistory.goBack(); }
-      else if (input.alt && key === 'arrowright' && wc.navigationHistory.canGoForward()) { event.preventDefault(); wc.navigationHistory.goForward(); }
+      else if (input.alt && (key === 'arrowleft' || key === 'arrowright')) {
+        event.preventDefault(); this.send(entry.owner, { type: 'history', id, direction: key === 'arrowleft' ? -1 : 1 });
+      }
       else if (key === 'escape') wc.stop();
     });
     wc.on('context-menu', (_event, params) => {
@@ -228,23 +236,32 @@ export class BrowserManager {
       if (isWebURL(params.linkURL)) items.push({ label: 'Open Link in New Tab', click: () => void this.openLink(entry.owner, params.linkURL) });
       if (params.isEditable) items.push({ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' });
       else if (params.selectionText) items.push({ role: 'copy' });
-      items.push({ label: 'Back', enabled: wc.navigationHistory.canGoBack(), click: () => wc.navigationHistory.goBack() },
+      items.push({ label: 'Back', enabled: entry.canGoBack || wc.navigationHistory.canGoBack(),
+        click: () => this.send(entry.owner, { type: 'history', id, direction: -1 }) },
+        { label: 'Forward', enabled: entry.canGoForward || wc.navigationHistory.canGoForward(),
+          click: () => this.send(entry.owner, { type: 'history', id, direction: 1 }) },
         { label: 'Reload', click: () => wc.reload() }, { label: 'Open in Default Browser', click: () => void this.external(entry, wc.getURL(), true) });
       Menu.buildFromTemplate(items).popup({ window: owner.window });
     });
     return entry;
   }
-  async create(owner: number, id: string, input: string): Promise<BrowserPage> {
+  async create(owner: number, id: string, input: string, history?: WebHistory): Promise<BrowserPage> {
     if (typeof id !== 'string' || !/^[\w-]{1,128}$/.test(id)) throw Error('Invalid web tab ID.');
     if (this.views.has(id)) return this.owned(owner, id).page;
     if (this.dormant.has(id) && this.dormant.get(id) !== owner) throw Error('This web tab does not belong to this window.');
     this.dormant.delete(id);
-    const entry = this.openEntry(owner, id, browserURL(input));
+    const url = browserURL(input);
+    if (history && (!Array.isArray(history.entries) || !history.entries.length || history.entries.length > 1000
+      || !Number.isInteger(history.index) || history.index < 0 || history.index >= history.entries.length
+      || history.entries.some(e => !e || (!isWebURL(e.url) && e.url !== 'about:blank') || typeof e.title !== 'string'
+        || (e.pageState !== undefined && typeof e.pageState !== 'string')))) throw Error('Invalid web history.');
+    const entry = this.openEntry(owner, id, url);
+    if (history) { entry.historyUrls = history.entries.map(e => e.url); entry.historyIndex = history.index; }
     this.saved.set(id, entry.page); this.persist();
-    void this.load(entry, entry.page.url);
+    void this.load(entry, entry.page.url, history);
     return entry.page;
   }
-  private async load(entry: Entry, url: string) {
+  private async load(entry: Entry, url: string, history?: WebHistory) {
     const navigation = ++entry.navigation;
     entry.page.url = url; entry.page.error = null; entry.page.startPage = url === 'about:blank';
     this.publish(entry);
@@ -254,7 +271,8 @@ export class BrowserManager {
       entry.page.error = null;
       entry.page.protection = 'ready';
       this.extensions?.host?.addTab(entry.view.webContents, this.options.stateFor(entry.owner)!.window);
-      await entry.view.webContents.loadURL(url);
+      if (history) await entry.view.webContents.navigationHistory.restore(history);
+      else await entry.view.webContents.loadURL(url);
     } catch (error) {
       if (navigation === entry.navigation && !entry.view.webContents.isDestroyed()
         && (error as { code?: string }).code !== 'ERR_ABORTED') this.error(entry, error);
@@ -292,13 +310,14 @@ export class BrowserManager {
     } finally { this.transferring.delete(entry.view.webContents.id); }
     return true;
   }
-  layout(owner: number, entries: Array<{ id: string; bounds: PreviewBounds }>) {
+  layout(owner: number, entries: Array<{ id: string; bounds: PreviewBounds; canGoBack?: boolean; canGoForward?: boolean }>) {
     const state = this.options.stateFor(owner);
     if (!state || !Array.isArray(entries)) return;
     const visible = new Set<string>();
     for (const item of entries.slice(0, 32)) {
       const entry = this.views.get(item.id), css = readPreviewBounds(item.bounds);
       if (!entry || entry.owner !== owner || !css || entry.view.webContents.isDestroyed()) continue;
+      entry.canGoBack = item.canGoBack === true; entry.canGoForward = item.canGoForward === true;
       const bounds = nativeZoomBounds(css, state.window.webContents.getZoomFactor());
       const [width, height] = state.window.getContentSize();
       bounds.width = Math.max(1, Math.min(bounds.width, width - bounds.x));
@@ -340,7 +359,13 @@ export class BrowserManager {
     });
   }
   registerIpc(channels: WindowIpc) {
-    channels.handle('browser:create', (state, id: string, url: string) => this.create(state.webContentsId, id, url));
+    channels.handle('browser:create', (state, id: string, url: string, history?: WebHistory) => this.create(state.webContentsId, id, url, history));
+    channels.handle('browser:history', (state, id: string): WebHistory => {
+      const entry = this.owned(state.webContentsId, id), history = entry.view.webContents.navigationHistory;
+      const entries = history.getAllEntries();
+      return entries.length ? { entries, index: history.getActiveIndex() }
+        : { entries: [{ url: entry.page.url, title: entry.page.title }], index: 0 };
+    });
     channels.handle('browser:navigate', async (state, id: string, input: string) => {
       const entry = this.owned(state.webContentsId, id); await this.load(entry, browserURL(input));
     });
@@ -352,8 +377,11 @@ export class BrowserManager {
     });
     channels.handle('browser:command', async (state, id: string, command: BrowserCommand) => {
       const entry = this.owned(state.webContentsId, id), wc = entry.view.webContents;
-      if (command === 'back' && wc.navigationHistory.canGoBack()) wc.navigationHistory.goBack();
-      else if (command === 'forward' && wc.navigationHistory.canGoForward()) wc.navigationHistory.goForward();
+      if (command === 'back' || command === 'forward') {
+        const offset = command === 'back' ? -1 : 1;
+        if (!wc.navigationHistory.canGoToOffset(offset)) return false;
+        wc.navigationHistory.goToOffset(offset); return true;
+      }
       else if (command === 'reload') {
         if (entry.page.protection === 'ready' && wc.getURL() === entry.page.url && !wc.isCrashed()) { entry.page.error = null; wc.reload(); }
         else await this.load(entry, entry.page.url);

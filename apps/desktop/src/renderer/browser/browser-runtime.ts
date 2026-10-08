@@ -4,7 +4,8 @@ import type { TabController } from '../workspace/tab-controller';
 import { project } from '../project/project-state.svelte';
 import { browser } from './browser-state.svelte';
 
-export function createBrowserRuntime(workspace: WorkspaceState, desktop: DesktopPort, tabs: TabController, activate: (id: string) => void) {
+export function createBrowserRuntime(workspace: WorkspaceState, desktop: DesktopPort, tabs: TabController,
+  activate: (id: string) => void, navigate: (id: string, direction: -1 | 1) => void) {
   let depth = 0, generation = 0, frozen = false;
   let lastLayout = '';
   const area = document.querySelector<HTMLElement>('.editor-area')!;
@@ -18,7 +19,8 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
     return [{ id: tab.id, host, bounds: { x: rect.x, y: rect.y, width: rect.width, height: rect.height } }];
   });
   function sync(force = false) {
-    const layout = frozen ? [] : entries().map(({ id, bounds }) => ({ id, bounds }));
+    const layout = frozen ? [] : entries().map(({ id, bounds }) => ({ id, bounds,
+      canGoBack: tabs.canGoBack(id), canGoForward: tabs.canGoForward(id) }));
     const signature = JSON.stringify(layout);
     if (!force && signature === lastLayout) return;
     lastLayout = signature; desktop.browser.layout(layout);
@@ -52,7 +54,9 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
     if (event.type === 'page') {
       const tab = workspace.find(event.page.id);
       if (tab?.kind === 'web') { tab.page = event.page; tabs.updateChrome(); sync(true); }
-    } else if (event.type === 'open') void tabs.addWeb(event.page, event.background);
+    } else if (event.type === 'navigation') tabs.webNavigated(event.id);
+    else if (event.type === 'history') navigate(event.id, event.direction);
+    else if (event.type === 'open') void tabs.addWeb(event.page, event.background);
     else if (event.type === 'focus') {
       // A native focus event can arrive after this group has selected a new
       // tab. Only its current page may claim command focus; obsolete events

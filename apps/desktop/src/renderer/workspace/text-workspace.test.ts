@@ -7,6 +7,8 @@ import { SurfaceController } from '../application/surface-controller';
 import { PreviewSession } from '../reader/preview-session';
 import { browserURL } from '../../core/browser/browser-url';
 import type { BrowserPage } from '../../core/browser/browser-state';
+import { fileURLToPath } from 'node:url';
+import type { WebHistory } from '../../core/workspace/tab-navigation';
 
 vi.mock('../view-state.svelte', () => ({ view: {} }));
 vi.mock('../shell/layout-session', () => ({ restoredOutlineOpen: () => false }));
@@ -14,7 +16,7 @@ const anchor = { sourceLine: 1, yRatio: .372, reason: 'empty-document', confiden
 const calls: string[] = [];
 beforeEach(() => {
   calls.length = 0;
-  vi.stubGlobal('window', { setTimeout: () => { calls.push('timer'); return 1; }, clearTimeout() {} });
+  vi.stubGlobal('window', { setTimeout: () => { calls.push('timer'); return 1; }, clearTimeout() {}, dispatchEvent: () => true });
   vi.stubGlobal('document', { title: '' });
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -36,15 +38,19 @@ function fixture() {
   const options = {
     workspace, session, preview, shell: { dataset: {} },
     desktop: { updateText() {}, updateTabState() {}, activateDocument: async (doc: DocumentSnapshot) => doc,
-      readDocumentLocation: async (path: string) => snapshot(path),
+      readDocumentLocation: async (path: string) => snapshot(path.startsWith('file:') ? fileURLToPath(path) : path),
       saveTabDocument: async (doc: DocumentSnapshot, text: string, revision: number) => ({ canceled: false,
         document: { ...doc, text, savedText: text, revision, savedRevision: revision } }),
-      browser: { create: async (id: string, input: string) => browserPage(id, browserURL(input)),
-        navigate: async () => {}, command: async () => {}, close: async () => true },
+      browser: { create: async (id: string, input: string, _history?: WebHistory) => browserPage(id, browserURL(input)),
+        navigate: async () => {}, command: async (): Promise<boolean | void> => {}, close: async () => true,
+        history: async (id: string) => {
+          const tab = workspace.find(id);
+          return { index: 0, entries: [{ url: tab?.kind === 'web' ? tab.page.url : 'about:blank', title: 'Web page' }] };
+        } },
       closeEmptyWindow() {}, discardDocument: async () => {}, adoptTabTransfer: async () => true,
       completeTabTransfer() {} },
     editor: { loaded: true, text: (tab: { text: string }) => tab.text, load: async () => {}, activate() {}, selectGroup() {}, saveView() {},
-      layout() {}, dispose() {}, clear() {}, exportView: () => ({ cursor: 7 }), importView() {},
+      layout() {}, dispose() {}, clear() {}, reveal() {}, exportView: () => ({ cursor: 7 }), importView() {},
       retarget() { calls.push('retarget'); }, replace() { calls.push('replace'); },
       setText: (tab: { text: string }, text: string) => { tab.text = text; return false; }, lineCount: () => 2 },
     reader: { themeId: 'paper', create() { calls.push('create'); }, destroy() { calls.push('destroy'); },
@@ -398,4 +404,105 @@ test('an invalid newer address also cancels a slow older file read', async () =>
   complete(snapshot('/project/slow.md'));
   assert.equal(await old, false);
   assert.equal(f.workspace.active, tab);
+});
+
+test('Explorer preview replacement retains its file history and Back keeps the preview slot', async () => {
+  const f = fixture();
+  await f.controller.show(snapshot('/project/keep.txt'));
+  await previewOpen(f.controller, snapshot('/project/first.txt'));
+  await previewOpen(f.controller, snapshot('/project/second.txt'));
+  await previewOpen(f.controller, snapshot('/project/third.txt'));
+  const id = f.workspace.activeId!;
+  assert.equal(f.controller.canGoBack(id), true);
+  const first = f.controller.navigateHistory(id, -1);
+  const second = f.controller.navigateHistory(id, -1);
+  assert.equal(await first, true);
+  assert.equal(await second, true);
+  assert.equal(f.workspace.activeDocument!.document.path, '/project/first.txt');
+  assert.equal(f.workspace.activeId, id);
+  assert.equal(f.workspace.tabs.length, 2);
+  assert.equal(f.workspace.groups.focused.previewId, id);
+  assert.equal(f.controller.canGoForward(id), true);
+  await f.controller.navigateHistory(id, 1);
+  assert.equal(f.workspace.activeDocument!.document.path, '/project/second.txt');
+  await previewOpen(f.controller, snapshot('/project/branch.txt'));
+  assert.equal(f.controller.canGoForward(f.workspace.activeId!), false);
+  await f.controller.navigateHistory(f.workspace.activeId!, -1);
+  assert.equal(f.workspace.activeDocument!.document.path, '/project/second.txt');
+});
+
+test('file and web history round-trips restore native history and preserve file reading positions', async () => {
+  const f = fixture();
+  await f.controller.show(snapshot('/project/start.txt'));
+  const id = f.workspace.activeId!;
+  f.workspace.activeDocument!.readingPosition = { kind: 'text', surface: 'editor', anchor: { ...anchor, sourceLine: 2 } };
+  await f.controller.navigateLocation(id, 'https://example.org/first');
+  const native = { index: 1, entries: [{ url: 'https://example.org/first', title: 'First', pageState: 'state' },
+    { url: 'https://example.org/second', title: 'Second' }] };
+  vi.spyOn(f.options.desktop.browser, 'history').mockResolvedValue(native);
+  await f.controller.navigateLocation(id, '/project/read.pdf');
+  assert.equal(f.controller.canGoBack(id), true);
+  const create = vi.spyOn(f.options.desktop.browser, 'create');
+  await f.controller.navigateHistory(id, -1);
+  assert.deepEqual(create.mock.calls.find(call => call[2]), [id, 'https://example.org/second', native]);
+  const command = vi.spyOn(f.options.desktop.browser, 'command').mockResolvedValueOnce(true);
+  const index = f.workspace.active!.navigation!.index;
+  await f.controller.navigateHistory(id, -1); // Native web traversal does not move the resource cursor.
+  assert.equal(f.workspace.active!.navigation!.index, index);
+  command.mockResolvedValue(undefined);
+  await f.controller.navigateHistory(id, -1);
+  assert.equal(f.workspace.activeDocument!.document.path, '/project/start.txt');
+  assert.equal(f.workspace.activeDocument!.anchor.sourceLine, 2);
+  await f.controller.navigateHistory(id, 1);
+  assert.equal(f.workspace.active!.kind, 'web');
+  assert.equal(f.controller.canGoForward(id), true);
+  await f.controller.navigateHistory(id, 1);
+  assert.equal(f.workspace.activeDocument!.document.path, '/project/read.pdf');
+});
+
+test('failed and canceled Back preserve the current file and the history cursor', async () => {
+  const f = fixture();
+  await f.controller.show(snapshot('/project/start.txt'));
+  const id = f.workspace.activeId!;
+  await f.controller.navigateLocation(id, '/project/edit.txt');
+  const current = f.workspace.activeDocument!;
+  const read = vi.spyOn(f.options.desktop, 'readDocumentLocation').mockRejectedValueOnce(Error('ENOENT'));
+  await assert.rejects(f.controller.navigateHistory(id, -1), /ENOENT/);
+  assert.equal(f.workspace.active, current);
+  assert.equal(current.navigation!.index, 1);
+  read.mockImplementation(async path => snapshot(fileURLToPath(path)));
+  f.controller.editorChanged(current, 'unsaved');
+  vi.spyOn(f.options, 'confirmClose').mockResolvedValue('cancel');
+  assert.equal(await f.controller.navigateHistory(id, -1), false);
+  assert.equal(f.workspace.active, current);
+  assert.equal(current.navigation!.index, 1);
+  assert.equal(current.text, 'unsaved');
+});
+
+test('a new native web navigation truncates future file entries, and window transfer retains the resource journal', async () => {
+  const f = fixture();
+  await f.controller.show(snapshot('/project/start.txt'));
+  const id = f.workspace.activeId!;
+  await f.controller.navigateLocation(id, 'https://example.org');
+  await f.controller.navigateLocation(id, '/project/end.txt');
+  await f.controller.navigateHistory(id, -1);
+  assert.equal(f.controller.canGoForward(id), true);
+  f.controller.webNavigated(id);
+  assert.equal(f.controller.canGoForward(id), false);
+  const transfer = structuredClone(f.controller.transferable(f.workspace.active!));
+  const destination = fixture();
+  await destination.controller.installTransferred({ transferId: 'history-transfer', tab: transfer });
+  assert.equal(destination.controller.canGoBack(id), true);
+  await destination.controller.navigateHistory(id, -1);
+  assert.equal(destination.workspace.activeDocument!.document.path, '/project/start.txt');
+});
+
+test('new web tabs start on Google and focus their address', async () => {
+  const f = fixture();
+  const dispatch = vi.spyOn(window, 'dispatchEvent');
+  await f.controller.openWeb();
+  const active = f.workspace.active!;
+  assert.equal(active.kind, 'web');
+  if (active.kind === 'web') assert.equal(active.page.url, 'https://www.google.com/');
+  assert.equal(dispatch.mock.calls.at(-1)![0].type, 'setdown:focus-location');
 });

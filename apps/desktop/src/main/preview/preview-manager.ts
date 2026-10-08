@@ -164,7 +164,14 @@ export class PreviewManager {
         this.zoom.change(zoomStep);
         return;
       }
-      if (input.key === 'Escape') {
+      const key = input.key.toLowerCase();
+      if ((input.control || input.meta) && !input.alt && (key === 'l' || key === 't')) {
+        event.preventDefault(); state.window.webContents.focus();
+        state.window.webContents.send('app:command', key === 'l' ? 'focus-location' : 'new-web-tab');
+      } else if (input.alt && !input.control && !input.meta && (key === 'arrowleft' || key === 'arrowright')) {
+        event.preventDefault(); state.window.webContents.focus();
+        state.window.webContents.send('app:command', key === 'arrowleft' ? 'navigate-back' : 'navigate-forward');
+      } else if (input.key === 'Escape') {
         event.preventDefault();
         state.window.webContents.focus();
         state.window.webContents.send('app:command', 'escape' satisfies AppCommand);

@@ -6,6 +6,7 @@ import type { PreviewThemeId } from '../preview/preview-preferences';
 import type { ViewportAnchor } from '../preview/viewport-anchor';
 
 export type DocumentTab = {
+  navigation?: import('./tab-navigation').TabNavigation;
   kind?: 'document';
   id: string;
   document: DocumentSnapshot;
@@ -25,7 +26,8 @@ export type DocumentTab = {
   find: { open: boolean; query: string; activeMatch: number; matches: number };
 };
 
-export type BrowserTab = { kind: 'web'; id: string; surface: 'web'; page: import('../browser/browser-state').BrowserPage };
+export type BrowserTab = { kind: 'web'; id: string; surface: 'web'; page: import('../browser/browser-state').BrowserPage;
+  navigation?: import('./tab-navigation').TabNavigation };
 export type WorkspaceTab = DocumentTab | BrowserTab;
 export const isDocumentTab = (tab: WorkspaceTab): tab is DocumentTab => tab.kind !== 'web';
 export const tabTitle = (tab: WorkspaceTab): string => tab.kind === 'web' ? tab.page.title || 'New web tab' : tab.document.name;

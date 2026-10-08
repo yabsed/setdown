@@ -32,6 +32,12 @@ async function fixture(document = true) {
   let app = await electron.launch(launchOptions);
   let page = await app.firstWindow();
   await focusApplication(app);
+  await app.evaluate(({ session, net }) => session.fromPartition('persist:setdown-browser').protocol.handle('https', request => {
+    if (new URL(request.url).hostname === 'www.google.com') {
+      return new Response('<!doctype html><title>Google</title><input aria-label="Search">', { headers: { 'content-type': 'text/html' } });
+    }
+    return net.fetch(request.url, { bypassCustomProtocolHandlers: true });
+  }));
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(String(error)));
   return { get app() { return app; }, get page() { return page; }, root, origin, requests, errors,
@@ -184,6 +190,10 @@ test('the first web page opens from a fresh empty workspace and popups preserve 
     await f.page.getByRole('button', { name: 'Open Web Page', exact: true }).click();
     const address = f.page.getByRole('textbox', { name: 'Address or file path' });
     await expect(address).toBeFocused();
+    await expect(address).toHaveValue('https://www.google.com/');
+    expect(await address.evaluate(input => ({ start: (input as HTMLInputElement).selectionStart,
+      end: (input as HTMLInputElement).selectionEnd, length: (input as HTMLInputElement).value.length })))
+      .toEqual({ start: 0, end: 23, length: 23 });
     await address.fill(`${f.origin}/first`);
     await address.press('Enter');
     await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible();
@@ -204,7 +214,7 @@ test('new web tabs take selection and address focus, including after a stale nat
     await expect(previous).toHaveAttribute('aria-selected', 'true');
     const previousId = (await previous.getAttribute('data-tab-id'))!;
     await f.page.getByRole('button', { name: 'New web tab', exact: true }).click();
-    const blank = f.page.getByRole('tab', { name: /New web tab/ });
+    const blank = f.page.getByRole('tab', { name: /Google/ });
     await expect(blank).toHaveAttribute('aria-selected', 'true');
     await expect(f.page.getByRole('textbox', { name: 'Address or file path' })).toBeFocused();
     const blankId = (await blank.getAttribute('data-tab-id'))!;
@@ -223,9 +233,9 @@ test('new web tabs take selection and address focus, including after a stale nat
     await expect(blank).toHaveAttribute('aria-selected', 'true');
     await previous.click();
     await f.page.keyboard.press('Control+t');
-    await expect(f.page.getByRole('tab', { name: /New web tab/ })).toHaveCount(2);
+    await expect(f.page.getByRole('tab', { name: /Google/ })).toHaveCount(2);
     const selected = f.page.locator('.document-tab[aria-selected="true"]');
-    await expect(selected).toContainText('New web tab');
+    await expect(selected).toContainText('Google');
     expect(await selected.getAttribute('data-tab-id')).not.toBe(blankId);
     await expect(f.page.getByRole('textbox', { name: 'Address or file path' })).toBeFocused();
     expect(f.errors).toEqual([]);
@@ -335,6 +345,115 @@ test('address navigation asks to save edited files and cancellation preserves th
     await expect(selected).toContainText('Research page');
     expect(await readFile(file, 'utf8')).toContain('unsaved marker');
     await expect(selected).toHaveAttribute('data-tab-id', id);
+    await expect(f.page.locator('.document-tab')).toHaveCount(1);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('Back and Forward traverse file and web boundaries while restoring the native web stack', async () => {
+  const f = await fixture();
+  const pdf = path.join(f.root, 'history.pdf');
+  await writeFile(pdf, pdfFixture(2));
+  try {
+    const selected = f.page.locator('.document-tab[aria-selected="true"]');
+    await expect(selected).toContainText('notes.md');
+    const id = await selected.getAttribute('data-tab-id');
+    const address = f.page.getByRole('textbox', { name: 'Address or file path' });
+    const back = f.page.getByRole('button', { name: 'Back', exact: true });
+    const forward = f.page.getByRole('button', { name: 'Forward', exact: true });
+    await expect(back).toBeDisabled();
+    await address.fill(`${f.origin}/first`); await address.press('Enter');
+    await expect(selected).toContainText('Research page');
+    await evaluatePage(f.app, f.origin, 'document.querySelector("a").click();true');
+    await expect(address).toHaveValue(`${f.origin}/second`);
+    await address.fill(pathToFileURL(pdf).href); await address.press('Enter');
+    await expect(f.page.getByRole('region', { name: 'PDF reader', exact: true })).toHaveAttribute('data-pdf-pages', '2');
+    await back.click();
+    await expect(address).toHaveValue(`${f.origin}/second`);
+    await expect.poll(() => evaluatePage(f.app, f.origin, 'location.pathname')).toBe('/second');
+    await back.click();
+    await expect(address).toHaveValue(`${f.origin}/first`);
+    // Input in the native page must also cross the last web entry into a file.
+    await f.app.evaluate(({ webContents }, origin) => {
+      const page = webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/first`)!;
+      page.focus(); page.sendInputEvent({ type: 'keyDown', keyCode: 'Left', modifiers: ['alt'] });
+      page.sendInputEvent({ type: 'keyUp', keyCode: 'Left', modifiers: ['alt'] });
+    }, f.origin);
+    await expect(selected).toContainText('notes.md');
+    await expect(address).toHaveValue(pathToFileURL(path.join(f.root, 'notes.md')).href);
+    await expect(back).toBeDisabled();
+    await forward.click(); await expect(address).toHaveValue(`${f.origin}/first`);
+    await expect.poll(() => evaluatePage(f.app, f.origin, 'location.pathname')).toBe('/first');
+    await forward.click(); await expect(address).toHaveValue(`${f.origin}/second`);
+    await forward.click(); await expect(selected).toContainText('history.pdf');
+    await back.click(); await expect(address).toHaveValue(`${f.origin}/second`);
+    await address.fill(`${f.origin}/new-branch`); await address.press('Enter');
+    await expect.poll(() => evaluatePage(f.app, f.origin, 'location.pathname')).toBe('/new-branch');
+    await expect(forward).toBeDisabled();
+    await expect(selected).toHaveAttribute('data-tab-id', id!);
+    await expect(f.page.locator('.document-tab')).toHaveCount(1);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('address focus selects the whole URL for mouse, keyboard, and native page shortcuts', async () => {
+  const f = await fixture();
+  try {
+    const address = f.page.getByRole('textbox', { name: 'Address or file path' });
+    const selected = () => address.evaluate(input => {
+      const value = input as HTMLInputElement;
+      return value.selectionStart === 0 && value.selectionEnd === value.value.length;
+    });
+    await expect(address).not.toBeFocused();
+    await address.click();
+    expect(await selected()).toBe(true);
+    await f.page.keyboard.type('replacement');
+    await expect(address).toHaveValue('replacement');
+    await address.fill(`${f.origin}/first`); await address.press('Enter');
+    await expect(f.page.locator('.document-tab[aria-selected="true"]')).toContainText('Research page');
+    await f.app.evaluate(({ webContents }, origin) => {
+      const page = webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/first`)!;
+      page.focus(); page.sendInputEvent({ type: 'keyDown', keyCode: 'L', modifiers: ['control'] });
+      page.sendInputEvent({ type: 'keyUp', keyCode: 'L', modifiers: ['control'] });
+    }, f.origin);
+    await expect(address).toBeFocused();
+    expect(await selected()).toBe(true);
+    await f.page.keyboard.type('fresh input');
+    await expect(address).toHaveValue('fresh input');
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('native Markdown reader shortcuts select the address and go back to the previous file', async () => {
+  const f = await fixture();
+  const previous = path.join(f.root, 'previous.txt');
+  await writeFile(previous, 'Previous file content\n');
+  try {
+    const address = f.page.getByRole('textbox', { name: 'Address or file path' });
+    await expect(f.page.locator('.document-tab[aria-selected="true"]')).toContainText('notes.md');
+    await address.fill(previous); await address.press('Enter');
+    await expect(f.page.locator('.document-tab[aria-selected="true"]')).toContainText('previous.txt');
+    await address.fill(path.join(f.root, 'notes.md')); await address.press('Enter');
+    await expect(f.page.locator('.shell')).toHaveAttribute('data-surface', 'viewer');
+    await expect.poll(() => f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]
+      .contentView.children.filter(v => v.getVisible()).length)).toBe(1);
+    const send = async (keyCode: string, modifier: 'control' | 'alt') => {
+      await f.app.evaluate(({ BrowserWindow }, { keyCode, modifier }) => {
+        const view = BrowserWindow.getAllWindows()[0].contentView.children.find(v => v.getVisible()) as import('electron').WebContentsView;
+        view.webContents.focus();
+        view.webContents.sendInputEvent({ type: 'keyDown', keyCode, modifiers: [modifier] });
+        view.webContents.sendInputEvent({ type: 'keyUp', keyCode, modifiers: [modifier] });
+      }, { keyCode, modifier });
+    };
+    await send('L', 'control');
+    await expect(address).toBeFocused();
+    expect(await address.evaluate(input => {
+      const value = input as HTMLInputElement;
+      return value.selectionStart === 0 && value.selectionEnd === value.value.length;
+    })).toBe(true);
+    await send('Left', 'alt');
+    await expect(f.page.locator('.document-tab[aria-selected="true"]')).toContainText('previous.txt');
+    await expect(f.page.locator('.shell')).toHaveAttribute('data-surface', 'editor');
     await expect(f.page.locator('.document-tab')).toHaveCount(1);
     expect(f.errors).toEqual([]);
   } finally { await f.dispose(); }

@@ -8,6 +8,7 @@ export default defineConfig({
     'src/core/browser/browser-url.test.ts',
     'src/core/document/file-location.test.ts',
     'src/core/workspace/editor-groups.test.ts',
+    'src/core/workspace/tab-navigation.test.ts',
     'src/renderer/workspace/media-cache.test.ts',
     'src/renderer/workspace/text-workspace.test.ts',
     'src/main/documents/image-file.test.ts',

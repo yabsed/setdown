@@ -189,3 +189,27 @@ test('a late file read cannot replace the last selected file or an explicit nati
     await expect(tab(page, 'third.txt')).toHaveAttribute('aria-selected', 'true');
   } finally { await cleanup(app, root); }
 });
+
+test('Explorer preview files share Back and Forward history and a new browse truncates the old branch', async () => {
+  const { root, app, page } = await launch();
+  try {
+    await browse(page, 'first.txt');
+    await browse(page, 'second.txt');
+    await browse(page, 'third.txt');
+    const id = (await tab(page, 'third.txt').getAttribute('data-tab-id'))!;
+    const back = page.getByRole('button', { name: 'Back', exact: true });
+    const forward = page.getByRole('button', { name: 'Forward', exact: true });
+    await back.click(); await expect(tab(page, 'second.txt')).toHaveAttribute('aria-selected', 'true');
+    await page.keyboard.press('Alt+ArrowLeft');
+    await expect(tab(page, 'first.txt')).toHaveAttribute('aria-selected', 'true');
+    await expect(tab(page, 'first.txt')).toHaveAttribute('data-tab-id', id);
+    await expect(tab(page, 'first.txt')).toHaveAttribute('data-preview', 'true');
+    await expect(back).toBeDisabled();
+    await forward.click(); await expect(tab(page, 'second.txt')).toHaveAttribute('aria-selected', 'true');
+    await browse(page, 'fourth.txt');
+    await expect(forward).toBeDisabled();
+    await back.click(); await expect(tab(page, 'second.txt')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('.document-tab')).toHaveCount(2);
+    await expect(tab(page, 'keep.txt')).toBeVisible();
+  } finally { await cleanup(app, root); }
+});

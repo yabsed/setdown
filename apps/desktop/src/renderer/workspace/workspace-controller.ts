@@ -61,7 +61,21 @@ export function startWorkspace(desktop: DesktopPort) {
       } else if (isFileLocation(input)) await tabs.show(await desktop.readDocumentLocation(input));
       else await tabs.openWeb(input);
     },
-    browserCommand: (id, command) => { void desktop.browser.command(id, command).catch(error => { browser.error = String(error); }); },
+    navigateHistory: (id, direction) => {
+      void (async () => {
+        const previous = workspace.find(id);
+        if (!previous) return;
+        if (workspace.activeId !== id) await tabs.activate(id);
+        projects.deactivateGitDiff();
+        if (await tabs.navigateHistory(id, direction) && previous.kind !== 'web' && workspace.find(id) !== previous) {
+          projects.closeWorkingTreeReviews(previous.document.path);
+        }
+      })().catch(error => { browser.error = String(error); });
+    },
+    browserCommand: (id, command) => {
+      if (command === 'back' || command === 'forward') { actions.navigateHistory(id, command === 'back' ? -1 : 1); return; }
+      void desktop.browser.command(id, command).catch(error => { browser.error = String(error); });
+    },
     browserPlaces: (query, bookmarksOnly) => desktop.browser.places(query, bookmarksOnly),
     browserBookmark: async (url, title, bookmarked) => {
       try { await desktop.browser.bookmark(url, title, bookmarked); browser.revision++; }
@@ -170,7 +184,7 @@ export function startWorkspace(desktop: DesktopPort) {
     confirmClose: (names) => closePrompt.request('tab', names), workspaceChanged: () => projectContextChanged(), groupsChanged: () => { groups?.sync(); browsers?.sync(true); },
     autoSave: { schedule: (tab) => autoSave.schedule(tab), cancel: (tabId) => autoSave.cancel(tabId) } });
   groups = createGroupRuntime({ workspace, desktop, editor, reader, activate: id => actions.activateTab(id) });
-  browsers = createBrowserRuntime(workspace, desktop, tabs, actions.activateTab);
+  browsers = createBrowserRuntime(workspace, desktop, tabs, actions.activateTab, actions.navigateHistory);
   const tabDrag = createTabDrag({ desktop, shell, tabs: workspace.tabs, groups: workspace.groups,
     dragging: (active) => groups?.drag(active),
     openFile: async (path, placement) => {
@@ -316,6 +330,9 @@ export function startWorkspace(desktop: DesktopPort) {
     command: (command) => {
       if (command === 'new-web-tab') { actions.newWebTab(); return; }
       if (command === 'focus-location') { window.dispatchEvent(new Event('setdown:focus-location')); return; }
+      if ((command === 'navigate-back' || command === 'navigate-forward') && workspace.activeId && !project.gitDiffActive) {
+        actions.navigateHistory(workspace.activeId, command === 'navigate-back' ? -1 : 1); return;
+      }
       if (workspace.active?.kind === 'web' && !project.gitDiffActive) {
         if (command === 'open-find') { window.dispatchEvent(new Event('setdown:browser-find')); return; }
         if (command === 'save' || command === 'save-as') { actions.browserCommand(workspace.active.id, 'save'); return; }
@@ -353,6 +370,10 @@ export function startWorkspace(desktop: DesktopPort) {
       tabDrag.reset(); void tabs.removeTransferred(tabId).finally(() => desktop.releaseTabTransferSource(transferId));
     },
     keydown: (event) => {
+      if (!event.isComposing && event.altKey && !event.ctrlKey && !event.metaKey && !terminalOwnsInput(event.target)
+        && ['ArrowLeft', 'ArrowRight'].includes(event.key) && !project.gitDiffActive && workspace.activeId) {
+        event.preventDefault(); actions.navigateHistory(workspace.activeId, event.key === 'ArrowLeft' ? -1 : 1); return;
+      }
       if (!event.isComposing && (event.ctrlKey || event.metaKey) && !event.altKey && ['l', 't'].includes(event.key.toLowerCase())) {
         event.preventDefault();
         if (event.key.toLowerCase() === 't') actions.newWebTab(); else window.dispatchEvent(new Event('setdown:focus-location'));

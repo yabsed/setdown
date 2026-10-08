@@ -36,7 +36,8 @@ function initialThemeSnapshot(): ThemeSnapshot {
 
 const api: MarkTexApi = {
   browser: {
-    create: (id, input) => ipcRenderer.invoke('browser:create', id, input),
+    create: (id, input, history) => ipcRenderer.invoke('browser:create', id, input, history),
+    history: (id) => ipcRenderer.invoke('browser:history', id),
     navigate: (id, input) => ipcRenderer.invoke('browser:navigate', id, input),
     command: (id, command) => ipcRenderer.invoke('browser:command', id, command),
     close: (id) => ipcRenderer.invoke('browser:close', id),
