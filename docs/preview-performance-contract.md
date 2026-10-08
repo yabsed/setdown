@@ -202,6 +202,15 @@ occupies 34 CSS pixels below the tab strip; both document preparation and visibl
 readers use the resulting group body. Existing viewport, IME, revision and timing
 guarantees still apply.
 
+Local addresses display encoded `file:///` URLs while document state retains
+filesystem paths. Explicit address navigation can replace a file with a web page
+or a web page with a file in the same tab and editor group. Failed reads, canceled
+save prompts, and rejected web beforeunload preserve the outgoing resource.
+Superseded reads cannot replace a newer address; native close events emitted
+during replacement cannot remove the retained tab. File URL encoding and the
+same-tab lifecycle are covered by `file-location.test.ts`,
+`text-workspace.test.ts`, and `browser.spec.ts` in the focused gate.
+
 `main/browser/browser-manager.ts` retains one sandboxed WebContentsView per live
 web tab, with a separate persistent browser session. Switching tabs and splitting
 groups keep page identity, forms and history. Browser layout uses app zoom once;

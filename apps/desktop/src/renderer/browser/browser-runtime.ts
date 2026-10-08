@@ -54,8 +54,12 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
       if (tab?.kind === 'web') { tab.page = event.page; tabs.updateChrome(); sync(true); }
     } else if (event.type === 'open') void tabs.addWeb(event.page, event.background);
     else if (event.type === 'focus') {
+      // A native focus event can arrive after this group has selected a new
+      // tab. Only its current page may claim command focus; obsolete events
+      // must not switch the newly opened tab back to the previous page.
+      if (workspace.find(event.id)?.kind !== 'web' || workspace.groups.owner(event.id)?.activeId !== event.id) return;
       if (workspace.activeId !== event.id || project.gitDiffActive) activate(event.id);
-    } else if (event.type === 'close') void tabs.close(event.id, true);
+    } else if (event.type === 'close') tabs.browserClosed(event.id);
     else if (event.type === 'places') browser.revision++;
     else if (event.type === 'find' && browser.findId === event.id) { browser.active = event.active; browser.matches = event.matches; }
   });

@@ -239,6 +239,8 @@ export type MarkTexApi = {
   getDocument(): Promise<DocumentSnapshot | null>;
   newDocument(): Promise<DocumentSnapshot | null>;
   openDocument(): Promise<DocumentSnapshot | null>;
+  /** Read an address-bar file location without activating or replacing a document. */
+  readDocumentLocation(location: string): Promise<DocumentSnapshot>;
   activateDocument(document: DocumentSnapshot, text: string, revision: number): Promise<DocumentSnapshot>;
   updateTabState(tabs: TabStateSummary[]): void;
   getGitReviewState(): Promise<GitReviewState | null>;

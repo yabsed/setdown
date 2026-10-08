@@ -1,9 +1,11 @@
 import { _electron as electron, expect, test } from '@playwright/test';
 import { createServer } from 'node:http';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
 import os from 'node:os';
 import path from 'node:path';
 import { disposeApplication, focusApplication, type TestApplication } from './electron-app';
+import { pdfFixture } from './pdf-fixture';
 
 async function fixture(document = true) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-browser-'));
@@ -32,7 +34,7 @@ async function fixture(document = true) {
   await focusApplication(app);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(String(error)));
-  return { get app() { return app; }, get page() { return page; }, origin, requests, errors,
+  return { get app() { return app; }, get page() { return page; }, root, origin, requests, errors,
     async restart() {
       await app.close();
       app = await electron.launch(launchOptions);
@@ -193,6 +195,43 @@ test('the first web page opens from a fresh empty workspace and popups preserve 
   } finally { await f.dispose(); }
 });
 
+test('new web tabs take selection and address focus, including after a stale native focus event', async () => {
+  const f = await fixture();
+  try {
+    await expect(f.page.getByRole('tab', { name: /notes.md/ })).toBeVisible();
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    const previous = f.page.getByRole('tab', { name: /Research page/ });
+    await expect(previous).toHaveAttribute('aria-selected', 'true');
+    const previousId = (await previous.getAttribute('data-tab-id'))!;
+    await f.page.getByRole('button', { name: 'New web tab', exact: true }).click();
+    const blank = f.page.getByRole('tab', { name: /New web tab/ });
+    await expect(blank).toHaveAttribute('aria-selected', 'true');
+    await expect(f.page.getByRole('textbox', { name: 'Address or file path' })).toBeFocused();
+    const blankId = (await blank.getAttribute('data-tab-id'))!;
+    // Native focus can already be in flight when a visible page is hidden.
+    const received = await f.page.evaluateHandle(id => {
+      const state = { received: false };
+      const unsubscribe = window.marktex.browser.onEvent(event => {
+        if (event.type !== 'focus' || event.id !== id) return;
+        unsubscribe(); requestAnimationFrame(() => { state.received = true; });
+      });
+      return state;
+    }, previousId);
+    await f.app.evaluate(({ BrowserWindow }, id) => BrowserWindow.getAllWindows()[0].webContents.send('browser:event', { type: 'focus', id }), previousId);
+    await expect.poll(() => received.evaluate(state => state.received)).toBe(true);
+    await received.dispose();
+    await expect(blank).toHaveAttribute('aria-selected', 'true');
+    await previous.click();
+    await f.page.keyboard.press('Control+t');
+    await expect(f.page.getByRole('tab', { name: /New web tab/ })).toHaveCount(2);
+    const selected = f.page.locator('.document-tab[aria-selected="true"]');
+    await expect(selected).toContainText('New web tab');
+    expect(await selected.getAttribute('data-tab-id')).not.toBe(blankId);
+    await expect(f.page.getByRole('textbox', { name: 'Address or file path' })).toBeFocused();
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
 test('moving a web tab to another window preserves its live page and enforces ownership', async () => {
   const f = await fixture();
   try {
@@ -220,6 +259,83 @@ test('moving a web tab to another window preserves its live page and enforces ow
       try { await window.marktex.browser.command(id, 'reload'); return 'allowed'; }
       catch { return 'rejected'; }
     }, id)).toBe('rejected');
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('file URLs and web addresses replace the current tab, including PDFs outside the project', async () => {
+  const f = await fixture();
+  const downloads = await mkdtemp(path.join(os.tmpdir(), 'setdown-downloads-'));
+  const pdf = path.join(downloads, "'26년 하반기 서울대 JD_게시용 # %20.pdf");
+  await writeFile(pdf, pdfFixture(2));
+  try {
+    const selected = f.page.locator('.document-tab[aria-selected="true"]');
+    await expect(selected).toContainText('notes.md');
+    const id = (await selected.getAttribute('data-tab-id'))!;
+    const address = f.page.getByRole('textbox', { name: 'Address or file path' });
+    const original = path.join(f.root, 'notes.md');
+    await expect(address).toHaveValue(pathToFileURL(original).href);
+    const go = async (value: string) => { await address.fill(value); await address.press('Enter'); };
+    await go(`${f.origin}/first`);
+    await expect(selected).toContainText('Research page');
+    const contentsId = await f.app.evaluate(({ webContents }, origin) => webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/first`)!.id, f.origin);
+    await go(pathToFileURL(pdf).href);
+    await expect(selected).toContainText(path.basename(pdf));
+    await expect(address).toHaveValue(pathToFileURL(pdf).href);
+    const reader = f.page.getByRole('region', { name: 'PDF reader', exact: true });
+    await expect(reader).toHaveAttribute('data-pdf-pages', '2');
+    await expect(reader.locator('[data-page-number="1"] .textLayer')).toContainText('PDF page 1');
+    await expect.poll(() => f.app.evaluate(({ webContents }, id) => !!webContents.fromId(id), contentsId)).toBe(false);
+    await go(`${f.origin}/second`);
+    await expect(selected).toContainText('Second page');
+    await expect(f.page.locator('.pdf-surface')).toHaveCount(0);
+    await go(original); // Absolute paths remain accepted too.
+    await expect(selected).toContainText('notes.md');
+    await expect(f.page.locator('.shell')).toHaveAttribute('data-surface', 'viewer');
+    await expect(address).toHaveValue(pathToFileURL(original).href);
+    await expect.poll(() => f.app.evaluate(async ({ BrowserWindow }) => {
+      const views = BrowserWindow.getAllWindows()[0].contentView.children.filter(v => v.getVisible());
+      if (views.length !== 1) return '';
+      return (views[0] as import('electron').WebContentsView).webContents.executeJavaScript('document.body.innerText');
+    })).toContain('Keep the reader intact.');
+    await go(pathToFileURL(path.join(downloads, 'missing.pdf')).href);
+    await expect(f.page.locator('.location-error[role="alert"]')).toContainText('ENOENT');
+    await expect(selected).toContainText('notes.md');
+    await expect(selected).toHaveAttribute('data-tab-id', id);
+    await expect(f.page.locator('.document-tab')).toHaveCount(1);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); await rm(downloads, { recursive: true, force: true }); }
+});
+
+test('address navigation asks to save edited files and cancellation preserves the current tab', async () => {
+  const f = await fixture();
+  const file = path.join(f.root, 'edited.txt');
+  await writeFile(file, 'Original text\n');
+  try {
+    const selected = f.page.locator('.document-tab[aria-selected="true"]');
+    await expect(selected).toContainText('notes.md');
+    const id = (await selected.getAttribute('data-tab-id'))!;
+    const address = f.page.getByRole('textbox', { name: 'Address or file path' });
+    await address.fill(pathToFileURL(file).href); await address.press('Enter');
+    await expect(selected).toContainText('edited.txt');
+    const editor = f.page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
+    await editor.press('Control+End'); await editor.pressSequentially('unsaved marker');
+    await expect(selected.getByLabel('Unsaved changes')).toBeVisible();
+    await address.fill(`${f.origin}/first`); await address.press('Enter');
+    const prompt = f.page.getByRole('dialog', { name: 'Save Changes' });
+    await expect(prompt).toBeVisible();
+    await prompt.getByRole('button', { name: 'Cancel', exact: true }).last().click();
+    await expect(prompt).toHaveCount(0);
+    await expect(selected).toContainText('edited.txt');
+    await expect(selected.getByLabel('Unsaved changes')).toBeVisible();
+    await expect(address).toHaveValue(pathToFileURL(file).href);
+    expect(await readFile(file, 'utf8')).not.toContain('unsaved marker');
+    await address.fill(`${f.origin}/first`); await address.press('Enter');
+    await prompt.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(selected).toContainText('Research page');
+    expect(await readFile(file, 'utf8')).toContain('unsaved marker');
+    await expect(selected).toHaveAttribute('data-tab-id', id);
+    await expect(f.page.locator('.document-tab')).toHaveCount(1);
     expect(f.errors).toEqual([]);
   } finally { await f.dispose(); }
 });

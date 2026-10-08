@@ -4,12 +4,13 @@
   import { project } from '../project/project-state.svelte';
   import { browser } from './browser-state.svelte';
   import type { BrowserPlace } from '../../protocol/browser';
+  import { fileLocation } from '../../core/document/file-location';
   let { actions, groupId }: { actions: AppActions; groupId: string } = $props();
   const group = $derived(view.groups.find(g => g.id === groupId));
   const tab = $derived(view.tabs.find(t => t.id === group?.activeId));
   const review = $derived(groupId === view.focusedGroupId && project.gitDiffActive ? project.gitDiff : null);
   const web = $derived(!review && tab?.kind === 'web' ? tab.page : undefined);
-  const location = $derived(review ? `${review.filePath}${review.history ? ` @ ${review.history.head.slice(0, 8)}` : ''}` : tab?.path ?? '');
+  const location = $derived(review ? fileLocation(review.filePath) : tab?.kind === 'web' ? tab.path : tab ? fileLocation(tab.path) : '');
   let input = $state<HTMLInputElement>(), finder = $state<HTMLInputElement>();
   let editing = $state(false), draft = $state(''), suggestions = $state<BrowserPlace[]>([]), selected = $state(-1), bookmarked = $state(false);
   let generation = 0, composing = false, timer: ReturnType<typeof setTimeout>;

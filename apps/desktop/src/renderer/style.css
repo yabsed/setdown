@@ -203,21 +203,24 @@ button { font: inherit; }
   line-height: 1;
 }
 .tab-close:hover { background: var(--app-hover); }
-.new-tab-button, .new-web-tab-button {
+.new-resource-button {
+  display: grid;
+  place-items: center;
   flex: 0 0 28px;
   width: 28px;
   height: 28px;
   margin-left: 4px;
   color: var(--app-muted-text);
   border: 0;
-  border-radius: 6px;
+  border-radius: 7px;
   background: transparent;
-  font-size: 20px;
-  line-height: 1;
+  padding: 5px;
   cursor: pointer;
   -webkit-app-region: no-drag;
 }
-.new-tab-button:hover, .new-web-tab-button:hover { background: var(--app-hover); }
+.new-resource-button svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; }
+.new-resource-button:hover { color: var(--app-text); background: var(--app-hover); }
+.new-resource-button:focus-visible { outline: 1px solid var(--app-accent); outline-offset: 1px; }
 .tab-actions { display: flex; align-items: center; flex: 0 0 auto; height: 28px; margin-left: 4px; -webkit-app-region: no-drag; }
 .editor-action, .viewer-action {
   display: grid;

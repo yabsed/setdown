@@ -13,7 +13,7 @@ export function browserURL(input: string): string {
     || /^[\w\p{L}-]+(?:\.[\w\p{L}-]+)+(?:[:/].*)?$/u.test(value))) {
     return browserURL(`${/^(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(value) ? 'http' : 'https'}://${value}`);
   }
-  return `https://duckduckgo.com/?q=${encodeURIComponent(value)}`;
+  return `https://www.google.com/search?q=${encodeURIComponent(value)}`;
 }
 
 export function isWebURL(value: unknown): boolean {

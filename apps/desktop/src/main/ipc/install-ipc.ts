@@ -4,6 +4,7 @@ import type { GitGraphRequest, GitHistorySelection } from '../../protocol/git-hi
 import { ipcMain, shell } from 'electron';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { normalizePreviewTheme } from '../../core/preview/preview-preferences';
 import { isMarkdownDocument, isOpenableDocument, isReadOnlyDocument } from '../../core/document/document-profile';
 import { retainUnsavedRevision } from '../../core/document/document-save';
@@ -76,6 +77,13 @@ export function installIpc(options: Options): void {
     state.closeAfterConfirmation = true; state.window.close();
   });
   channels.handle('document:open', (state) => documents.chooseAndOpen(state, false));
+  channels.handle('document:read-location', (_state, location: unknown) => {
+    if (typeof location !== 'string' || location.length > 16384) throw new Error('Invalid file location.');
+    const value = location.trim();
+    const filePath = /^file:/i.test(value) ? fileURLToPath(value) : value;
+    if (!path.isAbsolute(filePath)) throw new Error('Enter an absolute file path or file URL.');
+    return documents.read(filePath);
+  });
   channels.on('document:update-text', (state, { text, revision }: { text: string; revision: number }) =>
     documents.updateText(state, text, revision));
   channels.handle('preview:prepare', (state, request: {

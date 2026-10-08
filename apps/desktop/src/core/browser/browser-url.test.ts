@@ -7,7 +7,7 @@ describe('browser addresses', () => {
     ['localhost:5173/page', 'http://localhost:5173/page'],
     ['[::1]:8080', 'http://[::1]:8080/'],
     ['https://example.com', 'https://example.com/'],
-    ['한글 검색', 'https://duckduckgo.com/?q=%ED%95%9C%EA%B8%80%20%EA%B2%80%EC%83%89'],
+    ['한글 검색', 'https://www.google.com/search?q=%ED%95%9C%EA%B8%80%20%EA%B2%80%EC%83%89'],
     ['', 'about:blank'],
   ])('normalizes %s at the application boundary', (input, expected) => {
     expect(browserURL(input)).toBe(expected);

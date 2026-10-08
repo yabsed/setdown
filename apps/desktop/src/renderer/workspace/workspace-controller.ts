@@ -6,6 +6,7 @@ import { toggleTerminal, terminalOwnsInput } from '../terminal/terminal-state.sv
 import { GOLDEN_TOP_RATIO, type ViewportAnchor } from '../../core/preview/viewport-anchor';
 import { normalizePreviewTheme } from '../../core/preview/preview-preferences';
 import { hasMarkdownPreview } from '../../core/document/document-capabilities';
+import { isFileLocation } from '../../core/document/file-location';
 import { isMarkdownDocument } from '../../core/document/document-profile';
 import { createTabSession, WorkspaceState } from '../../core/workspace/workspace-state';
 import type { ThemeSnapshot } from '../../protocol/desktop-api';
@@ -50,13 +51,14 @@ export function startWorkspace(desktop: DesktopPort) {
     newWebTab: (input, background) => { projects.deactivateGitDiff(); void tabs.openWeb(input, background).catch(error => { browser.error = String(error); }); },
     navigateLocation: async (groupId, input) => {
       const target = workspace.groups.groups.find(group => group.id === groupId);
-      if (target?.activeId) await tabs.activate(target.activeId);
+      const id = target?.activeId;
+      const previous = id ? workspace.find(id) : null;
+      if (id && workspace.activeId !== id) await tabs.activate(id);
       projects.deactivateGitDiff();
-      if (/^(?:[/\\]|[a-z]:[\\/]|file:)/i.test(input)) {
-        const path = input.startsWith('file:') ? decodeURIComponent(new URL(input).pathname) : input;
-        const document = await desktop.openProjectFile(path);
-        if (document) await tabs.show(document);
-      } else if (workspace.active?.kind === 'web') await desktop.browser.navigate(workspace.active.id, input);
+      if (id) {
+        if (await tabs.navigateLocation(id, input) && previous && previous.kind !== 'web'
+          && workspace.find(id) !== previous) projects.closeWorkingTreeReviews(previous.document.path);
+      } else if (isFileLocation(input)) await tabs.show(await desktop.readDocumentLocation(input));
       else await tabs.openWeb(input);
     },
     browserCommand: (id, command) => { void desktop.browser.command(id, command).catch(error => { browser.error = String(error); }); },

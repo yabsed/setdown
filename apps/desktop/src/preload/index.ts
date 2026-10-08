@@ -68,6 +68,7 @@ const api: MarkTexApi = {
   getDocument: () => ipcRenderer.invoke('document:get'),
   newDocument: () => ipcRenderer.invoke('document:new'),
   openDocument: () => ipcRenderer.invoke('document:open'),
+  readDocumentLocation: (location) => ipcRenderer.invoke('document:read-location', location),
   activateDocument: (document, text, revision) =>
     ipcRenderer.invoke('document:activate', { document, text, revision }),
   updateTabState: (tabs: TabStateSummary[]) =>
