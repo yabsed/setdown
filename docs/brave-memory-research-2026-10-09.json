@@ -1,0 +1,1769 @@
+{
+  "setdownCommit": "49bf7578819e8a05369b7cb7eae01c73476aeb77",
+  "braveCommit": "97d6dfdfeff3e6855d4f6868e616a61454635de8",
+  "chromiumSourceTag": "156.0.8078.25",
+  "method": "Existing production build, isolated Xvfb, fresh temporary XDG_CONFIG_HOME, local HTTP fixtures; app.getAppMetrics PIDs deduplicated by process and /proc/PID/smaps_rollup Pss/Private; no forced GC; one run per fixture. This is a lifecycle diagnostic, not an optimization benchmark.",
+  "sourceDownloads": [
+    {
+      "path": "chrome/browser/performance_manager/policies/memory_saver_mode_policy.cc",
+      "bytes": 8417,
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/156.0.8078.25/chrome/browser/performance_manager/policies/memory_saver_mode_policy.cc?format=TEXT"
+    },
+    {
+      "path": "chrome/browser/performance_manager/policies/page_discarding_helper.cc",
+      "bytes": 14100,
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/156.0.8078.25/chrome/browser/performance_manager/policies/page_discarding_helper.cc?format=TEXT"
+    },
+    {
+      "path": "chrome/browser/performance_manager/policies/discard_eligibility_policy.cc",
+      "bytes": 22289,
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/156.0.8078.25/chrome/browser/performance_manager/policies/discard_eligibility_policy.cc?format=TEXT"
+    },
+    {
+      "path": "components/performance_manager/freezing/freezing_policy.cc",
+      "bytes": 61519,
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/156.0.8078.25/components/performance_manager/freezing/freezing_policy.cc?format=TEXT"
+    },
+    {
+      "path": "components/performance_manager/freezing/cannot_freeze_reason.h",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "path": "chrome/browser/performance_manager/chrome_browser_main_extra_parts_performance_manager.cc",
+      "bytes": 23637,
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/156.0.8078.25/chrome/browser/performance_manager/chrome_browser_main_extra_parts_performance_manager.cc?format=TEXT"
+    },
+    {
+      "path": "components/performance_manager/public/features.cc",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "path": "components/performance_manager/features.cc",
+      "bytes": 13190,
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/156.0.8078.25/components/performance_manager/features.cc?format=TEXT"
+    },
+    {
+      "path": "components/performance_manager/freezing/freezing_policy.h",
+      "bytes": 16423,
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/156.0.8078.25/components/performance_manager/freezing/freezing_policy.h?format=TEXT"
+    },
+    {
+      "path": "chrome/browser/performance_manager/policies/urgent_page_discarding_policy.cc",
+      "bytes": 7491,
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/156.0.8078.25/chrome/browser/performance_manager/policies/urgent_page_discarding_policy.cc?format=TEXT"
+    },
+    {
+      "path": "chrome/browser/performance_manager/policies/page_node_sort_proxy.h",
+      "error": "HTTP Error 404: Not Found"
+    }
+  ],
+  "buildSHA256": {
+    "apps/desktop/dist-electron/main.cjs": "82f9f1e3df8c6ddad2ccb1e372a3ee531975268d2d4115b8000ff1557c9d92ff",
+    "apps/desktop/dist/index.html": "80bd3f5debc342b82d12a38e25e9e41b8b47306430c7dd6bf5c51abf0fbae8bf"
+  },
+  "measurements": {
+    "memory": {
+      "date": "2026-10-08T15:48:34.330Z",
+      "versions": {
+        "node": "22.22.0",
+        "acorn": "8.15.0",
+        "ada": "2.9.2",
+        "amaro": "1.1.4",
+        "ares": "1.34.6",
+        "brotli": "1.0.9",
+        "cjs_module_lexer": "2.1.0",
+        "cldr": "44.1",
+        "icu": "74.2",
+        "llhttp": "9.3.0",
+        "modules": "139",
+        "napi": "10",
+        "nbytes": "0.1.1",
+        "ncrypto": "0.0.1",
+        "nghttp2": "1.64.0",
+        "openssl": "0.0.0",
+        "simdjson": "3.13.0",
+        "simdutf": "7.3.3",
+        "sqlite": "3.50.4",
+        "tz": "2025b",
+        "undici": "6.23.0",
+        "unicode": "15.1",
+        "uv": "1.51.0",
+        "uvwasi": "0.0.23",
+        "v8": "14.0.365.10-electron.0",
+        "zlib": "1.3.1",
+        "zstd": "1.5.8",
+        "electron": "38.8.6",
+        "chrome": "140.0.7339.249"
+      },
+      "fixture": {
+        "tabs": 8,
+        "typedArrayBytes": 8388608,
+        "paragraphs": 3000,
+        "origin": "http://127.0.0.1:43357"
+      },
+      "samples": [
+        {
+          "label": "shell-only",
+          "totalPssKiB": 352195,
+          "totalPrivateKiB": 234080,
+          "metrics": [
+            {
+              "pid": 610486,
+              "type": "Browser",
+              "memory": {
+                "workingSetSize": 232532,
+                "peakWorkingSetSize": 232532
+              },
+              "pssKiB": 110083,
+              "privateKiB": 71824
+            },
+            {
+              "pid": 610535,
+              "type": "Utility",
+              "name": "Network Service",
+              "memory": {
+                "workingSetSize": 83352,
+                "peakWorkingSetSize": 83352
+              },
+              "pssKiB": 27708,
+              "privateKiB": 14608
+            },
+            {
+              "pid": 610538,
+              "type": "Utility",
+              "name": "Node Utility Process",
+              "memory": {
+                "workingSetSize": 163464,
+                "peakWorkingSetSize": 163464
+              },
+              "pssKiB": 99873,
+              "privateKiB": 81460
+            },
+            {
+              "pid": 610550,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 121384,
+                "peakWorkingSetSize": 121384
+              },
+              "pssKiB": 71117,
+              "privateKiB": 46576,
+              "contentType": "window",
+              "contentURL": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/index.html"
+            },
+            {
+              "pid": 610625,
+              "type": "GPU",
+              "memory": {
+                "workingSetSize": 117880,
+                "peakWorkingSetSize": 144148
+              },
+              "pssKiB": 43414,
+              "privateKiB": 19612
+            }
+          ],
+          "contents": [
+            {
+              "id": 1,
+              "pid": 610550,
+              "type": "window",
+              "url": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/index.html",
+              "backgroundThrottling": true
+            }
+          ]
+        },
+        {
+          "label": "one-web-tab",
+          "totalPssKiB": 610542,
+          "totalPrivateKiB": 451352,
+          "metrics": [
+            {
+              "pid": 610486,
+              "type": "Browser",
+              "memory": {
+                "workingSetSize": 247760,
+                "peakWorkingSetSize": 263828
+              },
+              "pssKiB": 112996,
+              "privateKiB": 82548
+            },
+            {
+              "pid": 610535,
+              "type": "Utility",
+              "name": "Network Service",
+              "memory": {
+                "workingSetSize": 85104,
+                "peakWorkingSetSize": 85104
+              },
+              "pssKiB": 25960,
+              "privateKiB": 15016
+            },
+            {
+              "pid": 610538,
+              "type": "Utility",
+              "name": "Node Utility Process",
+              "memory": {
+                "workingSetSize": 163464,
+                "peakWorkingSetSize": 163464
+              },
+              "pssKiB": 93879,
+              "privateKiB": 81028
+            },
+            {
+              "pid": 610550,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 128984,
+                "peakWorkingSetSize": 128984
+              },
+              "pssKiB": 42470,
+              "privateKiB": 19700,
+              "contentType": "window",
+              "contentURL": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/index.html"
+            },
+            {
+              "pid": 610625,
+              "type": "GPU",
+              "memory": {
+                "workingSetSize": 121268,
+                "peakWorkingSetSize": 144148
+              },
+              "pssKiB": 42685,
+              "privateKiB": 19980
+            },
+            {
+              "pid": 610753,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145032,
+                "peakWorkingSetSize": 150712
+              },
+              "pssKiB": 60092,
+              "privateKiB": 38996,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:43357/page1"
+            },
+            {
+              "pid": 610683,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 100836,
+                "peakWorkingSetSize": 100836
+              },
+              "pssKiB": 27412,
+              "privateKiB": 10668,
+              "contentType": "window",
+              "contentURL": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/places.html"
+            },
+            {
+              "pid": 610718,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 291660,
+                "peakWorkingSetSize": 464264
+              },
+              "pssKiB": 205048,
+              "privateKiB": 183416,
+              "contentType": "backgroundPage",
+              "contentURL": "chrome-extension://fffnfdjoojbpkieonkfjfjgdbhkganpc/background.html"
+            }
+          ],
+          "contents": [
+            {
+              "id": 5,
+              "pid": 610718,
+              "type": "backgroundPage",
+              "url": "chrome-extension://fffnfdjoojbpkieonkfjfjgdbhkganpc/background.html",
+              "backgroundThrottling": true
+            },
+            {
+              "id": 3,
+              "pid": 610683,
+              "type": "window",
+              "url": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/places.html",
+              "backgroundThrottling": false
+            },
+            {
+              "id": 2,
+              "pid": 610753,
+              "type": "window",
+              "url": "http://127.0.0.1:43357/page1",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608
+              }
+            },
+            {
+              "id": 1,
+              "pid": 610550,
+              "type": "window",
+              "url": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/index.html",
+              "backgroundThrottling": true
+            }
+          ]
+        },
+        {
+          "label": "eight-web-tabs-seven-hidden",
+          "totalPssKiB": 953029,
+          "totalPrivateKiB": 784260,
+          "metrics": [
+            {
+              "pid": 610486,
+              "type": "Browser",
+              "memory": {
+                "workingSetSize": 255076,
+                "peakWorkingSetSize": 264436
+              },
+              "pssKiB": 113589,
+              "privateKiB": 87840
+            },
+            {
+              "pid": 610535,
+              "type": "Utility",
+              "name": "Network Service",
+              "memory": {
+                "workingSetSize": 85792,
+                "peakWorkingSetSize": 85792
+              },
+              "pssKiB": 24632,
+              "privateKiB": 15596
+            },
+            {
+              "pid": 610538,
+              "type": "Utility",
+              "name": "Node Utility Process",
+              "memory": {
+                "workingSetSize": 163464,
+                "peakWorkingSetSize": 163464
+              },
+              "pssKiB": 90828,
+              "privateKiB": 81028
+            },
+            {
+              "pid": 610550,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 131068,
+                "peakWorkingSetSize": 131392
+              },
+              "pssKiB": 33772,
+              "privateKiB": 23056,
+              "contentType": "window",
+              "contentURL": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/index.html"
+            },
+            {
+              "pid": 610625,
+              "type": "GPU",
+              "memory": {
+                "workingSetSize": 127804,
+                "peakWorkingSetSize": 144148
+              },
+              "pssKiB": 45042,
+              "privateKiB": 21676
+            },
+            {
+              "pid": 610753,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145052,
+                "peakWorkingSetSize": 150712
+              },
+              "pssKiB": 47729,
+              "privateKiB": 38696,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:43357/page1"
+            },
+            {
+              "pid": 610683,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 104608,
+                "peakWorkingSetSize": 104608
+              },
+              "pssKiB": 19500,
+              "privateKiB": 11624,
+              "contentType": "window",
+              "contentURL": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/places.html"
+            },
+            {
+              "pid": 610718,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 339116,
+                "peakWorkingSetSize": 464264
+              },
+              "pssKiB": 241532,
+              "privateKiB": 230292,
+              "contentType": "backgroundPage",
+              "contentURL": "chrome-extension://fffnfdjoojbpkieonkfjfjgdbhkganpc/background.html"
+            },
+            {
+              "pid": 610788,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145056,
+                "peakWorkingSetSize": 149128
+              },
+              "pssKiB": 48042,
+              "privateKiB": 39176,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:43357/page2"
+            },
+            {
+              "pid": 610799,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145040,
+                "peakWorkingSetSize": 149332
+              },
+              "pssKiB": 48042,
+              "privateKiB": 39184,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:43357/page3"
+            },
+            {
+              "pid": 610817,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145060,
+                "peakWorkingSetSize": 149512
+              },
+              "pssKiB": 48068,
+              "privateKiB": 39220,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:43357/page4"
+            },
+            {
+              "pid": 610828,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 144980,
+                "peakWorkingSetSize": 149400
+              },
+              "pssKiB": 48039,
+              "privateKiB": 39200,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:43357/page5"
+            },
+            {
+              "pid": 610839,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145072,
+                "peakWorkingSetSize": 149192
+              },
+              "pssKiB": 48073,
+              "privateKiB": 39224,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:43357/page6"
+            },
+            {
+              "pid": 610850,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145064,
+                "peakWorkingSetSize": 148956
+              },
+              "pssKiB": 48064,
+              "privateKiB": 39216,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:43357/page7"
+            },
+            {
+              "pid": 610861,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145024,
+                "peakWorkingSetSize": 149704
+              },
+              "pssKiB": 48077,
+              "privateKiB": 39232,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:43357/page8"
+            }
+          ],
+          "contents": [
+            {
+              "id": 11,
+              "pid": 610850,
+              "type": "window",
+              "url": "http://127.0.0.1:43357/page7",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608
+              }
+            },
+            {
+              "id": 10,
+              "pid": 610839,
+              "type": "window",
+              "url": "http://127.0.0.1:43357/page6",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608
+              }
+            },
+            {
+              "id": 9,
+              "pid": 610828,
+              "type": "window",
+              "url": "http://127.0.0.1:43357/page5",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608
+              }
+            },
+            {
+              "id": 8,
+              "pid": 610817,
+              "type": "window",
+              "url": "http://127.0.0.1:43357/page4",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608
+              }
+            },
+            {
+              "id": 7,
+              "pid": 610799,
+              "type": "window",
+              "url": "http://127.0.0.1:43357/page3",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608
+              }
+            },
+            {
+              "id": 5,
+              "pid": 610718,
+              "type": "backgroundPage",
+              "url": "chrome-extension://fffnfdjoojbpkieonkfjfjgdbhkganpc/background.html",
+              "backgroundThrottling": true
+            },
+            {
+              "id": 3,
+              "pid": 610683,
+              "type": "window",
+              "url": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/places.html",
+              "backgroundThrottling": false
+            },
+            {
+              "id": 2,
+              "pid": 610753,
+              "type": "window",
+              "url": "http://127.0.0.1:43357/page1",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608
+              }
+            },
+            {
+              "id": 6,
+              "pid": 610788,
+              "type": "window",
+              "url": "http://127.0.0.1:43357/page2",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608
+              }
+            },
+            {
+              "id": 12,
+              "pid": 610861,
+              "type": "window",
+              "url": "http://127.0.0.1:43357/page8",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608
+              }
+            },
+            {
+              "id": 1,
+              "pid": 610550,
+              "type": "window",
+              "url": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/index.html",
+              "backgroundThrottling": true
+            }
+          ]
+        },
+        {
+          "label": "eight-web-tabs-seven-hidden-after-five-seconds",
+          "totalPssKiB": 972717,
+          "totalPrivateKiB": 805188,
+          "metrics": [
+            {
+              "pid": 610486,
+              "type": "Browser",
+              "memory": {
+                "workingSetSize": 259332,
+                "peakWorkingSetSize": 272612
+              },
+              "pssKiB": 117128,
+              "privateKiB": 91380
+            },
+            {
+              "pid": 610535,
+              "type": "Utility",
+              "name": "Network Service",
+              "memory": {
+                "workingSetSize": 86620,
+                "peakWorkingSetSize": 89560
+              },
+              "pssKiB": 24821,
+              "privateKiB": 15732
+            },
+            {
+              "pid": 610538,
+              "type": "Utility",
+              "name": "Node Utility Process",
+              "memory": {
+                "workingSetSize": 163464,
+                "peakWorkingSetSize": 163464
+              },
+              "pssKiB": 90827,
+              "privateKiB": 81028
+            },
+            {
+              "pid": 610550,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 129788,
+                "peakWorkingSetSize": 131392
+              },
+              "pssKiB": 33121,
+              "privateKiB": 23040,
+              "contentType": "window",
+              "contentURL": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/index.html"
+            },
+            {
+              "pid": 610625,
+              "type": "GPU",
+              "memory": {
+                "workingSetSize": 126544,
+                "peakWorkingSetSize": 144148
+              },
+              "pssKiB": 44413,
+              "privateKiB": 21680
+            },
+            {
+              "pid": 610753,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145060,
+                "peakWorkingSetSize": 150712
+              },
+              "pssKiB": 47740,
+              "privateKiB": 38712,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:43357/page1"
+            },
+            {
+              "pid": 610683,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 104612,
+                "peakWorkingSetSize": 104612
+              },
+              "pssKiB": 19501,
+              "privateKiB": 11628,
+              "contentType": "window",
+              "contentURL": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/places.html"
+            },
+            {
+              "pid": 610718,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 330528,
+                "peakWorkingSetSize": 464264
+              },
+              "pssKiB": 258752,
+              "privateKiB": 247496,
+              "contentType": "backgroundPage",
+              "contentURL": "chrome-extension://fffnfdjoojbpkieonkfjfjgdbhkganpc/background.html"
+            },
+            {
+              "pid": 610788,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145068,
+                "peakWorkingSetSize": 149128
+              },
+              "pssKiB": 48042,
+              "privateKiB": 39180,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:43357/page2"
+            },
+            {
+              "pid": 610799,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145060,
+                "peakWorkingSetSize": 149332
+              },
+              "pssKiB": 48046,
+              "privateKiB": 39192,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:43357/page3"
+            },
+            {
+              "pid": 610817,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145080,
+                "peakWorkingSetSize": 149512
+              },
+              "pssKiB": 48071,
+              "privateKiB": 39228,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:43357/page4"
+            },
+            {
+              "pid": 610828,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 144996,
+                "peakWorkingSetSize": 149400
+              },
+              "pssKiB": 48042,
+              "privateKiB": 39208,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:43357/page5"
+            },
+            {
+              "pid": 610839,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145088,
+                "peakWorkingSetSize": 149192
+              },
+              "pssKiB": 48073,
+              "privateKiB": 39228,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:43357/page6"
+            },
+            {
+              "pid": 610850,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145076,
+                "peakWorkingSetSize": 148956
+              },
+              "pssKiB": 48064,
+              "privateKiB": 39220,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:43357/page7"
+            },
+            {
+              "pid": 610861,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145040,
+                "peakWorkingSetSize": 149704
+              },
+              "pssKiB": 48076,
+              "privateKiB": 39236,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:43357/page8"
+            }
+          ],
+          "contents": [
+            {
+              "id": 11,
+              "pid": 610850,
+              "type": "window",
+              "url": "http://127.0.0.1:43357/page7",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608
+              }
+            },
+            {
+              "id": 10,
+              "pid": 610839,
+              "type": "window",
+              "url": "http://127.0.0.1:43357/page6",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608
+              }
+            },
+            {
+              "id": 9,
+              "pid": 610828,
+              "type": "window",
+              "url": "http://127.0.0.1:43357/page5",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608
+              }
+            },
+            {
+              "id": 8,
+              "pid": 610817,
+              "type": "window",
+              "url": "http://127.0.0.1:43357/page4",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608
+              }
+            },
+            {
+              "id": 7,
+              "pid": 610799,
+              "type": "window",
+              "url": "http://127.0.0.1:43357/page3",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608
+              }
+            },
+            {
+              "id": 5,
+              "pid": 610718,
+              "type": "backgroundPage",
+              "url": "chrome-extension://fffnfdjoojbpkieonkfjfjgdbhkganpc/background.html",
+              "backgroundThrottling": true
+            },
+            {
+              "id": 3,
+              "pid": 610683,
+              "type": "window",
+              "url": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/places.html",
+              "backgroundThrottling": false
+            },
+            {
+              "id": 2,
+              "pid": 610753,
+              "type": "window",
+              "url": "http://127.0.0.1:43357/page1",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608
+              }
+            },
+            {
+              "id": 6,
+              "pid": 610788,
+              "type": "window",
+              "url": "http://127.0.0.1:43357/page2",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608
+              }
+            },
+            {
+              "id": 12,
+              "pid": 610861,
+              "type": "window",
+              "url": "http://127.0.0.1:43357/page8",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608
+              }
+            },
+            {
+              "id": 1,
+              "pid": 610550,
+              "type": "window",
+              "url": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/index.html",
+              "backgroundThrottling": true
+            }
+          ]
+        },
+        {
+          "label": "closed-seven-background-tabs",
+          "totalPssKiB": 705580,
+          "totalPrivateKiB": 548160,
+          "metrics": [
+            {
+              "pid": 610486,
+              "type": "Browser",
+              "memory": {
+                "workingSetSize": 261300,
+                "peakWorkingSetSize": 272612
+              },
+              "pssKiB": 127176,
+              "privateKiB": 96800
+            },
+            {
+              "pid": 610535,
+              "type": "Utility",
+              "name": "Network Service",
+              "memory": {
+                "workingSetSize": 86708,
+                "peakWorkingSetSize": 89560
+              },
+              "pssKiB": 26688,
+              "privateKiB": 15592
+            },
+            {
+              "pid": 610538,
+              "type": "Utility",
+              "name": "Node Utility Process",
+              "memory": {
+                "workingSetSize": 163464,
+                "peakWorkingSetSize": 163464
+              },
+              "pssKiB": 93811,
+              "privateKiB": 81028
+            },
+            {
+              "pid": 610550,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 131220,
+                "peakWorkingSetSize": 131392
+              },
+              "pssKiB": 45570,
+              "privateKiB": 23872,
+              "contentType": "window",
+              "contentURL": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/index.html"
+            },
+            {
+              "pid": 610625,
+              "type": "GPU",
+              "memory": {
+                "workingSetSize": 120468,
+                "peakWorkingSetSize": 144148
+              },
+              "pssKiB": 42610,
+              "privateKiB": 20812
+            },
+            {
+              "pid": 610683,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 104616,
+                "peakWorkingSetSize": 104616
+              },
+              "pssKiB": 28815,
+              "privateKiB": 11632,
+              "contentType": "window",
+              "contentURL": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/places.html"
+            },
+            {
+              "pid": 610718,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 367648,
+                "peakWorkingSetSize": 464264
+              },
+              "pssKiB": 280568,
+              "privateKiB": 258856,
+              "contentType": "backgroundPage",
+              "contentURL": "chrome-extension://fffnfdjoojbpkieonkfjfjgdbhkganpc/background.html"
+            },
+            {
+              "pid": 610861,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145040,
+                "peakWorkingSetSize": 149704
+              },
+              "pssKiB": 60342,
+              "privateKiB": 39568,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:43357/page8"
+            }
+          ],
+          "contents": [
+            {
+              "id": 5,
+              "pid": 610718,
+              "type": "backgroundPage",
+              "url": "chrome-extension://fffnfdjoojbpkieonkfjfjgdbhkganpc/background.html",
+              "backgroundThrottling": true
+            },
+            {
+              "id": 3,
+              "pid": 610683,
+              "type": "window",
+              "url": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/places.html",
+              "backgroundThrottling": false
+            },
+            {
+              "id": 12,
+              "pid": 610861,
+              "type": "window",
+              "url": "http://127.0.0.1:43357/page8",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608
+              }
+            },
+            {
+              "id": 1,
+              "pid": 610550,
+              "type": "window",
+              "url": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/index.html",
+              "backgroundThrottling": true
+            }
+          ]
+        }
+      ]
+    },
+    "visibility": {
+      "date": "2026-10-08T15:50:28.717Z",
+      "versions": {
+        "node": "22.22.0",
+        "acorn": "8.15.0",
+        "ada": "2.9.2",
+        "amaro": "1.1.4",
+        "ares": "1.34.6",
+        "brotli": "1.0.9",
+        "cjs_module_lexer": "2.1.0",
+        "cldr": "44.1",
+        "icu": "74.2",
+        "llhttp": "9.3.0",
+        "modules": "139",
+        "napi": "10",
+        "nbytes": "0.1.1",
+        "ncrypto": "0.0.1",
+        "nghttp2": "1.64.0",
+        "openssl": "0.0.0",
+        "simdjson": "3.13.0",
+        "simdutf": "7.3.3",
+        "sqlite": "3.50.4",
+        "tz": "2025b",
+        "undici": "6.23.0",
+        "unicode": "15.1",
+        "uv": "1.51.0",
+        "uvwasi": "0.0.23",
+        "v8": "14.0.365.10-electron.0",
+        "zlib": "1.3.1",
+        "zstd": "1.5.8",
+        "electron": "38.8.6",
+        "chrome": "140.0.7339.249"
+      },
+      "fixture": {
+        "tabs": 2,
+        "typedArrayBytes": 8388608,
+        "paragraphs": 3000,
+        "origin": "http://127.0.0.1:38577"
+      },
+      "samples": [
+        {
+          "label": "shell-only",
+          "totalPssKiB": 351751,
+          "totalPrivateKiB": 233272,
+          "nativeViews": [],
+          "metrics": [
+            {
+              "pid": 612255,
+              "type": "Browser",
+              "memory": {
+                "workingSetSize": 231868,
+                "peakWorkingSetSize": 233936
+              },
+              "pssKiB": 109255,
+              "privateKiB": 70756
+            },
+            {
+              "pid": 612305,
+              "type": "Utility",
+              "name": "Network Service",
+              "memory": {
+                "workingSetSize": 84068,
+                "peakWorkingSetSize": 84068
+              },
+              "pssKiB": 28279,
+              "privateKiB": 15180
+            },
+            {
+              "pid": 612308,
+              "type": "Utility",
+              "name": "Node Utility Process",
+              "memory": {
+                "workingSetSize": 163796,
+                "peakWorkingSetSize": 163796
+              },
+              "pssKiB": 99402,
+              "privateKiB": 80772
+            },
+            {
+              "pid": 612320,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 121812,
+                "peakWorkingSetSize": 121812
+              },
+              "pssKiB": 71691,
+              "privateKiB": 47260,
+              "contentType": "window",
+              "contentURL": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/index.html"
+            },
+            {
+              "pid": 612396,
+              "type": "GPU",
+              "memory": {
+                "workingSetSize": 117772,
+                "peakWorkingSetSize": 144380
+              },
+              "pssKiB": 43124,
+              "privateKiB": 19304
+            }
+          ],
+          "contents": [
+            {
+              "id": 1,
+              "pid": 612320,
+              "type": "window",
+              "url": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/index.html",
+              "backgroundThrottling": true
+            }
+          ]
+        },
+        {
+          "label": "one-web-tab",
+          "totalPssKiB": 620343,
+          "totalPrivateKiB": 461028,
+          "nativeViews": [
+            {
+              "id": 2,
+              "visible": true
+            }
+          ],
+          "metrics": [
+            {
+              "pid": 612255,
+              "type": "Browser",
+              "memory": {
+                "workingSetSize": 248152,
+                "peakWorkingSetSize": 264080
+              },
+              "pssKiB": 113073,
+              "privateKiB": 82312
+            },
+            {
+              "pid": 612305,
+              "type": "Utility",
+              "name": "Network Service",
+              "memory": {
+                "workingSetSize": 85740,
+                "peakWorkingSetSize": 85740
+              },
+              "pssKiB": 26401,
+              "privateKiB": 15556
+            },
+            {
+              "pid": 612308,
+              "type": "Utility",
+              "name": "Node Utility Process",
+              "memory": {
+                "workingSetSize": 163796,
+                "peakWorkingSetSize": 163796
+              },
+              "pssKiB": 93587,
+              "privateKiB": 80552
+            },
+            {
+              "pid": 612320,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 128780,
+                "peakWorkingSetSize": 128780
+              },
+              "pssKiB": 42554,
+              "privateKiB": 19824,
+              "contentType": "window",
+              "contentURL": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/index.html"
+            },
+            {
+              "pid": 612396,
+              "type": "GPU",
+              "memory": {
+                "workingSetSize": 121220,
+                "peakWorkingSetSize": 144380
+              },
+              "pssKiB": 42690,
+              "privateKiB": 19908
+            },
+            {
+              "pid": 612525,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145196,
+                "peakWorkingSetSize": 150928
+              },
+              "pssKiB": 60188,
+              "privateKiB": 39116,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:38577/page1"
+            },
+            {
+              "pid": 612456,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 100900,
+                "peakWorkingSetSize": 100900
+              },
+              "pssKiB": 27327,
+              "privateKiB": 10636,
+              "contentType": "window",
+              "contentURL": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/places.html"
+            },
+            {
+              "pid": 612489,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 301112,
+                "peakWorkingSetSize": 463728
+              },
+              "pssKiB": 214523,
+              "privateKiB": 193124,
+              "contentType": "backgroundPage",
+              "contentURL": "chrome-extension://fffnfdjoojbpkieonkfjfjgdbhkganpc/background.html"
+            }
+          ],
+          "contents": [
+            {
+              "id": 5,
+              "pid": 612489,
+              "type": "backgroundPage",
+              "url": "chrome-extension://fffnfdjoojbpkieonkfjfjgdbhkganpc/background.html",
+              "backgroundThrottling": true
+            },
+            {
+              "id": 3,
+              "pid": 612456,
+              "type": "window",
+              "url": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/places.html",
+              "backgroundThrottling": false
+            },
+            {
+              "id": 2,
+              "pid": 612525,
+              "type": "window",
+              "url": "http://127.0.0.1:38577/page1",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608,
+                "rafCount": 123
+              }
+            },
+            {
+              "id": 1,
+              "pid": 612320,
+              "type": "window",
+              "url": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/index.html",
+              "backgroundThrottling": true
+            }
+          ]
+        },
+        {
+          "label": "two-web-tabs-one-hidden",
+          "totalPssKiB": 667928,
+          "totalPrivateKiB": 507444,
+          "nativeViews": [
+            {
+              "id": 2,
+              "visible": false
+            },
+            {
+              "id": 6,
+              "visible": true
+            }
+          ],
+          "metrics": [
+            {
+              "pid": 612255,
+              "type": "Browser",
+              "memory": {
+                "workingSetSize": 248984,
+                "peakWorkingSetSize": 264080
+              },
+              "pssKiB": 112097,
+              "privateKiB": 82764
+            },
+            {
+              "pid": 612305,
+              "type": "Utility",
+              "name": "Network Service",
+              "memory": {
+                "workingSetSize": 86040,
+                "peakWorkingSetSize": 86040
+              },
+              "pssKiB": 26008,
+              "privateKiB": 15604
+            },
+            {
+              "pid": 612308,
+              "type": "Utility",
+              "name": "Node Utility Process",
+              "memory": {
+                "workingSetSize": 163796,
+                "peakWorkingSetSize": 163796
+              },
+              "pssKiB": 92799,
+              "privateKiB": 80552
+            },
+            {
+              "pid": 612320,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 127736,
+                "peakWorkingSetSize": 127944
+              },
+              "pssKiB": 38697,
+              "privateKiB": 20040,
+              "contentType": "window",
+              "contentURL": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/index.html"
+            },
+            {
+              "pid": 612396,
+              "type": "GPU",
+              "memory": {
+                "workingSetSize": 121256,
+                "peakWorkingSetSize": 144380
+              },
+              "pssKiB": 42363,
+              "privateKiB": 20152
+            },
+            {
+              "pid": 612525,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145264,
+                "peakWorkingSetSize": 150928
+              },
+              "pssKiB": 56407,
+              "privateKiB": 38876,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:38577/page1"
+            },
+            {
+              "pid": 612456,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 100964,
+                "peakWorkingSetSize": 100964
+              },
+              "pssKiB": 24770,
+              "privateKiB": 10700,
+              "contentType": "window",
+              "contentURL": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/places.html"
+            },
+            {
+              "pid": 612489,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 308112,
+                "peakWorkingSetSize": 463728
+              },
+              "pssKiB": 218023,
+              "privateKiB": 199480,
+              "contentType": "backgroundPage",
+              "contentURL": "chrome-extension://fffnfdjoojbpkieonkfjfjgdbhkganpc/background.html"
+            },
+            {
+              "pid": 612560,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145484,
+                "peakWorkingSetSize": 149580
+              },
+              "pssKiB": 56764,
+              "privateKiB": 39276,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:38577/page2"
+            }
+          ],
+          "contents": [
+            {
+              "id": 5,
+              "pid": 612489,
+              "type": "backgroundPage",
+              "url": "chrome-extension://fffnfdjoojbpkieonkfjfjgdbhkganpc/background.html",
+              "backgroundThrottling": true
+            },
+            {
+              "id": 3,
+              "pid": 612456,
+              "type": "window",
+              "url": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/places.html",
+              "backgroundThrottling": false
+            },
+            {
+              "id": 2,
+              "pid": 612525,
+              "type": "window",
+              "url": "http://127.0.0.1:38577/page1",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608,
+                "rafCount": 312
+              }
+            },
+            {
+              "id": 6,
+              "pid": 612560,
+              "type": "window",
+              "url": "http://127.0.0.1:38577/page2",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608,
+                "rafCount": 184
+              }
+            },
+            {
+              "id": 1,
+              "pid": 612320,
+              "type": "window",
+              "url": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/index.html",
+              "backgroundThrottling": true
+            }
+          ]
+        },
+        {
+          "label": "two-web-tabs-one-hidden-after-five-seconds",
+          "totalPssKiB": 759477,
+          "totalPrivateKiB": 599916,
+          "nativeViews": [
+            {
+              "id": 2,
+              "visible": false
+            },
+            {
+              "id": 6,
+              "visible": true
+            }
+          ],
+          "metrics": [
+            {
+              "pid": 612255,
+              "type": "Browser",
+              "memory": {
+                "workingSetSize": 251500,
+                "peakWorkingSetSize": 267036
+              },
+              "pssKiB": 114487,
+              "privateKiB": 85152
+            },
+            {
+              "pid": 612305,
+              "type": "Utility",
+              "name": "Network Service",
+              "memory": {
+                "workingSetSize": 87080,
+                "peakWorkingSetSize": 89712
+              },
+              "pssKiB": 26755,
+              "privateKiB": 16132
+            },
+            {
+              "pid": 612308,
+              "type": "Utility",
+              "name": "Node Utility Process",
+              "memory": {
+                "workingSetSize": 163796,
+                "peakWorkingSetSize": 163796
+              },
+              "pssKiB": 92788,
+              "privateKiB": 80552
+            },
+            {
+              "pid": 612320,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 126460,
+                "peakWorkingSetSize": 127944
+              },
+              "pssKiB": 38036,
+              "privateKiB": 20012,
+              "contentType": "window",
+              "contentURL": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/index.html"
+            },
+            {
+              "pid": 612396,
+              "type": "GPU",
+              "memory": {
+                "workingSetSize": 120024,
+                "peakWorkingSetSize": 144380
+              },
+              "pssKiB": 41752,
+              "privateKiB": 20168
+            },
+            {
+              "pid": 612525,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145392,
+                "peakWorkingSetSize": 150928
+              },
+              "pssKiB": 56517,
+              "privateKiB": 39000,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:38577/page1"
+            },
+            {
+              "pid": 612456,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 100964,
+                "peakWorkingSetSize": 100964
+              },
+              "pssKiB": 24763,
+              "privateKiB": 10700,
+              "contentType": "window",
+              "contentURL": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/places.html"
+            },
+            {
+              "pid": 612489,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 397192,
+                "peakWorkingSetSize": 463728
+              },
+              "pssKiB": 307521,
+              "privateKiB": 288816,
+              "contentType": "backgroundPage",
+              "contentURL": "chrome-extension://fffnfdjoojbpkieonkfjfjgdbhkganpc/background.html"
+            },
+            {
+              "pid": 612560,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145588,
+                "peakWorkingSetSize": 149580
+              },
+              "pssKiB": 56858,
+              "privateKiB": 39384,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:38577/page2"
+            }
+          ],
+          "contents": [
+            {
+              "id": 5,
+              "pid": 612489,
+              "type": "backgroundPage",
+              "url": "chrome-extension://fffnfdjoojbpkieonkfjfjgdbhkganpc/background.html",
+              "backgroundThrottling": true
+            },
+            {
+              "id": 3,
+              "pid": 612456,
+              "type": "window",
+              "url": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/places.html",
+              "backgroundThrottling": false
+            },
+            {
+              "id": 2,
+              "pid": 612525,
+              "type": "window",
+              "url": "http://127.0.0.1:38577/page1",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608,
+                "rafCount": 613
+              }
+            },
+            {
+              "id": 6,
+              "pid": 612560,
+              "type": "window",
+              "url": "http://127.0.0.1:38577/page2",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608,
+                "rafCount": 485
+              }
+            },
+            {
+              "id": 1,
+              "pid": 612320,
+              "type": "window",
+              "url": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/index.html",
+              "backgroundThrottling": true
+            }
+          ]
+        },
+        {
+          "label": "closed-one-background-tab",
+          "totalPssKiB": 646722,
+          "totalPrivateKiB": 489280,
+          "nativeViews": [
+            {
+              "id": 6,
+              "visible": true
+            }
+          ],
+          "metrics": [
+            {
+              "pid": 612255,
+              "type": "Browser",
+              "memory": {
+                "workingSetSize": 256892,
+                "peakWorkingSetSize": 267036
+              },
+              "pssKiB": 121459,
+              "privateKiB": 90636
+            },
+            {
+              "pid": 612305,
+              "type": "Utility",
+              "name": "Network Service",
+              "memory": {
+                "workingSetSize": 87228,
+                "peakWorkingSetSize": 89712
+              },
+              "pssKiB": 26978,
+              "privateKiB": 15928
+            },
+            {
+              "pid": 612308,
+              "type": "Utility",
+              "name": "Node Utility Process",
+              "memory": {
+                "workingSetSize": 163796,
+                "peakWorkingSetSize": 163796
+              },
+              "pssKiB": 93600,
+              "privateKiB": 80552
+            },
+            {
+              "pid": 612320,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 127140,
+                "peakWorkingSetSize": 127944
+              },
+              "pssKiB": 42008,
+              "privateKiB": 20436,
+              "contentType": "window",
+              "contentURL": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/index.html"
+            },
+            {
+              "pid": 612396,
+              "type": "GPU",
+              "memory": {
+                "workingSetSize": 119400,
+                "peakWorkingSetSize": 144380
+              },
+              "pssKiB": 41788,
+              "privateKiB": 20056
+            },
+            {
+              "pid": 612456,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 100968,
+                "peakWorkingSetSize": 100968
+              },
+              "pssKiB": 27355,
+              "privateKiB": 10704,
+              "contentType": "window",
+              "contentURL": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/places.html"
+            },
+            {
+              "pid": 612489,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 319748,
+                "peakWorkingSetSize": 463728
+              },
+              "pssKiB": 232758,
+              "privateKiB": 211164,
+              "contentType": "backgroundPage",
+              "contentURL": "chrome-extension://fffnfdjoojbpkieonkfjfjgdbhkganpc/background.html"
+            },
+            {
+              "pid": 612560,
+              "type": "Tab",
+              "memory": {
+                "workingSetSize": 145688,
+                "peakWorkingSetSize": 149580
+              },
+              "pssKiB": 60776,
+              "privateKiB": 39804,
+              "contentType": "window",
+              "contentURL": "http://127.0.0.1:38577/page2"
+            }
+          ],
+          "contents": [
+            {
+              "id": 5,
+              "pid": 612489,
+              "type": "backgroundPage",
+              "url": "chrome-extension://fffnfdjoojbpkieonkfjfjgdbhkganpc/background.html",
+              "backgroundThrottling": true
+            },
+            {
+              "id": 3,
+              "pid": 612456,
+              "type": "window",
+              "url": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/places.html",
+              "backgroundThrottling": false
+            },
+            {
+              "id": 6,
+              "pid": 612560,
+              "type": "window",
+              "url": "http://127.0.0.1:38577/page2",
+              "backgroundThrottling": true,
+              "fixture": {
+                "visibility": "visible",
+                "ready": true,
+                "payloadBytes": 8388608,
+                "rafCount": 668
+              }
+            },
+            {
+              "id": 1,
+              "pid": 612320,
+              "type": "window",
+              "url": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/index.html",
+              "backgroundThrottling": true
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
