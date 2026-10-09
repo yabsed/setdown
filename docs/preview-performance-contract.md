@@ -61,6 +61,13 @@ The percentage describes website zoom relative to the app factor. Updates in
 other tabs of the same hostname and app zoom changes retain this distinction;
 the indicator never adds native captures, navigation or layout polling.
 
+Website navigation controls styled with Electron's `app-region: drag` must
+remain clickable inside web tabs. Only the desktop shell owns native window
+dragging. The isolated page preload excludes web document elements and their
+`::before`/`::after` regions, including authored inline/important declarations.
+`browser.spec.ts` covers wide/narrow layouts, reloads and child frames; this rule
+does not inject styles into the shell or Markdown preview runtime.
+
 PDF/image wheel zoom is per file and keeps the content point under the cursor,
 subject to the scroll range at content edges. It must not change either common
 factor. PDF starts at fit width; explicit fit modes recompute on viewport/app

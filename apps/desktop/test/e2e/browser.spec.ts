@@ -28,6 +28,21 @@ async function fixture(document = true) {
       res.end(req.url.includes('blocked') ? 'window.blockedScript=true' : 'window.allowedScript=true'); return;
     }
     res.setHeader('content-type', 'text/html');
+    if (req.url === '/draggable' || req.url === '/draggable-frame') {
+      res.end(`<!doctype html><title>Website draggable regions</title>
+        <style>
+          body { margin: 0 }
+          .rail { -webkit-app-region: drag !important; height: 64px }
+          .rail::before { content: ''; position: absolute; width: 64px; height: 64px; -webkit-app-region: drag !important }
+          button { position: relative; width: 48px; height: 48px; margin: 8px }
+          @media (max-width: 800px) { .rail { -webkit-app-region: no-drag !important } }
+        </style>
+        <div class="rail"><button id="home" style="-webkit-app-region: drag !important"
+          onclick="window.homeClicks++;history.pushState({}, '', '#home')">Home</button></div>
+        ${req.url === '/draggable' ? '<iframe src="/draggable-frame"></iframe>' : ''}
+        <script>window.homeClicks = 0</script>`);
+      return;
+    }
     if (req.url === '/frame') { res.end('<!doctype html><div class="frame-ad">Frame advertisement</div><div class="removable">Control</div>'); return; }
     res.end(`<!doctype html><title>${req.url === '/second' ? 'Second page' : 'Research page'}</title>
       <style>.ad { display:block !important }</style><input id="draft"><a href="/second">Next page</a>
@@ -75,6 +90,39 @@ async function evaluatePage<T>(app: TestApplication, origin: string, script: str
     return page.executeJavaScript(script);
   }, { origin, script });
 }
+
+test('website draggable CSS cannot consume home navigation input in web tab frames', async () => {
+  const f = await fixture(false);
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/draggable`);
+    await expect(f.page.getByRole('tab', { name: /Website draggable regions/ })).toHaveAttribute('aria-selected', 'true');
+    const inspect = () => evaluatePage(f.app, f.origin, `({
+      width: innerWidth,
+      rail: getComputedStyle(document.querySelector('.rail')).getPropertyValue('-webkit-app-region'),
+      button: getComputedStyle(document.querySelector('#home')).getPropertyValue('-webkit-app-region'),
+      pseudo: getComputedStyle(document.querySelector('.rail'), '::before').getPropertyValue('-webkit-app-region'),
+      frame: getComputedStyle(document.querySelector('iframe').contentDocument.querySelector('#home')).getPropertyValue('-webkit-app-region')
+    })`);
+    await expect.poll(inspect).toEqual({ width: expect.any(Number), rail: 'no-drag', button: 'no-drag', pseudo: 'no-drag', frame: 'no-drag' });
+    expect((await inspect()).width).toBeGreaterThan(800);
+    const contents = await f.app.evaluateHandle(({ webContents }, origin) => webContents.getAllWebContents()
+      .find(wc => wc.getURL().startsWith(origin))!, f.origin);
+    await contents.evaluate(wc => {
+      wc.focus();
+      wc.sendInputEvent({ type: 'mouseDown', button: 'left', clickCount: 1, x: 32, y: 32 });
+      wc.sendInputEvent({ type: 'mouseUp', button: 'left', clickCount: 1, x: 32, y: 32 });
+    });
+    await expect.poll(() => evaluatePage(f.app, f.origin, '({clicks:homeClicks,hash:location.hash})'))
+      .toEqual({ clicks: 1, hash: '#home' });
+    await f.page.getByRole('button', { name: 'Reload page', exact: true }).click();
+    await expect.poll(() => evaluatePage(f.app, f.origin, 'homeClicks')).toBe(0);
+    await expect.poll(inspect).toEqual({ width: expect.any(Number), rail: 'no-drag', button: 'no-drag', pseudo: 'no-drag', frame: 'no-drag' });
+    await f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(650, 820));
+    await expect.poll(async () => (await inspect()).width).toBeLessThan(800);
+    expect((await inspect()).button).toBe('no-drag');
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
 
 test('web pages share document tabs, retain live state, navigate, bookmark, and split', async () => {
   test.setTimeout(90_000);

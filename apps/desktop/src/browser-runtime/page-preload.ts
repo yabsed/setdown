@@ -1,6 +1,12 @@
 import { ipcRenderer, webFrame } from 'electron';
 import { installWheelZoom } from '../preload/wheel-zoom';
 
+// Websites can share CSS with their Electron apps (e.g. ChatGPT's desktop
+// navigation). In Setdown's frameless window, app-region: drag swallows native
+// pointer input. Only the shell owns window dragging, never a web tab's frame.
+// USER !important also overrides authored inline/important draggable regions.
+webFrame.insertCSS('*, *::before, *::after { -webkit-app-region: no-drag !important; }', { cssOrigin: 'user' });
+
 // Capture trusted wheel input in every isolated frame, including fine trackpad
 // deltas that Chromium's native zoom request omits. No API reaches page scripts.
 installWheelZoom(steps => ipcRenderer.send('browser:wheel-zoom', steps), true);
