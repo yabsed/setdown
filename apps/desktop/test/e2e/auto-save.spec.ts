@@ -63,7 +63,7 @@ test('auto save never opens a save dialog for an untitled document', async () =>
     const window = await application.firstWindow();
     // The command channel only works once the renderer finished its startup.
     await expect(window.locator('.shell')).toHaveAttribute('data-surface', 'empty');
-    await window.evaluate(() => window.marktex.executeApplicationMenuItem('menu-new-document'));
+    await window.evaluate(() => globalThis.window.marktex.executeApplicationMenuItem('menu-new-document'));
     await expect(window.locator('.document-tab')).toHaveCount(1);
     await setAutoSave(window, true);
 

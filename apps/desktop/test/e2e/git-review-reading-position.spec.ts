@@ -14,11 +14,12 @@ async function visibleReview(application: Application, script = 'window.scrollY'
     const owner = BrowserWindow.getAllWindows().find((window) => window.isVisible());
     for (const view of owner?.contentView.children ?? []) {
       if (!('webContents' in view) || !view.getVisible()) continue;
-      if (!await view.webContents.executeJavaScript(
+      const contents = view.webContents as Electron.WebContents;
+      if (!await contents.executeJavaScript(
         'Boolean(document.querySelector(".setdown-rendered-diff-split"))',
       ).catch(() => false)) continue;
-      return { id: view.webContents.id, url: view.webContents.getURL(),
-        value: await view.webContents.executeJavaScript(script) };
+      return { id: contents.id, url: contents.getURL(),
+        value: await contents.executeJavaScript(script) };
     }
     return null;
   }, script);

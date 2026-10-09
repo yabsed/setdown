@@ -13,7 +13,7 @@ async function reviews(app: Application) {
     const owner = BrowserWindow.getAllWindows().find((window) => window.isVisible());
     const data = await Promise.all((owner?.contentView.children ?? []).map(async (view) => {
       if (!('webContents' in view)) return null;
-      const contents = view.webContents;
+      const contents = view.webContents as Electron.WebContents;
       if (!contents.getURL().startsWith('marktex-preview://document/')) return null;
       const result = await contents.executeJavaScript(`(() => {
         if (!document.querySelector('.setdown-rendered-diff-split')) return null;

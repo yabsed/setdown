@@ -76,7 +76,7 @@ test('Korean composition survives working-tree preview navigation without a sing
       const target = active.editContext ?? active;
       target.addEventListener('compositionstart', () => { log.starts += 1; });
       target.addEventListener('compositionend', () => { log.ends += 1; });
-      window.addEventListener('blur', () => { log.blur += 1; });
+      globalThis.window.addEventListener('blur', () => { log.blur += 1; });
       active.addEventListener('blur', () => { log.blur += 1; });
     });
     const preedit = (text: string) => cdp.send('Input.imeSetComposition', {

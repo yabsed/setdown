@@ -13,7 +13,7 @@ async function reviews(app: Application) {
     const owner = BrowserWindow.getAllWindows().find((window) => window.isVisible());
     const data = await Promise.all((owner?.contentView.children ?? []).map(async (view) => {
       if (!('webContents' in view)) return null;
-      const contents = view.webContents;
+      const contents = view.webContents as Electron.WebContents;
       if (!contents.getURL().startsWith('marktex-preview://document/')) return null;
       const result = await contents.executeJavaScript(`(() => {
         if (!document.querySelector('.setdown-rendered-diff-split')) return null;
@@ -57,12 +57,13 @@ test('review document styles preserve real math geometry across widths and zoom'
     const hidden = await app.evaluate(async ({ BrowserWindow }) => Promise.all(
       BrowserWindow.getAllWindows()[0].contentView.children.map(async view => {
         if (!('webContents' in view)) return null;
-        const geometry = await view.webContents.executeJavaScript(`(() => {
+        const contents = view.webContents as Electron.WebContents;
+        const geometry = await contents.executeJavaScript(`(() => {
           if (!document.querySelector('.setdown-rendered-diff-split')) return null;
           return { width: innerWidth, height: innerHeight };
         })()`).catch(() => null);
         return geometry ? { geometry, native: view.getBounds(), visible: view.getVisible(),
-          zoom: view.webContents.getZoomFactor() } : null;
+          zoom: contents.getZoomFactor() } : null;
       })));
     expect(hidden.filter(Boolean)).toHaveLength(2);
     for (const view of hidden) if (view) {

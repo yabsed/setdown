@@ -45,7 +45,7 @@ export function previews(application: Application, window: WindowSelector = 0) {
       // 때만" 제외한다.
       const views = (owner?.contentView.children ?? []).filter((candidate) => {
         if (!('webContents' in candidate)) return false;
-        const url = candidate.webContents.getURL();
+        const url = (candidate.webContents as Electron.WebContents).getURL();
         if (!url.startsWith('marktex-preview://document/')) return false;
         return !url.includes('/warmup-') || candidate.getVisible();
       }) as Electron.WebContentsView[];

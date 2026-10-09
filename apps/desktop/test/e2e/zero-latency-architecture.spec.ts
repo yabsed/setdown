@@ -18,11 +18,11 @@ test('keeps one live preview WebContents through Esc and window transfer', async
 
     const readInitial = () => application.evaluate(async ({ BrowserWindow }) => {
       const owner = BrowserWindow.getAllWindows().find((candidate) => candidate.isVisible());
-      const preview = owner?.contentView.children.find((candidate) =>
+      const preview = owner?.contentView.children.find((candidate): candidate is Electron.WebContentsView =>
         'webContents' in candidate
         // 미리 부팅해 둔 예비(warmup) view가 아니라 실제 문서의 view를 고른다.
-        && candidate.webContents.getURL().startsWith('marktex-preview://document/')
-        && !candidate.webContents.getURL().includes('/warmup-'));
+        && (candidate.webContents as Electron.WebContents).getURL().startsWith('marktex-preview://document/')
+        && !(candidate.webContents as Electron.WebContents).getURL().includes('/warmup-'));
       if (!owner || !preview || !('webContents' in preview)) return null;
       try {
         await preview.webContents.executeJavaScript(
@@ -50,11 +50,11 @@ test('keeps one live preview WebContents through Esc and window transfer', async
 
     const afterEsc = await application.evaluate(({ BrowserWindow }) => {
       const owner = BrowserWindow.getAllWindows().find((candidate) => candidate.isVisible());
-      const preview = owner?.contentView.children.find((candidate) =>
+      const preview = owner?.contentView.children.find((candidate): candidate is Electron.WebContentsView =>
         'webContents' in candidate
         // 미리 부팅해 둔 예비(warmup) view가 아니라 실제 문서의 view를 고른다.
-        && candidate.webContents.getURL().startsWith('marktex-preview://document/')
-        && !candidate.webContents.getURL().includes('/warmup-'));
+        && (candidate.webContents as Electron.WebContents).getURL().startsWith('marktex-preview://document/')
+        && !(candidate.webContents as Electron.WebContents).getURL().includes('/warmup-'));
       return preview && 'webContents' in preview
         ? { previewId: preview.webContents.id, url: preview.webContents.getURL() }
         : null;
@@ -94,8 +94,8 @@ test('keeps one live preview WebContents through Esc and window transfer', async
     const readTransferred = () => application.evaluate(async ({ BrowserWindow }, ids) => {
       const owner = BrowserWindow.getAllWindows().find((candidate) =>
         candidate.isVisible() && candidate.webContents.id !== ids.ownerId);
-      const preview = owner?.contentView.children.find((candidate) =>
-        'webContents' in candidate && candidate.webContents.id === ids.previewId);
+      const preview = owner?.contentView.children.find((candidate): candidate is Electron.WebContentsView =>
+        'webContents' in candidate && (candidate.webContents as Electron.WebContents).id === ids.previewId);
       if (!owner || !preview || !('webContents' in preview)) return null;
       return {
         ownerId: owner.webContents.id,

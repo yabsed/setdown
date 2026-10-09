@@ -83,8 +83,9 @@ for (const { idle, edits } of matrix) test(`sample math cold Esc cycles idle=${i
       ? await app.evaluate(async ({ BrowserWindow }) => Promise.all(
         BrowserWindow.getAllWindows()[0].contentView.children.map(async view => {
           if (!('webContents' in view)) return null;
-          return { id: view.webContents.id, bounds: view.getBounds(), visible: view.getVisible(), zoom: view.webContents.getZoomFactor(),
-            document: await view.webContents.executeJavaScript(`({ width: innerWidth, height: innerHeight,
+          const contents = view.webContents as Electron.WebContents;
+          return { id: contents.id, bounds: view.getBounds(), visible: view.getVisible(), zoom: contents.getZoomFactor(),
+            document: await contents.executeJavaScript(`({ width: innerWidth, height: innerHeight,
               dpr: devicePixelRatio,
               review: !!document.querySelector('.setdown-rendered-diff-split'),
               fonts: document.fonts.status, visibility: document.visibilityState })`).catch(() => null) };

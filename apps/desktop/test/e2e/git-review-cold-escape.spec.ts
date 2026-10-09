@@ -15,9 +15,11 @@ function inspectChanges(application: Application) {
     const owner = BrowserWindow.getAllWindows().find((candidate) => candidate.isVisible());
     if (!owner) return [];
     const rows = await Promise.all(owner.contentView.children.map(async (view) => {
-      if (!('webContents' in view) || view.webContents.isDestroyed()) return null;
-      if (!view.webContents.getURL().startsWith('marktex-preview://document/')) return null;
-      const geometry = await view.webContents.executeJavaScript(`(() => {
+      if (!('webContents' in view)) return null;
+      const contents = view.webContents as Electron.WebContents;
+      if (contents.isDestroyed()) return null;
+      if (!contents.getURL().startsWith('marktex-preview://document/')) return null;
+      const geometry = await contents.executeJavaScript(`(() => {
         const changed = Array.from(document.querySelectorAll(
           '.setdown-rendered-diff-after .setdown-diff-added'
         )).find((element) => element.textContent.includes(${JSON.stringify(marker)}));

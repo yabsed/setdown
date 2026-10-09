@@ -63,7 +63,7 @@ for (const idle of [0, 3000]) for (const edits of [false, true]) {
         await app.evaluate(async ({ BrowserWindow }) => Promise.all(BrowserWindow.getAllWindows()[0]
           .contentView.children.map(async view => 'webContents' in view ? {
             bounds: view.getBounds(), visible: view.getVisible(),
-            geometry: await view.webContents.executeJavaScript(`({ width:innerWidth, height:innerHeight,
+            geometry: await (view.webContents as Electron.WebContents).executeJavaScript(`({ width:innerWidth, height:innerHeight,
               visibility:document.visibilityState, pending:document.body.dataset.setdownPendingBlockCount })`).catch(() => null),
           } : null))));
 

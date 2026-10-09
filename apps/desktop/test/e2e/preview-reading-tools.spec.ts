@@ -177,9 +177,9 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     // animation frame을 탭 전환 뒤까지 기다리면 이전 테마가 한 frame 번쩍인다.
     await expect.poll(() => application.evaluate(async ({ BrowserWindow }) => {
       const owner = BrowserWindow.getAllWindows()[0];
-      const previews = owner.contentView.children.filter((candidate) =>
+      const previews = owner.contentView.children.filter((candidate): candidate is Electron.WebContentsView =>
         'webContents' in candidate
-        && candidate.webContents.getURL().startsWith('marktex-preview://document/'));
+        && (candidate.webContents as Electron.WebContents).getURL().startsWith('marktex-preview://document/'));
       const themes = await Promise.all(previews.map((preview) =>
         'webContents' in preview ? preview.webContents.executeJavaScript(
           "document.body.dataset.setdownPreviewTheme || ''",
@@ -294,7 +294,7 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     await expect.poll(secondPreview.hasVisible).toBe(true);
     await expect.poll(() =>
       secondPreview.evaluate<string>("document.body.dataset.setdownPreviewTheme || ''")).toBe('night');
-    await expect.poll(() => secondWindow.evaluate(() => ({
+    await expect.poll(() => secondWindow!.evaluate(() => ({
       theme: document.documentElement.dataset.theme,
       shell: getComputedStyle(document.querySelector('.shell')!).backgroundColor,
       editor: getComputedStyle(document.querySelector('.monaco-editor')!).backgroundColor,

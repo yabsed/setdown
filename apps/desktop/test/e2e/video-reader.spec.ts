@@ -53,7 +53,7 @@ test('opens video files, streams them with range requests and prevents text save
       const bounds = node.getBoundingClientRect();
       const terminal = document.querySelector('[aria-label="Integrated terminal"]')!.getBoundingClientRect();
       return {
-        shrank: bounds.height < node.videoHeight,
+        shrank: bounds.height < (node as HTMLVideoElement).videoHeight,
         clear: bounds.bottom <= terminal.top + 1,
       };
     })).toEqual({ shrank: true, clear: true });

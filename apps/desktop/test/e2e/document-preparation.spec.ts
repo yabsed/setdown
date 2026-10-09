@@ -27,9 +27,10 @@ test('hidden ordinary math document is prepared without focus changes and keeps 
       const views = BrowserWindow.getAllWindows()[0].contentView.children;
       for (const view of views) {
         if (!('webContents' in view)) continue;
-        const state = await view.webContents.executeJavaScript(`({ math:document.querySelectorAll('.katex').length,
+        const contents = view.webContents as Electron.WebContents;
+        const state = await contents.executeJavaScript(`({ math:document.querySelectorAll('.katex').length,
           pending:document.body.dataset.setdownPendingBlockCount, width:innerWidth, height:innerHeight })`).catch(() => null);
-        if (state?.math > 700 && state.pending === '0') return { ...state, id:view.webContents.id, visible:view.getVisible(), bounds:view.getBounds() };
+        if (state?.math > 700 && state.pending === '0') return { ...state, id:contents.id, visible:view.getVisible(), bounds:view.getBounds() };
       }
       return null;
     });

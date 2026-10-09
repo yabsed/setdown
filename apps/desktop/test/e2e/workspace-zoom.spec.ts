@@ -52,7 +52,7 @@ for (const extension of ['md', 'txt']) test(`text wheel zoom and app shortcuts h
       await window.locator('.monaco-editor').hover();
       await window.keyboard.down('Control'); await window.mouse.wheel(0, -120); await window.keyboard.up('Control');
     }
-    await expect.poll(() => window.evaluate(async () => (await window.marktex.getZoom()).text)).toBe(110);
+    await expect.poll(() => window.evaluate(async () => (await globalThis.window.marktex.getZoom()).text)).toBe(110);
     expect((await state(application)).factor).toBe(1);
     if (extension === 'md') {
       await expect.poll(async () => (await state(application)).rows.filter(row => row.visible).every(row => Math.abs(row.factor - 1.1) < .0001)).toBe(true);
@@ -67,15 +67,15 @@ for (const extension of ['md', 'txt']) test(`text wheel zoom and app shortcuts h
     await expect.poll(async () => (await state(application)).factor).toBe(1);
     await window.keyboard.press('Control+=');
     await window.keyboard.press('Control+0');
-    await expect.poll(() => window.evaluate(async () => (await window.marktex.getZoom()).app)).toBe(100);
-    expect(await window.evaluate(async () => (await window.marktex.getZoom()).text)).toBe(110);
+    await expect.poll(() => window.evaluate(async () => (await globalThis.window.marktex.getZoom()).app)).toBe(100);
+    expect(await window.evaluate(async () => (await globalThis.window.marktex.getZoom()).text)).toBe(110);
     await window.keyboard.press('Control+=');
     // Graceful close flushes preferences. A new process inherits both scopes.
     await disposeApplication(application);
     application = await electron.launch(options);
     const restored = await application.firstWindow();
     await focusApplication(application);
-    await expect.poll(() => restored.evaluate(() => window.marktex.getZoom())).toMatchObject({ app: 110, text: 110 });
+    await expect.poll(() => restored.evaluate(() => globalThis.window.marktex.getZoom())).toMatchObject({ app: 110, text: 110 });
     await expect.poll(async () => (await state(application)).factor).toBeCloseTo(1.1, 4);
   } finally {
     await disposeApplication(application);

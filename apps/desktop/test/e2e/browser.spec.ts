@@ -96,7 +96,7 @@ test('website draggable CSS cannot consume home navigation input in web tab fram
   try {
     await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/draggable`);
     await expect(f.page.getByRole('tab', { name: /Website draggable regions/ })).toHaveAttribute('aria-selected', 'true');
-    const inspect = () => evaluatePage(f.app, f.origin, `({
+    const inspect = () => evaluatePage<{ width: number; rail: string; button: string; pseudo: string; frame: string }>(f.app, f.origin, `({
       width: innerWidth,
       rail: getComputedStyle(document.querySelector('.rail')).getPropertyValue('-webkit-app-region'),
       button: getComputedStyle(document.querySelector('#home')).getPropertyValue('-webkit-app-region'),

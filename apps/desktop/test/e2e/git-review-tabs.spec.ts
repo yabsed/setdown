@@ -24,18 +24,19 @@ function diffPreviews(application: Application) {
     if (!owner) return [];
     const rows = await Promise.all(owner.contentView.children.map(async (candidate) => {
       if (!('webContents' in candidate)) return null;
-      const url = candidate.webContents.getURL();
+      const contents = candidate.webContents as Electron.WebContents;
+      const url = contents.getURL();
       if (!url.startsWith('marktex-preview://document/')) return null;
-      const renderedDiff = await candidate.webContents.executeJavaScript(
+      const renderedDiff = await contents.executeJavaScript(
         'Boolean(document.querySelector(".setdown-rendered-diff-split"))',
       ).catch(() => false);
       return renderedDiff ? {
-        id: candidate.webContents.id,
+        id: contents.id,
         url,
         visible: candidate.getVisible(),
-        scrollY: await candidate.webContents.executeJavaScript('window.scrollY')
+        scrollY: await contents.executeJavaScript('window.scrollY')
           .catch(() => 0),
-        text: await candidate.webContents.executeJavaScript('document.body.innerText')
+        text: await contents.executeJavaScript('document.body.innerText')
           .catch(() => ''),
       } : null;
     }));
