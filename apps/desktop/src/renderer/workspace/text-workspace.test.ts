@@ -49,8 +49,9 @@ function fixture() {
         } },
       closeEmptyWindow() {}, discardDocument: async () => {}, adoptTabTransfer: async () => true,
       completeTabTransfer() {} },
-    editor: { loaded: true, text: (tab: { text: string }) => tab.text, load: async () => {}, activate() {}, selectGroup() {}, saveView() {},
+    editor: { loaded: true, hasLiveView: () => false, text: (tab: { text: string }) => tab.text, load: async () => {}, activate() {}, selectGroup() {}, saveView() {},
       layout() {}, dispose() {}, clear() {}, reveal() {}, exportView: () => ({ cursor: 7 }), importView() {},
+      restoreView() {},
       retarget() { calls.push('retarget'); }, replace() { calls.push('replace'); },
       setText: (tab: { text: string }, text: string) => { tab.text = text; return false; }, lineCount: () => 2 },
     reader: { themeId: 'paper', create() { calls.push('create'); }, destroy() { calls.push('destroy'); },
@@ -63,6 +64,31 @@ function fixture() {
 }
 const previewOpen = (controller: TabController, document: DocumentSnapshot) =>
   controller.show(document, 'viewer', 'document', undefined, { pinned: false });
+
+test.each([true, false])('text activation restores saved positions only without a live group view (live: %s)', async live => {
+  const f = fixture();
+  await f.controller.show(snapshot('/project/first.cpp'));
+  const second = createWorkspaceTab('second', snapshot('/project/second.cpp'), 'editor', anchor);
+  second.readingPosition = { kind: 'text', surface: 'editor', anchor, editorView: { cursor: 7 } };
+  f.workspace.add(second);
+  const restore = vi.spyOn(f.options.editor, 'restoreView');
+  vi.spyOn(f.options.editor, 'hasLiveView').mockReturnValue(live);
+  await f.controller.activate(second.id);
+  assert.equal(restore.mock.calls.length, live ? 0 : 1);
+  assert.equal(second.restoringPosition, false);
+});
+
+test('focusing a live text group never reveals its older anchor when no saved editor view exists', async () => {
+  const f = fixture();
+  await f.controller.show(snapshot('/project/first.cpp'));
+  const second = createWorkspaceTab('second', snapshot('/project/second.cpp'), 'editor', anchor);
+  second.readingPosition = { kind: 'text', surface: 'editor', anchor };
+  f.workspace.add(second);
+  const reveal = vi.spyOn(f.options.editor, 'reveal');
+  vi.spyOn(f.options.editor, 'hasLiveView').mockReturnValue(true);
+  await f.controller.activate(second.id);
+  assert.equal(reveal.mock.calls.length, 0);
+});
 
 test('Explorer browsing replaces its preview and releases the outgoing model and reader', async () => {
   const f = fixture();

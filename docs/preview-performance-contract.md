@@ -285,6 +285,13 @@ is pinned until it becomes hidden. `active` on a media surface means visible;
 PDF search commands additionally require command focus. Splitting, moving and
 collapsing groups must preserve Monaco models and Undo histories.
 
+Focusing a continuously mounted text editor preserves its current viewport and
+the caret placed by the user's click. A saved reading position must not override
+that live view, including after scrolling a visible background group. Text tabs
+that are newly mounted still restore their saved view against the final shell
+geometry. The source-group focus case in `editor-groups.spec.ts` and activation
+cases in `text-workspace.test.ts` cover this distinction.
+
 `editor-groups.spec.ts`, `tab-detach.spec.ts`, `editor-groups.test.ts`,
 `preview-presentation.test.ts`, and `media-cache.test.ts` cover these guarantees.
 The detach test forces source `dragend` to reach main before an existing window's

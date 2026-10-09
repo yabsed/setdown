@@ -60,6 +60,11 @@ export class MonacoEditor {
   get editor() { return this.editorValue; }
   get model() { return this.editorValue?.getModel() ?? null; }
   get loaded() { return this.editorValue !== null; }
+  /** A mounted group already owns this tab's current caret and viewport. */
+  hasLiveView(tab: WorkspaceTab): boolean {
+    const model = this.models.get(tab.id);
+    return !!model && [...this.groupEditors.values()].some(entry => entry.editor.getModel() === model);
+  }
   text(tab: WorkspaceTab): string { return this.models.get(tab.id)?.getValue() ?? tab.text; }
   lineCount(tab: WorkspaceTab): number {
     return this.models.get(tab.id)?.getLineCount() ?? (tab.text.length === 0 ? 1 : tab.text.split(/\r\n|\r|\n/).length);

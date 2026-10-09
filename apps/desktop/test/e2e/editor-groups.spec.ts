@@ -1,4 +1,4 @@
-import { _electron as electron, expect, test, type Page } from '@playwright/test';
+import { _electron as electron, expect, test, type Page, type Locator } from '@playwright/test';
 import { mkdtemp, rm, writeFile, copyFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -221,5 +221,91 @@ test('wheel scrolls without selection; nested groups retain live native readers 
     expect(await page.locator('.document-tab[aria-selected="true"]').getAttribute('data-tab-id')).toBe(selected);
     await page.mouse.wheel(0, -2000);
     await expect.poll(() => list.evaluate(node => node.scrollLeft)).toBe(0);
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
+test('editing another visible source group preserves scroll and the newly clicked caret', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-group-focus-'));
+  const first = path.join(root, 'first.cpp'), second = path.join(root, 'second.cpp');
+  const source = (name: string) => Array.from({ length: 500 }, (_, i) => `// ${name} line ${i + 1}`).join('\n');
+  await writeFile(first, source('first')); await writeFile(second, source('second'));
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', first], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  const page = await app.firstWindow();
+  const snapshot = (editor: Locator) => editor.evaluate(node => {
+    const box = node.getBoundingClientRect();
+    const lines = [...node.querySelectorAll<HTMLElement>('.line-numbers')]
+      .map(line => ({ line: Number(line.textContent), y: line.getBoundingClientRect().y - box.y }))
+      .filter(line => line.y >= 0 && line.y < box.height).sort((a, b) => a.y - b.y);
+    return { firstLine: lines[0]?.line, offset: lines[0]?.y,
+      cursor: Number(node.querySelector('.active-line-number')?.textContent) };
+  });
+  const scrollUp = async (editor: Locator, steps: number) => {
+    await editor.locator('.monaco-editor').hover();
+    // Chromium's native wheel input is normalized by Monaco into wheel steps.
+    for (let i = 0; i < steps; i++) await page.mouse.wheel(0, -120);
+    await editor.evaluate(() => new Promise<void>(resolve => {
+      let frames = 12;
+      const settle = () => { if (--frames === 0) resolve(); else requestAnimationFrame(settle); };
+      requestAnimationFrame(settle);
+    }));
+  };
+  const clickLine = async (editor: Locator) => {
+    const target = await editor.evaluate(node => {
+      const box = node.getBoundingClientRect();
+      const line = [...node.querySelectorAll<HTMLElement>('.line-numbers')]
+        .find(line => {
+          const y = line.getBoundingClientRect().y;
+          return y > box.y + box.height * .6 && y < box.y + box.height * .7;
+        })!;
+      const rect = line.getBoundingClientRect();
+      return { line: Number(line.textContent), x: box.x + 130, y: rect.y + rect.height / 2 };
+    });
+    await page.mouse.click(target.x, target.y);
+    return target.line;
+  };
+  try {
+    await focusApplication(app);
+    await expect(page.getByRole('textbox', { name: 'Editor content' })).toBeVisible();
+    await open(page, second); await drop(page, 'second.cpp', 0, 'right');
+    await expect(page.locator('.monaco-editor:visible')).toHaveCount(2);
+    await page.locator('.focused-content .group-monaco-instance').evaluate(node => { node.dataset.testEditor = 'second'; });
+    const secondEditor = page.locator('[data-test-editor="second"]');
+    await secondEditor.getByRole('textbox', { name: 'Editor content' }).press('Control+End');
+    await page.keyboard.type(' SECOND_EDIT');
+    await expect(secondEditor.locator('.view-lines')).toContainText('SECOND_EDIT');
+    await page.getByRole('tab', { name: /first\.cpp/ }).click();
+    await page.locator('.focused-content .group-monaco-instance').evaluate(node => { node.dataset.testEditor = 'first'; });
+    const firstEditor = page.locator('[data-test-editor="first"]');
+    await firstEditor.getByRole('textbox', { name: 'Editor content' }).press('Control+End');
+    await page.keyboard.type(' FIRST_EDIT');
+    await expect(firstEditor.locator('.view-lines')).toContainText('FIRST_EDIT');
+
+    // Scrolling a still-visible background group changes its live viewport,
+    // while its saved deactivation position still points at the end of the file.
+    await scrollUp(secondEditor, 60);
+    await expect.poll(async () => (await snapshot(secondEditor)).firstLine).toBeLessThan(400);
+    const beforeFirst = await snapshot(firstEditor), beforeSecond = await snapshot(secondEditor);
+    const clickedSecond = await clickLine(secondEditor);
+    await expect(page.locator('.editor-group.focused .tab-name')).toHaveText('second.cpp');
+    await expect.poll(() => snapshot(secondEditor)).toEqual({ ...beforeSecond, cursor: clickedSecond });
+    expect(await snapshot(firstEditor)).toEqual(beforeFirst);
+    await page.keyboard.type(' CLICKED_SECOND');
+    await expect(secondEditor.locator('.view-lines')).toContainText('CLICKED_SECOND');
+
+    // Repeat in the other direction after editing; a group focus change must
+    // preserve both viewports and put input on the line the user just clicked.
+    await scrollUp(firstEditor, 40);
+    await expect.poll(async () => (await snapshot(firstEditor)).firstLine).toBeLessThan(450);
+    const firstScrolled = await snapshot(firstEditor), secondEdited = await snapshot(secondEditor);
+    const clickedFirst = await clickLine(firstEditor);
+    await expect(page.locator('.editor-group.focused .tab-name')).toHaveText('first.cpp');
+    await expect.poll(() => snapshot(firstEditor)).toEqual({ ...firstScrolled, cursor: clickedFirst });
+    expect(await snapshot(secondEditor)).toEqual(secondEdited);
+    await page.keyboard.type(' CLICKED_FIRST');
+    await expect(firstEditor.locator('.view-lines')).toContainText('CLICKED_FIRST');
+  } catch (error) {
+    await page.screenshot({ path: test.info().outputPath('group-focus.png') }).catch(() => {});
+    throw error;
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });

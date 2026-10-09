@@ -392,8 +392,13 @@ export class TabController {
       return;
     }
     const activation = ++this.activation;
+    // Focusing a continuously mounted text editor must retain its live scroll
+    // and the caret placed by this click, even if its saved position is older.
+    // Check before loading/selecting the group: a newly mounted editor still
+    // needs restoration against the final shell geometry.
+    const preserveEditorView = next.surface === 'editor' && !hasMarkdownPreview(next.document) && editor.hasLiveView(next);
     const restoreAnchor = next.readingPosition?.kind === 'text' ? { ...next.anchor } : null;
-    next.restoringPosition = !!restoreAnchor;
+    next.restoringPosition = !!restoreAnchor && !preserveEditorView;
     if (!reviewing && next.surface === 'editor') await editor.load();
     if (activation !== this.activation || workspace.find(next.id) !== next) return;
     if (!fresh) this.saveActiveState();
@@ -417,7 +422,7 @@ export class TabController {
     if (activation !== this.activation || workspace.activeId !== next.id) return;
     if (reviewing) { next.restoringPosition = false; return; }
     if (!hasMarkdownPreview(next.document)) {
-      if (next.surface === 'editor' && next.readingPosition?.kind === 'text' && next.readingPosition.editorView) {
+      if (!preserveEditorView && next.surface === 'editor' && next.readingPosition?.kind === 'text' && next.readingPosition.editorView) {
         // The empty shell hides Monaco and removes its chrome inset. Restore
         // only against the mounted group's final height, including its address
         // bar, so a clamped hidden viewport cannot shift the saved first line.
@@ -425,10 +430,11 @@ export class TabController {
         if (activation !== this.activation || workspace.activeId !== next.id) return;
         editor.restoreView(next);
       }
-      if (restoreAnchor && next.surface === 'editor' && !(next.readingPosition?.kind === 'text' && next.readingPosition.editorView)) editor.reveal(restoreAnchor);
+      if (!preserveEditorView && restoreAnchor && next.surface === 'editor'
+        && !(next.readingPosition?.kind === 'text' && next.readingPosition.editorView)) editor.reveal(restoreAnchor);
       next.restoringPosition = false;
-      // Cursor/scroll events during activation are deliberately suppressed by
-      // the position recorder. Capture the final view once that fence opens.
+      // Newly mounted editors suppress position recording during restoration.
+      // Capture the final view once that fence opens.
       if (next.surface === 'editor') this.options.capturePosition?.(next);
       return;
     }
