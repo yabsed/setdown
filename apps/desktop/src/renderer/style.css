@@ -165,7 +165,7 @@ button { font: inherit; }
   background: var(--app-chrome);
   -webkit-app-region: drag;
 }
-.tab-list { display: flex; flex: 1; min-width: 0; gap: 2px; overflow-x: auto; scrollbar-width: none; -webkit-app-region: no-drag; }
+.tab-list { display: flex; flex: 0 1 auto; min-width: 0; gap: 2px; overflow-x: auto; scrollbar-width: none; -webkit-app-region: no-drag; }
 .tab-list::-webkit-scrollbar { display: none; }
 .document-tab {
   display: flex;
@@ -221,7 +221,9 @@ button { font: inherit; }
 .new-resource-button svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; }
 .new-resource-button:hover { color: var(--app-text); background: var(--app-hover); }
 .new-resource-button:focus-visible { outline: 1px solid var(--app-accent); outline-offset: 1px; }
-.tab-actions { display: flex; align-items: center; flex: 0 0 auto; height: 28px; margin-left: 4px; -webkit-app-region: no-drag; }
+.tab-creation-actions, .tab-actions { display: flex; align-items: center; flex: 0 0 auto; height: 28px; -webkit-app-region: no-drag; }
+.tab-creation-actions { margin-left: 4px; }
+.tab-actions { margin-left: auto; }
 .editor-action, .viewer-action {
   display: grid;
   place-items: center;
