@@ -273,7 +273,9 @@ all four installers, generated release notes, and `SHA256SUMS`. Versions such as
 `0.2.0-beta.1` become GitHub prereleases. Use a new version/tag for an already
 published release; the workflow does not overwrite it.
 
-GitHub Actions must be enabled for the repository and permit the official
+Repository Actions were disabled at the user's request on 2026-10-09, so the
+Release workflow is currently unavailable. To use it, GitHub Actions must be
+enabled for the repository and permit the official
 `actions/*` actions. The release job requests `contents: write` and uses the
 automatically supplied `GITHUB_TOKEN`; no personal access token or additional
 secret is needed for unsigned releases. Code signing and in-app automatic
@@ -376,10 +378,11 @@ warm cycles separately for ordinary Markdown and Git review, with and without
 edits and preparation time. Incomplete runs, stale-content captures, and failed
 checks are not successful benchmarks.
 
-CI runs the contract suite on pull requests and pushes to `main`. The full latency
-comparison is available manually through the **Preview performance contract**
-workflow with `run_latency` enabled; local performance-path changes still require
-the comparative benchmark.
+GitHub Actions are currently disabled for this repository (2026-10-09). Local
+contract checks and performance-path benchmarks remain required. If Actions is
+re-enabled, CI runs the contract suite on pull requests and pushes to `main`, and
+the full latency comparison is available manually through the **Preview
+performance contract** workflow with `run_latency` enabled.
 
 Further documentation:
 

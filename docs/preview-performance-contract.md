@@ -183,14 +183,20 @@ with separate Chromium traces; do not enable tracing in the gate run.
 
 ## CI and merge protection
 
-`.github/workflows/preview-contract.yml` runs `preview-contract` on every PR and
-main push, with no path filter that could miss a stylesheet or dependency change.
-This automatic gate retains build/type checks, focused unit tests and real
-Electron/Chromium contract tests.
+GitHub Actions for `yabsed/setdown` was disabled at the user's request on
+2026-10-09 after recurring browser zoom test failures and an Electron inspector
+evaluation failure in recent CI runs. The repository setting disables automatic
+and manual workflows, including Release. Local contract checks and comparative
+benchmarks remain required for changes in the scope described above.
 
-`preview-latency` runs only through `workflow_dispatch` with `run_latency` enabled
-(disabled by default). The full 80-launch comparison has encountered intermittent
-Electron evaluation failures before it could produce measurements; see
+If Actions is re-enabled, `.github/workflows/preview-contract.yml` runs
+`preview-contract` on every PR and main push, with no path filter that could miss
+a stylesheet or dependency change. The workflow retains build/type checks,
+focused unit tests and real Electron/Chromium contract tests.
+
+When Actions is enabled, `preview-latency` runs only through `workflow_dispatch`
+with `run_latency` enabled (disabled by default). The full 80-launch comparison
+has encountered intermittent Electron evaluation failures before it could produce measurements; see
 [the CI investigation](ci-failure-analysis-2026-09-21.md). It is therefore a manual
 diagnostic rather than an automatic merge gate. This reduces automatic coverage:
 timing regressions must still be checked locally for changes to performance paths,
@@ -202,11 +208,13 @@ lockfile is installed independently. Both versions are measured serially on one
 VM; logs and comparisons are uploaded even on failure. Automatic events do not
 cancel a manually requested run.
 
-Repository branch protection/rulesets should require `preview-contract` on `main`;
-`preview-latency` is not an automatic merge requirement. Workflow YAML cannot
-configure repository rules. Changes to this document, the suite lists, workflow,
-fixture and tolerances deserve the same review as the optimized code. Do not
-bypass a measured regression by weakening its thresholds.
+At disablement, `main` had no branch protection and the repository had no
+rulesets. If CI is restored, branch protection/rulesets should require
+`preview-contract` on `main`; `preview-latency` is not an automatic merge
+requirement. Workflow YAML cannot configure repository rules. Changes to this
+document, the suite lists, workflow, fixture and tolerances deserve the same
+review as the optimized code. Do not bypass a measured regression by weakening
+its thresholds.
 
 Historical measurements and explanations remain in
 `sample-review-viewport-2026-09-21.md` and
