@@ -16,7 +16,17 @@
   let generation = 0, composing = false, timer: ReturnType<typeof setTimeout>;
   let error = $state('');
   let selectOnClick = false;
+  let activeTabId: string | undefined;
   const finding = $derived(!!web && browser.findId === tab?.id);
+  $effect(() => {
+    const id = tab?.id;
+    if (id === activeTabId) return;
+    activeTabId = id;
+    // The same input serves every tab; release the outgoing tab's edit/selection.
+    input?.blur();
+    if (input) input.setSelectionRange(input.value.length, input.value.length);
+    blur();
+  });
   $effect(() => { if (!editing) draft = location === 'about:blank' ? '' : location; });
   $effect(() => {
     const url = web?.url; void browser.revision;

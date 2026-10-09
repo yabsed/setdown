@@ -171,6 +171,8 @@ button { font: inherit; }
   display: flex;
   align-items: center;
   flex: 0 1 210px;
+  /* Keep the list's intrinsic width independent of loading labels and page titles. */
+  width: 210px;
   min-width: 96px;
   max-width: 230px;
   height: 30px;

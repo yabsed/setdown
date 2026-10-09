@@ -253,8 +253,11 @@ navigation stack: capture it only when leaving a web surface, then restore it
 before initial navigation when returning. Historical visits do not keep native
 views, Monaco models, or media readers alive. Page navigation, toolbar actions,
 and Alt+Left/Right share the same route, including native reader/page focus.
-New web tabs open Google and select their address; ordinary mouse/keyboard
-address focus also selects the complete value. `tab-navigation.test.ts`,
+New web tabs open Google with page focus and a collapsed address selection;
+explicit mouse/keyboard address focus selects the complete value. Web title and
+loading-label updates preserve tab widths while available space is unchanged.
+Tabs still shrink and scroll when needed, with creation buttons after the list.
+`tab-navigation.test.ts`,
 `text-workspace.test.ts`, `preview-tabs.spec.ts`, and `browser.spec.ts` cover this
 behavior in the focused gate.
 

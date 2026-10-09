@@ -58,6 +58,8 @@ async function fixture(document = true) {
   let app = await electron.launch(launchOptions);
   let page = await app.firstWindow();
   await focusApplication(app);
+  if (document) await expect(page.getByRole('tab', { name: /notes.md/ })).toBeVisible();
+  else await expect(page.getByRole('button', { name: 'Open Web Page', exact: true })).toBeVisible();
   // HTTPS is a built-in Chromium protocol: handle() does not intercept its
   // browser navigation on Electron 38. Keep this fixture off the real network.
   await app.evaluate(({ session, net }) => session.fromPartition('persist:setdown-browser').protocol.interceptBufferProtocol('https', (request, respond) => {
@@ -447,11 +449,9 @@ test('the first web page opens from a fresh empty workspace and popups preserve 
   try {
     await f.page.getByRole('button', { name: 'Open Web Page', exact: true }).click();
     const address = f.page.getByRole('textbox', { name: 'Address or file path' });
-    await expect(address).toBeFocused();
+    await expect(address).not.toBeFocused();
     await expect(address).toHaveValue('https://www.google.com/');
-    expect(await address.evaluate(input => ({ start: (input as HTMLInputElement).selectionStart,
-      end: (input as HTMLInputElement).selectionEnd, length: (input as HTMLInputElement).value.length })))
-      .toEqual({ start: 0, end: 23, length: 23 });
+    expect(await address.evaluate(input => (input as HTMLInputElement).selectionStart === (input as HTMLInputElement).selectionEnd)).toBe(true);
     await address.fill(`${f.origin}/first`);
     await address.press('Enter');
     await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible();
@@ -463,7 +463,33 @@ test('the first web page opens from a fresh empty workspace and popups preserve 
   } finally { await f.dispose(); }
 });
 
-test('new web tabs take selection and address focus, including after a stale native focus event', async () => {
+test('tab widths stay stable when adding tabs and updating web page titles', async () => {
+  const f = await fixture();
+  try {
+    const notes = f.page.getByRole('tab', { name: /notes.md/ });
+    await expect(notes).toBeVisible();
+    const originalWidth = (await notes.boundingBox())!.width;
+    await f.page.getByRole('button', { name: 'New web tab', exact: true }).click();
+    const web = f.page.locator('.document-tab[aria-selected="true"]');
+    await expect(web).toContainText('Google');
+    const widths = () => f.page.locator('.document-tab').evaluateAll(tabs => tabs.map(tab => tab.getBoundingClientRect().width));
+    const settled = await widths();
+    expect(settled[0]).toBe(originalWidth);
+    await evaluatePage(f.app, 'https://www.google.com/', 'document.title = "A much longer website title that should only change the text inside its tab"; true');
+    await expect(web).toContainText('A much longer website title');
+    expect(await widths()).toEqual(settled);
+    await evaluatePage(f.app, 'https://www.google.com/', 'document.title = "Google"; true');
+    await expect(web).toContainText('Google');
+    expect(await widths()).toEqual(settled);
+    await f.page.getByRole('button', { name: 'New document', exact: true }).click();
+    await expect(f.page.locator('.document-tab')).toHaveCount(3);
+    await expect(f.page.locator('.editor-surface')).toBeVisible();
+    expect((await widths()).slice(0, 2)).toEqual(settled);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('new web tabs take selection without selecting the address, including after a stale native focus event', async () => {
   const f = await fixture();
   try {
     await expect(f.page.getByRole('tab', { name: /notes.md/ })).toBeVisible();
@@ -474,7 +500,9 @@ test('new web tabs take selection and address focus, including after a stale nat
     await f.page.getByRole('button', { name: 'New web tab', exact: true }).click();
     const blank = f.page.getByRole('tab', { name: /Google/ });
     await expect(blank).toHaveAttribute('aria-selected', 'true');
-    await expect(f.page.getByRole('textbox', { name: 'Address or file path' })).toBeFocused();
+    const address = f.page.getByRole('textbox', { name: 'Address or file path' });
+    await expect(address).not.toBeFocused();
+    expect(await address.evaluate(input => (input as HTMLInputElement).selectionStart === (input as HTMLInputElement).selectionEnd)).toBe(true);
     const blankId = (await blank.getAttribute('data-tab-id'))!;
     // Native focus can already be in flight when a visible page is hidden.
     const received = await f.page.evaluateHandle(id => {
@@ -495,7 +523,16 @@ test('new web tabs take selection and address focus, including after a stale nat
     const selected = f.page.locator('.document-tab[aria-selected="true"]');
     await expect(selected).toContainText('Google');
     expect(await selected.getAttribute('data-tab-id')).not.toBe(blankId);
-    await expect(f.page.getByRole('textbox', { name: 'Address or file path' })).toBeFocused();
+    await expect(address).not.toBeFocused();
+    expect(await address.evaluate(input => (input as HTMLInputElement).selectionStart === (input as HTMLInputElement).selectionEnd)).toBe(true);
+    await f.page.keyboard.press('Control+l');
+    await expect(address).toBeFocused();
+    expect(await address.evaluate(input => (input as HTMLInputElement).selectionStart === 0
+      && (input as HTMLInputElement).selectionEnd === (input as HTMLInputElement).value.length)).toBe(true);
+    await f.page.keyboard.press('Control+t');
+    await expect(f.page.getByRole('tab', { name: /Google/ })).toHaveCount(3);
+    await expect(address).not.toBeFocused();
+    expect(await address.evaluate(input => (input as HTMLInputElement).selectionStart === (input as HTMLInputElement).selectionEnd)).toBe(true);
     expect(f.errors).toEqual([]);
   } finally { await f.dispose(); }
 });

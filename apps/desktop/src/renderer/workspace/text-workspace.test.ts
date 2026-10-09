@@ -523,12 +523,12 @@ test('a new native web navigation truncates future file entries, and window tran
   assert.equal(destination.workspace.activeDocument!.document.path, '/project/start.txt');
 });
 
-test('new web tabs start on Google and focus their address', async () => {
+test('new web tabs start on Google without requesting address focus', async () => {
   const f = fixture();
   const dispatch = vi.spyOn(window, 'dispatchEvent');
   await f.controller.openWeb();
   const active = f.workspace.active!;
   assert.equal(active.kind, 'web');
   if (active.kind === 'web') assert.equal(active.page.url, 'https://www.google.com/');
-  assert.equal(dispatch.mock.calls.at(-1)![0].type, 'setdown:focus-location');
+  assert.equal(dispatch.mock.calls.some(([event]) => event.type === 'setdown:focus-location'), false);
 });

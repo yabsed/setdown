@@ -136,7 +136,6 @@ export class TabController {
   openWeb = async (input = 'https://www.google.com/', background = false): Promise<void> => {
     const page = await this.options.desktop.browser.create(crypto.randomUUID(), input);
     await this.addWeb(page, background);
-    if (!background) window.dispatchEvent(new Event('setdown:focus-location'));
   };
   private visit(tab: WorkspaceTab): TabVisit | null {
     if (tab.kind === 'web') return { kind: 'web', url: tab.page.url };
