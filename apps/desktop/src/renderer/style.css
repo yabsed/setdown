@@ -1,4 +1,5 @@
 :root {
+  --app-font-family: "D2Coding", ui-monospace, monospace;
   --preview-background: #fff;
   --app-canvas: #f7f7f5;
   --app-surface: #fff;
@@ -22,7 +23,7 @@
   --app-overlay: rgba(25, 25, 23, .4);
   color: var(--app-text);
   background: var(--app-canvas);
-  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--app-font-family);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -31,6 +32,7 @@
 html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 #app { display: grid; grid-template-rows: 36px minmax(0, 1fr); background: var(--app-canvas); }
 button { font: inherit; }
+input, select, textarea { font-family: inherit; }
 
 .product-titlebar {
   display: flex;
@@ -584,7 +586,7 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 .search-file-results { padding-bottom: 3px; }
 .search-result { align-items: baseline; min-height: 24px; padding: 4px 10px 4px 23px; gap: 7px; }
 .result-position { flex: 0 0 28px; overflow: hidden; color: var(--app-subtle-text); font-size: 9px; text-align: right; }
-.result-preview { min-width: 0; overflow: hidden; color: var(--app-muted-text); font-family: ui-monospace, monospace; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.result-preview { min-width: 0; overflow: hidden; color: var(--app-muted-text); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .result-preview mark {
   padding: 0;
   color: inherit;
@@ -786,8 +788,8 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
   text-align: center;
 }
 .empty-mark { width: 68px; height: 68px; margin-bottom: 15px; filter: drop-shadow(0 8px 18px var(--app-shadow)); }
-.wordmark { margin-bottom: 24px; color: var(--app-text); font-family: Georgia, "Noto Serif KR", serif; font-size: 18px; font-weight: 600; letter-spacing: .01em; }
-.empty-state h1 { margin: 0 0 10px; font-family: Georgia, "Noto Serif KR", serif; font-size: clamp(25px, 4vw, 36px); font-weight: 500; letter-spacing: -.02em; }
+.wordmark { margin-bottom: 24px; color: var(--app-text); font-size: 18px; font-weight: 600; letter-spacing: .01em; }
+.empty-state h1 { margin: 0 0 10px; font-size: clamp(25px, 4vw, 36px); font-weight: 500; letter-spacing: -.02em; }
 .empty-state p { max-width: 440px; margin: 0 0 28px; color: var(--app-muted-text); line-height: 1.65; }
 .primary-button { padding: 10px 17px; color: var(--app-surface); border: 0; border-radius: 8px; background: var(--app-text); cursor: pointer; }
 .primary-button:hover { filter: brightness(.86); }
@@ -976,7 +978,7 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 .render-error { flex-direction: column; padding: 30px; text-align: center; }
 .render-error[data-variant="refresh"] { align-items: flex-start; text-align: left; }
 .render-error[data-variant="refresh"] strong { font-size: 12px; }
-.render-error span { max-width: 600px; color: var(--app-danger-text); font-family: monospace; font-size: 12px; }
+.render-error span { max-width: 600px; color: var(--app-danger-text); font-size: 12px; }
 .render-error button { padding: 7px 11px; color: var(--app-text); border: 1px solid var(--app-border); border-radius: 6px; background: var(--app-raised-surface); cursor: pointer; }
 
 .insertion-popover {
@@ -1203,6 +1205,6 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 .shell[data-surface="web"] .editor-surface { display: none; }
 .group-body[data-browser-frozen="true"] { background-size: 100% 100%; background-repeat: no-repeat; }
 .browser-empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; color: var(--app-text); text-align: center; }
-.browser-empty h2 { font: 500 20px/1.4 sans-serif; }
-.browser-empty p { max-width: 460px; font: 13px/1.8 sans-serif; opacity: .6; }
+.browser-empty h2 { font: 500 20px/1.4 var(--app-font-family); }
+.browser-empty p { max-width: 460px; font: 13px/1.8 var(--app-font-family); opacity: .6; }
 .browser-empty button { padding: 8px 14px; border: 1px solid var(--app-border); border-radius: 6px; color: inherit; background: var(--app-chrome); }

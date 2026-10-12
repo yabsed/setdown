@@ -82,7 +82,7 @@
     background: var(--app-text);
     color: var(--app-chrome);
     box-shadow: 0 0 0 2px var(--app-chrome);
-    font: 600 10px/1 sans-serif;
+    font: 600 10px/1 var(--app-font-family);
     font-variant-numeric: tabular-nums;
     pointer-events: none;
   }

@@ -1,4 +1,5 @@
 import { splitPreviewBlocks, type PreviewBlock } from './preview-blocks';
+import { APP_FONT_FAMILY } from '../theme/typography';
 import { alignPreviewBlocks } from './rendered-diff-alignment';
 import { ExactPairCache } from './exact-pair-cache';
 import { serializeReviewRows, type ReviewRows } from './review-rows';
@@ -214,7 +215,7 @@ export const RENDERED_DIFF_STYLES = `<style id="setdown-rendered-diff-styles">
     position: absolute;
     left: .25rem;
     top: .6rem;
-    font: 600 12px/1.6 ui-monospace, monospace;
+    font: 600 12px/1.6 ${APP_FONT_FAMILY};
     pointer-events: none;
   }
   .setdown-diff-cell[data-change="added"]::before { content: "+"; color: var(--diff-add-edge); }

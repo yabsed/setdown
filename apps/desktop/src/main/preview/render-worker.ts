@@ -17,6 +17,7 @@ import { promises as fs, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { Notebook, getDefaultNotebookConfig, utility } from 'crossnote';
 import type { FileSystemApi, WebviewConfig } from 'crossnote';
+import { APP_FONT_FAMILY } from '../../core/theme/typography';
 import {
   normalizePreviewTheme,
   previewThemeBackground,
@@ -335,6 +336,14 @@ function previewStyles(themeId: PreviewThemeId, screenTypography: boolean): stri
          한다. 새 문서를 열 때 보이던 흰 섬광의 원인이다. bridge가 theme을
          바꿀 때 이 값을 함께 갱신한다. */
       html, body { background: ${previewThemeBackground(themeId)}; }
+      /* Apply the app font across themes while retaining diagram/math fonts. */
+      html, body,
+      .markdown-preview,
+      .markdown-preview :is(h1, h2, h3, h4, h5, h6, p, blockquote, ul, ol, li,
+        dl, dt, dd, table, th, td, pre, code, kbd, samp, tt, summary,
+        button, input, select, textarea) {
+        font-family: ${APP_FONT_FAMILY} !important;
+      }
       ${screenTypographyStyles}
       html[data-setdown-folder-drop] body::after {
         content: 'Open Folder';
@@ -347,7 +356,7 @@ function previewStyles(themeId: PreviewThemeId, screenTypography: boolean): stri
         border: 2px dashed rgba(72, 139, 218, .9);
         border-radius: 8px;
         background: rgba(72, 139, 218, .16);
-        font: 600 15px Inter, ui-sans-serif, sans-serif;
+        font: 600 15px ${APP_FONT_FAMILY};
         pointer-events: none;
       }
       [data-source-line] { cursor: text; }

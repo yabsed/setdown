@@ -1,4 +1,5 @@
 import { onTextZoom, textZoomOptions } from '../editor/text-zoom';
+import { APP_FONT_FAMILY } from '../../core/theme/typography';
 import type * as Monaco from 'monaco-editor';
 import type { DocumentSnapshot } from '../../core/document/document';
 import { documentLanguage } from '../../core/document/document-profile';
@@ -103,7 +104,7 @@ export class MonacoEditor {
         automaticLayout: true, language: 'markdown', theme: monacoThemeName(this.options.theme()),
         wordWrap: 'on', wrappingIndent: 'same', lineNumbers: 'on', minimap: { enabled: false },
         scrollBeyondLastLine: false, smoothScrolling: true, cursorSmoothCaretAnimation: 'on',
-        fontFamily: "'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
+        fontFamily: APP_FONT_FAMILY,
         ...textZoomOptions(), padding: { top: 26, bottom: 60 },
         renderWhitespace: 'selection', bracketPairColorization: { enabled: true }, stickyScroll: { enabled: false },
       });

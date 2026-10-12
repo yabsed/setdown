@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { APP_FONT_FAMILY } from '../../../core/theme/typography';
   import { onTextZoom, textZoomOptions } from "../../editor/text-zoom";
   import { onDestroy, untrack } from 'svelte';
   import type * as Monaco from 'monaco-editor';
@@ -127,7 +128,7 @@
       minimap: { enabled: false },
       scrollBeyondLastLine: false,
       renderOverviewRuler: false,
-      fontFamily: "'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
+      fontFamily: APP_FONT_FAMILY,
       ...textZoomOptions(),
       padding: { top: 16, bottom: 48 },
     });

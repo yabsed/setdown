@@ -58,6 +58,8 @@ test('hidden ordinary math document is prepared without focus changes and keeps 
           const uiUrl = source.href.replace('/styles/preview.css', '/webview/preview.css');
           if (document.querySelector('link[href="' + uiUrl + '"]')) throw Error('UI CSS remains installed');
           const nodes = [...document.querySelector('.markdown-preview').querySelectorAll('h1,h2,h3,p,li,pre,table,.katex,.katex-mathml')];
+          const textFonts = [...document.querySelector('.markdown-preview').querySelectorAll('h1,h2,h3,p,li,pre,code,table')]
+            .map(node => getComputedStyle(node).fontFamily);
           const snapshot = () => nodes.map(node => {
             const r = node.getBoundingClientRect(), s = getComputedStyle(node);
             return { rect:[r.x+scrollX,r.y+scrollY,r.width,r.height].map(n=>Math.round(n*100)/100),
@@ -69,7 +71,7 @@ test('hidden ordinary math document is prepared without focus changes and keeps 
           await new Promise((resolve,reject)=>{link.onload=resolve;link.onerror=reject;source.before(link);});
           await document.fonts.ready;
           const original=snapshot();link.remove();await document.fonts.ready;
-          return {count:nodes.length, differences:original.flatMap((old,i)=>JSON.stringify(old)===JSON.stringify(optimized[i])?[]:[{old,optimized:optimized[i]}]).slice(0,10)};
+          return {count:nodes.length, textFonts, differences:original.flatMap((old,i)=>JSON.stringify(old)===JSON.stringify(optimized[i])?[]:[{old,optimized:optimized[i]}]).slice(0,10)};
         })()`);
         const pinned = await contents.executeJavaScript('window.__documentGeometry()');
         contents.disableDeviceEmulation();
@@ -78,6 +80,8 @@ test('hidden ordinary math document is prepared without focus changes and keeps 
         return { ...compared, pinned, natural };
       }, { id: hidden.id, zoom });
       expect(result.count).toBeGreaterThan(1500);
+      expect(result.textFonts.length).toBeGreaterThan(0);
+      for (const font of result.textFonts) expect(font.split(',')[0].replaceAll('"', '').trim()).toBe('D2Coding');
       expect(result.differences).toEqual([]);
       expect(result.pinned).toEqual(result.natural);
     }

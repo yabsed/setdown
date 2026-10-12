@@ -121,18 +121,18 @@
   .location-bar { position: relative; z-index: 15; display: flex; align-items: center; gap: 3px; height: 34px; padding: 3px 9px; box-sizing: border-box; background: var(--app-chrome); border-bottom: 1px solid var(--app-border); color: var(--app-text); }
   button { border: 0; border-radius: 5px; background: transparent; color: inherit; min-width: 26px; height: 26px; cursor: pointer; font-size: 16px; }
   button:hover { background: var(--app-hover); } button:disabled { opacity: .35; cursor: default; }
-  input { width: 0; flex: 1; height: 25px; padding: 0 9px; border: 1px solid transparent; border-radius: 5px; background: var(--app-canvas); color: inherit; font: 12px/1.4 sans-serif; outline: none; text-overflow: ellipsis; }
+  input { width: 0; flex: 1; height: 25px; padding: 0 9px; border: 1px solid transparent; border-radius: 5px; background: var(--app-canvas); color: inherit; font: 12px/1.4 var(--app-font-family); outline: none; text-overflow: ellipsis; }
   input:focus { border-color: var(--app-muted-text); } .location-kind { width: 20px; text-align: center; opacity: .5; }
-  .protection { font: 600 10px/1 sans-serif; letter-spacing: -.3px; } .failed, .location-error { color: #b94f4f; }
-  .bookmarked { color: var(--app-text); } .find-count { font: 11px sans-serif; }
+  .protection { font: 600 10px/1 var(--app-font-family); letter-spacing: -.3px; } .failed, .location-error { color: #b94f4f; }
+  .bookmarked { color: var(--app-text); } .find-count { font: 11px var(--app-font-family); }
   .loading { box-shadow: inset 0 -2px var(--app-muted-text); }
   .page-zoom { display: flex; align-items: center; flex-shrink: 0; border-left: 1px solid var(--app-border); padding-left: 3px; }
   .page-zoom button { min-width: 22px; }
-  .page-zoom .zoom-percent { min-width: 41px; padding: 0 3px; font: 11px/1 sans-serif; font-variant-numeric: tabular-nums; }
+  .page-zoom .zoom-percent { min-width: 41px; padding: 0 3px; font: 11px/1 var(--app-font-family); font-variant-numeric: tabular-nums; }
   .location-suggestions { position: absolute; top: 33px; left: 9px; right: 9px; padding: 5px; border: 1px solid var(--app-border); border-radius: 0 0 8px 8px; background: var(--app-chrome); box-shadow: 0 8px 24px #0002; }
   .location-suggestions button { display: flex; align-items: center; gap: 10px; text-align: left; width: 100%; height: auto; padding: 8px; }
   .location-suggestions .selected { background: var(--app-hover); }
   .suggestion-text { display: flex; flex-direction: column; min-width: 0; gap: 4px; }
-  strong, small { font: 12px sans-serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } small { opacity: .55; font-size: 11px; }
+  strong, small { font: 12px var(--app-font-family); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } small { opacity: .55; font-size: 11px; }
   .location-error { position: absolute; top: 34px; left: 10px; right: 10px; background: var(--app-chrome); padding: 8px; font-size: 12px; }
 </style>

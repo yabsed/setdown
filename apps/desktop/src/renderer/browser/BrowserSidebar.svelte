@@ -64,7 +64,7 @@
 </div>
 
 <style>
-  .browser-sidebar { display: flex; flex-direction: column; height: 100%; min-height: 0; color: var(--app-text); font: 12px sans-serif; }
+  .browser-sidebar { display: flex; flex-direction: column; height: 100%; min-height: 0; color: var(--app-text); font: 12px var(--app-font-family); }
   header { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; font-weight: 600; }
   button { border: 0; border-radius: 5px; background: none; color: inherit; cursor: pointer; } button:hover { background: var(--app-hover); }
   header button { font-size: 20px; width: 27px; height: 27px; }
@@ -77,6 +77,6 @@
   .delete-history { width: 22px; height: 28px; font-size: 17px; opacity: .6; }
   .places { overflow: auto; min-height: 0; padding: 0 6px 12px; } .place { display: flex; align-items: center; gap: 3px; }
   .open-place { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 5px; text-align: left; padding: 9px 7px; }
-  .place-title, small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .place-title { font: 12px sans-serif; } small { font: 10px sans-serif; opacity: .5; }
+  .place-title, small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .place-title { font: 12px var(--app-font-family); } small { font: 10px var(--app-font-family); opacity: .5; }
   .bookmark { width: 25px; height: 28px; opacity: .6; } .empty, p { margin: 10px 14px; line-height: 1.7; opacity: .65; }
 </style>

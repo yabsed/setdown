@@ -43,6 +43,14 @@ Changing zoom must not navigate, replace models, discard undo history or focus
 hidden previews. `workspace-zoom.test.ts` and `workspace-zoom.spec.ts` cover scope,
 reset, inheritance and persistence. The View menu uses the same coordinator.
 
+App typography uses the locally installed D2Coding family with a monospace
+fallback across shell controls, ordinary/Git editors, terminals, and Markdown
+body, heading, and code styles in every theme. Math and diagram renderers retain
+their specialized fonts. Preview font overrides are present during hidden
+preparation and remain applied when themes change. `document-preparation.spec.ts`
+and `review-document-styles.spec.ts` check the computed text font alongside the
+existing real math geometry comparisons.
+
 Browser Ctrl+wheel changes website zoom from 50% to 300% in 10-point steps.
 The isolated page preload reuses the bounded wheel accumulator in each frame;
 Electron's native `zoom-changed` event handles unconsumed requests. Ordinary

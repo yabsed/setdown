@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { APP_FONT_FAMILY } from '../../core/theme/typography';
   import { onMount, tick } from 'svelte';
   import { Terminal } from '@xterm/xterm';
   import { FitAddon } from '@xterm/addon-fit';
@@ -44,7 +45,7 @@
     node.style.cssText = 'position:absolute;inset:0';
     container.append(node);
     const term = new Terminal({ cursorBlink: true, fontSize: 13, scrollback: 5000,
-      fontFamily: '"DejaVu Sans Mono", "Cascadia Mono", Menlo, monospace', theme: theme(),
+      fontFamily: APP_FONT_FAMILY, theme: theme(),
       allowProposedApi: false, screenReaderMode: true });
     const fit = new FitAddon();
     term.loadAddon(fit);

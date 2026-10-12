@@ -88,6 +88,8 @@ test('review document styles preserve real math geometry across widths and zoom'
           const root = [...document.querySelectorAll('.setdown-rendered-diff-split, .setdown-rendered-diff-unified')]
             .find(el => el.getBoundingClientRect().width > 0);
           const nodes = [...root.querySelectorAll('h1,h2,h3,h4,p,li,pre,table,.katex,.katex-mathml')];
+          const textFonts = [...root.querySelectorAll('h1,h2,h3,h4,p,li,pre,code,table')]
+            .map(node => getComputedStyle(node).fontFamily);
           const snapshot = () => nodes.map(node => {
             const r = node.getBoundingClientRect(), s = getComputedStyle(node);
             return { tag: node.tagName, cls: node.className,
@@ -105,7 +107,7 @@ test('review document styles preserve real math geometry across widths and zoom'
           await document.fonts.ready;
           const original = snapshot();
           link.remove(); await document.fonts.ready;
-          return { width: innerWidth, representation: root.className, nodes: nodes.length,
+          return { width: innerWidth, representation: root.className, nodes: nodes.length, textFonts,
             math: root.querySelectorAll('.katex').length,
             differences: original.flatMap((old, i) => JSON.stringify(old) === JSON.stringify(optimized[i]) ? [] : [{old, optimized: optimized[i]}]).slice(0,10) };
         })()`);
@@ -119,6 +121,8 @@ test('review document styles preserve real math geometry across widths and zoom'
       }, { id: visible.id, zoom });
       expect(result.prepared).toEqual(result.natural);
       expect(result.math).toBeGreaterThan(700);
+      expect(result.textFonts.length).toBeGreaterThan(0);
+      for (const font of result.textFonts) expect(font.split(',')[0].replaceAll('"', '').trim()).toBe('D2Coding');
       expect(result.differences, JSON.stringify({ width, zoom, ...result })).toEqual([]);
     }
   } finally {
