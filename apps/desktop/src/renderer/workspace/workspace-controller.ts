@@ -86,6 +86,11 @@ export function startWorkspace(desktop: DesktopPort) {
       catch (error) { browser.error = String(error); }
     },
     browserFind: (id, query, forward, next) => desktop.browser.find(id, query, forward, next),
+    browserExtensions: () => desktop.browser.extensions(),
+    browserInstallExtension: (kind) => desktop.browser.installExtension(kind),
+    browserSetExtensionEnabled: (id, enabled) => desktop.browser.setExtensionEnabled(id, enabled),
+    browserRemoveExtension: (id) => desktop.browser.removeExtension(id),
+    browserOpenExtension: (id, page) => desktop.browser.openExtension(id, page, workspace.activeId ?? undefined),
     focusGroup: (id) => {
       projectOpenRequest++;
       const group = workspace.groups.groups.find(group => group.id === id);

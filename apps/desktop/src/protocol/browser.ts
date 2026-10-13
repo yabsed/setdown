@@ -11,6 +11,13 @@ export type BrowserDownload = {
   paused: boolean; resumable: boolean; startedAt: number;
 };
 export type DownloadCommand = 'pause' | 'resume' | 'cancel' | 'open' | 'show' | 'remove';
+export type BrowserExtensionInfo = {
+  id: string; name: string; version: string; description: string; manifestVersion: number;
+  enabled: boolean; builtin: boolean; hasPopup: boolean; hasOptions: boolean;
+  permissions: string[]; hostPermissions: string[]; error: string | null;
+};
+export type ExtensionInstallKind = 'folder' | 'archive';
+export type ExtensionPage = 'popup' | 'options';
 export type BrowserCommand = 'back' | 'forward' | 'reload' | 'stop' | 'focus' | 'mute' | 'external' | 'save' | 'protection'
   | 'zoom-in' | 'zoom-out' | 'zoom-reset';
 export type BrowserEvent =
@@ -21,6 +28,7 @@ export type BrowserEvent =
   | { type: 'navigation'; id: string }
   | { type: 'history'; id: string; direction: -1 | 1 }
   | { type: 'places' }
+  | { type: 'extensions' }
   | { type: 'download'; download: BrowserDownload }
   | { type: 'download-removed'; id: string }
   | { type: 'find'; id: string; active: number; matches: number };
@@ -39,5 +47,10 @@ export type BrowserApi = {
   downloads(): Promise<BrowserDownload[]>;
   downloadCommand(id: string, command: DownloadCommand): Promise<void>;
   restore(): Promise<BrowserPage[]>;
+  extensions(): Promise<BrowserExtensionInfo[]>;
+  installExtension(kind: ExtensionInstallKind): Promise<BrowserExtensionInfo[]>;
+  setExtensionEnabled(id: string, enabled: boolean): Promise<BrowserExtensionInfo[]>;
+  removeExtension(id: string): Promise<BrowserExtensionInfo[]>;
+  openExtension(id: string, page: ExtensionPage, tabId?: string): Promise<void>;
   onEvent(listener: (event: BrowserEvent) => void): () => void;
 };

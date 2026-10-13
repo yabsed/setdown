@@ -17,7 +17,7 @@ import { normalizePreviewTheme } from '../core/preview/preview-preferences';
 import { resourceUrl } from '../core/preview/media-url';
 
 installAppZoom((steps) => ipcRenderer.send('workspace:zoom', steps));
-installWheelZoom((steps) => ipcRenderer.send('workspace:text-zoom', steps));
+installWheelZoom((steps, scope) => ipcRenderer.send(scope === 'terminal' ? 'workspace:terminal-zoom' : 'workspace:text-zoom', steps));
 
 function subscribe<T>(channel: string, listener: (value: T) => void) {
   const handler = (_event: Electron.IpcRendererEvent, value: T) => listener(value);
@@ -50,6 +50,11 @@ const api: MarkTexApi = {
     downloads: () => ipcRenderer.invoke('browser:downloads'),
     downloadCommand: (id, command) => ipcRenderer.invoke('browser:download-command', id, command),
     restore: () => ipcRenderer.invoke('browser:restore'),
+    extensions: () => ipcRenderer.invoke('browser:extensions'),
+    installExtension: (kind) => ipcRenderer.invoke('browser:extension-install', kind),
+    setExtensionEnabled: (id, enabled) => ipcRenderer.invoke('browser:extension-set-enabled', id, enabled),
+    removeExtension: (id) => ipcRenderer.invoke('browser:extension-remove', id),
+    openExtension: (id, page, tabId) => ipcRenderer.invoke('browser:extension-open', id, page, tabId),
     onEvent: (listener) => subscribe('browser:event', listener),
   },
   getZoom: () => ipcRenderer.invoke('workspace:zoom-state'),

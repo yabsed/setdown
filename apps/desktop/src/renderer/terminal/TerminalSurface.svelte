@@ -4,7 +4,7 @@
   import { FitAddon } from '@xterm/addon-fit';
   import '@xterm/xterm/css/xterm.css';
   import { APP_FONT_FAMILY } from '../../core/theme/typography';
-  import { onTextZoom, textZoomFactor } from '../editor/text-zoom';
+  import { onTerminalZoom, terminalZoomFactor } from '../editor/text-zoom';
   import type { TerminalApi, TerminalEvent, TerminalSize } from '../../protocol/terminal';
   let { api, id, active, focused, changed }: { api: TerminalApi; id: string; active: boolean; focused: boolean;
     changed(info: { title?: string; cwd?: string; exited?: boolean }): void } = $props();
@@ -21,7 +21,7 @@
       foreground: style.getPropertyValue('--app-text').trim(), cursor: style.getPropertyValue('--app-text').trim(),
       selectionBackground: `${style.getPropertyValue('--app-accent').trim()}55` };
   }
-  const terminalFont = () => Math.max(8, Math.round(13 * textZoomFactor()));
+  const terminalFont = () => Math.max(8, Math.round(13 * terminalZoomFactor()));
   function resize(immediate = false) {
     if (!term || starting || !active || !container.clientWidth || !container.clientHeight) return;
     const size = fit.proposeDimensions();
@@ -80,9 +80,10 @@
       return true;
     });
     const unsubscribe = api.onEvent(receive);
-    // Text zoom (Ctrl+wheel over the terminal or editor, Ctrl+=/-/0) rescales
-    // the cell grid; the existing resize path reflows the PTY in the right order.
-    const unsubscribeZoom = onTextZoom(() => {
+    // Terminal zoom (Ctrl+wheel over the terminal only) rescales the cell
+    // grid; the existing resize path reflows the PTY in the right order.
+    // Editor/preview text zoom and app zoom never reach this listener.
+    const unsubscribeZoom = onTerminalZoom(() => {
       if (!term) return;
       term.options.fontSize = terminalFont();
       if (alive && active && !starting) requestAnimationFrame(() => { if (alive && term && active) resize(true); });

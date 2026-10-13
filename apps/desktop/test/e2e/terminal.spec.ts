@@ -40,7 +40,7 @@ test('horizontal resizing preserves a two-line right prompt, input and prior out
     await expect.poll(() => readFile(path.join(root, 'tty-size.txt'), 'utf8').catch(() => '')).toBe(await readFile(path.join(root, 'grid.txt'), 'utf8'));
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
-test('ctrl+wheel over the terminal changes text zoom and refits the grid in both directions', async () => {
+test('ctrl+wheel over the terminal changes terminal zoom only and refits the grid in both directions', async () => {
   test.skip(process.platform === 'win32', 'Commands use a POSIX shell.');
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-terminal-zoom-'));
   const file = path.join(root, 'zoom.md'); await writeFile(file, '# Zoom\n');
@@ -60,6 +60,12 @@ test('ctrl+wheel over the terminal changes text zoom and refits the grid in both
     await page.mouse.wheel(0, -240);
     await page.keyboard.up('Control');
     await expect.poll(fontOf).not.toBe(font0);
+    // Terminal wheel zoom moves only the terminal factor; editor/preview text
+    // size and app zoom stay at 100%.
+    await expect.poll(() => page.evaluate(async () => {
+      const zoom = await window.marktex.getZoom();
+      return zoom.app === 100 && zoom.text === 100 && zoom.terminal > 100;
+    })).toBe(true);
     let zoomed = '';
     await expect.poll(async () => {
       await run(input(page), 'stty size | cat > size-1.txt');
@@ -74,6 +80,17 @@ test('ctrl+wheel over the terminal changes text zoom and refits the grid in both
     await page.mouse.wheel(0, 240);
     await page.keyboard.up('Control');
     await expect.poll(fontOf).toBe(font0);
+    await expect.poll(() => page.evaluate(() => window.marktex.getZoom()))
+      .toMatchObject({ app: 100, text: 100, terminal: 100 });
+    // The dedicated menu reset also leaves the other factors alone.
+    await page.keyboard.down('Control');
+    await page.mouse.wheel(0, -240);
+    await page.keyboard.up('Control');
+    await expect.poll(fontOf).not.toBe(font0);
+    await page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-reset-terminal-zoom'));
+    await expect.poll(fontOf).toBe(font0);
+    await expect.poll(() => page.evaluate(() => window.marktex.getZoom()))
+      .toMatchObject({ app: 100, text: 100, terminal: 100 });
     let reset = '';
     await expect.poll(async () => {
       await run(input(page), 'stty size | cat > size-2.txt');

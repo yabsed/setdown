@@ -18,10 +18,12 @@ if (location.protocol === 'chrome-extension:') {
         if (chrome.runtime.lastError) console.error('Could not remove the obsolete managed storage cache', chrome.runtime.lastError.message);
       });
     }
+    // Cosmetic CSS is best-effort: the callback must fire (and no unhandled
+    // rejection may surface) even when a frame cannot accept the styles.
     root.chrome.tabs.insertCSS = (tabId: number, details: Parameters<typeof css>[1], callback?: () => void) =>
-      root.setdownExtensionCSS(tabId, details, false).then(() => callback?.());
+      root.setdownExtensionCSS(tabId, details, false).then(() => callback?.(), () => callback?.());
     root.chrome.tabs.removeCSS = (tabId: number, details: Parameters<typeof css>[1], callback?: () => void) =>
-      root.setdownExtensionCSS(tabId, details, true).then(() => callback?.());
+      root.setdownExtensionCSS(tabId, details, true).then(() => callback?.(), () => callback?.());
   }
   if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('setdownExtensionCSS', css);

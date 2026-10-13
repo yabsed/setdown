@@ -56,6 +56,11 @@ export type AppActions = {
   browserDeleteHistory(url?: string): Promise<void>;
   browserDownloadCommand(id: string, command: import('../protocol/browser').DownloadCommand): Promise<void>;
   browserFind(id: string, query: string, forward?: boolean, next?: boolean): void;
+  browserExtensions(): Promise<import('../protocol/browser').BrowserExtensionInfo[]>;
+  browserInstallExtension(kind: import('../protocol/browser').ExtensionInstallKind): Promise<import('../protocol/browser').BrowserExtensionInfo[]>;
+  browserSetExtensionEnabled(id: string, enabled: boolean): Promise<import('../protocol/browser').BrowserExtensionInfo[]>;
+  browserRemoveExtension(id: string): Promise<import('../protocol/browser').BrowserExtensionInfo[]>;
+  browserOpenExtension(id: string, page: import('../protocol/browser').ExtensionPage): Promise<void>;
   focusGroup(id: string): void;
   resizeGroup(id: string, ratio: number): void;
   loadMenu(id: string): Promise<ApplicationMenuEntry[]>;

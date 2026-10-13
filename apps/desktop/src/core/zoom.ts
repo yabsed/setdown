@@ -6,4 +6,4 @@ export function appZoomStep(input: { type: string; isComposing?: boolean; contro
   if (input.key === '-' || input.key === '_') return -1;
   if (input.key === '0' && !input.shift) return 0;
 }
-export type ZoomSnapshot = { app: number; text: number; revision: number };
+export type ZoomSnapshot = { app: number; text: number; terminal: number; revision: number };

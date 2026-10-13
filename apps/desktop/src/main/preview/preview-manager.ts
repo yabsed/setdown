@@ -514,8 +514,8 @@ export class PreviewManager {
       if (!this.options.stateFor(event.sender.id) || event.senderFrame !== event.sender.mainFrame) return;
       return this.zoom.snapshot;
     });
-    for (const scope of ['app', 'text'] as const) {
-      ipcMain.on(scope === 'app' ? 'workspace:zoom' : 'workspace:text-zoom', (event, steps: unknown) => {
+    for (const scope of ['app', 'text', 'terminal'] as const) {
+      ipcMain.on(scope === 'app' ? 'workspace:zoom' : scope === 'text' ? 'workspace:text-zoom' : 'workspace:terminal-zoom', (event, steps: unknown) => {
         if (event.sender.isDestroyed() || event.senderFrame !== event.sender.mainFrame) return;
         const direct = this.options.stateFor(event.sender.id);
         const visible = direct ? null : Array.from(this.views.values()).find((preview) =>

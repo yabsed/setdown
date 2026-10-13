@@ -3,13 +3,14 @@
   import type { BrowserPlace } from '../../protocol/browser';
   import { browser } from './browser-state.svelte';
   import BrowserDownloads from './BrowserDownloads.svelte';
+  import BrowserExtensions from './BrowserExtensions.svelte';
   let { actions }: { actions: AppActions } = $props();
-  let query = $state(''), section = $state<'bookmarks' | 'history' | 'downloads'>('bookmarks');
+  let query = $state(''), section = $state<'bookmarks' | 'history' | 'downloads' | 'extensions'>('bookmarks');
   let rows = $state<BrowserPlace[]>([]), error = $state(''), loading = $state(false), confirming = $state(false), deleting = $state(false);
   const activeDownloads = $derived(browser.downloads.filter(item => item.state === 'progressing').length);
   $effect(() => {
     const text = query, scope = section; void browser.revision;
-    if (scope === 'downloads') return;
+    if (scope === 'downloads' || scope === 'extensions') return;
     let current = true; loading = true;
     const timer = setTimeout(() => void actions.browserPlaces(text, scope).then(result => {
       if (current) { rows = result; error = ''; }
@@ -27,16 +28,19 @@
 
 <div class="browser-sidebar">
   <header><span>Browser</span><button aria-label="New web tab" title="New web tab (Ctrl/Cmd+T)" onclick={() => actions.newWebTab()}>+</button></header>
-  <input aria-label={section === 'downloads' ? 'Search downloads' : 'Search bookmarks and history'} placeholder={`Search ${section}`} bind:value={query} />
+  {#if section !== 'extensions'}<input aria-label={section === 'downloads' ? 'Search downloads' : 'Search bookmarks and history'} placeholder={`Search ${section}`} bind:value={query} />{/if}
   <nav aria-label="Browser library">
     <button class:selected={section === 'bookmarks'} aria-pressed={section === 'bookmarks'} onclick={() => select('bookmarks')}>Bookmarks</button>
     <button class:selected={section === 'history'} aria-pressed={section === 'history'} onclick={() => select('history')}>History</button>
     <button class:selected={section === 'downloads'} aria-pressed={section === 'downloads'} onclick={() => select('downloads')}>Downloads{#if activeDownloads}<span class="count">{activeDownloads}</span>{/if}</button>
+    <button class:selected={section === 'extensions'} aria-pressed={section === 'extensions'} onclick={() => select('extensions')}>Extensions</button>
   </nav>
-  {#if error}<p role="alert">{error}</p>{/if}
-  {#if section === 'downloads'}
+  {#if section === 'extensions'}
+    <BrowserExtensions {actions} />
+  {:else if section === 'downloads'}
     <BrowserDownloads {actions} {query} />
   {:else}
+  {#if error}<p role="alert">{error}</p>{/if}
   {#if section === 'history'}
     {#if confirming}
       <div class="history-confirm" role="group" aria-label="Confirm clear history">
@@ -64,12 +68,16 @@
 </div>
 
 <style>
-  .browser-sidebar { display: flex; flex-direction: column; height: 100%; min-height: 0; color: var(--app-text); font: 12px var(--app-font-family); }
+  .browser-sidebar { display: flex; flex-direction: column; height: 100%; min-height: 0; min-width: 0; color: var(--app-text); font: 12px var(--app-font-family); }
   header { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; font-weight: 600; }
   button { border: 0; border-radius: 5px; background: none; color: inherit; cursor: pointer; } button:hover { background: var(--app-hover); }
   header button { font-size: 20px; width: 27px; height: 27px; }
   input { margin: 0 12px 10px; padding: 7px 9px; min-width: 0; border: 1px solid var(--app-border); border-radius: 5px; background: var(--app-canvas); color: inherit; font: inherit; }
-  nav { display: flex; gap: 2px; margin: 0 8px 10px; } nav button { padding: 6px; font: inherit; opacity: .6; white-space: nowrap; } nav .selected { background: var(--app-hover); opacity: 1; }
+  /* Four sections cannot share one nowrap row at sidebar widths; wrap to a
+     second row instead of overflowing past the panel into the native view. */
+  nav { display: flex; flex-wrap: wrap; gap: 2px; margin: 0 8px 10px; min-width: 0; }
+  nav button { flex: 1 1 40%; min-width: 0; padding: 6px; font: inherit; opacity: .6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  nav .selected { background: var(--app-hover); opacity: 1; }
   .count { margin-left: 4px; font-size: 10px; }
   .clear-history { align-self: flex-end; margin: 0 12px 6px; padding: 5px 7px; font: inherit; color: var(--app-muted-text); }
   .history-confirm { display: flex; flex-direction: column; gap: 7px; margin: 0 12px 10px; padding: 9px; border: 1px solid var(--app-border); border-radius: 5px; }

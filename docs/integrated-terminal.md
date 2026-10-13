@@ -14,11 +14,15 @@ Closing a terminal tab also ends its process. Exited sessions retain their outpu
 and display an exited label until closed. Window close/reload terminates sessions
 owned by that window. App restart does not restore terminal processes.
 
-The cell font (13px base) follows the persisted common text zoom shared with
-Monaco editors: Ctrl+wheel over the terminal changes the text factor in both
-directions, and the grid refits through the ordered resize path. Like editor
-text zoom, keyboard Ctrl+plus/minus/0 keep their separate app-zoom scope.
-Zooming never kills, restarts or detaches a session.
+The cell font (13px base) follows its own persisted terminal text factor,
+independent of the common text zoom shared by Monaco editors and Markdown
+previews: Ctrl+wheel over the terminal changes only the terminal factor in
+both directions, and the grid refits through the ordered resize path.
+Ctrl+wheel over an editor or preview never refits the grid, and View →
+Reset Terminal Text Size resets only this factor. Settings written before
+the split inherit the text factor once. Like editor text zoom, keyboard
+Ctrl+plus/minus/0 keep their separate app-zoom scope. Zooming never kills,
+restarts or detaches a session.
 
 A session starts in the project folder, then the active document directory, then
 the user's documents/home directory. The location row displays this launch

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { WorkspaceZoom, nativeZoomBounds } from './workspace-zoom';
-import { WheelZoomAccumulator, isTextZoomTarget } from '../../preload/wheel-zoom';
+import { WheelZoomAccumulator, isTextZoomTarget, wheelZoomScope } from '../../preload/wheel-zoom';
 import { appZoomStep } from '../../core/zoom';
 import { installZoomSettings } from './zoom-settings';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -103,6 +103,29 @@ test('workspace wheel zoom reaches editors and terminals but never media surface
   assert.equal(isTextZoomTarget(element('.image-viewport')), false);
   assert.equal(isTextZoomTarget(element(null)), false);
   assert.equal(isTextZoomTarget(null), false);
+  // Terminals own a separate factor from editors and Markdown previews.
+  assert.equal(wheelZoomScope(element('.monaco-editor')), 'text');
+  assert.equal(wheelZoomScope(element('.terminal-surface')), 'terminal');
+  assert.equal(wheelZoomScope(element('.pdf-host')), null);
+  assert.equal(wheelZoomScope(null), null);
+});
+
+test('terminal zoom is independent of app/text zoom and never touches native targets', () => {
+  const zoom = new WorkspaceZoom(), shell = target(1), front = target(2);
+  zoom.track(shell); zoom.track(front, undefined, true);
+  const applied = shell.factors.length + front.factors.length;
+  zoom.change(2, 'terminal');
+  assert.equal(zoom.terminalFactor, 1.2);
+  assert.equal(zoom.textFactor, 1);
+  assert.equal(zoom.factor, 1);
+  assert.equal(shell.factors.length + front.factors.length, applied);
+  zoom.change(1, 'text');
+  assert.equal(zoom.terminalFactor, 1.2);
+  assert.equal(front.factors.at(-1), 1.1);
+  zoom.change(0, 'terminal');
+  assert.equal(zoom.terminalFactor, 1);
+  assert.equal(zoom.textFactor, 1.1);
+  assert.deepEqual(zoom.snapshot, { app: 100, text: 110, terminal: 100, revision: 3 });
 });
 
 test('text zoom composes with app zoom only in text previews, including spares and reloads', () => {
@@ -142,14 +165,20 @@ test('both preferences persist and malformed values are rejected independently',
     const file = path.join(root, 'zoom.json');
     const zoom = new WorkspaceZoom(); let updates = 0;
     const flush = installZoomSettings(file, zoom, () => updates++);
-    zoom.change(2); zoom.change(-1, 'text'); flush();
-    assert.equal(updates, 2);
+    zoom.change(2); zoom.change(-1, 'text'); zoom.change(3, 'terminal'); flush();
+    assert.equal(updates, 3);
     const restored = new WorkspaceZoom(); installZoomSettings(file, restored, () => {});
     assert.equal(restored.factor, 1.2); assert.equal(restored.textFactor, .9);
+    assert.equal(restored.terminalFactor, 1.3);
     assert.equal(JSON.parse(readFileSync(file, 'utf8')).app, 120);
     writeFileSync(file, JSON.stringify({ app: 500, text: 80 }));
     const invalid = new WorkspaceZoom(); installZoomSettings(file, invalid, () => {});
     assert.equal(invalid.factor, 1); assert.equal(invalid.textFactor, .8);
+    // Pre-split settings have no terminal factor: inherit the text factor once.
+    assert.equal(invalid.terminalFactor, .8);
+    writeFileSync(file, JSON.stringify({ app: 100, text: 120, terminal: 500 }));
+    const badTerminal = new WorkspaceZoom(); installZoomSettings(file, badTerminal, () => {});
+    assert.equal(badTerminal.textFactor, 1.2); assert.equal(badTerminal.terminalFactor, 1.2);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 test('app shortcuts accept plus/equal/minus and reset, but leave composition and other modifiers alone', () => {

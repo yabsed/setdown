@@ -3,8 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { promises as fs, unwatchFile, writeFileSync, renameSync } from 'node:fs';
 import path from 'node:path';
 import { browserURL, isWebURL } from '../../core/browser/browser-url';
+import { permissionSummaryLines } from '../../core/browser/extension-package';
 import { appZoomStep } from '../../core/zoom';
-import type { BrowserCommand, BrowserEvent, BrowserPage, BrowserPlaceScope, DownloadCommand } from '../../protocol/browser';
+import type { BrowserCommand, BrowserEvent, BrowserExtensionInfo, BrowserPage, BrowserPlaceScope, DownloadCommand, ExtensionInstallKind, ExtensionPage } from '../../protocol/browser';
 import type { WebHistory } from '../../core/workspace/tab-navigation';
 import { readPreviewBounds, type PreviewBounds } from '../../protocol/preview-preparation';
 import type { WindowState } from '../windows/window-state';
@@ -102,9 +103,9 @@ export class BrowserManager {
     return this.ready;
   }
   private extensionURL(url: string): string {
-    if (this.extensions?.extensionId && url.startsWith(`chrome-extension://${this.extensions.extensionId}/`)) return url;
-    return browserURL(url);
+    return this.extensions?.extensionURL(url) ?? browserURL(url);
   }
+  private isExtensionURL(url: string): boolean { return !!this.extensions?.isExtensionURL(url); }
   private forContents(contents: WebContents | null | undefined) { return contents && this.forContentsId(contents.id); }
   private forContentsId(id: number) { return Array.from(this.views.values()).find(entry => entry.view.webContents.id === id); }
   private owned(owner: number, id: unknown): Entry {
@@ -234,14 +235,14 @@ export class BrowserManager {
       this.send(entry.owner, { type: 'close', id });
     });
     wc.on('will-navigate', (event, next) => {
-      if (!isWebURL(next) && next !== 'about:blank' && !next.startsWith(`chrome-extension://${this.extensions?.extensionId}/`)) {
+      if (!isWebURL(next) && next !== 'about:blank' && !this.isExtensionURL(next)) {
         event.preventDefault(); void this.external(entry, next);
       }
     });
     wc.on('will-redirect', (event, next) => { if (!isWebURL(next)) event.preventDefault(); });
     wc.setWindowOpenHandler(details => {
       if (!isWebURL(details.url) && details.url !== 'about:blank'
-        && !details.url.startsWith(`chrome-extension://${this.extensions?.extensionId}/`)) {
+        && !this.isExtensionURL(details.url)) {
         void this.external(entry, details.url); return { action: 'deny' };
       }
       // Min's createWindow adoption preserves opener relationships, POST bodies,
@@ -447,8 +448,8 @@ export class BrowserManager {
       else if (command === 'save') {
         const result = await dialog.showSaveDialog(state.window, { title: 'Save web page', defaultPath: 'page.html', filters: [{ name: 'Web page', extensions: ['html'] }] });
         if (!result.canceled && result.filePath) await wc.savePage(result.filePath, 'HTMLComplete');
-      } else if (command === 'protection' && this.extensions?.extensionId) {
-        const page = this.openEntry(state.webContentsId, randomUUID(), `chrome-extension://${this.extensions.extensionId}/popup-fenix.html?tabId=${wc.id}`);
+      } else if (command === 'protection' && this.extensions?.builtinPopupURL()) {
+        const page = this.openEntry(state.webContentsId, randomUUID(), `${this.extensions.builtinPopupURL()}?tabId=${wc.id}`);
         this.send(page.owner, { type: 'open', page: page.page, background: false }); void this.load(page, page.page.url);
       }
     });
@@ -466,6 +467,61 @@ export class BrowserManager {
     channels.handle('browser:delete-history', async (_state, url?: string) => {
       if (url !== undefined && !isWebURL(url)) throw Error('Invalid history URL.');
       await this.places.deleteHistory(url); this.broadcast({ type: 'places' });
+    });
+    channels.handle('browser:extensions', async (): Promise<BrowserExtensionInfo[]> => {
+      await this.ensureReady();
+      return this.extensions!.list();
+    });
+    channels.handle('browser:extension-install', async (state, kind: ExtensionInstallKind): Promise<BrowserExtensionInfo[]> => {
+      await this.ensureReady();
+      const extensions = this.extensions!;
+      const picked = await dialog.showOpenDialog(state.window, kind === 'folder'
+        ? { title: 'Install extension from folder', properties: ['openDirectory'] }
+        : { title: 'Install extension package', properties: ['openFile'],
+            filters: [{ name: 'Extension package (.zip, .crx)', extensions: ['zip', 'crx'] }] });
+      if (picked.canceled || !picked.filePaths[0]) return extensions.list();
+      const inspected = await extensions.inspect(picked.filePaths[0]);
+      try {
+        const requested = permissionSummaryLines(inspected.info);
+        const choice = await dialog.showMessageBox(state.window, { type: 'warning',
+          message: `Install “${inspected.info.name}” ${inspected.info.version}?`,
+          detail: `Extensions can read and change pages you visit.${requested.length ? `\n\nRequested permissions:\n${requested.join('\n')}` : ''}\n\nOnly install extensions you trust. CRX signatures are not verified.`,
+          buttons: ['Cancel', 'Install'], defaultId: 0, cancelId: 0 });
+        if (choice.response !== 1) { await extensions.discard(inspected.token); return extensions.list(); }
+        await extensions.commit(inspected.token);
+      } catch (error) {
+        await extensions.discard(inspected.token).catch(() => undefined);
+        throw error;
+      }
+      this.broadcast({ type: 'extensions' });
+      return extensions.list();
+    });
+    channels.handle('browser:extension-set-enabled', async (_state, id: string, enabled: boolean): Promise<BrowserExtensionInfo[]> => {
+      await this.ensureReady();
+      const rows = await this.extensions!.setEnabled(String(id), enabled === true);
+      this.broadcast({ type: 'extensions' });
+      return rows;
+    });
+    channels.handle('browser:extension-remove', async (state, id: string): Promise<BrowserExtensionInfo[]> => {
+      await this.ensureReady();
+      const extensions = this.extensions!;
+      const target = extensions.list().find(item => item.id === String(id));
+      if (!target) throw Error('Unknown extension.');
+      if (target.builtin) throw Error('Built-in extensions cannot be removed.');
+      const choice = await dialog.showMessageBox(state.window, { type: 'warning',
+        message: `Remove “${target.name}”?`, detail: 'Its files and settings will be deleted.',
+        buttons: ['Cancel', 'Remove'], defaultId: 0, cancelId: 0 });
+      if (choice.response !== 1) return extensions.list();
+      const rows = await extensions.remove(target.id);
+      this.broadcast({ type: 'extensions' });
+      return rows;
+    });
+    channels.handle('browser:extension-open', async (state, id: string, page: ExtensionPage) => {
+      await this.ensureReady();
+      const url = this.extensions!.pageURL(String(id), page === 'options' ? 'options' : 'popup');
+      const entry = this.openEntry(state.webContentsId, randomUUID(), url);
+      this.send(entry.owner, { type: 'open', page: entry.page, background: false });
+      void this.load(entry, entry.page.url);
     });
     channels.handle('browser:downloads', () => this.downloads.list());
     channels.handle('browser:download-command', (_state, id: string, command: DownloadCommand) => this.downloads.command(id, command));

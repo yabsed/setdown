@@ -36,17 +36,21 @@ or instant returns after eviction. `media-tabs.spec.ts`, `image-reader.spec.ts`,
 `reading-positions.spec.ts` and the cache/file/history unit tests cover these
 guarantees and are included in the focused gate.
 
-Zoom has four independent scopes. Ctrl+plus/minus and Ctrl+0 change/reset the
+Zoom has five independent scopes. Ctrl+plus/minus and Ctrl+0 change/reset the
 persisted app factor in every window. Ctrl+wheel in text/Markdown changes the
-persisted common text factor: ordinary and Git Monaco editors scale typography,
+persisted common text factor: ordinary and Git Monaco editors scale typography
+and native Markdown views use app × text zoom (including hidden/spare views).
+Ctrl+wheel over a terminal changes only the persisted terminal factor:
 terminal surfaces scale their cell font (13px base) and refit the PTY grid
-through the ordered resize path, and native Markdown views use app × text zoom
-(including hidden/spare views).
-Native bounds still convert with **app zoom only**, never the text factor.
-Changing zoom must not navigate, replace models, discard undo history or focus
-hidden previews. `workspace-zoom.test.ts` and `workspace-zoom.spec.ts` cover scope,
-reset, inheritance and persistence; the terminal e2e covers Ctrl+wheel over a
-live PTY and Ctrl+0 reset. The View menu uses the same coordinator.
+through the ordered resize path, without touching editors, previews, native
+targets or native bounds. Settings written before this split inherit the text
+factor for terminals once.
+Native bounds still convert with **app zoom only**, never the text or terminal
+factor. Changing zoom must not navigate, replace models, discard undo history
+or focus hidden previews. `workspace-zoom.test.ts` and `workspace-zoom.spec.ts`
+cover scope, reset, inheritance and persistence; the terminal e2e covers
+Ctrl+wheel over a live PTY, factor independence and the dedicated reset. The
+View menu uses the same coordinator.
 
 App typography uses the locally installed D2Coding family with a monospace
 fallback across shell controls, ordinary/Git editors, terminals, and Markdown
@@ -349,7 +353,11 @@ gate. The full uBlock extension starts before remote navigation. Its adapter
 preserves native response-header events and targets styles to their actual frame.
 Electron 38 cannot remove user-origin webFrame styles; scoped user styles are
 disabled through root tokens and reused until navigation, preserving priority
-and allowing uBlock's cosmetic toggle without replacing page content.
+and allowing uBlock's cosmetic toggle without replacing page content. Frames
+that never run the page preload or never acknowledge a style request
+(blocked ad frames, error or destroyed frames) are skipped best-effort after
+a bounded wait; one such frame must not reject the extension's call, delay
+other frames, or spam the main-process log.
 
 Document command focus and presentation are separate: each editor group selects
 one document, and several groups may remain visible. The focused group owns the
