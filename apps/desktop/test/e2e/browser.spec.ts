@@ -243,12 +243,19 @@ test('web pages share document tabs, retain live state, navigate, bookmark, and 
     await expect(f.page.getByRole('tab', { name: /Second page/ })).toBeVisible();
     await f.page.getByRole('button', { name: 'Back', exact: true }).click();
     await expect(f.page.getByRole('textbox', { name: 'Address or file path' })).toHaveValue(`${f.origin}/first`);
-    const data = await f.page.evaluateHandle(() => new DataTransfer());
-    await webTab.dispatchEvent('dragstart', { dataTransfer: data });
     const body = f.page.locator('.group-body').first(), box = (await body.boundingBox())!;
-    const point = { clientX: box.x + box.width * .98, clientY: box.y + box.height / 2, dataTransfer: data };
-    await body.dispatchEvent('dragover', point); await body.dispatchEvent('drop', point);
-    await webTab.dispatchEvent('dragend', { dataTransfer: data }); await data.dispose();
+    const tabBox = (await webTab.boundingBox())!;
+    await f.page.mouse.move(tabBox.x + 30, tabBox.y + tabBox.height / 2);
+    await f.page.mouse.down();
+    await f.page.mouse.move(tabBox.x + 45, tabBox.y + tabBox.height / 2, { steps: 3 });
+    await expect.poll(() => f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children.filter(v => v.getVisible()).length)).toBe(0);
+    await f.page.evaluate(point => window.dispatchEvent(new DragEvent('dragleave', {
+      bubbles: true, cancelable: true, relatedTarget: null, clientX: point.x, clientY: point.y,
+    })), { x: tabBox.x + 45, y: tabBox.y + tabBox.height / 2 });
+    await expect(f.page.locator('.shell')).toHaveClass(/is-tab-dragging/);
+    await f.page.mouse.move(box.x + box.width * .96, box.y + box.height / 2, { steps: 12 });
+    await expect(f.page.locator('.group-drop-overlay')).toBeVisible();
+    await f.page.mouse.up();
     await expect(f.page.locator('.editor-group')).toHaveCount(2);
     await expect.poll(() => f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children.filter(v => v.getVisible()).length)).toBe(2);
     expect(await f.app.evaluate(({ webContents }, id) => webContents.fromId(id)?.getURL(), identity)).toBe(`${f.origin}/first`);

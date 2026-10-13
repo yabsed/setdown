@@ -19,7 +19,7 @@ const FILE = 'application/x-setdown-project-file';
 
 export function createTabDrag(options: Options) {
   let tabId: string | null = null, transferId: string | null = null;
-  let canceled = false, leftWindow = false;
+  let canceled = false, leftWindow = false, sourceDrag = false;
   let dragging = false;
   const setDragging = (active: boolean) => {
     if (dragging === active) return;
@@ -64,7 +64,7 @@ export function createTabDrag(options: Options) {
     scrollFrame = requestAnimationFrame(scrollStrip);
   }
   const reset = () => {
-    tabId = transferId = null; canceled = false; leftWindow = false; view.draggedTabId = null;
+    tabId = transferId = null; canceled = false; leftWindow = sourceDrag = false; view.draggedTabId = null;
     clearTarget(); options.shell.classList.remove('is-tab-dragging');
     setDragging(false);
   };
@@ -101,7 +101,7 @@ export function createTabDrag(options: Options) {
     options.render(); options.activate(id);
   }
   window.addEventListener('dragstart', event => {
-    if (supported(event)) { setDragging(true); options.shell.classList.add('is-tab-dragging'); }
+    if (supported(event)) { sourceDrag = true; setDragging(true); options.shell.classList.add('is-tab-dragging'); }
   });
   window.addEventListener('dragover', event => {
     if (!supported(event)) return;
@@ -150,16 +150,22 @@ export function createTabDrag(options: Options) {
     }
   }, true);
   window.addEventListener('dragleave', event => {
-    if (!event.relatedTarget) { leftWindow = true; clearTarget(); setDragging(false); options.shell.classList.remove('is-tab-dragging'); }
+    if (!event.relatedTarget) {
+      leftWindow = true; clearTarget();
+      // Native child surfaces can emit this while the pointer is still inside
+      // the window. A source drag owns its capture until drop/end/cancel;
+      // restoring native views here makes them consume the split drop.
+      if (!sourceDrag) { setDragging(false); options.shell.classList.remove('is-tab-dragging'); }
+    }
   });
-  window.addEventListener('dragend', () => { clearTarget(); setDragging(false); options.shell.classList.remove('is-tab-dragging'); });
+  window.addEventListener('dragend', () => { sourceDrag = false; clearTarget(); setDragging(false); options.shell.classList.remove('is-tab-dragging'); });
   return {
     start(id: string, event: DragEvent) {
       const tab = options.tabs.find(tab => tab.id === id);
       if (!tab) return;
       if (options.groups.pin(id)) options.render();
       // Do not change selection until the drop succeeds.
-      tabId = id; transferId = crypto.randomUUID(); canceled = false; leftWindow = false;
+      tabId = id; transferId = crypto.randomUUID(); canceled = false; leftWindow = false; sourceDrag = true;
       view.draggedTabId = id;
       options.shell.classList.add('is-tab-dragging'); setDragging(true);
       event.dataTransfer?.setData(MIME, transferId);

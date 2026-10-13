@@ -370,8 +370,14 @@ Like [Chrome tab movement](https://support.google.com/chrome/answer/2391819), ta
 strips accept drops over tabs, padding, and unused space, with an insertion marker
 and edge scrolling. Their unused space is not a native window-drag region; the
 application title bar still moves the window. A strip drop inserts without
-splitting, while body-edge drops retain their split behavior. Drop completion,
-cancellation, and leaving the window clear feedback and release native overlays.
-`editor-groups.spec.ts` checks real pointer input, order, group collapse, and Undo;
+splitting, while body-edge drops retain their split behavior. Drop completion and
+cancellation clear feedback and release native overlays.
+A source drag keeps its native captures until drop/end/cancel: a null
+`dragleave.relatedTarget` can also denote a native child-surface boundary inside
+the window and must not restore native views over a pending split drop. Incoming
+drags still release a destination window's captures when leaving it.
+`editor-groups.spec.ts` checks real Markdown pointer splits in both axes with/without
+a native-boundary leave signal, order, group collapse, and Undo. `browser.spec.ts`
+checks the same boundary signal during a real web-tab split;
 `tab-detach.spec.ts` checks cross-window strip drops even when source dragend
 precedes the destination claim, preserving the live native reader and position.

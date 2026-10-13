@@ -363,3 +363,66 @@ test('real tab drags use strip padding and insertion positions while preserving 
     await transfer.dispose();
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
+
+for (const boundaryLeave of [false, true]) for (const side of ['right', 'down'] as const)
+test(`real Markdown tab drag splits ${side} with native boundary leave=${boundaryLeave}`, async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-native-split-'));
+  const first = path.join(root, 'first.md'), second = path.join(root, 'second.md');
+  await writeFile(first, '# First native reader\n\nKeep this document.\n');
+  await writeFile(second, '# Second native reader\n\nMove this document.\n');
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', first], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  const page = await app.firstWindow();
+  try {
+    await focusApplication(app); await open(page, second);
+    await page.evaluate(() => {
+      const events: unknown[] = [];
+      for (const type of ['dragstart', 'dragover', 'dragleave', 'drop', 'dragend']) {
+        window.addEventListener(type, event => {
+          const e = event as DragEvent;
+          events.push({ type, x: e.clientX, y: e.clientY, related: (e.relatedTarget as Element | null)?.className ?? null,
+            target: (e.target as Element | null)?.className, dragging: document.querySelector('.shell')?.classList.contains('is-tab-dragging') });
+        }, true);
+      }
+      (window as typeof window & { splitDragEvents: unknown[] }).splitDragEvents = events;
+    });
+    const tab = page.getByRole('tab', { name: /second\.md/ });
+    const body = page.locator('.group-body').first();
+    const bounds = (await body.boundingBox())!;
+    const tabBox = (await tab.boundingBox())!;
+    await page.mouse.move(tabBox.x + 30, tabBox.y + tabBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(tabBox.x + 45, tabBox.y + tabBox.height / 2, { steps: 3 });
+    if (boundaryLeave) {
+      // Native child-surface boundaries can produce a null relatedTarget even
+      // inside the window. Reproduce that platform signal during a real drag.
+      await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children.filter(view => view.getVisible()).length)).toBe(0);
+      await page.evaluate(point => window.dispatchEvent(new DragEvent('dragleave', {
+        bubbles: true, cancelable: true, relatedTarget: null, clientX: point.x, clientY: point.y,
+      })), { x: tabBox.x + 45, y: tabBox.y + tabBox.height / 2 });
+      await expect(page.locator('.shell')).toHaveClass(/is-tab-dragging/);
+      expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children.filter(view => view.getVisible()).length)).toBe(0);
+    }
+    await page.mouse.move(bounds.x + bounds.width * (side === 'right' ? .96 : .5), bounds.y + bounds.height * (side === 'down' ? .96 : .5), { steps: 12 });
+    await expect(page.locator('.group-drop-overlay')).toBeVisible();
+    await page.mouse.up();
+    await expect(page.locator('.editor-group')).toHaveCount(2);
+    await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children.filter(view => view.getVisible()).length)).toBe(2);
+    const groups = await page.locator('.editor-group').evaluateAll(nodes => nodes.map(node => {
+      const box = node.getBoundingClientRect(); return { x: box.x, y: box.y, width: box.width, height: box.height };
+    }));
+    expect(groups[1][side === 'right' ? 'x' : 'y']).toBeGreaterThan(groups[0][side === 'right' ? 'x' : 'y']);
+    await expect.poll(() => app.evaluate(async ({ BrowserWindow }) => Promise.all(
+      BrowserWindow.getAllWindows()[0].contentView.children.filter(view => view.getVisible())
+        .map(view => (view as WebContentsView).webContents.executeJavaScript('document.body.innerText')),
+    ))).toEqual(expect.arrayContaining([expect.stringContaining('First native reader'), expect.stringContaining('Second native reader')]));
+    await expect(page.locator('.shell')).not.toHaveClass(/is-tab-dragging/);
+    await expect(page.locator('.group-drop-overlay')).toBeHidden();
+  } finally {
+    await page.mouse.up().catch(() => {});
+    const events = await page.evaluate(() => (window as typeof window & { splitDragEvents?: unknown[] }).splitDragEvents).catch(() => []);
+    await writeFile(test.info().outputPath('drag-events.json'), JSON.stringify(events, null, 2));
+    await page.screenshot({ path: test.info().outputPath('native-split.png') }).catch(() => {});
+    await disposeApplication(app); await rm(root, { recursive: true, force: true });
+  }
+});
