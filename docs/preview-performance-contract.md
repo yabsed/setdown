@@ -69,6 +69,14 @@ The percentage describes website zoom relative to the app factor. Updates in
 other tabs of the same hostname and app zoom changes retain this distinction;
 the indicator never adds native captures, navigation or layout polling.
 
+Explorer context menus, sidebar action menus, and the Explorer trash confirmation
+use the shell's balanced native-overlay lifecycle. Visible Markdown/Git/web views
+are replaced with captured content while these controls cover them, including
+split groups. Dismissal, menu actions, sidebar hiding, and component removal
+restore the same live views; transferring from a context menu to its confirmation keeps the overlay
+active. `browser.spec.ts` checks overlap, actionable menus, restoration, and
+unsaved web input across ordinary Markdown and split Markdown/web panels.
+
 Website navigation controls styled with Electron's `app-region: drag` must
 remain clickable inside web tabs. Only the desktop shell owns native window
 dragging. The isolated page preload excludes web document elements and their

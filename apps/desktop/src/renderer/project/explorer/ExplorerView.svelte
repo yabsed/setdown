@@ -1,4 +1,5 @@
 <script lang="ts">
+  import NativeOverlay from '../../shell/NativeOverlay.svelte';
   import type { ProjectEntryKind } from '../../../protocol/desktop-api';
   import type { AppActions } from '../../view-state.svelte';
   import { project, type VisibleProjectEntry } from '../project-state.svelte';
@@ -142,6 +143,10 @@
     if (target) await actions.trashProjectEntry(target.path).catch(() => {});
   }
 </script>
+
+{#if (menu || trashTarget) && project.visible && project.open}
+  <NativeOverlay />
+{/if}
 
 <svelte:window onclick={() => menu = null} onkeydown={(event) => {
   if (event.key === 'Escape') { menu = null; editing = null; trashTarget = null; }

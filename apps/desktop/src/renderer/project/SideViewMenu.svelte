@@ -1,5 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
+  import { project } from './project-state.svelte';
+  import NativeOverlay from '../shell/NativeOverlay.svelte';
 
   type MenuItem = { label: string; disabled?: boolean; run(): void };
 
@@ -47,6 +49,7 @@
     </svg>
   </button>
   {#if open}
+    {#if project.visible && project.open}<NativeOverlay />{/if}
     <div class="side-view-menu" bind:this={menu} role="menu" tabindex="-1" onkeydown={navigate}>
       {#each items as item}
         <button type="button" role="menuitem" disabled={item.disabled} onclick={() => run(item)}>{item.label}</button>
