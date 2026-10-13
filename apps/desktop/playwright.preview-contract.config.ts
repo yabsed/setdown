@@ -7,6 +7,7 @@ export default defineConfig(base, {
     'browser.spec.ts',
     'document-preparation.spec.ts',
     'editor-groups.spec.ts',
+    'explorer-selection.spec.ts',
     'preview-tabs.spec.ts',
     'git-review-first-open.spec.ts',
     'git-history.spec.ts',

@@ -101,14 +101,36 @@ export class ExplorerController {
     }
   };
 
-  trash = async (entryPath: string): Promise<void> => {
+  moveMany = async (paths: string[], target: string): Promise<string[]> => {
     try {
-      if (!await this.options.prepareRemove(entryPath)) return;
+      project.error = '';
+      const result = await this.options.desktop.moveProjectEntries(paths, target);
+      for (const moved of result.moves) {
+        this.remapExpanded(moved.from, moved.to);
+        await this.options.pathMoved(moved.from, moved.to);
+      }
+      this.expanded.add(target);
+      await this.reload(project.folder!);
+      if (result.error) this.fail(new Error(result.error));
+      return paths.map(path => {
+        const moved = result.moves.find(move => under(path, move.from));
+        return moved ? `${moved.to}${path.slice(moved.from.length)}` : path;
+      });
+    } catch (error) {
+      this.fail(error);
+      throw error;
+    }
+  };
+
+  trash = async (entryPath: string): Promise<boolean> => {
+    try {
+      if (!await this.options.prepareRemove(entryPath)) return false;
       await this.options.desktop.trashProjectEntry(entryPath);
       for (const directory of [...this.expanded]) {
         if (under(directory, entryPath)) this.expanded.delete(directory);
       }
       await this.reloadDirectories([parentPath(entryPath)]);
+      return true;
     } catch (error) {
       this.fail(error);
       throw error;

@@ -45,6 +45,7 @@ export class ProjectService {
   createEntry = (state: WindowState, parentPath: string, name: string, kind: ProjectEntryKind) => this.explorer.create(state, parentPath, name, kind);
   renameEntry = (state: WindowState, entryPath: string, name: string) => this.explorer.rename(state, entryPath, name);
   moveEntry = (state: WindowState, entryPath: string, targetDirectory: string) => this.explorer.move(state, entryPath, targetDirectory);
+  moveEntries = (state: WindowState, entryPaths: string[], targetDirectory: string) => this.explorer.moveMany(state, entryPaths, targetDirectory);
   trashEntry = (state: WindowState, entryPath: string) => this.explorer.trashEntry(state, entryPath);
   search = (state: WindowState, request: ProjectSearchRequest) => this.searcher.search(state, request);
   gitStatus = (state: WindowState) => this.git.status(state);

@@ -253,6 +253,16 @@ test('web pages share document tabs, retain live state, navigate, bookmark, and 
     await expect.poll(() => f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children.filter(v => v.getVisible()).length)).toBe(2);
     expect(await f.app.evaluate(({ webContents }, id) => webContents.fromId(id)?.getURL(), identity)).toBe(`${f.origin}/first`);
     await f.page.screenshot({ path: 'test-results/browser-split.png' });
+    await evaluatePage(f.app, f.origin, 'document.querySelector("#draft").value="strip move draft";window.stripIdentity={value:73};true');
+    const strip = f.page.locator('.tab-strip').first(), stripBox = (await strip.boundingBox())!;
+    await webTab.dragTo(strip, { targetPosition: { x: stripBox.width - 16, y: 2 } });
+    await expect(f.page.locator('.editor-group')).toHaveCount(1);
+    await expect(f.page.locator('.tab-name')).toHaveText(['notes.md', 'Research page']);
+    await expect.poll(() => f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children.filter(v => v.getVisible()).length)).toBe(1);
+    expect(await f.app.evaluate(({ webContents }, id) => webContents.fromId(id)?.getURL(), identity)).toBe(`${f.origin}/first`);
+    expect(await evaluatePage(f.app, f.origin, '({draft:document.querySelector("#draft").value,identity:window.stripIdentity.value})'))
+      .toEqual({ draft: 'strip move draft', identity: 73 });
+
     expect(f.errors).toEqual([]);
   } finally { await f.dispose(); }
 });

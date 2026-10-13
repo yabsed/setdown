@@ -1,3 +1,4 @@
+import { draggedPaths, PROJECT_FILES } from '../project/explorer/explorer-selection';
 import type { ClaimedTabTransfer, TransferableTab } from '../../protocol/desktop-api';
 import { splitDirection, type EditorGroupPlacement, type EditorGroups } from '../../core/workspace/editor-groups';
 import { view } from '../view-state.svelte';
@@ -19,15 +20,55 @@ const FILE = 'application/x-setdown-project-file';
 export function createTabDrag(options: Options) {
   let tabId: string | null = null, transferId: string | null = null;
   let canceled = false, leftWindow = false;
+  let dragging = false;
+  const setDragging = (active: boolean) => {
+    if (dragging === active) return;
+    dragging = active;
+    options.dragging(active);
+  };
   const overlay = document.createElement('div');
   overlay.className = 'group-drop-overlay'; overlay.hidden = true;
-  options.shell.append(overlay);
+  const indicator = document.createElement('div');
+  indicator.className = 'tab-drop-indicator'; indicator.hidden = true;
+  options.shell.append(overlay, indicator);
+  let activeStrip: HTMLElement | null = null;
+  let scrollFrame = 0;
+  let scrollList: HTMLElement | null = null;
+  let scrollPointer = 0;
+  const clearTarget = () => {
+    overlay.hidden = indicator.hidden = true;
+    activeStrip?.classList.remove('is-drop-target'); activeStrip = null;
+    cancelAnimationFrame(scrollFrame); scrollFrame = 0; scrollList = null;
+  };
+  function stripTarget(strip: HTMLElement, x: number): Target {
+    if (activeStrip !== strip) activeStrip?.classList.remove('is-drop-target');
+    activeStrip = strip; strip.classList.add('is-drop-target');
+    const list = strip.querySelector<HTMLElement>('.tab-list')!;
+    const tabs = Array.from(list.querySelectorAll<HTMLElement>('[data-tab-id]'));
+    const index = tabs.findIndex(tab => { const rect = tab.getBoundingClientRect(); return x < rect.left + rect.width / 2; });
+    const at = index < 0 ? tabs.length : index;
+    const bounds = list.getBoundingClientRect(), stripBounds = strip.getBoundingClientRect();
+    const edge = tabs[at]?.getBoundingClientRect().left ?? tabs.at(-1)?.getBoundingClientRect().right ?? bounds.left;
+    Object.assign(indicator.style, { left: `${Math.max(bounds.left, Math.min(edge, bounds.right)) - 1}px`,
+      top: `${stripBounds.top + 5}px`, height: `${stripBounds.height - 7}px` });
+    indicator.hidden = false; overlay.hidden = true;
+    return { groupId: strip.dataset.groupId!, direction: null, index: at };
+  }
+  function scrollStrip() {
+    if (!scrollList || !activeStrip) { scrollFrame = 0; return; }
+    const bounds = scrollList.getBoundingClientRect();
+    const speed = scrollPointer < bounds.left + 24 ? -12 : scrollPointer > bounds.right - 24 ? 12 : 0;
+    const previous = scrollList.scrollLeft;
+    scrollList.scrollLeft += speed;
+    if (scrollList.scrollLeft !== previous) stripTarget(activeStrip, scrollPointer);
+    scrollFrame = requestAnimationFrame(scrollStrip);
+  }
   const reset = () => {
     tabId = transferId = null; canceled = false; leftWindow = false; view.draggedTabId = null;
-    overlay.hidden = true; options.shell.classList.remove('is-tab-dragging');
-    options.dragging(false);
+    clearTarget(); options.shell.classList.remove('is-tab-dragging');
+    setDragging(false);
   };
-  const supported = (event: DragEvent) => !!transferId || Array.from(event.dataTransfer?.types ?? []).some(type => type === MIME || type === FILE);
+  const supported = (event: DragEvent) => !!transferId || Array.from(event.dataTransfer?.types ?? []).some(type => type === MIME || type === FILE || type === PROJECT_FILES);
   function target(event: DragEvent): Target | null {
     const area = document.querySelector('.editor-area')!;
     const point = { x: event.clientX, y: event.clientY };
@@ -36,12 +77,8 @@ export function createTabDrag(options: Options) {
       if (point.x < box.left || point.x > box.right || point.y < box.top || point.y > box.bottom) continue;
       const groupId = element.dataset.groupId!;
       const strip = element.querySelector<HTMLElement>('.tab-strip')!;
-      if (point.y < strip.getBoundingClientRect().bottom) {
-        const tabs = Array.from(strip.querySelectorAll<HTMLElement>('[data-tab-id]'));
-        const index = tabs.findIndex(tab => { const rect = tab.getBoundingClientRect(); return point.x < rect.left + rect.width / 2; });
-        overlay.hidden = true;
-        return { groupId, direction: null, index: index < 0 ? tabs.length : index };
-      }
+      if (point.y < strip.getBoundingClientRect().bottom) return stripTarget(strip, point.x);
+      clearTarget();
       const body = element.querySelector('.group-body')!.getBoundingClientRect();
       const direction = splitDirection(point.x - body.left, point.y - body.top, body.width, body.height);
       const source = tabId ? options.groups.owner(tabId) : null;
@@ -54,7 +91,7 @@ export function createTabDrag(options: Options) {
       overlay.hidden = false;
       return { groupId, direction: split };
     }
-    overlay.hidden = true;
+    clearTarget();
     return null;
   }
   function move(id: string, destination: Target) {
@@ -64,7 +101,7 @@ export function createTabDrag(options: Options) {
     options.render(); options.activate(id);
   }
   window.addEventListener('dragstart', event => {
-    if (supported(event)) { options.dragging(true); options.shell.classList.add('is-tab-dragging'); }
+    if (supported(event)) { setDragging(true); options.shell.classList.add('is-tab-dragging'); }
   });
   window.addEventListener('dragover', event => {
     if (!supported(event)) return;
@@ -74,13 +111,11 @@ export function createTabDrag(options: Options) {
     event.preventDefault();
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
     // A native Markdown view otherwise intercepts the next dragover/drop.
-    options.dragging(true);
+    setDragging(true);
     options.shell.classList.add('is-tab-dragging');
-    const list = (event.target as Element)?.closest<HTMLElement>('.tab-list');
-    if (list) {
-      const rect = list.getBoundingClientRect();
-      if (event.clientX < rect.left + 24) list.scrollLeft -= 24;
-      else if (event.clientX > rect.right - 24) list.scrollLeft += 24;
+    if (activeStrip) {
+      scrollList = activeStrip.querySelector<HTMLElement>('.tab-list'); scrollPointer = event.clientX;
+      if (!scrollFrame) scrollFrame = requestAnimationFrame(scrollStrip);
     }
   }, true);
   window.addEventListener('drop', event => {
@@ -90,7 +125,7 @@ export function createTabDrag(options: Options) {
     event.preventDefault(); event.stopPropagation();
     const localId = tabId;
     const incoming = event.dataTransfer?.getData(MIME);
-    const path = event.dataTransfer?.getData(FILE);
+    const paths = draggedPaths(event.dataTransfer, PROJECT_FILES, FILE);
     reset();
     if (localId) {
       if (incoming) options.desktop.cancelTabTransfer(incoming);
@@ -100,14 +135,24 @@ export function createTabDrag(options: Options) {
         if (!transfer) return;
         await options.install(transfer, destination);
       });
-    } else if (path) {
-      void options.openFile(path, destination).catch(error => console.error('Could not open dropped file', error));
+    } else if (paths.length) {
+      void (async () => {
+        let placement = destination;
+        for (const path of paths) {
+          await options.openFile(path, placement);
+          // Only the first file creates a split. Subsequent files follow it in
+          // selection order and remain pinned in that same destination group.
+          const group = options.groups.focused;
+          const index = group.activeId ? group.tabs.indexOf(group.activeId) + 1 : group.tabs.length;
+          placement = { groupId: group.id, direction: null, index };
+        }
+      })().catch(error => console.error('Could not open dropped files', error));
     }
   }, true);
   window.addEventListener('dragleave', event => {
-    if (!event.relatedTarget) { leftWindow = true; overlay.hidden = true; }
+    if (!event.relatedTarget) { leftWindow = true; clearTarget(); setDragging(false); options.shell.classList.remove('is-tab-dragging'); }
   });
-  window.addEventListener('dragend', () => { overlay.hidden = true; options.dragging(false); options.shell.classList.remove('is-tab-dragging'); });
+  window.addEventListener('dragend', () => { clearTarget(); setDragging(false); options.shell.classList.remove('is-tab-dragging'); });
   return {
     start(id: string, event: DragEvent) {
       const tab = options.tabs.find(tab => tab.id === id);
@@ -116,7 +161,7 @@ export function createTabDrag(options: Options) {
       // Do not change selection until the drop succeeds.
       tabId = id; transferId = crypto.randomUUID(); canceled = false; leftWindow = false;
       view.draggedTabId = id;
-      options.shell.classList.add('is-tab-dragging'); options.dragging(true);
+      options.shell.classList.add('is-tab-dragging'); setDragging(true);
       event.dataTransfer?.setData(MIME, transferId);
       if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
       options.desktop.registerTabTransfer(transferId, options.serialize(tab));
@@ -142,6 +187,6 @@ export function createTabDrag(options: Options) {
       if (detach) options.desktop.detachTabToWindow(id, event.screenX, event.screenY);
       else if (id) options.desktop.cancelTabTransfer(id);
     },
-    cancel() { canceled = true; overlay.hidden = true; }, reset,
+    cancel() { canceled = true; clearTarget(); setDragging(false); options.shell.classList.remove('is-tab-dragging'); }, reset,
   };
 }

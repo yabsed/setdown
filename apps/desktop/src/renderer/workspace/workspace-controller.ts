@@ -112,6 +112,8 @@ export function startWorkspace(desktop: DesktopPort) {
     createProjectEntry: (parent, name, kind) => projects.createEntry(parent, name, kind),
     renameProjectEntry: (path, name) => projects.renameEntry(path, name),
     moveProjectEntry: (path, target) => projects.moveEntry(path, target),
+    moveProjectEntries: (paths, target) => projects.moveEntries(paths, target),
+    openProjectFiles: async paths => { for (const path of paths) await projects.openFile(path, { pinned: true }); },
     trashProjectEntry: (path) => projects.trashEntry(path),
     openProjectSearchResult: (result) => void projects.openSearchResult(result),
     searchProject: (query) => projects.search(query),

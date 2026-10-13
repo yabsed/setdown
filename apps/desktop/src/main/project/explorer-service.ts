@@ -48,6 +48,40 @@ export class ExplorerService {
     await this.ensureMissing(to); await fs.rename(from, to);
     return { from, to };
   }
+  async moveMany(state: WindowState, entryPaths: string[], targetDirectory: string): Promise<{ moves: ProjectEntryMove[]; error?: string }> {
+    if (!Array.isArray(entryPaths) || !entryPaths.length || entryPaths.some(item => typeof item !== 'string')) {
+      throw new Error('Select files or folders to move.');
+    }
+    const directory = this.paths.inside(state, targetDirectory);
+    if (!(await fs.stat(directory)).isDirectory()) throw new Error('The move target is not a folder.');
+    const sources = [...new Set(entryPaths.map(item => this.mutableEntry(state, item)))];
+    const roots = sources.filter(item => !sources.some(parent => parent !== item && item.startsWith(`${parent}${path.sep}`)));
+    const planned: ProjectEntryMove[] = [];
+    // Validate the entire selection before changing anything. A conflict in the
+    // last item must not leave the earlier items moved or overwrite a file.
+    for (const from of roots) {
+      await fs.lstat(from);
+      if (directory === from || directory.startsWith(`${from}${path.sep}`)) throw new Error('A folder cannot be moved into itself.');
+      const to = this.paths.child(state, directory, path.basename(from));
+      if (to === from) continue;
+      if (planned.some(move => move.to === to)) throw new Error(`“${path.basename(to)}” occurs more than once in the selection.`);
+      await this.ensureMissing(to);
+      planned.push({ from, to });
+    }
+    const moves: ProjectEntryMove[] = [];
+    for (const move of planned) {
+      try {
+        await this.ensureMissing(move.to);
+        await fs.rename(move.from, move.to);
+        moves.push(move);
+      } catch (error) {
+        // Disk errors after preflight can leave a partial move. Return the exact
+        // completed paths so live documents and reading positions stay correct.
+        return { moves, error: error instanceof Error ? error.message : String(error) };
+      }
+    }
+    return { moves };
+  }
   async trashEntry(state: WindowState, entryPath: string): Promise<void> { await this.trash(this.mutableEntry(state, entryPath)); }
   private mutableEntry(state: WindowState, candidate: string): string {
     const entryPath = this.paths.inside(state, candidate);
@@ -59,6 +93,10 @@ export class ExplorerService {
       kind: directory ? 'directory' : isOpenableDocument(entryPath) ? 'document' : 'file' };
   }
   private async ensureMissing(candidate: string): Promise<void> {
-    if (await fs.stat(candidate).catch(() => null)) throw new Error(`“${path.basename(candidate)}” already exists.`);
+    const existing = await fs.lstat(candidate).catch((error: NodeJS.ErrnoException) => {
+      if (error.code !== 'ENOENT') throw error;
+      return null;
+    });
+    if (existing) throw new Error(`“${path.basename(candidate)}” already exists.`);
   }
 }

@@ -12,7 +12,7 @@ async function shellWindows(application: Awaited<ReturnType<typeof electron.laun
   return matches.filter((page): page is NonNullable<typeof page> => page !== null);
 }
 
-test('detaching a tab restores its preview iframe at the same semantic position', async () => {
+for (const dropArea of ['body', 'tab strip'] as const) test(`detaching a tab restores its preview at the same position via ${dropArea}`, async () => {
   const configRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-e2e-'));
   const { ELECTRON_RUN_AS_NODE: _ignored, ...environment } = process.env;
   const application = await electron.launch({
@@ -163,12 +163,13 @@ test('detaching a tab restores its preview iframe at the same semantic position'
       dataTransfer.setData('application/x-setdown-tab', id);
       return dataTransfer;
     }, transferId);
-    const target = sourceWindow.locator('.group-body').first();
+    const target = sourceWindow.locator(dropArea === 'body' ? '.group-body' : '.tab-strip').first();
     const targetBox = (await target.boundingBox())!;
     const point = { clientX: targetBox.x + targetBox.width / 2,
-      clientY: targetBox.y + targetBox.height / 2, dataTransfer: destinationTransfer };
+      clientY: targetBox.y + (dropArea === 'body' ? targetBox.height / 2 : 2), dataTransfer: destinationTransfer };
     await target.dispatchEvent('dragover', point);
-    await expect(sourceWindow.locator('.group-drop-overlay')).toBeVisible();
+    await expect(sourceWindow.locator(dropArea === 'body' ? '.group-drop-overlay' : '.tab-drop-indicator')).toBeVisible();
+    if (dropArea === 'tab strip') expect(await target.evaluate(node => getComputedStyle(node).getPropertyValue('-webkit-app-region'))).toBe('no-drag');
     await detachedWindow!.locator('.document-tab', { hasText: 'sample.md' }).evaluate((element) => {
       const dataTransfer = new DataTransfer();
       element.dispatchEvent(new DragEvent('dragleave', {

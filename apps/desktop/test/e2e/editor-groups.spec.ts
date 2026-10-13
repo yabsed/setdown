@@ -309,3 +309,57 @@ test('editing another visible source group preserves scroll and the newly clicke
     throw error;
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
+
+test('real tab drags use strip padding and insertion positions while preserving source edits and Undo', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-strip-drop-'));
+  const first = path.join(root, 'first.txt'), second = path.join(root, 'second.txt'), third = path.join(root, 'third.txt');
+  for (const file of [first, second, third]) await writeFile(file, `${path.basename(file)} original\n`);
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', first], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  const page = await app.firstWindow();
+  try {
+    await focusApplication(app); await open(page, second); await open(page, third);
+    const thirdTab = page.getByRole('tab', { name: /third\.txt/ });
+    await thirdTab.dragTo(page.getByRole('tab', { name: /first\.txt/ }), { targetPosition: { x: 5, y: 12 } });
+    await expect(page.locator('.tab-name')).toHaveText(['third.txt', 'first.txt', 'second.txt']);
+    await page.getByRole('tab', { name: /second\.txt/ }).click();
+    const editor = page.locator('.focused-content').getByRole('textbox', { name: 'Editor content' });
+    await editor.press('Control+End'); await editor.pressSequentially('KEEP_MY_UNDO');
+    await drop(page, 'second.txt', 0, 'right');
+    await expect(page.locator('.editor-group')).toHaveCount(2);
+    const strip = page.locator('.tab-strip').first();
+    const box = (await strip.boundingBox())!;
+    await page.getByRole('tab', { name: /second\.txt/ }).dragTo(strip, { targetPosition: { x: box.width - 16, y: 2 } });
+    await expect(page.locator('.editor-group')).toHaveCount(1);
+    await expect(page.locator('.tab-name')).toHaveText(['third.txt', 'first.txt', 'second.txt']);
+    await expect(page.locator('.focused-content .view-lines')).toContainText('KEEP_MY_UNDO');
+    await editor.press('Control+z');
+    await expect(page.locator('.focused-content .view-lines')).not.toContainText('KEEP_MY_UNDO');
+    await expect(page.locator('.tab-drop-indicator')).toBeHidden();
+    await expect(page.locator('.group-drop-overlay')).toBeHidden();
+    await expect(page.locator('.tab-strip.is-drop-target')).toHaveCount(0);
+
+    for (let i = 0; i < 12; i++) {
+      const file = path.join(root, `overflow-${i}.txt`); await writeFile(file, `${i}`); await open(page, file);
+    }
+    const list = page.locator('.tab-list');
+    await list.evaluate(node => node.scrollLeft = 0);
+    const transfer = await page.evaluateHandle(() => new DataTransfer());
+    await thirdTab.dispatchEvent('dragstart', { dataTransfer: transfer });
+    const listBox = (await list.boundingBox())!;
+    const hover = { clientX: listBox.x + listBox.width - 5, clientY: listBox.y + 12, dataTransfer: transfer };
+    await list.dispatchEvent('dragover', hover);
+    await expect(page.locator('.tab-drop-indicator')).toBeVisible();
+    // One dragover followed by a stationary pointer keeps scrolling the strip.
+    await expect.poll(() => list.evaluate(node => node.scrollLeft)).toBeGreaterThan(100);
+    await page.screenshot({ path: test.info().outputPath('tab-insertion.png') });
+    await page.keyboard.press('Escape');
+    await thirdTab.dispatchEvent('dragend', hover);
+    await expect(page.locator('.tab-drop-indicator')).toBeHidden();
+    await expect(page.locator('.shell')).not.toHaveClass(/is-tab-dragging/);
+    const stoppedAt = await list.evaluate(node => node.scrollLeft);
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    expect(await list.evaluate(node => node.scrollLeft)).toBe(stoppedAt);
+    await transfer.dispose();
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});

@@ -5,6 +5,8 @@ export default defineConfig({
   ...base,
   test: { ...base.test, include: [
     'src/architecture-boundaries.test.ts',
+    'src/main/project/explorer-service.test.ts',
+    'src/renderer/project/explorer/explorer-selection.test.ts',
     'src/core/browser/browser-url.test.ts',
     'src/main/browser/browser-downloads.test.ts',
     'src/core/document/file-location.test.ts',

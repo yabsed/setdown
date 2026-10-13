@@ -125,6 +125,7 @@ const api: MarkTexApi = {
   createProjectEntry: (parentPath, name, kind) => ipcRenderer.invoke('project:create-entry', { parentPath, name, kind }),
   renameProjectEntry: (entryPath, name) => ipcRenderer.invoke('project:rename-entry', { entryPath, name }),
   moveProjectEntry: (entryPath, targetDirectory) => ipcRenderer.invoke('project:move-entry', { entryPath, targetDirectory }),
+  moveProjectEntries: (entryPaths, targetDirectory) => ipcRenderer.invoke('project:move-entries', { entryPaths, targetDirectory }),
   trashProjectEntry: (entryPath) => ipcRenderer.invoke('project:trash-entry', entryPath),
   openProjectFile: (filePath) => ipcRenderer.invoke('project:open-file', filePath),
   searchProject: (request) => ipcRenderer.invoke('project:search', request),

@@ -76,7 +76,9 @@ export type AppActions = {
   createProjectEntry(parentPath: string, name: string, kind: ProjectEntryKind): Promise<void>;
   renameProjectEntry(path: string, name: string): Promise<void>;
   moveProjectEntry(path: string, targetDirectory: string): Promise<void>;
-  trashProjectEntry(path: string): Promise<void>;
+  moveProjectEntries(paths: string[], targetDirectory: string): Promise<string[]>;
+  openProjectFiles(paths: string[]): Promise<void>;
+  trashProjectEntry(path: string): Promise<boolean>;
   openProjectSearchResult(result: ProjectSearchResult): void;
   searchProject(query: string): void;
   toggleProjectSearchGroup(path: string): void;

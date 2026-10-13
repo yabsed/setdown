@@ -310,6 +310,7 @@ export type MarkTexApi = {
   createProjectEntry(parentPath: string, name: string, kind: ProjectEntryKind): Promise<ProjectEntry>;
   renameProjectEntry(entryPath: string, name: string): Promise<ProjectEntryMove>;
   moveProjectEntry(entryPath: string, targetDirectory: string): Promise<ProjectEntryMove>;
+  moveProjectEntries(entryPaths: string[], targetDirectory: string): Promise<{ moves: ProjectEntryMove[]; error?: string }>;
   trashProjectEntry(entryPath: string): Promise<void>;
   openProjectFile(filePath: string): Promise<DocumentSnapshot | null>;
   searchProject(request: ProjectSearchRequest): Promise<ProjectSearchResult[]>;

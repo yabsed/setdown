@@ -149,6 +149,11 @@ export function installIpc(options: Options): void {
     const moved = await projects.moveEntry(state, request.entryPath, request.targetDirectory);
     documents.positions?.move(moved.from, moved.to); return moved;
   });
+  channels.handle('project:move-entries', async (state, request: { entryPaths: string[]; targetDirectory: string }) => {
+    const result = await projects.moveEntries(state, request.entryPaths, request.targetDirectory);
+    for (const move of result.moves) documents.positions?.move(move.from, move.to);
+    return result;
+  });
   channels.handle('project:trash-entry', (state, entryPath: string) => projects.trashEntry(state, entryPath));
   channels.handle('project:open-file', (state, filePath: string) => documents.open(state, projects.assertDocument(state, filePath), false));
   channels.handle('project:search', (state, request: ProjectSearchRequest) => projects.search(state, request));

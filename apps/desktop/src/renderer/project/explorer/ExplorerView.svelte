@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { tick } from 'svelte';
+  import { selectEntry, topLevelPaths, draggedPaths, PROJECT_ENTRIES, PROJECT_FILES, type ExplorerSelection } from './explorer-selection';
   import NativeOverlay from '../../shell/NativeOverlay.svelte';
   import type { ProjectEntryKind } from '../../../protocol/desktop-api';
   import type { AppActions } from '../../view-state.svelte';
@@ -17,16 +19,23 @@
   type Menu = { x: number; y: number; entry: VisibleProjectEntry | null };
 
   let { actions }: { actions: AppActions } = $props();
-  let selected = $state('');
+  let selection = $state<ExplorerSelection>({ paths: [], anchor: '' });
+  let focused = $state('');
+  let busy = $state(false);
+  let dragged: string[] = [];
+  let dragImage: HTMLElement | null = null;
+  const selectedEntries = $derived(project.entries.filter(entry => selection.paths.includes(entry.path)));
+  const selectedPaths = () => selectedEntries.map(entry => entry.path);
+  const singleSelection = (path: string) => { selection = { paths: [path], anchor: path }; focused = path; };
   let editing = $state<Edit | null>(null);
   let menu = $state<Menu | null>(null);
-  let trashTarget = $state<VisibleProjectEntry | null>(null);
+  let trashTarget = $state<VisibleProjectEntry[] | null>(null);
   let dropTarget = $state('');
 
   const parentOf = (candidate: string) => candidate.replace(/[\\/][^\\/]+$/, '');
   const relativeToRoot = (candidate: string) => candidate.slice(project.folder?.path.length ?? 0)
     .replace(/^[\\/]/, '');
-  const selectedEntry = () => project.entries.find((entry) => entry.path === selected);
+  const selectedEntry = () => project.entries.find((entry) => entry.path === focused);
   const createParent = () => {
     const entry = selectedEntry();
     return entry?.kind === 'directory' ? entry.path
@@ -38,7 +47,7 @@
   function beginCreate(kind: ProjectEntryKind, parent = createParent()) {
     if (!parent) return;
     if (!project.explorerRootExpanded) actions.toggleProjectExplorerRoot();
-    selected = parent;
+    singleSelection(parent);
     const directory = project.entries.find((entry) => entry.path === parent);
     if (directory && !directory.expanded) void actions.toggleProjectDirectory(parent);
     editing = { mode: 'create', kind, parent, depth: createDepth(parent), value: '' };
@@ -46,7 +55,7 @@
   }
 
   function beginRename(entry: VisibleProjectEntry) {
-    selected = entry.path;
+    singleSelection(entry.path);
     editing = {
       mode: 'rename',
       kind: entry.kind === 'directory' ? 'directory' : 'file',
@@ -75,26 +84,76 @@
 
   function clearSelection(event: MouseEvent) {
     if (event.target !== event.currentTarget) return;
-    selected = '';
+    selection = { paths: [], anchor: '' };
     menu = null;
   }
 
   function activate(entry: VisibleProjectEntry, pinned = false) {
-    selected = entry.path;
+    singleSelection(entry.path);
     if (entry.kind === 'directory') void actions.toggleProjectDirectory(entry.path);
     else if (entry.kind === 'document') actions.openProjectFile(entry.path, { pinned });
   }
 
+  function clickEntry(event: MouseEvent, entry: VisibleProjectEntry) {
+    if (busy || event.detail === 2) return;
+    focused = entry.path;
+    if (event.ctrlKey || event.metaKey || event.shiftKey) {
+      selection = selectEntry(selection, entry.path, project.entries.map(item => item.path), event);
+    } else activate(entry);
+  }
+
+  async function focusEntry(path: string) {
+    focused = path;
+    await tick();
+    const row = [...document.querySelectorAll<HTMLElement>('.explorer-row')].find(row => row.dataset.path === path);
+    row?.focus(); row?.scrollIntoView({ block: 'nearest' });
+  }
+
+  function keyTree(event: KeyboardEvent) {
+    if (event.target instanceof HTMLInputElement) return;
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+      event.preventDefault(); event.stopPropagation();
+      selection = { paths: project.entries.map(entry => entry.path), anchor: focused || project.entries[0]?.path || '' };
+    } else if (event.key === 'Escape') selection = { paths: [], anchor: '' };
+  }
+
   function keyEntry(event: KeyboardEvent, entry: VisibleProjectEntry) {
-    if (event.key === 'Enter' || event.key === ' ') {
+    if (busy) return;
+    const visible = project.entries.map(item => item.path);
+    const index = visible.indexOf(entry.path);
+    const additive = event.ctrlKey || event.metaKey;
+    if (['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
+      event.preventDefault(); event.stopPropagation();
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? visible.length - 1
+        : Math.max(0, Math.min(visible.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)));
+      const path = visible[next];
+      if (!additive || event.shiftKey) selection = selectEntry(selection, path, visible, event);
+      void focusEntry(path);
+    } else if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+      event.preventDefault(); event.stopPropagation();
+      if (entry.kind === 'directory' && entry.expanded === (event.key === 'ArrowLeft')) void actions.toggleProjectDirectory(entry.path);
+      else if (event.key === 'ArrowRight' && entry.expanded && project.entries[index + 1]?.depth > entry.depth) void focusEntry(visible[index + 1]);
+      else if (event.key === 'ArrowLeft') {
+        const parent = [...project.entries.slice(0, index)].reverse().find(item => item.depth < entry.depth);
+        if (parent) void focusEntry(parent.path);
+      }
+    } else if (event.key === ' ' && additive) {
       event.preventDefault();
-      activate(entry, true);
-    } else if (event.key === 'F2') {
+      focused = entry.path;
+      selection = selectEntry(selection, entry.path, visible, event);
+    } else if (event.key === 'Enter') {
       event.preventDefault();
-      beginRename(entry);
+      if (!selection.paths.includes(entry.path)) singleSelection(entry.path);
+      if (selectedEntries.length > 1) void actions.openProjectFiles(selectedEntries.filter(item => item.kind === 'document').map(item => item.path));
+      else activate(entry, true);
+    } else if (event.key === ' ') {
+      event.preventDefault(); selection = selectEntry(selection, entry.path, visible, event);
+    } else if (event.key === 'F2' && selectedEntries.length <= 1) {
+      event.preventDefault(); beginRename(entry);
     } else if (event.key === 'Delete') {
       event.preventDefault();
-      trashTarget = entry;
+      if (!selection.paths.includes(entry.path)) singleSelection(entry.path);
+      trashTarget = [...selectedEntries];
     }
   }
 
@@ -106,14 +165,34 @@
 
   function openMenu(event: MouseEvent, entry: VisibleProjectEntry | null) {
     event.preventDefault();
-    selected = entry?.path ?? project.folder?.path ?? '';
+    if (busy) return;
+    if (entry && !selection.paths.includes(entry.path)) singleSelection(entry.path);
+    if (!entry) selection = { paths: [], anchor: '' };
+    focused = entry?.path ?? '';
     menu = { x: Math.min(event.clientX, innerWidth - 170), y: Math.min(event.clientY, innerHeight - 190), entry };
   }
 
   function startDrag(event: DragEvent, entry: VisibleProjectEntry) {
-    event.dataTransfer?.setData('application/x-setdown-project-entry', entry.path);
-    if (entry.kind !== 'directory') event.dataTransfer?.setData('application/x-setdown-project-file', entry.path);
-    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+    if (busy || !event.dataTransfer) { event.preventDefault(); return; }
+    if (!selection.paths.includes(entry.path)) singleSelection(entry.path);
+    dragged = topLevelPaths(selectedPaths());
+    event.dataTransfer.setData(PROJECT_ENTRIES, JSON.stringify(dragged));
+    event.dataTransfer.setData('application/x-setdown-project-entry', dragged[0]);
+    const files = selectedEntries.filter(item => item.kind === 'document').map(item => item.path);
+    if (files.length) {
+      event.dataTransfer.setData(PROJECT_FILES, JSON.stringify(files));
+      event.dataTransfer.setData('application/x-setdown-project-file', files[0]);
+    }
+    event.dataTransfer.effectAllowed = 'move';
+    if (dragged.length > 1) {
+      dragImage = document.createElement('div'); dragImage.className = 'explorer-drag-label';
+      dragImage.textContent = `${dragged.length} items`;
+      document.body.append(dragImage); event.dataTransfer.setDragImage(dragImage, 12, 12);
+    }
+  }
+
+  function endDrag() {
+    dragged = []; dropTarget = ''; dragImage?.remove(); dragImage = null;
   }
 
   function copy(value: string) {
@@ -123,24 +202,34 @@
   }
 
   function dragOver(event: DragEvent, target: string) {
-    if (!event.dataTransfer?.types.includes('application/x-setdown-project-entry')) return;
+    if (busy || !event.dataTransfer?.types.some(type => type === PROJECT_ENTRIES || type === 'application/x-setdown-project-entry')) return;
     event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-    dropTarget = target;
+    const invalid = dragged.some(path => target === path || target.startsWith(`${path}/`) || target.startsWith(`${path}\\`));
+    event.dataTransfer.dropEffect = invalid ? 'none' : 'move';
+    dropTarget = invalid ? '' : target;
   }
 
-  function drop(event: DragEvent, target: string) {
-    const source = event.dataTransfer?.getData('application/x-setdown-project-entry');
-    dropTarget = '';
-    if (!source) return;
-    event.preventDefault();
-    void actions.moveProjectEntry(source, target);
+  async function drop(event: DragEvent, target: string) {
+    const sources = draggedPaths(event.dataTransfer, PROJECT_ENTRIES, 'application/x-setdown-project-entry');
+    endDrag();
+    if (busy || !sources.length) return;
+    event.preventDefault(); event.stopPropagation();
+    busy = true;
+    try {
+      const paths = await actions.moveProjectEntries(sources, target);
+      selection = { paths, anchor: paths[0] ?? '' }; focused = paths[0] ?? '';
+    } catch { /* The controller displays the failure and leaves the selection intact. */ }
+    finally { busy = false; }
   }
 
   async function confirmTrash() {
-    const target = trashTarget;
-    trashTarget = null;
-    if (target) await actions.trashProjectEntry(target.path).catch(() => {});
+    const paths = topLevelPaths(trashTarget?.map(entry => entry.path) ?? []);
+    trashTarget = null; busy = true;
+    try {
+      for (const path of paths) { if (!await actions.trashProjectEntry(path)) break; }
+      selection = { paths: selectedPaths(), anchor: '' };
+    } catch { /* Stop at the first failure; keep the controller's error visible. */ }
+    finally { busy = false; }
   }
 </script>
 
@@ -184,7 +273,7 @@
   </div>
   {#if project.explorerRootExpanded}
   <div id="project-explorer-tree" class="explorer-tree" role="tree" tabindex="-1" aria-label={project.folder.name}
-    onclick={clearSelection} onkeydown={(event) => { if (event.key === 'Escape') selected = ''; }}>
+    aria-multiselectable="true" aria-busy={busy} onclick={clearSelection} onkeydown={keyTree}>
     {#if editing?.mode === 'create' && editing.parent === project.folder.path}
       <ExplorerEditRow kind={editing.kind} depth={editing.depth} initial={editing.value}
         label={`New ${editing.kind} name`} submit={(value) => void submitEdit(value)} cancel={() => editing = null} />
@@ -194,18 +283,18 @@
         <ExplorerEditRow kind={editing.kind} depth={editing.depth} initial={editing.value}
           label="Rename entry" submit={(value) => void submitEdit(value)} cancel={() => editing = null} />
       {:else}
-        <div role="treeitem" tabindex="0" draggable="true" class="explorer-row"
-          class:is-selected={selected === entry.path} class:is-muted={entry.kind === 'file'}
+        <div role="treeitem" tabindex={focused === entry.path || (!project.entries.some(item => item.path === focused) && entry === project.entries[0]) ? 0 : -1} draggable={!busy} class="explorer-row" data-path={entry.path}
+          class:is-selected={selection.paths.includes(entry.path)} class:is-muted={entry.kind === 'file'}
           class:is-drop-target={dropTarget === entry.path}
-          aria-selected={selected === entry.path}
+          aria-selected={selection.paths.includes(entry.path)}
           aria-expanded={entry.kind === 'directory' ? entry.expanded : undefined}
           style:padding-left={`${8 + entry.depth * 13}px`} title={entry.path}
-          onclick={(event) => { if (event.detail !== 2) activate(entry); }}
-          ondblclick={() => { if (entry.kind === 'document') activate(entry, true); }}
+          onclick={(event) => clickEntry(event, entry)}
+          ondblclick={(event) => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && entry.kind === 'document') activate(entry, true); }}
           onauxclick={(event) => { if (event.button === 1 && entry.kind === 'document') { event.preventDefault(); activate(entry, true); } }}
           onkeydown={(event) => keyEntry(event, entry)}
           oncontextmenu={(event) => openMenu(event, entry)} ondragstart={(event) => startDrag(event, entry)}
-          ondragend={() => dropTarget = ''}
+          ondragend={endDrag}
           ondragover={(event) => entry.kind === 'directory' && dragOver(event, entry.path)}
           ondragleave={() => dropTarget = ''}
           ondrop={(event) => entry.kind === 'directory' && drop(event, entry.path)}>
@@ -232,19 +321,19 @@
 {#if menu}
   <div class="project-context-menu" role="menu" tabindex="-1"
     style:left={`${menu.x}px`} style:top={`${menu.y}px`}>
-    {#if !menu.entry || menu.entry.kind === 'directory'}
+    {#if !menu.entry || (menu.entry.kind === 'directory' && selectedEntries.length === 1)}
       <button type="button" role="menuitem" onclick={() => beginCreate('file', menu?.entry?.path ?? project.folder!.path)}>New File</button>
       <button type="button" role="menuitem" onclick={() => beginCreate('directory', menu?.entry?.path ?? project.folder!.path)}>New Folder</button>
       <span class="menu-separator"></span>
     {/if}
     {#if menu.entry}
-      {#if menu.entry.kind === 'document'}<button type="button" role="menuitem"
-        onclick={() => actions.openProjectFile(menu!.entry!.path)}>Open</button>{/if}
-      <button type="button" role="menuitem" onclick={() => copy(menu!.entry!.path)}>Copy Path</button>
-      <button type="button" role="menuitem" onclick={() => copy(relativeToRoot(menu!.entry!.path))}>Copy Relative Path</button>
+      {#if selectedEntries.some(entry => entry.kind === 'document')}<button type="button" role="menuitem"
+        onclick={() => void actions.openProjectFiles(selectedEntries.filter(entry => entry.kind === 'document').map(entry => entry.path))}>Open</button>{/if}
+      <button type="button" role="menuitem" onclick={() => copy(selectedPaths().join('\n'))}>Copy Path</button>
+      <button type="button" role="menuitem" onclick={() => copy(selectedPaths().map(relativeToRoot).join('\n'))}>Copy Relative Path</button>
       <span class="menu-separator"></span>
-      <button type="button" role="menuitem" onclick={() => menu?.entry && beginRename(menu.entry)}>Rename <kbd>F2</kbd></button>
-      <button type="button" role="menuitem" onclick={() => { trashTarget = menu?.entry ?? null; menu = null; }}>Move to Trash <kbd>Del</kbd></button>
+      {#if selectedEntries.length === 1}<button type="button" role="menuitem" onclick={() => menu?.entry && beginRename(menu.entry)}>Rename <kbd>F2</kbd></button>{/if}
+      <button type="button" role="menuitem" onclick={() => { trashTarget = [...selectedEntries]; menu = null; }}>Move to Trash <kbd>Del</kbd></button>
     {:else}
       <button type="button" role="menuitem" onclick={() => { menu = null; actions.refreshProjectExplorer(); }}>Refresh</button>
       <button type="button" role="menuitem" onclick={() => { menu = null; actions.collapseProjectExplorer(); }}>Collapse Folders</button>
@@ -256,7 +345,7 @@
 
 {#if trashTarget}
   <div class="project-confirm" role="alertdialog" aria-modal="true" aria-labelledby="trash-title">
-    <strong id="trash-title">Move “{trashTarget.name}” to Trash?</strong>
+    <strong id="trash-title">Move {trashTarget.length === 1 ? `“${trashTarget[0].name}”` : `${topLevelPaths(trashTarget.map(entry => entry.path)).length} items`} to Trash?</strong>
     <span>You can restore it from the system Trash.</span>
     <div><button type="button" class="ghost" onclick={() => trashTarget = null}>Cancel</button>
       <button type="button" class="danger" onclick={() => void confirmTrash()}>Move to Trash</button></div>

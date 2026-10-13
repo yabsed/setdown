@@ -165,7 +165,7 @@ input, select, textarea { font-family: inherit; }
   padding: 6px 8px 0;
   border-bottom: 1px solid var(--app-border);
   background: var(--app-chrome);
-  -webkit-app-region: drag;
+  -webkit-app-region: no-drag;
 }
 .tab-list { display: flex; flex: 0 1 auto; min-width: 0; gap: 2px; overflow-x: auto; scrollbar-width: none; -webkit-app-region: no-drag; }
 .tab-list::-webkit-scrollbar { display: none; }
@@ -1208,3 +1208,9 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 .browser-empty h2 { font: 500 20px/1.4 var(--app-font-family); }
 .browser-empty p { max-width: 460px; font: 13px/1.8 var(--app-font-family); opacity: .6; }
 .browser-empty button { padding: 8px 14px; border: 1px solid var(--app-border); border-radius: 6px; color: inherit; background: var(--app-chrome); }
+
+/* A tab drop must also work in the strip's padding and unused space. The
+   application title bar remains the native window-drag region. */
+.tab-drop-indicator { position: fixed; z-index: 96; width: 3px; border-radius: 2px; background: var(--app-accent); pointer-events: none; }
+.explorer-drag-label { position: fixed; top: -100px; left: 0; padding: 6px 12px; border-radius: 5px; color: var(--app-text); background: var(--app-selected); border: 1px solid var(--app-border); }
+.explorer-row:focus-visible { outline: 1px solid var(--app-focus-ring); outline-offset: -1px; }

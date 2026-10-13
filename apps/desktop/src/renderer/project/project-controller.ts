@@ -92,7 +92,8 @@ export class ProjectController {
   createEntry = (parent: string, name: string, kind: ProjectEntryKind): Promise<void> => this.explorer.create(parent, name, kind);
   renameEntry = (path: string, name: string): Promise<void> => this.explorer.rename(path, name);
   moveEntry = (path: string, target: string): Promise<void> => this.explorer.move(path, target);
-  trashEntry = (path: string): Promise<void> => this.explorer.trash(path);
+  moveEntries = (paths: string[], target: string): Promise<string[]> => this.explorer.moveMany(paths, target);
+  trashEntry = (path: string): Promise<boolean> => this.explorer.trash(path);
   openSearchResult = (result: ProjectSearchResult): Promise<void> => this.searcher.open(result);
   search = (query: string): void => this.searcher.search(query);
   toggleSearchGroup = (path: string): void => this.searcher.toggleGroup(path);

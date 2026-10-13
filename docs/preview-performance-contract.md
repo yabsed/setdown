@@ -353,3 +353,25 @@ the preparation, focus, revision or visual guarantees above.
 replacement, promotion, resource release, saved edits, independent groups and
 explicit opens. They are included in the focused gate; ordinary and Git review
 latency retain the same 48-bucket comparison.
+
+## Explorer selection and tab-strip drops
+
+Explorer selection follows the [VS Code multi-selection model](https://code.visualstudio.com/docs/editing/getting-started/userinterface):
+Ctrl/Cmd toggles entries, Shift selects a visible range, Ctrl/Cmd+A selects visible
+entries, and modifier clicks do not replace the editor preview. Keyboard range
+selection and selected-item context menus operate on that same selection.
+A selected folder carries its selected descendants exactly once. Batch moves
+preflight paths and name conflicts before moving; unexpected disk failures report
+completed moves so live document paths and saved reading positions can follow.
+`explorer-selection.spec.ts` and selection/service unit tests cover the real
+multi-item drag, conflicts, pinned batch opens, and unsaved text after moving.
+
+Like [Chrome tab movement](https://support.google.com/chrome/answer/2391819), tab
+strips accept drops over tabs, padding, and unused space, with an insertion marker
+and edge scrolling. Their unused space is not a native window-drag region; the
+application title bar still moves the window. A strip drop inserts without
+splitting, while body-edge drops retain their split behavior. Drop completion,
+cancellation, and leaving the window clear feedback and release native overlays.
+`editor-groups.spec.ts` checks real pointer input, order, group collapse, and Undo;
+`tab-detach.spec.ts` checks cross-window strip drops even when source dragend
+precedes the destination claim, preserving the live native reader and position.
