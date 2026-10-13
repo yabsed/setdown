@@ -79,9 +79,14 @@ export class BrowserManager {
     }
     return this.profile;
   }
-  private ensureReady(): Promise<void> {
-    if (!this.ready) {
-      this.extensions ??= new BrowserExtensions(this.session, id => this.forContentsId(id)?.view.webContents, {
+  /** Start extensions ahead of the first web tab: uBlock's first-run filter
+   * compilation takes seconds on a fresh profile, and first navigation must
+   * not stall on it (the extension still starts before any remote load).
+   * A failed warmup is not latched; ensureReady retries on demand. */
+  warmup(): void { void this.ensureReady().catch(() => undefined); }
+  private ensureExtensions(): BrowserExtensions {
+    if (!this.extensions) {
+      this.extensions = new BrowserExtensions(this.session, id => this.forContentsId(id)?.view.webContents, {
         license: 'GPL-3.0',
         createTab: async details => {
           const state = details.openerTabId ? this.options.stateFor(this.forContentsId(details.openerTabId)?.owner ?? -1)
@@ -98,8 +103,13 @@ export class BrowserManager {
           if (entry && !this.transferring.has(contents.id)) void this.close(entry.owner, entry.page.id);
         },
       });
-      this.ready = this.extensions.start().catch(error => { this.ready = undefined; throw error; });
+      this.extensions.prepare();
     }
+    return this.extensions;
+  }
+  private ensureReady(): Promise<void> {
+    const extensions = this.ensureExtensions();
+    this.ready ??= extensions.start().catch(error => { this.ready = undefined; throw error; });
     return this.ready;
   }
   private extensionURL(url: string): string {
@@ -122,7 +132,7 @@ export class BrowserManager {
   private publish(entry: Entry) {
     if (entry.view.webContents.isDestroyed()) return;
     const wc = entry.view.webContents;
-    entry.page = { ...entry.page, loading: wc.isLoading(), canGoBack: wc.navigationHistory.canGoBack(),
+    entry.page = { ...entry.page, loading: wc.isLoading() || entry.page.protection === 'starting', canGoBack: wc.navigationHistory.canGoBack(),
       canGoForward: wc.navigationHistory.canGoForward(), audible: wc.isCurrentlyAudible(), muted: wc.isAudioMuted(),
       zoomPercent: Math.round(this.pageZoom(entry) * 100) };
     this.send(entry.owner, { type: 'page', page: entry.page });
@@ -299,9 +309,10 @@ export class BrowserManager {
     // Install session frame preloads before creating the RenderFrameHost.
     // Creating about:blank first can capture an incomplete preload registry;
     // its descendants then miss page policy and wheel handlers altogether.
-    await this.ensureReady();
-    if (this.views.has(id)) return this.owned(owner, id).page;
-    if (this.dormant.has(id) && this.dormant.get(id) !== owner) throw Error('This web tab does not belong to this window.');
+    // Only the synchronous registration must precede the view: the tab can
+    // appear immediately while load() still waits for uBlock to be ready
+    // before any remote navigation.
+    this.ensureExtensions();
     this.dormant.delete(id);
     const entry = this.openEntry(owner, id, url);
     if (history) { entry.historyUrls = history.entries.map(e => e.url); entry.historyIndex = history.index; }
@@ -528,14 +539,19 @@ export class BrowserManager {
     channels.handle('browser:restore', async state => {
       const own = [...this.views.values()].filter(e => e.owner === state.webContentsId).map(e => e.page);
       own.push(...[...this.dormant].filter(([, owner]) => owner === state.webContentsId).map(([id]) => this.saved.get(id)!));
-      if (own.length || this.restored) return own;
+      // Warm extensions only for shells that actually restore web tabs, so
+      // document-only launches never pay uBlock startup (or gain its
+      // background page). The shell window already exists at this point.
+      if (own.length || this.restored) { if (own.length) this.warmup(); return own; }
       this.restored = true;
       const saved: unknown = await fs.readFile(path.join(app.getPath('userData'), 'browser-tabs.json'), 'utf8').then(JSON.parse).catch(() => []);
       if (!Array.isArray(saved)) return [];
-      return saved.filter(p => p && isWebURL(p.url)).slice(0, 200).map(p => {
+      const pages = saved.filter(p => p && isWebURL(p.url)).slice(0, 200).map(p => {
         const page = { ...blankPage(randomUUID(), p.url), title: String(p.title || p.url) };
         this.saved.set(page.id, page); this.dormant.set(page.id, state.webContentsId); return page;
       });
+      if (pages.length) this.warmup();
+      return pages;
     });
   }
   dispose() { this.places.dispose(); }

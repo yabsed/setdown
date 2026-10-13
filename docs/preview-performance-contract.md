@@ -349,8 +349,14 @@ and progress/completion ordering.
 `browser.spec.ts` covers navigation, live state, native split visibility, bookmarks,
 fresh-profile extension startup, popup opener identity, and real uBlock network,
 scriptlet, frame cosmetic and response-header filtering. It is part of the focused
-gate. The full uBlock extension starts before remote navigation. Its adapter
-preserves native response-header events and targets styles to their actual frame.
+gate. The full uBlock extension starts before remote navigation; startup is
+warmed when a shell restores web tabs so first navigation does not pay the
+fresh-profile filter compilation (seconds) — document-only launches do not
+start extensions at all — and creating a web tab
+only needs the synchronous session-preload registration — the tab appears
+immediately while its remote load still waits for extension readiness. Its
+adapter preserves native response-header events and targets styles to their
+actual frame.
 Electron 38 cannot remove user-origin webFrame styles; scoped user styles are
 disabled through root tokens and reused until navigation, preserving priority
 and allowing uBlock's cosmetic toggle without replacing page content. Frames

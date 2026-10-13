@@ -54,6 +54,9 @@ test('user-installed extensions load, run content scripts, and can be disabled',
     const page = await app.firstWindow();
     await focusApplication(app);
     await expect(page.getByRole('button', { name: 'Open Web Page', exact: true })).toBeVisible();
+    // Cold extension startup (uBlock filter compilation) is setup, not part
+    // of the title assertion's default timeout below.
+    await page.evaluate(() => window.marktex.browser.extensions());
     await page.evaluate(url => window.marktex.openLink(url), `${origin}/article`);
     await expect(page.getByRole('tab', { name: /Research page/ })).toHaveAttribute('aria-selected', 'true');
 
@@ -70,6 +73,13 @@ test('user-installed extensions load, run content scripts, and can be disabled',
     await expect(page.locator('.project-sidebar')).toBeVisible();
     await page.locator('.activity-bar button[aria-label="Browser"]').click();
     const library = page.getByRole('navigation', { name: 'Browser library' });
+    // Search sits below the section selector.
+    const searchBelow = await page.locator('.browser-sidebar').evaluate(sidebar => {
+      const nav = sidebar.querySelector('nav')!.getBoundingClientRect();
+      const input = sidebar.querySelector('input')!.getBoundingClientRect();
+      return input.top >= nav.bottom;
+    });
+    expect(searchBelow).toBe(true);
     await library.getByRole('button', { name: 'Extensions' }).click();
     await expect(page.getByRole('button', { name: 'Install from file (.zip/.crx)…' })).toBeVisible();
     const inside = await page.locator('.browser-sidebar').evaluate(sidebar => {

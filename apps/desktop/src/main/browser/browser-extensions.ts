@@ -34,8 +34,13 @@ export class BrowserExtensions {
   private get extensionsRoot() { return path.join(app.getPath('userData'), 'extensions'); }
   private get registryFile() { return path.join(app.getPath('userData'), 'browser-extensions.json'); }
 
+  /** Register the session preloads and IPC synchronously. This must be able
+   * to run before a web view is created (its initial frame captures the
+   * preload registry) without waiting for uBlock to finish starting. */
+  prepare(): void { if (!this.host) this.installHost(); }
+
   async start(): Promise<void> {
-    if (!this.host) this.installHost();
+    this.prepare();
     await this.loadRegistry();
     await this.startBuiltin();
     for (const record of this.records) {

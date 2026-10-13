@@ -28,13 +28,13 @@
 
 <div class="browser-sidebar">
   <header><span>Browser</span><button aria-label="New web tab" title="New web tab (Ctrl/Cmd+T)" onclick={() => actions.newWebTab()}>+</button></header>
-  {#if section !== 'extensions'}<input aria-label={section === 'downloads' ? 'Search downloads' : 'Search bookmarks and history'} placeholder={`Search ${section}`} bind:value={query} />{/if}
   <nav aria-label="Browser library">
     <button class:selected={section === 'bookmarks'} aria-pressed={section === 'bookmarks'} onclick={() => select('bookmarks')}>Bookmarks</button>
     <button class:selected={section === 'history'} aria-pressed={section === 'history'} onclick={() => select('history')}>History</button>
     <button class:selected={section === 'downloads'} aria-pressed={section === 'downloads'} onclick={() => select('downloads')}>Downloads{#if activeDownloads}<span class="count">{activeDownloads}</span>{/if}</button>
     <button class:selected={section === 'extensions'} aria-pressed={section === 'extensions'} onclick={() => select('extensions')}>Extensions</button>
   </nav>
+  {#if section !== 'extensions'}<input aria-label={section === 'downloads' ? 'Search downloads' : 'Search bookmarks and history'} placeholder={`Search ${section}`} bind:value={query} />{/if}
   {#if section === 'extensions'}
     <BrowserExtensions {actions} />
   {:else if section === 'downloads'}

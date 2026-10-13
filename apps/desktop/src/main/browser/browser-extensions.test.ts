@@ -82,6 +82,13 @@ describe('BrowserExtensions registry', () => {
     await expect(extensions.commit(inspected.token)).resolves.toMatchObject({ name: 'Fixture Extension' });
   });
 
+  test('prepare registers the session preload once without starting uBlock', () => {
+    extensions.prepare();
+    extensions.prepare();
+    expect(electron.session.registerPreloadScript).toHaveBeenCalledOnce();
+    expect(electron.session.extensions.loadExtension).not.toHaveBeenCalled();
+  });
+
   test('cosmetic CSS for a frame that never acknowledges resolves instead of rejecting', async () => {
     vi.useFakeTimers();
     try {

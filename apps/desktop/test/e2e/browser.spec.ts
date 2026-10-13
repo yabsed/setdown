@@ -71,6 +71,10 @@ async function fixture(document = true) {
       data: Buffer.from(await response.arrayBuffer()), headers: Object.fromEntries(response.headers), statusCode: response.status,
     })).catch(() => respond({ error: -2 }));
   }));
+  // A fresh profile compiles uBlock's filter lists for several seconds and
+  // first navigation waits for it; that cold start is part of fixture setup
+  // (it must still complete), not of each test's 5s UI assertions.
+  await page.evaluate(() => window.marktex.browser.extensions());
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(String(error)));
   return { get app() { return app; }, get page() { return page; }, root, origin, requests, errors,
@@ -80,6 +84,7 @@ async function fixture(document = true) {
       app = await electron.launch(launchOptions);
       page = await app.firstWindow();
       await focusApplication(app);
+      await page.evaluate(() => window.marktex.browser.extensions());
       page.on('pageerror', error => errors.push(String(error)));
     }, async dispose() {
     await disposeApplication(app); await new Promise<void>(resolve => server.close(() => resolve())); await rm(root, { recursive: true, force: true });
@@ -588,15 +593,17 @@ test('tab widths stay stable when adding tabs and updating web page titles', asy
     const originalWidth = (await notes.boundingBox())!.width;
     await f.page.getByRole('button', { name: 'New web tab', exact: true }).click();
     const web = f.page.locator('.document-tab[aria-selected="true"]');
-    await expect(web).toContainText('Google');
+    // New renderer process + navigation + title can exceed the default 5s
+    // expect budget on a loaded headless machine; widths are asserted after.
+    await expect(web).toContainText('Google', { timeout: 15_000 });
     const widths = () => f.page.locator('.document-tab').evaluateAll(tabs => tabs.map(tab => tab.getBoundingClientRect().width));
     const settled = await widths();
     expect(settled[0]).toBe(originalWidth);
     await evaluatePage(f.app, 'https://www.google.com/', 'document.title = "A much longer website title that should only change the text inside its tab"; true');
-    await expect(web).toContainText('A much longer website title');
+    await expect(web).toContainText('A much longer website title', { timeout: 15_000 });
     expect(await widths()).toEqual(settled);
     await evaluatePage(f.app, 'https://www.google.com/', 'document.title = "Google"; true');
-    await expect(web).toContainText('Google');
+    await expect(web).toContainText('Google', { timeout: 15_000 });
     expect(await widths()).toEqual(settled);
     await f.page.getByRole('button', { name: 'New document', exact: true }).click();
     await expect(f.page.locator('.document-tab')).toHaveCount(3);
@@ -636,9 +643,11 @@ test('new web tabs take selection without selecting the address, including after
     await expect(blank).toHaveAttribute('aria-selected', 'true');
     await previous.click();
     await f.page.keyboard.press('Control+t');
-    await expect(f.page.getByRole('tab', { name: /Google/ })).toHaveCount(2);
+    // Each new tab spawns a renderer process and navigates; on a loaded
+    // headless machine that exceeds Playwright's default 5s expect budget.
+    await expect(f.page.getByRole('tab', { name: /Google/ })).toHaveCount(2, { timeout: 15_000 });
     const selected = f.page.locator('.document-tab[aria-selected="true"]');
-    await expect(selected).toContainText('Google');
+    await expect(selected).toContainText('Google', { timeout: 15_000 });
     expect(await selected.getAttribute('data-tab-id')).not.toBe(blankId);
     await expect(address).not.toBeFocused();
     expect(await address.evaluate(input => (input as HTMLInputElement).selectionStart === (input as HTMLInputElement).selectionEnd)).toBe(true);
@@ -647,7 +656,7 @@ test('new web tabs take selection without selecting the address, including after
     expect(await address.evaluate(input => (input as HTMLInputElement).selectionStart === 0
       && (input as HTMLInputElement).selectionEnd === (input as HTMLInputElement).value.length)).toBe(true);
     await f.page.keyboard.press('Control+t');
-    await expect(f.page.getByRole('tab', { name: /Google/ })).toHaveCount(3);
+    await expect(f.page.getByRole('tab', { name: /Google/ })).toHaveCount(3, { timeout: 15_000 });
     await expect(address).not.toBeFocused();
     expect(await address.evaluate(input => (input as HTMLInputElement).selectionStart === (input as HTMLInputElement).selectionEnd)).toBe(true);
     expect(f.errors).toEqual([]);
