@@ -2,6 +2,13 @@ import { WheelZoomAccumulator } from '../core/wheel-zoom';
 import { appZoomStep } from '../core/zoom';
 export { WheelZoomAccumulator } from '../core/wheel-zoom';
 
+/** Media surfaces handle their own cursor-anchored zoom, including shadow DOM. */
+export function isTextZoomTarget(target: EventTarget | null): boolean {
+  const element = target as Element | null;
+  if (element?.closest?.('.pdf-host, .image-viewport')) return false;
+  return !!element?.closest?.('.monaco-editor, .terminal-surface');
+}
+
 /** Installed in sandbox preloads, before editor, document or page handlers.
  * Do not expose ipcRenderer to page scripts. Synthetic wheel events are ignored.
  */
@@ -10,13 +17,8 @@ export function installWheelZoom(send: (steps: number) => void, nativeText = fal
   const wheel = (event: WheelEvent) => {
     if (!event.isTrusted || !event.ctrlKey || event.altKey || event.metaKey) return;
     if (!Number.isFinite(event.deltaY) || event.deltaY === 0) return;
+    if (!nativeText && !isTextZoomTarget(event.target)) return;
     event.preventDefault();
-    if (!nativeText) {
-      const target = event.target as Element;
-      // Media surfaces handle their own cursor-anchored zoom, including shadow DOM.
-      if (target.closest?.('.pdf-host, .image-viewport')) return;
-      if (!target.closest?.('.monaco-editor')) return;
-    }
     event.stopImmediatePropagation();
     const steps = accumulator.consume(event, performance.now());
     if (steps) send(steps);

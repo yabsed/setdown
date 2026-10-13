@@ -17,6 +17,7 @@ export function installTextZoom(desktop: DesktopPort) {
   void desktop.getZoom().then(update);
   return unsubscribe;
 }
+export function textZoomFactor() { return factor; }
 export function textZoomOptions() { return { fontSize: 14 * factor, lineHeight: 22 * factor }; }
 export function onTextZoom(listener: () => void) {
   listeners.add(listener);

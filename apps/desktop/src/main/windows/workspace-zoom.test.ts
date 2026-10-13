@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { WorkspaceZoom, nativeZoomBounds } from './workspace-zoom';
-import { WheelZoomAccumulator } from '../../preload/wheel-zoom';
+import { WheelZoomAccumulator, isTextZoomTarget } from '../../preload/wheel-zoom';
 import { appZoomStep } from '../../core/zoom';
 import { installZoomSettings } from './zoom-settings';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -94,6 +94,15 @@ test('huge or invalid deltas never flood the IPC channel', () => {
   const wheel = new WheelZoomAccumulator();
   assert.equal(wheel.consume({ deltaY: Infinity, deltaMode: 0 }, 0), 0);
   assert.equal(wheel.consume({ deltaY: -1e12, deltaMode: 0 }, 0), 4);
+});
+test('workspace wheel zoom reaches editors and terminals but never media surfaces', () => {
+  const element = (selector: string | null) => ({ closest: (query: string) => query.includes(selector ?? '') ? {} : null }) as unknown as EventTarget;
+  assert.equal(isTextZoomTarget(element('.monaco-editor')), true);
+  assert.equal(isTextZoomTarget(element('.terminal-surface')), true);
+  assert.equal(isTextZoomTarget(element('.pdf-host')), false);
+  assert.equal(isTextZoomTarget(element('.image-viewport')), false);
+  assert.equal(isTextZoomTarget(element(null)), false);
+  assert.equal(isTextZoomTarget(null), false);
 });
 
 test('text zoom composes with app zoom only in text previews, including spares and reloads', () => {

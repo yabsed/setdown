@@ -4,6 +4,7 @@
   import { FitAddon } from '@xterm/addon-fit';
   import '@xterm/xterm/css/xterm.css';
   import { APP_FONT_FAMILY } from '../../core/theme/typography';
+  import { onTextZoom, textZoomFactor } from '../editor/text-zoom';
   import type { TerminalApi, TerminalEvent, TerminalSize } from '../../protocol/terminal';
   let { api, id, active, focused, changed }: { api: TerminalApi; id: string; active: boolean; focused: boolean;
     changed(info: { title?: string; cwd?: string; exited?: boolean }): void } = $props();
@@ -20,6 +21,7 @@
       foreground: style.getPropertyValue('--app-text').trim(), cursor: style.getPropertyValue('--app-text').trim(),
       selectionBackground: `${style.getPropertyValue('--app-accent').trim()}55` };
   }
+  const terminalFont = () => Math.max(8, Math.round(13 * textZoomFactor()));
   function resize(immediate = false) {
     if (!term || starting || !active || !container.clientWidth || !container.clientHeight) return;
     const size = fit.proposeDimensions();
@@ -52,7 +54,7 @@
     });
   });
   onMount(() => {
-    term = new Terminal({ cursorBlink: true, fontSize: 13, scrollback: 5000, fontFamily: APP_FONT_FAMILY,
+    term = new Terminal({ cursorBlink: true, fontSize: terminalFont(), scrollback: 5000, fontFamily: APP_FONT_FAMILY,
       theme: theme(), allowProposedApi: false, screenReaderMode: true });
     fit = new FitAddon(); term.loadAddon(fit); term.open(container);
     term.onData(data => {
@@ -78,6 +80,13 @@
       return true;
     });
     const unsubscribe = api.onEvent(receive);
+    // Text zoom (Ctrl+wheel over the terminal or editor, Ctrl+=/-/0) rescales
+    // the cell grid; the existing resize path reflows the PTY in the right order.
+    const unsubscribeZoom = onTextZoom(() => {
+      if (!term) return;
+      term.options.fontSize = terminalFont();
+      if (alive && active && !starting) requestAnimationFrame(() => { if (alive && term && active) resize(true); });
+    });
     const observer = new ResizeObserver(() => resize()); observer.observe(container);
     const themes = new MutationObserver(() => { if (term) term.options.theme = theme(); });
     themes.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
@@ -102,7 +111,7 @@
       resize(true); if (focused && active) term?.focus();
     }).catch(cause => { if (alive) { error = String(cause); starting = false; changed({ title: 'Terminal failed', exited: true }); } });
     return () => {
-      alive = false; unsubscribe(); observer.disconnect(); themes.disconnect();
+      alive = false; unsubscribe(); unsubscribeZoom(); observer.disconnect(); themes.disconnect();
       clearTimeout(resizeTimer); resizeTimer = undefined;
       window.removeEventListener('setdown:focus-terminal', focus);
       // The workspace owns the process lifetime; moving/unmounting a surface

@@ -39,11 +39,14 @@ guarantees and are included in the focused gate.
 Zoom has four independent scopes. Ctrl+plus/minus and Ctrl+0 change/reset the
 persisted app factor in every window. Ctrl+wheel in text/Markdown changes the
 persisted common text factor: ordinary and Git Monaco editors scale typography,
-and native Markdown views use app × text zoom (including hidden/spare views).
+terminal surfaces scale their cell font (13px base) and refit the PTY grid
+through the ordered resize path, and native Markdown views use app × text zoom
+(including hidden/spare views).
 Native bounds still convert with **app zoom only**, never the text factor.
 Changing zoom must not navigate, replace models, discard undo history or focus
 hidden previews. `workspace-zoom.test.ts` and `workspace-zoom.spec.ts` cover scope,
-reset, inheritance and persistence. The View menu uses the same coordinator.
+reset, inheritance and persistence; the terminal e2e covers Ctrl+wheel over a
+live PTY and Ctrl+0 reset. The View menu uses the same coordinator.
 
 App typography uses the locally installed D2Coding family with a monospace
 fallback across shell controls, ordinary/Git editors, terminals, and Markdown

@@ -40,6 +40,49 @@ test('horizontal resizing preserves a two-line right prompt, input and prior out
     await expect.poll(() => readFile(path.join(root, 'tty-size.txt'), 'utf8').catch(() => '')).toBe(await readFile(path.join(root, 'grid.txt'), 'utf8'));
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
+test('ctrl+wheel over the terminal changes text zoom and refits the grid in both directions', async () => {
+  test.skip(process.platform === 'win32', 'Commands use a POSIX shell.');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-terminal-zoom-'));
+  const file = path.join(root, 'zoom.md'); await writeFile(file, '# Zoom\n');
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', file], env: { ...env, SHELL: '/bin/bash', XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    await focusApplication(app); const page = await app.firstWindow();
+    await page.locator('.new-terminal-tab-button').click();
+    await run(input(page), 'stty size | cat > size-0.txt');
+    await expect.poll(() => readFile(path.join(root, 'size-0.txt'), 'utf8').catch(() => '')).toMatch(/\d+ \d+/);
+    const box = await page.locator('.terminal-instance').boundingBox();
+    const fontOf = () => page.locator('.terminal-instance .xterm-rows').evaluate(el => getComputedStyle(el).fontSize);
+    const font0 = await fontOf();
+    const initial = (await readFile(path.join(root, 'size-0.txt'), 'utf8')).trim();
+    await page.keyboard.down('Control');
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+    await page.mouse.wheel(0, -240);
+    await page.keyboard.up('Control');
+    await expect.poll(fontOf).not.toBe(font0);
+    let zoomed = '';
+    await expect.poll(async () => {
+      await run(input(page), 'stty size | cat > size-1.txt');
+      zoomed = (await readFile(path.join(root, 'size-1.txt'), 'utf8').catch(() => 'missing')).trim();
+      return zoomed;
+    }).toMatch(/^\d+ \d+$/);
+    expect(zoomed).not.toBe(initial);
+    const [rows0, cols0] = initial.split(/\s+/).map(Number), [rows1, cols1] = zoomed.split(/\s+/).map(Number);
+    expect(cols1).toBeLessThan(cols0);
+    expect(rows1).toBeLessThanOrEqual(rows0);
+    await page.keyboard.down('Control');
+    await page.mouse.wheel(0, 240);
+    await page.keyboard.up('Control');
+    await expect.poll(fontOf).toBe(font0);
+    let reset = '';
+    await expect.poll(async () => {
+      await run(input(page), 'stty size | cat > size-2.txt');
+      reset = (await readFile(path.join(root, 'size-2.txt'), 'utf8').catch(() => 'missing')).trim();
+      return reset;
+    }).toBe(initial);
+    await page.screenshot({ path: test.info().outputPath('terminal-wheel-zoom.png') });
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
 for (const direction of ['right', 'down'] as const) test(`terminal tabs split ${direction}, preserve PTYs, and manage sessions in the sidebar`, async () => {
   test.skip(process.platform === 'win32', 'Commands use a POSIX shell.');
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-terminal-'));
