@@ -1,4 +1,5 @@
 import { TerminalScreen } from './terminal-screen';
+import { TerminalResize } from './terminal-resize';
 import { basename } from 'node:path';
 import { homedir } from 'node:os';
 import { statSync } from 'node:fs';
@@ -17,7 +18,7 @@ export function launchDirectory(...candidates: (string | null)[]): string {
 }
 
 type Spawn = (shell: string, args: string[], options: IPtyForkOptions) => IPty;
-type Session = { owner: number; pty: IPty; pending: number; paused: boolean; title: string; cwd: string; size: TerminalSize; screen: TerminalScreen; attaching: boolean; tail: { sequence: number; data: string }[]; exitCode?: number;
+type Session = { owner: number; pty: IPty; pending: number; paused: boolean; title: string; cwd: string; size: TerminalSize; screen: TerminalScreen; resizer: TerminalResize; attaching: boolean; tail: { sequence: number; event: TerminalEvent }[]; exitCode?: number;
   send: ((event: TerminalEvent) => void) | null; dispose(): void };
 const HIGH_WATER = 128 * 1024;
 const LOW_WATER = 32 * 1024;
@@ -40,13 +41,14 @@ export class TerminalManager {
     if (existing) {
       if (existing.send || existing.attaching) throw new Error('Invalid terminal request: already attached.');
       existing.attaching = true;
-      return existing.screen.snapshot().then(snapshot => {
+      return existing.resizer.settled().then(() => existing.screen.snapshot()).then(snapshot => {
         if (this.owned(owner, id) !== existing) throw new Error('Terminal closed during transfer.');
-        const tail = existing.tail.filter(chunk => chunk.sequence > snapshot.sequence).map(chunk => chunk.data).join('');
-        const info = this.info(existing, snapshot.data + tail);
+        const tail = existing.tail.filter(chunk => chunk.sequence > snapshot.sequence);
+        const info = this.info(existing, snapshot.data, snapshot.size);
         existing.tail = [];
         existing.send = send;
-        existing.pending = 0;
+        existing.pending = tail.reduce((total, chunk) => total + (chunk.event.type === 'data' ? chunk.event.data.length : 0), 0);
+        for (const chunk of tail) send(chunk.event);
         if (existing.paused && existing.exitCode === undefined) { existing.paused = false; existing.pty.resume(); }
         return info;
       }).finally(() => { existing.attaching = false; });
@@ -63,26 +65,39 @@ export class TerminalManager {
     const pty = this.spawn(shell, process.platform === 'win32' ? ['-NoLogo'] : ['-i'], {
       ...size, cwd: directory, env, name: 'xterm-256color',
     });
-    const session: Session = { owner, pty, pending: 0, paused: false, title: basename(shell), cwd: directory, size, screen: new TerminalScreen(size), attaching: false, tail: [], send, dispose: () => {} };
+    const screen = new TerminalScreen(size);
+    const emit = (event: TerminalEvent, sequence: number) => {
+      if (this.sessions.get(id) !== session) return;
+      if (session.send) session.send(event);
+      else session.tail.push({ sequence, event });
+    };
+    const resizer = new TerminalResize({
+      size: () => screen.size,
+      notify: next => { if (session.exitCode === undefined) { try { pty.resize(next.cols, next.rows); } catch { /* Shell may have exited. */ } } },
+      apply: async (next, current) => (await screen.resize(next, current, sequence => {
+        session.size = { ...next };
+        emit({ id, type: 'resize', size: { ...next } }, sequence);
+      })) !== null,
+    });
+    const session: Session = { owner, pty, pending: 0, paused: false, title: basename(shell), cwd: directory, size, screen, resizer, attaching: false, tail: [], send, dispose: () => {} };
     this.sessions.set(id, session);
     const data = pty.onData((text) => {
-      const sequence = session.screen.write(text);
-      if (!session.send) session.tail.push({ sequence, data: text });
+      session.screen.write(text, sequence => emit({ id, type: 'data', data: text }, sequence));
+      session.resizer.output();
       session.pending += text.length;
       if (!session.paused && session.pending > HIGH_WATER) { session.paused = true; pty.pause(); }
-      session.send?.({ id, type: 'data', data: text });
     });
     const exit = pty.onExit(({ exitCode }) => {
       session.exitCode = exitCode;
       session.dispose();
-      session.send?.({ id, type: 'exit', exitCode });
+      void screen.whenParsed(() => session.send?.({ id, type: 'exit', exitCode })).catch(() => {});
     });
     session.dispose = () => { data.dispose(); exit.dispose(); };
     return this.info(session);
   }
 
-  private info(session: Session, snapshot = ''): TerminalInfo {
-    return { title: session.title, cwd: session.cwd, size: { ...session.size }, snapshot, exitCode: session.exitCode };
+  private info(session: Session, snapshot = '', size = session.size): TerminalInfo {
+    return { title: session.title, cwd: session.cwd, size: { ...size }, snapshot, exitCode: session.exitCode };
   }
   owns(owner: number, id: string): boolean { return !!this.owned(owner, id); }
   adopt(source: number, destination: number, id: string): boolean {
@@ -101,12 +116,16 @@ export class TerminalManager {
   write(owner: number, id: string, data: string): void {
     if (typeof data !== 'string' || data.length > 64 * 1024) return;
     const session = this.owned(owner, id);
-    if (session?.exitCode === undefined) session?.pty.write(data);
+    if (!session || session.exitCode !== undefined) return;
+    if (!session.resizer.busy) session.pty.write(data);
+    else void session.resizer.settled().then(() => {
+      if (this.owned(owner, id) === session && session.exitCode === undefined) session.pty.write(data);
+    });
   }
   resize(owner: number, id: string, size: TerminalSize): void {
     if (!validSize(size)) return;
     const session = this.owned(owner, id);
-    if (session && session.exitCode === undefined) { session.size = { ...size }; session.screen.resize(size); try { session.pty.resize(size.cols, size.rows); } catch { /* Shell may have exited. */ } }
+    if (session) session.resizer.request(size);
   }
   acknowledge(owner: number, id: string, length: number): void {
     const session = this.owned(owner, id);
@@ -118,6 +137,7 @@ export class TerminalManager {
     const session = this.owned(owner, id);
     if (!session) return;
     this.sessions.delete(id);
+    session.resizer.dispose();
     session.screen.dispose();
     if (session.exitCode !== undefined) return;
     session.dispose();

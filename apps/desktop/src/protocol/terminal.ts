@@ -1,6 +1,7 @@
 export type TerminalSize = { cols: number; rows: number };
 export type TerminalEvent = { id: string } & (
   | { type: 'data'; data: string }
+  | { type: 'resize'; size: TerminalSize }
   | { type: 'exit'; exitCode: number }
 );
 export type TerminalInfo = { title: string; cwd: string; size: TerminalSize; snapshot: string; exitCode?: number };

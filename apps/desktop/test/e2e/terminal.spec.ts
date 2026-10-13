@@ -1,5 +1,5 @@
 import { _electron as electron, expect, test, type Locator } from '@playwright/test';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { previews } from './preview-view';
@@ -8,6 +8,38 @@ import { dragTerminal } from './terminal-drag';
 
 const run = async (input: Locator, command: string) => { await input.pressSequentially(command); await input.press('Enter'); };
 const input = (page: import('@playwright/test').Page) => page.locator('.terminal-content:not(.inactive) .xterm-helper-textarea');
+
+test('horizontal resizing preserves a two-line right prompt, input and prior output', async () => {
+  test.skip(process.platform === 'win32', 'Commands use a POSIX shell.');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-terminal-resize-'));
+  const file = path.join(root, 'resize.md'); await writeFile(file, '# Resize\n');
+  await copyFile(path.join(process.cwd(), 'test/fixtures/terminal-resize.cjs'), path.join(root, 'prompt.cjs'));
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', file], env: { ...env, SHELL: '/bin/bash', XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    await focusApplication(app); const page = await app.firstWindow();
+    await page.locator('.new-terminal-tab-button').click();
+    await run(input(page), 'node prompt.cjs');
+    const rows = page.locator('.xterm-rows'); await expect(rows).toContainText('RESIZE-LEFT');
+    await input(page).pressSequentially('typed-but-not-submitted');
+    const down = Array.from({ length: 21 }, (_, i) => 1180 - i * 20), up = [...down].reverse();
+    for (const widths of [down, up, down, up, down]) {
+      for (const width of widths) {
+        await app.evaluate(({ BrowserWindow }, width) => BrowserWindow.getAllWindows()[0].setContentSize(width, 700), width);
+        await page.waitForTimeout(12);
+      }
+      await expect.poll(async () => (await rows.innerText()).split('RESIZE-LEFT').length - 1).toBe(1);
+      await expect(rows).toContainText('RESIZE-RIGHT-STATUS');
+      await expect(rows).toContainText('typed-but-not-submitted');
+    }
+    expect((await rows.innerText()).replaceAll('\n', '')).toContain('HISTORY-START-' + '0123456789'.repeat(18) + '-HISTORY-END');
+    await page.screenshot({ path: test.info().outputPath('terminal-prompt-resize.png') });
+    await input(page).press('Control+C');
+    await expect.poll(() => readFile(path.join(root, 'typed.txt'), 'utf8').catch(() => '')).toBe('typed-but-not-submitted');
+    await run(input(page), 'stty size > tty-size.txt');
+    await expect.poll(() => readFile(path.join(root, 'tty-size.txt'), 'utf8').catch(() => '')).toBe(await readFile(path.join(root, 'grid.txt'), 'utf8'));
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
 for (const direction of ['right', 'down'] as const) test(`terminal tabs split ${direction}, preserve PTYs, and manage sessions in the sidebar`, async () => {
   test.skip(process.platform === 'win32', 'Commands use a POSIX shell.');
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-terminal-'));

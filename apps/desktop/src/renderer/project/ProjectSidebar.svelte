@@ -67,7 +67,7 @@
 </aside>
 
 <style>
-  .terminal-activity { margin-top: auto; flex-shrink: 0; }
+  .terminal-activity { flex-shrink: 0; }
   .scm-activity { position: relative; }
   .scm-activity-badge {
     position: absolute;

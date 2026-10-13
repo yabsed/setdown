@@ -50,7 +50,7 @@ describe('window-owned terminals', () => {
     expect(() => f.manager.create(1, 'bad', { cols: NaN, rows: -1 }, '/tmp', f.send)).toThrow('Invalid');
     expect(f.spawn).toHaveBeenCalledTimes(1);
   });
-  it('isolates input, resize, termination and acknowledgments by owner', () => {
+  it('isolates input, resize, termination and acknowledgments by owner', async () => {
     const f = fixture(); f.create();
     f.manager.write(2, 'one', 'wrong');
     f.manager.resize(2, 'one', { cols: 100, rows: 40 });
@@ -62,7 +62,7 @@ describe('window-owned terminals', () => {
     f.manager.resize(1, 'one', { cols: 100, rows: 40 });
     f.manager.resize(1, 'one', { cols: Infinity, rows: 40 });
     expect(f.pty.write).toHaveBeenCalledWith('echo hello\r');
-    expect(f.pty.resize).toHaveBeenCalledExactlyOnceWith(100, 40);
+    await vi.waitFor(() => expect(f.pty.resize).toHaveBeenCalledExactlyOnceWith(100, 40));
     f.manager.closeOwner(1);
     expect(f.pty.kill).toHaveBeenCalledOnce();
     expect(f.dataDispose).toHaveBeenCalledOnce();
@@ -79,9 +79,9 @@ describe('window-owned terminals', () => {
     f.manager.acknowledge(1, 'one', 140000);
     expect(f.pty.resume).toHaveBeenCalledOnce();
   });
-  it('reports exit once, releases subscriptions, and makes later input harmless', () => {
+  it('reports exit once, releases subscriptions, and makes later input harmless', async () => {
     const f = fixture(); f.create(); f.exit();
-    expect(f.send).toHaveBeenCalledWith({ id: 'one', type: 'exit', exitCode: 7 });
+    await vi.waitFor(() => expect(f.send).toHaveBeenCalledWith({ id: 'one', type: 'exit', exitCode: 7 }));
     f.manager.write(1, 'one', 'ignored'); f.manager.dispose();
     expect(f.pty.write).not.toHaveBeenCalled();
     expect(f.pty.kill).not.toHaveBeenCalled();
@@ -93,6 +93,7 @@ describe('terminal tab transfers', () => {
   it('keeps the PTY, buffers output during handoff and rejects the old owner', async () => {
     const f = fixture(); f.create();
     f.output('before\r\n');
+    await vi.waitFor(() => expect(f.send).toHaveBeenCalledWith({ id: 'one', type: 'data', data: 'before\r\n' }));
     expect(f.manager.adopt(9, 2, 'one')).toBe(false);
     expect(f.manager.adopt(1, 2, 'one')).toBe(true);
     expect(f.pty.pause).toHaveBeenCalledOnce();
@@ -109,7 +110,7 @@ describe('terminal tab transfers', () => {
     expect(f.spawn).toHaveBeenCalledOnce();
     expect(f.pty.resume).toHaveBeenCalledOnce();
     f.output('after');
-    expect(destination).toHaveBeenCalledWith({ id: 'one', type: 'data', data: 'after' });
+    await vi.waitFor(() => expect(destination).toHaveBeenCalledWith({ id: 'one', type: 'data', data: 'after' }));
     expect(f.send).toHaveBeenCalledTimes(1);
     f.manager.write(2, 'one', 'correct');
     expect(f.pty.write).toHaveBeenCalledWith('correct');
@@ -134,5 +135,43 @@ describe('terminal tab transfers', () => {
     expect(info.snapshot).toContain('first-row');
     expect(info.snapshot).toContain('latest');
     expect(info.snapshot.length).toBeLessThan(1000);
+  });
+});
+
+describe('ordered terminal resizing', () => {
+  it('fits exited output without resizing an exited process', async () => {
+    const f = fixture(); f.create(); f.exit();
+    f.manager.resize(1, 'one', { cols: 100, rows: 40 });
+    await vi.waitFor(() => expect(f.send).toHaveBeenCalledWith({ id: 'one', type: 'resize', size: { cols: 100, rows: 40 } }));
+    expect(f.pty.resize).not.toHaveBeenCalled();
+  });
+  it('delivers parsed output and dimensions in order before exit', async () => {
+    const f = fixture(); f.create();
+    f.output('before'); f.manager.resize(1, 'one', { cols: 100, rows: 40 }); f.output('after'); f.exit();
+    await vi.waitFor(() => expect(f.send).toHaveBeenCalledTimes(4));
+    expect(f.send.mock.calls.map(([event]) => event)).toEqual([
+      { id: 'one', type: 'data', data: 'before' },
+      { id: 'one', type: 'resize', size: { cols: 100, rows: 40 } },
+      { id: 'one', type: 'data', data: 'after' },
+      { id: 'one', type: 'exit', exitCode: 7 },
+    ]);
+  });
+  it('lets the process redraw a smaller prompt before reflow and user input', async () => {
+    const f = fixture(); f.create();
+    f.pty.resize = vi.fn(() => f.output('\r\x1b[2Kredrawn'));
+    f.manager.resize(1, 'one', { cols: 60, rows: 24 }); f.manager.write(1, 'one', 'typed');
+    expect(f.pty.write).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(f.pty.write).toHaveBeenCalledWith('typed'));
+    expect(f.send.mock.calls.map(([event]) => event)).toEqual([
+      { id: 'one', type: 'data', data: '\r\x1b[2Kredrawn' },
+      { id: 'one', type: 'resize', size: { cols: 60, rows: 24 } },
+    ]);
+  });
+  it('cancels queued input and grid updates when a resizing session closes', async () => {
+    const f = fixture(); f.create();
+    f.manager.resize(1, 'one', { cols: 60, rows: 24 }); f.manager.write(1, 'one', 'obsolete');
+    f.manager.close(1, 'one');
+    await new Promise(resolve => setTimeout(resolve, 40));
+    expect(f.pty.write).not.toHaveBeenCalled(); expect(f.send).not.toHaveBeenCalled();
   });
 });

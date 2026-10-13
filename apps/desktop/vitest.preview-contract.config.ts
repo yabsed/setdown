@@ -7,6 +7,7 @@ export default defineConfig({
     'src/architecture-boundaries.test.ts',
     'src/main/terminal/terminal-manager.test.ts',
     'src/main/terminal/terminal-screen.test.ts',
+    'src/main/terminal/terminal-resize.test.ts',
     'src/main/tabs/tab-transfer-manager.test.ts',
     'src/main/project/explorer-service.test.ts',
     'src/renderer/project/explorer/explorer-selection.test.ts',

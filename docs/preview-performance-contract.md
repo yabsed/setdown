@@ -115,6 +115,14 @@ beside the terminal refreshes external file changes without stealing focus.
 workspace lifecycle unit tests accompany them. See `integrated-terminal.md` for
 session and transcript limits.
 
+Terminal resize preserves a multiline prompt, unsubmitted input and prior
+output. Main applies growth before PTY notification and shrink after the
+process redraw, with ordered parser/grid events and a bounded output wait.
+The real native-window resize scenario in `terminal.spec.ts`, along with
+`terminal-resize.test.ts` and VT/manager tests, covers this ordering, snapshot
+dimensions, cancellation and closed/exited sessions. Sidebar compact sizing
+does not change the editor-group geometry.
+
 The common native lifecycle is: validate CSS bounds → convert/clip once → apply
 native bounds → synchronize Blink viewport → prepare hidden content. Navigation
 invalidates the viewport cache and replays that sequence after current ownership

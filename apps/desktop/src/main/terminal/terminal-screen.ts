@@ -45,17 +45,36 @@ export class TerminalScreen {
       return false;
     });
   }
-  write(data: string): number { this.terminal.write(data); return ++this.sequence; }
-  resize(size: TerminalSize): void { this.terminal.resize(size.cols, size.rows); }
-  snapshot(): Promise<{ data: string; sequence: number }> {
+  get size(): TerminalSize { return { cols: this.terminal.cols, rows: this.terminal.rows }; }
+  write(data: string, parsed?: (sequence: number) => void): number {
+    const sequence = ++this.sequence;
+    this.terminal.write(data, () => parsed?.(sequence));
+    return sequence;
+  }
+  resize(size: TerminalSize, current: () => boolean = () => true,
+    changed?: (sequence: number) => void): Promise<number | null> {
+    const sequence = ++this.sequence;
+    return this.parsed(() => {
+      if (!current()) return null;
+      this.terminal.resize(size.cols, size.rows);
+      changed?.(sequence);
+      return sequence;
+    });
+  }
+  whenParsed(action: () => void): Promise<void> { return this.parsed(action); }
+  snapshot(): Promise<{ data: string; sequence: number; size: TerminalSize }> {
     const sequence = this.sequence;
     // This parser barrier includes data queued immediately before a handoff.
+    return this.parsed(() => ({ data: this.serialize(), sequence,
+      size: { cols: this.terminal.cols, rows: this.terminal.rows } }));
+  }
+  private parsed<T>(action: () => T): Promise<T> {
     return new Promise((resolve, reject) => {
       if (this.disposed) { reject(new Error('Terminal screen was closed.')); return; }
       this.pending.add(reject);
       this.terminal.write('', () => {
         if (!this.pending.delete(reject)) return;
-        resolve({ data: this.serialize(), sequence });
+        resolve(action());
       });
     });
   }

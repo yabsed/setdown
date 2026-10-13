@@ -4,33 +4,50 @@
   const sessions = $derived(view.tabs.filter(tab => tab.kind === 'terminal'));
 </script>
 <section class="terminal-list" aria-label="Terminal sessions">
-  <header><h2>TERMINALS</h2><button aria-label="New terminal session" title="New terminal" onclick={actions.newTerminal}>+</button></header>
+  <header class="side-view-title">
+    <span>TERMINALS</span>
+    <button aria-label="New terminal session" title="New terminal" onclick={actions.newTerminal}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+  </header>
   {#if !sessions.length}
-    <p>No open terminals.</p>
-    <button class="create" onclick={actions.newTerminal}>New terminal</button>
+    <p class="empty">No open terminals.</p>
+    <button class="create" onclick={actions.newTerminal}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      <span>New terminal</span>
+    </button>
   {/if}
+  <div class="sessions">
   {#each sessions as tab (tab.id)}
     <div class="session" class:active={tab.active}>
       <button class="select" title={tab.path} aria-pressed={tab.active} onclick={() => actions.activateTab(tab.id)}>
-        <span>{tab.name}</span><small>{tab.path || 'Starting…'}</small>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 6 6 6-6 6M13 18h6"/></svg>
+        <span class="name">{tab.name}</span><small>{tab.path || 'Starting…'}</small>
       </button>
-      <button class="kill" title="Close terminal and end its process" aria-label={`Close terminal ${tab.name}`} onclick={() => actions.closeTab(tab.id)}>×</button>
+      <button class="kill" title="Close terminal and end its process" aria-label={`Close terminal ${tab.name}`} onclick={() => actions.closeTab(tab.id)}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
     </div>
   {/each}
+  </div>
 </section>
 <style>
-  .terminal-list { padding: 0 8px; }
-  header { height: 40px; display: flex; align-items: center; justify-content: space-between; }
-  h2 { font-size: 11px; font-weight: 400; color: var(--app-muted-text); margin: 0 8px; }
-  button { border: 0; background: transparent; color: var(--app-text); cursor: pointer; }
-  header button, .kill { flex-shrink: 0; width: 28px; height: 28px; font-size: 20px; }
+  .terminal-list { display: flex; flex: 1; flex-direction: column; min-height: 0; font-size: 11px; }
+  button { border: 0; background: transparent; color: var(--app-text); font: inherit; cursor: pointer; }
   button:hover { background: var(--app-hover); }
   button:focus-visible { outline: 1px solid var(--app-focus-ring); outline-offset: -1px; }
-  .session { display: flex; align-items: center; border-radius: 3px; }
-  .session.active { background: var(--app-selected); }
-  .select { display: flex; flex-direction: column; text-align: left; gap: 4px; flex: 1; min-width: 0; padding: 8px; }
-  span, small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  small, p { color: var(--app-muted-text); font-size: 11px; }
-  p { margin: 12px 8px; }
-  .create { margin: 0 8px; padding: 6px 10px; border: 1px solid var(--app-border); border-radius: 3px; }
+  svg { flex-shrink: 0; width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.35; stroke-linecap: round; stroke-linejoin: round; }
+  .sessions { flex: 1; min-height: 0; overflow: auto; padding: 3px 0 12px; }
+  .session { display: flex; align-items: center; height: 23px; }
+  .session:hover { background: var(--app-hover); }
+  .session.active { background: color-mix(in srgb, var(--app-focus-ring) 14%, var(--app-hover)); }
+  .select { display: flex; align-items: center; text-align: left; gap: 4px; flex: 1; min-width: 0; height: 23px; padding: 0 4px 0 14px; }
+  .name, small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .name { flex: 0 1 auto; min-width: 0; max-width: 50%; }
+  small { flex: 1; min-width: 0; margin-left: 4px; color: var(--app-muted-text); font: inherit; }
+  .kill { display: grid; place-items: center; flex-shrink: 0; width: 20px; height: 20px; padding: 4px; margin-right: 4px; opacity: 0; }
+  .kill svg { width: 12px; height: 12px; }
+  .session:hover .kill, .session:focus-within .kill, .session.active .kill { opacity: 1; }
+  .empty { margin: 10px 14px 6px; color: var(--app-muted-text); line-height: 23px; }
+  .create { display: flex; align-items: center; gap: 4px; flex-shrink: 0; height: 23px; padding: 0 14px; text-align: left; }
 </style>

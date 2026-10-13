@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 import { createRequire } from 'node:module';
 import type { Terminal as TerminalType } from '@xterm/headless';
 import { TerminalScreen } from './terminal-screen';
@@ -72,4 +72,31 @@ test('closing a screen rejects an unfinished handoff instead of leaving it pendi
   const screen = new TerminalScreen({ cols: 12, rows: 5 });
   const snapshot = screen.snapshot(); screen.dispose();
   await expect(snapshot).rejects.toThrow('closed');
+});
+test('queued data and grid changes notify the renderer in parser order', async () => {
+  const screen = new TerminalScreen({ cols: 12, rows: 5 }); disposables.push(screen);
+  const events: string[] = [];
+  screen.write('before', () => events.push('before'));
+  const resized = screen.resize({ cols: 8, rows: 5 }, () => true, () => events.push('resize'));
+  screen.write('after', () => events.push('after'));
+  await resized; const snapshot = await screen.snapshot();
+  expect(events).toEqual(['before', 'resize', 'after']);
+  expect(snapshot.size).toEqual({ cols: 8, rows: 5 });
+});
+test('a snapshot retains the dimensions at its barrier even if a later resize has already parsed', async () => {
+  const screen = new TerminalScreen({ cols: 12, rows: 5 }); disposables.push(screen);
+  screen.write('before');
+  const captured = screen.snapshot(), resized = screen.resize({ cols: 8, rows: 5 });
+  const snapshot = await captured; await resized;
+  expect(snapshot.size).toEqual({ cols: 12, rows: 5 });
+  expect(screen.size).toEqual({ cols: 8, rows: 5 });
+  expect(snapshot.sequence).toBeLessThan((await screen.snapshot()).sequence);
+});
+test('a canceled grid request leaves queued output at the original dimensions', async () => {
+  const screen = new TerminalScreen({ cols: 12, rows: 5 }); disposables.push(screen);
+  const changed = vi.fn();
+  expect(await screen.resize({ cols: 8, rows: 5 }, () => false, changed)).toBeNull();
+  screen.write('abcdefghijkl');
+  expect((await screen.snapshot()).size).toEqual({ cols: 12, rows: 5 });
+  expect(changed).not.toHaveBeenCalled();
 });
