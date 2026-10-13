@@ -54,7 +54,7 @@ export function previews(application: Application, window: WindowSelector = 0) {
       const run = (view: Electron.WebContentsView | undefined, script: string) =>
         view ? view.webContents.executeJavaScript(script).catch(() => null) : null;
 
-      switch (request.kind) {
+      const result = () => { switch (request.kind) {
         case 'count':
           return views.length;
         case 'urls':
@@ -72,7 +72,16 @@ export function previews(application: Application, window: WindowSelector = 0) {
           // 보이는 것이 없으면 첫 view로 물러선다. 편집 모드에서는 모든
           // Preview가 숨겨져 있지만 내용은 확인할 수 있어야 한다.
           return run(visible ?? views[0], request.script);
-      }
+      } };
+      // The Node inspector awaits a remote Promise through a weak handle.
+      // Retain recent responses until later queries supersede them, so native
+      // window/GC activity cannot collect an otherwise unreferenced response.
+      const retained = (globalThis as typeof globalThis & { __setdownPreviewQueries?: Promise<unknown>[] });
+      const queries = retained.__setdownPreviewQueries ??= [];
+      const response = Promise.resolve(result());
+      queries.push(response);
+      if (queries.length > 8) queries.shift();
+      return response;
     },
     [window, query] as [WindowSelector, Query],
   ) as Promise<T>;

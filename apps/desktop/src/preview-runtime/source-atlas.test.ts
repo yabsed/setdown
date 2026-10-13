@@ -17,7 +17,7 @@ function fixture() {
   const root = new Node(null);
   vi.stubGlobal('Element', Node);
   vi.stubGlobal('innerWidth', 800); vi.stubGlobal('innerHeight', 600);
-  vi.stubGlobal('document', { documentElement:{scrollTop:0,scrollLeft:0,scrollHeight:1000},
+  vi.stubGlobal('document', { documentElement:{scrollTop:0,scrollLeft:0,scrollHeight:1000}, body:{scrollTop:0},
     querySelector: (selector: string) => selector.startsWith('.markdown-preview') ? root : null });
   const atlas = new SourceAtlas({lineCount:()=>100,documentIsBlank:()=>false});
   return {Node,root,atlas};
@@ -46,4 +46,20 @@ test('unannotated whitespace still uses surrounding document anchors', () => {
   expect(anchor.reason).toBe('neighbor-interpolation');
   expect(anchor.sourceLine).toBeGreaterThan(10);
   expect(anchor.sourceLine).toBeLessThan(20);
+});
+
+
+test('ordinary positioning reuses document-relative geometry until content or viewport changes', () => {
+  const {Node,root,atlas} = fixture();
+  const paragraph = new Node(20,300); root.children = [paragraph];
+  const scan = vi.spyOn(root, 'querySelectorAll');
+  atlas.position(20, .3);
+  atlas.position(20, .4);
+  expect(scan).toHaveBeenCalledTimes(1);
+  atlas.invalidate();
+  atlas.position(20, .4);
+  expect(scan).toHaveBeenCalledTimes(2);
+  vi.stubGlobal('innerWidth', 600);
+  atlas.position(20, .4);
+  expect(scan).toHaveBeenCalledTimes(3);
 });

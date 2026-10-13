@@ -121,8 +121,8 @@ export class SourceAtlas {
     if (positionRequest && revision !== undefined && !this.stale && stableFonts
       && this.positionProof.matches(positionRequest, this.positionState(revision))) return;
     this.positionProof.invalidate();
-    // Preserve ordinary Markdown's behavior; Git primes a side-aware cache.
-    if (!sourceSide) this.invalidate();
+    // Document-relative rectangles survive scrolling. Content, resource, font
+    // and viewport invalidations own rebuilding for both documents and reviews.
     if (sourceSide) this.reviewSide = sourceSide;
     const entries = this.scoped(sourceSide);
     const height = innerHeight || 1;

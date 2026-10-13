@@ -100,3 +100,60 @@ test('hidden ordinary math document is prepared without focus changes and keeps 
     await rm(root, { recursive:true, force:true });
   }
 });
+
+test('ordinary position caches refresh after a disclosure changes layout', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-atlas-disclosure-'));
+  const file = path.join(root, 'disclosure.md');
+  const text = `# Before\n\n${'Intro paragraph. '.repeat(200)}\n\n<details>\n<summary>Expand</summary>\n\n${'Expanded paragraph. '.repeat(600)}\n\n</details>\n\n## Target\n\n${'Trailing paragraph. '.repeat(900)}\n`;
+  await writeFile(file, text);
+  const line = text.slice(0, text.indexOf('## Target')).split('\n').length;
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await app.firstWindow();
+    await expect(page.locator('.document-tab')).toHaveCount(1);
+    const id = (await page.locator('.document-tab').getAttribute('data-tab-id'))!;
+    const read = (script: string) => app.evaluate(async ({ BrowserWindow }, script) => {
+      const view = BrowserWindow.getAllWindows()[0].contentView.children.find(view => view.getVisible()) as Electron.WebContentsView;
+      return view ? view.webContents.executeJavaScript(script) : null;
+    }, script);
+    await expect.poll(() => read('!!document.querySelector("details")')).toBe(true);
+    const position = async () => {
+      await page.evaluate(({ id, line }) => window.marktex.sendPreviewCommand(id,
+        { command: 'marktex:position-preview', sourceLine: line, topRatio: .3, settle: false }), { id, line });
+      await expect.poll(() => read('Math.abs(document.querySelector("h2").getBoundingClientRect().top - innerHeight * .3)')).toBeLessThan(2);
+    };
+    await position();
+    // Reuse existing geometry, then alter native details layout without changing
+    // the Markdown revision or viewport. The next source position must remeasure.
+    await read('document.querySelector("details").open = true; true');
+    await position();
+    await read('document.querySelector("details").open = false; true');
+    await position();
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
+test('an owned background reader can prepare without changing the foreground document', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-background-reader-'));
+  const first = path.join(root, 'first.md'), second = path.join(root, 'second.md');
+  await writeFile(first, '# First reader\n'); await writeFile(second, '# Second reader\n');
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', first], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await app.firstWindow();
+    await expect(page.getByRole('tab', { name: /first.md/ })).toBeVisible();
+    const id = (await page.getByRole('tab', { name: /first.md/ }).getAttribute('data-tab-id'))!;
+    await page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), second);
+    await expect(page.getByRole('tab', { name: /second.md/ })).toHaveAttribute('aria-selected', 'true');
+    const result = await page.evaluate(async ({ id, first }) => {
+      const theme = await window.marktex.getTheme();
+      const result = await window.marktex.preparePreview(id, '# First reader\n', 0, first, theme.id);
+      return { result, document: await window.marktex.getDocument() };
+    }, { id, first });
+    expect(result.result.url).toMatch(/^marktex-preview:\/\/document\//);
+    expect(result.document?.path).toBe(second);
+    expect(result.document?.text).toBe('# Second reader\n');
+    await expect(page.getByRole('tab', { name: /second.md/ })).toHaveAttribute('aria-selected', 'true');
+
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});

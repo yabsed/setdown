@@ -27,6 +27,8 @@ type Options = {
 export class PreviewRenderer {
   private worker: Electron.UtilityProcess | null = null;
   private requestId = 0;
+  private readonly documentRequests = new Map<string, symbol>();
+  private readonly documentTasks = new Map<string, Promise<RenderResult>>();
   private reviewRevision = 0;
   private readonly reviews: ReviewRenderClient;
   private readonly reviewPages = new WeakMap<Electron.WebContents, { url: string; revision: number; pageKey: string }>();
@@ -93,6 +95,7 @@ export class PreviewRenderer {
   }
 
   forgetTab(tabId: string) {
+    this.documentRequests.delete(tabId);
     this.worker?.postMessage({ kind: 'forget-tab', tabId });
     if (/^git-diff:.*:[ab]$/.test(tabId)) this.baselines.delete(tabId.replace(/:[ab]$/, ''));
   }
@@ -263,17 +266,45 @@ export class PreviewRenderer {
     documentPath: string, requestedTheme: PreviewThemeId, senderId: number): Promise<RenderResult> {
     const preview = this.options.previews.views.get(tabId);
     if (!preview || preview.ownerWebContentsId !== senderId) throw new Error('The preview is not owned by this window.');
-    if (!state.currentDocument) throw new Error('No Markdown document is open.');
-    if (state.currentDocument.path !== documentPath) {
+    if (state.currentDocument?.path !== documentPath && !state.rendererTabs.some(tab => tab.path === documentPath)) {
       throw new Error('The preview request belongs to a document that is no longer open.');
     }
-    state.currentDocument = applyTextRevision(state.currentDocument, text, revision);
-    const renderPath = state.currentDocument.path;
+    const request = Symbol();
+    this.documentRequests.set(tabId, request);
+    // Worker block history and installed native content advance together. A
+    // canceled initial render must not become the next request's patch base.
+    const previous = this.documentTasks.get(tabId) ?? Promise.resolve();
+    const task = previous.catch(() => undefined).then(() =>
+      this.prepareDocument(state, tabId, text, revision, documentPath, requestedTheme, senderId, request));
+    this.documentTasks.set(tabId, task);
+    try { return await task; }
+    finally { if (this.documentTasks.get(tabId) === task) this.documentTasks.delete(tabId); }
+  }
+  private async prepareDocument(state: WindowState, tabId: string, text: string, revision: number,
+    documentPath: string, requestedTheme: PreviewThemeId, senderId: number, request: symbol): Promise<RenderResult> {
+    if (this.documentRequests.get(tabId) !== request) throw new Error('The preview request was superseded.');
+    const preview = this.options.previews.views.get(tabId);
+    if (!preview || preview.ownerWebContentsId !== senderId) throw new Error('The preview is not owned by this window.');
+    const active = state.currentDocument?.path === documentPath;
+    if (!active && !state.rendererTabs.some(tab => tab.path === documentPath)) {
+      throw new Error('The preview request belongs to a document that is no longer open.');
+    }
+    // A visible background group owns its document independently of the
+    // selected tab. Preparing it must never select or overwrite the foreground.
+    if (active && state.currentDocument && revision >= state.currentDocument.revision) {
+      state.currentDocument = applyTextRevision(state.currentDocument, text, revision);
+      state.activeRoot = path.dirname(documentPath);
+    }
+    const renderPath = documentPath;
     const themeId = normalizePreviewTheme(requestedTheme);
-    state.activeRoot = path.dirname(renderPath);
     const hasPage = preview.view.webContents.getURL().startsWith('marktex-preview://document/');
     const rendered = await this.render(tabId, text, revision, renderPath, themeId, hasPage);
-    if (state.currentDocument?.path !== renderPath) throw new Error('The document changed while its preview was being prepared.');
+    if (this.documentRequests.get(tabId) !== request
+      || this.options.previews.views.get(tabId) !== preview || preview.ownerWebContentsId !== senderId
+      || (state.currentDocument?.path !== renderPath && !state.rendererTabs.some(tab => tab.path === renderPath))) {
+      this.worker?.postMessage({ kind: 'forget-tab', tabId });
+      throw new Error('The document changed while its preview was being prepared.');
+    }
     preview.view.setBackgroundColor(previewThemeBackground(themeId));
     if (hasPage) this.options.previews.syncTheme(preview.view, themeId);
     if (typeof rendered.template === 'string') {

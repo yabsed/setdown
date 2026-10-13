@@ -27,7 +27,9 @@ PDF and image tabs use a separate shell-rendered surface cache (not native
 Markdown views). `renderer/workspace/media-cache.ts` retains the three most
 recently visited surfaces, keyed by tab, path, kind and disk version. Warm PDF
 returns preserve canvas/worker/scroll identity; closed, evicted or superseded
-surfaces release their resources. Inactive surfaces are inert, cannot focus
+surfaces release their resources. Closing a tab removes its surface; activating
+an evicted neighboring replacement can refill the cache up to its capacity.
+Inactive surfaces are inert, cannot focus
 find controls or publish reading positions, and preserve nonzero layout. Hidden
 resizes are reconciled on activation. This does not promise instant cold opens
 or instant returns after eviction. `media-tabs.spec.ts`, `image-reader.spec.ts`,
@@ -52,7 +54,8 @@ and `review-document-styles.spec.ts` check the computed text font alongside the
 existing real math geometry comparisons.
 
 Browser Ctrl+wheel changes website zoom from 50% to 300% in 10-point steps.
-The isolated page preload reuses the bounded wheel accumulator in each frame;
+The isolated page preload registers the bounded wheel accumulator in each
+committed frame after a native owner/frame readiness acknowledgment;
 Electron's native `zoom-changed` event handles unconsumed requests. Ordinary
 scrolling and synthetic DOM wheel events do not request zoom. Website
 zoom is shared by hostname within the browser session, matching Chromium's zoom
@@ -81,8 +84,14 @@ Website navigation controls styled with Electron's `app-region: drag` must
 remain clickable inside web tabs. Only the desktop shell owns native window
 dragging. The isolated page preload excludes web document elements and their
 `::before`/`::after` regions, including authored inline/important declarations.
-`browser.spec.ts` covers wide/narrow layouts, reloads and child frames; this rule
-does not inject styles into the shell or Markdown preview runtime.
+`browser.spec.ts` covers wide/narrow layouts, reloads and real child-frame clicks.
+The browser session registers a frame preload and applies the user-origin policy
+to the committed document through its owning native frame at DOM/load boundaries
+as well as initial creation. Session/extension preloads finish registration
+before the first web view is created; native frame load completion confirms the
+policy and wheel listener on each actual document;
+a provisional child document must not discard that policy. This rule does not
+inject styles into the shell or Markdown preview runtime.
 
 PDF/image wheel zoom is per file and keeps the content point under the cursor,
 subject to the scroll range at content edges. It must not change either common
@@ -99,7 +108,7 @@ group moves. A terminal group must remain outside every native reader/web view,
 including during window and sash resizing. No bottom terminal grid row remains.
 The Terminal activity button now manages sessions in the sidebar; opening that
 list does not create a PTY. Closing a tab ends its process, while cross-window
-transfer adopts the same PTY and replays bounded recent output. A clean document
+transfer adopts the same PTY and restores its live VT screen and input modes. A clean document
 beside the terminal refreshes external file changes without stealing focus.
 `terminal.spec.ts`, `editor-groups.spec.ts`, `image-terminal-layout.spec.ts`, and
 `video-reader.spec.ts` cover the replacement layout; terminal ownership and
@@ -113,6 +122,20 @@ is checked. A pending document request is consumed once; repeated show does not
 enqueue more background hydration. Showing is still an explicit presentation decision; readiness never
 grants permission to change visibility. Review positioning has its own revision
 acknowledgment, so it is not collapsed into ordinary document hydration.
+
+Ordinary source positions reuse document-relative geometry across scrolling;
+DOM, stylesheet/font/resource and viewport changes still invalidate it. Returning
+from edited source positions the latest prepared revision instead of scanning
+obsolete content immediately before patching it. The latest Esc anchor and
+weighted editor band still apply once that revision is installed.
+`source-atlas.test.ts` and the real edited document/reading-position cycles cover
+cache reuse, invalidation and latest-position behavior.
+
+Owned background document preparation uses its tab's file, without changing the
+foreground document or watcher. Per-tab main preparation keeps worker block
+history aligned with installed native content; a superseded uninstalled render
+cannot become a later patch base. Background preparation and early real tab
+split tests cover this ownership boundary.
 
 Ordinary document position/scroll settlement owns only its last applied scroll
 offset. A later scroll or positioning request supersedes it; its delayed layout

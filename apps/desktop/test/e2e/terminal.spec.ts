@@ -99,7 +99,7 @@ test('terminal list opens without creating a process; a terminal tab uses projec
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
 
-test('detaching a terminal transfers the same shell and replays its output', async () => {
+test('detaching a terminal transfers the same shell and restores its screen', async () => {
   test.skip(process.platform === 'win32', 'Commands use a POSIX shell.');
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-terminal-transfer-'));
   const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
@@ -170,5 +170,48 @@ test('two visible terminal groups receive input independently and survive tab-st
     await expect(page.locator('.editor-group')).toHaveCount(1);
     await run(input(page), 'printf "%s" "$SESSION_NAME" > merged.txt');
     await expect.poll(() => readFile(path.join(root, 'merged.txt'), 'utf8').catch(() => '')).toBe('two');
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
+
+test('a live Vim alternate screen retains visible text and insert mode across window transfer', async () => {
+  test.skip(process.platform === 'win32', 'This scenario uses the POSIX Vim fixture.');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-terminal-vim-'));
+  const file = path.join(root, 'tui.txt');
+  await writeFile(file, 'first-screen-marker\nsecond-screen-marker\n');
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.'], env: { ...env, SHELL: '/bin/bash', XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await app.firstWindow();
+    await expect(page.locator('.empty-new')).toBeVisible();
+    await page.evaluate(folder => window.marktex.restoreProjectFolder(folder), root);
+    await page.locator('.empty-new').click();
+    await page.locator('.new-terminal-tab-button').click();
+    const tab = page.getByRole('tab', { name: /^bash/ });
+    await expect(tab).toBeVisible();
+    await run(input(page), 'printf "%s" "$$" > shell.txt; vim -Nu NONE -n tui.txt');
+    await expect(page.locator('.xterm-rows')).toContainText('first-screen-marker');
+    await input(page).press('i'); await input(page).pressSequentially('before');
+    await expect(page.locator('.xterm-rows')).toContainText('beforefirst-screen-marker');
+    const text = await page.locator('.xterm-rows').innerText();
+    const dimensions = await page.locator('.terminal-instance').boundingBox();
+    await tab.evaluate(element => {
+      const dataTransfer = new DataTransfer();
+      element.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer }));
+      element.dispatchEvent(new DragEvent('dragleave', { bubbles: true, dataTransfer, relatedTarget: null }));
+      element.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer, screenX: 640, screenY: 420 }));
+    });
+    await expect(tab).toHaveCount(0);
+    const destination = app.windows().find(candidate => candidate !== page && !candidate.isClosed())!;
+    await expect.poll(() => destination.locator('.xterm-rows').innerText()).toBe(text);
+    const restored = (await destination.locator('.terminal-instance').boundingBox())!;
+    expect(restored.width).toBe(dimensions!.width); expect(restored.height).toBe(dimensions!.height);
+    await input(destination).pressSequentially('after');
+    await input(destination).press('Escape');
+    await input(destination).pressSequentially(':wq'); await input(destination).press('Enter');
+    await expect.poll(() => readFile(file, 'utf8')).toBe('beforeafterfirst-screen-marker\nsecond-screen-marker\n');
+    const pid = await readFile(path.join(root, 'shell.txt'), 'utf8');
+    await run(input(destination), 'printf "%s" "$$" > after.txt');
+    await expect.poll(() => readFile(path.join(root, 'after.txt'), 'utf8').catch(() => '')).toBe(pid);
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });

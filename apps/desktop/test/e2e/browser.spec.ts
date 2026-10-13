@@ -116,6 +116,17 @@ test('website draggable CSS cannot consume home navigation input in web tab fram
     });
     await expect.poll(() => evaluatePage(f.app, f.origin, '({clicks:homeClicks,hash:location.hash})'))
       .toEqual({ clicks: 1, hash: '#home' });
+    const point = await evaluatePage<{ x: number; y: number }>(f.app, f.origin, `(() => {
+      const frame = document.querySelector('iframe'), region = frame.getBoundingClientRect();
+      const button = frame.contentDocument.querySelector('#home').getBoundingClientRect();
+      return { x: region.left + frame.clientLeft + button.left + button.width / 2,
+        y: region.top + frame.clientTop + button.top + button.height / 2 };
+    })()`);
+    await contents.evaluate((wc, point) => {
+      wc.sendInputEvent({ type: 'mouseDown', button: 'left', clickCount: 1, ...point });
+      wc.sendInputEvent({ type: 'mouseUp', button: 'left', clickCount: 1, ...point });
+    }, point);
+    await expect.poll(() => evaluatePage(f.app, f.origin, 'document.querySelector("iframe").contentWindow.homeClicks')).toBe(1);
     await f.page.getByRole('button', { name: 'Reload page', exact: true }).click();
     await expect.poll(() => evaluatePage(f.app, f.origin, 'homeClicks')).toBe(0);
     await expect.poll(inspect).toEqual({ width: expect.any(Number), rail: 'no-drag', button: 'no-drag', pseudo: 'no-drag', frame: 'no-drag' });

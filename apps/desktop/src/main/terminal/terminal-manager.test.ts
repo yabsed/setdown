@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -6,6 +6,8 @@ import { homedir } from 'node:os';
 import type { IPty } from 'node-pty';
 import { launchDirectory, TerminalManager } from './terminal-manager';
 
+const managers: TerminalManager[] = [];
+afterEach(() => { for (const manager of managers.splice(0)) manager.dispose(); });
 function fixture() {
   let output = (_data: string) => {};
   let exit = (_event: { exitCode: number }) => {};
@@ -16,9 +18,13 @@ function fixture() {
     onExit: (callback: typeof exit) => { exit = callback; return { dispose: exitDispose }; },
   } as unknown as IPty;
   const spawn = vi.fn(() => pty);
-  const manager = new TerminalManager(spawn);
+  const manager = new TerminalManager(spawn); managers.push(manager);
   const send = vi.fn();
-  const create = (owner = 1, id = 'one') => manager.create(owner, id, { cols: 80, rows: 24 }, '/tmp', send);
+  const create = (owner = 1, id = 'one') => {
+    const info = manager.create(owner, id, { cols: 80, rows: 24 }, '/tmp', send);
+    if (info instanceof Promise) throw new Error('Expected a new terminal');
+    return info;
+  };
   return { manager, pty, spawn, send, create, output: (text: string) => output(text),
     exit: () => exit({ exitCode: 7 }), dataDispose, exitDispose };
 }
@@ -84,7 +90,7 @@ describe('window-owned terminals', () => {
 });
 
 describe('terminal tab transfers', () => {
-  it('keeps the PTY, buffers output during handoff and rejects the old owner', () => {
+  it('keeps the PTY, buffers output during handoff and rejects the old owner', async () => {
     const f = fixture(); f.create();
     f.output('before\r\n');
     expect(f.manager.adopt(9, 2, 'one')).toBe(false);
@@ -97,8 +103,8 @@ describe('terminal tab transfers', () => {
     expect(f.pty.write).not.toHaveBeenCalled();
     f.output('during\r\n');
     const destination = vi.fn();
-    const restored = f.manager.create(2, 'one', { cols: 90, rows: 20 }, '/tmp', destination);
-    expect(restored.replay).toBe('before\r\nduring\r\n');
+    const restored = await f.manager.create(2, 'one', { cols: 90, rows: 20 }, '/tmp', destination);
+    expect(restored.snapshot).toContain('before\r\nduring');
     expect(restored.size).toEqual({ cols: 80, rows: 24 });
     expect(f.spawn).toHaveBeenCalledOnce();
     expect(f.pty.resume).toHaveBeenCalledOnce();
@@ -110,22 +116,23 @@ describe('terminal tab transfers', () => {
     f.manager.closeOwner(2);
     expect(f.pty.kill).toHaveBeenCalledOnce();
   });
-  it('keeps exited output transferable without restarting a shell', () => {
+  it('keeps exited output transferable without restarting a shell', async () => {
     const f = fixture(); f.create(); f.output('finished'); f.exit();
     expect(f.manager.adopt(1, 2, 'one')).toBe(true);
-    const restored = f.manager.create(2, 'one', { cols: 80, rows: 24 }, '/tmp', vi.fn());
-    expect(restored).toMatchObject({ replay: 'finished', exitCode: 7 });
+    const restored = await f.manager.create(2, 'one', { cols: 80, rows: 24 }, '/tmp', vi.fn());
+    expect(restored).toMatchObject({ snapshot: expect.stringContaining('finished'), exitCode: 7 });
     f.manager.write(2, 'one', 'ignored'); f.manager.closeOwner(2);
     expect(f.spawn).toHaveBeenCalledOnce();
     expect(f.pty.kill).not.toHaveBeenCalled();
     expect(f.pty.write).not.toHaveBeenCalled();
   });
-  it('bounds retained output while preserving the most recent text', () => {
+  it('keeps screen content after a long overwritten output stream', async () => {
     const f = fixture(); f.create();
-    f.output('x'.repeat(3 * 1024 * 1024) + 'latest');
+    f.output('\x1b[Hfirst-row\x1b[3;1H' + 'x\r'.repeat(1100000) + 'latest');
     expect(f.manager.adopt(1, 2, 'one')).toBe(true);
-    const info = f.manager.create(2, 'one', { cols: 80, rows: 24 }, '/tmp', vi.fn());
-    expect(info.replay.length).toBe(2 * 1024 * 1024);
-    expect(info.replay.endsWith('latest')).toBe(true);
+    const info = await f.manager.create(2, 'one', { cols: 80, rows: 24 }, '/tmp', vi.fn());
+    expect(info.snapshot).toContain('first-row');
+    expect(info.snapshot).toContain('latest');
+    expect(info.snapshot.length).toBeLessThan(1000);
   });
 });

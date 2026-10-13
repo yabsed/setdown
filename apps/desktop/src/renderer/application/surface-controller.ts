@@ -62,7 +62,7 @@ export class SurfaceController {
     const revision = tab.revision;
     const anchor = tab.anchor;
     const readyRevision = this.options.preview.readyRevision;
-    if (readyRevision !== null) void this.options.preview.position(anchor, readyRevision, tab.id,
+    if (readyRevision === revision) void this.options.preview.position(anchor, readyRevision, tab.id,
       this.options.editor.lineCount(tab), false, viewport.band);
     this.set('viewer');
     window.requestAnimationFrame(() => {

@@ -5,11 +5,26 @@ import { installWheelZoom } from '../preload/wheel-zoom';
 // navigation). In Setdown's frameless window, app-region: drag swallows native
 // pointer input. Only the shell owns window dragging, never a web tab's frame.
 // USER !important also overrides authored inline/important draggable regions.
-webFrame.insertCSS('*, *::before, *::after { -webkit-app-region: no-drag !important; }', { cssOrigin: 'user' });
-
-// Capture trusted wheel input in every isolated frame, including fine trackpad
-// deltas that Chromium's native zoom request omits. No API reaches page scripts.
-installWheelZoom(steps => ipcRenderer.send('browser:wheel-zoom', steps), true);
+const excludeWindowDrag = () => {
+  webFrame.insertCSS('*, *::before, *::after { -webkit-app-region: no-drag !important; }', { cssOrigin: 'user' });
+};
+excludeWindowDrag();
+// Commit the policy through the owning native frame after document creation.
+// A provisional child-frame document may discard an early inserted stylesheet.
+let removeWheel: (() => void) | undefined;
+ipcRenderer.on('browser:frame-policy', (_event, committed: boolean) => {
+  excludeWindowDrag();
+  // Register against the committed frame's Window, after native ownership is
+  // established. An early provisional Window can lose its event listeners.
+  if (!removeWheel || committed) {
+    removeWheel?.();
+    removeWheel = installWheelZoom(steps => ipcRenderer.send('browser:wheel-zoom', steps), true);
+  }
+});
+const frameReady = () => ipcRenderer.send('browser:frame-ready');
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', frameReady, { once: true });
+else frameReady();
+window.addEventListener('load', frameReady, { once: true });
 
 // Runs in each page's isolated, sandboxed frame. No API is exposed to page JS.
 // uBO's user-origin styles must target the sender's frame and be removable.

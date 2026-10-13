@@ -71,11 +71,11 @@
     void api.create(id, { cols: term.cols, rows: term.rows }).then(async info => {
       if (!alive || !term) return;
       changed({ title: info.title, cwd: info.cwd, exited: info.exitCode !== undefined });
-      // Attach replays the bounded PTY transcript before accepting new output.
-      // Keep the original terminal dimensions during replay, then fit this group.
-      if (info.replay) {
+      // Restore the live VT buffers, cursor, attributes and input modes before new output.
+      // Keep the original terminal dimensions during restore, then fit this group.
+      if (info.snapshot) {
         term.resize(info.size.cols, info.size.rows);
-        await new Promise<void>(resolve => term!.write(info.replay, resolve));
+        await new Promise<void>(resolve => term!.write(info.snapshot, resolve));
       }
       if (!alive) return;
       starting = false; ready = info.exitCode === undefined;

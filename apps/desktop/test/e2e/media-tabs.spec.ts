@@ -51,7 +51,21 @@ test('PDF tabs retain canvases and isolate focus; eviction, hidden resize and ch
     await expect(reader).toHaveAttribute('data-pdf-pages', '4');
     await expect(reader).toHaveAttribute('data-pdf-page', '4');
     await expect(reader.locator('[data-page-number="4"] .textLayer')).toContainText('PDF page 4');
+    // New tabs are inserted after the active tab. Put reading-0 next to the
+    // already-cached reading-1 so active close tests disposal without loading
+    // an evicted neighbor into the cache at the same time.
+    const transfer = await page.evaluateHandle(() => new DataTransfer());
+    await tab(0).dispatchEvent('dragstart', { dataTransfer: transfer });
+    const list = page.locator('.tab-list'), bounds = (await list.boundingBox())!;
+    const point = { clientX: bounds.x + bounds.width - 2, clientY: bounds.y + bounds.height / 2, dataTransfer: transfer };
+    await list.dispatchEvent('dragover', point);
+    await list.dispatchEvent('drop', point);
+    await transfer.dispose();
+    await expect(page.locator('.document-tab').last()).toContainText('reading-0.pdf');
+    const closedId = await tab(0).getAttribute('data-tab-id');
     await tab(0).getByTitle('Close tab', { exact: true }).click();
+    await expect(tab(0)).toHaveCount(0);
+    await expect(page.locator(`[data-media-tab="${closedId}"]`)).toHaveCount(0);
     await expect(page.locator('.pdf-surface')).toHaveCount(2);
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });

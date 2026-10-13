@@ -106,7 +106,14 @@ const observer = new MutationObserver(() => {
   reader.scheduleHeadings();
 });
 observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true,
-  attributeFilter: ['style', 'class', 'data-source-line', 'data-processed'] });
+  attributeFilter: ['style', 'class', 'open', 'hidden', 'width', 'height', 'data-source-line', 'data-processed'] });
+// Resource sizing and CSS layout can move anchors without a DOM mutation.
+// Keep cache invalidation cheap and preserve the hydration batching boundary.
+const layoutObserver = new ResizeObserver(() => {
+  sourceAtlas.invalidate();
+  if (content.pendingCount === 0) viewport.schedule();
+});
+layoutObserver.observe(content.root() ?? document.documentElement);
 send({ type: 'marktex:ready', revision: config.revision });
 viewport.schedule();
 reader.scheduleHeadings();

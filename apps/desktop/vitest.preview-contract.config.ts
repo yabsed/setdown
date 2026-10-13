@@ -6,6 +6,7 @@ export default defineConfig({
   test: { ...base.test, include: [
     'src/architecture-boundaries.test.ts',
     'src/main/terminal/terminal-manager.test.ts',
+    'src/main/terminal/terminal-screen.test.ts',
     'src/main/tabs/tab-transfer-manager.test.ts',
     'src/main/project/explorer-service.test.ts',
     'src/renderer/project/explorer/explorer-selection.test.ts',
@@ -20,6 +21,7 @@ export default defineConfig({
     'src/main/reading/reading-position-store.test.ts',
     'src/protocol/preview-preparation.test.ts',
     'src/main/preview/preview-presentation.test.ts',
+    'src/main/preview/preview-renderer.test.ts',
     'src/main/preview/review-preparation.test.ts',
     'src/main/windows/workspace-zoom.test.ts',
     'src/core/preview/preview-install.test.ts',

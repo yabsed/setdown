@@ -24,9 +24,13 @@ on group resize and activation. Inactive terminals continue to consume and
 acknowledge output without taking focus. Main owns process lifetime separately
 from renderer surfaces. Tab transfer validates ownership, pauses the same PTY,
 changes its owner, and resumes when the destination subscribes. The old window
-cannot write, resize or terminate the transferred session. Cross-window display
-replays up to the most recent 2 Mi characters of raw output; older scrollback is
-bounded and replay is not an exact screen snapshot of full-screen terminal apps.
+cannot write, resize or terminate the transferred session. A lazily loaded
+headless xterm engine in main retains the live normal/alternate screen buffers
+and the same 5000-row scrollback limit as the renderer. A parser barrier captures
+the current cells, colors, cursor, saved cursor, scroll margins and input modes;
+output arriving after that barrier follows the snapshot exactly once. The new
+renderer restores at the old dimensions before fitting its group. This preserves
+full-screen programs such as Vim, including continued insert-mode input.
 
 `TerminalManager` validates input and sizes, and pauses busy output until the
 renderer acknowledges parsing it. Renderer disposal releases xterm only; explicit
@@ -35,9 +39,14 @@ document save, Markdown preparation, or browser navigation paths. File changes
 from a focused terminal refresh a clean neighboring document without stealing
 terminal focus.
 
-Tests: `terminal-manager.test.ts`, `text-workspace.test.ts`, and real Electron
+Tests: `terminal-manager.test.ts`, `terminal-screen.test.ts`, `text-workspace.test.ts`, and real Electron
 `terminal.spec.ts` cover ownership, backpressure, lifecycle, retained shell PID
 and variables, actual pointer splits, native reader boundaries, resizing, and
-cross-window transfer. Image/video/group layout tests cover neighboring surfaces.
+cross-window transfer. Screen tests compare both VT buffers and continued output,
+including colors, saved cursor, scrolling margins, mouse modes, Korean wide
+characters and pending right-margin wrap. Real Vim transfer compares visible
+rows and continues an unsaved edit after the move. The supplemental VT adapter
+is isolated in `terminal-screen.ts` and pinned to xterm 6.0.0/serialize 0.14.0;
+its round-trip checks must accompany upgrades. Image/video/group layout tests cover neighboring surfaces.
 Run GUI tests on Xvfb as required by AGENTS.md. These checks are included in the
 preview contract suite; the comparative latency gate still applies.

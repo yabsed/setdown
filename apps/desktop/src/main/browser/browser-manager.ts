@@ -1,4 +1,4 @@
-import { app, dialog, Menu, session, shell, WebContentsView, type Session, type WebContents, type Rectangle } from 'electron';
+import { app, dialog, Menu, session, shell, webFrameMain, WebContentsView, type Session, type WebContents, type Rectangle } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { promises as fs, unwatchFile, writeFileSync, renameSync } from 'node:fs';
 import path from 'node:path';
@@ -59,6 +59,10 @@ export class BrowserManager {
   private get session() {
     if (!this.profile) {
       this.profile = session.fromPartition('persist:setdown-browser');
+      // Session frame preloads follow committed subframe documents, including
+      // frames created/navigated after the owning WebContents was initialized.
+      this.profile.registerPreloadScript({ id: 'setdown-page-preload', type: 'frame',
+        filePath: path.join(__dirname, 'page-preload.cjs') });
       this.installPermissions(this.profile);
       this.profile.on('will-download', (_event, item, contents) => {
         const entry = this.forContents(contents);
@@ -168,7 +172,7 @@ export class BrowserManager {
     if (!state || state.window.isDestroyed()) throw Error('The window no longer exists.');
     this.trackOwner(owner);
     const view = new WebContentsView({ webPreferences: { session: this.session,
-      preload: path.join(__dirname, 'page-preload.cjs'), sandbox: true, contextIsolation: true,
+      sandbox: true, contextIsolation: true,
       nodeIntegration: false, nodeIntegrationInSubFrames: true, safeDialogs: true, autoplayPolicy: 'document-user-activation-required' },
       ...(existing ? { webContents: existing } : {}) });
     view.setVisible(false);
@@ -178,7 +182,17 @@ export class BrowserManager {
     this.views.set(id, entry);
     const wc = view.webContents;
     this.options.zoom.track(wc, () => this.publish(entry), () => this.pageZoom(entry));
-    wc.on('ipc-message', (_event, channel, steps) => { if (channel === 'browser:wheel-zoom') this.zoomPage(entry, steps); });
+    wc.on('ipc-message', (event, channel, steps) => {
+      if (channel === 'browser:wheel-zoom') this.zoomPage(entry, steps);
+      const frame = event.senderFrame;
+      if (channel === 'browser:frame-ready' && frame && !frame.isDestroyed()) {
+        frame.send('browser:frame-policy');
+      }
+    });
+    wc.on('did-frame-finish-load', (_event, _main, processId, routingId) => {
+      const frame = webFrameMain.fromId(processId, routingId);
+      if (frame && !frame.isDestroyed()) frame.send('browser:frame-policy', true);
+    });
     wc.on('zoom-changed', (_event, direction) => this.zoomPage(entry, direction === 'in' ? 1 : -1));
     const register = () => this.extensions?.host?.addTab(wc, this.options.stateFor(entry.owner)!.window);
     void this.ensureReady().then(() => { if (!wc.isDestroyed()) { register(); entry.page.protection = 'ready'; this.publish(entry); } })
@@ -276,12 +290,18 @@ export class BrowserManager {
     if (typeof id !== 'string' || !/^[\w-]{1,128}$/.test(id)) throw Error('Invalid web tab ID.');
     if (this.views.has(id)) return this.owned(owner, id).page;
     if (this.dormant.has(id) && this.dormant.get(id) !== owner) throw Error('This web tab does not belong to this window.');
-    this.dormant.delete(id);
     const url = browserURL(input);
     if (history && (!Array.isArray(history.entries) || !history.entries.length || history.entries.length > 1000
       || !Number.isInteger(history.index) || history.index < 0 || history.index >= history.entries.length
       || history.entries.some(e => !e || (!isWebURL(e.url) && e.url !== 'about:blank') || typeof e.title !== 'string'
         || (e.pageState !== undefined && typeof e.pageState !== 'string')))) throw Error('Invalid web history.');
+    // Install session frame preloads before creating the RenderFrameHost.
+    // Creating about:blank first can capture an incomplete preload registry;
+    // its descendants then miss page policy and wheel handlers altogether.
+    await this.ensureReady();
+    if (this.views.has(id)) return this.owned(owner, id).page;
+    if (this.dormant.has(id) && this.dormant.get(id) !== owner) throw Error('This web tab does not belong to this window.');
+    this.dormant.delete(id);
     const entry = this.openEntry(owner, id, url);
     if (history) { entry.historyUrls = history.entries.map(e => e.url); entry.historyIndex = history.index; }
     this.saved.set(id, entry.page); this.persist();
