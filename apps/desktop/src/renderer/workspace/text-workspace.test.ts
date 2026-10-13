@@ -37,7 +37,7 @@ function fixture() {
   };
   const options = {
     workspace, session, preview, shell: { dataset: {} },
-    desktop: { updateText() {}, updateTabState() {}, activateDocument: async (doc: DocumentSnapshot) => doc,
+    desktop: { terminal: { close: (id: string) => calls.push(`terminal-close:${id}`) }, updateText() {}, updateTabState() {}, activateDocument: async (doc: DocumentSnapshot) => doc,
       readDocumentLocation: async (path: string) => snapshot(path.startsWith('file:') ? fileURLToPath(path) : path),
       saveTabDocument: async (doc: DocumentSnapshot, text: string, revision: number) => ({ canceled: false,
         document: { ...doc, text, savedText: text, revision, savedRevision: revision } }),
@@ -185,7 +185,7 @@ for (const extension of ['txt', 'cpp', 'json', 'custom']) test(`open/edit/transf
   f.controller.acceptWorkingTreeBuffer(tab.document.path, 'working tree\r\n');
   const transfer = f.controller.transferable(tab);
   assert.notEqual(transfer.kind, 'web');
-  if (transfer.kind === 'web') throw new Error('Expected a document transfer');
+  if (transfer.kind === 'web' || transfer.kind === 'terminal') throw new Error('Expected a document transfer');
   assert.equal(transfer.document.encoding, 'utf8-bom');
   assert.equal(transfer.document.eol, 'crlf');
   assert.equal(transfer.previewUrl, null);
@@ -531,4 +531,50 @@ test('new web tabs start on Google without requesting address focus', async () =
   assert.equal(active.kind, 'web');
   if (active.kind === 'web') assert.equal(active.page.url, 'https://www.google.com/');
   assert.equal(dispatch.mock.calls.some(([event]) => event.type === 'setdown:focus-location'), false);
+});
+
+
+test('terminal activation, splitting and transfers stay outside document resources', async () => {
+  const f = fixture();
+  await f.controller.show(snapshot('/project/keep.txt'));
+  const documentId = f.workspace.activeId!;
+  calls.length = 0;
+  await f.controller.openTerminal();
+  const terminal = f.workspace.active!;
+  assert.equal(terminal.kind, 'terminal');
+  assert.equal(f.session.document, null);
+  assert.equal(f.session.surface, 'terminal');
+  assert.equal(f.controller.dirty(terminal), false);
+  assert.equal(f.workspace.documents.length, 1);
+  assert.equal(calls.includes('ensure'), false);
+  assert.equal(calls.includes('create'), false);
+  const transfer = f.controller.transferable(terminal);
+  assert.equal(transfer.kind, 'terminal');
+  f.workspace.groups.move(terminal.id, f.workspace.groups.owner(documentId)!.id, 'right');
+  await f.controller.activate(documentId);
+  await f.controller.activate(terminal.id);
+  assert.equal(f.workspace.groups.groups.length, 2);
+  await f.controller.removeTransferred(terminal.id);
+  assert.equal(calls.some(call => call.startsWith('terminal-close:')), false);
+  assert.equal(f.workspace.activeId, documentId);
+  await f.controller.installTransferred({ transferId: 'move', tab: transfer });
+  assert.equal(f.workspace.active?.kind, 'terminal');
+  await f.controller.close(terminal.id);
+  assert.equal(calls.filter(call => call === `terminal-close:${terminal.id}`).length, 1);
+  assert.equal(f.workspace.activeId, documentId);
+});
+
+test('external background refresh does not overwrite edits made while disk IO is pending', async () => {
+  const f = fixture();
+  await f.controller.show(snapshot('/project/keep.txt'));
+  const tab = f.workspace.activeDocument!;
+  await f.controller.openTerminal();
+  let finish!: (value: DocumentSnapshot) => void;
+  f.options.desktop.readDocumentLocation = () => new Promise(resolve => { finish = resolve; });
+  const refresh = f.controller.reloadDocumentPaths([tab.document.path], true);
+  tab.text = 'typed while reading'; tab.revision++;
+  finish(snapshot(tab.document.path, 'disk text'));
+  await refresh;
+  assert.equal(tab.text, 'typed while reading');
+  assert.equal(f.workspace.active?.kind, 'terminal');
 });

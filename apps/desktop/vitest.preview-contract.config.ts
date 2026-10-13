@@ -5,6 +5,8 @@ export default defineConfig({
   ...base,
   test: { ...base.test, include: [
     'src/architecture-boundaries.test.ts',
+    'src/main/terminal/terminal-manager.test.ts',
+    'src/main/tabs/tab-transfer-manager.test.ts',
     'src/main/project/explorer-service.test.ts',
     'src/renderer/project/explorer/explorer-selection.test.ts',
     'src/core/browser/browser-url.test.ts',

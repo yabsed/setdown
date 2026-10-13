@@ -28,10 +28,12 @@ export type DocumentTab = {
 
 export type BrowserTab = { kind: 'web'; id: string; surface: 'web'; page: import('../browser/browser-state').BrowserPage;
   navigation?: import('./tab-navigation').TabNavigation };
-export type WorkspaceTab = DocumentTab | BrowserTab;
-export const isDocumentTab = (tab: WorkspaceTab): tab is DocumentTab => tab.kind !== 'web';
-export const tabTitle = (tab: WorkspaceTab): string => tab.kind === 'web' ? tab.page.title || 'New web tab' : tab.document.name;
-export const tabLocation = (tab: WorkspaceTab): string => tab.kind === 'web' ? tab.page.url : tab.document.path;
+export type TerminalTab = { kind: 'terminal'; id: string; surface: 'terminal';
+  title: string; cwd: string; exited: boolean; navigation?: never };
+export type WorkspaceTab = DocumentTab | BrowserTab | TerminalTab;
+export const isDocumentTab = (tab: WorkspaceTab): tab is DocumentTab => tab.kind !== 'web' && tab.kind !== 'terminal';
+export const tabTitle = (tab: WorkspaceTab): string => tab.kind === 'terminal' ? `${tab.title}${tab.exited ? ' (exited)' : ''}` : tab.kind === 'web' ? tab.page.title || 'New web tab' : tab.document.name;
+export const tabLocation = (tab: WorkspaceTab): string => tab.kind === 'terminal' ? tab.cwd : tab.kind === 'web' ? tab.page.url : tab.document.path;
 
 export function createWorkspaceTab(
   id: string,
@@ -107,10 +109,10 @@ export function createTabSession(active: () => WorkspaceTab | null, emptyAnchor:
       const tab = documentTab();
       if (tab) tab.revision = value;
     },
-    get surface(): 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'web' { return active()?.surface ?? 'empty'; },
-    set surface(value: 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'web') {
+    get surface(): 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'web' | 'terminal' { return active()?.surface ?? 'empty'; },
+    set surface(value: 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'web' | 'terminal') {
       const tab = documentTab();
-      if (tab && value !== 'empty' && value !== 'web') tab.surface = documentSurface(tab.document.path, value);
+      if (tab && value !== 'empty' && value !== 'web' && value !== 'terminal') tab.surface = documentSurface(tab.document.path, value);
     },
     get anchor() { return documentTab()?.anchor ?? emptyAnchor; },
     set anchor(value: ViewportAnchor) {

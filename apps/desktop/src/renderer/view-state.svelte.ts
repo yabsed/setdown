@@ -10,7 +10,8 @@ import type {
 import type { ProjectView } from './project/project-state.svelte';
 
 export type TabView = {
-  kind?: 'document' | 'web';
+  kind?: 'document' | 'web' | 'terminal';
+  exited?: boolean;
   page?: import('../protocol/browser').BrowserPage;
   id: string;
   name: string;
@@ -44,6 +45,8 @@ export type WorkingTreeEdit = {
 };
 
 export type AppActions = {
+  newTerminal(): void;
+  terminalChanged(id: string, info: { title?: string; cwd?: string; exited?: boolean }): void;
   newWebTab(input?: string, background?: boolean): void;
   navigateLocation(groupId: string, input: string): Promise<void>;
   navigateHistory(id: string, direction: -1 | 1): void;
@@ -121,7 +124,7 @@ export const view = $state({
   focusedGroupId: 'group-0',
   tabs: [] as TabView[],
   draggedTabId: null as string | null,
-  surface: 'empty' as 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'web',
+  surface: 'empty' as 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'web' | 'terminal',
   mediaTabs: [] as import('./workspace/media-cache').MediaTab[],
   activeMediaId: null as string | null,
   notice: false,

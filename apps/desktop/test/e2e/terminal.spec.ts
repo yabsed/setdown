@@ -1,105 +1,174 @@
-import { _electron as electron, expect, test } from '@playwright/test';
+import { _electron as electron, expect, test, type Locator } from '@playwright/test';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { previews } from './preview-view';
-import { disposeApplication } from './electron-app';
+import { disposeApplication, focusApplication } from './electron-app';
+import { dragTerminal } from './terminal-drag';
 
-test('integrated PTY edits Markdown beside the reader and preserves hidden sessions', async () => {
-  test.skip(process.platform === 'win32', 'Commands in this scenario use a POSIX shell.');
+const run = async (input: Locator, command: string) => { await input.pressSequentially(command); await input.press('Enter'); };
+const input = (page: import('@playwright/test').Page) => page.locator('.terminal-content:not(.inactive) .xterm-helper-textarea');
+for (const direction of ['right', 'down'] as const) test(`terminal tabs split ${direction}, preserve PTYs, and manage sessions in the sidebar`, async () => {
+  test.skip(process.platform === 'win32', 'Commands use a POSIX shell.');
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-terminal-'));
   const file = path.join(root, 'terminal.md');
   await writeFile(file, '# Before terminal\n');
   const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
-  const app = await electron.launch({ args: ['.', file], env: { ...env, SHELL: '/bin/bash',
-    XDG_CONFIG_HOME: path.join(root, 'config') } });
+  const app = await electron.launch({ args: ['.', file], env: { ...env, SHELL: '/bin/bash', XDG_CONFIG_HOME: path.join(root, 'config') } });
   try {
-    const page = await app.firstWindow();
-    const reader = previews(app);
+    await focusApplication(app);
+    const page = await app.firstWindow(), reader = previews(app);
     await expect.poll(reader.hasVisible).toBe(true);
-    await page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-toggle-folder-tools'));
-    await page.getByRole('button', { name: 'Terminal', exact: true }).click();
-    const panel = page.getByRole('region', { name: 'Integrated terminal' });
-    await expect(panel).toBeVisible();
-    await expect(panel.getByRole('tab', { name: 'bash', exact: true })).toBeVisible();
-    const input = () => panel.locator('.terminal-instance:not([hidden]) .xterm-helper-textarea');
-    const run = async (command: string) => { await input().pressSequentially(command); await input().press('Enter'); };
-    // Real interactive PTY, with cwd inherited from the open document.
-    await run('pwd > cwd.txt; tty > tty.txt; printf "# From terminal\\n" > terminal.md');
+    await page.locator('.new-terminal-tab-button').click();
+    const tab = page.getByRole('tab', { name: /^bash/ });
+    await expect(tab).toBeVisible();
+    await expect.poll(reader.hasVisible).toBe(false);
+    await run(input(page), 'export SETDOWN_SESSION=still-here; pwd > cwd.txt; tty > tty.txt; printf "%s" "$$" > pid.txt');
     await expect.poll(() => readFile(path.join(root, 'cwd.txt'), 'utf8').catch(() => '')).toBe(root + '\n');
     await expect.poll(() => readFile(path.join(root, 'tty.txt'), 'utf8').catch(() => '')).toMatch(/\/dev\/(pts\/|ttys)/);
+    const pid = await readFile(path.join(root, 'pid.txt'), 'utf8');
+    const id = await tab.getAttribute('data-tab-id');
+    await page.getByRole('tab', { name: /terminal\.md/ }).click();
+    await expect(input(page)).toHaveCount(0);
+    await expect.poll(reader.hasVisible).toBe(true);
+    await tab.click();
+    await dragTerminal(page, tab, page.locator('.group-body'), direction);
+    await expect(page.locator('.editor-group')).toHaveCount(2);
+    await expect.poll(reader.hasVisible).toBe(true);
+    await expect(tab).toHaveAttribute('data-tab-id', id!);
+    await run(input(page), 'printf "%s:%s" "$$" "$SETDOWN_SESSION" > session.txt; printf "# From terminal\\n" > terminal.md');
+    await expect.poll(() => readFile(path.join(root, 'session.txt'), 'utf8').catch(() => '')).toBe(`${pid}:still-here`);
     await expect.poll(() => reader.evaluate('document.body.innerText')).toContain('From terminal');
-    const bounds = await reader.visibleBounds();
-    const panelBounds = await panel.boundingBox();
-    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(panelBounds!.y + 1);
-
-    await run('export SETDOWN_SESSION=still-here');
-    await page.getByRole('button', { name: 'Hide Terminal' }).click();
-    await expect(panel).toBeHidden();
-    await page.getByRole('button', { name: 'Terminal', exact: true }).click();
-    await run('printf "%s" "$SETDOWN_SESSION" > session.txt');
-    await expect.poll(() => readFile(path.join(root, 'session.txt'), 'utf8').catch(() => '')).toBe('still-here');
-
-    await page.locator('.mode-toggle').evaluate((button: HTMLButtonElement) => button.click());
-    const editor = page.getByRole('textbox', { name: 'Editor content' });
-    await editor.press('Control+A');
-    await editor.pressSequentially('# Edited in Setdown');
-    await editor.press('Control+S');
-    await expect.poll(() => readFile(file, 'utf8')).toBe('# Edited in Setdown');
-    await input().focus();
-    await input().press('Escape');
-    await expect(page.locator('.editor-surface')).toBeVisible();
-    await run('sleep 30');
-    await input().press('Control+C');
-    await run('printf interrupted > interrupt.txt');
+    const terminalBox = (await page.locator('.terminal-surface').boundingBox())!, native = (await reader.visibleBounds())!;
+    if (direction === 'right') expect(native.x + native.width).toBeLessThanOrEqual(terminalBox.x + 1);
+    else expect(native.y + native.height).toBeLessThanOrEqual(terminalBox.y + 1);
+    // Group resizing sends the new dimensions to the live PTY.
+    await run(input(page), 'stty size > size-before.txt');
+    await expect.poll(() => readFile(path.join(root, 'size-before.txt'), 'utf8').catch(() => '')).toMatch(/\d+ \d+/);
+    const before = await readFile(path.join(root, 'size-before.txt'), 'utf8');
+    await page.getByRole('button', { name: 'Resize editor groups' }).press(direction === 'right' ? 'ArrowLeft' : 'ArrowUp');
+    await run(input(page), 'stty size > size-after.txt');
+    await expect.poll(() => readFile(path.join(root, 'size-after.txt'), 'utf8').catch(() => before)).not.toBe(before);
+    await input(page).press('Escape');
+    await expect(page.locator('.shell')).toHaveAttribute('data-surface', 'terminal');
+    await run(input(page), 'sleep 30'); await input(page).press('Control+C');
+    await run(input(page), 'printf interrupted > interrupt.txt');
     await expect.poll(() => readFile(path.join(root, 'interrupt.txt'), 'utf8').catch(() => '')).toBe('interrupted');
-    await input().press('Control+Backquote');
-    await expect(panel).toBeHidden();
-    await page.getByRole('button', { name: 'Terminal', exact: true }).click();
-
-    const previousHeight = (await panel.boundingBox())!.height;
-    await page.getByRole('button', { name: 'Resize Terminal' }).press('ArrowUp');
-    expect((await panel.boundingBox())!.height).toBeGreaterThan(previousHeight);
-    await page.getByRole('button', { name: 'New Terminal', exact: true }).click();
-    await expect(panel.getByRole('tab')).toHaveCount(2);
-    await expect(panel.getByRole('tab', { name: 'bash', exact: true })).toHaveCount(2);
-    await run('exit 7');
-    await expect(panel.getByRole('tab', { name: 'bash (exited)', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Kill Terminal' }).click();
-    await expect(panel.getByRole('tab')).toHaveCount(1);
-    await page.screenshot({ path: test.info().outputPath('terminal.png') });
+    await input(page).press('Control+Backquote');
+    const list = page.getByRole('region', { name: 'Terminal sessions' });
+    await expect(list).toBeVisible();
+    await expect(list.locator('.session')).toHaveCount(1);
+    await list.getByRole('button', { name: 'New terminal session' }).click();
+    await expect(page.getByRole('tab', { name: /^bash/ })).toHaveCount(2);
+    await expect(list.locator('.session')).toHaveCount(2);
+    await run(input(page), 'exit 7');
+    await expect(page.getByRole('tab', { name: /bash \(exited\)/ })).toBeVisible();
+    await list.getByRole('button', { name: 'Close terminal bash (exited)', exact: true }).click();
+    await expect(list.locator('.session')).toHaveCount(1);
+    await run(input(page), 'printf "%s" "$SETDOWN_SESSION" > still.txt');
+    await expect.poll(() => readFile(path.join(root, 'still.txt'), 'utf8').catch(() => '')).toBe('still-here');
+    await page.screenshot({ path: test.info().outputPath(`terminal-${direction}.png`) });
+    await list.getByRole('button', { name: 'Close terminal bash', exact: true }).click();
+    await expect(page.locator('.editor-group')).toHaveCount(1);
+    await expect(page.locator('.terminal-surface')).toHaveCount(0);
+    await expect.poll(() => { try { process.kill(Number(pid), 0); return false; } catch { return true; } }).toBe(true);
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
 
-test('terminal opens without a document, uses the project directory and cleans up on reload', async () => {
-  test.skip(process.platform === 'win32', 'Process checks in this scenario use a POSIX shell.');
+test('terminal list opens without creating a process; a terminal tab uses project cwd and cleans up on reload', async () => {
+  test.skip(process.platform === 'win32', 'Process checks use POSIX.');
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-terminal-lifecycle-'));
   const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
-  const app = await electron.launch({ args: ['.'], env: { ...env, SHELL: '/bin/bash',
-    XDG_CONFIG_HOME: path.join(root, 'config') } });
+  const app = await electron.launch({ args: ['.'], env: { ...env, SHELL: '/bin/bash', XDG_CONFIG_HOME: path.join(root, 'config') } });
   try {
     const page = await app.firstWindow();
     await expect(page.getByRole('button', { name: 'New Document', exact: true })).toBeVisible();
-    await page.evaluate((folder) => window.marktex.restoreProjectFolder(folder), root);
+    await page.evaluate(folder => window.marktex.restoreProjectFolder(folder), root);
     await page.keyboard.press('Control+Backquote');
-    const panel = page.getByRole('region', { name: 'Integrated terminal' });
-    await expect(panel.getByRole('tab', { name: 'bash', exact: true })).toBeVisible();
-    const input = panel.locator('.xterm-helper-textarea');
-    await input.pressSequentially('printf "%s" "$$" > shell-pid.txt; pwd > project-cwd.txt');
-    await input.press('Enter');
+    const list = page.getByRole('region', { name: 'Terminal sessions' });
+    await expect(list).toContainText('No open terminals.');
+    await expect(page.locator('.terminal-surface')).toHaveCount(0);
+    await list.getByRole('button', { name: 'New terminal session' }).click();
+    await expect(page.getByRole('tab', { name: /^bash/ })).toBeVisible();
+    await run(input(page), 'printf "%s" "$$" > shell-pid.txt; pwd > project-cwd.txt');
     await expect.poll(() => readFile(path.join(root, 'project-cwd.txt'), 'utf8').catch(() => '')).toBe(root + '\n');
     const pid = Number(await readFile(path.join(root, 'shell-pid.txt'), 'utf8'));
-    expect(pid).toBeGreaterThan(0);
     await page.reload();
-    await expect(panel).toHaveCount(0);
-    await expect.poll(() => {
-      try { process.kill(pid, 0); return false; } catch (error) { return (error as NodeJS.ErrnoException).code === 'ESRCH'; }
-    }).toBe(true);
-    await page.keyboard.press('Control+Backquote');
-    await expect(panel.getByRole('tab', { name: 'bash', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Kill Terminal' }).click();
-    await expect(panel.getByRole('tab')).toHaveCount(0);
-    await page.getByRole('button', { name: 'New Terminal', exact: true }).click();
-    await expect(panel.getByRole('tab', { name: 'bash', exact: true })).toBeVisible();
+    await expect(page.locator('.terminal-surface')).toHaveCount(0);
+    await expect.poll(() => { try { process.kill(pid, 0); return false; } catch { return true; } }).toBe(true);
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
+test('detaching a terminal transfers the same shell and replays its output', async () => {
+  test.skip(process.platform === 'win32', 'Commands use a POSIX shell.');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-terminal-transfer-'));
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.'], env: { ...env, SHELL: '/bin/bash', XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await app.firstWindow();
+    await expect(page.locator('.shell')).toBeVisible();
+    await page.evaluate(folder => window.marktex.restoreProjectFolder(folder), root);
+    await page.locator('.empty-new').click();
+    await page.locator('.new-terminal-tab-button').click();
+    const tab = page.getByRole('tab', { name: /^bash/ });
+    await expect(tab).toBeVisible();
+    await run(input(page), 'export TRANSFER_STATE=preserved; printf "TRANSFER-OUTPUT\\n"; printf "%s" "$$" > before.txt');
+    await expect.poll(() => readFile(path.join(root, 'before.txt'), 'utf8').catch(() => '')).toMatch(/^\d+$/);
+    const pid = await readFile(path.join(root, 'before.txt'), 'utf8');
+    await tab.evaluate(element => {
+      const dataTransfer = new DataTransfer();
+      element.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer }));
+      element.dispatchEvent(new DragEvent('dragleave', { bubbles: true, dataTransfer, relatedTarget: null }));
+      element.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer, screenX: 640, screenY: 420 }));
+    });
+    await expect(tab).toHaveCount(0);
+    const destination = app.windows().find(candidate => candidate !== page && !candidate.isClosed())!;
+    await expect(destination.getByRole('tab', { name: /^bash/ })).toBeVisible();
+    await expect(destination.locator('.xterm-screen')).toContainText('TRANSFER-OUTPUT');
+    await run(input(destination), 'printf "%s:%s" "$$" "$TRANSFER_STATE" > after.txt');
+    await expect.poll(() => readFile(path.join(root, 'after.txt'), 'utf8').catch(() => '')).toBe(`${pid}:preserved`);
+    await page.reload();
+    await run(input(destination), 'printf alive > owner.txt');
+    await expect.poll(() => readFile(path.join(root, 'owner.txt'), 'utf8').catch(() => '')).toBe('alive');
+    await destination.getByRole('tab', { name: /^bash/ }).getByTitle('Close tab', { exact: true }).click();
+    await expect.poll(() => { try { process.kill(Number(pid), 0); return false; } catch { return true; } }).toBe(true);
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
+test('two visible terminal groups receive input independently and survive tab-strip merging', async () => {
+  test.skip(process.platform === 'win32', 'Commands use a POSIX shell.');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-two-terminals-'));
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.'], env: { ...env, SHELL: '/bin/bash', XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await app.firstWindow();
+    await expect(page.locator('.empty-new')).toBeVisible();
+    await page.evaluate(folder => window.marktex.restoreProjectFolder(folder), root);
+    await page.locator('.empty-new').click();
+    await page.locator('.new-terminal-tab-button').click();
+    await expect(page.getByRole('tab', { name: /^bash/ })).toHaveCount(1);
+    const first = await page.getByRole('tab', { name: /^bash/ }).getAttribute('data-tab-id');
+    await run(input(page), 'export SESSION_NAME=one');
+    await page.locator('.new-terminal-tab-button').click();
+    await expect(page.getByRole('tab', { name: /^bash/ })).toHaveCount(2);
+    const second = await page.locator('.document-tab[aria-selected="true"]').getAttribute('data-tab-id');
+    await run(input(page), 'export SESSION_NAME=two');
+    await dragTerminal(page, page.locator(`[data-tab-id="${second}"]`), page.locator('.group-body'), 'right');
+    await expect(page.locator('.terminal-content:not(.inactive)')).toHaveCount(2);
+    for (const [id, name] of [[first, 'one'], [second, 'two']]) {
+      await run(page.locator(`[data-terminal-tab="${id}"] .xterm-helper-textarea`), `printf "%s" "$SESSION_NAME" > ${name}.txt`);
+      await expect.poll(() => readFile(path.join(root, `${name}.txt`), 'utf8').catch(() => '')).toBe(name);
+      await expect(page.locator(`[data-tab-id="${id}"]`)).toHaveAttribute('aria-selected', 'true');
+    }
+    const tab = page.locator(`[data-tab-id="${second}"]`), box = (await tab.boundingBox())!;
+    const strip = (await page.locator('.tab-strip').first().boundingBox())!;
+    await page.mouse.move(box.x + 25, box.y + 20); await page.mouse.down();
+    await page.mouse.move(box.x + 45, box.y + 30, { steps: 8 });
+    await page.mouse.move(strip.x + 8, strip.y + 20, { steps: 12 });
+    await expect(page.locator('.tab-drop-indicator')).toBeVisible();
+    await page.mouse.up();
+    await expect(page.locator('.editor-group')).toHaveCount(1);
+    await run(input(page), 'printf "%s" "$SESSION_NAME" > merged.txt');
+    await expect.poll(() => readFile(path.join(root, 'merged.txt'), 'utf8').catch(() => '')).toBe('two');
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });

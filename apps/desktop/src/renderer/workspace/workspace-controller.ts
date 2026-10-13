@@ -2,13 +2,13 @@ import { createBrowserRuntime } from '../browser/browser-runtime';
 import { browser } from '../browser/browser-state.svelte';
 import { createGroupRuntime } from '../groups/group-runtime';
 import { ReadingPositionController } from '../reading/reading-position-controller';
-import { toggleTerminal, terminalOwnsInput } from '../terminal/terminal-state.svelte';
+import { terminalOwnsInput } from '../terminal/terminal-state.svelte';
 import { GOLDEN_TOP_RATIO, type ViewportAnchor } from '../../core/preview/viewport-anchor';
 import { normalizePreviewTheme } from '../../core/preview/preview-preferences';
 import { hasMarkdownPreview } from '../../core/document/document-capabilities';
 import { isFileLocation } from '../../core/document/file-location';
 import { isMarkdownDocument } from '../../core/document/document-profile';
-import { createTabSession, WorkspaceState } from '../../core/workspace/workspace-state';
+import { createTabSession, isDocumentTab, WorkspaceState } from '../../core/workspace/workspace-state';
 import type { ThemeSnapshot } from '../../protocol/desktop-api';
 import { mount } from 'svelte';
 import App from '../App.svelte';
@@ -48,6 +48,8 @@ export function startWorkspace(desktop: DesktopPort) {
   applyShellTheme(initialTheme.id);
   let projectOpenRequest = 0;
   const actions: AppActions = {
+    newTerminal: () => { projects.deactivateGitDiff(); void tabs.openTerminal(); },
+    terminalChanged: (id, info) => tabs.terminalChanged(id, info),
     newWebTab: (input, background) => { projects.deactivateGitDiff(); void tabs.openWeb(input, background).catch(error => { browser.error = String(error); }); },
     navigateLocation: async (groupId, input) => {
       const target = workspace.groups.groups.find(group => group.id === groupId);
@@ -56,7 +58,7 @@ export function startWorkspace(desktop: DesktopPort) {
       if (id && workspace.activeId !== id) await tabs.activate(id);
       projects.deactivateGitDiff();
       if (id) {
-        if (await tabs.navigateLocation(id, input) && previous && previous.kind !== 'web'
+        if (await tabs.navigateLocation(id, input) && previous && isDocumentTab(previous)
           && workspace.find(id) !== previous) projects.closeWorkingTreeReviews(previous.document.path);
       } else if (isFileLocation(input)) await tabs.show(await desktop.readDocumentLocation(input));
       else await tabs.openWeb(input);
@@ -67,7 +69,7 @@ export function startWorkspace(desktop: DesktopPort) {
         if (!previous) return;
         if (workspace.activeId !== id) await tabs.activate(id);
         projects.deactivateGitDiff();
-        if (await tabs.navigateHistory(id, direction) && previous.kind !== 'web' && workspace.find(id) !== previous) {
+        if (await tabs.navigateHistory(id, direction) && isDocumentTab(previous) && workspace.find(id) !== previous) {
           projects.closeWorkingTreeReviews(previous.document.path);
         }
       })().catch(error => { browser.error = String(error); });
@@ -148,7 +150,7 @@ export function startWorkspace(desktop: DesktopPort) {
     showRenderError: () => void surfaces.enterEditor(),
   };
   mount(App, { target: document.querySelector<HTMLDivElement>('#app')!, props: { actions, terminalApi: desktop.terminal, desktop,
-    mediaPosition: (id: string, position: import('../../core/reading/reading-position').ReadingPosition) => { const tab = workspace.find(id); if (tab && tab.kind !== 'web' && workspace.groups.groups.some(group => group.activeId === id) && !(workspace.activeId === id && project.gitDiffActive)) positions.remember(tab, position); } } });
+    mediaPosition: (id: string, position: import('../../core/reading/reading-position').ReadingPosition) => { const tab = workspace.find(id); if (tab && isDocumentTab(tab) && workspace.groups.groups.some(group => group.activeId === id) && !(workspace.activeId === id && project.gitDiffActive)) positions.remember(tab, position); } } });
   const shell = document.querySelector<HTMLElement>('.shell')!;
   restorePanelWidths(shell);
   const previewFrames = document.querySelector<HTMLElement>('.preview-frames')!;
@@ -318,7 +320,11 @@ export function startWorkspace(desktop: DesktopPort) {
     documentOpened: (opened) => { projectOpenRequest++; projects.deactivateGitDiff(); void tabs.show(opened); },
     externalChange: (change) => {
       const active = workspace.activeDocument;
-      if (!active || active.document.path !== change.path) return;
+      if (!active || active.document.path !== change.path) {
+        const background = workspace.documents.find(tab => tab.document.path === change.path);
+        if (background && !tabs.dirty(background)) void tabs.reloadDocumentPaths([change.path], true).catch(error => console.error('Could not refresh background document', error));
+        return;
+      }
       if (tabs.dirty(active)) { view.notice = true; return; }
       const revision = active.revision;
       void desktop.reloadDocument().then((documentSnapshot) => {
@@ -341,7 +347,7 @@ export function startWorkspace(desktop: DesktopPort) {
         if (command === 'open-find') { window.dispatchEvent(new Event('setdown:browser-find')); return; }
         if (command === 'save' || command === 'save-as') { actions.browserCommand(workspace.active.id, 'save'); return; }
       }
-      if (command === 'toggle-terminal') { toggleTerminal(); return; }
+      if (command === 'toggle-terminal') { projects.select('terminal'); return; }
       if (command === 'escape' && terminalOwnsInput()) return;
       if (command === 'escape' && insertions.dismissOnEscape('native')) return;
       if (command === 'new-document') { projects.deactivateGitDiff(); void documents.create(); }
@@ -390,7 +396,7 @@ export function startWorkspace(desktop: DesktopPort) {
         return;
       }
       if (event.ctrlKey && !event.altKey && !event.shiftKey && event.code === 'Backquote') {
-        event.preventDefault(); toggleTerminal(); return;
+        event.preventDefault(); projects.select('terminal'); return;
       }
       if (terminalOwnsInput(event.target)) return;
       // Shadow-DOM inputs and graph navigation own Escape/Find themselves.

@@ -187,7 +187,8 @@ export type TransferableDocumentTab = {
   tocOpen: boolean;
 };
 
-export type TransferableTab = TransferableDocumentTab | { kind: 'web'; id: string; page: import('./browser').BrowserPage;
+export type TransferableTerminalTab = { kind: 'terminal'; id: string; title: string; cwd: string; exited: boolean };
+export type TransferableTab = TransferableDocumentTab | TransferableTerminalTab | { kind: 'web'; id: string; page: import('./browser').BrowserPage;
   navigation?: import('../core/workspace/tab-navigation').TabNavigation };
 
 export type ClaimedTabTransfer = {

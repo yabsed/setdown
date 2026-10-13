@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { dragTerminal } from './terminal-drag';
 import { disposeApplication, focusApplication } from './electron-app';
 
 test('fit image stays still beside the explorer and terminal', async () => {
@@ -17,8 +18,11 @@ test('fit image stays still beside the explorer and terminal', async () => {
     await page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
     const explorer = page.getByRole('button', { name: 'Explorer', exact: true });
     if (await explorer.getAttribute('aria-expanded') !== 'true') await explorer.click();
-    await page.getByRole('button', { name: 'Terminal', exact: true }).click();
-    await expect(page.getByRole('region', { name: 'Integrated terminal' })).toBeVisible();
+    await page.locator('.new-terminal-tab-button').click();
+    await expect(page.locator('.terminal-surface')).toBeVisible();
+    await dragTerminal(page, page.locator('.document-tab[aria-selected="true"]'), page.locator('.group-body'), 'down');
+    await expect(page.locator('.editor-group')).toHaveCount(2);
+    await expect(page.getByRole('region', { name: 'Image reader' })).toBeVisible();
     // Previously both scrollbars appeared and disappeared, alternating fit size
     // every few frames after the terminal opened.
     const sizes = await page.evaluate(() => new Promise<number[]>((resolve) => {

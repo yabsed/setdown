@@ -5,6 +5,8 @@ export default defineConfig(base, {
   retries: 0,
   testMatch: [
     'browser.spec.ts',
+    'terminal.spec.ts',
+    'video-reader.spec.ts',
     'document-preparation.spec.ts',
     'editor-groups.spec.ts',
     'explorer-selection.spec.ts',

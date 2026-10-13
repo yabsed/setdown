@@ -10,7 +10,7 @@
   import ClosePrompt from './shell/ClosePrompt.svelte';
   import { view, type AppActions } from './view-state.svelte';
 
-  import { terminal } from './terminal/terminal-state.svelte';
+
 
   import type { TerminalApi } from '../protocol/terminal';
   import type { DesktopPort } from './ports/desktop-port';
@@ -24,8 +24,7 @@
 </script>
 
 <TitleBar {actions} />
-<section class="shell" data-surface="empty" data-tabs="false"
-  style:--terminal-height={terminal.open ? `min(${terminal.height}px, 65vh)` : '0px'}>
+<section class="shell" data-surface="empty" data-tabs="false">
   <ProjectSidebar {actions} />
   <div class="editor-area" class:split={view.groups.length > 1}>
   <EditorGroups {actions} />
@@ -64,12 +63,19 @@
     {/if}
     </div>
   {/each}
+  {#each view.tabs.filter(tab => tab.kind === 'terminal') as tab (tab.id)}
+    {@const group = view.groups.find(group => group.activeId === tab.id)}
+    {@const active = !!group && !(group.id === view.focusedGroupId && project.gitDiffActive)}
+    {@const box = boxes.find(box => box.id === group?.id) ?? focused}
+    <div class="group-content terminal-content" class:inactive={!active} inert={!active}
+      style={geometry(box)} data-terminal-tab={tab.id}>
+      {#await import('./terminal/TerminalSurface.svelte') then module}
+        <module.default api={terminalApi} id={tab.id} {active} focused={active && group?.id === view.focusedGroupId}
+          changed={info => actions.terminalChanged(tab.id, info)} />
+      {:catch error}<div role="alert">Could not load the terminal: {String(error)}</div>{/await}
+    </div>
+  {/each}
   </div>
-  {#if terminal.loaded}
-    {#await import('./terminal/TerminalPanel.svelte') then module}
-      <module.default api={terminalApi} />
-    {/await}
-  {/if}
   <InsertionDialogs {actions} />
   <ClosePrompt {actions} />
 </section>

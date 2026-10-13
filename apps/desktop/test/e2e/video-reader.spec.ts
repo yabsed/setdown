@@ -3,6 +3,7 @@ import { copyFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { disposeApplication, focusApplication } from './electron-app';
+import { dragTerminal } from './terminal-drag';
 import { previews } from './preview-view';
 
 const fixtures = path.join(import.meta.dirname, 'fixtures');
@@ -43,21 +44,24 @@ test('opens video files, streams them with range requests and prevents text save
     const initialVideoHeight = await video.evaluate((node) => node.getBoundingClientRect().height);
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1080, 520));
     await page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
-    await page.getByRole('button', { name: 'Terminal', exact: true }).click();
-    const terminal = page.getByRole('region', { name: 'Integrated terminal' });
+    await page.locator('.new-terminal-tab-button').click();
+    const terminal = page.getByRole('region', { name: 'Terminal', exact: true });
     await expect(terminal).toBeVisible();
-    const resize = terminal.getByRole('button', { name: 'Resize Terminal' });
+    await dragTerminal(page, page.locator('.document-tab[aria-selected="true"]'), page.locator('.group-body'), 'down');
+    await expect(page.locator('.editor-group')).toHaveCount(2);
+    const resize = page.getByRole('button', { name: 'Resize editor groups' });
     await resize.focus();
-    for (let index = 0; index < 6; index += 1) await page.keyboard.press('ArrowUp');
+    for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowUp');
     await expect.poll(async () => video.evaluate((node) => {
       const bounds = node.getBoundingClientRect();
-      const terminal = document.querySelector('[aria-label="Integrated terminal"]')!.getBoundingClientRect();
+      const terminal = document.querySelector('[aria-label="Terminal"]')!.getBoundingClientRect();
       return {
         shrank: bounds.height < (node as HTMLVideoElement).videoHeight,
         clear: bounds.bottom <= terminal.top + 1,
       };
     })).toEqual({ shrank: true, clear: true });
     expect(await video.evaluate((node) => node.getBoundingClientRect().height)).toBeLessThan(initialVideoHeight);
+    await page.locator('.terminal-location').locator('..').getByTitle('Close tab', { exact: true }).click();
     // Seeking is answered by explicit partial responses, not a buffered file.
     const range = await page.evaluate(async (url) => {
       const response = await fetch(url!, { headers: { Range: 'bytes=0-99' } });

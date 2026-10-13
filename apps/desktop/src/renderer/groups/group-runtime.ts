@@ -72,10 +72,10 @@ export function createGroupRuntime(options: {
   }
   function focusSurface(event: Event) {
     const element = event.target as HTMLElement;
-    const media = element.closest<HTMLElement>('[data-media-tab]');
+    const media = element.closest<HTMLElement>('[data-media-tab], [data-terminal-tab]');
     const groupId = element.closest<HTMLElement>('[data-group-id]')?.dataset.groupId;
     const group = workspace.groups.groups.find(g => g.id === groupId);
-    const tabId = media?.dataset.mediaTab ?? group?.activeId;
+    const tabId = media?.dataset.mediaTab ?? media?.dataset.terminalTab ?? group?.activeId;
     // Tab clicks perform their own activation; do not activate the old selected
     // tab first, which would race an asynchronous document activation.
     if (!element.closest('.tab-strip') && tabId && (tabId !== workspace.activeId || project.gitDiffActive)) options.activate(tabId);

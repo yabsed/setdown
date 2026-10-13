@@ -26,6 +26,7 @@ import { pathFromResourceUrl } from './preview/resource-url';
 import { TabTransferManager } from './tabs/tab-transfer-manager';
 import { ThemeManager } from './theme/theme-manager';
 import { WindowManager } from './windows/window-manager';
+import { TerminalManager } from './terminal/terminal-manager';
 import { installTerminalIpc } from './terminal/terminal-ipc';
 import { WindowRegistry } from './windows/window-registry';
 
@@ -57,7 +58,8 @@ const projects = new ProjectService((documentPath, text, query, limit, root) =>
 const windows = new WindowManager({ registry, previews, themes });
 const browsers = new BrowserManager({ stateFor: id => registry.stateForWebContents(id), states: () => registry.values, zoom: previews.zoom,
   openFile: (state, file) => documents.open(state, file) });
-const transfers = new TabTransferManager({ previews, browsers, stateFor: (id) => registry.stateForWebContents(id),
+const terminals = new TerminalManager();
+const transfers = new TabTransferManager({ previews, browsers, terminals, stateFor: (id) => registry.stateForWebContents(id),
   theme: () => themes.id, createWindow: windows.create });
 const channels = windowIpc((id) => registry.stateForWebContents(id));
 function sendCommand(command: AppCommand): void { registry.focused()?.window.webContents.send('app:command', command); }
@@ -148,7 +150,7 @@ else {
     browsers.registerIpc(channels);
     installReadingIpc(channels, positions, (id) => registry.stateForWebContents(id));
     app.on('will-quit', () => positions.flush());
-    const terminals = installTerminalIpc(channels);
+    installTerminalIpc(channels, terminals);
     app.on('before-quit', () => terminals.dispose());
     installApplicationMenu({ focusedState: () => registry.focused(), createWindow: windows.create,
       openDocument: (state) => documents.chooseAndOpen(state).catch(openError),

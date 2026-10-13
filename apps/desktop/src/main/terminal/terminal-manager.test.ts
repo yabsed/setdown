@@ -82,3 +82,50 @@ describe('window-owned terminals', () => {
     expect(f.exitDispose).toHaveBeenCalledOnce();
   });
 });
+
+describe('terminal tab transfers', () => {
+  it('keeps the PTY, buffers output during handoff and rejects the old owner', () => {
+    const f = fixture(); f.create();
+    f.output('before\r\n');
+    expect(f.manager.adopt(9, 2, 'one')).toBe(false);
+    expect(f.manager.adopt(1, 2, 'one')).toBe(true);
+    expect(f.pty.pause).toHaveBeenCalledOnce();
+    f.manager.closeOwner(1);
+    f.manager.write(1, 'one', 'wrong');
+    f.manager.resize(1, 'one', { cols: 90, rows: 20 });
+    expect(f.pty.kill).not.toHaveBeenCalled();
+    expect(f.pty.write).not.toHaveBeenCalled();
+    f.output('during\r\n');
+    const destination = vi.fn();
+    const restored = f.manager.create(2, 'one', { cols: 90, rows: 20 }, '/tmp', destination);
+    expect(restored.replay).toBe('before\r\nduring\r\n');
+    expect(restored.size).toEqual({ cols: 80, rows: 24 });
+    expect(f.spawn).toHaveBeenCalledOnce();
+    expect(f.pty.resume).toHaveBeenCalledOnce();
+    f.output('after');
+    expect(destination).toHaveBeenCalledWith({ id: 'one', type: 'data', data: 'after' });
+    expect(f.send).toHaveBeenCalledTimes(1);
+    f.manager.write(2, 'one', 'correct');
+    expect(f.pty.write).toHaveBeenCalledWith('correct');
+    f.manager.closeOwner(2);
+    expect(f.pty.kill).toHaveBeenCalledOnce();
+  });
+  it('keeps exited output transferable without restarting a shell', () => {
+    const f = fixture(); f.create(); f.output('finished'); f.exit();
+    expect(f.manager.adopt(1, 2, 'one')).toBe(true);
+    const restored = f.manager.create(2, 'one', { cols: 80, rows: 24 }, '/tmp', vi.fn());
+    expect(restored).toMatchObject({ replay: 'finished', exitCode: 7 });
+    f.manager.write(2, 'one', 'ignored'); f.manager.closeOwner(2);
+    expect(f.spawn).toHaveBeenCalledOnce();
+    expect(f.pty.kill).not.toHaveBeenCalled();
+    expect(f.pty.write).not.toHaveBeenCalled();
+  });
+  it('bounds retained output while preserving the most recent text', () => {
+    const f = fixture(); f.create();
+    f.output('x'.repeat(3 * 1024 * 1024) + 'latest');
+    expect(f.manager.adopt(1, 2, 'one')).toBe(true);
+    const info = f.manager.create(2, 'one', { cols: 80, rows: 24 }, '/tmp', vi.fn());
+    expect(info.replay.length).toBe(2 * 1024 * 1024);
+    expect(info.replay.endsWith('latest')).toBe(true);
+  });
+});

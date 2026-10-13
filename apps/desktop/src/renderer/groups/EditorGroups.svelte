@@ -34,7 +34,9 @@
     aria-label="Editor group" style:left={`${box.x}%`} style:top={`${box.y}%`}
     style:width={`${box.width}%`} style:height={`${box.height}%`}>
     <TabChrome {actions} groupId={box.id} />
-    <LocationBar {actions} groupId={box.id} />
+    {#if tab?.kind === 'terminal'}
+      <div class="terminal-location" title={tab.path}>{tab.path || 'Starting terminal…'}</div>
+    {:else}<LocationBar {actions} groupId={box.id} />{/if}
     <div class="group-body" data-group-id={box.id}>
       {#if tab?.kind === 'web' && (tab.page?.error || tab.page?.startPage)}
         <div class="browser-empty" data-browser-tab={tab.id}>

@@ -93,6 +93,19 @@ origins in its container coordinate system, including the shadow host's offset.
 `workspace-zoom.spec.ts` checks real wheel input, cursor anchors, fit resizing,
 tab isolation and app reset; reading-position tests cover file-state persistence.
 
+Terminals are workspace tabs and use the existing editor-group geometry. Their
+stable keyed surfaces retain xterm and PTY state across tab switches and local
+group moves. A terminal group must remain outside every native reader/web view,
+including during window and sash resizing. No bottom terminal grid row remains.
+The Terminal activity button now manages sessions in the sidebar; opening that
+list does not create a PTY. Closing a tab ends its process, while cross-window
+transfer adopts the same PTY and replays bounded recent output. A clean document
+beside the terminal refreshes external file changes without stealing focus.
+`terminal.spec.ts`, `editor-groups.spec.ts`, `image-terminal-layout.spec.ts`, and
+`video-reader.spec.ts` cover the replacement layout; terminal ownership and
+workspace lifecycle unit tests accompany them. See `integrated-terminal.md` for
+session and transcript limits.
+
 The common native lifecycle is: validate CSS bounds → convert/clip once → apply
 native bounds → synchronize Blink viewport → prepare hidden content. Navigation
 invalidates the viewport cache and replays that sequence after current ownership

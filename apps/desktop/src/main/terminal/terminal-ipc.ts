@@ -7,8 +7,7 @@ function documentsDirectory(): string | null {
   try { return app.getPath('documents'); } catch { return null; }
 }
 
-export function installTerminalIpc(channels: WindowIpc): TerminalManager {
-  const terminals = new TerminalManager();
+export function installTerminalIpc(channels: WindowIpc, terminals = new TerminalManager()): TerminalManager {
   const owners = new Set<number>();
   channels.handle('terminal:create', (state, id: string, size: TerminalSize) => {
     const owner = state.webContentsId;

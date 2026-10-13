@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { WebContentsView } from 'electron';
 import type { MarkTexApi } from '../../src/protocol/desktop-api';
+import { dragTerminal } from './terminal-drag';
 import { disposeApplication, focusApplication } from './electron-app';
 
 async function open(page: Page, file: string) {
@@ -52,14 +53,17 @@ test('wheel scrolls without selection; nested groups retain live native readers 
     ))).toEqual(expect.arrayContaining([expect.stringContaining('First reader'), expect.stringContaining('Second reader')]));
     await page.evaluate(folder => window.marktex.restoreProjectFolder(folder), root);
 
-    // Terminal and BrowserWindow resizing must leave both native readers inside
-    // their current DOM group boxes. In particular, no stale foreground bounds
-    // may extend across the terminal while background bounds are being updated.
-    await page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-toggle-terminal'));
-    const terminal = page.getByRole('region', { name: 'Integrated terminal' });
+    // A terminal group must never be covered by either native reader, including
+    // during BrowserWindow resizing and background-view bounds updates.
+    await page.locator('.new-terminal-tab-button').nth(1).click();
+    const terminal = page.getByRole('region', { name: 'Terminal', exact: true });
     await expect(terminal).toBeVisible();
+    const terminalId = await page.locator('.document-tab[aria-selected="true"]').last().getAttribute('data-tab-id');
+    await dragTerminal(page, page.locator(`[data-tab-id="${terminalId}"]`), page.locator('.group-body').nth(1), 'down');
+    await expect(page.locator('.editor-group')).toHaveCount(3);
+    await expect.poll(visibleReaders).toBe(2);
     const nativeLayoutMatches = async () => {
-      const bodies = await page.locator('.group-body').evaluateAll(nodes => nodes.map(node => {
+      const bodies = await page.locator('.editor-group:not(:has(.terminal-location)) .group-body').evaluateAll(nodes => nodes.map(node => {
         const box = node.getBoundingClientRect();
         return { x: box.x, y: box.y, width: box.width, height: box.height };
       }).sort((a, b) => a.x - b.x || a.y - b.y));
@@ -71,7 +75,7 @@ test('wheel scrolls without selection; nested groups retain live native readers 
         const view = native[index];
         return Math.abs(body.x - view.x) <= 1 && Math.abs(body.y - view.y) <= 1
           && Math.abs(body.width - view.width) <= 1 && Math.abs(body.height - view.height) <= 1
-          && view.y + view.height <= panel.y + 1;
+          && (view.x + view.width <= panel.x + 1 || view.y + view.height <= panel.y + 1);
       });
     };
     await expect.poll(nativeLayoutMatches).toBe(true);
@@ -94,14 +98,14 @@ test('wheel scrolls without selection; nested groups retain live native readers 
     for (const sample of liveResizeSamples) {
       expect(sample).toHaveLength(2);
       expect(sample[0].x + sample[0].width).toBeLessThanOrEqual(sample[1].x + 1);
-      expect(sample.every(box => box.y + box.height <= terminalTop + 1)).toBe(true);
+      expect(sample[1].y + sample[1].height).toBeLessThanOrEqual(terminalTop + 1);
     }
     for (const [width, height] of [[980, 720], [1220, 840], [1080, 760]]) {
       await app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0].setSize(size[0], size[1]), [width, height]);
       await expect.poll(nativeLayoutMatches).toBe(true);
       await expect.poll(visibleReaders).toBe(2);
     }
-    await terminal.getByRole('button', { name: 'Hide Terminal' }).click();
+    await page.locator(`[data-tab-id="${terminalId}"]`).getByTitle('Close tab', { exact: true }).click();
     await expect(terminal).toBeHidden();
 
     // Opening a project file by dropping it in group 2 must never first paint a

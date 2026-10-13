@@ -3,8 +3,9 @@ export type TerminalEvent = { id: string } & (
   | { type: 'data'; data: string }
   | { type: 'exit'; exitCode: number }
 );
+export type TerminalInfo = { title: string; cwd: string; size: TerminalSize; replay: string; exitCode?: number };
 export type TerminalApi = {
-  create(id: string, size: TerminalSize): Promise<{ title: string; cwd: string }>;
+  create(id: string, size: TerminalSize): Promise<TerminalInfo>;
   write(id: string, data: string): void;
   resize(id: string, size: TerminalSize): void;
   acknowledge(id: string, length: number): void;
