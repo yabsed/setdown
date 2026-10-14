@@ -103,6 +103,7 @@ export function startWorkspace(desktop: DesktopPort) {
     },
     resizeGroup: (id, ratio) => { workspace.groups.resize(id, ratio); tabs.render(); },
     menuOverlay: desktop.menuOverlay,
+    locationSuggestions: desktop.locationSuggestions,
     loadMenu: (id) => desktop.getApplicationMenu(id),
     executeMenuItem: (id) => desktop.executeApplicationMenuItem(id),
     resolveClosePrompt: (decision) => closePrompt.resolve(decision),

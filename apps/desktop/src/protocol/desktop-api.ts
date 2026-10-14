@@ -200,6 +200,12 @@ export type ClaimedTabTransfer = {
 export type { PreviewBounds } from './preview-preparation';
 export type PreviewMessage = { tabId: string; message: Record<string, unknown> };
 
+export type LocationSuggestionsRequest = {
+  token: string; bounds: import('./preview-preparation').PreviewBounds;
+  rows: Pick<import('./browser').BrowserPlace, 'url' | 'title' | 'bookmarked'>[]; selected: number;
+};
+export type LocationSuggestionsContext = LocationSuggestionsRequest & { theme: PreviewThemeId };
+
 export type MenuOverlayContext = { menuId: string; x: number; y: number; theme: PreviewThemeId };
 export type ApplicationMenuEntry = {
   id: string;
@@ -292,6 +298,15 @@ export type MarkTexApi = {
   destroyPreview(tabId: string): void;
   getTheme(): Promise<ThemeSnapshot>;
   getApplicationMenu(menuId: string): Promise<ApplicationMenuEntry[]>;
+  locationSuggestions: {
+    show(request: LocationSuggestionsRequest): Promise<void>;
+    hide(token: string): void;
+    context(): Promise<LocationSuggestionsContext>;
+    choose(token: string, index: number): void;
+    onShow(listener: (context: LocationSuggestionsContext) => void): () => void;
+    onChoice(listener: (choice: { token: string; url: string }) => void): () => void;
+    onHidden(listener: (token: string) => void): () => void;
+  };
   menuOverlay: {
     open(menuId: string, position: { x: number; y: number }): Promise<boolean>;
     context(): Promise<MenuOverlayContext>;

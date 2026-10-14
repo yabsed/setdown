@@ -13,6 +13,7 @@ import type { ApplicationMenuEntry, CloseDecision, DocumentSnapshot, GitRemoteAc
 import { canonicalPath } from '../documents/file-system';
 import type { DocumentManager } from '../documents/document-manager';
 import { applicationMenuEntries, executeApplicationMenu } from '../menu/application-menu';
+import { LocationOverlay } from '../browser/location-overlay';
 import { MenuOverlay } from '../menu/menu-overlay';
 import type { WindowState } from '../windows/window-state';
 import { exportPdf } from '../preview/pdf-exporter';
@@ -55,6 +56,9 @@ export function installIpc(options: Options): void {
       isReadOnlyDocument(filePath) && ['save', 'menu-save-as'].includes(item.id) ? { ...item, enabled: false } : item);
   };
   channels.handle('menu:get', menuEntries);
+  const locationOverlay = new LocationOverlay();
+  channels.handle('location-overlay:show', (state, request) => locationOverlay.show(state, request, themes.id));
+  channels.on('location-overlay:hide', (state, token) => { if (typeof token === 'string') locationOverlay.hide(state.webContentsId, token); });
   const menuOverlay = new MenuOverlay(menuEntries);
   channels.handle('menu-overlay:open', (state, menuId: string, position: { x: number; y: number }) => {
     if (![...options.browsers.views.values()].some(entry => entry.owner === state.webContentsId && entry.view.getVisible())) return false;

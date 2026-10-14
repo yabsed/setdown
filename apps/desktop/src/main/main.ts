@@ -193,8 +193,8 @@ else {
       if (state) void documents.open(state, filePath).catch(openError);
     }
   });
-  app.on('before-quit', () => { void browsers.flush(); browsers.dispose(); windows.disposeWatchers(); void projects.dispose(); });
-  app.on('will-quit', () => { try { browsers.flushOnExit(); } catch (error) { console.error('Could not save browser tabs', error); } });
+  app.on('before-quit', () => { void browsers.flush(); windows.disposeWatchers(); void projects.dispose(); });
+  app.on('will-quit', () => { browsers.dispose(); try { browsers.flushOnExit(); } catch (error) { console.error('Could not save browser tabs', error); } });
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) windows.create(); });
 }

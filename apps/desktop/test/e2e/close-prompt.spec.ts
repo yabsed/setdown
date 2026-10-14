@@ -53,7 +53,7 @@ test('uses the Setdown close prompt for dirty tabs and windows', async () => {
     await expect(window.locator('.tab-dirty')).toHaveCount(1);
 
     await window.locator('.tab-close').click();
-    const prompt = window.locator('.close-prompt-dialog');
+    const prompt = window.locator('dialog[aria-labelledby="close-prompt-title"]');
     await expect(prompt).toBeVisible();
     await expect(prompt.getByRole('heading')).toHaveText('Save Changes');
     const promptBounds = await prompt.boundingBox();

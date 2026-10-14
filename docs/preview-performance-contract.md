@@ -102,6 +102,24 @@ frame delivery. `browser.spec.ts` verifies advancing video frames while selectin
 these menus and unchanged page identity/visibility. The overlay runs only trusted
 shell code and validates commands against the owner's current menu entries.
 
+Address history/bookmark suggestions use their own bounded, transparent native
+view above the pages. Opening or editing the dropdown must not capture, hide,
+detach, resize or replace a web page in any split, including the input's own
+split. The shell address input retains keyboard and IME ownership; the native
+list accepts pointer selection and follows app zoom. Late show requests are
+invalidated by dismissal and owner destruction. `browser.spec.ts` exercises
+advancing video frames beside Markdown, web Reader and live web content,
+unchanged native page bounds/identity, Korean composition, native pointer
+selection and keyboard dismissal.
+
+Closing a workspace retires all its browser entries before closing their stable
+WebContents handles. Native View accessors are not a lifetime guarantee: audio
+and loading events can run during destruction, after `view.webContents` has
+become unavailable. Such events must not publish state or revive Places work.
+Cleanup is idempotent, and cancelable `before-quit` must not destroy browser
+pages. The audible-window close and canceled-close/quit scenarios in
+`browser.spec.ts` cover resource release and the absence of main-process errors.
+
 Explorer context menus, sidebar action menus, and the Explorer trash confirmation
 use the shell's balanced native-overlay lifecycle. Visible Markdown/Git/web views
 are replaced with captured content while these controls cover them, including
@@ -509,3 +527,44 @@ a native-boundary leave signal, order, group collapse, and Undo. `browser.spec.t
 checks the same boundary signal during a real web-tab split;
 `tab-detach.spec.ts` checks cross-window strip drops even when source dragend
 precedes the destination claim, preserving the live native reader and position.
+
+## Browser lifecycle validation, 2026-10-15
+
+The audible-close exception and split-video freeze were reproduced on the
+unmodified `1ba591057b0a393e57a2a930d06cc236993e1432` baseline before the fixes.
+The final build/typecheck, 688 unit tests, 282 focused contract unit tests,
+three comparator tests and 93 real Electron GUI scenarios passed.
+
+The independent baseline and candidate used Electron 44.7.2, the same isolated
+Xvfb display and five matched repetitions, alternating their order. Eight
+scenarios and all 48 first/second/warm comparisons were retained. The existing
+25% **and** 50ms regression thresholds were unchanged. Results below are
+**baseline → candidate medians in milliseconds**; warm is cycles 3–5.
+
+| Surface | Preparation | Edits | Measurement | First | Second | Warm |
+| --- | --- | --- | --- | --- | --- | --- |
+| document | 0ms | false | Esc → latest capture | 43.0 → 32.0 | 20.0 → 20.0 | 23.0 → 23.0 |
+| document | 0ms | false | Double-click → editor | 16.0 → 16.0 | 35.0 → 33.0 | 11.0 → 11.0 |
+| document | 0ms | true | Esc → latest capture | 390.0 → 404.0 | 99.0 → 111.0 | 89.0 → 89.0 |
+| document | 0ms | true | Double-click → editor | 19.0 → 16.0 | 17.0 → 15.0 | 12.0 → 13.0 |
+| document | 3000ms | false | Esc → latest capture | 40.0 → 47.0 | 21.0 → 22.0 | 19.0 → 18.0 |
+| document | 3000ms | false | Double-click → editor | 16.0 → 16.0 | 12.0 → 11.0 | 11.0 → 11.0 |
+| document | 3000ms | true | Esc → latest capture | 103.0 → 103.0 | 99.0 → 99.0 | 89.0 → 88.0 |
+| document | 3000ms | true | Double-click → editor | 15.0 → 19.0 | 12.0 → 15.0 | 15.0 → 13.0 |
+| review | 0ms | false | Esc → latest capture | 908.0 → 932.0 | 21.0 → 19.0 | 19.0 → 17.0 |
+| review | 0ms | false | Double-click → editor | 23.0 → 21.0 | 11.0 → 11.0 | 12.0 → 11.0 |
+| review | 0ms | true | Esc → latest capture | 991.0 → 974.0 | 1439.0 → 1445.0 | 181.0 → 173.0 |
+| review | 0ms | true | Double-click → editor | 14.0 → 22.0 | 19.0 → 13.0 | 18.0 → 17.0 |
+| review | 3000ms | false | Esc → latest capture | 28.0 → 30.0 | 24.0 → 24.0 | 18.0 → 18.0 |
+| review | 3000ms | false | Double-click → editor | 22.0 → 22.0 | 11.0 → 11.0 | 17.0 → 16.0 |
+| review | 3000ms | true | Esc → latest capture | 226.0 → 224.0 | 177.0 → 181.0 | 174.0 → 171.0 |
+| review | 3000ms | true | Double-click → editor | 21.0 → 21.0 | 18.0 → 12.0 | 17.0 → 17.0 |
+
+Result: **PASS**, 0 regressing buckets.
+The first run flagged `document/idle=0/edits=true/first/captureMs` (329ms → 456ms).
+That failure is preserved in [the initial comparison](browser-lifecycle-benchmark-first-run-2026-10-15.json).
+Separate Chromium traces showed similar HTML readiness and variable rendering/capture time;
+they do not establish a sole cause. Unused address-dropdown hide IPC was removed from inactive
+bars, then the changed implementation was measured again with the same scenarios and thresholds.
+[Complete validation and measurement records](browser-lifecycle-validation-2026-10-15.json)
+retain the per-repetition samples, build/lock/harness hashes and limitations; logs are in `/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/test-results/browser-lifecycle-2026-10-15`.

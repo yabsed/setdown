@@ -1,10 +1,11 @@
-import { WebContentsView, MessageChannelMain, ipcMain, type MessagePortMain } from 'electron';
+import { WebContentsView, MessageChannelMain, ipcMain, type WebContents, type MessagePortMain } from 'electron';
 import path from 'node:path';
 import type { BrowserPlace, BrowserPlaceScope } from '../../protocol/browser';
 
 /** Min's isolated Places service: IndexedDB and ranking never run in the shell. */
 export class BrowserPlaces {
   private view?: WebContentsView;
+  private contents?: WebContents;
   private ready?: Promise<MessagePortMain>;
   private sequence = 0;
   private pending = new Map<number, { resolve(value: unknown): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> }>();
@@ -15,9 +16,10 @@ export class BrowserPlaces {
         partition: 'persist:setdown-places', preload: path.join(__dirname, 'places-preload.cjs'),
         sandbox: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false,
       } });
+      const contents = this.contents = view.webContents;
       const timeout = setTimeout(() => { ipcMain.removeListener('browser:places-ready', onReady); reject(new Error('Browser library did not start.')); }, 15_000);
       const onReady = (event: Electron.IpcMainEvent) => {
-        if (event.sender !== view.webContents) return;
+        if (event.sender !== contents) return;
         clearTimeout(timeout); ipcMain.removeListener('browser:places-ready', onReady);
         const { port1, port2 } = new MessageChannelMain();
         port1.on('message', ({ data }) => {
@@ -26,15 +28,15 @@ export class BrowserPlaces {
           this.pending.delete(data.id); clearTimeout(task.timer);
           if (data.error) task.reject(new Error(data.error)); else task.resolve(data.result);
         });
-        port1.start(); view.webContents.postMessage('browser:places-port', null, [port2]); resolve(port1);
+        port1.start(); contents.postMessage('browser:places-port', null, [port2]); resolve(port1);
       };
       ipcMain.on('browser:places-ready', onReady);
-      view.webContents.once('destroyed', () => {
+      contents.once('destroyed', () => {
         clearTimeout(timeout); ipcMain.removeListener('browser:places-ready', onReady);
         for (const task of this.pending.values()) { clearTimeout(task.timer); task.reject(new Error('Browser library closed.')); }
-        this.pending.clear(); this.ready = undefined; this.view = undefined;
+        this.pending.clear(); this.ready = undefined; this.contents = undefined; this.view = undefined; reject(new Error('Browser library closed.'));
       });
-      void view.webContents.loadFile(path.join(__dirname, 'places.html')).catch(reject);
+      void contents.loadFile(path.join(__dirname, 'places.html')).catch(reject);
     });
     return this.ready;
   }
@@ -55,5 +57,5 @@ export class BrowserPlaces {
   update(url: string, title: string, options: { visit?: boolean; bookmarked?: boolean } = {}): Promise<void> {
     return this.request('update', { url, title: title.slice(0, 1000), ...options });
   }
-  dispose() { if (this.view && !this.view.webContents.isDestroyed()) this.view.webContents.close(); }
+  dispose() { const contents = this.contents; if (this.view && contents && !contents.isDestroyed()) contents.close(); }
 }

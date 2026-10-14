@@ -60,12 +60,22 @@
     bookmarked = false;
     if (url?.startsWith('http')) void actions.browserPlaces(url, 'bookmarks').then(rows => { if (web?.url === url) bookmarked = rows.some(p => p.url === url); }).catch(() => {});
   });
-  const suggesting = $derived(editing && suggestions.length > 0);
+  let bar = $state<HTMLElement>();
+  let placement = $state(0);
+  const popupToken = crypto.randomUUID();
+  let popupRequested = false;
   $effect(() => {
-    if (suggesting) {
-      window.dispatchEvent(new CustomEvent('setdown:native-overlay-visibility', { detail: true }));
-      return () => window.dispatchEvent(new CustomEvent('setdown:native-overlay-visibility', { detail: false }));
+    if (!editing || !suggestions.length || !bar) {
+      if (popupRequested) { popupRequested = false; actions.locationSuggestions.hide(popupToken); }
+      return;
     }
+    void placement;
+    popupRequested = true;
+    const rect = bar.getBoundingClientRect();
+    void actions.locationSuggestions.show({ token: popupToken, selected,
+      rows: suggestions.map(({ url, title, bookmarked }) => ({ url, title, bookmarked })),
+      bounds: { x: rect.left + 9, y: rect.bottom - 1, width: rect.width - 18, height: 12 + 46 * suggestions.length },
+    }).catch(reason => { error = String(reason); });
   });
   function search() {
     clearTimeout(timer); const request = ++generation;
@@ -82,17 +92,25 @@
   function blur() { editing = false; suggestions = []; generation++; clearTimeout(timer); }
   async function focus() { if (groupId !== view.focusedGroupId) return; await tick(); input?.focus(); input?.select(); }
   onMount(() => {
+    const resize = new ResizeObserver(() => { placement++; });
+    if (bar) resize.observe(bar);
+    const offChoice = actions.locationSuggestions.onChoice(choice => {
+      if (choice.token === popupToken && editing && suggestions.some(row => row.url === choice.url)) void go(choice.url);
+    });
+    const offHidden = actions.locationSuggestions.onHidden(token => { if (token === popupToken) { popupRequested = false; blur(); } });
+    const reposition = () => { placement++; };
+    window.addEventListener('resize', reposition);
     const find = async () => { if (groupId === view.focusedGroupId && web && tab) {
       browser.findId = tab.id; browser.active = 0; browser.matches = 0;
       actions.browserFind(tab.id, browser.query); await tick(); finder?.focus(); finder?.select();
     } };
     window.addEventListener('setdown:focus-location', focus);
     window.addEventListener('setdown:browser-find', find);
-    return () => { clearTimeout(timer); window.removeEventListener('setdown:focus-location', focus); window.removeEventListener('setdown:browser-find', find); };
+    return () => { resize.disconnect(); offChoice(); offHidden(); actions.locationSuggestions.hide(popupToken); window.removeEventListener('resize', reposition); clearTimeout(timer); window.removeEventListener('setdown:focus-location', focus); window.removeEventListener('setdown:browser-find', find); };
   });
 </script>
 
-<div class="location-bar" data-group-id={groupId} class:loading={web?.loading}>
+<div bind:this={bar} class="location-bar" data-group-id={groupId} class:loading={web?.loading}>
   <button aria-label="Back" title="Back (Alt+Left)" disabled={!tab?.canGoBack || !!review} onclick={() => actions.navigateHistory(tab!.id, -1)}>←</button>
   <button aria-label="Forward" title="Forward (Alt+Right)" disabled={!tab?.canGoForward || !!review} onclick={() => actions.navigateHistory(tab!.id, 1)}>→</button>
   {#if web}
@@ -113,11 +131,11 @@
   {:else}
     <input bind:this={input} aria-label="Address or file path" placeholder="Search or enter an address" spellcheck="false" autocomplete="off"
       bind:value={draft} title={location} onfocus={() => { editing = true; input?.select(); search(); }} onblur={blur}
-      onpointerdown={() => { selectOnClick = document.activeElement !== input; }}
+      onpointerdown={() => { selectOnClick = document.activeElement !== input || !document.hasFocus(); if (!editing) { editing = true; search(); } }}
       onmouseup={event => { if (selectOnClick) { event.preventDefault(); input?.select(); selectOnClick = false; } }}
       oninput={search} oncompositionstart={() => { composing = true; clearTimeout(timer); generation++; }} oncompositionend={() => { composing = false; search(); }}
       onkeydown={event => {
-        if (event.isComposing) return;
+        if (event.isComposing || composing) return;
         if (event.key === 'Enter') { event.preventDefault(); void go(); }
         else if (event.key === 'Escape') { blur(); input?.blur(); if (web) actions.browserCommand(tab!.id, 'focus'); }
         else if (event.key === 'ArrowDown' && suggestions.length) { event.preventDefault(); selected = (selected + 1) % suggestions.length; }
@@ -196,16 +214,6 @@
         percent={zoomState.tabs?.[zoomId ?? ''] ?? 100} change={step => actions.changeZoom(step, zoomScope, zoomId)} />
     {/if}
   {/if}
-  {#if editing && suggestions.length}
-    <div class="location-suggestions" role="listbox" aria-label="Bookmarks and history">
-      {#each suggestions as item, index (item.url)}
-        <button role="option" aria-selected={selected === index} class:selected={selected === index}
-          onpointerdown={event => event.preventDefault()} onclick={() => void go(item.url)}>
-          <span>{item.bookmarked ? '★' : '↗'}</span><span class="suggestion-text"><strong>{item.title}</strong><small>{item.url}</small></span>
-        </button>
-      {/each}
-    </div>
-  {/if}
   {#if error || (browser.error && groupId === view.focusedGroupId)}
     <span class="location-error" role="alert">{error || browser.error}<button aria-label="Dismiss browser error" onclick={() => { error = ''; browser.error = ''; }}>×</button></span>
   {/if}
@@ -220,11 +228,6 @@
   .location-error { color: #b94f4f; }
   .bookmarked { color: var(--app-text); } .find-count { font: 11px var(--app-font-family); }
   .loading { box-shadow: inset 0 -2px var(--app-muted-text); }
-  .location-suggestions { position: absolute; top: 33px; left: 9px; right: 9px; padding: 5px; border: 1px solid var(--app-border); border-radius: 0 0 8px 8px; background: var(--app-chrome); box-shadow: 0 8px 24px #0002; }
-  .location-suggestions button { display: flex; align-items: center; gap: 10px; text-align: left; width: 100%; height: auto; padding: 8px; }
-  .location-suggestions .selected { background: var(--app-hover); }
-  .suggestion-text { display: flex; flex-direction: column; min-width: 0; gap: 4px; }
-  strong, small { font: 12px var(--app-font-family); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } small { opacity: .55; font-size: 11px; }
   .location-error { position: absolute; top: 34px; left: 10px; right: 10px; background: var(--app-chrome); padding: 8px; font-size: 12px; }
   .location-icon { display: grid; place-items: center; flex: 0 0 28px; height: 28px; padding: 5px; border-radius: 7px; color: var(--app-muted-text); }
   .location-icon svg { width: 18px; height: 18px; fill: currentColor; }

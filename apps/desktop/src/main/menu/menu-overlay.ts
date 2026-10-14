@@ -1,4 +1,4 @@
-import { ipcMain, WebContentsView } from 'electron';
+import { ipcMain, WebContentsView, type WebContents } from 'electron';
 import path from 'node:path';
 import type { WindowState } from '../windows/window-state';
 import type { ApplicationMenuEntry, MenuOverlayContext } from '../../protocol/desktop-api';
@@ -7,10 +7,10 @@ import { executeApplicationMenu } from './application-menu';
 /** A transparent native layer keeps menus above live web content without hiding
  * the page or replacing its video frames with a captured image. */
 export class MenuOverlay {
-  private readonly owners = new Map<number, { state: WindowState; view: WebContentsView;
+  private readonly owners = new Map<number, { state: WindowState; view: WebContentsView; contents: WebContents;
     context: MenuOverlayContext; ready: Promise<void>; generation: number }>();
   constructor(entries: (state: WindowState, id: string) => ApplicationMenuEntry[]) {
-    const owned = (id: number) => [...this.owners.values()].find(entry => entry.view.webContents.id === id);
+    const owned = (id: number) => [...this.owners.values()].find(entry => entry.contents.id === id);
     ipcMain.handle('menu-overlay:context', event => owned(event.sender.id)?.context);
     ipcMain.handle('menu-overlay:entries', (event, id: string) => {
       const entry = owned(event.sender.id);
@@ -41,36 +41,38 @@ export class MenuOverlay {
     if (!entry) {
       const view = new WebContentsView({ webPreferences: { preload: path.join(__dirname, 'preload.cjs'),
         sandbox: true, contextIsolation: true, nodeIntegration: false } });
+      const contents = view.webContents;
       view.setBackgroundColor('#00000000'); view.setVisible(false);
       const url = new URL(state.window.webContents.getURL()); url.searchParams.set('menu-overlay', '1');
-      entry = { state, view, context, generation: 0, ready: view.webContents.loadURL(url.href) };
+      entry = { state, view, contents, context, generation: 0, ready: contents.loadURL(url.href) };
       this.owners.set(owner, entry);
-      view.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-      view.webContents.on('will-navigate', event => event.preventDefault());
+      contents.setWindowOpenHandler(() => ({ action: 'deny' }));
+      contents.on('will-navigate', event => event.preventDefault());
       state.window.on('resize', () => this.close(owner));
       state.window.on('blur', () => this.close(owner, false));
       state.window.webContents.on('did-start-navigation', (_event, _url, inPlace, mainFrame) => { if (mainFrame && !inPlace) this.close(owner, false); });
-      state.window.once('closed', () => { this.owners.delete(owner); if (!view.webContents.isDestroyed()) view.webContents.close(); });
+      state.window.once('closed', () => { this.owners.delete(owner); if (!contents.isDestroyed()) contents.close(); });
     }
     entry.context = context;
     const generation = ++entry.generation;
     await entry.ready;
-    await entry.view.webContents.insertCSS('html,body,#app{background:transparent!important}');
+    if (entry.generation !== generation || state.window.isDestroyed() || entry.contents.isDestroyed()) return false;
+    await entry.contents.insertCSS('html,body,#app{background:transparent!important}');
     if (entry.generation !== generation || state.window.isDestroyed()) return false;
     const [width, height] = state.window.getContentSize();
     entry.view.setBounds({ x: 0, y: 0, width, height });
-    entry.view.webContents.setZoomMode('isolated');
-    entry.view.webContents.setZoomFactor(state.window.webContents.getZoomFactor());
+    entry.contents.setZoomMode('isolated');
+    entry.contents.setZoomFactor(state.window.webContents.getZoomFactor());
     state.window.contentView.addChildView(entry.view);
-    entry.view.webContents.send('menu-overlay:show', context);
-    entry.view.setVisible(true); entry.view.webContents.focus();
+    entry.contents.send('menu-overlay:show', context);
+    entry.view.setVisible(true); entry.contents.focus();
     return true;
   }
   close(owner: number, focus = true): void {
     const entry = this.owners.get(owner);
     if (!entry) return;
     entry.generation++;
-    if (!entry.view.webContents.isDestroyed()) entry.view.setVisible(false);
+    if (!entry.contents.isDestroyed()) entry.view.setVisible(false);
     if (!entry.state.window.isDestroyed()) {
       entry.state.window.contentView.removeChildView(entry.view);
       entry.state.window.webContents.send('menu-overlay:closed');

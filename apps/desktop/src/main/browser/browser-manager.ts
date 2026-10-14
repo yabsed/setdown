@@ -21,7 +21,7 @@ import { BrowserPermissions } from './browser-permissions';
 import { browserContextMenu } from './browser-context-menu';
 import { BrowserAuth } from './browser-auth';
 
-type Entry = { owner: number; view: WebContentsView; page: BrowserPage; navigation: number; bounds?: Rectangle;
+type Entry = { owner: number; view: WebContentsView; contents: WebContents; page: BrowserPage; navigation: number; bounds?: Rectangle;
   document: number; menuGeneration: number; find?: { request: number; query: string }; htmlFullscreen?: boolean;
   popups: number[]; externalRequests: number[]; externalPending?: boolean;
   historyUrls: string[]; historyIndex: number; canGoBack?: boolean; canGoForward?: boolean; closing?: (value: boolean) => void };
@@ -51,12 +51,12 @@ export class BrowserManager {
   private readonly auth = new BrowserAuth((owner, id, request) => this.send(owner, { type: 'auth', id, request }));
   private readonly permissions = new BrowserPermissions(contents => {
     const entry = this.forContents(contents);
-    return entry ? { id: entry.page.id, owner: entry.owner, contents: entry.view.webContents, visible: entry.view.getVisible() } : undefined;
+    return entry ? { id: entry.page.id, owner: entry.owner, contents: entry.contents, visible: entry.view.getVisible() } : undefined;
   }, (owner, id, requests) => this.send(owner, { type: 'permissions', id, requests }));
   constructor(private readonly options: Options) {}
   private pageZoom(entry: Entry): number { return this.options.zoom.tabFactor(`${entry.page.id}:website`); }
   private zoomPage(entry: Entry, steps: unknown, requireVisible = true): void {
-    if (requireVisible && !entry.view.getVisible()) return;
+    if (!this.live(entry) || (requireVisible && !entry.view.getVisible())) return;
     this.options.zoom.changeTab(`${entry.page.id}:website`, steps);
   }
   private get session() {
@@ -83,7 +83,7 @@ export class BrowserManager {
   warmup(): void { void this.ensureReady().catch(() => undefined); }
   private ensureExtensions(): BrowserExtensions {
     if (!this.extensions) {
-      this.extensions = new BrowserExtensions(this.session, id => this.forContentsId(id)?.view.webContents, {
+      this.extensions = new BrowserExtensions(this.session, id => this.forContentsId(id)?.contents, {
         license: 'GPL-3.0',
         createTab: async details => {
           const state = details.openerTabId ? this.options.stateFor(this.forContentsId(details.openerTabId)?.owner ?? -1)
@@ -92,7 +92,7 @@ export class BrowserManager {
           const entry = this.openEntry(state.webContentsId, randomUUID(), this.extensionURL(details.url ?? 'about:blank'));
           this.send(entry.owner, { type: 'open', page: entry.page, background: details.active === false });
           void this.load(entry, entry.page.url);
-          return [entry.view.webContents, state.window];
+          return [entry.contents, state.window];
         },
         selectTab: contents => { const entry = this.forContents(contents); if (entry) this.send(entry.owner, { type: 'focus', id: entry.page.id }); },
         removeTab: contents => {
@@ -114,30 +114,35 @@ export class BrowserManager {
   }
   private isExtensionURL(url: string): boolean { return !!this.extensions?.isExtensionURL(url); }
   private forContents(contents: WebContents | null | undefined) { return contents && this.forContentsId(contents.id); }
-  private forContentsId(id: number) { return Array.from(this.views.values()).find(entry => entry.view.webContents.id === id); }
+  private forContentsId(id: number) { return Array.from(this.views.values()).find(entry => entry.contents.id === id); }
   private owned(owner: number, id: unknown): Entry {
     const entry = typeof id === 'string' ? this.views.get(id) : undefined;
-    if (!entry || entry.owner !== owner || entry.view.webContents.isDestroyed()) throw Error('This web tab does not belong to this window.');
+    if (!entry || entry.owner !== owner || entry.contents.isDestroyed()) throw Error('This web tab does not belong to this window.');
     return entry;
   }
   owns(owner: number, id: string) { return this.views.get(id)?.owner === owner; }
   reloadFocused(owner: number, ignoreCache = false): boolean {
     const id = this.options.zoom.activeTab(owner), entry = id ? this.views.get(id) : undefined;
-    if (!entry || entry.owner !== owner || entry.view.webContents.isDestroyed()) return false;
+    if (!entry || entry.owner !== owner || entry.contents.isDestroyed()) return false;
     entry.page.error = null; entry.page.failure = undefined;
-    const wc = entry.view.webContents;
+    const wc = entry.contents;
     if (wc.isCrashed() || wc.getURL() !== entry.page.url) void this.load(entry, entry.page.url);
     else if (ignoreCache) wc.reloadIgnoringCache(); else wc.reload();
     return true;
   }
   private send(owner: number, event: BrowserEvent) {
     const state = this.options.stateFor(owner);
-    if (state && !state.window.isDestroyed()) state.window.webContents.send('browser:event', event);
+    if (state && !state.window.isDestroyed() && !state.window.webContents.isDestroyed()) state.window.webContents.send('browser:event', event);
   }
   private broadcast(event: BrowserEvent) { for (const state of this.options.states()) this.send(state.webContentsId, event); }
+  private live(entry: Entry): boolean {
+    const state = this.options.stateFor(entry.owner);
+    return this.views.get(entry.page.id) === entry && !entry.contents.isDestroyed()
+      && !!state && !state.window.isDestroyed() && !state.window.webContents.isDestroyed();
+  }
   private publish(entry: Entry) {
-    if (entry.view.webContents.isDestroyed()) return;
-    const wc = entry.view.webContents;
+    if (!this.live(entry)) return;
+    const wc = entry.contents;
     entry.page = { ...entry.page, loading: wc.isLoading() || entry.page.protection === 'starting', canGoBack: wc.navigationHistory.canGoBack(),
       canGoForward: wc.navigationHistory.canGoForward(), audible: wc.isCurrentlyAudible(), muted: wc.isAudioMuted(),
       zoomPercent: Math.round(this.pageZoom(entry) * 100) };
@@ -176,17 +181,23 @@ export class BrowserManager {
     if (this.owners.has(owner)) return;
     this.owners.add(owner);
     const state = this.options.stateFor(owner)!;
-    state.window.once('closed', () => {
-      for (const entry of [...this.views.values()]) if (entry.owner === owner) {
-        this.permissions.clear(owner, entry.page.id);
-        this.auth.clear(entry.page.id);
-        this.views.delete(entry.page.id); entry.view.webContents.close();
-      }
-      for (const [id, tabOwner] of this.dormant) if (tabOwner === owner) this.dormant.delete(id);
-      this.owners.delete(owner);
-      this.closedTabs.delete(owner);
-      if (!this.owners.size) this.places.dispose();
-    });
+    state.window.once('closed', () => this.closeOwner(owner));
+  }
+  private closeOwner(owner: number) {
+    const entries = [...this.views.values()].filter(entry => entry.owner === owner);
+    // Retire every page before closing any native contents. Closing can emit
+    // synchronous loading/audio events, after the View's getter is cleared.
+    for (const entry of entries) this.views.delete(entry.page.id);
+    for (const entry of entries) {
+      this.permissions.clear(owner, entry.page.id);
+      this.auth.clear(entry.page.id);
+      const resolve = entry.closing; entry.closing = undefined; resolve?.(true);
+      if (!entry.contents.isDestroyed()) entry.contents.close();
+    }
+    for (const [id, tabOwner] of this.dormant) if (tabOwner === owner) this.dormant.delete(id);
+    this.owners.delete(owner);
+    this.closedTabs.delete(owner);
+    if (!this.owners.size) this.places.dispose();
   }
   private openEntry(owner: number, id: string, url: string, existing?: WebContents): Entry {
     const state = this.options.stateFor(owner);
@@ -199,10 +210,10 @@ export class BrowserManager {
       ...(existing ? { webContents: existing } : {}) });
     view.setVisible(false);
     // Hidden initial navigation stays detached, preserving document IME focus.
-    const entry: Entry = { owner, view, page: blankPage(id, url), navigation: 0, document: 0, menuGeneration: 0, popups: [], externalRequests: [],
+    const wc = view.webContents;
+    const entry: Entry = { owner, view, contents: wc, page: blankPage(id, url), navigation: 0, document: 0, menuGeneration: 0, popups: [], externalRequests: [],
       historyUrls: [], historyIndex: -1 };
     this.views.set(id, entry);
-    const wc = view.webContents;
     this.options.zoom.track(wc, () => this.publish(entry), () => this.pageZoom(entry));
     wc.on('ipc-message', (event, channel, steps) => {
       if (channel === 'browser:wheel-zoom') this.zoomPage(entry, steps);
@@ -238,9 +249,10 @@ export class BrowserManager {
       event.preventDefault(); this.auth.request(entry.owner, id, details.url, authInfo, callback);
     });
     const register = () => this.extensions?.host?.addTab(wc, this.options.stateFor(entry.owner)!.window);
-    void this.ensureReady().then(() => { if (!wc.isDestroyed()) { register(); entry.page.protection = 'ready'; this.publish(entry); } })
-      .catch(error => { if (!wc.isDestroyed()) { entry.page.protection = 'error'; this.error(entry, error); } });
+    void this.ensureReady().then(() => { if (this.live(entry)) { register(); entry.page.protection = 'ready'; this.publish(entry); } })
+      .catch(error => { if (this.live(entry)) { entry.page.protection = 'error'; this.error(entry, error); } });
     const navigation = (_event: Electron.Event, next: string) => {
+      if (!this.live(entry)) return;
       const history = wc.navigationHistory, index = history.getActiveIndex();
       if (index > entry.historyIndex && entry.historyUrls[index] !== next) this.send(entry.owner, { type: 'navigation', id });
       entry.historyIndex = index;
@@ -251,10 +263,11 @@ export class BrowserManager {
     };
     wc.on('did-navigate', navigation);
     wc.on('did-navigate-in-page', (event, url, main) => { if (main) navigation(event, url); });
-    wc.on('page-title-updated', (_event, title) => { entry.page.title = title; this.publish(entry); this.saved.set(id, entry.page); this.persist(); });
+    wc.on('page-title-updated', (_event, title) => { if (!this.live(entry)) return; entry.page.title = title; this.publish(entry); this.saved.set(id, entry.page); this.persist(); });
     wc.on('did-start-loading', () => this.publish(entry));
     wc.on('did-stop-loading', () => this.publish(entry));
     wc.on('did-finish-load', () => {
+      if (!this.live(entry)) return;
       if (isWebURL(wc.getURL())) void this.places.update(wc.getURL(), wc.getTitle(), { visit: true })
         .then(() => this.broadcast({ type: 'places' })).catch(console.error);
     });
@@ -270,7 +283,7 @@ export class BrowserManager {
       this.error(entry, browserFailureMessage(entry.page.failure));
     });
     wc.on('audio-state-changed', () => this.publish(entry));
-    wc.on('focus', () => { if (view.getVisible()) this.send(entry.owner, { type: 'focus', id }); });
+    wc.on('focus', () => { if (this.live(entry) && view.getVisible()) this.send(entry.owner, { type: 'focus', id }); });
     wc.on('found-in-page', (_event, result) => {
       if (entry.find?.request === result.requestId) this.send(entry.owner, { type: 'find', id, query: entry.find.query,
         active: result.activeMatchOrdinal, matches: result.matches });
@@ -282,9 +295,11 @@ export class BrowserManager {
       if (choice === 1) event.preventDefault(); else { entry.closing?.(false); entry.closing = undefined; }
     });
     wc.on('destroyed', () => {
+      const resolve = entry.closing; entry.closing = undefined; resolve?.(true);
+      if (this.views.get(id) !== entry) return;
       this.permissions.clear(entry.owner, id);
       this.auth.clear(id);
-      this.views.delete(id); entry.closing?.(true);
+      this.views.delete(id);
       if (this.options.stateFor(entry.owner)) { this.saved.delete(id); this.persist(); }
       this.send(entry.owner, { type: 'close', id });
     });
@@ -310,7 +325,7 @@ export class BrowserManager {
         const popup = this.openEntry(entry.owner, randomUUID(), details.url, (options as Electron.BrowserWindowConstructorOptions & { webContents?: WebContents }).webContents);
         popup.page.startPage = false;
         this.send(entry.owner, { type: 'open', page: popup.page, background: !entry.view.getVisible() || details.disposition === 'background-tab' });
-        return popup.view.webContents;
+        return popup.contents;
       } };
     });
     wc.on('before-input-event', (event, input) => {
@@ -376,14 +391,14 @@ export class BrowserManager {
     this.publish(entry);
     try {
       await this.ensureReady();
-      if (navigation !== entry.navigation || this.views.get(entry.page.id) !== entry || entry.view.webContents.isDestroyed()) return;
+      if (navigation !== entry.navigation || !this.live(entry)) return;
       entry.page.error = null;
       entry.page.protection = 'ready';
-      this.extensions?.host?.addTab(entry.view.webContents, this.options.stateFor(entry.owner)!.window);
-      if (history) await entry.view.webContents.navigationHistory.restore(history);
-      else await entry.view.webContents.loadURL(url);
+      this.extensions?.host?.addTab(entry.contents, this.options.stateFor(entry.owner)!.window);
+      if (history) await entry.contents.navigationHistory.restore(history);
+      else await entry.contents.loadURL(url);
     } catch (error) {
-      if (navigation === entry.navigation && !entry.view.webContents.isDestroyed()
+      if (navigation === entry.navigation && !entry.contents.isDestroyed()
         && (error as { code?: string }).code !== 'ERR_ABORTED' && !entry.page.failure) this.error(entry, error);
     }
   }
@@ -406,7 +421,7 @@ export class BrowserManager {
     if (entry.closing) return false;
     const closed = await new Promise<boolean>(resolve => {
       entry.closing = resolve;
-      entry.view.webContents.close({ waitForBeforeUnload: true });
+      entry.contents.close({ waitForBeforeUnload: true });
     });
     if (closed) { this.saved.delete(id); this.persist(); rememberClosed(); }
     return closed;
@@ -422,11 +437,11 @@ export class BrowserManager {
     entry.owner = destination; entry.bounds = undefined; this.trackOwner(destination);
     // The host's removeTab hook normally closes the real page. Reparenting only
     // updates extension ownership; the live page and its opener must survive.
-    this.transferring.add(entry.view.webContents.id);
+    this.transferring.add(entry.contents.id);
     try {
-      this.extensions?.host?.removeTab(entry.view.webContents);
-      this.extensions?.host?.addTab(entry.view.webContents, target.window);
-    } finally { this.transferring.delete(entry.view.webContents.id); }
+      this.extensions?.host?.removeTab(entry.contents);
+      this.extensions?.host?.addTab(entry.contents, target.window);
+    } finally { this.transferring.delete(entry.contents.id); }
     return true;
   }
   layout(owner: number, entries: Array<{ id: string; bounds: PreviewBounds; canGoBack?: boolean; canGoForward?: boolean }>) {
@@ -435,7 +450,7 @@ export class BrowserManager {
     const visible = new Set<string>();
     for (const item of entries.slice(0, 32)) {
       const entry = this.views.get(item.id), css = readPreviewBounds(item.bounds);
-      if (!entry || entry.owner !== owner || !css || entry.view.webContents.isDestroyed()) continue;
+      if (!entry || entry.owner !== owner || !css || entry.contents.isDestroyed()) continue;
       entry.canGoBack = item.canGoBack === true; entry.canGoForward = item.canGoForward === true;
       const bounds = nativeZoomBounds(css, state.window.webContents.getZoomFactor());
       const [width, height] = state.window.getContentSize();
@@ -468,7 +483,7 @@ export class BrowserManager {
       if (choice.response !== 1) return;
       } finally { entry.externalPending = false; }
     }
-    if (entry.view.webContents.isDestroyed() || entry.document !== generation || entry.owner !== owner) return;
+    if (entry.contents.isDestroyed() || entry.document !== generation || entry.owner !== owner) return;
     await shell.openExternal(url);
   }
   private permissionMenu(entry: Entry) {
@@ -476,13 +491,13 @@ export class BrowserManager {
     if (!state) return;
     Menu.buildFromTemplate(this.permissions.requests(entry.page.id).map(request => ({ label: `${request.label} · ${request.origin}`, submenu: [
       { label: 'Allow for This Page', click: () => {
-        if (entry.owner === owner && entry.document === generation && !entry.view.webContents.isDestroyed()) this.permissions.respond(owner, entry.page.id, request.token, true);
+        if (entry.owner === owner && entry.document === generation && !entry.contents.isDestroyed()) this.permissions.respond(owner, entry.page.id, request.token, true);
       } },
       { label: 'Deny', click: () => this.permissions.respond(owner, entry.page.id, request.token, false) },
     ] }))).popup({ window: state.window });
   }
   private siteMenu(entry: Entry) {
-    const wc = entry.view.webContents, owner = entry.owner, generation = entry.document, state = this.options.stateFor(owner);
+    const wc = entry.contents, owner = entry.owner, generation = entry.document, state = this.options.stateFor(owner);
     if (!state || !isWebURL(wc.getURL())) return;
     const origin = new URL(wc.getURL()).origin;
     const valid = () => !wc.isDestroyed() && entry.owner === owner && entry.document === generation;
@@ -504,7 +519,7 @@ export class BrowserManager {
   registerIpc(channels: WindowIpc) {
     channels.handle('browser:create', (state, id: string, url: string, history?: WebHistory) => this.create(state.webContentsId, id, url, history));
     channels.handle('browser:history', (state, id: string): WebHistory => {
-      const entry = this.owned(state.webContentsId, id), history = entry.view.webContents.navigationHistory;
+      const entry = this.owned(state.webContentsId, id), history = entry.contents.navigationHistory;
       const entries = history.getAllEntries();
       return entries.length ? { entries, index: history.getActiveIndex() }
         : { entries: [{ url: entry.page.url, title: entry.page.title }], index: 0 };
@@ -525,19 +540,19 @@ export class BrowserManager {
     channels.on('browser:layout', (state, entries: Array<{ id: string; bounds: PreviewBounds }>) => this.layout(state.webContentsId, entries));
     channels.handle('browser:capture', async (state, id: string) => {
       const entry = this.owned(state.webContentsId, id);
-      return entry.view.getVisible() ? (await entry.view.webContents.capturePage()).toDataURL() : null;
+      return entry.view.getVisible() ? (await entry.contents.capturePage()).toDataURL() : null;
     });
     channels.handle('browser:reader-extract', async (state, id: string) => {
       const entry = this.owned(state.webContentsId, id);
-      if (!isWebURL(entry.view.webContents.getURL())) return null;
-      return extractReaderArticle(entry.view.webContents);
+      if (!isWebURL(entry.contents.getURL())) return null;
+      return extractReaderArticle(entry.contents);
     });
     channels.handle('browser:reader-restore', async (state, id: string, anchor: ReaderAnchor) => {
       const entry = this.owned(state.webContentsId, id), valid = readReaderAnchor(anchor);
-      return valid ? restoreReaderAnchor(entry.view.webContents, valid) : false;
+      return valid ? restoreReaderAnchor(entry.contents, valid) : false;
     });
     channels.handle('browser:command', async (state, id: string, command: BrowserCommand) => {
-      const entry = this.owned(state.webContentsId, id), wc = entry.view.webContents;
+      const entry = this.owned(state.webContentsId, id), wc = entry.contents;
       if (command === 'back' || command === 'forward') {
         const offset = command === 'back' ? -1 : 1;
         if (!wc.navigationHistory.canGoToOffset(offset)) return false;
@@ -574,7 +589,7 @@ export class BrowserManager {
     });
     channels.on('browser:find', (state, id: string, text: string, forward: boolean = true, next: boolean = false) => {
       if (!this.owns(state.webContentsId, id)) return;
-      const entry = this.owned(state.webContentsId, id), wc = entry.view.webContents;
+      const entry = this.owned(state.webContentsId, id), wc = entry.contents;
       const query = typeof text === 'string' ? text.slice(0, 1000) : '';
       // Electron's findNext is Chromium's new_session flag: true starts a
       // search; false advances an existing session (despite the API name).
@@ -653,7 +668,7 @@ export class BrowserManager {
       // uBlock's page needs an explicit target: once opened as a tab, querying
       // the active tab would otherwise select the extension page itself.
       if (page === 'popup' && url === this.extensions!.builtinPopupURL() && tabId && this.owns(state.webContentsId, tabId)) {
-        const target = this.owned(state.webContentsId, tabId).view.webContents;
+        const target = this.owned(state.webContentsId, tabId).contents;
         url += `?tabId=${target.id}`;
       }
       const entry = this.openEntry(state.webContentsId, randomUUID(), url);
@@ -680,5 +695,8 @@ export class BrowserManager {
       return pages;
     });
   }
-  dispose() { this.places.dispose(); }
+  dispose() {
+    for (const owner of [...this.owners]) this.closeOwner(owner);
+    this.places.dispose();
+  }
 }

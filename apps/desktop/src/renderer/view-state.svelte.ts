@@ -46,6 +46,7 @@ export type WorkingTreeEdit = {
 };
 
 export type AppActions = {
+  locationSuggestions: import('../protocol/desktop-api').MarkTexApi['locationSuggestions'];
   menuOverlay: import('../protocol/desktop-api').MarkTexApi['menuOverlay'];
   changeZoom(steps: number, scope: 'app' | 'text' | 'terminal', tabId?: string): void;
   newTerminal(): void;

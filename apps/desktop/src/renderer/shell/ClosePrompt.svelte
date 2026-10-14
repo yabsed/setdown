@@ -33,7 +33,12 @@
   class="close-prompt-dialog"
   aria-labelledby="close-prompt-title"
   oncancel={(event) => { event.preventDefault(); choose('cancel'); }}
-  onclose={() => { announce(false); if (view.closePrompt) choose('cancel'); }}
+  onclose={() => {
+    // HTMLDialogElement queues close events. An old dismissal must not cancel
+    // a new prompt opened before that event was delivered.
+    if (dialog.open) return;
+    announce(false); if (view.closePrompt) choose('cancel');
+  }}
 >
   <form class="close-prompt-form" onsubmit={(event) => event.preventDefault()}>
     <header>
