@@ -4,16 +4,23 @@
 from __future__ import annotations
 
 import os
-import subprocess
+import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
+from time import monotonic
 from zoneinfo import ZoneInfo
+
+from git_history import BlobLineCounter, code_blobs, git_text
 
 os.environ.setdefault(
     "MPLCONFIGDIR", str(Path(tempfile.gettempdir()) / "setdown-matplotlib")
 )
 
+import matplotlib
+
+# This script saves PNGs and must not open a desktop window from an IDE.
+matplotlib.use("Agg")
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
@@ -61,12 +68,6 @@ CODE_DIRECTORIES = (
 CONFIG_DIRECTORIES = {Path("."), Path("apps/desktop")}
 
 
-def git(*args: str) -> str:
-    return subprocess.check_output(
-        ["git", *args], cwd=ROOT, text=True, encoding="utf-8"
-    )
-
-
 def is_code_file(path: str) -> bool:
     candidate = Path(path)
     if path in ROOT_CODE_FILES:
@@ -78,17 +79,8 @@ def is_code_file(path: str) -> bool:
     )
 
 
-def code_lines(commit: str) -> int:
-    paths = git("ls-tree", "-r", "--name-only", commit).splitlines()
-    total = 0
-    for path in paths:
-        if not is_code_file(path):
-            continue
-        content = subprocess.check_output(
-            ["git", "show", f"{commit}:{path}"], cwd=ROOT
-        )
-        total += len(content.splitlines())
-    return total
+def code_lines(commit: str, counter: BlobLineCounter) -> int:
+    return sum(counter.lines(sha) for sha, path in code_blobs(commit) if is_code_file(path))
 
 
 def apply_type() -> None:
@@ -110,7 +102,7 @@ def apply_type() -> None:
 
 
 def style_time_axis(axis: plt.Axes) -> None:
-    axis.xaxis.set_major_locator(mdates.HourLocator(byhour=range(0, 24, 6), tz=SEOUL))
+    axis.xaxis.set_major_locator(mdates.AutoDateLocator(minticks=4, maxticks=8, tz=SEOUL))
     axis.xaxis.set_major_formatter(mdates.DateFormatter("%m.%d\n%H:%M", tz=SEOUL))
     axis.tick_params(axis="both", which="both", length=0, labelsize=10)
     axis.grid(axis="x", color=GRID, linewidth=0.8, alpha=0.48)
@@ -241,20 +233,27 @@ def save_detailed(records: list[dict[str, object]]) -> None:
 
 
 def main() -> None:
+    started = monotonic()
     records = []
-    history = git(
+    history = git_text(
         "log", "--reverse", "--format=%H%x09%cI%x09%s"
     ).splitlines()
-    for row in history:
-        commit, committed_at, subject = row.split("\t", 2)
-        records.append(
-            {
-                "commit": commit,
-                "time": datetime.fromisoformat(committed_at),
-                "subject": subject,
-                "lines": code_lines(commit),
-            }
-        )
+    if not history:
+        raise RuntimeError("No commits found in this repository.")
+    print(f"Counting code lines across {len(history)} commits…", file=sys.stderr, flush=True)
+    with BlobLineCounter() as counter:
+        for index, row in enumerate(history, 1):
+            commit, committed_at, subject = row.split("\t", 2)
+            records.append(
+                {
+                    "commit": commit,
+                    "time": datetime.fromisoformat(committed_at),
+                    "subject": subject,
+                    "lines": code_lines(commit, counter),
+                }
+            )
+            if index == 1 or index % 25 == 0 or index == len(history):
+                print(f"Counted {index}/{len(history)} commits", file=sys.stderr, flush=True)
 
     CLEAN_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     times = [record["time"] for record in records]
@@ -267,6 +266,7 @@ def main() -> None:
     print(f"Wrote {CLEAN_OUTPUT.relative_to(ROOT)}")
     print(f"Wrote {DETAILED_OUTPUT.relative_to(ROOT)}")
     print(f"Final code lines: {lines[-1]:,}")
+    print(f"Completed in {monotonic() - started:.1f}s")
 
 
 if __name__ == "__main__":

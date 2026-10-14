@@ -6,12 +6,12 @@ from __future__ import annotations
 import argparse
 import csv
 import os
-import subprocess
 import tempfile
 from collections import OrderedDict
-from contextlib import AbstractContextManager
 from datetime import datetime
 from pathlib import Path
+
+from git_history import BlobLineCounter, code_blobs, git_text
 
 os.environ.setdefault(
     "MPLCONFIGDIR", str(Path(tempfile.gettempdir()) / "setdown-matplotlib")
@@ -80,14 +80,6 @@ LEGACY_TOOLING_FILES = {
 SELF_ANALYSIS_PATHS = {
     "scripts/plot-code-growth.py",
 }
-
-
-def git_bytes(*args: str) -> bytes:
-    return subprocess.check_output(["git", *args], cwd=ROOT)
-
-
-def git_text(*args: str) -> str:
-    return git_bytes(*args).decode("utf-8", errors="replace")
 
 
 def is_test_path(path: str) -> bool:
@@ -179,65 +171,9 @@ def component_for_path(path: str) -> str:
     return "legacy"
 
 
-class BlobLineCounter(AbstractContextManager["BlobLineCounter"]):
-    """Count physical lines once per blob SHA across the full history."""
-
-    def __init__(self) -> None:
-        self.cache: dict[str, int] = {}
-        self.process = subprocess.Popen(
-            ["git", "cat-file", "--batch"],
-            cwd=ROOT,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-        )
-
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
-        if self.process.stdin:
-            self.process.stdin.close()
-        if self.process.stdout:
-            self.process.stdout.close()
-        self.process.terminate()
-        self.process.wait(timeout=5)
-
-    def lines(self, sha: str) -> int:
-        cached = self.cache.get(sha)
-        if cached is not None:
-            return cached
-
-        if self.process.stdin is None or self.process.stdout is None:
-            raise RuntimeError("git cat-file batch process is unavailable")
-
-        self.process.stdin.write(f"{sha}\n".encode())
-        self.process.stdin.flush()
-
-        header = self.process.stdout.readline().decode("ascii", errors="replace").strip()
-        parts = header.split()
-        if len(parts) != 3 or parts[1] != "blob":
-            raise RuntimeError(f"unexpected git cat-file response for {sha}: {header}")
-
-        size = int(parts[2])
-        content = self.process.stdout.read(size)
-        self.process.stdout.read(1)
-
-        count = len(content.splitlines())
-        self.cache[sha] = count
-        return count
-
-
 def snapshot_components(commit: str, counter: BlobLineCounter) -> dict[str, int]:
     totals = {key: 0 for key in COMPONENTS}
-    tree = git_bytes("ls-tree", "-r", "-z", "--full-tree", commit)
-
-    for entry in tree.split(b"\0"):
-        if not entry:
-            continue
-
-        metadata, raw_path = entry.split(b"\t", 1)
-        _mode, kind, sha = metadata.decode("ascii").split()
-        if kind != "blob":
-            continue
-
-        path = raw_path.decode("utf-8", errors="surrogateescape")
+    for sha, path in code_blobs(commit):
         if not is_code_file(path):
             continue
 

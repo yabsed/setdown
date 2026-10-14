@@ -15,6 +15,17 @@ The command now produces:
 - `repository-component-growth-line.png` for component-by-component LOC growth.
 - `repository-component-growth-line.csv` with the source data for the component chart.
 
+Run only the total-growth plots with:
+
+```bash
+npm run build:total --workspace @setdown/code-growth
+```
+
+The total plot reports its progress and completion time. Both scripts reuse one
+`git cat-file --batch` process and cache line counts by blob ID, so unchanged
+files are counted once across history instead of starting Git for every file
+at every commit. Total plots are saved without opening a desktop window.
+
 The component chart follows `main` first-parent history by default and measures every
 commit. It classifies both the current monorepo paths and their pre-refactor equivalents
 into the same semantic groups so directory moves do not appear as artificial growth:
