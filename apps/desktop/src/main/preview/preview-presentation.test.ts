@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test, vi } from 'vitest';
-import type { WebContentsView } from 'electron';
+import { WebContentsView } from 'electron';
 import type { WindowState } from '../windows/window-state';
 import { PreviewManager } from './preview-manager';
 
@@ -34,6 +34,36 @@ vi.mock('../windows/workspace-zoom', async (importOriginal) => ({
 }));
 
 const bounds = { x: 20, y: 40, width: 600, height: 450 };
+test('a spare finishing navigation inherits a theme changed while its runtime was loading', async () => {
+  const f = fixture();
+  let theme: 'paper' | 'night' = 'paper';
+  const manager = new PreviewManager({
+    preload: '', stateFor: () => ({ window: f.owner } as unknown as WindowState),
+    theme: () => theme, themeAssets: value => ({ themeId: value as typeof theme,
+      backgroundColor: '#fff', previewCssUrl: 'preview.css', codeCssUrl: 'code.css' }), forgetTab() {},
+  });
+  manager.storeDocument('<template id="initial">content</template>', 'paper');
+  let complete!: () => void;
+  let spare!: WebContentsView;
+  const commands: unknown[] = [];
+  const navigation = new Promise<void>(resolve => { complete = resolve; });
+  const loading = vi.spyOn(manager, 'loadURL').mockImplementation(view => {
+    spare = view;
+    view.webContents.send = (_channel, message) => { commands.push(message); };
+    return navigation;
+  });
+  try {
+    manager.ensureSpare(1);
+    theme = 'night'; manager.setTheme(theme);
+    commands.length = 0; // Commands before the runtime loads cannot establish its theme.
+    complete(); await navigation; await Promise.resolve();
+    assert.deepEqual(commands, [{ command: 'marktex:apply-theme', themeId: 'night',
+      backgroundColor: '#fff', previewCssUrl: 'preview.css', codeCssUrl: 'code.css', hidden: true }]);
+    assert.equal(spare.getVisible(), false);
+    assert.equal(f.focusCount(), 0);
+  } finally { loading.mockRestore(); manager.discardSpare(1); }
+});
+
 function fixture() {
   const children: WebContentsView[] = [];
   let focusCount = 0;

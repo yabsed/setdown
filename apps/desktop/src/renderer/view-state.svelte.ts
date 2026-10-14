@@ -45,6 +45,7 @@ export type WorkingTreeEdit = {
 };
 
 export type AppActions = {
+  changeZoom(steps: number, scope: 'app' | 'text' | 'terminal'): void;
   newTerminal(): void;
   terminalChanged(id: string, info: { title?: string; cwd?: string; exited?: boolean }): void;
   newWebTab(input?: string, background?: boolean): void;
@@ -56,6 +57,8 @@ export type AppActions = {
   browserDeleteHistory(url?: string): Promise<void>;
   browserDownloadCommand(id: string, command: import('../protocol/browser').DownloadCommand): Promise<void>;
   browserFind(id: string, query: string, forward?: boolean, next?: boolean): void;
+  browserReaderEnter(id: string): void;
+  browserReaderExit(id: string, anchor?: import('../protocol/browser').ReaderAnchor): void;
   browserExtensions(): Promise<import('../protocol/browser').BrowserExtensionInfo[]>;
   browserInstallExtension(kind: import('../protocol/browser').ExtensionInstallKind): Promise<import('../protocol/browser').BrowserExtensionInfo[]>;
   browserSetExtensionEnabled(id: string, enabled: boolean): Promise<import('../protocol/browser').BrowserExtensionInfo[]>;

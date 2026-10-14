@@ -80,7 +80,7 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       reading.evaluate('document.body.dataset.setdownPreviewTheme')).toBe('medium');
     expect(await reading.evaluate('Math.round(scrollY)')).toBe(0);
 
-    await expect(window.locator('.tab-actions .toc-toggle')).toBeVisible();
+    await expect(window.locator('.location-actions .toc-toggle')).toBeVisible();
     await expect(window.locator('.find-toggle')).toHaveCount(0);
     await expect(window.locator('.theme-picker')).toHaveCount(0);
     await window.locator('.toc-toggle').click();
@@ -160,6 +160,10 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     // 편집 모드의 새 탭은 인계받은 warmup URL을 그대로 유지한다. 화면에 드러난
     // 뒤에야 e2e helper가 미사용 예비 view와 실제 탭 view를 구분할 수 있다.
     await expect.poll(reading.count).toBe(2);
+    // New Markdown tabs inherit the persisted outline preference. Closing it
+    // in this tab must still leave the original tab's outline open.
+    await expect(window.locator('.toc-panel')).toBeVisible();
+    await window.locator('.toc-toggle').click();
     await expect(window.locator('.toc-panel')).toBeHidden();
     await window.locator('.mode-toggle').click();
     await expect(window.locator('.editor-surface')).toBeVisible();
@@ -180,12 +184,17 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       const previews = owner.contentView.children.filter((candidate): candidate is Electron.WebContentsView =>
         'webContents' in candidate
         && (candidate.webContents as Electron.WebContents).getURL().startsWith('marktex-preview://document/'));
-      const themes = await Promise.all(previews.map((preview) =>
-        'webContents' in preview ? preview.webContents.executeJavaScript(
-          "document.body.dataset.setdownPreviewTheme || ''",
-        ).catch(() => '') : ''));
-      return themes.length >= 2 && themes.every((theme) => theme === 'night');
-    })).toBe(true);
+      const themes = await Promise.all(previews.map(async preview => ({
+        url: preview.webContents.getURL(), visible: preview.getVisible(),
+        ...await preview.webContents.executeJavaScript(`({
+          theme: document.body.dataset.setdownPreviewTheme || '',
+          visibility: document.visibilityState,
+          textLength: document.body.innerText.length,
+          stylesheets: [...document.querySelectorAll('link[rel=stylesheet]')].map(link => link.href),
+        })`).catch(() => ({ theme: '' })),
+      })));
+      return { enoughViews: themes.length >= 2, unexpected: themes.filter(row => row.theme !== 'night') };
+    })).toEqual({ enoughViews: true, unexpected: [] });
     await expect.poll(() => window.evaluate(() => ({
       theme: document.documentElement.dataset.theme,
       appearance: document.documentElement.dataset.appearance,

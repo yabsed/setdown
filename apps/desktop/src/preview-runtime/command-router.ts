@@ -33,6 +33,7 @@ type PreviewCommand = {
   themeId?: string;
   previewCssUrl?: string;
   codeCssUrl?: string;
+  hidden?: boolean;
   html?: string;
   markdown?: string;
   totalLineCount?: number;
@@ -223,6 +224,7 @@ export function installCommandRouter(options: Options): void {
           command.themeId ?? '',
           command.previewCssUrl,
           command.codeCssUrl,
+          command.hidden === true,
         );
         break;
       case 'marktex:find':

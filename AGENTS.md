@@ -3,7 +3,11 @@
 - Run GUI/Electron tests and benchmarks on an isolated virtual display (Xvfb)
   by default, even when the user's desktop display is available. Test windows
   must not appear on the user's desktop or steal its focus.
-- For example: `xvfb-run -a npm run test:preview-contract`. Run benchmark
+- On Wayland, also remove the inherited Wayland socket and isolate the runtime
+  directory and D-Bus session. Xvfb alone can still let Electron use the desktop.
+  `apps/desktop/scripts/with-isolated-display.sh` does this; GUI test and preview
+  benchmark npm scripts use it by default.
+- For example: `npm run test:preview-contract`. Run benchmark
   baseline and candidate on the same virtual display with identical settings.
 - If Xvfb is unavailable, prepare an equivalent isolated display, using a
   temporary directory when needed. Do not silently fall back to the user's

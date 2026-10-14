@@ -30,6 +30,11 @@ test('opens video files, streams them with range requests and prevents text save
     expect(src).toMatch(/^marktex-resource:\/\/file\/.*clip\.mp4$/);
     expect(await video.evaluate((node: HTMLVideoElement) => [node.readyState, node.duration])).toEqual([4, 2]);
     expect(await previews(app).count()).toBe(0);
+    await expect(page.getByRole('button', { name: 'Reset app zoom', exact: true })).toHaveText('100%');
+    await page.getByRole('button', { name: 'Zoom app in', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Reset app zoom', exact: true })).toHaveText('110%');
+    await page.getByRole('button', { name: 'Reset app zoom', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Reset app zoom', exact: true })).toHaveText('100%');
     // The surface must fill its group-content cell so the stage centers the video;
     // a surface that shrink-wraps into an implicit grid row would equal the video size.
     const centered = await reader.evaluate((surface) => {
@@ -61,7 +66,7 @@ test('opens video files, streams them with range requests and prevents text save
       };
     })).toEqual({ shrank: true, clear: true });
     expect(await video.evaluate((node) => node.getBoundingClientRect().height)).toBeLessThan(initialVideoHeight);
-    await page.locator('.terminal-location').locator('..').getByTitle('Close tab', { exact: true }).click();
+    await page.locator('.editor-group[data-tab-kind="terminal"]').getByTitle('Close tab', { exact: true }).click();
     // Seeking is answered by explicit partial responses, not a buffered file.
     const range = await page.evaluate(async (url) => {
       const response = await fetch(url!, { headers: { Range: 'bytes=0-99' } });

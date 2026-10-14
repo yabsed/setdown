@@ -1,3 +1,9 @@
-import type { BrowserDownload } from '../../protocol/browser';
+import type { BrowserDownload, ReaderAnchor, ReaderSnapshot } from '../../protocol/browser';
 export const browser = $state({ revision: 0, error: '', findId: null as string | null, query: '', active: 0, matches: 0,
-  downloads: [] as BrowserDownload[] });
+  downloads: [] as BrowserDownload[],
+  /** Reader-mode snapshots keyed by web tab id. A tab listed here hides its
+   * live native view (which keeps its page state) behind the shell reader. */
+  readers: {} as Record<string, ReaderSnapshot>,
+  /** Latest golden-line anchor published while scrolling each reader, so the
+   * address-bar toggle can return to the live page at the current place. */
+  readerPositions: {} as Record<string, ReaderAnchor> });

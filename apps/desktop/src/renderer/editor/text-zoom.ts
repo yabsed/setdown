@@ -23,9 +23,14 @@ function update(value: ZoomSnapshot) {
   }
 }
 // Subscribe before requesting the snapshot; revision ordering also covers reloads.
-export function installTextZoom(desktop: DesktopPort) {
-  const unsubscribe = desktop.onZoomChanged(update);
-  void desktop.getZoom().then(update);
+export function installTextZoom(desktop: DesktopPort, changed?: (value: ZoomSnapshot) => void) {
+  const apply = (value: ZoomSnapshot) => {
+    if (!value || value.revision < revision) return;
+    update(value);
+    changed?.(value);
+  };
+  const unsubscribe = desktop.onZoomChanged(apply);
+  void desktop.getZoom().then(apply);
   return unsubscribe;
 }
 export function textZoomFactor() { return factor; }

@@ -5,13 +5,16 @@ import { project } from '../project/project-state.svelte';
 import { browser } from './browser-state.svelte';
 
 export function createBrowserRuntime(workspace: WorkspaceState, desktop: DesktopPort, tabs: TabController,
-  activate: (id: string) => void, navigate: (id: string, direction: -1 | 1) => void) {
+  activate: (id: string) => void, navigate: (id: string, direction: -1 | 1) => void,
+  reader: (id: string) => void) {
   let depth = 0, generation = 0, frozen = false;
   let lastLayout = '';
   const area = document.querySelector<HTMLElement>('.editor-area')!;
   const entries = () => workspace.groups.groups.flatMap(group => {
     const tab = group.activeId && workspace.find(group.activeId);
-    if (!tab || tab.kind !== 'web' || tab.page.error || tab.page.startPage
+    // A tab in reader mode omits its native view from the layout, hiding it
+    // without destroying the live page behind the shell reader surface.
+    if (!tab || tab.kind !== 'web' || tab.page.error || tab.page.startPage || browser.readers[tab.id]
       || (group.id === workspace.groups.focusedId && project.gitDiffActive)) return [];
     const host = area.querySelector<HTMLElement>(`.group-body[data-group-id="${group.id}"]`);
     if (!host) return [];
@@ -54,9 +57,15 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
   const changedDownloads = new Set<string>();
   const unsubscribe = desktop.browser.onEvent(event => {
     if (event.type === 'page') {
+      // A reader snapshot belongs to the exact URL it was extracted from; any
+      // navigation (address bar, link, redirect) ends reader mode.
+      if (browser.readers[event.page.id] && browser.readers[event.page.id].article.url !== event.page.url) {
+        delete browser.readers[event.page.id]; delete browser.readerPositions[event.page.id];
+      }
       const tab = workspace.find(event.page.id);
       if (tab?.kind === 'web') { tab.page = event.page; tabs.updateChrome(); sync(true); }
     } else if (event.type === 'navigation') tabs.webNavigated(event.id);
+    else if (event.type === 'reader') reader(event.id);
     else if (event.type === 'history') navigate(event.id, event.direction);
     else if (event.type === 'open') void tabs.addWeb(event.page, event.background);
     else if (event.type === 'focus') {
@@ -65,7 +74,7 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
       // must not switch the newly opened tab back to the previous page.
       if (workspace.find(event.id)?.kind !== 'web' || workspace.groups.owner(event.id)?.activeId !== event.id) return;
       if (workspace.activeId !== event.id || project.gitDiffActive) activate(event.id);
-    } else if (event.type === 'close') tabs.browserClosed(event.id);
+    } else if (event.type === 'close') { delete browser.readers[event.id]; delete browser.readerPositions[event.id]; tabs.browserClosed(event.id); }
     else if (event.type === 'places') browser.revision++;
     else if (event.type === 'extensions') browser.revision++;
     else if (event.type === 'download') {

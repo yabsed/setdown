@@ -58,7 +58,13 @@ body, heading, and code styles in every theme. Math and diagram renderers retain
 their specialized fonts. Preview font overrides are present during hidden
 preparation and remain applied when themes change. `document-preparation.spec.ts`
 and `review-document-styles.spec.ts` check the computed text font alongside the
-existing real math geometry comparisons.
+existing real math geometry comparisons. Hidden theme updates use main's native
+presentation state: a never-shown view can report DOM visibility as "visible"
+while its animation frames are suspended. Theme completion must not wait for
+those frames, and a spare finishing navigation must reconcile the current theme
+before adoption. `theme-controller.test.ts`, `preview-presentation.test.ts`, and
+`preview-reading-tools.spec.ts` cover these cases without showing or focusing
+hidden readers.
 
 Browser Ctrl+wheel changes website zoom from 50% to 300% in 10-point steps.
 The isolated page preload registers the bounded wheel accumulator in each
@@ -73,11 +79,19 @@ Zoom preserves the live page and forms. The custom content-factor target in
 guarantees. Wheel IPC is accepted only from a visible owned web contents, with
 bounded integer steps; no desktop API is exposed to remote pages.
 
-The web location bar always displays website zoom, including 100%, and provides
-decrease, increase and reset controls through the same hostname-scoped path.
-The percentage describes website zoom relative to the app factor. Updates in
-other tabs of the same hostname and app zoom changes retain this distinction;
-the indicator never adds native captures, navigation or layout polling.
+Every tab's location bar displays decrease, reset percentage, and increase
+controls, including 100%. Live web pages use the hostname-scoped website factor;
+web reader mode uses the persisted common text factor, shared with Markdown and
+ordinary/Git editors. Reader Ctrl+wheel follows that same text scope. Entering or
+leaving reader mode preserves the live page's website factor and form state.
+Bookmark and reader buttons precede zoom, with the Markdown toolbar icon style;
+uBlock stays active and its controls remain available from Browser Extensions.
+Terminal bars use the terminal factor, PDF/image bars use their actual per-file
+scale (including fit modes), and video bars expose app zoom. Each split's controls
+address its own tab. Updates from wheels, menus, other windows, and same-host web
+tabs keep the percentage current; indicators add no native captures, navigation,
+or layout polling. `browser.spec.ts`, `workspace-zoom.spec.ts`, and
+`terminal.spec.ts` cover the toolbar routing alongside the existing zoom checks.
 
 Explorer context menus, sidebar action menus, and the Explorer trash confirmation
 use the shell's balanced native-overlay lifecycle. Visible Markdown/Git/web views
@@ -185,7 +199,11 @@ npx playwright install chromium
 npm run test:preview-contract
 ```
 
-Linux without a display: `xvfb-run -a npm run test:preview-contract`. The command
+Linux GUI tests use `scripts/with-isolated-display.sh` by default. It creates an
+Xvfb screen, private runtime directory and D-Bus session, removes inherited
+Wayland sockets, and selects X11. D-Bus starts inside the virtual display so its
+activated services inherit the same display. Plain `xvfb-run` can still expose windows on a
+Wayland desktop. The command
 runs the explicitly listed `vitest.preview-contract.config.ts` suite, the benchmark
 comparator's Node tests, the production build/typecheck, and
 `playwright.preview-contract.config.ts` with real Electron/Chromium. Retries are

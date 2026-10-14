@@ -10,7 +10,7 @@ import { isFileLocation } from '../../core/document/file-location';
 import { isMarkdownDocument } from '../../core/document/document-profile';
 import { createTabSession, isDocumentTab, WorkspaceState } from '../../core/workspace/workspace-state';
 import type { ThemeSnapshot } from '../../protocol/desktop-api';
-import { mount } from 'svelte';
+import { mount, tick } from 'svelte';
 import App from '../App.svelte';
 import { MonacoEditor } from '../adapters/monaco-editor';
 import { SurfaceController } from '../application/surface-controller';
@@ -48,6 +48,7 @@ export function startWorkspace(desktop: DesktopPort) {
   applyShellTheme(initialTheme.id);
   let projectOpenRequest = 0;
   const actions: AppActions = {
+    changeZoom: (steps, scope) => desktop.changeZoom(steps, scope),
     newTerminal: () => { projects.deactivateGitDiff(); void tabs.openTerminal(); },
     terminalChanged: (id, info) => tabs.terminalChanged(id, info),
     newWebTab: (input, background) => { projects.deactivateGitDiff(); void tabs.openWeb(input, background).catch(error => { browser.error = String(error); }); },
@@ -86,6 +87,8 @@ export function startWorkspace(desktop: DesktopPort) {
       catch (error) { browser.error = String(error); }
     },
     browserFind: (id, query, forward, next) => desktop.browser.find(id, query, forward, next),
+    browserReaderEnter: (id) => { void enterWebReader(id); },
+    browserReaderExit: (id, anchor) => { void exitWebReader(id, anchor); },
     browserExtensions: () => desktop.browser.extensions(),
     browserInstallExtension: (kind) => desktop.browser.installExtension(kind),
     browserSetExtensionEnabled: (id, enabled) => desktop.browser.setExtensionEnabled(id, enabled),
@@ -195,7 +198,42 @@ export function startWorkspace(desktop: DesktopPort) {
     confirmClose: (names) => closePrompt.request('tab', names), workspaceChanged: () => projectContextChanged(), groupsChanged: () => { groups?.sync(); browsers?.sync(true); },
     autoSave: { schedule: (tab) => autoSave.schedule(tab), cancel: (tabId) => autoSave.cancel(tabId) } });
   groups = createGroupRuntime({ workspace, desktop, editor, reader, activate: id => actions.activateTab(id) });
-  browsers = createBrowserRuntime(workspace, desktop, tabs, actions.activateTab, actions.navigateHistory);
+  browsers = createBrowserRuntime(workspace, desktop, tabs, actions.activateTab, actions.navigateHistory,
+    id => actions.browserReaderEnter(id));
+  /** Open shell menus/dialogs own Escape first (they close on it); reader
+   * entry is the last stop for an unconsumed Esc. */
+  const popupOwnsEscape = () => [...document.querySelectorAll('[role="menu"], [role="listbox"], dialog[open]')]
+    .some(element => element.getClientRects().length > 0);
+  /** Esc on a web page, mirroring the Markdown editor: extract a reader
+   * snapshot first, then hide the live view behind it (page state kept). */
+  const readerRequests = new Set<string>();
+  async function enterWebReader(id: string) {
+    if (browser.readers[id] || readerRequests.has(id) || workspace.find(id)?.kind !== 'web') return;
+    readerRequests.add(id);
+    const snapshot = await desktop.browser.readerExtract(id).catch(() => null).finally(() => readerRequests.delete(id));
+    const tab = workspace.find(id);
+    if (!snapshot || tab?.kind !== 'web' || tab.page.url !== snapshot.article.url) {
+      // Not readerable (or navigated mid-extraction): stay on the live page
+      // and give it back the focus Esc moved to the shell.
+      if (tab?.kind === 'web') actions.browserCommand(id, 'focus');
+      return;
+    }
+    browser.readers[id] = snapshot;
+    browsers?.sync(true);
+  }
+  /** Double-click in the reader, mirroring the Markdown viewer: position the
+   * hidden page at the clicked block first, then show and focus it. */
+  async function exitWebReader(id: string, anchor?: import('../../protocol/browser').ReaderAnchor) {
+    if (!browser.readers[id]) return;
+    // Published anchors live in $state (a proxy structured clone cannot
+    // serialize); send a plain copy, and never let a failed restore keep
+    // the reader open.
+    if (anchor) { try { await desktop.browser.readerRestore(id, { ...anchor }); } catch { /* exit anyway */ } }
+    delete browser.readers[id]; delete browser.readerPositions[id];
+    browsers?.sync(true);
+    await tick();
+    actions.browserCommand(id, 'focus');
+  }
   const tabDrag = createTabDrag({ desktop, shell, tabs: workspace.tabs, groups: workspace.groups,
     dragging: (active) => groups?.drag(active),
     openFile: async (path, placement) => {
@@ -349,6 +387,7 @@ export function startWorkspace(desktop: DesktopPort) {
         actions.navigateHistory(workspace.activeId, command === 'navigate-back' ? -1 : 1); return;
       }
       if (workspace.active?.kind === 'web' && !project.gitDiffActive) {
+        if (command === 'escape' && !popupOwnsEscape()) { actions.browserReaderEnter(workspace.active.id); return; }
         if (command === 'open-find') { window.dispatchEvent(new Event('setdown:browser-find')); return; }
         if (command === 'save' || command === 'save-as') { actions.browserCommand(workspace.active.id, 'save'); return; }
       }
@@ -415,6 +454,15 @@ export function startWorkspace(desktop: DesktopPort) {
       if (event.key.toLowerCase() === 's' && (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey) {
         event.preventDefault(); event.stopPropagation();
         if (!project.gitDiffActive || (!project.gitDiff?.staged && !project.gitDiff?.history)) void documents.save(false);
+        return;
+      }
+      if (event.key === 'Escape' && !project.gitDiffActive && workspace.active?.kind === 'web'
+        && !(event.target instanceof HTMLElement && event.target.closest('input, textarea, select, [contenteditable="true"]'))
+        && !popupOwnsEscape()) {
+        event.preventDefault(); event.stopPropagation();
+        // One-way like the Markdown viewer: Esc enters the reader; returning
+        // to the live page is the reader's double-click.
+        if (!browser.readers[workspace.active.id]) actions.browserReaderEnter(workspace.active.id);
         return;
       }
       if (event.key === 'Escape') tabDrag.cancel();

@@ -63,7 +63,7 @@ test('wheel scrolls without selection; nested groups retain live native readers 
     await expect(page.locator('.editor-group')).toHaveCount(3);
     await expect.poll(visibleReaders).toBe(2);
     const nativeLayoutMatches = async () => {
-      const bodies = await page.locator('.editor-group:not(:has(.terminal-location)) .group-body').evaluateAll(nodes => nodes.map(node => {
+      const bodies = await page.locator('.editor-group:not([data-tab-kind="terminal"]) .group-body').evaluateAll(nodes => nodes.map(node => {
         const box = node.getBoundingClientRect();
         return { x: box.x, y: box.y, width: box.width, height: box.height };
       }).sort((a, b) => a.x - b.x || a.y - b.y));

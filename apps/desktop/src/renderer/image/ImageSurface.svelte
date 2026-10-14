@@ -5,9 +5,10 @@
   import { imageMimeType } from '../../core/document/document-profile';
   import type { ReadingPosition, ImageReadingPosition } from '../../core/reading/reading-position';
   import type { DesktopPort } from '../ports/desktop-port';
+  import { mediaZoom } from '../zoom-state.svelte';
 
-  let { document: file, initialPosition, desktop, onposition, active }: {
-    document: DocumentSnapshot; initialPosition?: ReadingPosition; desktop: DesktopPort; active: boolean;
+  let { tabId, document: file, initialPosition, desktop, onposition, active }: {
+    tabId: string; document: DocumentSnapshot; initialPosition?: ReadingPosition; desktop: DesktopPort; active: boolean;
     onposition(position: ImageReadingPosition): void;
   } = $props();
   const initial = untrack(() => initialPosition?.kind === 'image' ? initialPosition : undefined);
@@ -61,6 +62,11 @@
   function changeZoom(value: string) {
     remember(); zoom = value === 'fit' || value === 'fit-width' ? value : Number(value); void layout();
   }
+  $effect(() => {
+    if (src) mediaZoom[tabId] = { percent: scale * 100, max: 800, change: steps => {
+      if (active && !dead) changeZoom(String(steps === 0 ? 1 : Math.max(.1, Math.min(8, scale * 1.1 ** steps))));
+    } };
+  });
   const wheelZoom = new WheelZoomAccumulator();
   function wheel(event: WheelEvent) {
     if (!event.isTrusted || !event.ctrlKey || event.altKey || event.metaKey) return;
@@ -102,7 +108,7 @@
         await layout();
       } catch (cause) { if (!dead) error = cause instanceof Error ? cause.message : String(cause); }
     })();
-    return () => { dead = true; host.removeEventListener('wheel', wheel); observer.disconnect(); if (url) URL.revokeObjectURL(url); };
+    return () => { dead = true; delete mediaZoom[tabId]; host.removeEventListener('wheel', wheel); observer.disconnect(); if (url) URL.revokeObjectURL(url); };
   });
 </script>
 

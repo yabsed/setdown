@@ -239,6 +239,7 @@ export type MarkTexApi = {
   mediaUrl(path: string): string;
   terminal: import('./terminal').TerminalApi;
   getZoom(): Promise<import('../core/zoom').ZoomSnapshot>;
+  changeZoom(steps: number, scope: 'app' | 'text' | 'terminal'): void;
   onZoomChanged(listener: (zoom: import('../core/zoom').ZoomSnapshot) => void): () => void;
   initialTheme: ThemeSnapshot;
   getDocument(): Promise<DocumentSnapshot | null>;

@@ -13,6 +13,7 @@ export type OutlineItem = { title: string; depth: number; dest: string | unknown
 type Options = {
   host: HTMLElement; document: DocumentSnapshot; initial?: PdfReadingPosition; desktop: DesktopPort;
   active(): boolean;
+  scaleChanged?(scale: number): void;
   changed(position: PdfReadingPosition): void;
   status(page: number, pages: number): void;
   outline(items: OutlineItem[]): void;
@@ -63,6 +64,9 @@ export class PdfRuntime {
         maxCanvasPixels: 16 * 1024 * 1024 };
       const viewer = this.viewer = new PDFViewer(viewerOptions);
       links.setViewer(viewer);
+      bus.on('scalechanging', ({ scale }: { scale: number }) => {
+        if (!this.dead) this.options.scaleChanged?.(scale);
+      });
       const wheelZoom = new WheelZoomAccumulator();
       container.addEventListener('wheel', (event) => {
         if (!event.isTrusted || !event.ctrlKey || event.altKey || event.metaKey) return;
@@ -169,6 +173,10 @@ export class PdfRuntime {
   }
   zoom(value: PdfReadingPosition['zoom']): void {
     if (this.viewer) this.viewer.currentScaleValue = String(value);
+  }
+  zoomStep(steps: number): void {
+    if (!this.viewer || this.dead || this.restoring || !this.options.active()) return;
+    this.zoom(steps === 0 ? 1 : Math.max(.1, Math.min(10, this.viewer.currentScale * 1.1 ** steps)));
   }
   rotate(): void { if (this.viewer) this.viewer.pagesRotation = (this.viewer.pagesRotation + 90) % 360; }
   find(query: string, previous = false, again = false): void {

@@ -116,6 +116,11 @@ test('PDF and image wheel zoom preserve the cursor point, file state and fit mod
     const after = await coordinate();
     expect(Math.abs(after[0] - before[0])).toBeLessThan(.005);
     expect(Math.abs(after[1] - before[1])).toBeLessThan(.005);
+    await expect(page.getByRole('button', { name: 'Reset pdf zoom', exact: true })).toHaveText(`${Math.round(Number(await pdfZoom().inputValue()) * 100)}%`);
+    await page.getByRole('button', { name: 'Reset pdf zoom', exact: true }).click();
+    await expect(pdfZoom()).toHaveValue('1');
+    await page.getByRole('button', { name: 'Zoom pdf in', exact: true }).click();
+    await expect.poll(async () => Number(await pdfZoom().inputValue())).toBeCloseTo(1.1, 4);
     const savedPdfZoom = await pdfZoom().inputValue();
     expect((await state(app)).factor).toBe(1);
     expect(await page.evaluate(async () => (await window.marktex.getZoom()).text)).toBe(100);
@@ -146,6 +151,11 @@ test('PDF and image wheel zoom preserve the cursor point, file state and fit mod
     await page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), otherImage);
     await expect(imageReader).toHaveAttribute('data-image-ready', 'true'); await expect(imageZoom()).toHaveValue('fit');
     await page.getByRole('tab').filter({ hasText: 'large.svg' }).click();
+    await expect(imageZoom()).toHaveValue('1.1');
+    await expect(page.getByRole('button', { name: 'Reset image zoom', exact: true })).toHaveText('110%');
+    await page.getByRole('button', { name: 'Reset image zoom', exact: true }).click();
+    await expect(imageZoom()).toHaveValue('1');
+    await page.getByRole('button', { name: 'Zoom image in', exact: true }).click();
     await expect(imageZoom()).toHaveValue('1.1');
     await page.keyboard.press('Control+='); await page.keyboard.press('Control+0');
     await expect(imageZoom()).toHaveValue('1.1');
@@ -183,6 +193,13 @@ test('Git review, ordinary editors and a second window share text zoom without r
     await page.keyboard.down('Control'); await page.mouse.wheel(0, -80); await page.keyboard.up('Control');
     await expect.poll(() => page.evaluate(async () => (await window.marktex.getZoom()).text)).toBe(110);
     await expect.poll(() => page.locator('.git-diff-editor .view-line').first().evaluate(node => parseFloat(getComputedStyle(node).fontSize))).toBeCloseTo(15.4, 1);
+    await expect(page.getByRole('button', { name: 'Reset text zoom', exact: true })).toHaveText('110%');
+    await page.getByRole('button', { name: 'Zoom text in', exact: true }).click();
+    await expect(editor).toBeEditable();
+    await expect(page.locator('.git-diff-editor')).toContainText('Zoom undo sentinel');
+    await expect(page.getByRole('button', { name: 'Reset text zoom', exact: true })).toHaveText('120%');
+    await page.getByRole('button', { name: 'Zoom text out', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Reset text zoom', exact: true })).toHaveText('110%');
     // Text sizing must retain the editable model and undo stack.
     await editor.press('Control+z');
     await expect(page.locator('.git-diff-editor')).not.toContainText('Zoom undo sentinel');

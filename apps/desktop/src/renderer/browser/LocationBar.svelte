@@ -1,10 +1,13 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
+  import ZoomControls from '../ZoomControls.svelte';
+  import { zoomState, mediaZoom } from '../zoom-state.svelte';
   import { view, type AppActions } from '../view-state.svelte';
   import { project } from '../project/project-state.svelte';
   import { browser } from './browser-state.svelte';
   import type { BrowserPlace } from '../../protocol/browser';
   import { fileLocation } from '../../core/document/file-location';
+  import { isMarkdownPath } from '../editor/markdown-editor-port';
   let { actions, groupId }: { actions: AppActions; groupId: string } = $props();
   const group = $derived(view.groups.find(g => g.id === groupId));
   const tab = $derived(view.tabs.find(t => t.id === group?.activeId));
@@ -18,6 +21,23 @@
   let selectOnClick = false;
   let activeTabId: string | undefined;
   const finding = $derived(!!web && browser.findId === tab?.id);
+  const media = $derived(view.mediaTabs.find(item => item.id === tab?.id));
+  const fileZoom = $derived(tab ? mediaZoom[tab.id] : undefined);
+  const zoomScope = $derived(review ? 'text' : tab?.kind === 'terminal' ? 'terminal' : media?.document.kind === 'video' ? 'app' : 'text');
+  const reading = $derived(!!tab && !!browser.readers[tab.id]);
+  // Markdown surface actions live in the address bar. They act on the focused
+  // session, so only the focused group's bar shows them (as the tab strip did).
+  const focusedGroup = $derived(groupId === view.focusedGroupId);
+  const markdown = $derived(!['web', 'terminal'].includes(tab?.kind ?? 'document') && isMarkdownPath(tab?.path ?? ''));
+  const canRender = $derived(project.gitDiffActive
+    ? !!project.gitDiff && isMarkdownPath(project.gitDiff.filePath)
+      && project.gitDiff.originalText !== null && project.gitDiff.modifiedText !== null
+    : markdown);
+  const canInsert = $derived(project.gitDiffActive
+    ? project.gitDiffMode === 'source' && !!project.gitDiff && !project.gitDiff.staged && !project.gitDiff.history
+      && project.gitDiff.originalText !== null && project.gitDiff.modifiedText !== null
+      && isMarkdownPath(project.gitDiff.filePath)
+    : markdown && view.surface === 'editor');
   $effect(() => {
     const id = tab?.id;
     if (id === activeTabId) return;
@@ -69,7 +89,9 @@
     <button aria-label={web.loading ? 'Stop loading' : 'Reload page'} title={web.loading ? 'Stop loading' : 'Reload page'}
       onclick={() => actions.browserCommand(tab!.id, web.loading ? 'stop' : 'reload')}>{web.loading ? '×' : '↻'}</button>
   {:else}<span class="location-kind" aria-hidden="true">{review ? '±' : '⌂'}</span>{/if}
-  {#if finding}
+  {#if tab?.kind === 'terminal'}
+    <span class="terminal-path" title={tab.path}>{tab.path || 'Starting terminal…'}</span>
+  {:else if finding}
     <input bind:this={finder} aria-label="Find in web page" placeholder="Find in page" bind:value={browser.query}
       oninput={() => actions.browserFind(tab!.id, browser.query)}
       onkeydown={event => { if (event.key === 'Enter') actions.browserFind(tab!.id, browser.query, !event.shiftKey, true); else if (event.key === 'Escape') { browser.findId = null; actions.browserFind(tab!.id, ''); } }} />
@@ -89,18 +111,63 @@
         else if (event.key === 'ArrowUp' && suggestions.length) { event.preventDefault(); selected = (selected + suggestions.length - 1) % suggestions.length; }
       }} />
     {#if web}
-      <button aria-label={bookmarked ? 'Remove bookmark' : 'Bookmark page'} title={bookmarked ? 'Remove bookmark' : 'Bookmark page'}
-        disabled={!web.url.startsWith('http')} class:bookmarked onclick={() => void actions.browserBookmark(web.url, web.title, !bookmarked)}>{bookmarked ? '★' : '☆'}</button>
-      <button class="protection" class:failed={web.protection === 'error'} aria-label="uBlock Origin" title={web.protection === 'ready' ? 'uBlock Origin — site controls' : 'uBlock Origin is starting'}
-        disabled={web.protection !== 'ready'} onclick={() => actions.browserCommand(tab!.id, 'protection')}>uBO</button>
+      <button class="location-icon bookmark-toggle" class:bookmarked aria-pressed={bookmarked}
+        aria-label={bookmarked ? 'Remove bookmark' : 'Bookmark page'} title={bookmarked ? 'Remove bookmark' : 'Bookmark page'}
+        disabled={!web.url.startsWith('http')} onclick={() => void actions.browserBookmark(web.url, web.title, !bookmarked)}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.78 5.63L21 9.54l-4.5 4.38 1.06 6.19L12 17.19l-5.56 2.92 1.06-6.19L3 9.54l6.22-.91Z"/></svg>
+      </button>
+      <button class="location-icon reader-toggle" class:active={reading} aria-pressed={reading}
+        aria-label={reading ? 'Exit reader mode' : 'Enter reader mode'}
+        title={reading ? 'Exit reader mode' : 'Reader mode (Esc)'} disabled={!web.url.startsWith('http')}
+        onclick={() => reading ? actions.browserReaderExit(tab!.id, browser.readerPositions[tab!.id]) : actions.browserReaderEnter(tab!.id)}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c4.75 0 8.27 3.13 9.66 6.35a1.62 1.62 0 0 1 0 1.3C20.27 15.87 16.75 19 12 19s-8.27-3.13-9.66-6.35a1.62 1.62 0 0 1 0-1.3C3.73 8.13 7.25 5 12 5Zm0 1.5c-4 0-7 2.63-8.28 5.45a.12.12 0 0 0 0 .1C5 14.87 8 17.5 12 17.5s7-2.63 8.28-5.45a.12.12 0 0 0 0-.1C19 9.13 16 6.5 12 6.5Zm0 2.25A3.25 3.25 0 1 1 12 15.25 3.25 3.25 0 0 1 12 8.75Zm0 1.5A1.75 1.75 0 1 0 12 13.75 1.75 1.75 0 0 0 12 10.25Z"/></svg>
+      </button>
     {/if}
   {/if}
-  {#if web}
-    <div class="page-zoom" role="group" aria-label="Website zoom">
-      <button aria-label="Zoom website out" title="Zoom website out" disabled={web.zoomPercent <= 50} onclick={() => actions.browserCommand(tab!.id, 'zoom-out')}>−</button>
-      <button class="zoom-percent" aria-label="Reset website zoom" title="Website zoom — click to reset to 100%" onclick={() => actions.browserCommand(tab!.id, 'zoom-reset')}>{web.zoomPercent}%</button>
-      <button aria-label="Zoom website in" title="Zoom website in" disabled={web.zoomPercent >= 300} onclick={() => actions.browserCommand(tab!.id, 'zoom-in')}>+</button>
+  {#if focusedGroup}
+    <div class="location-actions">
+      <button class="editor-action insert-table-button" class:review-editor-action={project.gitDiffActive} type="button" hidden={!canInsert}
+        title="Insert table" aria-label="Insert table" onclick={actions.openTable}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.75A1.75 1.75 0 0 1 5.75 3h12.5A1.75 1.75 0 0 1 20 4.75v14.5A1.75 1.75 0 0 1 18.25 21H5.75A1.75 1.75 0 0 1 4 19.25V4.75Zm1.5 3.75h4.75v-4H5.75a.25.25 0 0 0-.25.25V8.5Zm6.25 0h6.75V4.75a.25.25 0 0 0-.25-.25h-6.5v4Zm-6.25 1.5v4h4.75v-4H5.5Zm6.25 0v4h6.75v-4h-6.75ZM5.5 15.5v3.75c0 .14.11.25.25.25h4.5v-4H5.5Zm6.25 4h6.5a.25.25 0 0 0 .25-.25V15.5h-6.75v4Z"/></svg>
+      </button>
+      <button class="editor-action insert-link-button" class:review-editor-action={project.gitDiffActive} type="button" hidden={!canInsert}
+        title="Insert URL (Ctrl/Cmd+K)" aria-label="Insert URL" onclick={actions.openLink}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 15.5 8 17a3.54 3.54 0 0 1-5-5l3-3a3.54 3.54 0 0 1 5 0 .75.75 0 0 1-1.06 1.06 2.04 2.04 0 0 0-2.88 0l-3 3a2.04 2.04 0 0 0 2.88 2.88l1.5-1.5A.75.75 0 1 1 9.5 15.5Zm5-7L16 7a3.54 3.54 0 0 1 5 5l-3 3a3.54 3.54 0 0 1-5 0 .75.75 0 0 1 1.06-1.06 2.04 2.04 0 0 0 2.88 0l3-3a2.04 2.04 0 0 0-2.88-2.88l-1.5 1.5A.75.75 0 1 1 14.5 8.5Zm1.03.97a.75.75 0 0 1 0 1.06l-5 5a.75.75 0 0 1-1.06-1.06l5-5a.75.75 0 0 1 1.06 0Z"/></svg>
+      </button>
+      <button class="viewer-action toc-toggle" class:is-active={view.tocOpen} type="button"
+        hidden={project.gitDiffActive || !markdown}
+        aria-expanded={view.tocOpen} title={view.tocOpen ? 'Close outline' : 'Open outline'}
+        aria-label={view.tocOpen ? 'Close outline' : 'Open outline'} onclick={actions.toggleToc}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h2v2H4v-2Zm4 .25h12v1.5H8v-1.5ZM4 11h2v2H4v-2Zm4 .25h12v1.5H8v-1.5ZM4 16.5h2v2H4v-2Zm4 .25h12v1.5H8v-1.5Z"/></svg>
+      </button>
+      <span class="location-action-divider" aria-hidden="true" hidden={project.gitDiffActive || !markdown}></span>
+      <button class="mode-toggle" type="button"
+        hidden={!canRender || (!project.gitDiffActive && view.surface === 'empty') || project.gitDiffLoading}
+        title={`${project.gitDiffActive && project.gitDiff
+          ? project.gitDiffMode === 'rendered' ? 'View Source Diff' : 'View Rendered Diff'
+          : view.surface === 'viewer' ? 'Switch to Editor' : 'Switch to Viewer'} (Ctrl/Cmd+E)`}
+        aria-label={project.gitDiffActive && project.gitDiff
+          ? project.gitDiffMode === 'rendered' ? 'View Source Diff' : 'View Rendered Diff'
+          : view.surface === 'viewer' ? 'Switch to Editor' : 'Switch to Viewer'} onclick={actions.toggleSurface}>
+        {#if project.gitDiffActive && project.gitDiff ? project.gitDiffMode === 'rendered' : view.surface === 'viewer'}
+          <svg class="mode-icon is-visible" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.862 3.487a2.25 2.25 0 0 1 3.182 3.182L8.41 18.303a2 2 0 0 1-.878.507l-3.42 1.026 1.026-3.42a2 2 0 0 1 .507-.878L16.862 3.487Zm1.06 1.06L6.705 15.765a.5.5 0 0 0-.127.22l-.538 1.792 1.792-.538a.5.5 0 0 0 .22-.127L19.104 5.608a.75.75 0 0 0-1.182-1.06Z"/></svg>
+        {:else}
+          <svg class="mode-icon is-visible" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c4.75 0 8.27 3.13 9.66 6.35a1.62 1.62 0 0 1 0 1.3C20.27 15.87 16.75 19 12 19s-8.27-3.13-9.66-6.35a1.62 1.62 0 0 1 0-1.3C3.73 8.13 7.25 5 12 5Zm0 1.5c-4 0-7 2.63-8.28 5.45a.12.12 0 0 0 0 .1C5 14.87 8 17.5 12 17.5s7-2.63 8.28-5.45a.12.12 0 0 0 0-.1C19 9.13 16 6.5 12 6.5Zm0 2.25A3.25 3.25 0 1 1 12 15.25 3.25 3.25 0 0 1 12 8.75Zm0 1.5A1.75 1.75 0 1 0 12 13.75 1.75 1.75 0 0 0 12 10.25Z"/></svg>
+        {/if}
+      </button>
     </div>
+  {/if}
+  {#if tab || review}
+    {#if web && !reading}
+      <ZoomControls label="Website" percent={web.zoomPercent}
+        change={step => actions.browserCommand(tab!.id, step === 0 ? 'zoom-reset' : step < 0 ? 'zoom-out' : 'zoom-in')} />
+    {:else if !review && (media?.document.kind === 'pdf' || media?.document.kind === 'image')}
+      <ZoomControls label={media.document.kind === 'pdf' ? 'PDF' : 'Image'} percent={fileZoom?.percent ?? 100}
+        min={10} max={fileZoom?.max ?? 1000} disabled={!fileZoom} change={step => fileZoom?.change(step)} />
+    {:else}
+      <ZoomControls label={zoomScope === 'terminal' ? 'Terminal' : zoomScope === 'app' ? 'App' : 'Text'}
+        percent={zoomState[zoomScope]} change={step => actions.changeZoom(step, zoomScope)} />
+    {/if}
   {/if}
   {#if editing && suggestions.length}
     <div class="location-suggestions" role="listbox" aria-label="Bookmarks and history">
@@ -123,16 +190,28 @@
   button:hover { background: var(--app-hover); } button:disabled { opacity: .35; cursor: default; }
   input { width: 0; flex: 1; height: 25px; padding: 0 9px; border: 1px solid transparent; border-radius: 5px; background: var(--app-canvas); color: inherit; font: 12px/1.4 var(--app-font-family); outline: none; text-overflow: ellipsis; }
   input:focus { border-color: var(--app-muted-text); } .location-kind { width: 20px; text-align: center; opacity: .5; }
-  .protection { font: 600 10px/1 var(--app-font-family); letter-spacing: -.3px; } .failed, .location-error { color: #b94f4f; }
+  .location-error { color: #b94f4f; }
   .bookmarked { color: var(--app-text); } .find-count { font: 11px var(--app-font-family); }
   .loading { box-shadow: inset 0 -2px var(--app-muted-text); }
-  .page-zoom { display: flex; align-items: center; flex-shrink: 0; border-left: 1px solid var(--app-border); padding-left: 3px; }
-  .page-zoom button { min-width: 22px; }
-  .page-zoom .zoom-percent { min-width: 41px; padding: 0 3px; font: 11px/1 var(--app-font-family); font-variant-numeric: tabular-nums; }
   .location-suggestions { position: absolute; top: 33px; left: 9px; right: 9px; padding: 5px; border: 1px solid var(--app-border); border-radius: 0 0 8px 8px; background: var(--app-chrome); box-shadow: 0 8px 24px #0002; }
   .location-suggestions button { display: flex; align-items: center; gap: 10px; text-align: left; width: 100%; height: auto; padding: 8px; }
   .location-suggestions .selected { background: var(--app-hover); }
   .suggestion-text { display: flex; flex-direction: column; min-width: 0; gap: 4px; }
   strong, small { font: 12px var(--app-font-family); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } small { opacity: .55; font-size: 11px; }
   .location-error { position: absolute; top: 34px; left: 10px; right: 10px; background: var(--app-chrome); padding: 8px; font-size: 12px; }
+  .terminal-path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--app-muted-text); font-size: 12px; }
+  .location-icon { display: grid; place-items: center; flex: 0 0 28px; height: 28px; padding: 5px; border-radius: 7px; color: var(--app-muted-text); }
+  .location-icon svg { width: 18px; height: 18px; fill: currentColor; }
+  .bookmark-toggle svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
+  .bookmark-toggle.bookmarked svg { fill: currentColor; }
+  .location-icon:hover, .location-icon.active, .location-icon.bookmarked { color: var(--app-text); }
+  .location-icon.active { background: var(--app-hover); }
+  button:focus-visible { outline: 1px solid var(--app-muted-text); outline-offset: -1px; }
+  .location-actions { display: flex; align-items: center; flex: 0 0 auto; height: 28px; }
+  .location-actions button { min-width: 28px; height: 28px; }
+  .location-action-divider { width: 1px; height: 17px; margin: 0 6px; background: var(--app-border); }
+  @media (max-width: 620px) { .location-action-divider { margin: 0 4px; } }
+  .location-action-divider[hidden] { display: none; }
+  :global(.shell) .review-editor-action:not([hidden]) { display: grid; }
+  :global(.shell) .editor-action[hidden] { display: none; }
 </style>

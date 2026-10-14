@@ -78,7 +78,10 @@ export function createGroupRuntime(options: {
     const tabId = media?.dataset.mediaTab ?? media?.dataset.terminalTab ?? group?.activeId;
     // Tab clicks perform their own activation; do not activate the old selected
     // tab first, which would race an asynchronous document activation.
-    if (!element.closest('.tab-strip') && tabId && (tabId !== workspace.activeId || project.gitDiffActive)) options.activate(tabId);
+    // The focused group's address bar also owns Git review mode/zoom actions.
+    // Clicking those must retain the review session they are about to change.
+    const reviewChrome = groupId === workspace.groups.focusedId && element.closest('.location-bar');
+    if (!element.closest('.tab-strip') && tabId && (tabId !== workspace.activeId || (project.gitDiffActive && !reviewChrome))) options.activate(tabId);
   }
   area.addEventListener('pointerdown', focusSurface, true);
   area.addEventListener('focusin', focusSurface);

@@ -79,6 +79,14 @@ await Promise.all([
   build({ entryPoints: ['src/browser-runtime/places.ts'], outfile: 'dist-electron/places.js', bundle: true, platform: 'browser', format: 'iife', target: 'chrome140' }),
 ]);
 await fs.writeFile(path.join(output, 'places.html'), '<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'self\'"><script src="places.js"></script>');
+// Firefox Reader View's extraction library (Apache-2.0), run inside the page
+// on Esc. Keep the pinned submodule file verbatim; only copy it into place.
+const readability = path.join(root, 'vendor/readability/Readability.js');
+if (!await exists(readability)) {
+  execFileSync('git', ['submodule', 'update', '--init', '--recursive', 'vendor/readability'], { cwd: root, stdio: 'inherit' });
+}
+await fs.copyFile(readability, path.join(output, 'readability.js'));
+await fs.copyFile(path.join(root, 'vendor/readability/LICENSE.md'), path.join(output, 'READABILITY-LICENSE.txt'));
 await fs.copyFile(path.join(root, 'vendor/min/LICENSE.txt'), path.join(output, 'MIN-LICENSE.txt')).catch(async () => {
   await fs.copyFile('src/browser-runtime/MIN-LICENSE.txt', path.join(output, 'MIN-LICENSE.txt'));
 });

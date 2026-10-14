@@ -1,5 +1,6 @@
 import { _electron as electron, expect, test, type Locator } from '@playwright/test';
 import { copyFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import { previews } from './preview-view';
@@ -97,6 +98,13 @@ test('ctrl+wheel over the terminal changes terminal zoom only and refits the gri
       reset = (await readFile(path.join(root, 'size-2.txt'), 'utf8').catch(() => 'missing')).trim();
       return reset;
     }).toBe(initial);
+    await expect(page.getByRole('button', { name: 'Reset terminal zoom', exact: true })).toHaveText('100%');
+    await page.getByRole('button', { name: 'Zoom terminal in', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Reset terminal zoom', exact: true })).toHaveText('110%');
+    await expect.poll(fontOf).not.toBe(font0);
+    await page.getByRole('button', { name: 'Reset terminal zoom', exact: true }).click();
+    await expect.poll(fontOf).toBe(font0);
+    await expect.poll(() => page.evaluate(() => window.marktex.getZoom())).toMatchObject({ app: 100, text: 100, terminal: 100 });
     await page.screenshot({ path: test.info().outputPath('terminal-wheel-zoom.png') });
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
@@ -143,7 +151,29 @@ for (const direction of ['right', 'down'] as const) test(`terminal tabs split ${
     await expect.poll(() => readFile(path.join(root, 'size-after.txt'), 'utf8').catch(() => before)).not.toBe(before);
     await input(page).press('Escape');
     await expect(page.locator('.shell')).toHaveAttribute('data-surface', 'terminal');
-    await run(input(page), 'sleep 30'); await input(page).press('Control+C');
+    // Bash treats Escape as a pending Meta prefix. Cancel that idle readline
+    // state before typing the separate foreground-interruption scenario.
+    await input(page).press('Control+C');
+    await expect(page.locator('.terminal-content:not(.inactive) .xterm-rows')).toContainText('^C');
+    // Interrupt an actually running foreground process; Enter returning only
+    // confirms input delivery and can precede the shell starting sleep.
+    await run(input(page), "sh -c 'echo $$ > foreground.pid; exec sleep 30'");
+    let foregroundState = { command: '', child: '', output: '' };
+    try { await expect.poll(async () => {
+      const child = (await readFile(path.join(root, 'foreground.pid'), 'utf8').catch(() => '')).trim();
+      let command = '';
+      if (/^\d+$/.test(child)) {
+        try { command = execFileSync('ps', ['-p', child, '-o', 'comm='], { encoding: 'utf8' }).trim(); }
+        catch { /* Include the terminal transcript if the child is not running. */ }
+      }
+      foregroundState = { command, child, output: await page.locator('.terminal-content:not(.inactive) .xterm-rows').innerText() };
+      return foregroundState.command;
+    }).toMatch(/(?:^|\/)sleep$/); } finally {
+      await writeFile(test.info().outputPath('foreground-state.json'), JSON.stringify(foregroundState));
+    }
+    await input(page).press('Control+C');
+    const foreground = Number(await readFile(path.join(root, 'foreground.pid'), 'utf8'));
+    await expect.poll(() => { try { process.kill(foreground, 0); return false; } catch { return true; } }).toBe(true);
     await run(input(page), 'printf interrupted > interrupt.txt');
     await expect.poll(() => readFile(path.join(root, 'interrupt.txt'), 'utf8').catch(() => '')).toBe('interrupted');
     await input(page).press('Control+Backquote');

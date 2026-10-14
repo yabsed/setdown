@@ -105,6 +105,7 @@ test('workspace wheel zoom reaches editors and terminals but never media surface
   assert.equal(isTextZoomTarget(null), false);
   // Terminals own a separate factor from editors and Markdown previews.
   assert.equal(wheelZoomScope(element('.monaco-editor')), 'text');
+  assert.equal(wheelZoomScope(element('.web-reader')), 'text');
   assert.equal(wheelZoomScope(element('.terminal-surface')), 'terminal');
   assert.equal(wheelZoomScope(element('.pdf-host')), null);
   assert.equal(wheelZoomScope(null), null);

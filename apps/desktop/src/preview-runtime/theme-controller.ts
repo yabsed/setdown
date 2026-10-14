@@ -21,7 +21,7 @@ export class ThemeController {
     this.publishTheme(themeId);
   }
 
-  async apply(themeId: string, previewCssUrl: unknown, codeCssUrl: unknown): Promise<void> {
+  async apply(themeId: string, previewCssUrl: unknown, codeCssUrl: unknown, hidden = false): Promise<void> {
     if (!this.isLocalAsset(previewCssUrl) || !this.isLocalAsset(codeCssUrl)) return;
     const application = ++this.application;
     this.paintBackground(themeId);
@@ -68,7 +68,9 @@ export class ThemeController {
     };
 
     this.options.sourceAtlas.invalidate();
-    if (document.visibilityState === 'hidden') {
+    // Never-shown native views can report "visible" while Chromium suspends
+    // their animation frames. Main's presentation state is authoritative.
+    if (hidden || document.visibilityState === 'hidden') {
       restore();
       finish();
       return;

@@ -44,6 +44,17 @@ async function fixture(document = true) {
       return;
     }
     if (req.url === '/frame') { res.end('<!doctype html><div class="frame-ad">Frame advertisement</div><div class="removable">Control</div>'); return; }
+    if (req.url === '/article') {
+      const paragraphs = Array.from({ length: 40 }, (_, i) => `<p data-marker="${i}">Paragraph ${i}: reading mode should feel`
+        + ` exactly like the rendered Markdown reader, with the same Esc transition in, the same double-click`
+        + ` back out, and the reading position preserved in both directions every single time.</p>`).join('\n');
+      res.end(`<!doctype html><title>Long article</title>
+        <header><nav><a href="/first">Home</a> <a href="/second">More noise</a></nav></header>
+        <input id="draft">
+        <article><h1>The Long Article Title</h1><p>By A. Writer</p>${paragraphs}</article>
+        <footer>Copyright noise that reader mode must drop.</footer>`);
+      return;
+    }
     res.end(`<!doctype html><title>${req.url === '/second' ? 'Second page' : 'Research page'}</title>
       <style>.ad { display:block !important }</style><input id="draft"><a href="/second">Next page</a>
       <div class="ad">Advertisement</div><iframe src="/frame"></iframe>
@@ -54,7 +65,8 @@ async function fixture(document = true) {
   const origin = `http://127.0.0.1:${address.port}`;
   const file = path.join(root, 'notes.md'); await writeFile(file, '# Notes\n\nKeep the reader intact.\n');
   const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
-  const launchOptions = { args: document ? ['.', file] : ['.'], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } };
+  const headless = process.env.SETDOWN_E2E_HEADLESS ? ['--ozone-platform=headless', '--disable-gpu'] : [];
+  const launchOptions = { args: [...headless, '.', ...(document ? [file] : [])], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } };
   let app = await electron.launch(launchOptions);
   let page = await app.firstWindow();
   await focusApplication(app);
@@ -489,7 +501,7 @@ test('bundled uBlock blocks requests, scripts and frame cosmetics, and enforces 
   try {
     await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
     await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible();
-    await expect(f.page.getByRole('button', { name: 'uBlock Origin', exact: true })).toBeEnabled();
+    await expect.poll(() => f.page.evaluate(async () => (await window.marktex.browser.restore()).every(page => page.protection === 'ready'))).toBe(true);
     const filters = "*/blocked.js$script\n127.0.0.1##.ad\n127.0.0.1##.frame-ad\n127.0.0.1##+js(set-constant, probeFlag, true)\n*/csp$csp=script-src 'none'\n";
     await f.app.evaluate(async ({ webContents }, filters) => {
       const background = webContents.getAllWebContents().find(wc => wc.getType() === 'backgroundPage' && wc.getURL().endsWith('/background.html'))!;
@@ -515,7 +527,11 @@ test('bundled uBlock blocks requests, scripts and frame cosmetics, and enforces 
     await f.page.getByRole('textbox', { name: 'Address or file path' }).fill(`${f.origin}/csp`);
     await f.page.getByRole('textbox', { name: 'Address or file path' }).press('Enter');
     await expect.poll(() => evaluatePage(f.app, f.origin, '({url:location.pathname,allowed:!!window.allowedScript})')).toEqual({ url: '/csp', allowed: false });
-    await f.page.getByRole('button', { name: 'uBlock Origin', exact: true }).click();
+    await f.page.getByRole('button', { name: 'Toggle Folder Tools', exact: true }).click();
+    await f.page.getByRole('button', { name: 'Browser', exact: true }).click();
+    await f.page.getByRole('navigation', { name: 'Browser library' }).getByRole('button', { name: 'Extensions' }).click();
+    await f.page.locator('.extension').filter({ has: f.page.locator('.extension-name', { hasText: 'uBlock Origin' }) })
+      .getByRole('button', { name: 'Popup', exact: true }).click();
     await expect.poll(() => f.app.evaluate(async ({ webContents }) => {
       const popup = webContents.getAllWebContents().find(wc => wc.getURL().includes('/popup-fenix.html'));
       return popup && popup.mainFrame.executeJavaScript('document.querySelector("#hostname")?.textContent');
@@ -548,7 +564,7 @@ test('uBlock migrates the recursive managed cache and preserves filtering across
       f.requests.length = 0;
       await f.restart();
       await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible({ timeout: 30_000 });
-      await expect(f.page.getByRole('button', { name: 'uBlock Origin', exact: true })).toBeEnabled();
+      await expect.poll(() => f.page.evaluate(async () => (await window.marktex.browser.restore()).every(page => page.protection === 'ready'))).toBe(true);
       expect(await evaluatePage(f.app, f.origin, '({ad:getComputedStyle(document.querySelector(".ad")).display,blocked:!!window.blockedScript,allowed:!!window.allowedScript})'))
         .toEqual({ ad: 'none', blocked: false, allowed: true });
       expect(f.requests).not.toContain('/blocked.js');
@@ -841,6 +857,150 @@ test('address focus selects the whole URL for mouse, keyboard, and native page s
     expect(await selected()).toBe(true);
     await f.page.keyboard.type('fresh input');
     await expect(address).toHaveValue('fresh input');
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('Esc opens reader mode at the same block and double-click returns to the live page at the clicked block', async () => {
+  test.setTimeout(90_000);
+  const f = await fixture(false);
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/article`);
+    await expect(f.page.getByRole('tab', { name: /Long article/ })).toBeVisible();
+    await expect.poll(() => evaluatePage<boolean>(f.app, f.origin,
+      'document.readyState === "complete" && !!document.querySelector("[data-marker=\\"30\\"]")')).toBe(true);
+    const before = await evaluatePage<{ marker: number }>(f.app, f.origin, `(() => {
+      document.querySelector('#draft').value = 'keep me';
+      const el = document.querySelector('[data-marker="18"]');
+      window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - innerHeight * 0.372 + 5);
+      const golden = innerHeight * 0.372;
+      const hit = [...document.querySelectorAll('[data-marker]')].find(p => {
+        const rect = p.getBoundingClientRect(); return rect.top <= golden && rect.bottom > golden;
+      });
+      return { marker: hit ? Number(hit.dataset.marker) : -1 };
+    })()`);
+    expect(before.marker).toBe(18);
+    await f.app.evaluate(({ BrowserWindow }) => {
+      const view = BrowserWindow.getAllWindows()[0].contentView.children.find(v => v.getVisible()) as import('electron').WebContentsView;
+      view.webContents.focus();
+      view.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
+      view.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
+    });
+    const reader = f.page.locator('.web-reader');
+    await expect(reader).toBeVisible();
+    await expect(reader.locator('h1').first()).toContainText('Long article');
+    await expect(reader).toContainText('The Long Article Title');
+    await expect(reader).not.toContainText('Copyright noise');
+    const look = await reader.evaluate(el => {
+      const style = getComputedStyle(el);
+      return { font: style.fontFamily, size: style.fontSize };
+    });
+    expect(look.font).toContain('D2Coding');
+    expect(look.size).toBe('14px');
+    await expect.poll(() => reader.evaluate(el => {
+      const rect = el.getBoundingClientRect();
+      const golden = rect.top + el.clientHeight * 0.372;
+      const hit = [...el.querySelectorAll('[data-setdown-block]')].find(block => {
+        const bounds = block.getBoundingClientRect(); return bounds.top <= golden && bounds.bottom > golden;
+      });
+      return hit ? hit.textContent.trim().slice(0, 40) : '';
+    })).toContain('Paragraph 18:');
+    const target = reader.locator('[data-setdown-block]', { hasText: 'Paragraph 30:' }).first();
+    await target.scrollIntoViewIfNeeded();
+    await target.dblclick();
+    await expect(reader).toHaveCount(0);
+    await expect.poll(() => evaluatePage<{ value: string; ratio: number }>(f.app, f.origin, `(() => {
+      const rect = document.querySelector('[data-marker="30"]').getBoundingClientRect();
+      return { value: document.querySelector('#draft').value, ratio: rect.top / innerHeight };
+    })()`)).toEqual(expect.objectContaining({ value: 'keep me' }));
+    const after = await evaluatePage<{ ratio: number }>(f.app, f.origin,
+      '({ ratio: document.querySelector("[data-marker=\\"30\\"]").getBoundingClientRect().top / innerHeight })');
+    expect(after.ratio).toBeGreaterThan(-0.25);
+    expect(after.ratio).toBeLessThan(0.5);
+    // The address-bar toggle enters and leaves reader mode as well; leaving
+    // via the button returns at the reader's published golden-line place.
+    const toggle = f.page.getByRole('button', { name: 'Enter reader mode' });
+    await toggle.click();
+    await expect(reader).toBeVisible();
+    await expect(f.page.getByRole('button', { name: 'Exit reader mode' })).toHaveAttribute('aria-pressed', 'true');
+    expect(await reader.locator('.web-reader-column').evaluate(el => el.getBoundingClientRect().width)).toBeLessThanOrEqual(900);
+    await reader.locator('[data-setdown-block]', { hasText: 'Paragraph 12:' }).first().scrollIntoViewIfNeeded();
+    await f.page.waitForTimeout(150);
+    const readerMarker = await reader.evaluate(el => {
+      const golden = el.getBoundingClientRect().top + el.clientHeight * 0.372;
+      let best = -1;
+      for (const block of el.querySelectorAll('[data-setdown-block]')) {
+        if (block.getBoundingClientRect().top > golden) break;
+        best = Number(/Paragraph (\d+):/.exec(block.textContent)?.[1] ?? best);
+      }
+      return best;
+    });
+    // Paragraph 12 is on screen; the golden line can sit a few blocks either side of it.
+    expect(Math.abs(readerMarker - 12)).toBeLessThanOrEqual(3);
+    await f.page.getByRole('button', { name: 'Exit reader mode' }).click();
+    await expect(reader).toHaveCount(0);
+    // The golden line can fall in a paragraph gap, so land on the last
+    // paragraph that started above it.
+    const landedAt = () => evaluatePage<number>(f.app, f.origin, `(() => {
+      const golden = innerHeight * 0.372;
+      let best = -1;
+      for (const p of document.querySelectorAll('[data-marker]')) {
+        if (p.getBoundingClientRect().top > golden) break;
+        best = Number(p.dataset.marker);
+      }
+      return best;
+    })()`);
+    // Page and reader typeset paragraphs at different heights, so the
+    // golden-line paragraph can shift by a couple of blocks; it must stay
+    // the passage the reader was showing, not the old position near 30.
+    await expect.poll(async () => Math.abs((await landedAt()) - readerMarker)).toBeLessThanOrEqual(2);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('reader toolbar and wheel share Markdown zoom while the live website keeps its own factor', async () => {
+  const f = await fixture();
+  try {
+    const textReset = f.page.getByRole('button', { name: 'Reset text zoom', exact: true });
+    await expect(textReset).toHaveText('100%');
+    await f.page.getByRole('button', { name: 'Zoom text in', exact: true }).click();
+    await expect(textReset).toHaveText('110%');
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/article`);
+    const websiteReset = f.page.getByRole('button', { name: 'Reset website zoom', exact: true });
+    await expect(websiteReset).toHaveText('100%');
+    await expect(f.page.getByRole('button', { name: 'uBlock Origin', exact: true })).toHaveCount(0);
+    const bookmark = f.page.getByRole('button', { name: 'Bookmark page', exact: true });
+    const enter = f.page.getByRole('button', { name: 'Enter reader mode', exact: true });
+    expect((await bookmark.boundingBox())!.x).toBeLessThan((await enter.boundingBox())!.x);
+    expect((await enter.boundingBox())!.x).toBeLessThan((await websiteReset.boundingBox())!.x);
+    await f.page.getByRole('button', { name: 'Zoom website in', exact: true }).click();
+    await expect(websiteReset).toHaveText('110%');
+    await f.page.getByRole('button', { name: 'Zoom website in', exact: true }).click();
+    await expect(websiteReset).toHaveText('120%');
+    await evaluatePage(f.app, f.origin, "document.querySelector('#draft').value = 'keep zoom state'");
+    await enter.click();
+    const reader = f.page.getByRole('region', { name: 'Reader mode', exact: true });
+    await expect(reader).toBeVisible();
+    await expect(websiteReset).toHaveCount(0);
+    await expect(textReset).toHaveText('110%');
+    await f.page.getByRole('button', { name: 'Zoom text in', exact: true }).click();
+    await expect(textReset).toHaveText('120%');
+    await expect.poll(() => reader.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeCloseTo(16.8, 2);
+    await reader.hover();
+    await f.page.keyboard.down('Control'); await f.page.mouse.wheel(0, -80); await f.page.keyboard.up('Control');
+    await expect(textReset).toHaveText('130%');
+    await expect.poll(() => f.page.evaluate(() => window.marktex.getZoom())).toMatchObject({ app: 100, text: 130, terminal: 100 });
+    await f.page.screenshot({ path: test.info().outputPath('reader-toolbar.png') });
+    await f.page.getByRole('button', { name: 'Exit reader mode', exact: true }).click();
+    await expect(websiteReset).toHaveText('120%');
+    expect(await evaluatePage(f.app, f.origin, "document.querySelector('#draft').value")).toBe('keep zoom state');
+    await f.page.getByRole('tab', { name: /notes.md/ }).click();
+    await expect(textReset).toHaveText('130%');
+    await textReset.click(); await expect(textReset).toHaveText('100%');
+    await f.page.getByRole('button', { name: 'Switch to Editor', exact: true }).click();
+    await f.page.getByRole('button', { name: 'Zoom text in', exact: true }).click();
+    await expect.poll(() => f.page.locator('.monaco-editor .view-line').first().evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeCloseTo(15.4, 1);
+    await f.page.screenshot({ path: test.info().outputPath('markdown-toolbar.png') });
     expect(f.errors).toEqual([]);
   } finally { await f.dispose(); }
 });

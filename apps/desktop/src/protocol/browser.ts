@@ -1,8 +1,10 @@
 import type { PreviewBounds } from './preview-preparation';
 
 import type { BrowserPage } from '../core/browser/browser-state';
+import type { ReaderAnchor, ReaderSnapshot } from '../core/browser/reader-article';
 import type { WebHistory } from '../core/workspace/tab-navigation';
 export type { BrowserPage } from '../core/browser/browser-state';
+export type { ReaderAnchor, ReaderArticle, ReaderSnapshot } from '../core/browser/reader-article';
 export type BrowserPlace = { url: string; title: string; bookmarked: boolean; lastVisit: number; visits: number };
 export type BrowserPlaceScope = 'all' | 'bookmarks' | 'history';
 export type BrowserDownload = {
@@ -26,6 +28,7 @@ export type BrowserEvent =
   | { type: 'focus'; id: string }
   | { type: 'close'; id: string }
   | { type: 'navigation'; id: string }
+  | { type: 'reader'; id: string }
   | { type: 'history'; id: string; direction: -1 | 1 }
   | { type: 'places' }
   | { type: 'extensions' }
@@ -40,6 +43,8 @@ export type BrowserApi = {
   close(id: string): Promise<boolean>;
   layout(entries: Array<{ id: string; bounds: PreviewBounds; canGoBack?: boolean; canGoForward?: boolean }>): void;
   capture(id: string): Promise<string | null>;
+  readerExtract(id: string): Promise<ReaderSnapshot | null>;
+  readerRestore(id: string, anchor: ReaderAnchor): Promise<boolean>;
   find(id: string, text: string, forward?: boolean, next?: boolean): void;
   places(query: string, scope?: BrowserPlaceScope): Promise<BrowserPlace[]>;
   bookmark(url: string, title: string, bookmarked: boolean): Promise<void>;

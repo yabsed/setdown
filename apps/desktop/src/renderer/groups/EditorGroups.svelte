@@ -3,6 +3,8 @@
   import { groupLayout, type SashBox } from '../../core/workspace/editor-groups';
   import TabChrome from '../tabs/TabChrome.svelte';
   import LocationBar from '../browser/LocationBar.svelte';
+  import WebReaderSurface from '../browser/WebReaderSurface.svelte';
+  import { browser } from '../browser/browser-state.svelte';
   let { actions }: { actions: AppActions } = $props();
   const layout = $derived(groupLayout(view.groupTree));
   function resize(event: PointerEvent, sash: SashBox) {
@@ -30,15 +32,15 @@
 {#each layout.groups as box (box.id)}
     {@const tab = view.tabs.find(tab => tab.id === view.groups.find(group => group.id === box.id)?.activeId)}
 
-  <section class="editor-group" data-group-id={box.id} class:focused={view.focusedGroupId === box.id}
+  <section class="editor-group" data-group-id={box.id} data-tab-kind={tab?.kind ?? 'document'} class:focused={view.focusedGroupId === box.id}
     aria-label="Editor group" style:left={`${box.x}%`} style:top={`${box.y}%`}
     style:width={`${box.width}%`} style:height={`${box.height}%`}>
     <TabChrome {actions} groupId={box.id} />
-    {#if tab?.kind === 'terminal'}
-      <div class="terminal-location" title={tab.path}>{tab.path || 'Starting terminal…'}</div>
-    {:else}<LocationBar {actions} groupId={box.id} />{/if}
+    <LocationBar {actions} groupId={box.id} />
     <div class="group-body" data-group-id={box.id}>
-      {#if tab?.kind === 'web' && (tab.page?.error || tab.page?.startPage)}
+      {#if tab?.kind === 'web' && browser.readers[tab.id]}
+        <WebReaderSurface {actions} groupId={box.id} tabId={tab.id} snapshot={browser.readers[tab.id]} />
+      {:else if tab?.kind === 'web' && (tab.page?.error || tab.page?.startPage)}
         <div class="browser-empty" data-browser-tab={tab.id}>
           <h2>{tab.page?.error ? 'This page could not be opened' : 'A place for the web'}</h2>
           <p>{tab.page?.error || 'Enter an address above, or open a bookmark from the Browser panel.'}</p>

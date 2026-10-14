@@ -14,6 +14,8 @@ import type { WindowIpc } from '../ipc/window-ipc';
 import { BrowserExtensions } from './browser-extensions';
 import { BrowserPlaces } from './browser-places';
 import { BrowserDownloads } from './browser-downloads';
+import { extractReaderArticle, restoreReaderAnchor } from './browser-reader';
+import { readReaderAnchor, type ReaderAnchor } from '../../core/browser/reader-article';
 
 type Entry = { owner: number; view: WebContentsView; page: BrowserPage; navigation: number; bounds?: Rectangle;
   historyUrls: string[]; historyIndex: number; canGoBack?: boolean; canGoForward?: boolean; closing?: (value: boolean) => void };
@@ -279,7 +281,13 @@ export class BrowserManager {
       else if (input.alt && (key === 'arrowleft' || key === 'arrowright')) {
         event.preventDefault(); this.send(entry.owner, { type: 'history', id, direction: key === 'arrowleft' ? -1 : 1 });
       }
-      else if (key === 'escape') wc.stop();
+      else if (key === 'escape') {
+        // Mirrors the Markdown editor: Esc leaves the working surface for the
+        // reader. While loading, Esc still stops the load first (the page's
+        // own meaning); a second Esc then enters reader mode.
+        if (wc.isLoading()) wc.stop();
+        else if (isWebURL(wc.getURL())) { event.preventDefault(); owner.window.webContents.focus(); this.send(entry.owner, { type: 'reader', id }); }
+      }
     });
     wc.on('context-menu', (_event, params) => {
       const owner = this.options.stateFor(entry.owner);
@@ -434,6 +442,15 @@ export class BrowserManager {
       const entry = this.owned(state.webContentsId, id);
       return entry.view.getVisible() ? (await entry.view.webContents.capturePage()).toDataURL() : null;
     });
+    channels.handle('browser:reader-extract', async (state, id: string) => {
+      const entry = this.owned(state.webContentsId, id);
+      if (!isWebURL(entry.view.webContents.getURL())) return null;
+      return extractReaderArticle(entry.view.webContents);
+    });
+    channels.handle('browser:reader-restore', async (state, id: string, anchor: ReaderAnchor) => {
+      const entry = this.owned(state.webContentsId, id), valid = readReaderAnchor(anchor);
+      return valid ? restoreReaderAnchor(entry.view.webContents, valid) : false;
+    });
     channels.handle('browser:command', async (state, id: string, command: BrowserCommand) => {
       const entry = this.owned(state.webContentsId, id), wc = entry.view.webContents;
       if (command === 'back' || command === 'forward') {
@@ -527,9 +544,15 @@ export class BrowserManager {
       this.broadcast({ type: 'extensions' });
       return rows;
     });
-    channels.handle('browser:extension-open', async (state, id: string, page: ExtensionPage) => {
+    channels.handle('browser:extension-open', async (state, id: string, page: ExtensionPage, tabId?: string) => {
       await this.ensureReady();
-      const url = this.extensions!.pageURL(String(id), page === 'options' ? 'options' : 'popup');
+      let url = this.extensions!.pageURL(String(id), page === 'options' ? 'options' : 'popup');
+      // uBlock's page needs an explicit target: once opened as a tab, querying
+      // the active tab would otherwise select the extension page itself.
+      if (page === 'popup' && url === this.extensions!.builtinPopupURL() && tabId && this.owns(state.webContentsId, tabId)) {
+        const target = this.owned(state.webContentsId, tabId).view.webContents;
+        url += `?tabId=${target.id}`;
+      }
       const entry = this.openEntry(state.webContentsId, randomUUID(), url);
       this.send(entry.owner, { type: 'open', page: entry.page, background: false });
       void this.load(entry, entry.page.url);

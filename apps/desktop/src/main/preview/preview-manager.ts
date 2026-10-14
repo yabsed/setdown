@@ -120,8 +120,12 @@ export class PreviewManager {
     const spare = { view, ready: false };
     this.spares.set(ownerId, spare);
     this.loadURL(view, warmup.url, ownerId).then(() => {
+      if (this.spares.get(ownerId) !== spare || view.webContents.isDestroyed()) return;
       this.markTheme(view.webContents, warmup.themeId);
-      if (this.spares.get(ownerId) === spare) spare.ready = true;
+      // A theme command sent during initial navigation can precede the runtime.
+      // Reconcile the current theme before this hidden view can be adopted.
+      this.syncTheme(view, this.options.theme());
+      spare.ready = true;
     }).catch(() => {
       if (this.spares.get(ownerId) === spare) this.spares.delete(ownerId);
       if (!view.webContents.isDestroyed()) view.webContents.close();
@@ -395,7 +399,7 @@ export class PreviewManager {
     if (message?.command === 'marktex:apply-theme') {
       const assets = this.options.themeAssets(message.themeId);
       preview.view.setBackgroundColor(assets.backgroundColor);
-      preview.view.webContents.send('preview:command', { command: 'marktex:apply-theme', ...assets });
+      preview.view.webContents.send('preview:command', { command: 'marktex:apply-theme', ...assets, hidden: !preview.view.getVisible() });
       this.markTheme(preview.view.webContents, assets.themeId);
     } else preview.view.webContents.send('preview:command', message);
   }
@@ -452,7 +456,7 @@ export class PreviewManager {
     if (contents.isDestroyed() || this.themes.get(contents.id) === themeId) return;
     const assets = this.options.themeAssets(themeId);
     view.setBackgroundColor(assets.backgroundColor);
-    contents.send('preview:command', { command: 'marktex:apply-theme', ...assets });
+    contents.send('preview:command', { command: 'marktex:apply-theme', ...assets, hidden: !view.getVisible() });
     this.markTheme(contents, assets.themeId);
   }
 
