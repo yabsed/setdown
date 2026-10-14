@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { WebContents } from 'electron';
 import { readReaderSnapshot, type ReaderAnchor, type ReaderSnapshot } from '../../core/browser/reader-article';
-import { namuArticleRoot, readerBlocks } from '../../core/browser/namu-reader';
+import { namuArticleRoot, readerBlocks, removeNamuSvg } from '../../core/browser/namu-reader';
 import { GOLDEN_TOP_RATIO } from '../../core/preview/viewport-anchor';
 
 /** Block-level candidates that can carry a reading position. The ordinal of an
@@ -52,6 +52,9 @@ const extraction = `(function () {
     getBlocks(clone, namu, BLOCKS).forEach(function (el, index) {
       el.setAttribute('data-setdown-block', String(index));
     });
+    // Strip SVG before either extraction path, so the displayed and exported
+    // snapshots agree, while the live page and its block ordinals stay intact.
+    if (namu) (${removeNamuSvg.toString()})(clone);
     var namuRoot = namu ? (${namuArticleRoot.toString()})(clone) : null;
     if (namuRoot) namuRoot.querySelectorAll('a[href],img').forEach(function (el) {
       var key = el.tagName === 'IMG' ? 'src' : 'href'; var value = el.getAttribute(key);

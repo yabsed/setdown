@@ -33,7 +33,7 @@
     let link = ''; try { if (anchor) link = new URL(anchor.getAttribute('href')!, article.url).href; } catch { /* malformed link */ }
     const id = tabId, source = snapshot;
     const command = await actions.browserReaderMenu(id, { selection: text, link });
-    if (!container.isConnected || tabId !== id || snapshot !== source || !browser.readers[id]) return;
+    if (!container?.isConnected || tabId !== id || snapshot !== source || !browser.readers[id]) return;
     if (command === 'select-all') { const range = document.createRange(); range.selectNodeContents(content); selection?.removeAllRanges(); selection?.addRange(range); }
     else if (command === 'find') window.dispatchEvent(new Event('setdown:browser-find'));
     else if (command === 'export-markdown') await exportArticle('markdown');
@@ -70,18 +70,21 @@
   }
 
   onMount(() => {
-    const focus = ((event: CustomEvent<string>) => { if (event.detail === tabId) container.focus({ preventScroll: true }); }) as EventListener;
+    const element = container;
+    let disposed = false;
+    const current = () => !disposed && container === element && element.isConnected;
+    const focus = ((event: CustomEvent<string>) => { if (current() && event.detail === tabId) element.focus({ preventScroll: true }); }) as EventListener;
     window.addEventListener('setdown:reader-focus', focus);
     finder = createRenderedFind(container, content, tabId, (active, matches) => {
       if (browser.findId === tabId) { browser.active = active; browser.matches = matches; }
     });
-    void (async () => { await tick(); positionAt(browser.readerPositions[tabId] ?? snapshot.anchor); container.focus({ preventScroll: true }); })();
+    void (async () => { await tick(); if (!current()) return; positionAt(browser.readerPositions[tabId] ?? snapshot.anchor); element.focus({ preventScroll: true }); })();
     // Late image loads reflow the article; settle once more unless the user
     // has already taken over the scroll position.
-    const settle = () => { if (!userScrolled) positionAt(browser.readerPositions[tabId] ?? snapshot.anchor); };
-    container.addEventListener('load', settle, true);
+    const settle = () => { if (current() && !userScrolled) positionAt(browser.readerPositions[tabId] ?? snapshot.anchor); };
+    element.addEventListener('load', settle, true);
     const timer = setTimeout(settle, 350);
-    return () => { window.removeEventListener('setdown:reader-focus', focus); finder?.dispose(); container.removeEventListener('load', settle, true); clearTimeout(timer); clearTimeout(linkTimer); cancelAnimationFrame(publishFrame); };
+    return () => { disposed = true; window.removeEventListener('setdown:reader-focus', focus); finder?.dispose(); element.removeEventListener('load', settle, true); clearTimeout(timer); clearTimeout(linkTimer); cancelAnimationFrame(publishFrame); };
   });
 
   function anchorFor(el: HTMLElement | undefined): ReaderAnchor {
@@ -125,6 +128,8 @@
   }
 
   function onScroll() {
+    // Chromium can deliver a queued scroll after Svelte unbinds this surface.
+    if (!container?.isConnected) return;
     if (appliedTop >= 0 && Math.abs(container.scrollTop - appliedTop) > 2) userScrolled = true;
     publishAnchor();
   }

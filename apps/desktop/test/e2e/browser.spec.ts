@@ -96,7 +96,7 @@ async function fixture(document = true) {
   // (it must still complete), not of each test's 5s UI assertions.
   await page.evaluate(() => window.marktex.browser.extensions());
   const errors: string[] = [];
-  page.on('pageerror', error => errors.push(String(error)));
+  page.on('pageerror', error => errors.push(error.stack ?? String(error)));
   return { get app() { return app; }, get page() { return page; }, root, origin, requests, errors,
     finishDownloads() { for (const res of slowDownloads) res.end(Buffer.alloc(131072, 'b')); },
     async restart() {
@@ -105,7 +105,7 @@ async function fixture(document = true) {
       page = await app.firstWindow();
       await focusApplication(app);
       await page.evaluate(() => window.marktex.browser.extensions());
-      page.on('pageerror', error => errors.push(String(error)));
+      page.on('pageerror', error => errors.push(error.stack ?? String(error)));
     }, async dispose() {
     await disposeApplication(app); await new Promise<void>(resolve => server.close(() => resolve())); await rm(root, { recursive: true, force: true });
   } };
@@ -693,15 +693,22 @@ test('web reader searches the visible article and exports its snapshot as Markdo
 test('Namu reader extracts hashed div layouts, keeps tables and anchors and restores the live paragraph', async () => {
   const f = await fixture();
   try {
+    const raster = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a2ioAAAAASUVORK5CYII=';
+    const svgNoise = `<svg viewBox="0 0 24 24"><text>SVG icon noise</text><path d="M0 0h24v24H0z"/></svg>
+      <img src="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%3E%3C/svg%3E" alt="SVG data icon">
+      <img src="/icons/decoration.SVG?cache=1" alt="SVG file icon"><img src="/icons/diagram%2Esvgz" alt="Compressed SVG icon">
+      <img src="${raster}" srcset="/icons/responsive.svg 2x" alt="Raster illustration">`;
     const markup = `<!doctype html><title>Fixture wiki - 나무위키</title>
         <style>body{margin:0}h1{height:80px}td{padding:12px}.leaf{margin-bottom:28px}</style><h1>Fixture wiki</h1><nav>Site navigation, edit, history</nav>
-        <div class="random-root"><table><tr><th>Name</th><th>Value</th></tr><tr><td>Identity</td><td>Preserved table</td></tr></table><div id="toc"><a href="#s-1">1. Overview</a><a href="#s-2">2. More</a></div>
+        <div class="random-root"><table><tr><th>Name</th><th>Value</th></tr><tr><td>Identity</td><td>Preserved table</td></tr></table>${svgNoise}<div id="toc"><a href="#s-1">1. Overview</a><a href="#s-2">2. More</a></div>
         <div class="hash-A"><div class="empty">&nbsp;</div><div class="hash-B"><h2><a id="s-1" href="#toc">1.</a><span id="Overview">Overview<a href="/edit/Fixture?section=1">[편집]</a></span></h2></div></div>
         ${Array.from({ length: 25 }, (_, i) => `<div class="layout-${i}"><div>&nbsp;</div><div class="leaf">Wiki paragraph ${i}: useful content in a leaf div, containing <a href="/w/Other">a wiki link</a>. Reading preserves paragraphs despite changing obfuscated CSS classes.</div></div>`).join('')}
         <h2><a id="s-2" href="#toc">2.</a>More</h2><details><summary>Folded section</summary><div>Folded wiki content must remain readable.</div></details><p id="fn-1">Footnote preserved.</p></div><aside>Recent changes sidebar noise</aside>`;
     let served = 0;
+    const fallback = `<!doctype html><title>Fallback article</title><article><h1>Fallback article</h1>${svgNoise}
+      ${Array.from({ length: 25 }, (_, i) => `<p>Fallback paragraph ${i}: an ordinary article without wiki section anchors must still filter SVG icons and retain readable text with its raster image. The normal Readability extraction path remains available for this page.</p>`).join('')}</article>`;
     await f.app.context().route('https://namu.wiki/**', route => {
-      served++; return route.fulfill({ contentType: 'text/html; charset=utf-8', body: markup });
+      served++; return route.fulfill({ contentType: 'text/html; charset=utf-8', body: route.request().url().endsWith('/w/Fallback') ? fallback : markup });
     });
     await f.page.evaluate(() => window.marktex.openLink('https://namu.wiki/w/Fixture'));
     await expect(f.page.getByRole('tab', { name: /Fixture wiki/ })).toBeVisible();
@@ -712,10 +719,27 @@ test('Namu reader extracts hashed div layouts, keeps tables and anchors and rest
     await expect(reader.locator('p').filter({ hasText: 'Wiki paragraph 20:' })).toBeVisible();
     await expect(reader.locator('a[href="https://namu.wiki/w/Other"]').first()).toBeAttached();
     await expect(reader.locator('details')).toHaveAttribute('open', '');
+    await expect(reader.locator('svg')).toHaveCount(0);
+    await expect(reader.getByRole('img', { name: /SVG.*icon/ })).toHaveCount(0);
+    await expect(reader.getByRole('img', { name: 'Raster illustration' })).toHaveAttribute('src', raster);
+    await expect(reader.getByRole('img', { name: 'Raster illustration' })).not.toHaveAttribute('srcset');
+    await expect(reader).not.toContainText('SVG icon noise');
+    const id = (await f.page.getByRole('tab', { name: /Fixture wiki/ }).getAttribute('data-tab-id'))!;
+    const snapshot = await f.page.evaluate(id => window.marktex.browser.readerExtract(id), id);
+    expect(snapshot!.article.content).not.toMatch(/<svg\b|data:image\/svg|\.svgz?(?:[?"'\s]|$)/i);
     await expect(reader).not.toContainText('[편집]'); await expect(reader).not.toContainText('Recent changes sidebar noise');
     const paragraph = reader.locator('p').filter({ hasText: 'Wiki paragraph 20:' });
     await paragraph.dblclick(); await expect(reader).toHaveCount(0);
     expect(await evaluatePage(f.app, 'https://namu.wiki/w/Fixture', `(() => { const p=[...document.querySelectorAll('.leaf')].find(p=>p.textContent.startsWith('Wiki paragraph 20:')); const r=p.getBoundingClientRect(); return r.bottom>0 && r.top<innerHeight; })()`)).toBe(true);
+    expect(await evaluatePage(f.app, 'https://namu.wiki/w/Fixture', 'document.querySelectorAll("svg").length')).toBe(1);
+    await f.page.evaluate(() => window.marktex.openLink('https://namu.wiki/w/Fallback'));
+    await expect(f.page.getByRole('tab', { name: /Fallback article/ })).toBeVisible();
+    await f.page.getByRole('button', { name: 'Enter reader mode' }).click();
+    await expect(reader).toBeVisible(); await expect(reader).toContainText('Fallback paragraph 24:');
+    await expect(reader.locator('svg')).toHaveCount(0); await expect(reader).not.toContainText('SVG icon noise');
+    await expect(reader.locator('img')).toHaveCount(1);
+    await expect(reader.getByRole('img', { name: 'Raster illustration' })).toHaveAttribute('src', raster);
+    await expect(reader.getByRole('img', { name: 'Raster illustration' })).not.toHaveAttribute('srcset');
     expect(f.errors).toEqual([]);
   } finally { await f.dispose(); }
 });

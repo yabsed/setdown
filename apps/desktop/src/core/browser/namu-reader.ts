@@ -1,6 +1,19 @@
 /** Self-contained DOM adapter, also serialized into the remote main frame.
  * Current Namu pages use hashed classes and nested divs; semantic section
  * anchors remain usable. Never mutate the original document. */
+export function removeNamuSvg(doc: Document): void {
+  doc.querySelectorAll('svg').forEach(el => el.remove());
+  doc.querySelectorAll<HTMLImageElement>('img').forEach(image => {
+    // A raster fallback must not pick an SVG from its responsive candidates.
+    if (/data:image\/svg\+xml|\.svgz?(?:[?#\s,]|$)/i.test(image.getAttribute('srcset') ?? '')) image.removeAttribute('srcset');
+    const source = image.getAttribute('src')?.trim() ?? '';
+    if (/^data:image\/svg\+xml(?:[;,]|$)/i.test(source)) { image.remove(); return; }
+    try {
+      if (/\.svgz?$/i.test(decodeURIComponent(new URL(source, doc.baseURI).pathname))) image.remove();
+    } catch { /* An unparseable image URL is handled by the normal sanitizer. */ }
+  });
+}
+
 export function namuArticleRoot(doc: Document): HTMLElement | null {
   const headings = [...doc.querySelectorAll<HTMLAnchorElement>('h2 a[id^="s-"],h3 a[id^="s-"],h4 a[id^="s-"],h5 a[id^="s-"],h6 a[id^="s-"]')];
   let root = doc.querySelector<HTMLElement>('.wiki-content, .wiki-inner-content');

@@ -240,6 +240,9 @@ native find events cannot overwrite Reader counts. Search and Select All exclude
 the export controls. Closing search focuses that same Reader, without revealing
 or focusing its hidden native page. Keyed Reader mounts dispose highlights and
 restore their tab's saved reading anchor.
+Queued scroll/image callbacks and post-mount position/focus work must stop when
+the Reader is unmounted; cleanup retains its stable element reference. Switching
+from an image-bearing wiki Reader to a fallback article exercises this boundary.
 
 Web Reader exposes Export to Markdown and Export to PDF; the File menu's existing
 PDF command addresses the active Reader too. `BrowserManager` retains the exact
@@ -263,7 +266,12 @@ export does not promise an offline image archive.
 classes, semantic section anchors and nested `div` paragraphs. The adapter finds
 the common section root, removes empty scaffolding and editing controls, converts
 leaf content divs to paragraphs and preserves tables, lists, anchors, footnotes
-and expanded details. Extraction mutates a clone only. Extraction and live-page
+and expanded details. All inline SVGs and identifiable SVG image sources
+(`.svg`/`.svgz` URLs or SVG data URIs) are removed from the stamped clone before
+either wiki extraction or the Readability fallback. SVG responsive candidates
+are removed while raster fallback images remain. The same filtered snapshot
+feeds the Reader and Markdown/PDF export; the live page stays intact.
+Extraction mutates a clone only. Extraction and live-page
 restoration share the same block coordinate system; absent semantic structure
 falls back to Readability. This does not bypass an unavailable or blocked page.
 
@@ -271,7 +279,8 @@ The three reading-capability scenarios in `browser.spec.ts` exercise native
 right-click input and clipboard/Google commands, local Markdown PDF, visible
 Reader search without hidden-page find, Markdown/PDF buttons and File PDF,
 tab preservation, and hashed Namu-layout extraction with real double-click
-restoration. HTTPS fixtures use Playwright request routing on actual Electron
+restoration. The Namu case checks inline/file/data-URI SVG removal, retained
+raster images and filtering through the Readability fallback. HTTPS fixtures use Playwright request routing on actual Electron
 WebContents; the Namu fixture asserts that it was served rather than accidentally
 loading a public page. Export sanitization and menu capability unit tests are
 included in the focused gate. Existing preparation, IME, position and visual
@@ -679,3 +688,50 @@ The original failures and final results are preserved in
 all performance samples, identities, build/lock/harness hashes and limitations.
 Raw artifacts are in `test-results/reading-capabilities-2026-10-15` and
 `test-results/reading-capabilities-benchmark-2026-10-15`.
+
+## Namu SVG filtering validation, 2026-10-15
+
+Namu Reader strips inline SVG and identifiable SVG images from its cloned,
+stamped document before either extraction path. The real Electron fixture checks
+SVG elements, data URIs, upper-case `.SVG` with query parameters, an encoded
+`.svgz` path and SVG responsive candidates. PNGs, tables, anchors and live-page
+restoration remain covered. The generic Readability fallback is checked too.
+
+The first contract run passed 95/96 GUI cases: image-bearing Reader teardown
+exposed a queued scroll after its bound container had become null. The final
+implementation rejects obsolete callbacks and retains a stable element for
+cleanup. The final build/typecheck, 288 focused unit tests, three comparator
+tests and all 96 GUI cases passed on isolated Xvfb, without retries.
+
+The independent baseline is `1ca71e5de96fbfc39616b8a0beb84bcbc99fdf39`, with
+matching lockfiles and Electron 44.7.2. Five matched repetitions per version
+alternated their order on one isolated display. All eight scenarios and 48
+comparisons used the unchanged 25% **and** 50ms regression thresholds. Values are
+**baseline → candidate medians in milliseconds**; warm is cycles 3–5.
+
+| Surface | Preparation | Edits | Measurement | First | Second | Warm |
+| --- | --- | --- | --- | --- | --- | --- |
+| document | 0ms | false | Esc → latest capture | 37.0 → 37.0 | 21.0 → 27.0 | 20.0 → 20.0 |
+| document | 0ms | false | Double-click → editor | 16.0 → 19.0 | 34.0 → 34.0 | 11.0 → 12.0 |
+| document | 0ms | true | Esc → latest capture | 413.0 → 390.0 | 106.0 → 98.0 | 90.0 → 89.0 |
+| document | 0ms | true | Double-click → editor | 19.0 → 15.0 | 17.0 → 17.0 | 13.0 → 14.0 |
+| document | 3000ms | false | Esc → latest capture | 45.0 → 40.0 | 22.0 → 18.0 | 19.0 → 24.0 |
+| document | 3000ms | false | Double-click → editor | 16.0 → 16.0 | 12.0 → 11.0 | 11.0 → 11.0 |
+| document | 3000ms | true | Esc → latest capture | 111.0 → 89.0 | 102.0 → 98.0 | 90.0 → 92.0 |
+| document | 3000ms | true | Double-click → editor | 19.0 → 18.0 | 12.0 → 13.0 | 14.0 → 13.0 |
+| review | 0ms | false | Esc → latest capture | 954.0 → 908.0 | 22.0 → 19.0 | 20.0 → 20.0 |
+| review | 0ms | false | Double-click → editor | 21.0 → 22.0 | 11.0 → 11.0 | 12.0 → 12.0 |
+| review | 0ms | true | Esc → latest capture | 999.0 → 983.0 | 1480.0 → 1484.0 | 175.0 → 177.0 |
+| review | 0ms | true | Double-click → editor | 21.0 → 22.0 | 20.0 → 19.0 | 18.0 → 18.0 |
+| review | 3000ms | false | Esc → latest capture | 25.0 → 23.0 | 23.0 → 21.0 | 18.0 → 17.0 |
+| review | 3000ms | false | Double-click → editor | 23.0 → 23.0 | 12.0 → 11.0 | 16.0 → 16.0 |
+| review | 3000ms | true | Esc → latest capture | 230.0 → 228.0 | 187.0 → 182.0 | 180.0 → 173.0 |
+| review | 3000ms | true | Double-click → editor | 22.0 → 22.0 | 18.0 → 18.0 | 18.0 → 17.0 |
+
+Result: **PASS**, 0 regressing buckets. This compares ordinary Markdown and Git
+transitions; it does not measure Namu extraction latency.
+
+[The SVG validation record](namu-svg-validation-2026-10-15.json) retains every
+cycle measurement, comparison, identity/hash, the initial failure and the final
+checks. Raw logs/event traces are in `test-results/namu-svg-filter-2026-10-15`
+and `test-results/namu-svg-benchmark-2026-10-15`.
