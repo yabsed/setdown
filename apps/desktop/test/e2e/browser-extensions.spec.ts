@@ -5,6 +5,104 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { disposeApplication, focusApplication } from './electron-app';
+import { storeExtensionFixture } from './store-extension-fixture';
+
+test('Web Store links install only after confirmation, update with stable identity and restore across restart', async () => {
+  test.setTimeout(90_000);
+  const fixture = storeExtensionFixture();
+  let version = '1.0', unavailable = false, downloads = 0;
+  const server = createServer((req, res) => {
+    if (req.url === '/package') {
+      downloads++;
+      if (unavailable) { res.writeHead(404); res.end(); }
+      else { res.setHeader('content-type', 'application/x-chrome-extension'); res.end(fixture.package(version)); }
+    } else { res.setHeader('content-type', 'text/html'); res.end('<!doctype html><title>Store test page</title>Article'); }
+  });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-store-'));
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const options = { args: ['.'], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } };
+  let app = await electron.launch(options);
+  try {
+    let page = await app.firstWindow(); await focusApplication(app);
+    await page.evaluate(() => window.marktex.browser.extensions());
+    await app.evaluate(({ dialog }, origin) => {
+      const nativeFetch = globalThis.fetch;
+      (globalThis as any).__storeConfirmation = 0;
+      (globalThis as any).__storePrompts = [];
+      (globalThis as any).__storeRequests = [];
+      globalThis.fetch = (input, init) => {
+        const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
+        if (url.hostname === 'clients2.google.com' && url.pathname === '/service/update2/crx') {
+          (globalThis as any).__storeRequests.push(url.href);
+          return nativeFetch(`${origin}/package`, init);
+        }
+        return nativeFetch(input, init);
+      };
+      dialog.showMessageBox = (async (_owner: unknown, options: Electron.MessageBoxOptions) => {
+        (globalThis as any).__storePrompts.push(options);
+        return { response: (globalThis as any).__storeConfirmation, checkboxChecked: false };
+      }) as typeof dialog.showMessageBox;
+    }, origin);
+    await page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-toggle-folder-tools'));
+    await page.locator('.activity-bar button[aria-label="Browser"]').click();
+    await page.getByRole('navigation', { name: 'Browser library' }).getByRole('button', { name: 'Extensions' }).click();
+    await page.getByRole('button', { name: 'Install from Chrome Web Store…' }).click();
+    const input = page.getByRole('textbox', { name: 'Chrome Web Store link or extension ID' });
+    await input.fill('https://example.com/not-an-extension');
+    await page.getByRole('button', { name: 'Install extension', exact: true }).click();
+    await expect(page.getByRole('alert')).toContainText('Chrome Web Store'); expect(downloads).toBe(0);
+    await input.fill(`https://chromewebstore.google.com/detail/fixture/${fixture.id}?hl=ko`);
+    await page.getByRole('button', { name: 'Install extension', exact: true }).click();
+    await expect(page.getByRole('status')).toHaveCount(0);
+    expect(downloads).toBe(1);
+    expect((await page.evaluate(() => window.marktex.browser.extensions())).some(item => item.id === fixture.id)).toBe(false);
+    expect(await app.evaluate(() => (globalThis as any).__storePrompts[0])).toMatchObject({
+      message: 'Install “Store Fixture” 1.0?', detail: expect.stringContaining('storage'), defaultId: 0,
+    });
+    await app.evaluate(() => { (globalThis as any).__storeConfirmation = 1; });
+    await page.getByRole('button', { name: 'Install extension', exact: true }).click();
+    const row = page.locator('.extension').filter({ has: page.locator('.extension-name', { hasText: 'Store Fixture' }) });
+    await expect(row).toBeVisible();
+    expect((await page.evaluate(() => window.marktex.browser.extensions())).find(item => item.id === fixture.id))
+      .toMatchObject({ webStoreId: fixture.id, enabled: true, version: '1.0', error: null });
+    const requested = await app.evaluate(() => (globalThis as any).__storeRequests as string[]);
+    expect(new URLSearchParams(new URL(requested[0]).searchParams.get('x')!).get('id')).toBe(fixture.id);
+    await page.evaluate(url => window.marktex.openLink(url), `${origin}/article`);
+    const installedVersion = () => app.evaluate(async ({ webContents }, origin) => {
+      const wc = webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/article`);
+      return wc?.executeJavaScript('document.documentElement.dataset.storeFixture || ""');
+    }, origin);
+    await expect.poll(installedVersion).toBe('1.0');
+    version = '2.0';
+    await row.getByRole('button', { name: 'Update from Web Store' }).click();
+    await expect(row.locator('.extension-version')).toHaveText('2.0');
+    await page.getByRole('button', { name: 'Reload page', exact: true }).click();
+    await expect.poll(installedVersion).toBe('2.0');
+    unavailable = true;
+    await row.getByRole('button', { name: 'Update from Web Store' }).click();
+    await expect(page.getByRole('alert')).toContainText('Failed to download');
+    await expect(row.locator('.extension-version')).toHaveText('2.0');
+    await expect.poll(installedVersion).toBe('2.0');
+    await disposeApplication(app);
+    app = await electron.launch(options); page = await app.firstWindow(); await focusApplication(app);
+    const restored = await page.evaluate(() => window.marktex.browser.extensions());
+    expect(restored.find(item => item.id === fixture.id)).toMatchObject({ version: '2.0', enabled: true, webStoreId: fixture.id });
+    const requestsBefore = downloads;
+    await page.evaluate(url => window.marktex.openLink(url), `${origin}/article`);
+    await expect.poll(installedVersion).toBe('2.0'); expect(downloads).toBe(requestsBefore);
+    await page.evaluate(id => window.marktex.browser.setExtensionEnabled(id, false), fixture.id);
+    await page.getByRole('button', { name: 'Reload page', exact: true }).click();
+    await expect.poll(installedVersion).toBe('');
+    await app.evaluate(({ dialog }) => { dialog.showMessageBox = (async () => ({ response: 1, checkboxChecked: false })) as typeof dialog.showMessageBox; });
+    const removed = await page.evaluate(id => window.marktex.browser.removeExtension(id), fixture.id);
+    expect(removed.some(item => item.id === fixture.id)).toBe(false);
+  } finally {
+    await disposeApplication(app); await new Promise<void>(resolve => server.close(() => resolve()));
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 test('user-installed extensions load, run content scripts, and can be disabled', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-extensions-'));

@@ -92,7 +92,7 @@ export function startWorkspace(desktop: DesktopPort) {
     browserReaderEnter: (id) => { void enterWebReader(id); },
     browserReaderExit: (id, anchor) => { void exitWebReader(id, anchor); },
     browserExtensions: () => desktop.browser.extensions(),
-    browserInstallExtension: (kind) => desktop.browser.installExtension(kind),
+    browserInstallExtension: (kind, input) => desktop.browser.installExtension(kind, input),
     browserSetExtensionEnabled: (id, enabled) => desktop.browser.setExtensionEnabled(id, enabled),
     browserRemoveExtension: (id) => desktop.browser.removeExtension(id),
     browserOpenExtension: (id, page) => desktop.browser.openExtension(id, page, workspace.activeId ?? undefined),

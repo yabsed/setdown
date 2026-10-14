@@ -17,8 +17,9 @@ export type BrowserExtensionInfo = {
   id: string; name: string; version: string; description: string; manifestVersion: number;
   enabled: boolean; builtin: boolean; hasPopup: boolean; hasOptions: boolean;
   permissions: string[]; hostPermissions: string[]; error: string | null;
+  webStoreId?: string;
 };
-export type ExtensionInstallKind = 'folder' | 'archive';
+export type ExtensionInstallKind = 'folder' | 'archive' | 'web-store';
 export type ExtensionPage = 'popup' | 'options';
 export type BrowserPermissionRequest = { token: string; origin: string; permissions: string[]; label: string };
 export type BrowserAuthRequest = { token: string; origin: string; realm: string };
@@ -60,7 +61,7 @@ export type BrowserApi = {
   downloadCommand(id: string, command: DownloadCommand): Promise<void>;
   restore(): Promise<BrowserPage[]>;
   extensions(): Promise<BrowserExtensionInfo[]>;
-  installExtension(kind: ExtensionInstallKind): Promise<BrowserExtensionInfo[]>;
+  installExtension(kind: ExtensionInstallKind, input?: string): Promise<BrowserExtensionInfo[]>;
   setExtensionEnabled(id: string, enabled: boolean): Promise<BrowserExtensionInfo[]>;
   removeExtension(id: string): Promise<BrowserExtensionInfo[]>;
   openExtension(id: string, page: ExtensionPage, tabId?: string): Promise<void>;

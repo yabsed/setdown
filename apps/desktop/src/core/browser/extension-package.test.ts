@@ -83,10 +83,10 @@ describe('extension packages', () => {
 
   test('locates the ZIP payload inside CRX v2 and v3 files', () => {
     const payload = zip([{ name: 'manifest.json', data: Buffer.from(JSON.stringify({ manifest_version: 2, name: 'x', version: '1' })) }]);
-    const v3 = Buffer.alloc(16);
+    const v3 = Buffer.alloc(12);
     v3.write('Cr24', 0, 'latin1'); v3.writeUInt32LE(3, 4); v3.writeUInt32LE(7, 8);
     const crx3 = Buffer.concat([v3, Buffer.alloc(7), payload]);
-    expect(crxZipOffset(crx3)).toBe(23);
+    expect(crxZipOffset(crx3)).toBe(19);
     expect(parseManifestEntries(unpackExtensionArchive(crx3)).info.manifestVersion).toBe(2);
     const v2 = Buffer.alloc(16);
     v2.write('Cr24', 0, 'latin1'); v2.writeUInt32LE(2, 4); v2.writeUInt32LE(5, 8); v2.writeUInt32LE(3, 12);

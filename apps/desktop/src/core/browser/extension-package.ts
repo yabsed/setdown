@@ -98,14 +98,15 @@ export function permissionSummaryLines(info: Pick<ExtensionManifestInfo, 'permis
 
 /** Returns the byte offset where the ZIP payload of a CRX file starts. */
 export function crxZipOffset(bytes: Buffer): number {
-  if (bytes.length < 16 || bytes.toString('latin1', 0, 4) !== 'Cr24') throw Error('Not a CRX file.');
+  if (bytes.length < 12 || bytes.toString('latin1', 0, 4) !== 'Cr24') throw Error('Not a CRX file.');
   const version = bytes.readUInt32LE(4);
   if (version === 3) {
     const headerSize = bytes.readUInt32LE(8);
-    if (16 + headerSize > bytes.length) throw Error('The CRX header is truncated.');
-    return 16 + headerSize;
+    if (12 + headerSize > bytes.length) throw Error('The CRX header is truncated.');
+    return 12 + headerSize;
   }
   if (version === 2) {
+    if (bytes.length < 16) throw Error('The CRX header is truncated.');
     const keySize = bytes.readUInt32LE(8), signatureSize = bytes.readUInt32LE(12);
     const offset = 16 + keySize + signatureSize;
     if (offset > bytes.length) throw Error('The CRX header is truncated.');

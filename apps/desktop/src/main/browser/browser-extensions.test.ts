@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -28,8 +28,10 @@ const electron = vi.hoisted(() => {
 });
 vi.mock('electron', () => electron);
 vi.mock('electron-chrome-extensions', () => ({ ElectronChromeExtensions: class {} }));
+const store = vi.hoisted(() => ({ downloadExtension: vi.fn() }));
+vi.mock('electron-chrome-web-store', () => store);
 import { BrowserExtensions } from './browser-extensions';
-import { localExtensionDir } from '../../core/browser/extension-package';
+import { extensionIdFromKey, localExtensionDir } from '../../core/browser/extension-package';
 
 let root: string, source: string, extensions: BrowserExtensions;
 const manifest = { manifest_version: 2, name: 'Fixture Extension', version: '1.0',
@@ -113,5 +115,71 @@ describe('BrowserExtensions registry', () => {
     await expect(extensions.inspect(empty)).rejects.toThrow(/manifest\.json/);
     await expect(extensions.commit('missing-token')).rejects.toThrow(/expired/);
     await expect(extensions.setEnabled('unknown', true)).rejects.toThrow(/Unknown extension/);
+  });
+
+  test('downloads into staging, preserves the store identity and never loads before confirmation', async () => {
+    const key = Buffer.alloc(64, 7).toString('base64'), id = extensionIdFromKey(key)!;
+    await writeFile(path.join(source, 'manifest.json'), JSON.stringify({ ...manifest, key }));
+    store.downloadExtension.mockResolvedValue(source);
+    const staged = await extensions.inspectWebStore(`https://chromewebstore.google.com/detail/fixture/${id}`);
+    expect(store.downloadExtension).toHaveBeenCalledWith(id, expect.stringContaining('.download-'));
+    expect(electron.session.extensions.loadExtension).not.toHaveBeenCalled();
+    await extensions.discard(staged.token);
+    expect(await readdir(path.join(root, 'extensions'))).toEqual([]);
+    const next = await extensions.inspectWebStore(id);
+    expect(await extensions.commit(next.token)).toMatchObject({ webStoreId: id, enabled: true });
+    expect(JSON.parse(await readFile(path.join(root, 'browser-extensions.json'), 'utf8')))
+      .toEqual([{ dir: id, enabled: true, webStoreId: id }]);
+  });
+
+  test('rejects a different downloaded ID and cleans up failed downloads', async () => {
+    store.downloadExtension.mockResolvedValue(source);
+    await expect(extensions.inspectWebStore('b'.repeat(32))).rejects.toThrow(/does not match/);
+    expect(await readdir(path.join(root, 'extensions'))).toEqual([]);
+    store.downloadExtension.mockRejectedValueOnce(Error('Network failed'));
+    await expect(extensions.inspectWebStore('b'.repeat(32))).rejects.toThrow(/Network failed/);
+    expect(await readdir(path.join(root, 'extensions'))).toEqual([]);
+    expect(electron.session.extensions.loadExtension).not.toHaveBeenCalled();
+  });
+
+  test('a failed replacement restores the previous files, enabled state and registry', async () => {
+    await extensions.commit((await extensions.inspect(source)).token);
+    await writeFile(path.join(source, 'manifest.json'), JSON.stringify({ ...manifest, version: '2.0' }));
+    const update = await extensions.inspect(source);
+    electron.session.extensions.loadExtension.mockRejectedValueOnce(Error('Unsupported extension'));
+    await expect(extensions.commit(update.token)).rejects.toThrow(/Unsupported/);
+    expect(extensions.list()[0]).toMatchObject({ version: '1.0', enabled: true, error: null });
+    const dir = localExtensionDir(manifest);
+    expect(JSON.parse(await readFile(path.join(root, 'extensions', dir, 'manifest.json'), 'utf8')).version).toBe('1.0');
+    expect(await readdir(path.join(root, 'extensions'))).toEqual([dir]);
+    expect(JSON.parse(await readFile(path.join(root, 'browser-extensions.json'), 'utf8'))).toEqual([{ dir, enabled: true }]);
+  });
+
+  test('a disable requested during replacement applies to the completed new version', async () => {
+    const installed = await extensions.commit((await extensions.inspect(source)).token);
+    await writeFile(path.join(source, 'manifest.json'), JSON.stringify({ ...manifest, version: '2.0' }));
+    const update = await extensions.inspect(source);
+    let release!: () => void, entered!: () => void;
+    const loading = new Promise<void>(resolve => { entered = resolve; });
+    const wait = new Promise<void>(resolve => { release = resolve; });
+    const originalLoad = electron.session.extensions.loadExtension.getMockImplementation()!;
+    electron.session.extensions.loadExtension.mockImplementationOnce(async extensionPath => {
+      entered(); await wait; return originalLoad(extensionPath);
+    });
+    const replacing = extensions.commit(update.token); await loading;
+    const disabling = extensions.setEnabled(installed.id, false);
+    release(); await replacing; await disabling;
+    expect(extensions.list()[0]).toMatchObject({ version: '2.0', enabled: false });
+    expect(JSON.parse(await readFile(path.join(root, 'browser-extensions.json'), 'utf8'))[0].enabled).toBe(false);
+  });
+
+  test('updating a disabled extension keeps it disabled without executing its new code', async () => {
+    const installed = await extensions.commit((await extensions.inspect(source)).token);
+    await extensions.setEnabled(installed.id, false);
+    await writeFile(path.join(source, 'manifest.json'), JSON.stringify({ ...manifest, version: '2.0' }));
+    electron.session.extensions.loadExtension.mockClear();
+    const updated = await extensions.commit((await extensions.inspect(source)).token);
+    expect(updated).toMatchObject({ id: installed.id, version: '2.0', enabled: false });
+    expect(electron.session.extensions.loadExtension).not.toHaveBeenCalled();
   });
 });

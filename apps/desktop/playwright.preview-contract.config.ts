@@ -5,6 +5,7 @@ export default defineConfig(base, {
   retries: 0,
   testMatch: [
     'browser.spec.ts',
+    'browser-extensions.spec.ts',
     'preview-reading-tools.spec.ts',
     'terminal.spec.ts',
     'video-reader.spec.ts',

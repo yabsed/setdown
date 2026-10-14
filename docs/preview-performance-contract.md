@@ -394,6 +394,14 @@ replace the user's active surface. `browser.spec.ts` checks deletion persistence
 `browser-downloads.test.ts` checks interrupted restoration, duplicate file paths
 and progress/completion ordering.
 
+Web Store installs reuse the existing extension session and registry. The store
+downloader is imported only on an explicit install/update request, and staging
+does not execute extensions before confirmation. Disabled extensions stay disabled
+when updated; a failed enabled replacement restores the previous version.
+`browser-extensions.spec.ts` exercises real CRX3 unpacking, native content scripts,
+confirmation/cancellation, updates, restart restoration and removal; it is included
+in the focused gate. Store input and registry mutation tests accompany it.
+
 `browser.spec.ts` covers navigation, live state, native split visibility, bookmarks,
 fresh-profile extension startup, popup opener identity, and real uBlock network,
 scriptlet, frame cosmetic and response-header filtering. It is part of the focused

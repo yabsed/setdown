@@ -81,11 +81,19 @@ the left **Browser** panel. The **uBO** button opens the current site's controls
 Browser cookies, bookmarks and history use a separate local profile, and saved
 web tabs restore lazily after a restart.
 
+In **Browser → Extensions → Install from Chrome Web Store…**, paste an extension's
+store link or ID and confirm its name and permissions. Installed extensions can
+be disabled, removed, or updated with **Update from Web Store**. Updates require
+confirmation. Folder and `.zip`/`.crx` installation also remain available.
+Extension compatibility depends on the APIs it uses; installing from the store
+does not guarantee full Chrome compatibility. See [Web Store installation](docs/chrome-web-store-installation.md).
+
 The browser adapts [Min](https://github.com/minbrowser/min)'s native-view lifecycle
 and reuses its Places search/ranking code (Apache-2.0). It bundles the complete
 [uBlock Origin](https://github.com/gorhill/uBlock) extension and
 `electron-chrome-extensions` compatibility layer (GPL-3.0), with their license
 notices. This includes network filtering, cosmetic filtering and scriptlets.
+Store downloads reuse `electron-chrome-web-store` (MIT).
 
 Non-Markdown text editing supports UTF-8, with or without a BOM, up to 16 MiB.
 It preserves uniform LF or CRLF line endings and the final-newline state.

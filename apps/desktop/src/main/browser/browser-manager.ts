@@ -46,6 +46,7 @@ export class BrowserManager {
   private transferring = new Set<number>();
   private saveTimer?: ReturnType<typeof setTimeout>;
   private saving = Promise.resolve();
+  private extensionInstallBusy = false;
   private readonly closedTabs = new Map<number, Array<{ url: string; title: string }>>();
   private readonly auth = new BrowserAuth((owner, id, request) => this.send(owner, { type: 'auth', id, request }));
   private readonly permissions = new BrowserPermissions(contents => {
@@ -594,37 +595,45 @@ export class BrowserManager {
       await this.ensureReady();
       return this.extensions!.list();
     });
-    channels.handle('browser:extension-install', async (state, kind: ExtensionInstallKind): Promise<BrowserExtensionInfo[]> => {
-      await this.ensureReady();
-      const extensions = this.extensions!;
-      const picked = await dialog.showOpenDialog(state.window, kind === 'folder'
-        ? { title: 'Install extension from folder', properties: ['openDirectory'] }
-        : { title: 'Install extension package', properties: ['openFile'],
-            filters: [{ name: 'Extension package (.zip, .crx)', extensions: ['zip', 'crx'] }] });
-      if (picked.canceled || !picked.filePaths[0]) return extensions.list();
-      const inspected = await extensions.inspect(picked.filePaths[0]);
+    channels.handle('browser:extension-install', async (state, kind: ExtensionInstallKind, input?: string): Promise<BrowserExtensionInfo[]> => {
+      if (!['folder', 'archive', 'web-store'].includes(kind)) throw Error('Unknown extension installation source.');
+      if (this.extensionInstallBusy) throw Error('Another extension installation is in progress.');
+      this.extensionInstallBusy = true;
       try {
-        const requested = permissionSummaryLines(inspected.info);
-        const choice = await dialog.showMessageBox(state.window, { type: 'warning',
-          message: `Install “${inspected.info.name}” ${inspected.info.version}?`,
-          detail: `Extensions can read and change pages you visit.${requested.length ? `\n\nRequested permissions:\n${requested.join('\n')}` : ''}\n\nOnly install extensions you trust. CRX signatures are not verified.`,
-          buttons: ['Cancel', 'Install'], defaultId: 0, cancelId: 0 });
-        if (choice.response !== 1) { await extensions.discard(inspected.token); return extensions.list(); }
-        await extensions.commit(inspected.token);
-      } catch (error) {
-        await extensions.discard(inspected.token).catch(() => undefined);
-        throw error;
-      }
-      this.broadcast({ type: 'extensions' });
-      return extensions.list();
+        await this.ensureReady();
+        const extensions = this.extensions!;
+        if (state.window.isDestroyed()) return extensions.list();
+        const picked = kind === 'web-store' ? null : await dialog.showOpenDialog(state.window, kind === 'folder'
+          ? { title: 'Install extension from folder', properties: ['openDirectory'] }
+          : { title: 'Install extension package', properties: ['openFile'],
+              filters: [{ name: 'Extension package (.zip, .crx)', extensions: ['zip', 'crx'] }] });
+        if (picked && (picked.canceled || !picked.filePaths[0])) return extensions.list();
+        const inspected = kind === 'web-store' ? await extensions.inspectWebStore(input) : await extensions.inspect(picked!.filePaths[0]);
+        try {
+          if (state.window.isDestroyed()) return extensions.list();
+          const requested = permissionSummaryLines(inspected.info);
+          const choice = await dialog.showMessageBox(state.window, { type: 'warning',
+            message: `Install “${inspected.info.name}” ${inspected.info.version}?`,
+            detail: `${kind === 'web-store' ? 'Downloaded from Chrome Web Store.\n\n' : ''}Extensions can read and change pages you visit.${requested.length ? `\n\nRequested permissions:\n${requested.join('\n')}` : ''}\n\nOnly install extensions you trust. CRX signatures are not verified.`,
+            buttons: ['Cancel', 'Install'], defaultId: 0, cancelId: 0 });
+          if (choice.response !== 1 || state.window.isDestroyed()) return extensions.list();
+          await extensions.commit(inspected.token);
+        } finally {
+          await extensions.discard(inspected.token).catch(() => undefined);
+        }
+        this.broadcast({ type: 'extensions' });
+        return extensions.list();
+      } finally { this.extensionInstallBusy = false; }
     });
     channels.handle('browser:extension-set-enabled', async (_state, id: string, enabled: boolean): Promise<BrowserExtensionInfo[]> => {
+      if (this.extensionInstallBusy) throw Error('Finish the current extension installation first.');
       await this.ensureReady();
       const rows = await this.extensions!.setEnabled(String(id), enabled === true);
       this.broadcast({ type: 'extensions' });
       return rows;
     });
     channels.handle('browser:extension-remove', async (state, id: string): Promise<BrowserExtensionInfo[]> => {
+      if (this.extensionInstallBusy) throw Error('Finish the current extension installation first.');
       await this.ensureReady();
       const extensions = this.extensions!;
       const target = extensions.list().find(item => item.id === String(id));

@@ -64,7 +64,7 @@ export type AppActions = {
   browserReaderEnter(id: string): void;
   browserReaderExit(id: string, anchor?: import('../protocol/browser').ReaderAnchor): void;
   browserExtensions(): Promise<import('../protocol/browser').BrowserExtensionInfo[]>;
-  browserInstallExtension(kind: import('../protocol/browser').ExtensionInstallKind): Promise<import('../protocol/browser').BrowserExtensionInfo[]>;
+  browserInstallExtension(kind: import('../protocol/browser').ExtensionInstallKind, input?: string): Promise<import('../protocol/browser').BrowserExtensionInfo[]>;
   browserSetExtensionEnabled(id: string, enabled: boolean): Promise<import('../protocol/browser').BrowserExtensionInfo[]>;
   browserRemoveExtension(id: string): Promise<import('../protocol/browser').BrowserExtensionInfo[]>;
   browserOpenExtension(id: string, page: import('../protocol/browser').ExtensionPage): Promise<void>;

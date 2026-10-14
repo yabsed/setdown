@@ -3,13 +3,14 @@ import { ElectronChromeExtensions } from 'electron-chrome-extensions';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { webStoreId } from '../../core/browser/web-store';
 import {
   extensionIdFromKey, localExtensionDir, parseExtensionManifest, parseManifestEntries,
   unpackExtensionArchive, type ExtensionManifestInfo,
 } from '../../core/browser/extension-package';
 import type { BrowserExtensionInfo } from '../../protocol/browser';
 
-type StoredExtension = { dir: string; enabled: boolean };
+type StoredExtension = { dir: string; enabled: boolean; webStoreId?: string };
 type LoadedExtension = { record: StoredExtension; info: ExtensionManifestInfo; electronId?: string; lastElectronId?: string; error?: string };
 export type InspectedPackage = { token: string; info: ExtensionManifestInfo };
 
@@ -25,14 +26,21 @@ export class BrowserExtensions {
   private pending = new Map<string, { frame: WebFrameMain; done(error?: string): void }>();
   private records: StoredExtension[] = [];
   private loaded = new Map<string, LoadedExtension>();
-  private staging = new Map<string, { dir: string; info: ExtensionManifestInfo }>();
+  private staging = new Map<string, { dir: string; info: ExtensionManifestInfo; webStoreId?: string }>();
   private builtinInfo?: ExtensionManifestInfo;
   private registryLoaded = false;
+  private modifying = Promise.resolve();
   constructor(private readonly session: Session, private readonly tab: (id: number) => WebContents | undefined,
     private readonly callbacks: ConstructorParameters<typeof ElectronChromeExtensions>[0]) {}
 
   private get extensionsRoot() { return path.join(app.getPath('userData'), 'extensions'); }
   private get registryFile() { return path.join(app.getPath('userData'), 'browser-extensions.json'); }
+
+  private mutate<T>(task: () => Promise<T>): Promise<T> {
+    const result = this.modifying.then(task);
+    this.modifying = result.then(() => undefined, () => undefined);
+    return result;
+  }
 
   /** Register the session preloads and IPC synchronously. This must be able
    * to run before a web view is created (its initial frame captures the
@@ -97,6 +105,7 @@ export class BrowserExtensions {
     this.records = parsed.filter((item): item is StoredExtension => !!item && typeof item === 'object'
       && typeof (item as StoredExtension).dir === 'string' && /^[a-z0-9][a-z0-9-]*$/i.test((item as StoredExtension).dir)
       && typeof (item as StoredExtension).enabled === 'boolean');
+    for (const record of this.records) if (record.webStoreId !== record.dir || !/^[a-p]{32}$/.test(record.webStoreId ?? '')) delete record.webStoreId;
     for (const record of this.records) {
       const info = await this.readInstalledInfo(record.dir).catch(() => undefined);
       if (info) this.loaded.set(record.dir, { record, info });
@@ -177,6 +186,27 @@ export class BrowserExtensions {
     }
   }
 
+  /** Use upstream download/unpack/ID handling, then our normal confirmation and
+   * registry. The library must never load executable extension code here. */
+  async inspectWebStore(input: unknown): Promise<InspectedPackage> {
+    const id = webStoreId(input);
+    if (id === this.extensionId) throw Error('The built-in extension is managed by Setdown.');
+    await fs.mkdir(this.extensionsRoot, { recursive: true });
+    const temporary = await fs.mkdtemp(path.join(this.extensionsRoot, '.download-'));
+    try {
+      // Keep the store library and network work off ordinary app startup.
+      const { downloadExtension } = await import('electron-chrome-web-store');
+      const source = await downloadExtension(id, temporary);
+      const inspected = await this.inspect(source);
+      if (!inspected.info.key || extensionIdFromKey(inspected.info.key) !== id) {
+        await this.discard(inspected.token);
+        throw Error('The downloaded package does not match the requested extension.');
+      }
+      this.staging.get(inspected.token)!.webStoreId = id;
+      return inspected;
+    } finally { await fs.rm(temporary, { recursive: true, force: true }); }
+  }
+
   private async readStagedInfo(dir: string): Promise<ExtensionManifestInfo> {
     const raw: unknown = JSON.parse(await fs.readFile(path.join(dir, 'manifest.json'), 'utf8')
       .catch(() => { throw Error('The selected folder does not contain a manifest.json.'); }));
@@ -196,21 +226,45 @@ export class BrowserExtensions {
   }
 
   /** Installs a previously inspected package, replacing any same-ID install. */
-  async commit(token: string): Promise<BrowserExtensionInfo> {
+  commit(token: string): Promise<BrowserExtensionInfo> { return this.mutate(() => this.commitStaged(token)); }
+  private async commitStaged(token: string): Promise<BrowserExtensionInfo> {
     const staged = this.staging.get(token);
     if (!staged) throw Error('This installation has expired. Choose the file again.');
     this.staging.delete(token);
     const dirName = (staged.info.key ? extensionIdFromKey(staged.info.key) : undefined) ?? localExtensionDir(staged.info);
+    if (dirName === this.extensionId) {
+      await fs.rm(staged.dir, { recursive: true, force: true });
+      throw Error('The built-in extension is managed by Setdown.');
+    }
     const target = path.join(this.extensionsRoot, dirName);
-    let record = this.records.find(item => item.dir === dirName);
-    if (record) this.unloadRecord(record);
-    await fs.rm(target, { recursive: true, force: true });
-    await fs.rename(staged.dir, target);
-    if (!record) { record = { dir: dirName, enabled: true }; this.records.push(record); }
-    record.enabled = true;
-    this.loaded.set(dirName, { record, info: staged.info });
-    await this.persist();
-    await this.loadRecord(record).catch(() => undefined);
+    const previous = this.records.find(item => item.dir === dirName);
+    const previousState = this.loaded.get(dirName);
+    const record: StoredExtension = { dir: dirName, enabled: previous?.enabled ?? true, ...(staged.webStoreId ? { webStoreId: staged.webStoreId } : {}) };
+    const backup = path.join(this.extensionsRoot, `.backup-${randomUUID()}`);
+    let backedUp = false, moved = false;
+    try {
+      if (previous) {
+        this.unloadRecord(previous);
+        await fs.rename(target, backup); backedUp = true;
+      }
+      await fs.rename(staged.dir, target); moved = true;
+      this.loaded.set(dirName, { record, info: staged.info, lastElectronId: previousState?.electronId ?? previousState?.lastElectronId });
+      if (record.enabled) await this.loadRecord(record);
+      this.records = [...this.records.filter(item => item !== previous), record];
+      await this.persist();
+    } catch (error) {
+      this.unloadRecord(record);
+      if (moved) await fs.rm(target, { recursive: true, force: true });
+      if (backedUp) await fs.rename(backup, target);
+      this.records = this.records.filter(item => item !== record);
+      if (previous && !this.records.includes(previous)) this.records.push(previous);
+      if (previousState && previous) {
+        this.loaded.set(dirName, previousState);
+        if (previous.enabled) await this.loadRecord(previous).catch(() => undefined);
+      } else this.loaded.delete(dirName);
+      throw error;
+    } finally { await fs.rm(staged.dir, { recursive: true, force: true }); }
+    if (backedUp) await fs.rm(backup, { recursive: true, force: true }).catch(console.error);
     return this.describe(record);
   }
 
@@ -224,6 +278,7 @@ export class BrowserExtensions {
       hasPopup: !!info.popupPath, hasOptions: !!info.optionsPath,
       permissions: info.permissions, hostPermissions: info.hostPermissions,
       error: state?.error ?? null,
+      ...(record.webStoreId ? { webStoreId: record.webStoreId } : {}),
     };
   }
 
@@ -247,7 +302,8 @@ export class BrowserExtensions {
     throw Error('Unknown extension.');
   }
 
-  async setEnabled(handle: string, enabled: boolean): Promise<BrowserExtensionInfo[]> {
+  setEnabled(handle: string, enabled: boolean): Promise<BrowserExtensionInfo[]> { return this.mutate(() => this.changeEnabled(handle, enabled)); }
+  private async changeEnabled(handle: string, enabled: boolean): Promise<BrowserExtensionInfo[]> {
     const state = this.resolve(handle);
     state.record.enabled = enabled;
     if (enabled) await this.loadRecord(state.record).catch(() => undefined);
@@ -256,7 +312,8 @@ export class BrowserExtensions {
     return this.list();
   }
 
-  async remove(handle: string): Promise<BrowserExtensionInfo[]> {
+  remove(handle: string): Promise<BrowserExtensionInfo[]> { return this.mutate(() => this.removeInstalled(handle)); }
+  private async removeInstalled(handle: string): Promise<BrowserExtensionInfo[]> {
     const state = this.resolve(handle);
     this.unloadRecord(state.record);
     this.records = this.records.filter(item => item !== state.record);
