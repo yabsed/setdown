@@ -472,6 +472,63 @@ for (const command of ['close', 'quit'] as const) test(`canceling ${command} pre
   } finally { await f.dispose(); }
 });
 
+test('mouse-focused address edits survive empty suggestions and keep typing, caret and composition', async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible();
+    await f.page.evaluate(url => window.marktex.browser.bookmark(url, 'Address editing fixture', true), `${f.origin}/first`);
+    await f.app.evaluate(({ webContents }, origin) => webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/first`)!.focus(), f.origin);
+    const address = f.page.getByRole('textbox', { name: 'Address or file path', exact: true });
+    const input = (await address.boundingBox())!;
+    const point = await f.app.evaluate(({ BrowserWindow }, rect) => {
+      const owner = BrowserWindow.getAllWindows()[0], bounds = owner.getContentBounds(), zoom = owner.webContents.getZoomFactor();
+      return { x: Math.round(bounds.x + (rect.x + rect.width / 2) * zoom), y: Math.round(bounds.y + (rect.y + rect.height / 2) * zoom) };
+    }, input);
+    if (process.env.SETDOWN_ISOLATED_DISPLAY !== '1' || !process.env.DISPLAY) throw Error('Native address click requires isolated Xvfb.');
+    await execFile('python3', ['-c', `
+import ctypes, ctypes.util, sys
+x=ctypes.CDLL(ctypes.util.find_library('X11')); t=ctypes.CDLL(ctypes.util.find_library('Xtst'))
+x.XOpenDisplay.restype=ctypes.c_void_p
+x.XFlush.argtypes=[ctypes.c_void_p]; x.XCloseDisplay.argtypes=[ctypes.c_void_p]
+t.XTestFakeMotionEvent.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_int,ctypes.c_ulong]
+t.XTestFakeButtonEvent.argtypes=[ctypes.c_void_p,ctypes.c_uint,ctypes.c_int,ctypes.c_ulong]
+d=x.XOpenDisplay(None)
+if not d: raise RuntimeError('No isolated X display')
+t.XTestFakeMotionEvent(d,-1,int(sys.argv[1]),int(sys.argv[2]),0)
+t.XTestFakeButtonEvent(d,1,1,0); t.XTestFakeButtonEvent(d,1,0,0); x.XFlush(d); x.XCloseDisplay(d)
+`, String(point.x), String(point.y)]);
+    await expect(address).toBeFocused();
+    expect(await address.evaluate((input: HTMLInputElement) => input.selectionStart === 0 && input.selectionEnd === input.value.length)).toBe(true);
+    await expect.poll(() => f.app.windows().some(page => page.url().includes('location-overlay=1'))).toBe(true);
+    const popup = f.app.windows().find(page => page.url().includes('location-overlay=1'))!;
+    // Native title updates can replace a bookmark's label; its URL is the
+    // stable identity of the matching row needed for this input regression.
+    const suggestion = popup.getByRole('option').filter({ hasText: `${f.origin}/first` });
+    await expect(suggestion).toBeVisible();
+    // Each character spans the actual Places debounce: the first unmatched
+    // character closes an already-open popup while the same edit continues.
+    const query = 'no-history-match-928471';
+    await address.pressSequentially(query, { delay: 140 });
+    await expect(address).toHaveValue(query); await expect(address).toBeFocused();
+    expect(await address.evaluate((input: HTMLInputElement) => ({ start: input.selectionStart, end: input.selectionEnd }))).toEqual({ start: query.length, end: query.length });
+    await expect.poll(() => f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children.some(view =>
+      'webContents' in view && (view as Electron.WebContentsView).webContents.getURL().includes('location-overlay=1') && view.getVisible()))).toBe(false);
+    await address.press('Home'); await address.pressSequentially('kept-', { delay: 140 });
+    await expect(address).toHaveValue(`kept-${query}`);
+    await address.press('Control+a'); await address.pressSequentially(f.origin, { delay: 140 });
+    await expect(address).toHaveValue(f.origin);
+    await expect(suggestion).toBeVisible();
+    const cdp = await f.app.context().newCDPSession(f.page);
+    await address.press('Control+a');
+    await cdp.send('Input.imeSetComposition', { text: '한글', selectionStart: 2, selectionEnd: 2 });
+    await cdp.send('Input.insertText', { text: '한글' }); await cdp.detach();
+    await expect(address).toHaveValue('한글'); await expect(address).toBeFocused();
+    await address.press('Escape'); await expect(address).toHaveValue(`${f.origin}/first`);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
 for (const right of ['markdown', 'reader', 'web'] as const) test(`address suggestions preserve live video beside ${right}`, async () => {
   const f = await fixture();
   try {

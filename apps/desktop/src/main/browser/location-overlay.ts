@@ -57,7 +57,7 @@ export class LocationOverlay {
       entry = { state, view, contents, context, ready: contents.loadURL(url.href), generation: 0, visible: false, active: false };
       this.owners.set(owner, entry);
       state.window.on('blur', () => this.hide(owner));
-      state.window.on('resize', () => this.hide(owner));
+      state.window.on('resize', () => this.hide(owner, undefined, false));
       state.window.webContents.on('did-start-navigation', (_event, _url, inPlace, main) => { if (main && !inPlace) this.hide(owner); });
       state.window.once('closed', () => {
         this.owners.delete(owner);
@@ -79,14 +79,16 @@ export class LocationOverlay {
     entry.visible = true; entry.view.setVisible(true);
     // Deliberately no focus(): the address input owns keyboard and IME.
   }
-  hide(owner: number, token?: string): void {
+  hide(owner: number, token?: string, cancelEdit = true): void {
     const entry = this.owners.get(owner);
     if (!entry || !entry.active || (token !== undefined && token !== entry.context.token)) return;
     entry.generation++; entry.visible = false; entry.active = false;
     if (!entry.contents.isDestroyed()) entry.view.setVisible(false);
     if (!entry.state.window.isDestroyed()) {
       entry.state.window.contentView.removeChildView(entry.view);
-      entry.state.window.webContents.send('location-overlay:hidden', entry.context.token);
+      // A renderer-requested hide (for example, no search results) is only
+      // presentation. It must not cancel the still-focused address edit.
+      if (cancelEdit) entry.state.window.webContents.send('location-overlay:hidden', entry.context.token);
     }
   }
 }

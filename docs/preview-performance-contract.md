@@ -111,6 +111,13 @@ invalidated by dismissal and owner destruction. `browser.spec.ts` exercises
 advancing video frames beside Markdown, web Reader and live web content,
 unchanged native page bounds/identity, Korean composition, native pointer
 selection and keyboard dismissal.
+Hiding an empty suggestion list or repositioning it on window resize is a
+presentation change, not an address-edit cancellation. Renderer-requested hides
+must not echo a native cancellation event that resets its draft to the committed
+URL. Mouse-focused typing preserves the draft, caret and IME across matching →
+empty → matching queries; explicit Escape and actual focus/tab changes retain
+their existing cancellation behavior. The real native-click/slow-typing case in
+`browser.spec.ts` covers this boundary.
 
 Closing a workspace retires all its browser entries before closing their stable
 WebContents handles. Native View accessors are not a lifetime guarantee: audio
@@ -735,3 +742,57 @@ transitions; it does not measure Namu extraction latency.
 cycle measurement, comparison, identity/hash, the initial failure and the final
 checks. Raw logs/event traces are in `test-results/namu-svg-filter-2026-10-15`
 and `test-results/namu-svg-benchmark-2026-10-15`.
+
+## Address draft validation, 2026-10-15
+
+A real native mouse click from a focused web page, followed by 140ms-per-character
+typing across the Places debounce, reproduced the input loss on the original
+build. `no-history-match-928471` became the current `/first` URL followed by
+`-history-match-928471`. An empty result hid the native dropdown, which echoed
+`location-overlay:hidden`; the renderer canceled editing and synchronized the
+draft back to the committed URL before later keystrokes arrived.
+
+Renderer-requested hides and resize hides now update presentation without echoing
+an edit cancellation. Existing native cancellation paths retain their signals.
+The new GUI case verifies native-click selection, slow typing through empty
+results, caret position, Home-key insertion, reopening matches, Korean composition
+and explicit Escape. It identifies the suggestion by URL because native title
+updates can rename a bookmarked row. Existing split-video and native pointer
+selection cases also passed.
+
+The final build/typecheck, 288 focused unit tests, three comparator tests and all
+97 Electron GUI scenarios passed on isolated Xvfb with no retries. Initial
+fixture/typecheck failures and the successful unmodified-build reproduction are
+preserved in [the validation record](address-draft-validation-2026-10-15.json).
+
+The separate, independently installed baseline is
+`5c43b04c33b2930059cba3ccb8934538a892d1ec`; lockfiles match and both use Electron
+44.7.2. Five matched repetitions alternated version order on one isolated display.
+The eight scenarios and 48 first/second/warm comparisons retain the existing
+25% **and** 50ms thresholds. Values are **baseline → candidate medians in
+milliseconds**; warm is cycles 3–5.
+
+| Surface | Preparation | Edits | Measurement | First | Second | Warm |
+| --- | --- | --- | --- | --- | --- | --- |
+| document | 0ms | false | Esc → latest capture | 45.0 → 29.0 | 21.0 → 23.0 | 21.0 → 20.0 |
+| document | 0ms | false | Double-click → editor | 22.0 → 16.0 | 25.0 → 33.0 | 11.0 → 11.0 |
+| document | 0ms | true | Esc → latest capture | 430.0 → 434.0 | 101.0 → 101.0 | 89.0 → 89.0 |
+| document | 0ms | true | Double-click → editor | 18.0 → 19.0 | 14.0 → 13.0 | 16.0 → 13.0 |
+| document | 3000ms | false | Esc → latest capture | 41.0 → 42.0 | 21.0 → 19.0 | 25.0 → 21.0 |
+| document | 3000ms | false | Double-click → editor | 16.0 → 15.0 | 11.0 → 11.0 | 11.0 → 11.0 |
+| document | 3000ms | true | Esc → latest capture | 106.0 → 102.0 | 103.0 → 108.0 | 90.0 → 90.0 |
+| document | 3000ms | true | Double-click → editor | 19.0 → 15.0 | 12.0 → 12.0 | 13.0 → 15.0 |
+| review | 0ms | false | Esc → latest capture | 928.0 → 955.0 | 22.0 → 19.0 | 28.0 → 20.0 |
+| review | 0ms | false | Double-click → editor | 22.0 → 22.0 | 11.0 → 11.0 | 12.0 → 12.0 |
+| review | 0ms | true | Esc → latest capture | 975.0 → 970.0 | 1455.0 → 1496.0 | 177.0 → 173.0 |
+| review | 0ms | true | Double-click → editor | 22.0 → 22.0 | 18.0 → 20.0 | 17.0 → 17.0 |
+| review | 3000ms | false | Esc → latest capture | 30.0 → 29.0 | 23.0 → 23.0 | 17.0 → 18.0 |
+| review | 3000ms | false | Double-click → editor | 23.0 → 22.0 | 11.0 → 11.0 | 16.0 → 16.0 |
+| review | 3000ms | true | Esc → latest capture | 229.0 → 230.0 | 181.0 → 183.0 | 166.0 → 177.0 |
+| review | 3000ms | true | Double-click → editor | 22.0 → 21.0 | 18.0 → 19.0 | 17.0 → 18.0 |
+
+Result: **PASS**, 0 regressing buckets. These timings cover Markdown/Git
+transitions, not Places query latency. Every cycle measurement, comparison,
+identity/hash and the original failures are retained in the validation record.
+Raw logs/traces are in `test-results/address-draft-2026-10-15` and
+`test-results/address-draft-benchmark-2026-10-15`.
