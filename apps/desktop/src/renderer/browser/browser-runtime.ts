@@ -60,13 +60,13 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
       // A reader snapshot belongs to the exact URL it was extracted from; any
       // navigation (address bar, link, redirect) ends reader mode.
       if (browser.readers[event.page.id] && browser.readers[event.page.id].article.url !== event.page.url) {
-        delete browser.readers[event.page.id]; delete browser.readerPositions[event.page.id];
+        delete browser.readers[event.page.id]; delete browser.readerPositions[event.page.id]; delete browser.readerFind[event.page.id];
       }
       const tab = workspace.find(event.page.id);
       if (tab?.kind === 'web') { tab.page = event.page; tabs.updateChrome(); sync(true); }
     } else if (event.type === 'navigation') tabs.webNavigated(event.id);
     else if (event.type === 'document') {
-      delete browser.readers[event.id]; delete browser.readerPositions[event.id];
+      delete browser.readers[event.id]; delete browser.readerPositions[event.id]; delete browser.readerFind[event.id];
       if (browser.findId === event.id) { browser.findId = null; browser.active = 0; browser.matches = 0; }
     }
     else if (event.type === 'reader') reader(event.id);
@@ -78,7 +78,7 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
       // must not switch the newly opened tab back to the previous page.
       if (workspace.find(event.id)?.kind !== 'web' || workspace.groups.owner(event.id)?.activeId !== event.id) return;
       if (workspace.activeId !== event.id || project.gitDiffActive) activate(event.id);
-    } else if (event.type === 'close') { delete browser.readers[event.id]; delete browser.readerPositions[event.id]; tabs.browserClosed(event.id); }
+    } else if (event.type === 'close') { delete browser.readers[event.id]; delete browser.readerPositions[event.id]; delete browser.readerFind[event.id]; tabs.browserClosed(event.id); }
     else if (event.type === 'places') browser.revision++;
     else if (event.type === 'extensions') browser.revision++;
     else if (event.type === 'download') {
@@ -96,7 +96,7 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
       if (event.request) browser.auth[event.id] = event.request;
       else { delete browser.auth[event.id]; if (browser.authId === event.id) browser.authId = null; }
     }
-    else if (event.type === 'find' && browser.findId === event.id && event.query === browser.query) { browser.active = event.active; browser.matches = event.matches; }
+    else if (event.type === 'find' && !browser.readers[event.id] && browser.findId === event.id && event.query === browser.query) { browser.active = event.active; browser.matches = event.matches; }
   });
   void desktop.browser.downloads().then(rows => {
     browser.downloads = [...browser.downloads, ...rows.filter(item => !changedDownloads.has(item.id))]

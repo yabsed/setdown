@@ -6,6 +6,8 @@ export const browser = $state({ revision: 0, error: '', findId: null as string |
   /** Reader-mode snapshots keyed by web tab id. A tab listed here hides its
    * live native view (which keeps its page state) behind the shell reader. */
   readers: {} as Record<string, ReaderSnapshot>,
+  /** Find requests belong to the visible snapshot, independently of native page find. */
+  readerFind: {} as Record<string, { query: string; forward: boolean; next: boolean; request: number }>,
   /** Latest golden-line anchor published while scrolling each reader, so the
    * address-bar toggle can return to the live page at the current place. */
   readerPositions: {} as Record<string, ReaderAnchor> });

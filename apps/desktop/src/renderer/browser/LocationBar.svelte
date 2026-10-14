@@ -25,7 +25,7 @@
   let findComposing = false;
   function closeFind() {
     browser.findId = null; browser.active = 0; browser.matches = 0;
-    if (tab) { actions.browserFind(tab.id, ''); actions.browserCommand(tab.id, 'focus'); }
+    if (tab) { actions.browserFind(tab.id, ''); if (reading) window.dispatchEvent(new CustomEvent('setdown:reader-focus', { detail: tab.id })); else actions.browserCommand(tab.id, 'focus'); }
   }
   const media = $derived(view.mediaTabs.find(item => item.id === tab?.id));
   const fileZoom = $derived(tab ? mediaZoom[tab.id] : undefined);

@@ -16,6 +16,8 @@ export default defineConfig({
     'src/core/browser/extension-package.test.ts',
     'src/main/browser/browser-extensions.test.ts',
     'src/core/browser/reader-article.test.ts',
+    'src/core/browser/reader-export.test.ts',
+    'src/core/reading/reading-menu.test.ts',
     'src/main/browser/browser-downloads.test.ts',
     'src/main/browser/browser-permissions.test.ts',
     'src/main/browser/browser-auth.test.ts',

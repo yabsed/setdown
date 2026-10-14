@@ -14,6 +14,7 @@ import { canonicalPath } from '../documents/file-system';
 import type { DocumentManager } from '../documents/document-manager';
 import { applicationMenuEntries, executeApplicationMenu } from '../menu/application-menu';
 import { LocationOverlay } from '../browser/location-overlay';
+import { showReadingMenu } from '../menu/reading-menu';
 import { MenuOverlay } from '../menu/menu-overlay';
 import type { WindowState } from '../windows/window-state';
 import { exportPdf } from '../preview/pdf-exporter';
@@ -44,16 +45,31 @@ function documentMenus(items: ApplicationMenuEntry[], markdown: boolean, review:
 }
 export function installIpc(options: Options): void {
   const { channels, documents, previews, projects, renderer, themes, transfers, autoSave } = options;
+  channels.handle('browser:reader-export', (state, id: string, format: unknown) => {
+    if (format !== 'markdown' && format !== 'pdf') throw Error('Unsupported reader export format.');
+    return options.browsers.exportReader(state.webContentsId, id, format, themes.id);
+  });
   const history = new GitHistoryService();
   channels.handle('project:git-graph', (state, request: GitGraphRequest) => history.request(state, request));
   channels.on('project:git-graph-cancel', (state, id: unknown) => history.cancel(state, id));
   channels.handle('project:git-history-diff', (state, selection: GitHistorySelection) => history.diff(state, selection));
   previews.registerIpc(); transfers.registerIpc();
+  previews.setReadingMenu((tabId, contents, params, state, valid) => {
+    state.window.webContents.send('preview:message', { tabId, message: { type: 'marktex:focus' } });
+    void showReadingMenu(state.window, { selection: String(params.selectionText ?? ''), link: String(params.linkURL ?? ''), pdf: !tabId.startsWith('git-diff:') }, valid,
+      url => { void options.browsers.openLink(state.webContentsId, url); }, command => {
+        if (command === 'select-all') contents.selectAll();
+        else if (command === 'find') { state.window.webContents.focus(); state.window.webContents.send('preview:open-find', tabId); }
+        else if (command === 'export-pdf') state.window.webContents.send('preview:message', { tabId, message: { type: 'marktex:reader-export' } });
+      });
+  });
   const menuEntries = (state: WindowState, menuId: unknown) => {
     const review = state.rendererGitReview?.active === true;
     const filePath = review ? state.rendererGitReview!.path : state.currentDocument?.path ?? '';
+    const webId = previews.zoom.activeTab(state.webContentsId);
+    const webReader = !!webId && options.browsers.readerReady(state.webContentsId, webId) && !options.browsers.views.get(webId)?.view.getVisible();
     return documentMenus(applicationMenuEntries(menuId), isMarkdownDocument(filePath), review).map((item) =>
-      isReadOnlyDocument(filePath) && ['save', 'menu-save-as'].includes(item.id) ? { ...item, enabled: false } : item);
+      item.id === 'menu-export-pdf' && webReader ? { ...item, enabled: true } : isReadOnlyDocument(filePath) && ['save', 'menu-save-as'].includes(item.id) ? { ...item, enabled: false } : item);
   };
   channels.handle('menu:get', menuEntries);
   const locationOverlay = new LocationOverlay();

@@ -52,6 +52,8 @@ export type BrowserApi = {
   layout(entries: Array<{ id: string; bounds: PreviewBounds; canGoBack?: boolean; canGoForward?: boolean }>): void;
   capture(id: string): Promise<string | null>;
   readerExtract(id: string): Promise<ReaderSnapshot | null>;
+  readerMenu(id: string, context: { selection: string; link: string }): Promise<import('../core/reading/reading-menu').ReadingMenuCommand | null>;
+  readerExport(id: string, format: 'markdown' | 'pdf'): Promise<{ canceled: boolean; path?: string }>;
   readerRestore(id: string, anchor: ReaderAnchor): Promise<boolean>;
   find(id: string, text: string, forward?: boolean, next?: boolean): void;
   places(query: string, scope?: BrowserPlaceScope): Promise<BrowserPlace[]>;

@@ -87,16 +87,9 @@ async function fixture(document = true) {
   await focusApplication(app);
   if (document) await expect(page.getByRole('tab', { name: /notes.md/ })).toBeVisible();
   else await expect(page.getByRole('button', { name: 'Open Web Page', exact: true })).toBeVisible();
-  // HTTPS is a built-in Chromium protocol: handle() does not intercept its
-  // browser navigation on Electron 38. Keep this fixture off the real network.
-  await app.evaluate(({ session, net }) => session.fromPartition('persist:setdown-browser').protocol.interceptBufferProtocol('https', (request, respond) => {
-    if (new URL(request.url).hostname === 'www.google.com') {
-      respond({ data: Buffer.from('<!doctype html><title>Google</title><input aria-label="Search">'), mimeType: 'text/html' });
-      return;
-    }
-    void net.fetch(request.url, { bypassCustomProtocolHandlers: true }).then(async response => respond({
-      data: Buffer.from(await response.arrayBuffer()), headers: Object.fromEntries(response.headers), statusCode: response.status,
-    })).catch(() => respond({ error: -2 }));
+  // Keep Google navigation assertions off the real network.
+  await app.context().route('https://www.google.com/**', route => route.fulfill({
+    contentType: 'text/html', body: '<!doctype html><title>Google</title><input aria-label="Search">',
   }));
   // A fresh profile compiles uBlock's filter lists for several seconds and
   // first navigation waits for it; that cold start is part of fixture setup
@@ -601,6 +594,128 @@ t.XTestFakeButtonEvent(d,1,1,0); t.XTestFakeButtonEvent(d,1,0,0); x.XFlush(d); x
     await expect.poll(() => evaluatePage<number>(f.app, `${f.origin}/first`, 'window.presentedFrames')).toBeGreaterThan(samePaneFrame + 5);
     await expect(leftAddress).toBeFocused();
     await leftAddress.press('Escape');
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('reading surfaces offer native copy/search menus and local Markdown PDF export', async () => {
+  const f = await fixture();
+  try {
+    await captureNativeMenus(f.app);
+    const menu = async () => f.app.evaluate(async ({ BrowserWindow }) => {
+      const view = BrowserWindow.getAllWindows()[0].contentView.children.find(view => view.getVisible()
+        && 'webContents' in view && (view as Electron.WebContentsView).webContents.getURL().startsWith('marktex-preview:')) as Electron.WebContentsView;
+      const wc = view.webContents; wc.focus();
+      const point = await wc.executeJavaScript(`(() => { const p=document.querySelector('.markdown-preview p'); const range=document.createRange(); range.selectNodeContents(p); const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);const r=p.getBoundingClientRect();return {x:Math.round(r.left+r.width/2),y:Math.round(r.top+r.height/2)}; })()`);
+      await new Promise<void>(resolve => {
+        wc.once('context-menu', () => resolve());
+        wc.sendInputEvent({ type: 'mouseDown', ...point, button: 'right', clickCount: 1 });
+        wc.sendInputEvent({ type: 'mouseUp', ...point, button: 'right', clickCount: 1 });
+      });
+    });
+    await menu();
+    await chooseNativeMenu(f.app, ['Copy']);
+    expect(await f.app.evaluate(({ clipboard }) => clipboard.readText())).toContain('Keep the reader intact.');
+    await menu(); await chooseNativeMenu(f.app, ['Search Google']);
+    await expect(f.page.getByRole('tab', { name: /Google/ })).toBeVisible();
+    expect(await f.page.getByRole('textbox', { name: 'Address or file path' }).inputValue()).toContain('search?q=Keep%20the%20reader');
+    await f.page.getByRole('tab', { name: /notes.md/ }).click();
+    const target = test.info().outputPath('notes.pdf');
+    await f.app.evaluate(({ dialog }, target) => { dialog.showSaveDialog = (async () => ({ canceled: false, filePath: target })) as typeof dialog.showSaveDialog; }, target);
+    await menu(); await chooseNativeMenu(f.app, ['Export to PDF…']);
+    await expect.poll(() => readFile(target).then(data => data.subarray(0, 5).toString()).catch(() => '')).toBe('%PDF-');
+    await expect(f.page.getByRole('tab', { name: /notes.md/ })).toHaveAttribute('aria-selected', 'true');
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('web reader searches the visible article and exports its snapshot as Markdown and PDF', async () => {
+  const f = await fixture();
+  try {
+    await captureNativeMenus(f.app);
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/article`);
+    const tab = f.page.getByRole('tab', { name: /Long article/ }); await expect(tab).toBeVisible();
+    const id = (await tab.getAttribute('data-tab-id'))!;
+    await f.page.getByRole('button', { name: 'Enter reader mode' }).click();
+    const reader = f.page.getByRole('region', { name: 'Reader mode', exact: true });
+    await expect(reader).toBeVisible();
+    await f.app.evaluate(({ webContents }, origin) => {
+      const wc = webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/article`)!;
+      (globalThis as any).__readerNativeFind = 0;
+      const find = wc.findInPage.bind(wc);
+      wc.findInPage = (...args) => { (globalThis as any).__readerNativeFind++; return find(...args); };
+    }, f.origin);
+    await f.page.keyboard.press('Control+f');
+    const find = f.page.getByRole('textbox', { name: 'Find in web page' });
+    await expect(find).toBeFocused(); await find.fill('Paragraph ');
+    await expect(f.page.locator('.location-bar .find-count')).toHaveText('1/40');
+    await find.press('Enter'); await expect(f.page.locator('.location-bar .find-count')).toHaveText('2/40');
+    await find.press('Shift+Enter'); await expect(f.page.locator('.location-bar .find-count')).toHaveText('1/40');
+    await find.press('Shift+Enter'); await expect(f.page.locator('.location-bar .find-count')).toHaveText('40/40');
+    await find.fill('Export to Markdown'); await expect(f.page.locator('.location-bar .find-count')).toHaveText('0/0');
+    await find.fill('Paragraph 39');
+    await expect(f.page.locator('.location-bar .find-count')).toHaveText('1/1');
+    expect(await f.app.evaluate(() => (globalThis as any).__readerNativeFind)).toBe(0);
+    expect(await reader.evaluate((element, id) => {
+      const highlight = CSS.highlights.get(`reader-${id}-active`)!;
+      const range = [...highlight][0] as Range; const rect = range.getBoundingClientRect(), viewport = element.getBoundingClientRect();
+      return range.toString() === 'Paragraph 39' && rect.top >= viewport.top && rect.bottom <= viewport.bottom;
+    }, id)).toBe(true);
+    await find.press('Escape'); await expect(reader).toBeFocused();
+    const paragraph = reader.locator('p').filter({ hasText: 'Paragraph 39:' });
+    await paragraph.evaluate(p => { const range = document.createRange(); range.selectNodeContents(p); const selection = window.getSelection()!; selection.removeAllRanges(); selection.addRange(range); });
+    await paragraph.click({ button: 'right' }); await chooseNativeMenu(f.app, ['Copy']);
+    expect(await f.app.evaluate(({ clipboard }) => clipboard.readText())).toContain('Paragraph 39:');
+    const markdown = test.info().outputPath('article.md'), pdf = test.info().outputPath('article.pdf');
+    await f.app.evaluate(({ dialog }, { markdown, pdf }) => {
+      dialog.showSaveDialog = (async (_owner, options) => ({ canceled: false, filePath: options!.defaultPath!.endsWith('.pdf') ? pdf : markdown })) as typeof dialog.showSaveDialog;
+    }, { markdown, pdf });
+    await reader.getByRole('button', { name: 'Export to Markdown', exact: true }).click();
+    await expect.poll(() => readFile(markdown, 'utf8').catch(() => '')).toContain('Paragraph 39:');
+    const text = await readFile(markdown, 'utf8'); expect(text).toContain('# The Long Article Title'); expect(text).toContain(`${f.origin}/article`);
+    expect(text).not.toContain('Copyright noise');
+    await reader.getByRole('button', { name: 'Export to PDF', exact: true }).click();
+    await expect.poll(() => readFile(pdf).then(data => data.subarray(0, 5).toString()).catch(() => '')).toBe('%PDF-');
+    await expect(reader).toBeVisible(); await expect(tab).toHaveAttribute('aria-selected', 'true');
+    await rm(pdf);
+    await f.page.getByRole('button', { name: 'File', exact: true }).click();
+    await expect(f.page.getByRole('menuitem', { name: 'Export as PDF…', exact: true })).toBeEnabled();
+    await f.page.getByRole('menuitem', { name: 'Export as PDF…', exact: true }).click();
+    await expect.poll(() => readFile(pdf).then(data => data.subarray(0, 5).toString()).catch(() => '')).toBe('%PDF-');
+    await f.page.keyboard.press('Control+f'); await find.fill('Paragraph 39');
+    await expect(f.page.locator('.location-bar .find-count')).toHaveText('1/1');
+    await paragraph.dblclick(); await expect(reader).toHaveCount(0);
+    await expect.poll(() => f.app.evaluate(() => (globalThis as any).__readerNativeFind)).toBeGreaterThan(0);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('Namu reader extracts hashed div layouts, keeps tables and anchors and restores the live paragraph', async () => {
+  const f = await fixture();
+  try {
+    const markup = `<!doctype html><title>Fixture wiki - 나무위키</title>
+        <style>body{margin:0}h1{height:80px}td{padding:12px}.leaf{margin-bottom:28px}</style><h1>Fixture wiki</h1><nav>Site navigation, edit, history</nav>
+        <div class="random-root"><table><tr><th>Name</th><th>Value</th></tr><tr><td>Identity</td><td>Preserved table</td></tr></table><div id="toc"><a href="#s-1">1. Overview</a><a href="#s-2">2. More</a></div>
+        <div class="hash-A"><div class="empty">&nbsp;</div><div class="hash-B"><h2><a id="s-1" href="#toc">1.</a><span id="Overview">Overview<a href="/edit/Fixture?section=1">[편집]</a></span></h2></div></div>
+        ${Array.from({ length: 25 }, (_, i) => `<div class="layout-${i}"><div>&nbsp;</div><div class="leaf">Wiki paragraph ${i}: useful content in a leaf div, containing <a href="/w/Other">a wiki link</a>. Reading preserves paragraphs despite changing obfuscated CSS classes.</div></div>`).join('')}
+        <h2><a id="s-2" href="#toc">2.</a>More</h2><details><summary>Folded section</summary><div>Folded wiki content must remain readable.</div></details><p id="fn-1">Footnote preserved.</p></div><aside>Recent changes sidebar noise</aside>`;
+    let served = 0;
+    await f.app.context().route('https://namu.wiki/**', route => {
+      served++; return route.fulfill({ contentType: 'text/html; charset=utf-8', body: markup });
+    });
+    await f.page.evaluate(() => window.marktex.openLink('https://namu.wiki/w/Fixture'));
+    await expect(f.page.getByRole('tab', { name: /Fixture wiki/ })).toBeVisible();
+    expect(served).toBeGreaterThan(0);
+    await f.page.getByRole('button', { name: 'Enter reader mode' }).click();
+    const reader = f.page.getByRole('region', { name: 'Reader mode', exact: true }); await expect(reader).toBeVisible();
+    await expect(reader.locator('table')).toContainText('Preserved table');
+    await expect(reader.locator('p').filter({ hasText: 'Wiki paragraph 20:' })).toBeVisible();
+    await expect(reader.locator('a[href="https://namu.wiki/w/Other"]').first()).toBeAttached();
+    await expect(reader.locator('details')).toHaveAttribute('open', '');
+    await expect(reader).not.toContainText('[편집]'); await expect(reader).not.toContainText('Recent changes sidebar noise');
+    const paragraph = reader.locator('p').filter({ hasText: 'Wiki paragraph 20:' });
+    await paragraph.dblclick(); await expect(reader).toHaveCount(0);
+    expect(await evaluatePage(f.app, 'https://namu.wiki/w/Fixture', `(() => { const p=[...document.querySelectorAll('.leaf')].find(p=>p.textContent.startsWith('Wiki paragraph 20:')); const r=p.getBoundingClientRect(); return r.bottom>0 && r.top<innerHeight; })()`)).toBe(true);
     expect(f.errors).toEqual([]);
   } finally { await f.dispose(); }
 });

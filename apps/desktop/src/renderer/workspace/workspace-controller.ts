@@ -88,7 +88,15 @@ export function startWorkspace(desktop: DesktopPort) {
       try { await desktop.browser.bookmark(url, title, bookmarked); browser.revision++; }
       catch (error) { browser.error = String(error); }
     },
-    browserFind: (id, query, forward, next) => { if (!next) { browser.active = 0; browser.matches = 0; } desktop.browser.find(id, query, forward, next); },
+    browserFind: (id, query, forward = true, next = false) => {
+      if (!next) { browser.active = 0; browser.matches = 0; }
+      if (browser.readers[id]) browser.readerFind[id] = { query, forward, next, request: (browser.readerFind[id]?.request ?? 0) + 1 };
+      else desktop.browser.find(id, query, forward, next);
+    },
+    browserReaderMenu: (id, context) => desktop.browser.readerMenu(id, context),
+    browserReaderExport: async (id, format) => {
+      try { await desktop.browser.readerExport(id, format); } catch (error) { browser.error = String(error); }
+    },
     browserReaderEnter: (id) => { void enterWebReader(id); },
     browserReaderExit: (id, anchor) => { void exitWebReader(id, anchor); },
     browserExtensions: () => desktop.browser.extensions(),
@@ -223,7 +231,11 @@ export function startWorkspace(desktop: DesktopPort) {
       if (tab?.kind === 'web') actions.browserCommand(id, 'focus');
       return;
     }
+    // Retire native find highlights; the same query belongs to the visible
+    // reading surface and is replayed there after mount.
+    desktop.browser.find(id, '');
     browser.readers[id] = snapshot;
+    if (browser.findId === id) actions.browserFind(id, browser.query);
     browsers?.sync(true);
   }
   /** Double-click in the reader, mirroring the Markdown viewer: position the
@@ -234,7 +246,8 @@ export function startWorkspace(desktop: DesktopPort) {
     // serialize); send a plain copy, and never let a failed restore keep
     // the reader open.
     if (anchor) { try { await desktop.browser.readerRestore(id, { ...anchor }); } catch { /* exit anyway */ } }
-    delete browser.readers[id]; delete browser.readerPositions[id];
+    delete browser.readers[id]; delete browser.readerPositions[id]; delete browser.readerFind[id];
+    if (browser.findId === id) desktop.browser.find(id, browser.query);
     browsers?.sync(true);
     await tick();
     actions.browserCommand(id, 'focus');
@@ -358,6 +371,9 @@ export function startWorkspace(desktop: DesktopPort) {
         && workspace.groups.groups.some(group => group.activeId === payload.tabId)) {
         actions.activateTab(payload.tabId); return;
       }
+      if (payload.message.type === 'marktex:reader-export') {
+        void (async () => { await tabs.activate(payload.tabId); if (workspace.activeId === payload.tabId && !project.gitDiffActive) await documents.exportPdf(); })(); return;
+      }
       if (payload.message.type === 'marktex:folder-drop' && typeof payload.message.path === 'string') {
         void projects.openFolderPath(payload.message.path); return;
       }
@@ -395,10 +411,13 @@ export function startWorkspace(desktop: DesktopPort) {
       if (workspace.active?.kind === 'web' && !project.gitDiffActive) {
         if (command === 'escape' && browser.findId === workspace.active.id) {
           actions.browserFind(workspace.active.id, ''); browser.findId = null;
-          actions.browserCommand(workspace.active.id, 'focus'); return;
+          if (browser.readers[workspace.active.id]) window.dispatchEvent(new CustomEvent('setdown:reader-focus', { detail: workspace.active.id }));
+          else actions.browserCommand(workspace.active.id, 'focus');
+          return;
         }
         if (command === 'escape' && !popupOwnsEscape()) { actions.browserReaderEnter(workspace.active.id); return; }
         if (command === 'open-find') { window.dispatchEvent(new Event('setdown:browser-find')); return; }
+        if (command === 'export-pdf' && browser.readers[workspace.active.id]) { void actions.browserReaderExport(workspace.active.id, 'pdf'); return; }
         if (command === 'save' || command === 'save-as') { actions.browserCommand(workspace.active.id, 'save'); return; }
       }
       if (command === 'toggle-terminal') { projects.select('terminal'); return; }

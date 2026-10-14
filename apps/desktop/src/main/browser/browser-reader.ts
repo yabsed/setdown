@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { WebContents } from 'electron';
 import { readReaderSnapshot, type ReaderAnchor, type ReaderSnapshot } from '../../core/browser/reader-article';
+import { namuArticleRoot, readerBlocks } from '../../core/browser/namu-reader';
 import { GOLDEN_TOP_RATIO } from '../../core/preview/viewport-anchor';
 
 /** Block-level candidates that can carry a reading position. The ordinal of an
@@ -21,9 +22,11 @@ const extraction = `(function () {
   try {
     var BLOCKS = ${JSON.stringify(BLOCKS)};
     var doc = document;
+    var namu = ['namu.wiki', 'www.namu.wiki'].includes(location.hostname) && location.pathname.startsWith('/w/');
+    var getBlocks = ${readerBlocks.toString()};
     var vh = window.innerHeight || 1;
     var golden = vh * ${GOLDEN_TOP_RATIO};
-    var blocks = Array.prototype.slice.call(doc.querySelectorAll(BLOCKS));
+    var blocks = getBlocks(doc, namu, BLOCKS);
     var anchor = null, anchorRect = null, below = null;
     for (var i = 0; i < blocks.length; i++) {
       var rect = blocks[i].getBoundingClientRect();
@@ -46,11 +49,18 @@ const extraction = `(function () {
     var base = clone.querySelector('base');
     if (!base) { base = clone.createElement('base'); clone.head && clone.head.prepend(base); }
     if (base) base.setAttribute('href', doc.baseURI);
-    clone.querySelectorAll(BLOCKS).forEach(function (el, index) {
+    getBlocks(clone, namu, BLOCKS).forEach(function (el, index) {
       el.setAttribute('data-setdown-block', String(index));
     });
-    var article = new Readability(clone).parse();
-    if (!article || !article.content || (article.length || 0) < 200) return null;
+    var namuRoot = namu ? (${namuArticleRoot.toString()})(clone) : null;
+    if (namuRoot) namuRoot.querySelectorAll('a[href],img').forEach(function (el) {
+      var key = el.tagName === 'IMG' ? 'src' : 'href'; var value = el.getAttribute(key);
+      if (value && !value.startsWith('#')) try { el.setAttribute(key, new URL(value, doc.baseURI).href); } catch (_) {}
+      if (key === 'src') el.removeAttribute('srcset');
+    });
+    var article = namuRoot ? { title: doc.querySelector('h1')?.textContent || doc.title.replace(/ - 나무위키$/, ''),
+      siteName: '나무위키', content: namuRoot.outerHTML, length: namuRoot.textContent.length } : new Readability(clone).parse();
+    if (!article || !article.content || (article.length || 0) < (namuRoot ? 80 : 200)) return null;
     return {
       title: article.title || doc.title || '',
       byline: article.byline || null,
@@ -67,7 +77,7 @@ function restoration(anchor: ReaderAnchor): string {
       var BLOCKS = ${JSON.stringify(BLOCKS)};
       var vh = window.innerHeight || 1;
       var norm = function (value) { return (value || '').replace(/\\s+/g, ' ').trim(); };
-      var blocks = Array.prototype.slice.call(document.querySelectorAll(BLOCKS));
+      var blocks = (${readerBlocks.toString()})(document, ['namu.wiki', 'www.namu.wiki'].includes(location.hostname) && location.pathname.startsWith('/w/'), BLOCKS);
       var el = blocks[target.ordinal];
       var wanted = norm(target.text).slice(0, 40);
       if (wanted && !(el && norm(el.textContent).indexOf(wanted) >= 0)) {

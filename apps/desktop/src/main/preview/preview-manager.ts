@@ -56,6 +56,8 @@ export class PreviewManager {
   });
   private warmup: { url: string; themeId: PreviewThemeId } | null = null;
 
+  private readingMenu?: (tabId: string, contents: WebContents, params: Electron.ContextMenuParams, state: WindowState, valid: () => boolean) => void;
+  setReadingMenu(handler: NonNullable<PreviewManager['readingMenu']>) { this.readingMenu = handler; }
   constructor(private readonly options: Options) {}
 
   html(token: string) { return this.documents.get(token) ?? null; }
@@ -87,6 +89,17 @@ export class PreviewManager {
     });
     view.setBackgroundColor(previewThemeBackground(this.options.theme()));
     view.setVisible(false);
+    const contents = view.webContents;
+    contents.on('context-menu', (_event, params) => {
+      if (contents.isDestroyed() || !view.getVisible()) return;
+      const found = [...this.views].find(([, entry]) => entry.view === view);
+      const state = found && this.options.stateFor(found[1].ownerWebContentsId);
+      if (!found || !state) return;
+      const [tabId, entry] = found, url = contents.getURL();
+      this.readingMenu?.(tabId, contents, params, state, () => !contents.isDestroyed() && contents.getURL() === url
+        && this.views.get(tabId) === entry && entry.ownerWebContentsId === state.webContentsId
+        && view.getVisible() && !state.window.isDestroyed());
+    });
     view.webContents.on('focus', () => {
       this.returnFocusFromHiddenView(view);
       if (!view.getVisible()) return;

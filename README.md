@@ -81,6 +81,14 @@ the left **Browser** panel. The **uBO** button opens the current site's controls
 Browser cookies, bookmarks and history use a separate local profile, and saved
 web tabs restore lazily after a restart.
 
+Press `Esc` on a readable web article to open Reader mode; double-click a passage
+to return to that place on the live page. `Ctrl/Cmd+F` searches the visible reading
+text. Right-click rendered Markdown or a web Reader for Copy, Search Google,
+link actions, Select All and Find. Web Reader's **Export to Markdown** and
+**Export to PDF** buttons save the article with its source URL; **File → Export
+as PDF…** also works there. Markdown exports preserve linked images rather than
+downloading an offline image archive.
+
 In **Browser → Extensions → Install from Chrome Web Store…**, paste an extension's
 store link or ID and confirm its name and permissions. Installed extensions can
 be disabled, removed, or updated with **Update from Web Store**. Updates require

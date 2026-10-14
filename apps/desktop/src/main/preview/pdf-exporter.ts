@@ -5,7 +5,7 @@ import type { ExportPdfResult } from '../../protocol/desktop-api';
 import type { WindowState } from '../windows/window-state';
 import type { PreviewRenderer } from './preview-renderer';
 
-async function waitForPrintablePreview(window: BrowserWindow): Promise<void> {
+export async function waitForPrintablePreview(window: BrowserWindow): Promise<void> {
   await window.webContents.executeJavaScript(`new Promise((resolve) => {
     const started = Date.now();
     let stableSince = 0;

@@ -62,6 +62,8 @@ export type AppActions = {
   browserDeleteHistory(url?: string): Promise<void>;
   browserDownloadCommand(id: string, command: import('../protocol/browser').DownloadCommand): Promise<void>;
   browserFind(id: string, query: string, forward?: boolean, next?: boolean): void;
+  browserReaderExport(id: string, format: 'markdown' | 'pdf'): Promise<void>;
+  browserReaderMenu(id: string, context: { selection: string; link: string }): Promise<import('../core/reading/reading-menu').ReadingMenuCommand | null>;
   browserReaderEnter(id: string): void;
   browserReaderExit(id: string, anchor?: import('../protocol/browser').ReaderAnchor): void;
   browserExtensions(): Promise<import('../protocol/browser').BrowserExtensionInfo[]>;

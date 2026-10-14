@@ -39,7 +39,7 @@
     <LocationBar {actions} groupId={box.id} />
     <div class="group-body" data-group-id={box.id} data-zoom-tab={tab?.id}>
       {#if tab?.kind === 'web' && browser.readers[tab.id]}
-        <WebReaderSurface {actions} groupId={box.id} tabId={tab.id} snapshot={browser.readers[tab.id]} />
+        {#key tab.id}<WebReaderSurface {actions} groupId={box.id} tabId={tab.id} snapshot={browser.readers[tab.id]} />{/key}
       {:else if tab?.kind === 'web' && (tab.page?.error || tab.page?.startPage)}
         <div class="browser-empty" data-browser-tab={tab.id}>
           <h2>{tab.page?.error ? 'This page could not be opened' : 'A place for the web'}</h2>

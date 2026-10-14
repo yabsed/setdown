@@ -19,10 +19,12 @@ import { extractReaderArticle, restoreReaderAnchor } from './browser-reader';
 import { readReaderAnchor, type ReaderAnchor } from '../../core/browser/reader-article';
 import { BrowserPermissions } from './browser-permissions';
 import { browserContextMenu } from './browser-context-menu';
+import { showReadingMenu } from '../menu/reading-menu';
+import type { ReaderSnapshot } from '../../protocol/browser';
 import { BrowserAuth } from './browser-auth';
 
 type Entry = { owner: number; view: WebContentsView; contents: WebContents; page: BrowserPage; navigation: number; bounds?: Rectangle;
-  document: number; menuGeneration: number; find?: { request: number; query: string }; htmlFullscreen?: boolean;
+  document: number; reader?: { snapshot: ReaderSnapshot; document: number }; menuGeneration: number; find?: { request: number; query: string }; htmlFullscreen?: boolean;
   popups: number[]; externalRequests: number[]; externalPending?: boolean;
   historyUrls: string[]; historyIndex: number; canGoBack?: boolean; canGoForward?: boolean; closing?: (value: boolean) => void };
 type Options = { stateFor(id: number): WindowState | null; states(): Iterable<WindowState>; zoom: WorkspaceZoom;
@@ -119,6 +121,19 @@ export class BrowserManager {
     const entry = typeof id === 'string' ? this.views.get(id) : undefined;
     if (!entry || entry.owner !== owner || entry.contents.isDestroyed()) throw Error('This web tab does not belong to this window.');
     return entry;
+  }
+  readerReady(owner: number, id: string): boolean {
+    const entry = this.views.get(id);
+    return !!entry && this.live(entry) && entry.owner === owner && !!entry.reader && entry.reader.document === entry.document;
+  }
+  async exportReader(owner: number, id: string, format: 'markdown' | 'pdf', theme: import('../../core/preview/preview-preferences').PreviewThemeId) {
+    const entry = this.owned(owner, id), reader = entry.reader;
+    if (!reader || reader.document !== entry.document || entry.page.url !== reader.snapshot.article.url) return { canceled: true };
+    const { exportReader } = await import('./reader-exporter');
+    const state = this.options.stateFor(owner);
+    if (!state || state.window.isDestroyed() || !this.live(entry) || entry.owner !== owner || entry.reader !== reader || reader.document !== entry.document) return { canceled: true };
+    return exportReader(state.window, reader.snapshot.article, format, theme,
+      () => this.live(entry) && entry.owner === owner && entry.reader === reader && reader.document === entry.document);
   }
   owns(owner: number, id: string) { return this.views.get(id)?.owner === owner; }
   reloadFocused(owner: number, ignoreCache = false): boolean {
@@ -237,7 +252,7 @@ export class BrowserManager {
     wc.on('did-start-navigation', (_event, _url, inPlace, main) => {
       entry.menuGeneration++;
       if (!main || inPlace) return;
-      entry.document++; entry.find = undefined; entry.page.error = null; entry.page.failure = undefined;
+      entry.document++; entry.reader = undefined; entry.find = undefined; entry.page.error = null; entry.page.failure = undefined;
       this.send(entry.owner, { type: 'document', id });
       this.auth.clear(id);
       this.permissions.clear(entry.owner, id);
@@ -545,7 +560,17 @@ export class BrowserManager {
     channels.handle('browser:reader-extract', async (state, id: string) => {
       const entry = this.owned(state.webContentsId, id);
       if (!isWebURL(entry.contents.getURL())) return null;
-      return extractReaderArticle(entry.contents);
+      const document = entry.document;
+      const snapshot = await extractReaderArticle(entry.contents);
+      if (!this.live(entry) || entry.owner !== state.webContentsId || document !== entry.document || snapshot?.article.url !== entry.page.url) return null;
+      entry.reader = { snapshot, document }; return snapshot;
+    });
+    channels.handle('browser:reader-menu', (state, id: string, context: { selection: string; link: string }) => {
+      const entry = this.owned(state.webContentsId, id), document = entry.document;
+      if (!this.readerReady(state.webContentsId, id) || !context || typeof context.selection !== 'string' || typeof context.link !== 'string') return null;
+      return showReadingMenu(state.window, { selection: context.selection, link: context.link, markdown: true, pdf: true },
+        () => this.live(entry) && entry.owner === state.webContentsId && entry.document === document && !state.window.isDestroyed(),
+        url => { void this.openLink(entry.owner, url); });
     });
     channels.handle('browser:reader-restore', async (state, id: string, anchor: ReaderAnchor) => {
       const entry = this.owned(state.webContentsId, id), valid = readReaderAnchor(anchor);

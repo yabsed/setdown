@@ -5,6 +5,7 @@
   import type { ReaderAnchor, ReaderSnapshot } from '../../protocol/browser';
   import { GOLDEN_TOP_RATIO } from '../../core/preview/viewport-anchor';
   import { browser } from './browser-state.svelte';
+  import { createRenderedFind } from './rendered-find';
   import { zoomState } from '../zoom-state.svelte';
 
   let { actions, groupId, tabId, snapshot }: {
@@ -12,6 +13,32 @@
   } = $props();
   const article = $derived(snapshot.article);
   let container: HTMLElement;
+  let content: HTMLElement;
+  let finder = $state<ReturnType<typeof createRenderedFind>>();
+  let exporting = $state(false);
+  $effect(() => {
+    const request = browser.readerFind[tabId];
+    if (finder && request) finder.search(request.query, request.forward, request.next);
+  });
+  async function exportArticle(format: 'markdown' | 'pdf') {
+    if (exporting) return;
+    exporting = true;
+    try { await actions.browserReaderExport(tabId, format); } finally { exporting = false; }
+  }
+  async function contextMenu(event: MouseEvent) {
+    event.preventDefault(); actions.focusGroup(groupId);
+    const selection = window.getSelection();
+    const text = selection?.anchorNode && container.contains(selection.anchorNode) ? selection.toString() : '';
+    const anchor = (event.target as Element).closest<HTMLAnchorElement>('a[href]');
+    let link = ''; try { if (anchor) link = new URL(anchor.getAttribute('href')!, article.url).href; } catch { /* malformed link */ }
+    const id = tabId, source = snapshot;
+    const command = await actions.browserReaderMenu(id, { selection: text, link });
+    if (!container.isConnected || tabId !== id || snapshot !== source || !browser.readers[id]) return;
+    if (command === 'select-all') { const range = document.createRange(); range.selectNodeContents(content); selection?.removeAllRanges(); selection?.addRange(range); }
+    else if (command === 'find') window.dispatchEvent(new Event('setdown:browser-find'));
+    else if (command === 'export-markdown') await exportArticle('markdown');
+    else if (command === 'export-pdf') await exportArticle('pdf');
+  }
   let appliedTop = -1, userScrolled = false, linkTimer: ReturnType<typeof setTimeout> | undefined;
 
   // Article HTML is untrusted page content rendered in the shell: strip
@@ -43,13 +70,18 @@
   }
 
   onMount(() => {
-    void (async () => { await tick(); positionAt(snapshot.anchor); container.focus({ preventScroll: true }); })();
+    const focus = ((event: CustomEvent<string>) => { if (event.detail === tabId) container.focus({ preventScroll: true }); }) as EventListener;
+    window.addEventListener('setdown:reader-focus', focus);
+    finder = createRenderedFind(container, content, tabId, (active, matches) => {
+      if (browser.findId === tabId) { browser.active = active; browser.matches = matches; }
+    });
+    void (async () => { await tick(); positionAt(browser.readerPositions[tabId] ?? snapshot.anchor); container.focus({ preventScroll: true }); })();
     // Late image loads reflow the article; settle once more unless the user
     // has already taken over the scroll position.
-    const settle = () => { if (!userScrolled) positionAt(snapshot.anchor); };
+    const settle = () => { if (!userScrolled) positionAt(browser.readerPositions[tabId] ?? snapshot.anchor); };
     container.addEventListener('load', settle, true);
     const timer = setTimeout(settle, 350);
-    return () => { container.removeEventListener('load', settle, true); clearTimeout(timer); clearTimeout(linkTimer); cancelAnimationFrame(publishFrame); };
+    return () => { window.removeEventListener('setdown:reader-focus', focus); finder?.dispose(); container.removeEventListener('load', settle, true); clearTimeout(timer); clearTimeout(linkTimer); cancelAnimationFrame(publishFrame); };
   });
 
   function anchorFor(el: HTMLElement | undefined): ReaderAnchor {
@@ -105,7 +137,7 @@
   /** Keyboard counterpart of the double-click: Enter on the focused reader
    * returns to the page at the first visible block. */
   function keydown(event: KeyboardEvent) {
-    if (event.key !== 'Enter' || event.target !== container) return;
+    if (event.isComposing || event.key !== 'Enter' || event.target !== container) return;
     event.preventDefault();
     const blocks = stamped();
     const top = container.getBoundingClientRect().top;
@@ -121,7 +153,7 @@
     const href = link.getAttribute('href')!;
     event.preventDefault();
     if (href.startsWith('#')) {
-      try { container.querySelector(`#${CSS.escape(href.slice(1))}`)?.scrollIntoView(); } catch { /* bad fragment */ }
+      try { container.querySelector(`#${CSS.escape(decodeURIComponent(href.slice(1)))}`)?.scrollIntoView(); } catch { /* bad fragment */ }
       return;
     }
     let url: URL;
@@ -142,13 +174,20 @@
 <section class="web-reader" aria-label="Reader mode" data-reader-tab={tabId} tabindex="-1"
   data-zoom-tab={tabId} style:font-size={`${14 * (zoomState.tabs?.[tabId] ?? 100) / 100}px`} bind:this={container}
   onscroll={onScroll}
+  oncontextmenu={contextMenu}
   onclick={clicked} ondblclick={dblclick} onkeydown={keydown}>
   <div class="web-reader-column">
-    <header>
-      <h1>{article.title}</h1>
-      {#if meta}<p class="meta">{meta}</p>{/if}
-    </header>
-    {@html html}
+    <div class="reader-export-actions" aria-label="Export reading view">
+      <button disabled={exporting} onclick={() => void exportArticle('markdown')}>Export to Markdown</button>
+      <button disabled={exporting} onclick={() => void exportArticle('pdf')}>Export to PDF</button>
+    </div>
+    <div bind:this={content}>
+      <header>
+        <h1>{article.title}</h1>
+        {#if meta}<p class="meta">{meta}</p>{/if}
+      </header>
+      {@html html}
+    </div>
   </div>
 </section>
 
@@ -158,6 +197,9 @@
      carries app zoom), full-width body with 2em page padding and the
      Crossnote github-family element metrics. Colors come from the same theme
      profile that drives the preview, exposed as shell variables. */
+  .reader-export-actions { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
+  .reader-export-actions button { background: transparent; border: 1px solid var(--app-border); border-radius: 4px; padding: 4px 8px; color: var(--app-muted-text); font: 11px var(--app-font-family); cursor: pointer; }
+  .reader-export-actions button:hover { color: var(--app-text); background: var(--app-hover); }
   .web-reader {
     position: absolute; inset: 0; overflow: auto; overflow-x: hidden;
     padding: 2em; padding-bottom: 5rem; box-sizing: border-box;

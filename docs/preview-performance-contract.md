@@ -220,6 +220,63 @@ The lazily mounted history graph must not take ownership of document focus or
 trigger history reads on unsaved keystrokes. `git-history.spec.ts` and the
 history/provider/controller unit tests cover the integration.
 
+## Reading surface capabilities
+
+Rendered Markdown/Git and web Reader snapshots share the small capability-based
+menu in `core/reading/reading-menu.ts`. Main owns native menu presentation,
+clipboard writes and Google-search/new-tab navigation. A menu belongs to its
+captured window, tab and navigation; hiding, closing or transferring that native
+view invalidates its commands. Selection enables Copy and Search Google; HTTP(S)
+links enable copying their address and opening a new tab. Select All and Find
+operate on the addressed reading surface. Ordinary Markdown retains PDF export;
+Git review does not export the current ordinary document by accident.
+
+Find follows the **visible surface**, not merely the tab's resource type.
+`core/reading/rendered-search.ts` retains Markdown's existing cross-inline text
+range algorithm; `renderer/browser/rendered-find.ts` uses it for scoped Reader
+highlights, counts, wrapping next/previous matches and scrolling. Native website
+find is stopped on Reader entry and receives the current query on exit. Late
+native find events cannot overwrite Reader counts. Search and Select All exclude
+the export controls. Closing search focuses that same Reader, without revealing
+or focusing its hidden native page. Keyed Reader mounts dispose highlights and
+restore their tab's saved reading anchor.
+
+Web Reader exposes Export to Markdown and Export to PDF; the File menu's existing
+PDF command addresses the active Reader too. `BrowserManager` retains the exact
+validated article snapshot and document generation used by the reading surface.
+`main/browser/reader-exporter.ts` opens an owned Save dialog, rejects obsolete or
+transferred snapshots, and never replaces the active document. Conversion is
+loaded on demand. `core/browser/reader-export.ts` sanitizes article HTML and uses
+[Turndown](https://github.com/mixmark-io/turndown) with its
+[GFM plugin](https://github.com/mixmark-io/turndown-plugin-gfm) to preserve headings,
+section anchors, absolute links/images, lists, simple tables and fenced code.
+Tables with merged cells retain sanitized HTML. Export includes the article title
+and source URL. PDF prints the complete sanitized snapshot in a detached hidden
+window with no page scripts or desktop bridge, using the existing printable
+resource readiness check. Markdown image links remain remote references; this
+export does not promise an offline image archive.
+
+`core/browser/namu-reader.ts` is an extraction adapter limited to `namu.wiki` and
+`www.namu.wiki` `/w/` articles. Public HTML inspected on 2026-10-15 for
+[Markdown](https://namu.wiki/w/Markdown) and
+[키스 길](https://namu.wiki/w/%ED%82%A4%EC%8A%A4%20%EA%B8%B8) uses changing hashed
+classes, semantic section anchors and nested `div` paragraphs. The adapter finds
+the common section root, removes empty scaffolding and editing controls, converts
+leaf content divs to paragraphs and preserves tables, lists, anchors, footnotes
+and expanded details. Extraction mutates a clone only. Extraction and live-page
+restoration share the same block coordinate system; absent semantic structure
+falls back to Readability. This does not bypass an unavailable or blocked page.
+
+The three reading-capability scenarios in `browser.spec.ts` exercise native
+right-click input and clipboard/Google commands, local Markdown PDF, visible
+Reader search without hidden-page find, Markdown/PDF buttons and File PDF,
+tab preservation, and hashed Namu-layout extraction with real double-click
+restoration. HTTPS fixtures use Playwright request routing on actual Electron
+WebContents; the Namu fixture asserts that it was served rather than accidentally
+loading a public page. Export sanitization and menu capability unit tests are
+included in the focused gate. Existing preparation, IME, position and visual
+checks remain required.
+
 ## Required deterministic and browser checks
 
 From the repository root:
@@ -568,3 +625,57 @@ they do not establish a sole cause. Unused address-dropdown hide IPC was removed
 bars, then the changed implementation was measured again with the same scenarios and thresholds.
 [Complete validation and measurement records](browser-lifecycle-validation-2026-10-15.json)
 retain the per-repetition samples, build/lock/harness hashes and limitations; logs are in `/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/test-results/browser-lifecycle-2026-10-15`.
+
+## Reading capabilities validation, 2026-10-15
+
+The final build/typecheck, 694 unit tests, 288 focused contract unit tests, three
+comparator tests and 96 real Electron GUI scenarios passed. Tests ran on isolated
+Xvfb with a private runtime and D-Bus session, without retries. Exported PDFs were
+also checked with `pdftotext`: the web article retained its title, source and first
+and last paragraphs; the local Markdown PDF retained its text. The first web
+article PDF page was visually inspected.
+
+The public Namu **키스 길** HTML capture, served in actual Electron with page
+scripts/external resources disabled, yielded 48 paragraphs, seven tables, seven
+section headings and 82 position stamps, without editing links. The synthetic
+hashed-layout test additionally verifies double-click restoration to the live
+leaf-div paragraph. This evidence is limited to the inspected markup; it does not
+establish every future or authenticated Namu layout.
+
+The separately installed baseline is `81bcd84a96ff2cf4b75852dda4354f2090dc1b33`;
+both versions used Electron 44.7.2. Five matched repetitions alternated their order
+on one isolated display. The eight scenarios and 48 first/second/warm comparisons
+used the unchanged 25% **and** 50ms thresholds. Results are **baseline → candidate
+medians in milliseconds**; warm is cycles 3–5.
+
+| Surface | Preparation | Edits | Measurement | First | Second | Warm |
+| --- | --- | --- | --- | --- | --- | --- |
+| document | 0ms | false | Esc → latest capture | 43.0 → 42.0 | 21.0 → 28.0 | 23.0 → 19.0 |
+| document | 0ms | false | Double-click → editor | 19.0 → 17.0 | 35.0 → 35.0 | 12.0 → 12.0 |
+| document | 0ms | true | Esc → latest capture | 389.0 → 446.0 | 108.0 → 103.0 | 89.0 → 95.0 |
+| document | 0ms | true | Double-click → editor | 22.0 → 21.0 | 14.0 → 14.0 | 15.0 → 15.0 |
+| document | 3000ms | false | Esc → latest capture | 45.0 → 47.0 | 17.0 → 18.0 | 22.0 → 21.0 |
+| document | 3000ms | false | Double-click → editor | 17.0 → 17.0 | 11.0 → 11.0 | 10.0 → 11.0 |
+| document | 3000ms | true | Esc → latest capture | 115.0 → 101.0 | 105.0 → 94.0 | 91.0 → 94.0 |
+| document | 3000ms | true | Double-click → editor | 15.0 → 21.0 | 16.0 → 13.0 | 14.0 → 16.0 |
+| review | 0ms | false | Esc → latest capture | 975.0 → 974.0 | 24.0 → 25.0 | 18.0 → 28.0 |
+| review | 0ms | false | Double-click → editor | 22.0 → 23.0 | 11.0 → 13.0 | 12.0 → 13.0 |
+| review | 0ms | true | Esc → latest capture | 1089.0 → 1045.0 | 1501.0 → 1501.0 | 179.0 → 177.0 |
+| review | 0ms | true | Double-click → editor | 21.0 → 23.0 | 17.0 → 20.0 | 18.0 → 19.0 |
+| review | 3000ms | false | Esc → latest capture | 25.0 → 25.0 | 19.0 → 22.0 | 19.0 → 18.0 |
+| review | 3000ms | false | Double-click → editor | 25.0 → 25.0 | 11.0 → 12.0 | 18.0 → 18.0 |
+| review | 3000ms | true | Esc → latest capture | 231.0 → 233.0 | 186.0 → 184.0 | 180.0 → 178.0 |
+| review | 3000ms | true | Double-click → editor | 23.0 → 21.0 | 18.0 → 18.0 | 18.0 → 18.0 |
+
+Result: **PASS**, 0 regressing buckets. These timings cover ordinary Markdown
+and Git transitions, not web Reader extraction or file export latency.
+
+The initial contract run passed 95/96 GUI cases; the new native menu test examined
+the menu before Chromium emitted `context-menu`. It now waits for that actual
+event before sending native menu-selection input. The first Namu fixture routing
+also failed to intercept HTTPS and was replaced with verified Playwright routing.
+The original failures and final results are preserved in
+[the validation record](reading-capabilities-validation-2026-10-15.json), including
+all performance samples, identities, build/lock/harness hashes and limitations.
+Raw artifacts are in `test-results/reading-capabilities-2026-10-15` and
+`test-results/reading-capabilities-benchmark-2026-10-15`.
