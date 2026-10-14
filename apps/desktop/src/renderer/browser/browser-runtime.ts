@@ -65,6 +65,10 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
       const tab = workspace.find(event.page.id);
       if (tab?.kind === 'web') { tab.page = event.page; tabs.updateChrome(); sync(true); }
     } else if (event.type === 'navigation') tabs.webNavigated(event.id);
+    else if (event.type === 'document') {
+      delete browser.readers[event.id]; delete browser.readerPositions[event.id];
+      if (browser.findId === event.id) { browser.findId = null; browser.active = 0; browser.matches = 0; }
+    }
     else if (event.type === 'reader') reader(event.id);
     else if (event.type === 'history') navigate(event.id, event.direction);
     else if (event.type === 'open') void tabs.addWeb(event.page, event.background);
@@ -85,7 +89,14 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
       if (!downloadsLoaded) changedDownloads.add(event.id);
       browser.downloads = browser.downloads.filter(item => item.id !== event.id);
     }
-    else if (event.type === 'find' && browser.findId === event.id) { browser.active = event.active; browser.matches = event.matches; }
+    else if (event.type === 'permissions') {
+      if (event.requests.length) browser.permissions[event.id] = event.requests; else delete browser.permissions[event.id];
+    }
+    else if (event.type === 'auth') {
+      if (event.request) browser.auth[event.id] = event.request;
+      else { delete browser.auth[event.id]; if (browser.authId === event.id) browser.authId = null; }
+    }
+    else if (event.type === 'find' && browser.findId === event.id && event.query === browser.query) { browser.active = event.active; browser.matches = event.matches; }
   });
   void desktop.browser.downloads().then(rows => {
     browser.downloads = [...browser.downloads, ...rows.filter(item => !changedDownloads.has(item.id))]

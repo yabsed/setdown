@@ -44,6 +44,7 @@
         <div class="browser-empty" data-browser-tab={tab.id}>
           <h2>{tab.page?.error ? 'This page could not be opened' : 'A place for the web'}</h2>
           <p>{tab.page?.error || 'Enter an address above, or open a bookmark from the Browser panel.'}</p>
+          {#if tab.page?.failure}<p>{tab.page.failure.url}</p>{/if}
           {#if tab.page?.error}<button onclick={() => actions.browserCommand(tab.id, 'reload')}>Reload page</button>{/if}
         </div>
       {/if}

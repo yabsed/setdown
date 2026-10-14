@@ -11,5 +11,6 @@ export type BrowserPage = {
   muted: boolean;
   zoomPercent: number;
   error: string | null;
+  failure?: import('./browser-failure').BrowserFailure;
   protection: 'starting' | 'ready' | 'error';
 };

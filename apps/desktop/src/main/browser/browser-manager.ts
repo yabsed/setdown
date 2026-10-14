@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { promises as fs, unwatchFile, writeFileSync, renameSync } from 'node:fs';
 import path from 'node:path';
 import { browserURL, isWebURL } from '../../core/browser/browser-url';
+import { browserFailure, browserFailureMessage } from '../../core/browser/browser-failure';
 import { permissionSummaryLines } from '../../core/browser/extension-package';
 import { appZoomStep } from '../../core/zoom';
 import type { BrowserCommand, BrowserEvent, BrowserExtensionInfo, BrowserPage, BrowserPlaceScope, DownloadCommand, ExtensionInstallKind, ExtensionPage } from '../../protocol/browser';
@@ -16,8 +17,13 @@ import { BrowserPlaces } from './browser-places';
 import { BrowserDownloads } from './browser-downloads';
 import { extractReaderArticle, restoreReaderAnchor } from './browser-reader';
 import { readReaderAnchor, type ReaderAnchor } from '../../core/browser/reader-article';
+import { BrowserPermissions } from './browser-permissions';
+import { browserContextMenu } from './browser-context-menu';
+import { BrowserAuth } from './browser-auth';
 
 type Entry = { owner: number; view: WebContentsView; page: BrowserPage; navigation: number; bounds?: Rectangle;
+  document: number; menuGeneration: number; find?: { request: number; query: string }; htmlFullscreen?: boolean;
+  popups: number[]; externalRequests: number[]; externalPending?: boolean;
   historyUrls: string[]; historyIndex: number; canGoBack?: boolean; canGoForward?: boolean; closing?: (value: boolean) => void };
 type Options = { stateFor(id: number): WindowState | null; states(): Iterable<WindowState>; zoom: WorkspaceZoom;
   openFile(state: WindowState, file: string): Promise<unknown> };
@@ -40,6 +46,12 @@ export class BrowserManager {
   private transferring = new Set<number>();
   private saveTimer?: ReturnType<typeof setTimeout>;
   private saving = Promise.resolve();
+  private readonly closedTabs = new Map<number, Array<{ url: string; title: string }>>();
+  private readonly auth = new BrowserAuth((owner, id, request) => this.send(owner, { type: 'auth', id, request }));
+  private readonly permissions = new BrowserPermissions(contents => {
+    const entry = this.forContents(contents);
+    return entry ? { id: entry.page.id, owner: entry.owner, contents: entry.view.webContents, visible: entry.view.getVisible() } : undefined;
+  }, (owner, id, requests) => this.send(owner, { type: 'permissions', id, requests }));
   constructor(private readonly options: Options) {}
   private pageZoom(entry: Entry): number { return this.options.zoom.tabFactor(`${entry.page.id}:website`); }
   private zoomPage(entry: Entry, steps: unknown, requireVisible = true): void {
@@ -53,17 +65,12 @@ export class BrowserManager {
       // frames created/navigated after the owning WebContents was initialized.
       this.profile.registerPreloadScript({ id: 'setdown-page-preload', type: 'frame',
         filePath: path.join(__dirname, 'page-preload.cjs') });
-      this.installPermissions(this.profile);
+      this.permissions.install(this.profile);
       this.profile.on('will-download', (_event, item, contents) => {
         const entry = this.forContents(contents);
         if (!entry) { item.cancel(); return; }
-        const owner = this.options.stateFor(entry.owner);
         item.setSaveDialogOptions({ title: 'Save download', defaultPath: path.join(app.getPath('downloads'), path.basename(item.getFilename())) });
         this.downloads.track(item);
-        item.once('done', (_event, result) => {
-          if (result === 'completed' && item.getMimeType() === 'application/pdf' && owner && !owner.window.isDestroyed())
-            void this.options.openFile(owner, item.getSavePath()).catch(error => this.error(entry, error));
-        });
       });
     }
     return this.profile;
@@ -113,6 +120,15 @@ export class BrowserManager {
     return entry;
   }
   owns(owner: number, id: string) { return this.views.get(id)?.owner === owner; }
+  reloadFocused(owner: number, ignoreCache = false): boolean {
+    const id = this.options.zoom.activeTab(owner), entry = id ? this.views.get(id) : undefined;
+    if (!entry || entry.owner !== owner || entry.view.webContents.isDestroyed()) return false;
+    entry.page.error = null; entry.page.failure = undefined;
+    const wc = entry.view.webContents;
+    if (wc.isCrashed() || wc.getURL() !== entry.page.url) void this.load(entry, entry.page.url);
+    else if (ignoreCache) wc.reloadIgnoringCache(); else wc.reload();
+    return true;
+  }
   private send(owner: number, event: BrowserEvent) {
     const state = this.options.stateFor(owner);
     if (state && !state.window.isDestroyed()) state.window.webContents.send('browser:event', event);
@@ -161,9 +177,13 @@ export class BrowserManager {
     const state = this.options.stateFor(owner)!;
     state.window.once('closed', () => {
       for (const entry of [...this.views.values()]) if (entry.owner === owner) {
+        this.permissions.clear(owner, entry.page.id);
+        this.auth.clear(entry.page.id);
         this.views.delete(entry.page.id); entry.view.webContents.close();
       }
+      for (const [id, tabOwner] of this.dormant) if (tabOwner === owner) this.dormant.delete(id);
       this.owners.delete(owner);
+      this.closedTabs.delete(owner);
       if (!this.owners.size) this.places.dispose();
     });
   }
@@ -173,11 +193,12 @@ export class BrowserManager {
     this.trackOwner(owner);
     const view = new WebContentsView({ webPreferences: { session: this.session,
       sandbox: true, contextIsolation: true,
-      nodeIntegration: false, nodeIntegrationInSubFrames: true, safeDialogs: true, autoplayPolicy: 'document-user-activation-required' },
+      nodeIntegration: false, nodeIntegrationInSubFrames: true, safeDialogs: true, backgroundThrottling: true,
+      autoplayPolicy: 'document-user-activation-required' },
       ...(existing ? { webContents: existing } : {}) });
     view.setVisible(false);
     // Hidden initial navigation stays detached, preserving document IME focus.
-    const entry: Entry = { owner, view, page: blankPage(id, url), navigation: 0,
+    const entry: Entry = { owner, view, page: blankPage(id, url), navigation: 0, document: 0, menuGeneration: 0, popups: [], externalRequests: [],
       historyUrls: [], historyIndex: -1 };
     this.views.set(id, entry);
     const wc = view.webContents;
@@ -185,6 +206,13 @@ export class BrowserManager {
     wc.on('ipc-message', (event, channel, steps) => {
       if (channel === 'browser:wheel-zoom') this.zoomPage(entry, steps);
       const frame = event.senderFrame;
+      if (channel === 'browser:escape' && frame && frame === wc.focusedFrame && view.getVisible() && !entry.htmlFullscreen) {
+        if (wc.isLoading()) wc.stop();
+        else if (isWebURL(wc.getURL())) {
+          this.options.stateFor(entry.owner)?.window.webContents.focus();
+          this.send(entry.owner, { type: 'reader', id });
+        }
+      }
       if (channel === 'browser:frame-ready' && frame && !frame.isDestroyed()) {
         frame.send('browser:frame-policy');
       }
@@ -194,6 +222,20 @@ export class BrowserManager {
       if (frame && !frame.isDestroyed()) frame.send('browser:frame-policy', true);
     });
     wc.on('zoom-changed', (_event, direction) => this.zoomPage(entry, direction === 'in' ? 1 : -1));
+    wc.on('did-start-navigation', (_event, _url, inPlace, main) => {
+      entry.menuGeneration++;
+      if (!main || inPlace) return;
+      entry.document++; entry.find = undefined; entry.page.error = null; entry.page.failure = undefined;
+      this.send(entry.owner, { type: 'document', id });
+      this.auth.clear(id);
+      this.permissions.clear(entry.owner, id);
+      this.send(entry.owner, { type: 'find', id, query: '', active: 0, matches: 0 });
+    });
+    wc.on('enter-html-full-screen', () => { entry.htmlFullscreen = true; });
+    wc.on('leave-html-full-screen', () => { entry.htmlFullscreen = false; });
+    wc.on('login', (event, details, authInfo, callback) => {
+      event.preventDefault(); this.auth.request(entry.owner, id, details.url, authInfo, callback);
+    });
     const register = () => this.extensions?.host?.addTab(wc, this.options.stateFor(entry.owner)!.window);
     void this.ensureReady().then(() => { if (!wc.isDestroyed()) { register(); entry.page.protection = 'ready'; this.publish(entry); } })
       .catch(error => { if (!wc.isDestroyed()) { entry.page.protection = 'error'; this.error(entry, error); } });
@@ -215,13 +257,23 @@ export class BrowserManager {
       if (isWebURL(wc.getURL())) void this.places.update(wc.getURL(), wc.getTitle(), { visit: true })
         .then(() => this.broadcast({ type: 'places' })).catch(console.error);
     });
-    wc.on('did-fail-load', (_event, code, description, _url, main) => {
-      if (main && code !== -3) this.error(entry, description);
+    wc.on('did-fail-load', (_event, code, _description, url, main) => {
+      if (!main || code === -3) return;
+      entry.page.failure = browserFailure(url, code);
+      if (isWebURL(url)) entry.page.url = url;
+      this.error(entry, browserFailureMessage(entry.page.failure));
     });
-    wc.on('render-process-gone', (_event, details) => this.error(entry, `This page stopped (${details.reason}). Reload to recover.`));
+    wc.on('render-process-gone', () => {
+      this.permissions.clear(entry.owner, id); this.auth.clear(id); entry.find = undefined; entry.document++;
+      entry.page.failure = { kind: 'crash', url: entry.page.url, code: 0 };
+      this.error(entry, browserFailureMessage(entry.page.failure));
+    });
     wc.on('audio-state-changed', () => this.publish(entry));
     wc.on('focus', () => { if (view.getVisible()) this.send(entry.owner, { type: 'focus', id }); });
-    wc.on('found-in-page', (_event, result) => this.send(entry.owner, { type: 'find', id, active: result.activeMatchOrdinal, matches: result.matches }));
+    wc.on('found-in-page', (_event, result) => {
+      if (entry.find?.request === result.requestId) this.send(entry.owner, { type: 'find', id, query: entry.find.query,
+        active: result.activeMatchOrdinal, matches: result.matches });
+    });
     wc.on('will-prevent-unload', event => {
       const owner = this.options.stateFor(entry.owner);
       const choice = owner && dialog.showMessageBoxSync(owner.window, { type: 'question', message: 'Leave this page?',
@@ -229,6 +281,8 @@ export class BrowserManager {
       if (choice === 1) event.preventDefault(); else { entry.closing?.(false); entry.closing = undefined; }
     });
     wc.on('destroyed', () => {
+      this.permissions.clear(entry.owner, id);
+      this.auth.clear(id);
       this.views.delete(id); entry.closing?.(true);
       if (this.options.stateFor(entry.owner)) { this.saved.delete(id); this.persist(); }
       this.send(entry.owner, { type: 'close', id });
@@ -244,12 +298,17 @@ export class BrowserManager {
         && !this.isExtensionURL(details.url)) {
         void this.external(entry, details.url); return { action: 'deny' };
       }
+      // Keep genuine popup contents/opener/POST bodies. Bound unsolicited bursts
+      // without treating Electron's disposition as a user-activation signal.
+      const now = Date.now(); entry.popups = entry.popups.filter(time => now - time < 10_000);
+      if (entry.popups.length >= 5) return { action: 'deny' };
+      entry.popups.push(now);
       // Min's createWindow adoption preserves opener relationships, POST bodies,
       // and about:blank scripts instead of recreating a popup from its URL.
       return { action: 'allow', createWindow: options => {
         const popup = this.openEntry(entry.owner, randomUUID(), details.url, (options as Electron.BrowserWindowConstructorOptions & { webContents?: WebContents }).webContents);
         popup.page.startPage = false;
-        this.send(entry.owner, { type: 'open', page: popup.page, background: details.disposition === 'background-tab' });
+        this.send(entry.owner, { type: 'open', page: popup.page, background: !entry.view.getVisible() || details.disposition === 'background-tab' });
         return popup.view.webContents;
       } };
     });
@@ -260,35 +319,30 @@ export class BrowserManager {
       const step = appZoomStep(input);
       if (step !== undefined) { event.preventDefault(); this.options.zoom.change(step); return; }
       const key = input.key.toLowerCase(), modifier = input.control || input.meta;
-      const command = modifier && key === 'l' ? 'focus-location' : modifier && key === 't' ? 'new-web-tab'
+      const command = modifier && key === 'l' ? 'focus-location' : modifier && key === 't' ? input.shift ? 'reopen-web-tab' : 'new-web-tab'
         : modifier && key === 'w' ? 'close-tab' : modifier && key === 'f' ? 'open-find'
         : input.control && key === 'tab' ? input.shift ? 'previous-tab' : 'next-tab' : null;
       if (command) { event.preventDefault(); owner.window.webContents.focus(); owner.window.webContents.send('app:command', command); }
-      else if ((modifier && key === 'r') || key === 'f5') { event.preventDefault(); wc.reload(); }
+      else if ((modifier && key === 'r') || key === 'f5') { event.preventDefault(); if (input.shift || (key === 'f5' && modifier)) wc.reloadIgnoringCache(); else wc.reload(); }
       else if (input.alt && (key === 'arrowleft' || key === 'arrowright')) {
         event.preventDefault(); this.send(entry.owner, { type: 'history', id, direction: key === 'arrowleft' ? -1 : 1 });
-      }
-      else if (key === 'escape') {
-        // Mirrors the Markdown editor: Esc leaves the working surface for the
-        // reader. While loading, Esc still stops the load first (the page's
-        // own meaning); a second Esc then enters reader mode.
-        if (wc.isLoading()) wc.stop();
-        else if (isWebURL(wc.getURL())) { event.preventDefault(); owner.window.webContents.focus(); this.send(entry.owner, { type: 'reader', id }); }
       }
     });
     wc.on('context-menu', (_event, params) => {
       const owner = this.options.stateFor(entry.owner);
       if (!owner) return;
-      const items: Electron.MenuItemConstructorOptions[] = [];
-      if (isWebURL(params.linkURL)) items.push({ label: 'Open Link in New Tab', click: () => void this.openLink(entry.owner, params.linkURL) });
-      if (params.isEditable) items.push({ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' });
-      else if (params.selectionText) items.push({ role: 'copy' });
-      items.push({ label: 'Back', enabled: entry.canGoBack || wc.navigationHistory.canGoBack(),
-        click: () => this.send(entry.owner, { type: 'history', id, direction: -1 }) },
-        { label: 'Forward', enabled: entry.canGoForward || wc.navigationHistory.canGoForward(),
-          click: () => this.send(entry.owner, { type: 'history', id, direction: 1 }) },
-        { label: 'Reload', click: () => wc.reload() }, { label: 'Open in Default Browser', click: () => void this.external(entry, wc.getURL(), true) });
-      Menu.buildFromTemplate(items).popup({ window: owner.window });
+      const generation = entry.menuGeneration, sourceOwner = entry.owner;
+      const valid = () => !wc.isDestroyed() && entry.menuGeneration === generation && entry.owner === sourceOwner;
+      const items = browserContextMenu(wc, params, valid, (url, background) => {
+        // Finish the native menu dispatch before constructing another native
+        // view. Recheck ownership/document after leaving the menu's event loop.
+        setImmediate(() => { if (valid()) void this.openLink(sourceOwner, url, background).catch(error => this.error(entry, error)); });
+      },
+        direction => this.send(entry.owner, { type: 'history', id, direction }),
+        !!entry.canGoBack || wc.navigationHistory.canGoBack(), !!entry.canGoForward || wc.navigationHistory.canGoForward());
+      items.push({ label: 'Open in Default Browser', enabled: isWebURL(wc.getURL()), click: () => { if (valid()) void this.external(entry, wc.getURL(), true); } },
+        { label: 'Site Controls…', enabled: isWebURL(wc.getURL()), click: () => { setImmediate(() => { if (valid()) this.siteMenu(entry); }); } });
+      Menu.buildFromTemplate(items).popup({ window: owner.window, frame: params.frame ?? undefined });
     });
     return entry;
   }
@@ -329,16 +383,23 @@ export class BrowserManager {
       else await entry.view.webContents.loadURL(url);
     } catch (error) {
       if (navigation === entry.navigation && !entry.view.webContents.isDestroyed()
-        && (error as { code?: string }).code !== 'ERR_ABORTED') this.error(entry, error);
+        && (error as { code?: string }).code !== 'ERR_ABORTED' && !entry.page.failure) this.error(entry, error);
     }
   }
   async openLink(owner: number, url: string, background = false) {
     const page = await this.create(owner, randomUUID(), url);
     this.send(owner, { type: 'open', page, background });
   }
-  async close(owner: number, id: string): Promise<boolean> {
+  async close(owner: number, id: string, remember = false): Promise<boolean> {
+    const page = this.saved.get(id) ?? this.views.get(id)?.page;
+    const metadata = page && { url: page.url, title: page.title };
+    const rememberClosed = () => {
+      if (!remember || !metadata || !isWebURL(metadata.url)) return;
+      const stack = this.closedTabs.get(owner) ?? [];
+      stack.push(metadata); if (stack.length > 10) stack.shift(); this.closedTabs.set(owner, stack);
+    };
     if (this.dormant.get(id) === owner) {
-      this.dormant.delete(id); this.saved.delete(id); this.persist(); return true;
+      this.dormant.delete(id); this.saved.delete(id); this.persist(); rememberClosed(); return true;
     }
     const entry = this.owned(owner, id);
     if (entry.closing) return false;
@@ -346,12 +407,15 @@ export class BrowserManager {
       entry.closing = resolve;
       entry.view.webContents.close({ waitForBeforeUnload: true });
     });
-    if (closed) { this.saved.delete(id); this.persist(); }
+    if (closed) { this.saved.delete(id); this.persist(); rememberClosed(); }
     return closed;
   }
   adopt(source: number, destination: number, id: string): boolean {
     const entry = this.owned(source, id), target = this.options.stateFor(destination);
     if (!target) return false;
+    this.permissions.clear(source, id);
+    this.auth.clear(id);
+    entry.find = undefined; entry.document++;
     entry.view.setVisible(false);
     this.options.stateFor(source)?.window.contentView.removeChildView(entry.view);
     entry.owner = destination; entry.bounds = undefined; this.trackOwner(destination);
@@ -382,35 +446,59 @@ export class BrowserManager {
       if (!state.window.contentView.children.includes(entry.view)) state.window.contentView.addChildView(entry.view);
       entry.view.setVisible(true); visible.add(item.id);
     }
-    for (const [id, entry] of this.views) if (entry.owner === owner && !visible.has(id)) entry.view.setVisible(false);
+    for (const [id, entry] of this.views) if (entry.owner === owner && !visible.has(id)) {
+      entry.view.setVisible(false);
+      // Detach hidden pages like Min: remove unused native children while
+      // retaining their WebContents/form/history and Chromium's throttling.
+      if (state.window.contentView.children.includes(entry.view)) state.window.contentView.removeChildView(entry.view);
+    }
   }
   private async external(entry: Entry, url: string, explicit = false) {
     const state = this.options.stateFor(entry.owner);
     if (!state || !/^(https?:|mailto:|tel:)/i.test(url)) return;
+    const owner = entry.owner, generation = entry.document;
     if (!explicit) {
+      const now = Date.now(); entry.externalRequests = entry.externalRequests.filter(time => now - time < 20_000);
+      if (entry.externalPending || entry.externalRequests.length >= 2 || !entry.view.getVisible()) return;
+      entry.externalRequests.push(now); entry.externalPending = true;
+      try {
       const choice = await dialog.showMessageBox(state.window, { message: 'Open an external application?', detail: url,
         buttons: ['Cancel', 'Open'], defaultId: 0, cancelId: 0 });
       if (choice.response !== 1) return;
+      } finally { entry.externalPending = false; }
     }
+    if (entry.view.webContents.isDestroyed() || entry.document !== generation || entry.owner !== owner) return;
     await shell.openExternal(url);
   }
-  private installPermissions(profile: Session) {
-    const grants = new Set<string>();
-    profile.setPermissionCheckHandler((contents, permission, origin) => !!this.forContents(contents) && grants.has(`${origin}|${permission}`));
-    profile.setPermissionRequestHandler((contents, permission, callback, details) => {
-      const entry = this.forContents(contents), state = entry && this.options.stateFor(entry.owner);
-      if (!state || !['media', 'notifications', 'geolocation', 'fullscreen', 'pointerLock', 'clipboard-sanitized-write'].includes(permission)) return callback(false);
-      let origin: string;
-      try { origin = new URL(details.requestingUrl || contents.getURL()).origin; } catch { return callback(false); }
-      const key = `${origin}|${permission}`;
-      if (grants.has(key)) return callback(true);
-      void dialog.showMessageBox(state.window, { message: `Allow ${permission}?`, detail: origin,
-        buttons: ['Deny', 'Allow'], defaultId: 0, cancelId: 0 }).then(choice => {
-        if (contents.isDestroyed()) return callback(false);
-        if (choice.response === 1) grants.add(key);
-        callback(choice.response === 1);
-      }).catch(() => callback(false));
-    });
+  private permissionMenu(entry: Entry) {
+    const owner = entry.owner, generation = entry.document, state = this.options.stateFor(owner);
+    if (!state) return;
+    Menu.buildFromTemplate(this.permissions.requests(entry.page.id).map(request => ({ label: `${request.label} · ${request.origin}`, submenu: [
+      { label: 'Allow for This Page', click: () => {
+        if (entry.owner === owner && entry.document === generation && !entry.view.webContents.isDestroyed()) this.permissions.respond(owner, entry.page.id, request.token, true);
+      } },
+      { label: 'Deny', click: () => this.permissions.respond(owner, entry.page.id, request.token, false) },
+    ] }))).popup({ window: state.window });
+  }
+  private siteMenu(entry: Entry) {
+    const wc = entry.view.webContents, owner = entry.owner, generation = entry.document, state = this.options.stateFor(owner);
+    if (!state || !isWebURL(wc.getURL())) return;
+    const origin = new URL(wc.getURL()).origin;
+    const valid = () => !wc.isDestroyed() && entry.owner === owner && entry.document === generation;
+    Menu.buildFromTemplate([
+      { label: origin, enabled: false },
+      { label: entry.page.muted ? 'Unmute Tab' : 'Mute Tab', click: () => { if (valid()) { wc.setAudioMuted(!wc.isAudioMuted()); this.publish(entry); } } },
+      { label: 'Reset Page Permissions', click: () => { if (valid()) { this.permissions.clear(owner, entry.page.id); wc.reload(); } } },
+      { label: 'Clear This Site’s Data…', click: () => { void (async () => {
+        if (!valid()) return;
+        const choice = await dialog.showMessageBox(state.window, { message: 'Clear this site’s data?',
+          detail: `${origin}\nThis signs you out. Cookies shared with related subdomains are also removed. Bookmarks and history are kept.`, buttons: ['Cancel', 'Clear'], defaultId: 0, cancelId: 0 });
+        if (choice.response !== 1 || !valid()) return;
+        await wc.session.clearData({ origins: [origin], originMatchingMode: 'origin-in-all-contexts',
+          dataTypes: ['cookies', 'localStorage', 'indexedDB', 'serviceWorkers', 'fileSystems', 'cache'] });
+        if (valid()) { this.permissions.clear(owner, entry.page.id); wc.reload(); }
+      })().catch(error => this.error(entry, error)); } },
+    ]).popup({ window: state.window });
   }
   registerIpc(channels: WindowIpc) {
     channels.handle('browser:create', (state, id: string, url: string, history?: WebHistory) => this.create(state.webContentsId, id, url, history));
@@ -423,7 +511,16 @@ export class BrowserManager {
     channels.handle('browser:navigate', async (state, id: string, input: string) => {
       const entry = this.owned(state.webContentsId, id); await this.load(entry, browserURL(input));
     });
-    channels.handle('browser:close', (state, id: string) => this.close(state.webContentsId, id));
+    channels.handle('browser:close', (state, id: string, remember?: boolean) => this.close(state.webContentsId, id, remember === true));
+    channels.handle('browser:authenticate', (state, id: string, token: string, credentials: { username: string; password: string } | null) => {
+      this.owned(state.webContentsId, id); this.auth.respond(state.webContentsId, id, token, credentials);
+    });
+    channels.handle('browser:reopen', async state => {
+      const stack = this.closedTabs.get(state.webContentsId), previous = stack?.pop();
+      if (!previous) return;
+      try { await this.openLink(state.webContentsId, previous.url); }
+      catch (error) { stack!.push(previous); throw error; }
+    });
     channels.on('browser:layout', (state, entries: Array<{ id: string; bounds: PreviewBounds }>) => this.layout(state.webContentsId, entries));
     channels.handle('browser:capture', async (state, id: string) => {
       const entry = this.owned(state.webContentsId, id);
@@ -449,6 +546,12 @@ export class BrowserManager {
         if (entry.page.protection === 'ready' && wc.getURL() === entry.page.url && !wc.isCrashed()) { entry.page.error = null; wc.reload(); }
         else await this.load(entry, entry.page.url);
       }
+      else if (command === 'reload-no-cache') {
+        entry.page.error = null; entry.page.failure = undefined;
+        if (wc.getURL() === entry.page.url && !wc.isCrashed()) wc.reloadIgnoringCache(); else await this.load(entry, entry.page.url);
+      }
+      else if (command === 'permissions') this.permissionMenu(entry);
+      else if (command === 'site-info') this.siteMenu(entry);
       else if (command === 'stop') { entry.navigation++; wc.stop(); }
       else if (command === 'focus') {
         if (state.watchedPath) { unwatchFile(state.watchedPath); state.watchedPath = null; }
@@ -470,8 +573,12 @@ export class BrowserManager {
     });
     channels.on('browser:find', (state, id: string, text: string, forward: boolean = true, next: boolean = false) => {
       if (!this.owns(state.webContentsId, id)) return;
-      const wc = this.owned(state.webContentsId, id).view.webContents;
-      if (text) wc.findInPage(String(text).slice(0, 1000), { forward, findNext: next }); else wc.stopFindInPage('clearSelection');
+      const entry = this.owned(state.webContentsId, id), wc = entry.view.webContents;
+      const query = typeof text === 'string' ? text.slice(0, 1000) : '';
+      // Electron's findNext is Chromium's new_session flag: true starts a
+      // search; false advances an existing session (despite the API name).
+      if (query) entry.find = { request: wc.findInPage(query, { forward, findNext: !next || entry.find?.query !== query }), query };
+      else { entry.find = undefined; wc.stopFindInPage('clearSelection'); this.send(entry.owner, { type: 'find', id, query: '', active: 0, matches: 0 }); }
     });
     channels.handle('browser:places', (_state, query: string, scope?: BrowserPlaceScope) => this.places.search(query, scope));
     channels.handle('browser:bookmark', async (_state, url: string, title: string, bookmarked: boolean) => {

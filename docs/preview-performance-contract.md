@@ -365,6 +365,22 @@ groups keep page identity, forms and history. Browser layout uses app zoom once;
 remote pages receive neither Node nor the desktop bridge. Hidden initial loads
 stay detached. Library indexing/ranking runs in a separate, detached Places view.
 No periodic page captures or Markdown hydration are added to browser tabs.
+Hidden web tabs are detached from the native window without closing their
+WebContents. Chromium background throttling stays enabled; visible split groups
+remain attached. No timer discards live forms, audio, downloads or opener state.
+The browser lifecycle E2E disables Playwright's focus emulation on its original
+CDP session before asserting actual `document.visibilityState`; a second CDP
+session cannot release the first session's synthetic capturer.
+
+Website permissions are page/owner/origin scoped and announced through a quiet
+address-bar control. Navigation, transfer, destruction and expiry settle pending
+callbacks, without focusing a window. Native menus retain the source frame and
+navigation generation, and pass Chromium hit-test coordinates unchanged.
+Find results match both the native request ID and current query. Composition and
+page-owned Escape handlers precede Reader entry. HTTP authentication carries
+only its challenge token and origin to the UI; submitted credentials are never
+persisted by Setdown. Browser reload commands reload the focused web page while
+preserving the workspace. Same-URL reloads invalidate old Reader snapshots.
 
 Browser library history deletion serializes with visits/bookmark updates in the
 detached Places service. IndexedDB and its search cache change together; clearing
@@ -373,7 +389,8 @@ session DownloadItem events, coalesce progress updates, and immediately publish
 terminal states. Only serializable metadata crosses the desktop bridge. The
 library retains completed records across restart; an unfinished transfer from a
 previous process is shown as interrupted. Removing a download record keeps its
-file. `browser.spec.ts` checks deletion persistence and native download controls;
+file. Completed PDFs stay in Downloads until explicitly opened; they cannot
+replace the user's active surface. `browser.spec.ts` checks deletion persistence and native download controls;
 `browser-downloads.test.ts` checks interrupted restoration, duplicate file paths
 and progress/completion ordering.
 

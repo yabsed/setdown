@@ -8,6 +8,7 @@
   import { groupLayout } from '../core/workspace/editor-groups';
   import TitleBar from './shell/TitleBar.svelte';
   import ClosePrompt from './shell/ClosePrompt.svelte';
+  import BrowserAuthDialog from './browser/BrowserAuthDialog.svelte';
   import { view, type AppActions } from './view-state.svelte';
 
 
@@ -80,4 +81,5 @@
   </div>
   <InsertionDialogs {actions} />
   <ClosePrompt {actions} />
+  <BrowserAuthDialog api={desktop.browser} />
 </section>

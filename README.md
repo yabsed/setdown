@@ -387,6 +387,8 @@ performance contract** workflow with `run_latency` enabled.
 Further documentation:
 
 - [Preview guarantees, ownership, and benchmark procedure](docs/preview-performance-contract.md)
+- [Min source audit: small improvements to Setdown's web visits](docs/min-browser-details-audit-2026-10-14.md)
+- [Min-inspired browser details: implementation and validation](reports/2026_10_14_min_browser_details_implementation.md)
 - [Reading-position persistence, PDF and image viewers](docs/reading-positions-and-pdf.md)
 - [Integrated terminal behavior and implementation](docs/integrated-terminal.md)
 - [Text workspace support and acceptance scenarios](apps/desktop/test/TEXT-WORKSPACE.md)

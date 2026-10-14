@@ -7,6 +7,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { disposeApplication, focusApplication, type TestApplication } from './electron-app';
 import { pdfFixture } from './pdf-fixture';
+import { execFile as execFileCallback } from 'node:child_process';
+import { promisify } from 'node:util';
+const execFile = promisify(execFileCallback);
 
 async function fixture(document = true) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-browser-'));
@@ -14,6 +17,17 @@ async function fixture(document = true) {
   const slowDownloads = new Set<ServerResponse>();
   const server = createServer((req, res) => {
     requests.push(req.url!);
+    if (req.url === '/private') {
+      if (req.headers.authorization !== `Basic ${Buffer.from('reader:secret').toString('base64')}`) {
+        res.writeHead(401, { 'www-authenticate': 'Basic realm="Fixture library"' }); res.end('Authentication required');
+      } else res.end('<!doctype html><title>Private library</title><p>Signed in.</p>');
+      return;
+    }
+    if (req.url === '/network-failure') { req.socket.destroy(); return; }
+    if (req.url === '/download-pdf') {
+      res.setHeader('content-type', 'application/pdf'); res.setHeader('content-disposition', 'attachment; filename="download.pdf"');
+      res.end(pdfFixture(1)); return;
+    }
     if (req.url === '/download' || req.url === '/slow-download') {
       res.setHeader('content-type', 'application/octet-stream');
       res.setHeader('content-disposition', `attachment; filename="${req.url === '/download' ? 'report.txt' : 'slow.txt'}"`);
@@ -110,6 +124,292 @@ async function evaluatePage<T>(app: TestApplication, origin: string, script: str
     return page.executeJavaScript(script);
   }, { origin, script });
 }
+
+// Native Electron menus are still constructed and displayed on Xvfb. Retain a
+// handle so the tests can choose an OS menu item using real isolated input.
+async function captureNativeMenus(app: TestApplication) {
+  await app.evaluate(({ Menu }) => {
+    const build = Menu.buildFromTemplate;
+    const templates = new WeakMap<Electron.Menu, Electron.MenuItemConstructorOptions[]>();
+    Menu.buildFromTemplate = function(template) {
+      const menu = build.call(this, template); templates.set(menu, template as Electron.MenuItemConstructorOptions[]); return menu;
+    };
+    const original = Menu.prototype.popup;
+    Menu.prototype.popup = function(options) {
+      (globalThis as any).__browserTestMenu = this;
+      (globalThis as any).__browserTestMenuTemplate = templates.get(this);
+      return original.call(this, options);
+    };
+  });
+}
+async function chooseNativeMenu(app: TestApplication, labels: string[]) {
+  const keys = await app.evaluate(({ Menu }, labels) => {
+    const root: Electron.Menu = (globalThis as any).__browserTestMenu;
+    let items: Electron.MenuItemConstructorOptions[] = (globalThis as any).__browserTestMenuTemplate;
+    if (!root || !items) throw Error('No native menu was opened');
+    const keys: string[] = [];
+    for (const [index, label] of labels.entries()) {
+      const item = items.find(item => item.label === label);
+      if (!item) throw Error(`Missing native menu item: ${label}`);
+      const available = items.filter(item => item.type !== 'separator' && item.enabled !== false);
+      keys.push('Home', ...Array.from({ length: available.indexOf(item) }, () => 'Down'));
+      if (index < labels.length - 1) { keys.push('Right'); items = item.submenu as Electron.MenuItemConstructorOptions[]; }
+      else {
+        if (item.enabled === false || !item.click) throw Error(`Disabled native menu item: ${label}`);
+        keys.push('Return');
+      }
+    }
+    void Menu;
+    return keys;
+  }, labels);
+  if (process.env.SETDOWN_ISOLATED_DISPLAY !== '1' || !process.env.DISPLAY) throw Error('Native menu input requires the isolated Xvfb display.');
+  await execFile('python3', ['-c', `
+import ctypes, ctypes.util, json, sys, time
+x=ctypes.CDLL(ctypes.util.find_library('X11')); t=ctypes.CDLL(ctypes.util.find_library('Xtst'))
+x.XOpenDisplay.restype=ctypes.c_void_p
+x.XStringToKeysym.argtypes=[ctypes.c_char_p]; x.XStringToKeysym.restype=ctypes.c_ulong
+x.XKeysymToKeycode.argtypes=[ctypes.c_void_p,ctypes.c_ulong]; x.XKeysymToKeycode.restype=ctypes.c_uint
+x.XFlush.argtypes=[ctypes.c_void_p]; x.XCloseDisplay.argtypes=[ctypes.c_void_p]
+t.XTestFakeKeyEvent.argtypes=[ctypes.c_void_p,ctypes.c_uint,ctypes.c_int,ctypes.c_ulong]
+d=x.XOpenDisplay(None)
+if not d: raise RuntimeError('No isolated X display')
+for key in json.loads(sys.argv[1]):
+ code=x.XKeysymToKeycode(d,x.XStringToKeysym(key.encode()))
+ t.XTestFakeKeyEvent(d,code,1,0); t.XTestFakeKeyEvent(d,code,0,0); x.XFlush(d); time.sleep(.03)
+x.XCloseDisplay(d)
+`, JSON.stringify(keys)]);
+}
+async function pageContextMenu(app: TestApplication, origin: string, selector: string) {
+  await app.evaluate(async ({ webContents }, { origin, selector }) => {
+    const wc = webContents.getAllWebContents().find(wc => wc.getURL().startsWith(origin))!;
+    const point = await wc.executeJavaScript(`(() => { const rect = document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect(); return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }; })()`);
+    const position = { x: Math.round(point.x * wc.getZoomFactor()), y: Math.round(point.y * wc.getZoomFactor()) };
+    await new Promise<void>(resolve => {
+      wc.once('context-menu', () => resolve());
+      wc.sendInputEvent({ type: 'mouseDown', button: 'right', clickCount: 1, ...position });
+      wc.sendInputEvent({ type: 'mouseUp', button: 'right', clickCount: 1, ...position });
+    });
+  }, { origin, selector });
+}
+
+test('browser details: notification requests stay quiet, coalesce and expire with their document', async () => {
+  const f = await fixture();
+  try {
+    await captureNativeMenus(f.app);
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible();
+    await evaluatePage(f.app, f.origin, `window.permissionResults=[]; Notification.requestPermission().then(r=>permissionResults.push(r)); Notification.requestPermission().then(r=>permissionResults.push(r)); true`);
+    const review = f.page.getByRole('button', { name: 'Review permissions: Notifications', exact: true });
+    await expect(review).toBeVisible();
+    await expect(f.page.getByRole('dialog')).toHaveCount(0);
+    expect(await evaluatePage(f.app, f.origin, 'permissionResults.length')).toBe(0);
+    await review.click();
+    await chooseNativeMenu(f.app, [`Notifications · ${f.origin}`, 'Deny']);
+    await expect.poll(() => evaluatePage(f.app, f.origin, 'permissionResults')).toEqual(['denied', 'denied']);
+    await expect(review).toHaveCount(0);
+    await evaluatePage(f.app, f.origin, `Notification.requestPermission().then(r=>permissionResults.push(r)); true`);
+    await expect.poll(() => evaluatePage(f.app, f.origin, 'permissionResults.length')).toBe(3);
+    await expect(review).toHaveCount(0);
+    await f.page.getByRole('button', { name: 'Reload page', exact: true }).click();
+    await expect.poll(() => evaluatePage(f.app, f.origin, 'document.readyState')).toBe('complete');
+    await evaluatePage(f.app, f.origin, `Notification.requestPermission().then(r=>window.permissionResult=r);true`);
+    await expect(review).toBeVisible(); await review.click();
+    await chooseNativeMenu(f.app, [`Notifications · ${f.origin}`, 'Allow for This Page']);
+    await expect.poll(() => evaluatePage(f.app, f.origin, 'window.permissionResult')).toBe('granted');
+    await f.page.getByRole('button', { name: 'Reload page', exact: true }).click();
+    await expect.poll(() => evaluatePage(f.app, f.origin, 'document.readyState')).toBe('complete');
+    await evaluatePage(f.app, f.origin, `Notification.requestPermission();true`); await expect(review).toBeVisible();
+    const address = f.page.getByRole('textbox', { name: 'Address or file path' });
+    await address.fill(`${f.origin}/second`); await address.press('Enter');
+    await expect(f.page.getByRole('tab', { name: /Second page/ })).toBeVisible(); await expect(review).toHaveCount(0);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('browser details: native image copying and link menus preserve pixels, URLs and source ownership', async () => {
+  const f = await fixture();
+  try {
+    await captureNativeMenus(f.app);
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible();
+    await evaluatePage(f.app, f.origin, `(() => {
+      const canvas=document.createElement('canvas');canvas.width=20;canvas.height=10;
+      const ctx=canvas.getContext('2d');ctx.fillStyle='#ff0000';ctx.fillRect(0,0,20,10);
+      const image=new Image();image.id='copy-target';image.src=canvas.toDataURL();image.style='display:block;width:100px;height:50px';
+      document.body.prepend(image);return image.decode();
+    })()`);
+    const id = await f.page.locator('.document-tab[aria-selected="true"]').getAttribute('data-tab-id');
+    await f.page.evaluate(id => window.marktex.browser.command(id!, 'zoom-in'), id);
+    await f.app.evaluate(({ clipboard }) => clipboard.clear());
+    await pageContextMenu(f.app, f.origin, '#copy-target'); await chooseNativeMenu(f.app, ['Copy Image']);
+    await f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.focus());
+    await expect.poll(() => f.page.evaluate(async () => {
+      const item = (await navigator.clipboard.read()).find(item => item.types.includes('image/png'));
+      if (!item) return null;
+      const bitmap = await createImageBitmap(await item.getType('image/png'));
+      const canvas = document.createElement('canvas'); canvas.width = bitmap.width; canvas.height = bitmap.height;
+      const context = canvas.getContext('2d')!; context.drawImage(bitmap, 0, 0);
+      const copied = { width: bitmap.width, height: bitmap.height, pixel: [...context.getImageData(0, 0, 1, 1).data] };
+      bitmap.close(); return copied;
+    })).toEqual({ width: 20, height: 10, pixel: [255, 0, 0, 255] });
+    await pageContextMenu(f.app, f.origin, 'a'); await chooseNativeMenu(f.app, ['Copy Link Address']);
+    expect(await f.app.evaluate(({ clipboard }) => clipboard.readText())).toBe(`${f.origin}/second`);
+    await pageContextMenu(f.app, f.origin, 'a'); await chooseNativeMenu(f.app, ['Open Link in New Tab']);
+    await expect(f.page.getByRole('tab', { name: /Second page/ })).toBeVisible();
+    await expect(f.page.getByRole('tab', { name: /Research page/ })).toHaveAttribute('aria-selected', 'true');
+    // Keep a stale native menu through a real navigation: it cannot copy data
+    // or operate on the replacement document.
+    await pageContextMenu(f.app, `${f.origin}/first`, '#copy-target');
+    await f.app.evaluate(async ({ webContents }, origin) => {
+      const wc = webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/first`)!;
+      await wc.loadURL(`${origin}/second?replacement`);
+    }, f.origin);
+    await f.app.evaluate(({ clipboard }) => clipboard.clear());
+    await chooseNativeMenu(f.app, ['Copy Image']);
+    expect(await f.app.evaluate(({ clipboard }) => clipboard.has('image/png'))).toBe(false);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('browser details: hidden pages retain forms, mute remains accessible and closed tabs reopen without stale forms', async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    const web = f.page.getByRole('tab', { name: /Research page/ }); await expect(web).toBeVisible();
+    // Playwright enables focus emulation on every attached page, which forces
+    // document.visibilityState to "visible". Observe actual Blink visibility.
+    const target = f.app.context().pages().find(page => page.url().startsWith(f.origin))!;
+    // This must be the session that enabled the emulation: a new CDP session
+    // cannot release another session's capturer. Confine Playwright's internal
+    // adapter to this test; an API change fails here instead of faking visibility.
+    const implementation = (target as any)._connection.toImpl(target);
+    await implementation.delegate._mainFrameSession._client.send('Emulation.setFocusEmulationEnabled', { enabled: false });
+    const id = await web.getAttribute('data-tab-id');
+    const identity = await evaluatePage(f.app, f.origin, `window.pageIdentity=crypto.randomUUID();document.querySelector('#draft').value='Keep my draft';pageIdentity`);
+    await f.page.getByRole('tab', { name: /notes.md/ }).click();
+    await expect.poll(() => evaluatePage(f.app, f.origin, 'document.visibilityState')).toBe('hidden');
+    await web.click();
+    await expect.poll(() => evaluatePage(f.app, f.origin, 'document.visibilityState')).toBe('visible');
+    expect(await evaluatePage(f.app, f.origin, `({id:pageIdentity,draft:document.querySelector('#draft').value})`)).toEqual({ id: identity, draft: 'Keep my draft' });
+    await f.page.evaluate(id => window.marktex.browser.command(id!, 'mute'), id);
+    await expect(web.getByRole('button', { name: 'Unmute tab' })).toBeVisible();
+    await web.getByRole('button', { name: 'Unmute tab' }).click();
+    await expect(web.getByRole('button', { name: 'Unmute tab' })).toHaveCount(0);
+    await f.page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-reload-no-cache'));
+    await expect.poll(() => evaluatePage(f.app, f.origin, 'window.pageIdentity')).toBeUndefined();
+    await expect(web).toHaveAttribute('data-tab-id', id!); await expect(f.page.getByRole('tab', { name: /notes.md/ })).toBeVisible();
+    await web.locator('.tab-close').click(); await expect(web).toHaveCount(0);
+    await f.page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-reopen-web'));
+    await expect(web).toHaveAttribute('aria-selected', 'true');
+    expect(await web.getAttribute('data-tab-id')).not.toBe(id);
+    expect(await evaluatePage(f.app, f.origin, `document.querySelector('#draft').value`)).toBe('');
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('browser details: page find discards cleared searches and Escape respects editable controls', async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible();
+    await evaluatePage(f.app, f.origin, `document.body.insertAdjacentHTML('beforeend','<p>needle needle</p>');document.querySelector('#draft').focus();true`);
+    await f.app.evaluate(({ webContents }, origin) => {
+      const wc = webContents.getAllWebContents().find(wc => wc.getURL().startsWith(origin))!; wc.focus();
+      wc.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' }); wc.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
+    }, f.origin);
+    await expect(f.page.getByRole('button', { name: 'Enter reader mode', exact: true })).toBeVisible();
+    expect(await evaluatePage(f.app, f.origin, 'document.activeElement.id')).toBe('draft');
+    await f.page.evaluate(() => window.dispatchEvent(new Event('setdown:browser-find')));
+    const finder = f.page.getByRole('textbox', { name: 'Find in web page' });
+    await expect(finder).toBeFocused(); await finder.fill('needle');
+    await expect(f.page.locator('.location-bar .find-count')).toHaveText('1/2');
+    await finder.fill(''); await expect(f.page.locator('.location-bar .find-count')).toHaveText('0/0');
+    await finder.dispatchEvent('keydown', { key: 'Escape', isComposing: true }); await expect(finder).toBeVisible();
+    await finder.press('Escape'); await expect(finder).toHaveCount(0);
+    await expect(f.page.getByRole('button', { name: 'Enter reader mode', exact: true })).toBeVisible();
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('browser details: HTTP authentication is an owned opt-in prompt and error reload preserves its URL', async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/private`);
+    const signIn = f.page.getByRole('button', { name: 'Sign in to website', exact: true });
+    await expect(signIn).toBeVisible(); await expect(f.page.getByRole('dialog')).toHaveCount(0);
+    await signIn.click();
+    const prompt = f.page.getByRole('dialog', { name: 'Sign in to website', exact: true });
+    await expect(prompt).toBeVisible(); await expect(prompt).toContainText(f.origin);
+    await prompt.getByLabel('Username').fill('reader'); await prompt.getByLabel('Password', { exact: true }).fill('secret');
+    await prompt.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(prompt).not.toBeVisible(); await expect(f.page.getByRole('tab', { name: /Private library/ })).toBeVisible();
+    const address = f.page.getByRole('textbox', { name: 'Address or file path' });
+    await address.fill(`${f.origin}/network-failure`); await address.press('Enter');
+    await expect(f.page.locator('.browser-empty')).toBeVisible(); await expect(address).toHaveValue(`${f.origin}/network-failure`);
+    const before = f.requests.filter(url => url === '/network-failure').length;
+    await f.page.locator('.browser-empty').getByRole('button', { name: 'Reload page' }).click();
+    await expect.poll(() => f.requests.filter(url => url === '/network-failure').length).toBeGreaterThan(before);
+    await expect(address).toHaveValue(`${f.origin}/network-failure`);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('browser details: site reset preserves other sites and PDF completion leaves the active tab alone', async () => {
+  const f = await fixture();
+  try {
+    await captureNativeMenus(f.app);
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    const web = f.page.getByRole('tab', { name: /Research page/ }); await expect(web).toBeVisible();
+    const id = await web.getAttribute('data-tab-id');
+    await evaluatePage(f.app, f.origin, `localStorage.setItem('draft','site data');document.cookie='fixture=local';true`);
+    await f.page.evaluate(url => window.marktex.browser.bookmark(url, 'Retained bookmark', true), `${f.origin}/first`);
+    await f.app.evaluate(async ({ session, dialog }, origin) => {
+      await session.fromPartition('persist:setdown-browser').cookies.set({ url: 'https://unrelated.example/', name: 'fixture', value: 'keep' });
+      dialog.showMessageBox = (async (_window, options) => {
+        if (!options?.detail?.includes(origin)) throw Error('Site reset must identify the exact origin');
+        return { response: 1, checkboxChecked: false };
+      }) as typeof dialog.showMessageBox;
+    }, f.origin);
+    await f.page.getByRole('button', { name: 'Site controls', exact: true }).click(); await chooseNativeMenu(f.app, ['Clear This Site’s Data…']);
+    await expect.poll(() => evaluatePage(f.app, f.origin, `localStorage.getItem('draft')`)).toBe(null);
+    expect(await evaluatePage(f.app, f.origin, 'document.cookie')).not.toContain('fixture=local');
+    expect(await f.app.evaluate(async ({ session }) => (await session.fromPartition('persist:setdown-browser').cookies.get({ url: 'https://unrelated.example/' }))[0]?.value)).toBe('keep');
+    expect(await f.page.evaluate(async url => (await window.marktex.browser.places(url, 'bookmarks')).some(place => place.url === url), `${f.origin}/first`)).toBe(true);
+    const target = path.join(f.root, 'download.pdf');
+    await f.app.evaluate(({ session }, target) => session.fromPartition('persist:setdown-browser').once('will-download', (_event, item) => item.setSavePath(target)), target);
+    await evaluatePage(f.app, f.origin, `const link=document.createElement('a');link.href='/download-pdf';link.download='download.pdf';document.body.append(link);link.click();true`);
+    await expect.poll(() => f.page.evaluate(async () => (await window.marktex.browser.downloads()).some(item => item.name === 'download.pdf' && item.state === 'completed'))).toBe(true);
+    await expect(web).toHaveAttribute('aria-selected', 'true'); expect(await web.getAttribute('data-tab-id')).toBe(id);
+    expect((await readFile(target)).subarray(0, 4).toString()).toBe('%PDF');
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('browser details: cancelling native beforeunload preserves the form and does not add a closed tab', async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    const web = f.page.getByRole('tab', { name: /Research page/ }); await expect(web).toBeVisible();
+    // Electron's will-prevent-unload handler answers this dialog. Prevent
+    // Playwright's automatic dismissal from racing that native answer.
+    f.app.context().pages().find(page => page.url().startsWith(f.origin))!.on('dialog', () => {});
+    const id = await web.getAttribute('data-tab-id');
+    await f.app.evaluate(async ({ webContents, dialog }, origin) => {
+      dialog.showMessageBoxSync = () => 0;
+      const wc = webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/first`)!;
+      await wc.executeJavaScript(`document.querySelector('#draft').value='unsaved form';window.onbeforeunload=()=>false;true`, true);
+    }, f.origin);
+    expect(await f.page.evaluate(id => window.marktex.browser.close(id!, true), id)).toBe(false);
+    await expect(web).toHaveAttribute('aria-selected', 'true');
+    expect(await evaluatePage(f.app, f.origin, `document.querySelector('#draft').value`)).toBe('unsaved form');
+    await f.page.evaluate(() => window.marktex.browser.reopen()); await expect(web).toHaveCount(1);
+    await f.app.evaluate(({ dialog }) => { dialog.showMessageBoxSync = () => 1; });
+    expect(await f.page.evaluate(id => window.marktex.browser.close(id!, true), id)).toBe(true);
+    await expect(web).toHaveCount(0); await f.page.evaluate(() => window.marktex.browser.reopen());
+    await expect(web).toHaveAttribute('aria-selected', 'true');
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
 
 test('application menus preserve live video frames, playback and web view visibility', async () => {
   const f = await fixture();
@@ -394,13 +694,17 @@ test('browser Ctrl+wheel zooms websites and frames independently of the app and 
     await expect.poll(() => f.app.evaluate(({ BrowserWindow }, origin) => BrowserWindow.getAllWindows()[0]
       .contentView.children.some(view => view.getVisible() && 'webContents' in view
         && (view as Electron.WebContentsView).webContents.getURL() === `${origin}/first`), f.origin)).toBe(true);
-    const state = () => f.app.evaluate(({ BrowserWindow, webContents }, origin) => {
+    // Keep the actual view reference while hidden tabs detach from the window.
+    // Continue checking the same native bounds, identity and zoom off-screen.
+    const native = await f.app.evaluateHandle(({ BrowserWindow, webContents }, origin) => {
       const page = webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/first`)!;
       const window = BrowserWindow.getAllWindows()[0];
       const view = window.contentView.children.find(view => 'webContents' in view
-        && (view as Electron.WebContentsView).webContents.id === page.id)!;
-      return { id: page.id, factor: page.getZoomFactor(), bounds: view.getBounds(), app: window.webContents.getZoomFactor() };
+        && (view as Electron.WebContentsView).webContents.id === page.id) as Electron.WebContentsView;
+      return { window, view };
     }, f.origin);
+    const state = () => native.evaluate(({ window, view }) => ({ id: view.webContents.id,
+      factor: view.webContents.getZoomFactor(), bounds: view.getBounds(), app: window.webContents.getZoomFactor() }));
     const wheel = async (deltaY: number, control = true, frame = false) => {
       await f.app.evaluate(async ({ webContents }, { origin, deltaY, control, frame }) => {
         const page = webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/first`)!;

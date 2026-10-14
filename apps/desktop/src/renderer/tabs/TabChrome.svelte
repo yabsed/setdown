@@ -34,6 +34,14 @@
         ondblclick={() => actions.pinTab(tab.id)}
         ondragstart={(event) => actions.startTabDrag(tab.id, event)} ondragend={actions.endTabDrag}>
         <span class="tab-name">{tab.page?.loading ? '◌ ' : ''}{tab.name}</span>
+        {#if tab.kind === 'web' && (tab.page?.audible || tab.page?.muted)}
+          <span class="tab-audio" role="button" tabindex="0" aria-label={tab.page.muted ? 'Unmute tab' : 'Mute tab'}
+            title={tab.page.muted ? 'Unmute tab' : 'Mute tab'} aria-pressed={tab.page.muted}
+            onclick={event => { event.stopPropagation(); actions.browserCommand(tab.id, 'mute'); }}
+            onkeydown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); actions.browserCommand(tab.id, 'mute'); } }}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/>{#if tab.page.muted}<path d="m17 9 5 6m0-6-5 6"/>{:else}<path d="M17 8a6 6 0 0 1 0 8M20 5a10 10 0 0 1 0 14"/>{/if}</svg>
+          </span>
+        {/if}
         {#if tab.dirty}<span class="tab-dirty" aria-label="Unsaved changes">•</span>{/if}
         <span class="tab-close" title="Close tab" role="button" tabindex="0"
           onclick={(event) => { event.stopPropagation(); actions.closeTab(tab.id); }}
@@ -72,4 +80,7 @@
 
 <style>
   .document-tab[data-preview="true"] .tab-name { font-style: italic; }
+  .tab-audio { display: inline-grid; place-items: center; width: 20px; height: 20px; flex: 0 0 20px; border-radius: 4px; }
+  .tab-audio:hover { background: var(--app-hover); }
+  .tab-audio svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; }
 </style>

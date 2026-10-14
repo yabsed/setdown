@@ -525,7 +525,7 @@ export class TabController {
     const tab = workspace.tabs[index];
     if (tab.kind === 'web') {
       if (!confirmed) {
-        try { if (!await desktop.browser.close(tab.id)) return false; }
+        try { if (!await desktop.browser.close(tab.id, true)) return false; }
         catch (error) { tab.page.error = String(error); this.render(); return false; }
       }
     }

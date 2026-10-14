@@ -21,6 +21,12 @@
   let selectOnClick = false;
   let activeTabId: string | undefined;
   const finding = $derived(!!web && browser.findId === tab?.id);
+  const requests = $derived(tab ? browser.permissions[tab.id] ?? [] : []);
+  let findComposing = false;
+  function closeFind() {
+    browser.findId = null; browser.active = 0; browser.matches = 0;
+    if (tab) { actions.browserFind(tab.id, ''); actions.browserCommand(tab.id, 'focus'); }
+  }
   const media = $derived(view.mediaTabs.find(item => item.id === tab?.id));
   const fileZoom = $derived(tab ? mediaZoom[tab.id] : undefined);
   const zoomScope = $derived(tab?.kind === 'terminal' && !review ? 'terminal' : 'text');
@@ -76,7 +82,10 @@
   function blur() { editing = false; suggestions = []; generation++; clearTimeout(timer); }
   async function focus() { if (groupId !== view.focusedGroupId) return; await tick(); input?.focus(); input?.select(); }
   onMount(() => {
-    const find = async () => { if (groupId === view.focusedGroupId && web && tab) { browser.findId = tab.id; await tick(); finder?.focus(); finder?.select(); } };
+    const find = async () => { if (groupId === view.focusedGroupId && web && tab) {
+      browser.findId = tab.id; browser.active = 0; browser.matches = 0;
+      actions.browserFind(tab.id, browser.query); await tick(); finder?.focus(); finder?.select();
+    } };
     window.addEventListener('setdown:focus-location', focus);
     window.addEventListener('setdown:browser-find', find);
     return () => { clearTimeout(timer); window.removeEventListener('setdown:focus-location', focus); window.removeEventListener('setdown:browser-find', find); };
@@ -88,14 +97,19 @@
   <button aria-label="Forward" title="Forward (Alt+Right)" disabled={!tab?.canGoForward || !!review} onclick={() => actions.navigateHistory(tab!.id, 1)}>→</button>
   {#if web}
     <button aria-label={web.loading ? 'Stop loading' : 'Reload page'} title={web.loading ? 'Stop loading' : 'Reload page'}
-      onclick={() => actions.browserCommand(tab!.id, web.loading ? 'stop' : 'reload')}>{web.loading ? '×' : '↻'}</button>
+      onclick={event => actions.browserCommand(tab!.id, web.loading ? 'stop' : event.shiftKey ? 'reload-no-cache' : 'reload')}>{web.loading ? '×' : '↻'}</button>
   {:else}<span class="location-kind" aria-hidden="true">{review ? '±' : '⌂'}</span>{/if}
   {#if finding}
-    <input bind:this={finder} aria-label="Find in web page" placeholder="Find in page" bind:value={browser.query}
-      oninput={() => actions.browserFind(tab!.id, browser.query)}
-      onkeydown={event => { if (event.key === 'Enter') actions.browserFind(tab!.id, browser.query, !event.shiftKey, true); else if (event.key === 'Escape') { browser.findId = null; actions.browserFind(tab!.id, ''); } }} />
+    <input bind:this={finder} aria-label="Find in web page" placeholder="Find in page" maxlength="1000" bind:value={browser.query}
+      oninput={event => { browser.query = event.currentTarget.value; if (!findComposing) actions.browserFind(tab!.id, browser.query); }}
+      oncompositionstart={() => { findComposing = true; }} oncompositionend={() => { findComposing = false; actions.browserFind(tab!.id, browser.query); }}
+      onkeydown={event => {
+        if (event.isComposing || findComposing) return;
+        if (event.key === 'Enter') { event.preventDefault(); actions.browserFind(tab!.id, browser.query, !event.shiftKey, true); }
+        else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeFind(); }
+      }} />
     <span class="find-count">{browser.active}/{browser.matches}</span>
-    <button aria-label="Close web search" onclick={() => { browser.findId = null; actions.browserFind(tab!.id, ''); }}>×</button>
+    <button aria-label="Close web search" onclick={closeFind}>×</button>
   {:else}
     <input bind:this={input} aria-label="Address or file path" placeholder="Search or enter an address" spellcheck="false" autocomplete="off"
       bind:value={draft} title={location} onfocus={() => { editing = true; input?.select(); search(); }} onblur={blur}
@@ -110,6 +124,10 @@
         else if (event.key === 'ArrowUp' && suggestions.length) { event.preventDefault(); selected = (selected + suggestions.length - 1) % suggestions.length; }
       }} />
     {#if web}
+      <button class="location-icon" aria-label="Site controls" title="Site controls" disabled={!web.url.startsWith('http')}
+        onclick={() => actions.browserCommand(tab!.id, 'site-info')}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 10h2v7h-2zm0-4h2v2h-2zm1-4a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 1.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17z"/></svg>
+      </button>
       <button class="location-icon bookmark-toggle" class:bookmarked aria-pressed={bookmarked}
         aria-label={bookmarked ? 'Remove bookmark' : 'Bookmark page'} title={bookmarked ? 'Remove bookmark' : 'Bookmark page'}
         disabled={!web.url.startsWith('http')} onclick={() => void actions.browserBookmark(web.url, web.title, !bookmarked)}>
@@ -122,6 +140,16 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c4.75 0 8.27 3.13 9.66 6.35a1.62 1.62 0 0 1 0 1.3C20.27 15.87 16.75 19 12 19s-8.27-3.13-9.66-6.35a1.62 1.62 0 0 1 0-1.3C3.73 8.13 7.25 5 12 5Zm0 1.5c-4 0-7 2.63-8.28 5.45a.12.12 0 0 0 0 .1C5 14.87 8 17.5 12 17.5s7-2.63 8.28-5.45a.12.12 0 0 0 0-.1C19 9.13 16 6.5 12 6.5Zm0 2.25A3.25 3.25 0 1 1 12 15.25 3.25 3.25 0 0 1 12 8.75Zm0 1.5A1.75 1.75 0 1 0 12 13.75 1.75 1.75 0 0 0 12 10.25Z"/></svg>
       </button>
     {/if}
+  {/if}
+  {#if web && requests.length}
+    <button class="location-icon permission-request" aria-label={`Review permissions: ${requests.map(r => r.label).join(', ')}`}
+      title={requests.map(r => `${r.origin}: ${r.label}`).join('\n')} onclick={() => actions.browserCommand(tab!.id, 'permissions')}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a6 6 0 0 0-6 6v4l-2 4v2h16v-2l-2-4V8a6 6 0 0 0-6-6zm0 2a4 4 0 0 1 4 4v4.5l1.75 3.5H6.25L8 12.5V8a4 4 0 0 1 4-4zm-2 16a2 2 0 0 0 4 0z"/></svg>
+    </button>
+  {/if}
+  {#if tab && browser.auth[tab.id]}
+    <button aria-label="Sign in to website" title={`Sign in to ${browser.auth[tab.id].origin}`}
+      onclick={() => { browser.authId = tab.id; }}>Sign in</button>
   {/if}
   {#if focusedGroup}
     <div class="location-actions">
@@ -204,6 +232,7 @@
   .bookmark-toggle.bookmarked svg { fill: currentColor; }
   .location-icon:hover, .location-icon.active, .location-icon.bookmarked { color: var(--app-text); }
   .location-icon.active { background: var(--app-hover); }
+  .permission-request { color: var(--app-text); box-shadow: inset 0 0 0 1px var(--app-border); }
   button:focus-visible { outline: 1px solid var(--app-muted-text); outline-offset: -1px; }
   .location-actions { display: flex; align-items: center; flex: 0 0 auto; height: 28px; }
   .location-actions button { min-width: 28px; height: 28px; }

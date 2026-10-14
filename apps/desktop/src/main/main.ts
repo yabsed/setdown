@@ -161,7 +161,11 @@ else {
     app.on('before-quit', () => terminals.dispose());
     installApplicationMenu({ focusedState: () => registry.focused(), createWindow: windows.create,
       openDocument: (state) => documents.chooseAndOpen(state).catch(openError),
-      reloadWindow: (state) => { previews.closeOwner(state.webContentsId); state.window.webContents.reload(); },
+      reloadWindow: (state, ignoreCache) => {
+        if (browsers.reloadFocused(state.webContentsId, ignoreCache)) return;
+        previews.closeOwner(state.webContentsId);
+        if (ignoreCache) state.window.webContents.reloadIgnoringCache(); else state.window.webContents.reload();
+      },
       zoom: (steps, scope) => {
         const state = registry.focused();
         const id = state && previews.zoom.activeTab(state.webContentsId);

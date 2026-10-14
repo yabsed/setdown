@@ -215,6 +215,7 @@ export type CloseDecision = 'cancel' | 'discard' | 'save';
 
 export type AppCommand =
   | 'new-web-tab'
+  | 'reopen-web-tab'
   | 'focus-location'
   | 'navigate-back'
   | 'navigate-forward'

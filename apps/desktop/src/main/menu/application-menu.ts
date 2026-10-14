@@ -8,7 +8,7 @@ type MenuContext = {
   focusedState: () => WindowState | null;
   createWindow: () => unknown;
   openDocument: (state: WindowState) => unknown;
-  reloadWindow: (state: WindowState) => void;
+  reloadWindow: (state: WindowState, ignoreCache?: boolean) => void;
   sendCommand: (command: AppCommand) => void;
   setTheme: (theme: PreviewThemeId) => void;
   theme: () => PreviewThemeId;
@@ -70,6 +70,7 @@ export function installApplicationMenu(context: MenuContext) {
       id: 'application-menu-file', label: 'File', submenu: [
         { id: 'menu-new-window', label: 'New Window', accelerator: 'CmdOrCtrl+Shift+N', click: () => context.createWindow() },
         { id: 'menu-new-web', label: 'New Web Tab', accelerator: 'CmdOrCtrl+T', click: () => command('new-web-tab') },
+        { id: 'menu-reopen-web', label: 'Reopen Closed Web Tab', accelerator: 'CmdOrCtrl+Shift+T', click: () => command('reopen-web-tab') },
         { id: 'menu-location', label: 'Open Location…', accelerator: 'CmdOrCtrl+L', click: () => command('focus-location') },
         { id: 'menu-new-document', label: 'New', accelerator: 'CmdOrCtrl+N', click: () => command('new-document') },
         { id: 'menu-open-document', label: 'Open…', accelerator: 'CmdOrCtrl+O', click: () => {
@@ -109,6 +110,9 @@ export function installApplicationMenu(context: MenuContext) {
         { id: 'menu-reload', label: 'Reload', accelerator: 'CmdOrCtrl+R', click: () => {
           const current = state();
           if (current) context.reloadWindow(current);
+        } },
+        { id: 'menu-reload-no-cache', label: 'Reload Without Cache', accelerator: 'CmdOrCtrl+Shift+R', click: () => {
+          const current = state(); if (current) context.reloadWindow(current, true);
         } },
         { id: 'menu-toggle-devtools', label: 'Toggle Developer Tools', accelerator: 'CmdOrCtrl+Shift+I', click: () => contents()?.toggleDevTools() },
         { type: 'separator' },

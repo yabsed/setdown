@@ -20,27 +20,34 @@ export type BrowserExtensionInfo = {
 };
 export type ExtensionInstallKind = 'folder' | 'archive';
 export type ExtensionPage = 'popup' | 'options';
+export type BrowserPermissionRequest = { token: string; origin: string; permissions: string[]; label: string };
+export type BrowserAuthRequest = { token: string; origin: string; realm: string };
 export type BrowserCommand = 'back' | 'forward' | 'reload' | 'stop' | 'focus' | 'mute' | 'external' | 'save' | 'protection'
-  | 'zoom-in' | 'zoom-out' | 'zoom-reset';
+  | 'zoom-in' | 'zoom-out' | 'zoom-reset' | 'reload-no-cache' | 'permissions' | 'site-info';
 export type BrowserEvent =
   | { type: 'page'; page: BrowserPage }
   | { type: 'open'; page: BrowserPage; background: boolean }
   | { type: 'focus'; id: string }
   | { type: 'close'; id: string }
   | { type: 'navigation'; id: string }
+  | { type: 'document'; id: string }
   | { type: 'reader'; id: string }
   | { type: 'history'; id: string; direction: -1 | 1 }
   | { type: 'places' }
   | { type: 'extensions' }
   | { type: 'download'; download: BrowserDownload }
   | { type: 'download-removed'; id: string }
-  | { type: 'find'; id: string; active: number; matches: number };
+  | { type: 'permissions'; id: string; requests: BrowserPermissionRequest[] }
+  | { type: 'auth'; id: string; request: BrowserAuthRequest | null }
+  | { type: 'find'; id: string; query: string; active: number; matches: number };
 export type BrowserApi = {
   create(id: string, input: string, history?: WebHistory): Promise<BrowserPage>;
   history(id: string): Promise<WebHistory>;
   navigate(id: string, input: string): Promise<void>;
   command(id: string, command: BrowserCommand): Promise<boolean | void>;
-  close(id: string): Promise<boolean>;
+  close(id: string, remember?: boolean): Promise<boolean>;
+  reopen(): Promise<void>;
+  authenticate(id: string, token: string, credentials: { username: string; password: string } | null): Promise<void>;
   layout(entries: Array<{ id: string; bounds: PreviewBounds; canGoBack?: boolean; canGoForward?: boolean }>): void;
   capture(id: string): Promise<string | null>;
   readerExtract(id: string): Promise<ReaderSnapshot | null>;

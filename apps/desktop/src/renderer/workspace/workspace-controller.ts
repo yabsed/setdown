@@ -88,7 +88,7 @@ export function startWorkspace(desktop: DesktopPort) {
       try { await desktop.browser.bookmark(url, title, bookmarked); browser.revision++; }
       catch (error) { browser.error = String(error); }
     },
-    browserFind: (id, query, forward, next) => desktop.browser.find(id, query, forward, next),
+    browserFind: (id, query, forward, next) => { if (!next) { browser.active = 0; browser.matches = 0; } desktop.browser.find(id, query, forward, next); },
     browserReaderEnter: (id) => { void enterWebReader(id); },
     browserReaderExit: (id, anchor) => { void exitWebReader(id, anchor); },
     browserExtensions: () => desktop.browser.extensions(),
@@ -386,11 +386,16 @@ export function startWorkspace(desktop: DesktopPort) {
     },
     command: (command) => {
       if (command === 'new-web-tab') { actions.newWebTab(); return; }
+      if (command === 'reopen-web-tab') { void desktop.browser.reopen().catch(error => { browser.error = String(error); }); return; }
       if (command === 'focus-location') { window.dispatchEvent(new Event('setdown:focus-location')); return; }
       if ((command === 'navigate-back' || command === 'navigate-forward') && workspace.activeId && !project.gitDiffActive) {
         actions.navigateHistory(workspace.activeId, command === 'navigate-back' ? -1 : 1); return;
       }
       if (workspace.active?.kind === 'web' && !project.gitDiffActive) {
+        if (command === 'escape' && browser.findId === workspace.active.id) {
+          actions.browserFind(workspace.active.id, ''); browser.findId = null;
+          actions.browserCommand(workspace.active.id, 'focus'); return;
+        }
         if (command === 'escape' && !popupOwnsEscape()) { actions.browserReaderEnter(workspace.active.id); return; }
         if (command === 'open-find') { window.dispatchEvent(new Event('setdown:browser-find')); return; }
         if (command === 'save' || command === 'save-as') { actions.browserCommand(workspace.active.id, 'save'); return; }
@@ -434,7 +439,9 @@ export function startWorkspace(desktop: DesktopPort) {
       }
       if (!event.isComposing && (event.ctrlKey || event.metaKey) && !event.altKey && ['l', 't'].includes(event.key.toLowerCase())) {
         event.preventDefault();
-        if (event.key.toLowerCase() === 't') actions.newWebTab(); else window.dispatchEvent(new Event('setdown:focus-location'));
+        if (event.key.toLowerCase() === 't') {
+          if (event.shiftKey) void desktop.browser.reopen().catch(error => { browser.error = String(error); }); else actions.newWebTab();
+        } else window.dispatchEvent(new Event('setdown:focus-location'));
         return;
       }
       if (workspace.active?.kind === 'web' && !project.gitDiffActive && (event.ctrlKey || event.metaKey) && ['f', 's'].includes(event.key.toLowerCase())) {

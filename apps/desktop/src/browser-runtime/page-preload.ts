@@ -26,6 +26,17 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 else frameReady();
 window.addEventListener('load', frameReady, { once: true });
 
+// Let composition, editable controls and page-owned UI consume Escape first.
+// A microtask after dispatch would run before all native listeners on some
+// Chromium versions; a timer observes the completed DOM event instead.
+window.addEventListener('keydown', event => {
+  if (event.key !== 'Escape' || event.isComposing || !event.isTrusted) return;
+  const target = event.composedPath()[0];
+  if (document.fullscreenElement || document.pointerLockElement || document.querySelector('dialog[open], :popover-open')
+    || (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, textarea, select, [role="combobox"], [role="dialog"]')))) return;
+  setTimeout(() => { if (!event.defaultPrevented) ipcRenderer.send('browser:escape'); }, 0);
+}, true);
+
 // Runs in each page's isolated, sandboxed frame. No API is exposed to page JS.
 // uBO's user-origin styles must target the sender's frame and be removable.
 // Electron 38's RemoveInsertedCSS omits Blink's user-origin argument, so it
