@@ -38,26 +38,13 @@ export class BrowserManager {
   private saved = new Map<string, BrowserPage>();
   private dormant = new Map<string, number>();
   private transferring = new Set<number>();
-  private readonly siteZoom = new Map<string, number>();
   private saveTimer?: ReturnType<typeof setTimeout>;
   private saving = Promise.resolve();
   constructor(private readonly options: Options) {}
-  private zoomSite(entry: Entry): string {
-    // Chromium shares page zoom by hostname in this browser session.
-    return new URL(entry.view.webContents.getURL() || entry.page.url).hostname;
-  }
-  private pageZoom(entry: Entry): number { return (this.siteZoom.get(this.zoomSite(entry)) ?? 100) / 100; }
+  private pageZoom(entry: Entry): number { return this.options.zoom.tabFactor(`${entry.page.id}:website`); }
   private zoomPage(entry: Entry, steps: unknown, requireVisible = true): void {
-    if ((requireVisible && !entry.view.getVisible()) || typeof steps !== 'number' || !Number.isInteger(steps) || Math.abs(steps) > 4) return;
-    const site = this.zoomSite(entry);
-    const percent = steps === 0 ? 100 : Math.max(50, Math.min(300, (this.siteZoom.get(site) ?? 100) + steps * 10));
-    this.siteZoom.set(site, percent);
-    for (const page of this.views.values()) {
-      const contents = page.view.webContents;
-      if (!contents.isDestroyed() && this.zoomSite(page) === site) {
-        contents.setZoomFactor(this.options.zoom.factor * percent / 100); this.publish(page);
-      }
-    }
+    if (requireVisible && !entry.view.getVisible()) return;
+    this.options.zoom.changeTab(`${entry.page.id}:website`, steps);
   }
   private get session() {
     if (!this.profile) {

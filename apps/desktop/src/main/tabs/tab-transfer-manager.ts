@@ -41,7 +41,7 @@ export class TabTransferManager {
     const incoming = candidate as TransferableTab | null;
     if (typeof transferId !== 'string' || !incoming || typeof incoming.id !== 'string'
       || !this.options.stateFor(sourceId)
-      || (incoming.kind === 'terminal' ? !this.options.terminals?.owns(sourceId, incoming.id) : incoming.kind === 'web' ? !this.options.browsers?.owns(sourceId, incoming.id) : typeof incoming.document?.path !== 'string')) return;
+      || (incoming.kind === 'terminal' ? !this.options.terminals?.owns(sourceId, incoming.sessionId ?? incoming.id) : incoming.kind === 'web' ? !this.options.browsers?.owns(sourceId, incoming.id) : typeof incoming.document?.path !== 'string')) return;
     const markdown = incoming.kind !== 'web' && incoming.kind !== 'terminal' && isMarkdownDocument(incoming.document.path);
     const tab: TransferableTab = incoming.kind === 'terminal' || incoming.kind === 'web' || markdown ? incoming : { ...incoming, surface: documentSurface(incoming.document.path),
       previewUrl: null, previewRevision: null, previewTheme: null, viewerScrollRatio: null,
@@ -85,7 +85,7 @@ export class TabTransferManager {
     const destination = this.options.stateFor(destinationId)?.window;
     if (!destination || destination.isDestroyed()) return false;
     if (transfer.tab.kind === 'terminal') {
-      transfer.previewAdopted = this.options.terminals?.adopt(transfer.sourceWebContentsId, destinationId, transfer.tab.id) ?? false;
+      transfer.previewAdopted = this.options.terminals?.adopt(transfer.sourceWebContentsId, destinationId, transfer.tab.sessionId ?? transfer.tab.id) ?? false;
       return transfer.previewAdopted;
     }
     if (transfer.tab.kind === 'web') {

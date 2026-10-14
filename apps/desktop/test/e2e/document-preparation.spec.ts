@@ -1,7 +1,8 @@
+import { electron } from './electron-app';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { _electron as electron, expect, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { disposeApplication } from './electron-app';
 
 test('hidden ordinary math document is prepared without focus changes and keeps its typography', async () => {

@@ -2,7 +2,8 @@ import type { ReadingPosition } from '../reading/reading-position';
 
 export type WebHistory = { index: number; entries: { url: string; title: string; pageState?: string }[] };
 export type TabVisit = { kind: 'file'; url: string; position?: ReadingPosition }
-  | { kind: 'web'; url: string; history?: WebHistory };
+  | { kind: 'web'; url: string; history?: WebHistory }
+  | { kind: 'terminal'; url: string };
 export type TabNavigation = { entries: TabVisit[]; index: number };
 const MAX_RESOURCE_VISITS = 64;
 

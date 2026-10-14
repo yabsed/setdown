@@ -23,7 +23,7 @@ export function isTextZoomTarget(target: EventTarget | null): boolean {
  * Native text/page preloads always report the `text` scope; only the shell
  * routes terminal steps to their own channel.
  */
-export function installWheelZoom(send: (steps: number, scope: WheelZoomScope) => void, nativeText = false): () => void {
+export function installWheelZoom(send: (steps: number, scope: WheelZoomScope, tabId?: string) => void, nativeText = false): () => void {
   const accumulators: Record<WheelZoomScope, WheelZoomAccumulator> = {
     text: new WheelZoomAccumulator(), terminal: new WheelZoomAccumulator(),
   };
@@ -35,7 +35,8 @@ export function installWheelZoom(send: (steps: number, scope: WheelZoomScope) =>
     event.preventDefault();
     event.stopImmediatePropagation();
     const steps = accumulators[scope].consume(event, performance.now());
-    if (steps) send(steps, scope);
+    const tabId = (event.target as Element | null)?.closest<HTMLElement>('[data-zoom-tab]')?.dataset.zoomTab;
+    if (steps) send(steps, scope, tabId);
   };
   window.addEventListener('wheel', wheel, { capture: true, passive: false });
   return () => {

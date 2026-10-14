@@ -1,6 +1,7 @@
+import { electron } from './electron-app';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { _electron as electron, expect, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';

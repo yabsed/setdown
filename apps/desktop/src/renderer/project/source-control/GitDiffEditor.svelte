@@ -35,12 +35,13 @@
   let loading = $state(true);
   let error = $state('');
   let editor: Monaco.editor.IStandaloneDiffEditor | null = null;
-  const unregisterZoom = onTextZoom(() => {
+  const unregisterZoom = onTextZoom(id => {
+    if (id && id !== `git-diff:${project.activeGitDiffId}`) return;
     if (!editor || !api) return;
     const original = editor.getOriginalEditor(), modified = editor.getModifiedEditor();
     const originalLabel = original.getOption(api.editor.EditorOption.ariaLabel);
     const modifiedLabel = modified.getOption(api.editor.EditorOption.ariaLabel);
-    editor.updateOptions(textZoomOptions());
+    editor.updateOptions(textZoomOptions(project.activeGitDiffId ? `git-diff:${project.activeGitDiffId}` : undefined));
     // Diff option updates regenerate child accessibility labels. Preserve the
     // active snapshot names established by applySnapshots.
     original.updateOptions({ ariaLabel: originalLabel });
@@ -129,7 +130,7 @@
       scrollBeyondLastLine: false,
       renderOverviewRuler: false,
       fontFamily: APP_FONT_FAMILY,
-      ...textZoomOptions(),
+      ...textZoomOptions(project.activeGitDiffId ? `git-diff:${project.activeGitDiffId}` : undefined),
       padding: { top: 16, bottom: 48 },
     });
     const modifiedEditor = editor.getModifiedEditor();
@@ -272,6 +273,7 @@
       saveShownView();
       editor.setModel({ original: cached.original, modified: cached.modified });
       shownId = activeId;
+      editor.updateOptions(textZoomOptions(`git-diff:${activeId}`));
       editor.updateOptions({ readOnly: Boolean(active.diff.staged || active.diff.history), originalEditable: false,
         renderMarginRevertIcon: !active.diff.staged && !active.diff.history });
       if (cached.viewState) editor.restoreViewState(cached.viewState);

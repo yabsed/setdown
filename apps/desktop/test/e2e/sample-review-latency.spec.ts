@@ -1,3 +1,4 @@
+import { electron } from './electron-app';
 /** Diagnostic fixture for the real math-heavy sample; no latency pass/fail gate.
  * SETDOWN_PROFILE_REVIEW=1 optionally saves native CPU profiles in test output.
  */
@@ -6,7 +7,7 @@ import { promisify } from 'node:util';
 import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { _electron as electron, expect, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { disposeApplication } from './electron-app';
 
 const exec = promisify(execFile);

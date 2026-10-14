@@ -37,7 +37,12 @@ export class MonacoEditor {
   private readonly views = new Map<string, Monaco.editor.ICodeEditorViewState | null>();
   private readonly owners = new Map<string, DocumentModelOwner<Monaco.editor.ITextModel>>();
   private readonly replacing = new Set<string>();
-  private readonly unregisterZoom = onTextZoom(() => { for (const entry of this.groupEditors.values()) entry.editor.updateOptions(textZoomOptions()); });
+  private readonly unregisterZoom = onTextZoom(id => {
+    for (const entry of this.groupEditors.values()) {
+      const tab = this.options.tabs().find(tab => this.models.get(tab.id) === entry.editor.getModel());
+      if (tab && (!id || tab.id === id)) entry.editor.updateOptions(textZoomOptions(tab.id));
+    }
+  });
   private readonly unregisterModels: () => void;
   constructor(private readonly options: Options) {
     this.unregisterModels = liveDocumentModels.register((path, api) => {
@@ -124,10 +129,16 @@ export class MonacoEditor {
     }
     if (entry.host.parentElement !== this.options.host) {
       const focused = entry.editor.hasTextFocus();
-      this.options.host.append(entry.host);
-      // DOM reparenting blurs Monaco. Preserve a click into a background editor.
-      if (focused) entry.editor.focus();
+      this.moveHost(entry.host, this.options.host);
+      if (focused && !entry.editor.hasTextFocus()) entry.editor.focus();
     }
+  }
+  private moveHost(host: HTMLElement, parent: HTMLElement): void {
+    // Removing/reinserting a focused editor can detach Chromium's EditContext
+    // during its focus event. An atomic DOM move retains focus, caret and IME.
+    const target = parent as HTMLElement & { moveBefore?: (node: Node, before: Node | null) => void };
+    if (host.isConnected && parent.isConnected && target.moveBefore) target.moveBefore(host, null);
+    else parent.append(host);
   }
   syncGroups(groups: readonly { id: string; activeId: string | null }[], focusedId: string): void {
     if (!this.editorValue) return;
@@ -138,11 +149,12 @@ export class MonacoEditor {
       const tab = this.options.tabs().find(tab => tab.id === groups.find(g => g.id === id)?.activeId);
       if (id === focusedId) continue;
       const host = document.querySelector<HTMLElement>(`.group-editor-host[data-group-id="${id}"]`);
-      if (host && entry.host.parentElement !== host) host.append(entry.host);
+      if (host && entry.host.parentElement !== host) this.moveHost(entry.host, host);
       entry.host.style.visibility = tab?.surface === 'editor' ? 'visible' : 'hidden';
       const model = tab?.surface === 'editor' ? this.ensureModel(tab) : null;
       if (entry.editor.getModel() !== model) {
         entry.editor.setModel(model);
+        if (tab) entry.editor.updateOptions(textZoomOptions(tab.id));
         const state = tab ? this.views.get(tab.id) : null;
         if (state) entry.editor.restoreViewState(state);
       }
@@ -157,6 +169,7 @@ export class MonacoEditor {
     if (tab.document.kind !== undefined) { this.editorValue.setModel(null); return; }
     const model = this.ensureModel(tab);
     const sameModel = this.editorValue.getModel() === model;
+    this.editorValue.updateOptions(textZoomOptions(tab.id));
     if (!sameModel) this.editorValue.setModel(model);
     this.owners.get(tab.id)?.beginEditing(`document:${tab.id}`);
     if (sameModel) return; // Keep the caret placed by the click that focused this group.

@@ -1,4 +1,5 @@
-import { _electron as electron, expect, test } from '@playwright/test';
+import { electron } from './electron-app';
+import { expect, test } from '@playwright/test';
 import { createServer, type ServerResponse } from 'node:http';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
@@ -109,6 +110,87 @@ async function evaluatePage<T>(app: TestApplication, origin: string, script: str
     return page.executeJavaScript(script);
   }, { origin, script });
 }
+
+test('application menus preserve live video frames, playback and web view visibility', async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    await expect(f.page.getByRole('tab', { name: /Research page/ })).toHaveAttribute('aria-selected', 'true');
+    await evaluatePage(f.app, f.origin, `(() => {
+      const canvas = document.createElement('canvas'); canvas.width = 640; canvas.height = 480;
+      const ctx = canvas.getContext('2d'); let frame = 0;
+      setInterval(() => { ctx.fillStyle = frame++ % 2 ? '#ff0000' : '#0000ff'; ctx.fillRect(0, 0, 640, 480); }, 50);
+      const video = document.createElement('video'); video.id = 'live-video'; video.muted = true;
+      video.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;object-fit:fill';
+      video.srcObject = canvas.captureStream(20); document.body.append(video);
+      window.presentedFrames = 0;
+      const count = () => { window.presentedFrames++; video.requestVideoFrameCallback(count); };
+      video.requestVideoFrameCallback(count); return video.play();
+    })()`);
+    await expect.poll(() => evaluatePage<number>(f.app, f.origin, 'window.presentedFrames')).toBeGreaterThan(3);
+    await f.page.getByRole('button', { name: 'View', exact: true }).click();
+    await expect.poll(() => f.app.windows().some(page => page.url().includes('menu-overlay=1'))).toBe(true);
+    const menu = f.app.windows().find(page => page.url().includes('menu-overlay=1'))!;
+    await expect(menu.getByRole('menuitem', { name: 'Toggle Folder Tools', exact: true })).toBeVisible();
+    const before = await evaluatePage<number>(f.app, f.origin, 'window.presentedFrames');
+    await expect.poll(() => evaluatePage<number>(f.app, f.origin, 'window.presentedFrames')).toBeGreaterThan(before + 5);
+    expect(await evaluatePage(f.app, f.origin, 'document.querySelector("video").paused')).toBe(false);
+    expect(await f.app.evaluate(({ BrowserWindow }, origin) => BrowserWindow.getAllWindows()[0].contentView.children
+      .some(view => view.getVisible() && 'webContents' in view && (view as Electron.WebContentsView).webContents.getURL() === `${origin}/first`), f.origin)).toBe(true);
+    await expect(f.page.locator('[data-browser-frozen]')).toHaveCount(0);
+    await menu.getByRole('menuitem', { name: /^Theme/ }).hover();
+    await expect(menu.getByRole('menuitemradio').first()).toBeVisible();
+    const duringSubmenu = await evaluatePage<number>(f.app, f.origin, 'window.presentedFrames');
+    await expect.poll(() => evaluatePage<number>(f.app, f.origin, 'window.presentedFrames')).toBeGreaterThan(duringSubmenu + 5);
+    await menu.screenshot({ path: test.info().outputPath('menu-layer.png'), omitBackground: true });
+    await menu.keyboard.press('Escape');
+    await expect(f.page.getByRole('button', { name: 'View', exact: true })).toHaveAttribute('aria-expanded', 'false');
+    await f.page.getByRole('button', { name: 'View', exact: true }).click();
+    await expect(menu.getByRole('menuitem', { name: 'Toggle Folder Tools', exact: true })).toBeVisible();
+    await menu.getByRole('menuitem', { name: 'Toggle Folder Tools', exact: true }).click();
+    await expect(f.page.getByRole('button', { name: 'Toggle Folder Tools', exact: true })).toHaveAttribute('aria-expanded', 'true');
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('terminal addresses navigate through web and files while sessions and tab zoom stay independent', async () => {
+  const f = await fixture();
+  try {
+    await f.page.locator('.new-terminal-tab-button').click();
+    await expect(f.page.getByRole('tab', { name: /Terminal 1/ })).toHaveAttribute('aria-selected', 'true');
+    const address = f.page.getByRole('textbox', { name: 'Address or file path', exact: true });
+    const location = await address.inputValue(); expect(location).toMatch(/^terminal:\/\/[\da-f-]+$/);
+    const input = () => f.page.locator('.terminal-content:not(.inactive) .xterm-helper-textarea');
+    await input().pressSequentially('export SETDOWN_SESSION=retained'); await input().press('Enter');
+    await f.page.getByRole('button', { name: 'Zoom terminal in', exact: true }).click();
+    await expect(f.page.getByRole('button', { name: 'Reset terminal zoom', exact: true })).toHaveText('110%');
+    const go = async (url: string) => { await address.fill(url); await address.press('Enter'); };
+    await go(`${f.origin}/first`);
+    await expect(f.page.locator('.document-tab[aria-selected="true"]')).toContainText('Research page');
+    await go(pathToFileURL(path.join(f.root, 'notes.md')).href);
+    await expect(f.page.locator('.document-tab[aria-selected="true"]')).toContainText('notes.md');
+    await expect(address).toHaveValue(/^file:\/\//);
+    await f.page.getByRole('button', { name: 'Back', exact: true }).click();
+    await expect(address).toHaveValue(`${f.origin}/first`);
+    await f.page.getByRole('button', { name: 'Back', exact: true }).click();
+    await expect(address).toHaveValue(location);
+    await expect(f.page.getByRole('button', { name: 'Reset terminal zoom', exact: true })).toHaveText('110%');
+    await input().pressSequentially(`printf "$SETDOWN_SESSION" > '${f.root}/retained.txt'`); await input().press('Enter');
+    await expect.poll(() => readFile(path.join(f.root, 'retained.txt'), 'utf8').catch(() => '')).toBe('retained');
+    await f.page.getByRole('button', { name: 'Forward', exact: true }).click();
+    await expect(address).toHaveValue(`${f.origin}/first`);
+    await f.page.getByRole('button', { name: 'Toggle Folder Tools', exact: true }).click();
+    await f.page.getByRole('button', { name: 'Terminal', exact: true }).click();
+    await f.page.locator('.terminal-list .select').filter({ hasText: 'Terminal 1' }).click();
+    await expect(address).toHaveValue(location);
+    await f.page.locator('.new-terminal-tab-button').click();
+    await expect(f.page.getByRole('tab', { name: /Terminal 2/ })).toHaveAttribute('aria-selected', 'true');
+    await expect(f.page.getByRole('button', { name: 'Reset terminal zoom', exact: true })).toHaveText('100%');
+    await f.page.getByRole('tab', { name: /Terminal 1/ }).click();
+    await expect(f.page.getByRole('button', { name: 'Reset terminal zoom', exact: true })).toHaveText('110%');
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
 
 test('website draggable CSS cannot consume home navigation input in web tab frames', async () => {
   const f = await fixture(false);
@@ -359,7 +441,7 @@ test('browser Ctrl+wheel zooms websites and frames independently of the app and 
     await wheel(120, true, true);
     await expect.poll(async () => (await state()).factor).toBeCloseTo(1.1, 4);
     expect(await state()).toEqual({ ...original, factor: expect.closeTo(1.1, 4) });
-    expect(await f.page.evaluate(() => window.marktex.getZoom())).toEqual(preferences);
+    expect(await f.page.evaluate(async () => { const { tabs, revision, ...scopes } = await window.marktex.getZoom(); return scopes; })).toEqual({ app: preferences.app, text: preferences.text, terminal: preferences.terminal });
     expect(await evaluatePage(f.app, f.origin, '({draft:document.querySelector("#draft").value,value:window.keptObject.value})'))
       .toEqual({ draft: 'keep this', value: 42 });
     await f.page.getByRole('tab', { name: /notes.md/ }).click();
@@ -368,7 +450,7 @@ test('browser Ctrl+wheel zooms websites and frames independently of the app and 
     await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/second`);
     await expect(f.page.getByRole('tab', { name: /Second page/ })).toHaveAttribute('aria-selected', 'true');
     expect(await f.app.evaluate(({ webContents }, origin) => webContents.getAllWebContents()
-      .find(wc => wc.getURL() === `${origin}/second`)!.getZoomFactor(), f.origin)).toBeCloseTo(1.1, 4);
+      .find(wc => wc.getURL() === `${origin}/second`)!.getZoomFactor(), f.origin)).toBeCloseTo(1, 4);
     await f.page.getByRole('button', { name: 'New web tab', exact: true }).click();
     await expect(f.page.getByRole('tab', { name: /Google/ })).toHaveAttribute('aria-selected', 'true');
     await expect.poll(() => f.app.evaluate(({ webContents }) => webContents.getAllWebContents()
@@ -502,6 +584,14 @@ test('bundled uBlock blocks requests, scripts and frame cosmetics, and enforces 
     await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
     await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible();
     await expect.poll(() => f.page.evaluate(async () => (await window.marktex.browser.restore()).every(page => page.protection === 'ready'))).toBe(true);
+    // uBO aliases chrome to browser on startup. Both names must retain the
+    // augmented APIs in Chromium versions exposing a separate browser object.
+    expect(await f.app.evaluate(async ({ webContents }) => {
+      const background = webContents.getAllWebContents().find(wc => wc.getType() === 'backgroundPage')!;
+      return background.executeJavaScript(`({same:browser===chrome,
+        badge:typeof browser.browserAction.setBadgeBackgroundColor,
+        css:typeof browser.tabs.insertCSS, managed:typeof browser.storage.managed})`);
+    })).toEqual({ same: true, badge: 'function', css: 'function', managed: 'undefined' });
     const filters = "*/blocked.js$script\n127.0.0.1##.ad\n127.0.0.1##.frame-ad\n127.0.0.1##+js(set-constant, probeFlag, true)\n*/csp$csp=script-src 'none'\n";
     await f.app.evaluate(async ({ webContents }, filters) => {
       const background = webContents.getAllWebContents().find(wc => wc.getType() === 'backgroundPage' && wc.getURL().endsWith('/background.html'))!;
@@ -958,7 +1048,7 @@ test('Esc opens reader mode at the same block and double-click returns to the li
   } finally { await f.dispose(); }
 });
 
-test('reader toolbar and wheel share Markdown zoom while the live website keeps its own factor', async () => {
+test('reader toolbar and wheel use tab text zoom independently of other Markdown tabs and live website zoom', async () => {
   const f = await fixture();
   try {
     const textReset = f.page.getByRole('button', { name: 'Reset text zoom', exact: true });
@@ -982,20 +1072,20 @@ test('reader toolbar and wheel share Markdown zoom while the live website keeps 
     const reader = f.page.getByRole('region', { name: 'Reader mode', exact: true });
     await expect(reader).toBeVisible();
     await expect(websiteReset).toHaveCount(0);
-    await expect(textReset).toHaveText('110%');
+    await expect(textReset).toHaveText('100%');
     await f.page.getByRole('button', { name: 'Zoom text in', exact: true }).click();
-    await expect(textReset).toHaveText('120%');
-    await expect.poll(() => reader.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeCloseTo(16.8, 2);
+    await expect(textReset).toHaveText('110%');
+    await expect.poll(() => reader.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeCloseTo(15.4, 2);
     await reader.hover();
     await f.page.keyboard.down('Control'); await f.page.mouse.wheel(0, -80); await f.page.keyboard.up('Control');
-    await expect(textReset).toHaveText('130%');
-    await expect.poll(() => f.page.evaluate(() => window.marktex.getZoom())).toMatchObject({ app: 100, text: 130, terminal: 100 });
+    await expect(textReset).toHaveText('120%');
+    await expect.poll(() => f.page.evaluate(() => window.marktex.getZoom())).toMatchObject({ app: 100, text: 100, terminal: 100 });
     await f.page.screenshot({ path: test.info().outputPath('reader-toolbar.png') });
     await f.page.getByRole('button', { name: 'Exit reader mode', exact: true }).click();
     await expect(websiteReset).toHaveText('120%');
     expect(await evaluatePage(f.app, f.origin, "document.querySelector('#draft').value")).toBe('keep zoom state');
     await f.page.getByRole('tab', { name: /notes.md/ }).click();
-    await expect(textReset).toHaveText('130%');
+    await expect(textReset).toHaveText('110%');
     await textReset.click(); await expect(textReset).toHaveText('100%');
     await f.page.getByRole('button', { name: 'Switch to Editor', exact: true }).click();
     await f.page.getByRole('button', { name: 'Zoom text in', exact: true }).click();

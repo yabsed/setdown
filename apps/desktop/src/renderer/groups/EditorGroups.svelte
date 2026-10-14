@@ -37,7 +37,7 @@
     style:width={`${box.width}%`} style:height={`${box.height}%`}>
     <TabChrome {actions} groupId={box.id} />
     <LocationBar {actions} groupId={box.id} />
-    <div class="group-body" data-group-id={box.id}>
+    <div class="group-body" data-group-id={box.id} data-zoom-tab={tab?.id}>
       {#if tab?.kind === 'web' && browser.readers[tab.id]}
         <WebReaderSurface {actions} groupId={box.id} tabId={tab.id} snapshot={browser.readers[tab.id]} />
       {:else if tab?.kind === 'web' && (tab.page?.error || tab.page?.startPage)}

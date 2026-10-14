@@ -72,6 +72,10 @@ export function createGroupRuntime(options: {
   }
   function focusSurface(event: Event) {
     const element = event.target as HTMLElement;
+    // Let Monaco place the caret and focus its input before moving that editor
+    // into the foreground host. Moving it during pointerdown can invalidate
+    // Chromium's following mousedown/focus target. Its focus event activates it.
+    if (event.type === 'pointerdown' && element.closest('.monaco-editor')) return;
     const media = element.closest<HTMLElement>('[data-media-tab], [data-terminal-tab]');
     const groupId = element.closest<HTMLElement>('[data-group-id]')?.dataset.groupId;
     const group = workspace.groups.groups.find(g => g.id === groupId);

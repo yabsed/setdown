@@ -48,8 +48,10 @@ export function startWorkspace(desktop: DesktopPort) {
   applyShellTheme(initialTheme.id);
   let projectOpenRequest = 0;
   const actions: AppActions = {
-    changeZoom: (steps, scope) => desktop.changeZoom(steps, scope),
+    changeZoom: (steps, scope, tabId) => desktop.changeZoom(steps, scope, tabId),
     newTerminal: () => { projects.deactivateGitDiff(); void tabs.openTerminal(); },
+    openTerminalSession: id => { projects.deactivateGitDiff(); void tabs.openTerminalSession(id).catch(error => { browser.error = String(error); }); },
+    closeTerminalSession: id => { void tabs.closeTerminalSession(id); },
     terminalChanged: (id, info) => tabs.terminalChanged(id, info),
     newWebTab: (input, background) => { projects.deactivateGitDiff(); void tabs.openWeb(input, background).catch(error => { browser.error = String(error); }); },
     navigateLocation: async (groupId, input) => {
@@ -100,6 +102,7 @@ export function startWorkspace(desktop: DesktopPort) {
       if (group?.activeId) { projects.deactivateGitDiff(); void tabs.activate(group.activeId); }
     },
     resizeGroup: (id, ratio) => { workspace.groups.resize(id, ratio); tabs.render(); },
+    menuOverlay: desktop.menuOverlay,
     loadMenu: (id) => desktop.getApplicationMenu(id),
     executeMenuItem: (id) => desktop.executeApplicationMenuItem(id),
     resolveClosePrompt: (decision) => closePrompt.resolve(decision),
@@ -194,6 +197,7 @@ export function startWorkspace(desktop: DesktopPort) {
   positions = new ReadingPositionController({ desktop, editor, active, suspended: () => project.gitDiffActive });
   tabs = new TabController({ desktop, workspace, session, shell, editor, reader, preview, surfaces,
     capturePosition: (tab) => positions.capture(tab),
+    reviewZoomId: () => project.gitDiffActive && project.activeGitDiffId ? `git-diff:${project.activeGitDiffId}` : null,
     shouldSchedulePreview: () => !project.gitDiffActive,
     confirmClose: (names) => closePrompt.request('tab', names), workspaceChanged: () => projectContextChanged(), groupsChanged: () => { groups?.sync(); browsers?.sync(true); },
     autoSave: { schedule: (tab) => autoSave.schedule(tab), cancel: (tabId) => autoSave.cancel(tabId) } });

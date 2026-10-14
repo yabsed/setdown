@@ -560,6 +560,8 @@ test('terminal activation, splitting and transfers stay outside document resourc
   await f.controller.installTransferred({ transferId: 'move', tab: transfer });
   assert.equal(f.workspace.active?.kind, 'terminal');
   await f.controller.close(terminal.id);
+  assert.equal(calls.filter(call => call === `terminal-close:${terminal.id}`).length, 0);
+  await f.controller.closeTerminalSession(terminal.id);
   assert.equal(calls.filter(call => call === `terminal-close:${terminal.id}`).length, 1);
   assert.equal(f.workspace.activeId, documentId);
 });
@@ -577,4 +579,48 @@ test('external background refresh does not overwrite edits made while disk IO is
   await refresh;
   assert.equal(tab.text, 'typed while reading');
   assert.equal(f.workspace.active?.kind, 'terminal');
+});
+
+test('terminal addresses retain their session through file/web history and reject missing sessions', async () => {
+  const f = fixture();
+  await f.controller.openTerminal();
+  const id = f.workspace.activeId!;
+  assert.equal(f.workspace.terminals.get(id)?.title, 'Terminal 1');
+  await f.controller.navigateLocation(id, 'https://example.com/first');
+  assert.equal(f.workspace.active?.kind, 'web');
+  await f.controller.navigateLocation(id, 'file:///project/file.txt');
+  assert.equal(f.workspace.activeDocument?.document.path, '/project/file.txt');
+  await f.controller.navigateHistory(id, -1);
+  assert.equal(f.workspace.active?.kind, 'web');
+  await f.controller.navigateHistory(id, -1);
+  assert.equal(f.workspace.active?.kind, 'terminal');
+  assert.equal(f.workspace.activeId, id);
+  assert.equal(f.workspace.terminals.size, 1);
+  assert.equal(calls.some(call => call.startsWith('terminal-close:')), false);
+  const current = f.workspace.active;
+  for (const url of ['terminal://missing', `terminal://${id}/wrong`, `terminal://${id}?bad=1`]) {
+    await assert.rejects(f.controller.navigateLocation(id, url), /no longer available/);
+    assert.equal(f.workspace.active, current);
+  }
+  await f.controller.openTerminal();
+  const second = f.workspace.activeId!;
+  assert.equal(f.workspace.terminals.get(second)?.title, 'Terminal 2');
+  await f.controller.navigateLocation(second, `terminal://${id}`);
+  assert.equal(f.workspace.activeId, id);
+  assert.equal(f.workspace.tabs.filter(tab => tab.kind === 'terminal').length, 2);
+  assert.equal(f.workspace.find(second)?.kind, 'terminal');
+});
+
+test('a canceled dirty file navigation cannot replace it with a terminal session', async () => {
+  const f = fixture();
+  await f.controller.openTerminal();
+  const session = f.workspace.activeId!;
+  await f.controller.navigateLocation(session, '/project/edited.txt');
+  const tab = f.workspace.activeDocument!;
+  tab.text = 'unsaved'; tab.revision++;
+  f.options.confirmClose = async () => 'cancel';
+  assert.equal(await f.controller.navigateLocation(tab.id, `terminal://${session}`), false);
+  assert.equal(f.workspace.active, tab);
+  assert.equal(tab.text, 'unsaved');
+  assert.equal(f.workspace.terminals.has(session), true);
 });

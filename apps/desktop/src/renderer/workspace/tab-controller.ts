@@ -6,7 +6,7 @@ import { fileLocation, isFileLocation } from '../../core/document/file-location'
 import { browserURL } from '../../core/browser/browser-url';
 import { recordVisit, type TabNavigation, type TabVisit } from '../../core/workspace/tab-navigation';
 import { GOLDEN_TOP_RATIO, type ViewportAnchor } from '../../core/preview/viewport-anchor';
-import { createWorkspaceTab, isDocumentTab, tabTitle, tabLocation, type DocumentTab, type TabSession, type WorkspaceState, type WorkspaceTab } from '../../core/workspace/workspace-state';
+import { createWorkspaceTab, isDocumentTab, tabTitle, tabLocation, type DocumentTab, type TerminalTab, type TabSession, type WorkspaceState, type WorkspaceTab } from '../../core/workspace/workspace-state';
 import type { ClaimedTabTransfer, CloseDecision, DocumentSnapshot, TransferableTab } from '../../protocol/desktop-api';
 import type { MonacoEditor } from '../adapters/monaco-editor';
 import type { SurfaceController } from '../application/surface-controller';
@@ -27,6 +27,7 @@ type Options = {
   confirmClose(names: string[]): Promise<CloseDecision>;
   workspaceChanged(): void;
   groupsChanged?(): void;
+  reviewZoomId?(): string | null;
   autoSave?: { schedule(tab: DocumentTab): void; cancel(tabId?: string): void };
 };
 const TRANSFER_ANNOUNCE_GRACE_MS = 150;
@@ -38,6 +39,7 @@ export class TabController {
   private readonly navigationTasks = new Map<string, Promise<boolean>>();
   private readonly historyTasks = new Map<string, Promise<boolean>>();
   private readonly replacing = new Set<string>();
+  private terminalNumber = 0;
   constructor(private readonly options: Options) {}
   text = (tab: WorkspaceTab): string => isDocumentTab(tab) ? this.options.editor.text(tab) : '';
   dirty = (tab: WorkspaceTab): boolean => isDocumentTab(tab) && hasUnsavedText(tab.document, this.text(tab));
@@ -138,25 +140,51 @@ export class TabController {
   };
   openTerminal = async (): Promise<void> => {
     const id = crypto.randomUUID();
-    this.options.workspace.add({ kind: 'terminal', id, surface: 'terminal', title: 'Terminal', cwd: '', exited: false });
+    const session = { id, title: `Terminal ${++this.terminalNumber}`, cwd: '', exited: false };
+    this.options.workspace.terminals.set(id, session);
+    this.options.workspace.add({ ...session, kind: 'terminal', sessionId: id, surface: 'terminal' });
     this.render(); await this.activate(id);
   };
+  openTerminalSession = async (sessionId: string): Promise<void> => {
+    const { workspace } = this.options;
+    const session = workspace.terminals.get(sessionId);
+    if (!session) return;
+    const existing = workspace.tabs.find(tab => tab.kind === 'terminal' && (tab.sessionId ?? tab.id) === sessionId);
+    if (existing) return this.activate(existing.id);
+    if (workspace.activeId) { await this.navigateLocation(workspace.activeId, `terminal://${sessionId}`); return; }
+    const id = crypto.randomUUID();
+    workspace.add({ ...session, kind: 'terminal', id, sessionId, surface: 'terminal' });
+    this.render(); await this.activate(id);
+  };
+  closeTerminalSession = async (sessionId: string): Promise<void> => {
+    const { workspace, desktop } = this.options;
+    for (const tab of [...workspace.tabs]) if (tab.kind === 'terminal' && (tab.sessionId ?? tab.id) === sessionId) await this.close(tab.id);
+    workspace.terminals.delete(sessionId);
+    desktop.terminal.close(sessionId);
+    this.render();
+  };
   terminalChanged = (id: string, info: { title?: string; cwd?: string; exited?: boolean }): void => {
-    const tab = this.options.workspace.find(id);
-    if (tab?.kind !== 'terminal') return;
-    Object.assign(tab, info); this.updateChrome();
+    const { workspace } = this.options;
+    const session = workspace.terminals.get(id);
+    if (!session) return;
+    // A shell's executable/window title does not rename its numbered session.
+    if (info.cwd !== undefined) session.cwd = info.cwd;
+    if (info.exited !== undefined) session.exited = info.exited;
+    for (const tab of workspace.tabs) if (tab.kind === 'terminal' && (tab.sessionId ?? tab.id) === id) {
+      tab.title = session.title; tab.cwd = session.cwd; tab.exited = session.exited;
+    }
+    this.updateChrome();
   };
   openWeb = async (input = 'https://www.google.com/', background = false): Promise<void> => {
     const page = await this.options.desktop.browser.create(crypto.randomUUID(), input);
     await this.addWeb(page, background);
   };
   private visit(tab: WorkspaceTab): TabVisit | null {
-    if (tab.kind === 'terminal') return null;
+    if (tab.kind === 'terminal') return { kind: 'terminal', url: tabLocation(tab) };
     if (tab.kind === 'web') return { kind: 'web', url: tab.page.url };
     return tab.document.isUntitled ? null : { kind: 'file', url: fileLocation(tab.document.path), position: tab.readingPosition };
   }
   private navigation(tab: WorkspaceTab): TabNavigation {
-    if (tab.kind === 'terminal') return { entries: [], index: -1 };
     if (!tab.navigation) {
       const visit = this.visit(tab);
       tab.navigation = { entries: visit ? [visit] : [], index: visit ? 0 : -1 };
@@ -203,9 +231,14 @@ export class TabController {
     const { desktop, workspace } = this.options;
     const request = Symbol();
     this.navigationRequests.set(id, request);
-    let prepared: Promise<string | DocumentSnapshot>;
+    let prepared: Promise<string | DocumentSnapshot | TerminalTab>;
     try {
-      prepared = isFileLocation(input) ? desktop.readDocumentLocation(input.trim()) : Promise.resolve(browserURL(input));
+      if (/^terminal:/i.test(input.trim())) {
+        const url = new URL(input.trim());
+        const session = workspace.terminals.get(url.hostname);
+        if (!session || url.username || url.password || !['', '/'].includes(url.pathname) || url.search || url.hash) throw Error('This terminal session is no longer available.');
+        prepared = Promise.resolve({ ...session, kind: 'terminal', id, sessionId: session.id, surface: 'terminal' });
+      } else prepared = isFileLocation(input) ? desktop.readDocumentLocation(input.trim()) : Promise.resolve(browserURL(input));
     } catch (error) {
       if (!this.navigationTasks.has(id)) this.navigationRequests.delete(id);
       return Promise.reject(error);
@@ -221,10 +254,16 @@ export class TabController {
       if ('error' in result) throw result.error;
       let destination = result.value;
       const tab = workspace.find(id)!;
-      if (tab.kind === 'terminal') return false;
+      if (typeof destination !== 'string' && destination.kind === 'terminal') {
+        const sessionId = destination.sessionId;
+        const existing = workspace.tabs.find(other => other.id !== id && other.kind === 'terminal'
+          && (other.sessionId ?? other.id) === sessionId);
+        if (existing) { await this.activate(existing.id); return true; }
+        if (tab.kind === 'terminal' && (tab.sessionId ?? tab.id) === destination.sessionId) return true;
+      }
       const navigation = this.navigation(tab), target = historyIndex === undefined ? null : navigation.entries[historyIndex];
       if (historyIndex !== undefined && !target) return false;
-      if (typeof destination !== 'string' && target?.kind === 'file' && target.position) {
+      if (typeof destination !== 'string' && destination.kind !== 'terminal' && target?.kind === 'file' && target.position) {
         destination = { ...destination, readingPosition: target.position };
       }
       if (typeof destination === 'string' && tab.kind === 'web') {
@@ -232,7 +271,7 @@ export class TabController {
         await desktop.browser.navigate(id, destination);
         return true;
       }
-      if (typeof destination !== 'string' && isDocumentTab(tab) && destination.path === tab.document.path) {
+      if (typeof destination !== 'string' && destination.kind !== 'terminal' && isDocumentTab(tab) && destination.path === tab.document.path) {
         if (historyIndex !== undefined) { navigation.index = historyIndex; this.render(); }
         return true;
       }
@@ -266,7 +305,7 @@ export class TabController {
           }
           // A rejected beforeunload leaves the live web page and tab intact.
           if (tab.kind === 'web' && !await desktop.browser.close(id)) return false;
-          replacement = this.documentTab(id, destination);
+          replacement = destination.kind === 'terminal' ? destination : this.documentTab(id, destination);
         }
         if (workspace.activeId === id) this.saveActiveState();
         else if (isDocumentTab(tab)) { this.options.capturePosition?.(tab); this.options.editor.saveView(tab); }
@@ -314,7 +353,8 @@ export class TabController {
     return task;
   };
   transferable = (tab: WorkspaceTab): TransferableTab => {
-    if (tab.kind === 'terminal') return { kind: 'terminal', id: tab.id, title: tab.title, cwd: tab.cwd, exited: tab.exited };
+    if (tab.kind === 'terminal') return { kind: 'terminal', id: tab.id, sessionId: tab.sessionId ?? tab.id,
+      title: tab.title, cwd: tab.cwd, exited: tab.exited, navigation: tab.navigation };
     if (tab.kind === 'web') return { kind: 'web', id: tab.id, page: { ...tab.page }, navigation: tab.navigation };
     if (tab.id === this.options.workspace.activeId) this.saveActiveState();
     else this.options.editor.saveView(tab);
@@ -334,13 +374,16 @@ export class TabController {
       return { id: tab.id, name: tabTitle(tab), path: tabLocation(tab), kind: tab.kind,
         canGoBack: this.canGoBack(tab.id), canGoForward: this.canGoForward(tab.id),
         ...(tab.kind === 'web' ? { page: { ...tab.page } } : {}),
-        ...(tab.kind === 'terminal' ? { exited: tab.exited } : {}),
+        ...(tab.kind === 'terminal' ? { exited: tab.exited, sessionId: tab.sessionId ?? tab.id } : {}),
         active: tab.id === workspace.activeId, dirty, preview: !workspace.groups.isPinned(tab.id) };
     });
     view.groups = workspace.groups.groups.map(group => ({ ...group, tabs: [...group.tabs] }));
     view.groupTree = structuredClone(workspace.groups.tree);
     view.focusedGroupId = workspace.groups.focusedId;
     view.tabs = summaries;
+    view.terminalSessions = [...workspace.terminals.values()].map(session => ({ ...session }));
+    const review = this.options.reviewZoomId?.() ?? null;
+    desktop.setZoomTabs?.([...workspace.tabs.map(tab => tab.id), ...(review ? [review] : [])], review ?? workspace.activeId);
     void tick().then(() => this.options.groupsChanged?.());
     view.mediaTabs = this.media.sync(workspace.documents, workspace.activeId, workspace.groups.groups.flatMap(g => g.activeId ? [g.activeId] : []));
     view.activeMediaId = workspace.activeDocument?.document.kind ? workspace.activeId : null;
@@ -502,7 +545,6 @@ export class TabController {
     if (workspace.activeId === tab.id) this.saveActiveState();
     const removed = workspace.remove(tab.id);
     if (!removed) return true;
-    if (tab.kind === 'terminal') desktop.terminal.close(tab.id);
     this.release(tab);
     if (!removed.wasActive) { this.render(); return true; }
     const replacement = workspace.replacement(removed.index);
@@ -586,6 +628,7 @@ export class TabController {
     const removed = workspace.remove(tabId);
     if (!removed) return;
     const { tab } = removed;
+    if (tab.kind === 'terminal') workspace.terminals.delete(tab.sessionId ?? tab.id);
     if (!removed.wasActive) { editor.dispose(tab.id); return this.render(); }
     const replacement = workspace.replacement(removed.index);
     if (replacement) { await this.activate(replacement.id); editor.dispose(tab.id); return; }
@@ -685,6 +728,9 @@ export class TabController {
     const incoming = transfer.tab;
     if (incoming.kind === 'terminal') {
       if (!await desktop.adoptTabTransfer(transfer.transferId)) return;
+      const sessionId = incoming.sessionId ?? incoming.id;
+      workspace.terminals.set(sessionId, { id: sessionId, title: incoming.title, cwd: incoming.cwd, exited: incoming.exited });
+      this.terminalNumber = Math.max(this.terminalNumber, Number(incoming.title.match(/^Terminal (\d+)$/)?.[1] ?? 0));
       workspace.add({ ...incoming, surface: 'terminal' });
       if (placement) workspace.groups.move(incoming.id, placement.groupId, placement.direction, placement.index);
       this.render(); await this.activate(incoming.id); desktop.completeTabTransfer(transfer.transferId); return;

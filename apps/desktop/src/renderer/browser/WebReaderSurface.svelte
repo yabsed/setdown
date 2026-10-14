@@ -140,7 +140,7 @@
      viewer's native surface; Enter is its keyboard return path. -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <section class="web-reader" aria-label="Reader mode" data-reader-tab={tabId} tabindex="-1"
-  style:font-size={`${14 * zoomState.text / 100}px`} bind:this={container}
+  data-zoom-tab={tabId} style:font-size={`${14 * (zoomState.tabs?.[tabId] ?? 100) / 100}px`} bind:this={container}
   onscroll={onScroll}
   onclick={clicked} ondblclick={dblclick} onkeydown={keydown}>
   <div class="web-reader-column">

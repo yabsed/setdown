@@ -13,6 +13,8 @@ import type { ApplicationMenuEntry, CloseDecision, DocumentSnapshot, GitRemoteAc
 import { canonicalPath } from '../documents/file-system';
 import type { DocumentManager } from '../documents/document-manager';
 import { applicationMenuEntries, executeApplicationMenu } from '../menu/application-menu';
+import { MenuOverlay } from '../menu/menu-overlay';
+import type { WindowState } from '../windows/window-state';
 import { exportPdf } from '../preview/pdf-exporter';
 import type { PreviewManager } from '../preview/preview-manager';
 import type { PreviewRenderer } from '../preview/preview-renderer';
@@ -46,11 +48,17 @@ export function installIpc(options: Options): void {
   channels.on('project:git-graph-cancel', (state, id: unknown) => history.cancel(state, id));
   channels.handle('project:git-history-diff', (state, selection: GitHistorySelection) => history.diff(state, selection));
   previews.registerIpc(); transfers.registerIpc();
-  channels.handle('menu:get', (state, menuId: unknown) => {
+  const menuEntries = (state: WindowState, menuId: unknown) => {
     const review = state.rendererGitReview?.active === true;
     const filePath = review ? state.rendererGitReview!.path : state.currentDocument?.path ?? '';
     return documentMenus(applicationMenuEntries(menuId), isMarkdownDocument(filePath), review).map((item) =>
       isReadOnlyDocument(filePath) && ['save', 'menu-save-as'].includes(item.id) ? { ...item, enabled: false } : item);
+  };
+  channels.handle('menu:get', menuEntries);
+  const menuOverlay = new MenuOverlay(menuEntries);
+  channels.handle('menu-overlay:open', (state, menuId: string, position: { x: number; y: number }) => {
+    if (![...options.browsers.views.values()].some(entry => entry.owner === state.webContentsId && entry.view.getVisible())) return false;
+    return menuOverlay.open(state, { menuId, x: position?.x, y: position?.y, theme: themes.id });
   });
   channels.on('menu:execute', (state, itemId: unknown) => executeApplicationMenu(itemId, state.window));
   channels.handle('theme:get', (): ThemeSnapshot => themes.snapshot);

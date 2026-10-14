@@ -1,4 +1,4 @@
-import type { ZoomSnapshot } from '../../core/zoom';
+import { tabZoomKey, type ZoomSnapshot } from '../../core/zoom';
 import type { DesktopPort } from '../ports/desktop-port';
 
 /** Editors/previews and terminals follow separate persisted factors. Each
@@ -7,11 +7,19 @@ import type { DesktopPort } from '../ports/desktop-port';
 let factor = 1;
 let terminalFactorValue = 1;
 let revision = -1;
-const listeners = new Set<() => void>();
-const terminalListeners = new Set<() => void>();
+let tabs: Record<string, number> = {};
+const listeners = new Set<(id?: string) => void>();
+const terminalListeners = new Set<(id?: string) => void>();
 function update(value: ZoomSnapshot) {
   if (!value || value.revision < revision) return;
   revision = value.revision;
+  const next = value.tabs ?? {};
+  const changed = new Set([...Object.keys(tabs), ...Object.keys(next)].filter(id => tabs[id] !== next[id]));
+  tabs = next;
+  for (const id of changed) {
+    for (const listener of listeners) listener(id);
+    for (const listener of terminalListeners) listener(id);
+  }
   if (factor !== value.text / 100) {
     factor = value.text / 100;
     for (const listener of listeners) listener();
@@ -33,14 +41,14 @@ export function installTextZoom(desktop: DesktopPort, changed?: (value: ZoomSnap
   void desktop.getZoom().then(apply);
   return unsubscribe;
 }
-export function textZoomFactor() { return factor; }
-export function terminalZoomFactor() { return terminalFactorValue; }
-export function textZoomOptions() { return { fontSize: 14 * factor, lineHeight: 22 * factor }; }
-export function onTextZoom(listener: () => void) {
+export function textZoomFactor(id?: string) { return id ? (tabs[tabZoomKey(id)] ?? 100) / 100 : factor; }
+export function terminalZoomFactor(id?: string) { return id ? textZoomFactor(id) : terminalFactorValue; }
+export function textZoomOptions(id?: string) { const size = textZoomFactor(id); return { fontSize: 14 * size, lineHeight: 22 * size }; }
+export function onTextZoom(listener: (id?: string) => void) {
   listeners.add(listener);
   return () => { listeners.delete(listener); };
 }
-export function onTerminalZoom(listener: () => void) {
+export function onTerminalZoom(listener: (id?: string) => void) {
   terminalListeners.add(listener);
   return () => { terminalListeners.delete(listener); };
 }

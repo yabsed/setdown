@@ -187,7 +187,8 @@ export type TransferableDocumentTab = {
   tocOpen: boolean;
 };
 
-export type TransferableTerminalTab = { kind: 'terminal'; id: string; title: string; cwd: string; exited: boolean };
+export type TransferableTerminalTab = { kind: 'terminal'; id: string; sessionId?: string; title: string; cwd: string; exited: boolean;
+  navigation?: import('../core/workspace/tab-navigation').TabNavigation };
 export type TransferableTab = TransferableDocumentTab | TransferableTerminalTab | { kind: 'web'; id: string; page: import('./browser').BrowserPage;
   navigation?: import('../core/workspace/tab-navigation').TabNavigation };
 
@@ -199,6 +200,7 @@ export type ClaimedTabTransfer = {
 export type { PreviewBounds } from './preview-preparation';
 export type PreviewMessage = { tabId: string; message: Record<string, unknown> };
 
+export type MenuOverlayContext = { menuId: string; x: number; y: number; theme: PreviewThemeId };
 export type ApplicationMenuEntry = {
   id: string;
   label: string;
@@ -239,7 +241,8 @@ export type MarkTexApi = {
   mediaUrl(path: string): string;
   terminal: import('./terminal').TerminalApi;
   getZoom(): Promise<import('../core/zoom').ZoomSnapshot>;
-  changeZoom(steps: number, scope: 'app' | 'text' | 'terminal'): void;
+  changeZoom(steps: number, scope: 'app' | 'text' | 'terminal', tabId?: string): void;
+  setZoomTabs(ids: string[], active: string | null): void;
   onZoomChanged(listener: (zoom: import('../core/zoom').ZoomSnapshot) => void): () => void;
   initialTheme: ThemeSnapshot;
   getDocument(): Promise<DocumentSnapshot | null>;
@@ -288,6 +291,15 @@ export type MarkTexApi = {
   destroyPreview(tabId: string): void;
   getTheme(): Promise<ThemeSnapshot>;
   getApplicationMenu(menuId: string): Promise<ApplicationMenuEntry[]>;
+  menuOverlay: {
+    open(menuId: string, position: { x: number; y: number }): Promise<boolean>;
+    context(): Promise<MenuOverlayContext>;
+    entries(menuId: string): Promise<ApplicationMenuEntry[]>;
+    execute(itemId: string): void;
+    close(): void;
+    onShow(listener: (context: MenuOverlayContext) => void): () => void;
+    onClosed(listener: () => void): () => void;
+  };
   executeApplicationMenuItem(itemId: string): void;
   getPreviewThemeAssets(themeId: PreviewThemeId): Promise<PreviewThemeAssets>;
   closeEmptyWindow(): void;

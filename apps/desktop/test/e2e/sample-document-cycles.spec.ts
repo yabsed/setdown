@@ -1,3 +1,4 @@
+import { electron } from './electron-app';
 /** Ordinary Markdown Esc measurements; bench:preview applies the timing gate. Each test launches
  * a fresh app. Capture includes polling/IPC/readback, not monitor presentation.
  * The ordinary document opens in reader mode before the first source edit.
@@ -7,7 +8,7 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { _electron as electron, expect, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { disposeApplication } from './electron-app';
 import { cycleElectronExecutable, cycleSampleFixture, doubleClickPreview } from './preview-cycle-input';
 

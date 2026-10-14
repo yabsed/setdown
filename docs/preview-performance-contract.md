@@ -36,21 +36,25 @@ or instant returns after eviction. `media-tabs.spec.ts`, `image-reader.spec.ts`,
 `reading-positions.spec.ts` and the cache/file/history unit tests cover these
 guarantees and are included in the focused gate.
 
-Zoom has five independent scopes. Ctrl+plus/minus and Ctrl+0 change/reset the
-persisted app factor in every window. Ctrl+wheel in text/Markdown changes the
-persisted common text factor: ordinary and Git Monaco editors scale typography
-and native Markdown views use app × text zoom (including hidden/spare views).
-Ctrl+wheel over a terminal changes only the persisted terminal factor:
-terminal surfaces scale their cell font (13px base) and refit the PTY grid
-through the ordered resize path, without touching editors, previews, native
-targets or native bounds. Settings written before this split inherit the text
-factor for terminals once.
-Native bounds still convert with **app zoom only**, never the text or terminal
-factor. Changing zoom must not navigate, replace models, discard undo history
-or focus hidden previews. `workspace-zoom.test.ts` and `workspace-zoom.spec.ts`
-cover scope, reset, inheritance and persistence; the terminal e2e covers
-Ctrl+wheel over a live PTY, factor independence and the dedicated reset. The
-View menu uses the same coordinator.
+Content zoom belongs to each tab. Ctrl+plus/minus and Ctrl+0 still change/reset
+persisted app zoom in every window. Ctrl+wheel and location-bar controls change
+only the addressed tab's content factor, including ordinary/Git editors, native
+Markdown previews, terminals, and web reader mode. Native previews compose
+app × tab zoom; editor and terminal typography uses the tab factor. New tabs
+start at 100%, even when another tab of the same type is enlarged. The two
+panes of one Git review share that review tab's factor. Transferred tab IDs keep
+their factors. A newly created document tab after restart is a new zoom scope.
+Legacy text/terminal preference fields are retained for settings compatibility;
+they no longer couple production tabs.
+
+Native targets use [Electron's isolated zoom mode](https://www.electronjs.org/docs/latest/api/web-contents#contentssetzoommodemode) so two pages on the same origin
+can have different factors. Native bounds still convert with **app zoom only**.
+Changing zoom must not navigate, replace models, discard undo history or focus
+hidden previews. Unchanged native factors are not reapplied when another tab's
+factor changes. Terminal font updates refit the PTY through the ordered resize
+path. `workspace-zoom.test.ts`, `workspace-zoom.spec.ts`, `browser.spec.ts` and
+`terminal.spec.ts` cover scope, composition, tab independence, and reset.
+The View menu uses the same coordinator and active-tab ownership.
 
 App typography uses the locally installed D2Coding family with a monospace
 fallback across shell controls, ordinary/Git editors, terminals, and Markdown
@@ -71,27 +75,32 @@ The isolated page preload registers the bounded wheel accumulator in each
 committed frame after a native owner/frame readiness acknowledgment;
 Electron's native `zoom-changed` event handles unconsumed requests. Ordinary
 scrolling and synthetic DOM wheel events do not request zoom. Website
-zoom is shared by hostname within the browser session, matching Chromium's zoom
-policy, and composes with app zoom without changing app/text preferences or native
-bounds. Reloads, tab switches and app zoom updates retain the website factor.
+zoom belongs to the web tab, including when another tab has the same hostname,
+and composes with app zoom without changing other tabs or native bounds. Reloads, tab switches and app zoom updates retain the website factor.
 Zoom preserves the live page and forms. The custom content-factor target in
 `workspace-zoom.test.ts` and native wheel input in `browser.spec.ts` cover these
 guarantees. Wheel IPC is accepted only from a visible owned web contents, with
 bounded integer steps; no desktop API is exposed to remote pages.
 
 Every tab's location bar displays decrease, reset percentage, and increase
-controls, including 100%. Live web pages use the hostname-scoped website factor;
-web reader mode uses the persisted common text factor, shared with Markdown and
-ordinary/Git editors. Reader Ctrl+wheel follows that same text scope. Entering or
+controls, including 100%. Live web pages use their tab's website factor; web
+reader mode uses that tab's separate Markdown/text factor. Reader Ctrl+wheel
+follows that same tab text scope. Entering or
 leaving reader mode preserves the live page's website factor and form state.
 Bookmark and reader buttons precede zoom, with the Markdown toolbar icon style;
 uBlock stays active and its controls remain available from Browser Extensions.
-Terminal bars use the terminal factor, PDF/image bars use their actual per-file
-scale (including fit modes), and video bars expose app zoom. Each split's controls
-address its own tab. Updates from wheels, menus, other windows, and same-host web
-tabs keep the percentage current; indicators add no native captures, navigation,
+Terminal and video bars use their tab factors; PDF/image bars use their actual
+per-tab scale (including fit modes). Each split's controls
+address its own tab. Updates from wheels and menus keep the addressed tab's percentage current; indicators add no native captures, navigation,
 or layout polling. `browser.spec.ts`, `workspace-zoom.spec.ts`, and
 `terminal.spec.ts` cover the toolbar routing alongside the existing zoom checks.
+
+Top-level application menus over live web pages use a transparent, owned native
+menu view above the page. They do not capture, hide, pause or replace the page.
+Menu/submenu selection, Escape and dismissal preserve the live view and video
+frame delivery. `browser.spec.ts` verifies advancing video frames while selecting
+these menus and unchanged page identity/visibility. The overlay runs only trusted
+shell code and validates commands against the owner's current menu entries.
 
 Explorer context menus, sidebar action menus, and the Explorer trash confirmation
 use the shell's balanced native-overlay lifecycle. Visible Markdown/Git/web views
@@ -128,8 +137,12 @@ stable keyed surfaces retain xterm and PTY state across tab switches and local
 group moves. A terminal group must remain outside every native reader/web view,
 including during window and sash resizing. No bottom terminal grid row remains.
 The Terminal activity button now manages sessions in the sidebar; opening that
-list does not create a PTY. Closing a tab ends its process, while cross-window
-transfer adopts the same PTY and restores its live VT screen and input modes. A clean document
+list does not create a PTY. Closing a tab or navigating to a file/web page preserves its process; the
+Terminal sidebar selects the session again or explicitly ends it. Editable
+`terminal://<session-id>` addresses and Terminal 1, Terminal 2 labels distinguish
+sessions from web/file resources. Back/Forward restores the same session. An
+already displayed terminal address focuses its existing tab rather than creating
+a second competing PTY surface. Cross-window transfer of a terminal tab adopts the same PTY and restores its live VT screen and input modes. A clean document
 beside the terminal refreshes external file changes without stealing focus.
 `terminal.spec.ts`, `editor-groups.spec.ts`, `image-terminal-layout.spec.ts`, and
 `video-reader.spec.ts` cover the replacement layout; terminal ownership and
@@ -375,6 +388,15 @@ only needs the synchronous session-preload registration — the tab appears
 immediately while its remote load still waits for extension readiness. Its
 adapter preserves native response-header events and targets styles to their
 actual frame.
+Electron 44/Chromium exposes a separate native `browser` namespace. The pinned
+extension compatibility preload augments `chrome` and synchronously aliases
+`browser` to that same API before extension scripts run. uBlock's own aliasing
+must not discard browserAction, tabs, managed-storage and header adapters.
+`browser.spec.ts` checks both namespaces, fresh startup, real filtering, popup
+operation and settings/filter preservation across three restarts. API warnings
+from unsupported manifest permissions are not a readiness signal; remote
+navigation still waits for uBlock's actual filtering readiness.
+
 Electron 38 cannot remove user-origin webFrame styles; scoped user styles are
 disabled through root tokens and reused until navigation, preserving priority
 and allowing uBlock's cosmetic toggle without replacing page content. Frames
@@ -400,7 +422,9 @@ collapsing groups must preserve Monaco models and Undo histories.
 
 Focusing a continuously mounted text editor preserves its current viewport and
 the caret placed by the user's click. A saved reading position must not override
-that live view, including after scrolling a visible background group. Text tabs
+that live view, including after scrolling a visible background group. Monaco
+receives its pointer/caret focus before group activation reparents its host;
+connected editor hosts use an atomic DOM move to retain focus and IME state. Text tabs
 that are newly mounted still restore their saved view against the final shell
 geometry. The source-group focus case in `editor-groups.spec.ts` and activation
 cases in `text-workspace.test.ts` cover this distinction.

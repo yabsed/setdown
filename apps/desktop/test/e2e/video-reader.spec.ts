@@ -1,4 +1,5 @@
-import { _electron as electron, expect, test } from '@playwright/test';
+import { electron } from './electron-app';
+import { expect, test } from '@playwright/test';
 import { copyFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -30,11 +31,11 @@ test('opens video files, streams them with range requests and prevents text save
     expect(src).toMatch(/^marktex-resource:\/\/file\/.*clip\.mp4$/);
     expect(await video.evaluate((node: HTMLVideoElement) => [node.readyState, node.duration])).toEqual([4, 2]);
     expect(await previews(app).count()).toBe(0);
-    await expect(page.getByRole('button', { name: 'Reset app zoom', exact: true })).toHaveText('100%');
-    await page.getByRole('button', { name: 'Zoom app in', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Reset app zoom', exact: true })).toHaveText('110%');
-    await page.getByRole('button', { name: 'Reset app zoom', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Reset app zoom', exact: true })).toHaveText('100%');
+    await expect(page.getByRole('button', { name: 'Reset video zoom', exact: true })).toHaveText('100%');
+    await page.getByRole('button', { name: 'Zoom video in', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Reset video zoom', exact: true })).toHaveText('110%');
+    await page.getByRole('button', { name: 'Reset video zoom', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Reset video zoom', exact: true })).toHaveText('100%');
     // The surface must fill its group-content cell so the stage centers the video;
     // a surface that shrink-wraps into an implicit grid row would equal the video size.
     const centered = await reader.evaluate((surface) => {

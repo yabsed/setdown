@@ -28,7 +28,8 @@
   <ProjectSidebar {actions} />
   <div class="editor-area" class:split={view.groups.length > 1}>
   <EditorGroups {actions} />
-  <div class="group-content focused-content" style={geometry(focused)}>
+  <div class="group-content focused-content" style={geometry(focused)}
+    data-zoom-tab={project.gitDiffActive ? `git-diff:${project.activeGitDiffId}` : view.groups.find(group => group.id === view.focusedGroupId)?.activeId}>
   <div class="notice" hidden={!view.notice}>
     <span>This file was changed by another application.</span>
     <div>
@@ -52,7 +53,7 @@
       {:catch error}{#if active}<div role="alert">Could not load the PDF reader: {String(error)}</div>{/if}{/await}
     {:else if tab.document.kind === 'video'}
       {#await import('./video/VideoSurface.svelte') then module}
-        <module.default document={tab.document} initialPosition={tab.position} {active}
+        <module.default tabId={tab.id} document={tab.document} initialPosition={tab.position} {active}
           {desktop} onposition={(position) => mediaPosition(tab.id, position)} />
       {:catch error}{#if active}<div role="alert">Could not load the video player: {String(error)}</div>{/if}{/await}
     {:else}
@@ -63,15 +64,16 @@
     {/if}
     </div>
   {/each}
-  {#each view.tabs.filter(tab => tab.kind === 'terminal') as tab (tab.id)}
-    {@const group = view.groups.find(group => group.activeId === tab.id)}
+  {#each view.terminalSessions as session (session.id)}
+    {@const tab = view.tabs.find(tab => tab.kind === 'terminal' && tab.sessionId === session.id)}
+    {@const group = view.groups.find(group => group.activeId === tab?.id)}
     {@const active = !!group && !(group.id === view.focusedGroupId && project.gitDiffActive)}
     {@const box = boxes.find(box => box.id === group?.id) ?? focused}
     <div class="group-content terminal-content" class:inactive={!active} inert={!active}
-      style={geometry(box)} data-terminal-tab={tab.id}>
+      style={geometry(box)} data-terminal-tab={tab?.id} data-zoom-tab={tab?.id}>
       {#await import('./terminal/TerminalSurface.svelte') then module}
-        <module.default api={terminalApi} id={tab.id} {active} focused={active && group?.id === view.focusedGroupId}
-          changed={info => actions.terminalChanged(tab.id, info)} />
+        <module.default api={terminalApi} id={session.id} tabId={tab?.id} {active} focused={active && group?.id === view.focusedGroupId}
+          changed={info => actions.terminalChanged(session.id, info)} />
       {:catch error}<div role="alert">Could not load the terminal: {String(error)}</div>{/await}
     </div>
   {/each}

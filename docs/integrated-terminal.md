@@ -10,23 +10,24 @@ The activity-bar Terminal button and Ctrl+backquote toggle the terminal-session
 sidebar. Its activity icon follows Browser; the session rows and empty-list
 creation action use Explorer's 23px row height and 11px text. Opening the list does not start a shell. The list selects existing
 terminal tabs, creates sessions, and closes a session together with its process.
-Closing a terminal tab also ends its process. Exited sessions retain their output
+Closing a terminal tab, or navigating that tab to a file or web page, preserves
+its process. Select the session in the Terminal sidebar to return to it; the
+sidebar close button explicitly ends the process. Exited sessions retain their output
 and display an exited label until closed. Window close/reload terminates sessions
 owned by that window. App restart does not restore terminal processes.
 
-The cell font (13px base) follows its own persisted terminal text factor,
-independent of the common text zoom shared by Monaco editors and Markdown
-previews: Ctrl+wheel over the terminal changes only the terminal factor in
-both directions, and the grid refits through the ordered resize path.
-Ctrl+wheel over an editor or preview never refits the grid, and View →
-Reset Terminal Text Size resets only this factor. Settings written before
-the split inherit the text factor once. Like editor text zoom, keyboard
-Ctrl+plus/minus/0 keep their separate app-zoom scope. Zooming never kills,
-restarts or detaches a session.
+The cell font (13px base) follows the displaying tab's content factor. Each
+terminal tab starts at 100% and changes independently, even from other terminal
+tabs. Ctrl+wheel and address-bar controls update that tab and refit its PTY
+through the ordered resize path. View → Reset Terminal Text Size addresses the
+active tab. Ctrl+plus/minus/0 keep their separate app-zoom scope. Zoom never
+kills, restarts or detaches a session.
 
 A session starts in the project folder, then the active document directory, then
-the user's documents/home directory. The location row displays this launch
-folder; it does not track subsequent shell `cd` commands. There are at most 12
+the user's documents/home directory. The editable location row displays `terminal://<session-id>`; the sidebar
+displays the launch folder. Sessions have stable Terminal 1, Terminal 2 labels
+instead of shell-provided titles. Normal tab Back/Forward spans terminal, file
+and web resources, preserving the process when returning to its address. There are at most 12
 sessions per window. Ctrl+C remains a shell interrupt; Ctrl+Shift+C/V handles
 clipboard operations without duplicate paste. Escape stays inside the terminal.
 
@@ -62,8 +63,9 @@ process to redraw at the target width.
 
 `TerminalManager` validates input and sizes, and pauses busy output until the
 renderer acknowledges parsing it. Renderer disposal releases xterm only; explicit
-workspace close or owner destruction closes the PTY. Terminal tabs never enter
-document save, Markdown preparation, or browser navigation paths. File changes
+session close or owner destruction closes the PTY. The terminal resource itself
+never enters document save or Markdown preparation; its tab can navigate to
+those resources through the same address/history route as other tabs. File changes
 from a focused terminal refresh a clean neighboring document without stealing
 terminal focus.
 

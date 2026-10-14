@@ -1,14 +1,20 @@
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { onMount, tick } from 'svelte';
+  import { applyShellTheme } from '../theme';
+  import type { MenuOverlayContext } from '../../protocol/desktop-api';
   import type { ApplicationMenuEntry } from '../../protocol/desktop-api';
   import MenuItems from './MenuItems.svelte';
 
   let {
     load,
     execute,
+    nativeLayer = false,
+    overlay,
   }: {
     load: (menuId: string) => Promise<ApplicationMenuEntry[]>;
     execute: (itemId: string) => void;
+    nativeLayer?: boolean;
+    overlay: import('../../protocol/desktop-api').MarkTexApi['menuOverlay'];
   } = $props();
 
   const menus = ['File', 'View', 'Edit', 'Window'] as const;
@@ -18,6 +24,9 @@
   let openId = $state<string | null>(null);
   let entries = $state<ApplicationMenuEntry[]>([]);
   let request = 0;
+  let nativeOpen = $state(false);
+  let showGeneration = 0;
+  let placement = $state({ x: 0, y: 0 });
   let submenu = $state<{
     id: string;
     entries: ApplicationMenuEntry[];
@@ -31,7 +40,9 @@
 
   function close() {
     request += 1;
-    if (openId !== null) announce(false);
+    if (nativeLayer || nativeOpen) overlay.close();
+    else if (openId !== null) announce(false);
+    nativeOpen = false;
     openId = null;
     entries = [];
     submenu = null;
@@ -40,7 +51,13 @@
   async function open(button: HTMLButtonElement) {
     const menuId = button.dataset.menuId!;
     if (openId === menuId) return close();
-    if (openId === null) announce(true);
+    if (!nativeLayer) {
+      const bounds = root.getBoundingClientRect();
+      if (await overlay.open(menuId, { x: bounds.left, y: bounds.top })) {
+        nativeOpen = true; openId = menuId; return;
+      }
+    }
+    if (openId === null && !nativeLayer) announce(true);
     openId = menuId;
     submenu = null;
     const ownRequest = ++request;
@@ -85,11 +102,30 @@
     event.stopPropagation();
     close();
   }
+  onMount(() => {
+    if (!nativeLayer) return overlay.onClosed(() => {
+      if (!nativeOpen) return;
+      nativeOpen = false; openId = null; entries = []; submenu = null; request++;
+    });
+    const show = async (context: MenuOverlayContext) => {
+      const generation = ++showGeneration;
+      applyShellTheme(context.theme); placement = { x: context.x, y: context.y };
+      openId = null; submenu = null; await tick();
+      if (generation !== showGeneration) return;
+      const button = root.querySelector<HTMLButtonElement>(`[data-menu-id="${context.menuId}"]`);
+      if (button) await open(button);
+    };
+    const unsubscribe = overlay.onShow(context => { void show(context); });
+    void overlay.context().then(show);
+    return unsubscribe;
+  });
 </script>
 
 <svelte:window onpointerdown={outside} onkeydown={keydown} />
 
-<nav bind:this={root} class="application-menu" aria-label="Application menu">
+<nav bind:this={root} class="application-menu" aria-label="Application menu"
+  style:position={nativeLayer ? 'fixed' : undefined} style:left={nativeLayer ? `${placement.x}px` : undefined}
+  style:top={nativeLayer ? `${placement.y}px` : undefined}>
   {#each menus as label}
     <button
       type="button"
@@ -108,7 +144,7 @@
 <div
   bind:this={popup}
   class="application-menu-popup"
-  hidden={openId === null}
+  hidden={openId === null || nativeOpen}
   onscroll={() => submenu = null}
 >
   <MenuItems

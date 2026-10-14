@@ -220,13 +220,15 @@ export class DocumentManager {
   async pasteImage(state: WindowState): Promise<PasteImageResult> {
     const document = state.currentDocument;
     if (!document || !isMarkdownDocument(document.path)) return { canceled: true };
-    const clipboardFiles = clipboard.availableFormats()
-      .filter((format) => /uri-list|gnome-copied-files/i.test(format))
-      .flatMap((format) => {
-        try { return clipboard.readBuffer(format).toString('utf8').replace(/\0/g, '').split(/\r?\n/); }
-        catch { return []; }
-      });
-    const plainText = clipboard.readText().trim();
+    const items = await clipboard.read();
+    const clipboardFiles: string[] = [];
+    for (const item of items) for (const format of item.types.filter(format => /uri-list|gnome-copied-files/i.test(format))) {
+      try {
+        const data = await item.getType(format);
+        if ('text' in data) clipboardFiles.push(...(await data.text()).replace(/\0/g, '').split(/\r?\n/));
+      } catch { /* A platform may advertise a format it cannot convert. */ }
+    }
+    const plainText = (await clipboard.readText()).trim();
     if (plainText.startsWith('file://')) clipboardFiles.push(...plainText.split(/\r?\n/));
     const localPaths = [...new Set(clipboardFiles.map((entry) => entry.trim())
       .filter((entry) => entry && !['copy', 'cut'].includes(entry) && !entry.startsWith('#'))
@@ -239,9 +241,10 @@ export class DocumentManager {
       return { canceled: false, markdown: saved.map((image) => image.markdown).join('\n\n'),
         relativePath: saved[0]?.markdownPath };
     }
-    const image = clipboard.readImage();
-    if (image.isEmpty()) return { canceled: true };
-    const saved = await savePastedPng(document.path, image.toPNG());
+    const image = items.find(item => item.types.includes('image/png'));
+    if (!image) return { canceled: true };
+    const data = await image.getType('image/png');
+    const saved = await savePastedPng(document.path, Buffer.from(await data.arrayBuffer()));
     return { canceled: false, markdown: saved.markdown, relativePath: saved.markdownPath };
   }
 

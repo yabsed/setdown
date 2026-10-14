@@ -10,6 +10,6 @@
   <button class="product-identity" type="button" title="Toggle Folder Tools"
     aria-label="Toggle Folder Tools" aria-expanded={project.visible}
     onclick={actions.toggleProjectSidebar}>Setdown</button>
-  <ApplicationMenu load={actions.loadMenu} execute={actions.executeMenuItem} />
+  <ApplicationMenu overlay={actions.menuOverlay} load={actions.loadMenu} execute={actions.executeMenuItem} />
   <div class="titlebar-drag-space" aria-hidden="true"></div>
 </header>

@@ -19,6 +19,28 @@ function target(id: number) {
   };
 }
 
+test('tab zoom isolates native targets, survives reload and composes with app zoom', () => {
+  const zoom = new WorkspaceZoom(), a = target(1), b = target(2), shell = target(3);
+  zoom.track(a, undefined, () => zoom.tabFactor('a'));
+  zoom.track(b, undefined, () => zoom.tabFactor('b')); zoom.track(shell);
+  const untouched = b.factors.length + shell.factors.length;
+  zoom.changeTab('a', 2);
+  assert.equal(a.factors.at(-1), 1.2); assert.equal(b.factors.at(-1), 1);
+  assert.equal(b.factors.length + shell.factors.length, untouched);
+  a.emit('did-finish-load'); assert.equal(a.factors.at(-1), 1.2);
+  zoom.change(1); assert.equal(a.factors.at(-1), 1.32); assert.equal(b.factors.at(-1), 1.1);
+  zoom.changeTab('b', -1); assert.equal(a.factors.at(-1), 1.32);
+  assert.equal(b.factors.at(-1), 1.1 * .9);
+  const restored = new WorkspaceZoom(); restored.restore(zoom.snapshot);
+  assert.equal(restored.tabFactor('a'), 1.2); assert.equal(restored.tabFactor('b'), .9);
+  assert.equal(restored.tabFactor('new'), 1);
+  zoom.context(10, ['a', 'git-diff:review'], 'a');
+  assert.equal(zoom.ownsTab(10, 'b'), false);
+  assert.equal(zoom.ownsTab(10, 'git-diff:review:a'), true);
+  zoom.changeTab('git-diff:review:a', 1);
+  assert.equal(zoom.tabFactor('git-diff:review:b'), 1.1);
+});
+
 test('shell/front/back/another window use one scale', () => {
   const zoom = new WorkspaceZoom(); const views = [1, 2, 3, 4].map(target);
   views.forEach(view => zoom.track(view)); zoom.change(1);
@@ -126,7 +148,7 @@ test('terminal zoom is independent of app/text zoom and never touches native tar
   zoom.change(0, 'terminal');
   assert.equal(zoom.terminalFactor, 1);
   assert.equal(zoom.textFactor, 1.1);
-  assert.deepEqual(zoom.snapshot, { app: 100, text: 110, terminal: 100, revision: 3 });
+  assert.deepEqual(zoom.snapshot, { app: 100, text: 110, terminal: 100, revision: 3, tabs: {} });
 });
 
 test('text zoom composes with app zoom only in text previews, including spares and reloads', () => {

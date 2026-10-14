@@ -11,7 +11,7 @@ vi.mock('electron', () => {
     dead = false;
     bounds = { x: 0, y: 0, width: 0, height: 0 };
     webContents = {
-      id: ++id, isDestroyed: () => this.dead, isFocused: () => false,
+      setZoomFactor() {}, setZoomMode() {}, id: ++id, isDestroyed: () => this.dead, isFocused: () => false,
       on() {}, once() {}, send() {}, close: () => { this.dead = true; },
       getURL: () => 'marktex-preview://document/review', enableDeviceEmulation() {},
       loadURL: async (_url: string) => {},
@@ -30,7 +30,7 @@ vi.mock('../../core/preview/preview-install', () => ({
 }));
 vi.mock('../windows/workspace-zoom', async (importOriginal) => ({
   ...await importOriginal<typeof import('../windows/workspace-zoom')>(),
-  WorkspaceZoom: class { track() {} },
+  WorkspaceZoom: class { track() {} factor = 1; tabFactor() { return 1; } },
 }));
 
 const bounds = { x: 20, y: 40, width: 600, height: 450 };

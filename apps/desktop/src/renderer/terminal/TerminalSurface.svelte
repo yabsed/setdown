@@ -6,7 +6,7 @@
   import { APP_FONT_FAMILY } from '../../core/theme/typography';
   import { onTerminalZoom, terminalZoomFactor } from '../editor/text-zoom';
   import type { TerminalApi, TerminalEvent, TerminalSize } from '../../protocol/terminal';
-  let { api, id, active, focused, changed }: { api: TerminalApi; id: string; active: boolean; focused: boolean;
+  let { api, id, tabId, active, focused, changed }: { api: TerminalApi; id: string; tabId?: string; active: boolean; focused: boolean;
     changed(info: { title?: string; cwd?: string; exited?: boolean }): void } = $props();
   let container: HTMLDivElement;
   let error = $state('');
@@ -21,7 +21,7 @@
       foreground: style.getPropertyValue('--app-text').trim(), cursor: style.getPropertyValue('--app-text').trim(),
       selectionBackground: `${style.getPropertyValue('--app-accent').trim()}55` };
   }
-  const terminalFont = () => Math.max(8, Math.round(13 * terminalZoomFactor()));
+  const terminalFont = () => Math.max(8, Math.round(13 * terminalZoomFactor(tabId ?? id)));
   function resize(immediate = false) {
     if (!term || starting || !active || !container.clientWidth || !container.clientHeight) return;
     const size = fit.proposeDimensions();
@@ -47,9 +47,10 @@
     else { ready = false; changed({ exited: true }); term.write(`\r\n[Process exited with code ${event.exitCode}]\r\n`); }
   }
   $effect(() => {
-    const visible = active, selected = focused;
+    const visible = active, selected = focused; void tabId;
     void tick().then(() => {
       if (!alive || !visible) { clearTimeout(resizeTimer); resizeTimer = undefined; return; }
+      if (term) term.options.fontSize = terminalFont();
       resize(true); if (selected) term?.focus();
     });
   });
@@ -83,15 +84,15 @@
     // Terminal zoom (Ctrl+wheel over the terminal only) rescales the cell
     // grid; the existing resize path reflows the PTY in the right order.
     // Editor/preview text zoom and app zoom never reach this listener.
-    const unsubscribeZoom = onTerminalZoom(() => {
-      if (!term) return;
+    const unsubscribeZoom = onTerminalZoom(changedId => {
+      if (!term || (changedId && changedId !== (tabId ?? id))) return;
       term.options.fontSize = terminalFont();
       if (alive && active && !starting) requestAnimationFrame(() => { if (alive && term && active) resize(true); });
     });
     const observer = new ResizeObserver(() => resize()); observer.observe(container);
     const themes = new MutationObserver(() => { if (term) term.options.theme = theme(); });
     themes.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    const focus = (event: Event) => { if ((event as CustomEvent<string>).detail === id && active) term?.focus(); };
+    const focus = (event: Event) => { if ((event as CustomEvent<string>).detail === (tabId ?? id) && active) term?.focus(); };
     window.addEventListener('setdown:focus-terminal', focus);
     fit.fit();
     void api.create(id, { cols: term.cols, rows: term.rows }).then(async info => {

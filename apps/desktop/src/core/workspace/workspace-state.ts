@@ -28,12 +28,13 @@ export type DocumentTab = {
 
 export type BrowserTab = { kind: 'web'; id: string; surface: 'web'; page: import('../browser/browser-state').BrowserPage;
   navigation?: import('./tab-navigation').TabNavigation };
-export type TerminalTab = { kind: 'terminal'; id: string; surface: 'terminal';
-  title: string; cwd: string; exited: boolean; navigation?: never };
+export type TerminalSession = { id: string; title: string; cwd: string; exited: boolean };
+export type TerminalTab = { kind: 'terminal'; id: string; surface: 'terminal'; sessionId?: string;
+  title: string; cwd: string; exited: boolean; navigation?: import('./tab-navigation').TabNavigation };
 export type WorkspaceTab = DocumentTab | BrowserTab | TerminalTab;
 export const isDocumentTab = (tab: WorkspaceTab): tab is DocumentTab => tab.kind !== 'web' && tab.kind !== 'terminal';
 export const tabTitle = (tab: WorkspaceTab): string => tab.kind === 'terminal' ? `${tab.title}${tab.exited ? ' (exited)' : ''}` : tab.kind === 'web' ? tab.page.title || 'New web tab' : tab.document.name;
-export const tabLocation = (tab: WorkspaceTab): string => tab.kind === 'terminal' ? tab.cwd : tab.kind === 'web' ? tab.page.url : tab.document.path;
+export const tabLocation = (tab: WorkspaceTab): string => tab.kind === 'terminal' ? `terminal://${tab.sessionId ?? tab.id}` : tab.kind === 'web' ? tab.page.url : tab.document.path;
 
 export function createWorkspaceTab(
   id: string,
@@ -62,6 +63,7 @@ export function createWorkspaceTab(
 
 export class WorkspaceState {
   readonly tabs: WorkspaceTab[] = [];
+  readonly terminals = new Map<string, TerminalSession>();
   readonly groups = new EditorGroups();
   private activeTabId: string | null = null;
   get activeId() { return this.activeTabId; }

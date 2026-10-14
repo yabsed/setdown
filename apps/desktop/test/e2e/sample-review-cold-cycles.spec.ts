@@ -1,3 +1,4 @@
+import { electron } from './electron-app';
 /** Cold Esc/double-click measurements; bench:preview applies the timing gate.
  * No hidden DOM measurement.
  * SETDOWN_TRACE_CYCLES=1 records Chromium work; SETDOWN_CYCLES_IDLE_MS controls
@@ -10,7 +11,7 @@ import { promisify } from 'node:util';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { _electron as electron, expect, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { disposeApplication } from './electron-app';
 import { cycleElectronExecutable, cycleSampleFixture, doubleClickPreview } from './preview-cycle-input';
 

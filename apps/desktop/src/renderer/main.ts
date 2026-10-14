@@ -3,5 +3,9 @@ import { electronDesktop } from './adapters/electron-desktop';
 import { installTextZoom } from './editor/text-zoom';
 import { zoomState } from './zoom-state.svelte';
 
-installTextZoom(electronDesktop, snapshot => Object.assign(zoomState, snapshot));
-startWorkspace(electronDesktop);
+if (new URL(location.href).searchParams.has('menu-overlay')) {
+  void import('./shell/menu-overlay-runtime').then(module => module.startMenuOverlay(electronDesktop));
+} else {
+  installTextZoom(electronDesktop, snapshot => Object.assign(zoomState, snapshot));
+  startWorkspace(electronDesktop);
+}

@@ -1,7 +1,8 @@
 <script lang="ts">
   import { view, type AppActions } from '../view-state.svelte';
   let { actions }: { actions: AppActions } = $props();
-  const sessions = $derived(view.tabs.filter(tab => tab.kind === 'terminal'));
+  const sessions = $derived(view.terminalSessions.map(session => ({ ...session,
+    active: view.tabs.some(tab => tab.kind === 'terminal' && tab.sessionId === session.id && tab.active) })));
 </script>
 <section class="terminal-list" aria-label="Terminal sessions">
   <header class="side-view-title">
@@ -20,11 +21,11 @@
   <div class="sessions">
   {#each sessions as tab (tab.id)}
     <div class="session" class:active={tab.active}>
-      <button class="select" title={tab.path} aria-pressed={tab.active} onclick={() => actions.activateTab(tab.id)}>
+      <button class="select" title={`terminal://${tab.id}`} aria-pressed={tab.active} onclick={() => actions.openTerminalSession(tab.id)}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 6 6 6-6 6M13 18h6"/></svg>
-        <span class="name">{tab.name}</span><small>{tab.path || 'Starting…'}</small>
+        <span class="name">{tab.title}{tab.exited ? ' (exited)' : ''}</span><small>{tab.cwd || 'Starting…'}</small>
       </button>
-      <button class="kill" title="Close terminal and end its process" aria-label={`Close terminal ${tab.name}`} onclick={() => actions.closeTab(tab.id)}>
+      <button class="kill" title="End terminal process" aria-label={`Close terminal ${tab.title}`} onclick={() => actions.closeTerminalSession(tab.id)}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
       </button>
     </div>

@@ -1,4 +1,5 @@
-import { _electron as electron, expect, test, type Page, type Locator } from '@playwright/test';
+import { electron } from './electron-app';
+import { expect, test, type Page, type Locator } from '@playwright/test';
 import { mkdtemp, rm, writeFile, copyFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -291,6 +292,7 @@ test('editing another visible source group preserves scroll and the newly clicke
     await expect.poll(async () => (await snapshot(secondEditor)).firstLine).toBeLessThan(400);
     const beforeFirst = await snapshot(firstEditor), beforeSecond = await snapshot(secondEditor);
     const clickedSecond = await clickLine(secondEditor);
+
     await expect(page.locator('.editor-group.focused .tab-name')).toHaveText('second.cpp');
     await expect.poll(() => snapshot(secondEditor)).toEqual({ ...beforeSecond, cursor: clickedSecond });
     expect(await snapshot(firstEditor)).toEqual(beforeFirst);

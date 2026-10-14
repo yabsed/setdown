@@ -1,9 +1,10 @@
+import { electron } from './electron-app';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { _electron as electron, expect, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { disposeApplication } from './electron-app';
 
 const exec = promisify(execFile);
@@ -107,9 +108,9 @@ test('Working Tree shares table/link popovers, Ctrl+K, smart paste and native im
 
     // Real Electron clipboard -> asset file -> modified Monaco -> live document.
     await source.press(`${mod}+End`);
-    await app.evaluate(({ clipboard, nativeImage }) => clipboard.writeImage(nativeImage.createFromDataURL(
+    await app.evaluate(({ clipboard, nativeImage, ClipboardItem }) => clipboard.write([new ClipboardItem({ 'image/png': new Blob([Uint8Array.from(nativeImage.createFromDataURL(
       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAFElEQVR4nGPU6LnEAANMDEgANwcATIYBjqzlNOgAAAAASUVORK5CYII=',
-    )));
+    ).toPNG())], { type: 'image/png' }) })]));
     await source.press(`${mod}+v`);
     await expect.poll(f.buffer).toMatch(/!\[[^\]]*\]\(/);
     await source.press(`${mod}+s`);
@@ -133,7 +134,14 @@ test('read-only Index/original, commit text, ordinary Markdown and tab roundtrip
     const before = await f.buffer();
     const original = f.page.locator('.git-diff-editor').getByRole('textbox', { name: 'Staged version', exact: true });
     await f.app.evaluate(({ clipboard }) => clipboard.writeText('https://example.com/no-mutation'));
-    await original.click(); await original.press(`${mod}+a`); await original.press(`${mod}+v`);
+    // Native EditContext's textbox sits underneath Monaco's painted lines.
+    // Click the visible editor as a user does, then verify its input owns focus.
+    await f.page.locator('.git-diff-editor .monaco-editor').filter({
+      has: f.page.getByRole('textbox', { name: 'Staged version', exact: true }),
+    }).locator('.view-lines')
+      .click({ position: { x: 30, y: 10 } });
+    await expect(original).toBeFocused();
+    await original.press(`${mod}+a`); await original.press(`${mod}+v`);
     expect(await f.buffer()).toBe(before);
 
     const message = f.page.getByRole('textbox', { name: 'Commit message', exact: true });
@@ -146,7 +154,12 @@ test('read-only Index/original, commit text, ordinary Markdown and tab roundtrip
     await expect(f.page.locator('.insert-link-button')).toBeHidden();
     await expect(f.page.locator('.insert-table-button')).toBeHidden();
     const index = f.page.locator('.git-diff-editor').getByRole('textbox', { name: 'Staged version', exact: true });
-    await index.click(); await index.press(`${mod}+k`);
+    await f.page.locator('.git-diff-editor .monaco-editor').filter({
+      has: f.page.getByRole('textbox', { name: 'Staged version', exact: true }),
+    }).locator('.view-lines')
+      .click({ position: { x: 30, y: 10 } });
+    await expect(index).toBeFocused();
+    await index.press(`${mod}+k`);
     await expect(f.page.locator('.link-popover')).toBeHidden();
 
     await f.page.locator('.document-tab:not(.git-diff-tab)').click();

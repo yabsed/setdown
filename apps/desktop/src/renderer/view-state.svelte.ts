@@ -10,6 +10,7 @@ import type {
 import type { ProjectView } from './project/project-state.svelte';
 
 export type TabView = {
+  sessionId?: string;
   kind?: 'document' | 'web' | 'terminal';
   exited?: boolean;
   page?: import('../protocol/browser').BrowserPage;
@@ -45,8 +46,11 @@ export type WorkingTreeEdit = {
 };
 
 export type AppActions = {
-  changeZoom(steps: number, scope: 'app' | 'text' | 'terminal'): void;
+  menuOverlay: import('../protocol/desktop-api').MarkTexApi['menuOverlay'];
+  changeZoom(steps: number, scope: 'app' | 'text' | 'terminal', tabId?: string): void;
   newTerminal(): void;
+  openTerminalSession(id: string): void;
+  closeTerminalSession(id: string): void;
   terminalChanged(id: string, info: { title?: string; cwd?: string; exited?: boolean }): void;
   newWebTab(input?: string, background?: boolean): void;
   navigateLocation(groupId: string, input: string): Promise<void>;
@@ -131,6 +135,7 @@ export const view = $state({
   groupTree: { kind: 'group', id: 'group-0' } as import('../core/workspace/editor-groups').GroupTree,
   focusedGroupId: 'group-0',
   tabs: [] as TabView[],
+  terminalSessions: [] as import('../core/workspace/workspace-state').TerminalSession[],
   draggedTabId: null as string | null,
   surface: 'empty' as 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'web' | 'terminal',
   mediaTabs: [] as import('./workspace/media-cache').MediaTab[],

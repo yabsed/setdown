@@ -12,7 +12,7 @@ vi.mock('electron', async () => {
     dead = false;
     bounds = { x: 0, y: 0, width: 0, height: 0 };
     webContents = Object.assign(new EventEmitter(), {
-      id: ++id, isDestroyed: () => this.dead, isFocused: () => false,
+      setZoomFactor() {}, setZoomMode() {}, id: ++id, isDestroyed: () => this.dead, isFocused: () => false,
       close: () => { this.dead = true; }, send() {},
       loadURL: async (_url: string) => {},
     });

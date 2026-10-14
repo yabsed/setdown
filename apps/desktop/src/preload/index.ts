@@ -17,7 +17,7 @@ import { normalizePreviewTheme } from '../core/preview/preview-preferences';
 import { resourceUrl } from '../core/preview/media-url';
 
 installAppZoom((steps) => ipcRenderer.send('workspace:zoom', steps));
-installWheelZoom((steps, scope) => ipcRenderer.send(scope === 'terminal' ? 'workspace:terminal-zoom' : 'workspace:text-zoom', steps));
+installWheelZoom((steps, scope, tabId) => ipcRenderer.send(scope === 'terminal' ? 'workspace:terminal-zoom' : 'workspace:text-zoom', steps, tabId));
 
 function subscribe<T>(channel: string, listener: (value: T) => void) {
   const handler = (_event: Electron.IpcRendererEvent, value: T) => listener(value);
@@ -60,7 +60,8 @@ const api: MarkTexApi = {
     onEvent: (listener) => subscribe('browser:event', listener),
   },
   getZoom: () => ipcRenderer.invoke('workspace:zoom-state'),
-  changeZoom: (steps, scope) => ipcRenderer.send(scope === 'terminal' ? 'workspace:terminal-zoom' : scope === 'text' ? 'workspace:text-zoom' : 'workspace:zoom', steps),
+  changeZoom: (steps, scope, tabId) => ipcRenderer.send(scope === 'terminal' ? 'workspace:terminal-zoom' : scope === 'text' ? 'workspace:text-zoom' : 'workspace:zoom', steps, tabId),
+  setZoomTabs: (ids, active) => ipcRenderer.send('workspace:zoom-tabs', ids, active),
   onZoomChanged: (listener) => subscribe('workspace:zoom-changed', listener),
   saveReadingPosition: (record) => ipcRenderer.send('reading:save', record),
   flushReadingPositions: () => ipcRenderer.sendSync('reading:flush'),
@@ -107,6 +108,15 @@ const api: MarkTexApi = {
   destroyPreview: (tabId) => ipcRenderer.send('preview:destroy', tabId),
   getTheme: () => ipcRenderer.invoke('theme:get'),
   getApplicationMenu: (menuId) => ipcRenderer.invoke('menu:get', menuId),
+  menuOverlay: {
+    open: (menuId, position) => ipcRenderer.invoke('menu-overlay:open', menuId, position),
+    context: () => ipcRenderer.invoke('menu-overlay:context'),
+    entries: menuId => ipcRenderer.invoke('menu-overlay:entries', menuId),
+    execute: itemId => ipcRenderer.send('menu-overlay:execute', itemId),
+    close: () => ipcRenderer.send('menu-overlay:close'),
+    onShow: listener => subscribe('menu-overlay:show', listener),
+    onClosed: listener => subscribe('menu-overlay:closed', listener),
+  },
   executeApplicationMenuItem: (itemId) => ipcRenderer.send('menu:execute', itemId),
   getPreviewThemeAssets: (themeId) => ipcRenderer.invoke('preview:theme-assets', themeId),
   closeEmptyWindow: () => ipcRenderer.send('app:close-empty-window'),

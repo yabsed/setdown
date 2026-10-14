@@ -1,9 +1,10 @@
+import { electron } from './electron-app';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { _electron as electron, expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import type { MarkTexApi } from '../../src/protocol/desktop-api';
 import { disposeApplication } from './electron-app';
 

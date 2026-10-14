@@ -3,9 +3,10 @@
   import type { DocumentSnapshot } from '../../core/document/document';
   import type { ReadingPosition, VideoReadingPosition } from '../../core/reading/reading-position';
   import type { DesktopPort } from '../ports/desktop-port';
+  import { zoomState } from '../zoom-state.svelte';
 
-  let { document: file, initialPosition, desktop, onposition, active }: {
-    document: DocumentSnapshot; initialPosition?: ReadingPosition; desktop: DesktopPort; active: boolean;
+  let { tabId, document: file, initialPosition, desktop, onposition, active }: {
+    tabId: string; document: DocumentSnapshot; initialPosition?: ReadingPosition; desktop: DesktopPort; active: boolean;
     onposition(position: VideoReadingPosition): void;
   } = $props();
   const initial = untrack(() => initialPosition?.kind === 'video' ? initialPosition : undefined);
@@ -42,7 +43,7 @@
     {:else}
       <!-- Arbitrary user videos have no caption track to offer. -->
       <!-- svelte-ignore a11y_media_has_caption -->
-      <video bind:this={video} {src} controls playsinline preload="auto"
+      <video bind:this={video} {src} controls playsinline preload="auto" style:transform={`scale(${(zoomState.tabs?.[tabId] ?? 100) / 100})`}
         onloadeddata={loaded} onerror={() => failed = true}
         onpause={remember} onended={remember} ontimeupdate={remember}></video>
       {#if !ready}<p role="status">Opening video…</p>{/if}

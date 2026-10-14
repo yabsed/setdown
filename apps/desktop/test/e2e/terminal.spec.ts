@@ -1,4 +1,5 @@
-import { _electron as electron, expect, test, type Locator } from '@playwright/test';
+import { electron } from './electron-app';
+import { expect, test, type Locator } from '@playwright/test';
 import { copyFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
@@ -65,7 +66,7 @@ test('ctrl+wheel over the terminal changes terminal zoom only and refits the gri
     // size and app zoom stay at 100%.
     await expect.poll(() => page.evaluate(async () => {
       const zoom = await window.marktex.getZoom();
-      return zoom.app === 100 && zoom.text === 100 && zoom.terminal > 100;
+      return zoom.app === 100 && zoom.text === 100 && (zoom.tabs?.[document.querySelector<HTMLElement>('.document-tab[aria-selected="true"]')!.dataset.tabId!] ?? 100) > 100;
     })).toBe(true);
     let zoomed = '';
     await expect.poll(async () => {
@@ -120,7 +121,7 @@ for (const direction of ['right', 'down'] as const) test(`terminal tabs split ${
     const page = await app.firstWindow(), reader = previews(app);
     await expect.poll(reader.hasVisible).toBe(true);
     await page.locator('.new-terminal-tab-button').click();
-    const tab = page.getByRole('tab', { name: /^bash/ });
+    const tab = page.getByRole('tab', { name: /^Terminal \d/ });
     await expect(tab).toBeVisible();
     await expect.poll(reader.hasVisible).toBe(false);
     await run(input(page), 'export SETDOWN_SESSION=still-here; pwd > cwd.txt; tty > tty.txt; printf "%s" "$$" > pid.txt');
@@ -181,16 +182,16 @@ for (const direction of ['right', 'down'] as const) test(`terminal tabs split ${
     await expect(list).toBeVisible();
     await expect(list.locator('.session')).toHaveCount(1);
     await list.getByRole('button', { name: 'New terminal session' }).click();
-    await expect(page.getByRole('tab', { name: /^bash/ })).toHaveCount(2);
+    await expect(page.getByRole('tab', { name: /^Terminal \d/ })).toHaveCount(2);
     await expect(list.locator('.session')).toHaveCount(2);
     await run(input(page), 'exit 7');
-    await expect(page.getByRole('tab', { name: /bash \(exited\)/ })).toBeVisible();
-    await list.getByRole('button', { name: 'Close terminal bash (exited)', exact: true }).click();
+    await expect(page.getByRole('tab', { name: /Terminal 2 \(exited\)/ })).toBeVisible();
+    await list.getByRole('button', { name: 'Close terminal Terminal 2', exact: true }).click();
     await expect(list.locator('.session')).toHaveCount(1);
     await run(input(page), 'printf "%s" "$SETDOWN_SESSION" > still.txt');
     await expect.poll(() => readFile(path.join(root, 'still.txt'), 'utf8').catch(() => '')).toBe('still-here');
     await page.screenshot({ path: test.info().outputPath(`terminal-${direction}.png`) });
-    await list.getByRole('button', { name: 'Close terminal bash', exact: true }).click();
+    await list.getByRole('button', { name: 'Close terminal Terminal 1', exact: true }).click();
     await expect(page.locator('.editor-group')).toHaveCount(1);
     await expect(page.locator('.terminal-surface')).toHaveCount(0);
     await expect.poll(() => { try { process.kill(Number(pid), 0); return false; } catch { return true; } }).toBe(true);
@@ -211,7 +212,7 @@ test('terminal list opens without creating a process; a terminal tab uses projec
     await expect(list).toContainText('No open terminals.');
     await expect(page.locator('.terminal-surface')).toHaveCount(0);
     await list.getByRole('button', { name: 'New terminal session' }).click();
-    await expect(page.getByRole('tab', { name: /^bash/ })).toBeVisible();
+    await expect(page.getByRole('tab', { name: /^Terminal \d/ })).toBeVisible();
     await run(input(page), 'printf "%s" "$$" > shell-pid.txt; pwd > project-cwd.txt');
     await expect.poll(() => readFile(path.join(root, 'project-cwd.txt'), 'utf8').catch(() => '')).toBe(root + '\n');
     const pid = Number(await readFile(path.join(root, 'shell-pid.txt'), 'utf8'));
@@ -232,7 +233,7 @@ test('detaching a terminal transfers the same shell and restores its screen', as
     await page.evaluate(folder => window.marktex.restoreProjectFolder(folder), root);
     await page.locator('.empty-new').click();
     await page.locator('.new-terminal-tab-button').click();
-    const tab = page.getByRole('tab', { name: /^bash/ });
+    const tab = page.getByRole('tab', { name: /^Terminal \d/ });
     await expect(tab).toBeVisible();
     await run(input(page), 'export TRANSFER_STATE=preserved; printf "TRANSFER-OUTPUT\\n"; printf "%s" "$$" > before.txt');
     await expect.poll(() => readFile(path.join(root, 'before.txt'), 'utf8').catch(() => '')).toMatch(/^\d+$/);
@@ -245,14 +246,18 @@ test('detaching a terminal transfers the same shell and restores its screen', as
     });
     await expect(tab).toHaveCount(0);
     const destination = app.windows().find(candidate => candidate !== page && !candidate.isClosed())!;
-    await expect(destination.getByRole('tab', { name: /^bash/ })).toBeVisible();
+    await expect(destination.getByRole('tab', { name: /^Terminal \d/ })).toBeVisible();
     await expect(destination.locator('.xterm-screen')).toContainText('TRANSFER-OUTPUT');
     await run(input(destination), 'printf "%s:%s" "$$" "$TRANSFER_STATE" > after.txt');
     await expect.poll(() => readFile(path.join(root, 'after.txt'), 'utf8').catch(() => '')).toBe(`${pid}:preserved`);
     await page.reload();
     await run(input(destination), 'printf alive > owner.txt');
     await expect.poll(() => readFile(path.join(root, 'owner.txt'), 'utf8').catch(() => '')).toBe('alive');
-    await destination.getByRole('tab', { name: /^bash/ }).getByTitle('Close tab', { exact: true }).click();
+    await destination.getByRole('tab', { name: /^Terminal \d/ }).getByTitle('Close tab', { exact: true }).click();
+    expect(() => process.kill(Number(pid), 0)).not.toThrow();
+    await destination.getByRole('button', { name: 'Toggle Folder Tools', exact: true }).click();
+    await destination.getByRole('button', { name: 'Terminal', exact: true }).click();
+    await destination.getByRole('button', { name: 'Close terminal Terminal 1', exact: true }).click();
     await expect.poll(() => { try { process.kill(Number(pid), 0); return false; } catch { return true; } }).toBe(true);
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
@@ -268,11 +273,11 @@ test('two visible terminal groups receive input independently and survive tab-st
     await page.evaluate(folder => window.marktex.restoreProjectFolder(folder), root);
     await page.locator('.empty-new').click();
     await page.locator('.new-terminal-tab-button').click();
-    await expect(page.getByRole('tab', { name: /^bash/ })).toHaveCount(1);
-    const first = await page.getByRole('tab', { name: /^bash/ }).getAttribute('data-tab-id');
+    await expect(page.getByRole('tab', { name: /^Terminal \d/ })).toHaveCount(1);
+    const first = await page.getByRole('tab', { name: /^Terminal \d/ }).getAttribute('data-tab-id');
     await run(input(page), 'export SESSION_NAME=one');
     await page.locator('.new-terminal-tab-button').click();
-    await expect(page.getByRole('tab', { name: /^bash/ })).toHaveCount(2);
+    await expect(page.getByRole('tab', { name: /^Terminal \d/ })).toHaveCount(2);
     const second = await page.locator('.document-tab[aria-selected="true"]').getAttribute('data-tab-id');
     await run(input(page), 'export SESSION_NAME=two');
     await dragTerminal(page, page.locator(`[data-tab-id="${second}"]`), page.locator('.group-body'), 'right');
@@ -309,7 +314,7 @@ test('a live Vim alternate screen retains visible text and insert mode across wi
     await page.evaluate(folder => window.marktex.restoreProjectFolder(folder), root);
     await page.locator('.empty-new').click();
     await page.locator('.new-terminal-tab-button').click();
-    const tab = page.getByRole('tab', { name: /^bash/ });
+    const tab = page.getByRole('tab', { name: /^Terminal \d/ });
     await expect(tab).toBeVisible();
     await run(input(page), 'printf "%s" "$$" > shell.txt; vim -Nu NONE -n tui.txt');
     await expect(page.locator('.xterm-rows')).toContainText('first-screen-marker');

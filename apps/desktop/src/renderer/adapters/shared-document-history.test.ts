@@ -55,7 +55,7 @@ function fixture() {
   const live = lease.model as unknown as Model;
   let shown: Model | null = null;
   const editor = { getModel: () => shown, setModel: (model: Model | null) => { shown = model; },
-    restoreViewState() {}, dispose() {} };
+    restoreViewState() {}, updateOptions() {}, dispose() {} };
   (adapter as unknown as { editorValue: unknown }).editorValue = editor;
   adapter.activate(tab);
   return { adapter, tab, tabs, lease, live, borrow, editor, changes: () => changes,

@@ -13,7 +13,7 @@
   const tab = $derived(view.tabs.find(t => t.id === group?.activeId));
   const review = $derived(groupId === view.focusedGroupId && project.gitDiffActive ? project.gitDiff : null);
   const web = $derived(!review && tab?.kind === 'web' ? tab.page : undefined);
-  const location = $derived(review ? fileLocation(review.filePath) : tab?.kind === 'web' ? tab.path : tab ? fileLocation(tab.path) : '');
+  const location = $derived(review ? fileLocation(review.filePath) : tab?.kind === 'web' || tab?.kind === 'terminal' ? tab.path : tab ? fileLocation(tab.path) : '');
   let input = $state<HTMLInputElement>(), finder = $state<HTMLInputElement>();
   let editing = $state(false), draft = $state(''), suggestions = $state<BrowserPlace[]>([]), selected = $state(-1), bookmarked = $state(false);
   let generation = 0, composing = false, timer: ReturnType<typeof setTimeout>;
@@ -23,7 +23,8 @@
   const finding = $derived(!!web && browser.findId === tab?.id);
   const media = $derived(view.mediaTabs.find(item => item.id === tab?.id));
   const fileZoom = $derived(tab ? mediaZoom[tab.id] : undefined);
-  const zoomScope = $derived(review ? 'text' : tab?.kind === 'terminal' ? 'terminal' : media?.document.kind === 'video' ? 'app' : 'text');
+  const zoomScope = $derived(tab?.kind === 'terminal' && !review ? 'terminal' : 'text');
+  const zoomId = $derived(review && project.activeGitDiffId ? `git-diff:${project.activeGitDiffId}` : tab?.id);
   const reading = $derived(!!tab && !!browser.readers[tab.id]);
   // Markdown surface actions live in the address bar. They act on the focused
   // session, so only the focused group's bar shows them (as the tab strip did).
@@ -89,9 +90,7 @@
     <button aria-label={web.loading ? 'Stop loading' : 'Reload page'} title={web.loading ? 'Stop loading' : 'Reload page'}
       onclick={() => actions.browserCommand(tab!.id, web.loading ? 'stop' : 'reload')}>{web.loading ? '×' : '↻'}</button>
   {:else}<span class="location-kind" aria-hidden="true">{review ? '±' : '⌂'}</span>{/if}
-  {#if tab?.kind === 'terminal'}
-    <span class="terminal-path" title={tab.path}>{tab.path || 'Starting terminal…'}</span>
-  {:else if finding}
+  {#if finding}
     <input bind:this={finder} aria-label="Find in web page" placeholder="Find in page" bind:value={browser.query}
       oninput={() => actions.browserFind(tab!.id, browser.query)}
       onkeydown={event => { if (event.key === 'Enter') actions.browserFind(tab!.id, browser.query, !event.shiftKey, true); else if (event.key === 'Escape') { browser.findId = null; actions.browserFind(tab!.id, ''); } }} />
@@ -165,8 +164,8 @@
       <ZoomControls label={media.document.kind === 'pdf' ? 'PDF' : 'Image'} percent={fileZoom?.percent ?? 100}
         min={10} max={fileZoom?.max ?? 1000} disabled={!fileZoom} change={step => fileZoom?.change(step)} />
     {:else}
-      <ZoomControls label={zoomScope === 'terminal' ? 'Terminal' : zoomScope === 'app' ? 'App' : 'Text'}
-        percent={zoomState[zoomScope]} change={step => actions.changeZoom(step, zoomScope)} />
+      <ZoomControls label={zoomScope === 'terminal' ? 'Terminal' : media?.document.kind === 'video' ? 'Video' : 'Text'}
+        percent={zoomState.tabs?.[zoomId ?? ''] ?? 100} change={step => actions.changeZoom(step, zoomScope, zoomId)} />
     {/if}
   {/if}
   {#if editing && suggestions.length}
@@ -199,7 +198,6 @@
   .suggestion-text { display: flex; flex-direction: column; min-width: 0; gap: 4px; }
   strong, small { font: 12px var(--app-font-family); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } small { opacity: .55; font-size: 11px; }
   .location-error { position: absolute; top: 34px; left: 10px; right: 10px; background: var(--app-chrome); padding: 8px; font-size: 12px; }
-  .terminal-path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--app-muted-text); font-size: 12px; }
   .location-icon { display: grid; place-items: center; flex: 0 0 28px; height: 28px; padding: 5px; border-radius: 7px; color: var(--app-muted-text); }
   .location-icon svg { width: 18px; height: 18px; fill: currentColor; }
   .bookmark-toggle svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }

@@ -68,6 +68,15 @@ compat = compat.replace(broken, 'onHeadersReceived: base.onHeadersReceived');
 const managedAlias = 'managed: local,';
 if (compat.split(managedAlias).length !== 2) throw Error('Review the managed storage adapter for the installed library version.');
 compat = compat.replace(managedAlias, 'managed: undefined,');
+// Chromium now exposes `browser` as a separate native namespace. uBO prefers
+// it and assigns it to `chrome`, discarding this adapter unless both names use
+// the same augmented API. Install the alias synchronously, before page scripts.
+const freezeChrome = 'Object.freeze(chrome);';
+if (compat.split(freezeChrome).length !== 2) throw Error('Review the extension namespace adapter for the installed library version.');
+compat = compat.replace(freezeChrome, `if (globalThis.browser) {
+        Object.defineProperty(globalThis, "browser", { value: chrome, writable: true, configurable: true, enumerable: true });
+      }
+      ${freezeChrome}`);
 const fix = await build({ entryPoints: ['src/browser-runtime/extension-preload.ts'], bundle: true, write: false, platform: 'node', format: 'iife', external: ['electron'], target: 'node22' });
 // Extension background pages are not sandboxed; .cjs preserves require even
 // inside the desktop package's type:module scope.

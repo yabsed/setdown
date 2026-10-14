@@ -32,7 +32,7 @@ import { WindowRegistry } from './windows/window-registry';
 
 app.setName('Setdown');
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'marktex-resource', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } },
+  { scheme: 'marktex-resource', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
   { scheme: 'marktex-preview', privileges: { standard: true, secure: true, supportFetchAPI: true } },
 ]);
 const registry = new WindowRegistry();
@@ -108,7 +108,7 @@ function installProtocols(): void {
     return html ? new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8' } })
       : new Response('Preview expired', { status: 404 });
   });
-  protocol.handle('marktex-resource', (request) => {
+  protocol.handle('marktex-resource', async (request) => {
     const filePath = pathFromResourceUrl(request.url);
     if (!filePath) return new Response('Bad resource URL', { status: 400 });
     let resolved: string;
@@ -116,8 +116,15 @@ function installProtocols(): void {
     catch { return new Response('Resource is outside the allowed roots', { status: 403 }); }
     // Media elements seek with Range requests; answer them from an explicit
     // stream instead of buffering the whole file through net.fetch.
-    if (isVideoDocument(resolved)) return videoResponse(request, resolved);
-    return net.fetch(pathToFileURL(resolved).href);
+    const response = isVideoDocument(resolved) ? await videoResponse(request, resolved)
+      : await net.fetch(pathToFileURL(resolved).href);
+    // Shell/preview origins differ from this local resource origin. Chromium
+    // requires a CORS-enabled scheme even for fetch() of a permitted file range.
+    // The canonical-path/root check above still gates every resource read.
+    const headers = new Headers(response.headers);
+    headers.set('access-control-allow-origin', '*');
+    headers.set('access-control-expose-headers', 'Content-Range, Accept-Ranges');
+    return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   });
 }
 if (!app.requestSingleInstanceLock()) app.quit();
@@ -155,7 +162,12 @@ else {
     installApplicationMenu({ focusedState: () => registry.focused(), createWindow: windows.create,
       openDocument: (state) => documents.chooseAndOpen(state).catch(openError),
       reloadWindow: (state) => { previews.closeOwner(state.webContentsId); state.window.webContents.reload(); },
-      zoom: (steps, scope) => { previews.zoom.change(steps, scope); },
+      zoom: (steps, scope) => {
+        const state = registry.focused();
+        const id = state && previews.zoom.activeTab(state.webContentsId);
+        if (scope && scope !== 'app') { if (id) previews.zoom.changeTab(id, steps); }
+        else previews.zoom.change(steps);
+      },
       sendCommand, setTheme: (theme) => themes.set(theme), theme: () => themes.id,
       autoSave: () => autoSave.enabled,
       toggleAutoSave: () => {

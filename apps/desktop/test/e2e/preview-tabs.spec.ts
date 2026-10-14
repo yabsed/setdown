@@ -1,4 +1,5 @@
-import { _electron as electron, expect, test, type Page } from '@playwright/test';
+import { electron } from './electron-app';
+import { expect, test, type Page } from '@playwright/test';
 import type { WebContentsView } from 'electron';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
