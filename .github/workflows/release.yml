@@ -1,7 +1,7 @@
 name: Package and release
 
 on:
-  # Called for application pushes, version tags and manual package builds.
+  # Called only for version tags and manual artifact builds.
   workflow_call:
     inputs:
       channel:
@@ -13,6 +13,7 @@ permissions:
 
 jobs:
   metadata:
+    if: (inputs.channel == 'tag' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (inputs.channel == 'artifact' && github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
@@ -94,7 +95,7 @@ jobs:
 
   publish:
     name: Publish complete release
-    if: inputs.channel != 'artifact' && github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    if: inputs.channel == 'tag' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: [metadata, build]
     runs-on: ubuntu-24.04
     timeout-minutes: 15

@@ -16,11 +16,14 @@ test('only known documentation paths may skip desktop checks', () => {
   assert.equal(documentationOnly([]), false, 'unknown or empty diff runs checks');
 });
 
-test('tags and manual builds always validate; PRs cannot publish', () => {
+test('only version-tag pushes select publication; main and PRs only build', () => {
   const files = ['README.md'];
-  assert.deepEqual(planChecks({ event: 'push', ref: 'refs/heads/main', files }), { desktop: false, channel: 'preview' });
+  assert.deepEqual(planChecks({ event: 'push', ref: 'refs/heads/main', files }), { desktop: false, channel: 'none' });
+  assert.deepEqual(planChecks({ event: 'push', ref: 'refs/heads/main', files: ['apps/desktop/src/main/main.ts'] }), { desktop: true, channel: 'none' });
   assert.deepEqual(planChecks({ event: 'push', ref: 'refs/tags/v1.0.0', files }), { desktop: true, channel: 'tag' });
+  assert.deepEqual(planChecks({ event: 'push', ref: 'refs/tags/v1.1.0-beta.1', files }), { desktop: true, channel: 'tag' });
   assert.deepEqual(planChecks({ event: 'workflow_dispatch', ref: 'refs/heads/main', files }), { desktop: true, channel: 'artifact' });
+  assert.deepEqual(planChecks({ event: 'workflow_dispatch', ref: 'refs/tags/v1.0.0', files }), { desktop: true, channel: 'artifact' });
   assert.deepEqual(planChecks({ event: 'pull_request', ref: 'refs/pull/1/merge', files: ['package.json'] }), { desktop: true, channel: 'none' });
 });
 

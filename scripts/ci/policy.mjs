@@ -16,8 +16,7 @@ export function planChecks({ event, ref, files }) {
   return {
     desktop: force || !documentationOnly(files),
     channel: event === 'workflow_dispatch' ? 'artifact'
-      : event === 'push' && ref.startsWith('refs/tags/v') ? 'tag'
-        : event === 'push' && ref === 'refs/heads/main' ? 'preview' : 'none',
+      : event === 'push' && ref.startsWith('refs/tags/v') ? 'tag' : 'none',
   };
 }
 

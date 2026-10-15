@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       channel:
-        description: none (PR), preview (main), tag, or artifact (manual)
+        description: none (PR/main build), tag, or artifact (manual)
         required: true
         type: string
 
@@ -36,7 +36,7 @@ jobs:
 
   installers:
     name: Installers
-    if: inputs.channel != 'none' && github.event_name != 'pull_request'
+    if: (inputs.channel == 'tag' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (inputs.channel == 'artifact' && github.event_name == 'workflow_dispatch')
     uses: ./.github/workflows/release.yml
     with:
       channel: ${{ inputs.channel }}

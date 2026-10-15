@@ -518,9 +518,10 @@ with separate Chromium traces; do not enable tracing in the gate run.
 ## CI and merge protection
 
 `.github/workflows/ci.yml` runs on PRs, main pushes, version tags and manual
-requests. Its reusable `desktop.yml` typechecks and builds PRs; main pushes,
-tags and manual runs build Windows and Linux installers and verify the expected
-files. It does not run unit tests, benchmark-comparator tests, the real
+requests. Its reusable `desktop.yml` typechecks and builds PRs and application
+changes on main. Version tags and manual runs build Windows and Linux installers
+and verify the expected files; only a `v*` tag push may publish a GitHub Release.
+It does not run unit tests, benchmark-comparator tests, the real
 Electron/Chromium contract, or packaged-app smoke tests. Run
 `npm run test:preview-contract` locally for changes in this contract's scope;
 its GUI tests use the isolated-display wrapper and keep retries disabled.
@@ -552,9 +553,10 @@ Require **CI result** in main's branch rules. This final job fails on a failed o
 canceled desktop build or packaging run and accepts documentation-only skips;
 it is never omitted by workflow-level path filters. `preview-latency` is not an
 automatic merge requirement. Workflow YAML cannot configure repository rules.
-Main development releases and versioned tag releases depend on successful OS
-builds for the exact same commit. Later documentation pushes cannot cancel a
-pending application build.
+Versioned tag releases depend on successful OS builds for the exact same commit.
+Ordinary main pushes never package or publish a release; manual CI runs produce
+workflow artifacts only, including when the selected ref is a tag. Later
+documentation pushes cannot cancel a pending application build.
 Changes to this document, the suite lists, workflow, fixture and tolerances deserve the same
 review as the optimized code. Do not bypass a measured regression by weakening
 its thresholds.

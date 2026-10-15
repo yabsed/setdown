@@ -11,7 +11,7 @@ document, double-click the passage you want to change, and edit its Markdown
 source. Press `Esc` to return to reading with your place preserved.
 
 [Download stable](https://github.com/yabsed/setdown/releases/latest) ·
-[Development builds](https://github.com/yabsed/setdown/releases?q=dev.&expanded=true) ·
+[All releases](https://github.com/yabsed/setdown/releases) ·
 [CI](https://github.com/yabsed/setdown/actions/workflows/ci.yml)
 
 <p align="center">
@@ -328,10 +328,11 @@ The repository currently defines packaging targets for Linux and Windows.
 
 ### GitHub Releases
 
-The **CI** workflow typechecks and builds pull requests, and packages Windows x64
-on Windows 2022 and Linux x64 on Ubuntu 22.04 for release events. Choose the
-[latest stable release](https://github.com/yabsed/setdown/releases/latest) or the
-newest entry in [development builds](https://github.com/yabsed/setdown/releases?q=dev.&expanded=true).
+The **CI** workflow typechecks and builds pull requests and application changes on
+`main`. A `v*` tag push packages Windows x64 on Windows 2022 and Linux x64 on
+Ubuntu 22.04, then publishes the versioned release. Choose the
+[latest stable release](https://github.com/yabsed/setdown/releases/latest) or browse
+[all releases](https://github.com/yabsed/setdown/releases).
 
 | Environment | Download |
 | --- | --- |
@@ -346,30 +347,24 @@ not establish compatibility with every distribution or release. ARM64 and macOS
 are not part of this release workflow. Windows installers are currently unsigned
 and may trigger Windows security warnings. Git features require Git on `PATH`.
 
-Every application change pushed to `main` produces a development pre-release
-after both OS packages build and their expected installers are verified. A failed
-build or missing installer prevents publication; a documentation-only push does
-not produce installers. Run the local tests before pushing changes: CI no longer
-runs the unit, Electron, benchmark-comparator or packaged-app smoke suites.
+GitHub Releases are published only when a version tag such as `v1.0.1` is
+pushed. Ordinary `main` pushes and pull requests run typechecking and a production
+build; documentation-only changes may skip that build. Run the local tests before
+pushing changes: CI does not run the unit, Electron, benchmark-comparator or
+packaged-app smoke suites.
 
-Development versions use the next patch and the unique Actions run ID, for
-example `1.0.1-dev.38694878620` when the desktop version is `1.0.0`. If the desktop
-version already has a prerelease suffix, its target major/minor/patch is retained.
-The version is applied to the packaged app without committing version bumps.
-Each build gets its own tag and files; it never replaces the stable **Latest**
-release. Re-running a workflow keeps its version and preserves an already
+For a tag release, both OS packages must build and every expected installer must
+be verified before publication. Re-running a workflow preserves an already
 published release. Each release includes `build-info.json` (source commit and
 workflow run) and `SHA256SUMS` alongside all four installers. Uploads are staged
 in a draft and published only after every file has been verified.
 
-Development drafts may precede creation of their Git tag. Existing tags,
-including annotated tags, must resolve to the packaged commit; stable releases
-require the tag to exist before publication. The publisher checks the tag again
-before publishing. Authorization, validation, rate-limit and network errors stop
-publication and leave any staged draft available for a later retry.
-Draft discovery includes every page of the authenticated release list. Creation
-retains the returned release ID, which is used for upload verification and
-publication; a draft does not need a published tag to be found on a retry.
+The release tag must already exist and resolve to the packaged commit, including
+annotated tags. The publisher checks the tag again before publishing.
+Authorization, validation, rate-limit and network errors stop publication and
+leave any staged draft available for a later retry. Draft discovery includes
+every page of the authenticated release list; the returned release ID is retained
+for upload verification and publication.
 
 For a build without publishing, select **Actions → CI → Run workflow**. This
 packages `*-test.<run-id>` installers as workflow artifacts, retained for 14 days,
@@ -501,7 +496,7 @@ GitHub Actions policy:
 | Event | Checks | Delivery |
 | --- | --- | --- |
 | Pull request | Typecheck and production build | No publication |
-| Application change on `main` | Windows/Linux packaging and installer verification | Unique development pre-release |
+| Application change on `main` | Typecheck and production build | No publication |
 | `v*` tag push | Packaging, installer verification and version/tag validation | Versioned release; prerelease suffixes remain pre-releases |
 | Manual **CI** run | Packaging and installer verification regardless of changed paths | Downloadable artifacts only |
 | Documentation-only PR or main push | Explicit successful result | No installers |
