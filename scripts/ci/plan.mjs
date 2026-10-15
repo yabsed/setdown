@@ -11,10 +11,10 @@ if (/^[0-9a-f]{40}$/.test(base ?? '') && !/^0+$/.test(base)) {
     files = execFileSync('git', ['diff', '--no-renames', '--name-only', '-z', base, 'HEAD', '--'], { encoding: 'utf8' })
       .split('\0').filter(Boolean);
   } catch {
-    console.log('Base commit unavailable; running all desktop checks.');
+    console.log('Base commit unavailable; running the desktop build or packaging.');
   }
 }
 const plan = planChecks({ event: process.env.GITHUB_EVENT_NAME, ref: process.env.GITHUB_REF, files });
 for (const [key, value] of Object.entries(plan)) appendFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`);
 appendFileSync(process.env.GITHUB_STEP_SUMMARY,
-  `Desktop checks: **${plan.desktop ? 'required' : 'documentation-only skip'}**. Delivery: **${plan.channel}**.\n`);
+  `Desktop build or packaging: **${plan.desktop ? 'required' : 'documentation-only skip'}**. Delivery: **${plan.channel}**.\n`);

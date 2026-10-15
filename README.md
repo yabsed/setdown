@@ -269,8 +269,8 @@ The repository currently defines packaging targets for Linux and Windows.
 
 ### GitHub Releases
 
-The **CI** workflow validates changes and then builds Windows x64 on Windows 2022
-and Linux x64 on Ubuntu 22.04. Choose the
+The **CI** workflow typechecks and builds pull requests, and packages Windows x64
+on Windows 2022 and Linux x64 on Ubuntu 22.04 for release events. Choose the
 [latest stable release](https://github.com/yabsed/setdown/releases/latest) or the
 newest entry in [development builds](https://github.com/yabsed/setdown/releases?q=dev.&expanded=true).
 
@@ -288,10 +288,10 @@ are not part of this release workflow. Windows installers are currently unsigned
 and may trigger Windows security warnings. Git features require Git on `PATH`.
 
 Every application change pushed to `main` produces a development pre-release
-after the same commit passes all unit tests, typechecking, the production build,
-and the real Electron preview contract. Both OS packages must also launch,
-render Markdown and open the editor before publication. A failed check prevents
-publication; a documentation-only push does not produce installers.
+after both OS packages build and their expected installers are verified. A failed
+build or missing installer prevents publication; a documentation-only push does
+not produce installers. Run the local tests before pushing changes: CI no longer
+runs the unit, Electron, benchmark-comparator or packaged-app smoke suites.
 
 Development versions use the next patch and the unique Actions run ID, for
 example `1.0.1-dev.38694878620` when the desktop version is `1.0.0`. If the desktop
@@ -304,14 +304,14 @@ workflow run) and `SHA256SUMS` alongside all four installers. Uploads are staged
 in a draft and published only after every file has been verified.
 
 Development drafts may precede creation of their Git tag. Existing tags,
-including annotated tags, must resolve to the tested commit; stable releases
+including annotated tags, must resolve to the packaged commit; stable releases
 require the tag to exist before publication. The publisher checks the tag again
 before publishing. Authorization, validation, rate-limit and network errors stop
 publication and leave any staged draft available for a later retry.
 
 For a build without publishing, select **Actions → CI → Run workflow**. This
-always runs the checks and creates `*-test.<run-id>` installers as workflow
-artifacts, retained for 14 days, even when selecting a tag.
+packages `*-test.<run-id>` installers as workflow artifacts, retained for 14 days,
+even when selecting a tag.
 
 To publish a stable version, update the desktop version and lockfile, commit and
 push, then push the matching tag. For example, the next patch after `1.0.0` is:
@@ -325,14 +325,14 @@ git tag -a v1.0.1 -m "Setdown 1.0.1"
 git push origin v1.0.1
 ```
 
-Tag builds run the same checks even when the last commit only changes documents.
+Tag builds still package the app when the last commit only changes documents.
 The tag must match `apps/desktop/package.json` and its lockfile entry; the workspace
 root version is independent. Versions such as `1.1.0-beta.1` remain pre-releases.
 Published tags and assets are preserved; use a new version for a subsequent
 release. An interrupted draft for the same commit can be completed by rerunning
 the failed jobs.
 
-Only the publish job receives `contents: write`; checks and packaging use read
+Only the publish job receives `contents: write`; planning and packaging use read
 permissions. The automatically supplied `GITHUB_TOKEN` is sufficient. Code
 signing and in-app automatic updates require separate setup; publishing a new
 download does not update an installed app.
@@ -438,23 +438,23 @@ GitHub Actions policy:
 
 | Event | Checks | Delivery |
 | --- | --- | --- |
-| Pull request | Full unit suite, benchmark comparator tests, typecheck/build, Electron contract | No publication |
-| Application change on `main` | Same checks, then Windows/Linux packaging and packaged-app smoke checks | Unique development pre-release |
-| `v*` tag push | Same checks and packaging, with version/tag validation | Versioned release; prerelease suffixes remain pre-releases |
-| Manual **CI** run | Same checks and packaging regardless of changed paths | Downloadable artifacts only |
-| Documentation-only PR or main push | CI policy tests and an explicit successful result | No installers |
+| Pull request | Typecheck and production build | No publication |
+| Application change on `main` | Windows/Linux packaging and installer verification | Unique development pre-release |
+| `v*` tag push | Packaging, installer verification and version/tag validation | Versioned release; prerelease suffixes remain pre-releases |
+| Manual **CI** run | Packaging and installer verification regardless of changed paths | Downloadable artifacts only |
+| Documentation-only PR or main push | Explicit successful result | No installers |
 
 Only known documentation paths are exempt: root README/AGENTS/CONTRIBUTING/
 CHANGELOG/LICENSE files, `live_demo.gif`, `docs/`, and `reports/`. Markdown test
 fixtures, CSS, dependencies, workflows, submodules and unknown paths still run
-the desktop checks. Missing comparison history also runs all checks.
+the desktop build or packaging. Missing comparison history also triggers it.
 The stable required-check name is **CI result**, including documentation-only
 changes. Configure that check in the repository's branch rules to enforce it;
 workflow files alone do not change repository rules.
 
 New application pushes cancel obsolete runs for the same PR or main branch.
 Documentation pushes do not cancel an app build in progress. Tags, manual builds
-and benchmarks are independent. Failure reports are retained for 14 days.
+and benchmarks are independent. Packaging failure reports are retained for 14 days.
 
 For the full comparative benchmark, select **Actions → Preview latency benchmark
 → Run workflow**. Supply a baseline commit/tag, or leave it empty to compare with

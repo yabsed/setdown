@@ -403,21 +403,20 @@ with separate Chromium traces; do not enable tracing in the gate run.
 ## CI and merge protection
 
 `.github/workflows/ci.yml` runs on PRs, main pushes, version tags and manual
-requests. Its reusable `desktop.yml` runs the full unit suite (including every
-focused contract unit test), the benchmark comparator tests, production
-build/typecheck and the unchanged real Electron/Chromium contract suite. GUI
-execution uses the isolated-display wrapper. Retries remain disabled. Electron's
-sandbox is resolved through each app's Electron executable API, including
-workspace-local installations. This initializes Electron 44's lazy binary
-download before inspecting or configuring the sandbox; `npm ci` alone installs
-the package without necessarily installing its executable.
+requests. Its reusable `desktop.yml` typechecks and builds PRs; main pushes,
+tags and manual runs build Windows and Linux installers and verify the expected
+files. It does not run unit tests, benchmark-comparator tests, the real
+Electron/Chromium contract, or packaged-app smoke tests. Run
+`npm run test:preview-contract` locally for changes in this contract's scope;
+its GUI tests use the isolated-display wrapper and keep retries disabled.
 
 The only automatic exemptions are known documentation paths: root README,
 AGENTS, CONTRIBUTING, CHANGELOG and LICENSE files, `live_demo.gif`, `docs/`, and
 `reports/`. CSS, dependencies, Markdown test fixtures, workflows, submodule
-pointers and unknown paths always require desktop checks. Missing diff history
-runs the checks. Tags and manual CI runs always validate. The policy and its
-rename/deletion handling are covered by `scripts/ci/policy.test.mjs`.
+pointers and unknown paths always require a desktop build or packaging. Missing
+diff history triggers the build. Tags and manual CI runs always package the app.
+The policy and its rename/deletion handling can be checked locally with
+`node --test scripts/ci/policy.test.mjs`.
 
 `preview-latency` is a separate manual **Preview latency benchmark** workflow
 (`preview-benchmark.yml`). The full 80-launch comparison has encountered
@@ -435,12 +434,12 @@ VM; logs and comparisons are uploaded even on failure. Automatic events do not
 cancel a manually requested run.
 
 Require **CI result** in main's branch rules. This final job fails on a failed or
-canceled desktop pipeline and explicitly accepts documentation-only skips;
+canceled desktop build or packaging run and accepts documentation-only skips;
 it is never omitted by workflow-level path filters. `preview-latency` is not an
 automatic merge requirement. Workflow YAML cannot configure repository rules.
-Main development releases and versioned tag releases depend on successful checks
-for the exact same commit, followed by both OS builds and packaged-app smoke
-checks. Later documentation pushes cannot cancel a pending application build.
+Main development releases and versioned tag releases depend on successful OS
+builds for the exact same commit. Later documentation pushes cannot cancel a
+pending application build.
 Changes to this document, the suite lists, workflow, fixture and tolerances deserve the same
 review as the optimized code. Do not bypass a measured regression by weakening
 its thresholds.

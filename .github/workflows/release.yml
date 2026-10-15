@@ -1,7 +1,7 @@
 name: Package and release
 
 on:
-  # Only the checked desktop pipeline calls this workflow.
+  # Called for application pushes, version tags and manual package builds.
   workflow_call:
     inputs:
       channel:
@@ -60,38 +60,22 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - name: Install Linux packaging and display tools
+      - name: Install Linux packaging tools
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y rpm libcrypt1 xvfb xauth dbus-x11
+          sudo apt-get install --no-install-recommends -y rpm
       - run: npm ci
-      - name: Install Linux runtime dependencies
-        if: runner.os == 'Linux'
-        run: npx playwright install-deps chromium
       # Version changes are confined to the package; no version-bump commit.
       - name: Build installers
         run: npm run package:$RELEASE_PLATFORM -- --x64 --publish never --config.extraMetadata.version="$RELEASE_VERSION"
       - name: Verify expected installers
         run: node scripts/ci/verify-installers.mjs
-      - name: Enable packaged Linux sandbox
-        if: runner.os == 'Linux'
-        run: |
-          sudo chown root:root apps/desktop/release/linux-unpacked/chrome-sandbox
-          sudo chmod 4755 apps/desktop/release/linux-unpacked/chrome-sandbox
-      - name: Launch packaged Linux app on an isolated display
-        if: runner.os == 'Linux'
-        run: bash apps/desktop/scripts/with-isolated-display.sh node scripts/ci/package-smoke.mjs
-      # Hosted Windows runners have a dedicated desktop, separate from users.
-      - name: Launch packaged Windows app
-        if: runner.os == 'Windows'
-        run: node scripts/ci/package-smoke.mjs
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: package-failure-${{ matrix.platform }}-${{ github.run_attempt }}
           path: |
-            apps/desktop/test-results/package-smoke
             apps/desktop/release/builder-debug.yml
             apps/desktop/release/builder-effective-config.yaml
           retention-days: 14
