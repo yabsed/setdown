@@ -129,6 +129,7 @@ async function captureNativeMenus(app: TestApplication) {
     };
     const original = Menu.prototype.popup;
     Menu.prototype.popup = function(options) {
+      (globalThis as any).__browserTestMenuGeneration = ((globalThis as any).__browserTestMenuGeneration ?? 0) + 1;
       (globalThis as any).__browserTestMenu = this;
       (globalThis as any).__browserTestMenuTemplate = templates.get(this);
       return original.call(this, options);
@@ -696,6 +697,7 @@ test('web reader searches the visible article and exports its snapshot as Markdo
     await f.page.getByRole('button', { name: 'Enter reader mode' }).click();
     const reader = f.page.getByRole('region', { name: 'Reader mode', exact: true });
     await expect(reader).toBeVisible();
+    await expect(reader.getByRole('button')).toHaveCount(0);
     await f.app.evaluate(({ webContents }, origin) => {
       const wc = webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/article`)!;
       (globalThis as any).__readerNativeFind = 0;
@@ -727,11 +729,16 @@ test('web reader searches the visible article and exports its snapshot as Markdo
     await f.app.evaluate(({ dialog }, { markdown, pdf }) => {
       dialog.showSaveDialog = (async (_owner, options) => ({ canceled: false, filePath: options!.defaultPath!.endsWith('.pdf') ? pdf : markdown })) as typeof dialog.showSaveDialog;
     }, { markdown, pdf });
-    await reader.getByRole('button', { name: 'Export to Markdown', exact: true }).click();
+    const openReaderMenu = async () => {
+      const generation = await f.app.evaluate(() => (globalThis as any).__browserTestMenuGeneration ?? 0);
+      await paragraph.click({ button: 'right' });
+      await expect.poll(() => f.app.evaluate(() => (globalThis as any).__browserTestMenuGeneration ?? 0)).toBe(generation + 1);
+    };
+    await openReaderMenu(); await chooseNativeMenu(f.app, ['Export to Markdown…']);
     await expect.poll(() => readFile(markdown, 'utf8').catch(() => '')).toContain('Paragraph 39:');
     const text = await readFile(markdown, 'utf8'); expect(text).toContain('# The Long Article Title'); expect(text).toContain(`${f.origin}/article`);
     expect(text).not.toContain('Copyright noise');
-    await reader.getByRole('button', { name: 'Export to PDF', exact: true }).click();
+    await openReaderMenu(); await chooseNativeMenu(f.app, ['Export to PDF…']);
     await expect.poll(() => readFile(pdf).then(data => data.subarray(0, 5).toString()).catch(() => '')).toBe('%PDF-');
     await expect(reader).toBeVisible(); await expect(tab).toHaveAttribute('aria-selected', 'true');
     await rm(pdf);

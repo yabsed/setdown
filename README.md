@@ -84,9 +84,9 @@ web tabs restore lazily after a restart.
 Press `Esc` on a readable web article to open Reader mode; double-click a passage
 to return to that place on the live page. `Ctrl/Cmd+F` searches the visible reading
 text. Right-click rendered Markdown or a web Reader for Copy, Search Google,
-link actions, Select All and Find. Web Reader's **Export to Markdown** and
-**Export to PDF** buttons save the article with its source URL; **File → Export
-as PDF…** also works there. Markdown exports preserve linked images rather than
+link actions, Select All and Find. Web Reader's right-click menu also offers
+**Export to Markdown** and **Export to PDF**, saving the article with its source
+URL; **File → Export as PDF…** also works there. Markdown exports preserve linked images rather than
 downloading an offline image archive.
 
 In **Browser → Extensions → Install from Chrome Web Store…**, paste an extension's

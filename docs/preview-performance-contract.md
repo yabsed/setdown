@@ -251,7 +251,9 @@ Queued scroll/image callbacks and post-mount position/focus work must stop when
 the Reader is unmounted; cleanup retains its stable element reference. Switching
 from an image-bearing wiki Reader to a fallback article exercises this boundary.
 
-Web Reader exposes Export to Markdown and Export to PDF; the File menu's existing
+Web Reader exposes Export to Markdown and Export to PDF through its existing
+native right-click menu. The reading surface has no export toolbar or overflow
+button above or beside the article. The File menu's existing
 PDF command addresses the active Reader too. `BrowserManager` retains the exact
 validated article snapshot and document generation used by the reading surface.
 `main/browser/reader-exporter.ts` opens an owned Save dialog, rejects obsolete or
@@ -284,7 +286,8 @@ falls back to Readability. This does not bypass an unavailable or blocked page.
 
 The three reading-capability scenarios in `browser.spec.ts` exercise native
 right-click input and clipboard/Google commands, local Markdown PDF, visible
-Reader search without hidden-page find, Markdown/PDF buttons and File PDF,
+Reader search without hidden-page find, the absence of reading-surface buttons,
+right-click Markdown/PDF commands alongside File PDF,
 tab preservation, and hashed Namu-layout extraction with real double-click
 restoration. The Namu case checks inline/file/data-URI SVG removal, retained
 raster images and filtering through the Readability fallback. HTTPS fixtures use Playwright request routing on actual Electron
@@ -796,3 +799,43 @@ transitions, not Places query latency. Every cycle measurement, comparison,
 identity/hash and the original failures are retained in the validation record.
 Raw logs/traces are in `test-results/address-draft-2026-10-15` and
 `test-results/address-draft-benchmark-2026-10-15`.
+
+## Reader toolbar removal validation, 2026-10-15
+
+The web Reader now begins with the article title and content, without an export
+toolbar or overflow button. The existing real Electron scenario checks that the
+reading surface has no buttons, visible-article search still works, right-click
+Markdown/PDF exports retain the snapshot, and File PDF and live-page restoration
+still work. Build/typecheck, 288 focused unit tests, three comparator tests and all
+97 Electron GUI scenarios passed on isolated Xvfb, without retries.
+
+The independently installed baseline is `344e69db8601ff88d192e878e27139f1843daab8`; both
+versions use Electron 44.7.2. Three matched repetitions per version
+alternated order on one isolated display, retaining all eight scenarios and 48
+comparisons with the unchanged 25% **and** 50ms thresholds. Values are
+**baseline → candidate medians in milliseconds**; warm is cycles 3–5.
+
+| Surface | Preparation | Edits | Measurement | First | Second | Warm |
+| --- | --- | --- | --- | --- | --- | --- |
+| document | 0ms | false | Esc → latest capture | 46.0 → 51.0 | 18.0 → 18.0 | 23.0 → 18.0 |
+| document | 0ms | false | Double-click → editor | 17.0 → 17.0 | 36.0 → 34.0 | 11.0 → 12.0 |
+| document | 0ms | true | Esc → latest capture | 451.0 → 429.0 | 102.0 → 99.0 | 86.0 → 88.0 |
+| document | 0ms | true | Double-click → editor | 21.0 → 16.0 | 16.0 → 13.0 | 15.0 → 15.0 |
+| document | 3000ms | false | Esc → latest capture | 41.0 → 34.0 | 24.0 → 23.0 | 24.0 → 20.0 |
+| document | 3000ms | false | Double-click → editor | 16.0 → 17.0 | 11.0 → 13.0 | 11.0 → 10.0 |
+| document | 3000ms | true | Esc → latest capture | 120.0 → 109.0 | 102.0 → 99.0 | 91.0 → 92.0 |
+| document | 3000ms | true | Double-click → editor | 19.0 → 18.0 | 13.0 → 13.0 | 15.0 → 14.0 |
+| review | 0ms | false | Esc → latest capture | 910.0 → 1033.0 | 25.0 → 22.0 | 16.0 → 30.0 |
+| review | 0ms | false | Double-click → editor | 26.0 → 23.0 | 12.0 → 12.0 | 12.0 → 11.0 |
+| review | 0ms | true | Esc → latest capture | 1034.0 → 1034.0 | 1494.0 → 1490.0 | 181.0 → 177.0 |
+| review | 0ms | true | Double-click → editor | 22.0 → 23.0 | 21.0 → 19.0 | 20.0 → 19.0 |
+| review | 3000ms | false | Esc → latest capture | 27.0 → 25.0 | 21.0 → 21.0 | 19.0 → 27.0 |
+| review | 3000ms | false | Double-click → editor | 24.0 → 24.0 | 13.0 → 12.0 | 18.0 → 17.0 |
+| review | 3000ms | true | Esc → latest capture | 228.0 → 236.0 | 188.0 → 183.0 | 170.0 → 176.0 |
+| review | 3000ms | true | Double-click → editor | 22.0 → 23.0 | 18.0 → 18.0 | 17.0 → 17.0 |
+
+Result: **PASS**, 0 regressing buckets. These timings cover ordinary Markdown/Git
+transitions; they do not measure web Reader rendering or export latency.
+[Complete validation and per-repetition measurements](reader-toolbar-removal-validation-2026-10-15.json)
+retain the build/harness identities and raw log paths, including the interrupted
+check of the superseded UI.

@@ -182,10 +182,6 @@
   oncontextmenu={contextMenu}
   onclick={clicked} ondblclick={dblclick} onkeydown={keydown}>
   <div class="web-reader-column">
-    <div class="reader-export-actions" aria-label="Export reading view">
-      <button disabled={exporting} onclick={() => void exportArticle('markdown')}>Export to Markdown</button>
-      <button disabled={exporting} onclick={() => void exportArticle('pdf')}>Export to PDF</button>
-    </div>
     <div bind:this={content}>
       <header>
         <h1>{article.title}</h1>
@@ -202,9 +198,6 @@
      carries app zoom), full-width body with 2em page padding and the
      Crossnote github-family element metrics. Colors come from the same theme
      profile that drives the preview, exposed as shell variables. */
-  .reader-export-actions { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
-  .reader-export-actions button { background: transparent; border: 1px solid var(--app-border); border-radius: 4px; padding: 4px 8px; color: var(--app-muted-text); font: 11px var(--app-font-family); cursor: pointer; }
-  .reader-export-actions button:hover { color: var(--app-text); background: var(--app-hover); }
   .web-reader {
     position: absolute; inset: 0; overflow: auto; overflow-x: hidden;
     padding: 2em; padding-bottom: 5rem; box-sizing: border-box;
