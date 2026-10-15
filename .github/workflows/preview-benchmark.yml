@@ -1,0 +1,62 @@
+name: Preview latency benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      baseline:
+        description: Baseline commit or tag (empty uses the selected ref's parent)
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  latency:
+    name: preview-latency
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Resolve baseline to a commit
+        id: base
+        working-directory: candidate
+        env:
+          BASELINE_REF: ${{ inputs.baseline }}
+        run: |
+          baseline=$(git rev-parse --verify --end-of-options "${BASELINE_REF:-HEAD^}^{commit}")
+          echo "sha=$baseline" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          path: baseline
+          ref: ${{ steps.base.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            candidate/package-lock.json
+            baseline/package-lock.json
+      - run: npm ci
+        working-directory: candidate
+      - run: npm ci
+        working-directory: baseline
+      - run: npx playwright install --with-deps chromium
+        working-directory: candidate
+      - name: Enable each checkout's installed Electron sandbox
+        run: node candidate/scripts/ci/electron-sandbox.mjs candidate baseline
+      # The npm wrapper shares one private display with both apps. No retries.
+      - name: Compare all eight scenarios, five repetitions per version
+        working-directory: candidate
+        run: npm run bench:preview -- --baseline "$GITHUB_WORKSPACE/baseline" --output "$GITHUB_WORKSPACE/preview-benchmark" --runs 5
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: preview-latency-comparison-${{ github.run_attempt }}
+          path: preview-benchmark
+          retention-days: 30

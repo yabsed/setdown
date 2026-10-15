@@ -382,36 +382,44 @@ with separate Chromium traces; do not enable tracing in the gate run.
 
 ## CI and merge protection
 
-GitHub Actions for `yabsed/setdown` was disabled at the user's request on
-2026-10-09 after recurring browser zoom test failures and an Electron inspector
-evaluation failure in recent CI runs. The repository setting disables automatic
-and manual workflows, including Release. Local contract checks and comparative
-benchmarks remain required for changes in the scope described above.
+`.github/workflows/ci.yml` runs on PRs, main pushes, version tags and manual
+requests. Its reusable `desktop.yml` runs the full unit suite (including every
+focused contract unit test), the benchmark comparator tests, production
+build/typecheck and the unchanged real Electron/Chromium contract suite. GUI
+execution uses the isolated-display wrapper. Retries remain disabled. Electron's
+sandbox is resolved from each app's installed package, including workspace-local
+installations, rather than assuming a root `node_modules/electron` directory.
 
-If Actions is re-enabled, `.github/workflows/preview-contract.yml` runs
-`preview-contract` on every PR and main push, with no path filter that could miss
-a stylesheet or dependency change. The workflow retains build/type checks,
-focused unit tests and real Electron/Chromium contract tests.
+The only automatic exemptions are known documentation paths: root README,
+AGENTS, CONTRIBUTING, CHANGELOG and LICENSE files, `live_demo.gif`, `docs/`, and
+`reports/`. CSS, dependencies, Markdown test fixtures, workflows, submodule
+pointers and unknown paths always require desktop checks. Missing diff history
+runs the checks. Tags and manual CI runs always validate. The policy and its
+rename/deletion handling are covered by `scripts/ci/policy.test.mjs`.
 
-When Actions is enabled, `preview-latency` runs only through `workflow_dispatch`
-with `run_latency` enabled (disabled by default). The full 80-launch comparison
-has encountered intermittent Electron evaluation failures before it could produce measurements; see
+`preview-latency` is a separate manual **Preview latency benchmark** workflow
+(`preview-benchmark.yml`). The full 80-launch comparison has encountered
+intermittent Electron evaluation failures before it could produce measurements; see
 [the CI investigation](ci-failure-analysis-2026-09-21.md). It is therefore a manual
 diagnostic rather than an automatic merge gate. This reduces automatic coverage:
 timing regressions must still be checked locally for changes to performance paths,
 using the full benchmark described above. Its scenarios, repetitions, thresholds
 and fail-closed validation are unchanged.
 
-Manual comparisons use the selected ref's parent commit as the baseline. Each
-lockfile is installed independently. Both versions are measured serially on one
+Manual comparisons accept an explicit baseline commit/tag, defaulting to the
+selected ref's parent commit. Each lockfile is installed independently. Both
+versions are measured serially on one
 VM; logs and comparisons are uploaded even on failure. Automatic events do not
 cancel a manually requested run.
 
-At disablement, `main` had no branch protection and the repository had no
-rulesets. If CI is restored, branch protection/rulesets should require
-`preview-contract` on `main`; `preview-latency` is not an automatic merge
-requirement. Workflow YAML cannot configure repository rules. Changes to this
-document, the suite lists, workflow, fixture and tolerances deserve the same
+Require **CI result** in main's branch rules. This final job fails on a failed or
+canceled desktop pipeline and explicitly accepts documentation-only skips;
+it is never omitted by workflow-level path filters. `preview-latency` is not an
+automatic merge requirement. Workflow YAML cannot configure repository rules.
+Main development releases and versioned tag releases depend on successful checks
+for the exact same commit, followed by both OS builds and packaged-app smoke
+checks. Later documentation pushes cannot cancel a pending application build.
+Changes to this document, the suite lists, workflow, fixture and tolerances deserve the same
 review as the optimized code. Do not bypass a measured regression by weakening
 its thresholds.
 

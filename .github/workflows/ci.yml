@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+  # Validate and build downloadable installers; manual runs never publish.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    name: Select checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      desktop: ${{ steps.plan.outputs.desktop }}
+      channel: ${{ steps.plan.outputs.channel }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Check CI policy
+        run: node --test scripts/ci/*.test.mjs
+      - id: plan
+        run: node scripts/ci/plan.mjs
+
+  desktop:
+    name: Desktop
+    needs: plan
+    if: needs.plan.outputs.desktop == 'true'
+    uses: ./.github/workflows/desktop.yml
+    with:
+      channel: ${{ needs.plan.outputs.channel }}
+    # Called jobs reduce this to read except for the publish job.
+    permissions:
+      contents: write
+
+  result:
+    name: CI result
+    if: always()
+    needs: [plan, desktop]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require successful checks or an explicit documentation-only decision
+        env:
+          PLAN_RESULT: ${{ needs.plan.result }}
+          DESKTOP_REQUIRED: ${{ needs.plan.outputs.desktop }}
+          DESKTOP_RESULT: ${{ needs.desktop.result }}
+        run: |
+          test "$PLAN_RESULT" = success
+          if [ "$DESKTOP_REQUIRED" = true ]; then
+            test "$DESKTOP_RESULT" = success
+            echo 'Desktop checks completed successfully.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            test "$DESKTOP_REQUIRED" = false
+            test "$DESKTOP_RESULT" = skipped
+            echo 'Documentation-only change: desktop checks and packaging were not needed.' >> "$GITHUB_STEP_SUMMARY"
+          fi

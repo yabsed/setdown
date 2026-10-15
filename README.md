@@ -10,6 +10,10 @@ Setdown is a desktop Markdown reader and editor for local files. Read a typeset
 document, double-click the passage you want to change, and edit its Markdown
 source. Press `Esc` to return to reading with your place preserved.
 
+[Download stable](https://github.com/yabsed/setdown/releases/latest) ·
+[Development builds](https://github.com/yabsed/setdown/releases?q=dev.&expanded=true) ·
+[CI](https://github.com/yabsed/setdown/actions/workflows/ci.yml)
+
 <p align="center">
   <img src="live_demo.gif" width="900" alt="Editing Markdown from the Setdown Viewer and returning to the reading position">
 </p>
@@ -247,8 +251,10 @@ The repository currently defines packaging targets for Linux and Windows.
 
 ### GitHub Releases
 
-The **Release** workflow builds Windows x64 on Windows 2022 and Linux x64 on
-Ubuntu 22.04. Download installers from [GitHub Releases](https://github.com/yabsed/setdown/releases).
+The **CI** workflow validates changes and then builds Windows x64 on Windows 2022
+and Linux x64 on Ubuntu 22.04. Choose the
+[latest stable release](https://github.com/yabsed/setdown/releases/latest) or the
+newest entry in [development builds](https://github.com/yabsed/setdown/releases?q=dev.&expanded=true).
 
 | Environment | Download |
 | --- | --- |
@@ -263,39 +269,49 @@ not establish compatibility with every distribution or release. ARM64 and macOS
 are not part of this release workflow. Windows installers are currently unsigned
 and may trigger Windows security warnings. Git features require Git on `PATH`.
 
-For a build without publishing, select **Actions → Release → Run workflow**.
-Both jobs upload their installers as workflow artifacts, retained for 14 days.
-This also applies when manually selecting a tag.
+Every application change pushed to `main` produces a development pre-release
+after the same commit passes all unit tests, typechecking, the production build,
+and the real Electron preview contract. Both OS packages must also launch,
+render Markdown and open the editor before publication. A failed check prevents
+publication; a documentation-only push does not produce installers.
 
-To publish, commit and push the workflow and app changes, then push a tag matching
-`apps/desktop/package.json`. The current version is `0.1.0`:
+Development versions use the next patch and the unique Actions run ID, for
+example `1.0.1-dev.38694878620` when the desktop version is `1.0.0`. If the desktop
+version already has a prerelease suffix, its target major/minor/patch is retained.
+The version is applied to the packaged app without committing version bumps.
+Each build gets its own tag and files; it never replaces the stable **Latest**
+release. Re-running a workflow keeps its version and preserves an already
+published release. Each release includes `build-info.json` (source commit and
+workflow run) and `SHA256SUMS` alongside all four installers. Uploads are staged
+in a draft and published only after every file has been verified.
+
+For a build without publishing, select **Actions → CI → Run workflow**. This
+always runs the checks and creates `*-test.<run-id>` installers as workflow
+artifacts, retained for 14 days, even when selecting a tag.
+
+To publish a stable version, update the desktop version and lockfile, commit and
+push, then push the matching tag. For example, the next patch after `1.0.0` is:
 
 ```bash
-git tag -a v0.1.0 -m "Setdown 0.1.0"
-git push origin v0.1.0
+npm version 1.0.1 --workspace @setdown/desktop --no-git-tag-version
+git add apps/desktop/package.json package-lock.json
+git commit -m "Release Setdown 1.0.1"
+git push origin main
+git tag -a v1.0.1 -m "Setdown 1.0.1"
+git push origin v1.0.1
 ```
 
-For subsequent versions, update the desktop package and lockfile together before
-committing, for example:
+Tag builds run the same checks even when the last commit only changes documents.
+The tag must match `apps/desktop/package.json` and its lockfile entry; the workspace
+root version is independent. Versions such as `1.1.0-beta.1` remain pre-releases.
+Published tags and assets are preserved; use a new version for a subsequent
+release. An interrupted draft for the same commit can be completed by rerunning
+the failed jobs.
 
-```bash
-npm version 0.1.1 --workspace @setdown/desktop --no-git-tag-version
-```
-
-The workspace root's version is independent; the desktop version determines the
-release tag and filenames. A mismatched tag or lockfile stops the workflow.
-After Linux unit tests and both OS builds/typechecks pass, the workflow publishes
-all four installers, generated release notes, and `SHA256SUMS`. Versions such as
-`0.2.0-beta.1` become GitHub prereleases. Use a new version/tag for an already
-published release; the workflow does not overwrite it.
-
-Repository Actions were disabled at the user's request on 2026-10-09, so the
-Release workflow is currently unavailable. To use it, GitHub Actions must be
-enabled for the repository and permit the official
-`actions/*` actions. The release job requests `contents: write` and uses the
-automatically supplied `GITHUB_TOKEN`; no personal access token or additional
-secret is needed for unsigned releases. Code signing and in-app automatic
-updates are separate setup tasks.
+Only the publish job receives `contents: write`; checks and packaging use read
+permissions. The automatically supplied `GITHUB_TOKEN` is sufficient. Code
+signing and in-app automatic updates require separate setup; publishing a new
+download does not update an installed app.
 
 ## Keyboard reference
 
@@ -376,8 +392,8 @@ npm run test:preview-contract
 ```
 
 Before running browser checks, install Chromium with
-`npx playwright install chromium`. On Linux without a display, use
-`xvfb-run -a npm run test:preview-contract`.
+`npx playwright install chromium`. Linux GUI npm scripts create an isolated Xvfb
+display, runtime directory and D-Bus session automatically.
 
 Read the [preview performance contract](docs/preview-performance-contract.md)
 before changing preview preparation or presentation, native bounds, zoom,
@@ -394,11 +410,35 @@ warm cycles separately for ordinary Markdown and Git review, with and without
 edits and preparation time. Incomplete runs, stale-content captures, and failed
 checks are not successful benchmarks.
 
-GitHub Actions are currently disabled for this repository (2026-10-09). Local
-contract checks and performance-path benchmarks remain required. If Actions is
-re-enabled, CI runs the contract suite on pull requests and pushes to `main`, and
-the full latency comparison is available manually through the **Preview
-performance contract** workflow with `run_latency` enabled.
+GitHub Actions policy:
+
+| Event | Checks | Delivery |
+| --- | --- | --- |
+| Pull request | Full unit suite, benchmark comparator tests, typecheck/build, Electron contract | No publication |
+| Application change on `main` | Same checks, then Windows/Linux packaging and packaged-app smoke checks | Unique development pre-release |
+| `v*` tag push | Same checks and packaging, with version/tag validation | Versioned release; prerelease suffixes remain pre-releases |
+| Manual **CI** run | Same checks and packaging regardless of changed paths | Downloadable artifacts only |
+| Documentation-only PR or main push | CI policy tests and an explicit successful result | No installers |
+
+Only known documentation paths are exempt: root README/AGENTS/CONTRIBUTING/
+CHANGELOG/LICENSE files, `live_demo.gif`, `docs/`, and `reports/`. Markdown test
+fixtures, CSS, dependencies, workflows, submodules and unknown paths still run
+the desktop checks. Missing comparison history also runs all checks.
+The stable required-check name is **CI result**, including documentation-only
+changes. Configure that check in the repository's branch rules to enforce it;
+workflow files alone do not change repository rules.
+
+New application pushes cancel obsolete runs for the same PR or main branch.
+Documentation pushes do not cancel an app build in progress. Tags, manual builds
+and benchmarks are independent. Failure reports are retained for 14 days.
+
+For the full comparative benchmark, select **Actions → Preview latency benchmark
+→ Run workflow**. Supply a baseline commit/tag, or leave it empty to compare with
+the selected ref's parent. All eight scenarios and five repetitions per version
+run on the same isolated display; results and logs are retained for 30 days.
+Performance-path changes still require this comparison locally or manually;
+timing noise is not an automatic PR gate. The CI policy itself can be checked
+with `node --test scripts/ci/*.test.mjs`.
 
 Further documentation:
 

@@ -1,46 +1,36 @@
-name: Release
+name: Package and release
 
 on:
-  push:
-    tags: ['v*']
-  # Manual runs build downloadable artifacts without publishing a release.
-  workflow_dispatch:
+  # Only the checked desktop pipeline calls this workflow.
+  workflow_call:
+    inputs:
+      channel:
+        required: true
+        type: string
 
 permissions:
   contents: read
 
-concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
   metadata:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
-      version: ${{ steps.version.outputs.version }}
-      prerelease: ${{ steps.version.outputs.prerelease }}
+      version: ${{ steps.metadata.outputs.version }}
+      tag: ${{ steps.metadata.outputs.tag }}
+      prerelease: ${{ steps.metadata.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
-      - name: Validate release version
-        id: version
-        shell: bash
-        run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-          const { version } = JSON.parse(fs.readFileSync('apps/desktop/package.json', 'utf8'));
-          const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
-          if (lock.packages['apps/desktop'].version !== version) {
-            throw new Error('Update package-lock.json along with the desktop version.');
-          }
-          if (process.env.GITHUB_EVENT_NAME === 'push' && process.env.GITHUB_REF !== `refs/tags/v${version}`) {
-            throw new Error(`Release tag must be v${version}, matching apps/desktop/package.json.`);
-          }
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\nprerelease=${version.includes('-')}\n`);
-          NODE
+          package-manager-cache: false
+      - id: metadata
+        env:
+          RELEASE_CHANNEL: ${{ inputs.channel }}
+        run: node scripts/ci/release-metadata.mjs
 
   build:
     needs: metadata
@@ -56,88 +46,95 @@ jobs:
           - platform: linux
             runner: ubuntu-22.04
     env:
-      # Initial Windows releases are unsigned; signing can be configured later.
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
       RELEASE_PLATFORM: ${{ matrix.platform }}
+    defaults:
+      run:
+        shell: bash
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
-      - name: Install Linux packaging tools
+      - name: Install Linux packaging and display tools
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y rpm libcrypt1
+          sudo apt-get install --no-install-recommends -y rpm libcrypt1 xvfb xauth dbus-x11
       - run: npm ci
-      - name: Run unit tests
+      - name: Install Linux runtime dependencies
         if: runner.os == 'Linux'
-        run: npm test
-      # Each OS rebuilds native modules for its own Electron runtime.
-      # Publishing happens only in the release job after both builds succeed.
+        run: npx playwright install-deps chromium
+      # Version changes are confined to the package; no version-bump commit.
       - name: Build installers
-        run: npm run package:${{ matrix.platform }} -- --x64 --publish never
+        run: npm run package:$RELEASE_PLATFORM -- --x64 --publish never --config.extraMetadata.version="$RELEASE_VERSION"
       - name: Verify expected installers
-        shell: bash
+        run: node scripts/ci/verify-installers.mjs
+      - name: Enable packaged Linux sandbox
+        if: runner.os == 'Linux'
         run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-          const { RELEASE_VERSION: version, RELEASE_PLATFORM: platform } = process.env;
-          const suffixes = platform === 'win' ? ['x64.exe'] : ['x86_64.AppImage', 'amd64.deb', 'x86_64.rpm'];
-          for (const suffix of suffixes) {
-            const file = `apps/desktop/release/Setdown-${version}-${platform}-${suffix}`;
-            const stat = fs.statSync(file);
-            if (!stat.isFile() || stat.size === 0) throw new Error(`Missing or empty installer: ${file}`);
-          }
-          NODE
-      - uses: actions/upload-artifact@v4
+          sudo chown root:root apps/desktop/release/linux-unpacked/chrome-sandbox
+          sudo chmod 4755 apps/desktop/release/linux-unpacked/chrome-sandbox
+      - name: Launch packaged Linux app on an isolated display
+        if: runner.os == 'Linux'
+        run: bash apps/desktop/scripts/with-isolated-display.sh node scripts/ci/package-smoke.mjs
+      # Hosted Windows runners have a dedicated desktop, separate from users.
+      - name: Launch packaged Windows app
+        if: runner.os == 'Windows'
+        run: node scripts/ci/package-smoke.mjs
+      - uses: actions/upload-artifact@v7
+        if: failure()
         with:
-          name: installers-${{ matrix.platform }}-x64
+          name: package-failure-${{ matrix.platform }}-${{ github.run_attempt }}
+          path: |
+            apps/desktop/test-results/package-smoke
+            apps/desktop/release/builder-debug.yml
+            apps/desktop/release/builder-effective-config.yaml
+          retention-days: 14
+      - uses: actions/upload-artifact@v7
+        with:
+          name: installers-${{ matrix.platform }}-x64-${{ github.run_attempt }}
           path: |
             apps/desktop/release/*.exe
             apps/desktop/release/*.AppImage
             apps/desktop/release/*.deb
             apps/desktop/release/*.rpm
+            apps/desktop/release/build-info-*.json
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
 
-  release:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+  publish:
+    name: Publish complete release
+    if: inputs.channel != 'artifact' && github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     needs: [metadata, build]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      # Failed-job reruns may reuse the successful platform's earlier artifact.
+      - uses: actions/download-artifact@v8
         with:
           pattern: installers-*
-          merge-multiple: true
-          path: release-assets
-      - name: Publish installers and checksums
-        working-directory: release-assets
-        shell: bash
+          path: release-artifacts
+      - name: Publish installers, provenance and checksums
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_CHANNEL: ${{ inputs.channel }}
           RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
-          PRERELEASE: ${{ needs.metadata.outputs.prerelease }}
-        run: |
-          files=(
-            "Setdown-${RELEASE_VERSION}-win-x64.exe"
-            "Setdown-${RELEASE_VERSION}-linux-x86_64.AppImage"
-            "Setdown-${RELEASE_VERSION}-linux-amd64.deb"
-            "Setdown-${RELEASE_VERSION}-linux-x86_64.rpm"
-          )
-          for file in "${files[@]}"; do test -s "$file"; done
-          sha256sum "${files[@]}" > SHA256SUMS
-          flags=()
-          if [[ "$PRERELEASE" == 'true' ]]; then
-            flags+=(--prerelease --latest=false)
-          fi
-          gh release create "$RELEASE_TAG" "${files[@]}" SHA256SUMS \
-            --verify-tag --generate-notes --title "Setdown ${RELEASE_VERSION}" "${flags[@]}"
+          RELEASE_TAG: ${{ needs.metadata.outputs.tag }}
+          RELEASE_PRERELEASE: ${{ needs.metadata.outputs.prerelease }}
+        run: node scripts/ci/publish-release.mjs
