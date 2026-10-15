@@ -18,7 +18,9 @@
   let live = true, refreshVersion = 0;
   const selected = $derived(catalog.entries.find(entry => entry.id === selectedId));
   const entries = $derived(catalog.entries.filter(entry => `${entry.name} ${entry.id} ${entry.languages.join(' ')}`.toLowerCase().includes(query.toLowerCase()))
-    .sort((a, b) => Number(b.sessions.some(s => s.state === 'ready')) - Number(a.sessions.some(s => s.state === 'ready')) || Number(b.available) - Number(a.available) || Number(b.configured) - Number(a.configured) || a.name.localeCompare(b.name)));
+    .sort((a, b) => Number(b.sessions.some(s => s.state === 'ready')) - Number(a.sessions.some(s => s.state === 'ready'))
+      || Number(b.available || !!b.candidates?.length) - Number(a.available || !!a.candidates?.length)
+      || Number(b.configured) - Number(a.configured) || a.name.localeCompare(b.name)));
   const defaults: LanguageServerOptions = { args: [], settings: {}, initializationOptions: {} };
   function choose(entry: LanguageCatalogEntry) {
     selectedId = entry.id; adding = false; error = '';
@@ -29,7 +31,7 @@
     const result = await api.catalog();
     if (!live || version !== refreshVersion) return;
     catalog = result;
-    if (!selectedId && !adding) { const first = result.entries.find(entry => entry.configured); if (first) choose(first); }
+    if (!selectedId && !adding) { const first = entries[0]; if (first) choose(first); }
   }
   async function perform(action: () => Promise<unknown>) {
     if (busy) return;
@@ -39,16 +41,17 @@
     finally { busy = false; }
   }
   function status(entry: LanguageCatalogEntry) {
-    if (!entry.configured) return 'Connection needed';
+    if (!entry.configured) return entry.candidates?.length ? 'Found · Connection details needed' : 'Connection details needed';
     if (!entry.enabled) return 'Disabled';
     if (entry.sessions.some(session => session.state === 'failed')) return 'Failed';
     if (entry.sessions.some(session => session.state === 'starting')) return 'Starting';
     if (entry.sessions.some(session => session.state === 'ready')) return 'Running';
     if (entry.selectionNeeded) return 'Choose an installation';
     if (!entry.available) return 'Executable missing';
-    return entry.selected.length ? 'Found · Starts when needed' : 'Another server selected';
+    return entry.selected.length ? 'Found · Starts when needed' : 'Found · Choose a primary server';
   }
   function beginConnection(entry?: LanguageCatalogEntry) {
+    selectedId = entry?.id ?? '';
     adding = true; error = ''; connectionId = entry?.id ?? ''; connectionName = entry?.name ?? '';
     languageId = ''; extensions = ''; markers = ''; optionsText = JSON.stringify(defaults, null, 2);
   }
@@ -56,7 +59,8 @@
   async function add() {
     const options = JSON.parse(optionsText);
     if (await api.addConnection({ ...options, id: connectionId.trim(), name: connectionName.trim(),
-      languages: [{ languageId: languageId.trim(), extensions: words(extensions) }], rootMarkers: words(markers) })) {
+      languages: [{ languageId: languageId.trim(), extensions: words(extensions) }], rootMarkers: words(markers),
+      candidateId: selected?.id === connectionId.trim() && selected.candidates?.length === 1 ? selected.candidates[0].id : undefined })) {
       selectedId = connectionId.trim(); adding = false;
     }
   }
@@ -115,9 +119,10 @@
         <h3>{selected.name}</h3>
         <p>{selected.description}</p>
         <p class="state">{status(selected)}{selected.bundled ? ' · Included with Setdown' : ''}</p>
+        {#if selected.setupNote}<p>{selected.setupNote}</p>{/if}
         {#if selected.configured}
           <p>Executable<br /><code>{selected.executable}</code></p>
-          {#if selected.automatic}<p>Connects automatically when a matching file is opened.</p>{/if}
+          {#if selected.automatic && selected.enabled}<p>Connects when a matching file is opened. If several servers are installed, choose one below.</p>{/if}
           {#if selected.discoveryMessage}<p>{selected.discoveryMessage}</p>{/if}
           {#if selected.candidates && selected.candidates.length > 1}
             <details open={selected.selectionNeeded}>
@@ -142,20 +147,25 @@
           {/each}
           <details>
             <summary>Connection settings</summary>
+            {#if selected.profileSource}<p>Profile: {selected.profileSource}</p>{/if}
             {#if selected.searched?.length}<p>Searched: {selected.searched.join(', ')}</p>{/if}
             <label>Server options (JSON)<textarea rows="12" spellcheck="false" bind:value={optionsText}></textarea></label>
             <button disabled={busy} onclick={() => perform(() => api.configure(selected!.id, JSON.parse(optionsText)))}>Apply settings</button>
           </details>
           {#if selected.custom}<button disabled={busy} onclick={() => perform(async () => { await api.remove(selected!.id); selectedId = ''; })}>Remove connection</button>{/if}
         {:else}
-          <p>This is a discovery entry. Install the server, then provide its language ID, file extensions and startup arguments.</p>
+          <p>This server's connection profile is not included yet. Provide its language ID, file extensions and stdio arguments once.</p>
+          {#if selected.candidates?.length}
+            <p>Detected installation:</p>
+            {#each selected.candidates as candidate}<p><code>{candidate.path}</code></p>{/each}
+          {/if}
           <button disabled={busy} onclick={() => beginConnection(selected)}>Connect installed server…</button>
         {/if}
         {#if selected.homepage}<button disabled={busy} onclick={() => perform(() => api.openHomepage(selected!.id))}>Installation instructions ↗</button>{/if}
       {:else}<p>Choose a server or add a connection.</p>{/if}
     </section>
   </div>
-  <footer>Catalog: Mason {catalog.release} · {catalog.entries.length} servers · Installation is manual.</footer>
+  <footer>Catalog: Mason {catalog.release} · {catalog.entries.length} servers · {catalog.profiles ?? 0} connection profiles · Installation is manual.</footer>
 </dialog>
 
 <style>

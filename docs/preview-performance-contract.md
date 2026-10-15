@@ -372,6 +372,27 @@ choices and explicit disable settings survive discovery and settings updates.
 opening a document and unrelated configuration changes. The separate real-server
 gate adds fortls auto-connection, hover/completion and Rescan.
 
+Language discovery now covers the whole offline catalog. Pinned Helix definitions
+are normalized into main-process connection profiles; the renderer receives only
+enabled associations. Exact names, specific path globs, case-sensitive and compound
+suffixes retain their routing precedence. Bundled Python and explicit choices win;
+otherwise one installed primary connects, and several installed alternatives wait
+for selection. Disabled settings and older custom profiles keep their identities.
+A healthy session remains on its selected server across scans. Configuration
+invalidation uses the actual connected server, not a missing route alternative.
+
+Catalog reads share directory/package caches and use at most eight metadata
+workers; they never execute candidates. An eligible document or explicit Rescan
+may query the installed npm CLI's global root through Node with fixed arguments,
+in addition to the existing shell/Python metadata. npm bin mappings resolve a
+script and runtime without invoking shell wrappers or installation recipes.
+All metadata subprocesses retain cancellation, timeout and output limits.
+Unprofiled entries can reuse a main-owned detected candidate when a user supplies
+the missing connection data. No workspace-local command or package discovery is
+introduced. Generated writing/auxiliary profiles remain opt-in, preserving the
+Markdown-only no-LSP guarantee. Profile/routing/discovery/manager/client tests and
+the npm TypeScript fixture in `language-registry.spec.ts` cover these boundaries.
+
 ## Explorer file operations and document ownership
 
 Explorer commands are scoped to the tree. Native accelerators, the main Edit
@@ -1254,3 +1275,64 @@ functional logs are in `test-results/lsp-discovery-validation/`. Traces are in
 transitions, not large-project LSP indexing or
 network-filesystem discovery latency. They do not prove the initial first-cycle
 variation cannot recur.
+
+## Catalog-wide language discovery validation, 2026-10-16
+
+The generated catalog contains 384 entries and 195 connection profiles. Every
+entry participates in installation discovery; 142 of the 331 Mason entries have
+profiles and 189 still require connection metadata. The importer is offline,
+checksum-pinned and reproducible. Profile presence is not a blanket compatibility
+claim for every server or every protocol capability.
+
+Validation passed **111 unit files / 772 tests**, **58 contract unit files / 381
+tests**, three comparator tests, build/typecheck with zero Svelte errors/warnings,
+and **113 real Electron scenarios**. After the small final refinement to select
+an installed entry when opening Language Support, the final build reran **all
+three management scenarios**, including that initial choice, plus **two real
+fortls/rust-analyzer scenarios**. GUI tests used isolated Xvfb/runtime/D-Bus and
+never used the desktop display.
+
+Coverage includes imported variants and exact names/globs, independent Ada/GPR
+launch arguments, C#/F# solution root patterns, persisted disabling/custom
+connections, installed-primary ambiguity, main-owned candidate selection, npm
+bin/runtime lookup and one shared custom-prefix query, cancellation and metadata
+limits. The Electron npm fixture verifies an unconfigured TypeScript file connects
+and completes through an imported profile, survives Rescan on the same process,
+and retains Undo. It validates Setdown's protocol/launch integration; it does not
+run the actual upstream TypeScript server. Real servers cover Pyright/clangd in
+the contract and fortls/rust-analyzer in the additional gate.
+
+The independently installed baseline is
+`4b1683f6fbb25039e2ed13cd3c43df8414f62439`; baseline and candidate both use
+Electron 44.7.2. Each was separately built before the comparison. `--skip-build`
+reused those builds; the harness recorded and verified both artifact hashes.
+Five matched repetitions alternate execution order on one isolated display.
+All eight scenarios, five cycles, real double-clicks and latest-content captures
+were retained. No retry, assertion or tolerance was relaxed.
+
+Comparison: **PASS — 0 regressions across 48 buckets**, using the
+existing joint thresholds (>25% and >50ms).
+
+Median milliseconds are **baseline → candidate**. Warm is cycles 3–5 within each
+app, then the median across repetitions. Preparation wait is separate from input
+latency; Esc includes native capture/readback, not a monitor presentation timestamp.
+
+| Surface | Source wait | Edit | Esc first | Esc second | Esc warm | Double-click first | Double-click second | Double-click warm |
+| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Markdown | 0ms | no | 48 → 44 | 19 → 25 | 24 → 19 | 16 → 16 | 32 → 34 | 12 → 12 |
+| Markdown | 0ms | yes | 432 → 423 | 102 → 107 | 92 → 90 | 19 → 17 | 13 → 14 | 15 → 12 |
+| Markdown | 3000ms | no | 38 → 40 | 21 → 20 | 19 → 20 | 16 → 16 | 11 → 11 | 11 → 11 |
+| Markdown | 3000ms | yes | 109 → 107 | 102 → 105 | 88 → 89 | 19 → 19 | 13 → 13 | 15 → 14 |
+| Git review | 0ms | no | 906 → 969 | 20 → 20 | 26 → 27 | 23 → 23 | 12 → 11 | 12 → 12 |
+| Git review | 0ms | yes | 1031 → 1043 | 1502 → 1498 | 176 → 175 | 25 → 24 | 22 → 20 | 19 → 18 |
+| Git review | 3000ms | no | 27 → 27 | 23 → 24 | 17 → 19 | 24 → 23 | 11 → 11 | 16 → 16 |
+| Git review | 3000ms | yes | 226 → 228 | 178 → 182 | 177 → 176 | 21 → 21 | 18 → 19 | 17 → 17 |
+
+[Samples, identities, coverage and source hashes](lsp-profiles-preview-benchmark-2026-10-16.json).
+Raw records are in `test-results/lsp-profiles-benchmark-2026-10-16/`; functional
+logs are in `test-results/lsp-profile-validation/`. The baseline checkout is on
+disk under that validation directory: stale previous /tmp checkouts were removed
+after an initial temporary-filesystem quota failure, and the incomplete baseline
+install was replaced with a clean independent npm install before measurement.
+These measurements cover Markdown/Git transitions, not large-project LSP indexing,
+Windows execution, or slow/network-filesystem discovery latency.

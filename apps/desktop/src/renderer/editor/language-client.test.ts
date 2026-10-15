@@ -196,3 +196,13 @@ test('document symbols accept both hierarchical and flat protocol results', asyn
   expect(symbols[1].children[0].name).toBe('child');
   f.client.dispose();
 });
+
+test('configuration invalidates the server actually selected by discovery rather than a missing route alternative', async () => {
+  const f = fixture('/project/main.ts', { hoverProvider: true }, [{ server: 'missing-alternative', languageId: 'typescript', extensions: ['.ts'] }]);
+  vi.mocked(f.port.open).mockResolvedValue({ uri: 'file:///project/main.ts', server: 'installed-primary', capabilities: { hoverProvider: true } });
+  f.client.bind(f.tab, f.model);
+  await vi.waitFor(() => expect(f.hover.current).toBeDefined());
+  f.client.invalidate(['unrelated']); expect(f.port.close).not.toHaveBeenCalled();
+  f.client.invalidate(['installed-primary']); expect(f.port.close).toHaveBeenCalledWith(f.tab.id);
+  f.client.dispose();
+});

@@ -4,17 +4,18 @@ import type { LanguageServerDefinition } from '../core/document/language-definit
 
 export type LanguageServerOptions = { args: string[]; settings: Record<string, unknown>; initializationOptions: Record<string, unknown> };
 export type LanguageConnectionDraft = LanguageServerOptions & { id: string; name: string;
-  languages: LanguageServerDefinition['languages']; rootMarkers: string[] };
-export type LanguageServerCandidate = { id: string; path: string; source: 'explicit' | 'path' | 'user' | 'python' };
+  languages: LanguageServerDefinition['languages']; rootMarkers: string[]; candidateId?: string };
+export type LanguageServerCandidate = { id: string; path: string; source: 'explicit' | 'path' | 'user' | 'python' | 'npm' };
 export type LanguageCatalogEntry = {
   id: string; name: string; description: string; homepage: string; languages: string[];
   configured: boolean; bundled: boolean; custom: boolean; enabled: boolean; selected: string[];
   executable?: string; available?: boolean; options?: LanguageServerOptions;
   automatic?: boolean; canDetect?: boolean; candidates?: LanguageServerCandidate[];
   discoveryMessage?: string; selectionNeeded?: boolean; searched?: string[];
+  profileSource?: string; setupNote?: string;
   sessions: { root: string; state: 'starting' | 'ready' | 'failed'; message?: string; features?: string[] }[];
 };
-export type LanguageCatalog = { release: string; entries: LanguageCatalogEntry[] };
+export type LanguageCatalog = { release: string; profileSource?: string; profiles?: number; entries: LanguageCatalogEntry[] };
 
 export function textSynchronization(capabilities: ServerCapabilities): { change: number; openClose: boolean; save: false | { includeText?: boolean } } {
   const sync = capabilities.textDocumentSync;
@@ -31,7 +32,7 @@ export const languageMethods = [
 ] as const;
 export type LanguageMethod = typeof languageMethods[number];
 export type LanguageDocument = { id: string; generation: string; path: string; text: string; version: number };
-export type LanguageConnection = { uri: string; capabilities: ServerCapabilities };
+export type LanguageConnection = { uri: string; capabilities: ServerCapabilities; server?: string };
 export type LanguageUnavailable = { unavailable: 'missing' | 'selection-needed' };
 export type LanguageEvent =
   | { type: 'configuration'; servers?: string[] }

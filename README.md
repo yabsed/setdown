@@ -118,8 +118,10 @@ languages have syntax highlighting; additional LSP servers can be connected thro
 **Edit → Language Support…**. Python, clangd and compilers are not bundled.
 
 For C/C++, install [clangd](https://clangd.llvm.org/installation), then open a source
-file. Installed **rust-analyzer**, **gopls** and **fortls** also have automatic
-connection profiles. For example, after `pip install fortls`, open a saved `.f90`
+file. Installed servers use **195 connection profiles** imported from pinned Helix
+definitions plus Setdown defaults, including **rust-analyzer**, **gopls**, **fortls**,
+TypeScript/JavaScript, Bash, Lua, YAML and JSON. The full catalog is scanned for
+installed commands; npm global packages and Python script directories are detected. For example, after `pip install fortls`, open a saved `.f90`
 file; no language ID, extension mapping or JSON setup is needed. Previously saved
 manual paths and disabled connections are preserved.
 

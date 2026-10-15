@@ -30,7 +30,9 @@
     "start": "npm run build && electron .",
     "package:win": "npm run build && electron-builder --win nsis --x64",
     "package:linux": "npm run build && electron-builder --linux AppImage deb rpm",
-    "install:linux": "bash scripts/install-linux.sh"
+    "install:linux": "bash scripts/install-linux.sh",
+    "update:language-profiles": "python3 scripts/update-language-profiles.py",
+    "check:language-profiles": "python3 scripts/update-language-profiles.py --check"
   },
   "dependencies": {
     "@parcel/watcher": "^2.6.0",

@@ -74,6 +74,7 @@ export class LanguageClient {
         binding.state = 'unavailable'; binding.listener.dispose(); this.publishStatus(); return;
       }
       binding.uri = connection.uri;
+      binding.serverId = connection.server ?? binding.serverId;
       binding.sync = textSynchronization(connection.capabilities);
       if (this.bindings.get(model) === binding && !binding.failed) this.installProviders(binding, connection.capabilities);
     }).catch(fail);

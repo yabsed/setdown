@@ -1,0 +1,18 @@
+Setdown language connection profiles
+
+The pinned helix-languages.toml and the Helix-derived portions of the generated
+src/main/language/catalog/profiles.json are covered by the Mozilla Public
+License 2.0 (see HELIX-LICENSE).
+Copyright the Helix contributors.
+Upstream: https://github.com/helix-editor/helix
+Revision: ba40e547426b0f9896c8bdc699a4ab11f2b37dbc
+Original source: https://github.com/helix-editor/helix/blob/ba40e547426b0f9896c8bdc699a4ab11f2b37dbc/languages.toml
+
+Setdown modifications: normalization of file associations and server identity,
+Mason package mapping, application-policy overrides and import coverage records.
+Corresponding source, importer and modifications are included in Setdown's
+source distribution at scripts/language-profiles, scripts/update-language-profiles.py
+and src/main/language/catalog/profiles.json under apps/desktop:
+https://github.com/yabsed/setdown
+
+Mason catalog data retains its separate license (MASON-LICENSE).

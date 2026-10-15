@@ -2,8 +2,9 @@ import { constants, existsSync, mkdirSync, readFileSync, renameSync, statSync, w
 import { access, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { builtinLanguageServers, validateLanguageDefinition, type LanguageServerDefinition } from '../../core/document/language-definition';
-import type { LanguageRoute } from '../../core/document/language-support';
+import { validateLanguageDefinition, type LanguageServerDefinition } from '../../core/document/language-definition';
+import { builtinLanguageServers } from './catalog/profiles';
+import { languageSupport, type LanguageRoute } from '../../core/document/language-support';
 import type { ServerLaunch } from './server-session';
 
 type Options = { enabled?: boolean; executable?: string; automaticExecutable?: boolean; args?: string[]; settings?: Record<string, unknown>; initializationOptions?: Record<string, unknown> };
@@ -23,7 +24,7 @@ export class ServerRegistry {
     const ids = this.definitions().map(item => item.id);
     if (new Set(ids).size !== ids.length) throw Error('Duplicate language server ID.');
     for (const [language, id] of Object.entries(this.data.preferred))
-      if (!/^[\w+-]+$/.test(language) || typeof id !== 'string' || !ids.includes(id)) throw Error('Invalid preferred server.');
+      if (!/^[\w.+-]+$/.test(language) || typeof id !== 'string' || !ids.includes(id)) throw Error('Invalid preferred server.');
     // Validate persisted overrides too; a malformed file must not silently reset settings.
     for (const [id, options] of Object.entries(this.data.servers)) {
       this.definition(id);
@@ -45,16 +46,33 @@ export class ServerRegistry {
     return definition;
   }
   options(id: string): Options { return Object.hasOwn(this.data.servers, id) ? this.data.servers[id] : {}; }
+  preferred(languageId: string): string | undefined {
+    const id = this.data.preferred[languageId];
+    return id && this.enabled(id) ? id : this.definitions().find(d => this.options(d.id).enabled === true
+      && d.languages.some(l => l.languageId === languageId))?.id;
+  }
   enabled(id: string): boolean { return this.options(id).enabled ?? this.definition(id).enabledByDefault ?? false; }
   routes(): LanguageRoute[] {
     const definitions = this.definitions().filter(item => this.enabled(item.id));
     const result: LanguageRoute[] = [];
     for (const id of new Set(definitions.flatMap(item => item.languages.map(l => l.languageId)))) {
       const candidates = definitions.filter(item => item.languages.some(l => l.languageId === id));
-      const chosen = candidates.find(item => item.id === this.data.preferred[id]) ?? candidates[0];
-      for (const language of chosen.languages.filter(l => l.languageId === id)) result.push({ ...language, server: chosen.id });
+      candidates.sort((a, b) => Number(b.id === this.data.preferred[id]) - Number(a.id === this.data.preferred[id])
+        || Number(this.options(b.id).enabled === true) - Number(this.options(a.id).enabled === true));
+      for (const candidate of candidates) for (const language of candidate.languages.filter(l => l.languageId === id))
+        result.push({ ...language, server: candidate.id });
     }
     return result;
+  }
+  candidates(file: string): { server: string; languageId: string }[] {
+    const routes = this.routes(), support = languageSupport(file, routes);
+    if (!support) return [];
+    const matches = routes.filter(route => route.languageId === support.languageId && languageSupport(file, [route]));
+    const preferred = matches.find(route => route.server === this.data.preferred[support.languageId])
+      ?? matches.find(route => this.options(route.server).enabled === true);
+    // A user selection is authoritative, including a currently missing executable.
+    const chosen = preferred ? [preferred] : matches;
+    return [...new Map(chosen.map(({ server, languageId }) => [server, { server, languageId }])).values()];
   }
   private save(): void {
     const next = JSON.stringify(this.data, null, 2) + '\n';
@@ -115,9 +133,9 @@ export class ServerRegistry {
     }
     return (launch.environmentVariable && environment[launch.environmentVariable]) || launch.command;
   }
-  async chooseExecutable(id: string, executable: string): Promise<void> {
+  async chooseExecutable(id: string, executable: string, discoveredScript = false): Promise<void> {
     this.definition(id);
-    if (!path.isAbsolute(executable) || !await findExecutable(executable)) throw Error('Select an executable file.');
+    if (!path.isAbsolute(executable) || !(discoveredScript ? (await stat(executable)).isFile() : await findExecutable(executable))) throw Error('Select an executable file.');
     if (this.definition(id).launch.kind === 'bundledNode') throw Error('This server uses the bundled runtime.');
     this.data.servers[id] = { ...this.options(id), executable, automaticExecutable: false }; this.save();
   }

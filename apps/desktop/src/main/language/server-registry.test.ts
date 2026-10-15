@@ -35,7 +35,8 @@ test('custom definitions, active selection, settings and fingerprints survive re
   registry.setEnabled('pyright', false);
   expect(languageSupport('main.py', registry.routes())?.server).toBe('user-server');
   registry.remove('user-server');
-  expect(languageSupport('main.py', registry.routes())).toBeNull();
+  expect(registry.candidates('main.py').map(c => c.server)).not.toContain('user-server');
+  expect(registry.candidates('main.py').map(c => c.server)).not.toContain('pyright');
   expect(new ServerRegistry(root).definitions().some(d => d.id === 'user-server')).toBe(false);
 });
 
@@ -125,4 +126,14 @@ test('returning to automatic detection clears a manual or legacy override withou
   registry.useAutomatic('clangd');
   const restored = new ServerRegistry(root);
   expect(restored.executable('clangd')).toBe('clangd'); expect(restored.enabled('clangd')).toBe(false);
+});
+
+test('upstream solution globs find standalone C# roots and watch actual project filenames', async () => {
+  const root = await directory(); await mkdir(path.join(root, 'src'));
+  await writeFile(path.join(root, 'Workspace.slnx'), '');
+  const registry = new ServerRegistry(root), server = registry.definition('csharp-language-server');
+  expect(standaloneLanguageRoot(path.join(root, 'src/Main.cs'), server)).toBe(root);
+  const { serverProfile } = await import('./server-definitions');
+  expect(serverProfile(server).watches(path.join(root, 'Project.csproj'))).toBe(true);
+  expect(serverProfile(server).watches(path.join(root, 'unrelated.txt'))).toBe(false);
 });

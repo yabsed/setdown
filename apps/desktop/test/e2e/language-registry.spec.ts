@@ -1,10 +1,14 @@
 import { expect, test } from '@playwright/test';
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { electron, disposeApplication, focusApplication } from './electron-app';
 const require = createRequire(import.meta.url);
+const catalogSize = new Set([
+  ...require('../../src/main/language/catalog/mason.json').packages,
+  ...require('../../src/main/language/catalog/profiles.json').profiles,
+].map((entry: { id: string }) => entry.id)).size;
 
 test('installing a server while editing and rescanning connects the current model without replacing healthy sessions', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-auto-language-'));
@@ -102,7 +106,8 @@ test('Edit menu imports a new server, negotiates Full sync, and reconnects the s
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     const management = page.getByRole('dialog', { name: 'Language Support' });
     await expect(management).toBeVisible();
-    await expect(management.locator('footer')).toContainText('331 servers');
+    await expect(management.locator('.server-list button[aria-pressed="true"]')).toContainText('Found');
+    await expect(management.locator('footer')).toContainText(`${catalogSize} servers`);
     await management.screenshot({ path: testInfo.outputPath('language-support.png') });
     expect(await messages()).toHaveLength(0); // Viewing the catalog starts no process.
     await application.evaluate(({ dialog }, definition) => {
@@ -141,5 +146,56 @@ test('Edit menu imports a new server, negotiates Full sync, and reconnects the s
     await editor.press('Control+z'); await editor.press('Control+s');
     await expect.poll(() => readFile(file, 'utf8')).toBe('bad\n// unsaved');
     await expect(page.locator('.squiggly-error')).toHaveCount(1);
+  } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
+});
+
+test('an imported npm profile starts automatically and supplies completion without a connection form', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-profile-npm-'));
+  const file = path.join(root, 'main.ts'), log = path.join(root, 'messages.jsonl');
+  const prefix = path.join(root, 'npm-global'), folder = path.join(prefix, 'lib/node_modules/typescript-language-server');
+  await mkdir(folder, { recursive: true }); await mkdir(path.join(root, 'bin'));
+  await symlink(process.execPath, path.join(root, 'bin/node'));
+  await writeFile(file, 'const answer = 1;\n');
+  await writeFile(path.join(folder, 'package.json'), JSON.stringify({ name: 'typescript-language-server', bin: { 'typescript-language-server': './cli.cjs' } }));
+  await writeFile(path.join(folder, 'cli.cjs'), `
+    const fs = require('node:fs');
+    const {createMessageConnection, StreamMessageReader, StreamMessageWriter} = require(${JSON.stringify(require.resolve('vscode-jsonrpc/node'))});
+    const c = createMessageConnection(new StreamMessageReader(process.stdin), new StreamMessageWriter(process.stdout));
+    const log = (method, params) => fs.appendFileSync(${JSON.stringify(log)}, JSON.stringify({method,params,pid:process.pid,args:process.argv.slice(2)})+'\\n');
+    c.onRequest('initialize', p => {log('initialize',p); return {capabilities:{textDocumentSync:{openClose:true,change:1},completionProvider:{triggerCharacters:['.']}}}});
+    c.onNotification('textDocument/didOpen', p => log('open',p));
+    c.onNotification('textDocument/didChange', p => log('change',p));
+    c.onRequest('textDocument/completion', () => [{label:'profileCompletion',kind:6,insertText:'profileCompletion'}]);
+    c.onRequest('shutdown', () => null); c.onNotification('exit', () => process.exit(0)); c.listen();
+  `);
+  const messages = async () => (await readFile(log, 'utf8').catch(() => '')).split('\n').filter(Boolean).map(line => JSON.parse(line));
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+  const application = await electron.launch({ args: ['.', file], env: { ...env, HOME: root, XDG_CONFIG_HOME: path.join(root, 'config'),
+    PATH: path.join(root, 'bin'), npm_config_prefix: prefix, NPM_CONFIG_PREFIX: prefix,
+    CONDA_PREFIX: '', VIRTUAL_ENV: '', CARGO_HOME: path.join(root, '.cargo'), GOPATH: path.join(root, 'go'),
+    GOBIN: '', PIPX_BIN_DIR: '', UV_TOOL_BIN_DIR: '', XDG_BIN_HOME: '', SETDOWN_LSP_INHERIT_ENV: '1' } });
+  try {
+    const page = await application.firstWindow(); await focusApplication(application);
+    await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready');
+    await expect.poll(async () => (await messages()).filter(m => m.method === 'open').length).toBe(1);
+    const original = (await messages())[0];
+    expect(original.args).toEqual(['--stdio']); expect(original.params.initializationOptions.hostInfo).toBe('setdown');
+    expect((await messages()).find(m => m.method === 'open').params.textDocument.languageId).toBe('typescript');
+    const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
+    await editor.press('Control+End'); await editor.press('Control+Space');
+    await expect(page.locator('.suggest-widget')).toContainText('profileCompletion');
+    await editor.press('Escape'); await editor.pressSequentially('unsaved');
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
+    const management = page.getByRole('dialog', { name: 'Language Support' });
+    await management.getByRole('searchbox').fill('typescript-language-server'); await management.locator('.server-list button').click();
+    await expect(management.locator('.state')).toHaveText('Running');
+    await expect(management.locator('.details code').first()).toHaveText(path.join(folder, 'cli.cjs'));
+    await management.getByRole('button', { name: 'Rescan installed servers' }).click();
+    await expect(management.getByRole('button', { name: 'Rescan installed servers' })).toBeEnabled();
+    expect(new Set((await messages()).map(m => m.pid))).toEqual(new Set([original.pid]));
+    await management.getByRole('button', { name: 'Close language support' }).click();
+    await editor.press('Control+z'); await editor.press('Control+s');
+    await expect.poll(() => readFile(file, 'utf8')).toBe('const answer = 1;\n');
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
 });

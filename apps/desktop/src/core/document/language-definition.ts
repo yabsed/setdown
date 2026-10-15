@@ -1,4 +1,4 @@
-import { defaultLanguageRoutes, type LanguageRoute } from './language-support';
+import { type LanguageRoute } from './language-support';
 
 export type LanguageServerDefinition = {
   id: string; name: string; enabledByDefault?: boolean; automatic?: boolean; discovery?: 'python'; languages: Omit<LanguageRoute, 'server'>[];
@@ -8,32 +8,10 @@ export type LanguageServerDefinition = {
   settings: Record<string, unknown>;
   initializationOptions?: Record<string, unknown>;
   watchExtensions: string[]; watchFiles: string[];
+  npmPackage?: string;
+  provenance?: { source: string; revision: string; profile: string };
+  setupNote?: string;
 };
-const languages = (id: string) => defaultLanguageRoutes.filter(route => route.server === id).map(({ server: _server, ...route }) => route);
-export const builtinLanguageServers: LanguageServerDefinition[] = [
-  { id: 'pyright', name: 'Pyright', enabledByDefault: true, languages: languages('pyright'),
-    launch: { kind: 'bundledNode', module: 'pyright/langserver.index.js', args: ['--stdio'] }, rootMarkers: [],
-    settings: { python: { analysis: { autoSearchPaths: true, useLibraryCodeForTypes: true, diagnosticMode: 'openFiles', typeCheckingMode: 'basic' } } },
-    watchExtensions: ['.py', '.pyi', '.toml', '.json'], watchFiles: [] },
-  { id: 'clangd', name: 'clangd', enabledByDefault: true, automatic: true, languages: languages('clangd'),
-    launch: { kind: 'native', command: 'clangd', args: ['--background-index', '--pch-storage=disk', '-j=2', '--log=error'],
-      environmentVariable: 'SETDOWN_CLANGD_PATH', legacySettingsFile: 'clangd.json' },
-    rootMarkers: ['.clangd', 'compile_commands.json', 'compile_flags.txt', '.git', 'CMakeLists.txt'], settings: {},
-    watchExtensions: [...languages('clangd').flatMap(language => language.extensions)],
-    watchFiles: ['.clangd', '.clang-format', 'compile_commands.json', 'compile_flags.txt'] },
-  { id: 'gopls', name: 'gopls', enabledByDefault: true, automatic: true, languages: [{ languageId: 'go', extensions: ['.go'] }],
-    launch: { kind: 'native', command: 'gopls', args: [] }, rootMarkers: ['go.work', 'go.mod', '.git'], settings: {},
-    watchExtensions: ['.go'], watchFiles: ['go.mod', 'go.sum', 'go.work'] },
-  { id: 'rust-analyzer', name: 'rust-analyzer', enabledByDefault: true, automatic: true, languages: [{ languageId: 'rust', extensions: ['.rs'] }],
-    launch: { kind: 'native', command: 'rust-analyzer', args: [] }, rootMarkers: ['Cargo.toml', 'rust-project.json', '.git'], settings: {},
-    watchExtensions: ['.rs', '.toml'], watchFiles: ['Cargo.lock'] },
-  { id: 'fortls', name: 'fortls', enabledByDefault: true, automatic: true, discovery: 'python',
-    languages: [{ languageId: 'fortran', extensions: ['.f', '.for', '.fpp', '.f77', '.f90', '.f95', '.f03', '.f08', '.f18'] }],
-    launch: { kind: 'native', command: 'fortls', args: ['--disable_autoupdate', '--hover_signature', '--hover_language=fortran', '--use_signature_help'] },
-    rootMarkers: ['.fortlsrc', '.fortls.json', '.fortls', '.git'], settings: {},
-    watchExtensions: ['.f', '.for', '.fpp', '.f77', '.f90', '.f95', '.f03', '.f08', '.f18'], watchFiles: ['.fortlsrc', '.fortls.json', '.fortls'] },
-];
-
 /** User definitions contain data only. Launches are resolved in the process host. */
 export function validateLanguageDefinition(value: unknown): LanguageServerDefinition {
   const record = (v: unknown): v is Record<string, any> => !!v && typeof v === 'object' && !Array.isArray(v)
@@ -42,17 +20,22 @@ export function validateLanguageDefinition(value: unknown): LanguageServerDefini
   const strings = (v: unknown, max = 128): v is string[] => Array.isArray(v) && v.length <= max && v.every(item => text(item, 4096));
   if (!record(value) || !text(value.id, 80) || ['__proto__', 'constructor', 'prototype'].includes(value.id) || !/^[a-z0-9][a-z0-9._-]*$/.test(value.id) || !text(value.name)
     || !record(value.launch) || value.launch.kind !== 'native' || !text(value.launch.command, 4096)
-    || !strings(value.launch.args) || !Array.isArray(value.languages) || !value.languages.length || value.languages.length > 32)
+    || !strings(value.launch.args) || !Array.isArray(value.languages) || !value.languages.length || value.languages.length > 128)
     throw new Error('Provide an ID, name, native executable, arguments and at least one language.');
   const associations = value.languages.map((language: unknown) => {
-    if (!record(language) || !text(language.languageId, 80) || ['__proto__', 'constructor', 'prototype'].includes(language.languageId) || !/^[\w+-]+$/.test(language.languageId)
+    if (!record(language) || !text(language.languageId, 80) || ['__proto__', 'constructor', 'prototype'].includes(language.languageId) || !/^[\w.+-]+$/.test(language.languageId)
       || (language.monacoId !== undefined && (!text(language.monacoId, 80) || !/^[\w+-]+$/.test(language.monacoId)))
-      || !strings(language.extensions) || !language.extensions.length
+      || !strings(language.extensions)
+      || (language.filenames !== undefined && !strings(language.filenames))
+      || (language.filenamePatterns !== undefined && !strings(language.filenamePatterns))
+      || !(language.extensions.length || language.filenames?.length || language.filenamePatterns?.length)
+      || (language.filenames ?? []).some((name: string) => /[/\\]/.test(name) || name === '..')
+      || (language.filenamePatterns ?? []).some((pattern: string) => !/^[\w .+@/?!*_-]+$/.test(pattern) || pattern.split('/').includes('..') || pattern.startsWith('/'))
       || (language.caseSensitiveExtensions !== undefined && !strings(language.caseSensitiveExtensions))
       || [...language.extensions, ...(language.caseSensitiveExtensions ?? [])].some(e => !/^\.[\w.+-]+$/.test(e)))
       throw new Error('Each language needs a language ID and file extensions such as .go or .rs.');
     return { languageId: language.languageId, monacoId: language.monacoId, extensions: language.extensions,
-      caseSensitiveExtensions: language.caseSensitiveExtensions };
+      caseSensitiveExtensions: language.caseSensitiveExtensions, filenames: language.filenames, filenamePatterns: language.filenamePatterns };
   });
   for (const field of ['rootMarkers', 'watchFiles', 'watchExtensions']) {
     if (value[field] !== undefined && !strings(value[field])) throw new Error(`Invalid ${field}.`);

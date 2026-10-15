@@ -1,6 +1,8 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { builtinLanguageServers, type LanguageServerDefinition } from '../../core/document/language-definition';
+import type { LanguageServerDefinition } from '../../core/document/language-definition';
+import { builtinLanguageServers } from './catalog/profiles';
+import { matchesLanguagePattern } from '../../core/document/language-support';
 
 export type ServerProfile = {
   name: string; missingExecutableMessage?: string;
@@ -12,7 +14,7 @@ export function serverProfile(definition: LanguageServerDefinition, options?: { 
     initializationOptions: options?.initializationOptions ?? definition.initializationOptions,
     missingExecutableMessage: 'Open Edit → Language Support to select an installed executable.',
     watches: file => definition.watchExtensions.some(extension => file.toLowerCase().endsWith(extension.toLowerCase()))
-      || definition.watchFiles.includes(path.basename(file)) };
+      || definition.watchFiles.some(name => matchesLanguagePattern(path.basename(file), name)) };
 }
 export const serverProfiles = Object.fromEntries(builtinLanguageServers.map(definition => [definition.id, serverProfile(definition)]));
 export const clangdArgs = builtinLanguageServers.find(definition => definition.id === 'clangd')!.launch.args;
@@ -21,6 +23,11 @@ export function standaloneLanguageRoot(file: string, server: string | LanguageSe
   const directory = path.dirname(file);
   if (definition?.rootMarkers.length) for (let root = directory; ; root = path.dirname(root)) {
     if (definition.rootMarkers.some(marker => existsSync(path.join(root, marker)))) return root;
+    const patterns = definition.rootMarkers.filter(marker => /[*?]/.test(marker));
+    if (patterns.length) {
+      try { if (readdirSync(root).some(name => patterns.some(pattern => matchesLanguagePattern(name, pattern)))) return root; }
+      catch { /* Missing/inaccessible ancestor is not a workspace root. */ }
+    }
     if (path.dirname(root) === root) break;
   }
   return directory;
