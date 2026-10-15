@@ -1,13 +1,13 @@
 import type * as M from 'monaco-editor';
 import type * as L from 'vscode-languageserver-protocol';
 import type { DocumentTab } from '../../core/workspace/workspace-state';
-import type { LanguageApi, LanguageConnection, LanguageMethod } from '../../protocol/language';
+import type { LanguageApi, LanguageConnection, LanguageUnavailable, LanguageMethod } from '../../protocol/language';
 import { textSynchronization } from '../../protocol/language';
 import { languageSupport } from '../../core/document/language-support';
 import { completion, fromRange, markdown, marker, toPosition, toRange } from './language-conversion';
 
-type Binding = { tab: DocumentTab; model: M.editor.ITextModel; path: string; generation: string; connected: Promise<LanguageConnection>;
-  uri?: string; sync?: ReturnType<typeof textSynchronization>; queue: Promise<unknown>; listener: M.IDisposable; providers: M.IDisposable[]; failed: boolean; state: 'starting' | 'ready' | 'failed'; message?: string };
+type Binding = { serverId: string; tab: DocumentTab; model: M.editor.ITextModel; path: string; generation: string; connected: Promise<LanguageConnection | LanguageUnavailable>;
+  uri?: string; sync?: ReturnType<typeof textSynchronization>; queue: Promise<unknown>; listener: M.IDisposable; providers: M.IDisposable[]; failed: boolean; state: 'starting' | 'ready' | 'failed' | 'unavailable'; message?: string };
 export type LanguageOptions = {
   port: LanguageApi;
   route?: typeof languageSupport;
@@ -59,7 +59,7 @@ export class LanguageClient {
     const generation = crypto.randomUUID();
     const connected = this.options.port.open({ id: tab.id, generation, path: tab.document.path,
       text: model.getValue(), version: model.getVersionId() });
-    const binding: Binding = { tab, model, path: tab.document.path, generation, connected, queue: connected,
+    const binding: Binding = { serverId: (this.options.route ?? languageSupport)(tab.document.path)!.server, tab, model, path: tab.document.path, generation, connected, queue: connected,
       failed: false, state: 'starting', providers: [], listener: { dispose() {} } };
     this.bindings.set(model, binding);
     const fail = (error: unknown) => {
@@ -69,6 +69,10 @@ export class LanguageClient {
     // A failed initialization is a language-service state, not a rejected
     // editor/save queue. Keep ordinary editing usable while restart is offered.
     binding.queue = connected.then(connection => {
+      if (this.bindings.get(model) !== binding) return;
+      if ('unavailable' in connection) {
+        binding.state = 'unavailable'; binding.listener.dispose(); this.publishStatus(); return;
+      }
       binding.uri = connection.uri;
       binding.sync = textSynchronization(connection.capabilities);
       if (this.bindings.get(model) === binding && !binding.failed) this.installProviders(binding, connection.capabilities);
@@ -84,7 +88,7 @@ export class LanguageClient {
       // Initialization may still select Full sync; capture this revision, never later text.
       const fullText = !binding.sync || binding.sync.change === 1 || event.isFlush || event.isEolChange ? model.getValue() : undefined;
       binding.queue = binding.queue.then(() => {
-        if (this.bindings.get(model) === binding && !binding.failed)
+        if (this.bindings.get(model) === binding && !binding.failed && binding.state !== 'unavailable')
           return this.options.port.change(tab.id, version, binding.sync?.change === 0 ? []
             : binding.sync?.change === 1 || event.isFlush || event.isEolChange ? [{ text: fullText! }] : changes);
       }).catch(fail);
@@ -103,7 +107,7 @@ export class LanguageClient {
   saved(model: M.editor.ITextModel, text = model.getValue()): void {
     const binding = this.bindings.get(model);
     if (binding) void binding.queue.then(() => {
-      if (this.bindings.get(model) === binding && !binding.failed) this.options.port.saved(binding.tab.id, text);
+      if (this.bindings.get(model) === binding && !binding.failed && binding.state !== 'unavailable') this.options.port.saved(binding.tab.id, text);
     });
   }
   private cancel(binding: Binding): void {
@@ -128,6 +132,15 @@ export class LanguageClient {
       return null;
     } finally { cancel.dispose(); this.requests.delete(id); }
   }
+  invalidate(servers: string[]): void {
+    for (const binding of [...this.bindings.values()]) if (servers.includes(binding.serverId)) this.unbind(binding.model);
+  }
+  retryUnavailable(): void {
+    for (const binding of [...this.bindings.values()]) if (binding.state === 'unavailable' || binding.state === 'failed') {
+      this.unbind(binding.model);
+      if (!binding.model.isDisposed()) this.bind(binding.tab, binding.model);
+    }
+  }
   async restart(): Promise<void> {
     if (this.restarting) return this.restarting;
     const documents = [...this.bindings.values()];
@@ -149,7 +162,7 @@ export class LanguageClient {
   private publishStatus(): void {
     const bindings = [...this.bindings.values()];
     const current = bindings.find(binding => binding.state === 'failed') ?? bindings.find(binding => binding.state === 'starting');
-    this.options.status(current?.state ?? 'ready', current?.message);
+    this.options.status(current?.state ?? (bindings.some(b => b.state === 'ready') ? 'ready' : 'unavailable'), current?.message);
   }
   private uri(value: string): M.Uri {
     const target = this.api.Uri.parse(value);

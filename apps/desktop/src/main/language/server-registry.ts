@@ -6,7 +6,7 @@ import { builtinLanguageServers, validateLanguageDefinition, type LanguageServer
 import type { LanguageRoute } from '../../core/document/language-support';
 import type { ServerLaunch } from './server-session';
 
-type Options = { enabled?: boolean; executable?: string; args?: string[]; settings?: Record<string, unknown>; initializationOptions?: Record<string, unknown> };
+type Options = { enabled?: boolean; executable?: string; automaticExecutable?: boolean; args?: string[]; settings?: Record<string, unknown>; initializationOptions?: Record<string, unknown> };
 type Settings = { version: 1; servers: Record<string, Options>; custom: LanguageServerDefinition[]; preferred: Record<string, string> };
 export class ServerRegistry {
   private data: Settings = { version: 1, servers: {}, custom: [], preferred: {} };
@@ -31,7 +31,14 @@ export class ServerRegistry {
     }
     this.saved = JSON.stringify(this.data);
   }
-  definitions(): LanguageServerDefinition[] { return [...builtinLanguageServers, ...this.data.custom]; }
+  // Existing custom profiles shadow newly shipped defaults without losing their identity or settings.
+  definitions(): LanguageServerDefinition[] { return [...builtinLanguageServers.filter(d => !this.isCustom(d.id)), ...this.data.custom]; }
+  isCustom(id: string): boolean { return this.data.custom.some(d => d.id === id); }
+  automatic(id: string): boolean { return !!this.definition(id).automatic && this.options(id).enabled === undefined; }
+  canDetect(id: string): boolean {
+    const launch = this.definition(id).launch;
+    return launch.kind === 'native' && !path.isAbsolute(launch.command);
+  }
   definition(id: string): LanguageServerDefinition {
     const definition = this.definitions().find(item => item.id === id);
     if (!definition) throw new Error('Unknown language server. Configure a connection first.');
@@ -62,6 +69,7 @@ export class ServerRegistry {
   private validateOptions(options: Options): void {
     if (!options || typeof options !== 'object' || Array.isArray(options)
       || (options.enabled !== undefined && typeof options.enabled !== 'boolean')
+      || (options.automaticExecutable !== undefined && typeof options.automaticExecutable !== 'boolean')
       || (options.executable !== undefined && (typeof options.executable !== 'string' || !path.isAbsolute(options.executable))))
       throw Error('Invalid language server options.');
     validateLanguageDefinition({ id: 'options', name: 'Options', launch: { kind: 'native', command: 'server', args: options.args ?? [] },
@@ -81,7 +89,7 @@ export class ServerRegistry {
   }
   add(value: unknown): string {
     const definition = validateLanguageDefinition(value);
-    if (builtinLanguageServers.some(item => item.id === definition.id)) throw Error('Use connection settings to customize a built-in profile.');
+    if (!this.isCustom(definition.id) && builtinLanguageServers.some(item => item.id === definition.id)) throw Error('Use connection settings to customize a built-in profile.');
     if (this.data.custom.length >= 100 && !this.data.custom.some(item => item.id === definition.id)) throw Error('Too many custom servers.');
     this.data.custom = [...this.data.custom.filter(item => item.id !== definition.id), definition];
     this.save(); return definition.id;
@@ -93,31 +101,36 @@ export class ServerRegistry {
     for (const [language, selected] of Object.entries(this.data.preferred)) if (selected === id) delete this.data.preferred[language];
     this.save();
   }
-  executable(id: string): string {
+  executable(id: string, environment: NodeJS.ProcessEnv = process.env): string {
     const definition = this.definition(id), launch = definition.launch;
     const selected = this.options(id).executable;
     if (selected) return selected;
     if (launch.kind === 'bundledNode') return process.execPath;
+    if (this.options(id).automaticExecutable) return launch.command;
     if (launch.legacySettingsFile) {
       try {
         const legacy = JSON.parse(readFileSync(path.join(this.directory, launch.legacySettingsFile), 'utf8')).executable;
         if (typeof legacy === 'string' && path.isAbsolute(legacy)) return legacy;
       } catch { /* No earlier executable selection. */ }
     }
-    return (launch.environmentVariable && process.env[launch.environmentVariable]) || launch.command;
+    return (launch.environmentVariable && environment[launch.environmentVariable]) || launch.command;
   }
   async chooseExecutable(id: string, executable: string): Promise<void> {
     this.definition(id);
     if (!path.isAbsolute(executable) || !await findExecutable(executable)) throw Error('Select an executable file.');
     if (this.definition(id).launch.kind === 'bundledNode') throw Error('This server uses the bundled runtime.');
-    this.data.servers[id] = { ...this.options(id), executable }; this.save();
+    this.data.servers[id] = { ...this.options(id), executable, automaticExecutable: false }; this.save();
   }
-  launch(id: string, packaged: boolean): ServerLaunch {
+  useAutomatic(id: string): void {
+    if (!this.canDetect(id)) throw Error('This connection has no automatic executable profile.');
+    this.data.servers[id] = { ...this.options(id), executable: undefined, automaticExecutable: true }; this.save();
+  }
+  launch(id: string, packaged: boolean, environment: NodeJS.ProcessEnv = process.env, resolvedExecutable?: string): ServerLaunch {
     const definition = this.definition(id), options = this.options(id);
-    const { NODE_OPTIONS: _node, NODE_PATH: _path, ELECTRON_RUN_AS_NODE: _electron, ...env } = process.env;
+    const { NODE_OPTIONS: _node, NODE_PATH: _path, ELECTRON_RUN_AS_NODE: _electron, ...env } = environment;
     const args = options.args ?? definition.launch.args;
     if (definition.launch.kind === 'native') {
-      const executable = this.executable(id);
+      const executable = resolvedExecutable ?? this.executable(id, environment);
       if (/\.(cmd|bat)$/i.test(executable)) throw Error('Choose the runtime executable and put the server script in Arguments; shell launchers are not supported.');
       return { executable, args, env };
     }

@@ -18,7 +18,7 @@ const definition = { id: 'user-server', name: 'User server', launch: { kind: 'na
 test('custom definitions, active selection, settings and fingerprints survive restart without language branches', async () => {
   const root = await directory();
   let registry = new ServerRegistry(root);
-  expect(registry.routes().some(route => route.server === 'gopls')).toBe(false);
+  expect(registry.routes().some(route => route.server === 'gopls')).toBe(true);
   registry.add(definition);
   expect(languageSupport('main.py', registry.routes())?.server).toBe('pyright');
   registry.setEnabled('user-server', true);
@@ -96,4 +96,33 @@ test('configuration sections and sync negotiation honor the protocol without cla
     .toEqual({ change: 2, openClose: true, save: { includeText: true } });
   expect(textSynchronization({ textDocumentSync: { save: true } }).save).toEqual({});
   expect(textSynchronization({})).toEqual({ change: 0, openClose: false, save: false });
+});
+
+test('automatic Fortran routes need no user settings and explicit disabling survives reload', async () => {
+  const root = await directory(), registry = new ServerRegistry(root);
+  expect(languageSupport('hello.F90', registry.routes())).toEqual({ server: 'fortls', languageId: 'fortran' });
+  expect(registry.automatic('fortls')).toBe(true);
+  expect(registry.definition('fortls').launch.args).toContain('--disable_autoupdate');
+  registry.setEnabled('fortls', false);
+  expect(languageSupport('hello.f90', new ServerRegistry(root).routes())).toBeNull();
+});
+
+test('a pre-existing custom fortls profile shadows the new default and preserves user arguments', async () => {
+  const root = await directory();
+  await writeFile(path.join(root, 'language-servers.json'), JSON.stringify({ version: 1, preferred: { fortran: 'fortls' },
+    servers: { fortls: { enabled: true } }, custom: [{ ...definition, id: 'fortls',
+      languages: [{ languageId: 'fortran', extensions: ['.f90'] }], launch: { kind: 'native', command: '/my/fortls', args: ['--custom'] } }] }));
+  const registry = new ServerRegistry(root);
+  expect(registry.definitions().filter(d => d.id === 'fortls')).toHaveLength(1);
+  expect(registry.isCustom('fortls')).toBe(true); expect(registry.launch('fortls', false).args).toEqual(['--custom']);
+  registry.setEnabled('fortls', false); expect(new ServerRegistry(root).executable('fortls')).toBe('/my/fortls');
+});
+
+test('returning to automatic detection clears a manual or legacy override without changing enablement', async () => {
+  const root = await directory(), registry = new ServerRegistry(root);
+  await writeFile(path.join(root, 'clangd.json'), JSON.stringify({ executable: '/legacy/clangd' }));
+  await registry.chooseExecutable('clangd', process.execPath); registry.setEnabled('clangd', false);
+  registry.useAutomatic('clangd');
+  const restored = new ServerRegistry(root);
+  expect(restored.executable('clangd')).toBe('clangd'); expect(restored.enabled('clangd')).toBe(false);
 });

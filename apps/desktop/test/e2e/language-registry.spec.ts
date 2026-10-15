@@ -1,10 +1,66 @@
 import { expect, test } from '@playwright/test';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { electron, disposeApplication, focusApplication } from './electron-app';
 const require = createRequire(import.meta.url);
+
+test('installing a server while editing and rescanning connects the current model without replacing healthy sessions', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-auto-language-'));
+  const file = path.join(root, 'hello.f90'), log = path.join(root, 'server.jsonl');
+  const executable = path.join(root, '.local/bin/fortls');
+  await writeFile(file, 'program example\nend program example\n');
+  const messages = async () => (await readFile(log, 'utf8').catch(() => '')).split('\n').filter(Boolean).map(line => JSON.parse(line));
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+  const application = await electron.launch({ args: ['.', file], env: { ...env,
+    HOME: root, XDG_CONFIG_HOME: path.join(root, 'config'), PATH: '/usr/bin:/bin',
+    CONDA_PREFIX: '', VIRTUAL_ENV: '', CARGO_HOME: path.join(root, '.cargo'), GOPATH: path.join(root, 'go'),
+    GOBIN: '', PIPX_BIN_DIR: '', UV_TOOL_BIN_DIR: '', XDG_BIN_HOME: '', SETDOWN_LSP_INHERIT_ENV: '1' } });
+  try {
+    const page = await application.firstWindow(); await focusApplication(application);
+    await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'unavailable');
+    await expect(page.locator('.editor-host [role="status"]')).toHaveCount(0);
+    const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
+    await editor.press('Control+End'); await editor.pressSequentially('! edited before connection');
+    await mkdir(path.dirname(executable), { recursive: true });
+    await writeFile(executable, `#!${process.execPath}\n
+      const fs = require('node:fs');
+      const {createMessageConnection, StreamMessageReader, StreamMessageWriter} = require(${JSON.stringify(require.resolve('vscode-jsonrpc/node'))});
+      const log = (method, params) => fs.appendFileSync(${JSON.stringify(log)}, JSON.stringify({method, params, pid:process.pid})+'\\n');
+      const c = createMessageConnection(new StreamMessageReader(process.stdin), new StreamMessageWriter(process.stdout));
+      c.onRequest('initialize', params => {log('initialize',params); return {capabilities:{textDocumentSync:{openClose:true,change:1},hoverProvider:true}}});
+      c.onNotification('textDocument/didOpen', params => log('open',params));
+      c.onNotification('textDocument/didChange', params => log('change',params));
+      c.onRequest('textDocument/hover', () => ({contents:{kind:'plaintext',value:'automatic Fortran server'}}));
+      c.onRequest('shutdown', () => {log('shutdown',null); return null});
+      c.onNotification('exit', () => process.exit(0)); c.listen();
+    `); await chmod(executable, 0o755);
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
+    const management = page.getByRole('dialog', { name: 'Language Support' });
+    await management.getByRole('searchbox').fill('fortls'); await management.locator('.server-list button').click();
+    await management.getByRole('button', { name: 'Rescan installed servers' }).click();
+    await expect(management.locator('.state')).toHaveText('Running');
+    await expect(management.locator('.details code').first()).toHaveText(executable);
+    await expect.poll(async () => (await messages()).filter(m => m.method === 'open').length).toBe(1);
+    expect((await messages()).find(m => m.method === 'open').params.textDocument.text).toContain('! edited before connection');
+    const originalPid = (await messages())[0].pid;
+    await management.getByRole('button', { name: 'Rescan installed servers' }).click();
+    await expect(management.getByRole('button', { name: 'Rescan installed servers' })).toBeEnabled();
+    await management.getByRole('searchbox').fill('pyright'); await management.getByRole('button', { name: /^Pyright Python/ }).click();
+    await management.getByRole('button', { name: 'Disable', exact: true }).click();
+    await expect(management.locator('.state')).toHaveText('Disabled · Included with Setdown');
+    await management.getByRole('button', { name: 'Close language support' }).click();
+    await editor.press('Control+End'); await editor.pressSequentially('! still connected');
+    await expect.poll(async () => (await messages()).filter(m => m.method === 'change').length).toBeGreaterThan(0);
+    expect(new Set((await messages()).map(m => m.pid))).toEqual(new Set([originalPid]));
+    expect((await messages()).filter(m => m.method === 'initialize')).toHaveLength(1);
+    expect((await messages()).filter(m => m.method === 'shutdown')).toHaveLength(0);
+    await editor.press('Control+z'); await editor.press('Control+s');
+    await expect.poll(() => readFile(file, 'utf8')).toContain('! edited before connection');
+  } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
+});
 
 test('Edit menu imports a new server, negotiates Full sync, and reconnects the same unsaved model with Undo intact', async ({}, testInfo) => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-custom-language-'));

@@ -25,6 +25,7 @@ test('real rust-analyzer supplies completion, hover, diagnostics, rename/Undo, n
     const management = page.getByRole('dialog', { name: 'Language Support' });
     await management.getByRole('searchbox').fill('rust-analyzer');
     await management.locator('.server-list button').click();
+    await management.getByRole('button', { name: 'Disable', exact: true }).click();
     await application.evaluate(({ dialog }, executable) => {
       dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [executable] })) as typeof dialog.showOpenDialog;
     }, executable);

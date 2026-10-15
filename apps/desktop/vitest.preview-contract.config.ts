@@ -13,6 +13,7 @@ export default defineConfig({
     'src/renderer/workspace/auto-save.test.ts',
     'src/main/language/server-session.test.ts',
     'src/main/language/server-registry.test.ts',
+    'src/main/language/server-discovery.test.ts',
     'src/main/language/clangd-session.test.ts',
     'src/main/language/server-definitions.test.ts',
     'src/main/language/language-manager.test.ts',

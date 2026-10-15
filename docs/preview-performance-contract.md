@@ -342,8 +342,8 @@ Both the full unit suite and preview gate require `clangd` on PATH or an absolut
 Language support now uses declarative server definitions and a persisted registry.
 `Edit → Language Support…` and F1 open the same lazy management screen; the Setdown
 Folder Tools button retains its meaning. Catalog browsing starts no process.
-Configuration changes reconnect existing models without changing text or Undo,
-including models first acquired by Working Tree. One primary server is selected
+Configuration changes reconnect only models served by affected servers, without
+changing text or Undo, including models first acquired by Working Tree. One primary server is selected
 per language; settings changes are user-wide while explicit restart is window-local.
 Legacy clangd executable selection is retained. `server-registry.test.ts` and
 `language-registry.spec.ts` cover registration, persistence, routing, native choice,
@@ -353,6 +353,24 @@ and dynamic capabilities remain unadvertised. The real Rust integration test in
 `test/language-servers` is a separate explicit toolchain gate; see
 [language support](language-support.md). All existing Python/clangd, native-preview,
 focus/IME and comparative latency checks remain required.
+
+Native-server discovery is lazy and separate from editor-model creation. Static
+routes, Markdown-only reading, PDF and web browsing start no environment query.
+The first native LSP connection or explicit Rescan may resolve a bounded user
+shell environment; an activated Python environment remains inherited. Catalog
+browsing checks files but starts neither metadata helpers nor language servers.
+Discovery passes its selected absolute executable and environment together to the
+existing session and checks ownership/configuration after asynchronous work.
+
+Default automatic profiles can return a quiet unavailable state. Editing and
+saving continue, without queueing unbounded changes for a missing server. Rescan
+retries unavailable/failed bindings with the latest model contents; healthy
+connections and their process IDs survive repeated scans. Manual executable
+choices and explicit disable settings survive discovery and settings updates.
+`server-discovery.test.ts`, the client/manager tests and
+`language-registry.spec.ts` cover these guarantees, including installation after
+opening a document and unrelated configuration changes. The separate real-server
+gate adds fortls auto-connection, hover/completion and Rescan.
 
 ## Explorer file operations and document ownership
 
@@ -1161,3 +1179,78 @@ logs are in `test-results/explorer-validation/`. Separate Chromium traces are in
 `test-results/explorer-performance-diagnostic/`. These results cover Markdown/Git
 transitions; they do not establish large-tree or large-copy throughput, and do
 not prove the initial cold-path variation cannot recur.
+
+## Installed language-server discovery validation, 2026-10-16
+
+Final functional checks: **110 unit files / 761 tests**, including a real login
+shell exposing an executable through a path containing spaces and Korean text;
+**57 preview-contract unit files / 369 tests**, three comparator checks,
+build/typecheck with zero Svelte errors/warnings, and **112 real Electron
+scenarios passed**. The additional real-server gate passed **two scenarios**:
+fortls 3.2.2 auto-connection, hover/completion and Rescan; rust-analyzer
+0.3.3081-standalone with Rust 1.95.0 completion, hover, diagnostics, navigation,
+rename/Undo and restart. The full unit run includes the additional login-shell
+case added after the preview-contract unit phase. GUI runs used isolated
+Xvfb/runtime/D-Bus; no test window used the desktop display.
+
+Discovery regression coverage includes missing executables, disabled/manual
+choices, old custom fortls definitions, PATH priority, ambiguous candidates,
+Python scripts queries, environment/output limits, cancelled results, close while
+discovering, Rescan while discovering, latest unsaved text and Undo. New documents
+reuse a live workspace session after Rescan changes its future launch plan;
+unrelated settings changes preserve healthy server processes. gopls real-server
+behavior and Windows execution were not exercised by this Linux run.
+
+The independently installed baseline is
+`6b0db3c3ce0b7c18383e4292f57b8dba24849a39`; both apps use Electron 44.7.2.
+Two batches of five matched repetitions alternate baseline/candidate order on
+one isolated display within each batch, with eight fresh-app scenarios and five
+cycles each. No harness, correctness assertion, retry count or tolerance was
+relaxed. The benchmark
+includes first, second and warm cycles separately and checks current edited
+content before capture. Source preparation wait remains separate from measured
+input latency; Esc includes capture readback, not a monitor presentation timestamp.
+
+The initial five-pair comparison failed one bucket: ordinary Markdown, no edits,
+immediate first Esc, **35 → 121ms**. All eight scenarios and correctness checks
+completed; this was a timing failure, not an incomplete measurement. Its five
+baseline samples were 35, 22, 26, 50, 55ms, and candidate samples were
+121, 60, 121, 41, 127ms. Those samples remain part of the final aggregate.
+
+A separate diagnostic trace found immediate show requests in both versions
+and first captures of 20ms and 62ms. Preview bridge, render/review workers and
+CSS were byte-identical; Crossnote, KaTeX and Monaco versions also matched.
+These observations do not establish the cause of the initial timing difference.
+Traces include probes and are excluded from performance samples.
+
+Before further measurement, the follow-up was fixed at five additional matched
+repetitions. Original build hashes were verified before using `--skip-build`.
+No production code changed between batches. The aggregate uses all ten matched
+repetitions, including every initial sample, with unchanged thresholds. Each
+batch's separate outcome is retained in the comparison record.
+
+Combined comparison result: **PASS — 0 regressions across 48 buckets**, at the
+unchanged joint thresholds (>25% and >50ms).
+
+Median milliseconds below are **baseline → candidate**. Warm means the median
+of cycles 3–5 in each app, then the median across repetitions.
+
+| Surface | Source wait | Edit | Esc first | Esc second | Esc warm | Double-click first | Double-click second | Double-click warm |
+| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Markdown | 0ms | no | 39 → 53.5 | 24 → 27 | 22.5 → 21.5 | 36.5 → 22 | 37.5 → 35.5 | 11.5 → 12 |
+| Markdown | 0ms | yes | 464.5 → 447 | 101 → 103 | 91 → 91.5 | 21 → 21 | 17 → 13.5 | 15 → 14.5 |
+| Markdown | 3000ms | no | 42 → 41 | 22.5 → 21.5 | 22 → 23 | 16 → 16 | 12 → 12 | 11 → 11 |
+| Markdown | 3000ms | yes | 107.5 → 100 | 101.5 → 98 | 94.5 → 92 | 17 → 20 | 16 → 14 | 13 → 13 |
+| Git review | 0ms | no | 994 → 1005 | 19 → 21 | 27.5 → 29 | 23 → 22.5 | 11.5 → 11 | 12 → 12 |
+| Git review | 0ms | yes | 1069 → 1046.5 | 1576.5 → 1541.5 | 179 → 177 | 23.5 → 22 | 21.5 → 22 | 20 → 18.5 |
+| Git review | 3000ms | no | 26 → 28 | 21 → 21.5 | 17.5 → 18 | 25 → 24 | 11.5 → 11 | 17 → 17 |
+| Git review | 3000ms | yes | 228.5 → 230.5 | 185 → 189 | 175.5 → 178 | 22 → 22.5 | 18 → 17.5 | 16 → 18 |
+
+[Comparison samples, identities and source hashes](lsp-discovery-preview-benchmark-2026-10-16.json).
+Full raw records are in `test-results/lsp-discovery-benchmark-2026-10-16/` and
+`test-results/lsp-discovery-benchmark-followup-2026-10-16/`; combined data and
+functional logs are in `test-results/lsp-discovery-validation/`. Traces are in
+`test-results/lsp-discovery-diagnostic/`. These results cover ordinary Markdown/Git
+transitions, not large-project LSP indexing or
+network-filesystem discovery latency. They do not prove the initial first-cycle
+variation cannot recur.

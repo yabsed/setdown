@@ -18,7 +18,7 @@
   let live = true, refreshVersion = 0;
   const selected = $derived(catalog.entries.find(entry => entry.id === selectedId));
   const entries = $derived(catalog.entries.filter(entry => `${entry.name} ${entry.id} ${entry.languages.join(' ')}`.toLowerCase().includes(query.toLowerCase()))
-    .sort((a, b) => Number(b.configured) - Number(a.configured) || a.name.localeCompare(b.name)));
+    .sort((a, b) => Number(b.sessions.some(s => s.state === 'ready')) - Number(a.sessions.some(s => s.state === 'ready')) || Number(b.available) - Number(a.available) || Number(b.configured) - Number(a.configured) || a.name.localeCompare(b.name)));
   const defaults: LanguageServerOptions = { args: [], settings: {}, initializationOptions: {} };
   function choose(entry: LanguageCatalogEntry) {
     selectedId = entry.id; adding = false; error = '';
@@ -44,8 +44,9 @@
     if (entry.sessions.some(session => session.state === 'failed')) return 'Failed';
     if (entry.sessions.some(session => session.state === 'starting')) return 'Starting';
     if (entry.sessions.some(session => session.state === 'ready')) return 'Running';
+    if (entry.selectionNeeded) return 'Choose an installation';
     if (!entry.available) return 'Executable missing';
-    return entry.selected.length ? 'Ready when opened' : 'Another server selected';
+    return entry.selected.length ? 'Found · Starts when needed' : 'Another server selected';
   }
   function beginConnection(entry?: LanguageCatalogEntry) {
     adding = true; error = ''; connectionId = entry?.id ?? ''; connectionName = entry?.name ?? '';
@@ -77,6 +78,7 @@
   oncancel={event => { event.preventDefault(); onclose(); }}>
   <header>
     <h2 id="language-support-title">Language Support</h2>
+    <button disabled={busy} onclick={() => perform(() => api.rescan())}>{busy ? 'Checking…' : 'Rescan installed servers'}</button>
     <button aria-label="Close language support" onclick={onclose}>×</button>
   </header>
   <div class="body">
@@ -115,11 +117,23 @@
         <p class="state">{status(selected)}{selected.bundled ? ' · Included with Setdown' : ''}</p>
         {#if selected.configured}
           <p>Executable<br /><code>{selected.executable}</code></p>
+          {#if selected.automatic}<p>Connects automatically when a matching file is opened.</p>{/if}
+          {#if selected.discoveryMessage}<p>{selected.discoveryMessage}</p>{/if}
+          {#if selected.candidates && selected.candidates.length > 1}
+            <details open={selected.selectionNeeded}>
+              <summary>Installed executables</summary>
+              {#each selected.candidates as candidate (candidate.id)}
+                <p><code>{candidate.path}</code> · {candidate.source}<br />
+                  <button disabled={busy} onclick={() => perform(() => api.selectCandidate(selected!.id, candidate.id))}>Use this executable</button></p>
+              {/each}
+            </details>
+          {/if}
           {#if selected.selected.length}<p>Selected for {selected.selected.join(', ')}.</p>{/if}
           <div class="buttons">
             <button disabled={busy} onclick={() => perform(() => api.setEnabled(selected!.id, !selected!.enabled))}>{selected.enabled ? 'Disable' : 'Enable'}</button>
             {#if selected.enabled && !selected.selected.length}<button disabled={busy} onclick={() => perform(() => api.setEnabled(selected!.id, true))}>Use for these languages</button>{/if}
             {#if !selected.bundled}<button disabled={busy} onclick={() => perform(() => api.chooseExecutable(selected!.id))}>Choose executable…</button>{/if}
+            {#if selected.canDetect}<button disabled={busy} onclick={() => perform(() => api.useAutomatic(selected!.id))}>Use automatic detection</button>{/if}
             <button disabled={busy} onclick={() => window.dispatchEvent(new Event('setdown:restart-language'))}>Restart servers in this window</button>
           </div>
           {#each selected.sessions as session}
@@ -128,6 +142,7 @@
           {/each}
           <details>
             <summary>Connection settings</summary>
+            {#if selected.searched?.length}<p>Searched: {selected.searched.join(', ')}</p>{/if}
             <label>Server options (JSON)<textarea rows="12" spellcheck="false" bind:value={optionsText}></textarea></label>
             <button disabled={busy} onclick={() => perform(() => api.configure(selected!.id, JSON.parse(optionsText)))}>Apply settings</button>
           </details>

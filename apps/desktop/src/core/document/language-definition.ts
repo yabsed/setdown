@@ -1,7 +1,7 @@
 import { defaultLanguageRoutes, type LanguageRoute } from './language-support';
 
 export type LanguageServerDefinition = {
-  id: string; name: string; enabledByDefault?: boolean; languages: Omit<LanguageRoute, 'server'>[];
+  id: string; name: string; enabledByDefault?: boolean; automatic?: boolean; discovery?: 'python'; languages: Omit<LanguageRoute, 'server'>[];
   launch: { kind: 'native'; command: string; args: string[]; environmentVariable?: string; legacySettingsFile?: string }
     | { kind: 'bundledNode'; module: string; args: string[] };
   rootMarkers: string[];
@@ -15,18 +15,23 @@ export const builtinLanguageServers: LanguageServerDefinition[] = [
     launch: { kind: 'bundledNode', module: 'pyright/langserver.index.js', args: ['--stdio'] }, rootMarkers: [],
     settings: { python: { analysis: { autoSearchPaths: true, useLibraryCodeForTypes: true, diagnosticMode: 'openFiles', typeCheckingMode: 'basic' } } },
     watchExtensions: ['.py', '.pyi', '.toml', '.json'], watchFiles: [] },
-  { id: 'clangd', name: 'clangd', enabledByDefault: true, languages: languages('clangd'),
+  { id: 'clangd', name: 'clangd', enabledByDefault: true, automatic: true, languages: languages('clangd'),
     launch: { kind: 'native', command: 'clangd', args: ['--background-index', '--pch-storage=disk', '-j=2', '--log=error'],
       environmentVariable: 'SETDOWN_CLANGD_PATH', legacySettingsFile: 'clangd.json' },
     rootMarkers: ['.clangd', 'compile_commands.json', 'compile_flags.txt', '.git', 'CMakeLists.txt'], settings: {},
     watchExtensions: [...languages('clangd').flatMap(language => language.extensions)],
     watchFiles: ['.clangd', '.clang-format', 'compile_commands.json', 'compile_flags.txt'] },
-  { id: 'gopls', name: 'gopls', languages: [{ languageId: 'go', extensions: ['.go'] }],
+  { id: 'gopls', name: 'gopls', enabledByDefault: true, automatic: true, languages: [{ languageId: 'go', extensions: ['.go'] }],
     launch: { kind: 'native', command: 'gopls', args: [] }, rootMarkers: ['go.work', 'go.mod', '.git'], settings: {},
     watchExtensions: ['.go'], watchFiles: ['go.mod', 'go.sum', 'go.work'] },
-  { id: 'rust-analyzer', name: 'rust-analyzer', languages: [{ languageId: 'rust', extensions: ['.rs'] }],
+  { id: 'rust-analyzer', name: 'rust-analyzer', enabledByDefault: true, automatic: true, languages: [{ languageId: 'rust', extensions: ['.rs'] }],
     launch: { kind: 'native', command: 'rust-analyzer', args: [] }, rootMarkers: ['Cargo.toml', 'rust-project.json', '.git'], settings: {},
     watchExtensions: ['.rs', '.toml'], watchFiles: ['Cargo.lock'] },
+  { id: 'fortls', name: 'fortls', enabledByDefault: true, automatic: true, discovery: 'python',
+    languages: [{ languageId: 'fortran', extensions: ['.f', '.for', '.fpp', '.f77', '.f90', '.f95', '.f03', '.f08', '.f18'] }],
+    launch: { kind: 'native', command: 'fortls', args: ['--disable_autoupdate', '--hover_signature', '--hover_language=fortran', '--use_signature_help'] },
+    rootMarkers: ['.fortlsrc', '.fortls.json', '.fortls', '.git'], settings: {},
+    watchExtensions: ['.f', '.for', '.fpp', '.f77', '.f90', '.f95', '.f03', '.f08', '.f18'], watchFiles: ['.fortlsrc', '.fortls.json', '.fortls'] },
 ];
 
 /** User definitions contain data only. Launches are resolved in the process host. */

@@ -5,6 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import type { WindowState } from '../windows/window-state';
 import { LanguageManager } from './language-manager';
+import { ServerDiscovery } from './server-discovery';
+import { ServerEnvironment } from './server-environment';
 
 const mocks = vi.hoisted(() => ({ directory: '', handles: new Map<string, (...args: any[]) => any>(),
   events: new Map<string, (...args: any[]) => void>(), app: new Map<string, (...args: any[]) => void>(),
@@ -24,18 +26,18 @@ beforeEach(async () => { mocks.directory = await mkdtemp(path.join(os.tmpdir(), 
 
 afterEach(async () => { await rm(mocks.directory, { recursive: true, force: true }); });
 
-function fixture() {
+function fixture(discovery?: ServerDiscovery) {
   const root = path.resolve('language-fixture');
   const states = new Map<number, WindowState>();
   const event = (id: number) => {
     const contents = Object.assign(new EventEmitter(), { id, mainFrame: {}, isDestroyed: () => false, send: vi.fn() });
     states.set(id, { webContentsId: id, projectRoot: root, currentDocument: { path: path.join(root, 'main.py') },
-      rendererTabs: ['other.py', 'main.cpp', 'helper.h', 'other.c'].map(name => ({ path: path.join(root, name), isUntitled: false })),
+      rendererTabs: ['other.py', 'main.cpp', 'helper.h', 'other.c', 'hello.f90', 'other.f90'].map(name => ({ path: path.join(root, name), isUntitled: false })),
       window: { webContents: contents, isDestroyed: () => false } } as unknown as WindowState);
     return { sender: contents, senderFrame: contents.mainFrame };
   };
   const first = event(1), second = event(2);
-  new LanguageManager(id => states.get(id) ?? null).install();
+  new LanguageManager(id => states.get(id) ?? null, discovery).install();
   const document = (id: string, name = 'main.py') => ({ id, generation: `generation-${id}`, path: path.join(root, name), text: id, version: 1 });
   return { first, second, document, invoke: (key: string, ...args: unknown[]) => mocks.handles.get(`language:${key}`)!(...args),
     send: (key: string, ...args: unknown[]) => mocks.events.get(`language:${key}`)!(...args) };
@@ -97,7 +99,7 @@ test('settings are owner-checked, stop previous sessions and notify every subscr
   expect(() => f.invoke('set-enabled', { ...f.first, senderFrame: {} }, 'pyright', false)).toThrow(/owning editor/);
   await f.invoke('set-enabled', f.first, 'pyright', false);
   expect(mocks.servers[0].stop).toHaveBeenCalledOnce();
-  for (const event of [f.first, f.second]) expect(event.sender.send).toHaveBeenCalledWith('language:event', { type: 'configuration' });
+  for (const event of [f.first, f.second]) expect(event.sender.send).toHaveBeenCalledWith('language:event', { type: 'configuration', servers: ['pyright'] });
   expect((await f.invoke('configuration', f.second)).some((r: { server: string }) => r.server === 'pyright')).toBe(false);
   await expect(f.invoke('open', f.first, f.document('one'))).rejects.toThrow(/Invalid language/);
   await f.invoke('set-enabled', f.first, 'pyright', true);
@@ -109,7 +111,7 @@ test('save includeText uses the actual disk snapshot and a catalog read starts n
   const f = fixture();
   const catalog = await f.invoke('catalog', f.first);
   expect(catalog.entries.length).toBeGreaterThan(300); expect(mocks.servers).toHaveLength(0);
-  expect(catalog.entries.find((entry: { id: string }) => entry.id === 'gopls').enabled).toBe(false);
+  expect(catalog.entries.find((entry: { id: string }) => entry.id === 'gopls').automatic).toBe(true);
   await f.invoke('open', f.first, f.document('one'));
   f.send('saved', f.first, 'one', 'saved text');
   expect(mocks.servers[0].notify).toHaveBeenCalledWith('textDocument/didSave', expect.objectContaining({ text: 'saved text' }));
@@ -117,4 +119,67 @@ test('save includeText uses the actual disk snapshot and a catalog read starts n
   f.send('saved', { ...f.first, senderFrame: {} }, 'one', 'foreign text');
   f.send('saved', f.first, 'one');
   expect(mocks.servers[0].notify).not.toHaveBeenCalled();
+});
+
+test('rescanning and configuring Fortran preserve unrelated Python sessions in every window', async () => {
+  const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
+  const f = fixture(discovery);
+  await f.invoke('open', f.first, f.document('python'));
+  await f.invoke('open', f.second, f.document('other-python'));
+  expect(await f.invoke('open', f.first, f.document('fortran', 'hello.f90'))).toEqual({ unavailable: 'missing' });
+  await f.invoke('rescan', f.first);
+  expect(mocks.servers).toHaveLength(2); expect(mocks.servers.every(s => !s.stop.mock.calls.length)).toBe(true);
+  await f.invoke('configure', f.first, 'fortls', { args: ['--disable_autoupdate'], settings: {}, initializationOptions: {} });
+  expect(mocks.servers.every(s => !s.stop.mock.calls.length)).toBe(true);
+  expect(f.first.sender.send).toHaveBeenCalledWith('language:event', { type: 'configuration', servers: ['fortls'] });
+  discovery.dispose();
+});
+
+test('closing a document during environment discovery prevents a late server launch', async () => {
+  const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
+  let finish!: (value: { env: NodeJS.ProcessEnv; source: 'inherited' }) => void;
+  const waiting = new Promise<{ env: NodeJS.ProcessEnv; source: 'inherited' }>(resolve => { finish = resolve; });
+  const resolve = vi.spyOn(discovery.environment, 'resolve').mockReturnValue(waiting);
+  vi.spyOn(discovery, 'find').mockResolvedValue({ candidates: [], selected: { id: 'fixture', path: process.execPath, source: 'path' }, environment: { env: {}, source: 'inherited' }, searched: [] });
+  const f = fixture(discovery);
+  const opened = f.invoke('open', f.first, f.document('fortran', 'hello.f90'));
+  const rejected = expect(opened).rejects.toThrow(/closed or configuration changed/);
+  await vi.waitFor(() => expect(resolve).toHaveBeenCalled());
+  f.send('close', f.first, 'fortran'); finish({ env: {}, source: 'inherited' });
+  await rejected; expect(mocks.servers).toHaveLength(0); discovery.dispose();
+});
+
+
+test('new documents reuse the live workspace session after discovery chooses a new executable', async () => {
+  const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
+  const find = vi.spyOn(discovery, 'find').mockResolvedValue({ candidates: [], selected: { id: 'first', path: process.execPath, source: 'path' },
+    environment: { env: {}, source: 'inherited' }, searched: [] });
+  const f = fixture(discovery);
+  await f.invoke('open', f.first, f.document('one', 'hello.f90'));
+  find.mockResolvedValue({ candidates: [], selected: { id: 'second', path: '/different/fortls', source: 'path' },
+    environment: { env: { PATH: '/different' }, source: 'inherited' }, searched: [] });
+  await f.invoke('rescan', f.first);
+  await f.invoke('open', f.first, f.document('two', 'other.f90'));
+  expect(mocks.servers).toHaveLength(1); expect(mocks.servers[0].stop).not.toHaveBeenCalled();
+  expect(mocks.servers[0].notify.mock.calls.filter(call => call[0] === 'textDocument/didOpen')).toHaveLength(2);
+  await f.invoke('restart', f.first);
+  await f.invoke('open', f.first, f.document('three', 'hello.f90'));
+  expect(mocks.servers).toHaveLength(2);
+  expect(mocks.servers[1]).toMatchObject({ launch: { executable: '/different/fortls' } }); discovery.dispose();
+});
+
+test('rescan during document discovery discards the stale plan and completes the pending connection', async () => {
+  const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
+  const old = { candidates: [], selected: { id: 'old', path: '/old/fortls', source: 'path' as const },
+    environment: { env: {}, source: 'inherited' as const }, searched: [] };
+  let finish!: (value: typeof old) => void;
+  const waiting = new Promise<typeof old>(resolve => { finish = resolve; });
+  const find = vi.spyOn(discovery, 'find').mockResolvedValue({ ...old, selected: { ...old.selected, path: '/new/fortls' } }).mockReturnValueOnce(waiting);
+  const f = fixture(discovery);
+  const opening = f.invoke('open', f.first, f.document('one', 'hello.f90'));
+  await vi.waitFor(() => expect(find).toHaveBeenCalledOnce());
+  await f.invoke('rescan', f.first);
+  finish(old); await opening;
+  expect(mocks.servers).toHaveLength(1);
+  expect(mocks.servers[0]).toMatchObject({ launch: { executable: '/new/fortls' } }); discovery.dispose();
 });

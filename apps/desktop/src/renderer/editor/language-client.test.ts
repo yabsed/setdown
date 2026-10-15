@@ -34,6 +34,7 @@ function fixture(file = '/project/main.py', capabilities: import('vscode-languag
   const port: LanguageApi = {
     open: vi.fn(async document => { opened.push(document); return { uri: 'file:///project/main.py', capabilities }; }),
     change: vi.fn(async () => {}), close: vi.fn(), saved: vi.fn(), cancel: vi.fn(), restart: vi.fn(async () => {}), configuration: vi.fn(async () => []), catalog: vi.fn(async () => ({ release: '', entries: [] })),
+    rescan: vi.fn(async () => {}), useAutomatic: vi.fn(async () => {}), selectCandidate: vi.fn(async () => {}),
     setEnabled: vi.fn(async () => {}), chooseExecutable: vi.fn(async () => false), configure: vi.fn(async () => {}),
     addConnection: vi.fn(async () => false), importDefinition: vi.fn(async () => false), remove: vi.fn(async () => {}), openHomepage: vi.fn(async () => {}),
     request: vi.fn(async () => null), onEvent: callback => { event = callback; return () => {}; },
@@ -46,6 +47,24 @@ function fixture(file = '/project/main.py', capabilities: import('vscode-languag
   return { client, api, model, tab, port, event: (value: LanguageEvent) => event(value), opened, change, hover, providers };
 }
 const token: M.CancellationToken = { isCancellationRequested: false, onCancellationRequested: () => ({ dispose() {} }) };
+
+test('an absent automatic server leaves editing usable and rescanning connects the latest model once', async () => {
+  const f = fixture();
+  vi.mocked(f.port.open).mockResolvedValueOnce({ unavailable: 'missing' });
+  f.client.bind(f.tab, f.model);
+  await vi.waitFor(() => expect(f.port.open).toHaveBeenCalledOnce());
+  await new Promise(resolve => setTimeout(resolve, 0));
+  f.change([{ range: { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 1 }, text: 'new', rangeOffset: 0 }]);
+  expect(f.port.change).not.toHaveBeenCalled();
+  f.client.retryUnavailable();
+  await vi.waitFor(() => expect(f.opened).toHaveLength(1));
+  expect(f.opened[0].version).toBe(2);
+  f.client.retryUnavailable();
+  expect(f.port.open).toHaveBeenCalledTimes(2); // A healthy/in-flight connection survives another scan.
+  f.client.invalidate(['clangd']); expect(f.port.close).toHaveBeenCalledTimes(1);
+  f.client.invalidate(['pyright']); expect(f.port.close).toHaveBeenCalledTimes(2);
+  f.client.dispose();
+});
 
 test('retarget preserves the model and rejects diagnostics from the previous connection', async () => {
   const f = fixture();

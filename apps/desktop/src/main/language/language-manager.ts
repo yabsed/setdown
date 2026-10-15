@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { app, dialog, ipcMain, shell } from 'electron';
 import { readFile, stat } from 'node:fs/promises';
@@ -9,9 +10,10 @@ import { canonicalPath, isInside } from '../documents/file-system';
 import type { WindowState } from '../windows/window-state';
 import { languageSupport } from '../../core/document/language-support';
 import { ServerRegistry, findExecutable } from './server-registry';
-import { validateLanguageDefinition, builtinLanguageServers } from '../../core/document/language-definition';
+import { validateLanguageDefinition } from '../../core/document/language-definition';
 import { serverProfile, standaloneLanguageRoot } from './server-definitions';
 import { ServerSession } from './server-session';
+import { ServerDiscovery } from './server-discovery';
 
 type Binding = { id: string; generation: string; uri: string; version: number; server: ServerSession; capabilities: ServerCapabilities };
 type Owner = { state: WindowState; documents: Map<string, Binding>; servers: Map<string, ServerSession>;
@@ -22,7 +24,9 @@ export class LanguageManager {
   private readonly owners = new Map<number, Owner>();
   private readonly watched = new Set<number>();
   private readonly draining = new Set<Promise<void>>();
-  constructor(private readonly stateFor: (id: number) => WindowState | null) {}
+  private readonly pendingOpens = new Map<number, Map<string, symbol>>();
+  private scanning?: Promise<void>;
+  constructor(private readonly stateFor: (id: number) => WindowState | null, private readonly discovery = new ServerDiscovery()) {}
   private registryValue: ServerRegistry | undefined;
   private readonly subscribers = new Map<number, WindowState>();
   private readonly sessions = new Map<ServerSession, { id: string; root: string; state: 'starting' | 'ready' | 'failed'; message?: string; features?: string[] }>();
@@ -30,15 +34,45 @@ export class LanguageManager {
   private get registry(): ServerRegistry { return this.registryValue ??= new ServerRegistry(app.getPath('userData')); }
   private async changed(task: () => unknown | Promise<unknown>): Promise<void> {
     const update = this.updating.then(async () => {
+      const before = new Map(this.registry.definitions().map(d => [d.id, this.registry.fingerprint(d.id)]));
+      const routes = this.registry.routes();
       await task();
-      await Promise.all([...this.owners.keys()].map(id => this.dispose(id)));
-      for (const [id, state] of this.subscribers) {
-        if (state.window.isDestroyed() || state.window.webContents.isDestroyed()) { this.subscribers.delete(id); continue; }
-        state.window.webContents.send('language:event', { type: 'configuration' });
+      const after = new Map(this.registry.definitions().map(d => [d.id, this.registry.fingerprint(d.id)]));
+      const affected = new Set([...before.keys(), ...after.keys()].filter(id => before.get(id) !== after.get(id)));
+      const nextRoutes = this.registry.routes();
+      for (const route of [...routes, ...nextRoutes]) {
+        if (JSON.stringify(routes.filter(r => r.languageId === route.languageId)) !== JSON.stringify(nextRoutes.filter(r => r.languageId === route.languageId)))
+          affected.add(route.server);
       }
+      if (!affected.size) return;
+      for (const owner of this.owners.values()) {
+        const servers = [...owner.servers.values()].filter(server => affected.has(this.sessions.get(server)?.id ?? ''));
+        for (const [id, binding] of owner.documents) if (servers.includes(binding.server)) owner.documents.delete(id);
+        for (const [key, server] of owner.servers) if (servers.includes(server)) owner.servers.delete(key);
+        await Promise.all(servers.map(server => this.stop(server)));
+      }
+      this.broadcast({ type: 'configuration', servers: [...affected] });
     });
     this.updating = update.catch(() => {});
     return update;
+  }
+  private broadcast(event: LanguageEvent): void {
+    for (const [id, state] of this.subscribers) {
+      if (state.window.isDestroyed() || state.window.webContents.isDestroyed()) { this.subscribers.delete(id); continue; }
+      state.window.webContents.send('language:event', event);
+    }
+  }
+  private rescan(): Promise<void> {
+    if (this.scanning) return this.scanning;
+    return this.scanning = (async () => {
+      await this.updating;
+      this.discovery.reset();
+      const snapshot = await this.discovery.environment.resolve();
+      // Sequential bounded metadata work; no language server is started by a scan.
+      for (const definition of this.registry.definitions()) if (definition.launch.kind === 'native')
+        await this.discovery.find(this.registry.executable(definition.id, snapshot.env), { resolveEnvironment: true, python: definition.discovery === 'python' });
+      this.broadcast({ type: 'discovery' });
+    })().finally(() => { this.scanning = undefined; });
   }
   private subscribe(state: WindowState): void {
     if (this.subscribers.has(state.webContentsId)) return;
@@ -57,14 +91,17 @@ export class LanguageManager {
     return { release: catalog.release, entries: await Promise.all(packages.map(async item => {
       const definition = definitions.find(d => d.id === item.id), options = definition && registry.options(item.id);
       const bundled = definition?.launch.kind === 'bundledNode';
-      const executable = definition ? registry.executable(item.id) : undefined;
+      const executable = definition ? registry.executable(item.id, this.discovery.environment.peek().env) : undefined;
       // Only configured servers are checked; opening the full catalog doesn't spawn 331 probes.
-      const resolved = executable && await findExecutable(executable);
+      const found = executable && !bundled ? await this.discovery.find(executable, { python: definition?.discovery === 'python' }) : undefined;
+      const resolved = bundled ? executable : found?.selected?.path;
       const owner = this.owners.get(state.webContentsId);
       return { id: item.id, name: definition?.name ?? item.id, languages: item.languages, description: item.description, homepage: item.homepage,
-        configured: !!definition, bundled, custom: !!definition && !builtinLanguageServers.some(d => d.id === item.id),
+        configured: !!definition, bundled, custom: !!definition && registry.isCustom(item.id),
         enabled: !!definition && registry.enabled(item.id), selected: routes.filter(r => r.server === item.id).map(r => r.languageId),
-        executable: resolved || executable, available: !!resolved,
+        executable: resolved || executable, available: !!resolved, automatic: !!definition && registry.automatic(item.id),
+        canDetect: !!definition && registry.canDetect(item.id), candidates: found?.candidates, selectionNeeded: !!found?.candidates.length && !found.selected,
+        discoveryMessage: found?.environment.message, searched: found?.searched,
         options: definition ? { args: options?.args ?? definition.launch.args, settings: options?.settings ?? definition.settings,
           initializationOptions: options?.initializationOptions ?? definition.initializationOptions ?? {} } : undefined,
         sessions: [...(owner?.servers.values() ?? [])].flatMap(server => {
@@ -125,6 +162,16 @@ export class LanguageManager {
       this.subscribe(state(event)); await this.updating; return this.registry.routes();
     });
     ipcMain.handle('language:catalog', event => this.catalogFor(state(event)));
+    ipcMain.handle('language:rescan', event => { this.subscribe(state(event)); return this.rescan(); });
+    ipcMain.handle('language:automatic', (event, id: string) => { state(event); return this.changed(() => this.registry.useAutomatic(id)); });
+    ipcMain.handle('language:select-candidate', async (event, id: string, candidateId: string) => {
+      const owner = state(event), definition = this.registry.definition(id);
+      if (definition.launch.kind !== 'native' || typeof candidateId !== 'string') throw Error('Invalid executable selection.');
+      const found = await this.discovery.find(this.registry.executable(id, this.discovery.environment.peek().env), { python: definition.discovery === 'python' });
+      const candidate = found.candidates.find(c => c.id === candidateId);
+      if (!candidate || owner.window.isDestroyed()) throw Error('Executable candidate is no longer available. Rescan installed servers.');
+      await this.changed(() => this.registry.chooseExecutable(id, candidate.path));
+    });
     ipcMain.handle('language:set-enabled', (event, id: string, enabled: boolean) => {
       state(event); return this.changed(() => this.registry.setEnabled(id, enabled));
     });
@@ -166,6 +213,7 @@ export class LanguageManager {
     });
     let drained = false;
     app.on('will-quit', event => {
+      this.discovery.dispose();
       if (drained || (!this.owners.size && !this.draining.size)) return;
       event.preventDefault();
       void Promise.all([...this.owners.keys()].map(id => this.dispose(id)))
@@ -192,9 +240,9 @@ export class LanguageManager {
       || !Number.isSafeInteger(document.version) || document.version < 1) throw new Error('Invalid language document.');
     const support = languageSupport(document.path, routes)!;
     const file = canonicalPath(document.path);
-    const owns = state.currentDocument?.path === file || state.rendererTabs.some(tab => !tab.isUntitled && tab.path === file)
+    const owns = () => state.currentDocument?.path === file || state.rendererTabs.some(tab => !tab.isUntitled && tab.path === file)
       || state.rendererGitReview?.path === file;
-    if (!owns) throw new Error('The language document is not open in this window.');
+    if (!owns()) throw new Error('The language document is not open in this window.');
     let owner = this.owners.get(state.webContentsId);
     if (!owner) {
       owner = { state, documents: new Map(), servers: new Map(), requests: new Map() };
@@ -214,12 +262,54 @@ export class LanguageManager {
     this.close(state.webContentsId, document.id);
     const root = state.projectRoot && isInside(canonicalPath(state.projectRoot), file)
       ? canonicalPath(state.projectRoot) : standaloneLanguageRoot(file, this.registry.definition(support.server));
-    const key = `${support.server}:${root}:${this.registry.fingerprint(support.server)}`;
-    let server = owner.servers.get(key);
+    const definition = this.registry.definition(support.server);
+    const configuration = this.registry.fingerprint(support.server);
+    const pending = this.pendingOpens.get(state.webContentsId) ?? new Map<string, symbol>();
+    this.pendingOpens.set(state.webContentsId, pending);
+    const opening = Symbol(document.id); pending.set(document.id, opening);
+    // A rescan affects future sessions, not the launch plan of a live workspace.
+    // Configuration changes explicitly remove affected sessions before rebinding.
+    const activeServer = () => [...owner.servers.values()].find(server => {
+      const info = this.sessions.get(server);
+      return info?.id === support.server && info.root === root && info.state !== 'failed';
+    });
+    let server = activeServer();
+    let launch;
+    try {
+      if (server) { /* Reuse this workspace's running or initializing session. */ }
+      else if (definition.launch.kind === 'bundledNode') launch = this.registry.launch(support.server, app.isPackaged);
+      else {
+        for (;;) {
+          const revision = this.discovery.generation;
+          try {
+            const snapshot = await this.discovery.environment.resolve();
+            const command = this.registry.executable(support.server, snapshot.env);
+            const found = await this.discovery.find(command, { resolveEnvironment: true, python: definition.discovery === 'python' });
+            if (revision !== this.discovery.generation) continue;
+            if (!found.selected) {
+              if (this.registry.automatic(support.server) && !path.isAbsolute(command))
+                return { unavailable: found.candidates.length ? 'selection-needed' as const : 'missing' as const };
+              throw Error(`${definition.name}: ${found.candidates.length ? 'Choose an installed executable in Language Support.' : `Executable not found: ${command}. Rescan installed servers or choose an executable in Language Support.`}`);
+            }
+            launch = this.registry.launch(support.server, app.isPackaged, found.environment.env, found.selected.path);
+            break;
+          } catch (error) { if (revision === this.discovery.generation) throw error; }
+        }
+      }
+      if (pending.get(document.id) !== opening || this.owners.get(state.webContentsId) !== owner
+        || state.window.isDestroyed() || state.window.webContents.isDestroyed() || !owns()
+        || !this.registry.definitions().some(d => d.id === support.server)
+        || this.registry.fingerprint(support.server) !== configuration
+        || languageSupport(document.path, this.registry.routes())?.server !== support.server)
+        throw Error('Language document closed or configuration changed during discovery.');
+    } finally { if (pending.get(document.id) === opening) pending.delete(document.id); }
+    // Another document may have finished discovering the same server meanwhile.
+    server = activeServer();
     const owned = owner;
     if (!server) {
-      const definition = this.registry.definition(support.server);
-      const launch = this.registry.launch(support.server, app.isPackaged);
+      if (!launch) throw Error('Language session closed during discovery.');
+      const fingerprint = createHash('sha256').update(JSON.stringify([configuration, launch])).digest('hex').slice(0, 24);
+      const key = `${support.server}:${root}:${fingerprint}`;
       server = new ServerSession(launch, root, params => {
         for (const binding of owned.documents.values()) {
           // Reject unversioned/stale diagnostics rather
@@ -256,6 +346,7 @@ export class LanguageManager {
     return { uri: binding.uri, capabilities };
   }
   private close(ownerId: number, id: string): void {
+    this.pendingOpens.get(ownerId)?.delete(id);
     const owner = this.owners.get(ownerId);
     const binding = owner?.documents.get(id);
     if (!owner || !binding) return;
@@ -267,6 +358,7 @@ export class LanguageManager {
     }
   }
   private async dispose(id: number): Promise<void> {
+    this.pendingOpens.delete(id);
     const owner = this.owners.get(id);
     if (!owner) return;
     this.owners.delete(id);

@@ -118,21 +118,24 @@ languages have syntax highlighting; additional LSP servers can be connected thro
 **Edit → Language Support…**. Python, clangd and compilers are not bundled.
 
 For C/C++, install [clangd](https://clangd.llvm.org/installation), then open a source
-file. Setdown uses your selected executable first, then `SETDOWN_CLANGD_PATH`, then
-`clangd` on its inherited `PATH`. If the desktop launcher cannot find your clangd,
-open **Edit → Language Support…**, select clangd, and click **Choose executable…**.
-The editor's F1 palette also opens Language Support. The native chooser saves the
-absolute path and reconnects language sessions across windows without saving or
-replacing editor models. Ordinary editing stays usable if
-clangd is missing or fails. **Restart Language Servers** reconnects the current
-unsaved buffers, including after updating an executable or build configuration.
+file. Installed **rust-analyzer**, **gopls** and **fortls** also have automatic
+connection profiles. For example, after `pip install fortls`, open a saved `.f90`
+file; no language ID, extension mapping or JSON setup is needed. Previously saved
+manual paths and disabled connections are preserved.
 
-Language Support includes an offline Mason catalog, server status, enable/disable,
-executable selection, connection settings and custom JSON imports. rust-analyzer
-and gopls profiles are initially disabled; install their tools and enable the
-connection. Catalog membership does not guarantee compatibility, and installation
-is manual. See [language support](docs/language-support.md) for setup, custom
-connections, protocol limits and integration checks.
+If a newly installed server is not connected, open **Edit → Language Support…**
+and click **Rescan installed servers**. Setdown checks the user's environment,
+PATH and known installation directories; **Choose executable…** remains available
+for custom installations. Rescan reconnects unavailable documents with their
+current unsaved text while healthy language sessions keep running. Ordinary
+editing stays usable when a server is missing or fails.
+
+Language Support includes an offline Mason catalog, status, enable/disable,
+candidate selection, connection settings and custom JSON imports. The F1 palette
+opens the same screen. Catalog-only servers still need a connection definition;
+installation is manual. **Restart Language Servers** reconnects the current
+window's unsaved buffers. See [language support](docs/language-support.md) for
+discovery scope, custom connections, protocol limits and integration checks.
 
 Open the project folder for a shared analysis root. With no folder open, C/C++
 finds the nearest ancestor containing `.clangd`, `compile_commands.json`,

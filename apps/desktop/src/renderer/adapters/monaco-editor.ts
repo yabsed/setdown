@@ -60,12 +60,16 @@ export class MonacoEditor {
     const restart = () => { void this.languageClient?.restart(); };
     if (options.language) window.addEventListener('setdown:restart-language', restart);
     const unsubscribe = options.language?.port.onEvent(event => {
+      if (event.type === 'discovery') { this.languageClient?.retryUnavailable(); return; }
       if (event.type !== 'configuration') return;
       this.languageEpoch++;
-      this.languageClient?.dispose(); this.languageClient = undefined;
+      if (event.servers) this.languageClient?.invalidate(event.servers);
+      else { this.languageClient?.dispose(); this.languageClient = undefined; }
       this.languageLoading = undefined; this.languageRoutes = undefined; this.languageConfiguration = undefined;
-      this.languageError?.remove(); this.languageError = undefined;
-      delete options.host.dataset.languageServer;
+      if (!event.servers) {
+        this.languageError?.remove(); this.languageError = undefined;
+        delete options.host.dataset.languageServer;
+      }
       if (this.apiValue) for (const tab of options.tabs()) {
         const model = this.models.get(tab.id);
         if (model) this.connectLanguage(tab, model, this.apiValue);

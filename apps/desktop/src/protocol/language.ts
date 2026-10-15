@@ -5,10 +5,13 @@ import type { LanguageServerDefinition } from '../core/document/language-definit
 export type LanguageServerOptions = { args: string[]; settings: Record<string, unknown>; initializationOptions: Record<string, unknown> };
 export type LanguageConnectionDraft = LanguageServerOptions & { id: string; name: string;
   languages: LanguageServerDefinition['languages']; rootMarkers: string[] };
+export type LanguageServerCandidate = { id: string; path: string; source: 'explicit' | 'path' | 'user' | 'python' };
 export type LanguageCatalogEntry = {
   id: string; name: string; description: string; homepage: string; languages: string[];
   configured: boolean; bundled: boolean; custom: boolean; enabled: boolean; selected: string[];
   executable?: string; available?: boolean; options?: LanguageServerOptions;
+  automatic?: boolean; canDetect?: boolean; candidates?: LanguageServerCandidate[];
+  discoveryMessage?: string; selectionNeeded?: boolean; searched?: string[];
   sessions: { root: string; state: 'starting' | 'ready' | 'failed'; message?: string; features?: string[] }[];
 };
 export type LanguageCatalog = { release: string; entries: LanguageCatalogEntry[] };
@@ -29,12 +32,14 @@ export const languageMethods = [
 export type LanguageMethod = typeof languageMethods[number];
 export type LanguageDocument = { id: string; generation: string; path: string; text: string; version: number };
 export type LanguageConnection = { uri: string; capabilities: ServerCapabilities };
+export type LanguageUnavailable = { unavailable: 'missing' | 'selection-needed' };
 export type LanguageEvent =
-  | { type: 'configuration' }
+  | { type: 'configuration'; servers?: string[] }
+  | { type: 'discovery' }
   | { type: 'diagnostics'; id: string; generation: string; version: number; diagnostics: Diagnostic[] }
   | { type: 'status'; documents: { id: string; generation: string }[]; state: 'starting' | 'ready' | 'failed'; message?: string };
 export type LanguageApi = {
-  open(document: LanguageDocument): Promise<LanguageConnection>;
+  open(document: LanguageDocument): Promise<LanguageConnection | LanguageUnavailable>;
   change(id: string, version: number, changes: TextDocumentContentChangeEvent[]): Promise<void>;
   close(id: string): void;
   saved(id: string, text?: string): void;
@@ -43,6 +48,9 @@ export type LanguageApi = {
   restart(): Promise<void>;
   configuration(): Promise<LanguageRoute[]>;
   catalog(): Promise<LanguageCatalog>;
+  rescan(): Promise<void>;
+  useAutomatic(id: string): Promise<void>;
+  selectCandidate(id: string, candidateId: string): Promise<void>;
   setEnabled(id: string, enabled: boolean): Promise<void>;
   chooseExecutable(id: string): Promise<boolean>;
   configure(id: string, options: LanguageServerOptions): Promise<void>;
