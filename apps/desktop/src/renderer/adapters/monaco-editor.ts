@@ -35,7 +35,6 @@ export class MonacoEditor {
   private unregisterLanguage?: () => void;
   private languageClient: LanguageClient | undefined;
   private languageLoading: Promise<void> | undefined;
-  private languageError: HTMLButtonElement | undefined;
   private disposed = false;
   private languageRoot: string | null = null;
   private apiValue: typeof Monaco | null = null;
@@ -67,7 +66,6 @@ export class MonacoEditor {
       else { this.languageClient?.dispose(); this.languageClient = undefined; }
       this.languageLoading = undefined; this.languageRoutes = undefined; this.languageConfiguration = undefined;
       if (!event.servers) {
-        this.languageError?.remove(); this.languageError = undefined;
         delete options.host.dataset.languageServer;
       }
       if (this.apiValue) for (const tab of options.tabs()) {
@@ -89,7 +87,6 @@ export class MonacoEditor {
     this.disposed = true;
     this.unregisterLanguage?.();
     this.languageClient?.dispose();
-    this.languageError?.remove();
     this.unregisterModels();
     this.unregisterZoom();
     for (const id of [...this.models.keys()]) this.dispose(id);
@@ -395,18 +392,8 @@ export class MonacoEditor {
     if (tab.document.isUntitled || !support) return;
     this.languageLoading ??= import('../editor/language-client').then(({ LanguageClient }) => {
       if (this.disposed || epoch !== this.languageEpoch) return;
-      this.languageClient = new LanguageClient(api, { ...options, route: file => languageSupport(file, this.languageRoutes ?? []), status: (state, message) => {
+      this.languageClient = new LanguageClient(api, { ...options, route: file => languageSupport(file, this.languageRoutes ?? []), status: state => {
         this.options.host.dataset.languageServer = state;
-        if (state !== 'failed') { this.languageError?.remove(); this.languageError = undefined; return; }
-        if (!this.languageError) {
-          this.languageError = document.createElement('button');
-          this.languageError.textContent = 'Language support stopped · Restart';
-          this.languageError.setAttribute('role', 'status');
-          this.languageError.style.cssText = 'position:absolute;right:16px;bottom:12px;z-index:10;padding:6px 10px;color:inherit;background:var(--bg);border:1px solid currentColor;border-radius:4px';
-          this.languageError.onclick = () => { void this.languageClient?.restart(); };
-          this.options.host.append(this.languageError);
-        }
-        this.languageError.title = message ?? '';
       } });
       for (const current of this.options.tabs()) {
         const currentModel = this.models.get(current.id);

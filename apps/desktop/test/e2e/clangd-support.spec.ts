@@ -75,7 +75,7 @@ test('missing clangd keeps C editable and a native executable selection repairs 
   try {
     const page = await application.firstWindow(); await focusApplication(application);
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'failed', { timeout: 20_000 });
-    await expect(page.locator('.editor-host [role="status"]')).toHaveAttribute('title', /Language Support/);
+    await expect(page.locator('.editor-host [role="status"]')).toHaveCount(0);
     const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
     await editor.press('Control+End'); await editor.pressSequentially('// still editable');
     await editor.press('Control+s');
