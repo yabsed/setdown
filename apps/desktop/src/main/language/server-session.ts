@@ -3,10 +3,11 @@ import { pathToFileURL } from 'node:url';
 import { subscribe, type AsyncSubscription } from '@parcel/watcher';
 import { CancellationTokenSource, createMessageConnection, StreamMessageReader, StreamMessageWriter,
   type MessageConnection } from 'vscode-jsonrpc/node';
+import type { ServerProfile } from './server-definitions';
 import type { InitializeResult, PublishDiagnosticsParams, ServerCapabilities } from 'vscode-languageserver-protocol';
 
 export type ServerLaunch = { executable: string; args: string[]; env?: NodeJS.ProcessEnv };
-const analysis = { autoSearchPaths: true, useLibraryCodeForTypes: true, diagnosticMode: 'openFiles', typeCheckingMode: 'basic' };
+const genericProfile: ServerProfile = { name: 'Language', configuration: {}, watches: () => false };
 
 /** Official JSON-RPC owns framing and cancellation; this class owns process lifetime. */
 export class ServerSession {
@@ -24,7 +25,7 @@ export class ServerSession {
   readonly ready: Promise<ServerCapabilities>;
 
   constructor(launch: ServerLaunch, root: string,
-    diagnostics: (params: PublishDiagnosticsParams) => void, failed: (message: string) => void) {
+    diagnostics: (params: PublishDiagnosticsParams) => void, failed: (message: string) => void, private readonly profile = genericProfile) {
     this.child = spawn(launch.executable, launch.args, {
       cwd: root, env: launch.env, stdio: 'pipe', windowsHide: true, shell: false,
     });
@@ -44,14 +45,13 @@ export class ServerSession {
       void this.watcher?.then(watcher => watcher.unsubscribe()).catch(() => {});
       if (!this.stopping) failed(this.failureMessage);
     };
-    this.child.once('error', error => fail(error.message));
-    this.child.once('exit', (code, signal) => fail(`Python language server exited (${signal ?? code}).`));
+    this.child.once('error', error => fail(`${profile.name}: ${error.message}${(error as NodeJS.ErrnoException).code === 'ENOENT' && profile.missingExecutableMessage ? `. ${profile.missingExecutableMessage}` : ''}`));
+    this.child.once('exit', (code, signal) => fail(`${profile.name} language server exited (${signal ?? code}).`));
     this.connection.onError(([error]) => fail(error.message));
-    this.connection.onClose(() => fail('Python language server disconnected.'));
+    this.connection.onClose(() => fail(`${profile.name} language server disconnected.`));
     this.connection.onNotification('textDocument/publishDiagnostics', diagnostics);
     this.connection.onRequest('workspace/configuration', (params: { items: { section?: string }[] }) =>
-      params.items.map(item => item.section === 'python' ? { analysis }
-        : item.section === 'python.analysis' ? analysis : {}));
+      params.items.map(item => profile.configuration[item.section ?? ''] ?? {}));
     this.connection.onRequest('workspace/workspaceFolders', () => [{ uri: pathToFileURL(root).href, name: root }]);
     this.connection.onRequest('workspace/applyEdit', () => ({ applied: false, failureReason: 'Unsolicited edits are not supported.' }));
     this.connection.listen();
@@ -77,17 +77,18 @@ export class ServerSession {
       if (result.capabilities.positionEncoding && result.capabilities.positionEncoding !== 'utf-16')
         throw new Error('The language server must use UTF-16 positions.');
       await this.notify('initialized', {});
-      await this.notify('workspace/didChangeConfiguration', { settings: { python: { analysis } } });
+      if (Object.keys(profile.configuration).length)
+        await this.notify('workspace/didChangeConfiguration', { settings: profile.configuration });
       return result.capabilities;
     }).catch(error => { fail(String(error)); throw new Error(this.failureMessage ?? String(error)); });
     // The owner may close a window before the first caller awaits initialization.
     void this.ready.catch(() => {});
   }
 
-  async request<T>(method: string, params: unknown, token = new CancellationTokenSource(), timeoutMs = 10_000): Promise<T> {
-    if (this.stopped) throw new Error('Python language server is stopped. Use Restart Python Language Server.');
+  async request<T>(method: string, params: unknown, token = new CancellationTokenSource(), timeoutMs = /references|rename|documentSymbol/.test(method) ? 60_000 : 15_000): Promise<T> {
+    if (this.stopped) throw new Error(`${this.profile.name} language server is stopped. Use Restart Language Servers.`);
     if (this.inFlight >= 64) {
-      this.fail('Python language server stopped answering requests.');
+      this.fail(`${this.profile.name} language server stopped answering requests.`);
       throw new Error('Too many unanswered language requests.');
     }
     this.pending.add(token);
@@ -107,24 +108,28 @@ export class ServerSession {
           if (token.token.isCancellationRequested) abort();
           timeout = setTimeout(() => {
             const reason = `Language request timed out: ${method}`;
-            reject(new Error(reason)); this.fail(reason);
+            reject(new Error(reason));
+            // A cold C++ preamble/index may outlive one UI request. Cancellation
+            // retires that request; initialization failure still stops the process.
+            token.cancel();
+            if (method === 'initialize') this.fail(reason);
           }, timeoutMs);
         }),
       ]);
     } finally { clearTimeout(timeout); cancel?.dispose(); this.pending.delete(token); token.dispose(); }
   }
   async notify(method: string, params: unknown): Promise<void> {
-    if (this.stopped) throw new Error('Python language server is stopped. Use Restart Python Language Server.');
+    if (this.stopped) throw new Error(`${this.profile.name} language server is stopped. Use Restart Language Servers.`);
     await this.connection.sendNotification(method, params);
   }
   watch(root: string): void {
     this.watcher = subscribe(root, (error, events) => {
       if (error || this.stopped || this.stopping) return;
-      const changes = events.filter(event => /\.(pyi?|toml|json)$/.test(event.path))
+      const changes = events.filter(event => this.profile.watches(event.path))
         .map(event => ({ uri: pathToFileURL(event.path).href, type: event.type === 'create' ? 1 : event.type === 'delete' ? 3 : 2 }));
       if (changes.length) void this.ready.then(() => this.notify('workspace/didChangeWatchedFiles', { changes })).catch(() => {});
     }, { ignore: ['**/.git/**', '**/node_modules/**', '**/__pycache__/**'] });
-    void this.watcher.catch(error => console.warn('Python file watcher unavailable:', error));
+    void this.watcher.catch(error => console.warn(`${this.profile.name} file watcher unavailable:`, error));
   }
   stop(): Promise<void> { return this.stopping ??= this.stopProcess(); }
   private async stopProcess(): Promise<void> {

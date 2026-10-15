@@ -2,10 +2,11 @@ import type * as M from 'monaco-editor';
 import type * as L from 'vscode-languageserver-protocol';
 import type { DocumentTab } from '../../core/workspace/workspace-state';
 import type { LanguageApi, LanguageConnection, LanguageMethod } from '../../protocol/language';
+import { languageSupport } from '../../core/document/language-support';
 import { completion, fromRange, markdown, marker, toPosition, toRange } from './language-conversion';
 
 type Binding = { tab: DocumentTab; model: M.editor.ITextModel; path: string; generation: string; connected: Promise<LanguageConnection>;
-  queue: Promise<unknown>; listener: M.IDisposable; failed: boolean };
+  queue: Promise<unknown>; listener: M.IDisposable; providers: M.IDisposable[]; failed: boolean; state: 'starting' | 'ready' | 'failed'; message?: string };
 export type LanguageOptions = {
   port: LanguageApi;
   prepare(path: string): Promise<{ tab: DocumentTab; model: M.editor.ITextModel }>;
@@ -27,17 +28,17 @@ export class LanguageClient {
       if (event.type === 'status') {
         const affected = [...this.bindings.values()].filter(binding => event.documents.some(document => document.id === binding.tab.id && document.generation === binding.generation));
         if (!affected.length) return;
-        options.status(event.state, event.message);
+        for (const binding of affected) { binding.state = event.state; binding.message = event.message; }
+        this.publishStatus();
         if (event.state === 'failed') for (const binding of affected) {
-          binding.failed = true; api.editor.setModelMarkers(binding.model, 'setdown-python', []);
+          binding.failed = true; api.editor.setModelMarkers(binding.model, 'setdown-language', []);
         }
         return;
       }
       const binding = [...this.bindings.values()].find(binding => binding.tab.id === event.id);
       if (binding && binding.generation === event.generation && !binding.failed && !binding.model.isDisposed() && binding.model.getVersionId() === event.version)
-        api.editor.setModelMarkers(binding.model, 'setdown-python', event.diagnostics.map(d => marker(api, d)));
+        api.editor.setModelMarkers(binding.model, 'setdown-language', event.diagnostics.map(d => marker(api, d)));
     }) });
-    this.installProviders();
     this.disposables.push(api.editor.registerEditorOpener({ openCodeEditor: async (_source, uri, selection) => {
       if (uri.scheme !== 'file') return false;
       const binding = [...this.bindings.values()].find(binding => binding.model.uri.toString() === uri.toString());
@@ -49,25 +50,27 @@ export class LanguageClient {
     if (this.disposed || model.isDisposed()) return;
     if (this.restarting) { this.restartDocuments?.set(model, tab); return; }
     const old = this.bindings.get(model);
-    if (old?.path === tab.document.path && !tab.document.isUntitled && model.getLanguageId() === 'python') return;
+    if (old?.path === tab.document.path && !tab.document.isUntitled && languageSupport(tab.document.path)) return;
     this.unbind(model);
-    if (tab.document.isUntitled || model.isDisposed() || model.getLanguageId() !== 'python' || !/\.pyi?$/i.test(tab.document.path)) return;
+    if (tab.document.isUntitled || model.isDisposed() || !languageSupport(tab.document.path)) return;
     const generation = crypto.randomUUID();
     const connected = this.options.port.open({ id: tab.id, generation, path: tab.document.path,
       text: model.getValue(), version: model.getVersionId() });
     const binding: Binding = { tab, model, path: tab.document.path, generation, connected, queue: connected,
-      failed: false, listener: { dispose() {} } };
+      failed: false, state: 'starting', providers: [], listener: { dispose() {} } };
     this.bindings.set(model, binding);
     const fail = (error: unknown) => {
       if (this.bindings.get(model) !== binding) return;
-      binding.failed = true; this.options.status('failed', String(error));
+      binding.failed = true; binding.state = 'failed'; binding.message = String(error); this.publishStatus();
     };
     // A failed initialization is a language-service state, not a rejected
     // editor/save queue. Keep ordinary editing usable while restart is offered.
-    binding.queue = connected.catch(fail);
+    binding.queue = connected.then(connection => {
+      if (this.bindings.get(model) === binding && !binding.failed) this.installProviders(binding, connection.capabilities);
+    }).catch(fail);
     binding.listener = model.onDidChangeContent(event => {
       this.cancel(binding);
-      this.api.editor.setModelMarkers(model, 'setdown-python', []);
+      this.api.editor.setModelMarkers(model, 'setdown-language', []);
       const version = model.getVersionId();
       // Monaco reports simultaneous edits against the old model. Descending
       // offsets turn them into LSP's sequential edits, including CRLF and emoji.
@@ -85,7 +88,9 @@ export class LanguageClient {
     const binding = this.bindings.get(model);
     if (!binding) return;
     this.bindings.delete(model); binding.listener.dispose(); this.cancel(binding);
-    if (!model.isDisposed()) this.api.editor.setModelMarkers(model, 'setdown-python', []);
+    for (const provider of binding.providers) provider.dispose();
+    this.publishStatus();
+    if (!model.isDisposed()) this.api.editor.setModelMarkers(model, 'setdown-language', []);
     this.options.port.close(binding.tab.id);
   }
   saved(model: M.editor.ITextModel): void {
@@ -112,7 +117,7 @@ export class LanguageClient {
         && !token.isCancellationRequested ? result as T : null;
     } catch (error) {
       if (!token.isCancellationRequested && !model.isDisposed() && model.getVersionId() === version && !binding.failed)
-        console.warn('Python language request failed:', method, error);
+        console.warn('Language request failed:', method, error);
       return null;
     } finally { cancel.dispose(); this.requests.delete(id); }
   }
@@ -134,16 +139,27 @@ export class LanguageClient {
     for (const model of this.bindings.keys()) this.unbind(model);
     for (const disposable of this.disposables) disposable.dispose();
   }
+  private publishStatus(): void {
+    const bindings = [...this.bindings.values()];
+    const current = bindings.find(binding => binding.state === 'failed') ?? bindings.find(binding => binding.state === 'starting');
+    this.options.status(current?.state ?? 'ready', current?.message);
+  }
   private uri(value: string): M.Uri {
     const target = this.api.Uri.parse(value);
     if (target.scheme !== 'file' || target.query || target.fragment) throw new Error('Unsupported language target.');
     return [...this.bindings.values()].find(binding => binding.path === target.fsPath)?.model.uri ?? target;
   }
-  private installProviders(): void {
+  private installProviders(owner: Binding, capabilities: L.ServerCapabilities): void {
     const { api } = this;
-    const language = { language: 'python', scheme: 'file' };
-    this.disposables.push(api.languages.registerCompletionItemProvider(language, {
-      triggerCharacters: ['.'],
+    const language = { language: owner.model.getLanguageId(), scheme: 'file', pattern: owner.model.uri.fsPath };
+    // Each provider belongs to one live model and its negotiated capabilities.
+    // Different roots/servers may advertise different triggers or resolve support.
+    const scoped = <T extends object>(provider: T): T => Object.fromEntries(Object.entries(provider).map(([key, value]) =>
+      [key, typeof value === 'function' && (key.startsWith('provide') || key === 'resolveRenameLocation')
+        ? (model: M.editor.ITextModel, ...args: unknown[]) => model === owner.model && this.bindings.get(model) === owner
+          ? value(model, ...args) : null : value])) as T;
+    if (capabilities.completionProvider) owner.providers.push(api.languages.registerCompletionItemProvider(language, scoped({
+      triggerCharacters: capabilities.completionProvider!.triggerCharacters,
       provideCompletionItems: async (model, position, context, token) => {
         const response = await this.request<L.CompletionItem[] | L.CompletionList>(model, 'textDocument/completion',
           { position: toPosition(position), context: { triggerKind: context.triggerKind + 1, triggerCharacter: context.triggerCharacter } }, token);
@@ -158,9 +174,9 @@ export class LanguageClient {
         });
         return { suggestions, incomplete: !Array.isArray(response) && response.isIncomplete };
       },
-      resolveCompletionItem: async (item, token) => {
+      resolveCompletionItem: !capabilities.completionProvider!.resolveProvider ? undefined : async (item, token) => {
         const data = this.completionItems.get(item);
-        const valid = () => !!data && this.bindings.get(data.binding.model) === data.binding
+        const valid = () => !!data && data.binding === owner && this.bindings.get(data.binding.model) === data.binding
           && !data.binding.model.isDisposed() && data.binding.model.getVersionId() === data.version;
         if (!data || !valid()) return { ...item, additionalTextEdits: undefined };
         const resolved = await this.request<L.CompletionItem>(data.binding.model, 'completionItem/resolve', data.item, token);
@@ -169,24 +185,25 @@ export class LanguageClient {
         const fallback = 'insert' in item.range ? item.range.insert : item.range;
         return { ...item, ...completion(api, resolved, fallback) };
       },
-    }));
-    this.disposables.push(api.languages.registerHoverProvider(language, {
+    })));
+    if (capabilities.hoverProvider) owner.providers.push(api.languages.registerHoverProvider(language, scoped({
       provideHover: async (model, position, token) => {
         const result = await this.request<L.Hover>(model, 'textDocument/hover', { position: toPosition(position) }, token);
         return result && { contents: (Array.isArray(result.contents) ? result.contents : [result.contents]).map(markdown),
           range: result.range ? fromRange(result.range) : undefined };
       },
-    }));
-    this.disposables.push(api.languages.registerSignatureHelpProvider(language, {
-      signatureHelpTriggerCharacters: ['(', ','], signatureHelpRetriggerCharacters: [')'],
+    })));
+    if (capabilities.signatureHelpProvider) owner.providers.push(api.languages.registerSignatureHelpProvider(language, scoped({
+      signatureHelpTriggerCharacters: capabilities.signatureHelpProvider!.triggerCharacters ?? [],
+      signatureHelpRetriggerCharacters: capabilities.signatureHelpProvider!.retriggerCharacters ?? [],
       provideSignatureHelp: async (model, position, token) => {
         const result = await this.request<L.SignatureHelp>(model, 'textDocument/signatureHelp', { position: toPosition(position) }, token);
         return result && { value: { activeSignature: result.activeSignature ?? 0, activeParameter: result.activeParameter ?? 0,
           signatures: result.signatures.map(s => ({ label: s.label, documentation: s.documentation ? markdown(s.documentation) : undefined,
             parameters: (s.parameters ?? []).map(p => ({ label: p.label, documentation: p.documentation ? markdown(p.documentation) : undefined })) })) }, dispose() {} };
       },
-    }));
-    this.disposables.push(api.languages.registerDefinitionProvider(language, {
+    })));
+    if (capabilities.definitionProvider) owner.providers.push(api.languages.registerDefinitionProvider(language, scoped({
       provideDefinition: async (model, position, token) => {
         const result = await this.request<L.Location | L.Location[] | L.LocationLink[]>(model, 'textDocument/definition', { position: toPosition(position) }, token);
         if (!result) return null;
@@ -195,14 +212,14 @@ export class LanguageClient {
             originSelectionRange: item.originSelectionRange ? fromRange(item.originSelectionRange) : undefined }
           : { uri: this.uri(item.uri), range: fromRange(item.range) });
       },
-    }));
-    this.disposables.push(api.languages.registerReferenceProvider(language, {
+    })));
+    if (capabilities.referencesProvider) owner.providers.push(api.languages.registerReferenceProvider(language, scoped({
       provideReferences: async (model, position, context, token) => {
         const result = await this.request<L.Location[]>(model, 'textDocument/references', { position: toPosition(position), context }, token);
         return result?.filter(item => item.uri.startsWith('file:')).map(item => ({ uri: this.uri(item.uri), range: fromRange(item.range) }));
       },
-    }));
-    this.disposables.push(api.languages.registerDocumentSymbolProvider(language, {
+    })));
+    if (capabilities.documentSymbolProvider) owner.providers.push(api.languages.registerDocumentSymbolProvider(language, scoped({
       provideDocumentSymbols: async (model, token) => {
         const result = await this.request<L.DocumentSymbol[]>(model, 'textDocument/documentSymbol', {}, token);
         const convert = (symbol: L.DocumentSymbol): M.languages.DocumentSymbol => ({ name: symbol.name, detail: symbol.detail ?? '',
@@ -210,9 +227,9 @@ export class LanguageClient {
           range: fromRange(symbol.range), selectionRange: fromRange(symbol.selectionRange), children: symbol.children?.map(convert) });
         return result?.map(convert);
       },
-    }));
-    this.disposables.push(api.languages.registerRenameProvider(language, {
-      resolveRenameLocation: async (model, position, token) => {
+    })));
+    if (capabilities.renameProvider) owner.providers.push(api.languages.registerRenameProvider(language, scoped({
+      resolveRenameLocation: typeof capabilities.renameProvider !== 'object' || !capabilities.renameProvider.prepareProvider ? undefined : async (model, position, token) => {
         const result = await this.request<L.Range | { range: L.Range; placeholder: string }>(model, 'textDocument/prepareRename', { position: toPosition(position) }, token);
         if (!result) return { range: new api.Range(position.lineNumber, position.column, position.lineNumber, position.column), text: '', rejectReason: 'This symbol cannot be renamed.' };
         const range = fromRange('range' in result ? result.range : result);
@@ -233,7 +250,8 @@ export class LanguageClient {
             for (const change of this.textChanges(result)) {
               const target = await this.options.prepare(this.uri(change.uri).fsPath);
               if (!versions.has(target.model)) {
-                if (target.model.getLanguageId() !== 'python') throw new Error('Rename targets must be Python documents.');
+                if (languageSupport(target.tab.document.path)?.server !== languageSupport(owner.path)?.server)
+                  throw new Error('Rename targets must belong to the same language server.');
                 versions.set(target.model, target.model.getVersionId()); opened = true;
               }
             }
@@ -245,7 +263,7 @@ export class LanguageClient {
         }
         catch (error) { return { edits: [], rejectReason: String(error) }; }
       },
-    }));
+    })));
   }
   private textChanges(edit: L.WorkspaceEdit) {
     const changes: { uri: string; version?: number | null; edits: L.TextEdit[] }[] = [];

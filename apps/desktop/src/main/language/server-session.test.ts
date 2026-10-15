@@ -6,6 +6,7 @@ import os from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { CancellationTokenSource } from 'vscode-jsonrpc/node';
 import type { Hover, PublishDiagnosticsParams } from 'vscode-languageserver-protocol';
+import { serverProfiles } from './server-definitions';
 import { ServerSession } from './server-session';
 
 const require = createRequire(import.meta.url);
@@ -25,7 +26,7 @@ test('real Pyright sees independent unsaved buffers and versioned incremental Un
   const failures: string[] = [];
   const create = (index: number) => {
     const server = new ServerSession({ executable: process.execPath, args: [require.resolve('pyright/langserver.index.js'), '--stdio'] },
-      root, params => diagnostics[index].push(params), message => failures.push(message));
+      root, params => diagnostics[index].push(params), message => failures.push(message), serverProfiles.pyright);
     sessions.push(server); return server;
   };
   const first = create(0), second = create(1);
@@ -50,6 +51,7 @@ test('cancellation, timeouts, crash and shutdown do not leave pending requests',
     const {createMessageConnection, StreamMessageReader, StreamMessageWriter} = require(${JSON.stringify(require.resolve('vscode-jsonrpc/node'))});
     const c = createMessageConnection(new StreamMessageReader(process.stdin), new StreamMessageWriter(process.stdout));
     c.onRequest('initialize', () => ({capabilities:{positionEncoding:'utf-16'}}));
+    c.onRequest('ping', () => 'alive');
     c.onRequest('hang', () => new Promise(() => {}));
     c.onRequest('crash', () => process.exit(7));
     c.onRequest('shutdown', () => null);
@@ -57,7 +59,7 @@ test('cancellation, timeouts, crash and shutdown do not leave pending requests',
     c.listen();
   `);
   const failures: string[] = [];
-  const server = new ServerSession({ executable: process.execPath, args: [fixture] }, root, () => {}, message => failures.push(message));
+  const server = new ServerSession({ executable: process.execPath, args: [fixture] }, root, () => {}, message => failures.push(message), serverProfiles.pyright);
   sessions.push(server);
   await server.ready;
   const token = new CancellationTokenSource();
@@ -65,14 +67,15 @@ test('cancellation, timeouts, crash and shutdown do not leave pending requests',
   token.cancel();
   await expect(pending).rejects.toThrow(/cancelled/);
   await expect(server.request('hang', {}, undefined, 25)).rejects.toThrow(/cancelled|timed out/);
-  await expect.poll(() => failures.length).toBe(1);
+  expect(failures).toEqual([]);
+  expect(await server.request('ping', {})).toBe('alive');
   await server.stop();
   await expect(server.request('hang', {})).rejects.toThrow(/stopped/);
-  const crashed = new ServerSession({ executable: process.execPath, args: [fixture] }, root, () => {}, message => failures.push(message));
+  const crashed = new ServerSession({ executable: process.execPath, args: [fixture] }, root, () => {}, message => failures.push(message), serverProfiles.pyright);
   sessions.push(crashed);
   await crashed.ready;
   await expect(crashed.request('crash', {})).rejects.toThrow();
-  await expect.poll(() => failures.length).toBe(2);
+  await expect.poll(() => failures.length).toBe(1);
 });
 
 test('watching a closed imported file refreshes analysis without overwriting the open buffer', async () => {
@@ -83,7 +86,7 @@ test('watching a closed imported file refreshes analysis without overwriting the
   const uri = pathToFileURL(path.join(root, 'main.py')).href;
   const published: PublishDiagnosticsParams[] = [];
   const server = new ServerSession({ executable: process.execPath, args: [require.resolve('pyright/langserver.index.js'), '--stdio'] }, root,
-    params => published.push(params), () => {});
+    params => published.push(params), () => {}, serverProfiles.pyright);
   sessions.push(server);
   server.watch(root);
   await server.ready;

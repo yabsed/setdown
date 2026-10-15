@@ -7,7 +7,7 @@ import { LanguageManager } from './language-manager';
 const mocks = vi.hoisted(() => ({ handles: new Map<string, (...args: any[]) => any>(),
   events: new Map<string, (...args: any[]) => void>(), app: new Map<string, (...args: any[]) => void>(),
   servers: [] as { notify: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn>; root: string }[] }));
-vi.mock('electron', () => ({ app: { on: (key: string, fn: (...args: any[]) => void) => mocks.app.set(key, fn), quit: vi.fn() },
+vi.mock('electron', () => ({ app: { getPath: () => '/tmp/setdown-language-settings-test', on: (key: string, fn: (...args: any[]) => void) => mocks.app.set(key, fn), quit: vi.fn() },
   ipcMain: { handle: (key: string, fn: (...args: any[]) => any) => mocks.handles.set(key, fn),
     on: (key: string, fn: (...args: any[]) => void) => mocks.events.set(key, fn) } }));
 vi.mock('./server-session', () => ({ ServerSession: class {
@@ -16,7 +16,7 @@ vi.mock('./server-session', () => ({ ServerSession: class {
   readonly stop = vi.fn(async () => {});
   readonly request = vi.fn(async () => null);
   readonly watch = vi.fn();
-  constructor(_launch: unknown, readonly root: string) { mocks.servers.push(this); }
+  constructor(readonly launch: unknown, readonly root: string) { mocks.servers.push(this); }
 } }));
 beforeEach(() => { mocks.handles.clear(); mocks.events.clear(); mocks.app.clear(); mocks.servers.length = 0; });
 
@@ -26,7 +26,7 @@ function fixture() {
   const event = (id: number) => {
     const contents = Object.assign(new EventEmitter(), { id, mainFrame: {}, isDestroyed: () => false, send: vi.fn() });
     states.set(id, { webContentsId: id, projectRoot: root, currentDocument: { path: path.join(root, 'main.py') },
-      rendererTabs: [{ path: path.join(root, 'other.py'), isUntitled: false }],
+      rendererTabs: ['other.py', 'main.cpp', 'helper.h', 'other.c'].map(name => ({ path: path.join(root, name), isUntitled: false })),
       window: { webContents: contents, isDestroyed: () => false } } as unknown as WindowState);
     return { sender: contents, senderFrame: contents.mainFrame };
   };
@@ -64,4 +64,23 @@ test('foreign frames, unknown files, methods and stale versions cannot reach a s
   expect(() => f.invoke('change', f.first, 'one', 1, [{ text: 'old text' }])).toThrow(/Invalid/);
   expect(() => f.send('close', { ...f.first, senderFrame: {} }, 'one')).not.toThrow();
   expect(mocks.servers[0].stop).not.toHaveBeenCalled();
+});
+
+
+test('C, C++ and headers share clangd while Python and other windows remain independent', async () => {
+  const f = fixture();
+  await f.invoke('open', f.first, f.document('python'));
+  await f.invoke('open', f.first, f.document('cpp', 'main.cpp'));
+  await f.invoke('open', f.first, f.document('header', 'helper.h'));
+  await f.invoke('open', f.first, f.document('c', 'other.c'));
+  await f.invoke('open', f.second, f.document('other-window', 'main.cpp'));
+  expect(mocks.servers).toHaveLength(3);
+  expect(mocks.servers[1].notify).toHaveBeenCalledWith('textDocument/didOpen', expect.objectContaining({ textDocument: expect.objectContaining({ languageId: 'cpp' }) }));
+  expect(mocks.servers[1].notify).toHaveBeenCalledWith('textDocument/didOpen', expect.objectContaining({ textDocument: expect.objectContaining({ languageId: 'c' }) }));
+  f.send('close', f.first, 'cpp'); f.send('close', f.first, 'header');
+  expect(mocks.servers[1].stop).not.toHaveBeenCalled();
+  f.send('close', f.first, 'c');
+  expect(mocks.servers[1].stop).toHaveBeenCalledOnce();
+  expect(mocks.servers[0].stop).not.toHaveBeenCalled();
+  expect(mocks.servers[2].stop).not.toHaveBeenCalled();
 });

@@ -1,23 +1,29 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { app, ipcMain } from 'electron';
+import { app, dialog, ipcMain } from 'electron';
 import { CancellationTokenSource } from 'vscode-jsonrpc/node';
 import type { TextDocumentContentChangeEvent } from 'vscode-languageserver-protocol';
 import { languageMethods, type LanguageDocument, type LanguageEvent, type LanguageMethod } from '../../protocol/language';
 import { canonicalPath, isInside } from '../documents/file-system';
 import type { WindowState } from '../windows/window-state';
+import { languageSupport } from '../../core/document/language-support';
+import { ClangdSettings } from './clangd-settings';
+import { clangdArgs, serverProfiles, standaloneLanguageRoot } from './server-definitions';
 import { ServerSession } from './server-session';
 
 type Binding = { id: string; generation: string; uri: string; version: number; server: ServerSession };
 type Owner = { state: WindowState; documents: Map<string, Binding>; servers: Map<string, ServerSession>;
   requests: Map<string, CancellationTokenSource> };
 
-/** A separate server for each (window, Python root). Unsaved buffers never cross windows. */
+/** A separate server for each (window, server kind, project root). Unsaved buffers never cross windows. */
 export class LanguageManager {
   private readonly owners = new Map<number, Owner>();
   private readonly watched = new Set<number>();
   private readonly draining = new Set<Promise<void>>();
   constructor(private readonly stateFor: (id: number) => WindowState | null) {}
+  private get clangdSettings(): ClangdSettings {
+    return new ClangdSettings(path.join(app.getPath('userData'), 'clangd.json'));
+  }
   install(): void {
     const state = (event: Electron.IpcMainInvokeEvent | Electron.IpcMainEvent) => {
       const owner = this.stateFor(event.sender.id);
@@ -62,6 +68,13 @@ export class LanguageManager {
       if (binding) void binding.server.notify('textDocument/didSave', { textDocument: { uri: binding.uri } }).catch(() => {});
     });
     ipcMain.handle('language:restart', event => this.dispose(state(event).webContentsId));
+    ipcMain.handle('language:choose-clangd', async event => {
+      const owner = state(event);
+      const result = await dialog.showOpenDialog(owner.window, { title: 'Select clangd Executable', properties: ['openFile'] });
+      if (result.canceled || !result.filePaths[0] || owner.window.isDestroyed()) return false;
+      await this.clangdSettings.set(result.filePaths[0]);
+      return true;
+    });
     let drained = false;
     app.on('will-quit', event => {
       if (drained || (!this.owners.size && !this.draining.size)) return;
@@ -82,13 +95,14 @@ export class LanguageManager {
   private async open(state: WindowState, document: LanguageDocument) {
     if (!document || typeof document.id !== 'string' || document.id.length > 128
       || typeof document.generation !== 'string' || document.generation.length > 128
-      || typeof document.path !== 'string' || !path.isAbsolute(document.path) || !/\.pyi?$/i.test(document.path)
+      || typeof document.path !== 'string' || !path.isAbsolute(document.path) || !languageSupport(document.path)
       || typeof document.text !== 'string' || document.text.length > 16 * 1024 * 1024
-      || !Number.isSafeInteger(document.version) || document.version < 1) throw new Error('Invalid Python document.');
+      || !Number.isSafeInteger(document.version) || document.version < 1) throw new Error('Invalid language document.');
+    const support = languageSupport(document.path)!;
     const file = canonicalPath(document.path);
     const owns = state.currentDocument?.path === file || state.rendererTabs.some(tab => !tab.isUntitled && tab.path === file)
       || state.rendererGitReview?.path === file;
-    if (!owns) throw new Error('The Python document is not open in this window.');
+    if (!owns) throw new Error('The language document is not open in this window.');
     let owner = this.owners.get(state.webContentsId);
     if (!owner) {
       owner = { state, documents: new Map(), servers: new Map(), requests: new Map() };
@@ -102,38 +116,44 @@ export class LanguageManager {
         });
       }
     }
+    const uri = pathToFileURL(file).href;
+    if ([...owner.documents.values()].some(other => other.id !== document.id && other.uri === uri))
+      throw new Error('Language document is already connected.');
     this.close(state.webContentsId, document.id);
     const root = state.projectRoot && isInside(canonicalPath(state.projectRoot), file)
-      ? canonicalPath(state.projectRoot) : path.dirname(file);
-    let server = owner.servers.get(root);
+      ? canonicalPath(state.projectRoot) : standaloneLanguageRoot(file, support.server);
+    const key = `${support.server}:${root}`;
+    let server = owner.servers.get(key);
     const owned = owner;
     if (!server) {
-      const { NODE_OPTIONS: _options, NODE_PATH: _nodePath, ...env } = process.env;
-      const entry = require.resolve('pyright/langserver.index.js');
-      server = new ServerSession({ executable: process.execPath,
-        // Pyright's Node runtime requires a physical server/typeshed tree.
-        // electron-builder keeps this dependency outside ASAR (see package.json).
-        args: [app.isPackaged ? entry.replace(/([\\/])app\.asar([\\/])/, '$1app.asar.unpacked$2') : entry, '--stdio'],
-        env: { ...env, ELECTRON_RUN_AS_NODE: '1' } }, root, params => {
+      const { NODE_OPTIONS: _options, NODE_PATH: _nodePath, ELECTRON_RUN_AS_NODE: _electron, ...env } = process.env;
+      const launch = support.server === 'clangd'
+        ? { executable: this.clangdSettings.executable(), args: clangdArgs, env }
+        : (() => {
+          const entry = require.resolve('pyright/langserver.index.js');
+          return { executable: process.execPath,
+            args: [app.isPackaged ? entry.replace(/([\\/])app\.asar([\\/])/, '$1app.asar.unpacked$2') : entry, '--stdio'],
+            env: { ...env, ELECTRON_RUN_AS_NODE: '1' } };
+        })();
+      server = new ServerSession(launch, root, params => {
         for (const binding of owned.documents.values()) {
-          // Pyright includes versions. Reject unversioned/stale diagnostics rather
+          // Both supported servers include versions. Reject unversioned/stale diagnostics rather
           // than pretending they belong to the newest unsaved buffer.
           if (binding.server === server && binding.uri === params.uri && params.version === binding.version)
             this.emit(owned, { type: 'diagnostics', id: binding.id, generation: binding.generation, version: binding.version, diagnostics: params.diagnostics });
         }
       }, message => this.emit(owned, { type: 'status', state: 'failed', message,
-        documents: [...owned.documents.values()].filter(binding => binding.server === server).map(({ id, generation }) => ({ id, generation })) }));
-      owner.servers.set(root, server);
+        documents: [...owned.documents.values()].filter(binding => binding.server === server).map(({ id, generation }) => ({ id, generation })) }), serverProfiles[support.server]);
+      owner.servers.set(key, server);
       server.watch(root);
     }
-    const binding = { id: document.id, generation: document.generation, uri: pathToFileURL(file).href, version: document.version, server };
-    if ([...owner.documents.values()].some(other => other.uri === binding.uri)) throw new Error('Python document is already connected.');
+    const binding = { id: document.id, generation: document.generation, uri, version: document.version, server };
     owner.documents.set(document.id, binding);
     this.emit(owner, { type: 'status', state: 'starting', documents: [{ id: binding.id, generation: binding.generation }] });
     const capabilities = await server.ready;
     if (this.owners.get(state.webContentsId) !== owner || owner.documents.get(document.id) !== binding)
-      throw new Error('Python document closed during initialization.');
-    await server.notify('textDocument/didOpen', { textDocument: { uri: binding.uri, languageId: 'python',
+      throw new Error('Language document closed during initialization.');
+    await server.notify('textDocument/didOpen', { textDocument: { uri: binding.uri, languageId: support.languageId,
       version: document.version, text: document.text } });
     this.emit(owner, { type: 'status', state: 'ready', documents: [{ id: binding.id, generation: binding.generation }] });
     return { uri: binding.uri, capabilities };

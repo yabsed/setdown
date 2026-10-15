@@ -13,6 +13,7 @@ import { readEditorViewport } from '../editor/editor-viewport';
 import { DocumentModelOwner, liveDocumentModels } from '../editor/live-document-model';
 import { installMarkdownEditorActions } from '../editor/markdown-editor-actions';
 import { monacoThemeName, registerMonacoThemes } from '../theme';
+import { languageSupport } from '../../core/document/language-support';
 import type { LanguageClient, LanguageOptions } from '../editor/language-client';
 
 type Options = {
@@ -349,7 +350,7 @@ export class MonacoEditor {
   private connectLanguage(tab: WorkspaceTab, model: Monaco.editor.ITextModel, api: typeof Monaco): void {
     if (this.languageClient) { this.languageClient.bind(tab, model); return; }
     const options = this.options.language;
-    if (!options || tab.document.isUntitled || model.getLanguageId() !== 'python') return;
+    if (!options || tab.document.isUntitled || !languageSupport(tab.document.path)) return;
     this.languageLoading ??= import('../editor/language-client').then(({ LanguageClient }) => {
       if (this.disposed) return;
       this.languageClient = new LanguageClient(api, { ...options, status: (state, message) => {
@@ -357,7 +358,7 @@ export class MonacoEditor {
         if (state !== 'failed') { this.languageError?.remove(); this.languageError = undefined; return; }
         if (!this.languageError) {
           this.languageError = document.createElement('button');
-          this.languageError.textContent = 'Python language support stopped · Restart';
+          this.languageError.textContent = 'Language support stopped · Restart';
           this.languageError.setAttribute('role', 'status');
           this.languageError.style.cssText = 'position:absolute;right:16px;bottom:12px;z-index:10;padding:6px 10px;color:inherit;background:var(--bg);border:1px solid currentColor;border-radius:4px';
           this.languageError.onclick = () => { void this.languageClient?.restart(); };
@@ -369,12 +370,18 @@ export class MonacoEditor {
         const currentModel = this.models.get(current.id);
         if (currentModel) this.languageClient.bind(current, currentModel);
       }
-    }).catch(error => { this.languageLoading = undefined; console.error('Could not load Python support', error); });
+    }).catch(error => { this.languageLoading = undefined; console.error('Could not load language support', error); });
   }
   private installBindings(api: typeof Monaco, editor: Monaco.editor.IStandaloneCodeEditor): void {
-    editor.addAction({ id: 'setdown.restart-python', label: 'Restart Python Language Server',
-      precondition: 'editorLangId == python', contextMenuGroupId: '9_cutcopypaste', contextMenuOrder: 10,
+    editor.addAction({ id: 'setdown.restart-language', label: 'Restart Language Servers',
+      precondition: 'editorLangId == python || editorLangId == c || editorLangId == cpp', contextMenuGroupId: '9_cutcopypaste', contextMenuOrder: 10,
       run: async () => { await this.languageClient?.restart(); } });
+    editor.addAction({ id: 'setdown.select-clangd', label: 'Select clangd Executable',
+      precondition: 'editorLangId == c || editorLangId == cpp', contextMenuGroupId: '9_cutcopypaste', contextMenuOrder: 11,
+      run: async () => {
+        try { if (await this.options.language?.port.chooseClangd()) await this.languageClient?.restart(); }
+        catch (error) { if (this.languageError) this.languageError.title = String(error); console.error(error); }
+      } });
     editor.onDidFocusEditorText(() => {
       const tab = this.options.active();
       if (tab && editor.getModel() === this.models.get(tab.id)) this.owners.get(tab.id)?.beginEditing(`document:${tab.id}`);

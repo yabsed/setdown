@@ -70,8 +70,10 @@ test('definition opens the existing Setdown tab and Python diagnostics survive r
     await expect(page.locator('.squiggly-error').first()).toBeVisible({ timeout: 15_000 });
     // Use the real Monaco command palette to exercise the restart action.
     await editor.press('F1');
-    await page.locator('.quick-input-box input').fill('Restart Python Language Server');
+    await page.locator('.quick-input-box input').fill('>Restart Language Servers');
+    await expect(page.locator('.quick-input-widget')).toContainText('Restart Language Servers');
     await page.locator('.quick-input-box input').press('Enter');
+    await expect(page.locator('.quick-input-widget')).toBeHidden();
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 25_000 });
     await expect(page.locator('.squiggly-error').first()).toBeVisible({ timeout: 15_000 });
     expect(await readFile(path.join(root, 'helpers.py'), 'utf8')).not.toContain('unknown_name');

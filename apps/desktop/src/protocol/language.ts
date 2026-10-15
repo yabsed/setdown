@@ -20,5 +20,6 @@ export type LanguageApi = {
   request(id: string, version: number, requestId: string, method: LanguageMethod, params: unknown): Promise<unknown>;
   cancel(requestId: string): void;
   restart(): Promise<void>;
+  chooseClangd(): Promise<boolean>;
   onEvent(listener: (event: LanguageEvent) => void): () => void;
 };

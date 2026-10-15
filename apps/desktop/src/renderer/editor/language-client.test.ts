@@ -5,15 +5,17 @@ import { createWorkspaceTab } from '../../core/workspace/workspace-state';
 import { LanguageClient } from './language-client';
 import { fromRange, markdown, toRange } from './language-conversion';
 
-function fixture() {
+function fixture(file = '/project/main.py', capabilities: import('vscode-languageserver-protocol').ServerCapabilities = { hoverProvider: true }) {
   let version = 1;
   let listener: ((event: M.editor.IModelContentChangedEvent) => void) | undefined;
   let event: (event: LanguageEvent) => void = () => {};
   const opened: LanguageDocument[] = [];
   const hover: { current?: M.languages.HoverProvider } = {};
+  const providers = new Map<string, any>();
   const dispose = () => {};
   const api = {
     languages: new Proxy({}, { get: (_target, key) => (_selector: unknown, provider: M.languages.HoverProvider) => {
+      providers.set(String(key), provider);
       if (key === 'registerHoverProvider') hover.current = provider;
       return { dispose };
     } }),
@@ -21,16 +23,16 @@ function fixture() {
     MarkerSeverity: { Error: 8, Warning: 4, Info: 2, Hint: 1 }, MarkerTag: { Unnecessary: 1, Deprecated: 2 },
   } as unknown as typeof M;
   const model = {
-    uri: { toString: () => 'file:///project/main.py?tab-1' },
-    getValue: () => 'text', getVersionId: () => version, getLanguageId: () => 'python', isDisposed: () => false,
+    uri: { fsPath: file, toString: () => `file://${file}?tab-1` },
+    getValue: () => 'text', getVersionId: () => version, getLanguageId: () => file.endsWith('.py') ? 'python' : 'cpp', isDisposed: () => false,
     onDidChangeContent: (callback: typeof listener) => { listener = callback; return { dispose: () => { listener = undefined; } }; },
   } as unknown as M.editor.ITextModel;
-  const tab = createWorkspaceTab('tab-1', { path: '/project/main.py', name: 'main.py', text: 'text', savedText: 'text',
+  const tab = createWorkspaceTab('tab-1', { path: file, name: file.split('/').at(-1)!, text: 'text', savedText: 'text',
     revision: 0, savedRevision: 0, isUntitled: false, diskVersion: { mtimeMs: 0, size: 0 } }, 'editor',
   { sourceLine: 1, yRatio: .3, reason: 'empty-document', confidence: 'fallback' });
   const port: LanguageApi = {
-    open: vi.fn(async document => { opened.push(document); return { uri: 'file:///project/main.py', capabilities: {} }; }),
-    change: vi.fn(async () => {}), close: vi.fn(), saved: vi.fn(), cancel: vi.fn(), restart: vi.fn(async () => {}),
+    open: vi.fn(async document => { opened.push(document); return { uri: 'file:///project/main.py', capabilities }; }),
+    change: vi.fn(async () => {}), close: vi.fn(), saved: vi.fn(), cancel: vi.fn(), restart: vi.fn(async () => {}), chooseClangd: vi.fn(async () => false),
     request: vi.fn(async () => null), onEvent: callback => { event = callback; return () => {}; },
   };
   const client = new LanguageClient(api, { port, prepare: async () => ({ tab, model }), open: async () => {}, status: vi.fn() });
@@ -38,7 +40,7 @@ function fixture() {
     version++;
     listener?.({ changes, versionId: version, isFlush: false, isEolChange: false } as M.editor.IModelContentChangedEvent);
   };
-  return { client, api, model, tab, port, event: (value: LanguageEvent) => event(value), opened, change, hover };
+  return { client, api, model, tab, port, event: (value: LanguageEvent) => event(value), opened, change, hover, providers };
 }
 const token: M.CancellationToken = { isCancellationRequested: false, onCancellationRequested: () => ({ dispose() {} }) };
 
@@ -55,7 +57,7 @@ test('retarget preserves the model and rejects diagnostics from the previous con
   f.event({ type: 'diagnostics', id: previous.id, generation: previous.generation, version: 1, diagnostics: [] });
   expect(f.api.editor.setModelMarkers).not.toHaveBeenCalled();
   f.event({ type: 'diagnostics', id: previous.id, generation: f.opened[1].generation, version: 1, diagnostics: [] });
-  expect(f.api.editor.setModelMarkers).toHaveBeenCalledWith(f.model, 'setdown-python', []);
+  expect(f.api.editor.setModelMarkers).toHaveBeenCalledWith(f.model, 'setdown-language', []);
   f.client.dispose();
 });
 
@@ -95,7 +97,7 @@ test('saving and requesting while initialization fails leaves no rejected editor
   vi.mocked(f.port.open).mockImplementation(() => new Promise((_resolve, fail) => { reject = fail; }));
   f.client.bind(f.tab, f.model);
   f.client.saved(f.model);
-  const pending = f.hover.current!.provideHover(f.model, { lineNumber: 1, column: 1 } as M.Position, token, { verbosityRequest: undefined });
+  const pending = (f.client as any).request(f.model, 'textDocument/hover', {}, token);
   reject(new Error('Server failed to initialize.'));
   expect(await pending).toBeNull();
   expect(f.port.saved).not.toHaveBeenCalled();
@@ -109,4 +111,21 @@ test('UTF-16 ranges are lossless and server Markdown never grants HTML or comman
   const rendered = markdown({ kind: 'markdown', value: '[run](command:malicious)<script>bad()</script>' });
   expect(rendered.isTrusted).toBe(false); expect(rendered.supportHtml).toBe(false);
   expect(markdown({ kind: 'plaintext', value: '**plain**' }).value).toBe('\\*\\*plain\\*\\*');
+});
+
+
+test('C++ providers use negotiated triggers, omit unsupported resolve and stay within their model', async () => {
+  const f = fixture('/project/main.cpp', { completionProvider: { triggerCharacters: ['.', '>', ':'], resolveProvider: false }, hoverProvider: true });
+  f.client.bind(f.tab, f.model);
+  await vi.waitFor(() => expect(f.providers.has('registerCompletionItemProvider')).toBe(true));
+  const completion = f.providers.get('registerCompletionItemProvider') as M.languages.CompletionItemProvider;
+  expect(completion.triggerCharacters).toEqual(['.', '>', ':']);
+  expect(completion.resolveCompletionItem).toBeUndefined();
+  expect(f.providers.has('registerRenameProvider')).toBe(false);
+  const other = { ...f.model };
+  expect(await f.hover.current!.provideHover(other, { lineNumber: 1, column: 1 } as M.Position, token, { verbosityRequest: undefined })).toBeNull();
+  expect(f.port.request).not.toHaveBeenCalled();
+  await f.hover.current!.provideHover(f.model, { lineNumber: 1, column: 1 } as M.Position, token, { verbosityRequest: undefined });
+  expect(f.port.request).toHaveBeenCalledOnce();
+  f.client.dispose();
 });

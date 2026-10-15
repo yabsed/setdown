@@ -1,3 +1,5 @@
+import { languageSupport } from './language-support';
+
 /** Shared policy: no Monaco, filesystem, renderer or worker dependency. */
 export const MARKDOWN_EXTENSIONS = ['md', 'markdown', 'mdown', 'mkdn', 'mkd', 'rmd', 'qmd', 'mdx'];
 export const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'avif', 'svg'];
@@ -56,6 +58,8 @@ function matchesPattern(name: string, pattern: string): boolean {
 /** Call only at model creation/retargeting; highlighting never gates file opening. */
 export function documentLanguage(filePath: string, languages: readonly RegisteredLanguage[], firstLine = ''): string {
   if (isMarkdownDocument(filePath)) return 'markdown';
+  const supported = languageSupport(filePath);
+  if (supported && languages.some(language => language.id === supported.languageId)) return supported.languageId;
   const name = fileName(filePath);
   const lower = name.toLowerCase();
   const exact = languages.find((language) => language.filenames?.includes(name));

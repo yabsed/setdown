@@ -309,10 +309,10 @@ loading a public page. Export sanitization and menu capability unit tests are
 included in the focused gate. Existing preparation, IME, position and visual
 checks remain required.
 
-Saved Python documents add language support to the existing Monaco model; they
+Saved Python and C/C++ documents add language support to the existing Monaco model; they
 do not replace the ordinary/Working Tree buffer or its Undo history. The language
-client is loaded only for a saved Python model, and analysis runs in bundled
-Pyright processes scoped to window and root. Markdown-only use starts no language
+client is loaded only for a saved supported model. Bundled Pyright and installed
+clangd processes are scoped to window, server kind and root. Markdown-only use starts no language
 server. Save As reconnects the file URI without replacing the model; immutable
 history/staged models are not language documents. Incremental changes preserve
 UTF-16 positions and simultaneous edit ordering, and diagnostic/response delivery
@@ -323,11 +323,21 @@ releases its server; restart resends the current unsaved text, and window/app ex
 waits for child cleanup with a kill deadline. Rename opens affected files through
 normal document ownership and validates versions before applying text edits; Undo
 remains per file. The language client/manager/session unit tests and real
-`language-support.spec.ts` cover these boundaries, including completion-widget
+`language-support.spec.ts` and `clangd-support.spec.ts` cover these boundaries, including completion-widget
 Escape, cross-file navigation, rename/Undo, Save As, Working Tree sharing, crash
 recovery and child-process reaping. Packaged-app smoke tests also require actual
 Python diagnostics from the unpacked bundled server. These small-project checks
 do not establish large-project indexing or completion-latency guarantees.
+
+clangd owns compilation database and `.clangd` interpretation. Setdown supplies
+UTF-16 capabilities and registers only negotiated providers/triggers, including
+omitting completion resolve when unsupported. The C++ tests use actual clangd,
+compile commands, include paths, defines, unsaved diagnostics, rename/Undo and
+header navigation. Missing-executable recovery uses the native chooser and a
+persisted absolute path. A timed-out UI request must cancel only that request;
+the existing crash/shutdown cleanup and bounded outstanding-request limit remain.
+Both the full unit suite and preview gate require `clangd` on PATH or an absolute
+`SETDOWN_CLANGD_PATH`; absent clangd fails these checks rather than skipping them.
 
 ## Required deterministic and browser checks
 
@@ -932,3 +942,55 @@ identities and comparisons are retained in
 and protocol traces remain in `test-results/lsp-preview-benchmark-2026-10-15`;
 final build, unit, GUI and package logs are in
 `test-results/lsp-final-validation`.
+
+## C/C++ language support validation, 2026-10-15
+
+Saved C/C++ files now use installed clangd alongside bundled Python/Pyright.
+The final full unit run passed **710 tests in 103 files**. The preview contract
+passed build/typecheck, **304 focused unit tests**, three comparator tests and
+**106 real Electron scenarios**, with no retries or skips. clangd 22.1.0 on Linux
+was exercised with real compilation commands, `.clangd` defines, headers,
+unsaved diagnostics, completion, hover/references, rename/Undo, UTF-16 edits,
+independent buffers, missing-executable recovery, persistence and restart.
+Windows packaged clangd was not tested. These are small-project checks, not a
+large-project indexing or completion-latency guarantee.
+
+Initial chooser test failures came from removing the command-palette `>` prefix
+and using `require` in an Electron evaluation context without it. Corrected
+tests assert the actual command entry, execute it, verify the persisted path
+and receive real diagnostics. Initial and final logs are retained in
+`test-results/clangd-validation-2026-10-15`.
+
+Heavy checks ran sequentially with 4 GiB RAM, 512 MiB swap and a 2304 MiB Node
+heap limit. GUI checks and measurements used isolated Xvfb, runtime and D-Bus.
+The independent baseline is `f2e88c07df87775954f627f6b6946b6bf27d5c38`, with its
+own `npm ci` installation and build. Lockfiles match; both use Electron 44.7.2.
+Three matched repetitions alternated AB/BA on one display, preserving all eight
+scenarios, five cycles and the unchanged 25% **and** 50ms thresholds.
+Values below are **baseline → candidate medians in milliseconds**; warm is
+cycles 3–5. No builds or other heavy checks ran during measurement.
+
+| Surface | Preparation | Edits | Measurement | First | Second | Warm |
+| --- | --- | --- | --- | --- | --- | --- |
+| document | 0ms | false | Esc → latest capture | 43.0 → 39.0 | 22.0 → 23.0 | 20.0 → 18.0 |
+| document | 0ms | false | Double-click → editor | 19.0 → 18.0 | 34.0 → 36.0 | 12.0 → 11.0 |
+| document | 0ms | true | Esc → latest capture | 382.0 → 387.0 | 100.0 → 93.0 | 87.0 → 83.0 |
+| document | 0ms | true | Double-click → editor | 22.0 → 19.0 | 15.0 → 15.0 | 13.0 → 15.0 |
+| document | 3000ms | false | Esc → latest capture | 39.0 → 39.0 | 22.0 → 24.0 | 18.0 → 26.0 |
+| document | 3000ms | false | Double-click → editor | 17.0 → 16.0 | 11.0 → 11.0 | 11.0 → 11.0 |
+| document | 3000ms | true | Esc → latest capture | 107.0 → 109.0 | 108.0 → 99.0 | 83.0 → 100.0 |
+| document | 3000ms | true | Double-click → editor | 19.0 → 21.0 | 12.0 → 16.0 | 15.0 → 13.0 |
+| review | 0ms | false | Esc → latest capture | 973.0 → 950.0 | 21.0 → 28.0 | 19.0 → 21.0 |
+| review | 0ms | false | Double-click → editor | 23.0 → 24.0 | 11.0 → 11.0 | 12.0 → 13.0 |
+| review | 0ms | true | Esc → latest capture | 1024.0 → 1005.0 | 1460.0 → 1537.0 | 178.0 → 178.0 |
+| review | 0ms | true | Double-click → editor | 20.0 → 22.0 | 20.0 → 22.0 | 17.0 → 21.0 |
+| review | 3000ms | false | Esc → latest capture | 24.0 → 25.0 | 22.0 → 23.0 | 18.0 → 18.0 |
+| review | 3000ms | false | Double-click → editor | 23.0 → 23.0 | 11.0 → 10.0 | 17.0 → 17.0 |
+| review | 3000ms | true | Esc → latest capture | 228.0 → 229.0 | 183.0 → 181.0 | 177.0 → 178.0 |
+| review | 3000ms | true | Double-click → editor | 23.0 → 21.0 | 18.0 → 19.0 | 19.0 → 18.0 |
+
+Result: **PASS**, 0 regressing buckets across 48 comparisons. These timings cover
+ordinary Markdown/Git transitions, not C++ indexing or completion. The
+[validation record](clangd-preview-benchmark-2026-10-15.json) retains every cycle,
+comparison, build/source identity and check result. Raw measurements remain in
+`test-results/clangd-preview-benchmark-2026-10-15`.

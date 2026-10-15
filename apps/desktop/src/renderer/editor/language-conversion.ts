@@ -14,7 +14,7 @@ export function markdown(value: L.MarkupContent | L.MarkedString | undefined): M
   isTrusted: false, supportHtml: false };
 }
 export function marker(api: typeof M, diagnostic: L.Diagnostic): M.editor.IMarkerData {
-  return { ...fromRange(diagnostic.range), message: typeof diagnostic.message === 'string' ? diagnostic.message : diagnostic.message.value, source: diagnostic.source ?? 'Pyright',
+  return { ...fromRange(diagnostic.range), message: typeof diagnostic.message === 'string' ? diagnostic.message : diagnostic.message.value, source: diagnostic.source,
     severity: diagnostic.severity === 1 ? api.MarkerSeverity.Error : diagnostic.severity === 2 ? api.MarkerSeverity.Warning
       : diagnostic.severity === 4 ? api.MarkerSeverity.Hint : api.MarkerSeverity.Info,
     code: diagnostic.code === undefined ? undefined : String(diagnostic.code),

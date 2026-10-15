@@ -110,26 +110,54 @@ Store downloads reuse `electron-chrome-web-store` (MIT).
 Non-Markdown text editing supports UTF-8, with or without a BOM, up to 16 MiB.
 It preserves uniform LF or CRLF line endings and the final-newline state.
 Unsupported encodings, binary content, and mixed line endings are rejected.
-Unknown text languages fall back to plain text. Saved `.py` and `.pyi` files use
-bundled Pyright for completion (`Ctrl+Space`), hover, signature help, diagnostics,
+Unknown text languages fall back to plain text. Saved Python (`.py`, `.pyi`) files
+use bundled Pyright; saved C/C++ sources and headers use an installed **clangd**.
+Both provide completion (`Ctrl+Space`), hover, signature help, diagnostics,
 definition (`F12`), references (`Shift+F12`), symbols and rename (`F2`). Other
-languages currently have syntax highlighting without language-server support;
-Python itself and compilers are not bundled.
+languages have syntax highlighting. Python, clangd and compilers are not bundled.
 
-Open a project folder to give Python analysis the correct workspace root.
-Without one, the file's containing directory is used. Pyright reads the project's
-`pyrightconfig.json` or `[tool.pyright]` configuration. Language changes use the
-same document and Undo history as ordinary editing and Working Tree review.
-Multi-file rename opens affected files as unsaved tabs; normal save/auto-save
-rules still apply, and Undo is per file. Save As reconnects analysis at the new
-path without replacing the model.
+For C/C++, install [clangd](https://clangd.llvm.org/installation), then open a source
+file. Setdown uses your selected executable first, then `SETDOWN_CLANGD_PATH`, then
+`clangd` on its inherited `PATH`. If the desktop launcher cannot find your clangd,
+use **Select clangd Executable** in the editor context menu or command palette
+(`F1`). The native file chooser saves its absolute path in Setdown's user settings
+and restarts language support in that window. Ordinary editing stays usable if
+clangd is missing or fails. **Restart Language Servers** reconnects the current
+unsaved buffers, including after updating an executable or build configuration.
 
-Python analysis starts only when a saved Python document gets an editor model.
-Windows have separate servers so unsaved text cannot leak between windows.
-Closing the last Python document in a root stops its server. If analysis stops,
-use **Restart Python Language Server** in the editor context menu or command
-palette (`F1`); the document stays editable. Formatting, code actions, arbitrary
-server commands and filesystem operations from language servers are not enabled.
+Open the project folder for a shared analysis root. With no folder open, C/C++
+finds the nearest ancestor containing `.clangd`, `compile_commands.json`,
+`compile_flags.txt`, `CMakeLists.txt` or `.git`; otherwise it uses the file's folder.
+Python uses the file's folder and reads `pyrightconfig.json` or `[tool.pyright]`.
+clangd itself reads [compilation commands](https://clangd.llvm.org/design/compile-commands)
+and [.clangd configuration](https://clangd.llvm.org/config), including include paths,
+defines, language standards and header inference. For CMake projects, generate
+`compile_commands.json` with `cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON`
+(using a Makefile/Ninja generator). For another build-directory name, point clangd
+to it with a project `.clangd` file:
+
+```yaml
+CompileFlags:
+  CompilationDatabase: path/to/build
+```
+
+Without build settings clangd uses fallback flags, which may produce missing
+include or macro errors. Setdown does not run the build or guess project flags.
+clangd uses two async workers, background indexing and disk-backed preambles;
+these limit concurrency but are not a hard memory cap for large C++ projects.
+
+Language support starts only when a saved, supported file gets an editor model.
+A server is shared by its window, language-server kind and project root. Python
+and C/C++ do not share a process; separate windows keep unsaved buffers isolated.
+Closing the last related document stops its server. A slow request is cancelled
+without killing a healthy server; startup and shutdown have bounded deadlines.
+
+Language changes use the same document and Undo history as ordinary editing and
+Working Tree review. Multi-file rename opens affected files as unsaved tabs;
+normal save/auto-save rules still apply, and Undo is per file. Save As reconnects
+analysis at the new path without replacing the model. Formatting, code actions,
+arbitrary server commands and filesystem operations from language servers are
+not enabled yet.
 
 PDF search uses the document's embedded text; scanned pages need an existing OCR
 text layer. Image files can be up to 64 MiB. PDF and image positions, zoom, and

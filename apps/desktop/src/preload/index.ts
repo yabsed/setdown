@@ -43,6 +43,7 @@ const api: MarkTexApi = {
     request: (id, version, requestId, method, params) => ipcRenderer.invoke('language:request', id, version, requestId, method, params),
     cancel: id => ipcRenderer.send('language:cancel', id),
     restart: () => ipcRenderer.invoke('language:restart'),
+    chooseClangd: () => ipcRenderer.invoke('language:choose-clangd'),
     onEvent: listener => subscribe('language:event', listener),
   },
   browser: {
