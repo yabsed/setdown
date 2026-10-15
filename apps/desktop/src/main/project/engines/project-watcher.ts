@@ -23,14 +23,14 @@ export class ProjectWatcher implements ProjectWatcherPort {
     this.generations.set(id, generation);
     await this.unsubscribe(id);
     if (state.window.isDestroyed()) return;
-    const subscription = await watcher.subscribe(root, (error) => {
+    const subscription = await watcher.subscribe(root, (error, events) => {
       if (error) {
         console.error('Project watcher failed:', error);
         return;
       }
       if (this.generations.get(id) !== generation || state.window.isDestroyed()
         || state.window.webContents.isDestroyed()) return;
-      state.window.webContents.send('project:files-changed', { root });
+      state.window.webContents.send('project:files-changed', { root, paths: [...new Set(events.map(event => event.path))] });
     }, { ignore: IGNORE });
     if (this.generations.get(id) !== generation || state.window.isDestroyed()) {
       await subscription.unsubscribe();

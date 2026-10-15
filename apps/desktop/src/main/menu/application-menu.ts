@@ -65,6 +65,16 @@ export function installApplicationMenu(context: MenuContext) {
   const state = () => context.focusedState();
   const contents = () => state()?.window.webContents;
   const command = context.sendCommand;
+  const history = (action: 'undo' | 'redo') => {
+    if (!state()?.explorerEditTarget) contents()?.[action]();
+  };
+  const edit = (name: 'cut' | 'copy' | 'paste' | 'select-all') => {
+    const current = state();
+    if (current?.explorerEditTarget && current.window.webContents.isFocused()) return command(`explorer:${name}`);
+    const target = contents();
+    if (name === 'select-all') target?.selectAll();
+    else target?.[name]();
+  };
   const menu = Menu.buildFromTemplate([
     {
       id: 'application-menu-file', label: 'File', submenu: [
@@ -125,14 +135,14 @@ export function installApplicationMenu(context: MenuContext) {
     },
     {
       id: 'application-menu-edit', label: 'Edit', submenu: [
-        { id: 'menu-undo', label: 'Undo', accelerator: 'CmdOrCtrl+Z', click: () => contents()?.undo() },
-        { id: 'menu-redo', label: 'Redo', accelerator: 'CmdOrCtrl+Shift+Z', click: () => contents()?.redo() },
+        { id: 'menu-undo', label: 'Undo', accelerator: 'CmdOrCtrl+Z', click: () => history('undo') },
+        { id: 'menu-redo', label: 'Redo', accelerator: 'CmdOrCtrl+Shift+Z', click: () => history('redo') },
         { type: 'separator' },
-        { id: 'menu-cut', label: 'Cut', accelerator: 'CmdOrCtrl+X', click: () => contents()?.cut() },
-        { id: 'menu-copy', label: 'Copy', accelerator: 'CmdOrCtrl+C', click: () => contents()?.copy() },
-        { id: 'menu-paste', label: 'Paste', accelerator: 'CmdOrCtrl+V', click: () => contents()?.paste() },
+        { id: 'menu-cut', label: 'Cut', accelerator: 'CmdOrCtrl+X', click: () => edit('cut') },
+        { id: 'menu-copy', label: 'Copy', accelerator: 'CmdOrCtrl+C', click: () => edit('copy') },
+        { id: 'menu-paste', label: 'Paste', accelerator: 'CmdOrCtrl+V', click: () => edit('paste') },
         { type: 'separator' },
-        { id: 'menu-select-all', label: 'Select All', accelerator: 'CmdOrCtrl+A', click: () => contents()?.selectAll() },
+        { id: 'menu-select-all', label: 'Select All', accelerator: 'CmdOrCtrl+A', click: () => edit('select-all') },
         { type: 'separator' },
         { id: 'menu-language-support', label: 'Language Support…', click: () => command('language-support') },
         { type: 'separator' },

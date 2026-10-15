@@ -11,6 +11,7 @@ import { ExplorerController } from './explorer/explorer-controller';
 import { project, rememberProjectState, type ProjectView } from './project-state.svelte';
 import { SearchController } from './search/search-controller';
 import { SourceControlController } from './source-control/source-control-controller';
+import type { ExplorerTransfer } from '../../protocol/explorer';
 
 type SearchTarget = Pick<ProjectSearchResult, 'surface' | 'line' | 'column' | 'lineOccurrence' | 'ordinal'>;
 type Options = {
@@ -26,6 +27,8 @@ type Options = {
   highlight(query: string, target?: SearchTarget): void;
   pathMoved(from: string, to: string): Promise<void>;
   prepareRemove(path: string): Promise<boolean>;
+  commitRemove(path: string): Promise<void>;
+  runMutation<T>(operation: () => Promise<T>): Promise<T>;
   reviewChanged(open: boolean, active: boolean): void;
   resized(): void;
 };
@@ -35,10 +38,12 @@ export class ProjectController {
   private readonly searcher: SearchController;
   private readonly sourceControl: SourceControlController;
   private changeTimer?: number;
+  private changedPaths = new Set<string>();
+  private fullRefresh = false;
 
   constructor(private readonly options: Options) {
     this.explorer = new ExplorerController({ desktop: options.desktop, showDocument: options.showDocument,
-      pathMoved: options.pathMoved, prepareRemove: options.prepareRemove });
+      pathMoved: options.pathMoved, prepareRemove: options.prepareRemove, commitRemove: options.commitRemove, runMutation: options.runMutation });
     this.searcher = new SearchController({ desktop: options.desktop, documents: options.searchDocuments,
       // The composition root deactivates the old review only after a successful read.
       open: (path) => this.explorer.open(path), highlight: options.highlight });
@@ -95,16 +100,25 @@ export class ProjectController {
   renameEntry = (path: string, name: string): Promise<void> => this.explorer.rename(path, name);
   moveEntry = (path: string, target: string): Promise<void> => this.explorer.move(path, target);
   moveEntries = (paths: string[], target: string): Promise<string[]> => this.explorer.moveMany(paths, target);
+  transferEntries = (request: ExplorerTransfer | { kind: 'paste'; target: string; conflict?: ExplorerTransfer['conflict'] }) => this.explorer.transfer(request);
+  revealEntry = (path: string) => this.explorer.reveal(path);
   trashEntry = (path: string): Promise<boolean> => this.explorer.trash(path);
   openSearchResult = (result: ProjectSearchResult): Promise<void> => this.searcher.open(result);
   search = (query: string): void => this.searcher.search(query);
   toggleSearchGroup = (path: string): void => this.searcher.toggleGroup(path);
   contextChanged = (): void => this.searcher.contextChanged();
   documentSaved = (document: DocumentSnapshot): Promise<void> => this.sourceControl.documentSaved(document);
-  filesChanged = (root: string): void => {
+  filesChanged = (root: string, paths?: string[]): void => {
     if (root !== project.folder?.path) return;
-    window.clearTimeout(this.changeTimer);
-    this.changeTimer = window.setTimeout(() => void this.refreshChangedProject(), 120);
+    if (!paths) this.fullRefresh = true;
+    else for (const path of paths) this.changedPaths.add(path);
+    if (this.changeTimer) return;
+    this.changeTimer = window.setTimeout(() => {
+      this.changeTimer = undefined;
+      const changed = this.fullRefresh ? undefined : [...this.changedPaths];
+      this.fullRefresh = false; this.changedPaths.clear();
+      void this.refreshChangedProject(changed);
+    }, 120);
   };
   refreshGit = (): Promise<void> => this.sourceControl.refresh();
   toggleGitGroup = (title: string): void => {
@@ -138,13 +152,14 @@ export class ProjectController {
     if (action !== 'fetch') await this.explorer.refresh();
   };
   private async replaceFolder(folder: ProjectFolder): Promise<void> {
+    window.clearTimeout(this.changeTimer); this.changeTimer = undefined; this.changedPaths.clear(); this.fullRefresh = false;
     project.folder = folder; project.visible = true; project.open = true; project.activeView = 'explorer';
     this.options.folderChanged?.(folder.path);
     this.searcher.clear(); this.sourceControl.clear(); rememberProjectState();
     await this.explorer.reset(folder); await this.sourceControl.refresh(); this.resize();
   }
-  private async refreshChangedProject(): Promise<void> {
-    await this.explorer.refresh();
+  private async refreshChangedProject(paths?: string[]): Promise<void> {
+    await this.explorer.refresh(paths);
     if (project.searchQuery.trim()) this.searcher.contextChanged();
     await this.sourceControl.refresh();
   }

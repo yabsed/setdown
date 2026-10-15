@@ -78,6 +78,14 @@ export class WindowManager {
     });
     window.setMenuBarVisibility(false);
     window.webContents.on('before-input-event', (event, input) => {
+      if (state.explorerEditTarget && input.type === 'keyDown' && !input.isComposing
+        && (input.control || input.meta) && !input.alt && !input.shift) {
+        const command = ({ c: 'copy', x: 'cut', v: 'paste', a: 'select-all' } as const)[input.key.toLowerCase() as 'c' | 'x' | 'v' | 'a'];
+        if (command) {
+          event.preventDefault(); window.webContents.send('app:command', `explorer:${command}`); return;
+        }
+        if (input.key.toLowerCase() === 'z') { event.preventDefault(); return; }
+      }
       const zoomStep = appZoomStep(input);
       if (zoomStep !== undefined) {
         event.preventDefault();

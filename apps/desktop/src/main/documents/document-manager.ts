@@ -131,7 +131,7 @@ export class DocumentManager {
 
   private unchangedOnDisk(document: DocumentSnapshot): boolean {
     try { return sameDiskVersion(diskVersion(document.path), document.diskVersion); }
-    catch { return true; }
+    catch { return false; }
   }
 
   private async confirmOverwrite(state: WindowState, document: DocumentSnapshot) {

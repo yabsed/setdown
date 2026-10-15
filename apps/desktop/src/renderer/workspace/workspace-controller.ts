@@ -47,6 +47,11 @@ export function startWorkspace(desktop: DesktopPort) {
   };
   applyShellTheme(initialTheme.id);
   let projectOpenRequest = 0;
+  let fileMutation: Promise<unknown> = Promise.resolve();
+  const saveDocument = (saveAs = false) => {
+    const result = fileMutation.then(() => documents.save(saveAs));
+    fileMutation = result.catch(() => {}); return result;
+  };
   const actions: AppActions = {
     changeZoom: (steps, scope, tabId) => desktop.changeZoom(steps, scope, tabId),
     newTerminal: () => { projects.deactivateGitDiff(); void tabs.openTerminal(); },
@@ -135,6 +140,13 @@ export function startWorkspace(desktop: DesktopPort) {
     renameProjectEntry: (path, name) => projects.renameEntry(path, name),
     moveProjectEntry: (path, target) => projects.moveEntry(path, target),
     moveProjectEntries: (paths, target) => projects.moveEntries(paths, target),
+    explorer: desktop.explorer,
+    transferProjectEntries: request => projects.transferEntries(request),
+    revealActiveProjectEntry: async () => {
+      const active = workspace.active;
+      if (active && isDocumentTab(active)) await projects.revealEntry(active.document.path);
+    },
+    openProjectTerminal: path => { projects.deactivateGitDiff(); void tabs.openTerminal(path); },
     openProjectFiles: async paths => { for (const path of paths) await projects.openFile(path, { pinned: true }); },
     trashProjectEntry: (path) => projects.trashEntry(path),
     openProjectSearchResult: (result) => void projects.openSearchResult(result),
@@ -149,7 +161,7 @@ export function startWorkspace(desktop: DesktopPort) {
     layoutProjectGitDiff: (bounds) => projects.layoutGitDiff(bounds),
     updateProjectGitDiffLine: (line) => projects.updateGitDiffLine(line),
     changeProjectGitWorkingTree: (text, edits) => projects.changeGitWorkingTree(text, edits),
-    saveProjectGitWorkingTree: () => void documents.save(false),
+    saveProjectGitWorkingTree: () => void saveDocument(),
     initializeProjectGit: () => void projects.initializeGit(),
     stageProjectGit: (paths) => void stageProjectChanges(paths),
     unstageProjectGit: (paths) => void projects.unstageGit(paths),
@@ -227,8 +239,10 @@ export function startWorkspace(desktop: DesktopPort) {
     id => actions.browserReaderEnter(id));
   /** Open shell menus/dialogs own Escape first (they close on it); reader
    * entry is the last stop for an unconsumed Esc. */
-  const popupOwnsEscape = () => [...document.querySelectorAll('[role="menu"], [role="listbox"], dialog[open]')]
+  const popupOwnsEscape = () => [...document.querySelectorAll('[role="menu"], [role="listbox"], [role="alertdialog"], dialog[open]')]
     .some(element => element.getClientRects().length > 0);
+  const explorerOwnsEscape = (target = document.activeElement) => target instanceof Element
+    && !!target.closest('.explorer-tree, .explorer-root, .explorer-filter, .project-context-menu, .project-confirm');
   /** Esc on a web page, mirroring the Markdown editor: extract a reader
    * snapshot first, then hide the live view behind it (page state kept). */
   const readerRequests = new Set<string>();
@@ -304,7 +318,14 @@ export function startWorkspace(desktop: DesktopPort) {
     },
     activateWorkingTree: tabs.activateWorkingTreePath, workingTreeBuffer: tabs.documentBuffer,
     workingTreeChanged: tabs.acceptWorkingTreeBuffer, reloadDocuments: tabs.reloadDocumentPaths,
-    pathMoved: tabs.relocatePath, prepareRemove: tabs.prepareRemove,
+    pathMoved: tabs.relocatePath, prepareRemove: tabs.prepareRemove, commitRemove: tabs.commitRemove,
+    runMutation: operation => {
+      const result = fileMutation.then(async () => {
+        const release = await autoSave.hold();
+        try { return await operation(); } finally { release(); }
+      });
+      fileMutation = result.catch(() => {}); return result;
+    },
     reviewChanged: (open, activeReview) => {
       const wasOpen = shell.dataset.gitDiff === 'true';
       shell.dataset.gitDiff = String(open);
@@ -339,7 +360,7 @@ export function startWorkspace(desktop: DesktopPort) {
       return { identity: `document:${workspace.activeId}`, document, editor: editor.editor, monaco: editor.api, model: editor.model };
     },
   };
-  const insertions = createEditorInsertions({ ...editorContext, save: () => documents.save(false) });
+  const insertions = createEditorInsertions({ ...editorContext, save: () => saveDocument() });
   const removeImagePaste = installEditorImagePaste(editorContext);
   void desktop.getAutoSave().then((enabled) => autoSave.setEnabled(enabled));
   const unsubscribeAutoSave = desktop.onAutoSaveChanged((enabled) => autoSave.setEnabled(enabled));
@@ -408,12 +429,16 @@ export function startWorkspace(desktop: DesktopPort) {
           && active.document.path === documentSnapshot.path) void tabs.reload(documentSnapshot);
       }).catch((error) => { console.error('Could not reload changed file', error); view.notice = true; });
     },
-    projectFilesChanged: (event) => projects.filesChanged(event.root),
+    projectFilesChanged: (event) => projects.filesChanged(event.root, event.paths),
     themeChanged: (snapshot) => { void reader.applyTheme(snapshot); void projects.applyTheme(snapshot.id); },
     windowCloseRequested: (names) => {
       void closePrompt.request('window', names).then((decision) => desktop.resolveWindowClose(decision));
     },
     command: (command) => {
+      if (command === 'escape' && explorerOwnsEscape()) return;
+      if (command.startsWith('explorer:')) {
+        window.dispatchEvent(new CustomEvent('setdown:explorer-command', { detail: command.slice('explorer:'.length) })); return;
+      }
       if (command === 'language-support') { view.languageSupportOpen = true; return; }
       if (command === 'new-web-tab') { actions.newWebTab(); return; }
       if (command === 'reopen-web-tab') { void desktop.browser.reopen().catch(error => { browser.error = String(error); }); return; }
@@ -438,8 +463,8 @@ export function startWorkspace(desktop: DesktopPort) {
       if (command === 'escape' && insertions.dismissOnEscape('native')) return;
       if (command === 'new-document') { projects.deactivateGitDiff(); void documents.create(); }
       if (command === 'open-folder') void projects.chooseFolder();
-      if (command === 'save' && (!project.gitDiffActive || (!project.gitDiff?.staged && !project.gitDiff?.history))) void documents.save(false);
-      if (command === 'save-as' && (!project.gitDiffActive || (!project.gitDiff?.staged && !project.gitDiff?.history))) void documents.save(true);
+      if (command === 'save' && (!project.gitDiffActive || (!project.gitDiff?.staged && !project.gitDiff?.history))) void saveDocument();
+      if (command === 'save-as' && (!project.gitDiffActive || (!project.gitDiff?.staged && !project.gitDiff?.history))) void saveDocument(true);
       if (command === 'export-pdf' && !project.gitDiffActive) void documents.exportPdf();
       if (command === 'close-tab') {
         if (project.gitDiffActive) projects.closeGitDiff(); else if (workspace.activeId) void closeDocumentTab(workspace.activeId);
@@ -460,12 +485,13 @@ export function startWorkspace(desktop: DesktopPort) {
         if (project.gitDiffActive && project.gitDiff) projects.toggleGitDiffMode(); else surfaces.toggle();
       }
     },
-    saveBeforeClose: () => void documents.saveAll(),
+    saveBeforeClose: () => void fileMutation.then(() => documents.saveAll()),
     transferIncoming: (transfer) => { projects.deactivateGitDiff(); void tabs.installTransferred(transfer); },
     transferCompleted: ({ transferId, tabId }) => {
       tabDrag.reset(); void tabs.removeTransferred(tabId).finally(() => desktop.releaseTabTransferSource(transferId));
     },
     keydown: (event) => {
+      if (event.key === 'Escape' && explorerOwnsEscape(event.target instanceof Element ? event.target : null)) return;
       if (!event.isComposing && event.altKey && !event.ctrlKey && !event.metaKey && !terminalOwnsInput(event.target)
         && ['ArrowLeft', 'ArrowRight'].includes(event.key) && !project.gitDiffActive && workspace.activeId) {
         event.preventDefault(); actions.navigateHistory(workspace.activeId, event.key === 'ArrowLeft' ? -1 : 1); return;
@@ -497,7 +523,7 @@ export function startWorkspace(desktop: DesktopPort) {
       }
       if (event.key.toLowerCase() === 's' && (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey) {
         event.preventDefault(); event.stopPropagation();
-        if (!project.gitDiffActive || (!project.gitDiff?.staged && !project.gitDiff?.history)) void documents.save(false);
+        if (!project.gitDiffActive || (!project.gitDiff?.staged && !project.gitDiff?.history)) void saveDocument();
         return;
       }
       if (event.key === 'Escape' && !project.gitDiffActive && workspace.active?.kind === 'web'

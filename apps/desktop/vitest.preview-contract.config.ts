@@ -4,6 +4,13 @@ import base from './vitest.config';
 export default defineConfig({
   ...base,
   test: { ...base.test, maxWorkers: 2, include: [
+    'src/main/project/file-transfer.test.ts',
+    'src/main/project/explorer-clipboard.test.ts',
+    'src/main/documents/document-save.test.ts',
+    'src/main/project/explorer-service.test.ts',
+    'src/renderer/project/explorer/explorer-presentation.test.ts',
+    'src/renderer/project/explorer/explorer-controller.test.ts',
+    'src/renderer/workspace/auto-save.test.ts',
     'src/main/language/server-session.test.ts',
     'src/main/language/server-registry.test.ts',
     'src/main/language/clangd-session.test.ts',

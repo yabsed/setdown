@@ -95,6 +95,10 @@ export type AppActions = {
   renameProjectEntry(path: string, name: string): Promise<void>;
   moveProjectEntry(path: string, targetDirectory: string): Promise<void>;
   moveProjectEntries(paths: string[], targetDirectory: string): Promise<string[]>;
+  explorer: import('../protocol/explorer').ExplorerApi;
+  transferProjectEntries(request: import('../protocol/explorer').ExplorerTransfer | { kind: 'paste'; target: string; conflict?: import('../protocol/explorer').ExplorerTransfer['conflict'] }): Promise<void>;
+  revealActiveProjectEntry(): Promise<void>;
+  openProjectTerminal(path: string): void;
   openProjectFiles(paths: string[]): Promise<void>;
   trashProjectEntry(path: string): Promise<boolean>;
   openProjectSearchResult(result: ProjectSearchResult): void;

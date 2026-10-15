@@ -19,6 +19,17 @@ afterEach(async () => {
 });
 
 describe('project service', () => {
+  test('a file open in another window cannot be moved or trashed underneath its editor', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-shared-'));
+    temporaryDirectories.push(root);
+    const file = path.join(root, 'shared.txt'); await writeFile(file, 'keep');
+    const other = { webContentsId: 2, rendererTabs: [{ path: file }], currentDocument: null } as WindowState;
+    const service = new ProjectService(async () => [], noWatcher, () => [other]);
+    const state = { projectRoot: root, webContentsId: 1 } as WindowState;
+    await expect(service.renameEntry(state, file, 'renamed.txt')).rejects.toThrow('another Setdown window');
+    await expect(service.trashEntry(state, file)).rejects.toThrow('another Setdown window');
+    expect((await service.transfer(state, { kind: 'duplicate', paths: [file] })).items[0].status).toBe('completed');
+  });
   test('classifies the document formats Setdown can open', () => {
     expect(isMarkdownDocument('notes.md')).toBe(true);
     expect(isMarkdownDocument('paper.QMD')).toBe(true);

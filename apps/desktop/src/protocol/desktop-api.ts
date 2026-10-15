@@ -38,7 +38,7 @@ export type PickLinkTargetResult = {
 
 export type ProjectFolder = { path: string; name: string };
 
-export type ProjectFilesChanged = { root: string };
+export type ProjectFilesChanged = { root: string; paths?: string[] };
 
 export type ProjectEntry = {
   path: string;
@@ -220,6 +220,7 @@ export type ApplicationMenuEntry = {
 export type CloseDecision = 'cancel' | 'discard' | 'save';
 
 export type AppCommand =
+  | `explorer:${import('./explorer').ExplorerEditCommand}`
   | 'new-web-tab'
   | 'reopen-web-tab'
   | 'focus-location'
@@ -241,6 +242,7 @@ export type AppCommand =
   | 'toggle-surface';
 
 export type MarkTexApi = {
+  explorer: import('./explorer').ExplorerApi;
   browser: import('./browser').BrowserApi;
   saveReadingPosition(record: import('../core/reading/reading-position').ReadingRecord): void;
   flushReadingPositions(): void;

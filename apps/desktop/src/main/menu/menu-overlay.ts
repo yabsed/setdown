@@ -8,14 +8,15 @@ import { executeApplicationMenu } from './application-menu';
  * the page or replacing its video frames with a captured image. */
 export class MenuOverlay {
   private readonly owners = new Map<number, { state: WindowState; view: WebContentsView; contents: WebContents;
-    context: MenuOverlayContext; ready: Promise<void>; generation: number }>();
+    context: MenuOverlayContext; ready: Promise<void>; generation: number; explorerTarget: boolean }>();
   constructor(entries: (state: WindowState, id: string) => ApplicationMenuEntry[]) {
     const owned = (id: number) => [...this.owners.values()].find(entry => entry.contents.id === id);
     ipcMain.handle('menu-overlay:context', event => owned(event.sender.id)?.context);
     ipcMain.handle('menu-overlay:entries', (event, id: string) => {
       const entry = owned(event.sender.id);
       if (entry && /^application-menu-(file|view|edit|window)$/.test(id)) entry.context.menuId = id;
-      return entry ? entries(entry.state, id) : [];
+      return entry ? entries(entry.state, id).map(item => entry.explorerTarget && ['menu-undo', 'menu-redo'].includes(item.id)
+        ? { ...item, enabled: false } : item) : [];
     });
     ipcMain.on('menu-overlay:close', event => {
       const entry = owned(event.sender.id) ?? this.owners.get(event.sender.id);
@@ -24,12 +25,16 @@ export class MenuOverlay {
     ipcMain.on('menu-overlay:execute', (event, id: string) => {
       const entry = owned(event.sender.id);
       if (!entry || !entry.view.getVisible()) return;
+      if (entry.explorerTarget && ['menu-undo', 'menu-redo'].includes(id)) return;
       const find = (rows: ApplicationMenuEntry[]): ApplicationMenuEntry | undefined => {
         for (const row of rows) { if (row.id === id) return row; const nested = row.submenu && find(row.submenu); if (nested) return nested; }
       };
       const item = find(entries(entry.state, entry.context.menuId));
       if (!item?.enabled || item.submenu || item.type === 'separator') return;
       this.close(entry.state.webContentsId);
+      if (entry.explorerTarget && ['menu-copy', 'menu-cut', 'menu-paste', 'menu-select-all'].includes(id)) {
+        entry.state.window.webContents.send('app:command', `explorer:${id.slice(5)}`); return;
+      }
       executeApplicationMenu(id, entry.state.window);
     });
   }
@@ -44,7 +49,7 @@ export class MenuOverlay {
       const contents = view.webContents;
       view.setBackgroundColor('#00000000'); view.setVisible(false);
       const url = new URL(state.window.webContents.getURL()); url.searchParams.set('menu-overlay', '1');
-      entry = { state, view, contents, context, generation: 0, ready: contents.loadURL(url.href) };
+      entry = { state, view, contents, context, generation: 0, ready: contents.loadURL(url.href), explorerTarget: false };
       this.owners.set(owner, entry);
       contents.setWindowOpenHandler(() => ({ action: 'deny' }));
       contents.on('will-navigate', event => event.preventDefault());
@@ -54,6 +59,7 @@ export class MenuOverlay {
       state.window.once('closed', () => { this.owners.delete(owner); if (!contents.isDestroyed()) contents.close(); });
     }
     entry.context = context;
+    entry.explorerTarget = state.explorerEditTarget === true;
     const generation = ++entry.generation;
     await entry.ready;
     if (entry.generation !== generation || state.window.isDestroyed() || entry.contents.isDestroyed()) return false;

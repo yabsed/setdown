@@ -20,6 +20,7 @@ export class AutoSaveController {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private pendingTabId: string | null = null;
   private queue: Promise<void> = Promise.resolve();
+  private pauses = 0;
 
   constructor(private readonly options: Options) {}
 
@@ -30,7 +31,7 @@ export class AutoSaveController {
   }
 
   schedule(tab: WorkspaceTab): void {
-    if (!this.enabled || tab.id !== this.options.activeId()) return;
+    if (this.pauses || !this.enabled || tab.id !== this.options.activeId()) return;
     if (tab.document.isUntitled || tab.document.kind !== undefined) return;
     this.cancel();
     this.pendingTabId = tab.id;
@@ -48,6 +49,18 @@ export class AutoSaveController {
     this.pendingTabId = null;
   }
 
+  /** Drain in-flight saves before changing paths; a canceled timer alone is insufficient. */
+  async hold(): Promise<() => void> {
+    this.pauses++;
+    this.cancel();
+    await this.queue;
+    return () => {
+      this.pauses--;
+      const active = this.options.tabs.find(tab => tab.id === this.options.activeId());
+      if (active && this.options.dirty(active)) this.schedule(active);
+    };
+  }
+
   /** Enabling auto save writes every dirty file-backed tab immediately. */
   private async saveDirtyTabs(): Promise<void> {
     for (const tab of [...this.options.tabs]) {
@@ -62,6 +75,7 @@ export class AutoSaveController {
   }
 
   private async save(tabId: string, requireActive: boolean): Promise<void> {
+    if (this.pauses) return;
     const { desktop, tabs, text, dirty, acceptSaved, saved } = this.options;
     const tab = tabs.find((candidate) => candidate.id === tabId);
     if (!tab || !dirty(tab)) return;

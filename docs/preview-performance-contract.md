@@ -354,6 +354,44 @@ and dynamic capabilities remain unadvertised. The real Rust integration test in
 [language support](language-support.md). All existing Python/clangd, native-preview,
 focus/IME and comparative latency checks remain required.
 
+## Explorer file operations and document ownership
+
+Explorer commands are scoped to the tree. Native accelerators, the main Edit
+menu, and context-menu actions must agree on the selected files; inline name
+inputs, Monaco, terminals and reading surfaces retain their own text clipboard.
+The native menu overlay retains the originating tree target across its focus
+change. File-operation Undo/Redo remains unavailable and must not accidentally
+undo the active editor while the tree owns the command.
+
+`main/project/explorer-service.ts` serializes mutations. `file-transfer.ts` copies
+through a staging directory on the destination volume and reserves destinations
+without replacing existing contents. It preserves nested symbolic links as
+links; unsupported file types fail instead of silently disappearing. The typed
+receipt identifies completed, skipped, failed and unstarted entries. Cut is
+consumed only for completed moves. A main-owned nonce on the system clipboard
+invalidates file selection when another copy replaces it; this is currently
+Setdown project clipboard support, not OS file-manager interoperability.
+
+`explorer-controller.ts` applies committed path mappings before watcher refresh,
+invalidates stale directory reads, and retains selection outside the mounted
+view. `project-watcher.ts` sends changed paths; ordinary notifications refresh
+affected cached parents, with full refresh available for explicit reload and
+transaction reconciliation. Rename/move must keep live model text and history.
+`AutoSaveController.hold()` drains in-flight saves before path changes, while the
+workspace queues explicit saves with mutations. A file open in another Setdown
+window blocks a destructive operation until those tabs close; cross-window
+retargeting is not yet implemented.
+
+Trash preparation confirms dirty documents but keeps their models alive. Only
+successful OS trash completion closes approved revisions. New edits during the
+job remain in their buffer, and autosave must not recreate a missing file.
+Tests cover filesystem collision/failure receipts, clipboard invalidation,
+stale reads, autosave draining and deletion lifecycle. `explorer-selection.spec.ts`
+executes keyboard, context-menu and main-menu copy/paste, duplicate, conflict
+choices, basename/IME handling, selection persistence and failed trash in real
+Electron. Existing native web/Markdown overlay identity and focus tests remain
+required. These guarantees do not imply large-tree virtualization or file Undo.
+
 ## Required deterministic and browser checks
 
 From the repository root:
@@ -1056,3 +1094,70 @@ Raw captures, per-run logs and the complete report remain in
 `test-results/language-registry-benchmark-2026-10-15/`. Latest-content assertions
 were required for edited captures. These small-document measurements retain the
 existing timing limitations and do not establish large-project LSP performance.
+
+
+## Explorer file operations validation, 2026-10-15
+
+Final functional checks: **109 unit files / 744 tests**, and the full
+`test:preview-contract` gate with **56 files / 353 tests**, three comparator
+checks, build/typecheck (zero Svelte errors/warnings), and **111 real Electron
+scenarios passed**. The seven Explorer scenarios include the original native
+pointer/multi-selection coverage and four new clipboard, conflict, inline-name
+and failed-trash scenarios. All GUI runs used isolated Xvfb/runtime/D-Bus.
+
+The first full Electron run had **110 passes / one failure**: the existing
+website-draggable-CSS test observed `drag` on an iframe. A single baseline run
+and five independent candidate diagnostic runs passed; the final full gate also
+passed. The browser policy and that assertion were unchanged. The intermittent
+failure is retained as an unresolved diagnostic observation, not described as a
+fixed Explorer regression. Logs are in `test-results/explorer-validation/`.
+
+The independent, separately installed baseline is
+`12a234033dc62019be3c8ef15067d40a4e907218`. Both builds use Electron 44.7.2.
+Heavy checks ran sequentially with `MemoryMax=4G`, `MemorySwapMax=512M` and a
+2304MiB Node heap. Baseline and candidate use the same isolated display and
+settings within each comparison batch. No scenario/assertion/retry/tolerance
+changes were made.
+
+Performance evidence includes the failed initial comparison:
+
+- Initial **three matched repetitions: FAIL, two regressing buckets**. Markdown,
+  immediate first Esc after editing: **326 → 440ms**. Git review, immediate first
+  Esc without edits: **973 → 1225ms**. These samples were not discarded.
+- A separate Chromium trace placed the ordinary show request at approximately
+  0ms in both apps; native layout/preparation and capture dominated the cold
+  delay. The preview bridge and review worker artifacts were byte-identical.
+  Trace runs include diagnostic probes and are **excluded from gate samples**;
+  they do not establish the cause of the initial difference.
+- Before further measurements, the follow-up was fixed at **five additional
+  matched repetitions**, using the same builds, harness, fixtures and thresholds.
+  That five-pair batch passed all 48 comparisons. It used the runner's
+  `--skip-build` option only after both original artifact hashes were verified.
+- Re-evaluating **all eight repetitions**, including every initial sample, also
+  passes **48 comparisons, zero regressions** at the unchanged joint thresholds
+  (>25% and >50ms). No production code changed between these two batches. The
+  checked-in record includes each batch's outcome, all eight per-bucket samples,
+  artifact identities and hashes of the changed/new source files.
+
+Median milliseconds below are **baseline → candidate** across all eight
+repetitions. First and second are distinct cycles; warm is the median of cycles
+3–5 within each process, then across processes. Source wait is listed separately.
+
+| Surface | Source wait | Edit | Esc first | Esc second | Esc warm | Double-click first | Double-click second | Double-click warm |
+| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Markdown | 0ms | no | 39.5 → 35.5 | 19 → 20 | 20.5 → 21.5 | 17.5 → 17 | 35.5 → 33 | 11 → 12 |
+| Markdown | 0ms | yes | 429.5 → 437.5 | 101 → 105.5 | 91 → 93.5 | 18.5 → 19.5 | 14.5 → 14 | 15 → 13 |
+| Markdown | 3000ms | no | 42.5 → 40 | 20.5 → 20 | 24.5 → 25.5 | 17.5 → 16.5 | 11 → 11 | 11 → 11 |
+| Markdown | 3000ms | yes | 108 → 108.5 | 94.5 → 102 | 90.5 → 92 | 17.5 → 17.5 | 15.5 → 15.5 | 14.5 → 14.5 |
+| Git review | 0ms | no | 942 → 939 | 21.5 → 19.5 | 28 → 24.5 | 24 → 22 | 11 → 11 | 12.5 → 12 |
+| Git review | 0ms | yes | 1013.5 → 1042.5 | 1497.5 → 1565.5 | 175 → 181 | 25.5 → 22.5 | 19.5 → 20.5 | 18.5 → 19 |
+| Git review | 3000ms | no | 28 → 24.5 | 21.5 → 22 | 18 → 17.5 | 23.5 → 24 | 11 → 11.5 | 17.5 → 17.5 |
+| Git review | 3000ms | yes | 229.5 → 229 | 188 → 187 | 176.5 → 177 | 21.5 → 22.5 | 18 → 19 | 18 → 17 |
+
+[Comparison summary, samples and validation metadata](explorer-preview-benchmark-2026-10-15.json).
+Full raw records are in `test-results/explorer-benchmark-2026-10-15/` and
+`test-results/explorer-benchmark-expanded-2026-10-15/`; the combined record and
+logs are in `test-results/explorer-validation/`. Separate Chromium traces are in
+`test-results/explorer-performance-diagnostic/`. These results cover Markdown/Git
+transitions; they do not establish large-tree or large-copy throughput, and do
+not prove the initial cold-path variation cannot recur.

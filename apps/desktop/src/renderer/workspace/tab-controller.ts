@@ -40,6 +40,7 @@ export class TabController {
   private readonly historyTasks = new Map<string, Promise<boolean>>();
   private readonly replacing = new Set<string>();
   private terminalNumber = 0;
+  private readonly removalApprovals = new Map<string, Map<string, number>>();
   constructor(private readonly options: Options) {}
   text = (tab: WorkspaceTab): string => isDocumentTab(tab) ? this.options.editor.text(tab) : '';
   dirty = (tab: WorkspaceTab): boolean => isDocumentTab(tab) && hasUnsavedText(tab.document, this.text(tab));
@@ -138,9 +139,9 @@ export class TabController {
     this.render();
     if (!background) await this.activate(page.id);
   };
-  openTerminal = async (): Promise<void> => {
+  openTerminal = async (cwd = ''): Promise<void> => {
     const id = crypto.randomUUID();
-    const session = { id, title: `Terminal ${++this.terminalNumber}`, cwd: '', exited: false };
+    const session = { id, title: `Terminal ${++this.terminalNumber}`, cwd, exited: false };
     this.options.workspace.terminals.set(id, session);
     this.options.workspace.add({ ...session, kind: 'terminal', sessionId: id, surface: 'terminal' });
     this.render(); await this.activate(id);
@@ -558,6 +559,7 @@ export class TabController {
     return true;
   };
   prepareRemove = async (entryPath: string): Promise<boolean> => {
+    this.removalApprovals.delete(entryPath);
     const affected = this.options.workspace.documents.filter((tab) => this.pathUnder(tab.document.path, entryPath));
     const dirty = affected.filter(this.dirty);
     if (dirty.length) {
@@ -570,8 +572,17 @@ export class TabController {
         if (this.dirty(tab)) return false;
       }
     }
-    for (const tab of affected) if (!await this.close(tab.id, true)) return false;
+    this.removalApprovals.set(entryPath, new Map(affected.map(tab => [tab.id, tab.revision])));
     return true;
+  };
+
+  commitRemove = async (entryPath: string): Promise<void> => {
+    const approved = this.removalApprovals.get(entryPath);
+    this.removalApprovals.delete(entryPath);
+    const affected = this.options.workspace.documents.filter(tab => this.pathUnder(tab.document.path, entryPath));
+    // New edits made while the OS trash job was pending were never approved for
+    // discard. Retain their buffer; autosave skips the now-missing backing file.
+    for (const tab of affected) if (approved?.get(tab.id) === tab.revision) await this.close(tab.id, true);
   };
 
   /** One path-change boundary for Save As and Explorer rename/move. */

@@ -26,6 +26,7 @@ import type { TabTransferManager } from '../tabs/tab-transfer-manager';
 import type { AutoSaveStore } from '../settings/auto-save-store';
 import type { ThemeManager } from '../theme/theme-manager';
 import type { WindowIpc } from './window-ipc';
+import type { ExplorerOperationResult, ExplorerTransfer } from '../../protocol/explorer';
 
 type Options = {
   channels: WindowIpc; documents: DocumentManager; previews: PreviewManager;
@@ -69,7 +70,8 @@ export function installIpc(options: Options): void {
     const webId = previews.zoom.activeTab(state.webContentsId);
     const webReader = !!webId && options.browsers.readerReady(state.webContentsId, webId) && !options.browsers.views.get(webId)?.view.getVisible();
     return documentMenus(applicationMenuEntries(menuId), isMarkdownDocument(filePath), review).map((item) =>
-      item.id === 'menu-export-pdf' && webReader ? { ...item, enabled: true } : isReadOnlyDocument(filePath) && ['save', 'menu-save-as'].includes(item.id) ? { ...item, enabled: false } : item);
+      item.id === 'menu-export-pdf' && webReader ? { ...item, enabled: true }
+        : (state.explorerEditTarget && ['menu-undo', 'menu-redo'].includes(item.id)) || (isReadOnlyDocument(filePath) && ['save', 'menu-save-as'].includes(item.id)) ? { ...item, enabled: false } : item);
   };
   channels.handle('menu:get', menuEntries);
   const locationOverlay = new LocationOverlay();
@@ -167,6 +169,21 @@ export function installIpc(options: Options): void {
   channels.handle('project:get-folder', (state) => projects.current(state));
   channels.handle('project:restore-folder', (state, folderPath: string) => projects.restore(state, folderPath));
   channels.handle('project:read-directory', (state, directoryPath: string) => projects.readDirectory(state, directoryPath));
+  const transferred = (result: ExplorerOperationResult) => {
+    if (result.kind === 'move') for (const item of result.items) {
+      if (item.status === 'completed') documents.positions?.move(item.from, item.to);
+    }
+    return result;
+  };
+  channels.handle('explorer:transfer', async (state, request: ExplorerTransfer) => transferred(await projects.transfer(state, request)));
+  channels.handle('explorer:clipboard', () => projects.clipboard.read());
+  channels.handle('explorer:copy', (state, paths: string[], cut: boolean) => projects.copySelection(state, paths, cut));
+  channels.handle('explorer:clear-clipboard', async () => {
+    if ((await projects.clipboard.read())?.cut) await projects.clipboard.clear();
+  });
+  channels.handle('explorer:paste', async (state, target: string, conflict?: ExplorerTransfer['conflict']) => transferred(await projects.paste(state, target, conflict)));
+  channels.handle('explorer:reveal', (state, candidate: string) => shell.showItemInFolder(projects.assertProjectFile(state, candidate)));
+  channels.on('explorer:edit-target', (state, active: boolean) => { state.explorerEditTarget = active === true; });
   channels.handle('project:create-entry', (state, request: { parentPath: string; name: string; kind: ProjectEntryKind }) =>
     projects.createEntry(state, request.parentPath, request.name, request.kind));
   channels.handle('project:rename-entry', async (state, request: { entryPath: string; name: string }) => {

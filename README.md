@@ -190,10 +190,27 @@ start at fit width.
 Opening a file does not automatically open its parent folder as a project.
 Choose **File → Open Folder…** for a sidebar with:
 
-- **Explorer:** browse, create, rename, move, and trash files and folders.
+- **Explorer:** browse, create, rename, copy, cut, paste, duplicate, move, and trash
+  files and folders. Use the context menu or `Ctrl/Cmd+C/X/V` while the tree is
+  focused; `Ctrl/Cmd+D` duplicates and `F2` renames the basename.
 - **Search:** search Markdown by default, or opt into all text files.
 - **Source control:** inspect changes, stage, unstage, discard, commit, fetch,
   pull, push, and sync using Git.
+
+Explorer keeps selection and scroll position when switching sidebar views. Its
+**…** menu provides Reveal Active File, a filter for loaded entries, name/type
+sorting, and hidden-file visibility. Type a filename prefix to jump; drag onto a
+folder to move, or hold Ctrl/Alt to copy. Hovering over a closed folder expands it.
+The context menu also opens a terminal at the selected folder or reveals an item
+in the system file manager.
+
+File copy/paste currently works within the open project in Setdown. Copy uses
+saved disk contents; Duplicate keeps the clipboard unchanged. Conflicting pastes
+offer Keep Both or Skip Existing; existing files are never replaced. File-operation
+Undo/Redo, OS file-manager clipboard interoperability, cross-volume moves, and
+folder merging are not yet supported. Close a file's tabs in other Setdown windows
+before moving, renaming, or trashing it. The current window preserves live editor
+buffers on rename/move and only closes approved tabs after trash succeeds.
 
 Markdown changes can be reviewed as rendered documents or source diffs. Staged
 review compares **HEAD → Index**; unstaged review compares **Index → the current

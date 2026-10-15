@@ -3,9 +3,11 @@ import path from 'node:path';
 import { dialog } from 'electron';
 import type { GitRemoteAction, ProjectEntryKind, ProjectFolder, ProjectSearchRequest } from '../../protocol/desktop-api';
 import { isOpenableDocument } from '../../core/document/document-profile';
-import { canonicalPath } from '../documents/file-system';
+import { canonicalPath, isInside } from '../documents/file-system';
 import type { WindowState } from '../windows/window-state';
 import { ExplorerService } from './explorer-service';
+import { ExplorerClipboardStore } from './explorer-clipboard';
+import type { ExplorerTransfer } from '../../protocol/explorer';
 import { ProjectWatcher, type ProjectWatcherPort } from './engines/project-watcher';
 import { GitService } from './git-service';
 import { ProjectPaths } from './project-paths';
@@ -16,12 +18,39 @@ export { isMarkdownDocument } from './project-paths';
 
 /** Thin project facade; text candidates are still validated by the byte loader. */
 export class ProjectService {
+  readonly clipboard = new ExplorerClipboardStore();
+  transfer = (state: WindowState, request: ExplorerTransfer) => this.explorer.transfer(state, request);
+  async copySelection(state: WindowState, candidates: string[], cut: boolean) {
+    if (!Array.isArray(candidates) || !candidates.length || candidates.length > 10000) throw new Error('Select files or folders first.');
+    const paths = [...new Set(candidates.map(candidate => this.paths.entry(state, candidate)))];
+    for (const candidate of paths) {
+      if (candidate === this.paths.root(state)) throw new Error('The open folder itself cannot be changed.');
+      await fs.lstat(candidate);
+    }
+    return this.clipboard.write(paths, cut === true);
+  }
+  async paste(state: WindowState, target: string, conflict?: ExplorerTransfer['conflict']) {
+    const selection = await this.clipboard.snapshot();
+    if (!selection) throw new Error('Copy or cut files in Setdown first.');
+    const result = await this.transfer(state, { kind: selection.cut ? 'move' : 'copy', paths: selection.paths, target, conflict });
+    await this.clipboard.consume(selection, result);
+    return result;
+  }
   private readonly paths = new ProjectPaths();
-  private readonly explorer = new ExplorerService(this.paths);
+  private readonly explorer = new ExplorerService(this.paths, undefined, (state, paths) => {
+    for (const other of this.windows()) {
+      if (other.webContentsId === state.webContentsId) continue;
+      const open = [...other.rendererTabs, ...(other.currentDocument ? [other.currentDocument] : [])];
+      if (open.some(tab => paths.some(root => isInside(root, tab.path)))) {
+        throw new Error('This selection is open in another Setdown window. Close those tabs before moving, renaming, or deleting it.');
+      }
+    }
+  });
   private readonly git = new GitService(this.paths);
   private readonly searcher: SearchService;
   constructor(searchVisible: (documentPath: string, text: string, query: string, limit: number, root: string) => Promise<VisibleSearchMatch[]>,
-    private readonly watcher: ProjectWatcherPort = new ProjectWatcher()) {
+    private readonly watcher: ProjectWatcherPort = new ProjectWatcher(),
+    private readonly windows: () => Iterable<WindowState> = () => []) {
     this.searcher = new SearchService(this.paths, searchVisible);
   }
   async choose(state: WindowState): Promise<ProjectFolder | null> {

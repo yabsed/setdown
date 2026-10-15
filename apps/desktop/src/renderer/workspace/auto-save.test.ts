@@ -47,6 +47,28 @@ function fixture() {
     setSaveResult: (result: typeof saveResult) => { saveResult = result; } };
 }
 
+test('file mutation drains an in-flight save and resumes at the new path', async () => {
+  const f = fixture();
+  const tab = f.add('/project/old.txt'); f.workspace.activeId = tab.id;
+  f.controller.setEnabled(true); tab.text = 'first';
+  let finish!: () => void;
+  f.desktop.saveTabDocument.mockImplementationOnce(async document => {
+    await new Promise<void>(resolve => { finish = resolve; });
+    return { canceled: false, document: { ...document, text: 'first', savedText: 'first' } };
+  });
+  f.controller.schedule(tab); await f.settle();
+  let held = false;
+  const barrier = f.controller.hold().then(release => { held = true; return release; });
+  await Promise.resolve(); assert.equal(held, false);
+  finish(); const release = await barrier;
+  tab.document.path = '/project/new.txt'; tab.text = 'second';
+  f.controller.schedule(tab); await f.settle();
+  assert.equal(f.desktop.saveTabDocument.mock.calls.length, 1);
+  release(); await f.settle();
+  assert.equal(f.desktop.saveTabDocument.mock.calls[1][0].path, '/project/new.txt');
+  assert.equal(f.desktop.saveTabDocument.mock.calls[1][1], 'second');
+});
+
 test('an edit saves the active dirty tab after the debounce delay', async () => {
   const f = fixture();
   const tab = f.add('/project/note.md');

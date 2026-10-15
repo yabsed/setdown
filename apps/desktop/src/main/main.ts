@@ -55,7 +55,7 @@ const autoSave = new AutoSaveStore(path.join(app.getPath('userData'), 'auto-save
 const documents = new DocumentManager(() => renderer.forgetNotebooks(), positions);
 const projectSearchRenderer = new ProjectSearchRenderer(path.join(__dirname, 'render-worker.cjs'), () => themes.id);
 const projects = new ProjectService((documentPath, text, query, limit, root) =>
-  projectSearchRenderer.search(documentPath, text, query, limit, root));
+  projectSearchRenderer.search(documentPath, text, query, limit, root), undefined, () => registry.values);
 const windows = new WindowManager({ registry, previews, themes });
 const browsers = new BrowserManager({ stateFor: id => registry.stateForWebContents(id), states: () => registry.values, zoom: previews.zoom,
   openFile: (state, file) => documents.open(state, file) });

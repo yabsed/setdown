@@ -65,6 +65,28 @@ function fixture() {
 const previewOpen = (controller: TabController, document: DocumentSnapshot) =>
   controller.show(document, 'viewer', 'document', undefined, { pinned: false });
 
+test('preparing deletion preserves dirty models until the filesystem commits', async () => {
+  const f = fixture();
+  await f.controller.show(snapshot('/project/keep.txt'));
+  const tab = f.workspace.documents[0]; tab.text = 'UNSAVED';
+  const dispose = vi.spyOn(f.options.editor, 'dispose');
+  assert.equal(await f.controller.prepareRemove('/project/keep.txt'), true);
+  assert.equal(f.workspace.documents[0], tab);
+  assert.equal(tab.text, 'UNSAVED'); assert.equal(dispose.mock.calls.length, 0);
+  // A failed trash operation simply never calls commitRemove.
+  await f.controller.commitRemove('/project/keep.txt');
+  assert.equal(f.workspace.documents.length, 0); assert.equal(dispose.mock.calls.length, 1);
+});
+
+test('new edits during an OS trash job are not covered by the earlier discard decision', async () => {
+  const f = fixture(); await f.controller.show(snapshot('/project/keep.txt'));
+  const tab = f.workspace.documents[0];
+  assert.equal(await f.controller.prepareRemove('/project/keep.txt'), true);
+  tab.text = 'NEW EDIT'; tab.revision++;
+  await f.controller.commitRemove('/project/keep.txt');
+  assert.equal(f.workspace.documents[0], tab); assert.equal(tab.text, 'NEW EDIT');
+});
+
 test.each([true, false])('text activation restores saved positions only without a live group view (live: %s)', async live => {
   const f = fixture();
   await f.controller.show(snapshot('/project/first.cpp'));
