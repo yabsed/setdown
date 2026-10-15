@@ -85,14 +85,14 @@
 <section class="language-support" aria-label="Language Support" aria-busy={busy}>
   <header class="side-view-title">
     <span>LANGUAGE SUPPORT</span>
-    <button disabled={busy} aria-label="Rescan installed servers" title="Rescan installed servers" onclick={() => perform(() => api.rescan())}>
-      <svg class:scanning={busy} viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M5 8a7.5 7.5 0 0 1 13-2l2 3M4 15l2 3a7.5 7.5 0 0 0 13-2"/></svg>
+    <button type="button" disabled={busy} aria-label="Rescan installed servers" title="Rescan installed servers" onclick={() => perform(() => api.rescan())}>
+      <svg class:scanning={busy} viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.46-3.54L13 6M13 2v4H9"/></svg>
     </button>
-    <button disabled={busy} aria-label="Add language server" title="Add language server" onclick={() => beginConnection()}>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    <button type="button" disabled={busy} aria-label="Add language server" title="Add language server" onclick={() => beginConnection()}>
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>
     </button>
-    <button aria-label="Close language support" title="Hide Language Support" onclick={onclose}>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+    <button type="button" aria-label="Close language support" title="Hide Language Support" onclick={onclose}>
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8"/></svg>
     </button>
   </header>
   {#if error}<p class="error" role="alert">{error}</p>{/if}

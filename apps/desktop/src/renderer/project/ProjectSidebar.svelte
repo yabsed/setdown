@@ -49,7 +49,7 @@
     </button>
     <button type="button" class:is-active={project.open && project.activeView === 'language'}
       aria-label="Language Support" aria-expanded={project.open && project.activeView === 'language'} title="Language Support" onclick={() => select('language')}>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 3.5h6v6h-6zM3.5 14.5h6v6h-6zM14.5 14.5h6v6h-6zM17.5 2l4.5 4.5-4.5 4.5L13 6.5z"/></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 6-5 6 5 6M16 6l5 6-5 6M14 4l-4 16"/></svg>
     </button>
     <button type="button" class="terminal-activity" class:is-active={project.open && project.activeView === 'terminal'}
       aria-label="Terminal" aria-expanded={project.open && project.activeView === 'terminal'} title="Terminal sessions (Ctrl+`)" onclick={() => select('terminal')}>
