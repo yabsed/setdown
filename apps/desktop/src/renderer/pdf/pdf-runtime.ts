@@ -61,6 +61,9 @@ export class PdfRuntime {
       // It releases the viewer's own scroll listener and ResizeObserver on tab disposal.
       const viewerOptions = { container, viewer: pages, eventBus: bus, abortSignal: this.abort.signal,
         linkService: links, findController: find, annotationMode: AnnotationMode.ENABLE,
+        // The draw-layer highlighter reads document selections, which Chromium
+        // retargets outside this shadow root. Keep native selection paint visible.
+        enableSelectionRendering: false,
         maxCanvasPixels: 16 * 1024 * 1024 };
       const viewer = this.viewer = new PDFViewer(viewerOptions);
       links.setViewer(viewer);

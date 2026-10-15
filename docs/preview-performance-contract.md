@@ -38,8 +38,16 @@ guarantees and are included in the focused gate.
 Text-bearing PDFs allow pointer selection, keyboard copy, and a native Copy menu
 on right-click inside the PDF. The selected range must belong to that PDF's
 shadow root; selections elsewhere in the shell must not appear in its menu.
+Native text selection paint stays enabled: PDF.js' draw-layer selection renderer
+uses document-level ranges and treats Chromium's shadow selection as collapsed,
+which hides its own highlight while suppressing the native one. Selection must
+remain visibly highlighted during dragging and after release, and clearing it
+must remove that highlight. The Electron test compares actual screenshot pixels.
 Image-only PDFs need OCR before their contents can be selected as text.
 `pdf-selection.spec.ts` covers the pointer and both copy paths in Electron.
+Set `SETDOWN_TEST_PDF_FILE` to an absolute PDF path when running that test to
+repeat the same visual and clipboard checks against a real document; it copies
+the file into its temporary workspace before opening it.
 
 Content zoom belongs to each tab. Ctrl+plus/minus and Ctrl+0 still change/reset
 persisted app zoom in every window. Ctrl+wheel and location-bar controls change
