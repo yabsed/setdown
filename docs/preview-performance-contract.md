@@ -339,6 +339,13 @@ the existing crash/shutdown cleanup and bounded outstanding-request limit remain
 Both the full unit suite and preview gate require `clangd` on PATH or an absolute
 `SETDOWN_CLANGD_PATH`; absent clangd fails these checks rather than skipping them.
 
+Ordinary and Git source editors use fixed-position Monaco overflow widgets.
+First-line LSP hovers may extend over the surrounding chrome without being
+clipped by editor-group or source-surface containers. `clangd-support.spec.ts`
+checks real include hovers in ordinary, lower split and Working Tree editors,
+including hit testing at all four corners and retained screenshots. DOM
+visibility alone does not establish that the complete popup is displayed.
+
 Language support now uses declarative server definitions and a persisted registry.
 The Language Support activity below Browser, `Edit → Language Support…`, and F1
 open the same lazy sidebar; the Setdown Folder Tools button retains its meaning.
@@ -1512,3 +1519,64 @@ fixtures. They do not establish large-project LSP indexing time, RSS, or every
 server's support for each optional feature. Workspace edits remain text-only
 with per-file Undo; notebook/debugger/virtual-document and multi-server support
 remain outside this implementation.
+
+## LSP overflow widget validation — 2026-10-16
+
+Ordinary and Git source editors now use Monaco's fixed overflow widgets, so
+include hovers remain painted and hit-testable across clipped source/group
+boundaries. The real clangd regression covers ordinary, lower split and Working
+Tree source, with screenshots and four-corner hit testing. The same test fails
+against the unmodified baseline. No editor model or native preview lifecycle was
+changed.
+
+Final verification passed **61 unit files / 400 tests**, **three benchmark
+comparator tests**, production build/typecheck with **zero Svelte errors or
+warnings**, and **117 real Electron scenarios**. All GUI runs used isolated
+Xvfb/runtime/D-Bus. An initial run exposed a pre-existing clangd formatting-test
+race: normalized whitespace matched before formatting and disk save completed.
+The test now waits for actual changed indentation and changed disk contents.
+Initial failing logs and final passing logs are retained; no retry, skipped
+scenario, weakened assertion or tolerance change was introduced.
+
+The independent baseline is `1f37fa1b3d3520d6cd918777248c9f5d9ce69344`, installed separately
+with offline npm ci. Both apps use Electron **44.7.2**.
+Five matched repetitions alternate baseline/candidate order on one isolated
+display. The harness reuses and verifies their current production builds with
+`--skip-build`. All eight scenarios, all five cycles, latest-content captures
+and real double-click input completed.
+
+Comparison: **PASS — zero regressions across 48 buckets**, using the unchanged
+joint thresholds (>25% and >50ms). Values below are **baseline → candidate**
+median milliseconds. Warm is the median of cycles 3–5 in each fresh process,
+then the median across repetitions. Preparation wait is separate from measured
+input latency; Esc includes native capture/readback, not monitor presentation.
+
+| Surface | Source wait | Edit | Esc first | Esc second | Esc warm | Double-click first | Double-click second | Double-click warm |
+| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Markdown | 0ms | no | 39 → 36 | 24 → 25 | 22 → 21 | 18 → 17 | 34 → 35 | 12 → 11 |
+| Markdown | 0ms | yes | 420 → 453 | 97 → 99 | 90 → 93 | 18 → 17 | 16 → 13 | 12 → 14 |
+| Markdown | 3000ms | no | 40 → 43 | 22 → 21 | 20 → 18 | 17 → 16 | 11 → 11 | 11 → 11 |
+| Markdown | 3000ms | yes | 111 → 94 | 99 → 100 | 90 → 90 | 20 → 17 | 17 → 12 | 15 → 14 |
+| Git review | 0ms | no | 964 → 979 | 24 → 25 | 21 → 22 | 23 → 26 | 11 → 12 | 13 → 12 |
+| Git review | 0ms | yes | 1039 → 1021 | 1558 → 1538 | 178 → 183 | 23 → 22 | 22 → 21 | 20 → 18 |
+| Git review | 3000ms | no | 28 → 27 | 22 → 21 | 19 → 18 | 24 → 24 | 12 → 12 | 18 → 17 |
+| Git review | 3000ms | yes | 231 → 236 | 185 → 189 | 181 → 179 | 22 → 24 | 18 → 18 | 17 → 18 |
+
+Including the **configured 3000ms preparation allowance**, first Esc totals are
+below. These add the explicit wait allowance to measured input latency; they do
+not measure preparation CPU time. The wait precedes only the first cycle, so
+second/warm and double-click values stay as above. The 0ms scenarios' inclusive
+values equal the first table.
+
+| Surface | Edit | First Esc including preparation allowance |
+| --- | --- | ---: |
+| Markdown | no | 3040 → 3043 |
+| Markdown | yes | 3111 → 3094 |
+| Git review | no | 3028 → 3027 |
+| Git review | yes | 3231 → 3236 |
+
+[Samples, build identities and source hashes](lsp-hover-preview-benchmark-2026-10-16.json).
+Raw measurements are in `test-results/lsp-hover-performance-2026-10-16/`; functional logs and hover screenshots
+are in `test-results/lsp-hover-validation/`. These measurements cover
+ordinary Markdown/Git transitions, not large-project LSP indexing or general
+popup latency.

@@ -153,6 +153,9 @@ export class MonacoEditor {
       host.className = 'group-monaco-instance';
       this.options.host.append(host);
       const editor = api.editor.create(host, {
+        // Group/surface containers clip their contents. Fixed widgets keep LSP
+        // hovers and suggestions visible when Monaco places them beyond a pane.
+        fixedOverflowWidgets: true,
         automaticLayout: true, 'semanticHighlighting.enabled': true, codeLens: false, inlayHints: { enabled: 'offUnlessPressed' }, linkedEditing: true, language: 'markdown', theme: monacoThemeName(this.options.theme()),
         wordWrap: 'on', wrappingIndent: 'same', lineNumbers: 'on', minimap: { enabled: false },
         scrollBeyondLastLine: false, smoothScrolling: true, cursorSmoothCaretAnimation: 'on',

@@ -109,6 +109,7 @@
   function ensureEditor(monaco: typeof Monaco) {
     if (editor || !host) return;
     editor = monaco.editor.createDiffEditor(host, {
+      fixedOverflowWidgets: true,
       theme: monacoThemeName(normalizePreviewTheme(document.documentElement.dataset.theme)),
       readOnly: true,
       originalEditable: false,

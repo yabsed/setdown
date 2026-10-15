@@ -1,11 +1,74 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { electron, disposeApplication, focusApplication } from './electron-app';
+const exec = promisify(execFile);
 
 // These are real clangd tests: install clangd on PATH or set SETDOWN_CLANGD_PATH.
 // A missing executable is a failure, not an untested pass.
+async function expectFullyPainted(widget: Locator): Promise<void> {
+  // DOM visibility alone succeeds even when an ancestor clips most of a hover.
+  await expect.poll(() => widget.evaluate(node => {
+    const box = node.getBoundingClientRect();
+    return [box.left + 3, box.right - 3].every(x => [box.top + 3, box.bottom - 3].every(y => {
+      const hit = document.elementFromPoint(x, y);
+      return hit !== null && node.contains(hit);
+    }));
+  })).toBe(true);
+}
+
+test('first-line LSP hovers remain fully visible above ordinary and split editors', async ({}, testInfo) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-hover-'));
+  const file = path.join(root, 'main.cpp'), other = path.join(root, 'other.txt');
+  await writeFile(path.join(root, 'empty.hpp'), '#pragma once\n');
+  await writeFile(file, '#include "empty.hpp"\nint value = 0;\n');
+  await exec('git', ['init'], { cwd: root });
+  await exec('git', ['add', 'main.cpp', 'empty.hpp'], { cwd: root });
+  await exec('git', ['-c', 'user.name=Setdown Test', '-c', 'user.email=setdown@example.test', 'commit', '-m', 'base'], { cwd: root });
+  await writeFile(file, '#include "empty.hpp"\nint value = 1;\n');
+  await writeFile(other, 'A separate editor group.\n');
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+  const application = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await application.firstWindow();
+    await page.evaluate(folder => window.marktex.restoreProjectFolder(folder), root); await page.reload();
+    await focusApplication(application);
+    await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 25_000 });
+    const include = () => page.locator('.view-line span').filter({ hasText: 'empty.hpp' }).last();
+    const hover = page.locator('.monaco-resizable-hover:visible');
+    await include().hover(); await expect(hover).toContainText('empty.hpp');
+    await expectFullyPainted(hover);
+    await page.screenshot({ path: testInfo.outputPath('ordinary-first-line-hover.png') });
+    await page.mouse.move(1, 1);
+    await page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), other);
+    await expect(page.getByRole('tab', { name: /other\.txt/ })).toHaveAttribute('aria-selected', 'true');
+    const data = await page.evaluateHandle(() => new DataTransfer());
+    await page.getByRole('tab', { name: /main\.cpp/ }).dispatchEvent('dragstart', { dataTransfer: data });
+    const body = (await page.locator('.group-body').boundingBox())!;
+    const drop = { dataTransfer: data, clientX: body.x + body.width / 2, clientY: body.y + body.height - 5 };
+    await page.locator('.group-body').dispatchEvent('dragover', drop);
+    await page.locator('.group-body').dispatchEvent('drop', drop);
+    await data.dispose();
+    await expect(page.locator('.editor-group')).toHaveCount(2);
+    await include().hover(); await expect(hover).toContainText('empty.hpp');
+    await expectFullyPainted(hover);
+    await page.screenshot({ path: testInfo.outputPath('split-first-line-hover.png') });
+    await page.mouse.move(1, 1);
+    await page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
+    await page.getByRole('button', { name: 'Source Control', exact: true }).click();
+    await page.locator('.git-change-open').filter({ hasText: 'main.cpp' }).click();
+    const modified = page.locator('.modified-in-monaco-diff-editor');
+    await expect(modified.locator('.view-lines')).toContainText('value = 1');
+    await modified.locator('.view-line span').filter({ hasText: 'empty.hpp' }).last().hover();
+    await expect(hover).toContainText('empty.hpp');
+    await expectFullyPainted(hover);
+    await page.screenshot({ path: testInfo.outputPath('git-first-line-hover.png') });
+  } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
+});
+
 test('clangd honors compile commands and .clangd, with completion, rename, Undo and header navigation', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-clangd-'));
   const config = await mkdtemp(path.join(os.tmpdir(), 'setdown-clangd-config-'));
@@ -59,9 +122,13 @@ test('clangd honors compile commands and .clangd, with completion, rename, Undo 
     await editor.press('F1'); await page.locator('.quick-input-box input').fill('>Format Document');
     await page.locator('.quick-input-box input').press('Enter');
     await expect(page.locator('.monaco-editor .view-lines')).toContainText('    int count = 4;');
+    // String matchers normalize indentation, and count already has four spaces.
+    // Wait for a line whose indentation actually changes before saving.
+    await expect(page.locator('.monaco-editor .view-line').filter({ hasText: 'return greeting(3);' }))
+      .toHaveText(/^\s{4}return\s+greeting\(3\);$/);
     await editor.press('Control+s');
+    await expect.poll(() => readFile(file, 'utf8')).not.toBe(beforeFormat);
     await expect.poll(() => readFile(file, 'utf8')).toContain('    int count = 4;');
-    expect(await readFile(file, 'utf8')).not.toBe(beforeFormat);
     await editor.press('Control+z'); await editor.press('Control+s');
     await expect.poll(() => readFile(file, 'utf8')).toBe(beforeFormat);
     // F12 crosses into the ordinary header tab and keeps the compile context.
