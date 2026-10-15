@@ -195,7 +195,19 @@ export function startWorkspace(desktop: DesktopPort) {
     edit: (anchor) => void surfaces.enterEditor(anchor), anchorChanged: () => { surfaces.publishAnchor(); positions?.schedule(); } });
   const preview = new PreviewSession({ desktop, get tabs() { return workspace.documents; }, active,
     activeId: () => workspace.activeId, text: () => tabs.currentText(), lineCount: () => tabs.lineCount(), reader });
-  const editor = new MonacoEditor({ host: editorHost, tabs: () => workspace.documents, active,
+  const editor: MonacoEditor = new MonacoEditor({ host: editorHost, tabs: () => workspace.documents, active,
+    language: { port: desktop.language,
+      prepare: async path => { const tab = await tabs.prepareLanguageDocument(path); return { tab, model: editor.modelFor(tab) }; },
+      open: async (path, selection) => {
+        const tab = await tabs.prepareLanguageDocument(path);
+        await tabs.activate(tab.id);
+        await surfaces.enterEditor();
+        if (selection && editor.editor) {
+          if ('startLineNumber' in selection) { editor.editor.setSelection(selection); editor.editor.revealRangeInCenter(selection); }
+          else { editor.editor.setPosition(selection); editor.editor.revealPositionInCenter(selection); }
+          editor.editor.focus();
+        }
+      } },
     theme: () => reader.themeId, status: (status) => shell.dataset.editorRuntime = status,
     viewChanged: () => positions?.schedule(),
     focusTab: (id) => actions.activateTab(id),
@@ -310,7 +322,7 @@ export function startWorkspace(desktop: DesktopPort) {
       reader.projectSearch(editing ? '' : query, editing ? undefined : currentTarget);
       editor.projectSearch(editing ? query : '', editing ? currentTarget : undefined);
     },
-    resized: reader.syncView,
+    resized: reader.syncView, folderChanged: root => editor.setLanguageRoot(root),
   });
   projectContextChanged = projects.contextChanged;
   installFolderDrop(shell, desktop, (path) => void projects.openFolderPath(path));
@@ -331,7 +343,7 @@ export function startWorkspace(desktop: DesktopPort) {
   const removeImagePaste = installEditorImagePaste(editorContext);
   void desktop.getAutoSave().then((enabled) => autoSave.setEnabled(enabled));
   const unsubscribeAutoSave = desktop.onAutoSaveChanged((enabled) => autoSave.setEnabled(enabled));
-  window.addEventListener('beforeunload', () => { positions.flush(); insertions.dispose(); removeImagePaste(); unsubscribeAutoSave(); }, { once: true });
+  window.addEventListener('beforeunload', () => { positions.flush(); insertions.dispose(); removeImagePaste(); unsubscribeAutoSave(); editor.disposeWorkspace(); }, { once: true });
   function toggleToc() {
     const tab = workspace.activeDocument;
     if (!tab || !hasMarkdownPreview(tab.document)) return;

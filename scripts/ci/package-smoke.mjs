@@ -44,8 +44,18 @@ try {
   }), { timeout: 60_000 }).toBe(heading);
   await page.locator('.mode-toggle').click();
   await expect(page.getByRole('textbox', { name: 'Editor content' })).toBeEditable({ timeout: 30_000 });
+  // The packaged server must resolve its own runtime and typeshed from the
+  // installed application, without a system Node installation or repository.
+  const python = path.join(profile, 'smoke.py');
+  await writeFile(python, 'value: int = "wrong"\n');
+  const snapshot = await page.evaluate(file => window.marktex.readDocumentLocation(file), python);
+  await app.evaluate(({ BrowserWindow }, document) => {
+    BrowserWindow.getAllWindows()[0].webContents.send('document:opened', document);
+  }, snapshot);
+  await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 30_000 });
+  await expect(page.locator('.squiggly-error').first()).toBeVisible({ timeout: 30_000 });
   expect(pageErrors).toEqual([]);
-  console.log(`Packaged ${platform} ${version}: launched, rendered Markdown, opened editor.`);
+  console.log(`Packaged ${platform} ${version}: launched, rendered Markdown, opened editor, received Python diagnostics.`);
 } catch (error) {
   stderr += `\n${error.stack ?? error}\n`;
   await page?.screenshot({ path: path.join(output, 'shell.png') }).catch(() => undefined);

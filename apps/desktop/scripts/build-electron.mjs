@@ -5,7 +5,7 @@ const shared = {
   platform: 'node',
   target: 'node22',
   sourcemap: true,
-  external: ['electron', 'crossnote', '@parcel/watcher', '@vscode/ripgrep', 'node-pty', '@xterm/headless', '@xterm/addon-serialize', 'electron-chrome-extensions', 'electron-chrome-web-store', 'turndown', 'turndown-plugin-gfm', 'sanitize-html'],
+  external: ['electron', 'crossnote', '@parcel/watcher', '@vscode/ripgrep', 'node-pty', '@xterm/headless', '@xterm/addon-serialize', 'electron-chrome-extensions', 'electron-chrome-web-store', 'turndown', 'turndown-plugin-gfm', 'sanitize-html', 'pyright'],
 };
 await Promise.all([
   build({ ...shared, entryPoints: ['src/main/main.ts'], outfile: 'dist-electron/main.cjs', format: 'cjs' }),

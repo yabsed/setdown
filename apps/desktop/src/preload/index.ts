@@ -35,6 +35,16 @@ function initialThemeSnapshot(): ThemeSnapshot {
 }
 
 const api: MarkTexApi = {
+  language: {
+    open: document => ipcRenderer.invoke('language:open', document),
+    change: (id, version, changes) => ipcRenderer.invoke('language:change', id, version, changes),
+    close: id => ipcRenderer.send('language:close', id),
+    saved: id => ipcRenderer.send('language:saved', id),
+    request: (id, version, requestId, method, params) => ipcRenderer.invoke('language:request', id, version, requestId, method, params),
+    cancel: id => ipcRenderer.send('language:cancel', id),
+    restart: () => ipcRenderer.invoke('language:restart'),
+    onEvent: listener => subscribe('language:event', listener),
+  },
   browser: {
     create: (id, input, history) => ipcRenderer.invoke('browser:create', id, input, history),
     history: (id) => ipcRenderer.invoke('browser:history', id),

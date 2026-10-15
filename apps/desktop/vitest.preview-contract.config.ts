@@ -4,6 +4,9 @@ import base from './vitest.config';
 export default defineConfig({
   ...base,
   test: { ...base.test, include: [
+    'src/main/language/server-session.test.ts',
+    'src/main/language/language-manager.test.ts',
+    'src/renderer/editor/language-client.test.ts',
     'src/architecture-boundaries.test.ts',
     'src/main/terminal/terminal-manager.test.ts',
     'src/main/terminal/terminal-screen.test.ts',

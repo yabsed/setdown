@@ -296,6 +296,26 @@ loading a public page. Export sanitization and menu capability unit tests are
 included in the focused gate. Existing preparation, IME, position and visual
 checks remain required.
 
+Saved Python documents add language support to the existing Monaco model; they
+do not replace the ordinary/Working Tree buffer or its Undo history. The language
+client is loaded only for a saved Python model, and analysis runs in bundled
+Pyright processes scoped to window and root. Markdown-only use starts no language
+server. Save As reconnects the file URI without replacing the model; immutable
+history/staged models are not language documents. Incremental changes preserve
+UTF-16 positions and simultaneous edit ordering, and diagnostic/response delivery
+checks the current connection and document version.
+
+Language failure must leave editing and saving usable. Closing the last document
+releases its server; restart resends the current unsaved text, and window/app exit
+waits for child cleanup with a kill deadline. Rename opens affected files through
+normal document ownership and validates versions before applying text edits; Undo
+remains per file. The language client/manager/session unit tests and real
+`language-support.spec.ts` cover these boundaries, including completion-widget
+Escape, cross-file navigation, rename/Undo, Save As, Working Tree sharing, crash
+recovery and child-process reaping. Packaged-app smoke tests also require actual
+Python diagnostics from the unpacked bundled server. These small-project checks
+do not establish large-project indexing or completion-latency guarantees.
+
 ## Required deterministic and browser checks
 
 From the repository root:
@@ -849,3 +869,54 @@ transitions; they do not measure web Reader rendering or export latency.
 [Complete validation and per-repetition measurements](reader-toolbar-removal-validation-2026-10-15.json)
 retain the build/harness identities and raw log paths, including the interrupted
 check of the superseded UI.
+
+## Python language support validation, 2026-10-15
+
+The final implementation keeps Monaco 0.56.0 and adds lazy Python providers with
+bundled Pyright 1.1.414. Full unit validation passed **704 tests in 101 files**.
+The preview gate passed build/typecheck, **298 focused unit tests**, three
+comparator tests and **103 real Electron scenarios**, without retries or skips.
+Eight CI policy tests also passed. A final Linux x64 unpacked release package
+rendered Markdown, opened the editor and received Python diagnostics from its
+bundled server. Windows packaged execution was not tested locally.
+
+Earlier build attempts were interrupted during the memory-exhaustion incident.
+After resuming, builds and heavy checks ran serially inside systemd scopes with
+4 GiB RAM and 512 MiB swap limits; Node build heaps were capped at 2304 MiB.
+GUI runs used isolated Xvfb, runtime directories and D-Bus sessions. The baseline
+and candidate used the same benchmark scope and display; no build ran during
+measurement. These resource limits do not change production application policy.
+
+The independently installed baseline is
+`bf464956ed12ce64453eb461426f1544b697be6b`; both versions use Electron 44.7.2.
+Three matched repetitions alternated AB/BA order, retaining all eight scenarios,
+five cycles and 48 comparisons with the unchanged 25% **and** 50ms thresholds.
+Values are **baseline → candidate medians in milliseconds**; warm is cycles 3–5.
+
+| Surface | Preparation | Edits | Measurement | First | Second | Warm |
+| --- | --- | --- | --- | --- | --- | --- |
+| document | 0ms | false | Esc → latest capture | 39.0 → 53.0 | 26.0 → 19.0 | 21.0 → 22.0 |
+| document | 0ms | false | Double-click → editor | 18.0 → 23.0 | 36.0 → 38.0 | 12.0 → 11.0 |
+| document | 0ms | true | Esc → latest capture | 437.0 → 464.0 | 103.0 → 97.0 | 93.0 → 91.0 |
+| document | 0ms | true | Double-click → editor | 19.0 → 21.0 | 15.0 → 13.0 | 13.0 → 12.0 |
+| document | 3000ms | false | Esc → latest capture | 47.0 → 41.0 | 15.0 → 19.0 | 20.0 → 24.0 |
+| document | 3000ms | false | Double-click → editor | 16.0 → 16.0 | 13.0 → 13.0 | 11.0 → 12.0 |
+| document | 3000ms | true | Esc → latest capture | 109.0 → 108.0 | 97.0 → 92.0 | 91.0 → 93.0 |
+| document | 3000ms | true | Double-click → editor | 20.0 → 17.0 | 17.0 → 13.0 | 15.0 → 15.0 |
+| review | 0ms | false | Esc → latest capture | 1388.0 → 1070.0 | 29.0 → 20.0 | 28.0 → 20.0 |
+| review | 0ms | false | Double-click → editor | 22.0 → 22.0 | 12.0 → 11.0 | 12.0 → 12.0 |
+| review | 0ms | true | Esc → latest capture | 1085.0 → 1149.0 | 1601.0 → 1682.0 | 178.0 → 174.0 |
+| review | 0ms | true | Double-click → editor | 23.0 → 22.0 | 20.0 → 21.0 | 17.0 → 16.0 |
+| review | 3000ms | false | Esc → latest capture | 25.0 → 31.0 | 20.0 → 15.0 | 19.0 → 18.0 |
+| review | 3000ms | false | Double-click → editor | 24.0 → 24.0 | 11.0 → 11.0 | 17.0 → 17.0 |
+| review | 3000ms | true | Esc → latest capture | 229.0 → 233.0 | 184.0 → 183.0 | 170.0 → 179.0 |
+| review | 3000ms | true | Double-click → editor | 24.0 → 21.0 | 19.0 → 18.0 | 17.0 → 16.0 |
+
+Result: **PASS**, 0 regressing buckets. This establishes the existing
+Markdown/Git transition gate, not large-project indexing, completion latency,
+or browser responsiveness under language-server load. All timing samples,
+identities and comparisons are retained in
+[the validation record](lsp-preview-benchmark-2026-10-15.json). Raw benchmark logs
+and protocol traces remain in `test-results/lsp-preview-benchmark-2026-10-15`;
+final build, unit, GUI and package logs are in
+`test-results/lsp-final-validation`.

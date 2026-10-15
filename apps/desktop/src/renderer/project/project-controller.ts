@@ -14,6 +14,7 @@ import { SourceControlController } from './source-control/source-control-control
 
 type SearchTarget = Pick<ProjectSearchResult, 'surface' | 'line' | 'column' | 'lineOccurrence' | 'ordinal'>;
 type Options = {
+  folderChanged?(root: string | null): void;
   desktop: DesktopPort;
   searchDocuments(query: string): ProjectSearchDocument[];
   showDocument(path: string, options?: EditorOpenOptions): Promise<boolean>;
@@ -74,8 +75,9 @@ export class ProjectController {
     const remembered = project.folder;
     const folder = await this.options.desktop.getProjectFolder()
       ?? (remembered ? await this.options.desktop.restoreProjectFolder(remembered.path) : null);
-    if (!folder) { project.folder = null; rememberProjectState(); return; }
+    if (!folder) { project.folder = null; this.options.folderChanged?.(null); rememberProjectState(); return; }
     project.folder = folder; rememberProjectState();
+    this.options.folderChanged?.(folder.path);
     await this.explorer.restore(folder);
     this.searcher.restore();
     await this.sourceControl.refresh();
@@ -137,6 +139,7 @@ export class ProjectController {
   };
   private async replaceFolder(folder: ProjectFolder): Promise<void> {
     project.folder = folder; project.visible = true; project.open = true; project.activeView = 'explorer';
+    this.options.folderChanged?.(folder.path);
     this.searcher.clear(); this.sourceControl.clear(); rememberProjectState();
     await this.explorer.reset(folder); await this.sourceControl.refresh(); this.resize();
   }

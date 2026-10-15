@@ -247,6 +247,7 @@ export type MarkTexApi = {
   readImageBytes(path: string, version: DiskVersion): Promise<Uint8Array>;
   mediaUrl(path: string): string;
   terminal: import('./terminal').TerminalApi;
+  language: import('./language').LanguageApi;
   getZoom(): Promise<import('../core/zoom').ZoomSnapshot>;
   changeZoom(steps: number, scope: 'app' | 'text' | 'terminal', tabId?: string): void;
   setZoomTabs(ids: string[], active: string | null): void;

@@ -584,6 +584,8 @@ export class TabController {
     Object.assign(tab, { previewUrl: null, previewRevision: null, previewTheme: null });
     if (!markdown) Object.assign(tab, { surface: documentSurface(tab.document.path), tocOpen: false, headings: [], activeHeadingId: null,
       viewerScrollRatio: null, find: { open: false, query: '', activeMatch: 0, matches: 0 } });
+    // Publish ownership of the new path before any language-server open IPC.
+    this.updateChrome();
     editor.retarget(tab);
     if (workspace.activeId !== tab.id) return;
     if (wasMarkdown || markdown) preview.reset();
@@ -608,6 +610,7 @@ export class TabController {
     // Only actual draft-asset text rewriting replaces content, not a pure rename.
     if (revision <= saved.revision && text !== saved.text) this.options.editor.replace(tab, saved);
     if (oldPath !== saved.path) await this.retarget(tab, oldPath);
+    this.options.editor.saved?.(tab);
     this.updateChrome();
   };
 
@@ -661,6 +664,24 @@ export class TabController {
   installModel = (documentSnapshot: DocumentSnapshot): void => {
     const tab = this.options.workspace.active;
     if (tab && isDocumentTab(tab)) this.options.editor.replace(tab, documentSnapshot);
+  };
+  /** Load a language edit target as an ordinary, unsaved-capable tab without stealing focus. */
+  prepareLanguageDocument = async (path: string): Promise<DocumentTab> => {
+    const { workspace } = this.options;
+    const existing = workspace.documents.find(tab => tab.document.path === path && !tab.document.isUntitled);
+    if (existing) return existing;
+    const document = await this.options.desktop.readDocumentLocation(fileLocation(path));
+    if (document.kind !== undefined) throw new Error('Language edits require a text document.');
+    // A concurrent definition/rename may have opened it during the disk read.
+    const opened = workspace.documents.find(tab => tab.document.path === document.path);
+    if (opened) return opened;
+    const tab = this.documentTab(crypto.randomUUID(), document, 'editor');
+    const activeId = workspace.activeId;
+    workspace.add(tab);
+    if (activeId) workspace.groups.activate(activeId);
+    this.restoreDocumentTab(tab);
+    this.render(); this.updateChrome();
+    return tab;
   };
   show = async (documentSnapshot: DocumentSnapshot, initialSurface: 'viewer' | 'editor' | 'pdf' | 'image' | 'video' = 'viewer',
     presentation: 'document' | 'review' = 'document', placement?: EditorGroupPlacement, openOptions: EditorOpenOptions = {}): Promise<void> => {

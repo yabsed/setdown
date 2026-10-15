@@ -29,6 +29,7 @@ import { WindowManager } from './windows/window-manager';
 import { TerminalManager } from './terminal/terminal-manager';
 import { installTerminalIpc } from './terminal/terminal-ipc';
 import { WindowRegistry } from './windows/window-registry';
+import { LanguageManager } from './language/language-manager';
 
 app.setName('Setdown');
 protocol.registerSchemesAsPrivileged([
@@ -145,6 +146,7 @@ else {
   });
   app.whenReady().then(async () => {
     installProtocols(); themes.load(); autoSave.load();
+    new LanguageManager(id => registry.stateForWebContents(id)).install();
     app.on('browser-window-created', (_event, window) => window.once('closed', () => setImmediate(() => {
       if (!Array.from(registry.values).length) browsers.dispose();
     })));

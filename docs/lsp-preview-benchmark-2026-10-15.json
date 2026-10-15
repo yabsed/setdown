@@ -1,0 +1,4741 @@
+{
+  "schema": 1,
+  "startedAt": "2026-10-15T09:05:07.148Z",
+  "runs": 3,
+  "thresholds": {
+    "relative": 0.25,
+    "absoluteMs": 50
+  },
+  "harness": "candidate; same tests for both apps; five cycles per fresh process",
+  "measurement": "Escape keydown to latest-content nonempty native capture; includes polling/IPC/readback, not monitor presentation",
+  "fixtureHash": "a0ce32593f31ce0b79bc63e3867c0a227532954c45d50c92e2dfdc5518541314",
+  "harnessHash": "28965d46354ff6e78e7fc4fa53403d3f759c9a9922d1a06c9d71ff35728aeb4c",
+  "machine": {
+    "hostname": "fedora",
+    "platform": "linux",
+    "release": "7.2.8-200.fc44.x86_64",
+    "arch": "x64",
+    "cpu": "AMD Ryzen 7 8845HS w/ Radeon 780M Graphics",
+    "cpus": 16,
+    "node": "v22.23.1",
+    "display": ":99"
+  },
+  "baseline": {
+    "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/.cache/setdown-lsp-baseline",
+    "commit": "bf464956ed12ce64453eb461426f1544b697be6b",
+    "status": "",
+    "diffHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "lockHash": "75e682f26a78f8dd2855eca415ffa3d1d6b7f2ad3eaed67bb1c886088375d2fd",
+    "electron": "44.7.2",
+    "artifacts": {
+      "renderer": "a5935e32b87442eeae307d399107d3462243d027a26b2480f6bba2f177f5fd65",
+      "main": "6bf18996740f22213f0a550618de9d3a8bf6a51ea035724d9a4f546bfc0e3f49"
+    }
+  },
+  "candidate": {
+    "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer",
+    "commit": "bf464956ed12ce64453eb461426f1544b697be6b",
+    "status": "M README.md\n M apps/desktop/package.json\n M apps/desktop/playwright.preview-contract.config.ts\n M apps/desktop/scripts/build-electron.mjs\n M apps/desktop/src/main/main.ts\n M apps/desktop/src/preload/index.ts\n M apps/desktop/src/protocol/desktop-api.ts\n M apps/desktop/src/renderer/adapters/monaco-editor.ts\n M apps/desktop/src/renderer/project/project-controller.ts\n M apps/desktop/src/renderer/workspace/tab-controller.ts\n M apps/desktop/src/renderer/workspace/workspace-controller.ts\n M apps/desktop/vitest.preview-contract.config.ts\n M docs/preview-performance-contract.md\n M package-lock.json\n M reports/2026_10_15_15_59_lsp_architecture_and_integration_strategy.md\n M scripts/ci/package-smoke.mjs\n?? apps/desktop/src/main/language/\n?? apps/desktop/src/protocol/language.ts\n?? apps/desktop/src/renderer/editor/language-client.test.ts\n?? apps/desktop/src/renderer/editor/language-client.ts\n?? apps/desktop/src/renderer/editor/language-conversion.ts\n?? apps/desktop/test/e2e/language-support.spec.ts",
+    "diffHash": "fa2441674206ae7b865e98e1e73483b994039da62b83f0eb1b7341838a18e829",
+    "lockHash": "d7246fbb711788e14d0f6d64cefba5c71f29fbffee09e6d0f2f37c646e143a69",
+    "electron": "44.7.2",
+    "artifacts": {
+      "renderer": "b8b4099c60ac07f8b945249b19e11adad7072cb3cd00ca241eeeeb674dd672a6",
+      "main": "4d3e1b369b4486d26bfeafff9a2ac0534b0fed97703f1897343c9c11791f73c8"
+    }
+  },
+  "order": [
+    "1-baseline",
+    "1-candidate",
+    "2-candidate",
+    "2-baseline",
+    "3-baseline",
+    "3-candidate"
+  ],
+  "measurements": {
+    "baseline": [
+      [
+        {
+          "readerIdle": 0,
+          "idle": 0,
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055111154,
+              "showMs": 53,
+              "captureMs": 121,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 235,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 18
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055111444,
+              "showMs": 0,
+              "captureMs": 26,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 451,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 33
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055111739,
+              "showMs": -1,
+              "captureMs": 13,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 660,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 34
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055112071,
+              "showMs": -1,
+              "captureMs": 23,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055112325,
+              "showMs": -1,
+              "captureMs": 22,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 13
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 3000,
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055119559,
+              "showMs": 0,
+              "captureMs": 42,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 16
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055119808,
+              "showMs": -1,
+              "captureMs": 18,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 14
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055120010,
+              "showMs": 0,
+              "captureMs": 19,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 10
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055120200,
+              "showMs": 0,
+              "captureMs": 25,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055120432,
+              "showMs": 0,
+              "captureMs": 14,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 10
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 3000,
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055124618,
+              "showMs": -1,
+              "captureMs": 109,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 20
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055124995,
+              "showMs": -1,
+              "captureMs": 97,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 17
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055125343,
+              "showMs": 0,
+              "captureMs": 92,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 18
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055125675,
+              "showMs": 0,
+              "captureMs": 84,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 14
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055125977,
+              "showMs": 0,
+              "captureMs": 91,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 15
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 0,
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055113570,
+              "showMs": 0,
+              "captureMs": 406,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 21
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055114265,
+              "showMs": 0,
+              "captureMs": 111,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 15
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055114630,
+              "showMs": -1,
+              "captureMs": 90,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 13
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055114966,
+              "showMs": 0,
+              "captureMs": 93,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055115298,
+              "showMs": -1,
+              "captureMs": 104,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 16
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "idle": 3000,
+          "returnMethod": "double-click",
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055145673,
+              "showMs": 174,
+              "captureMs": 232,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 23
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055146034,
+              "showMs": 129,
+              "captureMs": 174,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 11
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055146315,
+              "showMs": 116,
+              "captureMs": 183,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 18
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055146630,
+              "showMs": 132,
+              "captureMs": 192,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 17
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055146927,
+              "showMs": 111,
+              "captureMs": 171,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 17
+            }
+          ],
+          "kind": "review"
+        },
+        {
+          "idle": 0,
+          "returnMethod": "double-click",
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055133114,
+              "showMs": 1045,
+              "captureMs": 1085,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 20
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055134332,
+              "showMs": 1559,
+              "captureMs": 1601,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 21
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055136059,
+              "showMs": 115,
+              "captureMs": 188,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055136347,
+              "showMs": 127,
+              "captureMs": 181,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 18
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055136611,
+              "showMs": 130,
+              "captureMs": 189,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 13
+            }
+          ],
+          "kind": "review"
+        },
+        {
+          "idle": 3000,
+          "returnMethod": "double-click",
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055141024,
+              "showMs": 7,
+              "captureMs": 34,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 24
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055141154,
+              "showMs": 1,
+              "captureMs": 21,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 11
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055141235,
+              "showMs": 2,
+              "captureMs": 22,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 17
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055141323,
+              "showMs": 1,
+              "captureMs": 19,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 17
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055141407,
+              "showMs": 1,
+              "captureMs": 16,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 18
+            }
+          ],
+          "kind": "review"
+        },
+        {
+          "idle": 0,
+          "returnMethod": "double-click",
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055129831,
+              "showMs": 1350,
+              "captureMs": 1407,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 27
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055131343,
+              "showMs": 1,
+              "captureMs": 29,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 30
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055131484,
+              "showMs": 1,
+              "captureMs": 28,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 14
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055131582,
+              "showMs": 1,
+              "captureMs": 26,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055131677,
+              "showMs": 1,
+              "captureMs": 29,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 11
+            }
+          ],
+          "kind": "review"
+        }
+      ],
+      [
+        {
+          "readerIdle": 0,
+          "idle": 0,
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055222157,
+              "showMs": 0,
+              "captureMs": 39,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 266,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 39
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055222413,
+              "showMs": 0,
+              "captureMs": 35,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 514,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 36
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055222709,
+              "showMs": 0,
+              "captureMs": 23,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 740,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055222985,
+              "showMs": -1,
+              "captureMs": 21,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 13
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055223176,
+              "showMs": 0,
+              "captureMs": 18,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 11
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 3000,
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055230347,
+              "showMs": 0,
+              "captureMs": 47,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 16
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055230757,
+              "showMs": 0,
+              "captureMs": 15,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055231034,
+              "showMs": 0,
+              "captureMs": 25,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 11
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055231278,
+              "showMs": -1,
+              "captureMs": 15,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 11
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055231529,
+              "showMs": 0,
+              "captureMs": 25,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 10
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 3000,
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055235761,
+              "showMs": 0,
+              "captureMs": 112,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 15
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055236161,
+              "showMs": 0,
+              "captureMs": 111,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 17
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055236520,
+              "showMs": 0,
+              "captureMs": 92,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 19
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055236880,
+              "showMs": 0,
+              "captureMs": 91,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 14
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055237225,
+              "showMs": 0,
+              "captureMs": 90,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 13
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 0,
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055224416,
+              "showMs": -1,
+              "captureMs": 437,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 19
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055225091,
+              "showMs": 0,
+              "captureMs": 103,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 13
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055225462,
+              "showMs": -1,
+              "captureMs": 93,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 11
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055225793,
+              "showMs": 0,
+              "captureMs": 79,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055226112,
+              "showMs": -1,
+              "captureMs": 98,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "idle": 3000,
+          "returnMethod": "double-click",
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055256992,
+              "showMs": 173,
+              "captureMs": 228,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 24
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055257360,
+              "showMs": 132,
+              "captureMs": 185,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 20
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055257685,
+              "showMs": 122,
+              "captureMs": 177,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 17
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055257992,
+              "showMs": 113,
+              "captureMs": 170,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 17
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055258270,
+              "showMs": 136,
+              "captureMs": 166,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 10
+            }
+          ],
+          "kind": "review"
+        },
+        {
+          "idle": 0,
+          "returnMethod": "double-click",
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055244312,
+              "showMs": 965,
+              "captureMs": 1042,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 24
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055245504,
+              "showMs": 1548,
+              "captureMs": 1613,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 20
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055247253,
+              "showMs": 135,
+              "captureMs": 166,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 17
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055247521,
+              "showMs": 131,
+              "captureMs": 180,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055247809,
+              "showMs": 129,
+              "captureMs": 178,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 18
+            }
+          ],
+          "kind": "review"
+        },
+        {
+          "idle": 3000,
+          "returnMethod": "double-click",
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055252211,
+              "showMs": 8,
+              "captureMs": 25,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 26
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055252333,
+              "showMs": 1,
+              "captureMs": 20,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055252419,
+              "showMs": 1,
+              "captureMs": 17,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 18
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055252503,
+              "showMs": 1,
+              "captureMs": 17,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 17
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055252584,
+              "showMs": 1,
+              "captureMs": 18,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 17
+            }
+          ],
+          "kind": "review"
+        },
+        {
+          "idle": 0,
+          "returnMethod": "double-click",
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055241162,
+              "showMs": 1348,
+              "captureMs": 1388,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 22
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055242666,
+              "showMs": 1,
+              "captureMs": 21,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 11
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055242752,
+              "showMs": 1,
+              "captureMs": 18,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 13
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055242840,
+              "showMs": 1,
+              "captureMs": 29,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 16
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055242935,
+              "showMs": 1,
+              "captureMs": 18,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 17
+            }
+          ],
+          "kind": "review"
+        }
+      ],
+      [
+        {
+          "readerIdle": 0,
+          "idle": 0,
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055260609,
+              "showMs": 0,
+              "captureMs": 31,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 266,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 16
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055260819,
+              "showMs": -1,
+              "captureMs": 18,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 479,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 37
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055261135,
+              "showMs": 0,
+              "captureMs": 19,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 685,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 21
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055261528,
+              "showMs": 0,
+              "captureMs": 30,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055261788,
+              "showMs": 0,
+              "captureMs": 20,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 11
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 3000,
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055269341,
+              "showMs": 0,
+              "captureMs": 47,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 16
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055269621,
+              "showMs": 0,
+              "captureMs": 15,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 13
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055269840,
+              "showMs": 0,
+              "captureMs": 17,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055270038,
+              "showMs": 0,
+              "captureMs": 20,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 11
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055270231,
+              "showMs": 0,
+              "captureMs": 27,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 11
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 3000,
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055274425,
+              "showMs": 0,
+              "captureMs": 88,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 21
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055274842,
+              "showMs": 0,
+              "captureMs": 95,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 14
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055275163,
+              "showMs": 0,
+              "captureMs": 94,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 16
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055275606,
+              "showMs": 0,
+              "captureMs": 81,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055275936,
+              "showMs": 0,
+              "captureMs": 93,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 18
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 0,
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055263145,
+              "showMs": 0,
+              "captureMs": 475,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 17
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055263921,
+              "showMs": 0,
+              "captureMs": 98,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 16
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055264374,
+              "showMs": 0,
+              "captureMs": 104,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 18
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055264756,
+              "showMs": 0,
+              "captureMs": 97,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 15
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055265139,
+              "showMs": -1,
+              "captureMs": 82,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 13
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "idle": 3000,
+          "returnMethod": "double-click",
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055292803,
+              "showMs": 173,
+              "captureMs": 229,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 24
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055293155,
+              "showMs": 130,
+              "captureMs": 184,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 19
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055293451,
+              "showMs": 113,
+              "captureMs": 176,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 18
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055293757,
+              "showMs": 131,
+              "captureMs": 169,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 17
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055294035,
+              "showMs": 109,
+              "captureMs": 142,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 16
+            }
+          ],
+          "kind": "review"
+        },
+        {
+          "idle": 0,
+          "returnMethod": "double-click",
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055280318,
+              "showMs": 1011,
+              "captureMs": 1099,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 23
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055281542,
+              "showMs": 1529,
+              "captureMs": 1559,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 20
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055283238,
+              "showMs": 140,
+              "captureMs": 177,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 18
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055283539,
+              "showMs": 116,
+              "captureMs": 176,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 18
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055283819,
+              "showMs": 115,
+              "captureMs": 188,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 16
+            }
+          ],
+          "kind": "review"
+        },
+        {
+          "idle": 3000,
+          "returnMethod": "double-click",
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055288209,
+              "showMs": 9,
+              "captureMs": 24,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 24
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055288336,
+              "showMs": 1,
+              "captureMs": 16,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 10
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055288411,
+              "showMs": 2,
+              "captureMs": 24,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 16
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055288500,
+              "showMs": 1,
+              "captureMs": 19,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 17
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055288585,
+              "showMs": 1,
+              "captureMs": 16,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 17
+            }
+          ],
+          "kind": "review"
+        },
+        {
+          "idle": 0,
+          "returnMethod": "double-click",
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055277423,
+              "showMs": 1042,
+              "captureMs": 1094,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 22
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055278637,
+              "showMs": 1,
+              "captureMs": 29,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055278735,
+              "showMs": 1,
+              "captureMs": 14,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055278821,
+              "showMs": 1,
+              "captureMs": 28,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 11
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055278935,
+              "showMs": 1,
+              "captureMs": 31,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 12
+            }
+          ],
+          "kind": "review"
+        }
+      ]
+    ],
+    "candidate": [
+      [
+        {
+          "readerIdle": 0,
+          "idle": 0,
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055149286,
+              "showMs": 0,
+              "captureMs": 66,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 324,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 36
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055149561,
+              "showMs": -1,
+              "captureMs": 30,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 573,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 35
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055149900,
+              "showMs": -1,
+              "captureMs": 35,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055150181,
+              "showMs": 0,
+              "captureMs": 32,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 13
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055150439,
+              "showMs": 0,
+              "captureMs": 25,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 10
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 3000,
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055157572,
+              "showMs": -1,
+              "captureMs": 41,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 19
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055157861,
+              "showMs": 0,
+              "captureMs": 15,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 13
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055158082,
+              "showMs": 0,
+              "captureMs": 27,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055158307,
+              "showMs": 0,
+              "captureMs": 21,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 11
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055158506,
+              "showMs": -1,
+              "captureMs": 24,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 3000,
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055162733,
+              "showMs": 0,
+              "captureMs": 135,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 21
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055163126,
+              "showMs": 0,
+              "captureMs": 92,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055163432,
+              "showMs": -1,
+              "captureMs": 109,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 19
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055163782,
+              "showMs": 0,
+              "captureMs": 93,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 14
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055164077,
+              "showMs": -1,
+              "captureMs": 90,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 0,
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055151705,
+              "showMs": -1,
+              "captureMs": 483,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 23
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055152444,
+              "showMs": -1,
+              "captureMs": 97,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 17
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055152796,
+              "showMs": -1,
+              "captureMs": 79,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 15
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055153083,
+              "showMs": 0,
+              "captureMs": 91,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055153381,
+              "showMs": 0,
+              "captureMs": 94,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "idle": 3000,
+          "returnMethod": "double-click",
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055183791,
+              "showMs": 186,
+              "captureMs": 233,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 22
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055184141,
+              "showMs": 136,
+              "captureMs": 183,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 15
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055184432,
+              "showMs": 116,
+              "captureMs": 179,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 19
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055184710,
+              "showMs": 133,
+              "captureMs": 183,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 13
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055184994,
+              "showMs": 128,
+              "captureMs": 191,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 13
+            }
+          ],
+          "kind": "review"
+        },
+        {
+          "idle": 0,
+          "returnMethod": "double-click",
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055171102,
+              "showMs": 1055,
+              "captureMs": 1137,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 13
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055172380,
+              "showMs": 1628,
+              "captureMs": 1660,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 21
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055174180,
+              "showMs": 139,
+              "captureMs": 174,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 13
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055174470,
+              "showMs": 147,
+              "captureMs": 176,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 20
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055174765,
+              "showMs": 143,
+              "captureMs": 174,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 21
+            }
+          ],
+          "kind": "review"
+        },
+        {
+          "idle": 3000,
+          "returnMethod": "double-click",
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055179160,
+              "showMs": 8,
+              "captureMs": 27,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 24
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055179290,
+              "showMs": 1,
+              "captureMs": 16,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055179371,
+              "showMs": 1,
+              "captureMs": 18,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 20
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055179458,
+              "showMs": 1,
+              "captureMs": 15,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 17
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055179537,
+              "showMs": 1,
+              "captureMs": 20,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 16
+            }
+          ],
+          "kind": "review"
+        },
+        {
+          "idle": 0,
+          "returnMethod": "double-click",
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055167997,
+              "showMs": 1290,
+              "captureMs": 1326,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 25
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055169423,
+              "showMs": 1,
+              "captureMs": 17,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 11
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055169502,
+              "showMs": 2,
+              "captureMs": 19,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 13
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055169593,
+              "showMs": 1,
+              "captureMs": 27,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 23
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055169719,
+              "showMs": 2,
+              "captureMs": 20,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 13
+            }
+          ],
+          "kind": "review"
+        }
+      ],
+      [
+        {
+          "readerIdle": 0,
+          "idle": 0,
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055187263,
+              "showMs": 0,
+              "captureMs": 53,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 301,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 17
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055187488,
+              "showMs": 0,
+              "captureMs": 19,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 514,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 38
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055187813,
+              "showMs": -1,
+              "captureMs": 20,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 708,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 11
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055188093,
+              "showMs": -1,
+              "captureMs": 30,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 13
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055188327,
+              "showMs": 0,
+              "captureMs": 18,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 11
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 3000,
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055194837,
+              "showMs": -1,
+              "captureMs": 41,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 16
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055195097,
+              "showMs": 0,
+              "captureMs": 19,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 14
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055195308,
+              "showMs": 0,
+              "captureMs": 20,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055195507,
+              "showMs": 0,
+              "captureMs": 20,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 13
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055195746,
+              "showMs": -1,
+              "captureMs": 15,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 14
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 3000,
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055199979,
+              "showMs": 0,
+              "captureMs": 104,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 17
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055200350,
+              "showMs": -1,
+              "captureMs": 89,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 19
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055200703,
+              "showMs": 0,
+              "captureMs": 97,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 16
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055201060,
+              "showMs": -1,
+              "captureMs": 89,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055201367,
+              "showMs": -1,
+              "captureMs": 91,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 15
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 0,
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055189615,
+              "showMs": -1,
+              "captureMs": 324,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 15
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055190067,
+              "showMs": 0,
+              "captureMs": 96,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055190279,
+              "showMs": 0,
+              "captureMs": 95,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055190492,
+              "showMs": -1,
+              "captureMs": 85,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 16
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055190699,
+              "showMs": 0,
+              "captureMs": 90,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "idle": 3000,
+          "returnMethod": "double-click",
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055218591,
+              "showMs": 167,
+              "captureMs": 228,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 21
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055218939,
+              "showMs": 131,
+              "captureMs": 183,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 19
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055219240,
+              "showMs": 143,
+              "captureMs": 178,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 18
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055219544,
+              "showMs": 112,
+              "captureMs": 178,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 19
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055219826,
+              "showMs": 110,
+              "captureMs": 172,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 18
+            }
+          ],
+          "kind": "review"
+        },
+        {
+          "idle": 0,
+          "returnMethod": "double-click",
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055205763,
+              "showMs": 1069,
+              "captureMs": 1149,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 22
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055207026,
+              "showMs": 1647,
+              "captureMs": 1707,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 22
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055208857,
+              "showMs": 139,
+              "captureMs": 170,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 18
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055209123,
+              "showMs": 106,
+              "captureMs": 175,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 16
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055209425,
+              "showMs": 131,
+              "captureMs": 184,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 12
+            }
+          ],
+          "kind": "review"
+        },
+        {
+          "idle": 3000,
+          "returnMethod": "double-click",
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055213954,
+              "showMs": 8,
+              "captureMs": 32,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 27
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055214106,
+              "showMs": 1,
+              "captureMs": 15,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 11
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055214182,
+              "showMs": 2,
+              "captureMs": 22,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 19
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055214272,
+              "showMs": 1,
+              "captureMs": 16,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 16
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055214353,
+              "showMs": 1,
+              "captureMs": 18,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 11
+            }
+          ],
+          "kind": "review"
+        },
+        {
+          "idle": 0,
+          "returnMethod": "double-click",
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055202915,
+              "showMs": 1020,
+              "captureMs": 1070,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 22
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055204084,
+              "showMs": 1,
+              "captureMs": 20,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 11
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055204171,
+              "showMs": 1,
+              "captureMs": 31,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055204272,
+              "showMs": 2,
+              "captureMs": 30,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 11
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055204383,
+              "showMs": 3,
+              "captureMs": 18,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 12
+            }
+          ],
+          "kind": "review"
+        }
+      ],
+      [
+        {
+          "readerIdle": 0,
+          "idle": 0,
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055296325,
+              "showMs": 0,
+              "captureMs": 29,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 266,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 23
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055296544,
+              "showMs": 0,
+              "captureMs": 18,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 514,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 43
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055296865,
+              "showMs": 0,
+              "captureMs": 21,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 740,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 10
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055297145,
+              "showMs": 0,
+              "captureMs": 22,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 11
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055297367,
+              "showMs": 0,
+              "captureMs": 23,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 11
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 3000,
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055304613,
+              "showMs": 0,
+              "captureMs": 40,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 16
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055304849,
+              "showMs": -1,
+              "captureMs": 20,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055305049,
+              "showMs": 0,
+              "captureMs": 24,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055305243,
+              "showMs": 0,
+              "captureMs": 24,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055305453,
+              "showMs": 0,
+              "captureMs": 20,
+              "captureRequiresLatestContent": false,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 13
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 3000,
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055309628,
+              "showMs": -1,
+              "captureMs": 108,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 15
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055310023,
+              "showMs": -1,
+              "captureMs": 96,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 13
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055310352,
+              "showMs": 0,
+              "captureMs": 93,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 19
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055310700,
+              "showMs": 0,
+              "captureMs": 95,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 18
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055311027,
+              "showMs": 0,
+              "captureMs": 91,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 15
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "readerIdle": 0,
+          "idle": 0,
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055298657,
+              "showMs": 0,
+              "captureMs": 464,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 21
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055299376,
+              "showMs": 0,
+              "captureMs": 102,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 13
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055299726,
+              "showMs": 0,
+              "captureMs": 94,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 18
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055300073,
+              "showMs": 0,
+              "captureMs": 97,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 14
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055300403,
+              "showMs": -1,
+              "captureMs": 90,
+              "captureRequiresLatestContent": true,
+              "mathAtPostCaptureRead": 766,
+              "viewId": 2,
+              "geometry": {
+                "width": 1080,
+                "height": 710
+              },
+              "doubleClickToEditorMs": 13
+            }
+          ],
+          "kind": "document"
+        },
+        {
+          "idle": 3000,
+          "returnMethod": "double-click",
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055328280,
+              "showMs": 166,
+              "captureMs": 237,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 21
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055328632,
+              "showMs": 118,
+              "captureMs": 174,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 18
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055328909,
+              "showMs": 140,
+              "captureMs": 172,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 17
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055329187,
+              "showMs": 132,
+              "captureMs": 179,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 10
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055329451,
+              "showMs": 126,
+              "captureMs": 185,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 16
+            }
+          ],
+          "kind": "review"
+        },
+        {
+          "idle": 0,
+          "returnMethod": "double-click",
+          "edits": true,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055315418,
+              "showMs": 1130,
+              "captureMs": 1216,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 28
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055316783,
+              "showMs": 1621,
+              "captureMs": 1682,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 18
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055318591,
+              "showMs": 132,
+              "captureMs": 171,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 16
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055318866,
+              "showMs": 130,
+              "captureMs": 167,
+              "captureRequiresLatestContent": true,
+              "viewId": 5,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 17
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055319135,
+              "showMs": 128,
+              "captureMs": 190,
+              "captureRequiresLatestContent": true,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 12
+            }
+          ],
+          "kind": "review"
+        },
+        {
+          "idle": 3000,
+          "returnMethod": "double-click",
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055323650,
+              "showMs": 9,
+              "captureMs": 31,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 23
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055323795,
+              "showMs": 1,
+              "captureMs": 13,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 11
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055323877,
+              "showMs": 3,
+              "captureMs": 23,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 17
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055323967,
+              "showMs": 1,
+              "captureMs": 17,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 17
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055324049,
+              "showMs": 1,
+              "captureMs": 18,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 11
+            }
+          ],
+          "kind": "review"
+        },
+        {
+          "idle": 0,
+          "returnMethod": "double-click",
+          "edits": false,
+          "samples": [
+            {
+              "cycle": 1,
+              "escapeAt": 1792055312594,
+              "showMs": 1036,
+              "captureMs": 1066,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 22
+            },
+            {
+              "cycle": 2,
+              "escapeAt": 1792055313780,
+              "showMs": 1,
+              "captureMs": 21,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 3,
+              "escapeAt": 1792055313866,
+              "showMs": 1,
+              "captureMs": 15,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 12
+            },
+            {
+              "cycle": 4,
+              "escapeAt": 1792055313956,
+              "showMs": 1,
+              "captureMs": 25,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 11
+            },
+            {
+              "cycle": 5,
+              "escapeAt": 1792055314048,
+              "showMs": 1,
+              "captureMs": 17,
+              "captureRequiresLatestContent": false,
+              "viewId": 4,
+              "geometry": {
+                "width": 780,
+                "height": 710,
+                "dpr": 1
+              },
+              "doubleClickToEditorMs": 12
+            }
+          ],
+          "kind": "review"
+        }
+      ]
+    ]
+  },
+  "comparisons": [
+    {
+      "key": "document/idle=0/edits=false/first/captureMs",
+      "baselineMs": 39,
+      "candidateMs": 53,
+      "deltaMs": 14,
+      "relativeChange": 0.358974358974359,
+      "regression": false,
+      "baselineSamples": [
+        121,
+        39,
+        31
+      ],
+      "candidateSamples": [
+        66,
+        53,
+        29
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=false/second/captureMs",
+      "baselineMs": 26,
+      "candidateMs": 19,
+      "deltaMs": -7,
+      "relativeChange": -0.2692307692307692,
+      "regression": false,
+      "baselineSamples": [
+        26,
+        35,
+        18
+      ],
+      "candidateSamples": [
+        30,
+        19,
+        18
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=false/warm/captureMs",
+      "baselineMs": 21,
+      "candidateMs": 22,
+      "deltaMs": 1,
+      "relativeChange": 0.047619047619047616,
+      "regression": false,
+      "baselineSamples": [
+        22,
+        21,
+        20
+      ],
+      "candidateSamples": [
+        32,
+        20,
+        22
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=false/first/doubleClickToEditorMs",
+      "baselineMs": 18,
+      "candidateMs": 23,
+      "deltaMs": 5,
+      "relativeChange": 0.2777777777777778,
+      "regression": false,
+      "baselineSamples": [
+        18,
+        39,
+        16
+      ],
+      "candidateSamples": [
+        36,
+        17,
+        23
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=false/second/doubleClickToEditorMs",
+      "baselineMs": 36,
+      "candidateMs": 38,
+      "deltaMs": 2,
+      "relativeChange": 0.05555555555555555,
+      "regression": false,
+      "baselineSamples": [
+        33,
+        36,
+        37
+      ],
+      "candidateSamples": [
+        35,
+        38,
+        43
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=false/warm/doubleClickToEditorMs",
+      "baselineMs": 12,
+      "candidateMs": 11,
+      "deltaMs": -1,
+      "relativeChange": -0.08333333333333333,
+      "regression": false,
+      "baselineSamples": [
+        13,
+        12,
+        12
+      ],
+      "candidateSamples": [
+        12,
+        11,
+        11
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=false/first/captureMs",
+      "baselineMs": 47,
+      "candidateMs": 41,
+      "deltaMs": -6,
+      "relativeChange": -0.1276595744680851,
+      "regression": false,
+      "baselineSamples": [
+        42,
+        47,
+        47
+      ],
+      "candidateSamples": [
+        41,
+        41,
+        40
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=false/second/captureMs",
+      "baselineMs": 15,
+      "candidateMs": 19,
+      "deltaMs": 4,
+      "relativeChange": 0.26666666666666666,
+      "regression": false,
+      "baselineSamples": [
+        18,
+        15,
+        15
+      ],
+      "candidateSamples": [
+        15,
+        19,
+        20
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=false/warm/captureMs",
+      "baselineMs": 20,
+      "candidateMs": 24,
+      "deltaMs": 4,
+      "relativeChange": 0.2,
+      "regression": false,
+      "baselineSamples": [
+        19,
+        25,
+        20
+      ],
+      "candidateSamples": [
+        24,
+        20,
+        24
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=false/first/doubleClickToEditorMs",
+      "baselineMs": 16,
+      "candidateMs": 16,
+      "deltaMs": 0,
+      "relativeChange": 0,
+      "regression": false,
+      "baselineSamples": [
+        16,
+        16,
+        16
+      ],
+      "candidateSamples": [
+        19,
+        16,
+        16
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=false/second/doubleClickToEditorMs",
+      "baselineMs": 13,
+      "candidateMs": 13,
+      "deltaMs": 0,
+      "relativeChange": 0,
+      "regression": false,
+      "baselineSamples": [
+        14,
+        12,
+        13
+      ],
+      "candidateSamples": [
+        13,
+        14,
+        12
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=false/warm/doubleClickToEditorMs",
+      "baselineMs": 11,
+      "candidateMs": 12,
+      "deltaMs": 1,
+      "relativeChange": 0.09090909090909091,
+      "regression": false,
+      "baselineSamples": [
+        10,
+        11,
+        11
+      ],
+      "candidateSamples": [
+        12,
+        13,
+        12
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=true/first/captureMs",
+      "baselineMs": 109,
+      "candidateMs": 108,
+      "deltaMs": -1,
+      "relativeChange": -0.009174311926605505,
+      "regression": false,
+      "baselineSamples": [
+        109,
+        112,
+        88
+      ],
+      "candidateSamples": [
+        135,
+        104,
+        108
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=true/second/captureMs",
+      "baselineMs": 97,
+      "candidateMs": 92,
+      "deltaMs": -5,
+      "relativeChange": -0.05154639175257732,
+      "regression": false,
+      "baselineSamples": [
+        97,
+        111,
+        95
+      ],
+      "candidateSamples": [
+        92,
+        89,
+        96
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=true/warm/captureMs",
+      "baselineMs": 91,
+      "candidateMs": 93,
+      "deltaMs": 2,
+      "relativeChange": 0.02197802197802198,
+      "regression": false,
+      "baselineSamples": [
+        91,
+        91,
+        93
+      ],
+      "candidateSamples": [
+        93,
+        91,
+        93
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=true/first/doubleClickToEditorMs",
+      "baselineMs": 20,
+      "candidateMs": 17,
+      "deltaMs": -3,
+      "relativeChange": -0.15,
+      "regression": false,
+      "baselineSamples": [
+        20,
+        15,
+        21
+      ],
+      "candidateSamples": [
+        21,
+        17,
+        15
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=true/second/doubleClickToEditorMs",
+      "baselineMs": 17,
+      "candidateMs": 13,
+      "deltaMs": -4,
+      "relativeChange": -0.23529411764705882,
+      "regression": false,
+      "baselineSamples": [
+        17,
+        17,
+        14
+      ],
+      "candidateSamples": [
+        12,
+        19,
+        13
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=true/warm/doubleClickToEditorMs",
+      "baselineMs": 15,
+      "candidateMs": 15,
+      "deltaMs": 0,
+      "relativeChange": 0,
+      "regression": false,
+      "baselineSamples": [
+        15,
+        14,
+        16
+      ],
+      "candidateSamples": [
+        14,
+        15,
+        18
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=true/first/captureMs",
+      "baselineMs": 437,
+      "candidateMs": 464,
+      "deltaMs": 27,
+      "relativeChange": 0.06178489702517163,
+      "regression": false,
+      "baselineSamples": [
+        406,
+        437,
+        475
+      ],
+      "candidateSamples": [
+        483,
+        324,
+        464
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=true/second/captureMs",
+      "baselineMs": 103,
+      "candidateMs": 97,
+      "deltaMs": -6,
+      "relativeChange": -0.05825242718446602,
+      "regression": false,
+      "baselineSamples": [
+        111,
+        103,
+        98
+      ],
+      "candidateSamples": [
+        97,
+        96,
+        102
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=true/warm/captureMs",
+      "baselineMs": 93,
+      "candidateMs": 91,
+      "deltaMs": -2,
+      "relativeChange": -0.021505376344086023,
+      "regression": false,
+      "baselineSamples": [
+        93,
+        93,
+        97
+      ],
+      "candidateSamples": [
+        91,
+        90,
+        94
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=true/first/doubleClickToEditorMs",
+      "baselineMs": 19,
+      "candidateMs": 21,
+      "deltaMs": 2,
+      "relativeChange": 0.10526315789473684,
+      "regression": false,
+      "baselineSamples": [
+        21,
+        19,
+        17
+      ],
+      "candidateSamples": [
+        23,
+        15,
+        21
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=true/second/doubleClickToEditorMs",
+      "baselineMs": 15,
+      "candidateMs": 13,
+      "deltaMs": -2,
+      "relativeChange": -0.13333333333333333,
+      "regression": false,
+      "baselineSamples": [
+        15,
+        13,
+        16
+      ],
+      "candidateSamples": [
+        17,
+        12,
+        13
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=true/warm/doubleClickToEditorMs",
+      "baselineMs": 13,
+      "candidateMs": 12,
+      "deltaMs": -1,
+      "relativeChange": -0.07692307692307693,
+      "regression": false,
+      "baselineSamples": [
+        13,
+        12,
+        15
+      ],
+      "candidateSamples": [
+        12,
+        12,
+        14
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=true/first/captureMs",
+      "baselineMs": 229,
+      "candidateMs": 233,
+      "deltaMs": 4,
+      "relativeChange": 0.017467248908296942,
+      "regression": false,
+      "baselineSamples": [
+        232,
+        228,
+        229
+      ],
+      "candidateSamples": [
+        233,
+        228,
+        237
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=true/second/captureMs",
+      "baselineMs": 184,
+      "candidateMs": 183,
+      "deltaMs": -1,
+      "relativeChange": -0.005434782608695652,
+      "regression": false,
+      "baselineSamples": [
+        174,
+        185,
+        184
+      ],
+      "candidateSamples": [
+        183,
+        183,
+        174
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=true/warm/captureMs",
+      "baselineMs": 170,
+      "candidateMs": 179,
+      "deltaMs": 9,
+      "relativeChange": 0.052941176470588235,
+      "regression": false,
+      "baselineSamples": [
+        183,
+        170,
+        169
+      ],
+      "candidateSamples": [
+        183,
+        178,
+        179
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=true/first/doubleClickToEditorMs",
+      "baselineMs": 24,
+      "candidateMs": 21,
+      "deltaMs": -3,
+      "relativeChange": -0.125,
+      "regression": false,
+      "baselineSamples": [
+        23,
+        24,
+        24
+      ],
+      "candidateSamples": [
+        22,
+        21,
+        21
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=true/second/doubleClickToEditorMs",
+      "baselineMs": 19,
+      "candidateMs": 18,
+      "deltaMs": -1,
+      "relativeChange": -0.05263157894736842,
+      "regression": false,
+      "baselineSamples": [
+        11,
+        20,
+        19
+      ],
+      "candidateSamples": [
+        15,
+        19,
+        18
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=true/warm/doubleClickToEditorMs",
+      "baselineMs": 17,
+      "candidateMs": 16,
+      "deltaMs": -1,
+      "relativeChange": -0.058823529411764705,
+      "regression": false,
+      "baselineSamples": [
+        17,
+        17,
+        17
+      ],
+      "candidateSamples": [
+        13,
+        18,
+        16
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=true/first/captureMs",
+      "baselineMs": 1085,
+      "candidateMs": 1149,
+      "deltaMs": 64,
+      "relativeChange": 0.05898617511520737,
+      "regression": false,
+      "baselineSamples": [
+        1085,
+        1042,
+        1099
+      ],
+      "candidateSamples": [
+        1137,
+        1149,
+        1216
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=true/second/captureMs",
+      "baselineMs": 1601,
+      "candidateMs": 1682,
+      "deltaMs": 81,
+      "relativeChange": 0.05059337913803873,
+      "regression": false,
+      "baselineSamples": [
+        1601,
+        1613,
+        1559
+      ],
+      "candidateSamples": [
+        1660,
+        1707,
+        1682
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=true/warm/captureMs",
+      "baselineMs": 178,
+      "candidateMs": 174,
+      "deltaMs": -4,
+      "relativeChange": -0.02247191011235955,
+      "regression": false,
+      "baselineSamples": [
+        188,
+        178,
+        177
+      ],
+      "candidateSamples": [
+        174,
+        175,
+        171
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=true/first/doubleClickToEditorMs",
+      "baselineMs": 23,
+      "candidateMs": 22,
+      "deltaMs": -1,
+      "relativeChange": -0.043478260869565216,
+      "regression": false,
+      "baselineSamples": [
+        20,
+        24,
+        23
+      ],
+      "candidateSamples": [
+        13,
+        22,
+        28
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=true/second/doubleClickToEditorMs",
+      "baselineMs": 20,
+      "candidateMs": 21,
+      "deltaMs": 1,
+      "relativeChange": 0.05,
+      "regression": false,
+      "baselineSamples": [
+        21,
+        20,
+        20
+      ],
+      "candidateSamples": [
+        21,
+        22,
+        18
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=true/warm/doubleClickToEditorMs",
+      "baselineMs": 17,
+      "candidateMs": 16,
+      "deltaMs": -1,
+      "relativeChange": -0.058823529411764705,
+      "regression": false,
+      "baselineSamples": [
+        13,
+        17,
+        18
+      ],
+      "candidateSamples": [
+        20,
+        16,
+        16
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=false/first/captureMs",
+      "baselineMs": 25,
+      "candidateMs": 31,
+      "deltaMs": 6,
+      "relativeChange": 0.24,
+      "regression": false,
+      "baselineSamples": [
+        34,
+        25,
+        24
+      ],
+      "candidateSamples": [
+        27,
+        32,
+        31
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=false/second/captureMs",
+      "baselineMs": 20,
+      "candidateMs": 15,
+      "deltaMs": -5,
+      "relativeChange": -0.25,
+      "regression": false,
+      "baselineSamples": [
+        21,
+        20,
+        16
+      ],
+      "candidateSamples": [
+        16,
+        15,
+        13
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=false/warm/captureMs",
+      "baselineMs": 19,
+      "candidateMs": 18,
+      "deltaMs": -1,
+      "relativeChange": -0.05263157894736842,
+      "regression": false,
+      "baselineSamples": [
+        19,
+        17,
+        19
+      ],
+      "candidateSamples": [
+        18,
+        18,
+        18
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=false/first/doubleClickToEditorMs",
+      "baselineMs": 24,
+      "candidateMs": 24,
+      "deltaMs": 0,
+      "relativeChange": 0,
+      "regression": false,
+      "baselineSamples": [
+        24,
+        26,
+        24
+      ],
+      "candidateSamples": [
+        24,
+        27,
+        23
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=false/second/doubleClickToEditorMs",
+      "baselineMs": 11,
+      "candidateMs": 11,
+      "deltaMs": 0,
+      "relativeChange": 0,
+      "regression": false,
+      "baselineSamples": [
+        11,
+        12,
+        10
+      ],
+      "candidateSamples": [
+        12,
+        11,
+        11
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=false/warm/doubleClickToEditorMs",
+      "baselineMs": 17,
+      "candidateMs": 17,
+      "deltaMs": 0,
+      "relativeChange": 0,
+      "regression": false,
+      "baselineSamples": [
+        17,
+        17,
+        17
+      ],
+      "candidateSamples": [
+        17,
+        16,
+        17
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=false/first/captureMs",
+      "baselineMs": 1388,
+      "candidateMs": 1070,
+      "deltaMs": -318,
+      "relativeChange": -0.22910662824207492,
+      "regression": false,
+      "baselineSamples": [
+        1407,
+        1388,
+        1094
+      ],
+      "candidateSamples": [
+        1326,
+        1070,
+        1066
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=false/second/captureMs",
+      "baselineMs": 29,
+      "candidateMs": 20,
+      "deltaMs": -9,
+      "relativeChange": -0.3103448275862069,
+      "regression": false,
+      "baselineSamples": [
+        29,
+        21,
+        29
+      ],
+      "candidateSamples": [
+        17,
+        20,
+        21
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=false/warm/captureMs",
+      "baselineMs": 28,
+      "candidateMs": 20,
+      "deltaMs": -8,
+      "relativeChange": -0.2857142857142857,
+      "regression": false,
+      "baselineSamples": [
+        28,
+        18,
+        28
+      ],
+      "candidateSamples": [
+        20,
+        30,
+        17
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=false/first/doubleClickToEditorMs",
+      "baselineMs": 22,
+      "candidateMs": 22,
+      "deltaMs": 0,
+      "relativeChange": 0,
+      "regression": false,
+      "baselineSamples": [
+        27,
+        22,
+        22
+      ],
+      "candidateSamples": [
+        25,
+        22,
+        22
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=false/second/doubleClickToEditorMs",
+      "baselineMs": 12,
+      "candidateMs": 11,
+      "deltaMs": -1,
+      "relativeChange": -0.08333333333333333,
+      "regression": false,
+      "baselineSamples": [
+        30,
+        11,
+        12
+      ],
+      "candidateSamples": [
+        11,
+        11,
+        12
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=false/warm/doubleClickToEditorMs",
+      "baselineMs": 12,
+      "candidateMs": 12,
+      "deltaMs": 0,
+      "relativeChange": 0,
+      "regression": false,
+      "baselineSamples": [
+        12,
+        16,
+        12
+      ],
+      "candidateSamples": [
+        13,
+        12,
+        12
+      ]
+    }
+  ],
+  "regressions": [],
+  "passed": true,
+  "finishedAt": "2026-10-15T09:08:50.068Z",
+  "rawArtifact": {
+    "path": "test-results/lsp-preview-benchmark-2026-10-15/comparison.json",
+    "sha256": "9abee0f1f33a7bfe8025a9f47dd92fa7adaa54597972e966164e5c6e6f25281e",
+    "omittedFields": [
+      "per-scenario trace",
+      "per-cycle trace"
+    ],
+    "note": "Timing samples, geometry, latest-content checks, identities and all comparisons are retained. Full traces remain in the raw artifact."
+  },
+  "validation": {
+    "fullUnit": {
+      "passed": 704,
+      "files": 101,
+      "log": "test-results/lsp-final-validation/unit-final.log"
+    },
+    "previewContract": {
+      "unitPassed": 298,
+      "unitFiles": 46,
+      "comparatorPassed": 3,
+      "electronPassed": 103,
+      "typecheckAndBuild": "passed",
+      "log": "test-results/lsp-final-validation/preview-contract.log"
+    },
+    "ciPolicy": {
+      "passed": 8,
+      "log": "test-results/lsp-final-validation/ci-policy.log"
+    },
+    "package": {
+      "platform": "linux-x64",
+      "format": "unpacked directory",
+      "version": "1.0.0",
+      "passed": true,
+      "checks": [
+        "Markdown rendered",
+        "editor opened",
+        "bundled Pyright initialized",
+        "Python diagnostic visible",
+        "no page errors"
+      ],
+      "log": "test-results/lsp-final-validation/package-smoke.log"
+    },
+    "execution": {
+      "display": "isolated Xvfb with private runtime and D-Bus",
+      "scopeMemoryMaxBytes": 4294967296,
+      "scopeSwapMaxBytes": 536870912,
+      "nodeBuildHeapMiB": 2304,
+      "retries": 0,
+      "heavyJobs": "serial"
+    },
+    "notMeasured": [
+      "Windows packaged execution",
+      "large-project indexing and completion latency",
+      "server-load video/input latency"
+    ]
+  }
+}

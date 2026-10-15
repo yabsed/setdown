@@ -110,8 +110,26 @@ Store downloads reuse `electron-chrome-web-store` (MIT).
 Non-Markdown text editing supports UTF-8, with or without a BOM, up to 16 MiB.
 It preserves uniform LF or CRLF line endings and the final-newline state.
 Unsupported encodings, binary content, and mixed line endings are rejected.
-Unknown text languages fall back to plain text; language servers and compilers
-are not bundled.
+Unknown text languages fall back to plain text. Saved `.py` and `.pyi` files use
+bundled Pyright for completion (`Ctrl+Space`), hover, signature help, diagnostics,
+definition (`F12`), references (`Shift+F12`), symbols and rename (`F2`). Other
+languages currently have syntax highlighting without language-server support;
+Python itself and compilers are not bundled.
+
+Open a project folder to give Python analysis the correct workspace root.
+Without one, the file's containing directory is used. Pyright reads the project's
+`pyrightconfig.json` or `[tool.pyright]` configuration. Language changes use the
+same document and Undo history as ordinary editing and Working Tree review.
+Multi-file rename opens affected files as unsaved tabs; normal save/auto-save
+rules still apply, and Undo is per file. Save As reconnects analysis at the new
+path without replacing the model.
+
+Python analysis starts only when a saved Python document gets an editor model.
+Windows have separate servers so unsaved text cannot leak between windows.
+Closing the last Python document in a root stops its server. If analysis stops,
+use **Restart Python Language Server** in the editor context menu or command
+palette (`F1`); the document stays editable. Formatting, code actions, arbitrary
+server commands and filesystem operations from language servers are not enabled.
 
 PDF search uses the document's embedded text; scanned pages need an existing OCR
 text layer. Image files can be up to 64 MiB. PDF and image positions, zoom, and

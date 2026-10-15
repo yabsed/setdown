@@ -496,7 +496,7 @@ DocumentEditCoordinator로 현재 문서의 format·quick fix부터 연결하고
 
 실제 중간·큰 프로젝트에서 시작·index·입력·diagnostics·탭 전환·종료를 측정한다. 서버가 일하는 동안 Markdown과 Git preview, 브라우저 영상과 주소 입력도 함께 검증한다. 서버 설치 자동화, semantic tokens·inlay hints·workspace symbols는 이 기반 위에서 선택한다.
 
-현재 작업에서는 위 단계의 런타임 구현이나 설치 변경을 수행하지 않았다. 이 보고서의 채택 조건을 실제 결과로 채우는 것이 다음 개발 작업이다.
+보고서 초안 작성 시점에는 위 단계의 런타임 구현이나 설치 변경을 수행하지 않았다. 이후 실제로 구현한 범위와 채택 실험의 결과는 아래 **2026-10-15 구현 결과**에 기록한다. 위 단계 전체가 완료됐다는 뜻은 아니다.
 
 ## 제안 모듈과 기존 코드의 접점
 
@@ -635,3 +635,50 @@ ordinary Markdown과 Git review, 편집 유무, 준비 시간 0ms·3000ms의 8�
 | 가벼운 편집기는 버퍼와 화면을 어떻게 나누는가 | [Sublime SessionBuffer](../vendor/sublime-lsp/plugin/session_buffer.py), [SessionView](../vendor/sublime-lsp/plugin/session_view.py), [sessions.py](../vendor/sublime-lsp/plugin/core/sessions.py) `apply_workspace_edit_async` |
 
 서브모듈은 위 동작의 근거와 비교 대상으로 사용한다. 런타임 빌드가 그 저장소의 최신 HEAD나 개발 도구 설치에 의존하게 만들지 않는다. 실제 코드를 가져오는 경우에는 해당 저장소의 라이선스와 저작권 표시를 함께 유지한다. 원본 코드의 존재가 통합 테스트를 대신하지는 않는다.
+
+## 2026-10-15 구현 결과: Python부터 연결
+
+위 내용은 설계 당시의 선택지와 단계다. 실제 첫 구현은 **기존 Monaco 0.56.0 + 공식 JSON-RPC + Pyright** 경로를 사용한다. Monaco 호환 계층이나 VS Code workbench를 런타임에 추가하지 않았다. Python의 의미 분석은 Pyright가 맡고, Setdown은 문서 연결·프로세스 수명·Monaco provider 변환을 담당한다.
+
+### 접합 실험에서 확인한 것
+
+별도 설치 경로에서 `monaco-languageclient@11.0.2`, `@codingame/monaco-vscode-editor-api@37.1.0`, `@codingame/monaco-vscode-extension-api@37.1.0` 및 호환 서비스 버전을 맞췄다. 격리된 실제 Electron에서 기존 흐름처럼 `createModel`로 `file:///tmp/example.py?tab-1` 모델을 만들고 undo 가능한 편집을 넣은 뒤 `initialize(getEditorServiceOverride())`를 호출했다. 모델에는 편집 내용과 Undo가 있었지만 서비스 초기화는 **`Error: Services are already initialized`**로 실패했다. 서비스 초기화 없이 호환 API의 에디터부터 생성하는 실험도 `MarkdownRendererService` override 부족으로 실패했다.
+
+이는 공식 계층 전체가 통합 불가능하다는 증명이 아니다. 모든 에디터보다 먼저 공통 서비스를 초기화하는 별도 이행은 여전히 가능하다. 다만 기존 Markdown/Git 모델이 이미 생성된 뒤 Python 기능을 지연 연결하는 현재 전략에는 그대로 사용할 수 없다. 이번 구현은 공통 에디터 부트스트랩을 교체하지 않는 대안을 택했다. `vscode-jsonrpc@9.0.1`, `vscode-languageserver-protocol@3.18.3`, `pyright@1.1.414`를 npm 런타임 의존성으로 정확히 고정했다. 참고 submodule HEAD를 배포 의존성으로 사용하지 않는다.
+
+### 실제 책임 경계
+
+| 모듈 | 구현한 책임 |
+| --- | --- |
+| `protocol/language.ts` | 문서 연결·변경·요청·취소·저장·종료·재시작의 좁은 preload 포트. 실행 파일이나 임의 LSP method를 받지 않는다. |
+| `main/language/language-manager.ts` | 등록된 shell main frame의 요청만 처리. 창·root별 서버 공유, 열린 문서의 소유권 확인, 진단의 문서 버전·연결 generation 확인, 종료 시 서버 회수. |
+| `main/language/server-session.ts` | 공식 stdio framing, initialize/capabilities, 취소·시간 제한·미응답 요청 상한, 파일 감시, shutdown/exit 및 강제 종료 기한. |
+| `renderer/editor/language-client.ts` | 기존 모델에 Python provider를 연결. 동시 편집을 내림차순 offset의 순차 LSP 변경으로 전송. 오래된 응답과 이전 연결의 진단을 폐기. |
+| `renderer/editor/language-conversion.ts` | UTF-16 위치·진단·completion·Markdown 변환. 서버 Markdown에는 HTML/command trust를 주지 않는다. |
+| `renderer/adapters/monaco-editor.ts` | Python 모델이 실제 생길 때만 client chunk를 import. 기존 모델의 생성·retarget·저장·해제 경계에 연결. |
+| `renderer/workspace/tab-controller.ts` | 여러 파일 편집 대상을 기존 문서 탭으로 준비. 원래 저장·dirty·Undo 경로를 유지하고 새 경로의 소유권을 IPC보다 먼저 전달. |
+
+분석은 Electron main 안에서 수행하지 않는다. 이번 단계는 별도 utility 중계 프로세스 대신 **main이 고정된 bundled Pyright 자식 프로세스의 stdio를 감독**한다. Electron 실행 파일의 Node 모드를 사용하므로 시스템 Node 설치가 필요 없다. renderer에 실행 권한을 주지 않으며 shell 실행도 사용하지 않는다. 별도 중계 프로세스와 추가 IPC 계층을 줄이는 대신, JSON-RPC framing은 main에서 수행한다. 큰 파일·큰 진단 응답의 main 부하를 모두 검증했다고 주장하지 않는다.
+
+패키지 검증에서는 개발 실행에 없던 문제가 발견됐다. ASAR 내부의 Pyright 진입점은 Node 모드에서 초기화 전에 종료됐고, 고정 bootstrap을 거쳐 require하는 방식도 해결하지 못했다. 같은 패키지 실행 파일로 물리 경로의 Pyright를 실행하면 초기화가 성공했다. 따라서 `asarUnpack`에 Pyright 전체를 포함하고 배포 시 `app.asar.unpacked`의 서버 경로를 사용한다. 서버 코드와 typeshed를 함께 포함하며, 설치된 패키지의 smoke test가 이 경계를 검증한다.
+
+### 사용할 수 있는 범위와 편집 보장
+
+- 저장된 `.py`·`.pyi`의 자동완성/resolve, hover, signature help, 진단, 정의 이동, 참조 목록, 문서 symbol, rename을 연결했다. F12/F2 및 Monaco의 기존 메뉴·widget을 사용한다.
+- 프로젝트 폴더가 있으면 해당 root를, 없으면 파일의 부모 디렉터리를 사용한다. 폴더 전환은 서버 연결을 다시 만들고 미저장 내용을 재전송한다. `pyrightconfig.json`과 `[tool.pyright]`를 사용하며, 닫힌 Python 파일과 설정 변경을 native watcher로 전달한다.
+- 같은 창·root의 문서는 서버 하나를 공유한다. 다른 창은 같은 파일이어도 서버를 분리한다. 마지막 문서 닫기, renderer 종료/재탐색, 창 종료, 앱 종료에서 서버를 회수한다. 실패 시 편집기는 살아 있고 명시적 재시작을 제공한다.
+- 원래 파일 URI와 tab query를 가진 Monaco 모델을 그대로 둔다. LSP URI는 현재 파일 경로를 별도로 사용하므로 Save As/Explorer 이동이 모델이나 Undo를 교체하지 않는다. Working Tree는 기존 모델 lease를 공유하고, staged/history의 `inmemory:` 모델은 LSP 문서가 아니다.
+- rename이 닫힌 파일을 대상으로 하면 먼저 일반 문서 탭으로 준비하고 서버에 최신 buffer를 보낸다. 그 내용을 기준으로 rename을 다시 계산한 뒤 버전·range·겹침을 검사한다. 최대 200개 문서와 4회 대상 안정화로 제한한다. 변경은 Monaco의 버전 검사를 거치는 text edit이며 자동 저장 설정을 포함한 기존 저장 규칙을 따른다. **Undo는 파일별**이다.
+- resource create/rename/delete, 임의 `workspace/executeCommand`, server가 자발적으로 요청하는 `workspace/applyEdit`, snippet workspace edit와 확인이 필요한 annotated edit는 지원한다고 광고하지 않거나 거부한다. completion의 서버 command도 실행하지 않는다.
+
+이번 범위에는 다른 언어 서버, 설치 관리자, formatting/code actions, debug adapter, 전체 VS Code 확장 호환성이 포함되지 않는다. Python 인터프리터나 compiler를 번들하지 않는다. 참조 목록의 미리보기는 standalone Monaco의 모델 해석 범위를 따르며, 별도 read-only 파일 모델 저장소를 만들지 않는다. 아직 열리지 않은 외부 파일은 정의/참조를 선택할 때 Setdown 문서 경로로 연다.
+
+### 검증 항목
+
+`server-session.test.ts`는 실제 Pyright를 실행해 창별 미저장 내용 분리, UTF-16/CRLF incremental change, 닫힌 import 파일 변경을 확인한다. 별도 fixture server로 취소·timeout·crash를 검사한다. `language-manager.test.ts`는 frame/문서 소유권·method 허용 범위·서버 공유와 해제를 검사한다. `language-client.test.ts`는 늦은 응답·이전 generation 진단·다중 cursor 변경·재시작 중 닫기를 다룬다.
+
+`language-support.spec.ts`는 격리된 실제 Electron/Pyright에서 자동완성, 진단, 정의 이동, rename/Undo, 미개봉 파일을 포함한 rename, Save As/Undo, 강제 종료 후 복구, 종료 후 PID 회수, 첫 Python Working Tree의 공유 모델을 검사한다. 기존 preview contract에 이 테스트들을 포함했다. 초기화 실패 도중 저장·hover 요청이 들어와도 편집 큐에 처리되지 않은 Promise 오류를 남기지 않는 회귀 검사도 추가했다.
+
+최종 전체 단위 검사 **704개**, preview gate의 단위 검사 **298개**·비교기 검사 **3개**·실제 Electron 검사 **103개**, CI 정책 검사 **8개**가 통과했다. 별도 설치한 `bf464956ed12ce64453eb461426f1544b697be6b` 기준 앱과 3회씩 교대 측정했고, 8개 시나리오·48개 비교 항목에서 기존 허용 기준을 넘는 회귀는 **0개**였다. 첫 번째·두 번째·warm 수치는 [preview contract](../docs/preview-performance-contract.md#python-language-support-validation-2026-10-15), 각 측정값과 빌드 식별자는 [검증 기록](../docs/lsp-preview-benchmark-2026-10-15.json)에 있다.
+
+최종 Linux x64 실행 패키지에서도 Markdown 표시·편집기 진입·번들 Pyright 진단 수신을 확인했다. 개발 실행만으로 끝내지 않고 ASAR 밖의 서버·typeshed 경로를 실제로 검증했다. Windows 패키지 실행과 큰 프로젝트의 색인·입력·completion 성능은 이번 로컬 검증 범위에 포함하지 않는다. 초기 메모리 부족 중단 이후에는 빌드와 무거운 검사를 직렬 실행하고, systemd scope의 RAM 4 GiB·swap 512 MiB 상한을 적용해 마무리했다. 검증 로그는 재시작 시 사라지는 `/tmp` 대신 `test-results/lsp-final-validation`에 남겼다.

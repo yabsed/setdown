@@ -13,8 +13,10 @@ import { readEditorViewport } from '../editor/editor-viewport';
 import { DocumentModelOwner, liveDocumentModels } from '../editor/live-document-model';
 import { installMarkdownEditorActions } from '../editor/markdown-editor-actions';
 import { monacoThemeName, registerMonacoThemes } from '../theme';
+import type { LanguageClient, LanguageOptions } from '../editor/language-client';
 
 type Options = {
+  language?: Omit<LanguageOptions, 'status'>;
   host: HTMLElement; tabs: () => WorkspaceTab[]; active: () => WorkspaceTab | null;
   theme: () => PreviewThemeId; status: (status: 'loading' | 'ready' | 'error') => void;
   changed: (tab: WorkspaceTab, text: string) => void;
@@ -26,6 +28,11 @@ type SearchTarget = { line: number; column: number; ordinal: number };
 type ProjectMatch = NonNullable<ProjectSearchDocument['matches']>[number];
 
 export class MonacoEditor {
+  private languageClient: LanguageClient | undefined;
+  private languageLoading: Promise<void> | undefined;
+  private languageError: HTMLButtonElement | undefined;
+  private disposed = false;
+  private languageRoot: string | null = null;
   private apiValue: typeof Monaco | null = null;
   private editorValue: Monaco.editor.IStandaloneCodeEditor | null = null;
   private groupId = 'group-0';
@@ -55,6 +62,9 @@ export class MonacoEditor {
     });
   }
   disposeWorkspace(): void {
+    this.disposed = true;
+    this.languageClient?.dispose();
+    this.languageError?.remove();
     this.unregisterModels();
     this.unregisterZoom();
     for (const id of [...this.models.keys()]) this.dispose(id);
@@ -72,6 +82,16 @@ export class MonacoEditor {
     return !!model && [...this.groupEditors.values()].some(entry => entry.editor.getModel() === model);
   }
   text(tab: WorkspaceTab): string { return this.models.get(tab.id)?.getValue() ?? tab.text; }
+  modelFor(tab: WorkspaceTab): Monaco.editor.ITextModel { return this.ensureModel(tab); }
+  saved(tab: WorkspaceTab): void {
+    const model = this.models.get(tab.id);
+    if (model) this.languageClient?.saved(model);
+  }
+  setLanguageRoot(root: string | null): void {
+    if (this.languageRoot === root) return;
+    this.languageRoot = root;
+    void this.languageClient?.restart();
+  }
   lineCount(tab: WorkspaceTab): number {
     return this.models.get(tab.id)?.getLineCount() ?? (tab.text.length === 0 ? 1 : tab.text.split(/\r\n|\r|\n/).length);
   }
@@ -184,6 +204,7 @@ export class MonacoEditor {
     const language = documentLanguage(tab.document.path, api.languages.getLanguages(), model.getLineContent(1));
     if (model.getLanguageId() !== language) api.editor.setModelLanguage(model, language);
     this.modelPaths.set(tab.id, tab.document.path);
+    this.connectLanguage(tab, model, api);
     if (previousPath) liveDocumentModels.publish({ type: 'retargeted', path: previousPath, nextPath: tab.document.path });
   }
   saveView(tab: WorkspaceTab): void {
@@ -227,6 +248,7 @@ export class MonacoEditor {
   }
   dispose(tabId: string): void {
     const model = this.models.get(tabId);
+    if (model) this.languageClient?.unbind(model);
     const path = this.modelPaths.get(tabId);
     for (const entry of this.groupEditors.values()) if (model && entry.editor.getModel() === model) entry.editor.setModel(null);
     const owner = this.owners.get(tabId);
@@ -321,9 +343,38 @@ export class MonacoEditor {
     this.models.set(tab.id, model);
     this.owners.set(tab.id, new DocumentModelOwner(model, () => listener.dispose()));
     this.modelPaths.set(tab.id, tab.document.path);
+    this.connectLanguage(tab, model, api);
     return model;
   }
+  private connectLanguage(tab: WorkspaceTab, model: Monaco.editor.ITextModel, api: typeof Monaco): void {
+    if (this.languageClient) { this.languageClient.bind(tab, model); return; }
+    const options = this.options.language;
+    if (!options || tab.document.isUntitled || model.getLanguageId() !== 'python') return;
+    this.languageLoading ??= import('../editor/language-client').then(({ LanguageClient }) => {
+      if (this.disposed) return;
+      this.languageClient = new LanguageClient(api, { ...options, status: (state, message) => {
+        this.options.host.dataset.languageServer = state;
+        if (state !== 'failed') { this.languageError?.remove(); this.languageError = undefined; return; }
+        if (!this.languageError) {
+          this.languageError = document.createElement('button');
+          this.languageError.textContent = 'Python language support stopped · Restart';
+          this.languageError.setAttribute('role', 'status');
+          this.languageError.style.cssText = 'position:absolute;right:16px;bottom:12px;z-index:10;padding:6px 10px;color:inherit;background:var(--bg);border:1px solid currentColor;border-radius:4px';
+          this.languageError.onclick = () => { void this.languageClient?.restart(); };
+          this.options.host.append(this.languageError);
+        }
+        this.languageError.title = message ?? '';
+      } });
+      for (const current of this.options.tabs()) {
+        const currentModel = this.models.get(current.id);
+        if (currentModel) this.languageClient.bind(current, currentModel);
+      }
+    }).catch(error => { this.languageLoading = undefined; console.error('Could not load Python support', error); });
+  }
   private installBindings(api: typeof Monaco, editor: Monaco.editor.IStandaloneCodeEditor): void {
+    editor.addAction({ id: 'setdown.restart-python', label: 'Restart Python Language Server',
+      precondition: 'editorLangId == python', contextMenuGroupId: '9_cutcopypaste', contextMenuOrder: 10,
+      run: async () => { await this.languageClient?.restart(); } });
     editor.onDidFocusEditorText(() => {
       const tab = this.options.active();
       if (tab && editor.getModel() === this.models.get(tab.id)) this.owners.get(tab.id)?.beginEditing(`document:${tab.id}`);
