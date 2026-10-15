@@ -303,6 +303,12 @@ published release. Each release includes `build-info.json` (source commit and
 workflow run) and `SHA256SUMS` alongside all four installers. Uploads are staged
 in a draft and published only after every file has been verified.
 
+Development drafts may precede creation of their Git tag. Existing tags,
+including annotated tags, must resolve to the tested commit; stable releases
+require the tag to exist before publication. The publisher checks the tag again
+before publishing. Authorization, validation, rate-limit and network errors stop
+publication and leave any staged draft available for a later retry.
+
 For a build without publishing, select **Actions → CI → Run workflow**. This
 always runs the checks and creates `*-test.<run-id>` installers as workflow
 artifacts, retained for 14 days, even when selecting a tag.
@@ -455,8 +461,8 @@ For the full comparative benchmark, select **Actions → Preview latency benchma
 the selected ref's parent. All eight scenarios and five repetitions per version
 run on the same isolated display; results and logs are retained for 30 days.
 Performance-path changes still require this comparison locally or manually;
-timing noise is not an automatic PR gate. The CI policy itself can be checked
-with `node --test scripts/ci/*.test.mjs`.
+timing noise is not an automatic PR gate. CI policy and the publishing lifecycle
+can be checked with `node --test scripts/ci/*.test.mjs`.
 
 Further documentation:
 

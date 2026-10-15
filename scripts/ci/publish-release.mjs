@@ -15,12 +15,46 @@ if (channel === 'artifact' || version !== env.RELEASE_VERSION || tag !== env.REL
   || String(prerelease) !== env.RELEASE_PRERELEASE) throw Error('Release metadata does not match the checked source.');
 
 const gh = args => execFileSync('gh', args, { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
-function api(endpoint, optional = false) {
-  try { return JSON.parse(gh(['api', `repos/${repo}/${endpoint}`])); }
+const api = endpoint => JSON.parse(gh(['api', `repos/${repo}/${endpoint}`]));
+function findResource(endpoint) {
+  try { return api(endpoint); }
   catch (error) {
-    if (optional && /HTTP 404/.test(String(error.stderr))) return null;
+    // Only exact-resource lookups use this helper. Authentication, rate limits,
+    // validation errors and network failures must never look like absence.
+    if (/\(HTTP 404\)/.test(String(error.stderr))) return null;
     throw error;
   }
+}
+function verifiedTagCommit() {
+  // Unlike commits/:ref (422 for an unknown name), this endpoint explicitly
+  // returns 404 for an absent tag: https://docs.github.com/rest/git/refs#get-a-reference
+  const reference = findResource(`git/ref/tags/${encodeURIComponent(tag)}`);
+  if (!reference) {
+    if (channel === 'tag') throw Error(`Required release tag ${tag} does not exist.`);
+    return null; // A development draft may precede creation of its Git tag.
+  }
+  if (reference.ref !== `refs/tags/${tag}`) throw Error('GitHub returned a different tag reference.');
+  let object = reference.object;
+  const seen = new Set();
+  while (object?.type === 'tag') {
+    if (!/^[0-9a-f]{40}$/.test(object.sha ?? '') || seen.has(object.sha) || seen.size >= 16)
+      throw Error('Invalid or excessively nested annotated release tag.');
+    seen.add(object.sha);
+    object = api(`git/tags/${object.sha}`).object;
+  }
+  if (object?.type !== 'commit' || object.sha !== commit)
+    throw Error(`Tag ${tag} does not point to the tested commit ${commit}.`);
+  return object.sha;
+}
+function publicationState() {
+  const tagCommit = verifiedTagCommit();
+  const release = findResource(`releases/tags/${encodeURIComponent(tag)}`);
+  // An existing Git tag is authoritative. target_commitish is only used by
+  // GitHub when creating a tag, and can legitimately still name a branch.
+  if (release && (release.tag_name !== tag || (!tagCommit && release.target_commitish !== commit)))
+    throw Error('Existing release belongs to a different source; refusing to replace it.');
+  if (release && !release.draft && !tagCommit) throw Error('Published release has no matching Git tag.');
+  return { tagCommit, release };
 }
 function summary(message) {
   console.log(message);
@@ -33,12 +67,7 @@ if (channel === 'preview' && !previewStillCurrent(api(`compare/${commit}...main`
   summary('Development release skipped: main has newer application changes.');
   process.exit(0);
 }
-const tagCommit = api(`commits/${encodeURIComponent(tag)}`, true);
-if ((channel === 'tag' && !tagCommit) || (tagCommit && tagCommit.sha !== commit)) {
-  throw Error(`Tag ${tag} does not point to the tested commit ${commit}.`);
-}
-const existing = api(`releases/tags/${encodeURIComponent(tag)}`, true);
-if (existing && existing.target_commitish !== commit) throw Error('Existing release belongs to a different source; refusing to replace it.');
+const { release: existing } = publicationState();
 if (existing && !existing.draft) {
   summary(`Already published; preserved without modification: ${existing.html_url}`);
   process.exit(0);
@@ -93,8 +122,8 @@ if (!existing) {
     '--title', `Setdown ${version}`, '--notes-file', notesFile, ...flags]);
 }
 gh(['release', 'upload', tag, ...files.map(name => path.join(staging, name)), '--clobber']);
-const staged = api(`releases/tags/${encodeURIComponent(tag)}`);
-if (!staged.draft) throw Error('Release was published before upload verification.');
+const { release: staged } = publicationState();
+if (!staged?.draft) throw Error('Release draft disappeared or was published before upload verification.');
 if (staged.assets.length !== files.length) throw Error('Draft contains unexpected or missing assets.');
 for (const name of files) {
   const asset = staged.assets.find(asset => asset.name === name);
@@ -105,6 +134,9 @@ if (channel === 'preview' && !previewStillCurrent(api(`compare/${commit}...main`
   summary(`Newer application changes arrived during upload; ${tag} remains an unpublished draft.`);
   process.exit(0);
 }
+// Uploads may take minutes. Recheck the tag immediately before publication;
+// never publish against a tag observed to have moved during staging.
+verifiedTagCommit();
 // GitHub's legacy selection chooses the latest stable version by release date
 // and semantic version; development builds never replace the stable Latest link.
 gh(['api', '--method', 'PATCH', `repos/${repo}/releases/${staged.id}`,
