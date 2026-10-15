@@ -5,11 +5,12 @@ import path from 'node:path';
 import os from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { CancellationTokenSource } from 'vscode-jsonrpc/node';
-import type { Hover, PublishDiagnosticsParams } from 'vscode-languageserver-protocol';
+import type { FullDocumentDiagnosticReport, Hover, PublishDiagnosticsParams } from 'vscode-languageserver-protocol';
 import { serverProfiles } from './server-definitions';
 import { ServerSession } from './server-session';
 
 const require = createRequire(import.meta.url);
+const pullProfile = { ...serverProfiles.pyright, renameAfterDiagnostics: false, initializationOptions: { ...serverProfiles.pyright.initializationOptions, disablePullDiagnostics: false } };
 const sessions: ServerSession[] = [];
 const roots: string[] = [];
 afterEach(async () => {
@@ -26,20 +27,22 @@ test('real Pyright sees independent unsaved buffers and versioned incremental Un
   const failures: string[] = [];
   const create = (index: number) => {
     const server = new ServerSession({ executable: process.execPath, args: [require.resolve('pyright/langserver.index.js'), '--stdio'] },
-      root, params => diagnostics[index].push(params), message => failures.push(message), serverProfiles.pyright);
+      root, params => diagnostics[index].push(params), message => failures.push(message), pullProfile);
     sessions.push(server); return server;
   };
   const first = create(0), second = create(1);
   await Promise.all([first.ready, second.ready]);
   await first.notify('textDocument/didOpen', { textDocument: { uri, languageId: 'python', version: 1, text: 'value: int = "😄"\r\n' } });
   await second.notify('textDocument/didOpen', { textDocument: { uri, languageId: 'python', version: 1, text: 'value = "other window"\r\n' } });
-  await expect.poll(() => diagnostics[0].find(d => d.version === 1)?.diagnostics.length, { timeout: 15_000 }).toBeGreaterThan(0);
+  await expect.poll(() => first.capabilities.forDocument(uri, 'python').diagnosticProvider).toBeTruthy();
+  await expect.poll(async () => (await first.request<FullDocumentDiagnosticReport>('textDocument/diagnostic', { textDocument: { uri } })).items.length, { timeout: 15_000 }).toBeGreaterThan(0);
   const hover = await second.request<Hover>('textDocument/hover', { textDocument: { uri }, position: { line: 0, character: 2 } });
   expect(JSON.stringify(hover)).toContain('other window');
   await first.notify('textDocument/didChange', { textDocument: { uri, version: 2 }, contentChanges: [
     { range: { start: { line: 0, character: 13 }, end: { line: 0, character: 17 } }, text: '42' },
   ] });
-  await expect.poll(() => diagnostics[0].find(d => d.version === 2)?.diagnostics, { timeout: 15_000 }).toEqual([]);
+  await expect.poll(async () => (await first.request<FullDocumentDiagnosticReport>('textDocument/diagnostic', { textDocument: { uri } })).items, { timeout: 15_000 }).toEqual([]);
+  expect(JSON.stringify(await first.request<Hover>('textDocument/hover', { textDocument: { uri }, position: { line: 0, character: 2 } }))).toContain('Literal[42]');
   expect(failures).toEqual([]);
 }, 30_000);
 
@@ -59,7 +62,7 @@ test('cancellation, timeouts, crash and shutdown do not leave pending requests',
     c.listen();
   `);
   const failures: string[] = [];
-  const server = new ServerSession({ executable: process.execPath, args: [fixture] }, root, () => {}, message => failures.push(message), serverProfiles.pyright);
+  const server = new ServerSession({ executable: process.execPath, args: [fixture] }, root, () => {}, message => failures.push(message), pullProfile);
   sessions.push(server);
   await server.ready;
   const token = new CancellationTokenSource();
@@ -71,11 +74,38 @@ test('cancellation, timeouts, crash and shutdown do not leave pending requests',
   expect(await server.request('ping', {})).toBe('alive');
   await server.stop();
   await expect(server.request('hang', {})).rejects.toThrow(/stopped/);
-  const crashed = new ServerSession({ executable: process.execPath, args: [fixture] }, root, () => {}, message => failures.push(message), serverProfiles.pyright);
+  const crashed = new ServerSession({ executable: process.execPath, args: [fixture] }, root, () => {}, message => failures.push(message), pullProfile);
   sessions.push(crashed);
   await crashed.ready;
   await expect(crashed.request('crash', {})).rejects.toThrow();
   await expect.poll(() => failures.length).toBe(1);
+});
+
+test('profile-gated rename waits for initial analysis, remains cancellable and never sends a timed-out edit', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-analysis-barrier-'));
+  roots.push(root);
+  const fixture = path.join(root, 'server.cjs');
+  await writeFile(fixture, `
+    const {createMessageConnection, StreamMessageReader, StreamMessageWriter} = require(${JSON.stringify(require.resolve('vscode-jsonrpc/node'))});
+    const c = createMessageConnection(new StreamMessageReader(process.stdin), new StreamMessageWriter(process.stdout));
+    let renames=0;
+    c.onRequest('initialize',()=>({capabilities:{renameProvider:true}}));
+    c.onRequest('count',()=>renames);
+    c.onRequest('textDocument/rename',()=>++renames);
+    c.onNotification('analyzed',()=>c.sendNotification('textDocument/publishDiagnostics',{uri:'file:///project/main.py',diagnostics:[]}));
+    c.onRequest('shutdown',()=>null); c.onNotification('exit',()=>process.exit(0)); c.listen();
+  `);
+  const server = new ServerSession({ executable: process.execPath, args: [fixture] }, root, () => {}, () => {}, { ...pullProfile, renameAfterDiagnostics: true });
+  sessions.push(server); await server.ready;
+  const token = new CancellationTokenSource();
+  const pending = server.request('textDocument/rename', {}, token);
+  expect(await server.request('count', {})).toBe(0);
+  token.cancel(); await expect(pending).rejects.toThrow(/cancelled/);
+  await expect(server.request('textDocument/rename', {}, undefined, 25)).rejects.toThrow(/timed out|cancelled/);
+  const ready = server.request('textDocument/rename', {});
+  await server.notify('analyzed', {});
+  expect(await ready).toBe(1);
+  expect(await server.request('count', {})).toBe(1);
 });
 
 test('watching a closed imported file refreshes analysis without overwriting the open buffer', async () => {
@@ -85,16 +115,33 @@ test('watching a closed imported file refreshes analysis without overwriting the
   await writeFile(dependency, 'value = 1\n');
   const uri = pathToFileURL(path.join(root, 'main.py')).href;
   const published: PublishDiagnosticsParams[] = [];
+  let refreshes = 0;
   const server = new ServerSession({ executable: process.execPath, args: [require.resolve('pyright/langserver.index.js'), '--stdio'] }, root,
-    params => published.push(params), () => {}, serverProfiles.pyright);
+    params => published.push(params), () => {}, pullProfile, { refresh: feature => { if (feature === 'diagnostic') refreshes++; } });
   sessions.push(server);
   server.watch(root);
   await server.ready;
   await server.notify('textDocument/didOpen', { textDocument: { uri, languageId: 'python', version: 1,
     text: 'from dependency import value\nresult: int = value\n' } });
-  await expect.poll(() => published.at(-1)?.diagnostics, { timeout: 15_000 }).toEqual([]);
-  published.length = 0;
+  expect((await server.request<FullDocumentDiagnosticReport>('textDocument/diagnostic', { textDocument: { uri } })).items).toEqual([]);
+  const initialRefreshes = refreshes;
   await writeFile(dependency, 'value = "changed on disk"\n');
-  await expect.poll(() => published.at(-1)?.diagnostics.length, { timeout: 15_000 }).toBeGreaterThan(0);
-  expect(published.at(-1)?.version).toBe(1);
+  await expect.poll(() => refreshes, { timeout: 15_000 }).toBeGreaterThan(initialRefreshes);
+  await expect.poll(async () => (await server.request<FullDocumentDiagnosticReport>('textDocument/diagnostic', { textDocument: { uri } })).items.length, { timeout: 15_000 }).toBeGreaterThan(0);
+  const hover = await server.request<Hover>('textDocument/hover', { textDocument: { uri }, position: { line: 1, character: 2 } });
+  expect(JSON.stringify(hover)).toContain('result');
 }, 25_000);
+
+test('workspace rename includes unopened Python files immediately after initialization', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-rename-unit-')); roots.push(root);
+  const helpers = path.join(root, 'helpers.py'), main = path.join(root, 'main.py'), uri = pathToFileURL(helpers).href;
+  const text = 'def greeting(name: str) -> str:\n    return name.upper()\n';
+  await writeFile(helpers, text); await writeFile(main, 'from helpers import greeting\nprint(greeting("Setdown"))\n');
+  const server = new ServerSession({ executable: require('electron'), env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, args: [require.resolve('pyright/langserver.index.js'), '--stdio'] }, root, () => {}, () => {}, serverProfiles.pyright);
+  sessions.push(server); server.watch(root); await server.ready;
+  await server.notify('textDocument/didOpen', { textDocument: { uri, languageId: 'python', version: 1, text } });
+  expect(serverProfiles.pyright.initializationOptions?.disablePullDiagnostics).toBe(true);
+  await server.request('textDocument/prepareRename', { textDocument: { uri }, position: { line: 0, character: 5 } });
+  const result = await server.request<import('vscode-languageserver-protocol').WorkspaceEdit>('textDocument/rename', { textDocument: { uri }, position: { line: 0, character: 5 }, newName: 'welcome' });
+  expect(JSON.stringify(result)).toContain(pathToFileURL(main).href);
+});

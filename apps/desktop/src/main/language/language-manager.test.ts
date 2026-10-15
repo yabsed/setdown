@@ -16,6 +16,7 @@ vi.mock('electron', () => ({ app: { getPath: () => mocks.directory, on: (key: st
     on: (key: string, fn: (...args: any[]) => void) => mocks.events.set(key, fn) } }));
 vi.mock('./server-session', () => ({ ServerSession: class {
   readonly ready = Promise.resolve({ textDocumentSync: { openClose: true, change: 2, save: { includeText: true } } });
+  readonly capabilities = { forDocument: () => ({ textDocumentSync: { openClose: true, change: 2, save: { includeText: true } } }) };
   readonly notify = vi.fn(async (_method: string, _params: unknown) => {});
   readonly stop = vi.fn(async () => {});
   readonly request = vi.fn(async () => null);

@@ -41,6 +41,7 @@ const api: MarkTexApi = {
     close: id => ipcRenderer.send('language:close', id),
     saved: (id, text) => ipcRenderer.send('language:saved', id, text),
     request: (id, version, requestId, method, params) => ipcRenderer.invoke('language:request', id, version, requestId, method, params),
+    editApplied: (id, applied, reason) => ipcRenderer.send('language:edit-applied', id, applied, reason),
     cancel: id => ipcRenderer.send('language:cancel', id),
     restart: () => ipcRenderer.invoke('language:restart'),
     configuration: () => ipcRenderer.invoke('language:configuration'),

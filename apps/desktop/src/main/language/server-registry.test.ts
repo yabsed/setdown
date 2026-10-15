@@ -92,7 +92,9 @@ test('configuration sections and sync negotiation honor the protocol without cla
   expect(configurationSection(settings, 'python.analysis')).toEqual({ typeCheckingMode: 'basic' });
   expect(configurationSection(settings, 'python.missing')).toBeNull();
   expect(configurationSection(settings, 'constructor')).toBeNull();
-  expect(textSynchronization({ textDocumentSync: 1 })).toEqual({ change: 1, openClose: true, save: false });
+  expect(textSynchronization({ textDocumentSync: 1 })).toEqual({ change: 1, openClose: true, save: { includeText: false } });
+  expect(textSynchronization({ textDocumentSync: 2 })).toEqual({ change: 2, openClose: true, save: { includeText: false } });
+  expect(textSynchronization({ textDocumentSync: 0 })).toEqual({ change: 0, openClose: false, save: false });
   expect(textSynchronization({ textDocumentSync: { change: 2, openClose: true, save: { includeText: true } } }))
     .toEqual({ change: 2, openClose: true, save: { includeText: true } });
   expect(textSynchronization({ textDocumentSync: { save: true } }).save).toEqual({});

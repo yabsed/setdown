@@ -284,6 +284,8 @@ export class TabController {
           const decision = await this.options.confirmClose([tab.document.name]);
           if (!current() || decision === 'cancel') return false;
           if (decision === 'save') {
+            await this.options.editor.beforeSave(tab);
+            if (!current() || workspace.find(id) !== tab) return false;
             const saved = await desktop.saveTabDocument(tab.document, this.text(tab), tab.revision);
             if (saved.canceled || !saved.document) return false;
             await this.acceptSaved(tab, saved.document);
@@ -534,6 +536,8 @@ export class TabController {
       const decision = await this.options.confirmClose([tab.document.name]);
       if (decision === 'cancel') return false;
       if (decision === 'save') {
+        await this.options.editor.beforeSave(tab);
+        if (workspace.find(tab.id) !== tab) return true;
         const result = await desktop.saveTabDocument(tab.document, this.text(tab), tab.revision);
         if (result.canceled || !result.document) return false;
         await this.acceptSaved(tab, result.document);
@@ -566,6 +570,8 @@ export class TabController {
       const decision = await this.options.confirmClose(dirty.map((tab) => tab.document.name));
       if (decision === 'cancel') return false;
       if (decision === 'save') for (const tab of dirty) {
+        await this.options.editor.beforeSave(tab);
+        if (!this.options.workspace.documents.includes(tab)) continue;
         const result = await this.options.desktop.saveTabDocument(tab.document, this.text(tab), tab.revision);
         if (result.canceled || !result.document) return false;
         await this.acceptSaved(tab, result.document);

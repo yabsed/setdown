@@ -35,5 +35,16 @@ test('installed fortls connects without registration and supplies hover and comp
     await editor.press('Home'); await editor.press('Shift+End'); await editor.pressSequentially('  answer = squa');
     await editor.press('Control+Space');
     await expect(page.locator('.suggest-widget.visible')).toContainText(/square/i, { timeout: 15_000 });
+    await editor.press('Escape');
+    await editor.press('Home'); await editor.press('Shift+End'); await editor.pressSequentially('  answer = square(4)');
+    await editor.press('Escape');
+    await editor.press('Control+Home'); await editor.press('ArrowDown'); await editor.press('ArrowDown');
+    await editor.press('End'); await editor.press('Enter'); await editor.pressSequentially('  integer :: answer');
+    await editor.press('Escape');
+    await editor.press('Control+s');
+    await expect.poll(async () => (await readFile(file, 'utf8')).match(/integer :: answer/g)?.length).toBe(2);
+    // fortls publishes diagnostics without a document version. Duplicate declarations
+    // must still produce visible diagnostics in the real Monaco model.
+    await expect(page.locator('.squiggly-error').first()).toBeVisible({ timeout: 15_000 });
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
 });

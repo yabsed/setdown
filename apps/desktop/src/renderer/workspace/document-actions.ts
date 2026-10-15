@@ -15,6 +15,7 @@ type Options = {
   reload: (document: DocumentSnapshot) => Promise<void>;
   saved: (document: DocumentSnapshot) => void | Promise<void>;
   renderTabs: () => void; updateChrome: () => void;
+  beforeSave?(tab: WorkspaceTab): Promise<void>;
   autoSave?: { cancel(tabId?: string): void };
 };
 export class DocumentActions {
@@ -29,6 +30,8 @@ export class DocumentActions {
     const tab = this.options.active();
     if (!tab || tab.document.kind !== undefined) return false;
     try {
+      await this.options.beforeSave?.(tab);
+      if (this.options.active() !== tab || !this.options.tabs.includes(tab)) return false;
       const text = this.options.text(tab);
       const result = saveAs
         ? await this.options.desktop.saveDocumentAs(text, tab.revision)
@@ -49,6 +52,8 @@ export class DocumentActions {
     try {
       for (const tab of [...this.options.tabs]) {
         if (!selected.has(tab.document.path) || !this.options.dirty(tab)) continue;
+        await this.options.beforeSave?.(tab);
+        if (!this.options.tabs.includes(tab)) continue;
         const result = await this.options.desktop.saveTabDocument(tab.document, this.options.text(tab), tab.revision);
         if (result.canceled || !result.document) return false;
         await this.accept(tab, result.document);
@@ -65,6 +70,8 @@ export class DocumentActions {
     try {
       for (const tab of [...this.options.tabs]) {
         if (!this.options.dirty(tab)) continue;
+        await this.options.beforeSave?.(tab);
+        if (!this.options.tabs.includes(tab)) continue;
         const result = await this.options.desktop.saveTabDocument(tab.document, this.options.text(tab), tab.revision);
         if (result.canceled || !result.document) { this.options.desktop.finishWindowClose(false); return; }
         await this.accept(tab, result.document);

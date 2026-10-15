@@ -49,7 +49,7 @@ function fixture() {
         } },
       closeEmptyWindow() {}, discardDocument: async () => {}, adoptTabTransfer: async () => true,
       completeTabTransfer() {} },
-    editor: { loaded: true, hasLiveView: () => false, text: (tab: { text: string }) => tab.text, load: async () => {}, activate() {}, selectGroup() {}, saveView() {},
+    editor: { beforeSave: async () => {}, loaded: true, hasLiveView: () => false, text: (tab: { text: string }) => tab.text, load: async () => {}, activate() {}, selectGroup() {}, saveView() {},
       layout() {}, dispose() {}, clear() {}, reveal() {}, exportView: () => ({ cursor: 7 }), importView() {},
       restoreView() {},
       retarget() { calls.push('retarget'); }, replace() { calls.push('replace'); },

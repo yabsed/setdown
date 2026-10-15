@@ -7,11 +7,18 @@ import { matchesLanguagePattern } from '../../core/document/language-support';
 export type ServerProfile = {
   name: string; missingExecutableMessage?: string;
   configuration: Record<string, unknown>; initializationOptions?: Record<string, unknown>;
+  renameAfterDiagnostics?: boolean;
   watches(file: string): boolean;
 };
 export function serverProfile(definition: LanguageServerDefinition, options?: { settings?: Record<string, unknown>; initializationOptions?: Record<string, unknown> }): ServerProfile {
+  const bundledPyright = definition.id === 'pyright' && definition.launch.kind === 'bundledNode';
+  const initializationOptions = { ...(bundledPyright ? { disablePullDiagnostics: true } : {}),
+    ...(options?.initializationOptions ?? definition.initializationOptions) };
   return { name: definition.name, configuration: options?.settings ?? definition.settings,
-    initializationOptions: options?.initializationOptions ?? definition.initializationOptions,
+    // Pyright enumerates workspace sources asynchronously. A rename before the
+    // first analysis can return only the open file. Its first push diagnostic is
+    // the barrier after enumeration; do not equate initialize with index readiness.
+    initializationOptions, renameAfterDiagnostics: bundledPyright && initializationOptions.disablePullDiagnostics !== false,
     missingExecutableMessage: 'Open Edit → Language Support to select an installed executable.',
     watches: file => definition.watchExtensions.some(extension => file.toLowerCase().endsWith(extension.toLowerCase()))
       || definition.watchFiles.some(name => matchesLanguagePattern(path.basename(file), name)) };

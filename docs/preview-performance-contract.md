@@ -361,11 +361,50 @@ per language; settings changes are user-wide while explicit restart is window-lo
 Legacy clangd executable selection is retained. `server-registry.test.ts` and
 `language-registry.spec.ts` cover registration, persistence, routing, native choice,
 Full/Incremental/None negotiation, save snapshots, initialization/settings and
-reconfiguration with Undo. Versionless push diagnostics remain rejected; pull
-and dynamic capabilities remain unadvertised. The real Rust integration test in
+reconfiguration with Undo. Versioned push diagnostics still require an exact
+model version. Versionless push diagnostics are now explicitly best-effort:
+receipt is stamped with the main process's observed document version and the
+renderer rejects it if it has already advanced. They are cleared on edits; this
+does not prove the server analyzed the latest text and must never authorize an
+edit. This supports servers such as fortls that omit versions. Pull diagnostics
+use the requesting model/generation/version, debounce changes, retain result IDs
+and handle refresh and unchanged reports. Supported dynamic registrations honor
+document selectors and are removed on unregister/session close. The real Rust integration test in
 `test/language-servers` is a separate explicit toolchain gate; see
 [language support](language-support.md). All existing Python/clangd, native-preview,
 focus/IME and comparative latency checks remain required.
+
+Semantic tokens, inlay hints, navigation, formatting and code actions attach to
+the same owned Monaco model through per-document providers. They must not create
+a second text store, make immutable Git revisions editable, or change reader
+preparation. Semantic token deltas validate their base, array bounds and tuple
+length; a corrupt delta triggers one full-token fetch. Refresh and provider
+disposal retire their caches. Optional Code Lens and format-on-type start disabled;
+inlay hints are shown on modifier-key request unless explicitly toggled.
+
+Text workspace edits validate every target before mutation, preserve ordinary
+dirty state and per-file Undo, and reject resource operations and annotations.
+Server-issued commands and resolvable items retain main-owned, expiring handles;
+renderer-supplied command arguments cannot replace the original server payload.
+Unsolicited `workspace/applyEdit` is rejected outside an owned user command or
+Explorer operation. Save preprocessing skips initializing/failed servers, bounds
+`willSaveWaitUntil`, and rejects edits for a superseded buffer. Explorer will/did
+notifications use both static and dynamic filters and report actual completed
+filesystem operations. The feature fixture covers formatting/Undo, raw diagnostic
+quick fixes, command/applyEdit into an unopened file, lazy symbols, hierarchy,
+visible semantic colors/inlays and Explorer rename/refactor/Undo in real Electron.
+The clangd gate also exercises actual server formatting with `.clang-format`.
+
+Bundled Pyright's initial source enumeration is asynchronous. Its first rename
+waits for its first analysis diagnostic rather than interpreting initialization
+as project-index readiness; cancellation/timeout must not later send the edit.
+The unchanged unopened-file rename scenario verifies this without a test sleep.
+This profile retains push diagnostics; generic pull remains covered separately.
+Legacy numeric Full/Incremental synchronization includes `didSave` without text,
+as in the reference client; numeric None remains unsynchronized. The explicit
+fortls gate now checks a duplicate-declaration diagnostic after actual disk save.
+See [language support](language-support.md) for feature entry points, server
+compatibility and deliberately unadvertised capabilities.
 
 Native-server discovery is lazy and separate from editor-model creation. Static
 routes, Markdown-only reading, PDF and web browsing start no environment query.
@@ -1401,3 +1440,75 @@ functional logs and light/dark screenshots are in
 `test-results/language-sidebar-validation/`. These checks cover Markdown/Git
 transitions and sidebar integration; they do not measure large-project indexing
 or claim a logo exists for every language. Unmapped languages use a short label.
+
+## LSP feature expansion validation — 2026-10-16
+
+The feature inventory, entry points and exclusions are maintained in
+[language support](language-support.md#editor-features). The existing Monaco
+document, dirty-state and per-file Undo paths remain authoritative. No editor
+framework or language-server dependency was added.
+
+Final verification passed **61 unit files / 400 tests**, **three benchmark
+comparator tests**, production build/typecheck with **zero Svelte errors or
+warnings**, **116 real Electron scenarios**, and **two real native-server
+scenarios** using installed fortls and rust-analyzer. All GUI runs used isolated
+Xvfb/runtime/D-Bus. The new fixture verifies visible semantic colors, inlay hints,
+formatting/Undo, raw diagnostic quick fixes, resolved commands with server-requested
+edits in an unopened file, workspace symbols, call hierarchy, and Explorer
+will/did rename with reference edits and Undo. Actual clangd verifies project
+formatting; actual fortls verifies diagnostics after disk save. Existing Python
+rename/Undo, source/reader, IME, zoom, browser playback and shutdown checks passed.
+
+Validation exposed and fixed the static `willRename` → `willRenameFiles` mapping,
+Pyright's initial source-enumeration race, and legacy numeric synchronization
+omitting `didSave`. An invalid semantic-token delta fetches a fresh full result;
+an initializing language server cannot delay ordinary saving. Initial failing
+logs and final passing logs are retained in `test-results/lsp-feature-validation/`.
+No assertions were relaxed and no retries or skips were added to obtain a pass.
+
+The independently installed baseline is
+`34ef4df5c85e436baa62bf6641122d005fa7fcf2`. Baseline and candidate use Electron
+**44.7.2**, with separate dependency installations. Five matched repetitions
+alternate baseline/candidate order on one isolated display. `--skip-build`
+reuses their verified production builds; the harness records and verifies both
+artifact hashes. All eight scenarios and five cycles per process completed,
+including latest-content captures and real double-click input.
+
+Comparison: **PASS — zero regressions across 48 buckets** using the existing
+joint thresholds (>25% and >50ms). Median milliseconds are **baseline → candidate**.
+Warm means cycles 3–5 within each process, then the median across repetitions.
+The table excludes the explicit source-preparation wait. Esc includes native
+capture/readback; it is not a monitor presentation timestamp.
+
+| Surface | Source wait | Edit | Esc first | Esc second | Esc warm | Double-click first | Double-click second | Double-click warm |
+| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Markdown | 0ms | no | 39 → 42 | 26 → 27 | 19 → 19 | 17 → 18 | 33 → 26 | 12 → 11 |
+| Markdown | 0ms | yes | 437 → 446 | 100 → 103 | 92 → 88 | 16 → 19 | 13 → 14 | 13 → 16 |
+| Markdown | 3000ms | no | 44 → 41 | 19 → 20 | 23 → 18 | 16 → 16 | 12 → 11 | 11 → 11 |
+| Markdown | 3000ms | yes | 110 → 96 | 106 → 101 | 92 → 89 | 19 → 19 | 13 → 12 | 15 → 13 |
+| Git review | 0ms | no | 952 → 912 | 21 → 19 | 26 → 28 | 23 → 24 | 12 → 11 | 12 → 12 |
+| Git review | 0ms | yes | 1027 → 1011 | 1493 → 1498 | 177 → 176 | 21 → 23 | 22 → 21 | 19 → 20 |
+| Git review | 3000ms | no | 29 → 24 | 22 → 22 | 19 → 19 | 23 → 23 | 11 → 11 | 17 → 17 |
+| Git review | 3000ms | yes | 227 → 233 | 181 → 191 | 174 → 175 | 22 → 22 | 18 → 18 | 18 → 17 |
+
+Including the **configured 3000ms preparation allowance**, the first Esc totals
+are below. This is wait allowance + measured input latency, not a separate
+measurement of preparation CPU time or complete application startup. The wait
+occurs only before the first cycle, so second/warm and double-click values stay
+as above; the 0ms scenarios' inclusive totals equal the first table.
+
+| Surface | Edit | First Esc including preparation allowance |
+| --- | --- | ---: |
+| Markdown | no | 3044 → 3041 |
+| Markdown | yes | 3110 → 3096 |
+| Git review | no | 3029 → 3024 |
+| Git review | yes | 3227 → 3233 |
+
+[Comparison samples, build identities and source hashes](lsp-features-preview-benchmark-2026-10-16.json).
+Raw results are in `test-results/lsp-features-performance/`; functional logs and
+feature screenshots are in `test-results/lsp-feature-validation/`.
+These checks establish the existing Markdown/Git transition contract for these
+fixtures. They do not establish large-project LSP indexing time, RSS, or every
+server's support for each optional feature. Workspace edits remain text-only
+with per-file Undo; notebook/debugger/virtual-document and multi-server support
+remain outside this implementation.

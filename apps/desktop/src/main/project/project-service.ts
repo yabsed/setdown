@@ -37,6 +37,7 @@ export class ProjectService {
     return result;
   }
   private readonly paths = new ProjectPaths();
+  setLanguageFileOperations(handler: NonNullable<ExplorerService['languageOperation']>): void { this.explorer.languageOperation = handler; }
   private readonly explorer = new ExplorerService(this.paths, undefined, (state, paths) => {
     for (const other of this.windows()) {
       if (other.webContentsId === state.webContentsId) continue;

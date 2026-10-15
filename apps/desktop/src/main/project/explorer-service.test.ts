@@ -86,3 +86,22 @@ describe('explorer service', () => {
     expect(await readFile(first, 'utf8')).toBe('first');
   });
 });
+
+test('language will/did operations bracket the actual mutation, and rejected edits leave files untouched', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-explorer-language-')); temporaryDirectories.push(root);
+  const service = new ExplorerService(new ProjectPaths(), async file => { await rm(file); });
+  const state = { projectRoot: root } as WindowState;
+  const from = path.join(root, 'before.py'), to = path.join(root, 'after.py');
+  await writeFile(from, 'value = 1\n');
+  const events: string[] = [];
+  service.languageOperation = async (_state, operation, phase) => {
+    events.push(`${phase}:${operation.kind}`);
+    if (phase === 'will') { expect(await readFile(from, 'utf8')).toBe('value = 1\n'); await expect(readFile(to)).rejects.toThrow(); }
+    else { expect(await readFile(to, 'utf8')).toBe('value = 1\n'); await expect(readFile(from)).rejects.toThrow(); }
+  };
+  await service.rename(state, from, 'after.py');
+  expect(events).toEqual(['will:rename', 'did:rename']);
+  service.languageOperation = async () => { throw Error('Document changed during import edits.'); };
+  await expect(service.trashEntry(state, to)).rejects.toThrow(/Document changed/);
+  expect(await readFile(to, 'utf8')).toBe('value = 1\n');
+});

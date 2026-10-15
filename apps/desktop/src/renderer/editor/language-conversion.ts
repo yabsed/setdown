@@ -17,7 +17,10 @@ export function marker(api: typeof M, diagnostic: L.Diagnostic): M.editor.IMarke
   return { ...fromRange(diagnostic.range), message: typeof diagnostic.message === 'string' ? diagnostic.message : diagnostic.message.value, source: diagnostic.source,
     severity: diagnostic.severity === 1 ? api.MarkerSeverity.Error : diagnostic.severity === 2 ? api.MarkerSeverity.Warning
       : diagnostic.severity === 4 ? api.MarkerSeverity.Hint : api.MarkerSeverity.Info,
-    code: diagnostic.code === undefined ? undefined : String(diagnostic.code),
+    code: diagnostic.code === undefined ? undefined : diagnostic.codeDescription && /^https?:\/\//.test(diagnostic.codeDescription.href)
+      ? { value: String(diagnostic.code), target: api.Uri.parse(diagnostic.codeDescription.href) } : String(diagnostic.code),
+    relatedInformation: diagnostic.relatedInformation?.filter(item => item.location.uri.startsWith('file:')).map(item => ({
+      resource: api.Uri.parse(item.location.uri), ...fromRange(item.location.range), message: item.message })),
     tags: diagnostic.tags?.map(tag => tag === 1 ? api.MarkerTag.Unnecessary : api.MarkerTag.Deprecated) };
 }
 export function completion(api: typeof M, item: L.CompletionItem, fallback: M.IRange): M.languages.CompletionItem {
@@ -27,14 +30,17 @@ export function completion(api: typeof M, item: L.CompletionItem, fallback: M.IR
     K.File, K.Reference, K.Folder, K.EnumMember, K.Constant, K.Struct, K.Event, K.Operator, K.TypeParameter];
   const edit = item.textEdit;
   return {
-    label: item.label, kind: kinds[item.kind ?? 1] ?? K.Text, detail: item.detail,
+    label: item.labelDetails ? { label: item.label, detail: item.labelDetails.detail, description: item.labelDetails.description } : item.label, kind: kinds[item.kind ?? 1] ?? K.Text, detail: item.detail,
     documentation: item.documentation ? markdown(item.documentation) : undefined,
     insertText: edit?.newText ?? item.insertText ?? item.label,
-    insertTextRules: item.insertTextFormat === 2 ? api.languages.CompletionItemInsertTextRule.InsertAsSnippet : undefined,
+    insertTextRules: ((item.insertTextFormat === 2 ? api.languages.CompletionItemInsertTextRule.InsertAsSnippet : 0)
+      | (item.insertTextMode === 1 ? api.languages.CompletionItemInsertTextRule.KeepWhitespace : 0)) || undefined,
     range: edit ? 'range' in edit ? fromRange(edit.range) : { insert: fromRange(edit.insert), replace: fromRange(edit.replace) } : fallback,
     additionalTextEdits: item.additionalTextEdits?.map(edit => ({ range: fromRange(edit.range), text: edit.newText })),
     sortText: item.sortText, filterText: item.filterText, preselect: item.preselect,
-    commitCharacters: item.commitCharacters, tags: item.tags?.includes(1) ? [api.languages.CompletionItemTag.Deprecated] : undefined,
-    // A server-supplied command is deliberately not executable in the shell.
+    commitCharacters: item.commitCharacters, tags: item.tags?.includes(1) || item.deprecated ? [api.languages.CompletionItemTag.Deprecated] : undefined,
+    // Command provenance and execution belong to LanguageClient, never to Monaco's global command namespace.
   };
 }
+
+export { completionDefaults } from '../../protocol/language-completion';

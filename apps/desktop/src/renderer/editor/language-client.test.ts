@@ -31,7 +31,7 @@ function fixture(file = '/project/main.py', capabilities: import('vscode-languag
   const tab = createWorkspaceTab('tab-1', { path: file, name: file.split('/').at(-1)!, text: 'text', savedText: 'text',
     revision: 0, savedRevision: 0, isUntitled: false, diskVersion: { mtimeMs: 0, size: 0 } }, 'editor',
   { sourceLine: 1, yRatio: .3, reason: 'empty-document', confidence: 'fallback' });
-  const port: LanguageApi = {
+  const port: LanguageApi = { editApplied: vi.fn(),
     open: vi.fn(async document => { opened.push(document); return { uri: 'file:///project/main.py', capabilities }; }),
     change: vi.fn(async () => {}), close: vi.fn(), saved: vi.fn(), cancel: vi.fn(), restart: vi.fn(async () => {}), configuration: vi.fn(async () => []), catalog: vi.fn(async () => ({ release: '', entries: [] })),
     rescan: vi.fn(async () => {}), useAutomatic: vi.fn(async () => {}), selectCandidate: vi.fn(async () => {}),
@@ -124,6 +124,17 @@ test('saving and requesting while initialization fails leaves no rejected editor
   expect(await pending).toBeNull();
   expect(f.port.saved).not.toHaveBeenCalled();
   expect(f.port.request).not.toHaveBeenCalled();
+  f.client.dispose();
+});
+
+test('save preparation does not wait for pending server initialization', async () => {
+  const f = fixture();
+  let finish!: (value: Awaited<ReturnType<LanguageApi['open']>>) => void;
+  vi.mocked(f.port.open).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+  f.client.bind(f.tab, f.model);
+  await f.client.beforeSave(f.model);
+  expect(f.port.request).not.toHaveBeenCalled();
+  finish({ unavailable: 'missing' });
   f.client.dispose();
 });
 

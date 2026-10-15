@@ -74,7 +74,7 @@
     window.addEventListener('keydown', keydown);
     void refresh().catch(reason => { error = String(reason); });
     const unsubscribe = api.onEvent(event => {
-      if (event.type !== 'diagnostics') void refresh().catch(reason => { error = String(reason); });
+      if (['configuration', 'discovery', 'status', 'activity', 'capabilities'].includes(event.type)) void refresh().catch(reason => { error = String(reason); });
     });
     return () => {
       live = false; unsubscribe(); window.removeEventListener('keydown', keydown);
@@ -173,6 +173,8 @@
           {#each selected.sessions as session}
             <p class="session"><code>{session.root}</code><br />{session.state}{session.message ? ` · ${session.message}` : ''}
               {#if session.features?.length}<br />{session.features.join(', ')}{/if}</p>
+            {#if session.progress?.length}<p class="session" role="status">{session.progress.join(' · ')}</p>{/if}
+            {#if session.logs?.length}<details><summary>Server output</summary><pre class="server-output">{session.logs.join('\n')}</pre></details>{/if}
           {/each}
           <details>
             <summary>Connection settings</summary>
@@ -251,6 +253,7 @@
   .details button.primary { color: #fff; background: var(--app-accent); border-color: var(--app-accent); }
   .details details { padding: 10px 0; border-top: 1px solid var(--app-border); margin-top: 14px; }
   .details summary { font-size: 11px; cursor: pointer; }
+  .server-output { max-height: 240px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; }
   .session { padding: 8px; background: var(--app-hover); font-size: 11px; }
   .empty { padding: 8px 14px; color: var(--app-muted-text); line-height: 1.6; }
   .error { margin: 8px 12px; color: var(--app-danger-text); white-space: pre-wrap; overflow-wrap: anywhere; }

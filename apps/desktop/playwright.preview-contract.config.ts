@@ -5,6 +5,7 @@ export default defineConfig(base, {
   retries: 0,
   testMatch: [
     'language-support.spec.ts',
+    'language-features.spec.ts',
     'language-registry.spec.ts',
     'clangd-support.spec.ts',
     'browser.spec.ts',

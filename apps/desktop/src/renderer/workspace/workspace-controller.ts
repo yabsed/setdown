@@ -291,10 +291,10 @@ export function startWorkspace(desktop: DesktopPort) {
     serialize: tabs.transferable, render: tabs.render,
     install: (transfer, placement) => tabs.installTransferred(transfer, placement) });
   autoSave = new AutoSaveController({ desktop, get tabs() { return workspace.documents; }, activeId: () => workspace.activeId,
-    text: tabs.text, dirty: tabs.dirty, acceptSaved: tabs.acceptSaved,
+    text: tabs.text, dirty: tabs.dirty, beforeSave: tab => editor.beforeSave(tab, 2), acceptSaved: tabs.acceptSaved,
     saved: (document) => projects.documentSaved(document) });
   const documents = new DocumentActions({ desktop, get tabs() { return workspace.documents; }, active, text: tabs.text, dirty: tabs.dirty,
-    preview, installModel: tabs.installModel, acceptSaved: tabs.acceptSaved,
+    preview, beforeSave: tab => editor.beforeSave(tab), installModel: tabs.installModel, acceptSaved: tabs.acceptSaved,
     show: (document, surface) => { projectOpenRequest++; projects.deactivateGitDiff(); return tabs.show(document, surface); },
     reload: tabs.reload, saved: (document) => projects.documentSaved(document),
     renderTabs: tabs.render, updateChrome: tabs.updateChrome, autoSave });

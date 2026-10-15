@@ -327,3 +327,90 @@ The Rust fixture was exercised with rust-analyzer `0.3.3081-standalone` from the
 using Rust `1.95.0`. The Linux x86-64 gzip archive was checked against release
 SHA-256 `040cab4e2abc490fadd95c3f6cbc60b941a78761dbc3acf0ec66fd7a97f31db3`.
 The binary is a local test tool, not a bundled application dependency.
+
+## Editor features
+
+This is the implemented inventory following the
+[LSP feature audit](../reports/2026_10_16_03_22_lsp_feature_audit_and_expansion_plan.md).
+Validation and matched preview measurements are recorded in the
+[performance contract](preview-performance-contract.md#lsp-feature-expansion-validation--2026-10-16).
+
+Features are registered per document from the connected server's capabilities,
+including supported dynamic registrations. Installing a server does not imply
+that it implements every feature below.
+
+| Feature | Where to use it |
+| --- | --- |
+| Semantic token colors (full, delta and range) | Automatically complements the existing syntax grammar and Setdown theme |
+| Declaration, type definition, implementation, references | Editor context menu / F1 navigation actions |
+| Document highlights, semantic selection expansion, folding | Cursor highlighting, Expand Selection and the folding gutter |
+| Document links and color presentations | Ctrl/Cmd-click links; color swatches and the color picker |
+| Code actions, quick fixes, refactorings, organize imports | Lightbulb, Ctrl/Cmd+. and F1; only server-provided kinds appear |
+| Document / range formatting | Format Document / Format Selection in F1 and the context menu |
+| Formatting while typing | F1 → Toggle Format on Type; off by default |
+| Linked editing | Matching names supplied by the server, such as paired tags |
+| Inlay hints, including lazy tooltips, locations and edits | Hold Ctrl+Alt (Cmd+Option on macOS), or F1 → Toggle Inlay Hints |
+| Code Lens and lazy command resolution | F1 → Toggle Code Lens; off by default |
+| Workspace symbols and lazy locations | F1 → Go to Workspace Symbol…; searches the active server's workspace |
+| Incoming/outgoing calls, super/subtypes | Corresponding F1/context-menu action; select a location or use › to explore its children |
+| Problems in open files | F1 → Show Problems in Open Files |
+| Server progress and bounded output | The existing Language Support server details |
+
+Navigation results use a small editor-local panel. Escape restores the editor;
+opening a result reuses ordinary tabs. These panels do not cover or suspend native
+web pages. Unsupported hierarchy/symbol actions are disabled. No persistent
+language-error button is added over the editor.
+
+Push diagnostics with versions require an exact match. Versionless diagnostics
+(such as fortls') are best-effort and are cleared on the next edit. Pull diagnostics
+use a 250 ms debounce, request versions, result IDs, refresh notifications and
+cancellation. Raw diagnostic data is retained for quick fixes; diagnostic links
+and related locations are preserved. This is separate from coloring: a server
+that does not supply semantic tokens still needs a syntax grammar for colors.
+In particular, fortls does not currently supply semantic tokens.
+Its legacy numeric text-sync capability now sends `didSave` without source text,
+matching [vscode-languageclient's normalization](https://github.com/microsoft/vscode-languageserver-node/blob/b8c8db0b6a5c1a257d224cda3f0c21ce0a8a3203/client/src/common/client.ts).
+This matters because fortls publishes diagnostics on open/save, not every keystroke.
+
+Bundled Pyright keeps push diagnostics by default. Pyright 1.1.414 enumerates source
+files asynchronously; requesting rename immediately after initialization can omit
+unopened files even in push mode. For this profile, rename waits for the first
+analysis diagnostic before sending the request, with cancellation and the normal
+request deadline. There is no fixed sleep or rename retry. Setdown uses Pyright's
+[`disablePullDiagnostics` initialization option](https://github.com/microsoft/pyright/blob/1.1.414/packages/pyright-internal/src/languageServerBase.ts)
+to make that initial-analysis signal available; other servers retain generic pull
+support. This follows the ordering in Pyright's
+[source enumeration and analysis](https://github.com/microsoft/pyright/blob/1.1.414/packages/pyright-internal/src/analyzer/service.ts).
+Explicit initialization options can override it (and opt out of the push barrier).
+The real Pyright session tests exercise generic pull/refresh separately.
+
+## Edits and file operations
+
+Formatting, rename, quick fixes, command edits and save edits use the existing
+Monaco models. Workspace edits validate all target versions, ranges and overlaps
+before applying. Closed targets become ordinary unsaved tabs without taking focus.
+Undo is per file; an edit is not silently saved and is not a filesystem-wide
+atomic transaction. Server item resolution and commands use bounded, expiring
+main-process handles. Server command names never become arbitrary editor commands
+or shell commands. Server `workspace/applyEdit` is accepted only during an active
+user command or an authorized Explorer operation and remains within that workspace.
+
+`willSave` and `willSaveWaitUntil` run before explicit saves, close-save,
+Save As, staging saves and auto save; wait-until has a 1.5-second budget. Edits
+arriving after a revision change are ignored. A server still initializing does
+not delay saving. Save still captures the current
+buffer and `didSave` receives the actual saved snapshot. This is not an automatic
+format-on-save setting.
+
+Explorer create, rename/move/cut, copy/duplicate and trash operations send filtered
+`will*Files` / `did*Files` events to connected servers. The existing serialized
+file-operation path holds auto save. Import/reference text edits are validated
+before filesystem mutation; `did` describes only completed operations. A rejected
+pre-edit aborts the operation. Filesystem failures can still leave the existing
+Explorer's explicitly reported partial result, and text edits retain per-file Undo.
+
+Server-requested creation/deletion/renaming **inside a WorkspaceEdit**, annotation
+confirmation, notebook synchronization, debugger inline values, monikers, virtual
+server documents, additional servers for one language, and nonstandard clangd
+extensions remain unadvertised. Those require their own document/transaction or
+product contract. The implementation does not add a VS Code extension runtime.

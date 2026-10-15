@@ -33,6 +33,7 @@ export class MonacoEditor {
   private languageConfiguration: Promise<LanguageRoute[]> | undefined;
   private languageEpoch = 0;
   private unregisterLanguage?: () => void;
+  private readonly languageContexts = new Map<Monaco.editor.IStandaloneCodeEditor, () => void>();
   private languageClient: LanguageClient | undefined;
   private languageLoading: Promise<void> | undefined;
   private disposed = false;
@@ -105,6 +106,10 @@ export class MonacoEditor {
   }
   text(tab: WorkspaceTab): string { return this.models.get(tab.id)?.getValue() ?? tab.text; }
   modelFor(tab: WorkspaceTab): Monaco.editor.ITextModel { return this.ensureModel(tab); }
+  async beforeSave(tab: WorkspaceTab, reason: 1 | 2 = 1): Promise<void> {
+    const model = this.models.get(tab.id);
+    if (model) await this.languageClient?.beforeSave(model, reason);
+  }
   saved(tab: WorkspaceTab): void {
     const model = this.models.get(tab.id);
     if (model) this.languageClient?.saved(model, tab.document.savedText);
@@ -148,7 +153,7 @@ export class MonacoEditor {
       host.className = 'group-monaco-instance';
       this.options.host.append(host);
       const editor = api.editor.create(host, {
-        automaticLayout: true, language: 'markdown', theme: monacoThemeName(this.options.theme()),
+        automaticLayout: true, 'semanticHighlighting.enabled': true, codeLens: false, inlayHints: { enabled: 'offUnlessPressed' }, linkedEditing: true, language: 'markdown', theme: monacoThemeName(this.options.theme()),
         wordWrap: 'on', wrappingIndent: 'same', lineNumbers: 'on', minimap: { enabled: false },
         scrollBeyondLastLine: false, smoothScrolling: true, cursorSmoothCaretAnimation: 'on',
         fontFamily: APP_FONT_FAMILY,
@@ -394,6 +399,7 @@ export class MonacoEditor {
       if (this.disposed || epoch !== this.languageEpoch) return;
       this.languageClient = new LanguageClient(api, { ...options, route: file => languageSupport(file, this.languageRoutes ?? []), status: state => {
         this.options.host.dataset.languageServer = state;
+        for (const update of this.languageContexts.values()) update();
       } });
       for (const current of this.options.tabs()) {
         const currentModel = this.models.get(current.id);
@@ -402,6 +408,30 @@ export class MonacoEditor {
     }).catch(error => { if (epoch === this.languageEpoch) this.languageLoading = undefined; console.error('Could not load language support', error); });
   }
   private installBindings(api: typeof Monaco, editor: Monaco.editor.IStandaloneCodeEditor): void {
+    const symbols = editor.createContextKey<boolean>('setdownLanguageSymbols', false), calls = editor.createContextKey<boolean>('setdownLanguageCalls', false),
+      types = editor.createContextKey<boolean>('setdownLanguageTypes', false), problems = editor.createContextKey<boolean>('setdownLanguageProblems', false);
+    const updateLanguageContext = () => {
+      const cap = this.languageClient?.capabilitiesFor(editor.getModel());
+      symbols.set(!!cap?.workspaceSymbolProvider); calls.set(!!cap?.callHierarchyProvider); types.set(!!cap?.typeHierarchyProvider);
+      problems.set(!!cap && Object.keys(cap).length > 0);
+    };
+    this.languageContexts.set(editor, updateLanguageContext);
+    editor.onDidChangeModel(updateLanguageContext);
+    editor.onDidDispose(() => this.languageContexts.delete(editor));
+    for (const [kind, label] of Object.entries({ symbols: 'Go to Workspace Symbol…', incoming: 'Show Incoming Calls', outgoing: 'Show Outgoing Calls', supertypes: 'Show Supertypes', subtypes: 'Show Subtypes', problems: 'Show Problems in Open Files' }) as ['symbols' | 'incoming' | 'outgoing' | 'supertypes' | 'subtypes' | 'problems', string][]) {
+      editor.addAction({ id: `setdown.language-${kind}`, label, precondition: kind === 'symbols' ? 'setdownLanguageSymbols' : kind === 'incoming' || kind === 'outgoing' ? 'setdownLanguageCalls' : kind === 'problems' ? 'setdownLanguageProblems' : 'setdownLanguageTypes', contextMenuGroupId: 'navigation', contextMenuOrder: 5,
+        run: () => this.languageClient?.showNavigation(kind, editor) });
+    }
+    editor.addAction({ id: 'setdown.toggle-inlay-hints', label: 'Toggle Inlay Hints', run: () => {
+      const enabled = editor.getOption(api.editor.EditorOption.inlayHints).enabled;
+      editor.updateOptions({ inlayHints: { enabled: enabled === 'on' ? 'offUnlessPressed' : 'on' } });
+    } });
+    editor.addAction({ id: 'setdown.toggle-format-on-type', label: 'Toggle Format on Type', run: () => {
+      editor.updateOptions({ formatOnType: !editor.getOption(api.editor.EditorOption.formatOnType) });
+    } });
+    editor.addAction({ id: 'setdown.toggle-code-lens', label: 'Toggle Code Lens', run: () => {
+      editor.updateOptions({ codeLens: !editor.getOption(api.editor.EditorOption.codeLens) });
+    } });
     editor.addAction({ id: 'setdown.restart-language', label: 'Restart Language Servers',
       run: async () => { await this.languageClient?.restart(); } });
     editor.addAction({ id: 'setdown.language-support', label: 'Language Support…',

@@ -1,3 +1,4 @@
+import type { LanguageRefresh } from './language-features';
 import type { Diagnostic, ServerCapabilities, TextDocumentContentChangeEvent } from 'vscode-languageserver-protocol';
 import type { LanguageRoute } from '../core/document/language-support';
 import type { LanguageServerDefinition } from '../core/document/language-definition';
@@ -17,13 +18,15 @@ export type LanguageCatalogEntry = {
   automatic?: boolean; canDetect?: boolean; candidates?: LanguageServerCandidate[];
   discoveryMessage?: string; selectionNeeded?: boolean; searched?: string[];
   profileSource?: string; setupNote?: string;
-  sessions: { root: string; state: 'starting' | 'ready' | 'failed'; message?: string; features?: string[] }[];
+  sessions: { root: string; state: 'starting' | 'ready' | 'failed'; message?: string; features?: string[]; logs?: string[]; progress?: string[] }[];
 };
 export type LanguageCatalog = { release: string; profileSource?: string; profiles?: number; entries: LanguageCatalogEntry[] };
 
 export function textSynchronization(capabilities: ServerCapabilities): { change: number; openClose: boolean; save: false | { includeText?: boolean } } {
   const sync = capabilities.textDocumentSync;
-  return typeof sync === 'number' ? { change: sync, openClose: sync !== 0, save: false as false | { includeText?: boolean } }
+  // The legacy numeric form includes didSave (without text) for Full/Incremental,
+  // matching vscode-languageclient. fortls still uses this representation.
+  return typeof sync === 'number' ? { change: sync, openClose: sync !== 0, save: sync === 0 ? false : { includeText: false } }
     : { change: sync?.change ?? 0, openClose: sync?.openClose ?? false,
       save: typeof sync?.save === 'object' ? sync.save : sync?.save === true ? {} : false };
 }
@@ -33,6 +36,16 @@ export const languageMethods = [
   'textDocument/completion', 'completionItem/resolve', 'textDocument/hover',
   'textDocument/signatureHelp', 'textDocument/definition', 'textDocument/references',
   'textDocument/documentSymbol', 'textDocument/rename', 'textDocument/prepareRename',
+  'textDocument/declaration', 'textDocument/typeDefinition', 'textDocument/implementation',
+  'textDocument/documentHighlight', 'textDocument/selectionRange', 'textDocument/foldingRange',
+  'textDocument/documentLink', 'documentLink/resolve', 'textDocument/documentColor', 'textDocument/colorPresentation',
+  'textDocument/semanticTokens/full', 'textDocument/semanticTokens/full/delta', 'textDocument/semanticTokens/range',
+  'textDocument/inlayHint', 'inlayHint/resolve', 'textDocument/linkedEditingRange',
+  'textDocument/codeAction', 'codeAction/resolve', 'textDocument/codeLens', 'codeLens/resolve',
+  'textDocument/formatting', 'textDocument/rangeFormatting', 'textDocument/onTypeFormatting',
+  'textDocument/willSaveWaitUntil', 'textDocument/diagnostic', 'workspace/symbol', 'workspaceSymbol/resolve', 'workspace/executeCommand',
+  'textDocument/prepareCallHierarchy', 'callHierarchy/incomingCalls', 'callHierarchy/outgoingCalls',
+  'textDocument/prepareTypeHierarchy', 'typeHierarchy/supertypes', 'typeHierarchy/subtypes',
 ] as const;
 export type LanguageMethod = typeof languageMethods[number];
 export type LanguageDocument = { id: string; generation: string; path: string; text: string; version: number };
@@ -41,7 +54,11 @@ export type LanguageUnavailable = { unavailable: 'missing' | 'selection-needed' 
 export type LanguageEvent =
   | { type: 'configuration'; servers?: string[] }
   | { type: 'discovery' }
-  | { type: 'diagnostics'; id: string; generation: string; version: number; diagnostics: Diagnostic[] }
+  | { type: 'diagnostics'; id: string; generation: string; version: number; unversioned?: boolean; diagnostics: Diagnostic[] }
+  | { type: 'refresh'; documents: { id: string; generation: string }[]; feature: LanguageRefresh }
+  | { type: 'capabilities'; id: string; generation: string; capabilities: ServerCapabilities }
+  | { type: 'activity' }
+  | { type: 'apply-edit'; id: string; generation: string; requestId: string; versions?: { id: string; generation: string; version: number }[]; edit: import('vscode-languageserver-protocol').WorkspaceEdit }
   | { type: 'status'; documents: { id: string; generation: string }[]; state: 'starting' | 'ready' | 'failed'; message?: string };
 export type LanguageApi = {
   open(document: LanguageDocument): Promise<LanguageConnection | LanguageUnavailable>;
@@ -50,6 +67,7 @@ export type LanguageApi = {
   saved(id: string, text?: string): void;
   request(id: string, version: number, requestId: string, method: LanguageMethod, params: unknown): Promise<unknown>;
   cancel(requestId: string): void;
+  editApplied(requestId: string, applied: boolean, failureReason?: string): void;
   restart(): Promise<void>;
   configuration(): Promise<LanguageRoute[]>;
   catalog(): Promise<LanguageCatalog>;

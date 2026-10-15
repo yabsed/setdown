@@ -14,6 +14,7 @@ test('clangd honors compile commands and .clangd, with completion, rename, Undo 
   const helper = path.join(root, 'include', 'helper.hpp');
   await writeFile(helper, '#pragma once\ninline int helper(int value) { return value + BUILD_VALUE + CONFIG_VALUE; }\n');
   await writeFile(path.join(root, '.clangd'), 'CompileFlags:\n  Add: [-DCONFIG_VALUE=9]\n');
+  await writeFile(path.join(root, '.clang-format'), 'BasedOnStyle: LLVM\nIndentWidth: 4\n');
   await writeFile(path.join(root, 'compile_commands.json'), JSON.stringify([{
     directory: root, file, arguments: ['clang++', '-std=c++20', '-Iinclude', '-DBUILD_VALUE=7', '-c', file],
   }]));
@@ -53,6 +54,16 @@ test('clangd honors compile commands and .clangd, with completion, rename, Undo 
     await editor.press('Control+z'); await editor.press('Control+s');
     await expect.poll(() => readFile(file, 'utf8')).toContain('int greeting(');
     expect(await readFile(file, 'utf8')).not.toContain('welcome');
+    // Real clangd formatting uses project style and remains one ordinary Undo step.
+    const beforeFormat = await readFile(file, 'utf8');
+    await editor.press('F1'); await page.locator('.quick-input-box input').fill('>Format Document');
+    await page.locator('.quick-input-box input').press('Enter');
+    await expect(page.locator('.monaco-editor .view-lines')).toContainText('    int count = 4;');
+    await editor.press('Control+s');
+    await expect.poll(() => readFile(file, 'utf8')).toContain('    int count = 4;');
+    expect(await readFile(file, 'utf8')).not.toBe(beforeFormat);
+    await editor.press('Control+z'); await editor.press('Control+s');
+    await expect.poll(() => readFile(file, 'utf8')).toBe(beforeFormat);
     // F12 crosses into the ordinary header tab and keeps the compile context.
     await editor.press('Control+Home'); await editor.press('ArrowDown'); await editor.press('Home');
     for (let index = 0; index < 35; index++) await editor.press('ArrowRight');

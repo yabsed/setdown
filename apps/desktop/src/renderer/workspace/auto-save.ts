@@ -11,6 +11,7 @@ type Options = {
   text(tab: WorkspaceTab): string;
   dirty(tab: WorkspaceTab): boolean;
   acceptSaved(tab: WorkspaceTab, document: DocumentSnapshot): Promise<void>;
+  beforeSave?(tab: WorkspaceTab): Promise<void>;
   saved(document: DocumentSnapshot): void | Promise<void>;
 };
 
@@ -82,6 +83,8 @@ export class AutoSaveController {
     if (tab.document.isUntitled || tab.document.kind !== undefined) return;
     if (requireActive && tab.id !== this.options.activeId()) return;
     try {
+      await this.options.beforeSave?.(tab);
+      if (!tabs.includes(tab) || (requireActive && tab.id !== this.options.activeId())) return;
       const result = await desktop.saveTabDocument(tab.document, text(tab), tab.revision, true);
       // A conflict-canceled save stays dirty; the external-change banner informs the user.
       if (result.canceled || !result.document || !tabs.includes(tab)) return;

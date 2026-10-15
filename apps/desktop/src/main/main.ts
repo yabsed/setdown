@@ -146,7 +146,9 @@ else {
   });
   app.whenReady().then(async () => {
     installProtocols(); themes.load(); autoSave.load();
-    new LanguageManager(id => registry.stateForWebContents(id)).install();
+    const languages = new LanguageManager(id => registry.stateForWebContents(id));
+    languages.install();
+    projects.setLanguageFileOperations((state, operation, phase) => languages.fileOperation(state, operation, phase));
     app.on('browser-window-created', (_event, window) => window.once('closed', () => setImmediate(() => {
       if (!Array.from(registry.values).length) browsers.dispose();
     })));

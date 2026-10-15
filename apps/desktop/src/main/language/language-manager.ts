@@ -1,10 +1,10 @@
 import path from 'node:path';
-import { createHash } from 'node:crypto';
-import { pathToFileURL } from 'node:url';
+import { createHash, randomUUID } from 'node:crypto';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { app, dialog, ipcMain, shell } from 'electron';
 import { readFile, stat } from 'node:fs/promises';
 import { CancellationTokenSource } from 'vscode-jsonrpc/node';
-import type { ServerCapabilities, TextDocumentContentChangeEvent } from 'vscode-languageserver-protocol';
+import type { WorkspaceEdit, ApplyWorkspaceEditResult, ServerCapabilities, TextDocumentContentChangeEvent } from 'vscode-languageserver-protocol';
 import { languageMethods, textSynchronization, type LanguageCatalog, type LanguageConnectionDraft, type LanguageServerOptions, type LanguageDocument, type LanguageEvent, type LanguageMethod } from '../../protocol/language';
 import { canonicalPath, isInside } from '../documents/file-system';
 import type { WindowState } from '../windows/window-state';
@@ -12,12 +12,15 @@ import { languageSupport } from '../../core/document/language-support';
 import { ServerRegistry, findExecutable } from './server-registry';
 import { validateLanguageDefinition } from '../../core/document/language-definition';
 import { serverProfile, standaloneLanguageRoot } from './server-definitions';
+import { fileOperationMethod, filteredFileOperation, type LanguageFileOperation } from './file-operations';
+import { ServerItems } from './server-items';
+import { featureNames, isDocumentMethod, resolveMethods } from '../../protocol/language-features';
 import { ServerSession } from './server-session';
 import { ServerDiscovery, type Discovery } from './server-discovery';
 import { languageCatalog, packageDiscovery, profileSource } from './catalog/profiles';
 import type { LanguageServerDefinition } from '../../core/document/language-definition';
 
-type Binding = { id: string; generation: string; uri: string; version: number; server: ServerSession; capabilities: ServerCapabilities };
+type Binding = { languageId: string; id: string; generation: string; uri: string; version: number; server: ServerSession; capabilities: ServerCapabilities };
 type Owner = { state: WindowState; documents: Map<string, Binding>; servers: Map<string, ServerSession>;
   requests: Map<string, CancellationTokenSource> };
 
@@ -27,6 +30,10 @@ export class LanguageManager {
   private readonly watched = new Set<number>();
   private readonly draining = new Set<Promise<void>>();
   private readonly pendingOpens = new Map<number, Map<string, symbol>>();
+  private readonly items = new Map<ServerSession, ServerItems>();
+  private readonly commands = new Map<ServerSession, Binding>();
+  private readonly editRequests = new Map<string, { owner: Owner; server: ServerSession; finish(result: ApplyWorkspaceEditResult): void }>();
+  private activityTimer?: ReturnType<typeof setTimeout>;
   private scanning?: Promise<void>;
   constructor(private readonly stateFor: (id: number) => WindowState | null, private readonly discovery = new ServerDiscovery()) {}
   private registryValue: ServerRegistry | undefined;
@@ -122,9 +129,9 @@ export class LanguageManager {
         profileSource: definition?.provenance ? `${definition.provenance.source} · ${definition.provenance.profile}` : undefined,
         setupNote: definition?.setupNote,
         options: definition ? { args: options?.args ?? definition.launch.args, settings: options?.settings ?? definition.settings,
-          initializationOptions: options?.initializationOptions ?? definition.initializationOptions ?? {} } : undefined,
+          initializationOptions: serverProfile(definition, options).initializationOptions ?? {} } : undefined,
         sessions: [...(owner?.servers.values() ?? [])].flatMap(server => {
-          const info = this.sessions.get(server); return info?.id === item.id ? [{ root: info.root, state: info.state, message: info.message, features: info.features }] : [];
+          const info = this.sessions.get(server); return info?.id === item.id ? [{ root: info.root, state: info.state, message: info.message, features: info.features, logs: server.logs, progress: [...(server.progress?.values() ?? [])] }] : [];
         }) };
     });
     // Report the same primary-server policy as document opening. Multiple installed
@@ -150,6 +157,7 @@ export class LanguageManager {
       if (!Number.isSafeInteger(version) || version <= binding.version || !Array.isArray(changes)
         || changes.length > 10000 || JSON.stringify(changes).length > 32 * 1024 * 1024) throw new Error('Invalid language change.');
       binding.version = version;
+      this.items.get(binding.server)?.forget(id, false);
       if (textSynchronization(binding.capabilities).change === 0) return;
       return binding.server.notify('textDocument/didChange', { textDocument: { uri: binding.uri, version }, contentChanges: changes });
     });
@@ -158,14 +166,37 @@ export class LanguageManager {
       const binding = this.binding(event.sender.id, id);
       if (!owner || binding.version !== version || !languageMethods.includes(method)
         || typeof requestId !== 'string' || requestId.length > 128 || owner.requests.has(requestId)
-        || owner.requests.size >= 64 || !params || typeof params !== 'object') throw new Error('Invalid or stale language request.');
+        || owner.requests.size >= 64 || !params || typeof params !== 'object' || JSON.stringify(params).length > 4 * 1024 * 1024) throw new Error('Invalid or stale language request.');
+      const origin = { document: id, generation: binding.generation, version };
+      const items = this.items.get(binding.server)!;
+      const command = method === 'workspace/executeCommand';
+      const itemMethod = method in resolveMethods || command;
+      const requestParams = itemMethod ? items.resolve(method, params, origin)
+        : isDocumentMethod(method) ? { ...params, textDocument: { uri: binding.uri } } : params;
+      if (command && this.commands.has(binding.server)) throw Error('A language command is already running.');
       const token = new CancellationTokenSource();
       owner.requests.set(requestId, token);
+      if (command) this.commands.set(binding.server, binding);
       try {
-        const result = await binding.server.request(method, method === 'completionItem/resolve' ? params
-          : { ...params, textDocument: { uri: binding.uri } }, token);
-        return owner.documents.get(id) === binding && binding.version === version ? result : null;
-      } finally { owner.requests.delete(requestId); }
+        if (method === 'textDocument/willSaveWaitUntil') {
+          const sync = binding.capabilities.textDocumentSync;
+          if (typeof sync !== 'object' || ![1, 2, 3].includes((params as { reason: number }).reason)) return [];
+          if (sync.willSave) await binding.server.notify('textDocument/willSave', requestParams);
+          if (!sync.willSaveWaitUntil) return [];
+        }
+        const result = await binding.server.request(method, requestParams, token, method === 'textDocument/willSaveWaitUntil' ? 1500 : undefined);
+        return owner.documents.get(id) === binding && binding.version === version
+          ? items.remember(method, result, origin) : null;
+      } finally {
+        owner.requests.delete(requestId);
+        if (command) this.commands.delete(binding.server);
+      }
+    });
+    ipcMain.on('language:edit-applied', (event, requestId: string, applied: boolean, failureReason?: string) => {
+      let sender: WindowState; try { sender = state(event); } catch { return; }
+      const proposal = this.editRequests.get(requestId);
+      if (!proposal || proposal.owner.state !== sender || typeof applied !== 'boolean') return;
+      proposal.finish({ applied, failureReason: typeof failureReason === 'string' ? failureReason.slice(0, 1000) : undefined });
     });
     const listen = (channel: string, handler: (owner: WindowState, id: string) => void) => {
       ipcMain.on(channel, (event, id: unknown) => {
@@ -357,38 +388,97 @@ export class LanguageManager {
       const key = `${support.server}:${root}:${fingerprint}`;
       server = new ServerSession(launch, root, params => {
         for (const binding of owned.documents.values()) {
-          // Reject unversioned/stale diagnostics rather
-          // than pretending they belong to the newest unsaved buffer.
-          if (binding.server === server && binding.uri === params.uri && params.version === binding.version)
-            this.emit(owned, { type: 'diagnostics', id: binding.id, generation: binding.generation, version: binding.version, diagnostics: params.diagnostics });
+          // Versionless push diagnostics are best-effort observations, never used as edit versions.
+          if (binding.server === server && binding.uri === params.uri && (params.version === undefined || params.version === binding.version))
+            this.emit(owned, { type: 'diagnostics', id: binding.id, generation: binding.generation, version: binding.version, unversioned: params.version === undefined, diagnostics: params.diagnostics });
         }
       }, message => {
         const info = server && this.sessions.get(server);
         if (info) { info.state = 'failed'; info.message = message; }
         this.emit(owned, { type: 'status', state: 'failed', message,
           documents: [...owned.documents.values()].filter(binding => binding.server === server).map(({ id, generation }) => ({ id, generation })) });
-      }, serverProfile(definition, this.registry.options(support.server)));
+      }, serverProfile(definition, this.registry.options(support.server)), {
+        refresh: feature => this.emit(owned, { type: 'refresh', feature,
+          documents: [...owned.documents.values()].filter(b => b.server === server).map(({ id, generation }) => ({ id, generation })) }),
+        capabilitiesChanged: () => {
+          for (const binding of owned.documents.values()) if (binding.server === server) {
+            binding.capabilities = server!.capabilities.forDocument(binding.uri, binding.languageId);
+            const info = this.sessions.get(server!); if (info) info.features = featureNames(binding.capabilities);
+            this.emit(owned, { type: 'capabilities', id: binding.id, generation: binding.generation, capabilities: binding.capabilities });
+          }
+        },
+        activity: () => {
+          if (!this.activityTimer) this.activityTimer = setTimeout(() => { this.activityTimer = undefined; this.broadcast({ type: 'activity' }); }, 500);
+        },
+        applyEdit: params => this.applyEdit(owned, server!, params.edit),
+      });
+      this.items.set(server, new ServerItems());
       this.sessions.set(server, { id: support.server, root, state: 'starting' });
       owner.servers.set(key, server);
       server.watch(root);
     }
-    const binding = { id: document.id, generation: document.generation, uri, version: document.version, server, capabilities: {} as ServerCapabilities };
+    const binding = { languageId: support.languageId, id: document.id, generation: document.generation, uri, version: document.version, server, capabilities: {} as ServerCapabilities };
     owner.documents.set(document.id, binding);
     this.emit(owner, { type: 'status', state: 'starting', documents: [{ id: binding.id, generation: binding.generation }] });
-    const capabilities = await server.ready;
+    await server.ready;
+    const capabilities = server.capabilities.forDocument(uri, support.languageId);
     if (this.owners.get(state.webContentsId) !== owner || owner.documents.get(document.id) !== binding)
       throw new Error('Language document closed during initialization.');
     binding.capabilities = capabilities;
     const info = this.sessions.get(server);
     if (info) {
       info.state = 'ready';
-      info.features = ['completion', 'hover', 'signatureHelp', 'definition', 'references', 'documentSymbol', 'rename']
-        .filter(feature => capabilities[`${feature}Provider` as keyof ServerCapabilities]);
+      info.features = featureNames(capabilities);
     }
     if (textSynchronization(capabilities).openClose) await server.notify('textDocument/didOpen', { textDocument: { uri: binding.uri, languageId: support.languageId,
       version: document.version, text: document.text } });
     this.emit(owner, { type: 'status', state: 'ready', documents: [{ id: binding.id, generation: binding.generation }] });
     return { uri: binding.uri, capabilities, server: support.server };
+  }
+  async fileOperation(state: WindowState, operation: LanguageFileOperation, phase: 'will' | 'did'): Promise<void> {
+    const owner = this.owners.get(state.webContentsId);
+    if (!owner) return;
+    const versions = [...owner.documents.values()].map(({ id, generation, version }) => ({ id, generation, version }));
+    for (const server of owner.servers.values()) {
+      if (this.sessions.get(server)?.state !== 'ready') continue;
+      const method = fileOperationMethod(operation, phase);
+      const params = filteredFileOperation(operation, server.capabilities.fileOperation(method));
+      if (!params.files.length) continue;
+      if (phase === 'did') { await server.notify(method, params).catch(() => {}); continue; }
+      const edit = await server.request<WorkspaceEdit | null>(method, params, undefined, 2000);
+      if (edit) {
+        const binding = [...owner.documents.values()].find(b => b.server === server);
+        if (!binding) throw Error('Language session closed during the file operation.');
+        const result = await this.applyEdit(owner, server, edit, { binding, versions });
+        if (!result.applied) throw Error(result.failureReason ?? 'Could not apply language file-operation edits.');
+        for (const entry of versions) entry.version = owner.documents.get(entry.id)?.version ?? entry.version;
+      }
+    }
+  }
+  private async applyEdit(owner: Owner, server: ServerSession, edit: WorkspaceEdit, fileOperation?: { binding: Binding; versions: { id: string; generation: string; version: number }[] }): Promise<ApplyWorkspaceEditResult> {
+    const binding = fileOperation?.binding ?? this.commands.get(server);
+    if (!binding || owner.documents.get(binding.id) !== binding) return { applied: false, failureReason: 'No active user command accepts edits.' };
+    try {
+      if (JSON.stringify(edit).length > 8 * 1024 * 1024) throw Error('Workspace edit is too large.');
+      const uris = edit.documentChanges ? edit.documentChanges.map(change => {
+        if (!('textDocument' in change)) throw Error('File operations are not supported by this edit transaction.');
+        return change.textDocument.uri;
+      }) : Object.keys(edit.changes ?? {});
+      const root = this.sessions.get(server)?.root;
+      if (!root || uris.length > 200) throw Error('Invalid workspace edit.');
+      for (const uri of uris) {
+        const parsed = new URL(uri);
+        if (parsed.protocol !== 'file:' || parsed.search || parsed.hash || !isInside(root, canonicalPath(fileURLToPath(uri))))
+          throw Error('Workspace edits must remain inside the language workspace.');
+      }
+    } catch (error) { return { applied: false, failureReason: String(error) }; }
+    return new Promise(resolve => {
+      const requestId = randomUUID();
+      const timer = setTimeout(() => finish({ applied: false, failureReason: 'Editor did not accept the edit in time.' }), 10_000);
+      const finish = (result: ApplyWorkspaceEditResult) => { clearTimeout(timer); this.editRequests.delete(requestId); resolve(result); };
+      this.editRequests.set(requestId, { owner, server, finish });
+      this.emit(owner, { type: 'apply-edit', id: binding.id, generation: binding.generation, requestId, versions: fileOperation?.versions, edit });
+    });
   }
   private close(ownerId: number, id: string): void {
     this.pendingOpens.get(ownerId)?.delete(id);
@@ -396,6 +486,7 @@ export class LanguageManager {
     const binding = owner?.documents.get(id);
     if (!owner || !binding) return;
     owner.documents.delete(id);
+    this.items.get(binding.server)?.forget(id);
     if (textSynchronization(binding.capabilities).openClose) void binding.server.notify('textDocument/didClose', { textDocument: { uri: binding.uri } }).catch(() => {});
     if (![...owner.documents.values()].some(other => other.server === binding.server)) {
       for (const [root, server] of owner.servers) if (server === binding.server) owner.servers.delete(root);
@@ -414,6 +505,8 @@ export class LanguageManager {
   }
   private stop(server: ServerSession): Promise<void> {
     this.sessions.delete(server);
+    this.items.delete(server); this.commands.delete(server);
+    for (const proposal of this.editRequests.values()) if (proposal.server === server) proposal.finish({ applied: false, failureReason: 'Language session closed.' });
     const stopped = server.stop();
     this.draining.add(stopped);
     void stopped.finally(() => this.draining.delete(stopped));

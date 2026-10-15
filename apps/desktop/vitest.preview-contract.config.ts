@@ -12,6 +12,8 @@ export default defineConfig({
     'src/renderer/project/explorer/explorer-controller.test.ts',
     'src/renderer/workspace/auto-save.test.ts',
     'src/main/language/server-session.test.ts',
+    'src/main/language/server-capabilities.test.ts',
+    'src/renderer/editor/language-features.test.ts',
     'src/main/language/server-registry.test.ts',
     'src/main/language/catalog/profiles.test.ts',
     'src/main/language/server-discovery.test.ts',
