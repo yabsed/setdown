@@ -387,8 +387,10 @@ requests. Its reusable `desktop.yml` runs the full unit suite (including every
 focused contract unit test), the benchmark comparator tests, production
 build/typecheck and the unchanged real Electron/Chromium contract suite. GUI
 execution uses the isolated-display wrapper. Retries remain disabled. Electron's
-sandbox is resolved from each app's installed package, including workspace-local
-installations, rather than assuming a root `node_modules/electron` directory.
+sandbox is resolved through each app's Electron executable API, including
+workspace-local installations. This initializes Electron 44's lazy binary
+download before inspecting or configuring the sandbox; `npm ci` alone installs
+the package without necessarily installing its executable.
 
 The only automatic exemptions are known documentation paths: root README,
 AGENTS, CONTRIBUTING, CHANGELOG and LICENSE files, `live_demo.gif`, `docs/`, and

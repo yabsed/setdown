@@ -65,7 +65,7 @@ test('obsolete main reruns cannot publish; later documentation alone is allowed'
   assert.equal(previewStillCurrent({ status: 'ahead', files: [] }), false);
 });
 
-test('sandbox resolution follows each checkout independently, including nested Electron', () => {
+test('sandbox resolution initializes a fresh Electron package in each checkout', () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'setdown-sandbox-path-'));
   try {
     for (const layout of ['hoisted', 'nested']) {
@@ -75,8 +75,16 @@ test('sandbox resolution follows each checkout independently, including nested E
       writeFileSync(path.join(desktop, 'package.json'), '{}');
       const electron = path.join(layout === 'hoisted' ? checkout : desktop, 'node_modules/electron');
       mkdirSync(path.join(electron, 'dist'), { recursive: true });
-      writeFileSync(path.join(electron, 'package.json'), '{"name":"electron"}');
-      writeFileSync(path.join(electron, 'dist/chrome-sandbox'), 'fixture');
+      writeFileSync(path.join(electron, 'package.json'), '{"name":"electron","main":"index.js"}');
+      // Mirror the lazy-install public API: package metadata exists before the
+      // executable and sandbox do. Merely resolving package.json must fail.
+      writeFileSync(path.join(electron, 'index.js'), `
+        const fs = require('node:fs');
+        const path = require('node:path');
+        fs.writeFileSync(path.join(__dirname, 'dist/electron'), 'executable fixture');
+        fs.writeFileSync(path.join(__dirname, 'dist/chrome-sandbox'), 'sandbox fixture');
+        module.exports = path.join(__dirname, 'dist/electron');
+      `);
       assert.equal(sandboxPath(checkout), path.join(electron, 'dist/chrome-sandbox'));
     }
   } finally { rmSync(root, { recursive: true, force: true }); }

@@ -6,7 +6,11 @@ import { pathToFileURL } from 'node:url';
 
 export function sandboxPath(root) {
   const require = createRequire(path.resolve(root, 'apps/desktop/package.json'));
-  const sandbox = path.join(path.dirname(require.resolve('electron/package.json')), 'dist/chrome-sandbox');
+  // Electron 44 downloads its binary on first require, not during npm ci.
+  // Resolve the executable through its public API before inspecting the helper;
+  // finding package.json alone does not mean dist has been installed.
+  const executable = require('electron');
+  const sandbox = path.join(path.dirname(executable), 'chrome-sandbox');
   if (!statSync(sandbox).isFile()) throw Error(`Missing Electron sandbox: ${sandbox}`);
   return sandbox;
 }
