@@ -54,20 +54,38 @@ if (args[0] === 'api') {
     if (state.tagCommit) response({sha: state.tagCommit});
     else { save(); console.error('gh: No commit found for SHA (HTTP 422)'); process.exit(1); }
   }
+  else if (args.includes('POST') && resource === 'releases') {
+    if (!args.includes('--input') || value('--input') !== '-') throw Error('Expected a JSON request body');
+    const body = JSON.parse(fs.readFileSync(0, 'utf8'));
+    if (!body.draft) throw Error('Must create a draft');
+    if (state.release?.tag_name === body.tag_name) throw Error('Release already exists');
+    (state.createBodies ??= []).push(body);
+    state.release = { ...body, id: state.nextReleaseId ?? 1, assets: [], html_url: 'https://example.invalid/release' };
+    response(state.release);
+  }
   else if (args.includes('PATCH')) {
+    if (resource !== 'releases/' + state.release?.id) missing();
     if (state.failPublish) failure(503);
     state.release.draft = false;
     state.published = true;
     if (!state.tagCommit && !state.tagObject) state.tagCommit = state.release.target_commitish;
     response(state.release);
-  } else if (endpoint.includes('/releases/tags/')) state.release ? response(state.release) : missing();
+  } else if (resource === 'releases?per_page=100') {
+    if (!args.includes('--paginate') || !args.includes('--slurp')) throw Error('Draft discovery must read every page');
+    const releases = [...(state.otherReleases ?? []), ...(state.release ? [state.release] : [])];
+    const pages = [];
+    for (let offset = 0; offset < releases.length; offset += 100) pages.push(releases.slice(offset, offset + 100));
+    response(state.listResponse ?? (pages.length ? pages : [[]]));
+  } else if (resource.startsWith('releases/') && /^[0-9]+$/.test(resource.slice('releases/'.length))) {
+    if (!state.release || resource !== 'releases/' + state.release.id) missing();
+    response(state.releaseReadOverride ?? state.release);
+  } else if (endpoint.includes('/releases/tags/')) {
+    // The tag endpoint only returns published releases, not unpublished drafts.
+    state.release && !state.release.draft ? response(state.release) : missing();
+  }
   else throw Error('Unexpected API call: ' + args.join(' '));
-} else if (args[0] === 'release' && args[1] === 'create') {
-  if (!args.includes('--draft')) throw Error('Must create a draft');
-  state.release = {id: 1, tag_name: args[2], draft: true, target_commitish: value('--target'), assets: [], html_url: 'https://example.invalid/release'};
-  response(state.release);
 } else if (args[0] === 'release' && args[1] === 'upload') {
-  if (!state.release.draft) throw Error('Cannot upload to a published release');
+  if (!state.release.draft || args[2] !== state.release.tag_name) throw Error('Cannot upload to a different or published release');
   state.release.assets = args.slice(3).filter(arg => arg !== '--clobber').map(file => ({
     name: path.basename(file), size: fs.statSync(file).size,
     digest: 'sha256:' + crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')
@@ -79,7 +97,8 @@ if (args[0] === 'api') {
   if (state.badDigest) state.release.assets[0].digest = 'sha256:corrupt';
   if (state.advanceDuringUpload) state.comparison = {status: 'ahead', files: [{filename: 'package-lock.json'}]};
   if (state.moveTagDuringUpload) state.tagCommit = state.moveTagDuringUpload;
-  response(state.release);
+  if (state.deleteDraftDuringUpload) delete state.release;
+  response(state.release ?? {});
 } else throw Error('Unexpected command: ' + args.join(' '));
 `;
 
@@ -108,6 +127,8 @@ function fixture(t, options = {}, releaseVersion = version) {
   } });
   return { root, read, run };
 }
+const creationCalls = state => state.calls.filter(call => call[0] === 'api' && call.includes('POST'));
+const hasMutation = state => state.calls.some(call => call[0] === 'release' || call.includes('POST') || call.includes('PATCH'));
 
 test('publication verifies both platform artifacts, stages six files, then publishes once', t => {
   const f = fixture(t);
@@ -119,13 +140,17 @@ test('publication verifies both platform artifacts, stages six files, then publi
   assert.deepEqual(state.release.assets.map(asset => asset.name).sort(),
     [...installerNames(version, 'win'), ...installerNames(version, 'linux'), 'build-info.json', 'SHA256SUMS'].sort());
   assert.equal(state.calls.at(-1).includes('make_latest=false'), true);
+  assert.equal(state.calls.some(call => call.includes('repos/example/setdown/releases/1')), true);
+  assert.equal(state.calls.some(call => call.some(arg => arg.includes('/releases/tags/'))), false);
+  assert.equal(state.createBodies[0].draft, true);
+  assert.equal(state.createBodies[0].target_commitish, commit);
   const info = JSON.parse(readFileSync(path.join(f.root, 'release-assets/build-info.json'), 'utf8'));
   assert.equal(info.commit, commit);
   assert.equal(readFileSync(path.join(f.root, 'release-assets/SHA256SUMS'), 'utf8').trim().split('\n').length, 5);
   const retry = f.run();
   assert.equal(retry.status, 0, retry.stderr);
   assert.equal(f.read().calls.filter(call => call.includes('PATCH')).length, 1);
-  assert.equal(f.read().calls.filter(call => call[0] === 'release' && call[1] === 'create').length, 1);
+  assert.equal(creationCalls(f.read()).length, 1);
 });
 
 test('stable publication requires the matching tag and participates in Latest selection', t => {
@@ -134,7 +159,8 @@ test('stable publication requires the matching tag and participates in Latest se
   assert.equal(result.status, 0, result.stderr);
   assert.equal(f.read().published, true);
   assert.equal(f.read().calls.at(-1).includes('make_latest=legacy'), true);
-  assert.equal(f.read().calls.find(call => call[1] === 'create').includes('--verify-tag'), true);
+  assert.equal(f.read().createBodies[0].tag_name, 'v1.0.0');
+  assert.equal(f.read().createBodies[0].prerelease, false);
 });
 
 test('manual artifact runs cannot invoke publication', t => {
@@ -147,7 +173,7 @@ test('a mismatched platform provenance aborts before any release mutation', t =>
   const f = fixture(t);
   writeFileSync(path.join(f.root, 'release-artifacts/installers-win-x64-1/build-info-win.json'), JSON.stringify({ version, commit: 'b'.repeat(40), runId: '1234', platform: 'win' }));
   assert.notEqual(f.run().status, 0);
-  assert.equal(f.read().calls.some(call => call[0] === 'release'), false);
+  assert.equal(hasMutation(f.read()), false);
 });
 
 test('missing Linux installers abort before a release is created', t => {
@@ -169,7 +195,7 @@ test('an interrupted upload leaves a draft that a failed-job rerun can complete'
   const retry = f.run();
   assert.equal(retry.status, 0, retry.stderr);
   assert.equal(f.read().published, true);
-  assert.equal(f.read().calls.filter(call => call[0] === 'release' && call[1] === 'create').length, 1);
+  assert.equal(creationCalls(f.read()).length, 1);
 });
 
 test('published releases are never overwritten on rerun', t => {
@@ -178,7 +204,7 @@ test('published releases are never overwritten on rerun', t => {
   } });
   const result = f.run();
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(f.read().calls.some(call => call[0] === 'release' || call.includes('PATCH')), false);
+  assert.equal(hasMutation(f.read()), false);
 });
 
 test('a tag that moved away from the validated source cannot be published', t => {
@@ -210,7 +236,7 @@ test('stable publication refuses an absent tag before creating a release', t => 
   const result = f.run({ RELEASE_CHANNEL: 'tag', GITHUB_REF: 'refs/tags/v1.0.0', RELEASE_PRERELEASE: 'false' });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Required release tag .* does not exist/);
-  assert.equal(f.read().calls.some(call => call[0] === 'release' || call.includes('PATCH')), false);
+  assert.equal(hasMutation(f.read()), false);
 });
 
 test('nested annotated tags are resolved to the tested commit', t => {
@@ -235,33 +261,33 @@ test('invalid, cyclic and missing annotated tag objects never become absent prev
   for (const [name, options] of Object.entries(scenarios)) await t.test(name, t => {
     const f = fixture(t, options);
     assert.notEqual(f.run().status, 0);
-    assert.equal(f.read().calls.some(call => call[0] === 'release' || call.includes('PATCH')), false);
+    assert.equal(hasMutation(f.read()), false);
   });
 });
 
 test('lookup authorization, validation, rate-limit, server and network failures stop publication', async t => {
-  for (const resource of [`git/ref/tags/v${version}`, `releases/tags/v${version}`]) {
+  for (const resource of [`git/ref/tags/v${version}`, 'releases?per_page=100']) {
     for (const status of [401, 403, 422, 429, 503, 'network']) await t.test(`${resource}: ${status}`, t => {
       const f = fixture(t, { apiErrors: { [resource]: status } });
       const result = f.run();
       assert.notEqual(result.status, 0);
       assert.match(result.stderr, status === 'network' ? /connection reset/ : new RegExp(`HTTP ${status}`));
-      assert.equal(f.read().calls.some(call => call[0] === 'release' || call.includes('PATCH')), false);
+      assert.equal(hasMutation(f.read()), false);
     });
   }
 });
 
-test('unbound drafts, wrong release identities and published releases without tags cannot be resumed', async t => {
+test('unbound drafts, invalid release IDs and published releases without tags cannot be resumed', async t => {
   const release = { id: 1, tag_name: `v${version}`, draft: true, target_commitish: commit, assets: [] };
   const scenarios = {
     differentSource: { release: { ...release, target_commitish: 'b'.repeat(40) } },
-    wrongIdentity: { tagCommit: commit, release: { ...release, tag_name: 'v9.0.0' } },
+    invalidId: { release: { ...release, id: 0 } },
     publishedWithoutTag: { release: { ...release, draft: false } },
   };
   for (const [name, options] of Object.entries(scenarios)) await t.test(name, t => {
     const f = fixture(t, options);
     assert.notEqual(f.run().status, 0);
-    assert.equal(f.read().calls.some(call => call[0] === 'release' || call.includes('PATCH')), false);
+    assert.equal(hasMutation(f.read()), false);
   });
 });
 
@@ -276,7 +302,7 @@ test('a failed publication leaves verified assets in a resumable draft', t => {
   const retry = f.run();
   assert.equal(retry.status, 0, retry.stderr);
   assert.equal(f.read().published, true);
-  assert.equal(f.read().calls.filter(call => call[0] === 'release' && call[1] === 'create').length, 1);
+  assert.equal(creationCalls(f.read()).length, 1);
 });
 
 test('a tag moved during upload or the final freshness check prevents publication', async t => {
@@ -287,6 +313,72 @@ test('a tag moved during upload or the final freshness check prevents publicatio
     assert.match(result.stderr, /does not point to the tested commit/);
     assert.equal(f.read().release.draft, true);
     assert.equal(f.read().published, undefined);
+    assert.equal(f.read().calls.some(call => call.includes('PATCH')), false);
+  });
+});
+
+test('the ID returned by draft creation is used for verification and publication', t => {
+  const id = 413653318;
+  const f = fixture(t, { nextReleaseId: id });
+  const result = f.run();
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(f.read().release.id, id);
+  assert.equal(f.read().calls.some(call => call.includes(`repos/example/setdown/releases/${id}`) && !call.includes('PATCH')), true);
+  assert.equal(f.read().calls.at(-1).includes(`repos/example/setdown/releases/${id}`), true);
+});
+
+test('an existing untagged draft on a later page resumes without creating another release', t => {
+  const id = 413653318;
+  const f = fixture(t, {
+    release: { id, tag_name: `v${version}`, draft: true, target_commitish: commit, assets: [] },
+    otherReleases: Array.from({ length: 100 }, (_, index) => ({ id: index + 1, tag_name: `v0.0.${index}`, draft: false })),
+  });
+  const result = f.run();
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(f.read().published, true);
+  assert.equal(f.read().release.id, id);
+  assert.equal(creationCalls(f.read()).length, 0);
+  assert.equal(f.read().tagCommit, commit);
+});
+
+test('duplicate draft identities and malformed listings abort before mutation', async t => {
+  const release = { id: 1, tag_name: `v${version}`, draft: true, target_commitish: commit, assets: [] };
+  for (const [name, options] of Object.entries({
+    duplicate: { release, otherReleases: [{ ...release, id: 2 }] },
+    malformed: { listResponse: [{}] },
+  })) await t.test(name, t => {
+    const f = fixture(t, options);
+    assert.notEqual(f.run().status, 0);
+    assert.equal(hasMutation(f.read()), false);
+  });
+});
+
+test('a deleted draft or failed ID lookup never falls back to another release', async t => {
+  for (const status of [401, 403, 404, 422, 429, 503, 'network']) await t.test(String(status), t => {
+    const f = fixture(t, { apiErrors: { 'releases/1': status } });
+    const result = f.run();
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, status === 'network' ? /connection reset/ : new RegExp(`HTTP ${status}`));
+    assert.equal(creationCalls(f.read()).length, 1);
+    assert.equal(f.read().calls.some(call => call.includes('PATCH')), false);
+  });
+  await t.test('deleted during upload', t => {
+    const f = fixture(t, { deleteDraftDuringUpload: true });
+    assert.notEqual(f.run().status, 0);
+    assert.equal(creationCalls(f.read()).length, 1);
+    assert.equal(f.read().calls.some(call => call.includes('PATCH')), false);
+  });
+});
+
+test('ID lookup validates the returned identity and source before publication', async t => {
+  const release = { id: 1, tag_name: `v${version}`, draft: true, target_commitish: commit, assets: [] };
+  for (const [name, override] of Object.entries({
+    differentId: { id: 2 },
+    differentTag: { tag_name: 'v9.0.0' },
+    differentSource: { target_commitish: 'b'.repeat(40) },
+  })) await t.test(name, t => {
+    const f = fixture(t, { releaseReadOverride: { ...release, ...override } });
+    assert.notEqual(f.run().status, 0);
     assert.equal(f.read().calls.some(call => call.includes('PATCH')), false);
   });
 });

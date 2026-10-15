@@ -14,7 +14,7 @@ const { version, tag, prerelease } = releaseMetadata({ channel, version: manifes
 if (channel === 'artifact' || version !== env.RELEASE_VERSION || tag !== env.RELEASE_TAG
   || String(prerelease) !== env.RELEASE_PRERELEASE) throw Error('Release metadata does not match the checked source.');
 
-const gh = args => execFileSync('gh', args, { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
+const gh = (args, input) => execFileSync('gh', args, { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024, input });
 const api = endpoint => JSON.parse(gh(['api', `repos/${repo}/${endpoint}`]));
 function findResource(endpoint) {
   try { return api(endpoint); }
@@ -46,14 +46,28 @@ function verifiedTagCommit() {
     throw Error(`Tag ${tag} does not point to the tested commit ${commit}.`);
   return object.sha;
 }
-function publicationState() {
-  const tagCommit = verifiedTagCommit();
-  const release = findResource(`releases/tags/${encodeURIComponent(tag)}`);
+function findRelease() {
+  // The tag endpoint only finds published releases. The authenticated list also
+  // includes drafts, including drafts whose Git tag has not been created yet.
+  const pages = JSON.parse(gh(['api', '--paginate', '--slurp', `repos/${repo}/releases?per_page=100`]));
+  if (!Array.isArray(pages) || pages.some(page => !Array.isArray(page))) throw Error('Invalid release listing.');
+  const matches = pages.flat().filter(release => release?.tag_name === tag);
+  if (matches.length > 1) throw Error(`Multiple releases found for ${tag}; refusing ambiguous publication.`);
+  return matches[0] ?? null;
+}
+function verifyRelease(release, tagCommit, expectedId = release?.id) {
+  if (!release || !Number.isSafeInteger(release.id) || release.id <= 0 || release.id !== expectedId
+    || typeof release.draft !== 'boolean') throw Error('Invalid release identity.');
   // An existing Git tag is authoritative. target_commitish is only used by
   // GitHub when creating a tag, and can legitimately still name a branch.
-  if (release && (release.tag_name !== tag || (!tagCommit && release.target_commitish !== commit)))
+  if (release.tag_name !== tag || (!tagCommit && release.target_commitish !== commit))
     throw Error('Existing release belongs to a different source; refusing to replace it.');
-  if (release && !release.draft && !tagCommit) throw Error('Published release has no matching Git tag.');
+  if (!release.draft && !tagCommit) throw Error('Published release has no matching Git tag.');
+}
+function publicationState(id) {
+  const tagCommit = verifiedTagCommit();
+  const release = id === undefined ? findRelease() : api(`releases/${id}`);
+  if (release) verifyRelease(release, tagCommit, id ?? release.id);
   return { tagCommit, release };
 }
 function summary(message) {
@@ -67,7 +81,7 @@ if (channel === 'preview' && !previewStillCurrent(api(`compare/${commit}...main`
   summary('Development release skipped: main has newer application changes.');
   process.exit(0);
 }
-const { release: existing } = publicationState();
+const { tagCommit, release: existing } = publicationState();
 if (existing && !existing.draft) {
   summary(`Already published; preserved without modification: ${existing.html_url}`);
   process.exit(0);
@@ -103,26 +117,28 @@ for (const name of files) {
 }
 writeFileSync(path.join(staging, 'SHA256SUMS'), [...hashes].map(([name, hash]) => `${hash}  ${name}\n`).join(''));
 files.push('SHA256SUMS');
-const notesFile = path.join(staging, 'release-notes.md');
-writeFileSync(notesFile, [
+const notes = [
   channel === 'preview' ? 'Development build from main. This is a pre-release.' : `Setdown ${version}.`,
   '', `Source: [${commit.slice(0, 12)}](https://github.com/${repo}/commit/${commit})`,
   `Validation and packaging: [workflow run](${runUrl})`, '',
   'Windows x64: `.exe`. Linux x64: `.AppImage`, `.deb`, or `.rpm`.',
   'Windows installers are unsigned. Check `SHA256SUMS` to verify your download.',
   '',
-].join('\n'));
+].join('\n');
 
 // Stage all files on a draft before publication, including on repositories
 // with immutable releases. A failed upload leaves a resumable, unpublished draft.
-if (!existing) {
-  const flags = prerelease ? ['--prerelease'] : [];
-  if (channel === 'tag') flags.push('--verify-tag');
-  gh(['release', 'create', tag, '--draft', '--target', commit, '--latest=false',
-    '--title', `Setdown ${version}`, '--notes-file', notesFile, ...flags]);
+let draft = existing;
+if (!draft) {
+  draft = JSON.parse(gh(['api', '--method', 'POST', `repos/${repo}/releases`, '--input', '-'], JSON.stringify({
+    tag_name: tag, target_commitish: commit, name: `Setdown ${version}`, body: notes,
+    draft: true, prerelease, make_latest: 'false',
+  })));
+  verifyRelease(draft, tagCommit);
+  if (!draft.draft) throw Error('Release creation did not return an unpublished draft.');
 }
 gh(['release', 'upload', tag, ...files.map(name => path.join(staging, name)), '--clobber']);
-const { release: staged } = publicationState();
+const { release: staged } = publicationState(draft.id);
 if (!staged?.draft) throw Error('Release draft disappeared or was published before upload verification.');
 if (staged.assets.length !== files.length) throw Error('Draft contains unexpected or missing assets.');
 for (const name of files) {

@@ -308,6 +308,9 @@ including annotated tags, must resolve to the packaged commit; stable releases
 require the tag to exist before publication. The publisher checks the tag again
 before publishing. Authorization, validation, rate-limit and network errors stop
 publication and leave any staged draft available for a later retry.
+Draft discovery includes every page of the authenticated release list. Creation
+retains the returned release ID, which is used for upload verification and
+publication; a draft does not need a published tag to be found on a retry.
 
 For a build without publishing, select **Actions → CI → Run workflow**. This
 packages `*-test.<run-id>` installers as workflow artifacts, retained for 14 days,
