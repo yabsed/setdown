@@ -134,6 +134,8 @@ export function installApplicationMenu(context: MenuContext) {
         { type: 'separator' },
         { id: 'menu-select-all', label: 'Select All', accelerator: 'CmdOrCtrl+A', click: () => contents()?.selectAll() },
         { type: 'separator' },
+        { id: 'menu-language-support', label: 'Language Support…', click: () => command('language-support') },
+        { type: 'separator' },
         { id: 'menu-auto-save', label: 'Auto Save', type: 'checkbox', checked: context.autoSave(),
           click: (item) => { item.checked = context.toggleAutoSave(); } },
       ],

@@ -236,6 +236,7 @@ export type AppCommand =
   | 'previous-tab'
   | 'open-find'
   | 'escape'
+  | 'language-support'
   | 'toggle-folder-tools'
   | 'toggle-surface';
 

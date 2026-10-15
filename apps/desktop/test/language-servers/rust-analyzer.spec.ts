@@ -1,0 +1,71 @@
+import { expect, test } from '@playwright/test';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
+import { electron, disposeApplication, focusApplication } from '../e2e/electron-app';
+
+test('real rust-analyzer supplies completion, hover, diagnostics, rename/Undo, navigation and restart through the common registry', async () => {
+  const executable = process.env.SETDOWN_RUST_ANALYZER_PATH;
+  if (!executable || !path.isAbsolute(executable)) throw Error('Set SETDOWN_RUST_ANALYZER_PATH to an installed rust-analyzer; Rust/cargo must be on PATH.');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-rust-integration-'));
+  const file = path.join(root, 'src', 'main.rs');
+  const definition = 'fn greeting(value: i32) -> i32 { helper::double(value) }';
+  await mkdir(path.join(root, 'src'));
+  await writeFile(path.join(root, 'Cargo.toml'), '[package]\nname = "setdown_test"\nversion = "0.1.0"\nedition = "2021"\n');
+  await writeFile(path.join(root, 'src/helper.rs'), 'pub fn double(value: i32) -> i32 { value * 2 }\n');
+  await writeFile(file, `mod helper;\n${definition}\nfn main() {\n    let count = ;\n    let _answer = greeting(3);\n}\n`);
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+  const application = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await application.firstWindow(); await focusApplication(application);
+    const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
+    await expect(editor).toBeVisible();
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
+    const management = page.getByRole('dialog', { name: 'Language Support' });
+    await management.getByRole('searchbox').fill('rust-analyzer');
+    await management.locator('.server-list button').click();
+    await application.evaluate(({ dialog }, executable) => {
+      dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [executable] })) as typeof dialog.showOpenDialog;
+    }, executable);
+    await management.getByRole('button', { name: 'Choose executable…', exact: true }).click();
+    await expect(management.locator('.details code').first()).toHaveText(executable);
+    await management.getByText('Connection settings', { exact: true }).click();
+    await management.getByLabel('Server options (JSON)').fill(JSON.stringify({ args: [], settings: {},
+      initializationOptions: { checkOnSave: false, cargo: { buildScripts: { enable: false } }, procMacro: { enable: false } } }));
+    await management.getByRole('button', { name: 'Apply settings', exact: true }).click();
+    await expect(management.getByRole('button', { name: 'Enable', exact: true })).toBeEnabled();
+    await management.getByRole('button', { name: 'Enable', exact: true }).click();
+    await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 30_000 });
+    await management.getByRole('button', { name: 'Close language support' }).click();
+    await expect(page.locator('.squiggly-error').first()).toBeVisible({ timeout: 30_000 });
+    await editor.press('Control+Home'); for (let i = 0; i < 3; i++) await editor.press('ArrowDown');
+    await editor.press('Home'); await editor.press('Shift+End'); await editor.pressSequentially('    let count = 4;');
+    await expect(page.locator('.squiggly-error')).toHaveCount(0, { timeout: 30_000 });
+    await editor.press('Control+Home'); for (let i = 0; i < 4; i++) await editor.press('ArrowDown');
+    await editor.press('Home'); await editor.press('Shift+End'); await editor.pressSequentially('    greet'); await editor.press('Control+Space');
+    await expect(page.locator('.suggest-widget.visible')).toContainText('greeting', { timeout: 20_000 });
+    await editor.press('Escape'); await editor.press('Home'); await editor.press('Shift+End'); await editor.pressSequentially('    let _answer = greeting(3);');
+    await editor.press('Control+Home'); await editor.press('ArrowDown'); await editor.press('Home');
+    for (let i = 0; i < 4; i++) await editor.press('ArrowRight');
+    await editor.press('F1'); await page.locator('.quick-input-box input').fill('>Show or Focus Hover');
+    await page.locator('.quick-input-box input').press('Enter');
+    await expect(page.locator('.monaco-hover:visible')).toContainText('greeting', { timeout: 15_000 });
+    await editor.press('Escape'); await editor.press('F2');
+    const rename = page.locator('.rename-input'); await expect(rename).toBeVisible();
+    await rename.fill('welcome'); await rename.press('Enter'); await expect(rename).toBeHidden();
+    await editor.press('Control+s'); await expect.poll(() => readFile(file, 'utf8')).toContain('fn welcome(');
+    expect(await readFile(file, 'utf8')).toContain('welcome(3)');
+    await editor.press('Control+z'); await editor.press('Control+s');
+    await expect.poll(() => readFile(file, 'utf8')).toContain('fn greeting(');
+    expect(await readFile(file, 'utf8')).not.toContain('welcome');
+    await editor.press('Control+Home'); await editor.press('ArrowDown'); await editor.press('Home');
+    for (let i = 0; i < definition.indexOf('double') + 2; i++) await editor.press('ArrowRight');
+    await editor.press('F12');
+    await expect(page.getByRole('tab', { name: /helper\.rs/ })).toHaveAttribute('aria-selected', 'true', { timeout: 15_000 });
+    await editor.press('F1'); await page.locator('.quick-input-box input').fill('>Restart Language Servers');
+    await page.locator('.quick-input-box input').press('Enter');
+    await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 30_000 });
+    await expect(page.locator('.squiggly-error')).toHaveCount(0);
+  } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
+});

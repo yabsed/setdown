@@ -339,6 +339,21 @@ the existing crash/shutdown cleanup and bounded outstanding-request limit remain
 Both the full unit suite and preview gate require `clangd` on PATH or an absolute
 `SETDOWN_CLANGD_PATH`; absent clangd fails these checks rather than skipping them.
 
+Language support now uses declarative server definitions and a persisted registry.
+`Edit → Language Support…` and F1 open the same lazy management screen; the Setdown
+Folder Tools button retains its meaning. Catalog browsing starts no process.
+Configuration changes reconnect existing models without changing text or Undo,
+including models first acquired by Working Tree. One primary server is selected
+per language; settings changes are user-wide while explicit restart is window-local.
+Legacy clangd executable selection is retained. `server-registry.test.ts` and
+`language-registry.spec.ts` cover registration, persistence, routing, native choice,
+Full/Incremental/None negotiation, save snapshots, initialization/settings and
+reconfiguration with Undo. Versionless push diagnostics remain rejected; pull
+and dynamic capabilities remain unadvertised. The real Rust integration test in
+`test/language-servers` is a separate explicit toolchain gate; see
+[language support](language-support.md). All existing Python/clangd, native-preview,
+focus/IME and comparative latency checks remain required.
+
 ## Required deterministic and browser checks
 
 From the repository root:
@@ -994,3 +1009,50 @@ ordinary Markdown/Git transitions, not C++ indexing or completion. The
 [validation record](clangd-preview-benchmark-2026-10-15.json) retains every cycle,
 comparison, build/source identity and check result. Raw measurements remain in
 `test-results/clangd-preview-benchmark-2026-10-15`.
+
+## 2026-10-15 declarative language registry validation
+
+Implemented user-wide server definitions/selection and the lazy
+`Edit → Language Support…` screen, preserving existing models and legacy clangd
+selection. The offline catalog is a pinned Mason snapshot, not an automatic
+installer or a blanket compatibility claim. [Setup and limits](language-support.md).
+
+Final checks on Linux, with GUI execution isolated by `with-isolated-display.sh`:
+
+- Full desktop unit suite: **104 files / 721 tests passed**.
+- `npm run test:preview-contract`: **50 unit files / 323 tests**, three comparator
+  tests, build/typecheck (zero Svelte errors/warnings), and **107 Electron scenarios
+  passed**. The new shared-model coverage preserves Undo without requiring DOM
+  event registration when the optional language integration is absent.
+- Real rust-analyzer `0.3.3081-standalone`: explicit integration test passed on the
+  final build, covering completion, hover, native syntax diagnostics, definition,
+  rename/Undo and restart through the generic registry. No gopls runtime claim.
+- Validation logs and management screenshot: `test-results/language-support-validation/`.
+
+Comparative baseline: **8831961d30c6ddec0cb47982d3228031b6765a3e**, in an independent
+installed checkout. Ran three repetitions per version, alternating AB/BA/AB, on
+the same isolated display. Both versions were rebuilt by the benchmark runner.
+Heavy checks ran sequentially with `MemoryMax=4G`, `MemorySwapMax=512M` and
+`NODE_OPTIONS=--max-old-space-size=2304`; no retry or tolerance changes.
+
+All eight scenarios and **48 comparisons passed; zero regressions** at the
+existing joint thresholds (>25% and >50ms). The table gives median milliseconds
+**baseline → candidate**, with the source preparation wait explicitly separated.
+First/second are individual cycles; warm is the median of cycles 3–5 per run.
+
+| Surface | Source wait | Edit | Esc first | Esc second | Esc warm | Double-click first | Double-click second | Double-click warm |
+| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Markdown | 0ms | no | 33 → 36 | 25 → 24 | 24 → 22 | 33 → 21 | 40 → 39 | 12 → 11 |
+| Markdown | 0ms | yes | 478 → 414 | 104 → 103 | 97 → 87 | 21 → 16 | 17 → 13 | 17 → 15 |
+| Markdown | 3000ms | no | 30 → 41 | 19 → 19 | 22 → 25 | 18 → 16 | 11 → 11 | 11 → 11 |
+| Markdown | 3000ms | yes | 108 → 98 | 98 → 110 | 90 → 93 | 20 → 16 | 13 → 17 | 16 → 14 |
+| Git review | 0ms | no | 1002 → 1020 | 26 → 24 | 27 → 28 | 23 → 22 | 12 → 12 | 12 → 13 |
+| Git review | 0ms | yes | 1107 → 1085 | 1604 → 1598 | 179 → 177 | 14 → 23 | 21 → 20 | 19 → 18 |
+| Git review | 3000ms | no | 28 → 23 | 23 → 23 | 16 → 17 | 23 → 23 | 12 → 12 | 18 → 17 |
+| Git review | 3000ms | yes | 233 → 229 | 182 → 189 | 179 → 175 | 22 → 23 | 18 → 19 | 17 → 17 |
+
+[Comparison summary, samples and artifact hashes](language-registry-preview-benchmark-2026-10-15.json).
+Raw captures, per-run logs and the complete report remain in
+`test-results/language-registry-benchmark-2026-10-15/`. Latest-content assertions
+were required for edited captures. These small-document measurements retain the
+existing timing limitations and do not establish large-project LSP performance.

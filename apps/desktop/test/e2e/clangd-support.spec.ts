@@ -75,7 +75,7 @@ test('missing clangd keeps C editable and a native executable selection repairs 
   try {
     const page = await application.firstWindow(); await focusApplication(application);
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'failed', { timeout: 20_000 });
-    await expect(page.locator('.editor-host [role="status"]')).toHaveAttribute('title', /Select clangd Executable/);
+    await expect(page.locator('.editor-host [role="status"]')).toHaveAttribute('title', /Language Support/);
     const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
     await editor.press('Control+End'); await editor.pressSequentially('// still editable');
     await editor.press('Control+s');
@@ -87,14 +87,20 @@ test('missing clangd keeps C editable and a native executable selection repairs 
     await application.evaluate(({ dialog }, executable) => {
       dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [executable] })) as typeof dialog.showOpenDialog;
     }, executable);
-    await editor.press('F1'); await page.locator('.quick-input-box input').fill('>Select clangd Executable');
-    await expect(page.locator('.quick-input-widget')).toContainText('Select clangd Executable');
+    await editor.press('F1'); await page.locator('.quick-input-box input').fill('>Language Support');
+    await expect(page.locator('.quick-input-widget')).toContainText('Language Support');
     await page.locator('.quick-input-box input').press('Enter');
     await expect(page.locator('.quick-input-widget')).toBeHidden();
+    const management = page.getByRole('dialog', { name: 'Language Support' });
+    await expect(management).toBeVisible();
+    await management.getByRole('searchbox').fill('clangd');
+    await management.locator('.server-list button').click();
+    await management.getByRole('button', { name: 'Choose executable…', exact: true }).click();
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 25_000 });
     await expect(page.locator('.squiggly-error').first()).toBeVisible({ timeout: 15_000 });
-    const settingsPath = path.join(await application.evaluate(({ app }) => app.getPath('userData')), 'clangd.json');
-    expect(JSON.parse(await readFile(settingsPath, 'utf8')).executable).toBe(executable);
+    await page.getByRole('button', { name: 'Close language support' }).click();
+    const settingsPath = path.join(await application.evaluate(({ app }) => app.getPath('userData')), 'language-servers.json');
+    expect(JSON.parse(await readFile(settingsPath, 'utf8')).servers.clangd.executable).toBe(executable);
     await editor.press('F1'); await page.locator('.quick-input-box input').fill('>Restart Language Servers');
     await expect(page.locator('.quick-input-widget')).toContainText('Restart Language Servers');
     await page.locator('.quick-input-box input').press('Enter');

@@ -114,16 +114,25 @@ Unknown text languages fall back to plain text. Saved Python (`.py`, `.pyi`) fil
 use bundled Pyright; saved C/C++ sources and headers use an installed **clangd**.
 Both provide completion (`Ctrl+Space`), hover, signature help, diagnostics,
 definition (`F12`), references (`Shift+F12`), symbols and rename (`F2`). Other
-languages have syntax highlighting. Python, clangd and compilers are not bundled.
+languages have syntax highlighting; additional LSP servers can be connected through
+**Edit → Language Support…**. Python, clangd and compilers are not bundled.
 
 For C/C++, install [clangd](https://clangd.llvm.org/installation), then open a source
 file. Setdown uses your selected executable first, then `SETDOWN_CLANGD_PATH`, then
 `clangd` on its inherited `PATH`. If the desktop launcher cannot find your clangd,
-use **Select clangd Executable** in the editor context menu or command palette
-(`F1`). The native file chooser saves its absolute path in Setdown's user settings
-and restarts language support in that window. Ordinary editing stays usable if
+open **Edit → Language Support…**, select clangd, and click **Choose executable…**.
+The editor's F1 palette also opens Language Support. The native chooser saves the
+absolute path and reconnects language sessions across windows without saving or
+replacing editor models. Ordinary editing stays usable if
 clangd is missing or fails. **Restart Language Servers** reconnects the current
 unsaved buffers, including after updating an executable or build configuration.
+
+Language Support includes an offline Mason catalog, server status, enable/disable,
+executable selection, connection settings and custom JSON imports. rust-analyzer
+and gopls profiles are initially disabled; install their tools and enable the
+connection. Catalog membership does not guarantee compatibility, and installation
+is manual. See [language support](docs/language-support.md) for setup, custom
+connections, protocol limits and integration checks.
 
 Open the project folder for a shared analysis root. With no folder open, C/C++
 finds the nearest ancestor containing `.clangd`, `compile_commands.json`,

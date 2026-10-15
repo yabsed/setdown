@@ -8,6 +8,16 @@ import type { InitializeResult, PublishDiagnosticsParams, ServerCapabilities } f
 
 export type ServerLaunch = { executable: string; args: string[]; env?: NodeJS.ProcessEnv };
 const genericProfile: ServerProfile = { name: 'Language', configuration: {}, watches: () => false };
+export function configurationSection(configuration: Record<string, unknown>, section?: string): unknown {
+  if (!section) return configuration;
+  if (Object.hasOwn(configuration, section)) return configuration[section];
+  let value: unknown = configuration;
+  for (const key of section.split('.')) {
+    if (!value || typeof value !== 'object' || !Object.hasOwn(value, key)) return null;
+    value = (value as Record<string, unknown>)[key];
+  }
+  return value ?? null;
+}
 
 /** Official JSON-RPC owns framing and cancellation; this class owns process lifetime. */
 export class ServerSession {
@@ -51,13 +61,14 @@ export class ServerSession {
     this.connection.onClose(() => fail(`${profile.name} language server disconnected.`));
     this.connection.onNotification('textDocument/publishDiagnostics', diagnostics);
     this.connection.onRequest('workspace/configuration', (params: { items: { section?: string }[] }) =>
-      params.items.map(item => profile.configuration[item.section ?? ''] ?? {}));
+      params.items.map(item => configurationSection(profile.configuration, item.section)));
     this.connection.onRequest('workspace/workspaceFolders', () => [{ uri: pathToFileURL(root).href, name: root }]);
     this.connection.onRequest('workspace/applyEdit', () => ({ applied: false, failureReason: 'Unsolicited edits are not supported.' }));
     this.connection.listen();
     this.ready = this.request<InitializeResult>('initialize', {
       processId: process.pid, clientInfo: { name: 'Setdown', version: '1.0.0' },
       rootUri: pathToFileURL(root).href, workspaceFolders: [{ uri: pathToFileURL(root).href, name: root }],
+      initializationOptions: profile.initializationOptions,
       capabilities: {
         general: { positionEncodings: ['utf-16'] },
         workspace: { configuration: true, workspaceFolders: true, applyEdit: false,

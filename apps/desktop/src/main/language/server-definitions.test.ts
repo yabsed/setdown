@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { languageSupport } from '../../core/document/language-support';
 import { documentLanguage } from '../../core/document/document-profile';
-import { ClangdSettings } from './clangd-settings';
+import { ServerRegistry } from './server-registry';
 import { serverProfiles, standaloneLanguageRoot } from './server-definitions';
 
 const roots: string[] = [];
@@ -34,15 +34,15 @@ test('standalone nested source and header discover the same project boundary', a
 });
 test('clangd settings persist the selected absolute executable and handle spaces without a shell', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-clangd-settings-')); roots.push(root);
-  const file = path.join(root, 'config', 'clangd.json');
-  const settings = new ClangdSettings(file);
+  const directory = path.join(root, 'config');
+  const settings = new ServerRegistry(directory);
   vi.stubEnv('SETDOWN_CLANGD_PATH', '/custom/clangd');
-  expect(settings.executable()).toBe('/custom/clangd');
+  expect(settings.executable('clangd')).toBe('/custom/clangd');
   const executable = path.join(root, 'clangd with spaces');
   await writeFile(executable, 'fixture'); await chmod(executable, 0o755);
-  await settings.set(executable);
-  expect(new ClangdSettings(file).executable()).toBe(executable);
-  await expect(settings.set(root)).rejects.toThrow();
-  await expect(settings.set('relative-clangd')).rejects.toThrow();
-  expect(new ClangdSettings(file).executable()).toBe(executable);
+  await settings.chooseExecutable('clangd', executable);
+  expect(new ServerRegistry(directory).executable('clangd')).toBe(executable);
+  await expect(settings.chooseExecutable('clangd', root)).rejects.toThrow();
+  await expect(settings.chooseExecutable('clangd', 'relative-clangd')).rejects.toThrow();
+  expect(new ServerRegistry(directory).executable('clangd')).toBe(executable);
 });

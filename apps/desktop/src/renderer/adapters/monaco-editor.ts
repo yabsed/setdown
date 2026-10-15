@@ -13,7 +13,7 @@ import { readEditorViewport } from '../editor/editor-viewport';
 import { DocumentModelOwner, liveDocumentModels } from '../editor/live-document-model';
 import { installMarkdownEditorActions } from '../editor/markdown-editor-actions';
 import { monacoThemeName, registerMonacoThemes } from '../theme';
-import { languageSupport } from '../../core/document/language-support';
+import { languageSupport, type LanguageRoute } from '../../core/document/language-support';
 import type { LanguageClient, LanguageOptions } from '../editor/language-client';
 
 type Options = {
@@ -29,6 +29,10 @@ type SearchTarget = { line: number; column: number; ordinal: number };
 type ProjectMatch = NonNullable<ProjectSearchDocument['matches']>[number];
 
 export class MonacoEditor {
+  private languageRoutes: LanguageRoute[] | undefined;
+  private languageConfiguration: Promise<LanguageRoute[]> | undefined;
+  private languageEpoch = 0;
+  private unregisterLanguage?: () => void;
   private languageClient: LanguageClient | undefined;
   private languageLoading: Promise<void> | undefined;
   private languageError: HTMLButtonElement | undefined;
@@ -53,6 +57,21 @@ export class MonacoEditor {
   });
   private readonly unregisterModels: () => void;
   constructor(private readonly options: Options) {
+    const restart = () => { void this.languageClient?.restart(); };
+    if (options.language) window.addEventListener('setdown:restart-language', restart);
+    const unsubscribe = options.language?.port.onEvent(event => {
+      if (event.type !== 'configuration') return;
+      this.languageEpoch++;
+      this.languageClient?.dispose(); this.languageClient = undefined;
+      this.languageLoading = undefined; this.languageRoutes = undefined; this.languageConfiguration = undefined;
+      this.languageError?.remove(); this.languageError = undefined;
+      delete options.host.dataset.languageServer;
+      if (this.apiValue) for (const tab of options.tabs()) {
+        const model = this.models.get(tab.id);
+        if (model) this.connectLanguage(tab, model, this.apiValue);
+      }
+    });
+    this.unregisterLanguage = () => { unsubscribe?.(); if (options.language) window.removeEventListener('setdown:restart-language', restart); };
     this.unregisterModels = liveDocumentModels.register((path, api) => {
       const tab = options.tabs().find((candidate) => candidate.document.path === path);
       if (!tab || tab.document.kind !== undefined) return null;
@@ -64,6 +83,7 @@ export class MonacoEditor {
   }
   disposeWorkspace(): void {
     this.disposed = true;
+    this.unregisterLanguage?.();
     this.languageClient?.dispose();
     this.languageError?.remove();
     this.unregisterModels();
@@ -86,7 +106,7 @@ export class MonacoEditor {
   modelFor(tab: WorkspaceTab): Monaco.editor.ITextModel { return this.ensureModel(tab); }
   saved(tab: WorkspaceTab): void {
     const model = this.models.get(tab.id);
-    if (model) this.languageClient?.saved(model);
+    if (model) this.languageClient?.saved(model, tab.document.savedText);
   }
   setLanguageRoot(root: string | null): void {
     if (this.languageRoot === root) return;
@@ -348,12 +368,30 @@ export class MonacoEditor {
     return model;
   }
   private connectLanguage(tab: WorkspaceTab, model: Monaco.editor.ITextModel, api: typeof Monaco): void {
-    if (this.languageClient) { this.languageClient.bind(tab, model); return; }
     const options = this.options.language;
-    if (!options || tab.document.isUntitled || !languageSupport(tab.document.path)) return;
+    if (!options || this.disposed || model.isDisposed()) return;
+    const epoch = this.languageEpoch;
+    // Fetch lightweight associations once. The LSP client and catalog stay off the preview path.
+    if (!this.languageRoutes) {
+      this.languageConfiguration ??= options.port.configuration();
+      void this.languageConfiguration.then(routes => {
+        if (this.disposed || epoch !== this.languageEpoch || model.isDisposed()) return;
+        this.languageRoutes = routes;
+        this.connectLanguage(tab, model, api);
+      }).catch(error => console.error('Could not read language configuration', error));
+      return;
+    }
+    const support = languageSupport(tab.document.path, this.languageRoutes);
+    const route = this.languageRoutes.find(route => route.server === support?.server && route.languageId === support?.languageId);
+    const language = route?.monacoId ?? support?.languageId
+      ?? documentLanguage(tab.document.path, api.languages.getLanguages(), model.getLineContent(1));
+    if (api.languages.getLanguages().some(item => item.id === language) && model.getLanguageId() !== language)
+      api.editor.setModelLanguage(model, language);
+    if (this.languageClient) { this.languageClient.bind(tab, model); return; }
+    if (tab.document.isUntitled || !support) return;
     this.languageLoading ??= import('../editor/language-client').then(({ LanguageClient }) => {
-      if (this.disposed) return;
-      this.languageClient = new LanguageClient(api, { ...options, status: (state, message) => {
+      if (this.disposed || epoch !== this.languageEpoch) return;
+      this.languageClient = new LanguageClient(api, { ...options, route: file => languageSupport(file, this.languageRoutes ?? []), status: (state, message) => {
         this.options.host.dataset.languageServer = state;
         if (state !== 'failed') { this.languageError?.remove(); this.languageError = undefined; return; }
         if (!this.languageError) {
@@ -368,20 +406,15 @@ export class MonacoEditor {
       } });
       for (const current of this.options.tabs()) {
         const currentModel = this.models.get(current.id);
-        if (currentModel) this.languageClient.bind(current, currentModel);
+        if (currentModel) this.connectLanguage(current, currentModel, api);
       }
-    }).catch(error => { this.languageLoading = undefined; console.error('Could not load language support', error); });
+    }).catch(error => { if (epoch === this.languageEpoch) this.languageLoading = undefined; console.error('Could not load language support', error); });
   }
   private installBindings(api: typeof Monaco, editor: Monaco.editor.IStandaloneCodeEditor): void {
     editor.addAction({ id: 'setdown.restart-language', label: 'Restart Language Servers',
-      precondition: 'editorLangId == python || editorLangId == c || editorLangId == cpp', contextMenuGroupId: '9_cutcopypaste', contextMenuOrder: 10,
       run: async () => { await this.languageClient?.restart(); } });
-    editor.addAction({ id: 'setdown.select-clangd', label: 'Select clangd Executable',
-      precondition: 'editorLangId == c || editorLangId == cpp', contextMenuGroupId: '9_cutcopypaste', contextMenuOrder: 11,
-      run: async () => {
-        try { if (await this.options.language?.port.chooseClangd()) await this.languageClient?.restart(); }
-        catch (error) { if (this.languageError) this.languageError.title = String(error); console.error(error); }
-      } });
+    editor.addAction({ id: 'setdown.language-support', label: 'Language Support…',
+      run: () => { window.dispatchEvent(new Event('setdown:language-support')); } });
     editor.onDidFocusEditorText(() => {
       const tab = this.options.active();
       if (tab && editor.getModel() === this.models.get(tab.id)) this.owners.get(tab.id)?.beginEditing(`document:${tab.id}`);

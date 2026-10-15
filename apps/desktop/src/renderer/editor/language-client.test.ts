@@ -3,9 +3,10 @@ import type * as M from 'monaco-editor';
 import type { LanguageApi, LanguageDocument, LanguageEvent } from '../../protocol/language';
 import { createWorkspaceTab } from '../../core/workspace/workspace-state';
 import { LanguageClient } from './language-client';
+import { languageSupport, type LanguageRoute } from '../../core/document/language-support';
 import { fromRange, markdown, toRange } from './language-conversion';
 
-function fixture(file = '/project/main.py', capabilities: import('vscode-languageserver-protocol').ServerCapabilities = { hoverProvider: true }) {
+function fixture(file = '/project/main.py', capabilities: import('vscode-languageserver-protocol').ServerCapabilities = { hoverProvider: true, textDocumentSync: 2 }, routes?: LanguageRoute[]) {
   let version = 1;
   let listener: ((event: M.editor.IModelContentChangedEvent) => void) | undefined;
   let event: (event: LanguageEvent) => void = () => {};
@@ -32,10 +33,12 @@ function fixture(file = '/project/main.py', capabilities: import('vscode-languag
   { sourceLine: 1, yRatio: .3, reason: 'empty-document', confidence: 'fallback' });
   const port: LanguageApi = {
     open: vi.fn(async document => { opened.push(document); return { uri: 'file:///project/main.py', capabilities }; }),
-    change: vi.fn(async () => {}), close: vi.fn(), saved: vi.fn(), cancel: vi.fn(), restart: vi.fn(async () => {}), chooseClangd: vi.fn(async () => false),
+    change: vi.fn(async () => {}), close: vi.fn(), saved: vi.fn(), cancel: vi.fn(), restart: vi.fn(async () => {}), configuration: vi.fn(async () => []), catalog: vi.fn(async () => ({ release: '', entries: [] })),
+    setEnabled: vi.fn(async () => {}), chooseExecutable: vi.fn(async () => false), configure: vi.fn(async () => {}),
+    addConnection: vi.fn(async () => false), importDefinition: vi.fn(async () => false), remove: vi.fn(async () => {}), openHomepage: vi.fn(async () => {}),
     request: vi.fn(async () => null), onEvent: callback => { event = callback; return () => {}; },
   };
-  const client = new LanguageClient(api, { port, prepare: async () => ({ tab, model }), open: async () => {}, status: vi.fn() });
+  const client = new LanguageClient(api, { port, route: file => languageSupport(file, routes), prepare: async () => ({ tab, model }), open: async () => {}, status: vi.fn() });
   const change = (changes: Partial<M.editor.IModelContentChange>[]) => {
     version++;
     listener?.({ changes, versionId: version, isFlush: false, isEolChange: false } as M.editor.IModelContentChangedEvent);
@@ -127,5 +130,50 @@ test('C++ providers use negotiated triggers, omit unsupported resolve and stay w
   expect(f.port.request).not.toHaveBeenCalled();
   await f.hover.current!.provideHover(f.model, { lineNumber: 1, column: 1 } as M.Position, token, { verbosityRequest: undefined });
   expect(f.port.request).toHaveBeenCalledOnce();
+  f.client.dispose();
+});
+
+
+test('a custom route uses negotiated Full sync for the exact revisions queued before and after initialization', async () => {
+  const f = fixture('/project/file.custom', { textDocumentSync: { openClose: true, change: 1, save: { includeText: true } } },
+    [{ server: 'unknown-to-core', languageId: 'custom', extensions: ['.custom'] }]);
+  let text = 'initial'; f.model.getValue = () => text;
+  f.client.bind(f.tab, f.model);
+  const range = { startLineNumber: 1, endLineNumber: 1, startColumn: 1, endColumn: 1 };
+  text = 'revision two'; f.change([{ range, rangeOffset: 0, text: 'ignored partial' }]);
+  text = 'revision three'; f.change([{ range, rangeOffset: 0, text: 'also partial' }]);
+  await vi.waitFor(() => expect(f.port.change).toHaveBeenCalledTimes(2));
+  expect(vi.mocked(f.port.change).mock.calls).toEqual([
+    ['tab-1', 2, [{ text: 'revision two' }]], ['tab-1', 3, [{ text: 'revision three' }]],
+  ]);
+  text = 'revision four'; f.change([{ range, rangeOffset: 0, text: 'partial' }]);
+  f.client.saved(f.model, 'actual saved snapshot');
+  await vi.waitFor(() => expect(f.port.saved).toHaveBeenCalledWith('tab-1', 'actual saved snapshot'));
+  expect(vi.mocked(f.port.change).mock.calls[2]).toEqual(['tab-1', 4, [{ text: 'revision four' }]]);
+  f.client.dispose();
+});
+
+test('no-sync servers only advance local response fences; configuration events are not diagnostics', async () => {
+  const f = fixture('/project/main.py', {}); f.client.bind(f.tab, f.model);
+  f.change([{ range: { startLineNumber: 1, endLineNumber: 1, startColumn: 1, endColumn: 1 }, rangeOffset: 0, text: 'x' }]);
+  await vi.waitFor(() => expect(f.port.change).toHaveBeenCalledWith('tab-1', 2, []));
+  expect(() => f.event({ type: 'configuration' })).not.toThrow(); f.client.dispose();
+});
+
+
+test('document symbols accept both hierarchical and flat protocol results', async () => {
+  const f = fixture('/project/main.py', { documentSymbolProvider: true });
+  f.client.bind(f.tab, f.model);
+  await vi.waitFor(() => expect(f.providers.has('registerDocumentSymbolProvider')).toBe(true));
+  const range = { start: { line: 1, character: 2 }, end: { line: 3, character: 4 } };
+  vi.mocked(f.port.request).mockResolvedValue([
+    { name: 'flat', kind: 12, containerName: 'module', location: { uri: 'file:///project/main.py', range } },
+    { name: 'foreign', kind: 12, location: { uri: 'file:///project/other.py', range } },
+    { name: 'tree', kind: 12, range, selectionRange: range, children: [{ name: 'child', kind: 13, range, selectionRange: range }] },
+  ]);
+  const symbols = await f.providers.get('registerDocumentSymbolProvider').provideDocumentSymbols(f.model, token);
+  expect(symbols.map((symbol: M.languages.DocumentSymbol) => symbol.name)).toEqual(['flat', 'tree']);
+  expect(symbols[0]).toMatchObject({ detail: 'module', range: fromRange(range), selectionRange: fromRange(range) });
+  expect(symbols[1].children[0].name).toBe('child');
   f.client.dispose();
 });

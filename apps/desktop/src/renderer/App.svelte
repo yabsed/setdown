@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import EmptyState from './shell/EmptyState.svelte';
   import InsertionDialogs from './editor/InsertionDialogs.svelte';
   import ReaderSurface from './reader/ReaderSurface.svelte';
@@ -19,11 +20,21 @@
   import { project } from './project/project-state.svelte';
   let { actions, terminalApi, desktop, mediaPosition }: { actions: AppActions; terminalApi: TerminalApi; desktop: DesktopPort;
     mediaPosition(id: string, position: ReadingPosition): void } = $props();
+  onMount(() => {
+    const show = () => { view.languageSupportOpen = true; };
+    window.addEventListener('setdown:language-support', show);
+    return () => window.removeEventListener('setdown:language-support', show);
+  });
   const boxes = $derived(groupLayout(view.groupTree).groups);
   const focused = $derived(boxes.find(box => box.id === view.focusedGroupId) ?? boxes[0]);
   const geometry = (box: typeof focused) => `left:${box.x}%;top:${box.y}%;width:${box.width}%;height:${box.height}%`;
 </script>
 
+{#if view.languageSupportOpen}
+  {#await import('./editor/LanguageSupport.svelte') then module}
+    <module.default api={desktop.language} onclose={() => { view.languageSupportOpen = false; }} />
+  {:catch error}<div role="alert">Could not load language support: {String(error)}</div>{/await}
+{/if}
 <TitleBar {actions} />
 <section class="shell" data-surface="empty" data-tabs="false">
   <ProjectSidebar {actions} />

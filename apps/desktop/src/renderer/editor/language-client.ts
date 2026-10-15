@@ -2,13 +2,15 @@ import type * as M from 'monaco-editor';
 import type * as L from 'vscode-languageserver-protocol';
 import type { DocumentTab } from '../../core/workspace/workspace-state';
 import type { LanguageApi, LanguageConnection, LanguageMethod } from '../../protocol/language';
+import { textSynchronization } from '../../protocol/language';
 import { languageSupport } from '../../core/document/language-support';
 import { completion, fromRange, markdown, marker, toPosition, toRange } from './language-conversion';
 
 type Binding = { tab: DocumentTab; model: M.editor.ITextModel; path: string; generation: string; connected: Promise<LanguageConnection>;
-  queue: Promise<unknown>; listener: M.IDisposable; providers: M.IDisposable[]; failed: boolean; state: 'starting' | 'ready' | 'failed'; message?: string };
+  uri?: string; sync?: ReturnType<typeof textSynchronization>; queue: Promise<unknown>; listener: M.IDisposable; providers: M.IDisposable[]; failed: boolean; state: 'starting' | 'ready' | 'failed'; message?: string };
 export type LanguageOptions = {
   port: LanguageApi;
+  route?: typeof languageSupport;
   prepare(path: string): Promise<{ tab: DocumentTab; model: M.editor.ITextModel }>;
   open(path: string, selection: M.IRange | M.IPosition | undefined): Promise<void>;
   status(state: string, message?: string): void;
@@ -35,6 +37,7 @@ export class LanguageClient {
         }
         return;
       }
+      if (event.type !== 'diagnostics') return;
       const binding = [...this.bindings.values()].find(binding => binding.tab.id === event.id);
       if (binding && binding.generation === event.generation && !binding.failed && !binding.model.isDisposed() && binding.model.getVersionId() === event.version)
         api.editor.setModelMarkers(binding.model, 'setdown-language', event.diagnostics.map(d => marker(api, d)));
@@ -50,9 +53,9 @@ export class LanguageClient {
     if (this.disposed || model.isDisposed()) return;
     if (this.restarting) { this.restartDocuments?.set(model, tab); return; }
     const old = this.bindings.get(model);
-    if (old?.path === tab.document.path && !tab.document.isUntitled && languageSupport(tab.document.path)) return;
+    if (old?.path === tab.document.path && !tab.document.isUntitled && (this.options.route ?? languageSupport)(tab.document.path)) return;
     this.unbind(model);
-    if (tab.document.isUntitled || model.isDisposed() || !languageSupport(tab.document.path)) return;
+    if (tab.document.isUntitled || model.isDisposed() || !(this.options.route ?? languageSupport)(tab.document.path)) return;
     const generation = crypto.randomUUID();
     const connected = this.options.port.open({ id: tab.id, generation, path: tab.document.path,
       text: model.getValue(), version: model.getVersionId() });
@@ -66,6 +69,8 @@ export class LanguageClient {
     // A failed initialization is a language-service state, not a rejected
     // editor/save queue. Keep ordinary editing usable while restart is offered.
     binding.queue = connected.then(connection => {
+      binding.uri = connection.uri;
+      binding.sync = textSynchronization(connection.capabilities);
       if (this.bindings.get(model) === binding && !binding.failed) this.installProviders(binding, connection.capabilities);
     }).catch(fail);
     binding.listener = model.onDidChangeContent(event => {
@@ -76,10 +81,12 @@ export class LanguageClient {
       // offsets turn them into LSP's sequential edits, including CRLF and emoji.
       const changes = [...event.changes].sort((a, b) => b.rangeOffset - a.rangeOffset)
         .map(change => ({ range: toRange(change.range), text: change.text }));
-      const contentChanges = event.isFlush || event.isEolChange ? [{ text: model.getValue() }] : changes;
+      // Initialization may still select Full sync; capture this revision, never later text.
+      const fullText = !binding.sync || binding.sync.change === 1 || event.isFlush || event.isEolChange ? model.getValue() : undefined;
       binding.queue = binding.queue.then(() => {
         if (this.bindings.get(model) === binding && !binding.failed)
-          return this.options.port.change(tab.id, version, contentChanges);
+          return this.options.port.change(tab.id, version, binding.sync?.change === 0 ? []
+            : binding.sync?.change === 1 || event.isFlush || event.isEolChange ? [{ text: fullText! }] : changes);
       }).catch(fail);
     });
   }
@@ -93,10 +100,10 @@ export class LanguageClient {
     if (!model.isDisposed()) this.api.editor.setModelMarkers(model, 'setdown-language', []);
     this.options.port.close(binding.tab.id);
   }
-  saved(model: M.editor.ITextModel): void {
+  saved(model: M.editor.ITextModel, text = model.getValue()): void {
     const binding = this.bindings.get(model);
     if (binding) void binding.queue.then(() => {
-      if (this.bindings.get(model) === binding && !binding.failed) this.options.port.saved(binding.tab.id);
+      if (this.bindings.get(model) === binding && !binding.failed) this.options.port.saved(binding.tab.id, text);
     });
   }
   private cancel(binding: Binding): void {
@@ -221,11 +228,15 @@ export class LanguageClient {
     })));
     if (capabilities.documentSymbolProvider) owner.providers.push(api.languages.registerDocumentSymbolProvider(language, scoped({
       provideDocumentSymbols: async (model, token) => {
-        const result = await this.request<L.DocumentSymbol[]>(model, 'textDocument/documentSymbol', {}, token);
+        const result = await this.request<(L.DocumentSymbol | L.SymbolInformation)[]>(model, 'textDocument/documentSymbol', {}, token);
         const convert = (symbol: L.DocumentSymbol): M.languages.DocumentSymbol => ({ name: symbol.name, detail: symbol.detail ?? '',
           kind: symbol.kind - 1, tags: symbol.tags?.includes(1) ? [api.languages.SymbolTag.Deprecated] : [],
           range: fromRange(symbol.range), selectionRange: fromRange(symbol.selectionRange), children: symbol.children?.map(convert) });
-        return result?.map(convert);
+        return result?.flatMap(symbol => 'location' in symbol
+          ? symbol.location.uri === owner.uri
+            ? [{ name: symbol.name, detail: symbol.containerName ?? '', kind: symbol.kind - 1, tags: [],
+                range: fromRange(symbol.location.range), selectionRange: fromRange(symbol.location.range) }] : []
+          : [convert(symbol)]);
       },
     })));
     if (capabilities.renameProvider) owner.providers.push(api.languages.registerRenameProvider(language, scoped({
@@ -250,7 +261,7 @@ export class LanguageClient {
             for (const change of this.textChanges(result)) {
               const target = await this.options.prepare(this.uri(change.uri).fsPath);
               if (!versions.has(target.model)) {
-                if (languageSupport(target.tab.document.path)?.server !== languageSupport(owner.path)?.server)
+                if ((this.options.route ?? languageSupport)(target.tab.document.path)?.server !== (this.options.route ?? languageSupport)(owner.path)?.server)
                   throw new Error('Rename targets must belong to the same language server.');
                 versions.set(target.model, target.model.getVersionId()); opened = true;
               }

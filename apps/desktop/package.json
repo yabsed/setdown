@@ -14,6 +14,7 @@
   "type": "module",
   "main": "dist-electron/main.cjs",
   "scripts": {
+    "test:language-servers": "npm run build && bash scripts/with-isolated-display.sh playwright test --config playwright.language-servers.config.ts",
     "test:preview-contract:unit": "vitest run --config vitest.preview-contract.config.ts && node --test scripts/preview-benchmark.test.mjs",
     "test:preview-contract:e2e": "bash scripts/with-isolated-display.sh playwright test --config playwright.preview-contract.config.ts",
     "test:preview-contract": "npm run test:preview-contract:unit && npm run build && npm run test:preview-contract:e2e",

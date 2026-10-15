@@ -414,6 +414,7 @@ export function startWorkspace(desktop: DesktopPort) {
       void closePrompt.request('window', names).then((decision) => desktop.resolveWindowClose(decision));
     },
     command: (command) => {
+      if (command === 'language-support') { view.languageSupportOpen = true; return; }
       if (command === 'new-web-tab') { actions.newWebTab(); return; }
       if (command === 'reopen-web-tab') { void desktop.browser.reopen().catch(error => { browser.error = String(error); }); return; }
       if (command === 'focus-location') { window.dispatchEvent(new Event('setdown:focus-location')); return; }

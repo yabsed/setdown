@@ -1,4 +1,5 @@
 import { build } from 'esbuild';
+import { copyFile } from 'node:fs/promises';
 
 const shared = {
   bundle: true,
@@ -20,3 +21,5 @@ await Promise.all([
 ]);
 
 await import('./build-browser.mjs');
+
+await copyFile('src/main/language/catalog/MASON-LICENSE', 'dist-electron/MASON-LICENSE');
