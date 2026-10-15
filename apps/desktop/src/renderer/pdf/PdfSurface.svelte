@@ -79,7 +79,19 @@
         {#if !outline.length}<p>No outline in this PDF.</p>{/if}
       </nav>
     {/if}
-    <div class="pdf-host" bind:this={host}></div>
+    <div class="pdf-host" role="group" aria-label="PDF page viewer" bind:this={host} oncontextmenu={(event) => {
+      if (!active || !focused) return;
+      const selected = window.getSelection();
+      const shadow = host.shadowRoot;
+      if (!selected || !shadow) return;
+      const ranges = selected.getComposedRanges({ shadowRoots: [shadow] });
+      if (!ranges.some(range => shadow.contains(range.startContainer) && shadow.contains(range.endContainer))) return;
+      const selection = selected.toString();
+      // Chromium can report isCollapsed=true for a visible selection retargeted through a shadow root.
+      if (!selection.trim()) return;
+      event.preventDefault();
+      void desktop.showPdfSelectionMenu(document.path, selection);
+    }}></div>
     {#if !count && !error && !passwordPrompt}<div class="pdf-message" role="status">Opening PDF…</div>{/if}
     {#if error}<div class="pdf-message" role="alert"><strong>Could not open this PDF.</strong><p>{error}</p></div>{/if}
     {#if passwordPrompt}

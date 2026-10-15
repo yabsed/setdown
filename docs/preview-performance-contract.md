@@ -35,6 +35,11 @@ resizes are reconciled on activation. This does not promise instant cold opens
 or instant returns after eviction. `media-tabs.spec.ts`, `image-reader.spec.ts`,
 `reading-positions.spec.ts` and the cache/file/history unit tests cover these
 guarantees and are included in the focused gate.
+Text-bearing PDFs allow pointer selection, keyboard copy, and a native Copy menu
+on right-click inside the PDF. The selected range must belong to that PDF's
+shadow root; selections elsewhere in the shell must not appear in its menu.
+Image-only PDFs need OCR before their contents can be selected as text.
+`pdf-selection.spec.ts` covers the pointer and both copy paths in Electron.
 
 Content zoom belongs to each tab. Ctrl+plus/minus and Ctrl+0 still change/reset
 persisted app zoom in every window. Ctrl+wheel and location-bar controls change

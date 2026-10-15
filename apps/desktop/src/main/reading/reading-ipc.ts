@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { clipboard, ipcMain, Menu } from 'electron';
 import { isPdfDocument, isImageDocument, isVideoDocument } from '../../core/document/document-profile';
 import type { DiskVersion } from '../../core/document/document';
 import type { WindowIpc } from '../ipc/window-ipc';
@@ -29,6 +29,17 @@ export function installReadingIpc(channels: WindowIpc, positions: ReadingPositio
   channels.handle('pdf:range', (state, file: string, begin: number, end: number, version: DiskVersion) => {
     if (typeof file !== 'string' || !isPdfDocument(file) || !owned(state, file)) throw new Error('PDF is not open in this window.');
     return readPdfRange(canonicalPath(file), begin, end, version);
+  });
+  channels.handle('pdf:selection-menu', (state, file: unknown, text: unknown) => {
+    if (typeof file !== 'string' || !isPdfDocument(file) || !owned(state, file) || !state.window.isFocused()
+      || typeof text !== 'string' || !text.trim()) return;
+    const selection = text.slice(0, 5_000_000);
+    return new Promise<void>(resolve => {
+      Menu.buildFromTemplate([{ label: 'Copy', click: () => {
+        if (!state.window.isDestroyed() && owned(state, file)) clipboard.writeText(selection);
+        resolve();
+      } }]).popup({ window: state.window, callback: resolve });
+    });
   });
   channels.handle('image:read', (state, file: string, version: DiskVersion) => {
     if (typeof file !== 'string' || !isImageDocument(file) || !owned(state, file)) throw new Error('Image is not open in this window.');

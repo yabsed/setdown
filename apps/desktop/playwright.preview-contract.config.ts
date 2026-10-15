@@ -20,6 +20,7 @@ export default defineConfig(base, {
     'image-reader.spec.ts',
     'image-terminal-layout.spec.ts',
     'media-tabs.spec.ts',
+    'pdf-selection.spec.ts',
     'workspace-zoom.spec.ts',
     'review-document-styles.spec.ts',
     'git-review-ime.spec.ts',

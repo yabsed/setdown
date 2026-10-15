@@ -244,6 +244,7 @@ export type MarkTexApi = {
   saveReadingPosition(record: import('../core/reading/reading-position').ReadingRecord): void;
   flushReadingPositions(): void;
   readPdfRange(path: string, begin: number, end: number, version: DiskVersion): Promise<Uint8Array>;
+  showPdfSelectionMenu(path: string, selection: string): Promise<void>;
   readImageBytes(path: string, version: DiskVersion): Promise<Uint8Array>;
   mediaUrl(path: string): string;
   terminal: import('./terminal').TerminalApi;
