@@ -7,7 +7,7 @@ import type {
   ProjectSearchResult,
 } from '../../protocol/desktop-api';
 
-export type ProjectView = 'explorer' | 'search' | 'git' | 'browser' | 'terminal';
+export type ProjectView = 'explorer' | 'search' | 'git' | 'browser' | 'language' | 'terminal';
 export type VisibleProjectEntry = ProjectEntry & {
   depth: number;
   expanded: boolean;
@@ -43,7 +43,7 @@ function restoredState(): {
 } {
   try {
     const value = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? '{}') as Record<string, unknown>;
-    const activeView = ['explorer', 'search', 'git', 'browser', 'terminal'].includes(String(value.activeView))
+    const activeView = ['explorer', 'search', 'git', 'browser', 'language', 'terminal'].includes(String(value.activeView))
       ? value.activeView as ProjectView : 'explorer';
     return {
       visible: typeof value.visible === 'boolean' ? value.visible : false,

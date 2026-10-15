@@ -91,7 +91,7 @@ test('missing clangd keeps C editable and a native executable selection repairs 
     await expect(page.locator('.quick-input-widget')).toContainText('Language Support');
     await page.locator('.quick-input-box input').press('Enter');
     await expect(page.locator('.quick-input-widget')).toBeHidden();
-    const management = page.getByRole('dialog', { name: 'Language Support' });
+    const management = page.getByRole('region', { name: 'Language Support', exact: true });
     await expect(management).toBeVisible();
     await management.getByRole('searchbox').fill('clangd');
     await management.locator('.server-list button').click();

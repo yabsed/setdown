@@ -21,7 +21,9 @@
   let { actions, terminalApi, desktop, mediaPosition }: { actions: AppActions; terminalApi: TerminalApi; desktop: DesktopPort;
     mediaPosition(id: string, position: ReadingPosition): void } = $props();
   onMount(() => {
-    const show = () => { view.languageSupportOpen = true; };
+    const show = () => {
+      if (!project.visible || !project.open || project.activeView !== 'language') actions.selectProjectView('language');
+    };
     window.addEventListener('setdown:language-support', show);
     return () => window.removeEventListener('setdown:language-support', show);
   });
@@ -30,14 +32,9 @@
   const geometry = (box: typeof focused) => `left:${box.x}%;top:${box.y}%;width:${box.width}%;height:${box.height}%`;
 </script>
 
-{#if view.languageSupportOpen}
-  {#await import('./editor/LanguageSupport.svelte') then module}
-    <module.default api={desktop.language} onclose={() => { view.languageSupportOpen = false; }} />
-  {:catch error}<div role="alert">Could not load language support: {String(error)}</div>{/await}
-{/if}
 <TitleBar {actions} />
 <section class="shell" data-surface="empty" data-tabs="false">
-  <ProjectSidebar {actions} />
+  <ProjectSidebar {actions} languageApi={desktop.language} />
   <div class="editor-area" class:split={view.groups.length > 1}>
   <EditorGroups {actions} />
   <div class="group-content focused-content" style={geometry(focused)}

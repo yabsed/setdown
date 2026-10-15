@@ -114,6 +114,12 @@ test('save includeText uses the actual disk snapshot and a catalog read starts n
   const catalog = await f.invoke('catalog', f.first);
   expect(catalog.entries.length).toBeGreaterThan(300); expect(mocks.servers).toHaveLength(0);
   expect(catalog.entries.find((entry: { id: string }) => entry.id === 'gopls').automatic).toBe(true);
+  expect(catalog.entries.find((entry: { id: string }) => entry.id === 'gopls').managed).toBe(false);
+  expect(catalog.entries.find((entry: { id: string }) => entry.id === 'gopls').discoverable).toBe(true);
+  expect(catalog.entries.find((entry: { id: string }) => entry.id === 'apex-language-server').discoverable).toBe(false);
+  await f.invoke('set-enabled', f.first, 'gopls', false);
+  const updated = await f.invoke('catalog', f.first);
+  expect(updated.entries.find((entry: { id: string }) => entry.id === 'gopls').managed).toBe(true);
   await f.invoke('open', f.first, f.document('one'));
   f.send('saved', f.first, 'one', 'saved text');
   expect(mocks.servers[0].notify).toHaveBeenCalledWith('textDocument/didSave', expect.objectContaining({ text: 'saved text' }));
@@ -231,7 +237,7 @@ test('the full catalog discovers a server without a connection profile without l
   });
   const f = fixture(discovery);
   const catalog = await f.invoke('catalog', f.first);
-  expect(catalog.entries.find((e: { id: string }) => e.id === 'aiken')).toMatchObject({ configured: false, available: true, candidates: [{ id: 'aiken-bin', path: process.execPath, source: 'path' }] });
+  expect(catalog.entries.find((e: { id: string }) => e.id === 'aiken')).toMatchObject({ configured: false, discoverable: true, available: true, candidates: [{ id: 'aiken-bin', path: process.execPath, source: 'path' }] });
   expect(mocks.servers).toHaveLength(0); expect(query).not.toHaveBeenCalled();
   await expect(f.invoke('add-connection', f.first, { id: 'aiken', name: 'Aiken', candidateId: 'forged', args: ['lsp'],
     languages: [{ languageId: 'aiken', extensions: ['.ak'] }], rootMarkers: [] })).rejects.toThrow(/Installation changed/);

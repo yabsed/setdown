@@ -138,7 +138,6 @@ export type AppActions = {
 };
 
 export const view = $state({
-  languageSupportOpen: false,
   groups: [{ id: 'group-0', tabs: [], activeId: null, previewId: null }] as import('../core/workspace/editor-groups').Group[],
   groupTree: { kind: 'group', id: 'group-0' } as import('../core/workspace/editor-groups').GroupTree,
   focusedGroupId: 'group-0',

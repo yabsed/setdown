@@ -113,6 +113,8 @@ export class LanguageManager {
       const owner = this.owners.get(state.webContentsId);
       return { id: item.id, name: definition?.name ?? item.id, languages: item.languages, description: item.description, homepage: item.homepage,
         configured: !!definition, bundled, custom: !!definition && registry.isCustom(item.id),
+        managed: !!definition && (registry.isCustom(item.id) || Object.keys(options ?? {}).length > 0 || !!executable && path.isAbsolute(executable)),
+        discoverable: definition ? registry.canDetect(item.id) : item.executables.length > 0,
         enabled: !!definition && registry.enabled(item.id), selected: [] as string[],
         executable: resolved || executable, available: !!resolved, automatic: !!definition && registry.automatic(item.id),
         canDetect: !!definition && registry.canDetect(item.id), candidates: found?.candidates, selectionNeeded: !!found?.candidates.length && !found.selected,

@@ -1,8 +1,40 @@
 # Language support
 
-Open **Edit → Language Support…** to find servers and manage connections. The
-editor's F1 palette opens the same screen. The Setdown button continues to open
-Folder Tools.
+Open **Language Support** in the left activity bar, directly below Browser.
+**Edit → Language Support…** and the editor's F1 palette open the same sidebar.
+It stays beside the document; opening it does not cover or freeze a live web page.
+The Setdown button continues to toggle Folder Tools.
+
+The sidebar has four groups: **Detected**, **Needs attention**, **Manual
+connections**, and **Available servers**. The fourth group contains automatically
+discoverable servers that have not been found yet. It starts collapsed to keep
+installed servers visible; search includes all four groups and expands matching
+results. Discovery support is independent of installation and of connection
+profile availability. Only entries without automatic discovery metadata are
+omitted from this list; they remain available in the manual-add flow.
+
+Each row separates runtime state (Ready, Running, Disabled, Failed, Not detected)
+from origin (Detected, Included, Manual). Missing saved connections and failed
+sessions remain visible so they can be repaired. A detected executable without a
+connection profile appears with **Setup needed**. Language logos use named SVG
+exports from the already installed Simple Icons package, pinned to 9.21.0 as a
+direct dependency. Logos adapt contrast to light/dark themes; languages without
+a matching logo use a short language label. No remote image requests are needed.
+
+Select a row to view its executable, controls, and errors. Advanced arguments,
+settings, and profile information are under **Connection settings**. Back returns
+to the filtered list. Escape clears a search, returns from details, or closes the
+sidebar; it does not switch the active document into reader mode.
+
+The title bar's refresh icon rescans installations. **+ / Add server manually…**
+opens the manual flow: choose a known profile and locate its executable, or enter
+a custom connection. **Import JSON…** remains available. Browsing a manual-only profile
+in this flow does not add it to the default list until it is detected or saved.
+
+The compact view title, icon actions, search field, counted sections, and row
+hierarchy follow [VS Code's view guidance](https://code.visualstudio.com/api/ux-guidelines/views)
+and its vendored `extensionsViewlet.ts` / `media/extensionsViewlet.css`. Setdown
+retains its own theme tokens and sidebar layout; the screen is not a marketplace.
 
 The [discovery design](../reports/2026_10_16_00_09_lsp_discovery_and_connection_design.md)
 explains the architecture and follow-up work. The behavior below describes the
@@ -12,7 +44,10 @@ implemented catalog-wide discovery and imported connection profiles.
 
 The offline catalog combines 331 packages from [Mason Registry](https://github.com/mason-org/mason-registry)
 with pinned [Helix language definitions](https://docs.helix-editor.com/languages.html).
-It currently lists **384 servers and 195 connection profiles**. Of the original
+It currently contains **384 servers and 195 connection profiles**. Automatic
+discovery covers **378 servers**; bundled Pyright is shown separately as Included.
+The remaining five entries require manual executable selection. The sidebar
+separates detected installations from available discovery profiles. Of the original
 331 Mason entries, 142 have an imported or retained connection profile; 189 still
 need connection metadata. The shared discovery flow checks every entry using its available executable
 metadata. Five Mason entries have neither an executable name nor an imported
@@ -43,7 +78,7 @@ their command, arguments, language IDs, file associations and root markers:
 - Entries without a connection profile still detect their installed executable.
   **Connect installed server…** asks for the missing language ID, extensions and
   stdio arguments. When there is one detected installation, it reuses that path
-  without opening a file chooser. **New connection** and **Import JSON…** remain
+  without opening a file chooser. **Add server manually…** and **Import JSON…** remain
   available; imported custom connections initially stay disabled.
 
 Installation is manual. Setdown does not execute Mason installation recipes or
@@ -53,10 +88,9 @@ interpreter. npm package `bin` metadata can also resolve an installed Node runti
 and script directly, including on Windows without running `.cmd`/`.bat` wrappers.
 Custom connections can still select Node and put the server script in `args`.
 
-The screen distinguishes **Executable missing**, **Choose an installation**, **Disabled**,
-**Found · Starts when needed**, **Found · Choose a primary server**, **Starting**,
-**Running** and **Failed**. Entries lacking a profile show **Connection details
-needed**, with **Found** when an installation was detected. It shows
+The details distinguish **Not detected**, **Choose installation**, **Disabled**,
+**Ready**, **Choose primary**, **Starting**, **Running** and **Failed**. Detected
+entries lacking a profile show **Setup needed**. The detail view shows
 executable path, workspace root, negotiated editor features and startup/crash
 errors (including available stderr). Finding an executable does not prove that
 its runtime or workspace is healthy; **Running** means LSP initialization completed.

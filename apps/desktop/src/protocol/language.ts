@@ -9,6 +9,10 @@ export type LanguageServerCandidate = { id: string; path: string; source: 'expli
 export type LanguageCatalogEntry = {
   id: string; name: string; description: string; homepage: string; languages: string[];
   configured: boolean; bundled: boolean; custom: boolean; enabled: boolean; selected: string[];
+  /** A user-owned connection or override, retained in management even when missing. */
+  managed?: boolean;
+  /** Executable metadata exists for automatic discovery, even without a connection profile. */
+  discoverable?: boolean;
   executable?: string; available?: boolean; options?: LanguageServerOptions;
   automatic?: boolean; canDetect?: boolean; candidates?: LanguageServerCandidate[];
   discoveryMessage?: string; selectionNeeded?: boolean; searched?: string[];

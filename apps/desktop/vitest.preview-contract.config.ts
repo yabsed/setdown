@@ -19,6 +19,7 @@ export default defineConfig({
     'src/main/language/server-definitions.test.ts',
     'src/main/language/language-manager.test.ts',
     'src/renderer/editor/language-client.test.ts',
+    'src/renderer/editor/language-presentation.test.ts',
     'src/renderer/adapters/shared-document-history.test.ts',
     'src/architecture-boundaries.test.ts',
     'src/main/terminal/terminal-manager.test.ts',

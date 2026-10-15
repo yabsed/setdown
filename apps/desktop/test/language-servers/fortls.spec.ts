@@ -22,7 +22,7 @@ test('installed fortls connects without registration and supplies hover and comp
     await editor.press('Escape');
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
-    const management = page.getByRole('dialog', { name: 'Language Support' });
+    const management = page.getByRole('region', { name: 'Language Support', exact: true });
     await management.getByRole('searchbox').fill('fortls'); await management.locator('.server-list button').click();
     await expect(management.locator('.state')).toHaveText('Running');
     await management.getByRole('button', { name: 'Rescan installed servers' }).click();

@@ -340,8 +340,21 @@ Both the full unit suite and preview gate require `clangd` on PATH or an absolut
 `SETDOWN_CLANGD_PATH`; absent clangd fails these checks rather than skipping them.
 
 Language support now uses declarative server definitions and a persisted registry.
-`Edit → Language Support…` and F1 open the same lazy management screen; the Setdown
-Folder Tools button retains its meaning. Catalog browsing starts no process.
+The Language Support activity below Browser, `Edit → Language Support…`, and F1
+open the same lazy sidebar; the Setdown Folder Tools button retains its meaning.
+The sidebar uses normal workspace geometry, without the native-overlay capture
+lifecycle. Web content remains live and keeps its identity and unsaved inputs.
+Keyboard/IME input belongs to the sidebar while its controls are focused; Escape
+must not enter reader mode. `browser.spec.ts` covers advancing native page frames,
+zero visibility changes, and preserved inputs while the sidebar is open.
+Catalog browsing starts no process. Undetected but discoverable servers appear in
+the fourth **Available servers** group and remain searchable alongside installed
+servers. Missing saved connections and failed sessions stay repairable. Only
+entries without discovery metadata are omitted; they remain available through
+the explicit manual-add flow. The discovery-capability flag is separate from
+installation presence and connection-profile availability.
+`language-presentation.test.ts` and `language-registry.spec.ts` cover filtering,
+status/source distinctions, manual creation/import/removal, and sidebar focus.
 Configuration changes reconnect only models served by affected servers, without
 changing text or Undo, including models first acquired by Working Tree. One primary server is selected
 per language; settings changes are user-wide while explicit restart is window-local.
@@ -1338,3 +1351,53 @@ after an initial temporary-filesystem quota failure, and the incomplete baseline
 install was replaced with a clean independent npm install before measurement.
 These measurements cover Markdown/Git transitions, not large-project LSP indexing,
 Windows execution, or slow/network-filesystem discovery latency.
+
+
+## Language Support sidebar validation, 2026-10-16
+
+The Language Support activity opens a normal sidebar below Browser. Detected,
+Needs attention, and Manual connections are followed by Available servers.
+All 378 discoverable server definitions remain searchable, regardless of whether
+they are installed or have a connection profile. Included Pyright remains visible;
+five entries without discovery metadata stay in the manual-add flow. Real language
+logos load with the lazy sidebar and use the existing light/dark appearance.
+
+Validation passed **59 contract unit files / 385 tests**, three benchmark comparator
+tests, production build/typecheck with zero Svelte errors/warnings, **115 real
+Electron scenarios**, and **two real fortls/rust-analyzer scenarios**. Coverage
+includes manual creation/import/removal, missing executable repair, search across
+all four groups, SVG logos, Escape ownership, unchanged native web visibility and
+frame delivery, current unsaved text, stable healthy sessions, and Undo. All GUI
+runs used isolated Xvfb/runtime/D-Bus.
+
+The independent baseline is `fb4951c16302857f5fb71b88f5c5fc323d155be3`. Its dependencies were
+installed separately with offline npm ci; the pinned local submodules and cached
+uBlock assets completed its production build. Candidate and baseline both use
+Electron 44.7.2. Five matched repetitions alternate order on
+one isolated display. The harness reused and verified the previously built
+artifacts, with all eight scenarios, all five cycles, latest-content captures,
+and real double-click input. No assertions, retries or tolerances were changed.
+
+Comparison: **PASS — 0 regressions across 48 buckets**, at the existing joint
+thresholds (>25% and >50ms). Median milliseconds below are **baseline → candidate**.
+Warm means cycles 3–5 within each app, then the median across repetitions.
+Source preparation wait is separate from input latency; Esc includes native
+capture/readback and is not a monitor presentation timestamp.
+
+| Surface | Source wait | Edit | Esc first | Esc second | Esc warm | Double-click first | Double-click second | Double-click warm |
+| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Markdown | 0ms | no | 59 → 39 | 28 → 31 | 20 → 24 | 20 → 20 | 37 → 36 | 12 → 11 |
+| Markdown | 0ms | yes | 440 → 433 | 94 → 94 | 91 → 90 | 17 → 20 | 17 → 15 | 14 → 14 |
+| Markdown | 3000ms | no | 43 → 41 | 16 → 22 | 21 → 23 | 16 → 17 | 11 → 11 | 12 → 11 |
+| Markdown | 3000ms | yes | 126 → 118 | 102 → 90 | 93 → 92 | 20 → 19 | 14 → 16 | 13 → 13 |
+| Git review | 0ms | no | 978 → 955 | 27 → 20 | 29 → 27 | 24 → 22 | 11 → 11 | 12 → 12 |
+| Git review | 0ms | yes | 1009 → 1022 | 1534 → 1457 | 177 → 176 | 22 → 15 | 13 → 22 | 18 → 18 |
+| Git review | 3000ms | no | 30 → 26 | 21 → 23 | 18 → 17 | 25 → 23 | 11 → 12 | 18 → 18 |
+| Git review | 3000ms | yes | 226 → 227 | 189 → 180 | 176 → 177 | 22 → 23 | 19 → 19 | 17 → 17 |
+
+[Samples, identities and source hashes](language-sidebar-preview-benchmark-2026-10-16.json).
+Raw comparisons are in `test-results/language-sidebar-benchmark-2026-10-16/`;
+functional logs and light/dark screenshots are in
+`test-results/language-sidebar-validation/`. These checks cover Markdown/Git
+transitions and sidebar integration; they do not measure large-project indexing
+or claim a logo exists for every language. Unmapped languages use a short label.

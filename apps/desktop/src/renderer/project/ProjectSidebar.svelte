@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { AppActions } from '../view-state.svelte';
+  import type { LanguageApi } from '../../protocol/language';
   import { resizePanelWithKeyboard, startPanelResize } from '../shell/panel-resize';
   import BrowserSidebar from '../browser/BrowserSidebar.svelte';
   import ExplorerView from './explorer/ExplorerView.svelte';
@@ -10,7 +11,7 @@
 
   import TerminalSidebar from '../terminal/TerminalSidebar.svelte';
 
-  let { actions }: { actions: AppActions } = $props();
+  let { actions, languageApi }: { actions: AppActions; languageApi: LanguageApi } = $props();
   let gitGroups = $derived(gitChangeGroups(project.git?.changes));
   let gitStatus = $derived(!project.git ? 'Repository status not loaded'
     : `${gitGroups.badge} change groups: ${gitGroups.staged.length} staged files, ${gitGroups.changed.length} changed files${gitGroups.conflicts.length ? `, ${gitGroups.conflicts.length} conflicts` : ''}`);
@@ -46,6 +47,10 @@
       aria-label="Browser" aria-expanded={project.open && project.activeView === 'browser'} title="Browser" onclick={() => select('browser')}>
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="3.5" ry="8.5"/><path d="M3.5 12h17"/></svg>
     </button>
+    <button type="button" class:is-active={project.open && project.activeView === 'language'}
+      aria-label="Language Support" aria-expanded={project.open && project.activeView === 'language'} title="Language Support" onclick={() => select('language')}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 3.5h6v6h-6zM3.5 14.5h6v6h-6zM14.5 14.5h6v6h-6zM17.5 2l4.5 4.5-4.5 4.5L13 6.5z"/></svg>
+    </button>
     <button type="button" class="terminal-activity" class:is-active={project.open && project.activeView === 'terminal'}
       aria-label="Terminal" aria-expanded={project.open && project.activeView === 'terminal'} title="Terminal sessions (Ctrl+`)" onclick={() => select('terminal')}>
       <svg viewBox="0 0 24 24"><path d="m5 6 6 6-6 6M13 18h6"/></svg>
@@ -57,6 +62,12 @@
     {:else if project.activeView === 'search'}<SearchView {actions} />
     {:else if project.activeView === 'terminal'}<TerminalSidebar {actions} />
     {:else if project.activeView === 'browser'}<BrowserSidebar {actions} />
+    {:else if project.activeView === 'language'}
+      {#if project.visible && project.open}
+        {#await import('../editor/LanguageSupport.svelte') then module}
+          <module.default api={languageApi} onclose={() => select('language')} />
+        {:catch error}<p role="alert">Could not load language support: {String(error)}</p>{/await}
+      {/if}
     {:else}<SourceControlView {actions} />{/if}
     {#if project.error}<p class="project-error">{project.error}</p>{/if}
   </section>

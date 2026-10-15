@@ -241,8 +241,8 @@ export function startWorkspace(desktop: DesktopPort) {
    * entry is the last stop for an unconsumed Esc. */
   const popupOwnsEscape = () => [...document.querySelectorAll('[role="menu"], [role="listbox"], [role="alertdialog"], dialog[open]')]
     .some(element => element.getClientRects().length > 0);
-  const explorerOwnsEscape = (target = document.activeElement) => target instanceof Element
-    && !!target.closest('.explorer-tree, .explorer-root, .explorer-filter, .project-context-menu, .project-confirm');
+  const sidebarOwnsEscape = (target = document.activeElement) => target instanceof Element
+    && !!target.closest('.explorer-tree, .explorer-root, .explorer-filter, .project-context-menu, .project-confirm, .language-support');
   /** Esc on a web page, mirroring the Markdown editor: extract a reader
    * snapshot first, then hide the live view behind it (page state kept). */
   const readerRequests = new Set<string>();
@@ -435,11 +435,11 @@ export function startWorkspace(desktop: DesktopPort) {
       void closePrompt.request('window', names).then((decision) => desktop.resolveWindowClose(decision));
     },
     command: (command) => {
-      if (command === 'escape' && explorerOwnsEscape()) return;
+      if (command === 'escape' && sidebarOwnsEscape()) return;
       if (command.startsWith('explorer:')) {
         window.dispatchEvent(new CustomEvent('setdown:explorer-command', { detail: command.slice('explorer:'.length) })); return;
       }
-      if (command === 'language-support') { view.languageSupportOpen = true; return; }
+      if (command === 'language-support') { window.dispatchEvent(new Event('setdown:language-support')); return; }
       if (command === 'new-web-tab') { actions.newWebTab(); return; }
       if (command === 'reopen-web-tab') { void desktop.browser.reopen().catch(error => { browser.error = String(error); }); return; }
       if (command === 'focus-location') { window.dispatchEvent(new Event('setdown:focus-location')); return; }
@@ -491,7 +491,7 @@ export function startWorkspace(desktop: DesktopPort) {
       tabDrag.reset(); void tabs.removeTransferred(tabId).finally(() => desktop.releaseTabTransferSource(transferId));
     },
     keydown: (event) => {
-      if (event.key === 'Escape' && explorerOwnsEscape(event.target instanceof Element ? event.target : null)) return;
+      if (event.key === 'Escape' && sidebarOwnsEscape(event.target instanceof Element ? event.target : null)) return;
       if (!event.isComposing && event.altKey && !event.ctrlKey && !event.metaKey && !terminalOwnsInput(event.target)
         && ['ArrowLeft', 'ArrowRight'].includes(event.key) && !project.gitDiffActive && workspace.activeId) {
         event.preventDefault(); actions.navigateHistory(workspace.activeId, event.key === 'ArrowLeft' ? -1 : 1); return;

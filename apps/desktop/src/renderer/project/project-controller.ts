@@ -58,7 +58,7 @@ export class ProjectController {
     rememberProjectState(); this.searcher.highlight(); this.resize();
   };
   select = (view: ProjectView): void => {
-    if (project.open && project.activeView === view) {
+    if (project.visible && project.open && project.activeView === view) {
       project.open = false;
       rememberProjectState(); this.searcher.highlight(); return this.resize();
     }

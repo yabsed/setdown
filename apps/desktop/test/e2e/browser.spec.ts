@@ -850,6 +850,39 @@ test('application menus preserve live video frames, playback and web view visibi
   } finally { await f.dispose(); }
 });
 
+test('language sidebar leaves the native web page live and Escape belongs to its search', async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    await expect(f.page.getByRole('tab', { name: /Research page/ })).toHaveAttribute('aria-selected', 'true');
+    const identity = await f.app.evaluate(({ webContents }, origin) => webContents.getAllWebContents().find(c => c.getURL() === `${origin}/first`)!.id, f.origin);
+    await evaluatePage(f.app, f.origin, `(() => {
+      document.querySelector('#draft').value = 'Keep this draft'; window.sidebarFrames = 0; window.sidebarVisibilityChanges = 0;
+      document.addEventListener('visibilitychange', () => window.sidebarVisibilityChanges++);
+      const frame = () => { window.sidebarFrames++; requestAnimationFrame(frame); }; requestAnimationFrame(frame);
+    })()`);
+    await f.page.getByRole('button', { name: 'Toggle Folder Tools', exact: true }).click();
+    await f.page.getByRole('button', { name: 'Language Support', exact: true }).click();
+    const panel = f.page.getByRole('region', { name: 'Language Support', exact: true });
+    await expect(panel.getByRole('searchbox')).toBeFocused();
+    await panel.getByRole('searchbox').fill('anything');
+    const before = await evaluatePage<number>(f.app, f.origin, 'window.sidebarFrames');
+    await expect.poll(() => evaluatePage<number>(f.app, f.origin, 'window.sidebarFrames')).toBeGreaterThan(before + 5);
+    await expect(f.page.locator('[data-browser-frozen]')).toHaveCount(0);
+    await panel.getByRole('searchbox').press('Escape');
+    await expect(panel.getByRole('searchbox')).toHaveValue('');
+    await panel.getByRole('searchbox').press('Escape');
+    await expect(panel).toHaveCount(0);
+    expect(await f.app.evaluate(({ BrowserWindow }, id) => {
+      const child = BrowserWindow.getAllWindows()[0].contentView.children.find(v => 'webContents' in v && (v as Electron.WebContentsView).webContents.id === id);
+      return child?.getVisible();
+    }, identity)).toBe(true);
+    expect(await evaluatePage(f.app, f.origin, 'document.querySelector("#draft").value')).toBe('Keep this draft');
+    expect(await evaluatePage(f.app, f.origin, 'window.sidebarVisibilityChanges')).toBe(0);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
 test('terminal addresses navigate through web and files while sessions and tab zoom stay independent', async () => {
   const f = await fixture();
   try {

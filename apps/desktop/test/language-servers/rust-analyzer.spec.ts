@@ -22,16 +22,16 @@ test('real rust-analyzer supplies completion, hover, diagnostics, rename/Undo, n
     await expect(editor).toBeVisible();
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
-    const management = page.getByRole('dialog', { name: 'Language Support' });
+    const management = page.getByRole('region', { name: 'Language Support', exact: true });
     await management.getByRole('searchbox').fill('rust-analyzer');
     await management.locator('.server-list button').click();
     await management.getByRole('button', { name: 'Disable', exact: true }).click();
     await application.evaluate(({ dialog }, executable) => {
       dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [executable] })) as typeof dialog.showOpenDialog;
     }, executable);
+    await management.getByText('Connection settings', { exact: true }).click();
     await management.getByRole('button', { name: 'Choose executable…', exact: true }).click();
     await expect(management.locator('.details code').first()).toHaveText(executable);
-    await management.getByText('Connection settings', { exact: true }).click();
     await management.getByLabel('Server options (JSON)').fill(JSON.stringify({ args: [], settings: {},
       initializationOptions: { checkOnSave: false, cargo: { buildScripts: { enable: false } }, procMacro: { enable: false } } }));
     await management.getByRole('button', { name: 'Apply settings', exact: true }).click();
