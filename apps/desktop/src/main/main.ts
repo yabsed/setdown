@@ -61,7 +61,7 @@ const browsers = new BrowserManager({ stateFor: id => registry.stateForWebConten
   openFile: (state, file) => documents.open(state, file) });
 const terminals = new TerminalManager();
 const transfers = new TabTransferManager({ previews, browsers, terminals, stateFor: (id) => registry.stateForWebContents(id),
-  theme: () => themes.id, createWindow: windows.create });
+  windows: () => registry.values, theme: () => themes.id, createWindow: windows.create });
 const channels = windowIpc((id) => registry.stateForWebContents(id));
 function sendCommand(command: AppCommand): void { registry.focused()?.window.webContents.send('app:command', command); }
 function openError(error: unknown): void {

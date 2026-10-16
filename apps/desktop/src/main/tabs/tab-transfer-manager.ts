@@ -18,6 +18,7 @@ type Transfer = {
 };
 type Options = {
   previews: PreviewManager; browsers?: BrowserManager; terminals?: TerminalManager; stateFor: (id: number) => WindowState | null; theme: () => PreviewThemeId;
+  windows: () => Iterable<WindowState>;
   createWindow: (position: { x: number; y: number } | null, initialDocument: null,
     showWhenReady: boolean, contentSize: { width: number; height: number } | null) => BrowserWindow;
 };
@@ -156,6 +157,19 @@ export class TabTransferManager {
     if (!Number.isFinite(screenX) || !Number.isFinite(screenY)) return;
     transfer.detachPosition = { x: Math.round(screenX - 120), y: Math.round(screenY - 18) };
     if (transfer.detachTimer) clearTimeout(transfer.detachTimer);
+    transfer.detachTimer = null;
+    // Source dragend and destination drop run in different renderers. A busy
+    // destination can claim well after the grace period, even though it already
+    // accepted dragover. Dropping over another visible Setdown window is never
+    // an outside detach: leave the transfer available for its actual drop.
+    // If that window rejects the drop, expiry cleans up and the source stays put.
+    for (const { window } of this.options.windows()) {
+      if (window.isDestroyed() || window.webContents.id === sourceId
+        || !window.isVisible() || window.isMinimized()) continue;
+      const bounds = window.getContentBounds();
+      if (screenX >= bounds.x && screenX < bounds.x + bounds.width
+        && screenY >= bounds.y && screenY < bounds.y + bounds.height) return;
+    }
     // A drop in another Setdown renderer and source dragend are delivered over
     // different IPC queues. Give the destination claim one bounded turn before
     // the hidden prepared window may claim the transfer.

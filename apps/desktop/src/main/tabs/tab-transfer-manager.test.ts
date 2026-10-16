@@ -18,6 +18,8 @@ vi.mock('electron', () => ({ ipcMain: {
 function fakeWindow(id: number) {
   let destroyed = false;
   let visible = true;
+  let minimized = false;
+  let bounds = { x: 1000, y: 100, width: 900, height: 700 };
   const messages: Array<{ channel: string; payload: unknown }> = [];
   const webContents = {
     id,
@@ -31,6 +33,8 @@ function fakeWindow(id: number) {
     isDestroyed: () => destroyed,
     destroy: vi.fn(() => { destroyed = true; }),
     getContentSize: () => [900, 700] as [number, number],
+    getContentBounds: () => bounds,
+    isMinimized: () => minimized,
     setPosition: vi.fn(),
     isVisible: () => visible,
     showInactive: vi.fn(() => { visible = true; }),
@@ -38,7 +42,9 @@ function fakeWindow(id: number) {
     focus: vi.fn(),
     once: vi.fn(),
   } as unknown as BrowserWindow;
-  return { window, webContents, messages, setVisible(value: boolean) { visible = value; } };
+  return { window, webContents, messages, setVisible(value: boolean) { visible = value; },
+    setMinimized(value: boolean) { minimized = value; },
+    setBounds(value: typeof bounds) { bounds = value; } };
 }
 
 const tab: TransferableTab = {
@@ -65,6 +71,7 @@ function fixture() {
   const manager = new TabTransferManager({
     previews: { views: new Map(), restoreScroll: vi.fn() } as unknown as PreviewManager,
     stateFor: id => states.get(id) ?? null,
+    windows: () => states.values(),
     theme: () => 'paper',
     createWindow: () => prepared.window,
   });
@@ -102,4 +109,36 @@ test('an unclaimed outside drop still detaches after claim arbitration', async (
   expect(f.prepared.window.showInactive).toHaveBeenCalledOnce();
   expect(f.prepared.webContents.send).toHaveBeenCalledWith('tabs:transfer-incoming',
     expect.objectContaining({ transferId: 'move' }));
+});
+
+test('a drop over an existing window allows its claim after the detach grace period', async () => {
+  const f = fixture();
+  f.existing.setBounds({ x: 600, y: 300, width: 900, height: 700 });
+  f.register(); f.detach();
+  await vi.advanceTimersByTimeAsync(1_000);
+  expect(f.prepared.window.showInactive).not.toHaveBeenCalled();
+  expect(await f.claim()).toMatchObject({ transferId: 'move', tab: { id: 'document' } });
+  expect(f.prepared.window.destroy).toHaveBeenCalledOnce();
+});
+
+for (const hidden of ['minimized', 'hidden', 'destroyed'] as const) test(`a ${hidden} window does not intercept an outside drop`, async () => {
+  const f = fixture();
+  f.existing.setBounds({ x: 600, y: 300, width: 900, height: 700 });
+  if (hidden === 'minimized') f.existing.setMinimized(true);
+  else if (hidden === 'hidden') f.existing.setVisible(false);
+  else f.existing.window.destroy();
+  f.register(); f.detach();
+  await vi.advanceTimersByTimeAsync(1_000);
+  expect(f.prepared.window.showInactive).toHaveBeenCalledOnce();
+});
+
+test('a rejected drop over an existing window expires without creating a window or removing the source', async () => {
+  const f = fixture();
+  f.existing.setBounds({ x: 600, y: 300, width: 900, height: 700 });
+  f.register(); f.detach();
+  await vi.advanceTimersByTimeAsync(61_000);
+  expect(f.prepared.window.showInactive).not.toHaveBeenCalled();
+  expect(f.prepared.window.destroy).toHaveBeenCalledOnce();
+  expect(f.source.webContents.send).not.toHaveBeenCalled();
+  expect(await f.claim()).toBeNull();
 });

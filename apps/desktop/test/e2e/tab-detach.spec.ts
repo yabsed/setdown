@@ -171,17 +171,27 @@ for (const dropArea of ['body', 'tab strip'] as const) test(`detaching a tab res
     await target.dispatchEvent('dragover', point);
     await expect(sourceWindow.locator(dropArea === 'body' ? '.group-drop-overlay' : '.tab-drop-indicator')).toBeVisible();
     if (dropArea === 'tab strip') expect(await target.evaluate(node => getComputedStyle(node).getPropertyValue('-webkit-app-region'))).toBe('no-drag');
-    await detachedWindow!.locator('.document-tab', { hasText: 'sample.md' }).evaluate((element) => {
+    const targetNativeWindow = await application.browserWindow(sourceWindow);
+    const screenPoint = await targetNativeWindow.evaluate((window, point) => {
+      const bounds = window.getContentBounds(), zoom = window.webContents.getZoomFactor();
+      return { x: bounds.x + point.x * zoom, y: bounds.y + point.y * zoom };
+    }, { x: point.clientX, y: point.clientY });
+    await targetNativeWindow.dispose();
+    await detachedWindow!.locator('.document-tab', { hasText: 'sample.md' }).evaluate((element, screenPoint) => {
       const dataTransfer = new DataTransfer();
       element.dispatchEvent(new DragEvent('dragleave', {
         bubbles: true, cancelable: true, dataTransfer, relatedTarget: null,
       }));
       element.dispatchEvent(new DragEvent('dragend', {
         bubbles: true, cancelable: true, dataTransfer,
-        clientX: -1, clientY: 80, screenX: 640, screenY: 420,
+        clientX: -1, clientY: 80, screenX: screenPoint.x, screenY: screenPoint.y,
       }));
-    });
-    await sourceWindow.waitForTimeout(20);
+    }, screenPoint);
+    // Deliberately exceed the old 120ms arbitration window. A delayed target
+    // must still win, without even briefly showing a third window.
+    await sourceWindow.waitForTimeout(500);
+    expect(await application.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows().filter(window => window.isVisible()).length)).toBe(2);
     await target.dispatchEvent('drop', point);
     await destinationTransfer.dispose();
 
