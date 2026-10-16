@@ -193,7 +193,7 @@ test('Python cells run in one kernel, persist results, and reset discards variab
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
 });
 
-test('native notebook analysis accepts IPython cells while retaining real errors and isolated cell ranges', async () => {
+test('native notebook analysis uses lightweight diagnostics with IPython and isolated cell ranges', async () => {
   test.setTimeout(90_000);
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-analysis-')), file = path.join(root, 'analysis.ipynb');
   const sources = ['%who\nimport math\nimport asyncio\nimport only_a', 'await asyncio.sleep(0)\nprint(math.sqrt(9), only_a.VALUE)\ndisplay(1)\nget_ipython()', 'count: int = "wrong"'];
@@ -223,12 +223,12 @@ test('native notebook analysis accepts IPython cells while retaining real errors
     const diagnostics = (version: number, id: string) => page.evaluate(({ version, id }) => (window as any).notebookAnalysis.diagnostics[`${version}:${id}`]?.diagnostics, { version, id });
     await expect.poll(() => diagnostics(1, 'cell0'), { timeout: 30_000 }).toEqual([]);
     await expect.poll(() => diagnostics(1, 'cell1'), { timeout: 30_000 }).toEqual([]);
-    await expect.poll(async () => (await diagnostics(1, 'cell2'))?.some((d: any) => /int/.test(d.message) && d.severity === 1), { timeout: 30_000 }).toBe(true);
+    await expect.poll(() => diagnostics(1, 'cell2'), { timeout: 30_000 }).toEqual([]);
     await page.evaluate(async () => { await (window as any).marktex.language.changeNotebook('analysis-probe', 2, [
-      { id: 'cell0', version: 2, text: 'values = [' }, { id: 'cell1', version: 2, text: 'print("valid")' }, { id: 'cell2', version: 2, text: 'count: int = 1' },
+      { id: 'cell0', version: 2, text: 'values = [' }, { id: 'cell1', version: 2, text: 'print(missing_name)' }, { id: 'cell2', version: 2, text: 'count: int = 1' },
     ]); });
     await expect.poll(async () => (await diagnostics(2, 'cell0'))?.some((d: any) => d.severity === 1), { timeout: 30_000 }).toBe(true);
-    await expect.poll(() => diagnostics(2, 'cell1'), { timeout: 30_000 }).toEqual([]);
+    await expect.poll(async () => (await diagnostics(2, 'cell1'))?.some((d: any) => d.code === 'reportUndefinedVariable' && d.severity === 2), { timeout: 30_000 }).toBe(true);
     await expect.poll(() => diagnostics(2, 'cell2'), { timeout: 30_000 }).toEqual([]);
     await page.evaluate(async () => { await (window as any).marktex.language.changeNotebook('analysis-probe', 3, [
       { id: 'cell2', version: 3, text: 'numbers = [1, 2]' }, { id: 'cell1', version: 3, text: 'print(sum(numbers))' },

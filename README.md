@@ -144,6 +144,9 @@ Open the project folder for a shared analysis root. With no folder open, C/C++
 finds the nearest ancestor containing `.clangd`, `compile_commands.json`,
 `compile_flags.txt`, `CMakeLists.txt` or `.git`; otherwise it uses the file's folder.
 Python uses the file's folder and reads `pyrightconfig.json` or `[tool.pyright]`.
+Python files and notebooks default to lightweight diagnostics (`typeCheckingMode: off`):
+syntax errors and core name/import warnings remain, while broad type diagnostics
+are disabled. Completion, hover and navigation remain available.
 clangd itself reads [compilation commands](https://clangd.llvm.org/design/compile-commands)
 and [.clangd configuration](https://clangd.llvm.org/config), including include paths,
 defines, language standards and header inference. For CMake projects, generate

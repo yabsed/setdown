@@ -7,10 +7,11 @@ import { pathToFileURL } from 'node:url';
 import { CancellationTokenSource } from 'vscode-jsonrpc/node';
 import type { FullDocumentDiagnosticReport, Hover, PublishDiagnosticsParams } from 'vscode-languageserver-protocol';
 import { serverProfiles } from './server-definitions';
+import { notebookPythonAnalysis } from './python-analysis';
 import { ServerSession } from './server-session';
 
 const require = createRequire(import.meta.url);
-const pullProfile = { ...serverProfiles.pyright, renameAfterDiagnostics: false, initializationOptions: { ...serverProfiles.pyright.initializationOptions, disablePullDiagnostics: false } };
+const pullProfile = { ...serverProfiles.pyright, configuration: { python: { analysis: { typeCheckingMode: 'basic' } } }, renameAfterDiagnostics: false, initializationOptions: { ...serverProfiles.pyright.initializationOptions, disablePullDiagnostics: false } };
 const sessions: ServerSession[] = [];
 const roots: string[] = [];
 afterEach(async () => {
@@ -145,3 +146,37 @@ test('workspace rename includes unopened Python files immediately after initiali
   const result = await server.request<import('vscode-languageserver-protocol').WorkspaceEdit>('textDocument/rename', { textDocument: { uri }, position: { line: 0, character: 5 }, newName: 'welcome' });
   expect(JSON.stringify(result)).toContain(pathToFileURL(main).href);
 });
+
+test.each(['pyright', 'basedpyright'])('%s off preset keeps core diagnostics and inference without type noise', async module => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-light-diagnostics-')); roots.push(root);
+  const uri = pathToFileURL(path.join(root, 'main.py')).href;
+  const analysis = module === 'basedpyright' ? notebookPythonAnalysis
+    : (serverProfiles.pyright.configuration.python as { analysis: Record<string, unknown> }).analysis;
+  const profile = { ...serverProfiles.pyright, renameAfterDiagnostics: false,
+    configuration: { python: { analysis }, basedpyright: { analysis } } };
+  const published: PublishDiagnosticsParams[] = [];
+  const failures: string[] = [];
+  const server = new ServerSession({ executable: process.execPath, args: [require.resolve(`${module}/langserver.index.js`), '--stdio'] },
+    root, params => published.push(params), message => failures.push(message), profile);
+  sessions.push(server); await server.ready;
+  const text = 'from typing import Literal\n'
+    + 'def read_csv(*, float_precision: Literal["high"]) -> object:\n    return object()\n'
+    + 'frame = read_csv(float_precision="round_trip")\nframe.groupby("method")\n'
+    + 'row = (3,)\nrow.R_nominal\ncount: int = "wrong"\n'
+    + 'import setdown_missing_module_9a72\nprint(setdown_missing_name)\n';
+  await server.notify('textDocument/didOpen', { textDocument: { uri, languageId: 'python', version: 1, text } });
+  await expect.poll(() => published.at(-1)?.diagnostics.filter(d => d.severity === 1 || d.severity === 2).map(d => d.code).sort(), { timeout: 15_000 })
+    .toEqual(['reportMissingImports', 'reportUndefinedVariable']);
+  expect(published.at(-1)?.diagnostics.filter(d => d.code === 'reportMissingImports' || d.code === 'reportUndefinedVariable').every(d => d.severity === 2)).toBe(true);
+  const hover = await server.request<Hover>('textDocument/hover', { textDocument: { uri }, position: { line: 5, character: 1 } });
+  expect(JSON.stringify(hover)).toContain('tuple');
+  const completions = await server.request('textDocument/completion', { textDocument: { uri }, position: { line: 4, character: 6 } });
+  expect(JSON.stringify(completions)).toContain('__class__');
+  await server.notify('textDocument/didChange', { textDocument: { uri, version: 2 }, contentChanges: [{ text: 'values = [\n' }] });
+  await expect.poll(() => published.at(-1)?.version, { timeout: 15_000 }).toBe(2);
+  expect(published.at(-1)?.diagnostics.some(d => d.severity === 1)).toBe(true);
+  await server.notify('textDocument/didChange', { textDocument: { uri, version: 3 }, contentChanges: [{ text: 'values = []\n' }] });
+  await expect.poll(() => published.at(-1)?.version, { timeout: 15_000 }).toBe(3);
+  expect(published.at(-1)?.diagnostics).toEqual([]);
+  expect(failures).toEqual([]);
+}, 30_000);

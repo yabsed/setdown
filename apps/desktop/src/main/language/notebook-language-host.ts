@@ -5,6 +5,7 @@ import type { LanguageCell, LanguageConnection, LanguageDocument, LanguageEvent,
 import type { WindowState } from '../windows/window-state';
 import { canonicalPath } from '../documents/file-system';
 import { ServerSession } from './server-session';
+import { notebookPythonAnalysis } from './python-analysis';
 import { notebookPython } from '../notebook/python-environments';
 
 const methods = new Set<LanguageMethod>(['textDocument/completion', 'textDocument/hover', 'textDocument/signatureHelp',
@@ -71,8 +72,9 @@ export class NotebookLanguageHost {
       const session = { state, document: { ...document }, cells: this.cells(uri, document.cells), uri, phase: 'starting', epoch: 0, requests: new Map(), ready: false } as Session;
       // Notebook mode supplies display(); the hidden first cell binds IPython's
       // runtime get_ipython() with its installed types. Neither source is rewritten.
-      // Explicit notebook-scoped config avoids changing the user's ordinary .py server.
-      const analysis = { typeCheckingMode: 'basic', diagnosticMode: 'openFilesOnly', autoSearchPaths: true, useLibraryCodeForTypes: true };
+      // Match VS Code's lightweight Python diagnostics; inference still powers
+      // completion/hover. Let the server's off preset own the diagnostic rules.
+      const analysis = notebookPythonAnalysis;
       session.server = new ServerSession({ executable: process.execPath, args: [entry, '--stdio'], env: { ...env, ELECTRON_RUN_AS_NODE: '1' } },
         state.projectRoot ?? path.dirname(file), params => {
           if (this.sessions.get(key) !== session) return;

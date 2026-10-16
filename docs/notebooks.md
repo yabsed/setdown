@@ -98,8 +98,15 @@ Text output display is limited to 200,000 characters, HTML/Markdown rendering to
 The bundled **basedpyright 1.40.2** analyzer receives separate Python cell documents
 through LSP notebook synchronization. It supports notebook `await`, magic/shell
 syntax and notebook-order dependencies. `display` and `get_ipython` have notebook
-context. Genuine type/name errors remain enabled; runtime execution order does not
-rewrite static document-order analysis. Non-Python
+context. Python files and notebooks use VS Code-style lightweight diagnostics by
+default: syntax errors remain errors; undefined names, unresolved imports, missing
+module sources and invalid type forms remain warnings. Broad type-checking
+diagnostics (including argument, overload and attribute mismatches) are off;
+completion, hover and navigation still use type inference. There is no separate
+type-checking mode selector. basedpyright disables even those core warnings in its
+`off` preset, so Setdown explicitly restores the four Pyright/Pylance defaults
+through server settings. Runtime execution order does not rewrite static
+document-order analysis. Non-Python
 notebooks can be edited and retain their metadata; notebook LSP mapping currently
 targets Python. Cross-cell rename, code actions, formatting and completion edits
 that cross cell boundaries are withheld until they can be applied transactionally.

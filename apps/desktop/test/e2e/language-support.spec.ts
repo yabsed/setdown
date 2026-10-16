@@ -11,7 +11,7 @@ test('Python diagnostics, completion, rename and Undo use the ordinary document'
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-language-'));
   const config = await mkdtemp(path.join(os.tmpdir(), 'setdown-language-config-'));
   const file = path.join(root, 'main.py');
-  const original = 'def greeting(name: str) -> str:\n    return name.upper()\n\nvalue: int = "wrong"\nprint(greeting("Setdown"))\n';
+  const original = 'def greeting(name: str) -> str:\n    return name.upper()\n\nvalue: int = "wrong"\nmissing_value\nprint(greeting("Setdown"))\n';
   await writeFile(file, original);
   const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
   const application = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: config } });
@@ -20,7 +20,8 @@ test('Python diagnostics, completion, rename and Undo use the ordinary document'
     page.on('console', message => { if (message.type() === 'error') console.log('renderer:', message.text()); });
     await focusApplication(application);
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 25_000 });
-    await expect(page.locator('.squiggly-error').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.squiggly-warning').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.squiggly-error')).toHaveCount(0);
     const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
     await editor.press('Control+End');
     await editor.pressSequentially('greet');
@@ -67,7 +68,7 @@ test('definition opens the existing Setdown tab and Python diagnostics survive r
     await expect(page.getByRole('tab', { name: /helpers\.py/ })).toHaveAttribute('aria-selected', 'true', { timeout: 15_000 });
     await editor.press('Control+End');
     await editor.pressSequentially('\nunknown_name');
-    await expect(page.locator('.squiggly-error').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.squiggly-warning').first()).toBeVisible({ timeout: 15_000 });
     // Use the real Monaco command palette to exercise the restart action.
     await editor.press('F1');
     await page.locator('.quick-input-box input').fill('>Restart Language Servers');
@@ -75,7 +76,7 @@ test('definition opens the existing Setdown tab and Python diagnostics survive r
     await page.locator('.quick-input-box input').press('Enter');
     await expect(page.locator('.quick-input-widget')).toBeHidden();
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 25_000 });
-    await expect(page.locator('.squiggly-error').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.squiggly-warning').first()).toBeVisible({ timeout: 15_000 });
     expect(await readFile(path.join(root, 'helpers.py'), 'utf8')).not.toContain('unknown_name');
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); await rm(config, { recursive: true, force: true }); }
 });
@@ -125,17 +126,17 @@ test('Save As reconnects Python at the new path and preserves Undo', async () =>
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 25_000 });
     const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
     await editor.press('Control+End'); await editor.pressSequentially('unknown_name');
-    await expect(page.locator('.squiggly-error').first()).toBeVisible();
+    await expect(page.locator('.squiggly-warning').first()).toBeVisible();
     await application.evaluate(({ dialog, BrowserWindow }, target) => {
       dialog.showSaveDialog = (async () => ({ canceled: false, filePath: target })) as typeof dialog.showSaveDialog;
       BrowserWindow.getAllWindows()[0].webContents.send('app:command', 'save-as');
     }, saved);
     await expect(page.getByRole('tab', { name: /renamed\.py/ })).toBeVisible();
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready');
-    await expect(page.locator('.squiggly-error').first()).toBeVisible();
+    await expect(page.locator('.squiggly-warning').first()).toBeVisible();
     await editor.press('Control+z'); await editor.press('Control+s');
     await expect.poll(() => readFile(saved, 'utf8')).toBe('value = 1\n');
-    await expect(page.locator('.squiggly-error')).toHaveCount(0);
+    await expect(page.locator('.squiggly-warning')).toHaveCount(0);
     expect(await readFile(file, 'utf8')).toBe('value = 1\n');
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); await rm(config, { recursive: true, force: true }); }
 });
@@ -185,7 +186,7 @@ test('server crash preserves unsaved edits; restart recovers and window close re
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 25_000 });
     await expect(management.locator('.state')).toHaveText('Running');
     await management.getByRole('button', { name: 'Close language support' }).click();
-    await expect(page.locator('.squiggly-error').first()).toBeVisible();
+    await expect(page.locator('.squiggly-warning').first()).toBeVisible();
     pids.splice(0, pids.length, ...await application.evaluate(() => (globalThis as unknown as { languagePids: number[] }).languagePids));
     expect(pids).toHaveLength(2);
     expect(await readFile(file, 'utf8')).toBe('value = 1\n');
@@ -204,7 +205,7 @@ test('first Python Working Tree shares diagnostics and Undo with the ordinary ed
   await writeFile(file, 'value: int = 1\n');
   await exec('git', ['add', '.'], { cwd: root });
   await exec('git', ['commit', '-m', 'base'], { cwd: root });
-  await writeFile(file, 'value: int = "wrong"\n');
+  await writeFile(file, 'value = missing_value\n');
   const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
   const application = await electron.launch({ args: ['.'], env: { ...env, XDG_CONFIG_HOME: config } });
   try {
@@ -216,8 +217,8 @@ test('first Python Working Tree shares diagnostics and Undo with the ordinary ed
     await page.getByRole('button', { name: 'Source Control', exact: true }).click();
     await page.locator('.git-change-open').click();
     const modified = page.locator('.modified-in-monaco-diff-editor');
-    await expect(modified.locator('.squiggly-error').first()).toBeVisible({ timeout: 25_000 });
-    await expect(page.locator('.original-in-monaco-diff-editor .squiggly-error')).toHaveCount(0);
+    await expect(modified.locator('.squiggly-warning').first()).toBeVisible({ timeout: 25_000 });
+    await expect(page.locator('.original-in-monaco-diff-editor .squiggly-warning')).toHaveCount(0);
     const source = modified.getByRole('textbox');
     await source.press('Control+End'); await source.pressSequentially('unknown_name');
     await page.locator('.git-diff-tab .tab-close').click();
@@ -225,7 +226,7 @@ test('first Python Working Tree shares diagnostics and Undo with the ordinary ed
     await expect(page.locator('.editor-surface .view-lines')).toContainText('unknown_name');
     await ordinary.press('Control+z');
     await expect(page.locator('.editor-surface .view-lines')).not.toContainText('unknown_name');
-    await expect(page.locator('.editor-surface .squiggly-error').first()).toBeVisible();
-    expect(await readFile(file, 'utf8')).toBe('value: int = "wrong"\n');
+    await expect(page.locator('.editor-surface .squiggly-warning').first()).toBeVisible();
+    expect(await readFile(file, 'utf8')).toBe('value = missing_value\n');
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); await rm(config, { recursive: true, force: true }); }
 });
