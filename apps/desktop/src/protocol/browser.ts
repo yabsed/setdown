@@ -23,7 +23,7 @@ export type ExtensionInstallKind = 'folder' | 'archive' | 'web-store';
 export type ExtensionPage = 'popup' | 'options';
 export type BrowserPermissionRequest = { token: string; origin: string; permissions: string[]; label: string };
 export type BrowserAuthRequest = { token: string; origin: string; realm: string };
-export type BrowserCommand = 'back' | 'forward' | 'reload' | 'stop' | 'focus' | 'mute' | 'external' | 'save' | 'protection'
+export type BrowserCommand = 'back' | 'forward' | 'reload' | 'stop' | 'activate' | 'focus' | 'mute' | 'external' | 'save' | 'protection'
   | 'zoom-in' | 'zoom-out' | 'zoom-reset' | 'reload-no-cache' | 'permissions' | 'site-info';
 export type BrowserEvent =
   | { type: 'page'; page: BrowserPage }

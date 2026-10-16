@@ -594,11 +594,11 @@ export class BrowserManager {
       else if (command === 'permissions') this.permissionMenu(entry);
       else if (command === 'site-info') this.siteMenu(entry);
       else if (command === 'stop') { entry.navigation++; wc.stop(); }
-      else if (command === 'focus') {
+      else if (command === 'activate' || command === 'focus') {
         if (state.watchedPath) { unwatchFile(state.watchedPath); state.watchedPath = null; }
         state.currentDocument = null;
         this.extensions?.host?.selectTab(wc);
-        if (entry.view.getVisible()) wc.focus();
+        if (command === 'focus' && entry.view.getVisible()) wc.focus();
       } else if (command === 'mute') { wc.setAudioMuted(!wc.isAudioMuted()); this.publish(entry); }
       else if (command === 'zoom-in' || command === 'zoom-out' || command === 'zoom-reset') {
         this.zoomPage(entry, command === 'zoom-reset' ? 0 : command === 'zoom-in' ? 1 : -1, false);

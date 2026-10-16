@@ -234,6 +234,7 @@ export function startWorkspace(desktop: DesktopPort) {
     changed: () => { projectContextChanged(); positions?.schedule(); } });
   positions = new ReadingPositionController({ desktop, editor, active, suspended: () => project.gitDiffActive });
   tabs = new TabController({ desktop, workspace, session, shell, editor, reader, preview, surfaces,
+    shouldFocusWeb: () => !document.activeElement?.matches('.location-bar input'),
     capturePosition: (tab) => positions.capture(tab),
     reviewZoomId: () => project.gitDiffActive && project.activeGitDiffId ? `git-diff:${project.activeGitDiffId}` : null,
     shouldSchedulePreview: () => !project.gitDiffActive,

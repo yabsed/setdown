@@ -65,6 +65,27 @@ function fixture() {
 const previewOpen = (controller: TabController, document: DocumentSnapshot) =>
   controller.show(document, 'viewer', 'document', undefined, { pinned: false });
 
+test('late web activation retains a newer shell edit while still selecting the browser tab', async () => {
+  const f = fixture();
+  const page = browserPage('web', 'https://example.com/');
+  f.workspace.add({ kind: 'web', id: page.id, surface: 'web', page });
+  let resolve!: (page: BrowserPage) => void;
+  f.options.desktop.browser.create = () => new Promise(done => { resolve = done; });
+  let editing = false;
+  Object.assign(f.options, { shouldFocusWeb: () => !editing });
+  const command = vi.spyOn(f.options.desktop.browser, 'command');
+  const activation = f.controller.activate(page.id);
+  editing = true;
+  resolve(page);
+  await activation;
+  assert.equal(f.workspace.activeId, page.id);
+  assert.deepEqual(command.mock.calls, [[page.id, 'activate']]);
+  editing = false;
+  f.options.desktop.browser.create = async () => page;
+  await f.controller.activate(page.id);
+  assert.deepEqual(command.mock.calls.at(-1), [page.id, 'focus']);
+});
+
 test('preparing deletion preserves dirty models until the filesystem commits', async () => {
   const f = fixture();
   await f.controller.show(snapshot('/project/keep.txt'));

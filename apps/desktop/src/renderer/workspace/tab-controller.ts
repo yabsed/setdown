@@ -29,6 +29,7 @@ type Options = {
   confirmClose(names: string[]): Promise<CloseDecision>;
   workspaceChanged(): void;
   groupsChanged?(): void;
+  shouldFocusWeb?(): boolean;
   reviewZoomId?(): string | null;
   autoSave?: { schedule(tab: DocumentTab): void; cancel(tabId?: string): void };
 };
@@ -443,7 +444,10 @@ export class TabController {
         this.render();
         if (activation === this.activation && workspace.activeId === next.id) {
           await tick(); this.options.groupsChanged?.();
-          await desktop.browser.command(next.id, 'focus');
+          // Activating an inactive split starts on pointerdown, before the
+          // address input takes focus. Recheck after the async create/layout:
+          // a newer address/find edit owns the keyboard, not the page below it.
+          await desktop.browser.command(next.id, this.options.shouldFocusWeb?.() === false ? 'activate' : 'focus');
         }
       } catch (error) { next.page.error = String(error); this.render(); }
       return;

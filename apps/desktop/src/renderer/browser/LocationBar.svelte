@@ -85,6 +85,8 @@
     }).catch(() => { if (request === generation) suggestions = []; }), 100);
   }
   async function go(value = selected >= 0 ? suggestions[selected].url : draft) {
+    // Submitting ends the address edit and lets navigation focus the content.
+    input?.blur();
     editing = false; suggestions = []; generation++; error = '';
     try { await actions.navigateLocation(groupId, value); }
     catch (reason) { error = String(reason); }

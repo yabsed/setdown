@@ -9,6 +9,7 @@ import { disposeApplication, focusApplication, type TestApplication } from './el
 import { pdfFixture } from './pdf-fixture';
 import { execFile as execFileCallback } from 'node:child_process';
 import { promisify } from 'node:util';
+import { nativeInput } from './native-input';
 const execFile = promisify(execFileCallback);
 
 async function fixture(document = true) {
@@ -536,6 +537,49 @@ for (const command of ['close', 'quit'] as const) test(`canceling ${command} pre
     await prompt.locator('.close-discard').click();
     await exited;
     expect(stderr).not.toMatch(/Uncaught Exception|Cannot read properties of undefined|Object has been destroyed/);
+  } finally { await f.dispose(); }
+});
+
+for (const split of [false, true]) test(`native address click owns keyboard focus with inactive split=${split}`, async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    const webTab = f.page.getByRole('tab', { name: /Research page/ });
+    await expect(webTab).toBeVisible();
+    if (split) {
+      const data = await f.page.evaluateHandle(() => new DataTransfer());
+      await webTab.dispatchEvent('dragstart', { dataTransfer: data });
+      const body = f.page.locator('.group-body').first(), box = (await body.boundingBox())!;
+      const point = { clientX: box.x + box.width * .98, clientY: box.y + box.height / 2, dataTransfer: data };
+      await body.dispatchEvent('dragover', point); await body.dispatchEvent('drop', point);
+      await webTab.dispatchEvent('dragend', { dataTransfer: data }); await data.dispose();
+      await expect(f.page.locator('.location-bar')).toHaveCount(2);
+      await f.page.getByRole('tab', { name: /notes.md/ }).click();
+    } else {
+      await f.app.evaluate(({ webContents }, origin) => webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/first`)!.focus(), f.origin);
+    }
+    const address = f.page.getByRole('textbox', { name: 'Address or file path', exact: true }).last();
+    const box = (await address.boundingBox())!;
+    const point = await f.app.evaluate(({ BrowserWindow }, box) => {
+      const window = BrowserWindow.getAllWindows()[0], bounds = window.getContentBounds(), zoom = window.webContents.getZoomFactor();
+      return { x: bounds.x + (box.x + box.width / 2) * zoom, y: bounds.y + (box.y + box.height / 2) * zoom };
+    }, box);
+    await nativeInput({ click: point });
+    await expect(address).toBeFocused();
+    // Let activation, Places results, and native overlay visibility settle.
+    await f.page.waitForTimeout(500);
+    await f.page.screenshot({ path: test.info().outputPath('address-native-focus.png') });
+    expect(await f.page.evaluate(() => document.hasFocus())).toBe(true);
+    const nativeFocus = await f.app.evaluate(({ BrowserWindow, webContents }) => ({
+      focused: webContents.getFocusedWebContents()?.getURL(),
+      windows: BrowserWindow.getAllWindows().map(window => ({ id: window.webContents.id, url: window.webContents.getURL(), visible: window.isVisible() })),
+      owner: webContents.getFocusedWebContents()?.id === BrowserWindow.getAllWindows()[0].webContents.id,
+    }));
+    await test.info().attach('native-focus.json', { body: JSON.stringify(nativeFocus), contentType: 'application/json' });
+    await nativeInput({ text: 'keyboardworks' });
+    await expect(address).toHaveValue('keyboardworks');
+    expect(nativeFocus.owner).toBe(true);
+    expect(await f.page.evaluate(() => document.hasFocus())).toBe(true);
   } finally { await f.dispose(); }
 });
 
