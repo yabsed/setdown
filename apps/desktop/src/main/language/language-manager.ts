@@ -20,7 +20,7 @@ import { ServerDiscovery, type Discovery } from './server-discovery';
 import { languageCatalog, packageDiscovery, profileSource } from './catalog/profiles';
 import type { LanguageServerDefinition } from '../../core/document/language-definition';
 
-type Binding = { languageId: string; id: string; generation: string; uri: string; version: number; server: ServerSession; capabilities: ServerCapabilities };
+type Binding = { notebook?: boolean; languageId: string; id: string; generation: string; uri: string; version: number; server: ServerSession; capabilities: ServerCapabilities };
 type Owner = { state: WindowState; documents: Map<string, Binding>; servers: Map<string, ServerSession>;
   requests: Map<string, CancellationTokenSource> };
 
@@ -167,6 +167,8 @@ export class LanguageManager {
       if (!owner || binding.version !== version || !languageMethods.includes(method)
         || typeof requestId !== 'string' || requestId.length > 128 || owner.requests.has(requestId)
         || owner.requests.size >= 64 || !params || typeof params !== 'object' || JSON.stringify(params).length > 4 * 1024 * 1024) throw new Error('Invalid or stale language request.');
+      if (binding.notebook && !['textDocument/completion', 'textDocument/hover', 'textDocument/signatureHelp', 'textDocument/definition'].includes(method))
+        throw Error('This operation is not mapped for notebook cells.');
       const origin = { document: id, generation: binding.generation, version };
       const items = this.items.get(binding.server)!;
       const command = method === 'workspace/executeCommand';
@@ -300,12 +302,15 @@ export class LanguageManager {
     this.subscribe(state);
     await this.updating;
     const routes = this.registry.routes();
+    const notebook = document?.notebook === 'python';
+    const languagePath = notebook ? 'notebook.py' : document?.path;
     if (!document || typeof document.id !== 'string' || document.id.length > 128
       || typeof document.generation !== 'string' || document.generation.length > 128
-      || typeof document.path !== 'string' || !path.isAbsolute(document.path) || !languageSupport(document.path, routes)
+      || typeof document.path !== 'string' || !path.isAbsolute(document.path) || !languageSupport(languagePath, routes)
+      || (document.notebook !== undefined && (!notebook || !/\.ipynb$/i.test(document.path)))
       || typeof document.text !== 'string' || document.text.length > 16 * 1024 * 1024
       || !Number.isSafeInteger(document.version) || document.version < 1) throw new Error('Invalid language document.');
-    let support = languageSupport(document.path, routes)!;
+    let support = languageSupport(languagePath, routes)!;
     const file = canonicalPath(document.path);
     const owns = () => state.currentDocument?.path === file || state.rendererTabs.some(tab => !tab.isUntitled && tab.path === file)
       || state.rendererGitReview?.path === file;
@@ -323,11 +328,14 @@ export class LanguageManager {
         });
       }
     }
-    const uri = pathToFileURL(file).href;
+    // The renderer supplies only the owned .ipynb path. This logical Python file
+    // is allocated here, beside it for local imports, and is never written to disk.
+    const projectionPath = notebook ? path.join(path.dirname(file), `.setdown-notebook-${randomUUID()}.py`) : file;
+    const uri = pathToFileURL(projectionPath).href;
     if ([...owner.documents.values()].some(other => other.id !== document.id && other.uri === uri))
       throw new Error('Language document is already connected.');
     this.close(state.webContentsId, document.id);
-    const candidates = this.registry.candidates(document.path);
+    const candidates = this.registry.candidates(languagePath);
     const configurations = new Map(candidates.map(c => [c.server, this.registry.fingerprint(c.server)]));
     const rootFor = (definition: LanguageServerDefinition) => state.projectRoot && isInside(canonicalPath(state.projectRoot), file)
       ? canonicalPath(state.projectRoot) : standaloneLanguageRoot(file, definition);
@@ -344,7 +352,7 @@ export class LanguageManager {
     let launch;
     const current = () => pending.get(document.id) === opening && this.owners.get(state.webContentsId) === owner
       && !state.window.isDestroyed() && !state.window.webContents.isDestroyed() && owns()
-      && JSON.stringify(this.registry.candidates(document.path)) === JSON.stringify(candidates)
+      && JSON.stringify(this.registry.candidates(languagePath)) === JSON.stringify(candidates)
       && candidates.every(c => this.registry.fingerprint(c.server) === configurations.get(c.server));
     try {
       if (!server) for (;;) {
@@ -417,7 +425,7 @@ export class LanguageManager {
       owner.servers.set(key, server);
       server.watch(root);
     }
-    const binding = { languageId: support.languageId, id: document.id, generation: document.generation, uri, version: document.version, server, capabilities: {} as ServerCapabilities };
+    const binding = { notebook, languageId: support.languageId, id: document.id, generation: document.generation, uri, version: document.version, server, capabilities: {} as ServerCapabilities };
     owner.documents.set(document.id, binding);
     this.emit(owner, { type: 'status', state: 'starting', documents: [{ id: binding.id, generation: binding.generation }] });
     await server.ready;

@@ -33,7 +33,7 @@ function fixture(discovery?: ServerDiscovery) {
   const event = (id: number) => {
     const contents = Object.assign(new EventEmitter(), { id, mainFrame: {}, isDestroyed: () => false, send: vi.fn() });
     states.set(id, { webContentsId: id, projectRoot: root, currentDocument: { path: path.join(root, 'main.py') },
-      rendererTabs: ['other.py', 'main.cpp', 'helper.h', 'other.c', 'hello.f90', 'other.f90', 'main.ts', 'other.ts', 'Dockerfile'].map(name => ({ path: path.join(root, name), isUntitled: false })),
+      rendererTabs: ['other.py', 'main.cpp', 'helper.h', 'other.c', 'hello.f90', 'other.f90', 'main.ts', 'other.ts', 'Dockerfile', 'notes.ipynb'].map(name => ({ path: path.join(root, name), isUntitled: false })),
       window: { webContents: contents, isDestroyed: () => false } } as unknown as WindowState);
     return { sender: contents, senderFrame: contents.mainFrame };
   };
@@ -247,4 +247,22 @@ test('the full catalog discovers a server without a connection profile without l
   expect(mocks.servers).toHaveLength(0);
   expect((await f.invoke('configuration', f.first)).some((r: { server: string }) => r.server === 'aiken')).toBe(true);
   discovery.dispose();
+});
+
+
+test('notebook projections require an owned notebook and cannot issue unmapped edits', async () => {
+  const f = fixture();
+  const document = { ...f.document('notebook', 'notes.ipynb'), notebook: 'python', text: 'values = [1, 2, 3]' };
+  const connection = await f.invoke('open', f.first, document);
+  expect(connection.uri).toMatch(/\/\.setdown-notebook-[a-f0-9-]+\.py$/);
+  expect(connection.uri).not.toContain('notes.ipynb');
+  expect(mocks.servers[0].notify).toHaveBeenCalledWith('textDocument/didOpen', expect.objectContaining({ textDocument: expect.objectContaining({
+    uri: connection.uri, languageId: 'python', text: document.text,
+  }) }));
+  await expect(f.invoke('open', f.first, { ...document, id: 'bad', path: '/not-owned.ipynb' })).rejects.toThrow(/not open/);
+  await expect(f.invoke('open', f.first, { ...document, id: 'bad', path: f.document('python').path })).rejects.toThrow(/Invalid/);
+  await expect(f.invoke('request', f.first, document.id, 1, 'rename', 'textDocument/rename', {})).rejects.toThrow(/not mapped/);
+  await expect(f.invoke('request', f.first, document.id, 1, 'command', 'workspace/executeCommand', {})).rejects.toThrow(/not mapped/);
+  await expect(f.invoke('request', f.first, document.id, 1, 'hover', 'textDocument/hover', { position: { line: 0, character: 1 } })).resolves.toBeNull();
+  f.send('close', f.first, document.id);
 });

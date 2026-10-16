@@ -1,3 +1,4 @@
+import { emptyNotebook } from '../../core/notebook/notebook-document';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { shell } from 'electron';
@@ -48,7 +49,7 @@ export class ExplorerService {
     const operation: LanguageFileOperation = { kind: 'create', files: [{ path: target, directory: kind === 'directory' }] };
     await this.languageOperation?.(state, operation, 'will');
     if (kind === 'directory') await fs.mkdir(target);
-    else if (kind === 'file') await fs.writeFile(target, '', { flag: 'wx' });
+    else if (kind === 'file') await fs.writeFile(target, /\.ipynb$/i.test(target) ? emptyNotebook() : '', { flag: 'wx' });
     else throw new Error('Unknown project entry kind.');
     await this.languageOperation?.(state, operation, 'did');
     return this.entry(target, kind === 'directory');

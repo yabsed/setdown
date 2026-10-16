@@ -1,3 +1,5 @@
+import { notebooks } from '../notebook/notebook-store';
+import { isNotebookDocument } from '../../core/document/document-profile';
 import { hasUnsavedText } from '../../core/document/document-state';
 import { hasMarkdownPreview } from '../../core/document/document-capabilities';
 import { documentSurface, isMarkdownDocument } from '../../core/document/document-profile';
@@ -43,7 +45,7 @@ export class TabController {
   private readonly removalApprovals = new Map<string, Map<string, number>>();
   constructor(private readonly options: Options) {}
   text = (tab: WorkspaceTab): string => isDocumentTab(tab) ? this.options.editor.text(tab) : '';
-  dirty = (tab: WorkspaceTab): boolean => isDocumentTab(tab) && hasUnsavedText(tab.document, this.text(tab));
+  dirty = (tab: WorkspaceTab): boolean => isDocumentTab(tab) && (isNotebookDocument(tab.document.path) ? notebooks.get(tab).document.dirty : hasUnsavedText(tab.document, this.text(tab)));
   currentText = (): string | null => {
     const tab = this.options.workspace.active;
     return tab ? this.text(tab) : this.options.session.document?.text ?? null;
@@ -384,6 +386,15 @@ export class TabController {
     view.groupTree = structuredClone(workspace.groups.tree);
     view.focusedGroupId = workspace.groups.focusedId;
     view.tabs = summaries;
+    view.notebookTabs = workspace.documents.filter(tab => isNotebookDocument(tab.document.path)).map(tab => {
+      const entry = notebooks.get(tab);
+      entry.changed = () => {
+        if (workspace.find(tab.id) !== tab) return;
+        workspace.groups.pin(tab.id); tab.revision++;
+        this.updateChrome(); this.options.autoSave?.schedule(tab);
+      };
+      return { id: tab.id, entry, path: tab.document.path };
+    });
     view.terminalSessions = [...workspace.terminals.values()].map(session => ({ ...session }));
     const review = this.options.reviewZoomId?.() ?? null;
     desktop.setZoomTabs?.([...workspace.tabs.map(tab => tab.id), ...(review ? [review] : [])], review ?? workspace.activeId);
@@ -400,7 +411,7 @@ export class TabController {
   updateChrome = (): void => {
     const { document: activeDocument } = this.options.session;
     if (!activeDocument) { document.title = `${this.options.workspace.active ? tabTitle(this.options.workspace.active) + ' — ' : ''}Setdown`; this.render(); return; }
-    const dirty = hasUnsavedText(activeDocument, this.currentText() ?? activeDocument.text);
+    const dirty = this.options.workspace.activeDocument ? this.dirty(this.options.workspace.activeDocument) : false;
     document.title = `${dirty ? '• ' : ''}${activeDocument.name} — Setdown`;
     this.render();
   };
@@ -606,7 +617,7 @@ export class TabController {
     editor.retarget(tab);
     if (workspace.activeId !== tab.id) return;
     if (wasMarkdown || markdown) preview.reset();
-    if (!markdown && tab.document.kind === undefined && !editor.loaded) await editor.load();
+    if (!markdown && tab.surface === 'editor' && tab.document.kind === undefined && !editor.loaded) await editor.load();
     if (workspace.activeId !== tab.id || !workspace.find(tab.id)) return;
     surfaces.set(tab.surface);
     await desktop.activateDocument(tab.document, this.text(tab), tab.revision);
@@ -637,6 +648,9 @@ export class TabController {
       if (!this.pathUnder(tab.document.path, from)) continue;
       const previousPath = tab.document.path;
       const nextPath = `${to}${previousPath.slice(from.length)}`;
+      // Materialize the current owner before changing the extension, including
+      // unsaved cells that have not yet been serialized for a disk save.
+      tab.text = this.text(tab);
       tab.document = { ...tab.document, path: nextPath,
         name: nextPath.split(/[\\/]/).at(-1) || tab.document.name };
       await this.retarget(tab, previousPath);
@@ -686,9 +700,9 @@ export class TabController {
   prepareLanguageDocument = async (path: string): Promise<DocumentTab> => {
     const { workspace } = this.options;
     const existing = workspace.documents.find(tab => tab.document.path === path && !tab.document.isUntitled);
-    if (existing) return existing;
+    if (existing) { if (isNotebookDocument(path)) throw Error('Edit notebook cells in the notebook tab.'); return existing; }
     const document = await this.options.desktop.readDocumentLocation(fileLocation(path));
-    if (document.kind !== undefined) throw new Error('Language edits require a text document.');
+    if (document.kind !== undefined || isNotebookDocument(path)) throw new Error('Language edits require an ordinary text document.');
     // A concurrent definition/rename may have opened it during the disk read.
     const opened = workspace.documents.find(tab => tab.document.path === document.path);
     if (opened) return opened;
@@ -700,7 +714,7 @@ export class TabController {
     this.render(); this.updateChrome();
     return tab;
   };
-  show = async (documentSnapshot: DocumentSnapshot, initialSurface: 'viewer' | 'editor' | 'pdf' | 'image' | 'video' = 'viewer',
+  show = async (documentSnapshot: DocumentSnapshot, initialSurface: 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'notebook' = 'viewer',
     presentation: 'document' | 'review' = 'document', placement?: EditorGroupPlacement, openOptions: EditorOpenOptions = {}): Promise<void> => {
     const { editor, workspace } = this.options;
     if (!documentSnapshot.isUntitled) {

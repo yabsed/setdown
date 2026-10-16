@@ -1,3 +1,4 @@
+import type { NotebookApi } from './notebook';
 import type { GitGraphReply, GitGraphRequest, GitHistorySelection } from './git-history';
 import type { PreviewThemeAssets, PreviewThemeId } from '../core/preview/preview-preferences';
 import type { DiskVersion, DocumentSnapshot } from '../core/document/document';
@@ -155,7 +156,7 @@ export type TransferableDocumentTab = {
   document: DocumentSnapshot;
   text: string;
   revision: number;
-  surface: 'viewer' | 'editor' | 'pdf' | 'image' | 'video';
+  surface: 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'notebook';
   readingPosition?: import('../core/reading/reading-position').ReadingPosition;
   anchor: {
     sourceLine: number;
@@ -242,6 +243,8 @@ export type AppCommand =
   | 'toggle-surface';
 
 export type MarkTexApi = {
+  notebook: NotebookApi;
+  renderNotebookMarkdown(path: string, source: string): Promise<{ html: string; baseHref: string }>;
   explorer: import('./explorer').ExplorerApi;
   browser: import('./browser').BrowserApi;
   saveReadingPosition(record: import('../core/reading/reading-position').ReadingRecord): void;

@@ -48,7 +48,7 @@ export const languageMethods = [
   'textDocument/prepareTypeHierarchy', 'typeHierarchy/supertypes', 'typeHierarchy/subtypes',
 ] as const;
 export type LanguageMethod = typeof languageMethods[number];
-export type LanguageDocument = { id: string; generation: string; path: string; text: string; version: number };
+export type LanguageDocument = { notebook?: 'python'; id: string; generation: string; path: string; text: string; version: number };
 export type LanguageConnection = { uri: string; capabilities: ServerCapabilities; server?: string };
 export type LanguageUnavailable = { unavailable: 'missing' | 'selection-needed' };
 export type LanguageEvent =

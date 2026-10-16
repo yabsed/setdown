@@ -73,6 +73,7 @@ you need file navigation, search, Git review, or a terminal.
 | File type | Experience |
 | --- | --- |
 | Markdown | Typeset Viewer and source Editor, including rendered Git comparisons |
+| Jupyter (`.ipynb`) | Markdown/code cells, drag reordering, Python LSP, cell/whole-notebook execution and saved outputs; see [notebooks](docs/notebooks.md) |
 | Text, source, and configuration files | Source editing with Monaco syntax highlighting and text Git diffs |
 | PDF | Read-only viewer with continuous scrolling, page navigation, outline, text search and selection, zoom, rotation, and password entry |
 | PNG, JPEG, WebP, GIF, AVIF, SVG | Read-only image viewer with fit, zoom, rotation, and drag-to-pan controls |

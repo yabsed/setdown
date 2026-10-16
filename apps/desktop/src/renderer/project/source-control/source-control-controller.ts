@@ -325,7 +325,7 @@ export class SourceControlController {
   changeWorkingTree = (text: string, edits?: WorkingTreeEdit[]): void => {
     const tab = this.activeTab();
     const diff = tab?.diff;
-    if (!tab || !diff || diff.staged || diff.history || diff.originalText === null || diff.modifiedText === null) return;
+    if (!tab || !diff || diff.staged || diff.history || /\.ipynb$/i.test(diff.filePath) || diff.originalText === null || diff.modifiedText === null) return;
     this.options.workingTreeChanged(diff.filePath, text, edits);
     if (tab.diff?.modifiedText === text) return; // Document event already handled it.
     tab.diff = { ...diff, modifiedText: text, modifiedLabel: 'WORKTREE' };

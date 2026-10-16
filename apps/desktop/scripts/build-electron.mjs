@@ -6,7 +6,7 @@ const shared = {
   platform: 'node',
   target: 'node22',
   sourcemap: true,
-  external: ['electron', 'crossnote', '@parcel/watcher', '@vscode/ripgrep', 'node-pty', '@xterm/headless', '@xterm/addon-serialize', 'electron-chrome-extensions', 'electron-chrome-web-store', 'turndown', 'turndown-plugin-gfm', 'sanitize-html', 'pyright'],
+  external: ['electron', 'jsonc-parser', 'crossnote', '@parcel/watcher', '@vscode/ripgrep', 'node-pty', '@xterm/headless', '@xterm/addon-serialize', 'electron-chrome-extensions', 'electron-chrome-web-store', 'turndown', 'turndown-plugin-gfm', 'sanitize-html', 'pyright'],
 };
 await Promise.all([
   build({ ...shared, entryPoints: ['src/main/main.ts'], outfile: 'dist-electron/main.cjs', format: 'cjs' }),
@@ -19,6 +19,8 @@ await Promise.all([
     entryPoints: ['src/preview-runtime/bridge.ts'], outfile: 'dist-electron/preview-bridge.js',
     sourcemap: false, legalComments: 'none' }),
 ]);
+
+await copyFile('src/main/notebook/kernel-bridge.py', 'dist-electron/kernel-bridge.py');
 
 await import('./build-browser.mjs');
 

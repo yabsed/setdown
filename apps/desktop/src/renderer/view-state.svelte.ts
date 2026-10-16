@@ -46,6 +46,7 @@ export type WorkingTreeEdit = {
 };
 
 export type AppActions = {
+  openLanguageLocation(path: string, selection?: import('monaco-editor').IRange | import('monaco-editor').IPosition): Promise<void>;
   locationSuggestions: import('../protocol/desktop-api').MarkTexApi['locationSuggestions'];
   menuOverlay: import('../protocol/desktop-api').MarkTexApi['menuOverlay'];
   changeZoom(steps: number, scope: 'app' | 'text' | 'terminal', tabId?: string): void;
@@ -144,7 +145,8 @@ export const view = $state({
   tabs: [] as TabView[],
   terminalSessions: [] as import('../core/workspace/workspace-state').TerminalSession[],
   draggedTabId: null as string | null,
-  surface: 'empty' as 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'web' | 'terminal',
+  surface: 'empty' as 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'notebook' | 'web' | 'terminal',
+  notebookTabs: [] as { id: string; path: string; entry: import('./notebook/notebook-store').NotebookEntry }[],
   mediaTabs: [] as import('./workspace/media-cache').MediaTab[],
   activeMediaId: null as string | null,
   notice: false,

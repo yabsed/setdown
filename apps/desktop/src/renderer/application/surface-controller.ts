@@ -1,3 +1,4 @@
+import { isNotebookDocument } from '../../core/document/document-profile';
 import { GOLDEN_TOP_RATIO, clampAnchor, type ViewportAnchor } from '../../core/preview/viewport-anchor';
 import { hasMarkdownPreview } from '../../core/document/document-capabilities';
 import type { TabSession, WorkspaceState } from '../../core/workspace/workspace-state';
@@ -21,6 +22,7 @@ export class SurfaceController {
     this.options.shell.dataset.anchorConfidence = anchor.confidence;
   };
   set(next: TabSession['surface']): void {
+    if (this.options.session.document && isNotebookDocument(this.options.session.document.path) && ['viewer', 'editor'].includes(next)) next = 'notebook';
     if (next === 'viewer' && this.options.session.document && !hasMarkdownPreview(this.options.session.document)) next = 'editor';
     this.options.session.surface = next;
     view.surface = next;
@@ -38,6 +40,7 @@ export class SurfaceController {
   enterEditor = async (next: ViewportAnchor = this.options.session.anchor): Promise<void> => {
     this.anchorRequest += 1;
     const targetTabId = this.options.workspace.activeId;
+    if (this.options.session.document && isNotebookDocument(this.options.session.document.path)) { this.set('notebook'); return; }
     if (!targetTabId || this.options.workspace.activeDocument?.document.kind !== undefined) return;
     await this.options.editor.load();
     if (this.options.workspace.activeId !== targetTabId) return;

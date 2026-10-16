@@ -35,6 +35,14 @@ function initialThemeSnapshot(): ThemeSnapshot {
 }
 
 const api: MarkTexApi = {
+  notebook: {
+    run: request => ipcRenderer.invoke('notebook:run', request),
+    interrupt: (id, generation) => ipcRenderer.invoke('notebook:interrupt', id, generation),
+    shutdown: (id, generation) => ipcRenderer.send('notebook:shutdown', id, generation),
+    choosePython: () => ipcRenderer.invoke('notebook:choose-python'),
+    onEvent: listener => subscribe('notebook:kernel-event', listener),
+  },
+  renderNotebookMarkdown: (path, source) => ipcRenderer.invoke('notebook:markdown', path, source),
   language: {
     open: document => ipcRenderer.invoke('language:open', document),
     change: (id, version, changes) => ipcRenderer.invoke('language:change', id, version, changes),

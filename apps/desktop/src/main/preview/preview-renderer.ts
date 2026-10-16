@@ -100,6 +100,14 @@ export class PreviewRenderer {
     if (/^git-diff:.*:[ab]$/.test(tabId)) this.baselines.delete(tabId.replace(/:[ab]$/, ''));
   }
 
+  async renderNotebookCell(documentPath: string, text: string) {
+    const tabId = `notebook:${++this.requestId}`;
+    try {
+      const result = await this.render(tabId, text, 1, documentPath, this.options.theme(), false, false, true);
+      return { html: result.html ?? '', baseHref: result.baseHref };
+    } finally { this.forgetTab(tabId); }
+  }
+
   async renderExport(state: WindowState, text: string, revision: number, documentPath: string) {
     const tabId = `export:${Date.now()}-${Math.random().toString(36).slice(2)}`;
     state.activeRoot = path.dirname(documentPath);

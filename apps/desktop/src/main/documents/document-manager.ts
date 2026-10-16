@@ -103,7 +103,7 @@ export class DocumentManager {
 
   async chooseAndOpen(state: WindowState, notify = true) {
     const result = await dialog.showOpenDialog(state.window, {
-      properties: ['openFile'], filters: [{ name: 'Documents', extensions: [...MARKDOWN_EXTENSIONS, ...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS, 'pdf', 'txt'] }, MARKDOWN_FILTER, { name: 'PDF', extensions: ['pdf'] }, { name: 'Images', extensions: IMAGE_EXTENSIONS }, { name: 'Videos', extensions: VIDEO_EXTENSIONS }, ALL_FILES_FILTER],
+      properties: ['openFile'], filters: [{ name: 'Documents', extensions: [...MARKDOWN_EXTENSIONS, ...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS, 'pdf', 'txt', 'ipynb'] }, MARKDOWN_FILTER, { name: 'PDF', extensions: ['pdf'] }, { name: 'Images', extensions: IMAGE_EXTENSIONS }, { name: 'Videos', extensions: VIDEO_EXTENSIONS }, ALL_FILES_FILTER],
     });
     if (result.canceled || !result.filePaths[0]) return null;
     return this.open(state, result.filePaths[0], notify);

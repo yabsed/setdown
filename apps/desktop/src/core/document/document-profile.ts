@@ -25,7 +25,8 @@ const BINARY = new Set(('pdf png jpg jpeg gif webp avif bmp ico icns tif tiff he
   + 'exe dll so dylib bin class pyc pyo wasm sqlite sqlite3 db woff woff2 ttf otf eot '
   + 'mp3 mp4 m4a wav ogg flac avi mov mkv webm psd ai sketch').split(' '));
 
-export type DocumentSurface = 'viewer' | 'editor' | 'pdf' | 'image' | 'video';
+export const isNotebookDocument = (filePath: string): boolean => /\.ipynb$/i.test(filePath);
+export type DocumentSurface = 'notebook' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video';
 export type DocumentProfile = { readonly kind: 'markdown' | 'text' | 'pdf' | 'image' | 'video'; readonly preview: 'markdown' | 'pdf' | 'image' | 'video' | null };
 const pdf: DocumentProfile = Object.freeze({ kind: 'pdf', preview: 'pdf' });
 const image: DocumentProfile = Object.freeze({ kind: 'image', preview: 'image' });
@@ -43,7 +44,7 @@ export function isTextCandidate(filePath: string): boolean {
   return !BINARY.has(name.includes('.') ? name.split('.').at(-1)!.toLowerCase() : '');
 }
 export function documentSurface(filePath: string, preferred: DocumentSurface = 'viewer'): DocumentSurface {
-  return isPdfDocument(filePath) ? 'pdf' : isImageDocument(filePath) ? 'image'
+  return isNotebookDocument(filePath) ? 'notebook' : isPdfDocument(filePath) ? 'pdf' : isImageDocument(filePath) ? 'image'
     : isVideoDocument(filePath) ? 'video'
     : isMarkdownDocument(filePath) ? (preferred === 'editor' ? 'editor' : 'viewer') : 'editor';
 }

@@ -4,6 +4,10 @@ import base from './vitest.config';
 export default defineConfig({
   ...base,
   test: { ...base.test, maxWorkers: 2, include: [
+    'src/core/notebook/notebook-document.test.ts',
+    'src/renderer/notebook/notebook-execution.test.ts',
+    'src/renderer/notebook/notebook-language.test.ts',
+    'src/main/notebook/kernel-manager.test.ts',
     'src/main/project/file-transfer.test.ts',
     'src/main/project/explorer-clipboard.test.ts',
     'src/main/documents/document-save.test.ts',

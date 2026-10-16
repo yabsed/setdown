@@ -53,6 +53,16 @@ export function startWorkspace(desktop: DesktopPort) {
     fileMutation = result.catch(() => {}); return result;
   };
   const actions: AppActions = {
+    openLanguageLocation: async (path, selection) => {
+        const tab = await tabs.prepareLanguageDocument(path);
+        await tabs.activate(tab.id);
+        await surfaces.enterEditor();
+        if (selection && editor.editor) {
+          if ('startLineNumber' in selection) { editor.editor.setSelection(selection); editor.editor.revealRangeInCenter(selection); }
+          else { editor.editor.setPosition(selection); editor.editor.revealPositionInCenter(selection); }
+          editor.editor.focus();
+        }
+      },
     changeZoom: (steps, scope, tabId) => desktop.changeZoom(steps, scope, tabId),
     newTerminal: () => { projects.deactivateGitDiff(); void tabs.openTerminal(); },
     openTerminalSession: id => { projects.deactivateGitDiff(); void tabs.openTerminalSession(id).catch(error => { browser.error = String(error); }); },
@@ -210,16 +220,7 @@ export function startWorkspace(desktop: DesktopPort) {
   const editor: MonacoEditor = new MonacoEditor({ host: editorHost, tabs: () => workspace.documents, active,
     language: { port: desktop.language,
       prepare: async path => { const tab = await tabs.prepareLanguageDocument(path); return { tab, model: editor.modelFor(tab) }; },
-      open: async (path, selection) => {
-        const tab = await tabs.prepareLanguageDocument(path);
-        await tabs.activate(tab.id);
-        await surfaces.enterEditor();
-        if (selection && editor.editor) {
-          if ('startLineNumber' in selection) { editor.editor.setSelection(selection); editor.editor.revealRangeInCenter(selection); }
-          else { editor.editor.setPosition(selection); editor.editor.revealPositionInCenter(selection); }
-          editor.editor.focus();
-        }
-      } },
+      open: actions.openLanguageLocation },
     theme: () => reader.themeId, status: (status) => shell.dataset.editorRuntime = status,
     viewChanged: () => positions?.schedule(),
     focusTab: (id) => actions.activateTab(id),
@@ -472,7 +473,8 @@ export function startWorkspace(desktop: DesktopPort) {
       if (command === 'next-tab') cycleTab(1);
       if (command === 'previous-tab') cycleTab(-1);
       if (command === 'open-find' && !project.gitDiffActive) {
-        if (session.surface === 'pdf') window.dispatchEvent(new Event('setdown:pdf-find'));
+        if (session.surface === 'notebook') window.dispatchEvent(new Event('setdown:notebook-find'));
+        else if (session.surface === 'pdf') window.dispatchEvent(new Event('setdown:pdf-find'));
         else if (session.surface === 'editor') editor.find(); else reader.openFind();
       }
       if (command === 'escape' && project.gitDiffActive) {

@@ -189,8 +189,8 @@
     const modelId = crypto.randomUUID();
     // The ordinary document owns the editable model, including its entire
     // undo/redo stack. HEAD/INDEX snapshots remain independent and read-only.
-    const lease = (diff.staged || diff.history) ? null : liveDocumentModels.acquire(diff.filePath, monaco);
-    if (!diff.staged && !diff.history && !lease) throw new Error('Open the document before editing its Working Tree.');
+    const lease = (diff.staged || diff.history || /\.ipynb$/i.test(diff.filePath)) ? null : liveDocumentModels.acquire(diff.filePath, monaco);
+    if (!diff.staged && !diff.history && !/\.ipynb$/i.test(diff.filePath) && !lease) throw new Error('Open the document before editing its Working Tree.');
     let original: Monaco.editor.ITextModel | null = null;
     let modified: Monaco.editor.ITextModel;
     try {
@@ -201,7 +201,7 @@
     } catch (cause) { original?.dispose(); lease?.release(); throw cause; }
     const cached: CachedModels = {
       original, modified, lease, originalText: diff.originalText, modifiedText: modified.getValue(),
-      sourceSide: 'after', readOnly: Boolean(diff.staged || diff.history), filePath: diff.filePath,
+      sourceSide: 'after', readOnly: Boolean(diff.staged || diff.history || /\.ipynb$/i.test(diff.filePath)), filePath: diff.filePath,
       listener: { dispose() {} }, viewState: null,
     };
     // Borrowed models have exactly one document-state listener, in the owner.
@@ -215,7 +215,7 @@
     const existing = models.get(id);
     if (existing && existing.originalText === diff.originalText
       && (!!existing.lease || existing.modifiedText === diff.modifiedText)
-      && existing.readOnly === Boolean(diff.staged || diff.history) && existing.filePath === diff.filePath) {
+      && existing.readOnly === Boolean(diff.staged || diff.history || /\.ipynb$/i.test(diff.filePath)) && existing.filePath === diff.filePath) {
       if (!existing.lease) existing.modifiedText = diff.modifiedText;
       return existing;
     }
@@ -275,12 +275,12 @@
       editor.setModel({ original: cached.original, modified: cached.modified });
       shownId = activeId;
       editor.updateOptions(textZoomOptions(`git-diff:${activeId}`));
-      editor.updateOptions({ readOnly: Boolean(active.diff.staged || active.diff.history), originalEditable: false,
-        renderMarginRevertIcon: !active.diff.staged && !active.diff.history });
+      editor.updateOptions({ readOnly: Boolean(active.diff.staged || active.diff.history || /\.ipynb$/i.test(active.diff.filePath)), originalEditable: false,
+        renderMarginRevertIcon: !active.diff.staged && !active.diff.history && !/\.ipynb$/i.test(active.diff.filePath) });
       if (cached.viewState) editor.restoreViewState(cached.viewState);
       layout = true;
     }
-    const originalAriaLabel = active.diff.staged || active.diff.history ? `${active.diff.originalLabel} version`
+    const originalAriaLabel = active.diff.staged || active.diff.history || /\.ipynb$/i.test(active.diff.filePath) ? `${active.diff.originalLabel} version`
       : active.diff.originalLabel === 'EMPTY' ? 'Empty staged version' : 'Staged version';
     editor.getOriginalEditor().updateOptions({ ariaLabel: originalAriaLabel });
     editor.getModifiedEditor().updateOptions({ ariaLabel: active.diff.history ? `${active.diff.modifiedLabel} version` : active.diff.staged ? 'Staged version' : 'Current document' });

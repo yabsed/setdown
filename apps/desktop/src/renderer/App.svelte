@@ -50,6 +50,18 @@
   <ReaderSurface {actions} />
   <GitDiffSurface {actions} />
   </div>
+  {#each view.notebookTabs as tab (tab.id)}
+    {@const group = view.groups.find(g => g.activeId === tab.id)}
+    {@const active = !!group && !(group.id === view.focusedGroupId && project.gitDiffActive)}
+    {@const box = boxes.find(box => box.id === group?.id) ?? focused}
+    <div class="group-content notebook-content" class:inactive={!active} inert={!active} style={geometry(box)} data-notebook-tab={tab.id} data-zoom-tab={tab.id}>
+      {#key tab.entry}
+        {#await import('./notebook/NotebookSurface.svelte') then module}
+          <module.default entry={tab.entry} path={tab.path} {active} {desktop} openFile={actions.openLanguageLocation} onfocus={() => { if (view.focusedGroupId !== group?.id) actions.activateTab(tab.id); }} />
+        {:catch error}<div role="alert">Could not load the notebook: {String(error)}</div>{/await}
+      {/key}
+    </div>
+  {/each}
   {#each view.mediaTabs as tab (tab.key)}
     {@const group = view.groups.find(g => g.activeId === tab.id)}
     {@const active = !!group && !(group.id === view.focusedGroupId && project.gitDiffActive)}
@@ -91,3 +103,7 @@
   <ClosePrompt {actions} />
   <BrowserAuthDialog api={desktop.browser} />
 </section>
+
+<style>
+  .notebook-content.inactive { display: none; }
+</style>

@@ -1,9 +1,15 @@
+import { NotebookDocument } from '../notebook/notebook-document';
+import { isNotebookDocument } from './document-profile';
 import type { DocumentSnapshot } from './document';
 import { isMarkdownDocument, isTextCandidate, isReadOnlyDocument } from './document-profile';
 import { decodeTextBytes, encodedText } from './text-codec';
 
 /** Validate a newly selected text destination before any disk/state mutation. */
 export function prepareDocumentSave(document: DocumentSnapshot, text: string, destination: string) {
+  if (isNotebookDocument(destination)) {
+    const notebook = new NotebookDocument(text);
+    if (notebook.error) throw Error(`Cannot save this notebook: ${notebook.error}`);
+  }
   if (document.kind) throw new Error('PDF and image documents are read-only.');
   if (isMarkdownDocument(destination)) {
     // Existing Markdown accepts its existing encodings/EOL policy unchanged.

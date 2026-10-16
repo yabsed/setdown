@@ -1,3 +1,4 @@
+import { installNotebookIpc } from '../notebook/notebook-ipc';
 import type { BrowserManager } from '../browser/browser-manager';
 import { GitHistoryService } from '../project/git-history-service';
 import type { GitGraphRequest, GitHistorySelection } from '../../protocol/git-history';
@@ -45,6 +46,7 @@ function documentMenus(items: ApplicationMenuEntry[], markdown: boolean, review:
   }));
 }
 export function installIpc(options: Options): void {
+  installNotebookIpc(options.channels);
   const { channels, documents, previews, projects, renderer, themes, transfers, autoSave } = options;
   channels.handle('browser:reader-export', (state, id: string, format: unknown) => {
     if (format !== 'markdown' && format !== 'pdf') throw Error('Unsupported reader export format.');
@@ -86,6 +88,12 @@ export function installIpc(options: Options): void {
   channels.handle('theme:get', (): ThemeSnapshot => themes.snapshot);
   channels.handle('settings:get-auto-save', () => autoSave.enabled);
   channels.handle('preview:theme-assets', (_state, themeId: unknown) => themes.assets(themeId));
+  channels.handle('notebook:markdown', (state, file: string, source: string) => {
+    if (typeof file !== 'string' || !/\.ipynb$/i.test(file) || typeof source !== 'string' || source.length > 1024 * 1024
+      || !(state.currentDocument?.path === file || state.rendererTabs.some(tab => tab.path === file)))
+      throw Error('Notebook Markdown requires an open notebook and a bounded cell.');
+    return renderer.renderNotebookCell(file, source);
+  });
   channels.handle('document:get', (state) => state.currentDocument);
   channels.handle('document:new', (state) => documents.newDocument(state));
   channels.handle('document:activate', (state, { document, text, revision }: {

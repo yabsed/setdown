@@ -1,3 +1,5 @@
+import { notebooks } from '../notebook/notebook-store';
+import { isNotebookDocument } from '../../core/document/document-profile';
 import { onTextZoom, textZoomOptions } from '../editor/text-zoom';
 import { APP_FONT_FAMILY } from '../../core/theme/typography';
 import type * as Monaco from 'monaco-editor';
@@ -77,7 +79,7 @@ export class MonacoEditor {
     this.unregisterLanguage = () => { unsubscribe?.(); if (options.language) window.removeEventListener('setdown:restart-language', restart); };
     this.unregisterModels = liveDocumentModels.register((path, api) => {
       const tab = options.tabs().find((candidate) => candidate.document.path === path);
-      if (!tab || tab.document.kind !== undefined) return null;
+      if (!tab || tab.document.kind !== undefined || isNotebookDocument(tab.document.path)) return null;
       // A diff can be the first source surface opened from an ordinary Viewer.
       // Use its already-loaded Monaco module without creating an ordinary editor.
       this.ensureModel(tab, api);
@@ -91,6 +93,7 @@ export class MonacoEditor {
     this.unregisterModels();
     this.unregisterZoom();
     for (const id of [...this.models.keys()]) this.dispose(id);
+    notebooks.disposeAll();
     for (const entry of this.groupEditors.values()) { entry.editor.dispose(); entry.host.remove(); }
     this.groupEditors.clear();
     this.editorValue = null;
@@ -104,13 +107,14 @@ export class MonacoEditor {
     const model = this.models.get(tab.id);
     return !!model && [...this.groupEditors.values()].some(entry => entry.editor.getModel() === model);
   }
-  text(tab: WorkspaceTab): string { return this.models.get(tab.id)?.getValue() ?? tab.text; }
+  text(tab: WorkspaceTab): string { if (isNotebookDocument(tab.document.path)) return notebooks.get(tab).document.serialize(); return this.models.get(tab.id)?.getValue() ?? tab.text; }
   modelFor(tab: WorkspaceTab): Monaco.editor.ITextModel { return this.ensureModel(tab); }
   async beforeSave(tab: WorkspaceTab, reason: 1 | 2 = 1): Promise<void> {
     const model = this.models.get(tab.id);
     if (model) await this.languageClient?.beforeSave(model, reason);
   }
   saved(tab: WorkspaceTab): void {
+    if (isNotebookDocument(tab.document.path)) { notebooks.get(tab).document.markSaved(tab.document.savedText); return; }
     const model = this.models.get(tab.id);
     if (model) this.languageClient?.saved(model, tab.document.savedText);
   }
@@ -136,7 +140,7 @@ export class MonacoEditor {
       // Keep Markdown's complete editor configuration unchanged. Syntax selection
       // lives on each model; introducing text tabs cannot leak different wrapping.
       this.selectGroup(this.groupId);
-      for (const tab of this.options.tabs()) if (tab.document.kind === undefined) this.ensureModel(tab);
+      for (const tab of this.options.tabs()) if (tab.document.kind === undefined && !isNotebookDocument(tab.document.path)) this.ensureModel(tab);
       const active = this.options.active();
       if (active) this.activate(active);
       this.options.status('ready');
@@ -216,7 +220,7 @@ export class MonacoEditor {
   }
   activate(tab: WorkspaceTab): void {
     if (!this.editorValue) return;
-    if (tab.document.kind !== undefined) { this.editorValue.setModel(null); return; }
+    if (tab.document.kind !== undefined || isNotebookDocument(tab.document.path)) { this.editorValue.setModel(null); return; }
     const model = this.ensureModel(tab);
     const sameModel = this.editorValue.getModel() === model;
     this.editorValue.updateOptions(textZoomOptions(tab.id));
@@ -228,6 +232,11 @@ export class MonacoEditor {
   }
   /** Retarget highlighting without replacing content, undo history or view state. */
   retarget(tab: WorkspaceTab, api = this.apiValue): void {
+    if (isNotebookDocument(tab.document.path)) {
+      if (this.models.has(tab.id)) this.dispose(tab.id);
+      return;
+    }
+    notebooks.dispose(tab.id);
     const model = this.models.get(tab.id);
     const previousPath = this.modelPaths.get(tab.id);
     if (!api || !model || previousPath === tab.document.path) return;
@@ -245,6 +254,7 @@ export class MonacoEditor {
   exportView(tabId: string): unknown { return this.views.get(tabId) ?? null; }
   importView(tabId: string, value: unknown): void { this.views.set(tabId, value as Monaco.editor.ICodeEditorViewState | null); }
   replace(tab: WorkspaceTab, document: DocumentSnapshot): void {
+    if (isNotebookDocument(document.path)) { notebooks.dispose(tab.id); tab.text = document.text; tab.revision = document.revision; return; }
     const model = this.models.get(tab.id);
     // Reload/asset rewriting is one explicit, undoable document edit, not a new
     // model. A mounted Working Tree must never retain a disposed live model.
@@ -266,6 +276,7 @@ export class MonacoEditor {
   }
   /** Explicit external edit. Normal Working Tree typing already uses our model. */
   setText(tab: WorkspaceTab, text: string, edits?: WorkingTreeEdit[]): boolean {
+    if (isNotebookDocument(tab.document.path)) throw Error("Edit notebook cells in the notebook tab.");
     const model = this.models.get(tab.id);
     if (!model) { tab.text = text; return false; }
     if (model.getValue() === text) return true;
@@ -277,6 +288,7 @@ export class MonacoEditor {
     return true; // The document-owned listener runs even when its editor is hidden.
   }
   dispose(tabId: string): void {
+    notebooks.dispose(tabId);
     const model = this.models.get(tabId);
     if (model) this.languageClient?.unbind(model);
     const path = this.modelPaths.get(tabId);
@@ -288,7 +300,7 @@ export class MonacoEditor {
     if (path) liveDocumentModels.publish({ type: 'closed', path });
   }
   clear(): void { this.editorValue?.setModel(null); }
-  setTheme(theme: PreviewThemeId): void { this.apiValue?.editor.setTheme(monacoThemeName(theme)); }
+  setTheme(theme: PreviewThemeId): void { window.dispatchEvent(new CustomEvent('setdown:notebook-theme', { detail: theme })); this.apiValue?.editor.setTheme(monacoThemeName(theme)); }
   layout(): void { this.editorValue?.layout(); }
   restoreView(tab: WorkspaceTab): void {
     const editor = this.editorValue;

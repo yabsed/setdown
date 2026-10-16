@@ -4,6 +4,7 @@ import base from './playwright.config';
 export default defineConfig(base, {
   retries: 0,
   testMatch: [
+    'notebook.spec.ts',
     'language-support.spec.ts',
     'language-features.spec.ts',
     'language-registry.spec.ts',
