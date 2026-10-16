@@ -2,11 +2,11 @@
   import { untrack } from 'svelte';
   import type { DocumentSnapshot } from '../../core/document/document';
   import type { ReadingPosition, VideoReadingPosition } from '../../core/reading/reading-position';
-  import type { DesktopPort } from '../ports/desktop-port';
+  import type { VideoPort } from '../ports/desktop-port';
   import { zoomState } from '../zoom-state.svelte';
 
   let { tabId, document: file, initialPosition, desktop, onposition, active }: {
-    tabId: string; document: DocumentSnapshot; initialPosition?: ReadingPosition; desktop: DesktopPort; active: boolean;
+    tabId: string; document: DocumentSnapshot; initialPosition?: ReadingPosition; desktop: VideoPort; active: boolean;
     onposition(position: VideoReadingPosition): void;
   } = $props();
   const initial = untrack(() => initialPosition?.kind === 'video' ? initialPosition : undefined);

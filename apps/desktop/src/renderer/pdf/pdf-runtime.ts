@@ -6,12 +6,12 @@ import viewerCss from 'pdfjs-dist/web/pdf_viewer.css?inline';
 import type { PDFViewer, PDFLinkService, EventBus } from 'pdfjs-dist/legacy/web/pdf_viewer.mjs';
 import type { DocumentSnapshot } from '../../core/document/document';
 import type { PdfReadingPosition } from '../../core/reading/reading-position';
-import type { DesktopPort } from '../ports/desktop-port';
+import type { PdfPort } from '../ports/desktop-port';
 import { readPdfBytes } from './pdf-range';
 
 export type OutlineItem = { title: string; depth: number; dest: string | unknown[] | null };
 type Options = {
-  host: HTMLElement; document: DocumentSnapshot; initial?: PdfReadingPosition; desktop: DesktopPort;
+  host: HTMLElement; document: DocumentSnapshot; initial?: PdfReadingPosition; desktop: PdfPort;
   active(): boolean;
   scaleChanged?(scale: number): void;
   changed(position: PdfReadingPosition): void;

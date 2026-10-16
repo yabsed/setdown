@@ -1,3 +1,4 @@
+import { suites } from './test-suites.mjs';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { closeSync, mkdirSync, openSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
@@ -35,8 +36,10 @@ mkdirSync(path.dirname(output), { recursive: true });
 mkdirSync(output);
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const git = (root, args) => {
-  const result = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
-  if (result.status !== 0) throw Error(result.stderr || 'Cannot read checkout identity');
+  // A directory refactor can exceed spawnSync's default 1 MiB diff buffer.
+  // Preserve the complete diff for hashing; never accept truncated identity.
+  const result = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+  if (result.status !== 0) throw Error(result.error?.message || result.stderr || 'Cannot read checkout identity');
   return result.stdout.trim();
 };
 const identity = root => ({ root, commit: git(root, ['rev-parse', 'HEAD']),
@@ -57,8 +60,8 @@ function treeHash(directory) {
 }
 const harnessHash = () => hash([
   'playwright.config.ts', 'playwright.preview-benchmark.config.ts',
-  'test/e2e/sample-document-cycles.spec.ts', 'test/e2e/sample-review-cold-cycles.spec.ts',
-  'test/e2e/preview-cycle-input.ts', 'test/e2e/electron-app.ts', 'test/fixtures/sample.md',
+  ...suites.benchmark.files, ...suites.benchmark.support,
+  'test/suites.json', 'scripts/test-suites.mjs',
   'scripts/preview-benchmark.mjs', 'scripts/preview-benchmark-compare.mjs',
 ].map(file => readFileSync(path.join(desktop(candidate), file), 'utf8')).join('\0'));
 const report = { schema: 1, startedAt: new Date().toISOString(), runs, thresholds,

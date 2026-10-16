@@ -1,6 +1,6 @@
 <script lang="ts">
   import { insertion, resizeTable } from './insertion-state.svelte';
-  import type { AppActions } from '../view-state.svelte';
+  import type { AppActions } from '../ports/ui-actions';
   import { isComposingInput } from './composition-guard';
 
   const TABLE_COLUMNS = 10;

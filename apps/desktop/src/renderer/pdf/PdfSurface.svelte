@@ -2,12 +2,12 @@
   import { onMount } from 'svelte';
   import type { DocumentSnapshot } from '../../core/document/document';
   import type { ReadingPosition, PdfReadingPosition } from '../../core/reading/reading-position';
-  import type { DesktopPort } from '../ports/desktop-port';
+  import type { PdfPort } from '../ports/desktop-port';
   import { PdfRuntime, type OutlineItem } from './pdf-runtime';
   import { mediaZoom } from '../zoom-state.svelte';
 
   let { tabId, document, initialPosition, desktop, onposition, active, focused = active }: { tabId: string; focused?: boolean; document: DocumentSnapshot; active: boolean;
-    initialPosition?: ReadingPosition; desktop: DesktopPort; onposition(position: PdfReadingPosition): void } = $props();
+    initialPosition?: ReadingPosition; desktop: PdfPort; onposition(position: PdfReadingPosition): void } = $props();
   let host: HTMLDivElement;
   let runtime: PdfRuntime;
   let page = $state(1);

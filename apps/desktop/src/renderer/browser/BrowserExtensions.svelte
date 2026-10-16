@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { AppActions } from '../view-state.svelte';
+  import type { AppActions } from '../ports/ui-actions';
   import type { BrowserExtensionInfo, ExtensionInstallKind } from '../../protocol/browser';
   import { browser } from './browser-state.svelte';
   import { webStoreId, webStoreURL } from '../../core/browser/web-store';

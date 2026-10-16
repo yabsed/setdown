@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { AppActions } from '../view-state.svelte';
+  import type { AppActions } from '../ports/ui-actions';
   import type { LanguageApi } from '../../protocol/language';
   import { resizePanelWithKeyboard, startPanelResize } from '../shell/panel-resize';
   import BrowserSidebar from '../browser/BrowserSidebar.svelte';
@@ -64,7 +64,7 @@
     {:else if project.activeView === 'browser'}<BrowserSidebar {actions} />
     {:else if project.activeView === 'language'}
       {#if project.visible && project.open}
-        {#await import('../editor/LanguageSupport.svelte') then module}
+        {#await import('../language/LanguageSupport.svelte') then module}
           <module.default api={languageApi} onclose={() => select('language')} />
         {:catch error}<p role="alert">Could not load language support: {String(error)}</p>{/await}
       {/if}

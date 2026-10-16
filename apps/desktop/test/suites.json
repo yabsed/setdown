@@ -1,0 +1,296 @@
+{
+  "schema": 1,
+  "unit": {
+    "include": [
+      "src/**/*.test.ts"
+    ],
+    "previewContract": [
+      "src/architecture-boundaries.test.ts",
+      "src/core/browser/browser-failure.test.ts",
+      "src/core/browser/browser-url.test.ts",
+      "src/core/browser/reader-article.test.ts",
+      "src/core/browser/reader-export.test.ts",
+      "src/core/browser/web-store.test.ts",
+      "src/core/document/file-location.test.ts",
+      "src/core/notebook/notebook-document.test.ts",
+      "src/core/notebook/notebook-tools.test.ts",
+      "src/core/preview/preview-install.test.ts",
+      "src/core/reading/reading-menu.test.ts",
+      "src/core/workspace/editor-groups.test.ts",
+      "src/core/workspace/tab-navigation.test.ts",
+      "src/main/browser/browser-auth.test.ts",
+      "src/main/browser/browser-context-menu.test.ts",
+      "src/main/browser/browser-downloads.test.ts",
+      "src/main/browser/browser-extensions.test.ts",
+      "src/main/browser/browser-permissions.test.ts",
+      "src/main/browser/extension-package.test.ts",
+      "src/main/documents/document-save.test.ts",
+      "src/main/documents/image-file.test.ts",
+      "src/main/language/catalog/profiles.test.ts",
+      "src/main/language/clangd-session.test.ts",
+      "src/main/language/language-manager.test.ts",
+      "src/main/language/server-capabilities.test.ts",
+      "src/main/language/server-definitions.test.ts",
+      "src/main/language/server-discovery.test.ts",
+      "src/main/language/server-registry.test.ts",
+      "src/main/language/server-session.test.ts",
+      "src/main/notebook/kernel-manager.test.ts",
+      "src/main/notebook/python-environments.test.ts",
+      "src/main/preview/preview-presentation.test.ts",
+      "src/main/preview/preview-renderer.test.ts",
+      "src/main/preview/review-preparation.test.ts",
+      "src/main/project/explorer-clipboard.test.ts",
+      "src/main/project/explorer-service.test.ts",
+      "src/main/project/file-transfer.test.ts",
+      "src/main/project/git-history-service.test.ts",
+      "src/main/reading/reading-position-store.test.ts",
+      "src/main/tabs/tab-transfer-manager.test.ts",
+      "src/main/terminal/terminal-manager.test.ts",
+      "src/main/terminal/terminal-resize.test.ts",
+      "src/main/terminal/terminal-screen.test.ts",
+      "src/main/windows/workspace-zoom.test.ts",
+      "src/preview-runtime/content-controller.test.ts",
+      "src/preview-runtime/scroll-settlement.test.ts",
+      "src/preview-runtime/source-atlas.test.ts",
+      "src/preview-runtime/theme-controller.test.ts",
+      "src/preview-runtime/viewport-controller.test.ts",
+      "src/protocol/preview-preparation.test.ts",
+      "src/renderer/adapters/shared-document-history.test.ts",
+      "src/renderer/language/language-client.test.ts",
+      "src/renderer/language/language-features.test.ts",
+      "src/renderer/language/language-presentation.test.ts",
+      "src/renderer/notebook/notebook-controller.test.ts",
+      "src/renderer/notebook/notebook-execution.test.ts",
+      "src/renderer/notebook/notebook-language.test.ts",
+      "src/renderer/project/explorer/explorer-controller.test.ts",
+      "src/renderer/project/explorer/explorer-presentation.test.ts",
+      "src/renderer/project/explorer/explorer-selection.test.ts",
+      "src/renderer/project/source-control/git-graph-provider.test.ts",
+      "src/renderer/project/source-control/git-review-latency.test.ts",
+      "src/renderer/project/source-control/review-presentation.test.ts",
+      "src/renderer/project/source-control/source-control-controller.test.ts",
+      "src/renderer/reader/reader-preparation.test.ts",
+      "src/renderer/workspace/auto-save.test.ts",
+      "src/renderer/workspace/document-sessions.test.ts",
+      "src/renderer/workspace/media-cache.test.ts",
+      "src/renderer/workspace/text-workspace.test.ts"
+    ]
+  },
+  "e2e": {
+    "browser/browser-extensions.spec.ts": {
+      "previewContract": true
+    },
+    "browser/downloads.spec.ts": {
+      "previewContract": true
+    },
+    "browser/find.spec.ts": {
+      "previewContract": true
+    },
+    "browser/focus.spec.ts": {
+      "previewContract": true
+    },
+    "browser/layout.spec.ts": {
+      "previewContract": true
+    },
+    "browser/lifecycle.spec.ts": {
+      "previewContract": true
+    },
+    "browser/menus.spec.ts": {
+      "previewContract": true
+    },
+    "browser/navigation.spec.ts": {
+      "previewContract": true
+    },
+    "browser/privacy.spec.ts": {
+      "previewContract": true
+    },
+    "browser/reader.spec.ts": {
+      "previewContract": true
+    },
+    "browser/transfer.spec.ts": {
+      "previewContract": true
+    },
+    "browser/ublock.spec.ts": {
+      "previewContract": true
+    },
+    "browser/zoom.spec.ts": {
+      "previewContract": true
+    },
+    "git/git-activity-badge.spec.ts": {
+      "previewContract": false
+    },
+    "git/git-history.spec.ts": {
+      "previewContract": true
+    },
+    "git/git-review-cold-escape.spec.ts": {
+      "previewContract": false
+    },
+    "git/git-review-editing-tools.spec.ts": {
+      "previewContract": false
+    },
+    "git/git-review-first-open.spec.ts": {
+      "previewContract": true
+    },
+    "git/git-review-ime.spec.ts": {
+      "previewContract": true
+    },
+    "git/git-review-instant-escape.spec.ts": {
+      "previewContract": false
+    },
+    "git/git-review-reading-position.spec.ts": {
+      "previewContract": false
+    },
+    "git/git-review-tabs.spec.ts": {
+      "previewContract": false
+    },
+    "git/rendered-diff-layout.spec.ts": {
+      "previewContract": false
+    },
+    "git/review-document-styles.spec.ts": {
+      "previewContract": true
+    },
+    "git/review-preparation-layout.spec.ts": {
+      "previewContract": true
+    },
+    "git/review-row-patching.spec.ts": {
+      "previewContract": false
+    },
+    "git/source-atlas-review.spec.ts": {
+      "previewContract": true
+    },
+    "git/verified-review-position.spec.ts": {
+      "previewContract": true
+    },
+    "language/clangd-support.spec.ts": {
+      "previewContract": true
+    },
+    "language/language-features.spec.ts": {
+      "previewContract": true
+    },
+    "language/language-registry.spec.ts": {
+      "previewContract": true
+    },
+    "language/language-support.spec.ts": {
+      "previewContract": true
+    },
+    "media/image-reader.spec.ts": {
+      "previewContract": true
+    },
+    "media/image-terminal-layout.spec.ts": {
+      "previewContract": true
+    },
+    "media/media-tabs.spec.ts": {
+      "previewContract": true
+    },
+    "media/pdf-selection.spec.ts": {
+      "previewContract": true
+    },
+    "media/reading-positions.spec.ts": {
+      "previewContract": true
+    },
+    "media/video-reader.spec.ts": {
+      "previewContract": true
+    },
+    "notebook/notebook.spec.ts": {
+      "previewContract": true
+    },
+    "preview/document-preparation.spec.ts": {
+      "previewContract": true
+    },
+    "preview/preview-local-links.spec.ts": {
+      "previewContract": false
+    },
+    "preview/preview-reading-tools.spec.ts": {
+      "previewContract": true
+    },
+    "preview/preview-runtime-transition.spec.ts": {
+      "previewContract": false
+    },
+    "preview/preview-tabs.spec.ts": {
+      "previewContract": true
+    },
+    "preview/sample-document-cycles.spec.ts": {
+      "previewContract": false
+    },
+    "preview/sample-review-cold-cycles.spec.ts": {
+      "previewContract": false
+    },
+    "preview/sample-review-latency.spec.ts": {
+      "previewContract": false
+    },
+    "preview/zero-latency-architecture.spec.ts": {
+      "previewContract": true
+    },
+    "project/explorer-selection.spec.ts": {
+      "previewContract": true
+    },
+    "terminal/terminal.spec.ts": {
+      "previewContract": true
+    },
+    "workspace/auto-save.spec.ts": {
+      "previewContract": false
+    },
+    "workspace/close-prompt.spec.ts": {
+      "previewContract": false
+    },
+    "workspace/editor-groups.spec.ts": {
+      "previewContract": true
+    },
+    "workspace/external-change.spec.ts": {
+      "previewContract": false
+    },
+    "workspace/markdown-insertions.spec.ts": {
+      "previewContract": false
+    },
+    "workspace/reload-layout.spec.ts": {
+      "previewContract": false
+    },
+    "workspace/shared-document-history.spec.ts": {
+      "previewContract": false
+    },
+    "workspace/tab-detach.spec.ts": {
+      "previewContract": true
+    },
+    "workspace/text-workspace.spec.ts": {
+      "previewContract": false
+    },
+    "workspace/workspace-zoom.spec.ts": {
+      "previewContract": true
+    }
+  },
+  "external": {
+    "language-servers": {
+      "command": "test:language-servers",
+      "environment": "isolated Electron; installed fortls and rust-analyzer toolchains",
+      "files": [
+        "test/language-servers/fortls.spec.ts",
+        "test/language-servers/rust-analyzer.spec.ts"
+      ]
+    },
+    "notebook-tools": {
+      "command": "test:notebook-tools",
+      "environment": "isolated Electron; configured Python scientific/notebook tools",
+      "files": [
+        "test/notebook-tools/integration.spec.ts"
+      ]
+    },
+    "notebook-kernel": {
+      "command": "python3 test/notebook/kernel-bridge.test.py",
+      "environment": "Python with IPython, ipykernel, pandas and NumPy",
+      "files": [
+        "test/notebook/kernel-bridge.test.py"
+      ]
+    }
+  },
+  "benchmark": {
+    "files": [
+      "test/e2e/preview/sample-document-cycles.spec.ts",
+      "test/e2e/preview/sample-review-cold-cycles.spec.ts"
+    ],
+    "support": [
+      "test/support/preview/preview-cycle-input.ts",
+      "test/support/electron/electron-app.ts",
+      "test/fixtures/sample.md"
+    ]
+  }
+}

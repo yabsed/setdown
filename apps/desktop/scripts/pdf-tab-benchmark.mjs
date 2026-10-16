@@ -20,7 +20,7 @@ const candidate = realpathSync(fileURLToPath(new URL('../../..', import.meta.url
 const roots = { baseline: realpathSync(values.baseline), candidate };
 if (roots.baseline === roots.candidate) throw Error('Use a separate baseline checkout.');
 await mkdir(values.output);
-const fixture = await build({ entryPoints: [fileURLToPath(new URL('../test/e2e/pdf-fixture.ts', import.meta.url))], bundle: true, write: false, platform: 'node', format: 'esm' });
+const fixture = await build({ entryPoints: [fileURLToPath(new URL('../test/support/media/pdf-fixture.ts', import.meta.url))], bundle: true, write: false, platform: 'node', format: 'esm' });
 const { pdfFixture } = await import(`data:text/javascript;base64,${Buffer.from(fixture.outputFiles[0].text).toString('base64')}`);
 const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
 function buildHash(root) {

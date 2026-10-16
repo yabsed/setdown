@@ -14,7 +14,7 @@ import type {
   PreviewBounds, PreviewLayoutGuide, PreviewMessage,
 } from '../../../protocol/desktop-api';
 import type { DesktopPort } from '../../ports/desktop-port';
-import type { WorkingTreeEdit } from '../../view-state.svelte';
+import type { WorkingTreeEdit } from '../../../core/document/text-edit';
 import { project, type GitDiffTabState } from '../project-state.svelte';
 import { ReviewPresentation } from './review-presentation';
 

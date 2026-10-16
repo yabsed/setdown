@@ -1,7 +1,7 @@
 import { afterEach, expect, test, vi } from 'vitest';
 import { ReaderController } from './reader-controller';
 
-vi.mock('../view-state.svelte', () => ({ view:{} }));
+vi.mock('../workspace/workspace-view.svelte', () => ({ view:{} }));
 afterEach(() => vi.unstubAllGlobals());
 
 function fixture(path = '/sample.md') {

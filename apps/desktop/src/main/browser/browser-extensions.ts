@@ -7,7 +7,7 @@ import { webStoreId } from '../../core/browser/web-store';
 import {
   extensionIdFromKey, localExtensionDir, parseExtensionManifest, parseManifestEntries,
   unpackExtensionArchive, type ExtensionManifestInfo,
-} from '../../core/browser/extension-package';
+} from './extension-package';
 import type { BrowserExtensionInfo } from '../../protocol/browser';
 
 type StoredExtension = { dir: string; enabled: boolean; webStoreId?: string };

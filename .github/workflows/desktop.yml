@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   build:
-    name: Typecheck and build
+    name: Tests, typecheck and build
     if: inputs.channel == 'none'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -32,6 +32,14 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - name: Install the real clangd used by service tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y clangd
+      - name: Unit tests and architecture boundaries
+        run: npm test
+      - name: CI policy, test inventory and build adapters
+        run: npm run test:tooling
       - run: npm run build
 
   installers:

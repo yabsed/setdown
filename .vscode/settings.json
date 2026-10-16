@@ -1,4 +1,18 @@
 {
     "python-envs.defaultEnvManager": "ms-python.python:conda",
-    "python-envs.defaultPackageManager": "ms-python.python:conda"
+    "python-envs.defaultPackageManager": "ms-python.python:conda",
+    "search.exclude": {
+        "vendor/**": true,
+        "**/dist/**": true,
+        "**/dist-electron/**": true,
+        "**/release/**": true,
+        "**/test-results/**": true
+    },
+    "files.watcherExclude": {
+        "**/vendor/**": true,
+        "**/dist/**": true,
+        "**/dist-electron/**": true,
+        "**/release/**": true,
+        "**/test-results/**": true
+    }
 }

@@ -4,11 +4,11 @@
   import type { DocumentSnapshot } from '../../core/document/document';
   import { imageMimeType } from '../../core/document/document-profile';
   import type { ReadingPosition, ImageReadingPosition } from '../../core/reading/reading-position';
-  import type { DesktopPort } from '../ports/desktop-port';
+  import type { ImagePort } from '../ports/desktop-port';
   import { mediaZoom } from '../zoom-state.svelte';
 
   let { tabId, document: file, initialPosition, desktop, onposition, active }: {
-    tabId: string; document: DocumentSnapshot; initialPosition?: ReadingPosition; desktop: DesktopPort; active: boolean;
+    tabId: string; document: DocumentSnapshot; initialPosition?: ReadingPosition; desktop: ImagePort; active: boolean;
     onposition(position: ImageReadingPosition): void;
   } = $props();
   const initial = untrack(() => initialPosition?.kind === 'image' ? initialPosition : undefined);

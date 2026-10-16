@@ -1,37 +1,5 @@
 import { defineConfig } from '@playwright/test';
 import base from './playwright.config';
+import { e2eFiles } from './scripts/test-suites.mjs';
 
-export default defineConfig(base, {
-  retries: 0,
-  testMatch: [
-    'notebook.spec.ts',
-    'language-support.spec.ts',
-    'language-features.spec.ts',
-    'language-registry.spec.ts',
-    'clangd-support.spec.ts',
-    'browser.spec.ts',
-    'browser-extensions.spec.ts',
-    'preview-reading-tools.spec.ts',
-    'terminal.spec.ts',
-    'video-reader.spec.ts',
-    'document-preparation.spec.ts',
-    'editor-groups.spec.ts',
-    'explorer-selection.spec.ts',
-    'preview-tabs.spec.ts',
-    'git-review-first-open.spec.ts',
-    'git-history.spec.ts',
-    'reading-positions.spec.ts',
-    'image-reader.spec.ts',
-    'image-terminal-layout.spec.ts',
-    'media-tabs.spec.ts',
-    'pdf-selection.spec.ts',
-    'workspace-zoom.spec.ts',
-    'review-document-styles.spec.ts',
-    'git-review-ime.spec.ts',
-    'review-preparation-layout.spec.ts',
-    'verified-review-position.spec.ts',
-    'source-atlas-review.spec.ts',
-    'tab-detach.spec.ts',
-    'zero-latency-architecture.spec.ts',
-  ],
-});
+export default defineConfig(base, { retries: 0, testMatch: e2eFiles(true).map(file => `**/${file}`) });

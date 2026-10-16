@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { AppActions } from '../../view-state.svelte';
+  import type { AppActions } from '../../ports/ui-actions';
   import { project } from '../project-state.svelte';
   import { groupSearchResults } from './search-groups';
   import { searchHighlightParts } from './search-highlight';

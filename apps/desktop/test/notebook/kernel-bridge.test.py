@@ -1,4 +1,4 @@
-"""Real IPython integration, no GUI or desktop. Run with Python containing ipykernel."""
+"""Real IPython integration, no GUI. Requires ipykernel, pandas and NumPy."""
 import json
 from pathlib import Path
 import queue

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { electron, disposeApplication, focusApplication } from '../e2e/electron-app';
+import { electron, disposeApplication, focusApplication } from '../support/electron/electron-app';
 
 test('real rust-analyzer supplies completion, hover, diagnostics, rename/Undo, navigation and restart through the common registry', async () => {
   const executable = process.env.SETDOWN_RUST_ANALYZER_PATH;

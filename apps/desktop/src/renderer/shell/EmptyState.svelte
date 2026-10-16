@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { AppActions } from '../view-state.svelte';
+  import type { AppActions } from '../ports/ui-actions';
   let { actions }: { actions: AppActions } = $props();
 </script>
 

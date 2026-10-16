@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { electron, disposeApplication, focusApplication } from '../e2e/electron-app';
+import { electron, disposeApplication, focusApplication } from '../support/electron/electron-app';
 
 test('installed fortls connects without registration and supplies hover and completion after rescan', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-fortls-'));

@@ -1,4 +1,7 @@
 import { defineConfig } from '@playwright/test';
+import { validateSuites } from './scripts/test-suites.mjs';
+
+validateSuites();
 
 export default defineConfig({
   testDir: './test/e2e',

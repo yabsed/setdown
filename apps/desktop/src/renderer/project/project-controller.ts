@@ -6,7 +6,7 @@ import type {
 import type { PreviewThemeId } from '../../core/preview/preview-preferences';
 import type { EditorOpenOptions } from '../../core/workspace/editor-groups';
 import type { DesktopPort } from '../ports/desktop-port';
-import type { WorkingTreeEdit } from '../view-state.svelte';
+import type { WorkingTreeEdit } from '../../core/document/text-edit';
 import { ExplorerController } from './explorer/explorer-controller';
 import { project, rememberProjectState, type ProjectView } from './project-state.svelte';
 import { SearchController } from './search/search-controller';

@@ -31,7 +31,7 @@ vi.mock('electron-chrome-extensions', () => ({ ElectronChromeExtensions: class {
 const store = vi.hoisted(() => ({ downloadExtension: vi.fn() }));
 vi.mock('electron-chrome-web-store', () => store);
 import { BrowserExtensions } from './browser-extensions';
-import { extensionIdFromKey, localExtensionDir } from '../../core/browser/extension-package';
+import { extensionIdFromKey, localExtensionDir } from './extension-package';
 
 let root: string, source: string, extensions: BrowserExtensions;
 const manifest = { manifest_version: 2, name: 'Fixture Extension', version: '1.0',

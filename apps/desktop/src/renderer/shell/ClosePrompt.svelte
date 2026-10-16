@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { CloseDecision } from '../../protocol/desktop-api';
-  import { view, type AppActions } from '../view-state.svelte';
+  import { view } from '../workspace/workspace-view.svelte';
+import type { AppActions } from '../ports/ui-actions';
 
   let { actions }: { actions: AppActions } = $props();
   let dialog: HTMLDialogElement;

@@ -2,7 +2,7 @@ import type * as M from 'monaco-editor';
 import type * as L from 'vscode-languageserver-protocol';
 import type { LanguageApi, LanguageConnection, LanguageMethod } from '../../protocol/language';
 import type { NotebookEntry } from './notebook-store';
-import { completion, completionDefaults, fromRange, markdown, marker, toPosition } from '../editor/language-conversion';
+import { completion, completionDefaults, fromRange, markdown, marker, toPosition } from '../language/language-conversion';
 
 /** Cell documents retain their IPython semantics and local coordinates.
  * Providers still reject edits/commands that cannot be applied transactionally. */

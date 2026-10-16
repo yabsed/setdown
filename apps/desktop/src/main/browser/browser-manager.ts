@@ -4,7 +4,7 @@ import { promises as fs, unwatchFile, writeFileSync, renameSync } from 'node:fs'
 import path from 'node:path';
 import { browserURL, isWebURL } from '../../core/browser/browser-url';
 import { browserFailure, browserFailureMessage } from '../../core/browser/browser-failure';
-import { permissionSummaryLines } from '../../core/browser/extension-package';
+import { permissionSummaryLines } from './extension-package';
 import { appZoomStep } from '../../core/zoom';
 import type { BrowserCommand, BrowserEvent, BrowserExtensionInfo, BrowserPage, BrowserPlaceScope, DownloadCommand, ExtensionInstallKind, ExtensionPage } from '../../protocol/browser';
 import type { WebHistory } from '../../core/workspace/tab-navigation';

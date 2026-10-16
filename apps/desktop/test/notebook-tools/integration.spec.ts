@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, symlink, writeFile, readFile, rm } from 'node:fs/promis
 import path from 'node:path';
 import os from 'node:os';
 import { execFileSync } from 'node:child_process';
-import { electron, disposeApplication, focusApplication } from '../e2e/electron-app';
+import { electron, disposeApplication, focusApplication } from '../support/electron/electron-app';
 
 test('real nbconvert, Ruff, Jupytext, nbdime and JupyterLab integration', async () => {
   const toolsPython = process.env.SETDOWN_NOTEBOOK_TOOLS_PYTHON;

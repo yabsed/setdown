@@ -6,7 +6,7 @@
   import { selectEntry, topLevelPaths, draggedPaths, PROJECT_ENTRIES, PROJECT_FILES } from './explorer-selection';
   import NativeOverlay from '../../shell/NativeOverlay.svelte';
   import type { ProjectEntryKind } from '../../../protocol/desktop-api';
-  import type { AppActions } from '../../view-state.svelte';
+  import type { AppActions } from '../../ports/ui-actions';
   import { project, type VisibleProjectEntry } from '../project-state.svelte';
   import SideViewMenu from '../SideViewMenu.svelte';
   import ExplorerEditRow from './ExplorerEditRow.svelte';

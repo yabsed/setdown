@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { view, type AppActions } from '../view-state.svelte';
+  import { view } from '../workspace/workspace-view.svelte';
+import type { AppActions } from '../ports/ui-actions';
   let { actions }: { actions: AppActions } = $props();
   const sessions = $derived(view.terminalSessions.map(session => ({ ...session,
     active: view.tabs.some(tab => tab.kind === 'terminal' && tab.sessionId === session.id && tab.active) })));

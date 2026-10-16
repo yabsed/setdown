@@ -3,7 +3,7 @@ import { hasMarkdownPreview } from '../../core/document/document-capabilities';
 import { clampAnchor, type BandLine, type ViewportAnchor } from '../../core/preview/viewport-anchor';
 import type { DocumentTab as WorkspaceTab } from '../../core/workspace/workspace-state';
 import type { DesktopPort } from '../ports/desktop-port';
-import { view } from '../view-state.svelte';
+import { view } from '../workspace/workspace-view.svelte';
 import type { ReaderController } from './reader-controller';
 
 type Options = {

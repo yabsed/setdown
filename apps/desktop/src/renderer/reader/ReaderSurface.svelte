@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { view, type AppActions } from '../view-state.svelte';
+  import { view } from '../workspace/workspace-view.svelte';
+import type { AppActions } from '../ports/ui-actions';
   import { resizePanelWithKeyboard, startPanelResize } from '../shell/panel-resize';
 
   let { actions }: { actions: AppActions } = $props();

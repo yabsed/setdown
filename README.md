@@ -447,6 +447,11 @@ services to adapters, and architecture tests enforce dependency boundaries.
 Preview results carry revision identity so obsolete work cannot replace newer
 content or appear in another tab.
 
+See the [architecture and dependency guide](docs/architecture/overview.md) for
+feature ownership, public entry points, and test placement. The
+[external-code guide](docs/architecture/external-code.md) distinguishes runtime
+dependencies, build inputs, and reference-only vendor checkouts.
+
 Open Markdown tabs keep their rendered views and editor state alive. While you
 edit, Setdown prepares updated content in the background and keeps the last
 completed preview available until the replacement is ready. Source anchors help
@@ -457,11 +462,13 @@ restricted to the document directory and required rendering assets. Executable
 code chunks, document-local Crossnote scripts/configuration, and HTML5 embeds
 are disabled. PDF scripts are disabled, and SVG files are loaded as images.
 
-Upstream reference sources live in `vendor/` as submodules. Normal builds use npm
-packages and do not require those checkouts. Fetch them when needed with:
+Upstream sources live in `vendor/` as submodules. Most runtime libraries come
+from npm. The browser build also uses the pinned uBlock Origin and Readability
+sources and initializes those checkouts when missing. Other reference checkouts
+are optional; fetch only the source needed for your work:
 
 ```bash
-git submodule update --init --recursive
+git submodule update --init vendor/<name>
 ```
 
 ## Development checks
@@ -471,6 +478,7 @@ Run commands from the repository root:
 ```bash
 npm run typecheck           # TypeScript and Svelte checks
 npm test                    # Unit and integration tests
+npm run test:tooling         # Build adapters, test inventory, and CI policy
 npm run build               # Typecheck and production build
 npm run test:e2e             # Build and run Electron end-to-end tests
 npm run test:preview-contract
@@ -499,8 +507,8 @@ GitHub Actions policy:
 
 | Event | Checks | Delivery |
 | --- | --- | --- |
-| Pull request | Typecheck and production build | No publication |
-| Application change on `main` | Typecheck and production build | No publication |
+| Pull request | Unit/tooling tests, typecheck and production build | No publication |
+| Application change on `main` | Unit/tooling tests, typecheck and production build | No publication |
 | `v*` tag push | Packaging, installer verification and version/tag validation | Versioned release; prerelease suffixes remain pre-releases |
 | Manual **CI** run | Packaging and installer verification regardless of changed paths | Downloadable artifacts only |
 | Documentation-only PR or main push | Explicit successful result | No installers |

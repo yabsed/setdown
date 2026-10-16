@@ -4,7 +4,7 @@ import { retainUnsavedRevision } from '../../core/document/document-save';
 import type { PreviewSession } from '../reader/preview-session';
 import type { DocumentTab as WorkspaceTab } from '../../core/workspace/workspace-state';
 import type { DesktopPort } from '../ports/desktop-port';
-import { view } from '../view-state.svelte';
+import { view } from './workspace-view.svelte';
 
 type Options = {
   desktop: DesktopPort; tabs: WorkspaceTab[]; active: () => WorkspaceTab | null;

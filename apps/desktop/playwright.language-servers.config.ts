@@ -1,3 +1,5 @@
+import { validateSuites } from './scripts/test-suites.mjs';
+validateSuites();
 import { defineConfig } from '@playwright/test';
 import base from './playwright.config';
 // Explicit integration gate: requires the named native server and toolchain.

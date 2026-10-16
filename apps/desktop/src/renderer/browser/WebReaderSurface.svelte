@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import DOMPurify from 'dompurify';
-  import type { AppActions } from '../view-state.svelte';
+  import type { AppActions } from '../ports/ui-actions';
   import type { ReaderAnchor, ReaderSnapshot } from '../../protocol/browser';
   import { GOLDEN_TOP_RATIO } from '../../core/preview/viewport-anchor';
   import { browser } from './browser-state.svelte';

@@ -2,7 +2,9 @@
   "name": "setdown-workspace",
   "version": "0.1.0",
   "private": true,
-  "workspaces": ["apps/*"],
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
     "test:preview-contract": "npm run test:preview-contract --workspace @setdown/desktop",
     "bench:preview": "npm run bench:preview --workspace @setdown/desktop --",
@@ -15,7 +17,8 @@
     "start": "npm start --workspace @setdown/desktop --",
     "package:win": "npm run package:win --workspace @setdown/desktop --",
     "package:linux": "npm run package:linux --workspace @setdown/desktop --",
-    "install:linux": "npm run install:linux --workspace @setdown/desktop"
+    "install:linux": "npm run install:linux --workspace @setdown/desktop",
+    "test:tooling": "node --test scripts/ci/*.test.mjs && npm run test:tooling --workspace @setdown/desktop"
   },
   "overrides": {
     "dompurify": "3.4.15",

@@ -2,7 +2,7 @@
   import { onMount, untrack } from 'svelte';
   import type { WebGitGraphElement } from '@web-git-graph/web';
   import type { GitGraphCommit } from '@web-git-graph/protocol';
-  import type { AppActions } from '../../view-state.svelte';
+  import type { AppActions } from '../../ports/ui-actions';
   import { electronDesktop } from '../../adapters/electron-desktop';
   import { themeProfile } from '../../../core/theme/theme-catalog';
   import { normalizePreviewTheme } from '../../../core/preview/preview-preferences';

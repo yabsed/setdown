@@ -15,7 +15,7 @@
   "main": "dist-electron/main.cjs",
   "scripts": {
     "test:language-servers": "npm run build && bash scripts/with-isolated-display.sh playwright test --config playwright.language-servers.config.ts",
-    "test:preview-contract:unit": "vitest run --config vitest.preview-contract.config.ts && node --test scripts/preview-benchmark.test.mjs",
+    "test:preview-contract:unit": "vitest run --config vitest.preview-contract.config.ts && npm run test:tooling",
     "test:preview-contract:e2e": "bash scripts/with-isolated-display.sh playwright test --config playwright.preview-contract.config.ts",
     "test:preview-contract": "npm run test:preview-contract:unit && npm run build && npm run test:preview-contract:e2e",
     "bench:preview": "bash scripts/with-isolated-display.sh node scripts/preview-benchmark.mjs",
@@ -33,7 +33,8 @@
     "install:linux": "bash scripts/install-linux.sh",
     "update:language-profiles": "python3 scripts/update-language-profiles.py",
     "check:language-profiles": "python3 scripts/update-language-profiles.py --check",
-    "test:notebook-tools": "npm run build && bash scripts/with-isolated-display.sh playwright test --config playwright.notebook-tools.config.ts"
+    "test:notebook-tools": "npm run build && bash scripts/with-isolated-display.sh playwright test --config playwright.notebook-tools.config.ts",
+    "test:tooling": "node --test scripts/*.test.mjs scripts/browser/*.test.mjs"
   },
   "dependencies": {
     "@parcel/watcher": "^2.6.0",

@@ -6,7 +6,7 @@
   import { normalizePreviewTheme } from '../../../core/preview/preview-preferences';
   import { documentLanguage } from '../../../core/document/document-profile';
   import type { GitDiff } from '../../../protocol/desktop-api';
-  import type { AppActions } from '../../view-state.svelte';
+  import type { AppActions } from '../../ports/ui-actions';
   import { monacoThemeName, registerMonacoThemes } from '../../theme';
   import { CompositionGuard } from '../../editor/composition-guard';
   import { liveDocumentModels, type ModelLease } from '../../editor/live-document-model';

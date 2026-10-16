@@ -1,16 +1,17 @@
+import { DocumentSessions } from './document-sessions';
 import assert from 'node:assert/strict';
 import { beforeEach, afterEach, test, vi } from 'vitest';
 import { createWorkspaceTab, createTabSession, WorkspaceState } from '../../core/workspace/workspace-state';
 import type { DocumentSnapshot } from '../../core/document/document';
 import { TabController } from './tab-controller';
-import { SurfaceController } from '../application/surface-controller';
+import { SurfaceController } from './surface-controller';
 import { PreviewSession } from '../reader/preview-session';
 import { browserURL } from '../../core/browser/browser-url';
 import type { BrowserPage } from '../../core/browser/browser-state';
 import { fileURLToPath } from 'node:url';
 import type { WebHistory } from '../../core/workspace/tab-navigation';
 
-vi.mock('../view-state.svelte', () => ({ view: {} }));
+vi.mock('./workspace-view.svelte', () => ({ view: {} }));
 vi.mock('../shell/layout-session', () => ({ restoredOutlineOpen: () => false }));
 const anchor = { sourceLine: 1, yRatio: .372, reason: 'empty-document', confidence: 'fallback' } as const;
 const calls: string[] = [];
@@ -59,7 +60,7 @@ function fixture() {
     surfaces: { set(surface: 'viewer' | 'editor') { session.surface = surface; }, publishAnchor() {} },
     confirmClose: async (): Promise<'save' | 'discard' | 'cancel'> => 'discard', shouldSchedulePreview: () => true, workspaceChanged() {},
   };
-  const controller = new TabController(options as unknown as ConstructorParameters<typeof TabController>[0]);
+  const controller = new TabController(Object.assign(options, { documents: new DocumentSessions(options.editor) }) as unknown as ConstructorParameters<typeof TabController>[0]);
   return { controller, workspace, session, preview, options };
 }
 const previewOpen = (controller: TabController, document: DocumentSnapshot) =>

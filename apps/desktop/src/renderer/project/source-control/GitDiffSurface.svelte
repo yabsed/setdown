@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, untrack } from 'svelte';
-  import type { AppActions } from '../../view-state.svelte';
+  import type { AppActions } from '../../ports/ui-actions';
   import { project } from '../project-state.svelte';
   import GitDiffEditor from './GitDiffEditor.svelte';
   import { gitDiffViewport } from './git-diff-viewport';

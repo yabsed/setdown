@@ -5,12 +5,13 @@
   import ReaderSurface from './reader/ReaderSurface.svelte';
   import GitDiffSurface from './project/source-control/GitDiffSurface.svelte';
   import ProjectSidebar from './project/ProjectSidebar.svelte';
-  import EditorGroups from './groups/EditorGroups.svelte';
+  import EditorGroups from './workspace/groups/EditorGroups.svelte';
   import { groupLayout } from '../core/workspace/editor-groups';
   import TitleBar from './shell/TitleBar.svelte';
   import ClosePrompt from './shell/ClosePrompt.svelte';
   import BrowserAuthDialog from './browser/BrowserAuthDialog.svelte';
-  import { view, type AppActions } from './view-state.svelte';
+  import { view } from './workspace/workspace-view.svelte';
+import type { AppActions } from './ports/ui-actions';
 
 
 

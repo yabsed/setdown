@@ -1,6 +1,6 @@
 <script lang="ts">
   import { project } from '../project/project-state.svelte';
-  import type { AppActions } from '../view-state.svelte';
+  import type { AppActions } from '../ports/ui-actions';
   import ApplicationMenu from './ApplicationMenu.svelte';
 
   let { actions }: { actions: AppActions } = $props();

@@ -8,7 +8,7 @@ import {
 import type { DocumentTab as WorkspaceTab } from '../../core/workspace/workspace-state';
 import { hasMarkdownPreview } from '../../core/document/document-capabilities';
 import type { DesktopPort } from '../ports/desktop-port';
-import { view } from '../view-state.svelte';
+import { view } from '../workspace/workspace-view.svelte';
 import {
   GOLDEN_TOP_RATIO,
   clamp,

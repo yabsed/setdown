@@ -1,4 +1,3 @@
-import { notebooks } from '../notebook/notebook-store';
 import { isNotebookDocument } from '../../core/document/document-profile';
 import { onTextZoom, textZoomOptions } from '../editor/text-zoom';
 import { APP_FONT_FAMILY } from '../../core/theme/typography';
@@ -10,15 +9,16 @@ import type { PreviewThemeId } from '../../core/preview/preview-preferences';
 import type { BandLine, ViewportAnchor } from '../../core/preview/viewport-anchor';
 import type { DocumentTab as WorkspaceTab } from '../../core/workspace/workspace-state';
 import type { ProjectSearchDocument } from '../../protocol/desktop-api';
-import type { WorkingTreeEdit } from '../view-state.svelte';
+import type { WorkingTreeEdit } from '../../core/document/text-edit';
 import { readEditorViewport } from '../editor/editor-viewport';
 import { DocumentModelOwner, liveDocumentModels } from '../editor/live-document-model';
 import { installMarkdownEditorActions } from '../editor/markdown-editor-actions';
 import { monacoThemeName, registerMonacoThemes } from '../theme';
 import { languageSupport, type LanguageRoute } from '../../core/document/language-support';
-import type { LanguageClient, LanguageOptions } from '../editor/language-client';
+import type { LanguageClient, LanguageOptions } from '../language/language-client';
 
 type Options = {
+  releaseDocuments?(): void;
   pythonCells?(path: string, source: string): Promise<void>;
   language?: Omit<LanguageOptions, 'status'>;
   host: HTMLElement; tabs: () => WorkspaceTab[]; active: () => WorkspaceTab | null;
@@ -94,7 +94,7 @@ export class MonacoEditor {
     this.unregisterModels();
     this.unregisterZoom();
     for (const id of [...this.models.keys()]) this.dispose(id);
-    notebooks.disposeAll();
+    this.options.releaseDocuments?.();
     for (const entry of this.groupEditors.values()) { entry.editor.dispose(); entry.host.remove(); }
     this.groupEditors.clear();
     this.editorValue = null;
@@ -108,14 +108,13 @@ export class MonacoEditor {
     const model = this.models.get(tab.id);
     return !!model && [...this.groupEditors.values()].some(entry => entry.editor.getModel() === model);
   }
-  text(tab: WorkspaceTab): string { if (isNotebookDocument(tab.document.path)) return notebooks.get(tab).document.serialize(); return this.models.get(tab.id)?.getValue() ?? tab.text; }
+  text(tab: WorkspaceTab): string { return this.models.get(tab.id)?.getValue() ?? tab.text; }
   modelFor(tab: WorkspaceTab): Monaco.editor.ITextModel { return this.ensureModel(tab); }
   async beforeSave(tab: WorkspaceTab, reason: 1 | 2 = 1): Promise<void> {
     const model = this.models.get(tab.id);
     if (model) await this.languageClient?.beforeSave(model, reason);
   }
   saved(tab: WorkspaceTab): void {
-    if (isNotebookDocument(tab.document.path)) { notebooks.get(tab).document.markSaved(tab.document.savedText); return; }
     const model = this.models.get(tab.id);
     if (model) this.languageClient?.saved(model, tab.document.savedText);
   }
@@ -237,7 +236,6 @@ export class MonacoEditor {
       if (this.models.has(tab.id)) this.dispose(tab.id);
       return;
     }
-    notebooks.dispose(tab.id);
     const model = this.models.get(tab.id);
     const previousPath = this.modelPaths.get(tab.id);
     if (!api || !model || previousPath === tab.document.path) return;
@@ -255,7 +253,6 @@ export class MonacoEditor {
   exportView(tabId: string): unknown { return this.views.get(tabId) ?? null; }
   importView(tabId: string, value: unknown): void { this.views.set(tabId, value as Monaco.editor.ICodeEditorViewState | null); }
   replace(tab: WorkspaceTab, document: DocumentSnapshot): void {
-    if (isNotebookDocument(document.path)) { notebooks.dispose(tab.id); tab.text = document.text; tab.revision = document.revision; return; }
     const model = this.models.get(tab.id);
     // Reload/asset rewriting is one explicit, undoable document edit, not a new
     // model. A mounted Working Tree must never retain a disposed live model.
@@ -289,7 +286,6 @@ export class MonacoEditor {
     return true; // The document-owned listener runs even when its editor is hidden.
   }
   dispose(tabId: string): void {
-    notebooks.dispose(tabId);
     const model = this.models.get(tabId);
     if (model) this.languageClient?.unbind(model);
     const path = this.modelPaths.get(tabId);
@@ -411,7 +407,7 @@ export class MonacoEditor {
       api.editor.setModelLanguage(model, language);
     if (this.languageClient) { this.languageClient.bind(tab, model); return; }
     if (tab.document.isUntitled || !support) return;
-    this.languageLoading ??= import('../editor/language-client').then(({ LanguageClient }) => {
+    this.languageLoading ??= import('../language/language-client').then(({ LanguageClient }) => {
       if (this.disposed || epoch !== this.languageEpoch) return;
       this.languageClient = new LanguageClient(api, { ...options, route: file => languageSupport(file, this.languageRoutes ?? []), status: state => {
         this.options.host.dataset.languageServer = state;
