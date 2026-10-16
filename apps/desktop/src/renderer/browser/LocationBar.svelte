@@ -116,7 +116,7 @@
   {#if web}
     <button aria-label={web.loading ? 'Stop loading' : 'Reload page'} title={web.loading ? 'Stop loading' : 'Reload page'}
       onclick={event => actions.browserCommand(tab!.id, web.loading ? 'stop' : event.shiftKey ? 'reload-no-cache' : 'reload')}>{web.loading ? '×' : '↻'}</button>
-  {:else}<span class="location-kind" aria-hidden="true">{review ? '±' : '⌂'}</span>{/if}
+  {:else if review}<span class="location-kind" aria-hidden="true">±</span>{/if}
   {#if finding}
     <input bind:this={finder} aria-label="Find in web page" placeholder="Find in page" maxlength="1000" bind:value={browser.query}
       oninput={event => { browser.query = event.currentTarget.value; if (!findComposing) actions.browserFind(tab!.id, browser.query); }}
