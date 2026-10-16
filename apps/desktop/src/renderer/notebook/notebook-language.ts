@@ -106,6 +106,54 @@ export class NotebookLanguage {
     } }));
     void this.reconnect();
   }
+  private readonly commandToken: M.CancellationToken = { isCancellationRequested: false, onCancellationRequested: () => ({ dispose() {} }) };
+  private position(id: string, offset: number): L.Position {
+    const cell = this.entry.document.cells.find(cell => cell.id === id); if (!cell) throw Error('Select a code cell first.');
+    const lines = cell.source.slice(0, offset).split(/\r\n|\r|\n/); return { line: lines.length - 1, character: lines.at(-1)!.length };
+  }
+  private transaction(edit: L.WorkspaceEdit): () => void {
+    if (edit.changeAnnotations && Object.values(edit.changeAnnotations).some(item => item.needsConfirmation)) throw Error('This action requires changes outside the notebook.');
+    const version = this.version, groups = new Map<string, L.TextEdit[]>();
+    const add = (uri: string, edits: L.TextEdit[]) => {
+      const id = Object.entries(this.connection?.cells ?? {}).find(([, value]) => value === uri)?.[0];
+      if (!id) throw Error('This action also edits another file. Open the notebook in JupyterLab to apply it there.');
+      groups.set(id, [...groups.get(id) ?? [], ...edits]);
+    };
+    if (edit.changes && edit.documentChanges) throw Error('Ambiguous workspace edit.');
+    for (const [uri, edits] of Object.entries(edit.changes ?? {})) add(uri, edits);
+    for (const change of edit.documentChanges ?? []) {
+      if (!('textDocument' in change)) throw Error('File operations cannot be applied as a notebook cell edit.');
+      const id = Object.entries(this.connection?.cells ?? {}).find(([, value]) => value === change.textDocument.uri)?.[0];
+      const cell = this.entry.document.cells.find(cell => cell.id === id);
+      if (change.textDocument.version != null && change.textDocument.version !== cell?.version) throw Error('A cell changed. Request this action again.');
+      if (change.edits.some(edit => !('newText' in edit))) throw Error('Unsupported snippet edit.');
+      add(change.textDocument.uri, change.edits as L.TextEdit[]);
+    }
+    const edits = [...groups].map(([id, changes]) => {
+      const cell = this.entry.document.cells.find(cell => cell.id === id)!;
+      const offset = (p: L.Position) => { const lines = cell.source.match(/[^\r\n]*(?:\r\n|\r|\n|$)/g) ?? []; return lines.slice(0, p.line).reduce((total, line) => total + line.length, 0) + p.character; };
+      const mapped = changes.map(edit => { if (!this.range(id, edit.range)) throw Error('Invalid cell edit range.'); return { start: offset(edit.range.start), end: offset(edit.range.end), text: edit.newText }; }).sort((a, b) => b.start - a.start);
+      let source = cell.source, boundary = source.length + 1;
+      for (const change of mapped) { if (change.start > change.end || change.end >= boundary) throw Error('Overlapping cell edits.'); source = source.slice(0, change.start) + change.text + source.slice(change.end); boundary = change.start + 1; }
+      return { id, version: cell.version, source };
+    });
+    return () => { if (this.disposed || version !== this.version) throw Error('The notebook changed. Request this action again.'); this.entry.document.editSources(edits); };
+  }
+  async rename(id: string | undefined, offset: number, newName: string): Promise<void> {
+    if (!id || !this.connection?.capabilities.renameProvider) throw Error('Rename is not available in this notebook.');
+    if (!/^[\p{ID_Start}_][\p{ID_Continue}]*$/u.test(newName)) throw Error('Enter a valid Python identifier.');
+    const edit = await this.request<L.WorkspaceEdit>(id, 'textDocument/rename', { position: this.position(id, offset), newName }, this.commandToken);
+    if (!edit) throw Error('No rename edits were returned, or the notebook changed.'); this.transaction(edit)();
+  }
+  async actions(id: string | undefined, offset: number): Promise<{ title: string; apply(): void }[]> {
+    if (!id || !this.connection?.capabilities.codeActionProvider) return [];
+    const position = this.position(id, offset);
+    const actions = await this.request<(L.CodeAction | L.Command)[]>(id, 'textDocument/codeAction', { range: { start: position, end: position }, context: { diagnostics: this.diagnostics.get(id) ?? [] } }, this.commandToken);
+    return (actions ?? []).flatMap(action => {
+      if (!('edit' in action) || !action.edit || action.command || action.disabled) return [];
+      try { return [{ title: action.title, apply: this.transaction(action.edit) }]; } catch { return []; }
+    });
+  }
   private cells() { return this.entry.document.cells.filter(cell => cell.kind === 'code').map(cell => ({ id: cell.id, version: cell.version, text: cell.source })); }
   private range(id: string, range: L.Range): { id: string; range: L.Range } | null {
     const cell = this.entry.document.cells.find(cell => cell.id === id && cell.kind === 'code'); if (!cell) return null;

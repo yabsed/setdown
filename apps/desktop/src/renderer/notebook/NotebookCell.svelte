@@ -10,12 +10,14 @@
   import { onTextZoom, textZoomOptions } from '../editor/text-zoom';
   import type { CellExecutionState } from './notebook-execution';
   import { notebookHtml } from './notebook-content';
+  import type { TraceTarget } from '../../core/notebook/notebook-tools';
   import NotebookOutputs from './NotebookOutputs.svelte';
-  let { entry, cell, revision, api, active, path, desktop, theme, onfocus, onmodel, reveal, run, executionState, duration, selected, collapsedInput, collapsedOutput, onselect, onrunNext, ondragstart, ondragend }: {
+  let { entry, cell, revision, api, active, path, desktop, theme, onfocus, onmodel, reveal, run, executionState, duration, selected, collapsedInput, collapsedOutput, onselect, onrunNext, ondragstart, ondragend, lineNumbers, ontrace }: {
     entry: NotebookEntry; cell: NotebookCell; revision: number; api: typeof M | null; active: boolean; path: string;
     desktop: DesktopPort; theme: PreviewThemeId; onfocus(): void; onmodel(): void;
     run(): unknown; executionState?: CellExecutionState; duration?: number; selected: boolean; collapsedInput: boolean; collapsedOutput: boolean;
     onselect(event?: MouseEvent): void; onrunNext(insert: boolean): void;
+    lineNumbers: boolean; ontrace(target: TraceTarget): Promise<void>;
     ondragstart(event: DragEvent): void; ondragend(): void;
     reveal?: { id: string; range: M.IRange; sequence: number; edit?: boolean };
   } = $props();
@@ -55,7 +57,7 @@
         // from retaining an input target after an offscreen cell is retired.
         editContext: false,
         fontFamily: APP_FONT_FAMILY, ...textZoomOptions(entry.id), minimap: { enabled: false },
-        scrollBeyondLastLine: false, wordWrap: 'on', lineNumbers: syntax === 'code' ? 'on' : 'off',
+        scrollBeyondLastLine: false, wordWrap: 'on', lineNumbers: syntax === 'code' && lineNumbers ? 'on' : 'off',
         folding: false, stickyScroll: { enabled: false }, glyphMargin: false, lineDecorationsWidth: 8,
         lineNumbersMinChars: 3, padding: { top: 10, bottom: 10 }, fixedOverflowWidgets: true,
         ariaLabel: `${syntax === 'code' ? 'Code' : syntax === 'markdown' ? 'Markdown' : 'Raw'} cell editor`,
@@ -95,6 +97,7 @@
       const saved = entry.views.get(cell.id); if (saved) view.restoreViewState(saved);
       syncScroll();
       const cursor = view.onDidChangeCursorPosition(event => {
+        entry.controller.cursors.set(cell.id, model.getOffsetAt(event.position));
         if (!view.hasTextFocus() || composing || event.source === 'mouse') return;
         const scroll = container.closest('.notebook-scroll'); if (!(scroll instanceof HTMLElement)) return;
         const viewport = scroll.getBoundingClientRect(), bounds = frame.getBoundingClientRect();
@@ -107,6 +110,7 @@
       return () => { entry.views.set(cell.id, view.saveViewState()); scroll.removeEventListener('scroll', syncScroll); viewportSize.disconnect(); cursor.dispose(); startComposition.dispose(); endComposition.dispose(); zoom(); size.dispose(); focus.dispose(); blur.dispose(); view.dispose(); if (editor === view) editor = undefined; };
     });
   });
+  $effect(() => { editor?.updateOptions({ lineNumbers: kind === 'code' && lineNumbers ? 'on' : 'off' }); });
   $effect(() => {
     if (!active || !nearby || sourceMode || kind !== 'markdown') return;
     const text = source, version = cell.version; let canceled = false;
@@ -193,7 +197,7 @@
       {#if source !== executedSource}<span>From an earlier version of this cell</span>{/if}
     </div>
     {#if !collapsedOutput}
-      {#if nearby || focused || selectionHeld}<div use:measureOutput><NotebookOutputs {outputs} {path} {desktop} /></div>
+      {#if nearby || focused || selectionHeld}<div use:measureOutput><NotebookOutputs {outputs} {path} {desktop} {ontrace} /></div>
       {:else}<div class="output-placeholder" style:height={`${outputHeight}px`} aria-hidden="true"></div>{/if}
     {/if}
   {/if}

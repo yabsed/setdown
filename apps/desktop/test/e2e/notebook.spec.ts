@@ -286,3 +286,87 @@ test('scrolling preserves focused editors and measured output height; cell copy 
     await page.keyboard.press('Escape'); await page.keyboard.press('Control+s');
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
 });
+
+test('notebook convenience commands preserve data through replace, split, clear and image export', async () => {
+  test.setTimeout(90_000);
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-tools-ui-')), file = path.join(root, 'convenience.ipynb');
+  const value = notebook();
+  value.cells[1].outputs = [{ output_type: 'display_data', metadata: {}, data: { 'image/png': png, 'text/plain': 'image-search-target' } }] as any;
+  await writeFile(file, JSON.stringify(value));
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+  const application = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await application.firstWindow(); await focusApplication(application);
+    const errors: string[] = []; page.on('pageerror', error => errors.push(String(error)));
+    await expect(page.locator('.notebook-cell')).toHaveCount(3);
+    const command = async (label: string) => { await page.getByRole('button', { name: 'Commands…', exact: true }).click(); await page.getByRole('region', { name: 'Notebook commands' }).getByRole('button', { name: label, exact: true }).click(); };
+    await page.getByRole('button', { name: 'Outline', exact: true }).click();
+    await expect(page.getByRole('navigation', { name: 'Notebook outline' })).toContainText('Notebook');
+    await page.getByRole('button', { name: 'Toggle notebook section' }).click(); await expect(page.locator('[data-cell-id="define"]')).toBeHidden();
+    await page.getByRole('button', { name: 'Toggle notebook section' }).click(); await expect(page.locator('[data-cell-id="define"]')).toBeVisible();
+    await page.getByRole('button', { name: 'View full size' }).click(); await expect(page.getByRole('dialog', { name: 'Notebook image viewer' })).toBeVisible();
+    await page.getByRole('button', { name: 'Close image', exact: true }).click();
+    const imageFile = path.join(root, 'image.png');
+    await application.evaluate(({ dialog }, file) => { dialog.showSaveDialog = async () => ({ canceled: false, filePath: file }); }, imageFile);
+    await page.getByRole('button', { name: 'Save image…', exact: true }).click();
+    await expect.poll(async () => readFile(imageFile).then(data => data.toString('base64'), () => '')).toBe(png);
+    await page.locator('[data-cell-id="use"]').getByRole('button', { name: 'Select cell', exact: true }).click(); await page.keyboard.press('Control+f');
+    await page.getByRole('textbox', { name: 'Find in notebook', exact: true }).fill('numbers');
+    await page.getByRole('textbox', { name: 'Replace in notebook', exact: true }).fill('values');
+    await page.getByRole('button', { name: 'Replace all', exact: true }).click();
+    await expect(page.locator('.notebook-notice')).toContainText('Replaced source matches'); await page.keyboard.press('Control+s');
+    await expect.poll(async () => JSON.parse(await readFile(file, 'utf8')).cells[2].source).toBe('values.append(4)');
+    await page.getByRole('button', { name: 'Undo cell operation', exact: true }).click(); await page.keyboard.press('Control+s');
+    await expect.poll(async () => JSON.parse(await readFile(file, 'utf8')).cells[2].source).toBe('numbers.append(4)');
+    await page.getByRole('combobox', { name: 'Notebook search scope' }).selectOption('outputs');
+    await page.getByRole('textbox', { name: 'Find in notebook', exact: true }).fill('image-search-target');
+    await page.getByRole('button', { name: 'Next notebook match' }).click(); await expect(page.locator('.search-snippet')).toContainText('image-search-target');
+    await page.getByRole('button', { name: 'Close notebook search' }).click();
+    const editor = page.locator('[data-cell-id="define"]').getByRole('textbox', { name: /Code cell editor/ });
+    await editor.press('Control+Home'); await editor.press('ArrowRight');
+    await command('Split cell at cursor'); await expect(page.locator('.notebook-cell')).toHaveCount(4);
+    await page.getByRole('button', { name: 'Undo cell operation', exact: true }).click(); await expect(page.locator('.notebook-cell')).toHaveCount(3);
+    await editor.press('Control+Home'); await editor.press('ArrowRight'); await editor.press('F2');
+    await page.getByRole('textbox', { name: 'New symbol name' }).fill('renamed_numbers');
+    await page.getByRole('button', { name: 'Rename across cells', exact: true }).click();
+    await expect(page.getByRole('textbox', { name: 'New symbol name' })).toBeHidden(); await page.keyboard.press('Control+s');
+    await expect.poll(async () => JSON.parse(await readFile(file, 'utf8')).cells[2].source).toBe('renamed_numbers.append(4)');
+    await page.getByRole('button', { name: 'Undo cell operation', exact: true }).click();
+    await command('Clear all outputs'); await expect(page.locator('.notebook-outputs')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Undo cell operation', exact: true }).click(); await expect(page.locator('.notebook-outputs img')).toBeVisible();
+    await page.keyboard.press('Control+s');
+    expect(JSON.parse(await readFile(file, 'utf8')).cells[1].outputs).toEqual(value.cells[1].outputs);
+    expect(errors).toEqual([]); await page.screenshot({ path: test.info().outputPath('notebook-convenience.png') });
+  } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
+});
+
+test('notebook stdin, variables and restart-all use the live kernel with scoped state', async () => {
+  test.setTimeout(90_000);
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-variables-')), file = path.join(root, 'variables.ipynb');
+  await writeFile(file, JSON.stringify({ nbformat: 4, nbformat_minor: 5, metadata: { language_info: { name: 'python' } }, cells: [
+    { id: 'input', cell_type: 'code', metadata: {}, source: 'answer = input("Name: ")\nitems = list(range(250))\nprint(answer)', execution_count: null, outputs: [] },
+    { id: 'use', cell_type: 'code', metadata: {}, source: 'print(len(items))', execution_count: null, outputs: [] },
+  ] }));
+  const python = process.env.SETDOWN_TEST_NOTEBOOK_PYTHON ?? execFileSync('python3', ['-c', 'import sys; print(sys.executable)'], { encoding: 'utf8' }).trim();
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+  const application = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await application.firstWindow(); await focusApplication(application);
+    await application.evaluate(({ dialog }, python) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [python] }); }, python);
+    await page.getByRole('combobox', { name: 'Python environment', exact: true }).selectOption('__choose__');
+    await page.getByRole('button', { name: 'Run all cells', exact: true }).click();
+    await page.getByRole('textbox', { name: 'Kernel input' }).fill('한글'); await page.getByRole('button', { name: 'Send input' }).click();
+    await expect(page.locator('.kernel-state')).toHaveText('idle');
+    await expect(page.locator('[data-cell-id="use"] .notebook-outputs')).toContainText('250');
+    await page.getByRole('button', { name: 'Variables', exact: true }).click();
+    const variables = page.getByRole('region', { name: 'Notebook variables' });
+    await variables.getByRole('button', { name: 'items', exact: true }).click(); await expect(variables).toContainText('1–100 of 250');
+    await variables.getByRole('button', { name: 'Next 100' }).click(); await expect(variables).toContainText('101–200 of 250');
+    await variables.getByRole('button', { name: 'All variables' }).click(); await expect(variables.getByRole('button', { name: 'answer', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Commands…', exact: true }).click(); await page.getByRole('button', { name: 'Restart kernel and run all', exact: true }).click();
+    await expect(variables).toContainText('Variables are available when the local kernel is idle.');
+    await page.getByRole('textbox', { name: 'Kernel input' }).fill('restart'); await page.getByRole('button', { name: 'Send input' }).click();
+    await expect(page.locator('.kernel-state')).toHaveText('idle'); await expect(variables.getByRole('button', { name: 'items', exact: true })).toBeVisible();
+    await expect(page.locator('[data-cell-id="use"] .execution')).toHaveText('[2]'); await page.keyboard.press('Control+s');
+  } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
+});

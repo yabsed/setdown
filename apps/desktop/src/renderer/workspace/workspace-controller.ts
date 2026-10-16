@@ -218,6 +218,10 @@ export function startWorkspace(desktop: DesktopPort) {
   const preview = new PreviewSession({ desktop, get tabs() { return workspace.documents; }, active,
     activeId: () => workspace.activeId, text: () => tabs.currentText(), lineCount: () => tabs.lineCount(), reader });
   const editor: MonacoEditor = new MonacoEditor({ host: editorHost, tabs: () => workspace.documents, active,
+    pythonCells: async (path, source) => {
+      try { const file = await desktop.notebook.pythonCells(path, source); if (file) await projects.openFile(file, { pinned: true }); }
+      catch (error) { window.alert(String(error)); }
+    },
     language: { port: desktop.language,
       prepare: async path => { const tab = await tabs.prepareLanguageDocument(path); return { tab, model: editor.modelFor(tab) }; },
       open: actions.openLanguageLocation },

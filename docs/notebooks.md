@@ -11,7 +11,7 @@ Python notebook. Editing does not require Jupyter or an installed Python kernel.
   to reorder the selected cells; the insertion line shows the destination. Cell controls move, duplicate,
   delete, or change the cell type. Clear Output removes that cell's saved outputs.
 - `Ctrl/Cmd+S`, Save As, Auto Save, unsaved-tab indicators and close confirmation
-  use the existing document workflow. `Ctrl/Cmd+F` searches cell sources. The first Enter selects the first match; finding Markdown keeps its reader open and leaves focus in the search field.
+  use the existing document workflow. `Ctrl/Cmd+F` searches sources, complete stored text outputs, or rendered Markdown text; case-sensitive and regular-expression modes are available. Replace All changes sources in one cell operation. The first Enter selects the first match; finding Markdown keeps its reader open and leaves focus in the search field.
 - Text Undo belongs to the focused cell editor. The notebook toolbar's Undo/Redo
   buttons handle cell operations. Deleting and restoring a cell keeps its text
   history while the notebook remains open. Window transfer preserves the current
@@ -52,7 +52,7 @@ python -m pip install ipykernel jupyter_client
 ```
 
 The **Python environment** selector lists the launch/shell PATH Python, project
-`.venv`/`venv` environments, and the current virtual/Conda environment. Choose an
+`.venv`/`venv` environments, current virtual/Conda environments, Conda’s registered environment list, and Python executables from installed Jupyter kernelspecs. Choose an
 entry or **Choose executable…**. Setdown starts from PATH; project executables are
 listed without being run or automatically selected. An explicit choice is saved
 per notebook path and shared by execution and notebook language analysis. Switching
@@ -68,9 +68,7 @@ automatically. As with a terminal, explicitly running Python permits the code to
 access your files and environment.
 
 Streams, expressions, exceptions, rich displays, `display_id` updates and
-`clear_output(wait=True)` update the notebook's persisted outputs. Widgets,
-interactive JavaScript, remote kernels, debugger and stdin prompts (`input()`)
-are not yet supported. IPython magic/shell cells execute through IPython. Notebook-aware analysis retains
+`clear_output(wait=True)` update the notebook's persisted outputs. `input()` and `getpass()` display an input form; password values are masked and are not written into notebook outputs by Setdown. Interrupt or reset dismisses pending input. Widgets, interactive plots, remote execution and debugging are available through the JupyterLab integration described below. IPython magic/shell cells execute through IPython. Notebook-aware analysis retains
 Python imports and statements in these cells; it does not blank the entire cell.
 
 ## Preservation and limits
@@ -108,8 +106,7 @@ type-checking mode selector. basedpyright disables even those core warnings in i
 through server settings. Runtime execution order does not rewrite static
 document-order analysis. Non-Python
 notebooks can be edited and retain their metadata; notebook LSP mapping currently
-targets Python. Cross-cell rename, code actions, formatting and completion edits
-that cross cell boundaries are withheld until they can be applied transactionally.
+targets Python. F2 or Commands → Rename changes cell-local LSP edits across the notebook atomically. Safe LSP code actions with explicit workspace edits use the same transaction. Stale responses, external file edits, resource operations and arbitrary server commands are rejected. Ruff provides whole-notebook formatting and safe fixes; only its source changes are applied, preserving original metadata and outputs. Completion edits still remain within their originating cell.
 Mermaid and other active Markdown runtimes are not part of the fragment renderer.
 
 Execution accepts up to 1 MiB of source per cell. The renderer submits one cell at a
@@ -118,7 +115,7 @@ time from its queue; the main-process batch transport also retains its 4 MiB lim
 new execution results exceed it.
 
 Git shows `.ipynb` as a read-only JSON diff. Change cells in the notebook tab, which
-remains the single editable owner. Notebook cell/diff merge tooling is not included.
+remains the single editable owner. Commands → Compare notebook with Git HEAD opens a read-only cell-aware nbdime comparison of HEAD and the current unsaved snapshot. It separates source, outputs and metadata. Merge conflict resolution remains in Git/Jupyter tooling.
 
 ## Implementation boundaries
 
@@ -164,3 +161,97 @@ and [messaging semantics](https://jupyter-client.readthedocs.io/en/stable/messag
 
 The implementation and regression scenarios are covered by the
 [preview performance contract](preview-performance-contract.md).
+
+For the original audit and implementation status, see the [feature audit](../reports/2026_10_16_notebook_remaining_convenience_features.md).
+
+## Notebook commands
+
+Use **Commands…**, Ctrl/Cmd+Shift+P inside a notebook, or right-click its cell header.
+The same command handler backs toolbar, context and keyboard actions.
+
+- Run cells above excludes the active cell; Run from current cell to end includes it.
+  Restart kernel and run all waits for the old bridge to exit before starting a new one.
+- Clear all outputs is one Undo operation. Collapse/expand all inputs or outputs,
+  section folding and line-number choices affect presentation only.
+- Split cell at cursor (Ctrl/Cmd+Shift+-) gives the second cell a fresh ID. Split
+  and Join selected adjacent cells clear stale code results, with original data
+  available through Undo. Join requires identical metadata, attachments and unknown
+  fields; conflicting attachments or metadata produce an error without changes.
+- Outline parses all Markdown cells, including those offscreen. Fenced code is not
+  treated as a heading. Title links retain reading mode; section toggles hide cells
+  until the next same/higher-level heading, and the current title sticks above the
+  scroller. A section boundary is a cell; headings within one cell remain together.
+- In cell selection mode: A/B insert above/below, M/Y select Markdown/code, DD deletes,
+  L toggles that cell’s numbers, Shift+L toggles all numbers, Alt+Up/Down moves selected
+  cells. These keys do not change cells during ordinary typing or IME composition.
+- Images have **View full size** (zoom and scroll) and **Save image…**. Saving writes
+  original PNG/JPEG/GIF/WebP bytes without changing the notebook. It does not recreate
+  a vector original from a raster output. Traceback buttons navigate to execution
+  counts or file/line locations and identify changed cell source.
+- **Variables** inspects the current idle local kernel on demand. Lists and dictionaries,
+  NumPy arrays (flat indices) and DataFrames have paged previews of 100 rows and up to
+  100 columns. Busy/reset kernels clear the panel; returning idle refreshes it. Custom
+  objects show their type instead of recursively inspecting arbitrary attributes.
+- Search uses a worker, debounces edits and terminates expressions exceeding two
+  seconds. It finds text in offscreen/truncated outputs and shows a match excerpt.
+  Replace All rechecks every cell revision before changing any source. Regex replacement
+  supports JavaScript capture substitutions; literal replacement keeps `$` unchanged.
+
+## External notebook tools
+
+Choose **Install notebook tools** once. Setdown creates a separate virtual environment
+under its application data directory and installs JupyterLab, nbconvert with WebPDF,
+nbdime, Jupytext, Ruff, ipywidgets, Plotly and anywidget. It does not install these into
+the selected project Python. This explicit command requires network access; normal
+opening/editing/running of notebooks does not download packages. The UI reports
+installation/export failures and provides **Cancel tool**. **Stop external notebook
+sessions** stops local tool servers owned by this window. Closing the window or app
+also stops them. Jupyter configuration, trust state and runtime files have their own
+Setdown application-data directories.
+
+HTML, Markdown, script and PDF export run **nbconvert** on the current snapshot without
+executing cells or overwriting the notebook. Save dialogs choose a separate destination.
+Markdown image assets are copied to a companion folder; an existing asset folder is
+never silently overwritten. WebPDF uses nbconvert’s Chromium exporter and may download
+its supported Chromium on first use. Exports containing user-authored HTML are ordinary
+exported documents, separate from Setdown’s sanitized native output view.
+
+**Open JupyterLab: widgets, plots and debugger** opens a token-authenticated loopback
+JupyterLab server in an ordinary Setdown web tab. Save first: this session edits the
+saved notebook file, and existing external-change/conflict handling applies when
+returning to the native notebook. Its kernel state is separate from the native kernel.
+The selected Python is registered as a `Setdown · /path/to/python` kernel choice in Lab;
+choose that kernel to use the project’s installed packages. Other registered kernels
+remain selectable. JupyterLab supplies widget comms, interactive MIME renderers and
+its debugger with breakpoints, stepping and inspection; debugging requires a compatible
+kernel such as ipykernel. The native cell output renderer remains static.
+
+**Connect to remote JupyterLab** opens the supplied HTTP(S) Lab URL in a web tab.
+Authentication, sessions, uploads and kernel selection belong to that server’s UI;
+local files/variables are not silently copied to it. Python and non-Python kernels use
+JupyterLab’s own language support. A classic Notebook-only server needs a Lab endpoint
+to provide the integrated debugger and Lab interface.
+
+In a `.py` editor, use the context menu or Monaco command palette action **Open Python
+# %% cells as interactive notebook…**. Jupytext converts the current unsaved text,
+including `# %% [markdown]`, into a separately saved `.ipynb` and opens it in Setdown.
+This is an explicit snapshot: execution and outputs belong to the new notebook;
+editing it does not rewrite or automatically synchronize the source `.py` file.
+
+External integrations deliberately reuse maintained tools. They do not run VS Code
+extensions inside Setdown or turn the native notebook pane into JupyterLab.
+
+## Verify the integrations
+
+`npm run test:preview-contract` covers notebook transactions, analysis, input/variables,
+images and search in the full isolated Electron regression suite. The standalone
+kernel suite is `python3 apps/desktop/test/notebook/kernel-bridge.test.py` with
+ipykernel, pandas and NumPy installed in the test Python.
+
+For external tools, provision a separate venv with the package ranges listed in
+`src/main/notebook/notebook-tools.ts`. Set `SETDOWN_NOTEBOOK_TOOLS_PYTHON` to its absolute
+Python executable and run `npm run test:notebook-tools --workspace @setdown/desktop`.
+The test uses temporary files/configuration and exercises real HTML/Markdown/script/PDF
+exports, Ruff, nbdime, Jupytext, JupyterLab widgets, Plotly, debugger activation and server
+shutdown. Chromium for WebPDF must be available or downloadable. These checks do not
+exercise a third-party remote server or a separately installed non-Python kernel.

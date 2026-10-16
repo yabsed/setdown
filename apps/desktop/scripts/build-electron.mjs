@@ -21,6 +21,7 @@ await Promise.all([
 ]);
 
 await copyFile('src/main/notebook/kernel-bridge.py', 'dist-electron/kernel-bridge.py');
+await copyFile('src/main/notebook/notebook-inspect.py', 'dist-electron/notebook-inspect.py');
 
 await import('./build-browser.mjs');
 

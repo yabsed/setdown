@@ -46,7 +46,7 @@ function documentMenus(items: ApplicationMenuEntry[], markdown: boolean, review:
   }));
 }
 export function installIpc(options: Options): void {
-  installNotebookIpc(options.channels);
+  installNotebookIpc(options.channels, options.browsers);
   const { channels, documents, previews, projects, renderer, themes, transfers, autoSave } = options;
   channels.handle('browser:reader-export', (state, id: string, format: unknown) => {
     if (format !== 'markdown' && format !== 'pdf') throw Error('Unsupported reader export format.');

@@ -93,7 +93,7 @@ export function outputText(outputs: unknown[]): string {
     if (item.output_type === 'error') return terminalText(Array.isArray(item.traceback) ? item.traceback.join('\n') : `${item.ename}: ${item.evalue}`);
     if (data?.['text/plain']) return notebookText(data['text/plain']);
     if (data?.['text/markdown']) return notebookText(data['text/markdown']);
-    if (data?.['text/html']) return new DOMParser().parseFromString(notebookHtml(notebookText(data['text/html'])), 'text/html').body.textContent ?? '';
+    if (data?.['text/html']) return new DOMParser().parseFromString(DOMPurify.sanitize(notebookText(data['text/html']), { ALLOWED_TAGS: [], ALLOWED_ATTR: [], KEEP_CONTENT: true }), 'text/html').body.textContent ?? '';
     if (data && Object.hasOwn(data, 'application/json')) return JSON.stringify(data['application/json'], null, 2);
     return '';
   }).join('\n');

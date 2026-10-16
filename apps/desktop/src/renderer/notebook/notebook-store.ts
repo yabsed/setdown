@@ -17,7 +17,20 @@ export class NotebookEntry {
     this.document = new NotebookDocument(text);
     this.controller = new NotebookController(this.document);
     this.document.markSaved(savedText);
-    this.release = this.document.subscribe(event => { if (event === 'structure') this.controller.reconcile(); this.changed?.(event); });
+    this.release = this.document.subscribe(event => {
+      if (event === 'structure') {
+        for (const cell of this.document.cells) {
+          const model = this.models.get(cell.id);
+          if (model && model.getValue() !== cell.source) {
+            model.pushStackElement();
+            model.pushEditOperations(null, [{ range: model.getFullModelRange(), text: cell.source }], () => null);
+            model.pushStackElement();
+          }
+        }
+        this.controller.reconcile();
+      }
+      this.changed?.(event);
+    });
   }
   model(api: typeof Monaco, cell: NotebookCell): Monaco.editor.ITextModel {
     const language = cell.kind === 'markdown' ? 'markdown' : cell.kind === 'raw' ? 'plaintext' : this.document.language;

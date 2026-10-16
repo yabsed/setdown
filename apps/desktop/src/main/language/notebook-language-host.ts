@@ -10,7 +10,7 @@ import { notebookPython } from '../notebook/python-environments';
 
 const methods = new Set<LanguageMethod>(['textDocument/completion', 'textDocument/hover', 'textDocument/signatureHelp',
   'textDocument/definition', 'textDocument/references', 'textDocument/documentHighlight', 'textDocument/documentSymbol',
-  'textDocument/semanticTokens/full', 'textDocument/inlayHint']);
+  'textDocument/semanticTokens/full', 'textDocument/inlayHint', 'textDocument/rename', 'textDocument/prepareRename', 'textDocument/codeAction']);
 type Cell = LanguageCell & { uri: string };
 type Session = { state: WindowState; document: LanguageDocument; cells: Cell[]; server: ServerSession;
   phase: 'starting' | 'ready' | 'failed'; message?: string; uri: string; epoch: number; requests: Map<string, CancellationTokenSource>; ready: boolean };
@@ -139,6 +139,7 @@ export class NotebookLanguageHost {
     if (!session?.ready || version !== session.document.version || !methods.has(method) || typeof requestId !== 'string' || requestId.length > 128
       || session.requests.size >= 64 || session.requests.has(requestId) || !value || typeof value !== 'object' || JSON.stringify(value).length > 4 * 1024 * 1024) throw Error('Invalid notebook language request.');
     const { cell: cellId, ...params } = value as Record<string, unknown>;
+    if (method === 'textDocument/rename' && (typeof params.newName !== 'string' || !/^[\p{ID_Start}_][\p{ID_Continue}]*$/u.test(params.newName) || !params.position)) throw Error('Invalid notebook rename request.');
     const cell = session.cells.find(cell => cell.id === cellId); if (!cell) throw Error('Notebook cell is closed.');
     const token = new CancellationTokenSource(); session.requests.set(requestId, token);
     try {

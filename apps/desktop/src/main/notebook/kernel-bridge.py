@@ -10,6 +10,7 @@ import signal
 import sys
 import tempfile
 import threading
+import uuid
 
 
 def emit(event):
@@ -63,6 +64,7 @@ async def main():
         client = None
         running = None
         cancelled = False
+        inputs = {}
         async def execute(cells):
             nonlocal cancelled
             try:
@@ -73,6 +75,17 @@ async def main():
                     if cell.get("runId"):
                         identity["runId"] = cell["runId"]
                     emit({"type": "cell-start", **identity})
+                    async def stdin(message):
+                        request = str(uuid.uuid4())
+                        answer = loop.create_future()
+                        inputs[request] = answer
+                        emit({"type": "input", **identity, "request": request,
+                              "prompt": str(message['content'].get('prompt', ''))[:2000],
+                              "password": bool(message['content'].get('password'))})
+                        try:
+                            client.input(await answer)
+                        finally:
+                            inputs.pop(request, None)
                     size = 0
                     limited = False
                     def output(message):
@@ -90,8 +103,8 @@ async def main():
                             limited = True
                             emit({"type": "output", **identity, "kind": "stream", "content": {
                                 "name": "stderr", "text": "\n[Setdown: live output exceeded 8 MiB; further output was omitted.]\n"}})
-                    reply = await client.execute_interactive(cell["source"], allow_stdin=False,
-                                                            stop_on_error=True, output_hook=output)
+                    reply = await client.execute_interactive(cell["source"], allow_stdin=True,
+                                                            stop_on_error=True, output_hook=output, stdin_hook=stdin)
                     ok = reply["content"].get("status") == "ok"
                     emit({"type": "cell-done", **identity, "ok": ok,
                           "count": reply["content"].get("execution_count")})
@@ -140,7 +153,30 @@ async def main():
                     break
                 if action == "interrupt":
                     cancelled = True
+                    for answer in list(inputs.values()):
+                        if not answer.done(): answer.set_result('')
                     await km.interrupt_kernel()
+                elif action == "input":
+                    answer = inputs.get(command.get('request'))
+                    if answer and not answer.done(): answer.set_result(str(command.get('value', ''))[:65536])
+                elif action == "inspect":
+                    request = command.get('request')
+                    if running and not running.done():
+                        emit({'type': 'inspect', 'request': request, 'error': 'Wait for the current cell to finish.'})
+                        continue
+                    try:
+                        with open(os.path.join(os.path.dirname(__file__), 'notebook-inspect.py')) as source:
+                            code = source.read()
+                        params = json.dumps({'name': command.get('name'), 'offset': command.get('offset', 0)})
+                        chunks = []
+                        def capture(message):
+                            if message['header']['msg_type'] == 'stream': chunks.append(message['content'].get('text', ''))
+                        reply = await client.execute_interactive(code + '\nprint(__import__("json").dumps(_setdown_inspect(**' + "__import__('json').loads(" + repr(params) + ")" + '), allow_nan=False))',
+                            silent=True, store_history=False, allow_stdin=False, output_hook=capture, timeout=15)
+                        if reply['content'].get('status') != 'ok': raise RuntimeError(reply['content'].get('evalue', 'Could not inspect variable'))
+                        emit({'type': 'inspect', 'request': request, 'result': json.loads(''.join(chunks))})
+                    except Exception as error:
+                        emit({'type': 'inspect', 'request': request, 'error': str(error)})
                 elif action == "execute" and (running is None or running.done()):
                     cancelled = False
                     emit({"type": "state", "state": "busy"})

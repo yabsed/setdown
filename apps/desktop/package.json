@@ -32,7 +32,8 @@
     "package:linux": "npm run build && electron-builder --linux AppImage deb rpm",
     "install:linux": "bash scripts/install-linux.sh",
     "update:language-profiles": "python3 scripts/update-language-profiles.py",
-    "check:language-profiles": "python3 scripts/update-language-profiles.py --check"
+    "check:language-profiles": "python3 scripts/update-language-profiles.py --check",
+    "test:notebook-tools": "npm run build && bash scripts/with-isolated-display.sh playwright test --config playwright.notebook-tools.config.ts"
   },
   "dependencies": {
     "@parcel/watcher": "^2.6.0",
@@ -63,7 +64,8 @@
     "turndown": "^7.2.4",
     "turndown-plugin-gfm": "^1.0.2",
     "vscode-jsonrpc": "9.0.1",
-    "vscode-languageserver-protocol": "3.18.3"
+    "vscode-languageserver-protocol": "3.18.3",
+    "markdown-it": "14.3.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
@@ -97,7 +99,8 @@
       "node_modules/node-pty/**/*",
       "node_modules/pyright/**/*",
       "node_modules/basedpyright/**/*",
-      "dist-electron/ublock/**/*"
+      "dist-electron/ublock/**/*",
+      "dist-electron/notebook-inspect.py"
     ],
     "directories": {
       "output": "release"

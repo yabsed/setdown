@@ -7,7 +7,7 @@ function fixture() {
   const document = new NotebookDocument(emptyNotebook()), a = document.add('code'), markdown = document.add('markdown'), b = document.add('code');
   document.setSource(a, 'numbers = [1, 2, 3]'); document.setSource(b, 'print(sum(numbers))');
   let listener: (event: NotebookKernelEvent) => void = () => {};
-  const port: NotebookApi = { copyOutput: vi.fn(async () => {}), environments: vi.fn(async () => ({ candidates: [], selected: "/usr/bin/python3" })), selectPython: vi.fn(async () => {}), run: vi.fn(async () => {}), interrupt: vi.fn(async () => {}), shutdown: vi.fn(),
+  const port: NotebookApi = { resolveTraceFile: vi.fn(async (_path, target) => target), cancelTools: vi.fn(async () => {}), pythonCells: vi.fn(async () => null), saveImage: vi.fn(async () => null), tool: vi.fn(async () => ({})), input: vi.fn(async () => {}), inspect: vi.fn(async () => {}), copyOutput: vi.fn(async () => {}), environments: vi.fn(async () => ({ candidates: [], selected: "/usr/bin/python3" })), selectPython: vi.fn(async () => {}), run: vi.fn(async () => {}), interrupt: vi.fn(async () => {}), shutdown: vi.fn(async () => {}),
     choosePython: vi.fn(async () => '/opt/venv/bin/python'), onEvent: callback => { listener = callback; return () => { listener = () => {}; }; } };
   const execution = new NotebookExecution(port, document, 'notebook', '/workspace/example.ipynb');
   const request = () => vi.mocked(port.run).mock.calls.at(-1)![0];

@@ -1,5 +1,7 @@
 import { app } from 'electron';
 import path from 'node:path';
+import os from 'node:os';
+import { promises as fs } from 'node:fs';
 import { readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
 import { executableFile, ServerDiscovery } from '../language/server-discovery';
 import type { NotebookEnvironments } from '../../protocol/notebook';
@@ -38,6 +40,29 @@ export class PythonEnvironments {
       const root = found.environment.env[key]; if (root) await add(key === 'CONDA_PREFIX' && process.platform === 'win32' ? path.join(root, 'python.exe') : executable(root), key === 'VIRTUAL_ENV' ? 'Virtual environment' : 'Conda');
     }
     for (const candidate of found.candidates) await add(candidate.path, 'PATH', `Python · ${path.basename(path.dirname(candidate.path))}`);
+    // Enumerate installed environments from local metadata; never run conda or a kernelspec command.
+    try {
+      const roots = (await fs.readFile(path.join(os.homedir(), '.conda', 'environments.txt'), 'utf8')).split(/\r?\n/).filter(root => path.isAbsolute(root)).slice(0, 100);
+      for (const root of roots) await add(process.platform === 'win32' ? path.join(root, 'python.exe') : executable(root), 'Conda', path.basename(root));
+    } catch { /* Conda is optional. */ }
+    const kernelRoots = new Set([path.join(os.homedir(), '.local/share/jupyter/kernels'), path.join(os.homedir(), 'Library/Jupyter/kernels'),
+      '/usr/share/jupyter/kernels', '/usr/local/share/jupyter/kernels',
+      ...candidates.map(item => path.join(path.dirname(path.dirname(item.path)), 'share/jupyter/kernels'))]);
+    if (process.env.APPDATA) kernelRoots.add(path.join(process.env.APPDATA, 'jupyter/kernels'));
+    for (const root of (found.environment.env.JUPYTER_PATH ?? '').split(path.delimiter).filter(Boolean)) kernelRoots.add(path.join(root, 'kernels'));
+    for (const root of kernelRoots) {
+      try {
+        for (const name of (await fs.readdir(root)).slice(0, 100)) {
+          try {
+            const specFile = path.join(root, name, 'kernel.json'); if ((await fs.stat(specFile)).size > 64 * 1024) continue;
+            const spec = JSON.parse(await fs.readFile(specFile, 'utf8'));
+            // Only discover the executable. Ignore all spec flags, env and launch commands.
+            if (spec.language === 'python' && typeof spec.argv?.[0] === 'string' && path.isAbsolute(spec.argv[0]) && /^python(?:[0-9.]+)?(?:\.exe)?$/i.test(path.basename(spec.argv[0])))
+              await add(spec.argv[0], 'Jupyter kernel', typeof spec.display_name === 'string' ? spec.display_name : name);
+          } catch { /* Missing/invalid spec is not a Python environment. */ }
+        }
+      } catch { /* No registered kernels at this prefix. */ }
+    }
     // Project-local executables are offered for explicit selection, never launched by discovery.
     // Never silently replace an explicitly selected environment that disappeared.
     return { selected: choices[file] ?? found.selected?.path, candidates };

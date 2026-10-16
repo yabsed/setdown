@@ -173,6 +173,53 @@ export class NotebookDocument {
     const cell = this.cells.find(cell => cell.id === id); if (!cell || cell.clearOutputs) return;
     this.perform(() => { cell.clearOutputs = true; }, () => { cell.clearOutputs = false; });
   }
+  clearMany(ids: readonly string[] = this.cells.map(cell => cell.id)): void {
+    const cells = this.cells.filter(cell => ids.includes(cell.id) && cell.kind === 'code' && !cell.clearOutputs);
+    if (cells.length) this.perform(() => { for (const cell of cells) cell.clearOutputs = true; },
+      () => { for (const cell of cells) cell.clearOutputs = false; });
+  }
+  /** Version-check the entire edit before mutating any cell. Used by replace/LSP. */
+  editSources(edits: readonly { id: string; version: number; source: string }[]): void {
+    const seen = new Set<string>();
+    const changes = edits.map(edit => {
+      const cell = this.cells.find(cell => cell.id === edit.id);
+      if (!cell || cell.version !== edit.version || seen.has(edit.id) || typeof edit.source !== 'string') throw Error('Cells changed before the edit could be applied.');
+      seen.add(edit.id); return { cell, before: cell.source, after: edit.source };
+    }).filter(change => change.before !== change.after);
+    if (changes.length) this.perform(() => { for (const c of changes) { c.cell.source = c.after; c.cell.version++; } },
+      () => { for (const c of changes) { c.cell.source = c.before; c.cell.version++; } });
+  }
+  split(id: string, offset: number): string | undefined {
+    const index = this.cells.findIndex(cell => cell.id === id), cell = this.cells[index];
+    if (!cell || !Number.isInteger(offset) || offset <= 0 || offset >= cell.source.length) return;
+    // Do not split a CRLF or UTF-16 surrogate pair.
+    if (cell.source[offset - 1] === '\r' && cell.source[offset] === '\n'
+      || /[\uD800-\uDBFF]/.test(cell.source[offset - 1]) && /[\uDC00-\uDFFF]/.test(cell.source[offset])) throw Error('Choose a cursor position between characters.');
+    const original = cell.source, clear = cell.clearOutputs;
+    const next = { ...cell, id: crypto.randomUUID(), source: original.slice(offset), version: 1, clearOutputs: cell.kind === 'code' };
+    this.perform(() => { cell.source = original.slice(0, offset); cell.version++; cell.clearOutputs = cell.kind === 'code'; this.cells.splice(index + 1, 0, next); },
+      () => { cell.source = original; cell.version++; cell.clearOutputs = clear; this.cells.splice(this.cells.indexOf(next), 1); });
+    return next.id;
+  }
+  join(ids: readonly string[]): string | undefined {
+    const selected = this.cells.filter(cell => ids.includes(cell.id));
+    if (selected.length < 2) return;
+    const index = this.cells.indexOf(selected[0]);
+    if (selected.some((cell, i) => cell.kind !== selected[0].kind || this.cells[index + i] !== cell)) throw Error('Select adjacent cells of the same type to join.');
+    const first = selected[0], before = [...this.cells], source = first.source, clear = first.clearOutputs;
+    // Metadata/attachments must not silently disappear when cells are joined.
+    const metadata = (cell: NotebookCell) => {
+      if (!cell.original) return 'metadata:{}';
+      const document = cell.originalDocument ?? this.original;
+      return (cell.original.children ?? []).filter(property => !['id', 'cell_type', 'source', 'outputs', 'execution_count'].includes(property.children![0].value))
+        .map(property => { const [key, node] = property.children!; return key.value + ':' + document.slice(node.offset, node.offset + node.length); }).sort().join('|');
+    };
+    if (selected.some(cell => metadata(cell) !== metadata(first))) throw Error('These cells have different metadata or attachments. Keep them separate to preserve that data.');
+    const combined = selected.map(cell => cell.source).join(this.original.includes('\r\n') ? '\r\n' : '\n');
+    this.perform(() => { first.source = combined; first.version++; first.clearOutputs = first.kind === 'code'; this.cells.splice(index + 1, selected.length - 1); },
+      () => { first.source = source; first.version++; first.clearOutputs = clear; this.cells.splice(0, this.cells.length, ...before); });
+    return first.id;
+  }
   undo(): void { const action = this.undoStack.pop(); if (action) { action.undo(); this.redoStack.push(action); this.changed(); } }
   redo(): void { const action = this.redoStack.pop(); if (action) { action.redo(); this.undoStack.push(action); this.changed(); } }
   get canUndo(): boolean { return !!this.undoStack.length; }

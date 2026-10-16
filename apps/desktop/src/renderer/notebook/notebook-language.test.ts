@@ -20,7 +20,7 @@ function fixture() {
   entry.models.set(b, model);
   let event: (event: LanguageEvent) => void = () => {};
   const port = { open: vi.fn(async () => ({ uri: 'file:///project/notebook.ipynb', cells: { [a]: 'vscode-notebook-cell:/project/notebook.ipynb#a', [b]: 'vscode-notebook-cell:/project/notebook.ipynb#b' }, capabilities: {
-    completionProvider: { triggerCharacters: ['.'] }, hoverProvider: true, textDocumentSync: 1 }, server: 'notebook-python' })),
+    renameProvider: true, codeActionProvider: true, completionProvider: { triggerCharacters: ['.'] }, hoverProvider: true, textDocumentSync: 1 }, server: 'notebook-python' })),
     change: vi.fn(async () => {}), changeNotebook: vi.fn(async () => ({ [a]: 'vscode-notebook-cell:/project/notebook.ipynb#a', [b]: 'vscode-notebook-cell:/project/notebook.ipynb#b' })), close: vi.fn(), cancel: vi.fn(), request: vi.fn(async (): Promise<unknown> => []),
     onEvent: (listener: typeof event) => { event = listener; return () => {}; } } as unknown as LanguageApi;
   const client = new NotebookLanguage(api, port, entry, '/project/notebook.ipynb', () => {}, async () => {}, async () => {});
@@ -78,5 +78,18 @@ test('cell-local UTF-16 diagnostics never survive a dependency revision or faile
   f.event({ ...event, version: 3 }); expect(vi.mocked(f.api.editor.setModelMarkers).mock.calls.at(-1)![2]).toHaveLength(1);
   f.event({ type: 'status', documents: [{ id, generation }], state: 'failed' });
   expect(f.api.editor.setModelMarkers).toHaveBeenLastCalledWith(f.entry.models.get(f.b), 'notebook-language', []);
+  f.client.dispose(); f.entry.dispose();
+});
+
+test('rename applies cell-local edits atomically and a code action expires after another source edit', async () => {
+  const f = fixture(); await Promise.resolve(); await Promise.resolve();
+  const changes = { 'vscode-notebook-cell:/project/notebook.ipynb#a': [{ range: { start: { line: 0, character: 0 }, end: { line: 0, character: 7 } }, newText: 'values' }],
+    'vscode-notebook-cell:/project/notebook.ipynb#b': [{ range: { start: { line: 0, character: 0 }, end: { line: 0, character: 7 } }, newText: 'values' }] };
+  vi.mocked(f.port.request).mockResolvedValue({ changes }); await f.client.rename(f.b, 2, 'values');
+  expect(f.entry.document.cells.map(cell => cell.source)).toEqual(['values = [1, 2, 3]', 'values.']);
+  f.entry.document.undo(); expect(f.entry.document.cells[0].source).toBe('numbers = [1, 2, 3]');
+  vi.mocked(f.port.request).mockResolvedValue([{ title: 'Safe edit', edit: { changes } }, { title: 'Unsafe command', command: { command: 'execute', title: 'execute' } }]);
+  const actions = await f.client.actions(f.b, 2); expect(actions).toHaveLength(1);
+  f.entry.document.setSource(f.a, 'numbers = []'); expect(() => actions[0].apply()).toThrow(/changed/); expect(f.entry.document.cells[1].source).toBe('numbers.');
   f.client.dispose(); f.entry.dispose();
 });

@@ -5,6 +5,7 @@ export default defineConfig({
   ...base,
   test: { ...base.test, maxWorkers: 2, include: [
     'src/core/notebook/notebook-document.test.ts',
+    'src/core/notebook/notebook-tools.test.ts',
     'src/renderer/notebook/notebook-execution.test.ts',
     'src/renderer/notebook/notebook-controller.test.ts',
     'src/renderer/notebook/notebook-language.test.ts',

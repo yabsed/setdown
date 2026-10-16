@@ -1617,7 +1617,8 @@ older run cannot overwrite a rerun of the same cell.
 
 Python analysis uses native notebook cell synchronization with the bundled
 basedpyright, preserving magic-cell Python statements, top-level await and cell
-syntax boundaries. It does not suppress genuine type/name errors. Wire URI epochs,
+syntax boundaries. Core syntax/name/import diagnostics remain enabled; broad type
+checking follows the lightweight policy documented in `notebooks.md`. Wire URI epochs,
 notebook dependency revisions and cell source revisions reject stale diagnostics.
 Notebook analysis and execution share a persisted explicit Python environment.
 Project-local candidates are only listed until selected. Search keeps Markdown in
@@ -1766,3 +1767,73 @@ Raw run JSON/logs are in `test-results/notebook-reform/benchmark/`. This compari
 covers existing ordinary Markdown/Git transitions. Notebook functional regressions
 cover the fixtures above; they do not establish a 1,000-cell memory budget,
 kernel startup latency or sustained output throughput.
+
+## Notebook convenience validation — 2026-10-16
+
+This implements the remaining convenience audit with native notebook commands and
+explicit integrations with JupyterLab, nbconvert, nbdime, Jupytext and Ruff. See
+[notebook usage and session boundaries](notebooks.md). Native Python diagnostics
+keep the VS Code-style lightweight policy; there is no strictness selector.
+
+Final validation: **68 unit files / 450 tests**, **3 benchmark-comparator tests**,
+production typecheck/build with **zero Svelte errors or warnings**, **125 real
+Electron scenarios** including **8 notebook scenarios**, and **4 real IPython
+kernel integration tests**. The separate external-tool Electron test passes real
+HTML/Markdown/script/WebPDF export, Ruff, nbdime HEAD comparison, Jupytext conversion,
+JupyterLab slider widgets and Plotly FigureWidget rendering, debugger activation,
+and stopping the owned servers. It uses a separate fully installed tool venv.
+
+Bulk source edits validate every cell revision before mutation and use one cell
+operation for Undo. Splitting clears stale results; joins reject incompatible
+metadata/attachments instead of discarding them. Search regexes run in a worker
+with a two-second timeout. Output changes still do not resynchronize LSP. The
+variable viewer transfers bounded pages only on request; input requests are tied
+to the active run and kernel generation. Restart-all awaits old bridge shutdown.
+
+JupyterLab is an owned web session with its own kernel, not the native cell renderer.
+The Python `# %%` path creates a separate notebook snapshot. Native output sanitization,
+IME/focus, original JSON spans and shared native analysis/execution Python remain
+covered by the existing regressions. Remote-server compatibility and non-Python
+kernels were not independently exercised by this local Python tool test.
+
+The baseline is **3bbf4355a8e520fed17455a16f5db211b83ddb98**, installed in the original
+checkout with its own dependencies. The candidate is a separate checkout with its
+own installation. Both use **Electron 44.7.2**. Three matched repetitions alternate
+AB/BA on one isolated Xvfb/runtime/D-Bus environment: eight scenarios per version,
+five cycles per process, 48 application launches. Both applications were built by
+the benchmark runner; fixture/harness/build hashes were retained and checked.
+
+**PASS — zero regressions in all 48 buckets**, with unchanged joint thresholds
+(**>25% and >50ms**). Values below are baseline → candidate medians in milliseconds.
+Warm is the median of cycles 3–5 in each process, then across repetitions. Esc is
+latest-content native capture latency including polling/IPC/readback, not a monitor
+presentation timestamp. The first table excludes the configured preparation wait.
+
+| Surface | Source wait | Edit | Esc first | Esc second | Esc warm | Double-click first | Double-click second | Double-click warm |
+| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Markdown | 0ms | no | 33 → 37 | 21 → 20 | 24 → 24 | 17 → 17 | 31 → 31 | 11 → 11 |
+| Markdown | 0ms | yes | 393 → 432 | 95 → 100 | 81 → 90 | 19 → 20 | 13 → 13 | 17 → 14 |
+| Markdown | 3000ms | no | 27 → 42 | 22 → 16 | 20 → 24 | 16 → 16 | 12 → 11 | 11 → 11 |
+| Markdown | 3000ms | yes | 88 → 106 | 98 → 100 | 90 → 93 | 20 → 14 | 12 → 14 | 13 → 12 |
+| Git review | 0ms | no | 922 → 930 | 21 → 20 | 18 → 17 | 22 → 23 | 12 → 12 | 12 → 12 |
+| Git review | 0ms | yes | 970 → 994 | 1492 → 1438 | 175 → 175 | 14 → 21 | 21 → 21 | 18 → 19 |
+| Git review | 3000ms | no | 32 → 23 | 23 → 22 | 18 → 18 | 23 → 23 | 11 → 11 | 18 → 17 |
+| Git review | 3000ms | yes | 223 → 231 | 189 → 171 | 177 → 180 | 23 → 21 | 18 → 17 | 18 → 17 |
+
+Including the **configured 3000ms preparation allowance** gives the following
+first-cycle totals. This adds the intentional wait, not measured preparation CPU
+time. Only the first cycle waits; second/warm and double-click measurements are
+unchanged. The 0ms inclusive totals equal the first table.
+
+| Surface | Edit | First Esc including preparation allowance |
+| --- | --- | ---: |
+| Markdown | no | 3027 → 3042 |
+| Markdown | yes | 3088 → 3106 |
+| Git review | no | 3032 → 3023 |
+| Git review | yes | 3223 → 3231 |
+
+[Samples, build identities and hashes](notebook-convenience-preview-benchmark-2026-10-16.json).
+Raw measurements and passing logs/screenshots are retained in
+`test-results/notebook-convenience-2026-10-16/`. These benchmarks cover ordinary
+Markdown/Git transitions; they do not establish notebook kernel startup, large
+variable-query throughput, PDF export latency or remote-server performance.

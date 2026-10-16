@@ -1,4 +1,4 @@
-import type { NotebookApi, NotebookKernelEvent, NotebookExecutionCell } from '../../protocol/notebook';
+import type { NotebookApi, NotebookKernelEvent, NotebookExecutionCell, NotebookInspection } from '../../protocol/notebook';
 import type { NotebookCell, NotebookDocument } from '../../core/notebook/notebook-document';
 
 export type CellExecutionState = 'queued' | 'running' | 'succeeded' | 'error' | 'canceled' | 'skipped';
@@ -10,6 +10,25 @@ export class NotebookExecution {
   state = 'stopped'; message = ''; python = ''; selectedPython?: string;
   readonly cells = new Map<string, CellExecutionState>();
   readonly durations = new Map<string, number>();
+  inputRequest?: Extract<NotebookKernelEvent, { type: 'input' }>;
+  private inspections = new Map<string, { resolve(value: NotebookInspection): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> }>();
+  async answerInput(value: string): Promise<void> {
+    const request = this.inputRequest; if (!request) return;
+    await this.port.input(this.id, this.generation, request.request, value);
+    if (this.inputRequest === request) this.inputRequest = undefined;
+    this.changed();
+  }
+  inspect(name?: string, offset = 0): Promise<NotebookInspection> {
+    if (this.state !== 'idle') return Promise.reject(Error('Run a cell and wait for the kernel to become idle.'));
+    const request = crypto.randomUUID();
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { this.inspections.delete(request); reject(Error('Variable inspection timed out.')); }, 20_000);
+      this.inspections.set(request, { resolve, reject, timer });
+      void this.port.inspect(this.id, this.generation, request, name, offset).catch(error => {
+        clearTimeout(timer); this.inspections.delete(request); reject(error);
+      });
+    });
+  }
   private queue = new Map<string, Run>();
   private active?: Run;
   private started = 0;
@@ -66,9 +85,18 @@ export class NotebookExecution {
   }
   private event(event: NotebookKernelEvent): void {
     if (this.disposed || event.id !== this.id || event.generation !== this.generation) return;
+    if (event.type === 'inspect') {
+      const pending = this.inspections.get(event.request); if (!pending) return;
+      clearTimeout(pending.timer); this.inspections.delete(event.request);
+      if (event.error) pending.reject(Error(event.error)); else pending.resolve(event.result ?? {}); return;
+    }
+    if (event.type === 'input') {
+      if (this.active?.id === event.cell && this.active.version === event.version && (!event.runId || event.runId === this.active.runId)) { this.inputRequest = event; this.changed(); } return;
+    }
     if (event.type === 'state') {
       this.state = event.state; this.message = event.message ?? this.message; this.python = event.python ?? this.python;
       if (!this.busy) {
+        this.inputRequest = undefined;
         this.flush();
         if (event.state === 'failed' || event.state === 'stopped') {
           if (this.active) this.cells.set(this.active.id, event.state === 'failed' ? 'error' : 'canceled');
@@ -136,9 +164,11 @@ export class NotebookExecution {
     try { await this.port.interrupt(this.id, this.generation); }
     catch (error) { this.message = String(error); this.changed(); }
   }
-  shutdown(): void {
-    this.flush(); this.port.shutdown(this.id, this.generation); this.generation = crypto.randomUUID();
-    this.active = undefined; this.queue.clear(); this.state = 'stopped'; this.cells.clear(); this.durations.clear(); this.runs.clear(); this.message = ''; this.changed();
+  shutdown(): Promise<void> {
+    this.inputRequest = undefined;
+    for (const pending of this.inspections.values()) { clearTimeout(pending.timer); pending.reject(Error('Kernel was reset.')); } this.inspections.clear();
+    this.flush(); const stopped = this.port.shutdown(this.id, this.generation).catch(error => { this.message = String(error); this.changed(); }); this.generation = crypto.randomUUID();
+    this.active = undefined; this.queue.clear(); this.state = 'stopped'; this.cells.clear(); this.durations.clear(); this.runs.clear(); this.message = ''; this.changed(); return stopped;
   }
   async choosePython(): Promise<void> {
     const python = await this.port.choosePython(this.path);

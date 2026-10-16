@@ -70,7 +70,7 @@ export class NotebookKernelManager {
           const line = buffer.slice(0, index); buffer = buffer.slice(index + 1);
           try {
             const event = JSON.parse(line) as NotebookKernelEvent;
-            if (!['state', 'cell-start', 'cell-done', 'output'].includes(event.type)) throw Error('Unknown kernel event.');
+            if (!['state', 'cell-start', 'cell-done', 'output', 'input', 'inspect'].includes(event.type)) throw Error('Unknown kernel event.');
             if (event.type === 'state') {
               if (event.state === 'failed') { fail(event.message ?? 'Python kernel failed.'); return; }
               if (event.state === 'idle' && !session.ready) {
@@ -100,16 +100,29 @@ export class NotebookKernelManager {
     }
     this.write(session, { type: 'interrupt' });
   }
-  stop(owner: number, id: string, generation?: string): void {
+  input(owner: number, id: string, generation: string, request: string, value: string): void {
+    const session = this.sessions.get(this.key(owner, id));
+    if (!session || session.request.generation !== generation || typeof request !== 'string' || request.length > 128
+      || typeof value !== 'string' || value.length > 65536) throw Error('Input request expired.');
+    this.write(session, { type: 'input', request, value });
+  }
+  inspect(owner: number, id: string, generation: string, request: string, name?: string, offset = 0): void {
+    const session = this.sessions.get(this.key(owner, id));
+    if (!session || session.request.generation !== generation || !session.ready || session.busy) throw Error('Run a cell and wait for the kernel to become idle.');
+    if (typeof request !== 'string' || request.length > 128 || name !== undefined && (typeof name !== 'string' || !/^[\p{ID_Start}_][\p{ID_Continue}]*$/u.test(name))
+      || !Number.isSafeInteger(offset) || offset < 0 || offset > 10000000) throw Error('Invalid variable request.');
+    this.write(session, { type: 'inspect', request, name, offset });
+  }
+  stop(owner: number, id: string, generation?: string): Promise<void> {
     const key = this.key(owner, id), session = this.sessions.get(key);
-    if (session && generation && session.request.generation !== generation) return;
+    if (session && generation && session.request.generation !== generation) return Promise.resolve();
     this.pending.delete(key);
-    if (!session) return;
+    if (!session) return Promise.resolve();
     this.sessions.delete(key); clearTimeout(session.timer);
     // EOF also terminates a kernel if the owner crashes before sending shutdown.
     this.write(session, { type: 'shutdown' }); session.child.stdin.end();
     const kill = setTimeout(() => session.child.kill('SIGKILL'), 8000); kill.unref();
-    session.child.once('exit', () => clearTimeout(kill));
+    return new Promise(resolve => { session.child.once('close', () => { clearTimeout(kill); resolve(); }); });
   }
   disposeOwner(owner: number): void {
     for (const key of this.pending.keys()) if (key.startsWith(`${owner}:`)) this.pending.delete(key);

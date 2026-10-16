@@ -8,6 +8,23 @@ export class NotebookController {
   readonly collapsedInputs = new Set<string>();
   readonly collapsedOutputs = new Set<string>();
   scrollTop = 0;
+  readonly hiddenLineNumbers = new Set<string>();
+  readonly foldedSections = new Set<string>();
+  readonly cursors = new Map<string, number>();
+  collapseAll(kind: 'input' | 'output', collapse: boolean): void {
+    const target = kind === 'input' ? this.collapsedInputs : this.collapsedOutputs;
+    target.clear(); if (collapse) for (const cell of this.document.cells) target.add(cell.id); this.changed();
+  }
+  lineNumbers(id?: string): void {
+    const ids = id ? [id] : this.document.cells.map(cell => cell.id), hide = ids.some(id => !this.hiddenLineNumbers.has(id));
+    for (const id of ids) { if (hide) this.hiddenLineNumbers.add(id); else this.hiddenLineNumbers.delete(id); } this.changed();
+  }
+  split(): string | undefined {
+    if (!this.active) return;
+    const next = this.document.split(this.active, this.cursors.get(this.active) ?? 0);
+    if (next) this.select(next); return next;
+  }
+  join(): string | undefined { const id = this.document.join([...this.selected]); if (id) this.select(id); return id; }
   private listeners = new Set<() => void>();
   constructor(readonly document: NotebookDocument) {}
   subscribe(listener: () => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }

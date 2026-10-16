@@ -19,6 +19,7 @@ import { languageSupport, type LanguageRoute } from '../../core/document/languag
 import type { LanguageClient, LanguageOptions } from '../editor/language-client';
 
 type Options = {
+  pythonCells?(path: string, source: string): Promise<void>;
   language?: Omit<LanguageOptions, 'status'>;
   host: HTMLElement; tabs: () => WorkspaceTab[]; active: () => WorkspaceTab | null;
   theme: () => PreviewThemeId; status: (status: 'loading' | 'ready' | 'error') => void;
@@ -423,6 +424,10 @@ export class MonacoEditor {
     }).catch(error => { if (epoch === this.languageEpoch) this.languageLoading = undefined; console.error('Could not load language support', error); });
   }
   private installBindings(api: typeof Monaco, editor: Monaco.editor.IStandaloneCodeEditor): void {
+    if (this.options.pythonCells) editor.addAction({ id: 'setdown.python-cells', label: 'Open Python # %% cells as interactive notebook…', precondition: 'editorLangId == python', contextMenuGroupId: 'navigation', contextMenuOrder: 7, run: async () => {
+      const tab = this.options.tabs().find(tab => this.models.get(tab.id) === editor.getModel()); const model = editor.getModel();
+      if (tab?.document.path && model) await this.options.pythonCells!(tab.document.path, model.getValue());
+    } });
     const symbols = editor.createContextKey<boolean>('setdownLanguageSymbols', false), calls = editor.createContextKey<boolean>('setdownLanguageCalls', false),
       types = editor.createContextKey<boolean>('setdownLanguageTypes', false), problems = editor.createContextKey<boolean>('setdownLanguageProblems', false);
     const updateLanguageContext = () => {

@@ -88,6 +88,32 @@ class KernelBridgeTest(unittest.TestCase):
         self.assertIn('clear_output', kinds)
         self.assertIn(self.directory.name, json.dumps(events))
 
+    def test_stdin_password_and_paged_variables(self):
+        self.send({'type': 'execute', 'cells': [{'id': 'input', 'version': 3, 'runId': 'run-input', 'source': 'from getpass import getpass\nanswer = input("Name: ")\nsecret = getpass("Password: ")\nprint(answer, len(secret))'}]})
+        request = self.until(lambda e: e['type'] == 'input')[-1]
+        self.assertFalse(request['password'])
+        self.assertEqual(request['runId'], 'run-input')
+        self.send({'type': 'input', 'request': request['request'], 'value': '한글'})
+        request = self.until(lambda e: e['type'] == 'input')[-1]
+        self.assertTrue(request['password'])
+        self.send({'type': 'input', 'request': request['request'], 'value': 'private-value'})
+        events = self.until(lambda e: e.get('state') == 'idle')
+        self.assertIn('한글 13', json.dumps(events, ensure_ascii=False))
+        self.assertNotIn('private-value', json.dumps(events))
+        self.run_cells(['import pandas as pd\nimport numpy as np\nnullable = list(range(250))\nframe = pd.DataFrame({"a": range(250)})\narray = np.arange(300).reshape(10, 30).T'])
+        def inspect(name=None, offset=0):
+            self.send({'type': 'inspect', 'request': 'inspect', 'name': name, 'offset': offset})
+            event = self.until(lambda e: e['type'] == 'inspect')[-1]
+            self.assertNotIn('error', event)
+            return event['result']
+        self.assertIn('frame', [v['name'] for v in inspect()['variables']])
+        table = inspect('frame', 100)
+        self.assertEqual(table['total'], 250)
+        self.assertEqual(table['rows'][0], ['100', '100'])
+        self.assertEqual(len(table['rows']), 100)
+        self.assertEqual(inspect('nullable', 200)['rows'][0], ['200', '200'])
+        self.assertEqual(inspect('array', 0)['rows'][:2], [['0', '0'], ['1', '30']])
+
     def test_interrupt_retains_kernel_and_stops_queue(self):
         self.send({'type': 'execute', 'cells': [{'id': 'loop', 'version': 2, 'source': 'import time\nwhile True: time.sleep(.05)'},
                                                {'id': 'never', 'version': 1, 'source': 'print("MUST_NOT_RUN")'}]})
