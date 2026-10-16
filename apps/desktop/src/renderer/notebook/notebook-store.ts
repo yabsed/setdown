@@ -2,18 +2,22 @@ import type { NotebookExecution } from './notebook-execution';
 import { NotebookDocument, type NotebookCell } from '../../core/notebook/notebook-document';
 import type { DocumentTab } from '../../core/workspace/workspace-state';
 import type * as Monaco from 'monaco-editor';
+import { NotebookController } from './notebook-controller';
+import type { NotebookChange } from '../../core/notebook/notebook-document';
 
 export class NotebookEntry {
   readonly document: NotebookDocument;
   readonly models = new Map<string, Monaco.editor.ITextModel>();
   readonly views = new Map<string, Monaco.editor.ICodeEditorViewState | null>();
+  readonly controller: NotebookController;
   execution?: NotebookExecution;
-  changed?: () => void;
+  changed?: (event: NotebookChange) => void;
   private release: () => void;
   constructor(readonly id: string, text: string, savedText: string) {
     this.document = new NotebookDocument(text);
+    this.controller = new NotebookController(this.document);
     this.document.markSaved(savedText);
-    this.release = this.document.subscribe(() => this.changed?.());
+    this.release = this.document.subscribe(event => { if (event === 'structure') this.controller.reconcile(); this.changed?.(event); });
   }
   model(api: typeof Monaco, cell: NotebookCell): Monaco.editor.ITextModel {
     const language = cell.kind === 'markdown' ? 'markdown' : cell.kind === 'raw' ? 'plaintext' : this.document.language;

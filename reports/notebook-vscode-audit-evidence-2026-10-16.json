@@ -1,0 +1,461 @@
+{
+  "sourceCommit": "600f9aeb4380d5895d980f57b291dc1316a97774",
+  "date": "2026-10-16",
+  "method": {
+    "layout": "Current built Electron, isolated Xvfb, 35 synthetic code cells; first output contains 100 lines.",
+    "language": "Real Pyright 1.1.414 over stdio using current NotebookProjection; ephemeral workspace; basic type checking, openFiles, push diagnostics. Client additionally advertises notebook sync to test server support.",
+    "runtime": "In-process IPython InteractiveShell, not a GUI/kernel bridge integration test."
+  },
+  "layout": {
+    "sourceCommit": "600f9aeb4380d5895d980f57b291dc1316a97774",
+    "before": {
+      "scrollTop": 0,
+      "scrollHeight": 7413,
+      "firstHeight": 1736,
+      "secondTop": 1924,
+      "outputMounted": true,
+      "editorMounted": true,
+      "focusedCell": "cell0"
+    },
+    "requestedScrollTop": 2158,
+    "after": {
+      "scrollTop": 501,
+      "scrollHeight": 5450,
+      "firstHeight": 115,
+      "secondTop": -198,
+      "outputMounted": false,
+      "editorMounted": false,
+      "focusedCell": null
+    },
+    "previousEditorConnected": false,
+    "documentHeightDelta": -1963
+  },
+  "language": {
+    "pyright": "1.1.414",
+    "notebookDocumentSync": null,
+    "cases": [
+      {
+        "name": "ordinary-cross-cell",
+        "sources": [
+          "import math",
+          "print(math.sqrt(4))"
+        ],
+        "projectedText": "import math\n\n\nprint(math.sqrt(4))",
+        "excluded": [
+          false,
+          false
+        ],
+        "diagnosticVersion": 1,
+        "diagnostics": []
+      },
+      {
+        "name": "magic-removes-import",
+        "sources": [
+          "%who\nimport math",
+          "print(math.sqrt(4))"
+        ],
+        "projectedText": "\n\n\n\nprint(math.sqrt(4))",
+        "excluded": [
+          true,
+          false
+        ],
+        "diagnosticVersion": 1,
+        "diagnostics": [
+          {
+            "message": "\"math\" is not defined",
+            "code": "reportUndefinedVariable",
+            "severity": 1,
+            "projectedRange": {
+              "start": {
+                "line": 4,
+                "character": 6
+              },
+              "end": {
+                "line": 4,
+                "character": 10
+              }
+            },
+            "mapped": {
+              "id": "cell1",
+              "range": {
+                "start": {
+                  "line": 0,
+                  "character": 6
+                },
+                "end": {
+                  "line": 0,
+                  "character": 10
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "top-level-await",
+        "sources": [
+          "import asyncio\nawait asyncio.sleep(0)"
+        ],
+        "projectedText": "import asyncio\nawait asyncio.sleep(0)",
+        "excluded": [
+          false
+        ],
+        "diagnosticVersion": 1,
+        "diagnostics": [
+          {
+            "message": "\"await\" allowed only within async function",
+            "severity": 1,
+            "projectedRange": {
+              "start": {
+                "line": 1,
+                "character": 0
+              },
+              "end": {
+                "line": 1,
+                "character": 5
+              }
+            },
+            "mapped": {
+              "id": "cell0",
+              "range": {
+                "start": {
+                  "line": 1,
+                  "character": 0
+                },
+                "end": {
+                  "line": 1,
+                  "character": 5
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "ipython-builtins",
+        "sources": [
+          "display(42)\nprint(get_ipython())"
+        ],
+        "projectedText": "display(42)\nprint(get_ipython())",
+        "excluded": [
+          false
+        ],
+        "diagnosticVersion": 1,
+        "diagnostics": [
+          {
+            "message": "\"display\" is not defined",
+            "code": "reportUndefinedVariable",
+            "severity": 1,
+            "projectedRange": {
+              "start": {
+                "line": 0,
+                "character": 0
+              },
+              "end": {
+                "line": 0,
+                "character": 7
+              }
+            },
+            "mapped": {
+              "id": "cell0",
+              "range": {
+                "start": {
+                  "line": 0,
+                  "character": 0
+                },
+                "end": {
+                  "line": 0,
+                  "character": 7
+                }
+              }
+            }
+          },
+          {
+            "message": "\"get_ipython\" is not defined",
+            "code": "reportUndefinedVariable",
+            "severity": 1,
+            "projectedRange": {
+              "start": {
+                "line": 1,
+                "character": 6
+              },
+              "end": {
+                "line": 1,
+                "character": 17
+              }
+            },
+            "mapped": {
+              "id": "cell0",
+              "range": {
+                "start": {
+                  "line": 1,
+                  "character": 6
+                },
+                "end": {
+                  "line": 1,
+                  "character": 17
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "unclosed-previous-cell",
+        "sources": [
+          "values = [1, 2",
+          "result = 42\nprint(result)"
+        ],
+        "projectedText": "values = [1, 2\n\n\nresult = 42\nprint(result)",
+        "excluded": [
+          false,
+          false
+        ],
+        "diagnosticVersion": 1,
+        "diagnostics": [
+          {
+            "message": "\"[\" was not closed",
+            "severity": 1,
+            "projectedRange": {
+              "start": {
+                "line": 0,
+                "character": 9
+              },
+              "end": {
+                "line": 0,
+                "character": 10
+              }
+            },
+            "mapped": {
+              "id": "cell0",
+              "range": {
+                "start": {
+                  "line": 0,
+                  "character": 9
+                },
+                "end": {
+                  "line": 0,
+                  "character": 10
+                }
+              }
+            }
+          },
+          {
+            "message": "Statements must be separated by newlines or semicolons",
+            "severity": 1,
+            "projectedRange": {
+              "start": {
+                "line": 4,
+                "character": 13
+              },
+              "end": {
+                "line": 4,
+                "character": 13
+              }
+            },
+            "mapped": {
+              "id": "cell1",
+              "range": {
+                "start": {
+                  "line": 1,
+                  "character": 13
+                },
+                "end": {
+                  "line": 1,
+                  "character": 13
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "split-block-across-cells",
+        "sources": [
+          "if True:",
+          "    print(42)"
+        ],
+        "projectedText": "if True:\n\n\n    print(42)",
+        "excluded": [
+          false,
+          false
+        ],
+        "diagnosticVersion": 1,
+        "diagnostics": []
+      },
+      {
+        "name": "future-import-in-second-cell",
+        "sources": [
+          "answer = 42",
+          "from __future__ import annotations\nprint(answer)"
+        ],
+        "projectedText": "answer = 42\n\n\nfrom __future__ import annotations\nprint(answer)",
+        "excluded": [
+          false,
+          false
+        ],
+        "diagnosticVersion": 1,
+        "diagnostics": [
+          {
+            "message": "Imports from __future__ must be at the beginning of the file",
+            "code": "reportGeneralTypeIssues",
+            "severity": 1,
+            "projectedRange": {
+              "start": {
+                "line": 3,
+                "character": 0
+              },
+              "end": {
+                "line": 3,
+                "character": 34
+              }
+            },
+            "mapped": {
+              "id": "cell1",
+              "range": {
+                "start": {
+                  "line": 0,
+                  "character": 0
+                },
+                "end": {
+                  "line": 0,
+                  "character": 34
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "true-type-error",
+        "sources": [
+          "count: int = \"wrong\""
+        ],
+        "projectedText": "count: int = \"wrong\"",
+        "excluded": [
+          false
+        ],
+        "diagnosticVersion": 1,
+        "diagnostics": [
+          {
+            "message": "Type \"Literal['wrong']\" is not assignable to declared type \"int\"\n  \"Literal['wrong']\" is not assignable to \"int\"",
+            "code": "reportAssignmentType",
+            "severity": 1,
+            "projectedRange": {
+              "start": {
+                "line": 0,
+                "character": 13
+              },
+              "end": {
+                "line": 0,
+                "character": 20
+              }
+            },
+            "mapped": {
+              "id": "cell0",
+              "range": {
+                "start": {
+                  "line": 0,
+                  "character": 13
+                },
+                "end": {
+                  "line": 0,
+                  "character": 20
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "use-before-definition",
+        "sources": [
+          "print(later)",
+          "later = 42"
+        ],
+        "projectedText": "print(later)\n\n\nlater = 42",
+        "excluded": [
+          false,
+          false
+        ],
+        "diagnosticVersion": 1,
+        "diagnostics": [
+          {
+            "message": "\"later\" is not defined",
+            "code": "reportUndefinedVariable",
+            "severity": 1,
+            "projectedRange": {
+              "start": {
+                "line": 0,
+                "character": 6
+              },
+              "end": {
+                "line": 0,
+                "character": 11
+              }
+            },
+            "mapped": {
+              "id": "cell0",
+              "range": {
+                "start": {
+                  "line": 0,
+                  "character": 6
+                },
+                "end": {
+                  "line": 0,
+                  "character": 11
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "runtime": [
+    {
+      "name": "magic-removes-import",
+      "cells": [
+        {
+          "source": "%who\nimport math",
+          "error": null
+        },
+        {
+          "source": "print(math.sqrt(4))",
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "top-level-await",
+      "cells": [
+        {
+          "source": "import asyncio\nawait asyncio.sleep(0)",
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "ipython-builtins",
+      "cells": [
+        {
+          "source": "display(42)\nprint(get_ipython())",
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "split-block-across-cells",
+      "cells": [
+        {
+          "source": "if True:",
+          "error": "incomplete input (<ipython-input-1-2c8a33b52dfb>, line 1)"
+        },
+        {
+          "source": "    print(42)",
+          "error": null
+        }
+      ]
+    }
+  ]
+}

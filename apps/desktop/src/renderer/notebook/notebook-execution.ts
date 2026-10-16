@@ -1,13 +1,19 @@
 import type { NotebookApi, NotebookKernelEvent, NotebookExecutionCell } from '../../protocol/notebook';
 import type { NotebookCell, NotebookDocument } from '../../core/notebook/notebook-document';
 
+export type CellExecutionState = 'queued' | 'running' | 'succeeded' | 'error' | 'canceled' | 'skipped';
 type Output = Record<string, unknown>;
 type Run = NotebookExecutionCell & { cell: NotebookCell; outputs: Output[]; count: number | null;
   clear: boolean; displays: Map<string, number[]> };
 /** Owns execution independently of virtual cell views. No code runs at construction. */
 export class NotebookExecution {
   state = 'stopped'; message = ''; python = ''; selectedPython?: string;
-  readonly cells = new Map<string, 'queued' | 'running' | 'error'>();
+  readonly cells = new Map<string, CellExecutionState>();
+  readonly durations = new Map<string, number>();
+  private queue = new Map<string, Run>();
+  private active?: Run;
+  private started = 0;
+  private interrupted = false;
   private generation = crypto.randomUUID();
   private runs = new Map<string, Run>();
   private pending = new Set<string>();
@@ -23,38 +29,65 @@ export class NotebookExecution {
   private changed(): void { for (const listener of this.listeners) listener(); }
   setPath(path: string): void { if (path !== this.path) { this.shutdown(); this.path = path; } }
   async run(ids?: string[]): Promise<void> {
-    if (this.busy || this.disposed || this.document.error || this.document.language !== 'python') return;
-    const cells = this.document.cells.filter(cell => cell.kind === 'code' && (!ids || ids.includes(cell.id)));
-    if (!cells.length) return;
-    this.message = ''; this.state = 'starting'; this.cells.clear();
-    for (const cell of cells) {
-      this.cells.set(cell.id, 'queued');
-      this.runs.set(cell.id, { id: cell.id, version: cell.version, source: cell.source, cell, outputs: [], count: null, clear: false, displays: new Map() });
+    if (this.disposed || this.document.error || this.document.language !== 'python') return;
+    for (const cell of this.document.cells.filter(cell => cell.kind === 'code' && (!ids || ids.includes(cell.id)))) {
+      const run: Run = { id: cell.id, runId: crypto.randomUUID(), version: cell.version, source: cell.source, cell, outputs: [], count: null, clear: false, displays: new Map() };
+      this.queue.set(cell.id, run);
+      if (this.active?.id !== cell.id) this.cells.set(cell.id, 'queued');
     }
-    this.changed(); const generation = this.generation;
+    this.changed(); await this.pump();
+  }
+  private async pump(): Promise<void> {
+    if (this.active || this.disposed) return;
+    let run: Run | undefined;
+    while (this.queue.size) {
+      const candidate = this.queue.values().next().value!; this.queue.delete(candidate.id);
+      if (this.document.cells.includes(candidate.cell) && candidate.cell.kind === 'code') { run = candidate; break; }
+      this.cells.set(candidate.id, 'skipped');
+    }
+    if (!run) return;
+    this.flush(); this.active = run; this.runs.set(run.id, run); this.interrupted = false;
+    this.message = ''; this.state = this.state === 'stopped' || this.state === 'failed' ? 'starting' : 'busy';
+    this.cells.set(run.id, 'queued'); this.changed(); const generation = this.generation;
     try {
+      if (!this.selectedPython) await this.loadEnvironment();
+      if (this.disposed || generation !== this.generation) return;
       await this.port.run({ id: this.id, generation, path: this.path, python: this.selectedPython,
-        cells: cells.map(cell => ({ id: cell.id, version: cell.version, source: cell.source })) });
+        cells: [{ id: run.id, version: run.version, source: run.source, runId: run.runId }] });
     } catch (error) {
       if (generation !== this.generation || this.disposed) return;
-      this.state = 'failed'; this.message = String(error); this.cells.clear(); this.changed();
+      this.state = 'failed'; this.message = String(error); this.cells.set(run.id, 'error'); this.active = undefined;
+      this.cancelQueue('skipped'); this.changed();
     }
+  }
+  private cancelQueue(state: CellExecutionState): void {
+    for (const id of this.queue.keys()) if (id !== this.active?.id) this.cells.set(id, state);
+    this.queue.clear();
   }
   private event(event: NotebookKernelEvent): void {
     if (this.disposed || event.id !== this.id || event.generation !== this.generation) return;
     if (event.type === 'state') {
       this.state = event.state; this.message = event.message ?? this.message; this.python = event.python ?? this.python;
-      if (!this.busy) { this.flush(); for (const [id, state] of this.cells) if (state !== 'error') this.cells.delete(id); }
-      this.changed(); return;
+      if (!this.busy) {
+        this.flush();
+        if (event.state === 'failed' || event.state === 'stopped') {
+          if (this.active) this.cells.set(this.active.id, event.state === 'failed' ? 'error' : 'canceled');
+          this.cancelQueue('skipped');
+        }
+        this.active = undefined;
+      }
+      this.changed(); if (event.state === 'idle') void this.pump(); return;
     }
     const run = this.runs.get(event.cell);
-    if (!run || run.version !== event.version || !this.document.cells.includes(run.cell) || run.cell.kind !== 'code') return;
+    if (!run || (event.runId !== undefined && run.runId !== event.runId) || run.version !== event.version || !this.document.cells.includes(run.cell) || run.cell.kind !== 'code') return;
     if (event.type === 'cell-start') {
-      this.cells.set(run.id, 'running'); this.pending.add(run.id); this.flush(); this.changed(); return;
+      this.started = performance.now(); this.cells.set(run.id, 'running'); this.pending.add(run.id); this.flush(); this.changed(); return;
     }
     if (event.type === 'cell-done') {
       run.count = event.count; this.pending.add(run.id); this.flush();
-      if (event.ok) this.cells.delete(run.id); else this.cells.set(run.id, 'error');
+      this.durations.set(run.id, Math.max(0, performance.now() - this.started));
+      this.cells.set(run.id, this.interrupted ? 'canceled' : event.ok ? 'succeeded' : 'error');
+      if (!event.ok) this.cancelQueue('skipped');
       this.changed(); return;
     }
     const { kind, content } = event;
@@ -97,6 +130,7 @@ export class NotebookExecution {
   }
   async interrupt(): Promise<void> {
     if (!this.busy) return;
+    this.interrupted = true; this.cancelQueue('canceled'); this.changed();
     // Stop a discovery still awaiting shell environment as well as a live kernel.
     if (this.state === 'starting') { this.shutdown(); return; }
     try { await this.port.interrupt(this.id, this.generation); }
@@ -104,11 +138,19 @@ export class NotebookExecution {
   }
   shutdown(): void {
     this.flush(); this.port.shutdown(this.id, this.generation); this.generation = crypto.randomUUID();
-    this.state = 'stopped'; this.cells.clear(); this.runs.clear(); this.message = ''; this.changed();
+    this.active = undefined; this.queue.clear(); this.state = 'stopped'; this.cells.clear(); this.durations.clear(); this.runs.clear(); this.message = ''; this.changed();
   }
   async choosePython(): Promise<void> {
-    const python = await this.port.choosePython();
+    const python = await this.port.choosePython(this.path);
     if (python && !this.disposed) { this.shutdown(); this.selectedPython = python; this.python = python; this.changed(); }
+  }
+  async selectPython(python: string): Promise<void> {
+    await this.port.selectPython(this.path, python);
+    if (!this.disposed) { this.shutdown(); this.selectedPython = python; this.python = python; this.changed(); }
+  }
+  async loadEnvironment(): Promise<void> {
+    const file = this.path; const result = await this.port.environments(file);
+    if (!this.disposed && file === this.path && !this.selectedPython) { this.selectedPython = result.selected; this.python = result.selected ?? ''; this.changed(); }
   }
   dispose(): void { this.shutdown(); this.disposed = true; this.release(); this.listeners.clear(); }
 }

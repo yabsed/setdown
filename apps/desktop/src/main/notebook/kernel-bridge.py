@@ -70,6 +70,8 @@ async def main():
                     if cancelled:
                         break
                     identity = {"cell": cell["id"], "version": cell["version"]}
+                    if cell.get("runId"):
+                        identity["runId"] = cell["runId"]
                     emit({"type": "cell-start", **identity})
                     size = 0
                     limited = False

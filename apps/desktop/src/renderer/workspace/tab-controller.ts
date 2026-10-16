@@ -388,10 +388,12 @@ export class TabController {
     view.tabs = summaries;
     view.notebookTabs = workspace.documents.filter(tab => isNotebookDocument(tab.document.path)).map(tab => {
       const entry = notebooks.get(tab);
-      entry.changed = () => {
+      const publishedDirty = entry.document.dirty;
+      entry.changed = event => {
         if (workspace.find(tab.id) !== tab) return;
         workspace.groups.pin(tab.id); tab.revision++;
-        this.updateChrome(); this.options.autoSave?.schedule(tab);
+        if (event !== 'output' || publishedDirty !== entry.document.dirty) this.updateChrome();
+        this.options.autoSave?.schedule(tab);
       };
       return { id: tab.id, entry, path: tab.document.path };
     });

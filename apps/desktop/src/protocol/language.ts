@@ -9,6 +9,7 @@ export type LanguageConnectionDraft = LanguageServerOptions & { id: string; name
 export type LanguageServerCandidate = { id: string; path: string; source: 'explicit' | 'path' | 'user' | 'python' | 'npm' };
 export type LanguageCatalogEntry = {
   id: string; name: string; description: string; homepage: string; languages: string[];
+  notebook?: boolean;
   configured: boolean; bundled: boolean; custom: boolean; enabled: boolean; selected: string[];
   /** A user-owned connection or override, retained in management even when missing. */
   managed?: boolean;
@@ -31,7 +32,7 @@ export function textSynchronization(capabilities: ServerCapabilities): { change:
       save: typeof sync?.save === 'object' ? sync.save : sync?.save === true ? {} : false };
 }
 
-/** No executable paths, shell commands or arbitrary LSP methods cross this port. */
+/** Only listed LSP methods cross this port. Notebook Python paths are explicitly selected environments, never server commands. */
 export const languageMethods = [
   'textDocument/completion', 'completionItem/resolve', 'textDocument/hover',
   'textDocument/signatureHelp', 'textDocument/definition', 'textDocument/references',
@@ -48,13 +49,14 @@ export const languageMethods = [
   'textDocument/prepareTypeHierarchy', 'typeHierarchy/supertypes', 'typeHierarchy/subtypes',
 ] as const;
 export type LanguageMethod = typeof languageMethods[number];
-export type LanguageDocument = { notebook?: 'python'; id: string; generation: string; path: string; text: string; version: number };
-export type LanguageConnection = { uri: string; capabilities: ServerCapabilities; server?: string };
+export type LanguageCell = { id: string; version: number; text: string };
+export type LanguageDocument = { notebook?: 'python'; cells?: LanguageCell[]; python?: string; id: string; generation: string; path: string; text: string; version: number };
+export type LanguageConnection = { uri: string; cells?: Record<string, string>; capabilities: ServerCapabilities; server?: string };
 export type LanguageUnavailable = { unavailable: 'missing' | 'selection-needed' };
 export type LanguageEvent =
   | { type: 'configuration'; servers?: string[] }
   | { type: 'discovery' }
-  | { type: 'diagnostics'; id: string; generation: string; version: number; unversioned?: boolean; diagnostics: Diagnostic[] }
+  | { type: 'diagnostics'; id: string; generation: string; version: number; cell?: string; cellVersion?: number; unversioned?: boolean; diagnostics: Diagnostic[] }
   | { type: 'refresh'; documents: { id: string; generation: string }[]; feature: LanguageRefresh }
   | { type: 'capabilities'; id: string; generation: string; capabilities: ServerCapabilities }
   | { type: 'activity' }
@@ -63,6 +65,7 @@ export type LanguageEvent =
 export type LanguageApi = {
   open(document: LanguageDocument): Promise<LanguageConnection | LanguageUnavailable>;
   change(id: string, version: number, changes: TextDocumentContentChangeEvent[]): Promise<void>;
+  changeNotebook(id: string, version: number, cells: LanguageCell[]): Promise<Record<string, string>>;
   close(id: string): void;
   saved(id: string, text?: string): void;
   request(id: string, version: number, requestId: string, method: LanguageMethod, params: unknown): Promise<unknown>;

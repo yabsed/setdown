@@ -50,14 +50,15 @@ export function notebookHtml(html: string, baseHref = '', attachments: Record<st
   return fragment.body.innerHTML;
 }
 export type StaticOutput = { kind: 'text' | 'error' | 'html' | 'markdown' | 'image' | 'unsupported'; content: string };
-export function staticOutput(output: unknown): StaticOutput {
+export function staticOutput(output: unknown, preferred?: string): StaticOutput {
   if (!output || typeof output !== 'object') return { kind: 'unsupported', content: 'Unrecognized output is preserved in the notebook.' };
   const item = output as Record<string, unknown>;
-  if (item.output_type === 'stream') return { kind: 'text', content: displayText(item.text) };
+  if (item.output_type === 'stream') return { kind: 'text', content: terminalText(displayText(item.text)) };
   if (item.output_type === 'error') return { kind: 'error', content: (Array.isArray(item.traceback) ? item.traceback.join('\n')
     : `${item.ename ?? 'Error'}: ${item.evalue ?? ''}`).replace(/\x1b\[[0-9;]*[A-Za-z]/g, '').slice(0, DISPLAY_TEXT_LIMIT) };
   const data = item.data as Record<string, unknown> | undefined;
   if (data && typeof data === 'object') {
+    if (preferred && Object.hasOwn(data, preferred)) return staticOutput({ ...item, data: { [preferred]: data[preferred] } });
     for (const mime of ['image/png', 'image/jpeg', 'image/gif', 'image/webp']) {
       const image = rasterData(mime, data[mime]); if (image) return { kind: 'image', content: image };
     }
@@ -69,4 +70,31 @@ export function staticOutput(output: unknown): StaticOutput {
     return { kind: 'unsupported', content: `Stored output (${Object.keys(data).join(', ')}) — preserved; interactive rendering is not enabled.` };
   }
   return { kind: 'unsupported', content: `Stored ${String(item.output_type ?? 'unknown')} output is preserved.` };
+}
+
+/** Display-only terminal controls; the notebook still stores the original bytes. */
+export function terminalText(text: string): string {
+  return text.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '').replace(/\x1b\][^\x07]*(?:\x07|\x1b\\)/g, '')
+    .split('\n').map(line => {
+      const result: string[] = []; let cursor = 0;
+      for (const character of line) {
+        if (character === '\r') cursor = 0;
+        else if (character === '\b') cursor = Math.max(0, cursor - 1);
+        else result[cursor++] = character;
+      }
+      return result.join('');
+    }).join('\n');
+}
+export function outputText(outputs: unknown[]): string {
+  return outputs.map(output => {
+    if (!output || typeof output !== 'object') return '';
+    const item = output as Record<string, unknown>, data = item.data as Record<string, unknown> | undefined;
+    if (item.output_type === 'stream') return terminalText(notebookText(item.text));
+    if (item.output_type === 'error') return terminalText(Array.isArray(item.traceback) ? item.traceback.join('\n') : `${item.ename}: ${item.evalue}`);
+    if (data?.['text/plain']) return notebookText(data['text/plain']);
+    if (data?.['text/markdown']) return notebookText(data['text/markdown']);
+    if (data?.['text/html']) return new DOMParser().parseFromString(notebookHtml(notebookText(data['text/html'])), 'text/html').body.textContent ?? '';
+    if (data && Object.hasOwn(data, 'application/json')) return JSON.stringify(data['application/json'], null, 2);
+    return '';
+  }).join('\n');
 }

@@ -36,6 +36,7 @@ export function clientCapabilities(): ClientCapabilities {
   const dynamic = { dynamicRegistration: true };
   return {
     general: { positionEncodings: ['utf-16'] },
+    notebookDocument: { synchronization: { dynamicRegistration: false, executionSummarySupport: true } },
     window: { workDoneProgress: true, showMessage: { messageActionItem: { additionalPropertiesSupport: false } } },
     workspace: { configuration: true, workspaceFolders: true, applyEdit: true,
       workspaceEdit: { documentChanges: true, resourceOperations: [], failureHandling: 'abort' },

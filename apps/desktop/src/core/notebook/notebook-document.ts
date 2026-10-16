@@ -1,10 +1,11 @@
 import { findNodeAtLocation, getNodeValue, parseTree, type Node, type ParseError } from 'jsonc-parser';
 
 export type CellKind = 'code' | 'markdown' | 'raw';
+export type NotebookChange = 'source' | 'structure' | 'output';
 export type NotebookCell = {
   id: string; kind: CellKind; source: string; version: number;
   outputRevision: number; executedSource?: string; outputs: unknown[]; executionCount: number | null; attachments: Record<string, unknown>;
-  original?: Node; originalKind: CellKind; originalSource: string; clearOutputs: boolean;
+  original?: Node; originalDocument?: string; originalKind: CellKind; originalSource: string; clearOutputs: boolean;
 };
 const field = (node: Node, key: string) => findNodeAtLocation(node, [key]);
 const value = (node: Node, key: string): unknown => { const child = field(node, key); return child && getNodeValue(child); };
@@ -40,7 +41,7 @@ export class NotebookDocument {
   private savedOrder: string[] = [];
   private serialized?: { revision: number; text: string };
   private serializations = new Map<string, { order: string[]; cells: Map<string, { source: string; kind: CellKind; clear: boolean; output: number }> }>();
-  private listeners = new Set<() => void>();
+  private listeners = new Set<(event: NotebookChange) => void>();
   private undoStack: { undo(): void; redo(): void }[] = [];
   private redoStack: { undo(): void; redo(): void }[] = [];
   constructor(readonly original: string) {
@@ -81,8 +82,8 @@ export class NotebookDocument {
     } catch (error) { this.error = error instanceof Error ? error.message : String(error); this.cells.length = 0; }
     this.language = language; this.minor = minor; this.markSaved(original);
   }
-  subscribe(listener: () => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }
-  private changed(): void { this.revision++; this.serialized = undefined; for (const listener of this.listeners) listener(); }
+  subscribe(listener: (event: NotebookChange) => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }
+  private changed(event: NotebookChange = 'structure'): void { this.revision++; this.serialized = undefined; for (const listener of this.listeners) listener(event); }
   get dirty(): boolean {
     return this.cells.length !== this.savedOrder.length || this.cells.some((cell, i) => {
       const saved = this.checkpoint.get(cell.id);
@@ -92,7 +93,7 @@ export class NotebookDocument {
   setSource(id: string, source: string): void {
     const cell = this.cells.find(cell => cell.id === id);
     if (!cell || this.error || cell.source === source) return;
-    cell.source = source; cell.version++; this.changed();
+    cell.source = source; cell.version++; this.changed('source');
   }
   private perform(redo: () => void, undo: () => void): void {
     if (this.error) return;
@@ -109,6 +110,33 @@ export class NotebookDocument {
   remove(id: string): void {
     const index = this.cells.findIndex(cell => cell.id === id), cell = this.cells[index];
     if (cell) this.perform(() => this.cells.splice(this.cells.indexOf(cell), 1), () => this.cells.splice(index, 0, cell));
+  }
+  removeMany(ids: readonly string[]): void {
+    const previous = [...this.cells], next = previous.filter(cell => !ids.includes(cell.id));
+    if (next.length === previous.length) return;
+    this.perform(() => this.cells.splice(0, this.cells.length, ...next), () => this.cells.splice(0, this.cells.length, ...previous));
+  }
+  moveManyBefore(ids: readonly string[], before?: string): void {
+    const previous = [...this.cells], moving = previous.filter(cell => ids.includes(cell.id));
+    if (!moving.length || before && ids.includes(before)) return;
+    const next = previous.filter(cell => !ids.includes(cell.id));
+    const index = before ? next.findIndex(cell => cell.id === before) : next.length;
+    if (index < 0) return; next.splice(index, 0, ...moving);
+    if (next.every((cell, i) => cell === previous[i])) return;
+    this.perform(() => this.cells.splice(0, this.cells.length, ...next), () => this.cells.splice(0, this.cells.length, ...previous));
+  }
+  copyCells(ids: readonly string[]): string {
+    return `{"nbformat":4,"nbformat_minor":${this.minor},"metadata":{},"cells":[${this.cells.filter(cell => ids.includes(cell.id)).map(cell => this.serializeCell(cell)).join(',')}]}`;
+  }
+  pasteCells(text: string, after?: string): string[] {
+    if (text.length > 16 * 1024 * 1024) throw Error('Copied cells are too large.');
+    const source = new NotebookDocument(text);
+    if (source.error || !source.cells.length) throw Error(source.error ?? 'No cells to paste.');
+    const cells = source.cells.map(cell => ({ ...cell, id: crypto.randomUUID(), originalDocument: text }));
+    const previous = [...this.cells], next = [...previous], index = after ? previous.findIndex(cell => cell.id === after) + 1 : previous.length;
+    next.splice(index, 0, ...cells);
+    this.perform(() => this.cells.splice(0, this.cells.length, ...next), () => this.cells.splice(0, this.cells.length, ...previous));
+    return cells.map(cell => cell.id);
   }
   duplicate(id: string): string | undefined {
     const index = this.cells.findIndex(cell => cell.id === id), original = this.cells[index]; if (!original) return;
@@ -134,7 +162,7 @@ export class NotebookDocument {
     const cell = this.cells.find(cell => cell.id === id);
     if (!cell || cell.kind !== 'code' || this.error) return;
     cell.outputs = outputs; cell.executionCount = count; cell.executedSource = source;
-    cell.outputRevision++; cell.clearOutputs = false; this.changed();
+    cell.outputRevision++; cell.clearOutputs = false; this.changed('output');
   }
   convert(id: string, kind: CellKind): void {
     const cell = this.cells.find(cell => cell.id === id); if (!cell || cell.kind === kind) return;
@@ -205,15 +233,16 @@ export class NotebookDocument {
   }
   private serializeCell(cell: NotebookCell): string {
     const node = cell.original;
-    const copied = !!node && value(node, 'id') !== undefined && value(node, 'id') !== cell.id;
+    const original = cell.originalDocument ?? this.original;
+    const copied = !!node && (this.minor >= 5 || value(node, 'id') !== undefined) && value(node, 'id') !== cell.id;
     if (!node) return JSON.stringify({ cell_type: cell.kind, ...(this.minor >= 5 ? { id: cell.id } : {}), metadata: {}, source: cell.source,
       ...(cell.kind === 'code' ? { execution_count: cell.clearOutputs ? null : cell.executionCount, outputs: cell.clearOutputs ? [] : cell.outputs } : {}) }, null, 1).replace(/\n/g, this.original.includes('\r\n') ? '\r\n' : '\n');
     if (!copied && cell.source === cell.originalSource && cell.kind === cell.originalKind && !cell.clearOutputs && !cell.outputRevision)
-      return this.original.slice(node.offset, node.offset + node.length);
+      return original.slice(node.offset, node.offset + node.length);
     if (!copied && cell.kind === cell.originalKind && !cell.clearOutputs && !cell.outputRevision) {
       const source = field(node, 'source')!;
-      return this.original.slice(node.offset, source.offset) + JSON.stringify(cell.source)
-        + this.original.slice(source.offset + source.length, node.offset + node.length);
+      return original.slice(node.offset, source.offset) + JSON.stringify(cell.source)
+        + original.slice(source.offset + source.length, node.offset + node.length);
     }
     // Copy raw property spans (including unknown fields and numeric lexemes).
     const replace = new Map<string, string>([['cell_type', JSON.stringify(cell.kind)]]);
@@ -228,7 +257,7 @@ export class NotebookDocument {
       const [key] = property.children!; const name = key.value as string;
       if (cell.kind !== 'code' && ['outputs', 'execution_count'].includes(name)) continue;
       if (replace.has(name)) { properties.push(`${JSON.stringify(name)}: ${replace.get(name)}`); replace.delete(name); }
-      else properties.push(this.original.slice(property.offset, property.offset + property.length));
+      else properties.push(original.slice(property.offset, property.offset + property.length));
     }
     for (const [key, val] of replace) properties.push(`${JSON.stringify(key)}: ${val}`);
     const eol = this.original.includes('\r\n') ? '\r\n' : '\n';

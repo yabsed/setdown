@@ -150,7 +150,14 @@
         <p>{selected.description}</p>
         <div class="detail-status"><span class="state status" data-tone={serverStatus(selected).tone}>{status(selected)}</span><span class="source">{connectionSource(selected)}</span></div>
         {#if selected.setupNote}<p>{selected.setupNote}</p>{/if}
-        {#if selected.configured}
+        {#if selected.notebook}
+          <p>Choose Python in the notebook toolbar. Analysis and execution share that environment.</p>
+          <button disabled={busy} onclick={() => window.dispatchEvent(new Event('setdown:restart-language'))}>Restart servers in this window</button>
+          {#each selected.sessions as session}
+            <p class="session"><code>{session.root}</code><br />{session.state}{session.message ? ` · ${session.message}` : ''}</p>
+            {#if session.logs?.length}<details><summary>Server output</summary><pre class="server-output">{session.logs.join('\n')}</pre></details>{/if}
+          {/each}
+        {:else if selected.configured}
           <p class="executable"><span class="field-label">Executable</span><code>{selected.executable}</code></p>
           {#if selected.automatic && selected.enabled}<p>Starts when you open a matching file.</p>{/if}
           {#if selected.discoveryMessage}<p>{selected.discoveryMessage}</p>{/if}

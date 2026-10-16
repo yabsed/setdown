@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { NotebookDocument, emptyNotebook } from './notebook-document';
-import { NotebookProjection, hasNotebookMagic } from './notebook-projection';
 const fixture = (minor = 5) => JSON.stringify({ metadata: { custom: { retained: true } }, nbformat: 4, nbformat_minor: minor,
   cells: [{ cell_type: 'markdown', ...(minor >= 5 ? { id: 'intro' } : {}), metadata: { tags: ['intro'] },
     source: ['# A', ' title\n', 'Text'], attachments: { 'image.png': { 'image/png': 'AA==' } } },
@@ -104,26 +103,4 @@ describe('notebook ownership and persistence', () => {
       const document = new NotebookDocument(text); expect(document.error).toBeTruthy(); document.add('code');
       expect(document.serialize()).toBe(text); expect(document.cells).toEqual([]); expect(document.dirty).toBe(false);
     });
-});
-
-describe('Python cell projection', () => {
-  it('maps UTF-16 positions and definitions between cells, excludes separators, and rebuilds after preceding edits', () => {
-    const document = new NotebookDocument(emptyNotebook()); const a = document.add('code'), b = document.add('code');
-    document.setSource(a, 'label = "🙂"\nnumbers = [1, 2]'); document.setSource(b, 'numbers.append(3)');
-    const projection = new NotebookProjection(document.cells);
-    expect(projection.position(b, { line: 0, character: 7 })).toEqual({ line: 4, character: 7 });
-    expect(projection.range({ start: { line: 1, character: 0 }, end: { line: 1, character: 7 } })?.id).toBe(a);
-    expect(projection.range({ start: { line: 1, character: 0 }, end: { line: 4, character: 7 } })).toBeNull();
-    expect(projection.position(a, { line: 0, character: 12 })).toEqual({ line: 0, character: 12 });
-    document.setSource(a, '\n' + document.cells[0].source);
-    expect(new NotebookProjection(document.cells).position(b, { line: 0, character: 0 })?.line).toBe(5);
-  });
-  it('does not confuse string/comment contents with IPython commands', () => {
-    expect(hasNotebookMagic('a = """\n%time\n!echo\n"""\nb = 10 % 2\n# %time')).toBe(false);
-    for (const source of ['%time f()', '!pip install a', '%%bash\necho hello', 'files = !ls', 'str?']) expect(hasNotebookMagic(source)).toBe(true);
-    const document = new NotebookDocument(emptyNotebook()); const id = document.add('code'); document.setSource(id, '!echo no');
-    const projection = new NotebookProjection(document.cells); expect(projection.text).toBe('');
-    expect(projection.position(id, { line: 0, character: 0 })).toBeNull();
-    expect(document.cells[0].source).toBe('!echo no');
-  });
 });

@@ -7,7 +7,7 @@ function fixture() {
   const document = new NotebookDocument(emptyNotebook()), a = document.add('code'), markdown = document.add('markdown'), b = document.add('code');
   document.setSource(a, 'numbers = [1, 2, 3]'); document.setSource(b, 'print(sum(numbers))');
   let listener: (event: NotebookKernelEvent) => void = () => {};
-  const port: NotebookApi = { run: vi.fn(async () => {}), interrupt: vi.fn(async () => {}), shutdown: vi.fn(),
+  const port: NotebookApi = { copyOutput: vi.fn(async () => {}), environments: vi.fn(async () => ({ candidates: [], selected: "/usr/bin/python3" })), selectPython: vi.fn(async () => {}), run: vi.fn(async () => {}), interrupt: vi.fn(async () => {}), shutdown: vi.fn(),
     choosePython: vi.fn(async () => '/opt/venv/bin/python'), onEvent: callback => { listener = callback; return () => { listener = () => {}; }; } };
   const execution = new NotebookExecution(port, document, 'notebook', '/workspace/example.ipynb');
   const request = () => vi.mocked(port.run).mock.calls.at(-1)![0];
@@ -17,12 +17,14 @@ function fixture() {
 }
 afterEach(() => vi.useRealTimers());
 describe('notebook execution ownership', () => {
-  it('starts only on request, runs code cells in visible order, and rejects concurrent runs', async () => {
+  it('starts only on request, queues cells in visible order and coalesces queued reruns', async () => {
     const f = fixture(); expect(f.port.run).not.toHaveBeenCalled();
     f.document.moveBefore(f.b, f.a); await f.execution.run();
-    expect(f.request().cells.map(c => c.id)).toEqual([f.b, f.a]);
+    expect(f.request().cells.map(c => c.id)).toEqual([f.b]);
+    expect(f.execution.cells.get(f.a)).toBe('queued');
     await f.execution.run([f.a]); expect(f.port.run).toHaveBeenCalledTimes(1);
-    f.send({ type: 'state', state: 'idle' }); await f.execution.run([f.a]);
+    f.send({ type: 'state', state: 'idle' });
+    expect(f.port.run).toHaveBeenCalledTimes(2);
     expect(f.request().cells.map(c => c.id)).toEqual([f.a]); f.execution.dispose();
   });
   it('batches stream output, implements clear(wait), and saves counts without damaging Markdown', async () => {
@@ -43,7 +45,11 @@ describe('notebook execution ownership', () => {
   });
   it('updates display IDs across cells and never persists transient display handles', async () => {
     vi.useFakeTimers(); const f = fixture(); await f.execution.run();
-    for (const id of [f.a, f.b]) f.output('display_data', { data: { 'text/plain': 'old' }, transient: { display_id: 'shared' } }, id);
+    for (const id of [f.a, f.b]) {
+      f.output('display_data', { data: { 'text/plain': 'old' }, transient: { display_id: 'shared' } }, id);
+      f.send({ type: 'cell-done', cell: id, version: f.request().cells[0].version, count: 1, ok: true });
+      f.send({ type: 'state', state: 'idle' });
+    }
     f.output('update_display_data', { data: { 'text/plain': 'new' }, transient: { display_id: 'shared' } }, f.b);
     vi.advanceTimersByTime(50);
     for (const cell of f.document.cells.filter(c => c.kind === 'code')) {
@@ -72,4 +78,27 @@ describe('notebook execution ownership', () => {
     f.execution.dispose(); const calls = vi.mocked(f.port.run).mock.calls.length;
     await f.execution.run(); expect(f.port.run).toHaveBeenCalledTimes(calls);
   });
+});
+
+  it('failure skips remaining queued cells; interrupt cancels them without losing completed outputs', async () => {
+    const f = fixture(); await f.execution.run(); const first = f.request();
+    f.send({ type: 'state', state: 'busy' });
+    f.send({ type: 'cell-start', cell: f.a, version: first.cells[0].version, runId: first.cells[0].runId });
+    f.send({ type: 'cell-done', cell: f.a, version: first.cells[0].version, runId: first.cells[0].runId, count: 1, ok: false });
+    f.send({ type: 'state', state: 'idle' });
+    expect(f.execution.cells.get(f.a)).toBe('error'); expect(f.execution.cells.get(f.b)).toBe('skipped'); expect(f.port.run).toHaveBeenCalledTimes(1);
+    await f.execution.run([f.a]); f.send({ type: 'state', state: 'busy' }); await f.execution.run([f.b]);
+    await f.execution.interrupt(); expect(f.execution.cells.get(f.b)).toBe('canceled');
+    f.send({ type: 'cell-done', cell: f.a, version: first.cells[0].version, runId: first.cells[0].runId, count: 99, ok: true });
+    expect(f.document.cells[0].executionCount).not.toBe(99);
+    f.execution.dispose();
+  });
+
+it('canceling startup while the saved environment is loading cannot launch a late kernel', async () => {
+  const f = fixture(); let resolve!: (value: { candidates: []; selected: string }) => void;
+  vi.mocked(f.port.environments).mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+  const starting = f.execution.run();
+  expect(f.execution.state).toBe('starting'); f.execution.shutdown();
+  resolve({ candidates: [], selected: '/saved/environment/python' }); await starting;
+  expect(f.port.run).not.toHaveBeenCalled(); expect(f.execution.state).toBe('stopped'); f.execution.dispose();
 });

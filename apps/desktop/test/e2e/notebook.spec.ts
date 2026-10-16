@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -122,6 +122,8 @@ test('long cells grow with their contents and scroll only the notebook, includin
     const editor = cell.getByRole('textbox', { name: /Code cell editor/ });
     await expect(editor).toBeAttached();
     await expect.poll(() => host.evaluate(element => element.clientHeight)).toBeGreaterThan(2000);
+    expect(await cell.locator('.editor-viewport').evaluate(node => node.clientHeight)).toBeLessThanOrEqual(await scroll.evaluate(node => node.clientHeight));
+    expect(await cell.locator('.view-line').count()).toBeLessThan(80);
     const bounds = await host.boundingBox(); if (!bounds) throw Error('Missing cell bounds');
     await page.mouse.move(bounds.x + 150, bounds.y + 80); await page.mouse.wheel(0, 450);
     await expect.poll(() => scroll.evaluate(element => element.scrollTop)).toBeGreaterThan(100);
@@ -158,7 +160,7 @@ test('Python cells run in one kernel, persist results, and reset discards variab
     await application.evaluate(({ dialog }, python) => {
       dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [python] });
     }, python);
-    await page.getByRole('button', { name: 'Python environment…', exact: true }).click();
+    await page.getByRole('combobox', { name: 'Python environment', exact: true }).selectOption('__choose__');
     await page.getByRole('button', { name: 'Run all cells', exact: true }).click();
     const cell = page.locator('[data-cell-id="use"]');
     await expect(cell.locator('.notebook-outputs')).toContainText('10', { timeout: 60_000 });
@@ -166,11 +168,121 @@ test('Python cells run in one kernel, persist results, and reset discards variab
     await expect(cell.locator('.execution')).toHaveText('[2]');
     await page.keyboard.press('Control+s');
     await expect.poll(async () => JSON.parse(await readFile(file, 'utf8')).cells[2].outputs[0]?.text).toContain('10');
+    await cell.getByRole('button', { name: 'Copy cell output', exact: true }).click();
+    await expect(cell.locator('.output-actions [role="status"]')).toHaveText('Copied');
+    expect((await application.evaluate(({ clipboard }) => clipboard.readText())).trim()).toBe('10');
+    // Cancel before window closing starts: variables must survive the canceled quit.
+    await application.evaluate(({ app }) => { app.once('before-quit', event => event.preventDefault()); app.quit(); });
+    const editor = cell.getByRole('textbox', { name: /Code cell editor/ });
+    await editor.press('Control+a'); await page.keyboard.insertText('import time\ntime.sleep(0.5)\nnumbers.append(4)\nprint(sum(numbers))');
+    await editor.press('Shift+Enter');
+    await expect(page.locator('.notebook-cell')).toHaveCount(4);
+    const next = page.locator('.notebook-cell').nth(3);
+    await expect(next.locator('.monaco-editor')).toHaveClass(/focused/);
+    await page.keyboard.insertText('print(sum(numbers))'); await page.keyboard.press('Alt+Enter');
+    await expect(page.locator('.notebook-cell')).toHaveCount(5);
+    await expect(next.locator('.notebook-outputs')).toContainText('14', { timeout: 60_000 });
+    await expect(page.locator('.kernel-state')).toHaveText('idle');
+
     await page.getByRole('button', { name: 'Reset kernel', exact: true }).click();
     await expect(page.locator('.kernel-state')).toHaveText('stopped');
     await cell.getByRole('button', { name: 'Run cell', exact: true }).click();
     await expect(cell.locator('.notebook-outputs')).toContainText('NameError', { timeout: 60_000 });
     await expect(page.locator('.kernel-state')).toHaveText('idle');
     await page.keyboard.press('Control+s');
+  } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
+});
+
+test('native notebook analysis accepts IPython cells while retaining real errors and isolated cell ranges', async () => {
+  test.setTimeout(90_000);
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-analysis-')), file = path.join(root, 'analysis.ipynb');
+  const sources = ['%who\nimport math\nimport asyncio\nimport only_a', 'await asyncio.sleep(0)\nprint(math.sqrt(9), only_a.VALUE)\ndisplay(1)\nget_ipython()', 'count: int = "wrong"'];
+  const pythonA = path.join(root, '.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
+  const pythonB = path.join(root, 'env-b', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
+  for (const name of ['.venv', 'env-b']) execFileSync(process.env.SETDOWN_TEST_NOTEBOOK_PYTHON ?? 'python3', ['-m', 'venv', '--without-pip', '--system-site-packages', path.join(root, name)]);
+  const packages = execFileSync(pythonA, ['-c', 'import sysconfig; print(sysconfig.get_path("purelib"))'], { encoding: 'utf8' }).trim();
+  await mkdir(packages, { recursive: true }); await writeFile(path.join(packages, 'only_a.py'), 'VALUE = 42\n');
+  await writeFile(file, JSON.stringify({ nbformat: 4, nbformat_minor: 5, metadata: { language_info: { name: 'python' } }, cells: sources.map((source, i) => ({ id: `cell${i}`, cell_type: 'code', metadata: {}, source, execution_count: null, outputs: [] })) }));
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+  const application = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await application.firstWindow();
+    await expect(page.locator('.notebook-surface')).toHaveAttribute('data-notebook-language', 'ready', { timeout: 30_000 });
+    await page.getByRole('combobox', { name: 'Python environment', exact: true }).selectOption(pythonA);
+    await page.evaluate(async ({ file, sources, pythonA, pythonB }) => {
+      const api = (window as any).marktex.language;
+      const state = (window as any).notebookAnalysis = { diagnostics: {} as Record<string, any>, connection: null, other: undefined };
+      api.onEvent((event: any) => { if (event.type === 'diagnostics' && event.id === 'analysis-other') state.other = event.diagnostics; });
+      api.onEvent((event: any) => { if (event.type === 'diagnostics' && event.id === 'analysis-probe') state.diagnostics[`${event.version}:${event.cell}`] = event; });
+      state.connection = await api.open({ id: 'analysis-probe', generation: 'probe', path: file, python: pythonA, notebook: 'python', text: '', version: 1,
+        cells: sources.map((text: string, i: number) => ({ id: `cell${i}`, version: 1, text })) });
+      await api.open({ id: 'analysis-other', generation: 'other', path: file, python: pythonB, notebook: 'python', text: '', version: 1,
+        cells: [{ id: 'only', version: 1, text: 'import only_a' }] });
+    }, { file, sources, pythonA, pythonB });
+    await expect.poll(() => page.evaluate(() => (window as any).notebookAnalysis.other?.some((d: any) => d.code === 'reportMissingImports')), { timeout: 30_000 }).toBe(true);
+    const diagnostics = (version: number, id: string) => page.evaluate(({ version, id }) => (window as any).notebookAnalysis.diagnostics[`${version}:${id}`]?.diagnostics, { version, id });
+    await expect.poll(() => diagnostics(1, 'cell0'), { timeout: 30_000 }).toEqual([]);
+    await expect.poll(() => diagnostics(1, 'cell1'), { timeout: 30_000 }).toEqual([]);
+    await expect.poll(async () => (await diagnostics(1, 'cell2'))?.some((d: any) => /int/.test(d.message) && d.severity === 1), { timeout: 30_000 }).toBe(true);
+    await page.evaluate(async () => { await (window as any).marktex.language.changeNotebook('analysis-probe', 2, [
+      { id: 'cell0', version: 2, text: 'values = [' }, { id: 'cell1', version: 2, text: 'print("valid")' }, { id: 'cell2', version: 2, text: 'count: int = 1' },
+    ]); });
+    await expect.poll(async () => (await diagnostics(2, 'cell0'))?.some((d: any) => d.severity === 1), { timeout: 30_000 }).toBe(true);
+    await expect.poll(() => diagnostics(2, 'cell1'), { timeout: 30_000 }).toEqual([]);
+    await expect.poll(() => diagnostics(2, 'cell2'), { timeout: 30_000 }).toEqual([]);
+    await page.evaluate(async () => { await (window as any).marktex.language.changeNotebook('analysis-probe', 3, [
+      { id: 'cell2', version: 3, text: 'numbers = [1, 2]' }, { id: 'cell1', version: 3, text: 'print(sum(numbers))' },
+    ]); });
+    await expect.poll(() => diagnostics(3, 'cell1'), { timeout: 30_000 }).toEqual([]);
+    await page.getByRole('button', { name: 'Run all cells', exact: true }).click();
+    await expect(page.locator('[data-cell-id="cell1"] .notebook-outputs')).toContainText('42', { timeout: 60_000 });
+    await expect(page.locator('.kernel-state')).toHaveText('idle');
+    await page.evaluate(() => { (window as any).marktex.language.close('analysis-probe'); (window as any).marktex.language.close('analysis-other'); });
+  } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
+});
+
+test('scrolling preserves focused editors and measured output height; cell copy and reader search keep their scope', async () => {
+  test.setTimeout(60_000);
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-layout-')), file = path.join(root, 'layout.ipynb');
+  await writeFile(file, JSON.stringify({ nbformat: 4, nbformat_minor: 5, metadata: {}, cells: [
+    { id: 'intro', cell_type: 'markdown', metadata: {}, source: '# Searchable heading\n\nUnique reader text.' },
+    ...Array.from({ length: 35 }, (_, i) => ({ id: `code-${i}`, cell_type: 'code', metadata: { keep: i }, source: `value_${i} = ${i}`, execution_count: null,
+      outputs: i ? [] : [{ output_type: 'stream', name: 'stdout', text: Array.from({ length: 100 }, (_, j) => `output ${j}`).join('\n') }] })),
+  ] }));
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+  const application = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await application.firstWindow(); await focusApplication(application);
+    const first = page.locator('[data-cell-id="code-0"]'), editor = first.getByRole('textbox', { name: /Code cell editor/ }), scroll = page.locator('.notebook-scroll');
+    await expect(first.locator('.notebook-outputs')).toContainText('output 99');
+    await editor.focus(); const mounted = await editor.elementHandle();
+    const ime = await page.context().newCDPSession(page);
+    await ime.send('Input.imeSetComposition', { text: 'ㅎ', selectionStart: 1, selectionEnd: 1 });
+    const height = await first.evaluate(node => node.getBoundingClientRect().height);
+    await scroll.evaluate(node => node.scrollTop = 3500);
+    await expect.poll(() => scroll.evaluate(node => node.scrollTop)).toBeGreaterThan(3000);
+    expect(await mounted!.evaluate(node => node.isConnected && document.activeElement === node)).toBe(true);
+    expect(Math.abs(await first.evaluate(node => node.getBoundingClientRect().height) - height)).toBeLessThan(3);
+    await ime.send('Input.insertText', { text: '한' }); await ime.detach();
+    await expect(first.locator('.view-lines')).toContainText('한');
+    await page.locator('[data-cell-id="code-20"]').getByRole('button', { name: 'Select cell', exact: true }).click();
+    await expect(first.locator('.monaco-editor')).toHaveCount(0);
+    await expect(first.locator('.notebook-outputs')).toHaveCount(0);
+    expect(Math.abs(await first.evaluate(node => node.getBoundingClientRect().height) - height)).toBeLessThan(3);
+    await page.keyboard.press('Control+c'); await page.keyboard.press('Control+v');
+    await expect(page.locator('.notebook-cell')).toHaveCount(37);
+    await page.keyboard.press('Control+z'); await expect(page.locator('.notebook-cell')).toHaveCount(36);
+    await page.keyboard.press('Control+f');
+    const find = page.getByRole('textbox', { name: 'Find in notebook', exact: true });
+    await find.fill('Unique reader'); await find.pressSequentially(' text');
+    await expect(find).toHaveValue('Unique reader text');
+    await find.press('Enter');
+    await expect(find).toBeFocused();
+    await writeFile(test.info().outputPath('search-geometry.json'), JSON.stringify(await page.evaluate(() => { const reader = document.querySelector('[data-cell-id="intro"] .cell-markdown')!; const scroll = document.querySelector('.notebook-scroll')!; return { reader: reader.getBoundingClientRect().toJSON(), scroll: scroll.getBoundingClientRect().toJSON(), top: scroll.scrollTop, window: { x: window.scrollX, y: window.scrollY }, search: document.querySelector('.notebook-search')?.textContent, value: (document.querySelector('.notebook-search input') as HTMLInputElement)?.value }; })));
+    await expect(page.locator('[data-cell-id="intro"] .cell-markdown')).toBeInViewport();
+    await expect(page.locator('[data-cell-id="intro"] .cell-editor')).toHaveCount(0);
+    await expect(page.locator('.notebook-search')).toContainText('1/1');
+    await page.screenshot({ path: test.info().outputPath('notebook-reform.png') });
+    await page.keyboard.press('Escape'); await page.keyboard.press('Control+s');
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
 });

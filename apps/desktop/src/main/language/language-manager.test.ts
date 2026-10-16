@@ -10,18 +10,19 @@ import { ServerEnvironment } from './server-environment';
 
 const mocks = vi.hoisted(() => ({ directory: '', handles: new Map<string, (...args: any[]) => any>(),
   events: new Map<string, (...args: any[]) => void>(), app: new Map<string, (...args: any[]) => void>(),
-  servers: [] as { notify: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn>; root: string }[] }));
+  servers: [] as { notify: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn>; root: string; diagnostics: (params: any) => void }[] }));
 vi.mock('electron', () => ({ app: { getPath: () => mocks.directory, on: (key: string, fn: (...args: any[]) => void) => mocks.app.set(key, fn), quit: vi.fn() },
   ipcMain: { handle: (key: string, fn: (...args: any[]) => any) => mocks.handles.set(key, fn),
     on: (key: string, fn: (...args: any[]) => void) => mocks.events.set(key, fn) } }));
+vi.mock('../notebook/python-environments', () => ({ notebookPython: { resolve: async () => ({ python: '/usr/bin/python3', env: {} }) } }));
 vi.mock('./server-session', () => ({ ServerSession: class {
-  readonly ready = Promise.resolve({ textDocumentSync: { openClose: true, change: 2, save: { includeText: true } } });
+  readonly ready = Promise.resolve({ notebookDocumentSync: { notebookSelector: [{ notebook: 'jupyter-notebook' }] }, textDocumentSync: { openClose: true, change: 2, save: { includeText: true } } });
   readonly capabilities = { forDocument: () => ({ textDocumentSync: { openClose: true, change: 2, save: { includeText: true } } }) };
   readonly notify = vi.fn(async (_method: string, _params: unknown) => {});
   readonly stop = vi.fn(async () => {});
   readonly request = vi.fn(async () => null);
   readonly watch = vi.fn();
-  constructor(readonly launch: unknown, readonly root: string) { mocks.servers.push(this); }
+  constructor(readonly launch: unknown, readonly root: string, readonly diagnostics: (params: any) => void) { mocks.servers.push(this); }
 } }));
 beforeEach(async () => { mocks.directory = await mkdtemp(path.join(os.tmpdir(), 'setdown-manager-test-'));  mocks.handles.clear(); mocks.events.clear(); mocks.app.clear(); mocks.servers.length = 0; });
 
@@ -250,19 +251,35 @@ test('the full catalog discovers a server without a connection profile without l
 });
 
 
-test('notebook projections require an owned notebook and cannot issue unmapped edits', async () => {
+test('native notebook cells require ownership and cannot issue unmapped edits', async () => {
   const f = fixture();
-  const document = { ...f.document('notebook', 'notes.ipynb'), notebook: 'python', text: 'values = [1, 2, 3]' };
+  const document = { ...f.document('notebook', 'notes.ipynb'), notebook: 'python', text: '', cells: [{ id: 'one', version: 1, text: 'values = [1, 2, 3]' }] };
   const connection = await f.invoke('open', f.first, document);
-  expect(connection.uri).toMatch(/\/\.setdown-notebook-[a-f0-9-]+\.py$/);
-  expect(connection.uri).not.toContain('notes.ipynb');
-  expect(mocks.servers[0].notify).toHaveBeenCalledWith('textDocument/didOpen', expect.objectContaining({ textDocument: expect.objectContaining({
-    uri: connection.uri, languageId: 'python', text: document.text,
-  }) }));
-  await expect(f.invoke('open', f.first, { ...document, id: 'bad', path: '/not-owned.ipynb' })).rejects.toThrow(/not open/);
+  expect(connection.uri).toMatch(/notes.ipynb$/);
+  expect(connection.cells.one).toMatch(/^vscode-notebook-cell:.*notes.ipynb#one.0$/);
+  expect(mocks.servers[0].notify).toHaveBeenCalledWith('notebookDocument/didOpen', expect.objectContaining({
+    cellTextDocuments: expect.arrayContaining([expect.objectContaining({ uri: connection.cells.one, languageId: 'python', text: document.cells[0].text })]),
+  }));
+  await expect(f.invoke('open', f.first, { ...document, id: 'bad', path: '/not-owned.ipynb' })).rejects.toThrow(/open notebook/);
   await expect(f.invoke('open', f.first, { ...document, id: 'bad', path: f.document('python').path })).rejects.toThrow(/Invalid/);
-  await expect(f.invoke('request', f.first, document.id, 1, 'rename', 'textDocument/rename', {})).rejects.toThrow(/not mapped/);
-  await expect(f.invoke('request', f.first, document.id, 1, 'command', 'workspace/executeCommand', {})).rejects.toThrow(/not mapped/);
-  await expect(f.invoke('request', f.first, document.id, 1, 'hover', 'textDocument/hover', { position: { line: 0, character: 1 } })).resolves.toBeNull();
+  await expect(f.invoke('request', f.first, document.id, 1, 'rename', 'textDocument/rename', { cell: 'one' })).rejects.toThrow(/Invalid/);
+  await expect(f.invoke('request', f.first, document.id, 1, 'command', 'workspace/executeCommand', {})).rejects.toThrow(/Invalid/);
+  await expect(f.invoke('request', f.first, document.id, 1, 'hover', 'textDocument/hover', { cell: 'one', position: { line: 0, character: 1 } })).resolves.toBeNull();
+  const next = await f.invoke('notebook-change', f.first, document.id, 2, [{ id: 'two', version: 1, text: 'values' }, ...document.cells]);
+  expect(next.one).toMatch(/#one.2$/);
+  vi.mocked(f.first.sender.send).mockClear();
+  mocks.servers[0].diagnostics({ uri: connection.cells.one, version: 2, diagnostics: [] });
+  mocks.servers[0].diagnostics({ uri: next.one, version: 1, diagnostics: [] });
+  expect(f.first.sender.send).not.toHaveBeenCalled();
+  mocks.servers[0].diagnostics({ uri: next.one, version: 2, diagnostics: [] });
+  expect(f.first.sender.send).toHaveBeenCalledWith('language:event', expect.objectContaining({ type: 'diagnostics', version: 2, cell: 'one', cellVersion: 1 }));
+  expect(mocks.servers[0].notify).toHaveBeenCalledWith('notebookDocument/didClose', expect.anything());
+  await expect(f.invoke('notebook-change', f.first, document.id, 1, document.cells)).rejects.toThrow(/Stale/);
   f.send('close', f.first, document.id);
+});
+
+test('quit is not delayed when there are no language processes to drain', () => {
+  fixture(); const event = { preventDefault: vi.fn() };
+  mocks.app.get('will-quit')!(event);
+  expect(event.preventDefault).not.toHaveBeenCalled();
 });

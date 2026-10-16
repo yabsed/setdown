@@ -18,6 +18,7 @@ export function validateNotebookRun(request: NotebookRun): void {
   for (const cell of request.cells) {
     if (!cell || typeof cell.id !== 'string' || !/^[a-zA-Z0-9_-]{1,64}$/.test(cell.id) || ids.has(cell.id)
       || !Number.isSafeInteger(cell.version) || cell.version < 1 || typeof cell.source !== 'string'
+      || (cell.runId !== undefined && (typeof cell.runId !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(cell.runId)))
       || cell.source.length > 1024 * 1024) throw Error('Invalid or oversized notebook cell.');
     ids.add(cell.id); length += cell.source.length;
   }

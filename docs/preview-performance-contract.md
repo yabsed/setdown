@@ -1592,17 +1592,36 @@ worker and are sanitized before entering the shell. A late fragment must not
 replace a newer source revision. Escape returns a Markdown cell to its latest
 preview while respecting composition and Monaco popup ownership.
 
-Code editor heights follow the full wrapped content at the current width and
+Logical code-cell heights follow the full wrapped content at the current width and
 zoom. There is no 600px cell or output height cap. Notebook scrolling owns wheel
 input over code and keyboard caret reveal; shrinking/Undo and view restoration
-must not leave an independent editor scroll offset. Dragging starts only from
-a cell header handle, with insertion position and a single structural Undo.
+must not leave an independent editor scroll offset. Monaco renders a viewport-sized
+sticky inner editor whose offset follows the outer scroll; its full logical height
+is reserved. Offscreen focused/composing editors are retained, and output placeholders
+reserve measured height without margin-collapse shifts. These virtual views use
+Monaco's supported textarea input (`editContext: false`): native EditContext left
+an ordinary focused find input receiving `beforeinput` without committing text
+after offscreen editor retirement. The regression checks real Korean composition
+across scrolling, subsequent normal input, and both fill and keyboard typing. Dragging starts only from
+a cell header handle, with insertion position, edge auto-scroll, selected-cell grouping
+and a single structural Undo. Cell selection and native text selection have separate
+clipboard scopes; copied metadata, attachments and output bundles retain exact JSON.
 
 Explicit Run starts one Python kernel per notebook; opening does not. Source/order
-snapshots, kernel generations, owner window and stable cell IDs prevent results
+snapshots, unique run IDs, kernel generations, owner window and stable cell IDs prevent results
 from attaching to a different cell. Closing the owner or resetting releases the
 kernel. Output changes must not invalidate Python LSP requests. Source-only edits
-preserve unrelated JSON spans, metadata, outputs and attachments.
+preserve unrelated JSON spans, metadata, outputs and attachments. Runs join a serial
+queue; errors stop queued work, interrupt cancels it, and delayed results from an
+older run cannot overwrite a rerun of the same cell.
+
+Python analysis uses native notebook cell synchronization with the bundled
+basedpyright, preserving magic-cell Python statements, top-level await and cell
+syntax boundaries. It does not suppress genuine type/name errors. Wire URI epochs,
+notebook dependency revisions and cell source revisions reject stale diagnostics.
+Notebook analysis and execution share a persisted explicit Python environment.
+Project-local candidates are only listed until selected. Search keeps Markdown in
+reader mode, selects the first match on first Enter and leaves find input focus intact.
 
 Coverage lives in `notebook-document.test.ts`, `notebook-language.test.ts`,
 `notebook-execution.test.ts`, `kernel-manager.test.ts` and real Electron
@@ -1674,3 +1693,76 @@ functional logs/screenshots are in `test-results/notebook-validation-2026-10-16/
 The comparison covers existing ordinary Markdown/Git transition latency. The
 notebook GUI scenarios establish behavior, not large-notebook memory budgets or
 kernel startup/indexing performance; those are not measured by this benchmark.
+
+## Notebook reform validation — 2026-10-16
+
+This follows the initial notebook validation above, against baseline `600f9ae`.
+The completed gate passed **67 unit files / 441 tests**, **three benchmark
+comparator tests**, production build/typecheck with **zero Svelte errors or
+warnings**, **123 real Electron scenarios**, and **three real IPython integration
+tests**. All GUI execution used isolated Xvfb/runtime/D-Bus; no desktop windows,
+test retries, weakened assertions or changed performance tolerances were used.
+
+The six notebook Electron scenarios cover native notebook diagnostics for magic,
+top-level await and independent cell syntax; a genuine type error remains visible.
+They also cover reordered cell diagnostics, cross-cell definitions, two actual
+Python environments with different import availability, and execution using the
+selected environment. Layout/input cases exercise 35 cells with long output and
+a 120-line cell, bounded Monaco rendering, retained output height, real Korean
+composition while scrolling, and subsequent ordinary search input. Clipboard,
+structural Undo, Shift/Alt+Enter queueing, output copy, canceled app quit preserving
+kernel variables, and reset clearing those variables are included.
+
+The initial full run caught the expected catalog change from one bundled Python
+entry to two. Its assertion now verifies both exact server IDs and opens the
+notebook-specific details. A full rerun passed all 123 scenarios. Earlier probes
+also exposed a will-quit drain that delayed restart without a language session,
+and Chromium EditContext swallowing find input after virtual editor disposal;
+the final production fixes and regression scenarios are included in this gate.
+
+Functional logs and the notebook screenshot are retained in
+`test-results/notebook-reform/`; the final full log is `contract-final-2.log`, and
+the real IPython log is `kernel-tests.log`.
+
+The independent baseline is `600f9aeb4380d5895d980f57b291dc1316a97774`,
+installed with its own dependencies and built under
+`test-results/notebook-reform/baseline/`. Baseline and candidate both use Electron
+**44.7.2**. Five matched repetitions alternate order on one isolated display.
+`--skip-build` reused current independently built artifacts; the harness verified
+their hashes before and after measurement. All eight scenarios and five cycles
+completed with latest-content capture checks and real double-click input.
+
+**PASS — zero regressions across 48 buckets**, using unchanged joint thresholds
+(>25% and >50ms). Values below are **baseline → candidate medians in milliseconds**.
+Warm is the median of cycles 3–5 per process, then across repetitions. Esc includes
+polling/IPC/native capture readback, not a monitor presentation timestamp.
+This table excludes the configured preparation wait.
+
+| Surface | Source wait | Edit | Esc first | Esc second | Esc warm | Double-click first | Double-click second | Double-click warm |
+| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Markdown | 0ms | no | 40 → 40 | 21 → 23 | 24 → 24 | 17 → 19 | 30 → 35 | 11 → 11 |
+| Markdown | 0ms | yes | 404 → 428 | 101 → 100 | 90 → 89 | 16 → 15 | 14 → 14 | 14 → 14 |
+| Markdown | 3000ms | no | 25 → 27 | 18 → 21 | 22 → 22 | 16 → 16 | 11 → 11 | 11 → 11 |
+| Markdown | 3000ms | yes | 95 → 110 | 103 → 89 | 91 → 90 | 20 → 20 | 14 → 13 | 12 → 13 |
+| Git review | 0ms | no | 927 → 907 | 19 → 22 | 28 → 20 | 23 → 23 | 12 → 11 | 12 → 12 |
+| Git review | 0ms | yes | 1006 → 980 | 1432 → 1492 | 175 → 175 | 25 → 22 | 12 → 19 | 17 → 17 |
+| Git review | 3000ms | no | 32 → 30 | 21 → 22 | 17 → 17 | 24 → 24 | 11 → 11 | 16 → 16 |
+| Git review | 3000ms | yes | 227 → 232 | 181 → 185 | 174 → 175 | 20 → 23 | 18 → 19 | 17 → 18 |
+
+Including the **configured 3000ms preparation allowance**, first Esc totals are
+below. This adds the explicit wait, not measured preparation CPU time. The wait
+precedes only the first cycle; second/warm and double-click metrics are unchanged.
+The 0ms scenarios have the same inclusive totals as the first table.
+
+| Surface | Edit | First Esc including preparation allowance |
+| --- | --- | ---: |
+| Markdown | no | 3025 → 3027 |
+| Markdown | yes | 3095 → 3110 |
+| Git review | no | 3032 → 3030 |
+| Git review | yes | 3227 → 3232 |
+
+[Samples, build identities and hashes](notebook-reform-preview-benchmark-2026-10-16.json).
+Raw run JSON/logs are in `test-results/notebook-reform/benchmark/`. This comparison
+covers existing ordinary Markdown/Git transitions. Notebook functional regressions
+cover the fixtures above; they do not establish a 1,000-cell memory budget,
+kernel startup latency or sustained output throughput.

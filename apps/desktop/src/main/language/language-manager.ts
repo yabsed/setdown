@@ -5,7 +5,7 @@ import { app, dialog, ipcMain, shell } from 'electron';
 import { readFile, stat } from 'node:fs/promises';
 import { CancellationTokenSource } from 'vscode-jsonrpc/node';
 import type { WorkspaceEdit, ApplyWorkspaceEditResult, ServerCapabilities, TextDocumentContentChangeEvent } from 'vscode-languageserver-protocol';
-import { languageMethods, textSynchronization, type LanguageCatalog, type LanguageConnectionDraft, type LanguageServerOptions, type LanguageDocument, type LanguageEvent, type LanguageMethod } from '../../protocol/language';
+import { languageMethods, textSynchronization, type LanguageCatalog, type LanguageCatalogEntry, type LanguageConnectionDraft, type LanguageServerOptions, type LanguageDocument, type LanguageEvent, type LanguageMethod } from '../../protocol/language';
 import { canonicalPath, isInside } from '../documents/file-system';
 import type { WindowState } from '../windows/window-state';
 import { languageSupport } from '../../core/document/language-support';
@@ -19,13 +19,15 @@ import { ServerSession } from './server-session';
 import { ServerDiscovery, type Discovery } from './server-discovery';
 import { languageCatalog, packageDiscovery, profileSource } from './catalog/profiles';
 import type { LanguageServerDefinition } from '../../core/document/language-definition';
+import { NotebookLanguageHost } from './notebook-language-host';
 
-type Binding = { notebook?: boolean; languageId: string; id: string; generation: string; uri: string; version: number; server: ServerSession; capabilities: ServerCapabilities };
+type Binding = { languageId: string; id: string; generation: string; uri: string; version: number; server: ServerSession; capabilities: ServerCapabilities };
 type Owner = { state: WindowState; documents: Map<string, Binding>; servers: Map<string, ServerSession>;
   requests: Map<string, CancellationTokenSource> };
 
 /** A separate server for each (window, server kind, project root). Unsaved buffers never cross windows. */
 export class LanguageManager {
+  private readonly notebooks = new NotebookLanguageHost();
   private readonly owners = new Map<number, Owner>();
   private readonly watched = new Set<number>();
   private readonly draining = new Set<Promise<void>>();
@@ -111,7 +113,7 @@ export class LanguageManager {
     const packages = [...languageCatalog];
     for (const definition of definitions) if (!packages.some(item => item.id === definition.id))
       packages.push({ id: definition.id, languages: definition.languages.map(l => l.languageId), description: 'Custom language server connection.', homepage: '', licenses: [], source: { id: '' }, executables: [] } as typeof packages[number]);
-    const entries = await mapLimited(packages, async item => {
+    const entries: LanguageCatalogEntry[] = await mapLimited(packages, async item => {
       const definition = definitions.find(d => d.id === item.id), options = definition && registry.options(item.id);
       const bundled = definition?.launch.kind === 'bundledNode';
       const executable = definition ? registry.executable(item.id, this.discovery.environment.peek().env) : undefined;
@@ -142,6 +144,10 @@ export class LanguageManager {
       const chosen = matching.find(e => e.id === preferred) ?? (!preferred && (matching.find(e => e.bundled) ?? (matching.length === 1 ? matching[0] : undefined)));
       if (chosen) chosen.selected.push(languageId);
     }
+    entries.push({ id: 'notebook-python', name: 'Notebook Python', languages: ['python'],
+      description: 'Cell-aware Python analysis for Jupyter notebooks, using the Python environment selected in the notebook.',
+      homepage: '', configured: true, bundled: true, custom: false, enabled: true, selected: ['Python notebooks'],
+      available: true, notebook: true, sessions: this.notebooks.snapshot(state.webContentsId) });
     return { release: catalog.release, profileSource, profiles: definitions.length, entries };
   }
   install(): void {
@@ -152,6 +158,7 @@ export class LanguageManager {
       return owner;
     };
     ipcMain.handle('language:open', (event, document: LanguageDocument) => this.open(state(event), document));
+    ipcMain.handle('language:notebook-change', (event, id, version, cells) => this.notebooks.change(state(event).webContentsId, id, version, cells));
     ipcMain.handle('language:change', (event, id: string, version: number, changes: TextDocumentContentChangeEvent[]) => {
       const binding = this.binding(state(event).webContentsId, id);
       if (!Number.isSafeInteger(version) || version <= binding.version || !Array.isArray(changes)
@@ -162,13 +169,13 @@ export class LanguageManager {
       return binding.server.notify('textDocument/didChange', { textDocument: { uri: binding.uri, version }, contentChanges: changes });
     });
     ipcMain.handle('language:request', async (event, id: string, version: number, requestId: string, method: LanguageMethod, params: unknown) => {
+      const sender = state(event);
+      if (this.notebooks.has(sender.webContentsId, id)) return this.notebooks.request(sender.webContentsId, id, version, requestId, method, params);
       const owner = this.owners.get(state(event).webContentsId);
       const binding = this.binding(event.sender.id, id);
       if (!owner || binding.version !== version || !languageMethods.includes(method)
         || typeof requestId !== 'string' || requestId.length > 128 || owner.requests.has(requestId)
         || owner.requests.size >= 64 || !params || typeof params !== 'object' || JSON.stringify(params).length > 4 * 1024 * 1024) throw new Error('Invalid or stale language request.');
-      if (binding.notebook && !['textDocument/completion', 'textDocument/hover', 'textDocument/signatureHelp', 'textDocument/definition'].includes(method))
-        throw Error('This operation is not mapped for notebook cells.');
       const origin = { document: id, generation: binding.generation, version };
       const items = this.items.get(binding.server)!;
       const command = method === 'workspace/executeCommand';
@@ -208,7 +215,7 @@ export class LanguageManager {
         handler(owner, id);
       });
     };
-    listen('language:cancel', (owner, id) => { this.owners.get(owner.webContentsId)?.requests.get(id)?.cancel(); });
+    listen('language:cancel', (owner, id) => { this.notebooks.cancel(owner.webContentsId, id); this.owners.get(owner.webContentsId)?.requests.get(id)?.cancel(); });
     listen('language:close', (owner, id) => this.close(owner.webContentsId, id));
     ipcMain.on('language:saved', (event, id: string, text?: string) => {
       let owner: WindowState; try { owner = state(event); } catch { return; }
@@ -218,7 +225,10 @@ export class LanguageManager {
       if (save && (!save.includeText || (typeof text === 'string' && text.length <= 16 * 1024 * 1024)))
         void binding.server.notify('textDocument/didSave', { textDocument: { uri: binding.uri }, ...(save.includeText ? { text } : {}) }).catch(() => {});
     });
-    ipcMain.handle('language:restart', event => this.dispose(state(event).webContentsId));
+    ipcMain.handle('language:restart', async event => {
+      const owner = state(event); await this.dispose(owner.webContentsId);
+      if (!owner.window.webContents.isDestroyed()) owner.window.webContents.send('language:event', { type: 'configuration', servers: ['notebook-python'] });
+    });
     ipcMain.handle('language:configuration', async event => {
       this.subscribe(state(event)); await this.updating; return this.registry.routes();
     });
@@ -283,9 +293,9 @@ export class LanguageManager {
     let drained = false;
     app.on('will-quit', event => {
       this.discovery.dispose();
-      if (drained || (!this.owners.size && !this.draining.size)) return;
+      if (drained || (!this.owners.size && !this.draining.size && !this.notebooks.running)) return;
       event.preventDefault();
-      void Promise.all([...this.owners.keys()].map(id => this.dispose(id)))
+      void Promise.all([this.notebooks.dispose(), ...[...this.owners.keys()].map(id => this.dispose(id))])
         .then(() => Promise.all([...this.draining])).finally(() => { drained = true; app.quit(); });
     });
   }
@@ -299,15 +309,15 @@ export class LanguageManager {
     return binding;
   }
   private async open(state: WindowState, document: LanguageDocument) {
+    if (document?.notebook === 'python') return this.notebooks.open(state, document);
     this.subscribe(state);
     await this.updating;
     const routes = this.registry.routes();
-    const notebook = document?.notebook === 'python';
-    const languagePath = notebook ? 'notebook.py' : document?.path;
+    const languagePath = document?.path;
     if (!document || typeof document.id !== 'string' || document.id.length > 128
       || typeof document.generation !== 'string' || document.generation.length > 128
       || typeof document.path !== 'string' || !path.isAbsolute(document.path) || !languageSupport(languagePath, routes)
-      || (document.notebook !== undefined && (!notebook || !/\.ipynb$/i.test(document.path)))
+      || (document.notebook !== undefined)
       || typeof document.text !== 'string' || document.text.length > 16 * 1024 * 1024
       || !Number.isSafeInteger(document.version) || document.version < 1) throw new Error('Invalid language document.');
     let support = languageSupport(languagePath, routes)!;
@@ -328,10 +338,7 @@ export class LanguageManager {
         });
       }
     }
-    // The renderer supplies only the owned .ipynb path. This logical Python file
-    // is allocated here, beside it for local imports, and is never written to disk.
-    const projectionPath = notebook ? path.join(path.dirname(file), `.setdown-notebook-${randomUUID()}.py`) : file;
-    const uri = pathToFileURL(projectionPath).href;
+    const uri = pathToFileURL(file).href;
     if ([...owner.documents.values()].some(other => other.id !== document.id && other.uri === uri))
       throw new Error('Language document is already connected.');
     this.close(state.webContentsId, document.id);
@@ -425,7 +432,7 @@ export class LanguageManager {
       owner.servers.set(key, server);
       server.watch(root);
     }
-    const binding = { notebook, languageId: support.languageId, id: document.id, generation: document.generation, uri, version: document.version, server, capabilities: {} as ServerCapabilities };
+    const binding = { languageId: support.languageId, id: document.id, generation: document.generation, uri, version: document.version, server, capabilities: {} as ServerCapabilities };
     owner.documents.set(document.id, binding);
     this.emit(owner, { type: 'status', state: 'starting', documents: [{ id: binding.id, generation: binding.generation }] });
     await server.ready;
@@ -489,6 +496,7 @@ export class LanguageManager {
     });
   }
   private close(ownerId: number, id: string): void {
+    this.notebooks.close(ownerId, id);
     this.pendingOpens.get(ownerId)?.delete(id);
     const owner = this.owners.get(ownerId);
     const binding = owner?.documents.get(id);
@@ -502,13 +510,14 @@ export class LanguageManager {
     }
   }
   private async dispose(id: number): Promise<void> {
+    const notebooks = this.notebooks.dispose(id);
     this.pendingOpens.delete(id);
     const owner = this.owners.get(id);
-    if (!owner) return;
+    if (!owner) { await notebooks; return; }
     this.owners.delete(id);
     for (const token of owner.requests.values()) token.cancel();
     owner.documents.clear();
-    await Promise.all([...owner.servers.values()].map(server => this.stop(server)));
+    await Promise.all([notebooks, ...[...owner.servers.values()].map(server => this.stop(server))]);
     owner.servers.clear();
   }
   private stop(server: ServerSession): Promise<void> {

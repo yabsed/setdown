@@ -27,9 +27,14 @@ test('the language sidebar searches all discoverable servers, shows language log
     const panel = page.getByRole('region', { name: 'Language Support', exact: true });
     const detected = panel.locator('[data-group="detected"]');
     const available = panel.locator('[data-group="available"]');
-    await expect(detected.locator('.server')).toHaveCount(1);
-    await expect(detected.locator('.server')).toContainText('Pyright');
-    await expect(detected.getByRole('img', { name: 'Python logo' })).toBeVisible();
+    await expect(detected.locator('.server')).toHaveCount(2);
+    await expect(detected.locator('[data-server-id="pyright"]')).toContainText('Pyright');
+    await expect(detected.locator('[data-server-id="notebook-python"]')).toContainText('Notebook Python');
+    await expect(detected.getByRole('img', { name: 'Python logo' })).toHaveCount(2);
+    await detected.locator('[data-server-id="notebook-python"]').click();
+    await expect(panel).toContainText('Analysis and execution share that environment.');
+    await expect(panel.getByRole('button', { name: 'Restart servers in this window' })).toBeVisible();
+    await panel.getByRole('button', { name: 'Back to language servers' }).click();
     await expect(available.locator('summary')).toContainText('Available servers');
     expect(await available.locator('.server').count()).toBeGreaterThan(300);
     await expect(available).not.toHaveAttribute('open');
