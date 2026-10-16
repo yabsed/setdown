@@ -1,4 +1,4 @@
-import { app, dialog, Menu, session, shell, webFrameMain, WebContentsView, type Session, type WebContents, type Rectangle } from 'electron';
+import { app, dialog, Menu, session, shell, webFrameMain, WebContentsView, type Session, type WebContents, type Rectangle, type BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { promises as fs, unwatchFile, writeFileSync, renameSync } from 'node:fs';
 import path from 'node:path';
@@ -28,6 +28,7 @@ type Entry = { owner: number; view: WebContentsView; contents: WebContents; page
   popups: number[]; externalRequests: number[]; externalPending?: boolean;
   historyUrls: string[]; historyIndex: number; canGoBack?: boolean; canGoForward?: boolean; closing?: (value: boolean) => void };
 type Options = { stateFor(id: number): WindowState | null; states(): Iterable<WindowState>; zoom: WorkspaceZoom;
+  createWindow?(): BrowserWindow;
   openFile(state: WindowState, file: string): Promise<unknown> };
 const blankPage = (id: string, url: string): BrowserPage => ({ id, url, title: url === 'about:blank' ? 'New web tab' : url,
   startPage: url === 'about:blank', loading: false, canGoBack: false, canGoForward: false, audible: false, muted: false, zoomPercent: 100, error: null, protection: 'starting' });
@@ -37,7 +38,7 @@ const blankPage = (id: string, url: string): BrowserPage => ({ id, url, title: u
 export class BrowserManager {
   readonly views = new Map<string, Entry>();
   private readonly places = new BrowserPlaces();
-  private readonly downloads = new BrowserDownloads(event => this.broadcast(event));
+  private readonly downloads = new BrowserDownloads(event => { this.extensions?.downloads?.publish(event); this.broadcast(event); });
   private profile?: Session;
   private extensions?: BrowserExtensions;
   private ready?: Promise<void>;
@@ -49,6 +50,7 @@ export class BrowserManager {
   private saveTimer?: ReturnType<typeof setTimeout>;
   private saving = Promise.resolve();
   private extensionInstallBusy = false;
+  private readonly rendererWaiters = new Map<number, () => void>();
   private readonly closedTabs = new Map<number, Array<{ url: string; title: string }>>();
   private readonly auth = new BrowserAuth((owner, id, request) => this.send(owner, { type: 'auth', id, request }));
   private readonly permissions = new BrowserPermissions(contents => {
@@ -70,8 +72,9 @@ export class BrowserManager {
         filePath: path.join(__dirname, 'page-preload.cjs') });
       this.permissions.install(this.profile);
       this.profile.on('will-download', (_event, item, contents) => {
+        if (this.extensions?.downloads?.claim(item, contents)) return;
         const entry = this.forContents(contents);
-        if (!entry) { item.cancel(); return; }
+        if (!entry && !(contents && this.isExtensionURL(contents.getURL()))) { item.cancel(); return; }
         item.setSaveDialogOptions({ title: 'Save download', defaultPath: path.join(app.getPath('downloads'), path.basename(item.getFilename())) });
         this.downloads.track(item);
       });
@@ -87,6 +90,25 @@ export class BrowserManager {
     if (!this.extensions) {
       this.extensions = new BrowserExtensions(this.session, id => this.forContentsId(id)?.contents, {
         license: 'GPL-3.0',
+        createWindow: async details => {
+          if (!this.options.createWindow) throw Error('Creating a browser window is unavailable.');
+          if (details.type && details.type !== 'normal') throw Error('Only normal Setdown windows are supported.');
+          if (details.incognito || details.tabId !== undefined) throw Error('Private windows and moving an existing tab through windows.create are not supported.');
+          const urls = details.url === undefined ? ['about:blank'] : Array.isArray(details.url) ? details.url : [details.url];
+          if (!urls.length || urls.length > 20 || urls.some(url => typeof url !== 'string')) throw Error('Invalid window URLs.');
+          const window = this.options.createWindow();
+          await this.waitForRenderer(window);
+          const state = this.options.stateFor(window.webContents.id);
+          if (!state) throw Error('The new window is unavailable.');
+          for (const [index, url] of urls.entries()) {
+            const entry = this.openEntry(state.webContentsId, randomUUID(), this.extensionURL(url));
+            this.send(entry.owner, { type: 'open', page: entry.page, background: index > 0 });
+            void this.load(entry, entry.page.url);
+          }
+          if (details.focused === false) window.showInactive(); else window.show();
+          return window;
+        },
+        removeWindow: window => { if (!window.isDestroyed()) window.close(); },
         createTab: async details => {
           const state = details.openerTabId ? this.options.stateFor(this.forContentsId(details.openerTabId)?.owner ?? -1)
             : Array.from(this.options.states()).find(state => state.window.id === details.windowId) ?? Array.from(this.options.states()).find(state => state.window.isFocused());
@@ -101,10 +123,22 @@ export class BrowserManager {
           const entry = this.forContents(contents);
           if (entry && !this.transferring.has(contents.id)) void this.close(entry.owner, entry.page.id);
         },
-      });
+      }, { downloads: this.downloads, changed: () => this.broadcast({ type: 'extensions' }) });
       this.extensions.prepare();
     }
     return this.extensions;
+  }
+  private waitForRenderer(window: BrowserWindow): Promise<void> {
+    const id = window.webContents.id;
+    return new Promise((resolve, reject) => {
+      const finish = (error?: Error) => {
+        clearTimeout(timer); this.rendererWaiters.delete(id); window.removeListener('closed', closed);
+        if (error) reject(error); else resolve();
+      };
+      const closed = () => finish(Error('Window closed during creation.'));
+      const timer = setTimeout(() => finish(Error('The new window did not finish initializing.')), 30_000);
+      window.once('closed', closed); this.rendererWaiters.set(id, () => finish());
+    });
   }
   private ensureReady(): Promise<void> {
     const extensions = this.ensureExtensions();
@@ -261,6 +295,7 @@ export class BrowserManager {
     wc.on('enter-html-full-screen', () => { entry.htmlFullscreen = true; });
     wc.on('leave-html-full-screen', () => { entry.htmlFullscreen = false; });
     wc.on('login', (event, details, authInfo, callback) => {
+      if (this.extensions?.network?.auth.request(event, wc, details, authInfo, callback)) return;
       event.preventDefault(); this.auth.request(entry.owner, id, details.url, authInfo, callback);
     });
     const register = () => this.extensions?.host?.addTab(wc, this.options.stateFor(entry.owner)!.window);
@@ -364,13 +399,15 @@ export class BrowserManager {
       if (!owner) return;
       const generation = entry.menuGeneration, sourceOwner = entry.owner;
       const valid = () => !wc.isDestroyed() && entry.menuGeneration === generation && entry.owner === sourceOwner;
-      const items = browserContextMenu(wc, params, valid, (url, background) => {
+      const items: Array<Electron.MenuItem | Electron.MenuItemConstructorOptions> = browserContextMenu(wc, params, valid, (url, background) => {
         // Finish the native menu dispatch before constructing another native
         // view. Recheck ownership/document after leaving the menu's event loop.
         setImmediate(() => { if (valid()) void this.openLink(sourceOwner, url, background).catch(error => this.error(entry, error)); });
       },
         direction => this.send(entry.owner, { type: 'history', id, direction }),
         !!entry.canGoBack || wc.navigationHistory.canGoBack(), !!entry.canGoForward || wc.navigationHistory.canGoForward());
+      const extensionItems = this.extensions?.host?.getContextMenuItems(wc, params) ?? [];
+      if (extensionItems.length) items.push({ type: 'separator' }, ...extensionItems, { type: 'separator' });
       items.push({ label: 'Open in Default Browser', enabled: isWebURL(wc.getURL()), click: () => { if (valid()) void this.external(entry, wc.getURL(), true); } },
         { label: 'Site Controls…', enabled: isWebURL(wc.getURL()), click: () => { setImmediate(() => { if (valid()) this.siteMenu(entry); }); } });
       Menu.buildFromTemplate(items).popup({ window: owner.window, frame: params.frame ?? undefined });
@@ -407,6 +444,7 @@ export class BrowserManager {
     try {
       await this.ensureReady();
       if (navigation !== entry.navigation || !this.live(entry)) return;
+      if (isWebURL(url)) this.extensions?.network?.assertReady();
       entry.page.error = null;
       entry.page.protection = 'ready';
       this.extensions?.host?.addTab(entry.contents, this.options.stateFor(entry.owner)!.window);
@@ -608,8 +646,7 @@ export class BrowserManager {
         const result = await dialog.showSaveDialog(state.window, { title: 'Save web page', defaultPath: 'page.html', filters: [{ name: 'Web page', extensions: ['html'] }] });
         if (!result.canceled && result.filePath) await wc.savePage(result.filePath, 'HTMLComplete');
       } else if (command === 'protection' && this.extensions?.builtinPopupURL()) {
-        const page = this.openEntry(state.webContentsId, randomUUID(), `${this.extensions.builtinPopupURL()}?tabId=${wc.id}`);
-        this.send(page.owner, { type: 'open', page: page.page, background: false }); void this.load(page, page.page.url);
+        this.extensions.bridge?.activate(this.extensions.extensionId!, wc, { x: state.window.getContentBounds().width - 40, y: 80, width: 28, height: 28 });
       }
     });
     channels.on('browser:find', (state, id: string, text: string, forward: boolean = true, next: boolean = false) => {
@@ -631,6 +668,7 @@ export class BrowserManager {
       if (url !== undefined && !isWebURL(url)) throw Error('Invalid history URL.');
       await this.places.deleteHistory(url); this.broadcast({ type: 'places' });
     });
+    channels.on('browser:ready', state => { this.rendererWaiters.get(state.webContentsId)?.(); });
     channels.handle('browser:extensions', async (): Promise<BrowserExtensionInfo[]> => {
       await this.ensureReady();
       return this.extensions!.list();
@@ -680,22 +718,47 @@ export class BrowserManager {
       if (!target) throw Error('Unknown extension.');
       if (target.builtin) throw Error('Built-in extensions cannot be removed.');
       const choice = await dialog.showMessageBox(state.window, { type: 'warning',
-        message: `Remove “${target.name}”?`, detail: 'Its files and settings will be deleted.',
+        message: `Remove “${target.name}”?`, detail: 'Its installed files will be deleted.',
         buttons: ['Cancel', 'Remove'], defaultId: 0, cancelId: 0 });
       if (choice.response !== 1) return extensions.list();
       const rows = await extensions.remove(target.id);
       this.broadcast({ type: 'extensions' });
       return rows;
     });
+    channels.handle('browser:extension-actions', async (state, tabId: string) => {
+      const target = this.owned(state.webContentsId, tabId);
+      await this.ensureReady();
+      return this.extensions!.bridge!.actions(target.contents.id);
+    });
+    channels.handle('browser:extension-activate', async (state, id: string, tabId: string, raw: unknown) => {
+      const target = this.owned(state.webContentsId, tabId), css = readPreviewBounds(raw);
+      if (!css) throw Error('Invalid extension button bounds.');
+      await this.ensureReady();
+      this.extensions!.host!.selectTab(target.contents);
+      this.extensions!.bridge!.activate(String(id), target.contents, nativeZoomBounds(css, state.window.webContents.getZoomFactor()));
+    });
+    channels.handle('browser:extension-menu', async (state, tabId: string, raw: unknown) => {
+      const target = this.owned(state.webContentsId, tabId), css = readPreviewBounds(raw);
+      if (!css) throw Error('Invalid extension menu bounds.');
+      await this.ensureReady();
+      const bounds = nativeZoomBounds(css, state.window.webContents.getZoomFactor());
+      const actions = await this.extensions!.bridge!.actions(target.contents.id);
+      Menu.buildFromTemplate(actions.map(action => ({ label: action.title, submenu: [{ label: 'Open', enabled: action.enabled, click: () => {
+        if (!this.owns(state.webContentsId, tabId)) return;
+        this.extensions!.host!.selectTab(target.contents);
+        this.extensions!.bridge!.activate(action.id, target.contents, bounds);
+      } }, { label: 'Pin to address bar', type: 'checkbox' as const, checked: action.pinned, click: () => this.extensions!.bridge!.pin(action.id, !action.pinned) }] }))).popup({ window: state.window, x: bounds.x, y: bounds.y + bounds.height });
+    });
     channels.handle('browser:extension-open', async (state, id: string, page: ExtensionPage, tabId?: string) => {
       await this.ensureReady();
-      let url = this.extensions!.pageURL(String(id), page === 'options' ? 'options' : 'popup');
-      // uBlock's page needs an explicit target: once opened as a tab, querying
-      // the active tab would otherwise select the extension page itself.
-      if (page === 'popup' && url === this.extensions!.builtinPopupURL() && tabId && this.owns(state.webContentsId, tabId)) {
-        const target = this.owned(state.webContentsId, tabId).contents;
-        url += `?tabId=${target.id}`;
+      if (page !== 'options') {
+        const target = tabId ? this.owned(state.webContentsId, tabId).contents : this.extensions!.bridge?.activeTab();
+        if (!target || this.extensions!.bridge?.parent(target) !== state.window) throw Error('Open a web tab before using an extension.');
+        this.extensions!.host!.selectTab(target);
+        this.extensions!.bridge!.activate(String(id), target, { x: state.window.getContentBounds().width - 40, y: 80, width: 28, height: 28 });
+        return;
       }
+      const url = this.extensions!.pageURL(String(id), 'options');
       const entry = this.openEntry(state.webContentsId, randomUUID(), url);
       this.send(entry.owner, { type: 'open', page: entry.page, background: false });
       void this.load(entry, entry.page.url);

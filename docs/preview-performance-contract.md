@@ -106,6 +106,15 @@ follows that same tab text scope. Entering or
 leaving reader mode preserves the live page's website factor and form state.
 Bookmark and reader buttons precede zoom, with the Markdown toolbar icon style;
 uBlock stays active and its controls remain available from Browser Extensions.
+Extension action buttons also live beside the address bar. A popup is a sandboxed
+native child window, never a registered browser tab: popup/worker queries must
+retain the original web tab and owning window. Its anchor converts CSS pixels to
+native DIP with app zoom once. Escape, loss of focus, navigation and owner changes
+close it without replacing the page. `browser/extension-runtime.spec.ts` covers
+this identity, input, lifecycle, and the connected proxy/download APIs; details
+and explicit compatibility limits are in `browser-extension-runtime.md`.
+The Electron test helper enables Chromium sandbox, matching production and
+allowing MV3 service-worker preloads to run.
 Terminal and video bars use their tab factors; PDF/image bars use their actual
 per-tab scale (including fit modes). Each split's controls
 address its own tab. Updates from wheels and menus keep the addressed tab's percentage current; indicators add no native captures, navigation,

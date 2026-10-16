@@ -18,6 +18,9 @@ export type BrowserActions = {
   browserInstallExtension(kind: import('../../protocol/browser').ExtensionInstallKind, input?: string): Promise<import('../../protocol/browser').BrowserExtensionInfo[]>;
   browserSetExtensionEnabled(id: string, enabled: boolean): Promise<import('../../protocol/browser').BrowserExtensionInfo[]>;
   browserRemoveExtension(id: string): Promise<import('../../protocol/browser').BrowserExtensionInfo[]>;
+  browserExtensionActions: BrowserApi['extensionActions'];
+  browserActivateExtension: BrowserApi['activateExtension'];
+  browserExtensionMenu: BrowserApi['extensionMenu'];
   browserOpenExtension(id: string, page: import('../../protocol/browser').ExtensionPage): Promise<void>;
 };
 
@@ -59,6 +62,9 @@ export function createBrowserActions(options: Options): BrowserActions {
     browserInstallExtension: (kind, input) => api.installExtension(kind, input),
     browserSetExtensionEnabled: (id, enabled) => api.setExtensionEnabled(id, enabled),
     browserRemoveExtension: (id) => api.removeExtension(id),
+    browserExtensionActions: tabId => api.extensionActions(tabId),
+    browserActivateExtension: (id, tabId, bounds) => api.activateExtension(id, tabId, bounds),
+    browserExtensionMenu: (tabId, bounds) => api.extensionMenu(tabId, bounds),
     browserOpenExtension: (id, page) => api.openExtension(id, page, options.activeId() ?? undefined),
   };
   /** Esc on a web page, mirroring the Markdown editor: extract a reader

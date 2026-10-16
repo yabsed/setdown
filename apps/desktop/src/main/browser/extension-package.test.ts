@@ -61,6 +61,12 @@ describe('extension packages', () => {
     expect(() => parseExtensionManifest({ manifest_version: 2, version: '1' })).toThrow(/no name/);
   });
 
+  test('installation summary includes content-script hosts and optional permissions', () => {
+    const info = parseExtensionManifest({ ...manifest, host_permissions: [], permissions: ['storage', 'activeTab'],
+      content_scripts: [{ matches: ['https://chatgpt.com/*'] }], optional_permissions: ['proxy'], optional_host_permissions: ['https://example.com/*'] }, messages);
+    expect(permissionSummaryLines(info)).toEqual(['• storage', '• activeTab', '• Scripts on https://chatgpt.com/*', '• Optional: proxy', '• Optional access to https://example.com/*']);
+  });
+
   test('extracts stored and deflated ZIP entries under a wrapping folder', () => {
     const archive = zip([
       { name: 'pkg/manifest.json', data: Buffer.from(JSON.stringify(manifest)) },

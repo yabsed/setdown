@@ -519,6 +519,7 @@ export function startWorkspace(desktop: DesktopPort) {
     const pages = await desktop.browser.restore();
     for (const page of pages) await tabs.addWeb(page, true);
     if (!workspace.activeId && pages.length) await tabs.activate(pages[0].id);
+    desktop.browser.ready();
   });
   const previewResizeObserver = new ResizeObserver(reader.syncView);
   previewResizeObserver.observe(previewFrames);

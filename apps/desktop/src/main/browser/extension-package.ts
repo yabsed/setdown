@@ -15,6 +15,9 @@ export type ExtensionManifestInfo = {
   manifestVersion: number;
   permissions: string[];
   hostPermissions: string[];
+  optionalPermissions?: string[];
+  optionalHostPermissions?: string[];
+  contentScriptMatches?: string[];
   popupPath?: string;
   optionsPath?: string;
   key?: string;
@@ -78,6 +81,9 @@ export function parseExtensionManifest(raw: unknown, messages?: Record<string, {
     manifestVersion,
     permissions,
     hostPermissions: [...new Set(hostPermissions)],
+    optionalPermissions: stringList(manifest.optional_permissions).filter(item => !item.includes('://') && item !== '<all_urls>'),
+    optionalHostPermissions: [...new Set([...stringList(manifest.optional_host_permissions), ...stringList(manifest.optional_permissions).filter(item => item.includes('://') || item === '<all_urls>')])],
+    contentScriptMatches: [...new Set(Array.isArray(manifest.content_scripts) ? manifest.content_scripts.flatMap(script => stringList(script?.matches)) : [])],
     popupPath: action ? text(action.default_popup) : undefined,
     optionsPath: text(optionsUi?.page) ?? text(manifest.options_page),
     key: text(manifest.key),
@@ -88,10 +94,13 @@ export function parseExtensionManifest(raw: unknown, messages?: Record<string, {
  * sizes itself to its text, so a manifest with hundreds of host permissions
  * (Bypass Paywalls Clean lists ~970 sites) must never render in full: the
  * oversized GTK/Wayland surface fails to allocate and the install hangs. */
-export function permissionSummaryLines(info: Pick<ExtensionManifestInfo, 'permissions' | 'hostPermissions'>, limit = 12): string[] {
+export function permissionSummaryLines(info: Pick<ExtensionManifestInfo, 'permissions' | 'hostPermissions' | 'optionalPermissions' | 'optionalHostPermissions' | 'contentScriptMatches'>, limit = 12): string[] {
   const clip = (value: string) => value.length > 80 ? `${value.slice(0, 79)}…` : value;
   const all = [...info.permissions.map(item => `• ${clip(item)}`),
-    ...info.hostPermissions.map(item => `• Access to ${clip(item)}`)];
+    ...info.hostPermissions.map(item => `• Access to ${clip(item)}`),
+    ...(info.contentScriptMatches ?? []).filter(item => !info.hostPermissions.includes(item)).map(item => `• Scripts on ${clip(item)}`),
+    ...(info.optionalPermissions ?? []).map(item => `• Optional: ${clip(item)}`),
+    ...(info.optionalHostPermissions ?? []).map(item => `• Optional access to ${clip(item)}`)];
   if (all.length <= limit) return all;
   return [...all.slice(0, limit), `• …and ${all.length - limit} more`];
 }

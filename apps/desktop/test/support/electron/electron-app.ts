@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 // Resolve the app's Electron, even when npm installs it inside the workspace.
 const executablePath = createRequire(import.meta.url)('electron') as string;
 export const electron = {
-  launch: (options: Parameters<typeof _electron.launch>[0] = {}) => _electron.launch({ executablePath, ...options }),
+  launch: (options: Parameters<typeof _electron.launch>[0] = {}) => _electron.launch({ executablePath, chromiumSandbox: true, ...options }),
 };
 
 export type TestApplication = Awaited<ReturnType<typeof electron.launch>>;

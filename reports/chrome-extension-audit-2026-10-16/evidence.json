@@ -1,0 +1,490 @@
+{
+  "head": "a14c44007715cb1ff810458aff9c74cee7d00bd8",
+  "electron": "44.7.2",
+  "chromium": "152.0.7977.149",
+  "electronChromeExtensions": "4.9.0",
+  "electronChromeWebStore": "0.13.0",
+  "packages": [
+    {
+      "name": "surfshark",
+      "storeId": "ailoabdmgclmfmhdagmlohpjlbpffblp",
+      "sha256": "604a59cfc27ce0819958d6dd7db96d77671b7138d2c23cc3af435efedb58ea91",
+      "bytes": 25248825,
+      "version": "5.4.0",
+      "manifestVersion": 3,
+      "permissions": [
+        "proxy",
+        "webRequest",
+        "webNavigation",
+        "privacy",
+        "tabs",
+        "contextMenus",
+        "storage",
+        "scripting",
+        "webRequestAuthProvider",
+        "declarativeNetRequest",
+        "declarativeNetRequestFeedback",
+        "browsingData"
+      ],
+      "hostPermissions": [
+        "<all_urls>"
+      ],
+      "background": {
+        "service_worker": "background.bundle.js"
+      },
+      "action": {
+        "default_icon": "icons/icon48.png",
+        "default_title": "__MSG_appName__",
+        "default_popup": "index.html"
+      },
+      "contentScriptGroups": 7,
+      "staticRulesets": 40,
+      "source": "https://clients2.google.com/service/update2/crx",
+      "requestedChromeVersion": "152.0.7977.149",
+      "execution": "Not installed or executed; static inspection only"
+    },
+    {
+      "name": "chatgpt-exporter",
+      "storeId": "ilmdofdhpnhffldihboadndccenlnfll",
+      "sha256": "d96387836acf6a80a18450b02c1a7bcc61f0ce24966deeda08689b1a9569f0a3",
+      "bytes": 839426,
+      "version": "6.13.1",
+      "manifestVersion": 3,
+      "permissions": [
+        "storage",
+        "activeTab"
+      ],
+      "hostPermissions": [
+        "https://*.chatgptexporter.com/"
+      ],
+      "background": {
+        "service_worker": "background.js"
+      },
+      "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+          "16": "assets/icon16.png",
+          "32": "assets/icon32.png",
+          "48": "assets/icon48.png",
+          "128": "assets/icon128.png"
+        }
+      },
+      "contentScriptGroups": 2,
+      "staticRulesets": 0,
+      "source": "https://clients2.google.com/service/update2/crx",
+      "requestedChromeVersion": "152.0.7977.149",
+      "execution": "Not installed or executed; static inspection only"
+    }
+  ],
+  "runtime": {
+    "date": "2026-10-16T13:39:00.698Z",
+    "isolatedDisplay": "1",
+    "observations": {
+      "MV2": {
+        "popupId": 7,
+        "snapshot": {
+          "proxy": "object",
+          "proxySettings": "object",
+          "downloads": "function",
+          "privacyGet": "function",
+          "scripting": "undefined",
+          "dnr": "undefined",
+          "sessionStorage": "undefined",
+          "browsingData": "undefined",
+          "browserSame": true,
+          "headerSame": true,
+          "runtimeExternal": "object",
+          "setUninstallURL": "function",
+          "sessionSetAccessLevel": "undefined",
+          "badgeTextColor": "undefined",
+          "actionBadge": "undefined"
+        },
+        "activeTabs": [
+          {
+            "active": true,
+            "audible": false,
+            "autoDiscardable": true,
+            "discarded": false,
+            "frozen": false,
+            "height": 820,
+            "highlighted": false,
+            "id": 7,
+            "incognito": false,
+            "index": 0,
+            "groupId": -1,
+            "mutedInfo": {
+              "muted": false
+            },
+            "pinned": false,
+            "selected": true,
+            "status": "complete",
+            "title": "Audit popup MV2",
+            "url": "chrome-extension://kmihlgklboiaiegfoggncnhkckkoldeg/popup.html",
+            "width": 1080,
+            "windowId": 1
+          }
+        ],
+        "workerStorage": {
+          "workerSnapshot": {
+            "actionBadge": "undefined",
+            "badgeTextColor": "undefined",
+            "browserSame": true,
+            "browsingData": "undefined",
+            "dnr": "undefined",
+            "downloads": "function",
+            "headerSame": true,
+            "privacyGet": "function",
+            "proxy": "object",
+            "proxySettings": "object",
+            "runtimeExternal": "object",
+            "scripting": "undefined",
+            "sessionSetAccessLevel": "undefined",
+            "sessionStorage": "undefined",
+            "setUninstallURL": "function"
+          }
+        },
+        "download": {
+          "value": "undefined",
+          "callback": true,
+          "callbackValue": "undefined"
+        },
+        "privacy": {
+          "callback": false,
+          "waitedMs": 500
+        },
+        "permissions": {
+          "before": false,
+          "granted": true,
+          "after": true,
+          "removed": true,
+          "afterRemove": true
+        },
+        "workerMessage": {
+          "snapshot": {
+            "proxy": "object",
+            "proxySettings": "object",
+            "downloads": "function",
+            "privacyGet": "function",
+            "scripting": "undefined",
+            "dnr": "undefined",
+            "sessionStorage": "undefined",
+            "browsingData": "undefined",
+            "browserSame": true,
+            "headerSame": true,
+            "runtimeExternal": "object",
+            "setUninstallURL": "function",
+            "sessionSetAccessLevel": "undefined",
+            "badgeTextColor": "undefined",
+            "actionBadge": "undefined"
+          },
+          "tabs": [
+            {
+              "active": true,
+              "audible": false,
+              "autoDiscardable": true,
+              "discarded": false,
+              "frozen": false,
+              "height": 820,
+              "highlighted": false,
+              "id": 7,
+              "incognito": false,
+              "index": 0,
+              "groupId": -1,
+              "mutedInfo": {
+                "muted": false
+              },
+              "pinned": false,
+              "selected": true,
+              "status": "complete",
+              "title": "Audit popup MV2",
+              "url": "chrome-extension://kmihlgklboiaiegfoggncnhkckkoldeg/popup.html",
+              "width": 1080,
+              "windowId": 1
+            }
+          ]
+        }
+      },
+      "MV3": {
+        "popupId": 8,
+        "snapshot": {
+          "proxy": "object",
+          "proxySettings": "object",
+          "downloads": "function",
+          "privacyGet": "function",
+          "scripting": "function",
+          "dnr": "object",
+          "sessionStorage": "object",
+          "browsingData": "undefined",
+          "browserSame": true,
+          "headerSame": true,
+          "runtimeExternal": "object",
+          "setUninstallURL": "function",
+          "sessionSetAccessLevel": "function",
+          "badgeTextColor": "function",
+          "actionBadge": "function"
+        },
+        "activeTabs": [
+          {
+            "active": true,
+            "audible": false,
+            "autoDiscardable": true,
+            "discarded": false,
+            "frozen": false,
+            "height": 820,
+            "highlighted": false,
+            "id": 8,
+            "incognito": false,
+            "index": 0,
+            "groupId": -1,
+            "mutedInfo": {
+              "muted": false
+            },
+            "pinned": false,
+            "selected": true,
+            "status": "complete",
+            "title": "Audit popup MV3",
+            "url": "chrome-extension://lmldleifcehgbkdhibjlldnabfjhonpg/popup.html",
+            "width": 1080,
+            "windowId": 1
+          }
+        ],
+        "workerStorage": {
+          "workerSnapshot": {
+            "actionBadge": "function",
+            "badgeTextColor": "function",
+            "browserSame": false,
+            "browsingData": "undefined",
+            "dnr": "object",
+            "downloads": "undefined",
+            "headerSame": true,
+            "privacyGet": "undefined",
+            "proxy": "object",
+            "proxySettings": "object",
+            "runtimeExternal": "object",
+            "scripting": "function",
+            "sessionSetAccessLevel": "function",
+            "sessionStorage": "object",
+            "setUninstallURL": "function"
+          }
+        },
+        "download": {
+          "value": "undefined",
+          "callback": true,
+          "callbackValue": "undefined"
+        },
+        "privacy": {
+          "callback": false,
+          "waitedMs": 500
+        },
+        "permissions": {
+          "before": false,
+          "granted": true,
+          "after": true,
+          "removed": true,
+          "afterRemove": true
+        },
+        "workerMessage": {
+          "snapshot": {
+            "proxy": "object",
+            "proxySettings": "object",
+            "downloads": "undefined",
+            "privacyGet": "undefined",
+            "scripting": "function",
+            "dnr": "object",
+            "sessionStorage": "object",
+            "browsingData": "undefined",
+            "browserSame": false,
+            "headerSame": true,
+            "runtimeExternal": "object",
+            "setUninstallURL": "function",
+            "sessionSetAccessLevel": "function",
+            "badgeTextColor": "function",
+            "actionBadge": "function"
+          },
+          "tabs": [
+            {
+              "active": true,
+              "audible": false,
+              "autoDiscardable": false,
+              "discarded": false,
+              "frozen": false,
+              "groupId": 0,
+              "highlighted": false,
+              "id": 8,
+              "incognito": false,
+              "index": 0,
+              "lastAccessed": 0,
+              "mutedInfo": {
+                "muted": false,
+                "reason": "user"
+              },
+              "pinned": false,
+              "selected": false,
+              "splitViewId": -1,
+              "title": "Audit popup MV3",
+              "url": "chrome-extension://lmldleifcehgbkdhibjlldnabfjhonpg/popup.html",
+              "windowId": 0
+            }
+          ]
+        },
+        "scripting": [
+          {
+            "documentId": "E54F6E0A07AE35BF1367E4F03BF17851",
+            "frameId": 0,
+            "result": "Audit article"
+          }
+        ],
+        "proxySet": {
+          "done": true
+        },
+        "proxyResolved": "DIRECT",
+        "proxyFetch": {
+          "error": "Error: net::ERR_NAME_NOT_RESOLVED"
+        },
+        "proxyRequests": [],
+        "proxyNativeControl": {
+          "resolved": "PROXY 127.0.0.1:36943",
+          "body": "via-audit-proxy"
+        },
+        "proxyRequestsAfterControl": [
+          "http://setdown-audit.invalid/control"
+        ],
+        "proxyClear": {
+          "done": true
+        },
+        "proxyResolvedAfterClear": "DIRECT",
+        "dnr": [
+          {
+            "action": {
+              "type": "block"
+            },
+            "condition": {
+              "resourceTypes": [
+                "xmlhttprequest"
+              ],
+              "urlFilter": "http://127.0.0.1:35733/dnr-blocked"
+            },
+            "id": 999999,
+            "priority": 1
+          }
+        ],
+        "dnrRequest": {
+          "error": "TypeError: Failed to fetch"
+        },
+        "dnrAfterRemoval": {
+          "status": 200
+        }
+      }
+    },
+    "extensions": [
+      {
+        "id": "kmihlgklboiaiegfoggncnhkckkoldeg",
+        "name": "Audit MV2",
+        "version": "1.0",
+        "description": "",
+        "manifestVersion": 2,
+        "enabled": true,
+        "builtin": false,
+        "hasPopup": true,
+        "hasOptions": false,
+        "permissions": [
+          "storage",
+          "tabs",
+          "downloads",
+          "proxy",
+          "privacy",
+          "scripting",
+          "webRequest"
+        ],
+        "hostPermissions": [],
+        "error": null
+      },
+      {
+        "id": "lmldleifcehgbkdhibjlldnabfjhonpg",
+        "name": "Audit MV3",
+        "version": "1.0",
+        "description": "",
+        "manifestVersion": 3,
+        "enabled": true,
+        "builtin": false,
+        "hasPopup": true,
+        "hasOptions": false,
+        "permissions": [
+          "storage",
+          "tabs",
+          "downloads",
+          "proxy",
+          "privacy",
+          "scripting",
+          "webRequest",
+          "declarativeNetRequest",
+          "webRequestAuthProvider",
+          "browsingData"
+        ],
+        "hostPermissions": [
+          "http://127.0.0.1/*"
+        ],
+        "error": null
+      }
+    ],
+    "preloads": [
+      {
+        "filePath": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/page-preload.cjs",
+        "id": "setdown-page-preload",
+        "type": "frame"
+      },
+      {
+        "filePath": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/electron-chrome-extensions/dist/chrome-extension-api.preload.js",
+        "id": "crx-mv3-preload",
+        "type": "service-worker"
+      },
+      {
+        "filePath": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/chrome-extension-api.preload.cjs",
+        "id": "setdown-ubo-preload",
+        "type": "frame"
+      }
+    ],
+    "articleId": 5,
+    "blobDownload": [
+      {
+        "id": "c8f1b6d2-7fc9-43ce-87f7-17fbd34a8989",
+        "url": "blob:http://127.0.0.1:35733/8f9a578d-6394-42fe-b518-6c3ec4612885",
+        "name": "blob-export.md",
+        "path": "/tmp/setdown-extension-runtime-audit-GrDiLv/blob-export.md",
+        "state": "completed",
+        "received": 21,
+        "total": 21,
+        "paused": false,
+        "resumable": false,
+        "startedAt": 1792157944589
+      }
+    ],
+    "blobFileText": "# Export\n한글 audit",
+    "workerConsole": [],
+    "downloadList": [
+      {
+        "id": "c8f1b6d2-7fc9-43ce-87f7-17fbd34a8989",
+        "url": "blob:http://127.0.0.1:35733/8f9a578d-6394-42fe-b518-6c3ec4612885",
+        "name": "blob-export.md",
+        "path": "/tmp/setdown-extension-runtime-audit-GrDiLv/blob-export.md",
+        "state": "completed",
+        "received": 21,
+        "total": 21,
+        "paused": false,
+        "resumable": false,
+        "startedAt": 1792157944589
+      }
+    ]
+  },
+  "validation": {
+    "unitFiles": 3,
+    "unitTestsPassed": 18,
+    "preloadPatchNodeTestFilesPassed": 1,
+    "extensionAndUblockE2ePassed": 4,
+    "e2eDurationSeconds": 17.2,
+    "initialBuild": "typecheck and Vite passed; build:electron blocked by sandbox spawnSync git EPERM",
+    "electronBuildOutsideSandbox": "passed",
+    "fullPreviewContract": "not run; no product code changes",
+    "liveAccountTests": "not performed"
+  }
+}

@@ -8,6 +8,11 @@ import {
   extensionIdFromKey, localExtensionDir, parseExtensionManifest, parseManifestEntries,
   unpackExtensionArchive, type ExtensionManifestInfo,
 } from './extension-package';
+import { ExtensionHostBridge } from './extensions/host-bridge';
+import { ExtensionPermissions } from './extensions/extension-permissions';
+import { ExtensionNetwork } from './extensions/extension-network';
+import { ExtensionDownloads } from './extensions/extension-downloads';
+import type { BrowserDownloads } from './browser-downloads';
 import type { BrowserExtensionInfo } from '../../protocol/browser';
 
 type StoredExtension = { dir: string; enabled: boolean; webStoreId?: string };
@@ -22,6 +27,10 @@ const EXTENSION_URL = /^chrome-extension:\/\/([a-p]{32})\//;
  * in `browser-extensions.json` only records directory and enabled state. */
 export class BrowserExtensions {
   host?: ElectronChromeExtensions;
+  bridge?: ExtensionHostBridge;
+  downloads?: ExtensionDownloads;
+  network?: ExtensionNetwork;
+  private permissions?: ExtensionPermissions;
   extensionId?: string;
   private pending = new Map<string, { frame: WebFrameMain; done(error?: string): void }>();
   private records: StoredExtension[] = [];
@@ -31,7 +40,8 @@ export class BrowserExtensions {
   private registryLoaded = false;
   private modifying = Promise.resolve();
   constructor(private readonly session: Session, private readonly tab: (id: number) => WebContents | undefined,
-    private readonly callbacks: ConstructorParameters<typeof ElectronChromeExtensions>[0]) {}
+    private readonly callbacks: ConstructorParameters<typeof ElectronChromeExtensions>[0],
+    private readonly services: { downloads?: BrowserDownloads; changed?(): void } = {}) {}
 
   private get extensionsRoot() { return path.join(app.getPath('userData'), 'extensions'); }
   private get registryFile() { return path.join(app.getPath('userData'), 'browser-extensions.json'); }
@@ -55,6 +65,7 @@ export class BrowserExtensions {
       if (!record.enabled || this.loaded.get(record.dir)?.electronId) continue;
       await this.loadRecord(record).catch(() => undefined);
     }
+    await this.network?.ready();
   }
 
   private async startBuiltin(): Promise<void> {
@@ -277,7 +288,7 @@ export class BrowserExtensions {
       enabled: record.enabled && !!state?.electronId, builtin: false,
       hasPopup: !!info.popupPath, hasOptions: !!info.optionsPath,
       permissions: info.permissions, hostPermissions: info.hostPermissions,
-      error: state?.error ?? null,
+      error: state?.error ?? this.network?.errorFor(state?.electronId) ?? null,
       ...(record.webStoreId ? { webStoreId: record.webStoreId } : {}),
     };
   }
@@ -308,6 +319,7 @@ export class BrowserExtensions {
     state.record.enabled = enabled;
     if (enabled) await this.loadRecord(state.record).catch(() => undefined);
     else this.unloadRecord(state.record);
+    await this.network?.ready();
     await this.persist();
     return this.list();
   }
@@ -315,7 +327,10 @@ export class BrowserExtensions {
   remove(handle: string): Promise<BrowserExtensionInfo[]> { return this.mutate(() => this.removeInstalled(handle)); }
   private async removeInstalled(handle: string): Promise<BrowserExtensionInfo[]> {
     const state = this.resolve(handle);
+    const id = state.electronId ?? state.lastElectronId;
     this.unloadRecord(state.record);
+    if (id) { this.permissions?.forget(id); this.network?.forget(id); }
+    await this.network?.ready();
     this.records = this.records.filter(item => item !== state.record);
     this.loaded.delete(state.record.dir);
     await fs.rm(path.join(this.extensionsRoot, state.record.dir), { recursive: true, force: true });
@@ -355,17 +370,31 @@ export class BrowserExtensions {
 
   private installHost(): void {
     this.host = new ElectronChromeExtensions({ ...this.callbacks, session: this.session, license: 'GPL-3.0' });
+    this.bridge = new ExtensionHostBridge(this.host, this.session, () => this.services.changed?.());
+    const permissions = this.permissions = new ExtensionPermissions(this.bridge);
+    this.network = new ExtensionNetwork(this.bridge, permissions);
+    if (this.services.downloads) this.downloads = new ExtensionDownloads(this.bridge, permissions, this.services.downloads);
+    for (const name of ['privacy.network.networkPredictionEnabled', 'privacy.services.autofillAddressEnabled', 'privacy.services.autofillCreditCardEnabled', 'privacy.services.passwordSavingEnabled', 'privacy.websites.hyperlinkAuditingEnabled', ...['erase', 'removeFile', 'getFileIcon', 'acceptDanger', 'setUiOptions', 'showDefaultFolder'].map(name => `downloads.${name}`)]) {
+      this.bridge.handle(`unsupported.${name}`, () => { throw Error(`${name} is not supported by this browser.`); });
+    }
     // Replace the library's registration by its actual returned ID, keeping
     // one preload and using our packaged header/CSS compatibility adapter.
     for (const script of this.session.getPreloadScripts()) {
-      if (script.type === 'frame' && path.basename(script.filePath) === 'chrome-extension-api.preload.js') {
+      if (path.basename(script.filePath) === 'chrome-extension-api.preload.js') {
         this.session.unregisterPreloadScript(script.id);
       }
     }
     this.session.registerPreloadScript({ id: 'setdown-ubo-preload', type: 'frame', filePath: path.join(__dirname, 'chrome-extension-api.preload.cjs') });
+    this.session.registerPreloadScript({ id: 'setdown-extension-worker', type: 'service-worker', filePath: path.join(__dirname, 'chrome-extension-worker.preload.cjs') });
+    ipcMain.on('browser:extension-builtin', event => {
+      const id = EXTENSION_URL.exec(event.senderFrame?.url ?? '')?.[1];
+      const extension = id && this.session.extensions.getExtension(id);
+      const builtinPath = path.join(__dirname, 'ublock').replace(`${path.sep}app.asar${path.sep}`, `${path.sep}app.asar.unpacked${path.sep}`);
+      event.returnValue = event.sender.session === this.session && !!extension && extension.path === builtinPath;
+    });
     ipcMain.handle('browser:extension-css', async (event, id: unknown, raw: unknown, remove: unknown) => {
       const sender = event.senderFrame?.url ? EXTENSION_URL.exec(event.senderFrame.url) : null;
-      if (event.sender.session !== this.session || !sender || !this.isExtensionURL(event.senderFrame!.url)) throw Error('Unknown extension sender.');
+      if (event.sender.session !== this.session || !sender || sender[1] !== this.extensionId) throw Error('Unknown extension sender.');
       const target = typeof id === 'number' ? this.tab(id) : undefined;
       const details = raw as { code?: unknown; frameId?: unknown; allFrames?: unknown } | null;
       if (!target || !details || typeof details.code !== 'string' || details.code.length > 4_000_000) return;

@@ -1,0 +1,31 @@
+{
+  "baselineCommit": "a14c44007715cb1ff810458aff9c74cee7d00bd8",
+  "commands": [
+    "npm run test:preview-contract",
+    "npm run bench:preview -- --baseline /tmp/setdown-extension-baseline --runs 5 --skip-build --output /tmp/setdown-extension-preview-benchmark-complete"
+  ],
+  "verification": {
+    "unitFiles": 70,
+    "unitTestsPassed": 465,
+    "toolingTestsPassed": 11,
+    "electronTestsPassed": 129,
+    "svelteErrors": 0,
+    "svelteWarnings": 0
+  },
+  "benchmark": {
+    "passed": true,
+    "freshApplications": 80,
+    "comparisons": 48,
+    "regressions": 0,
+    "artifactDirectory": "/tmp/setdown-extension-preview-benchmark-complete"
+  },
+  "isolation": "Xvfb, private runtime directory and D-Bus; Wayland unset; Chromium sandbox enabled",
+  "interruptedBenchmark": {
+    "path": "/tmp/setdown-extension-preview-benchmark-verified",
+    "reason": "Conversation interruption terminated the process; incomplete samples are excluded from the final comparison."
+  },
+  "productCertification": {
+    "surfshark": false,
+    "chatgptExporter": false
+  }
+}

@@ -37,7 +37,7 @@ export class BrowserDownloads {
   private snapshot() {
     return [...this.records.values()].sort((a, b) => b.startedAt - a.startedAt).map(record => ({ ...record }));
   }
-  track(item: DownloadItem): void {
+  track(item: DownloadItem): string {
     void this.load();
     const id = randomUUID();
     const live: LiveDownload = { item };
@@ -64,6 +64,7 @@ export class BrowserDownloads {
       this.trim();
     });
     publish();
+    return id;
   }
   private trim() {
     const finished = this.snapshot().filter(record => !active(record));

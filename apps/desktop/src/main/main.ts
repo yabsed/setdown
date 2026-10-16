@@ -57,7 +57,7 @@ const projectSearchRenderer = new ProjectSearchRenderer(path.join(__dirname, 're
 const projects = new ProjectService((documentPath, text, query, limit, root) =>
   projectSearchRenderer.search(documentPath, text, query, limit, root), undefined, () => registry.values);
 const windows = new WindowManager({ registry, previews, themes });
-const browsers = new BrowserManager({ stateFor: id => registry.stateForWebContents(id), states: () => registry.values, zoom: previews.zoom,
+const browsers = new BrowserManager({ createWindow: () => windows.create(null, null, false), stateFor: id => registry.stateForWebContents(id), states: () => registry.values, zoom: previews.zoom,
   openFile: (state, file) => documents.open(state, file) });
 const terminals = new TerminalManager();
 const transfers = new TabTransferManager({ previews, browsers, terminals, stateFor: (id) => registry.stateForWebContents(id),

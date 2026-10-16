@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import vm from 'node:vm';
 import { test } from 'node:test';
-import { patchExtensionPreload } from './extension-preload.mjs';
+import { patchExtensionPreload, secureExtensionInvocations } from './extension-preload.mjs';
 
 const require = createRequire(import.meta.url);
 const header = 'onHeadersReceived: new ExtensionEvent("webRequest.onHeadersReceived")';
@@ -34,4 +34,21 @@ test('the installed compatibility library still matches every guarded patch', ()
   const patched = patchExtensionPreload(upstream);
   assert.notEqual(patched, upstream);
   assert.throws(() => patchExtensionPreload(patched), /Review the/);
+});
+
+test('extensions without webRequest still initialize and additions preserve literal dollar expressions', () => {
+  const context = vm.createContext({ base: undefined, local: {}, browser: {} });
+  const addition = 'globalThis.literal = "$& $` $\\\'";';
+  vm.runInContext(patchExtensionPreload(fixture, addition), context);
+  assert.equal(context.browser.webRequest.onHeadersReceived, undefined);
+  assert.equal(context.literal, "$& $` $'");
+});
+
+test('production additions compile and never enable upstream API payload logging', async () => {
+  const { extensionAPI } = await import('./extension-api.mjs');
+  const upstream = readFileSync(require.resolve('electron-chrome-extensions/preload'), 'utf8');
+  const result = secureExtensionInvocations(patchExtensionPreload(upstream, extensionAPI));
+  new vm.Script(result);
+  assert.ok(!result.includes('console.log(fnName, args)'));
+  assert.ok(!result.includes('console.log(fnName, "(result)", result)'));
 });

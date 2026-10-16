@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer, webFrame } from 'electron';
 
 // Appended after the pinned extension compatibility preload at build time.
 // Only the bundled extension sees these bindings; remote pages receive none.
-if (location.protocol === 'chrome-extension:') {
+if (location.protocol === 'chrome-extension:' && ipcRenderer.sendSync('browser:extension-builtin') === true) {
   const css = (tabId: number, details: { code: string; frameId?: number; allFrames?: boolean }, remove: boolean) =>
     ipcRenderer.invoke('browser:extension-css', tabId, details, remove);
   function install() {

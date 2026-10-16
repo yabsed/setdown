@@ -7,11 +7,13 @@ const electron = vi.hoisted(() => {
   const loaded = new Map<string, { id: string; path: string }>();
   return {
     loaded,
-    app: { getPath: vi.fn(), isPackaged: false },
+    app: { getPath: vi.fn(), on: vi.fn(), isPackaged: false },
     ipcMain: { handle: vi.fn(), on: vi.fn() },
     webContents: { getAllWebContents: vi.fn(() => []) },
     session: {
+      serviceWorkers: { on: vi.fn() },
       extensions: {
+        on: vi.fn(),
         loadExtension: vi.fn(async (extensionPath: string) => {
           const id = 'a'.repeat(32);
           loaded.set(id, { id, path: extensionPath });
@@ -27,7 +29,11 @@ const electron = vi.hoisted(() => {
   };
 });
 vi.mock('electron', () => electron);
-vi.mock('electron-chrome-extensions', () => ({ ElectronChromeExtensions: class {} }));
+vi.mock('electron-chrome-extensions', () => ({ ElectronChromeExtensions: class {
+  ctx = { router: { handle: vi.fn(), onExtensionMessage: vi.fn() }, store: { on: vi.fn() } };
+  api = { browserAction: { actionMap: new Map(), onUpdate: vi.fn() } };
+  on = vi.fn();
+} }));
 const store = vi.hoisted(() => ({ downloadExtension: vi.fn() }));
 vi.mock('electron-chrome-web-store', () => store);
 import { BrowserExtensions } from './browser-extensions';
@@ -84,10 +90,12 @@ describe('BrowserExtensions registry', () => {
     await expect(extensions.commit(inspected.token)).resolves.toMatchObject({ name: 'Fixture Extension' });
   });
 
-  test('prepare registers the session preload once without starting uBlock', () => {
+  test('prepare registers frame and worker preloads once without starting uBlock', () => {
     extensions.prepare();
     extensions.prepare();
-    expect(electron.session.registerPreloadScript).toHaveBeenCalledOnce();
+    expect(electron.session.registerPreloadScript).toHaveBeenCalledTimes(2);
+    expect(electron.session.registerPreloadScript).toHaveBeenCalledWith(expect.objectContaining({ type: 'frame', filePath: expect.stringContaining('chrome-extension-api.preload.cjs') }));
+    expect(electron.session.registerPreloadScript).toHaveBeenCalledWith(expect.objectContaining({ type: 'service-worker', filePath: expect.stringContaining('chrome-extension-worker.preload.cjs') }));
     expect(electron.session.extensions.loadExtension).not.toHaveBeenCalled();
   });
 

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
+  import ExtensionActions from '../../browser/ExtensionActions.svelte';
   import ZoomControls from '../../ZoomControls.svelte';
   import { zoomState, mediaZoom } from '../../zoom-state.svelte';
   import { view } from '../workspace-view.svelte';
@@ -205,6 +206,7 @@ import type { AppActions } from '../../ports/ui-actions';
       </button>
     </div>
   {/if}
+  {#if web && tab && !reading}<ExtensionActions {actions} tabId={tab.id} />{/if}
   {#if tab || review}
     {#if web && !reading}
       <ZoomControls label="Website" percent={web.zoomPercent}

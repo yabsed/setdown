@@ -19,6 +19,7 @@ export type BrowserExtensionInfo = {
   permissions: string[]; hostPermissions: string[]; error: string | null;
   webStoreId?: string;
 };
+export type BrowserExtensionAction = { id: string; pinned: boolean; title: string; badge: string; color: string; icon: string | null; enabled: boolean };
 export type ExtensionInstallKind = 'folder' | 'archive' | 'web-store';
 export type ExtensionPage = 'popup' | 'options';
 export type BrowserPermissionRequest = { token: string; origin: string; permissions: string[]; label: string };
@@ -42,6 +43,7 @@ export type BrowserEvent =
   | { type: 'auth'; id: string; request: BrowserAuthRequest | null }
   | { type: 'find'; id: string; query: string; active: number; matches: number };
 export type BrowserApi = {
+  ready(): void;
   create(id: string, input: string, history?: WebHistory): Promise<BrowserPage>;
   history(id: string): Promise<WebHistory>;
   navigate(id: string, input: string): Promise<void>;
@@ -66,6 +68,9 @@ export type BrowserApi = {
   installExtension(kind: ExtensionInstallKind, input?: string): Promise<BrowserExtensionInfo[]>;
   setExtensionEnabled(id: string, enabled: boolean): Promise<BrowserExtensionInfo[]>;
   removeExtension(id: string): Promise<BrowserExtensionInfo[]>;
+  extensionActions(tabId: string): Promise<BrowserExtensionAction[]>;
+  activateExtension(id: string, tabId: string, bounds: PreviewBounds): Promise<void>;
+  extensionMenu(tabId: string, bounds: PreviewBounds): Promise<void>;
   openExtension(id: string, page: ExtensionPage, tabId?: string): Promise<void>;
   onEvent(listener: (event: BrowserEvent) => void): () => void;
 };

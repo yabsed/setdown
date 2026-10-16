@@ -1,5 +1,6 @@
 import { buildUblock } from './browser/build-ublock.mjs';
-import { patchExtensionPreload } from './browser/extension-preload.mjs';
+import { extensionAPI } from './browser/extension-api.mjs';
+import { patchExtensionPreload, secureExtensionInvocations } from './browser/extension-preload.mjs';
 import { build } from 'esbuild';
 import { promises as fs } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -11,11 +12,12 @@ const output = path.resolve('dist-electron');
 const exists = async file => fs.access(file).then(() => true, () => false);
 await fs.mkdir(output, { recursive: true });
 await buildUblock(root, output);
-const compat = patchExtensionPreload(await fs.readFile(require.resolve('electron-chrome-extensions/preload'), 'utf8'));
+const compat = secureExtensionInvocations(patchExtensionPreload(await fs.readFile(require.resolve('electron-chrome-extensions/preload'), 'utf8'), extensionAPI));
 const fix = await build({ entryPoints: ['src/browser-runtime/extension-preload.ts'], bundle: true, write: false, platform: 'node', format: 'iife', external: ['electron'], target: 'node22' });
 // Extension background pages are not sandboxed; .cjs preserves require even
 // inside the desktop package's type:module scope.
 await fs.writeFile(path.join(output, 'chrome-extension-api.preload.cjs'), compat + '\n' + fix.outputFiles[0].text);
+await fs.writeFile(path.join(output, 'chrome-extension-worker.preload.cjs'), compat);
 const compatRoot = path.dirname(path.dirname(require.resolve('electron-chrome-extensions/preload')));
 await fs.copyFile(path.join(compatRoot, 'LICENSE-GPL'), path.join(output, 'EXTENSION-COMPAT-LICENSE.txt'));
 await Promise.all([

@@ -24,6 +24,7 @@
       "src/main/browser/browser-extensions.test.ts",
       "src/main/browser/browser-permissions.test.ts",
       "src/main/browser/extension-package.test.ts",
+      "src/main/browser/extensions/extension-policy.test.ts",
       "src/main/documents/document-save.test.ts",
       "src/main/documents/image-file.test.ts",
       "src/main/language/catalog/profiles.test.ts",
@@ -255,6 +256,9 @@
       "previewContract": false
     },
     "workspace/workspace-zoom.spec.ts": {
+      "previewContract": true
+    },
+    "browser/extension-runtime.spec.ts": {
       "previewContract": true
     }
   },
