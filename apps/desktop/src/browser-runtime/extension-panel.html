@@ -1,0 +1,11 @@
+<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src data:"><title>Extensions</title>
+<style>
+:root{--canvas:transparent;--text:inherit;--hover:transparent;--border:transparent}
+*{box-sizing:border-box}html{height:100%;background:var(--canvas);border:1px solid var(--border);border-radius:6px;color:var(--text);font:12px system-ui,sans-serif}
+body{margin:0;padding:4px;height:100%;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;outline:none}
+.strip{display:flex;align-items:center;gap:4px;width:max-content;height:28px}
+button{color:inherit;font:inherit;flex:0 0 28px;width:28px;height:28px;padding:4px;border:0;border-radius:5px;background:transparent;display:grid;place-items:center;cursor:pointer}
+button:hover{background:var(--hover)}button:focus-visible{outline:1px solid var(--text);outline-offset:-1px}button:disabled{opacity:.4;cursor:default}
+.icon{position:relative;width:20px;height:20px;display:grid;place-items:center}.icon img{width:20px;height:20px;object-fit:contain}.fallback{font-size:14px;font-weight:600}
+.badge{position:absolute;right:-4px;bottom:-3px;color:white;border-radius:3px;padding:0 2px;font-size:8px;line-height:10px;max-width:24px;overflow:hidden}
+</style></head><body><script src="extension-panel.js"></script></body></html>

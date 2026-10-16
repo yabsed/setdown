@@ -1,9 +1,12 @@
-import { app, ipcMain, BrowserWindow, type ServiceWorkerMain } from 'electron';
-import { readFileSync, writeFileSync, renameSync } from 'node:fs';
+import { ipcMain, BrowserWindow, type ServiceWorkerMain } from 'electron';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import type { Extension, Rectangle, Session, WebContents } from 'electron';
 import type { ElectronChromeExtensions } from 'electron-chrome-extensions';
 import type { BrowserExtensionAction } from '../../../protocol/browser';
+import { ExtensionSurface } from './extension-surface';
+import { DEFAULT_PREVIEW_THEME, type PreviewThemeId } from '../../../core/preview/preview-preferences';
+import { themeProfile } from '../../../core/theme/theme-catalog';
 
 type Context = { extension: Extension; sender: WebContents; type: 'frame' | 'service-worker' };
 type Handler = (context: Context, ...args: any[]) => unknown;
@@ -28,10 +31,11 @@ type Internals = {
 export class ExtensionHostBridge {
   private readonly internal: Internals;
   private popupTab?: WebContents;
-  private pins: Record<string, boolean> = {};
-  private readonly pinsFile = path.join(app.getPath('userData'), 'browser-extension-actions.json');
-  constructor(host: ElectronChromeExtensions, readonly session: Session, private readonly changed: () => void) {
-    try { const value = JSON.parse(readFileSync(this.pinsFile, 'utf8')); if (value && typeof value === 'object' && !Array.isArray(value)) this.pins = value; } catch { /* first launch */ }
+  private surface?: ExtensionSurface;
+  private sequence = 0;
+  private clickWithoutPopup: Internals['api']['browserAction']['activateClick'];
+  constructor(host: ElectronChromeExtensions, readonly session: Session, changed: () => void,
+    private readonly theme: () => PreviewThemeId = () => DEFAULT_PREVIEW_THEME) {
     this.internal = host as unknown as Internals;
     const { ctx, api } = this.internal;
     if (!(api?.browserAction?.actionMap instanceof Map) || typeof ctx?.router?.handle !== 'function') {
@@ -44,7 +48,7 @@ export class ExtensionHostBridge {
       const focused = BrowserWindow.getFocusedWindow();
       const focusedOwner = focused?.getParentWindow() ?? focused;
       if (focusedOwner && ctx.store.windows.has(focusedOwner)) ctx.store.lastFocusedWindowId = focusedOwner.id;
-      const senderWindow = event.type === 'frame' ? ctx.store.tabToWindow.get(event.sender) ?? BrowserWindow.fromWebContents(event.sender) : undefined;
+      const senderWindow = event.type === 'frame' ? (this.surface && this.surface.contents === event.sender ? this.surface.parent : ctx.store.tabToWindow.get(event.sender) ?? BrowserWindow.fromWebContents(event.sender)) : undefined;
       const owner = senderWindow?.getParentWindow() ?? senderWindow;
       const currentId = owner && ctx.store.windows.has(owner) ? owner.id : ctx.store.lastFocusedWindowId;
       if (name === 'windows.getCurrent' && currentId !== undefined) return original(event, id, 'windows.get', currentId, ...args);
@@ -76,38 +80,23 @@ export class ExtensionHostBridge {
     api.browserAction.onUpdate = () => { update(); changed(); };
     ctx.store.on('active-tab-changed', tab => { if (this.popupTab && tab !== this.popupTab) this.dismiss(); });
     session.extensions.on('extension-unloaded', (_event, extension) => {
-      if (api.browserAction.popup?.extensionId === extension.id) this.dismiss();
+      if (this.surface && (!this.surface.extensionId || this.surface.extensionId === extension.id)) this.dismiss();
       changed();
     });
-    host.on('browser-action-popup-created', (popup: Popup) => {
-      const win = popup.browserWindow, target = this.popupTab;
-      if (!win || !target) return;
-      const close = () => popup.destroy();
-      const navigate = (_event: unknown, _url: string, _inPlace: boolean, main: boolean) => { if (main) close(); };
-      const parent = ctx.store.tabToWindow.get(target);
-      win.on('blur', close);
-      target.once('destroyed', close); target.on('did-start-navigation', navigate);
-      parent?.on('resize', close); parent?.on('move', close);
-      win.webContents.on('before-input-event', (event, input) => {
-        if (input.type === 'keyDown' && input.key === 'Escape' && !input.isAutoRepeat && !input.isComposing) {
-          event.preventDefault(); close(); if (!target.isDestroyed()) target.focus();
-        }
-      });
-      win.webContents.setWindowOpenHandler(({ url }) => {
-        // The host's tabs.create implementation adopts the browser tab in Setdown.
-        void original({ type: 'frame', sender: win.webContents, senderFrame: win.webContents.mainFrame }, popup.extensionId,
-          'tabs.create', { url, openerTabId: target.id }).catch(console.error);
-        return { action: 'deny' };
-      });
-      win.webContents.on('will-navigate', (event, url) => {
-        if (!url.startsWith(`chrome-extension://${popup.extensionId}/`)) event.preventDefault();
-      });
-      win.once('closed', () => {
-        target.removeListener('destroyed', close); target.removeListener('did-start-navigation', navigate);
-        parent?.removeListener('resize', close); parent?.removeListener('move', close);
-      });
+    this.clickWithoutPopup = api.browserAction.activateClick.bind(api.browserAction);
+    api.browserAction.activateClick = ({ extensionId, tabId, anchorRect }) => this.activate(extensionId, this.tab(tabId), anchorRect);
+    ipcMain.handle('extension-panel:context', async event => {
+      const surface = this.surface;
+      if (!surface || surface.extensionId || surface.contents !== event.sender) throw Error('Unknown extension panel.');
+      const { appearance, palette } = themeProfile(this.theme());
+      return { items: await this.actions(surface.target.id), appearance, palette };
     });
-    this.handle('browserAction.getUserSettings', ({ extension }) => ({ isOnToolbar: this.pins[extension.id] !== false }));
+    ipcMain.handle('extension-panel:choose', (event, id: string) => {
+      const surface = this.surface;
+      if (!surface || surface.extensionId || surface.contents !== event.sender) throw Error('Unknown extension panel.');
+      this.activate(id, surface.target, surface.anchor);
+    });
+    this.handle('browserAction.getUserSettings', () => ({ isOnToolbar: false }));
     this.handle('windows.remove', (_event, id: number) => {
       const window = [...ctx.store.windows].find(window => window.id === id && !window.isDestroyed());
       if (!window) throw Error('No such browser window.');
@@ -142,23 +131,53 @@ export class ExtensionHostBridge {
       const response = this.internal.api.browserAction.handleCRXRequest({ url: `crx://extension-icon/${id}/20/1?tabId=${tabId}` });
       const icon = response.ok ? `data:image/png;base64,${Buffer.from(await response.arrayBuffer()).toString('base64')}` : null;
       const color = Array.isArray(props.color) ? `rgba(${props.color.slice(0, 3).join(',')},${(props.color[3] ?? 255) / 255})` : props.color;
-      return { id, pinned: this.pins[id] !== false, title: props.title || this.session.extensions.getExtension(id)?.name || id, badge: props.text || '', color: color || '#555', enabled: props.enabled !== false, icon };
+      return { id, title: props.title || this.session.extensions.getExtension(id)?.name || id, badge: props.text || '', color: color || '#555', enabled: props.enabled !== false, icon };
     }));
-  }
-  pin(id: string, pinned: boolean): void {
-    if (!this.session.extensions.getExtension(id)) throw Error('Unknown extension.');
-    this.pins[id] = pinned;
-    writeFileSync(`${this.pinsFile}.tmp`, JSON.stringify(this.pins)); renameSync(`${this.pinsFile}.tmp`, this.pinsFile);
-    this.changed();
   }
   activate(id: string, tab: WebContents, bounds: Rectangle): void {
     const api = this.internal.api.browserAction, action = api.actionMap.get(id);
     if (!action || (action.tabs[tab.id]?.enabled ?? action.enabled) === false) throw Error('This extension action is unavailable.');
     const url = api.getPopupUrl(id, tab.id);
     if (url && !url.startsWith(`chrome-extension://${id}/`)) throw Error('An extension popup must belong to that extension.');
+    const toggle = this.surface?.extensionId === id && this.surface.target === tab;
+    this.dismiss();
+    if (toggle) return;
     this.popupTab = tab;
-    this.internal.ctx.store.lastFocusedWindowId = this.parent(tab)?.id;
-    api.activateClick({ extensionId: id, tabId: tab.id, anchorRect: bounds });
+    const parent = this.parent(tab);
+    if (!parent || parent.isDestroyed()) throw Error('The browser window is unavailable.');
+    this.internal.ctx.store.lastFocusedWindowId = parent.id;
+    if (!url) { this.clickWithoutPopup({ extensionId: id, tabId: tab.id, anchorRect: bounds }); return; }
+    const surface = this.surface = new ExtensionSurface(id, parent, tab, bounds, { session: this.session }, () => {
+      if (this.surface === surface) this.surface = undefined;
+    });
+    surface.contents.setWindowOpenHandler(({ url }) => {
+      void this.internal.ctx.router.onExtensionMessage({ type: 'frame', sender: surface.contents, senderFrame: surface.contents.mainFrame }, id,
+        'tabs.create', { url, openerTabId: tab.id }).catch(console.error);
+      return { action: 'deny' };
+    });
+    surface.contents.on('will-navigate', (event, url) => { if (!url.startsWith(`chrome-extension://${id}/`)) event.preventDefault(); });
+    void surface.load(url).catch(console.error);
   }
-  dismiss(): void { this.internal.api.browserAction.popup?.destroy(); this.internal.api.browserAction.popup = undefined; }
+  async menu(tab: WebContents, bounds: Rectangle): Promise<void> {
+    const toggle = this.surface && !this.surface.extensionId && this.surface.target === tab;
+    this.dismiss();
+    if (toggle) return;
+    const sequence = this.sequence, items = await this.actions(tab.id), parent = this.parent(tab);
+    if (sequence !== this.sequence || tab.isDestroyed() || !parent || parent.isDestroyed()) return;
+    this.popupTab = tab;
+    const zoom = parent.webContents.getZoomFactor();
+    const surface = this.surface = new ExtensionSurface('', parent, tab, bounds, {
+      preload: path.join(__dirname, 'extension-panel-preload.cjs'), zoom,
+      width: Math.min(420, 10 + Math.max(1, items.length) * 28 + Math.max(0, items.length - 1) * 4) * zoom,
+      height: 38 * zoom, radius: 6,
+    }, () => { if (this.surface === surface) this.surface = undefined; });
+    surface.view.setBackgroundColor(themeProfile(this.theme()).palette.chrome);
+    surface.contents.on('will-navigate', event => event.preventDefault());
+    await surface.load(pathToFileURL(path.join(__dirname, 'extension-panel.html')).href);
+  }
+  dismiss(): void {
+    this.sequence++;
+    this.surface?.destroy(); this.surface = undefined;
+    this.internal.api.browserAction.popup?.destroy(); this.internal.api.browserAction.popup = undefined;
+  }
 }

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "date": "2026-10-17",
+  "baselineCommit": "3348823c21240660608d531d6ca0df226e6dd9e7",
+  "checks": {
+    "previewContract": {
+      "command": "npm run test:preview-contract",
+      "exitCode": 0,
+      "unitTests": 465,
+      "toolingTests": 11,
+      "electronTests": 130,
+      "log": "preview-contract.txt"
+    },
+    "previewBenchmark": {
+      "command": "npm run bench:preview -- --baseline /tmp/setdown-extension-ui-baseline --skip-build --output /tmp/setdown-extension-ui-benchmark-20261017",
+      "exitCode": 0,
+      "freshAppLaunches": 80,
+      "comparisons": 48,
+      "regressions": 0,
+      "thresholds": {
+        "relative": 0.25,
+        "absoluteMs": 50
+      },
+      "summary": "preview-summary.json",
+      "raw": "preview-comparison.json.gz"
+    }
+  },
+  "notes": [
+    "GUI and benchmark use isolated Xvfb, private runtime and D-Bus; inherited Wayland display is removed.",
+    "Initial full GUI run passed 129 tests and found the obsolete sidebar Popup selector; the updated test opens More actions then Open extension and retains all filtering/popup assertions.",
+    "The next run exposed missing test synchronization between native window creation and its shell Page; it was interrupted, then the corrected full suite passed all 130 tests with retries disabled.",
+    "The compact icon strip uses the selected app theme, including Paper and Night; OS Escape input preserves Reader mode and avoids focusing its hidden web page.",
+    "The fixture screenshot shows test extension icons, not authenticated third-party product certification."
+  ]
+}

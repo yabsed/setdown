@@ -1,0 +1,1120 @@
+{
+  "schema": 1,
+  "startedAt": "2026-10-16T16:00:00.102Z",
+  "runs": 5,
+  "thresholds": {
+    "relative": 0.25,
+    "absoluteMs": 50
+  },
+  "harness": "candidate; same tests for both apps; five cycles per fresh process",
+  "measurement": "Escape keydown to latest-content nonempty native capture; includes polling/IPC/readback, not monitor presentation",
+  "fixtureHash": "a0ce32593f31ce0b79bc63e3867c0a227532954c45d50c92e2dfdc5518541314",
+  "harnessHash": "1f78723f4bac3bb92b966c60a6a0d690db9e68675be5c2511617cf475a9d4340",
+  "machine": {
+    "hostname": "fedora",
+    "platform": "linux",
+    "release": "7.2.10-200.fc44.x86_64",
+    "arch": "x64",
+    "cpu": "AMD Ryzen 7 8845HS w/ Radeon 780M Graphics",
+    "cpus": 16,
+    "node": "v22.23.1",
+    "display": ":100"
+  },
+  "baseline": {
+    "root": "/tmp/setdown-extension-ui-baseline",
+    "commit": "3348823c21240660608d531d6ca0df226e6dd9e7",
+    "status": "",
+    "diffHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "lockHash": "3b50516691763f1c6acf1d5d13ff78ec1f90e8a0cad16d065dbd8e1ddeee0237",
+    "electron": "44.7.2",
+    "artifacts": {
+      "renderer": "d1f33d693d355a8428baec6f76f602a135bd8435124d25f599c88a074f5fb4a8",
+      "main": "49c7c5e30a82e6136e949b5631c70d287a3a6631c569309ffa5835c613a4ffd5"
+    }
+  },
+  "candidate": {
+    "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer",
+    "commit": "07588993ac3e5406060af0772eae07c95c592592",
+    "status": "M apps/desktop/scripts/build-browser.mjs\n M apps/desktop/src/main/browser/browser-extensions.test.ts\n M apps/desktop/src/main/browser/browser-extensions.ts\n M apps/desktop/src/main/browser/browser-manager.ts\n M apps/desktop/src/main/browser/extensions/host-bridge.ts\n M apps/desktop/src/main/main.ts\n M apps/desktop/src/protocol/browser.ts\n M apps/desktop/src/renderer/browser/BrowserExtensions.svelte\n M apps/desktop/src/renderer/browser/ExtensionActions.svelte\n M apps/desktop/src/renderer/browser/browser-actions.ts\n M apps/desktop/src/renderer/workspace/location/LocationBar.svelte\n M apps/desktop/test/e2e/browser/browser-extensions.spec.ts\n M apps/desktop/test/e2e/browser/extension-runtime.spec.ts\n M apps/desktop/test/e2e/browser/reader.spec.ts\n M apps/desktop/test/e2e/browser/ublock.spec.ts\n M apps/desktop/test/support/electron/native-input.ts\n M docs/browser-extension-runtime.md\n M docs/preview-performance-contract.md\n?? apps/desktop/src/browser-runtime/extension-panel-preload.ts\n?? apps/desktop/src/browser-runtime/extension-panel.html\n?? apps/desktop/src/browser-runtime/extension-panel.ts\n?? apps/desktop/src/main/browser/extensions/extension-surface.ts",
+    "diffHash": "a1d85edaed7606912d74afbac778ff0c2fbcf7108bcd5967e2546f4acdde24aa",
+    "lockHash": "3b50516691763f1c6acf1d5d13ff78ec1f90e8a0cad16d065dbd8e1ddeee0237",
+    "electron": "44.7.2",
+    "artifacts": {
+      "renderer": "51a3aabf1bfe982ecb5b04647daf9dac3a2dfdfcf77318709566e4f8dce81cc6",
+      "main": "747bce32b1fa670a2c7dc680b503aa69dc027eab790a07f08da7ebec1956d33b"
+    }
+  },
+  "order": [
+    "1-baseline",
+    "1-candidate",
+    "2-candidate",
+    "2-baseline",
+    "3-baseline",
+    "3-candidate",
+    "4-candidate",
+    "4-baseline",
+    "5-baseline",
+    "5-candidate"
+  ],
+  "comparisons": [
+    {
+      "key": "document/idle=3000/edits=true/first/captureMs",
+      "baselineMs": 90,
+      "candidateMs": 112,
+      "deltaMs": 22,
+      "relativeChange": 0.24444444444444444,
+      "regression": false,
+      "baselineSamples": [
+        73,
+        104,
+        101,
+        89,
+        90
+      ],
+      "candidateSamples": [
+        110,
+        112,
+        105,
+        133,
+        123
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=true/second/captureMs",
+      "baselineMs": 99,
+      "candidateMs": 102,
+      "deltaMs": 3,
+      "relativeChange": 0.030303030303030304,
+      "regression": false,
+      "baselineSamples": [
+        99,
+        108,
+        87,
+        98,
+        99
+      ],
+      "candidateSamples": [
+        102,
+        93,
+        110,
+        92,
+        102
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=true/warm/captureMs",
+      "baselineMs": 90,
+      "candidateMs": 93,
+      "deltaMs": 3,
+      "relativeChange": 0.03333333333333333,
+      "regression": false,
+      "baselineSamples": [
+        91,
+        92,
+        90,
+        89,
+        90
+      ],
+      "candidateSamples": [
+        90,
+        93,
+        91,
+        96,
+        93
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=true/first/doubleClickToEditorMs",
+      "baselineMs": 20,
+      "candidateMs": 16,
+      "deltaMs": -4,
+      "relativeChange": -0.2,
+      "regression": false,
+      "baselineSamples": [
+        20,
+        21,
+        21,
+        16,
+        17
+      ],
+      "candidateSamples": [
+        16,
+        21,
+        16,
+        16,
+        15
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=true/second/doubleClickToEditorMs",
+      "baselineMs": 13,
+      "candidateMs": 15,
+      "deltaMs": 2,
+      "relativeChange": 0.15384615384615385,
+      "regression": false,
+      "baselineSamples": [
+        15,
+        13,
+        18,
+        13,
+        12
+      ],
+      "candidateSamples": [
+        13,
+        14,
+        15,
+        17,
+        18
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=true/warm/doubleClickToEditorMs",
+      "baselineMs": 12,
+      "candidateMs": 14,
+      "deltaMs": 2,
+      "relativeChange": 0.16666666666666666,
+      "regression": false,
+      "baselineSamples": [
+        12,
+        11,
+        16,
+        13,
+        11
+      ],
+      "candidateSamples": [
+        14,
+        12,
+        12,
+        16,
+        16
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=true/first/captureMs",
+      "baselineMs": 447,
+      "candidateMs": 445,
+      "deltaMs": -2,
+      "relativeChange": -0.0044742729306487695,
+      "regression": false,
+      "baselineSamples": [
+        310,
+        452,
+        465,
+        447,
+        401
+      ],
+      "candidateSamples": [
+        445,
+        459,
+        447,
+        427,
+        386
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=true/second/captureMs",
+      "baselineMs": 95,
+      "candidateMs": 97,
+      "deltaMs": 2,
+      "relativeChange": 0.021052631578947368,
+      "regression": false,
+      "baselineSamples": [
+        92,
+        105,
+        100,
+        91,
+        95
+      ],
+      "candidateSamples": [
+        97,
+        93,
+        102,
+        91,
+        100
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=true/warm/captureMs",
+      "baselineMs": 89,
+      "candidateMs": 92,
+      "deltaMs": 3,
+      "relativeChange": 0.033707865168539325,
+      "regression": false,
+      "baselineSamples": [
+        82,
+        92,
+        94,
+        89,
+        82
+      ],
+      "candidateSamples": [
+        88,
+        92,
+        93,
+        92,
+        93
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=true/first/doubleClickToEditorMs",
+      "baselineMs": 20,
+      "candidateMs": 21,
+      "deltaMs": 1,
+      "relativeChange": 0.05,
+      "regression": false,
+      "baselineSamples": [
+        16,
+        21,
+        20,
+        17,
+        22
+      ],
+      "candidateSamples": [
+        22,
+        22,
+        21,
+        21,
+        16
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=true/second/doubleClickToEditorMs",
+      "baselineMs": 16,
+      "candidateMs": 14,
+      "deltaMs": -2,
+      "relativeChange": -0.125,
+      "regression": false,
+      "baselineSamples": [
+        13,
+        16,
+        18,
+        12,
+        20
+      ],
+      "candidateSamples": [
+        16,
+        13,
+        16,
+        13,
+        14
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=true/warm/doubleClickToEditorMs",
+      "baselineMs": 14,
+      "candidateMs": 14,
+      "deltaMs": 0,
+      "relativeChange": 0,
+      "regression": false,
+      "baselineSamples": [
+        14,
+        16,
+        13,
+        16,
+        13
+      ],
+      "candidateSamples": [
+        16,
+        14,
+        12,
+        12,
+        17
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=false/first/captureMs",
+      "baselineMs": 43,
+      "candidateMs": 40,
+      "deltaMs": -3,
+      "relativeChange": -0.06976744186046512,
+      "regression": false,
+      "baselineSamples": [
+        57,
+        43,
+        45,
+        30,
+        32
+      ],
+      "candidateSamples": [
+        40,
+        50,
+        44,
+        35,
+        21
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=false/second/captureMs",
+      "baselineMs": 19,
+      "candidateMs": 22,
+      "deltaMs": 3,
+      "relativeChange": 0.15789473684210525,
+      "regression": false,
+      "baselineSamples": [
+        17,
+        19,
+        22,
+        29,
+        19
+      ],
+      "candidateSamples": [
+        19,
+        23,
+        22,
+        35,
+        20
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=false/warm/captureMs",
+      "baselineMs": 25,
+      "candidateMs": 21,
+      "deltaMs": -4,
+      "relativeChange": -0.16,
+      "regression": false,
+      "baselineSamples": [
+        26,
+        26,
+        18,
+        25,
+        21
+      ],
+      "candidateSamples": [
+        18,
+        25,
+        21,
+        23,
+        18
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=false/first/doubleClickToEditorMs",
+      "baselineMs": 17,
+      "candidateMs": 19,
+      "deltaMs": 2,
+      "relativeChange": 0.11764705882352941,
+      "regression": false,
+      "baselineSamples": [
+        17,
+        16,
+        23,
+        17,
+        18
+      ],
+      "candidateSamples": [
+        16,
+        19,
+        38,
+        40,
+        15
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=false/second/doubleClickToEditorMs",
+      "baselineMs": 34,
+      "candidateMs": 36,
+      "deltaMs": 2,
+      "relativeChange": 0.058823529411764705,
+      "regression": false,
+      "baselineSamples": [
+        33,
+        34,
+        36,
+        34,
+        19
+      ],
+      "candidateSamples": [
+        33,
+        36,
+        39,
+        41,
+        17
+      ]
+    },
+    {
+      "key": "document/idle=0/edits=false/warm/doubleClickToEditorMs",
+      "baselineMs": 12,
+      "candidateMs": 11,
+      "deltaMs": -1,
+      "relativeChange": -0.08333333333333333,
+      "regression": false,
+      "baselineSamples": [
+        12,
+        12,
+        11,
+        12,
+        11
+      ],
+      "candidateSamples": [
+        12,
+        11,
+        11,
+        11,
+        12
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=false/first/captureMs",
+      "baselineMs": 43,
+      "candidateMs": 41,
+      "deltaMs": -2,
+      "relativeChange": -0.046511627906976744,
+      "regression": false,
+      "baselineSamples": [
+        41,
+        43,
+        42,
+        43,
+        45
+      ],
+      "candidateSamples": [
+        41,
+        50,
+        30,
+        44,
+        27
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=false/second/captureMs",
+      "baselineMs": 23,
+      "candidateMs": 17,
+      "deltaMs": -6,
+      "relativeChange": -0.2608695652173913,
+      "regression": false,
+      "baselineSamples": [
+        24,
+        23,
+        14,
+        25,
+        20
+      ],
+      "candidateSamples": [
+        22,
+        17,
+        17,
+        18,
+        17
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=false/warm/captureMs",
+      "baselineMs": 20,
+      "candidateMs": 25,
+      "deltaMs": 5,
+      "relativeChange": 0.25,
+      "regression": false,
+      "baselineSamples": [
+        27,
+        19,
+        16,
+        25,
+        20
+      ],
+      "candidateSamples": [
+        17,
+        25,
+        26,
+        25,
+        27
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=false/first/doubleClickToEditorMs",
+      "baselineMs": 16,
+      "candidateMs": 16,
+      "deltaMs": 0,
+      "relativeChange": 0,
+      "regression": false,
+      "baselineSamples": [
+        17,
+        15,
+        16,
+        16,
+        16
+      ],
+      "candidateSamples": [
+        16,
+        17,
+        16,
+        15,
+        19
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=false/second/doubleClickToEditorMs",
+      "baselineMs": 12,
+      "candidateMs": 12,
+      "deltaMs": 0,
+      "relativeChange": 0,
+      "regression": false,
+      "baselineSamples": [
+        11,
+        11,
+        12,
+        12,
+        12
+      ],
+      "candidateSamples": [
+        11,
+        12,
+        12,
+        11,
+        13
+      ]
+    },
+    {
+      "key": "document/idle=3000/edits=false/warm/doubleClickToEditorMs",
+      "baselineMs": 11,
+      "candidateMs": 11,
+      "deltaMs": 0,
+      "relativeChange": 0,
+      "regression": false,
+      "baselineSamples": [
+        10,
+        11,
+        10,
+        12,
+        12
+      ],
+      "candidateSamples": [
+        11,
+        11,
+        11,
+        11,
+        11
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=true/first/captureMs",
+      "baselineMs": 232,
+      "candidateMs": 233,
+      "deltaMs": 1,
+      "relativeChange": 0.004310344827586207,
+      "regression": false,
+      "baselineSamples": [
+        226,
+        234,
+        233,
+        232,
+        230
+      ],
+      "candidateSamples": [
+        231,
+        233,
+        231,
+        233,
+        246
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=true/second/captureMs",
+      "baselineMs": 188,
+      "candidateMs": 188,
+      "deltaMs": 0,
+      "relativeChange": 0,
+      "regression": false,
+      "baselineSamples": [
+        191,
+        188,
+        186,
+        172,
+        195
+      ],
+      "candidateSamples": [
+        209,
+        183,
+        188,
+        190,
+        185
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=true/warm/captureMs",
+      "baselineMs": 174,
+      "candidateMs": 173,
+      "deltaMs": -1,
+      "relativeChange": -0.005747126436781609,
+      "regression": false,
+      "baselineSamples": [
+        177,
+        174,
+        170,
+        179,
+        170
+      ],
+      "candidateSamples": [
+        175,
+        172,
+        180,
+        170,
+        173
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=true/first/doubleClickToEditorMs",
+      "baselineMs": 21,
+      "candidateMs": 22,
+      "deltaMs": 1,
+      "relativeChange": 0.047619047619047616,
+      "regression": false,
+      "baselineSamples": [
+        14,
+        22,
+        21,
+        23,
+        12
+      ],
+      "candidateSamples": [
+        23,
+        21,
+        29,
+        21,
+        22
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=true/second/doubleClickToEditorMs",
+      "baselineMs": 18,
+      "candidateMs": 18,
+      "deltaMs": 0,
+      "relativeChange": 0,
+      "regression": false,
+      "baselineSamples": [
+        18,
+        19,
+        17,
+        18,
+        18
+      ],
+      "candidateSamples": [
+        18,
+        18,
+        17,
+        18,
+        18
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=true/warm/doubleClickToEditorMs",
+      "baselineMs": 18,
+      "candidateMs": 17,
+      "deltaMs": -1,
+      "relativeChange": -0.05555555555555555,
+      "regression": false,
+      "baselineSamples": [
+        18,
+        17,
+        18,
+        18,
+        16
+      ],
+      "candidateSamples": [
+        16,
+        18,
+        18,
+        17,
+        17
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=false/first/captureMs",
+      "baselineMs": 928,
+      "candidateMs": 973,
+      "deltaMs": 45,
+      "relativeChange": 0.04849137931034483,
+      "regression": false,
+      "baselineSamples": [
+        975,
+        920,
+        913,
+        960,
+        928
+      ],
+      "candidateSamples": [
+        956,
+        973,
+        988,
+        982,
+        919
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=false/second/captureMs",
+      "baselineMs": 22,
+      "candidateMs": 28,
+      "deltaMs": 6,
+      "relativeChange": 0.2727272727272727,
+      "regression": false,
+      "baselineSamples": [
+        22,
+        20,
+        22,
+        23,
+        19
+      ],
+      "candidateSamples": [
+        15,
+        19,
+        32,
+        28,
+        29
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=false/warm/captureMs",
+      "baselineMs": 29,
+      "candidateMs": 28,
+      "deltaMs": -1,
+      "relativeChange": -0.034482758620689655,
+      "regression": false,
+      "baselineSamples": [
+        30,
+        29,
+        17,
+        29,
+        29
+      ],
+      "candidateSamples": [
+        26,
+        30,
+        29,
+        28,
+        28
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=false/first/doubleClickToEditorMs",
+      "baselineMs": 23,
+      "candidateMs": 25,
+      "deltaMs": 2,
+      "relativeChange": 0.08695652173913043,
+      "regression": false,
+      "baselineSamples": [
+        23,
+        23,
+        23,
+        21,
+        23
+      ],
+      "candidateSamples": [
+        25,
+        23,
+        25,
+        27,
+        30
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=false/second/doubleClickToEditorMs",
+      "baselineMs": 12,
+      "candidateMs": 12,
+      "deltaMs": 0,
+      "relativeChange": 0,
+      "regression": false,
+      "baselineSamples": [
+        12,
+        15,
+        11,
+        11,
+        12
+      ],
+      "candidateSamples": [
+        11,
+        12,
+        13,
+        14,
+        12
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=false/warm/doubleClickToEditorMs",
+      "baselineMs": 12,
+      "candidateMs": 13,
+      "deltaMs": 1,
+      "relativeChange": 0.08333333333333333,
+      "regression": false,
+      "baselineSamples": [
+        12,
+        12,
+        11,
+        13,
+        13
+      ],
+      "candidateSamples": [
+        12,
+        12,
+        13,
+        14,
+        13
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=true/first/captureMs",
+      "baselineMs": 970,
+      "candidateMs": 1022,
+      "deltaMs": 52,
+      "relativeChange": 0.05360824742268041,
+      "regression": false,
+      "baselineSamples": [
+        970,
+        1041,
+        964,
+        910,
+        1013
+      ],
+      "candidateSamples": [
+        1003,
+        987,
+        1091,
+        1022,
+        1146
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=true/second/captureMs",
+      "baselineMs": 1497,
+      "candidateMs": 1491,
+      "deltaMs": -6,
+      "relativeChange": -0.004008016032064128,
+      "regression": false,
+      "baselineSamples": [
+        1500,
+        1442,
+        1455,
+        1497,
+        1498
+      ],
+      "candidateSamples": [
+        1480,
+        1491,
+        1487,
+        1595,
+        1538
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=true/warm/captureMs",
+      "baselineMs": 174,
+      "candidateMs": 181,
+      "deltaMs": 7,
+      "relativeChange": 0.040229885057471264,
+      "regression": false,
+      "baselineSamples": [
+        180,
+        174,
+        173,
+        171,
+        229
+      ],
+      "candidateSamples": [
+        179,
+        181,
+        175,
+        189,
+        182
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=true/first/doubleClickToEditorMs",
+      "baselineMs": 14,
+      "candidateMs": 16,
+      "deltaMs": 2,
+      "relativeChange": 0.14285714285714285,
+      "regression": false,
+      "baselineSamples": [
+        22,
+        14,
+        14,
+        14,
+        23
+      ],
+      "candidateSamples": [
+        14,
+        14,
+        24,
+        25,
+        16
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=true/second/doubleClickToEditorMs",
+      "baselineMs": 21,
+      "candidateMs": 22,
+      "deltaMs": 1,
+      "relativeChange": 0.047619047619047616,
+      "regression": false,
+      "baselineSamples": [
+        21,
+        21,
+        21,
+        20,
+        22
+      ],
+      "candidateSamples": [
+        22,
+        22,
+        22,
+        23,
+        23
+      ]
+    },
+    {
+      "key": "review/idle=0/edits=true/warm/doubleClickToEditorMs",
+      "baselineMs": 18,
+      "candidateMs": 19,
+      "deltaMs": 1,
+      "relativeChange": 0.05555555555555555,
+      "regression": false,
+      "baselineSamples": [
+        17,
+        20,
+        18,
+        18,
+        23
+      ],
+      "candidateSamples": [
+        19,
+        19,
+        19,
+        19,
+        23
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=false/first/captureMs",
+      "baselineMs": 27,
+      "candidateMs": 28,
+      "deltaMs": 1,
+      "relativeChange": 0.037037037037037035,
+      "regression": false,
+      "baselineSamples": [
+        25,
+        27,
+        30,
+        27,
+        21
+      ],
+      "candidateSamples": [
+        28,
+        25,
+        28,
+        37,
+        32
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=false/second/captureMs",
+      "baselineMs": 22,
+      "candidateMs": 23,
+      "deltaMs": 1,
+      "relativeChange": 0.045454545454545456,
+      "regression": false,
+      "baselineSamples": [
+        21,
+        22,
+        22,
+        24,
+        20
+      ],
+      "candidateSamples": [
+        21,
+        23,
+        25,
+        22,
+        26
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=false/warm/captureMs",
+      "baselineMs": 17,
+      "candidateMs": 18,
+      "deltaMs": 1,
+      "relativeChange": 0.058823529411764705,
+      "regression": false,
+      "baselineSamples": [
+        17,
+        17,
+        17,
+        17,
+        17
+      ],
+      "candidateSamples": [
+        18,
+        17,
+        18,
+        19,
+        18
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=false/first/doubleClickToEditorMs",
+      "baselineMs": 24,
+      "candidateMs": 23,
+      "deltaMs": -1,
+      "relativeChange": -0.041666666666666664,
+      "regression": false,
+      "baselineSamples": [
+        25,
+        23,
+        24,
+        22,
+        24
+      ],
+      "candidateSamples": [
+        25,
+        22,
+        23,
+        23,
+        27
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=false/second/doubleClickToEditorMs",
+      "baselineMs": 12,
+      "candidateMs": 11,
+      "deltaMs": -1,
+      "relativeChange": -0.08333333333333333,
+      "regression": false,
+      "baselineSamples": [
+        12,
+        11,
+        12,
+        14,
+        10
+      ],
+      "candidateSamples": [
+        11,
+        12,
+        11,
+        11,
+        10
+      ]
+    },
+    {
+      "key": "review/idle=3000/edits=false/warm/doubleClickToEditorMs",
+      "baselineMs": 17,
+      "candidateMs": 18,
+      "deltaMs": 1,
+      "relativeChange": 0.058823529411764705,
+      "regression": false,
+      "baselineSamples": [
+        17,
+        17,
+        19,
+        18,
+        17
+      ],
+      "candidateSamples": [
+        18,
+        18,
+        19,
+        16,
+        17
+      ]
+    }
+  ],
+  "regressions": [],
+  "passed": true,
+  "finishedAt": "2026-10-16T16:06:02.398Z"
+}

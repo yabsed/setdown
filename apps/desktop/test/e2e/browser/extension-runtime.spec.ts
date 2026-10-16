@@ -1,9 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { createServer } from 'node:http';
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { electron, disposeApplication, focusApplication } from '../../support/electron/electron-app';
+import { nativeInput } from '../../support/electron/native-input';
 
 test('MV3 popup targets its web tab; worker grants, proxy, WebRTC, cookies and downloads have real effects', async () => {
   test.setTimeout(120_000);
@@ -77,7 +78,43 @@ test('MV3 popup targets its web tab; worker grants, proxy, WebRTC, cookies and d
     await page.evaluate(url => window.marktex.openLink(url), `${origin}/article`);
     await expect(page.getByRole('tab', { name: /Extension target/ })).toHaveAttribute('aria-selected', 'true');
     const before = await page.getByRole('tab').count();
-    await page.getByRole('button', { name: 'Runtime Fixture', exact: true }).click();
+    const picker = async (owner: Page = page) => {
+      const box = (await owner.getByRole('button', { name: 'Extensions menu', exact: true }).boundingBox())!;
+      const window = await app.browserWindow(owner);
+      const point = await window.evaluate((win, box) => {
+        win.show(); win.focus();
+        const root = win.getContentBounds(), zoom = win.webContents.getZoomFactor();
+        return { x: root.x + (box.x + box.width / 2) * zoom, y: root.y + (box.y + box.height / 2) * zoom };
+      }, box);
+      await nativeInput({ click: point });
+      await expect.poll(() => app.windows().some(window => window.url().endsWith('/extension-panel.html'))).toBe(true);
+      return app.windows().find(window => window.url().endsWith('/extension-panel.html'))!;
+    };
+    const openAction = async (owner: Page = page) => {
+      const panel = await picker(owner);
+      const button = panel.getByRole('button', { name: 'Runtime Fixture', exact: true });
+      await expect(button).toBeVisible();
+      const box = (await button.boundingBox())!;
+      const point = await app.evaluate(({ BrowserWindow, WebContentsView }, box) => {
+        for (const win of BrowserWindow.getAllWindows()) for (const view of win.contentView.children) {
+          if (view instanceof WebContentsView && view.webContents.getURL().endsWith('/extension-panel.html')) {
+            const root = win.getContentBounds(), bounds = view.getBounds(), zoom = view.webContents.getZoomFactor();
+            return { x: root.x + bounds.x + (box.x + box.width / 2) * zoom, y: root.y + bounds.y + (box.y + box.height / 2) * zoom };
+          }
+        }
+        throw Error('Extension strip is not attached to its owner.');
+      }, box);
+      await nativeInput({ click: point });
+    };
+    const geometry = () => app.evaluate(({ BrowserWindow, WebContentsView }, id) => {
+      for (const parent of BrowserWindow.getAllWindows()) for (const view of parent.contentView.children) {
+        if (view instanceof WebContentsView && view.webContents.getURL() === `chrome-extension://${id}/popup.html`) {
+          return { bounds: view.getBounds(), zoom: parent.webContents.getZoomFactor(), windows: BrowserWindow.getAllWindows().length };
+        }
+      }
+    }, fixture.id);
+
+    await openAction();
     await expect.poll(() => app.evaluate(({ webContents }, id) => webContents.getAllWebContents().some(wc => wc.getURL() === `chrome-extension://${id}/popup.html`), fixture.id)).toBe(true);
     const popupValue = (code: string) => app.evaluate(async ({ webContents }, args) => {
       const wc = webContents.getAllWebContents().find(wc => wc.getURL() === `chrome-extension://${args.id}/popup.html`)!;
@@ -90,9 +127,13 @@ test('MV3 popup targets its web tab; worker grants, proxy, WebRTC, cookies and d
     const popupPage = app.windows().find(window => window.url() === `chrome-extension://${fixture.id}/popup.html`)!;
     await popupPage.locator('#typing').click(); await popupPage.keyboard.type('working'); await popupPage.keyboard.insertText('한글');
     await expect(popupPage.locator('#typing')).toHaveValue('working한글');
+    const anchor = (await page.getByRole('button', { name: 'Extensions menu' }).boundingBox())!;
+    await expect.poll(async () => (await geometry())?.bounds.y).toBe(Math.round(anchor.y + anchor.height + 6));
+    expect((await geometry())?.windows).toBe(1);
     const inspected = await worker({ op: 'inspect' }); expect(inspected.value.alias).toBe(true);
     await worker({ op: 'badge', tabId: target.tab.id, text: '2' });
-    await expect(page.getByRole('button', { name: 'Runtime Fixture', exact: true }).locator('.badge')).toHaveText('2');
+    const actionState = (owner: Page) => owner.evaluate(async id => { const tab = document.querySelector('[role=tab][aria-selected=true]')?.getAttribute('data-tab-id'); return tab ? (await window.marktex.browser.extensionActions(tab)).find(item => item.id === id) : undefined; }, fixture.id);
+    await expect.poll(() => actionState(page).then(item => item?.badge)).toBe('2');
     expect(inspected.value.tabs[0].id).toBe(target.tab.id); expect(inspected.value.tabs[0].windowId).toBe(target.tab.windowId);
     expect((await worker({ op: 'privacy', method: 'get' })).error).toContain('privacy permission');
     expect((await worker({ op: 'permission', method: 'request' })).value).toBe(true);
@@ -158,7 +199,7 @@ test('MV3 popup targets its web tab; worker grants, proxy, WebRTC, cookies and d
       wc.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' }); wc.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
     }, fixture.id);
     await expect.poll(() => app.evaluate(({ webContents }, id) => webContents.getAllWebContents().some(wc => wc.getURL() === `chrome-extension://${id}/popup.html`), fixture.id)).toBe(false);
-    await page.getByRole('button', { name: 'Runtime Fixture', exact: true }).click();
+    await openAction();
     await expect.poll(() => popupValue('document.body.dataset.target || ""')).toContain('Extension target');
     await worker({ op: 'proxy', method: 'set', details: { value: { mode: 'fixed_servers', rules: { singleProxy: { host: '127.0.0.1', port } } } } });
     await page.evaluate(id => window.marktex.browser.setExtensionEnabled(id, false), fixture.id);
@@ -170,21 +211,40 @@ test('MV3 popup targets its web tab; worker grants, proxy, WebRTC, cookies and d
       const wc = webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/article`);
       return wc && !wc.isLoading() ? wc.executeJavaScript("document.documentElement.dataset.runtimeFixture || ''").catch(() => '') : '';
     }, origin)).toBe('ready');
-    await page.getByRole('button', { name: 'Runtime Fixture', exact: true }).click();
+    await openAction();
     await expect.poll(() => popupValue('document.body.dataset.target || ""')).toContain('Extension target');
     await worker({ op: 'proxy', method: 'clear' });
     await popupValue(`void chrome.runtime.sendMessage({op:'window',url:${JSON.stringify(`${origin}/second`)}}); true`);
     await expect.poll(() => app.evaluate(({ BrowserWindow, session }) => BrowserWindow.getAllWindows().filter(win => win.webContents.session !== session.fromPartition('persist:setdown-browser')).length)).toBe(2);
+    // Native window creation precedes its shell navigation and Playwright Page.
+    await expect.poll(() => app.windows().some(window => window !== page && window.url() === page.url())).toBe(true);
     const second = app.windows().find(window => window !== page && window.url() === page.url())!;
     await expect(second.getByRole('tab', { name: /Extension target/ })).toHaveAttribute('aria-selected', 'true');
-    await second.getByRole('button', { name: 'Runtime Fixture', exact: true }).click();
+    await openAction(second);
     await expect.poll(() => popupValue('document.body.dataset.target || ""')).toContain('/second');
     const otherTarget = JSON.parse(await popupValue('document.body.dataset.target'));
     expect(otherTarget.tab.windowId).not.toBe(target.tab.windowId);
     expect((await worker({ op: 'inspect' })).value.tabs[0].id).toBe(otherTarget.tab.id);
+    await worker({ op: 'badge', tabId: target.tab.id, text: '2' });
     await worker({ op: 'disableAction', tabId: otherTarget.tab.id });
-    await expect(second.getByRole('button', { name: 'Runtime Fixture', exact: true })).toBeDisabled();
-    await expect(page.getByRole('button', { name: 'Runtime Fixture', exact: true })).toBeEnabled();
+    const disabledPanel = await picker(second);
+    await expect(disabledPanel.getByRole('button', { name: 'Runtime Fixture', exact: true })).toBeDisabled();
+    await disabledPanel.keyboard.press('Escape');
+    const firstPanel = await picker(page);
+    await expect(firstPanel.getByRole('button', { name: 'Runtime Fixture', exact: true })).toBeEnabled();
+    await expect(firstPanel.getByRole('button', { name: 'Runtime Fixture', exact: true }).locator('.badge')).toHaveText('2');
+    await expect(firstPanel.locator('header, .label')).toHaveCount(0);
+    expect((await firstPanel.locator('body').boundingBox())!.height).toBeLessThanOrEqual(38);
+    await firstPanel.screenshot({ path: '/tmp/setdown-extension-picker.png' });
+    const nativeShot = await app.evaluate(async ({ BrowserWindow, WebContentsView }) => { const owner = BrowserWindow.getAllWindows().find(win => win.contentView.children.some(view => view instanceof WebContentsView && view.webContents.getURL().endsWith('/extension-panel.html')))!; return (await owner.capturePage()).toPNG().toString('base64'); });
+    await writeFile('/tmp/setdown-extension-toolbar.png', Buffer.from(nativeShot, 'base64'));
+    await firstPanel.keyboard.press('Escape');
+    await page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-zoom-in'));
+    await expect.poll(() => page.evaluate(() => window.marktex.getZoom())).toMatchObject({ app: 110 });
+    await openAction();
+    const zoomAnchor = (await page.getByRole('button', { name: 'Extensions menu' }).boundingBox())!;
+    await expect.poll(async () => { const value = await geometry(); return value ? Math.abs(value.bounds.y - Math.round((zoomAnchor.y + zoomAnchor.height) * value.zoom + 6)) : 100; }).toBeLessThanOrEqual(1);
+    expect((await geometry())?.windows).toBe(2);
 
   } finally { await disposeApplication(app); await new Promise<void>(resolve => server.close(() => resolve())); await rm(root, { recursive: true, force: true }); }
 });

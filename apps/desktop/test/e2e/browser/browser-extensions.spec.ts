@@ -48,6 +48,10 @@ test('Web Store links install only after confirmation, update with stable identi
     await page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-toggle-folder-tools'));
     await page.locator('.activity-bar button[aria-label="Browser"]').click();
     await page.getByRole('navigation', { name: 'Browser library' }).getByRole('button', { name: 'Extensions' }).click();
+    const builtin = page.locator('.extension').filter({ hasText: 'Built-in' });
+    await expect(builtin.locator('.extension-icon img')).toBeVisible();
+    expect(await builtin.locator('img').evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+    await page.getByRole('button', { name: 'Add extension', exact: true }).click();
     await page.getByRole('button', { name: 'Install from Chrome Web Store…' }).click();
     const input = page.getByRole('textbox', { name: 'Chrome Web Store link or extension ID' });
     await input.fill('https://example.com/not-an-extension');
@@ -75,6 +79,7 @@ test('Web Store links install only after confirmation, update with stable identi
       return wc?.executeJavaScript('document.documentElement.dataset.storeFixture || ""');
     }, origin);
     await expect.poll(installedVersion).toBe('1.0');
+    await row.getByRole('button', { name: 'More actions for Store Fixture' }).click();
     version = '2.0';
     await row.getByRole('button', { name: 'Update from Web Store' }).click();
     await expect(row.locator('.extension-version')).toHaveText('2.0');
@@ -180,6 +185,7 @@ test('user-installed extensions load, run content scripts, and can be disabled',
     });
     expect(searchBelow).toBe(true);
     await library.getByRole('button', { name: 'Extensions' }).click();
+    await page.getByRole('button', { name: 'Add extension', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Install from file (.zip/.crx)…' })).toBeVisible();
     const inside = await page.locator('.browser-sidebar').evaluate(sidebar => {
       const box = sidebar.getBoundingClientRect();

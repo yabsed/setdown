@@ -3,6 +3,7 @@ import { readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { fixture, evaluatePage, captureNativeMenus, chooseNativeMenu } from '../../support/browser/browser-fixture';
+import { nativeInput } from '../../support/electron/native-input';
 
 test('reading surfaces offer native copy/search menus and local Markdown PDF export', async () => {
   const f = await fixture();
@@ -331,6 +332,67 @@ test('native Markdown reader shortcuts select the address and go back to the pre
     await expect(f.page.locator('.document-tab[aria-selected="true"]')).toContainText('previous.txt');
     await expect(f.page.locator('.shell')).toHaveAttribute('data-surface', 'editor');
     await expect(f.page.locator('.document-tab')).toHaveCount(1);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('web Reader keeps location controls stationary and the compact extension strip available', async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/article`);
+    await expect(f.page.getByRole('tab', { name: /Long article/ })).toBeVisible();
+    const positions = () => f.page.locator('.location-bar').evaluate(bar => [...bar.querySelectorAll('.location-icon, .extensions-button, .page-zoom, input')].map(node => {
+      const rect = node.getBoundingClientRect(); return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+    }));
+    const before = await positions();
+    const button = f.page.getByRole('button', { name: 'Extensions menu', exact: true });
+    const address = (await f.page.getByRole('textbox', { name: 'Address or file path' }).boundingBox())!;
+    const site = (await f.page.getByRole('button', { name: 'Site controls', exact: true }).boundingBox())!;
+    const extension = (await button.boundingBox())!;
+    expect(extension.x).toBeGreaterThanOrEqual(address.x + address.width);
+    expect(extension.x + extension.width).toBeLessThanOrEqual(site.x);
+    expect(await button.evaluate(node => getComputedStyle(node).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
+    await f.page.getByRole('button', { name: 'Enter reader mode', exact: true }).click();
+    const reader = f.page.getByRole('region', { name: 'Reader mode', exact: true });
+    await expect(reader).toBeVisible();
+    expect(await positions()).toEqual(before);
+    await button.click();
+    await expect.poll(() => f.app.windows().some(page => page.url().endsWith('/extension-panel.html'))).toBe(true);
+    const panel = f.app.windows().find(page => page.url().endsWith('/extension-panel.html'))!;
+    await expect(panel.getByRole('toolbar', { name: 'Extensions' })).toBeVisible();
+    await expect(panel.locator('header, .label')).toHaveCount(0);
+    expect(await panel.locator('html').evaluate(node => getComputedStyle(node).backgroundColor))
+      .toBe(await f.page.locator('.location-bar').evaluate(node => getComputedStyle(node).backgroundColor));
+    await expect.poll(() => f.app.evaluate(({ BrowserWindow, WebContentsView, webContents }) => {
+      const owner = BrowserWindow.getAllWindows()[0];
+      const view = owner.contentView.children.find(view => view instanceof WebContentsView && view.webContents.getURL().endsWith('/extension-panel.html')) as Electron.WebContentsView | undefined;
+      return { visible: view?.getVisible(), focused: webContents.getFocusedWebContents() === view?.webContents };
+    })).toEqual({ visible: true, focused: true });
+    await nativeInput({ keys: ['Escape'] });
+    await expect.poll(() => f.app.windows().some(page => page.url().endsWith('/extension-panel.html'))).toBe(false);
+    await expect(reader).toBeVisible();
+    const state = await f.app.evaluate(({ BrowserWindow, WebContentsView, webContents }, origin) => {
+      const owner = BrowserWindow.getAllWindows()[0];
+      const page = owner.contentView.children.find(view => view instanceof WebContentsView && view.webContents.getURL() === `${origin}/article`);
+      return { hidden: !page || !page.getVisible(), shellFocused: webContents.getFocusedWebContents() === owner.webContents };
+    }, f.origin);
+    expect(state).toEqual({ hidden: true, shellFocused: true });
+    await f.page.getByRole('button', { name: 'Exit reader mode', exact: true }).click();
+    await expect(reader).toHaveCount(0);
+    expect(await positions()).toEqual(before);
+    for (const theme of ['paper', 'night']) {
+      await f.page.evaluate(theme => window.marktex.executeApplicationMenuItem(`preview-theme-${theme}`), theme);
+      await expect.poll(() => f.page.evaluate(() => document.documentElement.dataset.theme)).toBe(theme);
+      await button.click();
+      await expect.poll(() => f.app.windows().some(page => page.url().endsWith('/extension-panel.html'))).toBe(true);
+      const themed = f.app.windows().find(page => page.url().endsWith('/extension-panel.html'))!;
+      await expect(themed.getByRole('toolbar', { name: 'Extensions' })).toBeVisible();
+      expect(await themed.locator('html').evaluate(node => getComputedStyle(node).backgroundColor))
+        .toBe(await f.page.locator('.location-bar').evaluate(node => getComputedStyle(node).backgroundColor));
+      await expect.poll(() => f.app.evaluate(({ webContents }) => webContents.getFocusedWebContents()?.getURL().endsWith('/extension-panel.html'))).toBe(true);
+      await nativeInput({ keys: ['Escape'] });
+      await expect.poll(() => f.app.windows().some(page => page.url().endsWith('/extension-panel.html'))).toBe(false);
+    }
     expect(f.errors).toEqual([]);
   } finally { await f.dispose(); }
 });

@@ -1,4 +1,4 @@
-import { app, ipcMain, webContents, type Session, type WebContents, type WebFrameMain } from 'electron';
+import { app, ipcMain, nativeImage, webContents, type Session, type WebContents, type WebFrameMain } from 'electron';
 import { ElectronChromeExtensions } from 'electron-chrome-extensions';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
@@ -37,11 +37,12 @@ export class BrowserExtensions {
   private loaded = new Map<string, LoadedExtension>();
   private staging = new Map<string, { dir: string; info: ExtensionManifestInfo; webStoreId?: string }>();
   private builtinInfo?: ExtensionManifestInfo;
+  private icons = new Map<string, string>();
   private registryLoaded = false;
   private modifying = Promise.resolve();
   constructor(private readonly session: Session, private readonly tab: (id: number) => WebContents | undefined,
     private readonly callbacks: ConstructorParameters<typeof ElectronChromeExtensions>[0],
-    private readonly services: { downloads?: BrowserDownloads; changed?(): void } = {}) {}
+    private readonly services: { downloads?: BrowserDownloads; changed?(): void; theme?(): import('../../core/preview/preview-preferences').PreviewThemeId } = {}) {}
 
   private get extensionsRoot() { return path.join(app.getPath('userData'), 'extensions'); }
   private get registryFile() { return path.join(app.getPath('userData'), 'browser-extensions.json'); }
@@ -74,6 +75,7 @@ export class BrowserExtensions {
     if (app.isPackaged) extensionPath = extensionPath.replace(`${path.sep}app.asar${path.sep}`, `${path.sep}app.asar.unpacked${path.sep}`);
     const extension = await this.session.extensions.loadExtension(extensionPath);
     this.extensionId = extension.id;
+    await this.readIcon(extensionPath, extension.manifest);
     try { this.builtinInfo = parseExtensionManifest(extension.manifest); }
     catch { this.builtinInfo = { name: extension.name, version: extension.version, description: '', manifestVersion: 2, permissions: [], hostPermissions: [] }; }
     if (extension.name) this.builtinInfo.name = extension.name;
@@ -133,6 +135,7 @@ export class BrowserExtensions {
   private async readInstalledInfo(dir: string): Promise<ExtensionManifestInfo> {
     const root = path.join(this.extensionsRoot, dir);
     const raw: unknown = JSON.parse(await fs.readFile(path.join(root, 'manifest.json'), 'utf8'));
+    await this.readIcon(root, raw);
     let messages: Record<string, { message?: unknown }> | undefined;
     const locale = raw && typeof raw === 'object' ? (raw as Record<string, unknown>).default_locale : undefined;
     if (typeof locale === 'string') {
@@ -140,6 +143,22 @@ export class BrowserExtensions {
         .then(content => JSON.parse(content) as typeof messages).catch(() => undefined);
     }
     return parseExtensionManifest(raw, messages);
+  }
+
+  private async readIcon(root: string, raw: unknown): Promise<void> {
+    this.icons.delete(root);
+    const manifest = raw as { icons?: Record<string, string>; action?: { default_icon?: unknown }; browser_action?: { default_icon?: unknown } };
+    const icons = manifest?.icons ?? manifest?.action?.default_icon ?? manifest?.browser_action?.default_icon;
+    const name = typeof icons === 'string' ? icons : icons && typeof icons === 'object'
+      ? Object.entries(icons).sort(([a], [b]) => Math.abs(Number(a) - 64) - Math.abs(Number(b) - 64))[0]?.[1] : undefined;
+    if (typeof name !== 'string') return;
+    try {
+      const file = await fs.realpath(path.resolve(root, name));
+      const base = await fs.realpath(root);
+      if (!file.startsWith(base + path.sep) || (await fs.stat(file)).size > 2_000_000) return;
+      const image = nativeImage.createFromBuffer(await fs.readFile(file));
+      if (!image.isEmpty()) this.icons.set(root, image.resize({ width: 48, height: 48, quality: 'best' }).toDataURL());
+    } catch { /* A missing icon must not prevent installation or activation. */ }
   }
 
   private async loadRecord(record: StoredExtension): Promise<void> {
@@ -150,6 +169,7 @@ export class BrowserExtensions {
       const existing = this.session.extensions.getAllExtensions().find(item => item.path === extensionPath);
       if (existing) this.session.extensions.removeExtension(existing.id);
       const extension = await this.session.extensions.loadExtension(extensionPath);
+      await this.readIcon(extensionPath, extension.manifest);
       this.loaded.set(record.dir, { record, info, electronId: extension.id });
     } catch (error) {
       this.loaded.set(record.dir, { record, info, error: error instanceof Error ? error.message : String(error) });
@@ -261,6 +281,7 @@ export class BrowserExtensions {
       await fs.rename(staged.dir, target); moved = true;
       this.loaded.set(dirName, { record, info: staged.info, lastElectronId: previousState?.electronId ?? previousState?.lastElectronId });
       if (record.enabled) await this.loadRecord(record);
+      else await this.readInstalledInfo(dirName);
       this.records = [...this.records.filter(item => item !== previous), record];
       await this.persist();
     } catch (error) {
@@ -285,6 +306,7 @@ export class BrowserExtensions {
     return {
       id: state?.electronId ?? state?.lastElectronId ?? (info.key ? extensionIdFromKey(info.key) : undefined) ?? record.dir,
       name: info.name, version: info.version, description: info.description, manifestVersion: info.manifestVersion,
+      icon: this.icons.get(path.join(this.extensionsRoot, record.dir)),
       enabled: record.enabled && !!state?.electronId, builtin: false,
       hasPopup: !!info.popupPath, hasOptions: !!info.optionsPath,
       permissions: info.permissions, hostPermissions: info.hostPermissions,
@@ -297,6 +319,7 @@ export class BrowserExtensions {
     const rows: BrowserExtensionInfo[] = [];
     if (this.extensionId && this.builtinInfo) rows.push({
       id: this.extensionId, name: this.builtinInfo.name, version: this.builtinInfo.version,
+      icon: this.icons.get(this.session.extensions.getExtension(this.extensionId)?.path ?? ''),
       description: this.builtinInfo.description, manifestVersion: this.builtinInfo.manifestVersion,
       enabled: true, builtin: true, hasPopup: true, hasOptions: !!this.builtinInfo.optionsPath,
       permissions: this.builtinInfo.permissions, hostPermissions: this.builtinInfo.hostPermissions, error: null,
@@ -370,7 +393,7 @@ export class BrowserExtensions {
 
   private installHost(): void {
     this.host = new ElectronChromeExtensions({ ...this.callbacks, session: this.session, license: 'GPL-3.0' });
-    this.bridge = new ExtensionHostBridge(this.host, this.session, () => this.services.changed?.());
+    this.bridge = new ExtensionHostBridge(this.host, this.session, () => this.services.changed?.(), this.services.theme);
     const permissions = this.permissions = new ExtensionPermissions(this.bridge);
     this.network = new ExtensionNetwork(this.bridge, permissions);
     if (this.services.downloads) this.downloads = new ExtensionDownloads(this.bridge, permissions, this.services.downloads);

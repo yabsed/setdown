@@ -1,0 +1,94 @@
+
+> setdown-workspace@0.1.0 bench:preview
+> npm run bench:preview --workspace @setdown/desktop -- --baseline /tmp/setdown-extension-ui-baseline --skip-build --output /tmp/setdown-extension-ui-benchmark-20261017
+
+
+> @setdown/desktop@1.0.0 bench:preview
+> bash scripts/with-isolated-display.sh node scripts/preview-benchmark.mjs --baseline /tmp/setdown-extension-ui-baseline --skip-build --output /tmp/setdown-extension-ui-benchmark-20261017
+
+Measuring 1-baseline: 8 scenarios, each in a fresh Electron process
+dbus-daemon[1534824]: [session uid=1000 pid=1534824] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=1535067 comm="/tmp/setdown-extension-ui-baseline/apps/desktop/no" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1534824]: [session uid=1000 pid=1534824] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=1535067 comm="/tmp/setdown-extension-ui-baseline/apps/desktop/no" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1534824]: [session uid=1000 pid=1534824] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[1534824]: [session uid=1000 pid=1534824] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.3' (uid=1000 pid=1535126 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1534824]: [session uid=1000 pid=1534824] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[1534824]: [session uid=1000 pid=1534824] Activating service name='org.freedesktop.portal.Documents' requested by ':1.3' (uid=1000 pid=1535126 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1534824]: [session uid=1000 pid=1534824] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[1534824]: [session uid=1000 pid=1534824] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.3' (uid=1000 pid=1535126 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[1534824]: [session uid=1000 pid=1534824] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=1535183 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[1534824]: [session uid=1000 pid=1534824] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[1534824]: [session uid=1000 pid=1534824] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[1534824]: [session uid=1000 pid=1534824] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.3' (uid=1000 pid=1535126 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1534824]: [session uid=1000 pid=1534824] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:1535126): xdg-desktop-portal-WARNING **: 01:00:03.915: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[1534824]: [session uid=1000 pid=1534824] Activating service name='org.freedesktop.secrets' requested by ':1.3' (uid=1000 pid=1535126 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+** Message: 01:00:03.923: couldn't access control socket: /tmp/setdown-display-runtime.9vtpO9/keyring/control: No such file or directory
+discover_other_daemon: 0dbus-daemon[1534824]: [session uid=1000 pid=1534824] Successfully activated service 'org.freedesktop.secrets'
+dbus-daemon[1534824]: [session uid=1000 pid=1534824] Successfully activated service 'org.freedesktop.portal.Desktop'
+Measuring 1-candidate: 8 scenarios, each in a fresh Electron process
+Measuring 2-candidate: 8 scenarios, each in a fresh Electron process
+Measuring 2-baseline: 8 scenarios, each in a fresh Electron process
+Measuring 3-baseline: 8 scenarios, each in a fresh Electron process
+Measuring 3-candidate: 8 scenarios, each in a fresh Electron process
+Measuring 4-candidate: 8 scenarios, each in a fresh Electron process
+Measuring 4-baseline: 8 scenarios, each in a fresh Electron process
+Measuring 5-baseline: 8 scenarios, each in a fresh Electron process
+Measuring 5-candidate: 8 scenarios, each in a fresh Electron process
+┌─────────┬───────────────────────────────────────────────────────────────┬────────────┬─────────────┬────────────┐
+│ (index) │ scenario                                                      │ baselineMs │ candidateMs │ regression │
+├─────────┼───────────────────────────────────────────────────────────────┼────────────┼─────────────┼────────────┤
+│ 0       │ 'document/idle=3000/edits=true/first/captureMs'               │ 90         │ 112         │ false      │
+│ 1       │ 'document/idle=3000/edits=true/second/captureMs'              │ 99         │ 102         │ false      │
+│ 2       │ 'document/idle=3000/edits=true/warm/captureMs'                │ 90         │ 93          │ false      │
+│ 3       │ 'document/idle=3000/edits=true/first/doubleClickToEditorMs'   │ 20         │ 16          │ false      │
+│ 4       │ 'document/idle=3000/edits=true/second/doubleClickToEditorMs'  │ 13         │ 15          │ false      │
+│ 5       │ 'document/idle=3000/edits=true/warm/doubleClickToEditorMs'    │ 12         │ 14          │ false      │
+│ 6       │ 'document/idle=0/edits=true/first/captureMs'                  │ 447        │ 445         │ false      │
+│ 7       │ 'document/idle=0/edits=true/second/captureMs'                 │ 95         │ 97          │ false      │
+│ 8       │ 'document/idle=0/edits=true/warm/captureMs'                   │ 89         │ 92          │ false      │
+│ 9       │ 'document/idle=0/edits=true/first/doubleClickToEditorMs'      │ 20         │ 21          │ false      │
+│ 10      │ 'document/idle=0/edits=true/second/doubleClickToEditorMs'     │ 16         │ 14          │ false      │
+│ 11      │ 'document/idle=0/edits=true/warm/doubleClickToEditorMs'       │ 14         │ 14          │ false      │
+│ 12      │ 'document/idle=0/edits=false/first/captureMs'                 │ 43         │ 40          │ false      │
+│ 13      │ 'document/idle=0/edits=false/second/captureMs'                │ 19         │ 22          │ false      │
+│ 14      │ 'document/idle=0/edits=false/warm/captureMs'                  │ 25         │ 21          │ false      │
+│ 15      │ 'document/idle=0/edits=false/first/doubleClickToEditorMs'     │ 17         │ 19          │ false      │
+│ 16      │ 'document/idle=0/edits=false/second/doubleClickToEditorMs'    │ 34         │ 36          │ false      │
+│ 17      │ 'document/idle=0/edits=false/warm/doubleClickToEditorMs'      │ 12         │ 11          │ false      │
+│ 18      │ 'document/idle=3000/edits=false/first/captureMs'              │ 43         │ 41          │ false      │
+│ 19      │ 'document/idle=3000/edits=false/second/captureMs'             │ 23         │ 17          │ false      │
+│ 20      │ 'document/idle=3000/edits=false/warm/captureMs'               │ 20         │ 25          │ false      │
+│ 21      │ 'document/idle=3000/edits=false/first/doubleClickToEditorMs'  │ 16         │ 16          │ false      │
+│ 22      │ 'document/idle=3000/edits=false/second/doubleClickToEditorMs' │ 12         │ 12          │ false      │
+│ 23      │ 'document/idle=3000/edits=false/warm/doubleClickToEditorMs'   │ 11         │ 11          │ false      │
+│ 24      │ 'review/idle=3000/edits=true/first/captureMs'                 │ 232        │ 233         │ false      │
+│ 25      │ 'review/idle=3000/edits=true/second/captureMs'                │ 188        │ 188         │ false      │
+│ 26      │ 'review/idle=3000/edits=true/warm/captureMs'                  │ 174        │ 173         │ false      │
+│ 27      │ 'review/idle=3000/edits=true/first/doubleClickToEditorMs'     │ 21         │ 22          │ false      │
+│ 28      │ 'review/idle=3000/edits=true/second/doubleClickToEditorMs'    │ 18         │ 18          │ false      │
+│ 29      │ 'review/idle=3000/edits=true/warm/doubleClickToEditorMs'      │ 18         │ 17          │ false      │
+│ 30      │ 'review/idle=0/edits=false/first/captureMs'                   │ 928        │ 973         │ false      │
+│ 31      │ 'review/idle=0/edits=false/second/captureMs'                  │ 22         │ 28          │ false      │
+│ 32      │ 'review/idle=0/edits=false/warm/captureMs'                    │ 29         │ 28          │ false      │
+│ 33      │ 'review/idle=0/edits=false/first/doubleClickToEditorMs'       │ 23         │ 25          │ false      │
+│ 34      │ 'review/idle=0/edits=false/second/doubleClickToEditorMs'      │ 12         │ 12          │ false      │
+│ 35      │ 'review/idle=0/edits=false/warm/doubleClickToEditorMs'        │ 12         │ 13          │ false      │
+│ 36      │ 'review/idle=0/edits=true/first/captureMs'                    │ 970        │ 1022        │ false      │
+│ 37      │ 'review/idle=0/edits=true/second/captureMs'                   │ 1497       │ 1491        │ false      │
+│ 38      │ 'review/idle=0/edits=true/warm/captureMs'                     │ 174        │ 181         │ false      │
+│ 39      │ 'review/idle=0/edits=true/first/doubleClickToEditorMs'        │ 14         │ 16          │ false      │
+│ 40      │ 'review/idle=0/edits=true/second/doubleClickToEditorMs'       │ 21         │ 22          │ false      │
+│ 41      │ 'review/idle=0/edits=true/warm/doubleClickToEditorMs'         │ 18         │ 19          │ false      │
+│ 42      │ 'review/idle=3000/edits=false/first/captureMs'                │ 27         │ 28          │ false      │
+│ 43      │ 'review/idle=3000/edits=false/second/captureMs'               │ 22         │ 23          │ false      │
+│ 44      │ 'review/idle=3000/edits=false/warm/captureMs'                 │ 17         │ 18          │ false      │
+│ 45      │ 'review/idle=3000/edits=false/first/doubleClickToEditorMs'    │ 24         │ 23          │ false      │
+│ 46      │ 'review/idle=3000/edits=false/second/doubleClickToEditorMs'   │ 12         │ 11          │ false      │
+│ 47      │ 'review/idle=3000/edits=false/warm/doubleClickToEditorMs'     │ 17         │ 18          │ false      │
+└─────────┴───────────────────────────────────────────────────────────────┴────────────┴─────────────┴────────────┘
+PASS: 0 regressions. /tmp/setdown-extension-ui-benchmark-20261017/comparison.json

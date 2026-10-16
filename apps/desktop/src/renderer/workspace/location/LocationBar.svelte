@@ -146,6 +146,7 @@ import type { AppActions } from '../../ports/ui-actions';
         else if (event.key === 'ArrowUp' && suggestions.length) { event.preventDefault(); selected = (selected + suggestions.length - 1) % suggestions.length; }
       }} />
     {#if web}
+      <ExtensionActions {actions} tabId={tab!.id} />
       <button class="location-icon" aria-label="Site controls" title="Site controls" disabled={!web.url.startsWith('http')}
         onclick={() => actions.browserCommand(tab!.id, 'site-info')}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 10h2v7h-2zm0-4h2v2h-2zm1-4a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 1.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17z"/></svg>
@@ -206,7 +207,6 @@ import type { AppActions } from '../../ports/ui-actions';
       </button>
     </div>
   {/if}
-  {#if web && tab && !reading}<ExtensionActions {actions} tabId={tab.id} />{/if}
   {#if tab || review}
     {#if web && !reading}
       <ZoomControls label="Website" percent={web.zoomPercent}

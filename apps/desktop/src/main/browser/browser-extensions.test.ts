@@ -31,7 +31,7 @@ const electron = vi.hoisted(() => {
 vi.mock('electron', () => electron);
 vi.mock('electron-chrome-extensions', () => ({ ElectronChromeExtensions: class {
   ctx = { router: { handle: vi.fn(), onExtensionMessage: vi.fn() }, store: { on: vi.fn() } };
-  api = { browserAction: { actionMap: new Map(), onUpdate: vi.fn() } };
+  api = { browserAction: { actionMap: new Map(), onUpdate: vi.fn(), activateClick: vi.fn() } };
   on = vi.fn();
 } }));
 const store = vi.hoisted(() => ({ downloadExtension: vi.fn() }));

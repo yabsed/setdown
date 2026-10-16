@@ -45,8 +45,9 @@ test('bundled uBlock blocks requests, scripts and frame cosmetics, and enforces 
     await f.page.getByRole('button', { name: 'Toggle Folder Tools', exact: true }).click();
     await f.page.getByRole('button', { name: 'Browser', exact: true }).click();
     await f.page.getByRole('navigation', { name: 'Browser library' }).getByRole('button', { name: 'Extensions' }).click();
-    await f.page.locator('.extension').filter({ has: f.page.locator('.extension-name', { hasText: 'uBlock Origin' }) })
-      .getByRole('button', { name: 'Popup', exact: true }).click();
+    const row = f.page.locator('.extension').filter({ has: f.page.locator('.extension-name', { hasText: 'uBlock Origin' }) });
+    await row.getByRole('button', { name: 'More actions for uBlock Origin' }).click();
+    await row.getByRole('button', { name: 'Open extension', exact: true }).click();
     await expect.poll(() => f.app.evaluate(async ({ webContents }) => {
       const popup = webContents.getAllWebContents().find(wc => wc.getURL().includes('/popup-fenix.html'));
       return popup && popup.mainFrame.executeJavaScript('document.querySelector("#hostname")?.textContent');

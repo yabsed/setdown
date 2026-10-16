@@ -17,9 +17,9 @@ export type BrowserExtensionInfo = {
   id: string; name: string; version: string; description: string; manifestVersion: number;
   enabled: boolean; builtin: boolean; hasPopup: boolean; hasOptions: boolean;
   permissions: string[]; hostPermissions: string[]; error: string | null;
-  webStoreId?: string;
+  webStoreId?: string; icon?: string;
 };
-export type BrowserExtensionAction = { id: string; pinned: boolean; title: string; badge: string; color: string; icon: string | null; enabled: boolean };
+export type BrowserExtensionAction = { id: string; title: string; badge: string; color: string; icon: string | null; enabled: boolean };
 export type ExtensionInstallKind = 'folder' | 'archive' | 'web-store';
 export type ExtensionPage = 'popup' | 'options';
 export type BrowserPermissionRequest = { token: string; origin: string; permissions: string[]; label: string };

@@ -3,7 +3,7 @@ import { promisify } from 'node:util';
 
 /** OS input preserves the actual focused WebContents; locator typing can mask
  * a native focus loss by targeting the shell directly. */
-export async function nativeInput(input: { click?: { x: number; y: number }; text?: string }) {
+export async function nativeInput(input: { click?: { x: number; y: number }; text?: string; keys?: string[] }) {
   if (process.env.SETDOWN_ISOLATED_DISPLAY !== '1' || !process.env.DISPLAY) throw Error('Native input requires isolated Xvfb.');
   await promisify(execFile)('python3', ['-c', `
 import ctypes, ctypes.util, json, sys, time
@@ -21,6 +21,10 @@ data=json.loads(sys.argv[1])
 if 'click' in data:
  p=data['click']; t.XTestFakeMotionEvent(d,-1,round(p['x']),round(p['y']),0)
  t.XTestFakeButtonEvent(d,1,1,0); t.XTestFakeButtonEvent(d,1,0,0); x.XFlush(d)
+for name in data.get('keys',[]):
+ key=x.XKeysymToKeycode(d,x.XStringToKeysym(name.encode()))
+ if not key: raise ValueError('Unknown X11 key: '+name)
+ t.XTestFakeKeyEvent(d,key,1,0); t.XTestFakeKeyEvent(d,key,0,0); x.XFlush(d)
 for c in data.get('text',''):
  if not ('a' <= c <= 'z'): raise ValueError('This helper types lowercase ASCII only')
  key=x.XKeysymToKeycode(d,x.XStringToKeysym(c.encode()))

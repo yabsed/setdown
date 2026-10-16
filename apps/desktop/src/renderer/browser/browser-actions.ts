@@ -65,7 +65,15 @@ export function createBrowserActions(options: Options): BrowserActions {
     browserExtensionActions: tabId => api.extensionActions(tabId),
     browserActivateExtension: (id, tabId, bounds) => api.activateExtension(id, tabId, bounds),
     browserExtensionMenu: (tabId, bounds) => api.extensionMenu(tabId, bounds),
-    browserOpenExtension: (id, page) => api.openExtension(id, page, options.activeId() ?? undefined),
+    browserOpenExtension: (id, page) => {
+      const tabId = options.activeId();
+      const button = [...document.querySelectorAll<HTMLElement>('[data-extension-tab]')].find(button => button.dataset.extensionTab === tabId);
+      if (page === 'popup' && tabId && button) {
+        const { x, y, width, height } = button.getBoundingClientRect();
+        return api.activateExtension(id, tabId, { x, y, width, height });
+      }
+      return api.openExtension(id, page, tabId ?? undefined);
+    },
   };
   /** Esc on a web page, mirroring the Markdown editor: extract a reader
    * snapshot first, then hide the live view behind it (page state kept). */

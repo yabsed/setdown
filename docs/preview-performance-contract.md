@@ -106,13 +106,20 @@ follows that same tab text scope. Entering or
 leaving reader mode preserves the live page's website factor and form state.
 Bookmark and reader buttons precede zoom, with the Markdown toolbar icon style;
 uBlock stays active and its controls remain available from Browser Extensions.
-Extension action buttons also live beside the address bar. A popup is a sandboxed
-native child window, never a registered browser tab: popup/worker queries must
+One transparent Extensions button before the page actions keeps the same width in live web and Reader
+mode: entering or leaving Reader must not shift the other location controls.
+It opens a compact icon strip, then replaces
+it with the selected extension's popup at the same anchor. Both are native
+WebContentsViews inside the owner, avoiding compositor placement of separate
+windows on Wayland. They do not capture, hide or resize the live web page.
+A popup is sandboxed and never a registered browser tab: popup/worker queries must
 retain the original web tab and owning window. Its anchor converts CSS pixels to
 native DIP with app zoom once. Escape, loss of focus, navigation and owner changes
 close it without replacing the page. `browser/extension-runtime.spec.ts` covers
 this identity, input, lifecycle, and the connected proxy/download APIs; details
 and explicit compatibility limits are in `browser-extension-runtime.md`.
+`browser/reader.spec.ts` also checks stationary controls and closing the strip
+without focusing or showing the hidden web page in Reader mode.
 The Electron test helper enables Chromium sandbox, matching production and
 allowing MV3 service-worker preloads to run.
 Terminal and video bars use their tab factors; PDF/image bars use their actual

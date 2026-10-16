@@ -28,6 +28,7 @@ type Entry = { owner: number; view: WebContentsView; contents: WebContents; page
   popups: number[]; externalRequests: number[]; externalPending?: boolean;
   historyUrls: string[]; historyIndex: number; canGoBack?: boolean; canGoForward?: boolean; closing?: (value: boolean) => void };
 type Options = { stateFor(id: number): WindowState | null; states(): Iterable<WindowState>; zoom: WorkspaceZoom;
+  theme?(): import('../../core/preview/preview-preferences').PreviewThemeId;
   createWindow?(): BrowserWindow;
   openFile(state: WindowState, file: string): Promise<unknown> };
 const blankPage = (id: string, url: string): BrowserPage => ({ id, url, title: url === 'about:blank' ? 'New web tab' : url,
@@ -123,7 +124,7 @@ export class BrowserManager {
           const entry = this.forContents(contents);
           if (entry && !this.transferring.has(contents.id)) void this.close(entry.owner, entry.page.id);
         },
-      }, { downloads: this.downloads, changed: () => this.broadcast({ type: 'extensions' }) });
+      }, { downloads: this.downloads, changed: () => this.broadcast({ type: 'extensions' }), theme: this.options.theme });
       this.extensions.prepare();
     }
     return this.extensions;
@@ -742,12 +743,8 @@ export class BrowserManager {
       if (!css) throw Error('Invalid extension menu bounds.');
       await this.ensureReady();
       const bounds = nativeZoomBounds(css, state.window.webContents.getZoomFactor());
-      const actions = await this.extensions!.bridge!.actions(target.contents.id);
-      Menu.buildFromTemplate(actions.map(action => ({ label: action.title, submenu: [{ label: 'Open', enabled: action.enabled, click: () => {
-        if (!this.owns(state.webContentsId, tabId)) return;
-        this.extensions!.host!.selectTab(target.contents);
-        this.extensions!.bridge!.activate(action.id, target.contents, bounds);
-      } }, { label: 'Pin to address bar', type: 'checkbox' as const, checked: action.pinned, click: () => this.extensions!.bridge!.pin(action.id, !action.pinned) }] }))).popup({ window: state.window, x: bounds.x, y: bounds.y + bounds.height });
+      this.extensions!.host!.selectTab(target.contents);
+      await this.extensions!.bridge!.menu(target.contents, bounds);
     });
     channels.handle('browser:extension-open', async (state, id: string, page: ExtensionPage, tabId?: string) => {
       await this.ensureReady();

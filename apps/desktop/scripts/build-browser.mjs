@@ -21,9 +21,11 @@ await fs.writeFile(path.join(output, 'chrome-extension-worker.preload.cjs'), com
 const compatRoot = path.dirname(path.dirname(require.resolve('electron-chrome-extensions/preload')));
 await fs.copyFile(path.join(compatRoot, 'LICENSE-GPL'), path.join(output, 'EXTENSION-COMPAT-LICENSE.txt'));
 await Promise.all([
-  ...['places-preload', 'page-preload'].map(name => build({ entryPoints: [`src/browser-runtime/${name}.ts`], outfile: `dist-electron/${name}.cjs`, bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] })),
+  ...['places-preload', 'page-preload', 'extension-panel-preload'].map(name => build({ entryPoints: [`src/browser-runtime/${name}.ts`], outfile: `dist-electron/${name}.cjs`, bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] })),
+  build({ entryPoints: ['src/browser-runtime/extension-panel.ts'], outfile: 'dist-electron/extension-panel.js', bundle: true, platform: 'browser', format: 'iife', target: 'chrome140' }),
   build({ entryPoints: ['src/browser-runtime/places.ts'], outfile: 'dist-electron/places.js', bundle: true, platform: 'browser', format: 'iife', target: 'chrome140' }),
 ]);
+await fs.copyFile('src/browser-runtime/extension-panel.html', path.join(output, 'extension-panel.html'));
 await fs.writeFile(path.join(output, 'places.html'), '<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'self\'"><script src="places.js"></script>');
 // Firefox Reader View's extraction library (Apache-2.0), run inside the page
 // on Esc. Keep the pinned submodule file verbatim; only copy it into place.
