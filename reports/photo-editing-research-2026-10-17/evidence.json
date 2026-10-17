@@ -1,0 +1,133 @@
+{
+  "capturedAt": "2026-10-17T07:04:12.431Z",
+  "revisions": {
+    ".": "dffbe111e59356d255b0fa3466a72e77ca72c007",
+    "vendor/fabric.js": "90d2c71ecee44bae1915fed3e9423f53b9cb1889",
+    "vendor/svelte-chop-chop": "855a288b07ed11c9dfe78807a70e04b787275c9f",
+    "vendor/filerobot-image-editor": "a7cce3173cb380c4900b9cb9fb8d91f7f33a7a26"
+  },
+  "versions": {
+    "node": "24.21.0",
+    "acorn": "8.18.0",
+    "ada": "4.0.0",
+    "amaro": "1.1.11",
+    "ares": "1.34.8",
+    "brotli": "1.2.0",
+    "cldr": "48.0",
+    "icu": "78.2",
+    "llhttp": "9.4.3",
+    "merve": "1.2.2",
+    "modules": "149",
+    "napi": "10",
+    "nbytes": "0.1.4",
+    "ncrypto": "0.0.1",
+    "nghttp2": "1.70.0",
+    "nghttp3": "",
+    "ngtcp2": "",
+    "openssl": "0.0.0",
+    "simdjson": "4.6.7",
+    "simdutf": "7.7.0",
+    "sqlite": "3.53.4",
+    "tz": "2026d",
+    "undici": "7.29.1",
+    "unicode": "17.0",
+    "uv": "1.52.1",
+    "uvwasi": "0.0.23",
+    "v8": "15.2.124.37-electron.0",
+    "zlib": "1.3.2.1-motley",
+    "zstd": "1.6.0",
+    "electron": "44.7.2",
+    "chrome": "152.0.7977.149"
+  },
+  "environment": {
+    "isolatedDisplay": true,
+    "waylandRemoved": true,
+    "privateRuntime": true,
+    "chromiumSandbox": true
+  },
+  "scope": "Pinned source probes in real Electron; not application integration, benchmark, native keyboard, or GPU coverage.",
+  "errors": [],
+  "svelte": {
+    "rotateExport": {
+      "input": {
+        "width": 80,
+        "height": 40
+      },
+      "rotation": 90,
+      "expected": {
+        "width": 40,
+        "height": 80,
+        "opaquePixels": 3200
+      },
+      "actual": {
+        "width": 80,
+        "height": 40,
+        "opaquePixels": 1600
+      }
+    },
+    "rotationHistory": {
+      "beforeUndo": 180,
+      "afterUndo": 0,
+      "afterRedo": 90,
+      "expected": [
+        180,
+        90,
+        180
+      ]
+    },
+    "initialDirty": true,
+    "finetuneHistory": {
+      "before": {
+        "brightness": 50,
+        "canUndo": false
+      },
+      "after": {
+        "brightness": 50,
+        "canUndo": false
+      }
+    },
+    "resizeCrop": {
+      "before": {
+        "x": 200,
+        "y": 100,
+        "width": 400,
+        "height": 200
+      },
+      "after": {
+        "x": 100,
+        "y": 50,
+        "width": 200,
+        "height": 100
+      }
+    },
+    "composingShortcut": {
+      "before": 90,
+      "after": 180,
+      "defaultPrevented": true
+    }
+  },
+  "fabric": {
+    "backend": "Canvas2D",
+    "zoomed": {
+      "width": 80,
+      "height": 40,
+      "opaquePixels": 800
+    },
+    "canonical": {
+      "width": 80,
+      "height": 40,
+      "opaquePixels": 3200
+    },
+    "encodedDimensions": {
+      "width": 80,
+      "height": 40,
+      "mime": "image/png"
+    },
+    "filterPixel": [
+      126,
+      126,
+      126,
+      255
+    ]
+  }
+}
