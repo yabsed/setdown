@@ -44,6 +44,8 @@ html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '').replace(/<title>.*
   .replace('</body>', '<script type="module" src="/main.js"></script></body>');
 await writeFile(path.join(output, 'index.html'), html);
 await cp(path.join(wasm, 'rhwp_bg.wasm'), path.join(output, 'rhwp_bg.wasm'));
+// Use the same complete blank document template as RHWP's createBlankDocument().
+await cp(path.join(root, 'vendor/rhwp/saved/blank2010.hwp'), path.join(output, 'blank.hwp'));
 await cp(path.join(hop, 'public/images'), path.join(output, 'images'), { recursive: true });
 await rm(path.join(output, 'fonts'), { recursive: true, force: true });
 await cp(path.join(root, 'vendor/hop/assets/fonts'), path.join(output, 'fonts'), { recursive: true,

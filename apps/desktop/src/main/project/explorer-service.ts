@@ -49,7 +49,11 @@ export class ExplorerService {
     const operation: LanguageFileOperation = { kind: 'create', files: [{ path: target, directory: kind === 'directory' }] };
     await this.languageOperation?.(state, operation, 'will');
     if (kind === 'directory') await fs.mkdir(target);
-    else if (kind === 'file') await fs.writeFile(target, /\.ipynb$/i.test(target) ? emptyNotebook() : '', { flag: 'wx' });
+    else if (kind === 'file') {
+      const content = /\.hwp$/i.test(target) ? await fs.readFile(path.join(__dirname, 'hwp', 'blank.hwp'))
+        : /\.ipynb$/i.test(target) ? emptyNotebook() : '';
+      await fs.writeFile(target, content, { flag: 'wx' });
+    }
     else throw new Error('Unknown project entry kind.');
     await this.languageOperation?.(state, operation, 'did');
     return this.entry(target, kind === 'directory');

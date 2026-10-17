@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -11,6 +11,74 @@ async function engine() {
   module.initSync({ module: await readFile(path.join(wasmRoot, 'rhwp_bg.wasm')) });
   return module;
 }
+
+test('Explorer creates a blank HWP in the selected folder and opens an editable, saveable document', async () => {
+  test.setTimeout(90_000);
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-new-hwp-'));
+  const folder = path.join(root, 'documents');
+  await mkdir(folder);
+  const existing = path.join(folder, 'existing.hwp');
+  await writeFile(existing, 'KEEP_EXISTING');
+  const text = path.join(root, 'start.txt');
+  await writeFile(text, 'Start');
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', text], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    await focusApplication(app);
+    const page = await app.firstWindow();
+    await page.evaluate(folder => window.marktex.restoreProjectFolder(folder), root);
+    await page.reload();
+    await page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
+    await page.getByRole('button', { name: 'Explorer', exact: true }).click();
+    const create = page.getByRole('button', { name: 'New HWP File', exact: true });
+    const input = page.getByRole('textbox', { name: 'New HWP file name', exact: true });
+    await create.click();
+    await expect(input).toHaveValue('Untitled.hwp');
+    await expect(input).toBeFocused();
+    expect(await input.evaluate(node => [(node as HTMLInputElement).selectionStart, (node as HTMLInputElement).selectionEnd])).toEqual([0, 8]);
+    await input.press('Escape');
+    await expect(input).toBeHidden();
+    expect(await readdir(root)).not.toContain('Untitled.hwp');
+
+    await page.getByRole('treeitem', { name: 'documents', exact: true }).click();
+    await create.click();
+    await input.fill('existing');
+    await input.press('Enter');
+    await expect(page.locator('.project-error')).toContainText('already exists');
+    await expect(input).toBeVisible();
+    expect(await readFile(existing, 'utf8')).toBe('KEEP_EXISTING');
+    await input.fill('새 문서');
+    await input.press('Enter');
+    const file = path.join(folder, '새 문서.hwp');
+    await expect(page.locator('.shell')).toHaveAttribute('data-surface', 'hwp');
+    await expect.poll(() => page.evaluate(async () => (await window.marktex.getDocument())?.path)).toBe(file);
+    await expect(page.getByRole('treeitem', { name: '새 문서.hwp', exact: true })).toBeVisible();
+    await expect(page.locator('.project-error')).toBeHidden();
+    expect(await readdir(root)).not.toContain('새 문서.hwp');
+    const core = await engine();
+    const blank = new core.HwpDocument(new Uint8Array(await readFile(file)));
+    try {
+      expect(JSON.parse(blank.getTextFileText())).toBe('');
+      expect(JSON.parse(blank.getDocumentInfo())).toMatchObject({ pageCount: 1, sectionCount: 1 });
+    } finally { blank.free(); }
+    const child = async () => app.evaluate(({ webContents }) => webContents.getAllWebContents().find(w => w.getURL().startsWith('setdown-hwp:'))?.id);
+    await expect.poll(child).toBeTruthy();
+    const id = (await child())!;
+    await expect.poll(() => app.evaluate(({ webContents }, id) => webContents.fromId(id)!.executeJavaScript('document.documentElement.dataset.hwpReady'), id), { timeout: 45_000 }).toBe('true');
+    await app.evaluate(({ webContents }, id) => { const contents = webContents.fromId(id)!; contents.focus(); contents.insertText('새 HWP 문서 편집'); }, id);
+    await expect(page.locator('.shell')).toHaveAttribute('data-dirty-tabs', '1');
+    await app.evaluate(({ webContents }, id) => {
+      const contents = webContents.fromId(id)!;
+      contents.sendInputEvent({ type: 'keyDown', keyCode: 's', modifiers: ['control'] });
+      contents.sendInputEvent({ type: 'keyUp', keyCode: 's', modifiers: ['control'] });
+    }, id);
+    await expect(page.locator('.shell')).toHaveAttribute('data-dirty-tabs', '0');
+    const saved = new core.HwpDocument(new Uint8Array(await readFile(file)));
+    try { expect(saved.getTextFileText()).toContain('새 HWP 문서 편집'); } finally { saved.free(); }
+    await page.screenshot({ path: test.info().outputPath('new-hwp-explorer.png') });
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
 for (const format of ['hwp', 'hwpx'] as const) test(`${format}: local Canvas editor, input, save, reopen, retained undo and isolation`, async () => {
   test.setTimeout(120_000);
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-hwp-'));
