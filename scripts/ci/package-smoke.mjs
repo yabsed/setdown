@@ -25,7 +25,7 @@ let page;
 let stderr = '';
 const pageErrors = [];
 try {
-  app = await electron.launch({ executablePath, args: [`--user-data-dir=${path.join(profile, 'data')}`, file],
+  app = await electron.launch({ executablePath, chromiumSandbox: true, args: [`--user-data-dir=${path.join(profile, 'data')}`, file],
     env: { ...environment, XDG_CONFIG_HOME: path.join(profile, 'config') }, timeout: 60_000 });
   app.process().stderr?.on('data', chunk => { stderr += chunk; });
   app.on('window', window => window.on('pageerror', error => pageErrors.push(String(error))));
@@ -47,7 +47,8 @@ try {
   // The packaged server must resolve its own runtime and typeshed from the
   // installed application, without a system Node installation or repository.
   const python = path.join(profile, 'smoke.py');
-  await writeFile(python, 'value: int = "wrong"\n');
+  // Type checking is off by default; opt this fixture in to verify diagnostics.
+  await writeFile(python, '# pyright: strict\nvalue: int = "wrong"\n');
   const snapshot = await page.evaluate(file => window.marktex.readDocumentLocation(file), python);
   await app.evaluate(({ BrowserWindow }, document) => {
     BrowserWindow.getAllWindows()[0].webContents.send('document:opened', document);

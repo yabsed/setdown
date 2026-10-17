@@ -99,6 +99,8 @@
       "package.json"
     ],
     "asarUnpack": [
+      "**/node_modules/sharp/**/*",
+      "**/node_modules/@img/**/*",
       "dist-electron/kernel-bridge.py",
       "node_modules/node-pty/**/*",
       "node_modules/pyright/**/*",
