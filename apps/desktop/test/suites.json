@@ -77,7 +77,9 @@
       "src/renderer/workspace/text-workspace.test.ts",
       "src/core/image/image-recipe.test.ts",
       "src/main/documents/image-save.test.ts",
-      "src/renderer/image/image-edit-sessions.test.ts"
+      "src/renderer/image/image-edit-sessions.test.ts",
+      "src/main/documents/hwp-file.test.ts",
+      "src/renderer/hwp/hwp-sessions.test.ts"
     ]
   },
   "e2e": {
@@ -268,6 +270,9 @@
       "previewContract": true
     },
     "media/image-editor.spec.ts": {
+      "previewContract": true
+    },
+    "media/hwp-editor.spec.ts": {
       "previewContract": true
     }
   },

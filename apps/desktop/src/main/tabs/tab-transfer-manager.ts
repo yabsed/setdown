@@ -17,6 +17,7 @@ type Transfer = {
   previewBand: Promise<BandLine[]>; sourceContentSize: { width: number; height: number } | null;
 };
 type Options = {
+  hwp?: import('../hwp/hwp-manager').HwpManager;
   previews: PreviewManager; browsers?: BrowserManager; terminals?: TerminalManager; stateFor: (id: number) => WindowState | null; theme: () => PreviewThemeId;
   windows: () => Iterable<WindowState>;
   createWindow: (position: { x: number; y: number } | null, initialDocument: null,
@@ -91,6 +92,10 @@ export class TabTransferManager {
     }
     if (transfer.tab.kind === 'web') {
       transfer.previewAdopted = this.options.browsers?.adopt(transfer.sourceWebContentsId, destinationId, transfer.tab.id) ?? false;
+      return transfer.previewAdopted;
+    }
+    if (transfer.tab.document.kind === 'hwp') {
+      transfer.previewAdopted = this.options.hwp?.adopt(transfer.sourceWebContentsId, destinationId, transfer.tab.id) ?? false;
       return transfer.previewAdopted;
     }
     // Text tabs transfer their document/model state; there is no native page to adopt.

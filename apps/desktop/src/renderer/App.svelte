@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import HwpSurface from './hwp/HwpSurface.svelte';
   import EmptyState from './shell/EmptyState.svelte';
   import InsertionDialogs from './editor/InsertionDialogs.svelte';
   import ReaderSurface from './reader/ReaderSurface.svelte';
@@ -61,6 +62,14 @@ import type { AppActions } from './ports/ui-actions';
           <module.default entry={tab.entry} path={tab.path} {active} {desktop} openFile={actions.openLanguageLocation} onfocus={() => { if (view.focusedGroupId !== group?.id) actions.activateTab(tab.id); }} />
         {:catch error}<div role="alert">Could not load the notebook: {String(error)}</div>{/await}
       {/key}
+    </div>
+  {/each}
+  {#each view.hwpTabs as tab (tab.id)}
+    {@const group = view.groups.find(g => g.activeId === tab.id)}
+    {@const active = !!group && !(group.id === view.focusedGroupId && project.gitDiffActive)}
+    {@const box = boxes.find(box => box.id === group?.id) ?? focused}
+    <div class="group-content media-content" class:inactive={!active} style={geometry(box)} data-zoom-tab={tab.id}>
+      {#key tab.document.path}<HwpSurface {tab} {active} notice={view.notice && group?.id === view.focusedGroupId} {desktop} />{/key}
     </div>
   {/each}
   {#each view.mediaTabs as tab (tab.key)}

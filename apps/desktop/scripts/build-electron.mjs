@@ -10,6 +10,7 @@ const shared = {
 };
 await mkdir('dist-electron', { recursive: true });
 await Promise.all([
+  build({ ...shared, entryPoints: ["src/hwp-runtime/preload.ts"], outfile: "dist-electron/hwp-preload.cjs", format: "cjs" }),
   build({ ...shared, entryPoints: ['src/image-export-runtime/preload.ts'], outfile: 'dist-electron/image-export-preload.cjs', format: 'cjs' }),
   build({ bundle: true, platform: 'browser', target: 'chrome120', format: 'iife', entryPoints: ['src/image-export-runtime/index.ts'], outfile: 'dist-electron/image-export.js' }),
   copyFile('src/image-export-runtime/index.html', 'dist-electron/image-export.html'),
@@ -32,3 +33,5 @@ await import('./build-browser.mjs');
 await copyFile('src/main/language/catalog/MASON-LICENSE', 'dist-electron/MASON-LICENSE');
 await copyFile('scripts/language-profiles/upstream/HELIX-LICENSE', 'dist-electron/HELIX-LICENSE');
 await copyFile('scripts/language-profiles/NOTICE', 'dist-electron/HELIX-PROFILES-NOTICE');
+
+await import("./build-hwp.mjs");

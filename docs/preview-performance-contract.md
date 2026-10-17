@@ -280,6 +280,17 @@ The lazily mounted history graph must not take ownership of document focus or
 trigger history reads on unsaved keystrokes. `git-history.spec.ts` and the
 history/provider/controller unit tests cover the integration.
 
+## HWP editor isolation
+
+HWP/HWPX use a separate local RHWP Studio `WebContentsView`, created only for
+HWP tabs. They never enter the Markdown render worker, Monaco text serialization,
+or the three-entry media cache. Hidden editors retain their engine/undo state;
+transfers adopt the same native view. Geometry converts CSS to native DIP with
+app zoom once. Shell overlays hide and restore that view, without discarding the
+document. HWP's page zoom remains separate from app zoom and Markdown tab zoom.
+The file/session tests and `media/hwp-editor.spec.ts` are in the focused gate.
+See [HWP support](hwp-support.md) for save, isolation and compatibility boundaries.
+
 ## Reading surface capabilities
 
 Current guarantees, ownership and required coverage: [Reading surface capabilities](contracts/reading-surfaces.md#reading-surface-capabilities).

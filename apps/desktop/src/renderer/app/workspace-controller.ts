@@ -1,3 +1,4 @@
+import { hwpSessions } from '../hwp/hwp-sessions';
 import { imageSessions } from '../image/image-edit-sessions';
 import { DocumentSessions } from '../workspace/document-sessions';
 import { notebookContent, notebookViews } from '../notebook/document-content';
@@ -215,7 +216,18 @@ export function startWorkspace(desktop: DesktopPort) {
     focusTab: (id) => actions.activateTab(id),
     changed: (tab, text) => tabs.editorChanged(tab, text), scrolled: () => surfaces.editorScrolled(),
     escape: () => void surfaces.enterViewer(), insertLink: () => insertions.openLink(), insertTable: () => insertions.openTable() });
-  const documentSessions = new DocumentSessions(editor, [notebookContent, imageSessions], desktop);
+  const documentSessions = new DocumentSessions(editor, [notebookContent, imageSessions, hwpSessions], desktop);
+  const stopHwp = hwpSessions.configure(desktop.hwp, () => workspace.documents, () => tabs?.updateChrome());
+  const stopHwpActions = desktop.hwp.onAction(({ id, command }) => {
+    if (command === 'focus') { if (workspace.groups.owner(id)?.activeId === id && workspace.activeId !== id) actions.activateTab(id); return; }
+    const tab = workspace.documents.find(tab => tab.id === id); if (!tab) return;
+    const task = fileMutation.then(async () => {
+      try { const result = await documentSessions.save(tab, command === 'save-as');
+        if (result.document && !result.canceled) { await tabs.acceptSaved(tab, result.document); await projects.documentSaved(result.document); }
+      } catch (error) { window.alert(`Could not save the document.\n${String(error)}`); }
+    }); fileMutation = task.catch(() => {});
+  });
+  window.addEventListener('beforeunload', () => { stopHwp(); stopHwpActions(); }, { once: true });
   imageSessions.configure(desktop.imageEdit, () => workspace.documents, () => tabs?.updateChrome());
   imageSessions.saveFromToolbar = (id, saveAs) => {
     const tab = workspace.documents.find(t => t.id === id);
@@ -431,6 +443,14 @@ export function startWorkspace(desktop: DesktopPort) {
         if (command === 'open-find') { window.dispatchEvent(new Event('setdown:browser-find')); return; }
         if (command === 'export-pdf' && browser.readers[workspace.active.id]) { void actions.browserReaderExport(workspace.active.id, 'pdf'); return; }
         if (command === 'save' || command === 'save-as') { actions.browserCommand(workspace.active.id, 'save'); return; }
+      }
+      if (active()?.document.kind === 'hwp' && !project.gitDiffActive) {
+        if (command === 'escape') return;
+        if (command === 'hwp:undo' || command === 'hwp:redo' || command === 'hwp:cut' || command === 'hwp:copy' || command === 'hwp:paste' || command === 'hwp:select-all') {
+          if (document.activeElement?.matches('input, textarea, [contenteditable="true"]')) document.execCommand(command === 'hwp:select-all' ? 'selectAll' : command.slice(4));
+          else desktop.hwp.command(active()!.id, command.slice(4) as 'undo' | 'redo' | 'cut' | 'copy' | 'paste' | 'select-all'); return;
+        }
+        if (command === 'open-find') { desktop.hwp.command(active()!.id, 'find'); return; }
       }
       if (command === 'image:undo' || command === 'image:redo') {
         if (document.activeElement?.matches('input, textarea, [contenteditable="true"]')) document.execCommand(command.slice(6));

@@ -14,7 +14,7 @@ export class DocumentSessions {
   private owner(tab: DocumentTab) { return this.owners.find(owner => owner.accepts(tab)); }
   text = (tab: DocumentTab): string => this.owner(tab)?.text(tab) ?? this.editor.text(tab);
   dirty = (tab: DocumentTab): boolean => this.owner(tab)?.dirty(tab) ?? hasUnsavedText(tab.document, this.text(tab));
-  beforeSave = (tab: DocumentTab, reason: 1 | 2 = 1): Promise<void> => this.editor.beforeSave(tab, reason);
+  beforeSave = (tab: DocumentTab, reason: 1 | 2 = 1): Promise<void> => tab.document.kind ? Promise.resolve() : this.editor.beforeSave(tab, reason);
   save = (tab: DocumentTab, saveAs = false): Promise<import('../../protocol/desktop-api').SaveResult> => {
     const owner = this.owner(tab);
     if (owner?.save) return owner.save(tab, saveAs);

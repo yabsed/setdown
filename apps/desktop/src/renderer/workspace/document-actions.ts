@@ -29,7 +29,7 @@ export class DocumentActions {
   }
   async save(saveAs = false) {
     const tab = this.options.active();
-    if (!tab || (tab.document.kind !== undefined && tab.document.kind !== 'image')) return false;
+    if (!tab || (tab.document.kind !== undefined && tab.document.kind !== 'image' && tab.document.kind !== 'hwp')) return false;
     try {
       await this.options.beforeSave?.(tab);
       if (this.options.active() !== tab || !this.options.tabs.includes(tab)) return false;
@@ -108,7 +108,7 @@ export class DocumentActions {
   keepExternalChange() {
     const tab = this.options.active();
     if (!tab) return;
-    if (tab.document.kind === 'image') { view.notice = false; return; }
+    if (tab.document.kind === 'image' || tab.document.kind === 'hwp') { view.notice = false; return; }
     const { id, revision } = tab;
     const path = tab.document.path;
     const text = this.options.text(tab);

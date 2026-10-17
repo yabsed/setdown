@@ -40,9 +40,14 @@ format, and screenshots become PNG assets. Local assets go in
 `<document name>.assets/`; untitled documents keep them in a draft bundle until
 Save As succeeds.
 
+HWP and HWPX files open in a local RHWP Studio editor, with text/table editing,
+Undo/Redo, Save and Save As. The bundled WASM needs no Hancom installation or
+online document service. See [HWP support](docs/hwp-support.md) for format limits,
+font substitution, and overwrite protection.
+
 ## Feature demos
 
-Keep related text files, PDFs, and images in the same window. Open a folder when
+Keep related text files, PDFs, images, and HWP/HWPX documents in the same window. Open a folder when
 you need file navigation, search, Git review, or a terminal.
 
 <table width="100%">
@@ -76,6 +81,7 @@ you need file navigation, search, Git review, or a terminal.
 | Jupyter (`.ipynb`) | Markdown/code cells, multi-cell clipboard and drag reordering, notebook-aware Python LSP, shared Python environment, queued execution, output tools, outline, search/replace and variables; JupyterLab widgets/debugging and nbconvert/nbdime exports/comparison through explicit tool integration; see [notebooks](docs/notebooks.md) |
 | Text, source, and configuration files | Source editing with Monaco syntax highlighting and text Git diffs |
 | PDF | Read-only viewer with continuous scrolling, page navigation, outline, text search and selection, zoom, rotation, and password entry |
+| HWP, HWPX | Local RHWP Studio editor with text/table editing, Undo/Redo, Save/Save As, and protection against reported conversion loss and external changes |
 | PNG, JPEG, WebP | Image viewer plus editing for static images: crop, rotate, flip, resize, brightness, contrast, saturation, Undo/Redo and Save As |
 | GIF, AVIF, SVG, animated images | Image viewer with fit, zoom, rotation, and drag-to-pan controls |
 | HTTP and HTTPS pages | Browser tabs with back/forward navigation, bookmarks, history, search, and uBlock Origin |
@@ -284,6 +290,10 @@ needed, then fetches the uAssets revisions pinned in
 subsequent builds reuse `node_modules/.cache/setdown-browser`. Packaged apps
 include the extension and initial filter lists. Restart Electron after changing
 main-process code or browser preloads; Vite's renderer refresh cannot apply them.
+
+The HWP build initializes `vendor/hop` and `vendor/rhwp` on first use. It reuses
+HOP's verified WASM distribution and bundles the pinned Studio source and local
+fonts; no Rust build or nested HOP upstream checkout is required.
 
 For development with the Vite server:
 

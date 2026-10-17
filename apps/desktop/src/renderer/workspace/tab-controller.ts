@@ -237,6 +237,7 @@ export class TabController {
     const review = this.options.reviewZoomId?.() ?? null;
     desktop.setZoomTabs?.([...workspace.tabs.map(tab => tab.id), ...(review ? [review] : [])], review ?? workspace.activeId);
     void tick().then(() => this.options.groupsChanged?.());
+    view.hwpTabs = workspace.documents.filter(tab => tab.document.kind === 'hwp');
     view.mediaTabs = this.media.sync(workspace.documents, workspace.activeId, workspace.groups.groups.flatMap(g => g.activeId ? [g.activeId] : []));
     view.activeMediaId = workspace.activeDocument?.document.kind ? workspace.activeId : null;
     shell.dataset.tabs = summaries.length > 0 ? 'true' : 'false';

@@ -1,5 +1,5 @@
 import { clipboard, ipcMain, Menu } from 'electron';
-import { isPdfDocument, isImageDocument, isVideoDocument } from '../../core/document/document-profile';
+import { isHwpDocument, isPdfDocument, isImageDocument, isVideoDocument } from '../../core/document/document-profile';
 import type { DiskVersion } from '../../core/document/document';
 import type { WindowIpc } from '../ipc/window-ipc';
 import type { WindowState } from '../windows/window-state';
@@ -16,6 +16,7 @@ export function installReadingIpc(channels: WindowIpc, positions: ReadingPositio
   channels.on('reading:save', (state, value: unknown) => {
     if (!state.window.isFocused() || !validReadingRecord(value) || !owned(state, value.path)
       || value.observedAt > Date.now() + 1000) return;
+    if ((value.position.kind === 'hwp') !== isHwpDocument(value.path)) return;
     if ((value.position.kind === 'pdf') !== isPdfDocument(value.path)) return;
     if ((value.position.kind === 'image') !== isImageDocument(value.path)) return;
     if ((value.position.kind === 'video') !== isVideoDocument(value.path)) return;

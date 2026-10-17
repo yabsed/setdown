@@ -1,3 +1,4 @@
+import { HwpManager } from './hwp/hwp-manager';
 import { BrowserManager } from './browser/browser-manager';
 import { installZoomSettings } from './windows/zoom-settings';
 /** Electron main process composition root. */
@@ -33,6 +34,7 @@ import { LanguageManager } from './language/language-manager';
 
 app.setName('Setdown');
 protocol.registerSchemesAsPrivileged([
+  { scheme: 'setdown-hwp', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } },
   { scheme: 'marktex-resource', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
   { scheme: 'marktex-preview', privileges: { standard: true, secure: true, supportFetchAPI: true } },
 ]);
@@ -59,8 +61,10 @@ const projects = new ProjectService((documentPath, text, query, limit, root) =>
 const windows = new WindowManager({ registry, previews, themes });
 const browsers = new BrowserManager({ createWindow: () => windows.create(null, null, false), stateFor: id => registry.stateForWebContents(id), states: () => registry.values, zoom: previews.zoom,
   openFile: (state, file) => documents.open(state, file), theme: () => themes.id });
+const hwp = new HwpManager({ positions, root: path.join(__dirname, 'hwp'), preload: path.join(__dirname, 'hwp-preload.cjs'),
+  zoom: previews.zoom, stateFor: id => registry.stateForWebContents(id) });
 const terminals = new TerminalManager();
-const transfers = new TabTransferManager({ previews, browsers, terminals, stateFor: (id) => registry.stateForWebContents(id),
+const transfers = new TabTransferManager({ previews, browsers, terminals, hwp, stateFor: (id) => registry.stateForWebContents(id),
   windows: () => registry.values, theme: () => themes.id, createWindow: windows.create });
 const channels = windowIpc((id) => registry.stateForWebContents(id));
 function sendCommand(command: AppCommand): void { registry.focused()?.window.webContents.send('app:command', command); }
@@ -159,6 +163,7 @@ else {
     app.on('will-quit', flushZoom);
     installIpc({ channels, documents, previews, projects, renderer, themes, transfers, autoSave, browsers });
     browsers.registerIpc(channels);
+    hwp.register(channels);
     installReadingIpc(channels, positions, (id) => registry.stateForWebContents(id));
     app.on('will-quit', () => positions.flush());
     installTerminalIpc(channels, terminals);
