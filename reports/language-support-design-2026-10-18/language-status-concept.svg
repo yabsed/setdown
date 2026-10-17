@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1060" viewBox="0 0 1440 1060" role="img" aria-labelledby="title desc">
+  <title id="title">Setdown language support design proposal</title>
+  <desc id="desc">An active document status in the existing location bar opens a panel showing analysis scope, project configuration, TypeScript version and providers. A second panel illustrates limited syntax analysis with a setup action. This is a design concept, not a running product screenshot.</desc>
+  <defs>
+    <style>
+      text { font-family: 'D2Coding', 'DejaVu Sans Mono', monospace; fill: #242424; font-size: 16px; }
+      .muted { fill: #6c6c67; }
+      .small { font-size: 14px; }
+      .tiny { font-size: 12px; }
+      .heading { font-size: 22px; font-weight: 700; }
+      .label { font-size: 14px; font-weight: 700; }
+      .link { fill: #0969da; }
+      .code { font-size: 18px; }
+    </style>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%"><feDropShadow dx="0" dy="5" stdDeviation="10" flood-color="#242424" flood-opacity="0.07"/></filter>
+  </defs>
+  <rect width="1440" height="1060" fill="#f7f7f5"/>
+  <text x="56" y="57" class="heading">Language support belongs to the active document</text>
+  <text x="56" y="86" class="muted">Setdown design proposal · Existing location bar · No additional permanent bottom bar</text>
+  <rect x="56" y="117" width="1328" height="296" rx="10" fill="#fff" stroke="#d8d8d2"/>
+  <path d="M66 117H1374Q1384 117 1384 127V170H56V127Q56 117 66 117" fill="#ecece8"/>
+  <text x="80" y="149" class="muted">←  →</text>
+  <rect x="155" y="128" width="748" height="32" rx="5" fill="#f7f7f5"/>
+  <text x="170" y="149" class="small muted">apps/desktop/src/main/project/explorer-clipboard.test.ts</text>
+  <rect x="919" y="128" width="344" height="32" rx="5" fill="#fff" stroke="#d8d8d2"/>
+  <circle cx="936" cy="144" r="3" fill="#6c6c67"/>
+  <text x="948" y="149" class="small">TypeScript · Project analysis</text>
+  <path d="m1245 141 4 5 4-5" fill="none" stroke="#6c6c67"/>
+  <text x="1286" y="149" class="small muted">100%  +</text>
+  <text x="84" y="212" class="small muted">1</text>
+  <text x="119" y="212" class="code"><tspan fill="#9a4383">import</tspan> { beforeEach, expect, test, vi } <tspan fill="#9a4383">from</tspan> <tspan fill="#246d43">'vitest'</tspan>;</text>
+  <text x="84" y="246" class="small muted">2</text>
+  <text x="119" y="246" class="code"><tspan fill="#9a4383">import</tspan> { ExplorerClipboard } <tspan fill="#9a4383">from</tspan> <tspan fill="#246d43">'./explorer-clipboard'</tspan>;</text>
+  <text x="84" y="280" class="small muted">3</text>
+  <text x="84" y="314" class="small muted">4</text>
+  <text x="119" y="314" class="code"><tspan fill="#0969da">test</tspan>(<tspan fill="#246d43">'copies the selected entry'</tspan>, () =&gt; {</text>
+  <text x="84" y="348" class="small muted">5</text>
+  <text x="119" y="348" class="code">  <tspan fill="#6c6c67">// The project service resolves real files and dependencies.</tspan></text>
+  <text x="84" y="382" class="small muted">6</text>
+  <text x="119" y="382" class="code">});</text>
+  <text x="56" y="457" class="label">A · PROJECT ANALYSIS AVAILABLE</text>
+  <text x="752" y="457" class="label">B · LIMITED ANALYSIS</text>
+  <g filter="url(#shadow)">
+    <rect x="56" y="478" width="632" height="478" rx="10" fill="#fff" stroke="#d8d8d2"/>
+    <rect x="752" y="478" width="632" height="478" rx="10" fill="#fff" stroke="#d8d8d2"/>
+  </g>
+  <text x="82" y="517" class="heading">TypeScript</text>
+  <text x="82" y="545" class="small muted">Language support for this file</text>
+  <rect x="82" y="568" width="580" height="59" rx="5" fill="#f7f7f5"/>
+  <text x="98" y="592" class="label">Project analysis</text>
+  <text x="98" y="613" class="small muted">Imports, types and navigation are available.</text>
+  <text x="82" y="664" class="small muted">Project</text>
+  <text x="212" y="664" class="small link">apps/desktop/tsconfig.json  ↗</text>
+  <text x="212" y="685" class="tiny muted">Confirmed by TypeScript</text>
+  <text x="82" y="722" class="small muted">TypeScript</text>
+  <text x="212" y="722" class="small">5.9.3 · Setdown bundled</text>
+  <text x="212" y="744" class="small link">Choose version…</text>
+  <line x1="82" y1="766" x2="662" y2="766" stroke="#d8d8d2"/>
+  <text x="82" y="798" class="small muted">Type checking</text>
+  <text x="270" y="798" class="small">TypeScript</text>
+  <text x="82" y="828" class="small muted">Linting</text>
+  <text x="270" y="828" class="small">Biome · Workspace</text>
+  <text x="82" y="858" class="small muted">Formatting</text>
+  <text x="270" y="858" class="small">Biome</text>
+  <line x1="82" y1="879" x2="662" y2="879" stroke="#d8d8d2"/>
+  <text x="82" y="922" class="small link">Open Problems</text>
+  <text x="380" y="922" class="small link">Workspace settings…</text>
+  <text x="778" y="517" class="heading">TypeScript</text>
+  <text x="778" y="545" class="small muted">Language support for this file</text>
+  <rect x="778" y="568" width="580" height="81" rx="5" fill="#f7f7f5"/>
+  <text x="794" y="593" class="label">Syntax checks only</text>
+  <text x="794" y="617" class="small muted">Project analysis is unavailable.</text>
+  <text x="794" y="637" class="small muted">Imports and types have not been checked.</text>
+  <text x="778" y="686" class="small muted">Available</text>
+  <text x="938" y="686" class="small">Highlighting, syntax checks</text>
+  <text x="778" y="718" class="small muted">Service</text>
+  <text x="938" y="718" class="small">No project service selected</text>
+  <text x="778" y="750" class="small muted">Config found</text>
+  <text x="938" y="750" class="small">tsconfig.json</text>
+  <text x="938" y="772" class="tiny muted">Detected on disk; not yet loaded</text>
+  <rect x="778" y="803" width="238" height="38" rx="5" fill="#0969da"/>
+  <text x="796" y="828" class="small" style="fill:#fff">Enable project analysis</text>
+  <text x="778" y="866" class="small muted">Use the bundled TypeScript service.</text>
+  <line x1="778" y1="879" x2="1358" y2="879" stroke="#d8d8d2"/>
+  <text x="778" y="922" class="small link">Language settings…</text>
+  <text x="1124" y="922" class="small link">Advanced…</text>
+  <text x="56" y="999" class="small muted">Concept only. Values illustrate the proposed model; bundled TypeScript and provider roles require implementation.</text>
+  <text x="56" y="1024" class="small muted">Limited syntax mode assumes the URI / TSX parser defect has been fixed. An unverified parser must not publish errors.</text>
+</svg>
