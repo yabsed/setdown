@@ -44,7 +44,7 @@ export class SearchController {
     ++this.request; window.clearTimeout(this.timer);
     project.searchQuery = ''; project.searchResults = []; project.expandedSearchGroups = []; project.searching = false;
     rememberProjectState(); this.options.highlight('');
-    void this.options.desktop.searchProject({ query: '', documents: [] });
+    if (project.folder) void this.options.desktop.searchProject({ query: '', documents: [] });
   };
   private async run(query: string, request: number): Promise<void> {
     const root = project.folder?.path;

@@ -177,6 +177,8 @@ export function installIpc(options: Options): void {
   channels.handle('document:pick-link-target', (state, documentPath: string) => documents.pickLink(state, documentPath));
   channels.handle('project:choose-folder', (state) => projects.choose(state));
   channels.handle('project:get-folder', (state) => projects.current(state));
+  channels.handle('project:recent-folders', () => projects.recentFolders.list());
+  channels.handle('project:close-folder', (state) => projects.close(state));
   channels.handle('project:restore-folder', (state, folderPath: string) => projects.restore(state, folderPath));
   channels.handle('project:read-directory', (state, directoryPath: string) => projects.readDirectory(state, directoryPath));
   const transferred = (result: ExplorerOperationResult) => {

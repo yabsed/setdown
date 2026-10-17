@@ -35,12 +35,19 @@ export class ExplorerController {
   }
 
   reset = async (folder: ProjectFolder): Promise<void> => {
+    this.clear();
+    tree.root = folder.path;
+    await this.load(folder.path);
+  };
+
+  clear = (): void => {
     this.generation++;
     this.requests.clear();
     this.children.clear();
     this.expanded.clear();
-    tree.root = folder.path; tree.scroll = 0; tree.filter = ''; selectPaths([]);
-    await this.load(folder.path);
+    tree.root = ''; tree.scroll = 0; tree.filter = ''; selectPaths([]);
+    this.refreshPending = false;
+    project.entries = []; project.expanded = [];
   };
 
   restore = async (folder: ProjectFolder): Promise<void> => {

@@ -8,6 +8,7 @@ const IGNORE = [
 
 export interface ProjectWatcherPort {
   watch(state: WindowState, root: string): Promise<void>;
+  unwatch(id: number): Promise<void>;
   dispose(): Promise<void>;
 }
 
@@ -22,7 +23,7 @@ export class ProjectWatcher implements ProjectWatcherPort {
     const generation = (this.generations.get(id) ?? 0) + 1;
     this.generations.set(id, generation);
     await this.unsubscribe(id);
-    if (state.window.isDestroyed()) return;
+    if (this.generations.get(id) !== generation || state.window.isDestroyed()) return;
     const subscription = await watcher.subscribe(root, (error, events) => {
       if (error) {
         console.error('Project watcher failed:', error);
@@ -39,12 +40,17 @@ export class ProjectWatcher implements ProjectWatcherPort {
     this.subscriptions.set(id, subscription);
     if (!this.closed.has(id)) {
       this.closed.add(id);
-      state.window.once('closed', () => void this.unsubscribe(id));
+      state.window.once('closed', () => void this.unwatch(id));
     }
   }
 
   async dispose(): Promise<void> {
-    await Promise.all([...this.subscriptions.keys()].map((id) => this.unsubscribe(id)));
+    await Promise.all([...this.generations.keys()].map((id) => this.unwatch(id)));
+  }
+
+  async unwatch(id: number): Promise<void> {
+    this.generations.set(id, (this.generations.get(id) ?? 0) + 1);
+    await this.unsubscribe(id);
   }
 
   private async unsubscribe(id: number): Promise<void> {

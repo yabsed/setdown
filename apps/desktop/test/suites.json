@@ -27,6 +27,10 @@
       "src/main/browser/extensions/extension-policy.test.ts",
       "src/main/documents/document-save.test.ts",
       "src/main/documents/image-file.test.ts",
+      "src/main/project/recent-folders.test.ts",
+      "src/main/project/project-service.test.ts",
+      "src/main/project/engines/project-watcher.test.ts",
+      "src/renderer/project/project-controller.test.ts",
       "src/main/language/catalog/profiles.test.ts",
       "src/main/language/clangd-session.test.ts",
       "src/main/language/language-manager.test.ts",
@@ -252,6 +256,9 @@
     },
     "workspace/reload-layout.spec.ts": {
       "previewContract": false
+    },
+    "workspace/folder-history.spec.ts": {
+      "previewContract": true
     },
     "workspace/shared-document-history.spec.ts": {
       "previewContract": false

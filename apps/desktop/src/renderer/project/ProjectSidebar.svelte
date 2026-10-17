@@ -3,6 +3,7 @@
   import type { LanguageApi } from '../../protocol/language';
   import { resizePanelWithKeyboard, startPanelResize } from '../shell/panel-resize';
   import BrowserSidebar from '../browser/BrowserSidebar.svelte';
+  import FolderPicker from './FolderPicker.svelte';
   import ExplorerView from './explorer/ExplorerView.svelte';
   import { project, type ProjectView } from './project-state.svelte';
   import SearchView from './search/SearchView.svelte';
@@ -58,7 +59,8 @@
   </nav>
 
   <section class="side-view" aria-label={project.activeView} hidden={!project.open}>
-    {#if project.activeView === 'explorer'}<ExplorerView {actions} />
+    {#if project.visible && project.open}<FolderPicker {actions} />{/if}
+    {#if project.activeView === 'explorer'}{#key project.folder?.path}<ExplorerView {actions} />{/key}
     {:else if project.activeView === 'search'}<SearchView {actions} />
     {:else if project.activeView === 'terminal'}<TerminalSidebar {actions} />
     {:else if project.activeView === 'browser'}<BrowserSidebar {actions} />

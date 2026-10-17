@@ -79,6 +79,10 @@ test('uBlock migrates the recursive managed cache and preserves filtering across
     for (let cycle = 0; cycle < 3; cycle++) {
       f.requests.length = 0;
       await f.restart();
+      // Startup is intentionally empty; opening a page must still use the
+      // persisted extension/filter settings on every new app process.
+      await expect(f.page.getByRole('tab', { name: /Research page/ })).toHaveCount(0);
+      await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
       await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible({ timeout: 30_000 });
       await expect.poll(() => f.page.evaluate(async () => (await window.marktex.browser.restore()).every(page => page.protection === 'ready'))).toBe(true);
       expect(await evaluatePage(f.app, f.origin, '({ad:getComputedStyle(document.querySelector(".ad")).display,blocked:!!window.blockedScript,allowed:!!window.allowedScript})'))

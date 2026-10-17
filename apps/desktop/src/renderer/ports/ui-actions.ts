@@ -37,6 +37,9 @@ export type AppActions = BrowserActions & TerminalActions & {
   toggleProjectSidebar(): void;
   selectProjectView(view: ProjectView): void;
   chooseProjectFolder(): void;
+  openProjectFolder(path: string): Promise<void>;
+  closeProjectFolder(): Promise<void>;
+  refreshRecentProjectFolders(): Promise<void>;
   refreshProjectExplorer(): void;
   collapseProjectExplorer(): void;
   toggleProjectExplorerRoot(): void;

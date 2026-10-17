@@ -121,8 +121,8 @@ test('history deletion updates persistent places while preserving bookmarks and 
     await expect(f.page.locator('.browser-sidebar .place')).toHaveCount(0);
     const bookmark = await f.page.evaluate(() => window.marktex.browser.places('', 'bookmarks'));
     expect(bookmark).toEqual([{ url: `${f.origin}/first`, title: 'Research page', bookmarked: true, lastVisit: 0, visits: 0 }]);
-    // Prevent restored tabs from creating genuinely new visits during this
-    // persistence check; reopening a page should normally record a new visit.
+    // Close live pages before this persistence check; reopening a page should
+    // normally record a new visit, while app startup itself opens no tabs.
     await f.page.evaluate(async () => {
       for (const page of await window.marktex.browser.restore()) await window.marktex.browser.close(page.id);
     });

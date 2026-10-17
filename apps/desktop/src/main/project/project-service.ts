@@ -13,6 +13,7 @@ import { GitService } from './git-service';
 import { ProjectPaths } from './project-paths';
 import { SearchService } from './search-service';
 import type { VisibleSearchMatch } from './visible-search';
+import { RecentFolders } from './recent-folders';
 export { parseGitDiffHunks, parseGitStatus } from './git-service';
 export { isMarkdownDocument } from './project-paths';
 
@@ -49,24 +50,41 @@ export class ProjectService {
   });
   private readonly git = new GitService(this.paths);
   private readonly searcher: SearchService;
+  private readonly folderRequests = new WeakMap<WindowState, number>();
   constructor(searchVisible: (documentPath: string, text: string, query: string, limit: number, root: string) => Promise<VisibleSearchMatch[]>,
     private readonly watcher: ProjectWatcherPort = new ProjectWatcher(),
-    private readonly windows: () => Iterable<WindowState> = () => []) {
+    private readonly windows: () => Iterable<WindowState> = () => [],
+    readonly recentFolders = new RecentFolders()) {
     this.searcher = new SearchService(this.paths, searchVisible);
   }
   async choose(state: WindowState): Promise<ProjectFolder | null> {
+    const request = this.beginFolderRequest(state);
     const selected = await dialog.showOpenDialog(state.window, { title: 'Open Folder', properties: ['openDirectory'] });
-    if (selected.canceled || !selected.filePaths[0]) return null;
-    state.projectRoot = canonicalPath(selected.filePaths[0]);
-    this.watch(state, state.projectRoot);
-    return this.folder(state.projectRoot);
+    if (selected.canceled || !selected.filePaths[0] || this.folderRequests.get(state) !== request) return null;
+    return this.openFolder(state, selected.filePaths[0], request);
   }
   current(state: WindowState): ProjectFolder | null { return state.projectRoot ? this.folder(state.projectRoot) : null; }
   async restore(state: WindowState, candidate: string): Promise<ProjectFolder | null> {
+    return this.openFolder(state, candidate, this.beginFolderRequest(state));
+  }
+  async close(state: WindowState): Promise<void> {
+    this.beginFolderRequest(state);
+    state.projectRoot = null;
+    state.explorerEditTarget = false;
+    await this.watcher.unwatch(state.webContentsId);
+  }
+  private beginFolderRequest(state: WindowState): number {
+    const request = (this.folderRequests.get(state) ?? 0) + 1;
+    this.folderRequests.set(state, request);
+    return request;
+  }
+  private async openFolder(state: WindowState, candidate: string, request: number): Promise<ProjectFolder | null> {
+    if (typeof candidate !== 'string' || !path.isAbsolute(candidate)) return null;
     const folderPath = canonicalPath(candidate);
     const stat = await fs.stat(folderPath).catch(() => null);
-    if (!stat?.isDirectory()) return null;
+    if (!stat?.isDirectory() || this.folderRequests.get(state) !== request) return null;
     state.projectRoot = folderPath;
+    this.recentFolders.visit(folderPath);
     this.watch(state, folderPath);
     return this.folder(folderPath);
   }

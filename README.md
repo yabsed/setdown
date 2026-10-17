@@ -90,8 +90,9 @@ Open a web tab with `Ctrl/Cmd+T`, or enter a URL with `Ctrl/Cmd+L`. Every editor
 group has an address/file-path bar. Web links in documents open inside Setdown;
 web pages can sit beside documents in split groups. The star saves a bookmark in
 the left **Browser** panel. The **uBO** button opens the current site's controls.
-Browser cookies, bookmarks and history use a separate local profile, and saved
-web tabs restore lazily after a restart.
+Browser cookies, bookmarks and history use a separate local profile. New app
+sessions start without reopening web tabs; Reload preserves live pages
+in the current window.
 
 Press `Esc` on a readable web article to open Reader mode; double-click a passage
 to return to that place on the live page. `Ctrl/Cmd+F` searches the visible reading
@@ -252,6 +253,13 @@ those edits and ask before replacing them.
 Click the Setdown wordmark to toggle folder tools. The sidebar and document
 outline are resizable, and their layout is restored on window reload. Closing
 folder tools leaves document tabs open.
+
+New windows start with **None** as their folder and no open tabs. The empty
+screen and the folder selector offer the five most recently opened folders,
+shared across windows and restarts. Choosing **None** releases the folder while
+keeping open files and unsaved edits. Reload preserves the current window's
+folder and live web pages; restarting the app starts empty. Opening Setdown
+with a file argument opens that file without selecting its directory.
 
 ### Integrated terminal
 

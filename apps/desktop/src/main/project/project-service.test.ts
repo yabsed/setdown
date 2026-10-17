@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import type { WindowState } from '../windows/window-state';
 import {
   isMarkdownDocument,
@@ -11,7 +11,7 @@ import {
 import { indexVisibleHtml, searchVisibleText } from './visible-search';
 
 const temporaryDirectories: string[] = [];
-const noWatcher = { watch: async () => undefined, dispose: async () => undefined };
+const noWatcher = { watch: async () => undefined, unwatch: async () => undefined, dispose: async () => undefined };
 
 afterEach(async () => {
   await Promise.all(temporaryDirectories.splice(0).map((directory) =>
@@ -19,6 +19,34 @@ afterEach(async () => {
 });
 
 describe('project service', () => {
+  test('None stops watching without closing documents, and supersedes an in-flight folder open', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-folder-close-'));
+    temporaryDirectories.push(root);
+    const watcher = { ...noWatcher, unwatch: vi.fn(async () => undefined) };
+    const service = new ProjectService(async () => [], watcher);
+    const state = { webContentsId: 3, projectRoot: null, currentDocument: { path: 'keep.txt', text: 'unsaved' } } as unknown as WindowState;
+    await service.restore(state, root);
+    expect(service.recentFolders.list().map(folder => folder.path)).toEqual([root]);
+    const pending = service.restore(state, root);
+    await service.close(state);
+    expect(await pending).toBeNull();
+    expect(service.current(state)).toBeNull();
+    expect(state.currentDocument).toEqual({ path: 'keep.txt', text: 'unsaved' });
+    expect(watcher.unwatch).toHaveBeenCalledWith(3);
+    expect(service.recentFolders.list()).toHaveLength(1);
+    await expect(service.readDirectory(state, root)).rejects.toThrow('No folder is open');
+  });
+
+  test('unavailable folders leave the current workspace and history intact', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-folder-missing-'));
+    temporaryDirectories.push(root);
+    const service = new ProjectService(async () => [], noWatcher);
+    const state = { projectRoot: null } as WindowState;
+    await service.restore(state, root);
+    expect(await service.restore(state, path.join(root, 'missing'))).toBeNull();
+    expect(state.projectRoot).toBe(root);
+    expect(service.recentFolders.list().map(folder => folder.path)).toEqual([root]);
+  });
   test('a file open in another window cannot be moved or trashed underneath its editor', async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-shared-'));
     temporaryDirectories.push(root);
@@ -36,6 +64,7 @@ describe('project service', () => {
     let watchStarted = false;
     const slowWatcher = {
       watch: () => { watchStarted = true; return new Promise<void>(() => {}); },
+      unwatch: async () => undefined,
       dispose: async () => undefined,
     };
     const service = new ProjectService(async () => [], slowWatcher);

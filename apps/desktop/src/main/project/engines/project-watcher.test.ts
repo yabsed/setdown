@@ -1,7 +1,8 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import nativeWatcher from '@parcel/watcher';
 import type { ProjectFilesChanged } from '../../../protocol/desktop-api';
 import type { WindowState } from '../../windows/window-state';
 import { GitService } from '../git-service';
@@ -17,6 +18,24 @@ afterEach(async () => {
 });
 
 describe('project watcher engine', () => {
+  test('closing a folder invalidates a pending subscription and ignores its late events', async () => {
+    let finish!: (subscription: { unsubscribe(): Promise<void> }) => void;
+    const pending = new Promise<{ unsubscribe(): Promise<void> }>(resolve => { finish = resolve; });
+    const subscribe = vi.spyOn(nativeWatcher, 'subscribe').mockReturnValue(pending);
+    const unsubscribe = vi.fn(async () => {}), send = vi.fn();
+    const window = { isDestroyed: () => false, once: vi.fn(), webContents: { isDestroyed: () => false, send } };
+    const watcher = new ProjectWatcher();
+    try {
+      const opening = watcher.watch({ webContentsId: 9, window } as unknown as WindowState, '/root');
+      await vi.waitFor(() => expect(subscribe).toHaveBeenCalled());
+      await watcher.unwatch(9);
+      finish({ unsubscribe });
+      await opening;
+      subscribe.mock.calls[0][1](null, [{ path: '/root/late.txt', type: 'create' }]);
+      expect(unsubscribe).toHaveBeenCalledOnce();
+      expect(send).not.toHaveBeenCalled();
+    } finally { subscribe.mockRestore(); await watcher.dispose(); }
+  });
   test('turns native recursive events into one renderer notification channel', async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-watch-'));
     temporaryDirectories.push(root);

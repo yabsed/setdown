@@ -84,6 +84,7 @@ export const project = $state({
   open: restored.open,
   activeView: restored.activeView,
   folder: restored.folder,
+  recentFolders: [] as ProjectFolder[],
   explorerRootExpanded: restored.explorerRootExpanded,
   entries: [] as VisibleProjectEntry[],
   expanded: restored.expanded,

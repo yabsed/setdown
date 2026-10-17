@@ -345,6 +345,8 @@ export type MarkTexApi = {
   pathForFile(file: File): string;
   chooseProjectFolder(): Promise<ProjectFolder | null>;
   getProjectFolder(): Promise<ProjectFolder | null>;
+  getRecentProjectFolders(): Promise<ProjectFolder[]>;
+  closeProjectFolder(): Promise<void>;
   restoreProjectFolder(path: string): Promise<ProjectFolder | null>;
   readProjectDirectory(directoryPath: string): Promise<ProjectEntry[]>;
   createProjectEntry(parentPath: string, name: string, kind: ProjectEntryKind): Promise<ProjectEntry>;

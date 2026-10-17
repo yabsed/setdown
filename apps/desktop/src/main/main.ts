@@ -22,6 +22,7 @@ import { AutoSaveStore } from './settings/auto-save-store';
 import { PreviewManager } from './preview/preview-manager';
 import { PreviewRenderer } from './preview/preview-renderer';
 import { ProjectService } from './project/project-service';
+import { RecentFolders } from './project/recent-folders';
 import { ProjectSearchRenderer } from './project/project-search-renderer';
 import { pathFromResourceUrl } from './preview/resource-url';
 import { TabTransferManager } from './tabs/tab-transfer-manager';
@@ -57,7 +58,8 @@ const autoSave = new AutoSaveStore(path.join(app.getPath('userData'), 'auto-save
 const documents = new DocumentManager(() => renderer.forgetNotebooks(), positions);
 const projectSearchRenderer = new ProjectSearchRenderer(path.join(__dirname, 'render-worker.cjs'), () => themes.id);
 const projects = new ProjectService((documentPath, text, query, limit, root) =>
-  projectSearchRenderer.search(documentPath, text, query, limit, root), undefined, () => registry.values);
+  projectSearchRenderer.search(documentPath, text, query, limit, root), undefined, () => registry.values,
+  new RecentFolders(path.join(app.getPath('userData'), 'recent-folders.json')));
 const windows = new WindowManager({ registry, previews, themes });
 const browsers = new BrowserManager({ createWindow: () => windows.create(null, null, false), stateFor: id => registry.stateForWebContents(id), states: () => registry.values, zoom: previews.zoom,
   openFile: (state, file) => documents.open(state, file), theme: () => themes.id });

@@ -770,16 +770,11 @@ export class BrowserManager {
       // Warm extensions only for shells that actually restore web tabs, so
       // document-only launches never pay uBlock startup (or gain its
       // background page). The shell window already exists at this point.
-      if (own.length || this.restored) { if (own.length) this.warmup(); return own; }
+      // Reload reconnects to this window's live pages. Fresh windows and app
+      // launches start empty; old browser-tabs.json files never reopen pages.
       this.restored = true;
-      const saved: unknown = await fs.readFile(path.join(app.getPath('userData'), 'browser-tabs.json'), 'utf8').then(JSON.parse).catch(() => []);
-      if (!Array.isArray(saved)) return [];
-      const pages = saved.filter(p => p && isWebURL(p.url)).slice(0, 200).map(p => {
-        const page = { ...blankPage(randomUUID(), p.url), title: String(p.title || p.url) };
-        this.saved.set(page.id, page); this.dormant.set(page.id, state.webContentsId); return page;
-      });
-      if (pages.length) this.warmup();
-      return pages;
+      if (own.length) this.warmup();
+      return own;
     });
   }
   dispose() {

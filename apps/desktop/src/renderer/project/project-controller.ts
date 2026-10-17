@@ -40,6 +40,8 @@ export class ProjectController {
   private changeTimer?: number;
   private changedPaths = new Set<string>();
   private fullRefresh = false;
+  private folderRequest = 0;
+  private recentRequest = 0;
 
   constructor(private readonly options: Options) {
     this.explorer = new ExplorerController({ desktop: options.desktop, showDocument: options.showDocument,
@@ -68,24 +70,55 @@ export class ProjectController {
     this.searcher.highlight(); this.resize();
   };
   chooseFolder = async (): Promise<void> => {
-    const folder = await this.options.desktop.chooseProjectFolder();
-    if (folder) await this.replaceFolder(folder);
+    const request = ++this.folderRequest;
+    try {
+      const folder = await this.options.desktop.chooseProjectFolder();
+      if (folder && request === this.folderRequest) await this.replaceFolder(folder);
+    } catch (error) { if (request === this.folderRequest) this.fail(error); }
   };
   openFolderPath = async (folderPath: string): Promise<void> => {
-    const folder = await this.options.desktop.restoreProjectFolder(folderPath);
-    if (!folder) { project.error = 'Drop a folder to open it.'; return; }
-    await this.replaceFolder(folder);
+    const request = ++this.folderRequest;
+    try {
+      const folder = await this.options.desktop.restoreProjectFolder(folderPath);
+      if (request !== this.folderRequest) return;
+      if (!folder) { project.error = `Folder is unavailable: ${folderPath}`; return; }
+      await this.replaceFolder(folder);
+    } catch (error) { if (request === this.folderRequest) this.fail(error); }
+  };
+  recentFolders = async (): Promise<void> => {
+    const request = ++this.recentRequest;
+    try {
+      const folders = await this.options.desktop.getRecentProjectFolders();
+      if (request === this.recentRequest) project.recentFolders = folders;
+    } catch (error) { if (request === this.recentRequest) this.fail(error); }
+  };
+  closeFolder = async (): Promise<void> => {
+    const request = ++this.folderRequest;
+    try {
+      await this.options.desktop.closeProjectFolder();
+      if (request !== this.folderRequest) return;
+      this.clearFolderRefresh();
+      project.folder = null; project.error = '';
+      this.explorer.clear(); this.searcher.clear(); this.sourceControl.clear();
+      this.options.folderChanged?.(null);
+      rememberProjectState(); this.resize();
+    } catch (error) { if (request === this.folderRequest) this.fail(error); }
   };
   restore = async (): Promise<void> => {
-    const remembered = project.folder;
-    const folder = await this.options.desktop.getProjectFolder()
-      ?? (remembered ? await this.options.desktop.restoreProjectFolder(remembered.path) : null);
-    if (!folder) { project.folder = null; this.options.folderChanged?.(null); rememberProjectState(); return; }
+    const request = ++this.folderRequest;
+    void this.recentFolders();
+    // Reload keeps the main process's current folder. A fresh window always
+    // starts with no folder, regardless of an old renderer storage snapshot.
+    const folder = await this.options.desktop.getProjectFolder();
+    if (request !== this.folderRequest) return;
+    if (!folder) { project.folder = null; this.explorer.clear(); this.options.folderChanged?.(null); rememberProjectState(); return; }
     project.folder = folder; rememberProjectState();
     this.options.folderChanged?.(folder.path);
     await this.explorer.restore(folder);
+    if (request !== this.folderRequest) return;
     this.searcher.restore();
     await this.sourceControl.refresh();
+    if (request !== this.folderRequest) return;
     await this.sourceControl.restore();
     this.resize();
   };
@@ -152,14 +185,20 @@ export class ProjectController {
     if (action !== 'fetch') await this.explorer.refresh();
   };
   private async replaceFolder(folder: ProjectFolder): Promise<void> {
-    window.clearTimeout(this.changeTimer); this.changeTimer = undefined; this.changedPaths.clear(); this.fullRefresh = false;
-    project.folder = folder; project.visible = true; project.open = true; project.activeView = 'explorer';
+    this.clearFolderRefresh();
+    project.folder = folder; project.error = ''; project.visible = true; project.open = true; project.activeView = 'explorer';
+    project.explorerRootExpanded = true;
+    void this.recentFolders();
     this.options.folderChanged?.(folder.path);
     this.searcher.clear(); this.sourceControl.clear(); rememberProjectState();
     // Git status scans the whole tree; the explorer's top level is already
     // rendered by reset(), so let status fill in behind it.
     await this.explorer.reset(folder); void this.sourceControl.refresh(); this.resize();
   }
+  private clearFolderRefresh(): void {
+    window.clearTimeout(this.changeTimer); this.changeTimer = undefined; this.changedPaths.clear(); this.fullRefresh = false;
+  }
+  private fail(error: unknown): void { project.error = error instanceof Error ? error.message : String(error); }
   private async refreshChangedProject(paths?: string[]): Promise<void> {
     await this.explorer.refresh(paths);
     if (project.searchQuery.trim()) this.searcher.contextChanged();

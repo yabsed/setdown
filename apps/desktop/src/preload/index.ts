@@ -223,6 +223,8 @@ const api: MarkTexApi = {
   },
   chooseProjectFolder: () => ipcRenderer.invoke('project:choose-folder'),
   getProjectFolder: () => ipcRenderer.invoke('project:get-folder'),
+  getRecentProjectFolders: () => ipcRenderer.invoke('project:recent-folders'),
+  closeProjectFolder: () => ipcRenderer.invoke('project:close-folder'),
   restoreProjectFolder: (folderPath) => ipcRenderer.invoke('project:restore-folder', folderPath),
   readProjectDirectory: (directoryPath) => ipcRenderer.invoke('project:read-directory', directoryPath),
   createProjectEntry: (parentPath, name, kind) => ipcRenderer.invoke('project:create-entry', { parentPath, name, kind }),

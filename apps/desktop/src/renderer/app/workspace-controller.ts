@@ -126,6 +126,9 @@ export function startWorkspace(desktop: DesktopPort) {
     toggleProjectSidebar: () => projects.toggle(),
     selectProjectView: (target) => projects.select(target),
     chooseProjectFolder: () => void projects.chooseFolder(),
+    openProjectFolder: path => projects.openFolderPath(path),
+    closeProjectFolder: () => projects.closeFolder(),
+    refreshRecentProjectFolders: () => projects.recentFolders(),
     refreshProjectExplorer: () => void projects.refreshExplorer(),
     collapseProjectExplorer: () => projects.collapseExplorer(),
     toggleProjectExplorerRoot: () => projects.toggleExplorerRoot(),
@@ -263,7 +266,7 @@ export function startWorkspace(desktop: DesktopPort) {
   const popupOwnsEscape = () => [...document.querySelectorAll('[role="menu"], [role="listbox"], [role="alertdialog"], dialog[open]')]
     .some(element => element.getClientRects().length > 0);
   const sidebarOwnsEscape = (target = document.activeElement) => target instanceof Element
-    && !!target.closest('.explorer-tree, .explorer-root, .explorer-filter, .project-context-menu, .project-confirm, .language-support');
+    && !!target.closest('.explorer-tree, .explorer-root, .explorer-filter, .project-context-menu, .project-confirm, .folder-picker, .language-support');
   const tabDrag = createTabDrag({ desktop, shell, tabs: workspace.tabs, groups: workspace.groups,
     dragging: (active) => groups?.drag(active),
     openFile: async (path, placement) => {

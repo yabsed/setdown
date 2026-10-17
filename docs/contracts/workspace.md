@@ -5,6 +5,34 @@ Paths in code spans are relative to `apps/desktop` unless otherwise noted.
 See [the contract entry point](../preview-performance-contract.md) for required
 checks, isolated-display rules and the comparative performance gate.
 
+## Empty startup and recent folders
+
+A fresh app process and each new window start with no selected project folder
+and no tabs. Explicit file launch arguments open only the requested document;
+its directory does not implicitly become the project folder. Legacy
+`browser-tabs.json` records do not reopen pages. Reload reconnects to the same
+window's current folder and live web pages, preserving page identity and forms.
+
+`main/project/recent-folders.ts` stores at most five distinct canonical folder
+paths in visit order, shared across windows and app restarts. History never
+selects a folder by itself. Successful folder opens move an entry to the front;
+an unavailable folder leaves the current workspace intact and reports an error.
+The empty screen and Folder Tools selector expose this history. The selector's
+None option clears project scope while retaining open documents and edits.
+
+Closing a folder invalidates pending folder selections, directory reads,
+search/status results and native watcher subscriptions. It clears project-only
+Explorer/search/Git state and language workspace scope. A late asynchronous
+result cannot reopen the closed folder. The folder selector uses the existing
+native overlay mechanism and keyboard menu semantics.
+Escape closes the folder menu without leaving the Markdown source editor;
+selecting the current folder preserves the Explorer's expansion state.
+
+`workspace/folder-history.spec.ts`, the project service/controller tests, recent
+folder store tests and watcher tests cover these behaviors. The uBlock restart
+scenario explicitly opens its page after each empty startup, preserving its
+filter/settings checks.
+
 ## Explorer file operations and document ownership
 
 Explorer commands are scoped to the tree. Native accelerators, the main Edit
