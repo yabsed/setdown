@@ -1,4 +1,4 @@
-import { WheelZoomAccumulator } from '../core/wheel-zoom';
+import { ContentZoomInput, type ContentZoomChange } from '../core/wheel-zoom';
 import { appZoomStep } from '../core/zoom';
 export { WheelZoomAccumulator } from '../core/wheel-zoom';
 
@@ -11,7 +11,7 @@ export function wheelZoomScope(target: EventTarget | null): WheelZoomScope | nul
   const element = target as Element | null;
   if (element?.closest?.('.pdf-host, .image-viewport')) return null;
   if (element?.closest?.('.terminal-surface')) return 'terminal';
-  return element?.closest?.('.monaco-editor') || element?.closest?.('.web-reader') ? 'text' : null;
+  return element?.closest?.('.monaco-editor, .web-reader, .notebook-surface, .video-surface') ? 'text' : null;
 }
 
 export function isTextZoomTarget(target: EventTarget | null): boolean {
@@ -23,10 +23,10 @@ export function isTextZoomTarget(target: EventTarget | null): boolean {
  * Native text/page preloads always report the `text` scope; only the shell
  * routes terminal steps to their own channel.
  */
-export function installWheelZoom(send: (steps: number, scope: WheelZoomScope, tabId?: string) => void, nativeText = false): () => void {
-  const accumulators: Record<WheelZoomScope, WheelZoomAccumulator> = {
-    text: new WheelZoomAccumulator(), terminal: new WheelZoomAccumulator(),
-  };
+export function installWheelZoom(send: (steps: ContentZoomChange, scope: WheelZoomScope, tabId?: string) => void, nativeText = false): () => void {
+  let accumulator = new ContentZoomInput();
+  let previousOwner: Element | null = null;
+  let previousTab: string | undefined;
   const wheel = (event: WheelEvent) => {
     if (!event.isTrusted || !event.ctrlKey || event.altKey || event.metaKey) return;
     if (!Number.isFinite(event.deltaY) || event.deltaY === 0) return;
@@ -34,8 +34,13 @@ export function installWheelZoom(send: (steps: number, scope: WheelZoomScope, ta
     if (!scope) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    const steps = accumulators[scope].consume(event, performance.now());
-    const tabId = (event.target as Element | null)?.closest<HTMLElement>('[data-zoom-tab]')?.dataset.zoomTab;
+    const owner = nativeText ? document.documentElement
+      : (event.target as Element | null)?.closest<HTMLElement>('[data-zoom-tab]') ?? null;
+    const tabId = nativeText ? undefined : (owner as HTMLElement | null)?.dataset.zoomTab;
+    if (owner !== previousOwner || tabId !== previousTab) {
+      accumulator = new ContentZoomInput(); previousOwner = owner; previousTab = tabId;
+    }
+    const steps = accumulator.consume(event, performance.now());
     if (steps) send(steps, scope, tabId);
   };
   window.addEventListener('wheel', wheel, { capture: true, passive: false });

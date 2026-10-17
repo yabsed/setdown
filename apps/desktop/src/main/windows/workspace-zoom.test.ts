@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { WorkspaceZoom, nativeZoomBounds } from './workspace-zoom';
 import { WheelZoomAccumulator, isTextZoomTarget, wheelZoomScope } from '../../preload/wheel-zoom';
+import { ContentZoomInput } from '../../core/wheel-zoom';
 import { appZoomStep } from '../../core/zoom';
 import { installZoomSettings } from './zoom-settings';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -105,6 +106,34 @@ test('wheel direction reversal and idle reset discard residual motion', () => {
   wheel.consume({ deltaY: -60, deltaMode: 0 }, 30);
   assert.equal(wheel.consume({ deltaY: -20, deltaMode: 0 }, 400), 0);
 });
+test('every short pinch responds immediately without relying on wheel tick metadata', () => {
+  const input = new ContentZoomInput(), zoom = new WorkspaceZoom();
+  for (let i = 0; i < 5; i++) {
+    const previous = zoom.tabFactor('a');
+    const change = input.consume({ deltaY: -100 * Math.log(1.02), deltaMode: 0 }, i * 500);
+    assert.equal(zoom.changeTab('a', change), true);
+    assert.ok(Math.abs(zoom.tabFactor('a') - previous * 1.02) < 1e-12);
+  }
+  assert.equal(zoom.tabFactor('b'), 1); assert.equal(zoom.factor, 1);
+  const before = zoom.tabFactor('a');
+  zoom.changeTab('a', input.consume({ deltaY: 1, deltaMode: 0 }, 2010));
+  assert.ok(zoom.tabFactor('a') < before);
+  const restored = new WorkspaceZoom(); restored.restore(zoom.snapshot);
+  assert.equal(restored.tabFactor('a'), zoom.tabFactor('a'));
+  // A mouse notch immediately following a pinch still uses stepped zoom.
+  assert.equal(input.consume({ deltaY: -80, deltaMode: 0 }, 2020), 1);
+});
+test('continuous tab zoom validates factors and keeps its existing bounds', () => {
+  const zoom = new WorkspaceZoom();
+  for (const scale of [NaN, Infinity, 0, -.1, .49, 2.01, '1.1', null, undefined]) {
+    assert.equal(zoom.changeTab('a', { scale }), false);
+  }
+  for (let i = 0; i < 20; i++) zoom.changeTab('a', { scale: 2 });
+  assert.equal(zoom.tabFactor('a'), 3);
+  for (let i = 0; i < 20; i++) zoom.changeTab('a', { scale: .5 });
+  assert.equal(zoom.tabFactor('a'), .5);
+  assert.equal(zoom.changeTab('a', 0), true); assert.equal(zoom.tabFactor('a'), 1);
+});
 test('native float rounding at a wheel notch boundary does not lose a zoom step', () => {
   const wheel = new WheelZoomAccumulator();
   assert.equal(wheel.consume({ deltaY: -(80 - 1e-5), deltaMode: 0 }, 0), 1);
@@ -128,6 +157,8 @@ test('workspace wheel zoom reaches editors and terminals but never media surface
   // Terminals own a separate factor from editors and Markdown previews.
   assert.equal(wheelZoomScope(element('.monaco-editor')), 'text');
   assert.equal(wheelZoomScope(element('.web-reader')), 'text');
+  assert.equal(wheelZoomScope(element('.notebook-surface')), 'text');
+  assert.equal(wheelZoomScope(element('.video-surface')), 'text');
   assert.equal(wheelZoomScope(element('.terminal-surface')), 'terminal');
   assert.equal(wheelZoomScope(element('.pdf-host')), null);
   assert.equal(wheelZoomScope(null), null);

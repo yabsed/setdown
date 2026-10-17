@@ -67,7 +67,7 @@ import type { AppActions } from './ports/ui-actions';
     {@const group = view.groups.find(g => g.activeId === tab.id)}
     {@const active = !!group && !(group.id === view.focusedGroupId && project.gitDiffActive)}
     {@const box = boxes.find(box => box.id === group?.id) ?? focused}
-    <div class="group-content media-content" class:inactive={!active} style={geometry(box)} data-media-tab={tab.id}>
+    <div class="group-content media-content" class:inactive={!active} style={geometry(box)} data-media-tab={tab.id} data-zoom-tab={tab.id}>
     {#if tab.document.kind === 'pdf'}
       {#await import('./pdf/PdfSurface.svelte') then module}
         <module.default tabId={tab.id} document={tab.document} initialPosition={tab.position} {active}

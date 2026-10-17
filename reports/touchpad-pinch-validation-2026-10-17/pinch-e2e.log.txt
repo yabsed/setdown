@@ -1,0 +1,51 @@
+
+Running 9 tests using 1 worker
+
+(node:307763) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[1/9] test/e2e/browser/zoom.spec.ts:6:1 › browser Ctrl+wheel zooms websites and frames independently of the app and documents
+dbus-daemon[307748]: [session uid=1000 pid=307748] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=307808 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[307748]: [session uid=1000 pid=307748] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=307808 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[307748]: [session uid=1000 pid=307748] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[307748]: [session uid=1000 pid=307748] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.3' (uid=1000 pid=307869 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[307748]: [session uid=1000 pid=307748] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[307748]: [session uid=1000 pid=307748] Activating service name='org.freedesktop.portal.Documents' requested by ':1.3' (uid=1000 pid=307869 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[307748]: [session uid=1000 pid=307748] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[307748]: [session uid=1000 pid=307748] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.3' (uid=1000 pid=307869 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[307748]: [session uid=1000 pid=307748] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=307911 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[307748]: [session uid=1000 pid=307748] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[307748]: [session uid=1000 pid=307748] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[307748]: [session uid=1000 pid=307748] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.3' (uid=1000 pid=307869 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[307748]: [session uid=1000 pid=307748] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:307869): xdg-desktop-portal-WARNING **: 13:41:03.949: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[307748]: [session uid=1000 pid=307748] Activating service name='org.freedesktop.secrets' requested by ':1.3' (uid=1000 pid=307869 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+** Message: 13:41:03.956: couldn't access control socket: /tmp/setdown-display-runtime.Mv7xbe/keyring/control: No such file or directory
+discover_other_daemon: 0dbus-daemon[307748]: [session uid=1000 pid=307748] Successfully activated service 'org.freedesktop.secrets'
+dbus-daemon[307748]: [session uid=1000 pid=307748] Successfully activated service 'org.freedesktop.portal.Desktop'
+[2/9] test/e2e/media/video-reader.spec.ts:19:1 › opens video files, streams them with range requests and prevents text saves
+[3/9] test/e2e/media/video-reader.spec.ts:102:1 › restores the playback position after restart
+[4/9] test/e2e/workspace/workspace-zoom.spec.ts:47:40 › text wheel zoom and app shortcuts have independent scopes in md
+[5/9] test/e2e/workspace/workspace-zoom.spec.ts:47:40 › text wheel zoom and app shortcuts have independent scopes in txt
+[6/9] test/e2e/workspace/workspace-zoom.spec.ts:98:1 › PDF and image wheel zoom preserve the cursor point, file state and fit mode across app zoom
+[7/9] test/e2e/workspace/workspace-zoom.spec.ts:190:1 › Git review, ordinary editors and a second window retain independent text zoom without replacing models
+test/e2e/workspace/workspace-zoom.spec.ts:190:1 › Git review, ordinary editors and a second window retain independent text zoom without replacing models
+
+
+
+
+
+
+
+
+
+
+[8/9] test/e2e/workspace/workspace-zoom.spec.ts:245:1 › two Markdown tabs retain independent zoom in native readers and Monaco
+[9/9] test/e2e/workspace/workspace-zoom.spec.ts:291:1 › touchpad pinch zooms text, notebook outputs and terminal tabs independently
+  9 passed (31.9s)

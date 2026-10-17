@@ -1,3 +1,4 @@
+import { pinch } from '../../support/electron/pinch';
 import { electron } from '../../support/electron/electron-app';
 import { expect, test } from '@playwright/test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -120,6 +121,9 @@ test('PDF and image wheel zoom preserve the cursor point, file state and fit mod
     const coordinate = () => target.evaluate((node, point) => {
       const r = node.getBoundingClientRect(); return [(point.x - r.left) / r.width, (point.y - r.top) / r.height];
     }, point);
+    await pinch(app, 1.3, target);
+    await expect.poll(async () => Number(await pdfZoom().inputValue())).toBeGreaterThan(1);
+    await reader.getByRole('button', { name: '100%', exact: true }).click();
     const before = await coordinate();
     await page.mouse.move(point.x, point.y); await page.keyboard.down('Control');
     await page.mouse.wheel(0, -80); await page.keyboard.up('Control');
@@ -151,6 +155,9 @@ test('PDF and image wheel zoom preserve the cursor point, file state and fit mod
     const imageCoordinate = () => imageReader.locator('img').evaluate((node, point) => {
       const r = node.getBoundingClientRect(); return [(point.x - r.left) / r.width, (point.y - r.top) / r.height];
     }, imagePoint);
+    await pinch(app, 1.3, viewport);
+    await expect.poll(async () => Number(await imageReader.getByRole('combobox', { name: 'Image zoom' }).inputValue())).toBeGreaterThan(1);
+    await imageReader.getByRole('button', { name: '100%', exact: true }).click();
     const imageBefore = await imageCoordinate();
     await page.mouse.move(imagePoint.x, imagePoint.y); await page.keyboard.down('Control');
     await page.mouse.wheel(0, -80); await page.keyboard.up('Control');
@@ -200,6 +207,10 @@ test('Git review, ordinary editors and a second window retain independent text z
     const editor = page.getByRole('textbox', { name: 'Current document', exact: true });
     await expect(editor).toBeEditable();
     await editor.press('Control+End'); await editor.pressSequentially('Zoom undo sentinel');
+    await pinch(app, 1.3, page.locator('.git-diff-editor .monaco-editor').last());
+    await expect.poll(() => activeTextZoom(page)).toBeGreaterThan(100);
+    await page.getByRole('button', { name: 'Reset text zoom', exact: true }).click();
+    await expect.poll(() => activeTextZoom(page)).toBe(100);
     await page.locator('.git-diff-editor .monaco-editor').last().hover();
     await page.keyboard.down('Control'); await page.mouse.wheel(0, -80); await page.keyboard.up('Control');
     await expect.poll(() => activeTextZoom(page)).toBe(110);
@@ -244,6 +255,16 @@ test('two Markdown tabs retain independent zoom in native readers and Monaco', a
     const increase = page.getByRole('button', { name: 'Zoom text in', exact: true });
     const nativeFactor = async () => (await state(app)).rows.find(row => row.visible)?.factor;
     await expect.poll(nativeFactor).toBe(1);
+    for (let gesture = 0; gesture < 5; gesture++) {
+      const previous = (await nativeFactor())!;
+      await pinch(app, 1.02);
+      await expect.poll(nativeFactor).toBeGreaterThan(previous);
+    }
+    const pinched = (await nativeFactor())!;
+    await pinch(app, .75);
+    await expect.poll(nativeFactor).toBeLessThan(pinched);
+    expect((await state(app)).factor).toBe(1);
+    await reset.click(); await expect.poll(nativeFactor).toBe(1);
     await increase.click(); await expect(reset).toHaveText('110%');
     await expect.poll(nativeFactor).toBeCloseTo(1.1, 4);
     await page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), second);
@@ -263,5 +284,45 @@ test('two Markdown tabs retain independent zoom in native readers and Monaco', a
     await expect.poll(font).toBeCloseTo(16.8, 1);
     await page.getByRole('tab', { name: /first.md/ }).click();
     await expect(reset).toHaveText('100%'); await expect.poll(font).toBe(14);
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
+
+test('touchpad pinch zooms text, notebook outputs and terminal tabs independently', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-pinch-'));
+  const file = path.join(root, 'first.txt'), notebook = path.join(root, 'cells.ipynb');
+  await writeFile(file, 'Original text\n');
+  await writeFile(notebook, JSON.stringify({ nbformat: 4, nbformat_minor: 5, metadata: {}, cells: [
+    { id: 'output', cell_type: 'code', metadata: {}, source: 'print(42)', execution_count: 1,
+      outputs: [{ output_type: 'stream', name: 'stdout', text: '42\n' }] },
+  ] }));
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await app.firstWindow(); await focusApplication(app);
+    const editor = page.locator('.editor-surface .monaco-editor');
+    await expect(editor).toBeVisible();
+    for (let gesture = 0; gesture < 5; gesture++) {
+      const previous = await activeTextZoom(page);
+      await pinch(app, 1.02, editor);
+      await expect.poll(() => activeTextZoom(page)).toBeGreaterThan(previous);
+    }
+    const textZoom = await activeTextZoom(page);
+    await page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), notebook);
+    const output = page.locator('.notebook-outputs');
+    await expect(output).toContainText('42');
+    await pinch(app, 1.3, output);
+    await expect.poll(() => activeTextZoom(page)).toBeGreaterThan(100);
+    const notebookZoom = await activeTextZoom(page);
+    await page.locator('.new-terminal-tab-button').click();
+    const terminal = page.getByRole('region', { name: 'Terminal', exact: true });
+    await expect(terminal).toBeVisible();
+    await pinch(app, 1.3, terminal);
+    await expect.poll(() => activeTextZoom(page)).toBeGreaterThan(100);
+    expect((await state(app)).factor).toBe(1);
+    await page.getByRole('tab', { name: /first.txt/ }).click();
+    await expect.poll(() => activeTextZoom(page)).toBe(textZoom);
+    await page.getByRole('tab', { name: /cells.ipynb/ }).click();
+    await expect.poll(() => activeTextZoom(page)).toBe(notebookZoom);
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });

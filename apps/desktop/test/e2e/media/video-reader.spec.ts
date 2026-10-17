@@ -1,3 +1,4 @@
+import { pinch } from '../../support/electron/pinch';
 import { electron } from '../../support/electron/electron-app';
 import { expect, test } from '@playwright/test';
 import { copyFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -32,6 +33,9 @@ test('opens video files, streams them with range requests and prevents text save
     expect(await video.evaluate((node: HTMLVideoElement) => [node.readyState, node.duration])).toEqual([4, 2]);
     expect(await previews(app).count()).toBe(0);
     await expect(page.getByRole('button', { name: 'Reset video zoom', exact: true })).toHaveText('100%');
+    await pinch(app, 1.3, video);
+    await expect.poll(() => video.evaluate(node => Number(getComputedStyle(node).transform.match(/matrix\(([^,]+)/)?.[1]))).toBeGreaterThan(1);
+    await page.getByRole('button', { name: 'Reset video zoom', exact: true }).click();
     await page.getByRole('button', { name: 'Zoom video in', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Reset video zoom', exact: true })).toHaveText('110%');
     await page.getByRole('button', { name: 'Reset video zoom', exact: true }).click();
@@ -55,6 +59,10 @@ test('opens video files, streams them with range requests and prevents text save
     await expect(terminal).toBeVisible();
     await dragTerminal(page, page.locator('.document-tab[aria-selected="true"]'), page.locator('.group-body'), 'down');
     await expect(page.locator('.editor-group')).toHaveCount(2);
+    await pinch(app, 1.3, video);
+    await expect(page.getByRole('button', { name: 'Reset video zoom', exact: true })).not.toHaveText('100%');
+    await expect(page.getByRole('button', { name: 'Reset terminal zoom', exact: true })).toHaveText('100%');
+    await page.getByRole('button', { name: 'Reset video zoom', exact: true }).click();
     const resize = page.getByRole('button', { name: 'Resize editor groups' });
     await resize.focus();
     for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowUp');

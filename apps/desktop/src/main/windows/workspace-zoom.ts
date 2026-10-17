@@ -53,9 +53,13 @@ export class WorkspaceZoom {
   activeTab(owner: number): string | null { return this.contexts.get(owner)?.active ?? null; }
   ownsTab(owner: number, id: string): boolean { return this.contexts.get(owner)?.ids.has(tabZoomKey(id)) ?? false; }
   changeTab(id: string, steps: unknown): boolean {
-    if (typeof steps !== 'number' || !Number.isInteger(steps) || Math.abs(steps) > 4) return false;
+    const scale = steps && typeof steps === 'object' && 'scale' in steps ? steps.scale : undefined;
+    if (scale !== undefined) {
+      if (typeof scale !== 'number' || !Number.isFinite(scale) || scale < .5 || scale > 2) return false;
+    } else if (typeof steps !== 'number' || !Number.isInteger(steps) || Math.abs(steps) > 4) return false;
     const key = tabZoomKey(id), previous = this.tabs.get(key) ?? 100;
-    const next = steps === 0 ? 100 : Math.max(50, Math.min(300, previous + steps * 10));
+    const next = scale !== undefined ? Math.max(50, Math.min(300, previous * scale))
+      : steps === 0 ? 100 : Math.max(50, Math.min(300, previous + (steps as number) * 10));
     if (previous === next) return false;
     this.tabs.set(key, next); this.revision++;
     for (const entry of this.targets.values()) this.apply(entry);
@@ -72,7 +76,7 @@ export class WorkspaceZoom {
     // followed the text factor then, so inherit it once instead of resetting.
     this.terminalPercent = valid(saved.terminal) ? saved.terminal : this.textPercent;
     if (saved.tabs && typeof saved.tabs === 'object') for (const [id, percent] of Object.entries(saved.tabs).slice(-1000)) {
-      if (id.length < 256 && valid(percent)) this.tabs.set(id, percent);
+      if (id.length < 256 && typeof percent === 'number' && Number.isFinite(percent) && percent >= 50 && percent <= 300) this.tabs.set(id, percent);
     }
   }
 

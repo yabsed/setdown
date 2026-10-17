@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, tick, untrack, flushSync } from 'svelte';
-  import { WheelZoomAccumulator } from '../../core/wheel-zoom';
+  import { ContentZoomInput } from '../../core/wheel-zoom';
   import type { DocumentSnapshot } from '../../core/document/document';
   import { imageMimeType } from '../../core/document/document-profile';
   import type { ReadingPosition, ImageReadingPosition } from '../../core/reading/reading-position';
@@ -67,7 +67,7 @@
       if (active && !dead) changeZoom(String(steps === 0 ? 1 : Math.max(.1, Math.min(8, scale * 1.1 ** steps))));
     } };
   });
-  const wheelZoom = new WheelZoomAccumulator();
+  const wheelZoom = new ContentZoomInput();
   function wheel(event: WheelEvent) {
     if (!event.isTrusted || !event.ctrlKey || event.altKey || event.metaKey) return;
     event.preventDefault(); event.stopPropagation();
@@ -78,7 +78,7 @@
     const x = event.clientX - rect.left, y = event.clientY - rect.top;
     const pointX = (host.scrollLeft + x - stageWidth / 2) / scale;
     const pointY = (host.scrollTop + y - stageHeight / 2) / scale;
-    const next = Math.max(.1, Math.min(8, scale * 1.1 ** steps));
+    const next = Math.max(.1, Math.min(8, scale * (typeof steps === 'number' ? 1.1 ** steps : steps.scale)));
     // Commit geometry before the next wheel sample; rapid trackpad events must
     // never combine a new scale with the previous frame's scroll offsets.
     flushSync(() => { zoom = next; });

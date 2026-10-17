@@ -1,3 +1,4 @@
+import { pinch } from '../../support/electron/pinch';
 import { expect, test } from '@playwright/test';
 
 import { fixture, evaluatePage } from '../../support/browser/browser-fixture';
@@ -44,6 +45,10 @@ test('browser Ctrl+wheel zooms websites and frames independently of the app and 
     await expect.poll(() => evaluatePage(f.app, f.origin, 'document.readyState')).toBe('complete');
     await evaluatePage(f.app, f.origin, 'new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(true))))');
     const original = await state();
+    await pinch(f.app, 1.3, undefined, f.origin);
+    await expect.poll(async () => (await state()).factor).toBeGreaterThan(1);
+    await f.page.getByRole('button', { name: 'Reset website zoom' }).click();
+    await expect.poll(async () => (await state()).factor).toBeCloseTo(1, 4);
     const preferences = await f.page.evaluate(() => window.marktex.getZoom());
     await evaluatePage(f.app, f.origin, 'window.dispatchEvent(new WheelEvent("wheel",{ctrlKey:true,deltaY:-120}));true');
     expect((await state()).factor).toBe(1);

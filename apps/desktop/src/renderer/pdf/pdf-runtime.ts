@@ -1,4 +1,4 @@
-import { WheelZoomAccumulator } from '../../core/wheel-zoom';
+import { ContentZoomInput } from '../../core/wheel-zoom';
 import { getDocument, GlobalWorkerOptions, PDFDataRangeTransport, AnnotationMode,
   type PDFDocumentLoadingTask, type PDFDocumentProxy } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
@@ -70,14 +70,14 @@ export class PdfRuntime {
       bus.on('scalechanging', ({ scale }: { scale: number }) => {
         if (!this.dead) this.options.scaleChanged?.(scale);
       });
-      const wheelZoom = new WheelZoomAccumulator();
+      const wheelZoom = new ContentZoomInput();
       container.addEventListener('wheel', (event) => {
         if (!event.isTrusted || !event.ctrlKey || event.altKey || event.metaKey) return;
         event.preventDefault(); event.stopPropagation();
         if (this.restoring || this.dead || !this.options.active()) return;
         const steps = wheelZoom.consume(event, performance.now());
         if (!steps) return;
-        const next = Math.max(.1, Math.min(10, viewer.currentScale * 1.1 ** steps));
+        const next = Math.max(.1, Math.min(10, viewer.currentScale * (typeof steps === 'number' ? 1.1 ** steps : steps.scale)));
         const rect = container.getBoundingClientRect();
         viewer.updateScale({ scaleFactor: next / viewer.currentScale,
           origin: [event.clientX - rect.left + container.offsetLeft,

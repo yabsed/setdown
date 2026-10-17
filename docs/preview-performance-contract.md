@@ -73,6 +73,21 @@ path. `workspace-zoom.test.ts`, `workspace-zoom.spec.ts`, `test/e2e/browser/*.sp
 `terminal.spec.ts` cover scope, composition, tab independence, and reset.
 The View menu uses the same coordinator and active-tab ownership.
 
+Touchpad pinch follows the content under the pointer, without requiring the
+Control key. Fine pixel input, including Chromium's trusted pinch-derived wheel events,
+changes the tab factor continuously using its logarithmic scale, without a
+dead zone or reliance on deprecated wheel tick metadata. Coarse Ctrl+wheel
+retains its existing notch scale. Fractional tab factors survive persistence.
+Residual input must not carry between tab owners. Notebook outputs and video surfaces participate too;
+PDF/image pinches use their existing cursor-anchored file scale. Shell/app zoom,
+other tabs, live page identity, and editor models remain unchanged. The zoom,
+browser, and video Electron tests use `Input.synthesizePinchGesture` with the
+mouse source, exercising Chromium's touchpad-to-wheel conversion without a
+Control key or synthetic DOM event. Physical device/OS gesture delivery is not
+established by those automated tests. Dated results, including five consecutive
+short pinches and the full latency comparison, are in
+[Touchpad pinch validation](validation/2026-10-17-touchpad-pinch.md).
+
 App typography uses the locally installed D2Coding family with a monospace
 fallback across shell controls, ordinary/Git editors, terminals, and Markdown
 body, heading, and code styles in every theme. Math and diagram renderers retain
@@ -87,7 +102,8 @@ before adoption. `theme-controller.test.ts`, `preview-presentation.test.ts`, and
 `preview-reading-tools.spec.ts` cover these cases without showing or focusing
 hidden readers.
 
-Browser Ctrl+wheel changes website zoom from 50% to 300% in 10-point steps.
+Browser coarse Ctrl+wheel changes website zoom from 50% to 300% in 10-point steps;
+fine pixel input changes it continuously within those same limits.
 The isolated page preload registers the bounded wheel accumulator in each
 committed frame after a native owner/frame readiness acknowledgment;
 Electron's native `zoom-changed` event handles unconsumed requests. Ordinary
@@ -97,7 +113,8 @@ and composes with app zoom without changing other tabs or native bounds. Reloads
 Zoom preserves the live page and forms. The custom content-factor target in
 `workspace-zoom.test.ts` and native wheel input in `test/e2e/browser/*.spec.ts` cover these
 guarantees. Wheel IPC is accepted only from a visible owned web contents, with
-bounded integer steps; no desktop API is exposed to remote pages.
+bounded integer steps or finite relative scale factors from 0.5 to 2;
+no desktop API is exposed to remote pages.
 
 Every tab's location bar displays decrease, reset percentage, and increase
 controls, including 100%. Live web pages use their tab's website factor; web
