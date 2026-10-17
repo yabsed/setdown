@@ -85,6 +85,10 @@ No periodic page captures or Markdown hydration are added to browser tabs.
 Hidden web tabs are detached from the native window without closing their
 WebContents. Chromium background throttling stays enabled; visible split groups
 remain attached. No timer discards live forms, audio, downloads or opener state.
+Pages opened by another page become independent tabs: closing the opener must
+preserve descendants and their live state, including tabs moved to another
+window. Chromium's `window.opener` relationship remains intact while the opener
+is alive; Setdown owns tab destruction (`outlivesOpener: true`).
 The browser lifecycle E2E disables Playwright's focus emulation on its original
 CDP session before asserting actual `document.visibilityState`; a second CDP
 session cannot release the first session's synthetic capturer.

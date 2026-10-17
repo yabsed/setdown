@@ -124,6 +124,61 @@ test('the first web page opens from a fresh empty workspace and popups preserve 
   } finally { await f.dispose(); }
 });
 
+test('closing an opener preserves child and descendant tabs with their live state', async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    const parent = f.page.getByRole('tab', { name: /Research page/ });
+    await expect(parent).toBeVisible();
+    await evaluatePage(f.app, f.origin, `
+      window.child = window.open('about:blank');
+      child.document.title = 'Independent child';
+      child.document.body.innerHTML = '<input id="draft">';
+      child.document.querySelector('#draft').value = 'Unsent child draft';
+      child.keptObject = { value: 42 };
+      true;
+    `);
+    const child = f.page.getByRole('tab', { name: /Independent child/ });
+    await expect(child).toBeVisible();
+    const childId = await f.app.evaluate(({ webContents }) => webContents.getAllWebContents().find(wc => wc.getTitle() === 'Independent child')!.id);
+    await f.app.evaluate(async ({ webContents }, id) => webContents.fromId(id)!.executeJavaScript(`
+      window.child = window.open('about:blank');
+      child.document.title = 'Independent grandchild';
+      child.document.body.innerHTML = '<input id="draft">';
+      child.document.querySelector('#draft').value = 'Unsent grandchild draft';
+      child.keptObject = { value: 73 };
+      true;
+    `), childId);
+    const grandchild = f.page.getByRole('tab', { name: /Independent grandchild/ });
+    await expect(grandchild).toBeVisible();
+    const grandchildId = await f.app.evaluate(({ webContents }) => webContents.getAllWebContents().find(wc => wc.getTitle() === 'Independent grandchild')!.id);
+    expect(await evaluatePage(f.app, f.origin, 'child.opener === window && child.child.opener === child')).toBe(true);
+    const state = (id: number) => f.app.evaluate(async ({ webContents }, id) => {
+      const wc = webContents.fromId(id);
+      return wc ? wc.executeJavaScript('({ draft: document.querySelector("#draft").value, value: keptObject.value, openerDetached: opener === null })') : null;
+    }, id);
+
+    await parent.locator('.tab-close').click();
+    await expect(parent).toHaveCount(0);
+    await expect(child).toBeVisible();
+    await expect(grandchild).toBeVisible();
+    expect(await state(childId)).toEqual({ draft: 'Unsent child draft', value: 42, openerDetached: true });
+    expect(await state(grandchildId)).toEqual({ draft: 'Unsent grandchild draft', value: 73, openerDetached: false });
+    await child.click();
+    await expect(child).toHaveAttribute('aria-selected', 'true');
+    await child.locator('.tab-close').click();
+    await expect(child).toHaveCount(0);
+    await expect.poll(() => state(childId)).toBeNull();
+    await expect(grandchild).toBeVisible();
+    expect(await state(grandchildId)).toEqual({ draft: 'Unsent grandchild draft', value: 73, openerDetached: true });
+    await grandchild.locator('.tab-close').click();
+    await expect(grandchild).toHaveCount(0);
+    await expect.poll(() => state(grandchildId)).toBeNull();
+    await expect(f.page.getByRole('tab', { name: /notes.md/ })).toBeVisible();
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
 test('file URLs and web addresses replace the current tab, including PDFs outside the project', async () => {
   const f = await fixture();
   const downloads = await mkdtemp(path.join(os.tmpdir(), 'setdown-downloads-'));

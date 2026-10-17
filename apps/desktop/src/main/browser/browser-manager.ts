@@ -372,7 +372,9 @@ export class BrowserManager {
       entry.popups.push(now);
       // Min's createWindow adoption preserves opener relationships, POST bodies,
       // and about:blank scripts instead of recreating a popup from its URL.
-      return { action: 'allow', createWindow: options => {
+      // Adopted pages are independent tabs. Electron otherwise destroys them
+      // with their opener, even after moving them into another workspace window.
+      return { action: 'allow', outlivesOpener: true, createWindow: options => {
         const popup = this.openEntry(entry.owner, randomUUID(), details.url, (options as Electron.BrowserWindowConstructorOptions & { webContents?: WebContents }).webContents);
         popup.page.startPage = false;
         this.send(entry.owner, { type: 'open', page: popup.page, background: !entry.view.getVisible() || details.disposition === 'background-tab' });

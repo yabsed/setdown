@@ -71,6 +71,50 @@ d=x.XOpenDisplay(None); t.XTestFakeButtonEvent(d,1,0,0); x.XFlush(d); x.XCloseDi
   } finally { await f.dispose(); }
 });
 
+test('a popup moved to another window survives closing its original window', async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible();
+    await evaluatePage(f.app, f.origin, `
+      window.child = window.open('about:blank');
+      child.document.title = 'Transferred popup';
+      child.document.body.innerHTML = '<input id="draft">';
+      child.document.querySelector('#draft').value = 'Keep this draft';
+      child.keptObject = { value: 42 };
+      true;
+    `);
+    const popup = f.page.getByRole('tab', { name: /Transferred popup/ });
+    await expect(popup).toBeVisible();
+    const contentsId = await f.app.evaluate(({ webContents }) => webContents.getAllWebContents().find(wc => wc.getTitle() === 'Transferred popup')!.id);
+    const destinationReady = f.app.waitForEvent('window');
+    await popup.evaluate(element => {
+      const dataTransfer = new DataTransfer();
+      element.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer, screenX: 600, screenY: 400 }));
+      element.dispatchEvent(new DragEvent('dragleave', { bubbles: true, dataTransfer, relatedTarget: null }));
+      element.dispatchEvent(new DragEvent('dragend', { bubbles: true, cancelable: true, dataTransfer, screenX: 600, screenY: 400 }));
+    });
+    const destination = await destinationReady;
+    const transferred = destination.getByRole('tab', { name: /Transferred popup/ });
+    await expect(transferred).toBeVisible();
+    await expect(popup).toHaveCount(0);
+    expect(await evaluatePage(f.app, f.origin, 'child.opener === window')).toBe(true);
+    const sourceWindow = await f.app.browserWindow(f.page);
+    const closed = f.page.waitForEvent('close');
+    await sourceWindow.evaluate(window => window.close());
+    await closed;
+    await sourceWindow.dispose();
+    await expect(transferred).toBeVisible();
+    expect(await f.app.evaluate(async ({ webContents }, id) => webContents.fromId(id)!.executeJavaScript(
+      '({ draft: document.querySelector("#draft").value, value: keptObject.value, openerDetached: opener === null })'), contentsId))
+      .toEqual({ draft: 'Keep this draft', value: 42, openerDetached: true });
+    await transferred.locator('.tab-close').click();
+    await expect(transferred).toHaveCount(0);
+    await expect.poll(() => f.app.evaluate(({ webContents }, id) => !!webContents.fromId(id), contentsId)).toBe(false);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
 test('moving a web tab to another window preserves its live page and enforces ownership', async () => {
   const f = await fixture();
   try {
