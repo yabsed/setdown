@@ -199,6 +199,10 @@ test('Git review, ordinary editors and a second window retain independent text z
   const app = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
   try {
     const page = await app.firstWindow(); await focusApplication(app);
+    const menuIds = await page.evaluate(async () => (await window.marktex.getApplicationMenu('application-menu-view')).map(item => item.id));
+    expect(menuIds).toContain('menu-reset-zoom');
+    expect(menuIds).not.toContain('menu-reset-text-zoom');
+    expect(menuIds).not.toContain('menu-reset-terminal-zoom');
     await page.evaluate(folder => window.marktex.restoreProjectFolder(folder), root);
     await page.reload();
     await page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
@@ -236,7 +240,12 @@ test('Git review, ordinary editors and a second window retain independent text z
     await second.evaluate(() => window.marktex.executeApplicationMenuItem('menu-zoom-in'));
     await expect.poll(() => page.evaluate(() => window.marktex.getZoom())).toMatchObject({ text: 100, app: 110 });
     await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().every(window => Math.abs(window.webContents.getZoomFactor() - 1.1) < .0001))).toBe(true);
-    await second.evaluate(() => window.marktex.executeApplicationMenuItem('menu-reset-text-zoom'));
+    await second.getByRole('button', { name: 'New Document', exact: true }).click();
+    const reset = second.getByRole('button', { name: 'Reset text zoom', exact: true });
+    await second.getByRole('button', { name: 'Zoom text in', exact: true }).click();
+    await expect(reset).toHaveText('110%');
+    await reset.click();
+    await expect(reset).toHaveText('100%');
     await expect.poll(() => page.locator('.editor-surface .view-line').first().evaluate(node => parseFloat(getComputedStyle(node).fontSize))).toBe(14);
     expect(await page.evaluate(async () => (await window.marktex.getZoom()).app)).toBe(110);
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }

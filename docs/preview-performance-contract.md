@@ -71,7 +71,10 @@ hidden previews. Unchanged native factors are not reapplied when another tab's
 factor changes. Terminal font updates refit the PTY through the ordered resize
 path. `workspace-zoom.test.ts`, `workspace-zoom.spec.ts`, `test/e2e/browser/*.spec.ts` and
 `terminal.spec.ts` cover scope, composition, tab independence, and reset.
-The View menu uses the same coordinator and active-tab ownership.
+The View menu uses the same coordinator for app zoom. Content zoom resets use
+the percentage control in each tab's location bar; the separate text and terminal
+reset menu items are removed. `workspace-zoom.spec.ts` checks their absence and
+retains app reset and independent tab reset coverage.
 
 Touchpad pinch follows the content under the pointer, without requiring the
 Control key. Fine pixel input, including Chromium's trusted pinch-derived wheel events,

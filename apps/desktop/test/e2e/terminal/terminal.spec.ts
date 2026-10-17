@@ -84,12 +84,12 @@ test('ctrl+wheel over the terminal changes terminal zoom only and refits the gri
     await expect.poll(fontOf).toBe(font0);
     await expect.poll(() => page.evaluate(() => window.marktex.getZoom()))
       .toMatchObject({ app: 100, text: 100, terminal: 100 });
-    // The dedicated menu reset also leaves the other factors alone.
+    // The location-bar reset also leaves the other factors alone.
     await page.keyboard.down('Control');
     await page.mouse.wheel(0, -240);
     await page.keyboard.up('Control');
     await expect.poll(fontOf).not.toBe(font0);
-    await page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-reset-terminal-zoom'));
+    await page.getByRole('button', { name: 'Reset terminal zoom', exact: true }).click();
     await expect.poll(fontOf).toBe(font0);
     await expect.poll(() => page.evaluate(() => window.marktex.getZoom()))
       .toMatchObject({ app: 100, text: 100, terminal: 100 });

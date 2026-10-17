@@ -19,9 +19,9 @@ owned by that window. App restart does not restore terminal processes.
 The cell font (13px base) follows the displaying tab's content factor. Each
 terminal tab starts at 100% and changes independently, even from other terminal
 tabs. Ctrl+wheel and address-bar controls update that tab and refit its PTY
-through the ordered resize path. View → Reset Terminal Text Size addresses the
-active tab. Ctrl+plus/minus/0 keep their separate app-zoom scope. Zoom never
-kills, restarts or detaches a session.
+through the ordered resize path. Click the percentage in the address bar to
+reset that terminal tab to 100%. Ctrl+plus/minus/0 keep their separate app-zoom
+scope. Zoom never kills, restarts or detaches a session.
 
 A session starts in the project folder, then the active document directory, then
 the user's documents/home directory. The editable location row displays `terminal://<session-id>`; the sidebar

@@ -193,12 +193,12 @@ surfaces stay in memory per window; older surfaces reload at their saved positio
 | Scope | Control | Effect |
 | --- | --- | --- |
 | Application | `Ctrl/Cmd++`, `Ctrl/Cmd+-`, `Ctrl/Cmd+0` | Resize the application across windows; `0` resets app zoom |
-| Text | `Ctrl+wheel` over Markdown or text | Change the shared reader/editor text size, including Git review |
+| Text | `Ctrl+wheel` over Markdown or text, or the address-bar zoom controls | Change that tab's reader/editor text size, including Git review |
 | PDF or image | `Ctrl+wheel` over the file, or its toolbar | Zoom that file independently |
 
-App zoom and text size persist across restarts. Use **View → Reset Text Size** to
-reset text size. Media toolbars provide their own fit and 100% controls; new PDFs
-start at fit width.
+App zoom persists across restarts; new text tabs start at 100%. Click the
+percentage in a tab's address bar to reset its content zoom to 100%. Media
+toolbars provide their own fit and 100% controls; new PDFs start at fit width.
 
 ## Optional folder tools
 

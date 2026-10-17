@@ -130,8 +130,6 @@ export function installApplicationMenu(context: MenuContext) {
         { id: 'menu-reset-zoom', label: 'Reset App Zoom', accelerator: 'CmdOrCtrl+0', click: () => context.zoom(0) },
         { id: 'menu-zoom-in', label: 'Zoom In', accelerator: 'CmdOrCtrl+Plus', click: () => context.zoom(1) },
         { id: 'menu-zoom-out', label: 'Zoom Out', accelerator: 'CmdOrCtrl+-', click: () => context.zoom(-1) },
-        { id: 'menu-reset-text-zoom', label: 'Reset Text Size', click: () => context.zoom(0, 'text') },
-        { id: 'menu-reset-terminal-zoom', label: 'Reset Terminal Text Size', click: () => context.zoom(0, 'terminal') },
       ],
     },
     {
