@@ -156,7 +156,9 @@ export class ProjectController {
     project.folder = folder; project.visible = true; project.open = true; project.activeView = 'explorer';
     this.options.folderChanged?.(folder.path);
     this.searcher.clear(); this.sourceControl.clear(); rememberProjectState();
-    await this.explorer.reset(folder); await this.sourceControl.refresh(); this.resize();
+    // Git status scans the whole tree; the explorer's top level is already
+    // rendered by reset(), so let status fill in behind it.
+    await this.explorer.reset(folder); void this.sourceControl.refresh(); this.resize();
   }
   private async refreshChangedProject(paths?: string[]): Promise<void> {
     await this.explorer.refresh(paths);

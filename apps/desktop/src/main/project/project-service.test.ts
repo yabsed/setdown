@@ -30,6 +30,24 @@ describe('project service', () => {
     await expect(service.trashEntry(state, file)).rejects.toThrow('another Setdown window');
     expect((await service.transfer(state, { kind: 'duplicate', paths: [file] })).items[0].status).toBe('completed');
   });
+  test('opening a folder does not wait for the recursive watcher subscription', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-watch-slow-'));
+    temporaryDirectories.push(root);
+    let watchStarted = false;
+    const slowWatcher = {
+      watch: () => { watchStarted = true; return new Promise<void>(() => {}); },
+      dispose: async () => undefined,
+    };
+    const service = new ProjectService(async () => [], slowWatcher);
+    const state = { projectRoot: null } as WindowState;
+    const folder = await Promise.race([
+      service.restore(state, root),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 500)),
+    ]);
+    expect(folder).toEqual({ path: root, name: path.basename(root) });
+    expect(watchStarted).toBe(true);
+  });
+
   test('classifies the document formats Setdown can open', () => {
     expect(isMarkdownDocument('notes.md')).toBe(true);
     expect(isMarkdownDocument('paper.QMD')).toBe(true);

@@ -58,7 +58,7 @@ export class ProjectService {
     const selected = await dialog.showOpenDialog(state.window, { title: 'Open Folder', properties: ['openDirectory'] });
     if (selected.canceled || !selected.filePaths[0]) return null;
     state.projectRoot = canonicalPath(selected.filePaths[0]);
-    await this.watch(state, state.projectRoot);
+    this.watch(state, state.projectRoot);
     return this.folder(state.projectRoot);
   }
   current(state: WindowState): ProjectFolder | null { return state.projectRoot ? this.folder(state.projectRoot) : null; }
@@ -67,7 +67,7 @@ export class ProjectService {
     const stat = await fs.stat(folderPath).catch(() => null);
     if (!stat?.isDirectory()) return null;
     state.projectRoot = folderPath;
-    await this.watch(state, folderPath);
+    this.watch(state, folderPath);
     return this.folder(folderPath);
   }
   dispose = (): Promise<void> => this.watcher.dispose();
@@ -93,7 +93,9 @@ export class ProjectService {
   }
   assertProjectFile(state: WindowState, candidate: string): string { return this.paths.inside(state, candidate); }
   private folder(root: string): ProjectFolder { return { path: root, name: path.basename(root) || root }; }
-  private async watch(state: WindowState, root: string): Promise<void> {
-    await this.watcher.watch(state, root).catch((error) => console.error('Could not watch the open folder:', error));
+  private watch(state: WindowState, root: string): void {
+    // Subscribing walks every directory in the tree. Never make the first
+    // (top-level) directory read wait for it; watch in the background.
+    void this.watcher.watch(state, root).catch((error) => console.error('Could not watch the open folder:', error));
   }
 }
