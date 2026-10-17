@@ -74,6 +74,7 @@
     "vscode-languageserver-protocol": "3.18.3"
   },
   "devDependencies": {
+    "@electron/rebuild": "4.2.0",
     "@noble/hashes": "2.4.0",
     "@playwright/test": "^1.60.0",
     "@sveltejs/vite-plugin-svelte": "^6.2.4",
@@ -92,13 +93,16 @@
     "wait-on": "^8.0.0"
   },
   "build": {
+    "npmRebuild": false,
+    "beforePack": "./scripts/rebuild-native.mjs",
     "appId": "app.setdown.desktop",
     "productName": "Setdown",
     "artifactName": "Setdown-${version}-${os}-${arch}.${ext}",
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
-      "package.json"
+      "package.json",
+      "!**/node_modules/canvas{,/**/*}"
     ],
     "asarUnpack": [
       "**/node_modules/sharp/**/*",

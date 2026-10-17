@@ -324,6 +324,14 @@ The installer places the application under
 sets Setdown as the default Markdown application. It uses
 `update-desktop-database` and `xdg-mime` and does not require administrator access.
 
+Packaging rebuilds native dependencies for the bundled Electron version. The
+optional Node `canvas` packages pulled in by jsdom and Fabric are excluded from
+rebuilding and the application package: image editing uses Chromium's canvas,
+and TikZ uses jsdom only to process SVG. Cairo/Pixman development packages are
+therefore not required for those unused modules. Required native dependencies,
+including `node-pty` and `@parcel/watcher`, still participate in rebuilding;
+their build failures stop packaging.
+
 To produce AppImage, deb, and rpm packages instead (requires `rpmbuild`, provided
 by `rpm` on Ubuntu/Debian or `rpm-build` on Fedora; the bundled FPM tool also
 requires `libcrypt.so.1`, supplied by `libcrypt1` on Ubuntu):
