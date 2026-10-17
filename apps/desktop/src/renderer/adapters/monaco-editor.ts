@@ -15,7 +15,10 @@ import { DocumentModelOwner, liveDocumentModels } from '../editor/live-document-
 import { installMarkdownEditorActions } from '../editor/markdown-editor-actions';
 import { monacoThemeName, registerMonacoThemes } from '../theme';
 import { languageSupport, type LanguageRoute } from '../../core/document/language-support';
-import type { LanguageClient, LanguageOptions } from '../language/language-client';
+import type { LanguageOptions } from '../language/language-client';
+import type { LanguageServices } from '../language/language-services';
+import { documentSupport, builtinSupport, onBuiltinSupport, retargetBuiltin } from '../language/language-runtime';
+import { recognizedLanguage } from '../../core/document/language-policy';
 import { loadMonaco } from '../editor/monaco-runtime';
 
 type Options = {
@@ -38,7 +41,12 @@ export class MonacoEditor {
   private languageEpoch = 0;
   private unregisterLanguage?: () => void;
   private readonly languageContexts = new Map<Monaco.editor.IStandaloneCodeEditor, () => void>();
-  private languageClient: LanguageClient | undefined;
+  private languageClient: LanguageServices | undefined;
+  private readonly languageOverrides = new Map<string, string>();
+  private readonly offBuiltin = onBuiltinSupport(model => {
+    const tab = this.options.tabs().find(tab => this.models.get(tab.id) === model);
+    if (tab) this.publishLanguageSupport(tab, model);
+  });
   private languageLoading: Promise<void> | undefined;
   private disposed = false;
   private languageRoot: string | null = null;
@@ -90,7 +98,7 @@ export class MonacoEditor {
   }
   disposeWorkspace(): void {
     this.disposed = true;
-    this.unregisterLanguage?.();
+    this.unregisterLanguage?.(); this.offBuiltin();
     this.languageClient?.dispose();
     this.unregisterModels();
     this.unregisterZoom();
@@ -239,6 +247,7 @@ export class MonacoEditor {
     const language = documentLanguage(tab.document.path, api.languages.getLanguages(), model.getLineContent(1));
     if (model.getLanguageId() !== language) api.editor.setModelLanguage(model, language);
     this.modelPaths.set(tab.id, tab.document.path);
+    retargetBuiltin(api, model, tab.document.path);
     this.connectLanguage(tab, model, api);
     if (previousPath) liveDocumentModels.publish({ type: 'retargeted', path: previousPath, nextPath: tab.document.path });
   }
@@ -284,6 +293,7 @@ export class MonacoEditor {
   }
   dispose(tabId: string): void {
     const model = this.models.get(tabId);
+    documentSupport.remove(tabId); this.languageOverrides.delete(tabId);
     if (model) this.languageClient?.unbind(model);
     const path = this.modelPaths.get(tabId);
     for (const entry of this.groupEditors.values()) if (model && entry.editor.getModel() === model) entry.editor.setModel(null);
@@ -379,6 +389,7 @@ export class MonacoEditor {
     this.models.set(tab.id, model);
     this.owners.set(tab.id, new DocumentModelOwner(model, () => listener.dispose()));
     this.modelPaths.set(tab.id, tab.document.path);
+    retargetBuiltin(api, model, tab.document.path);
     this.connectLanguage(tab, model, api);
     return model;
   }
@@ -396,25 +407,49 @@ export class MonacoEditor {
       }).catch(error => console.error('Could not read language configuration', error));
       return;
     }
-    const support = languageSupport(tab.document.path, this.languageRoutes);
-    const route = this.languageRoutes.find(route => route.server === support?.server && route.languageId === support?.languageId);
-    const language = route?.monacoId ?? support?.languageId
-      ?? documentLanguage(tab.document.path, api.languages.getLanguages(), model.getLineContent(1));
-    if (api.languages.getLanguages().some(item => item.id === language) && model.getLanguageId() !== language)
+    const language = this.languageOverrides.get(tab.id) ?? recognizedLanguage(tab.document.path, api.languages.getLanguages(), this.languageRoutes, model.getLineContent(1));
+    if (!api.languages.getLanguages().some(item => item.id === language)) api.languages.register({ id: language });
+    if (model.getLanguageId() !== language) {
+      this.languageClient?.unbind(model);
       api.editor.setModelLanguage(model, language);
+    }
+    this.publishLanguageSupport(tab, model);
     if (this.languageClient) { this.languageClient.bind(tab, model); return; }
-    if (tab.document.isUntitled || !support) return;
-    this.languageLoading ??= import('../language/language-client').then(({ LanguageClient }) => {
+    // Markdown stays off the analysis import path unless a provider was explicitly enabled.
+    if (language === 'markdown' && !languageSupport(tab.document.path, this.languageRoutes)) return;
+    this.languageLoading ??= import('../language/language-services').then(({ LanguageServices }) => {
       if (this.disposed || epoch !== this.languageEpoch) return;
-      this.languageClient = new LanguageClient(api, { ...options, route: file => languageSupport(file, this.languageRoutes ?? []), status: state => {
-        this.options.host.dataset.languageServer = state;
-        for (const update of this.languageContexts.values()) update();
-      } });
+      this.languageClient = new LanguageServices(api, { ...options, routes: () => this.languageRoutes ?? [],
+        changed: () => {
+          for (const current of this.options.tabs()) { const currentModel = this.models.get(current.id); if (currentModel) this.publishLanguageSupport(current, currentModel); }
+          for (const update of this.languageContexts.values()) update();
+        },
+        status: state => { this.options.host.dataset.languageServer = state; },
+      });
       for (const current of this.options.tabs()) {
         const currentModel = this.models.get(current.id);
         if (currentModel) this.connectLanguage(current, currentModel, api);
       }
     }).catch(error => { if (epoch === this.languageEpoch) this.languageLoading = undefined; console.error('Could not load language support', error); });
+  }
+  private publishLanguageSupport(tab: WorkspaceTab, model: Monaco.editor.ITextModel): void {
+    const api = this.apiValue;
+    if (!api || model.isDisposed()) return;
+    const language = model.getLanguageId();
+    const choices = api.languages.getLanguages().map(item => ({ id: item.id, name: item.aliases?.[0] ?? item.id })).sort((a, b) => a.name.localeCompare(b.name));
+    documentSupport.set({ id: tab.id, language, name: choices.find(item => item.id === language)?.name ?? language, path: tab.document.path,
+      choices, providers: this.languageClient?.supportFor(model) ?? (builtinSupport(model).features.length ? [builtinSupport(model)] : []),
+      setLanguage: id => {
+        if (model.isDisposed() || (id && !choices.some(item => item.id === id))) return;
+        if (id) this.languageOverrides.set(tab.id, id); else this.languageOverrides.delete(tab.id);
+        this.languageClient?.unbind(model); this.connectLanguage(tab, model, api);
+      },
+      restart: () => { retargetBuiltin(api, model, tab.document.path); void this.languageClient?.restart().catch(error => console.warn('Language restart failed', error)); },
+      problems: () => {
+        const editor = [...this.groupEditors.values()].find(entry => entry.editor.getModel() === model)?.editor;
+        if (editor) void this.languageClient?.showNavigation('problems', editor);
+      },
+    });
   }
   private installBindings(api: typeof Monaco, editor: Monaco.editor.IStandaloneCodeEditor): void {
     if (this.options.pythonCells) editor.addAction({ id: 'setdown.python-cells', label: 'Open Python # %% cells as interactive notebook…', precondition: 'editorLangId == python', contextMenuGroupId: 'navigation', contextMenuOrder: 7, run: async () => {
@@ -426,7 +461,7 @@ export class MonacoEditor {
     const updateLanguageContext = () => {
       const cap = this.languageClient?.capabilitiesFor(editor.getModel());
       symbols.set(!!cap?.workspaceSymbolProvider); calls.set(!!cap?.callHierarchyProvider); types.set(!!cap?.typeHierarchyProvider);
-      problems.set(!!cap && Object.keys(cap).length > 0);
+      problems.set(!!editor.getModel());
     };
     this.languageContexts.set(editor, updateLanguageContext);
     editor.onDidChangeModel(updateLanguageContext);

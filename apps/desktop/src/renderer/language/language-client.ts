@@ -13,12 +13,19 @@ import type { LanguageRefresh } from '../../protocol/language-features';
 import { completionDefaults, completion, fromRange, markdown, marker, toPosition, toRange } from './language-conversion';
 import { requestLanguageResult, LanguageRequestError, languageItemHandles } from '../../protocol/language-request';
 import { completionContext as toCompletionContext } from '../../protocol/language-completion';
-import { ownLanguageDiagnostics, hasBuiltinLanguageService } from './builtin-diagnostics';
+import { ownLanguageDiagnostics } from './builtin-diagnostics';
+import { diagnosticsFor, type DiagnosticStore } from './diagnostic-store';
+import type { ProviderSupport } from './document-support';
+import { featureNames } from '../../protocol/language-features';
 
-type Binding = { capabilities: LanguageCapabilities; diagnosticCache: DiagnosticCache; diagnostics: L.Diagnostic[]; refresh: Map<LanguageRefresh, Set<() => void>>; serverId: string; tab: DocumentTab; model: M.editor.ITextModel; path: string; generation: string; connected: Promise<LanguageConnection | LanguageUnavailable>;
+type Binding = { serverName?: string; hasDiagnostics?: boolean; id: string; context?: string[]; unavailable?: 'missing' | 'selection-needed'; lease: ReturnType<DiagnosticStore['lease']>; diagnosticChannels: Map<string, L.Diagnostic[]>; capabilities: LanguageCapabilities; diagnosticCache: DiagnosticCache; diagnostics: L.Diagnostic[]; refresh: Map<LanguageRefresh, Set<() => void>>; serverId: string; tab: DocumentTab; model: M.editor.ITextModel; path: string; generation: string; connected: Promise<LanguageConnection | LanguageUnavailable>;
   uri?: string; sync?: ReturnType<typeof textSynchronization>; queue: Promise<unknown>; listener: M.IDisposable; providers: M.IDisposable[]; failed: boolean; state: 'starting' | 'ready' | 'failed' | 'unavailable'; message?: string };
 export type LanguageOptions = {
   port: LanguageApi;
+  provider?: string;
+  languageId?(model: M.editor.ITextModel): string | undefined;
+  filterCapabilities?(model: M.editor.ITextModel, server: string, capabilities: LanguageCapabilities): LanguageCapabilities;
+  documentStatus?(model: M.editor.ITextModel, status?: ProviderSupport): void;
   route?: typeof languageSupport;
   prepare(path: string): Promise<{ tab: DocumentTab; model: M.editor.ITextModel }>;
   open(path: string, selection: M.IRange | M.IPosition | undefined): Promise<void>;
@@ -39,30 +46,35 @@ export class LanguageClient {
   private readonly commandEdits = new Map<Binding, Map<M.editor.ITextModel, number>>();
   constructor(private readonly api: typeof M, private readonly options: LanguageOptions) {
     this.disposables.push({ dispose: options.port.onEvent(event => {
+      if (event.type === 'context') {
+        const binding = [...this.bindings.values()].find(b => b.id === event.id && b.generation === event.generation);
+        if (binding) { binding.context = event.context; this.publishStatus(); }
+        return;
+      }
       if (event.type === 'refresh') {
-        for (const binding of this.bindings.values()) if (event.documents.some(d => d.id === binding.tab.id && d.generation === binding.generation))
+        for (const binding of this.bindings.values()) if (event.documents.some(d => d.id === binding.id && d.generation === binding.generation))
           for (const listener of binding.refresh.get(event.feature) ?? []) listener();
         return;
       }
       if (event.type === 'capabilities') {
-        const binding = [...this.bindings.values()].find(b => b.tab.id === event.id && b.generation === event.generation);
+        const binding = [...this.bindings.values()].find(b => b.id === event.id && b.generation === event.generation);
         if (binding && !binding.failed) this.installProviders(binding, event.capabilities);
         return;
       }
       if (event.type === 'apply-edit') {
-        const binding = [...this.bindings.values()].find(b => b.tab.id === event.id && b.generation === event.generation);
+        const binding = [...this.bindings.values()].find(b => b.id === event.id && b.generation === event.generation);
         let versions = binding && this.commandEdits.get(binding);
         if (event.versions) {
           versions = new Map();
           for (const document of event.versions) {
-            const target = [...this.bindings.values()].find(b => b.tab.id === document.id && b.generation === document.generation);
+            const target = [...this.bindings.values()].find(b => b.id === document.id && b.generation === document.generation);
             if (target) versions.set(target.model, document.version);
           }
         }
         void (async () => {
           try {
             if (!binding || !versions) throw Error('No active editor command accepts edits.');
-            if (event.versions?.some(document => ![...this.bindings.values()].some(b => b.tab.id === document.id && b.generation === document.generation))) throw Error('Documents closed during the file operation.');
+            if (event.versions?.some(document => ![...this.bindings.values()].some(b => b.id === document.id && b.generation === document.generation))) throw Error('Documents closed during the file operation.');
             const edit = await this.workspaceEdit(event.edit, versions, noCancellation, true);
             if (this.bindings.get(binding.model) !== binding) throw Error('Language session closed.');
             this.applyEdit(edit);
@@ -75,20 +87,22 @@ export class LanguageClient {
         return;
       }
       if (event.type === 'status') {
-        const affected = [...this.bindings.values()].filter(binding => event.documents.some(document => document.id === binding.tab.id && document.generation === binding.generation));
+        const affected = [...this.bindings.values()].filter(binding => event.documents.some(document => document.id === binding.id && document.generation === binding.generation));
         if (!affected.length) return;
         for (const binding of affected) { binding.state = event.state; binding.message = event.message; }
         this.publishStatus();
         if (event.state === 'failed') for (const binding of affected) {
-          binding.failed = true; binding.diagnostics = []; api.editor.setModelMarkers(binding.model, 'setdown-language', []);
+          binding.failed = true; binding.diagnostics = []; binding.diagnosticChannels.clear(); binding.lease.clear();
           for (const provider of binding.providers) provider.dispose(); binding.providers = [];
         }
-        return;
+        this.publishStatus(); return;
       }
       if (event.type !== 'diagnostics') return;
-      const binding = [...this.bindings.values()].find(binding => binding.tab.id === event.id);
-      if (binding && binding.generation === event.generation && !binding.failed && !binding.model.isDisposed() && binding.model.getVersionId() === event.version)
-        this.diagnostics(binding, event.diagnostics);
+      const binding = [...this.bindings.values()].find(binding => binding.id === event.id);
+      if (binding && binding.generation === event.generation && !binding.failed && !binding.model.isDisposed() && binding.model.getVersionId() === event.version) {
+        if (event.server) this.setServer(binding, event.server);
+        this.diagnostics(binding, event.diagnostics, 'push', event.unversioned ? undefined : event.version);
+      }
     }) });
     this.disposables.push(api.editor.registerEditorOpener({ openCodeEditor: async (_source, uri, selection) => {
       if (uri.scheme !== 'file') return false;
@@ -105,31 +119,33 @@ export class LanguageClient {
     this.unbind(model);
     if (tab.document.isUntitled || model.isDisposed() || !(this.options.route ?? languageSupport)(tab.document.path)) return;
     const generation = crypto.randomUUID();
-    const connected = this.options.port.open({ id: tab.id, generation, path: tab.document.path,
+    diagnosticsFor(this.api).setResource(model, tab.document.path);
+    const id = this.options.provider ? `${tab.id}:${this.options.provider}` : tab.id;
+    const connected = this.options.port.open({ id, generation, path: tab.document.path, server: this.options.provider, languageId: this.options.languageId?.(model),
       text: model.getValue(), version: model.getVersionId() });
-    const binding: Binding = { capabilities: {}, diagnosticCache: new Map(), diagnostics: [], refresh: new Map(), serverId: (this.options.route ?? languageSupport)(tab.document.path)!.server, tab, model, path: tab.document.path, generation, connected, queue: connected,
+    const binding: Binding = { id, lease: diagnosticsFor(this.api).lease(model, (this.options.route ?? languageSupport)(tab.document.path)!.server, generation), diagnosticChannels: new Map(), capabilities: {}, diagnosticCache: new Map(), diagnostics: [], refresh: new Map(), serverId: (this.options.route ?? languageSupport)(tab.document.path)!.server, tab, model, path: tab.document.path, generation, connected, queue: connected,
       failed: false, state: 'starting', providers: [], listener: { dispose() {} } };
     this.bindings.set(model, binding);
     const fail = (error: unknown) => {
       if (this.bindings.get(model) !== binding) return;
-      binding.failed = true; binding.state = 'failed'; binding.message = String(error); this.publishStatus();
+      binding.failed = true; binding.state = 'failed'; binding.message = String(error); binding.lease.clear();
+      for (const provider of binding.providers) provider.dispose(); binding.providers = []; this.publishStatus();
     };
     // A failed initialization is a language-service state, not a rejected
     // editor/save queue. Keep ordinary editing usable while restart is offered.
     binding.queue = connected.then(connection => {
       if (this.bindings.get(model) !== binding) return;
       if ('unavailable' in connection) {
-        binding.state = 'unavailable'; binding.listener.dispose(); this.publishStatus(); return;
+        binding.state = 'unavailable'; binding.unavailable = connection.unavailable; binding.listener.dispose(); this.publishStatus(); return;
       }
-      binding.uri = connection.uri;
-      binding.serverId = connection.server ?? binding.serverId;
+      binding.uri = connection.uri; binding.state = 'ready'; binding.context = connection.context; binding.serverName = connection.name;
+      this.setServer(binding, connection.server ?? binding.serverId);
       binding.sync = textSynchronization(connection.capabilities);
       if (this.bindings.get(model) === binding && !binding.failed) this.installProviders(binding, connection.capabilities);
     }).catch(fail);
     binding.listener = model.onDidChangeContent(event => {
       if (!this.applying) this.cancel(binding);
-      binding.diagnostics = [];
-      this.api.editor.setModelMarkers(model, 'setdown-language', []);
+      binding.diagnostics = []; binding.diagnosticChannels.clear(); binding.lease.clear();
       const version = model.getVersionId();
       // Monaco reports simultaneous edits against the old model. Descending
       // offsets turn them into LSP's sequential edits, including CRLF and emoji.
@@ -139,7 +155,7 @@ export class LanguageClient {
       const fullText = !binding.sync || binding.sync.change === 1 || event.isFlush || event.isEolChange ? model.getValue() : undefined;
       binding.queue = binding.queue.then(() => {
         if (this.bindings.get(model) === binding && !binding.failed && binding.state !== 'unavailable')
-          return this.options.port.change(tab.id, version, binding.sync?.change === 0 ? []
+          return this.options.port.change(binding.id, version, binding.sync?.change === 0 ? []
             : binding.sync?.change === 1 || event.isFlush || event.isEolChange ? [{ text: fullText! }] : changes);
       }).catch(fail);
       for (const other of this.bindings.values()) if (other !== binding && other.capabilities.diagnosticProvider?.interFileDependencies)
@@ -153,8 +169,8 @@ export class LanguageClient {
     this.bindings.delete(model); binding.listener.dispose(); this.cancel(binding);
     for (const provider of binding.providers) provider.dispose();
     this.publishStatus();
-    if (!model.isDisposed()) this.api.editor.setModelMarkers(model, 'setdown-language', []);
-    this.options.port.close(binding.tab.id);
+    binding.lease.dispose(); this.options.documentStatus?.(model, undefined);
+    this.options.port.close(binding.id);
   }
   async beforeSave(model: M.editor.ITextModel, reason: 1 | 2 = 1): Promise<void> {
     const binding = this.bindings.get(model);
@@ -169,7 +185,7 @@ export class LanguageClient {
   saved(model: M.editor.ITextModel, text = model.getValue()): void {
     const binding = this.bindings.get(model);
     if (binding) void binding.queue.then(() => {
-      if (this.bindings.get(model) === binding && !binding.failed && binding.state !== 'unavailable') this.options.port.saved(binding.tab.id, text);
+      if (this.bindings.get(model) === binding && !binding.failed && binding.state !== 'unavailable') this.options.port.saved(binding.id, text);
     });
   }
   private cancel(binding: Binding): void {
@@ -187,7 +203,7 @@ export class LanguageClient {
     const cancel = token.onCancellationRequested(() => this.options.port.cancel(id));
     try {
       if (commandVersions) this.commandEdits.set(binding, commandVersions);
-      const result = await requestLanguageResult<T>(method, () => this.options.port.request(binding.tab.id, version, id, method, params),
+      const result = await requestLanguageResult<T>(method, () => this.options.port.request(binding.id, version, id, method, params),
         () => this.bindings.get(model) === binding && !binding.failed && !model.isDisposed() && model.getVersionId() === version, token);
       return this.bindings.get(model) === binding && !model.isDisposed() && model.getVersionId() === version
         && !token.isCancellationRequested ? result as T : null;
@@ -221,12 +237,17 @@ export class LanguageClient {
   }
   dispose(): void {
     this.disposed = true;
-    this.restartDocuments?.clear();
+    this.restartDocuments?.clear(); this.resultsView?.dispose();
     for (const model of this.bindings.keys()) this.unbind(model);
     for (const disposable of this.disposables) disposable.dispose();
   }
   private publishStatus(): void {
     const bindings = [...this.bindings.values()];
+    for (const binding of bindings) this.options.documentStatus?.(binding.model, {
+      id: binding.serverId, name: binding.serverName ?? binding.serverId, kind: 'server', state: binding.state === 'unavailable' ? binding.unavailable ?? 'missing' : binding.state,
+      features: binding.failed ? [] : featureNames(binding.capabilities), checks: !binding.failed && binding.state === 'ready' && (binding.capabilities.diagnosticProvider || binding.hasDiagnostics) ? 'Server diagnostics' : 'none',
+      message: binding.message, context: binding.context,
+    });
     const current = bindings.find(binding => binding.state === 'failed') ?? bindings.find(binding => binding.state === 'starting');
     this.options.status(current?.state ?? (bindings.some(b => b.state === 'ready') ? 'ready' : 'unavailable'), current?.message);
   }
@@ -241,6 +262,7 @@ export class LanguageClient {
   async showNavigation(kind: 'symbols' | 'incoming' | 'outgoing' | 'supertypes' | 'subtypes' | 'problems', editor: M.editor.IStandaloneCodeEditor): Promise<void> {
     const model = editor.getModel(), position = editor.getPosition();
     if (!model || !position) return;
+    if (kind === 'problems') { await this.showProblems(editor); return; }
     const binding = this.bindings.get(model);
     if (!binding) return;
     const capability = { symbols: 'workspaceSymbolProvider', incoming: 'callHierarchyProvider', outgoing: 'callHierarchyProvider', supertypes: 'typeHierarchyProvider', subtypes: 'typeHierarchyProvider', problems: undefined }[kind] as keyof L.ServerCapabilities | undefined;
@@ -271,8 +293,6 @@ export class LanguageClient {
     this.resultsView?.dispose();
     const view = await showLanguageResults(host, { title: titles[kind], searchable: kind === 'symbols', load: async (query, token) => {
       if (!valid()) throw Error('Document changed. Reopen language results.');
-      if (kind === 'problems') return [...this.bindings.values()].flatMap(b => b.diagnostics.map(d => location(
-        `${d.severity === 1 ? 'Error' : d.severity === 2 ? 'Warning' : 'Info'} · ${typeof d.message === 'string' ? d.message : d.message.value}`, b.uri!, d.range)));
       if (kind === 'symbols') {
         const result = await this.request<(L.SymbolInformation | L.WorkspaceSymbol)[]>(model, 'workspace/symbol', { query }, token);
         return (result ?? []).filter(symbol => symbol.location.uri.startsWith('file:')).map(symbol => {
@@ -293,10 +313,31 @@ export class LanguageClient {
     if (!valid()) { view.dispose(); return; }
     binding.providers.push(view);
   }
+  async showProblems(editor: M.editor.IStandaloneCodeEditor): Promise<void> {
+    const host = editor.getDomNode()?.parentElement;
+    if (!host) return;
+    const { showLanguageResults } = await import('./language-results');
+    this.resultsView?.dispose();
+    this.resultsView = await showLanguageResults(host, { title: 'Problems · Open Files', searchable: false, empty: 'No diagnostics reported. Language Support shows which checks are active.',
+      subscribe: listener => diagnosticsFor(this.api).subscribe(listener),
+      load: async () => diagnosticsFor(this.api).entries().map(({ model, batch, item }) => ({
+        label: item.message, detail: `${item.source ?? batch.provider} · ${diagnosticsFor(this.api).resource(model)}:${item.startLineNumber}`,
+        open: async () => { await this.options.open(diagnosticsFor(this.api).resource(model), item); },
+      })),
+    }, () => editor.focus());
+  }
   private snapshot(): Map<M.editor.ITextModel, number> { return new Map([...this.bindings.keys()].map(model => [model, model.getVersionId()])); }
-  private diagnostics(binding: Binding, diagnostics: L.Diagnostic[]): void {
-    binding.diagnostics = diagnostics;
-    this.api.editor.setModelMarkers(binding.model, 'setdown-language', diagnostics.map(d => marker(this.api, d)));
+  private setServer(binding: Binding, server: string): void {
+    if (binding.serverId === server) return;
+    binding.lease.dispose(); binding.serverId = server;
+    binding.lease = diagnosticsFor(this.api).lease(binding.model, server, binding.generation);
+    for (const [channel, items] of binding.diagnosticChannels) binding.lease.publish(channel, items.map(d => marker(this.api, d)));
+  }
+  private diagnostics(binding: Binding, diagnostics: L.Diagnostic[], channel = 'push', version?: number): void {
+    if (!binding.hasDiagnostics) { binding.hasDiagnostics = true; binding.providers.push(ownLanguageDiagnostics(this.api, binding.model, binding.serverId)); this.publishStatus(); }
+    binding.diagnosticChannels.set(channel, diagnostics);
+    binding.diagnostics = [...binding.diagnosticChannels.values()].flat();
+    binding.lease.publish(channel, diagnostics.map(d => marker(this.api, d)), version);
   }
   private applyEdit(edit: M.languages.WorkspaceEdit): void {
     const grouped = new Map<M.editor.ITextModel, M.editor.IIdentifiedSingleEditOperation[]>();
@@ -315,10 +356,10 @@ export class LanguageClient {
   }
   private installProviders(owner: Binding, capabilities: LanguageCapabilities): void {
     for (const provider of owner.providers) provider.dispose();
-    owner.providers = []; owner.capabilities = capabilities;
+    owner.providers = []; capabilities = this.options.filterCapabilities?.(owner.model, owner.serverId, capabilities) ?? capabilities; owner.capabilities = capabilities;
     const { api } = this;
-    const language = { language: owner.model.getLanguageId(), scheme: 'file', pattern: owner.model.uri.fsPath, exclusive: hasBuiltinLanguageService(owner.model.getLanguageId()) };
-    owner.providers.push(ownLanguageDiagnostics(api, owner.model));
+    const language = { language: owner.model.getLanguageId(), scheme: 'file', pattern: owner.model.uri.fsPath, exclusive: false };
+    if (capabilities.diagnosticProvider || owner.hasDiagnostics) owner.providers.push(ownLanguageDiagnostics(api, owner.model, owner.serverId));
     // Each provider belongs to one live model and its negotiated capabilities.
     // Different roots/servers may advertise different triggers or resolve support.
     const scoped = <T extends object>(provider: T): T => Object.fromEntries(Object.entries(provider).map(([key, value]) =>
@@ -352,7 +393,7 @@ export class LanguageClient {
       }),
     };
     installNavigationFeatures(context); installSemanticFeatures(context); installEditFeatures(context);
-    installPullDiagnostics(context, diagnostics => this.diagnostics(owner, diagnostics), owner.diagnosticCache);
+    installPullDiagnostics(context, diagnostics => this.diagnostics(owner, diagnostics, 'pull', owner.model.getVersionId()), owner.diagnosticCache);
     this.publishStatus();
     if (capabilities.completionProvider) owner.providers.push(api.languages.registerCompletionItemProvider(language, scoped({
       triggerCharacters: capabilities.completionProvider!.triggerCharacters,
@@ -372,7 +413,7 @@ export class LanguageClient {
           return converted;
         });
         return { suggestions, incomplete: !Array.isArray(response) && response.isIncomplete,
-          dispose: () => { lease.disposed = true; this.options.port.releaseItems?.(binding.tab.id, [...lease.handles]); } };
+          dispose: () => { lease.disposed = true; this.options.port.releaseItems?.(binding.id, [...lease.handles]); } };
       },
       resolveCompletionItem: !capabilities.completionProvider!.resolveProvider ? undefined : async (item, token) => {
         const data = this.completionItems.get(item);
@@ -381,7 +422,7 @@ export class LanguageClient {
         if (!data || !valid()) return { ...item, additionalTextEdits: undefined };
         const resolved = await this.request<L.CompletionItem>(data.binding.model, 'completionItem/resolve', data.item, token);
         const handles = languageItemHandles(resolved);
-        if (data.lease.disposed) this.options.port.releaseItems?.(data.binding.tab.id, handles);
+        if (data.lease.disposed) this.options.port.releaseItems?.(data.binding.id, handles);
         else for (const handle of handles) data.lease.handles.add(handle);
         if (!valid()) return { ...item, additionalTextEdits: undefined };
         if (!resolved) return item;
@@ -435,7 +476,7 @@ export class LanguageClient {
           : [convert(symbol)]);
       },
     })));
-    if (capabilities.renameProvider) owner.providers.push(api.languages.registerRenameProvider(language, scoped({
+    if (capabilities.renameProvider) owner.providers.push(api.languages.registerRenameProvider({ ...language, exclusive: true }, scoped({
       resolveRenameLocation: typeof capabilities.renameProvider !== 'object' || !capabilities.renameProvider.prepareProvider ? undefined : async (model, position, token) => {
         const result = await this.request<L.Range | { range: L.Range; placeholder: string } | { defaultBehavior: boolean }>(model, 'textDocument/prepareRename', { position: toPosition(position) }, token);
         if (!result) return { range: new api.Range(position.lineNumber, position.column, position.lineNumber, position.column), text: '', rejectReason: 'This symbol cannot be renamed.' };

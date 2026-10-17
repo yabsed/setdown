@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import ExtensionActions from '../../browser/ExtensionActions.svelte';
+  import DocumentLanguageStatus from '../../language/DocumentLanguageStatus.svelte';
+  import { isNotebookDocument } from '../../../core/document/document-profile';
   import ZoomControls from '../../ZoomControls.svelte';
   import { zoomState, mediaZoom } from '../../zoom-state.svelte';
   import { view } from '../workspace-view.svelte';
@@ -174,6 +176,9 @@ import type { AppActions } from '../../ports/ui-actions';
   {#if tab && browser.auth[tab.id]}
     <button aria-label="Sign in to website" title={`Sign in to ${browser.auth[tab.id].origin}`}
       onclick={() => { browser.authId = tab.id; }}>Sign in</button>
+  {/if}
+  {#if tab && !web && tab.kind !== 'terminal' && !markdown && !review && !media && !hwp && !isNotebookDocument(tab.path)}
+    <DocumentLanguageStatus tabId={tab.id} />
   {/if}
   {#if focusedGroup}
     <div class="location-actions">

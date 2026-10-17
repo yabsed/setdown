@@ -1,5 +1,7 @@
 /** Routing metadata is independent of analysis, installation and editor APIs. */
 export type LanguageRoute = {
+  role?: 'primary' | 'supplementary'; enabled?: boolean; formatting?: boolean;
+  scopes?: { root: string; role?: 'primary' | 'supplementary'; formatting?: boolean }[];
   server: string; languageId: string; monacoId?: string;
   extensions: string[]; caseSensitiveExtensions?: string[];
   filenames?: string[]; filenamePatterns?: string[];
@@ -11,6 +13,7 @@ export const defaultLanguageRoutes: LanguageRoute[] = [
     extensions: ['.cc', '.cpp', '.cxx', '.c++', '.hh', '.hpp', '.hxx', '.h++', '.ipp', '.inl', '.tpp', '.ixx', '.cppm'] },
 ];
 export function languageSupport(file: string, routes = defaultLanguageRoutes): { server: string; languageId: string } | null {
+  routes = routes.filter(route => route.enabled !== false);
   const normalized = file.replace(/\\/g, '/');
   const name = normalized.split('/').at(-1)!;
   const named = routes.find(route => route.filenames?.includes(name));
@@ -41,4 +44,15 @@ export function matchesLanguagePattern(file: string, pattern: string): boolean {
     patterns.set(pattern, expression);
   }
   return expression.test(file.replace(/\\/g, '/'));
+}
+
+/** Apply routing preferences to the document, not the currently focused folder. */
+export function resourceLanguageRoutes(routes: LanguageRoute[], file: string): LanguageRoute[] {
+  const normalize = (value: string) => value.replace(/\\/g, '/').replace(/\/$/, '');
+  const resource = normalize(file);
+  return routes.map(route => (route.scopes ?? []).filter(scope => {
+    const root = normalize(scope.root); return resource === root || resource.startsWith(root + '/');
+  }).sort((a, b) => a.root.length - b.root.length).reduce((current, scope) => ({ ...current,
+    ...(scope.role === undefined ? {} : { role: scope.role }), ...(scope.formatting === undefined ? {} : { formatting: scope.formatting }),
+  }), route));
 }

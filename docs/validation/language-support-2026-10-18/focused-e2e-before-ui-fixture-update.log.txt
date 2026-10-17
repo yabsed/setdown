@@ -1,0 +1,100 @@
+
+Running 9 tests using 1 worker
+
+(node:66235) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[1/9] test/e2e/language/language-policy.spec.ts:16:1 › without servers, language modes and real local errors survive; project guesses and schema loading failures are not code errors
+dbus-daemon[66223]: [session uid=1000 pid=66223] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=66246 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[66223]: [session uid=1000 pid=66223] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=66246 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[66223]: [session uid=1000 pid=66223] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[66223]: [session uid=1000 pid=66223] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.3' (uid=1000 pid=66305 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[66223]: [session uid=1000 pid=66223] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[66223]: [session uid=1000 pid=66223] Activating service name='org.freedesktop.portal.Documents' requested by ':1.3' (uid=1000 pid=66305 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[66223]: [session uid=1000 pid=66223] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[66223]: [session uid=1000 pid=66223] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.3' (uid=1000 pid=66305 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[66223]: [session uid=1000 pid=66223] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=66347 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[66223]: [session uid=1000 pid=66223] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[66223]: [session uid=1000 pid=66223] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[66223]: [session uid=1000 pid=66223] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.3' (uid=1000 pid=66305 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[66223]: [session uid=1000 pid=66223] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:66305): xdg-desktop-portal-WARNING **: 01:32:04.580: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[66223]: [session uid=1000 pid=66223] Activating service name='org.freedesktop.secrets' requested by ':1.3' (uid=1000 pid=66305 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+** Message: 01:32:04.590: couldn't access control socket: /tmp/setdown-display-runtime.9QAr10/keyring/control: No such file or directory
+discover_other_daemon: 0dbus-daemon[66223]: [session uid=1000 pid=66223] Successfully activated service 'org.freedesktop.secrets'
+dbus-daemon[66223]: [session uid=1000 pid=66223] Successfully activated service 'org.freedesktop.portal.Desktop'
+[2/9] test/e2e/language/language-policy.spec.ts:74:1 › project analysis, a supplementary formatter and local validation share one document without overwriting diagnostics
+[3/9] test/e2e/language/language-policy.spec.ts:125:1 › the bundled project service resolves installed and sibling imports while preserving real missing-import and type errors
+[4/9] test/e2e/language/language-reform.spec.ts:9:1 › real IPC preserves cancellation, independent diagnostic registrations and a 4,097-item completion list
+[5/9] test/e2e/language/language-reform.spec.ts:60:1 › built-in JSON, CSS and HTML workers work with external servers disabled
+[6/9] test/e2e/language/language-registry.spec.ts:13:1 › the language sidebar searches all discoverable servers, shows language logos and keeps manual connections repairable
+  1) test/e2e/language/language-registry.spec.ts:13:1 › the language sidebar searches all discoverable servers, shows language logos and keeps manual connections repairable 
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  getByRole('region', { name: 'Language Support', exact: true }).locator('[data-group="detected"]').locator('.server')
+    Expected: 2
+    Received: 3
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveCount" getByRole('region', { name: 'Language Support', exact: true }).locator('[data-group="detected"]').locator('.server') with timeout 5000ms
+      - waiting for getByRole('region', { name: 'Language Support', exact: true }).locator('[data-group="detected"]').locator('.server')
+        2 × locator resolved to 0 elements
+          - unexpected value "0"
+        12 × locator resolved to 3 elements
+           - unexpected value "3"
+
+
+      28 |     const detected = panel.locator('[data-group="detected"]');
+      29 |     const available = panel.locator('[data-group="available"]');
+    > 30 |     await expect(detected.locator('.server')).toHaveCount(2);
+         |                                               ^
+      31 |     await expect(detected.locator('[data-server-id="pyright"]')).toContainText('Pyright');
+      32 |     await expect(detected.locator('[data-server-id="notebook-python"]')).toContainText('Notebook Python');
+      33 |     await expect(detected.getByRole('img', { name: 'Python logo' })).toHaveCount(2);
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/language/language-registry.spec.ts:30:47
+
+    Error Context: test-results/language-language-registry-0387f-nual-connections-repairable/error-context.md
+
+
+(node:68468) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[7/9] test/e2e/language/language-registry.spec.ts:98:1 › installing a server while editing and rescanning connects the current model without replacing healthy sessions
+[8/9] test/e2e/language/language-registry.spec.ts:158:1 › Edit menu imports a new server, negotiates Full sync, and reconnects the same unsaved model with Undo intact
+  2) test/e2e/language/language-registry.spec.ts:158:1 › Edit menu imports a new server, negotiates Full sync, and reconnects the same unsaved model with Undo intact 
+
+    TimeoutError: locator.fill: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('region', { name: 'Language Support', exact: true }).getByLabel('Server options (JSON)')
+
+
+      231 |     await management.getByRole('searchbox').fill('fixture-custom'); await management.locator('.server-list button').click();
+      232 |     await management.getByText('Connection settings', { exact: true }).click();
+    > 233 |     await management.getByLabel('Server options (JSON)').fill(JSON.stringify({ args: [server], settings: { custom: { nested: { enabled: false } } }, initializationOptions: { test: 'reconfigured' } }));
+          |                                                          ^
+      234 |     await management.getByRole('button', { name: 'Apply settings', exact: true }).click();
+      235 |     await expect.poll(async () => (await messages()).filter(m => m.method === 'open').length).toBe(2);
+      236 |     expect((await messages()).filter(m => m.method === 'open').at(-1).params.textDocument.text).toBe('fixed\n// unsaved');
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/language/language-registry.spec.ts:233:58
+
+    Error Context: test-results/language-language-registry-04bcb-aved-model-with-Undo-intact/error-context.md
+
+
+(node:69675) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[9/9] test/e2e/language/language-registry.spec.ts:244:1 › an imported npm profile starts automatically and supplies completion without a connection form
+  2 failed
+    test/e2e/language/language-registry.spec.ts:13:1 › the language sidebar searches all discoverable servers, shows language logos and keeps manual connections repairable 
+    test/e2e/language/language-registry.spec.ts:158:1 › Edit menu imports a new server, negotiates Full sync, and reconnects the same unsaved model with Undo intact 
+  7 passed (1.0m)

@@ -1,0 +1,70 @@
+{
+  "investigationDate": "2026-10-18",
+  "method": "Installed Monaco workers in Node; no external LSP, network or GUI. VS Code grammar package metadata inspected.",
+  "monacoVersion": "0.56.0",
+  "json": {
+    "valid": [],
+    "syntaxError": [
+      {
+        "code": 516,
+        "severity": 1,
+        "message": "Value expected"
+      }
+    ],
+    "unavailableSchema": [
+      {
+        "code": 768,
+        "severity": 2,
+        "message": "Unable to load schema from 'https://setdown.invalid/schema.json'. No schema request service available"
+      }
+    ],
+    "localSchemaViolation": [
+      {
+        "severity": 1,
+        "message": "Incorrect type. Expected \"number\"."
+      }
+    ]
+  },
+  "css": {
+    "knownProperty": [],
+    "syntaxError": [
+      {
+        "code": "css-colonexpected",
+        "severity": 1,
+        "message": "colon expected"
+      }
+    ],
+    "withoutCustomData": [
+      {
+        "code": "unknownProperties",
+        "severity": 2,
+        "message": "Unknown property: 'setdown-token'"
+      }
+    ],
+    "withCustomData": []
+  },
+  "html": {
+    "completionContainsDiv": true,
+    "hasValidationMethod": false
+  },
+  "vscodeBuiltInGrammarPackages": {
+    "python": {
+      "languages": [
+        "python"
+      ],
+      "grammarCount": 2,
+      "hasRuntimeEntrypoint": false,
+      "hasProblemMatchers": false
+    },
+    "cpp": {
+      "languages": [
+        "c",
+        "cpp",
+        "cuda-cpp"
+      ],
+      "grammarCount": 5,
+      "hasRuntimeEntrypoint": false,
+      "hasProblemMatchers": true
+    }
+  }
+}

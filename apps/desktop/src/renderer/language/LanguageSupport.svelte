@@ -21,6 +21,37 @@
   let extensions = $state('');
   let markers = $state('');
   let optionsText = $state('');
+  let scope = $state(''), role = $state<'primary' | 'supplementary'>('primary'), formatting = $state('auto');
+  let interpreter = $state(''), compilationDirectory = $state(''), rootOverride = $state('');
+  function editOptions(options: LanguageServerOptions) {
+    scope = options.scope ?? ''; role = options.role ?? 'primary'; formatting = options.formatting === undefined ? 'auto' : options.formatting ? 'on' : 'off';
+    rootOverride = options.root ?? '';
+    const python = options.settings.python;
+    interpreter = python && typeof python === 'object' ? String((python as Record<string, unknown>).pythonPath ?? '') : '';
+    const arg = options.args.findIndex(arg => arg === '--compile-commands-dir' || arg.startsWith('--compile-commands-dir='));
+    compilationDirectory = arg < 0 ? '' : options.args[arg].split('=').slice(1).join('=') || options.args[arg + 1] || '';
+    optionsText = JSON.stringify(options, null, 2);
+  }
+  function connectionOptions(): LanguageServerOptions {
+    const options = JSON.parse(optionsText) as LanguageServerOptions;
+    if (!Array.isArray(options.args) || !options.settings || typeof options.settings !== 'object') throw Error('Arguments and settings must be valid JSON.');
+    if (selected?.languages.includes('python')) {
+      const python = { ...(options.settings.python as object ?? {}) } as Record<string, unknown>;
+      if (interpreter.trim()) python.pythonPath = interpreter.trim(); else delete python.pythonPath;
+      options.settings = { ...options.settings, python };
+    }
+    if (selected?.id === 'clangd') {
+      const args: string[] = [];
+      for (let index = 0; index < options.args.length; index++) {
+        const arg = options.args[index];
+        if (arg === '--compile-commands-dir') { index++; continue; }
+        if (!arg.startsWith('--compile-commands-dir=')) args.push(arg);
+      }
+      if (compilationDirectory.trim()) args.push(`--compile-commands-dir=${compilationDirectory.trim()}`);
+      options.args = args;
+    }
+    return { ...options, scope: scope || undefined, root: rootOverride.trim() || undefined, role, formatting: formatting === 'auto' ? undefined : formatting === 'on' };
+  }
   let live = true, refreshVersion = 0;
   const selected = $derived(catalog.entries.find(entry => entry.id === selectedId));
   const groups = $derived(serverGroups(catalog.entries, query));
@@ -29,7 +60,7 @@
   function choose(entry: LanguageCatalogEntry) {
     selectedId = entry.id; mode = 'details'; error = '';
     void tick().then(() => backButton?.focus());
-    optionsText = JSON.stringify(entry.options ?? defaults, null, 2);
+    editOptions(entry.options ?? defaults);
   }
   async function refresh() {
     const version = ++refreshVersion;
@@ -189,16 +220,25 @@
           {/each}
           <details>
             <summary>Connection settings</summary>
+            <label>Apply to<select aria-label="Language settings scope" value={scope} onchange={event => {
+              const target = event.currentTarget.value;
+              editOptions(target ? selected!.options ?? defaults : selected!.globalOptions ?? defaults); scope = target;
+            }}><option value="">All projects</option>{#if selected.projectRoot}<option value={selected.projectRoot}>This project — {selected.projectRoot}</option>{/if}</select></label>
+            <label>Provider role<select aria-label="Provider role" bind:value={role}><option value="primary">Project analysis</option><option value="supplementary">Additional diagnostics and tools</option></select></label>
+            <label>Formatting<select aria-label="Formatting provider" bind:value={formatting}><option value="auto">Default for this role</option><option value="on">Use this provider</option><option value="off">Do not use this provider</option></select></label>
+            <label>Analysis root<input aria-label="Analysis root" bind:value={rootOverride} placeholder="Detect from project files" /></label>
+            {#if selected.languages.includes('python')}<label>Python interpreter<input aria-label="Analysis Python interpreter" bind:value={interpreter} placeholder="Server's project environment" /></label>{/if}
+            {#if selected.id === 'clangd'}<label>Compilation database directory<input aria-label="Compilation database directory" bind:value={compilationDirectory} placeholder="Detect compile_commands.json" /></label>{/if}
             <div class="buttons">
               {#if !selected.bundled}<button disabled={busy} onclick={() => perform(() => api.chooseExecutable(selected!.id))}>Choose executable…</button>{/if}
               {#if selected.canDetect}<button disabled={busy} onclick={() => perform(() => api.useAutomatic(selected!.id))}>Use automatic detection</button>{/if}
             </div>
             {#if selected.profileSource}<p>Profile: {selected.profileSource}</p>{/if}
             {#if selected.searched?.length}<p>Searched: {selected.searched.join(', ')}</p>{/if}
-            <label>Server options (JSON)<textarea rows="12" spellcheck="false" bind:value={optionsText}></textarea></label>
+            <details><summary>Advanced server options (JSON)</summary><label>Arguments, settings and initialization options<textarea rows="12" spellcheck="false" bind:value={optionsText}></textarea></label></details>
             <p>Optional <code>root</code>: an absolute analysis directory for files beneath it. Omit it to detect each project automatically.</p>
-            {#if selected.languages.includes('python')}<p>Set <code>settings.python.pythonPath</code> to choose the Python interpreter used for imports. Otherwise the server uses its project configuration and defaults.</p>{/if}
-            <button disabled={busy} onclick={() => perform(() => api.configure(selected!.id, JSON.parse(optionsText)))}>Apply settings</button>
+            {#if selected.languages.includes('python')}<p>The interpreter above controls import analysis. Leave it empty to use the server’s project configuration and defaults.</p>{/if}
+            <button disabled={busy} onclick={() => perform(() => api.configure(selected!.id, connectionOptions()))}>Apply settings</button>
           </details>
           {#if selected.custom}<button disabled={busy} onclick={() => perform(async () => { await api.remove(selected!.id); selectedId = ''; back(); })}>Remove connection</button>{/if}
         {:else}

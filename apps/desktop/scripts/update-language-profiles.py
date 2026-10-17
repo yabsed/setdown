@@ -87,14 +87,14 @@ def generate():
         npm = unquote(source[len('pkg:npm/'):].rsplit('@', 1)[0]) if source.startswith('pkg:npm/') else None
         markers = sorted({r for l in associations[name] for r in l.get('roots', []) if '/' not in r and '\\' not in r and r != '..'})
         note = overrides['manual'].get(name)
-        # Keep the existing Markdown-only no-LSP guarantee. Auxiliary providers cannot
-        # displace the primary code server until multiple-server feature routing exists.
-        auxiliary = name in {'ruff', 'golangci-lint-lsp', 'vscode-eslint-language-server', 'tailwindcss-ls', 'harper-ls', 'ltex-ls', 'ltex-ls-plus', 'vale-ls', 'rumdl', 'pytest-language-server', 'zizmor', 'oxlint-language-server', 'oxfmt-language-server'}
+        # Supplemental tools are opt-in and never replace project analysis.
+        auxiliary = name in {'biome', 'ruff', 'golangci-lint-lsp', 'vscode-eslint-language-server', 'tailwindcss-ls', 'harper-ls', 'ltex-ls', 'ltex-ls-plus', 'vale-ls', 'rumdl', 'pytest-language-server', 'zizmor', 'oxlint-language-server', 'oxfmt-language-server'}
         if auxiliary:
-            note = note or 'Optional diagnostics or formatting provider. Enable explicitly to use it as the primary server.'
+            note = note or 'Optional supplementary provider. Enable to add diagnostics or formatting alongside project analysis.'
         if any(r['languageId'] in {'markdown', 'git-commit'} for r in routes):
             note = note or 'Optional writing support. Enable explicitly; Markdown editing does not start a server by default.'
         definition = {'id': identity, 'name': identity, 'enabledByDefault': not bool(note), 'automatic': True,
+                      'role': 'supplementary' if auxiliary else 'primary',
                       'languages': routes, 'launch': {'kind': 'native', 'command': server['command'], 'args': [arg.replace('--client-id=helix', '--client-id=setdown') for arg in server.get('args', [])]},
                       'rootMarkers': markers, 'settings': {}, 'watchExtensions': sorted({e for r in routes for e in r['extensions']}),
                       'watchFiles': markers, 'provenance': {'source': 'Helix', 'revision': sources['helix']['revision'], 'profile': name}}

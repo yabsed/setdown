@@ -7,8 +7,8 @@ import { builtinLanguageServers } from './catalog/profiles';
 import { languageSupport, type LanguageRoute } from '../../core/document/language-support';
 import type { ServerLaunch } from './server-session';
 
-type Options = { enabled?: boolean; executable?: string; automaticExecutable?: boolean; args?: string[]; settings?: Record<string, unknown>; initializationOptions?: Record<string, unknown>; root?: string };
-type Settings = { version: 1; servers: Record<string, Options>; custom: LanguageServerDefinition[]; preferred: Record<string, string> };
+export type Options = { role?: 'primary' | 'supplementary'; formatting?: boolean; enabled?: boolean; executable?: string; automaticExecutable?: boolean; args?: string[]; settings?: Record<string, unknown>; initializationOptions?: Record<string, unknown>; root?: string };
+type Settings = { version: 1; servers: Record<string, Options>; custom: LanguageServerDefinition[]; preferred: Record<string, string>; projects?: Record<string, Record<string, Options>> };
 export class ServerRegistry {
   private data: Settings = { version: 1, servers: {}, custom: [], preferred: {} };
   private saved = JSON.stringify(this.data);
@@ -30,6 +30,10 @@ export class ServerRegistry {
       this.definition(id);
       this.validateOptions(options);
     }
+    for (const [root, servers] of Object.entries(this.data.projects ?? {})) {
+      if (!path.isAbsolute(root) || !record(servers)) throw Error('Invalid project language settings.');
+      for (const [id, options] of Object.entries(servers)) { this.definition(id); this.validateOptions(options); }
+    }
     this.saved = JSON.stringify(this.data);
   }
   // Existing custom profiles shadow newly shipped defaults without losing their identity or settings.
@@ -45,14 +49,26 @@ export class ServerRegistry {
     if (!definition) throw new Error('Unknown language server. Configure a connection first.');
     return definition;
   }
-  options(id: string): Options { return Object.hasOwn(this.data.servers, id) ? this.data.servers[id] : {}; }
+  options(id: string, resource?: string): Options {
+    const global = Object.hasOwn(this.data.servers, id) ? this.data.servers[id] : {};
+    if (!resource) return global;
+    const roots = Object.keys(this.data.projects ?? {}).filter(root => {
+      const relative = path.relative(root, resource); return relative === '' || (!relative.startsWith('..' + path.sep) && relative !== '..' && !path.isAbsolute(relative));
+    }).sort((a, b) => a.length - b.length);
+    return roots.reduce((options, root) => ({ ...options, ...this.data.projects![root][id] }), global);
+  }
+  role(id: string, resource?: string): 'primary' | 'supplementary' { return this.options(id, resource).role ?? this.definition(id).role ?? 'primary'; }
+  associations(resource?: string): LanguageRoute[] {
+    return this.definitions().flatMap(d => d.languages.map(language => ({ ...language, server: d.id, enabled: this.enabled(d.id), role: this.role(d.id, resource), formatting: this.options(d.id, resource).formatting,
+      scopes: Object.entries(this.data.projects ?? {}).filter(([, servers]) => !!servers[d.id]).map(([root, servers]) => ({ root, role: servers[d.id].role, formatting: servers[d.id].formatting })) })));
+  }
   preferred(languageId: string): string | undefined {
     const id = this.data.preferred[languageId];
-    return id && this.enabled(id) ? id : this.definitions().find(d => this.options(d.id).enabled === true
+    return id && this.enabled(id) && this.role(id) === 'primary' ? id : this.definitions().find(d => this.role(d.id) === 'primary' && this.options(d.id).enabled === true
       && d.languages.some(l => l.languageId === languageId))?.id;
   }
   enabled(id: string): boolean { return this.options(id).enabled ?? this.definition(id).enabledByDefault ?? false; }
-  routes(): LanguageRoute[] {
+  routes(resource?: string): LanguageRoute[] {
     const definitions = this.definitions().filter(item => this.enabled(item.id));
     const result: LanguageRoute[] = [];
     for (const id of new Set(definitions.flatMap(item => item.languages.map(l => l.languageId)))) {
@@ -60,14 +76,15 @@ export class ServerRegistry {
       candidates.sort((a, b) => Number(b.id === this.data.preferred[id]) - Number(a.id === this.data.preferred[id])
         || Number(this.options(b.id).enabled === true) - Number(this.options(a.id).enabled === true));
       for (const candidate of candidates) for (const language of candidate.languages.filter(l => l.languageId === id))
-        result.push({ ...language, server: candidate.id });
+        result.push({ ...language, server: candidate.id, role: this.role(candidate.id, resource), formatting: this.options(candidate.id, resource).formatting });
     }
     return result;
   }
-  candidates(file: string): { server: string; languageId: string }[] {
-    const routes = this.routes(), support = languageSupport(file, routes);
+  candidates(file: string, server?: string, languageId?: string): { server: string; languageId: string }[] {
+    const routes = this.routes(file).filter(route => server ? route.server === server : route.role !== 'supplementary');
+    const support = languageId ? routes.find(route => route.languageId === languageId) : languageSupport(file, routes);
     if (!support) return [];
-    const matches = routes.filter(route => route.languageId === support.languageId && languageSupport(file, [route]));
+    const matches = routes.filter(route => route.languageId === support.languageId && (languageId || languageSupport(file, [route])));
     const preferred = matches.find(route => route.server === this.data.preferred[support.languageId])
       ?? matches.find(route => this.options(route.server).enabled === true);
     // A user selection is authoritative, including a currently missing executable.
@@ -91,19 +108,32 @@ export class ServerRegistry {
       || (options.root !== undefined && (typeof options.root !== 'string' || options.root.length > 4096 || options.root.includes('\0') || !path.isAbsolute(options.root)))
       || (options.executable !== undefined && (typeof options.executable !== 'string' || !path.isAbsolute(options.executable))))
       throw Error('Invalid language server options.');
+    if (options.role !== undefined && !['primary', 'supplementary'].includes(options.role)) throw Error('Invalid provider role.');
+    if (options.formatting !== undefined && typeof options.formatting !== 'boolean') throw Error('Invalid formatting preference.');
     validateLanguageDefinition({ id: 'options', name: 'Options', launch: { kind: 'native', command: 'server', args: options.args ?? [] },
       languages: [{ languageId: 'text', extensions: ['.txt'] }], settings: options.settings, initializationOptions: options.initializationOptions });
   }
-  configure(id: string, options: Pick<Options, 'args' | 'settings' | 'initializationOptions' | 'root'>): void {
+  configure(id: string, options: Pick<Options, 'args' | 'settings' | 'initializationOptions' | 'root' | 'role' | 'formatting'>, scope?: string): void {
     this.definition(id); this.validateOptions(options);
-    this.data.servers[id] = { ...this.options(id), args: options.args, settings: options.settings, initializationOptions: options.initializationOptions, root: options.root };
+    if (scope && (!path.isAbsolute(scope) || scope.includes('\0'))) throw Error('Project scope must be an absolute path.');
+    const target = scope ? ((this.data.projects ??= {})[scope] ??= {}) : this.data.servers;
+    // Omitted project fields inherit exactly as they will after a settings reload.
+    // Keeping own undefined keys here would mask the global value until restart.
+    target[id] = Object.fromEntries(Object.entries({ ...(target[id] ?? {}), args: options.args,
+      settings: options.settings, initializationOptions: options.initializationOptions, root: options.root,
+      role: options.role, formatting: options.formatting }).filter(([, value]) => value !== undefined));
+    // Exactly one explicitly selected external formatter per overlapping language.
+    if (options.formatting) for (const other of this.definitions()) {
+      if (other.id !== id && other.languages.some(a => this.definition(id).languages.some(b => a.languageId === b.languageId)))
+        target[other.id] = { ...(target[other.id] ?? {}), formatting: false };
+    }
     this.save();
   }
   setEnabled(id: string, enabled: boolean): void {
     const definition = this.definition(id);
     if (typeof enabled !== 'boolean') throw Error('Invalid enabled state.');
     this.data.servers[id] = { ...this.options(id), enabled };
-    if (enabled) for (const language of definition.languages) this.data.preferred[language.languageId] = id;
+    if (enabled && this.role(id) === 'primary') for (const language of definition.languages) this.data.preferred[language.languageId] = id;
     this.save();
   }
   add(value: unknown): string {
@@ -117,6 +147,7 @@ export class ServerRegistry {
     if (!this.data.custom.some(item => item.id === id)) throw Error('Only custom connections can be removed.');
     this.data.custom = this.data.custom.filter(item => item.id !== id);
     delete this.data.servers[id];
+    for (const servers of Object.values(this.data.projects ?? {})) delete servers[id];
     for (const [language, selected] of Object.entries(this.data.preferred)) if (selected === id) delete this.data.preferred[language];
     this.save();
   }
@@ -144,8 +175,8 @@ export class ServerRegistry {
     if (!this.canDetect(id)) throw Error('This connection has no automatic executable profile.');
     this.data.servers[id] = { ...this.options(id), executable: undefined, automaticExecutable: true }; this.save();
   }
-  launch(id: string, packaged: boolean, environment: NodeJS.ProcessEnv = process.env, resolvedExecutable?: string): ServerLaunch {
-    const definition = this.definition(id), options = this.options(id);
+  launch(id: string, packaged: boolean, environment: NodeJS.ProcessEnv = process.env, resolvedExecutable?: string, resource?: string): ServerLaunch {
+    const definition = this.definition(id), options = this.options(id, resource);
     const { NODE_OPTIONS: _node, NODE_PATH: _path, ELECTRON_RUN_AS_NODE: _electron, ...env } = environment;
     const args = options.args ?? definition.launch.args;
     if (definition.launch.kind === 'native') {
@@ -158,7 +189,7 @@ export class ServerRegistry {
       env: { ...env, ELECTRON_RUN_AS_NODE: '1' } };
   }
   fingerprint(id: string): string {
-    return createHash('sha256').update(JSON.stringify([this.definition(id), this.options(id), this.executable(id)])).digest('hex').slice(0, 16);
+    return createHash('sha256').update(JSON.stringify([this.definition(id), this.options(id), this.executable(id), Object.entries(this.data.projects ?? {}).map(([root, servers]) => [root, servers[id]])])).digest('hex').slice(0, 16);
   }
 }
 

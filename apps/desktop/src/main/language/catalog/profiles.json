@@ -16,6 +16,7 @@
       "name": "Pyright",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "python",
@@ -89,6 +90,7 @@
       "name": "clangd",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "c",
@@ -190,6 +192,7 @@
       "name": "gopls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "go",
@@ -258,6 +261,7 @@
       "name": "rust-analyzer",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "rust",
@@ -320,6 +324,7 @@
       "name": "fortls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "fortran",
@@ -383,10 +388,138 @@
       "discovery": "python"
     },
     {
+      "id": "typescript-language-server",
+      "name": "TypeScript and JavaScript",
+      "enabledByDefault": true,
+      "automatic": false,
+      "role": "primary",
+      "languages": [
+        {
+          "languageId": "javascript",
+          "extensions": [
+            ".js",
+            ".mjs",
+            ".cjs",
+            ".rules",
+            ".es6",
+            ".pac",
+            ".gs"
+          ],
+          "filenames": [
+            ".node_repl_history",
+            "jakefile"
+          ]
+        },
+        {
+          "languageId": "javascriptreact",
+          "extensions": [
+            ".jsx"
+          ],
+          "monacoId": "javascript"
+        },
+        {
+          "languageId": "typescript",
+          "extensions": [
+            ".ts",
+            ".mts",
+            ".cts"
+          ]
+        },
+        {
+          "languageId": "typescriptreact",
+          "extensions": [
+            ".tsx"
+          ],
+          "monacoId": "typescript"
+        },
+        {
+          "languageId": "gjs",
+          "extensions": [
+            ".gjs"
+          ]
+        },
+        {
+          "languageId": "gts",
+          "extensions": [
+            ".gts"
+          ]
+        }
+      ],
+      "launch": {
+        "kind": "bundledNode",
+        "module": "typescript-language-server/lib/cli.mjs",
+        "args": [
+          "--stdio"
+        ]
+      },
+      "rootMarkers": [
+        "tsconfig.json",
+        "jsconfig.json",
+        "package.json"
+      ],
+      "settings": {
+        "typescript": {
+          "inlayHints": {
+            "includeInlayEnumMemberValueHints": true,
+            "includeInlayFunctionLikeReturnTypeHints": true,
+            "includeInlayFunctionParameterTypeHints": true,
+            "includeInlayParameterNameHints": "all",
+            "includeInlayParameterNameHintsWhenArgumentMatchesName": true,
+            "includeInlayPropertyDeclarationTypeHints": true,
+            "includeInlayVariableTypeHints": true
+          }
+        },
+        "javascript": {
+          "inlayHints": {
+            "includeInlayEnumMemberValueHints": true,
+            "includeInlayFunctionLikeReturnTypeHints": true,
+            "includeInlayFunctionParameterTypeHints": true,
+            "includeInlayParameterNameHints": "all",
+            "includeInlayParameterNameHintsWhenArgumentMatchesName": true,
+            "includeInlayPropertyDeclarationTypeHints": true,
+            "includeInlayVariableTypeHints": true
+          }
+        }
+      },
+      "watchExtensions": [
+        ".cjs",
+        ".cts",
+        ".es6",
+        ".gjs",
+        ".gs",
+        ".gts",
+        ".js",
+        ".jsx",
+        ".mjs",
+        ".mts",
+        ".pac",
+        ".rules",
+        ".ts",
+        ".tsx"
+      ],
+      "watchFiles": [
+        "ember-cli-build.js",
+        "jsconfig.json",
+        "package.json",
+        "tsconfig.json"
+      ],
+      "provenance": {
+        "source": "Helix",
+        "revision": "ba40e547426b0f9896c8bdc699a4ab11f2b37dbc",
+        "profile": "typescript-language-server"
+      },
+      "initializationOptions": {
+        "hostInfo": "setdown"
+      },
+      "npmPackage": "typescript-language-server",
+      "setupNote": "Bundled project analysis. Uses the bundled TypeScript SDK unless a different SDK is selected."
+    },
+    {
       "id": "ada-gpr-language-server",
       "name": "ada-gpr-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "gpr",
@@ -423,6 +556,7 @@
       "name": "ada-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "ada",
@@ -459,6 +593,7 @@
       "name": "amber-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "amber",
@@ -489,6 +624,7 @@
       "name": "ameba-ls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "crystal",
@@ -525,6 +661,7 @@
       "name": "ansible-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "yaml",
@@ -579,6 +716,7 @@
       "name": "asm-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "nasm",
@@ -621,6 +759,7 @@
       "name": "astro-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "astro",
@@ -659,6 +798,7 @@
       "name": "awk-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "awk",
@@ -696,6 +836,7 @@
       "name": "basedpyright",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "python",
@@ -765,6 +906,7 @@
       "name": "bash-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "bash",
@@ -884,6 +1026,7 @@
       "name": "bass",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "bass",
@@ -916,6 +1059,7 @@
       "name": "beancount-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "beancount",
@@ -948,6 +1092,7 @@
       "name": "bicep-langserver",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "bicep",
@@ -980,6 +1125,7 @@
       "name": "biome",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "json",
@@ -1126,6 +1272,7 @@
       "name": "bitbake-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "bitbake",
@@ -1166,6 +1313,7 @@
       "name": "blueprint-compiler",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "blueprint",
@@ -1198,6 +1346,7 @@
       "name": "buck2",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "starlark",
@@ -1246,6 +1395,7 @@
       "name": "buf",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "protobuf",
@@ -1281,6 +1431,7 @@
       "name": "c3-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "c3",
@@ -1319,6 +1470,7 @@
       "name": "cairo-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "cairo",
@@ -1349,6 +1501,7 @@
       "name": "circom-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "circom",
@@ -1383,6 +1536,7 @@
       "name": "cl-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "common-lisp",
@@ -1429,6 +1583,7 @@
       "name": "clarinet",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "clarity",
@@ -1465,6 +1620,7 @@
       "name": "clojure-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "clojure",
@@ -1519,6 +1675,7 @@
       "name": "cmake-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "cmake",
@@ -1553,6 +1710,7 @@
       "name": "codeql",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "codeql",
@@ -1589,6 +1747,7 @@
       "name": "commit-lsp",
       "enabledByDefault": false,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "git-commit",
@@ -1623,6 +1782,7 @@
       "name": "crystalline",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "crystal",
@@ -1661,6 +1821,7 @@
       "name": "csharp-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "c-sharp",
@@ -1704,6 +1865,7 @@
       "name": "css-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "css",
@@ -1773,6 +1935,7 @@
       "name": "cuelsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "cue",
@@ -1810,6 +1973,7 @@
       "name": "dart",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "dart",
@@ -1847,6 +2011,7 @@
       "name": "debian-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "debian",
@@ -1892,6 +2057,7 @@
       "name": "deno",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "javascript",
@@ -1980,6 +2146,7 @@
       "name": "dhall-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "dhall",
@@ -2010,6 +2177,7 @@
       "name": "docker-compose-language-service",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "dockercompose",
@@ -2055,6 +2223,7 @@
       "name": "docker-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "dockerfile",
@@ -2138,6 +2307,7 @@
       "name": "dockerfile-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "dockerfile",
@@ -2195,6 +2365,7 @@
       "name": "dot-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "dot",
@@ -2228,6 +2399,7 @@
       "name": "drools-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "drools",
@@ -2264,6 +2436,7 @@
       "name": "dts-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "devicetree",
@@ -2296,6 +2469,7 @@
       "name": "earthlyls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "earthfile",
@@ -2329,6 +2503,7 @@
       "name": "ebnfer",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "ebnf",
@@ -2359,6 +2534,7 @@
       "name": "eiffel-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "eiffel",
@@ -2389,6 +2565,7 @@
       "name": "elixir-ls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "elixir",
@@ -2442,6 +2619,7 @@
       "name": "elm-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "elm",
@@ -2477,6 +2655,7 @@
       "name": "elp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "erlang",
@@ -2524,6 +2703,7 @@
       "name": "elvish",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "elvish",
@@ -2556,6 +2736,7 @@
       "name": "ember-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "glimmer",
@@ -2612,6 +2793,7 @@
       "name": "erlang-ls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "erlang",
@@ -2657,6 +2839,7 @@
       "name": "eslint-lsp",
       "enabledByDefault": false,
       "automatic": true,
+      "role": "supplementary",
       "languages": [
         {
           "languageId": "gjs",
@@ -2721,13 +2904,14 @@
         }
       },
       "npmPackage": "vscode-langservers-extracted",
-      "setupNote": "Optional diagnostics or formatting provider. Enable explicitly to use it as the primary server."
+      "setupNote": "Optional supplementary provider. Enable to add diagnostics or formatting alongside project analysis."
     },
     {
       "id": "expert",
       "name": "expert",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "elixir",
@@ -2778,6 +2962,7 @@
       "name": "fennel-ls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "fennel",
@@ -2810,6 +2995,7 @@
       "name": "fish-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "fish",
@@ -2843,6 +3029,7 @@
       "name": "forc",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "sway",
@@ -2881,6 +3068,7 @@
       "name": "forth-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "forth",
@@ -2917,6 +3105,7 @@
       "name": "fsautocomplete",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "fsharp",
@@ -2964,6 +3153,7 @@
       "name": "gh-actions-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "github-action",
@@ -3002,6 +3192,7 @@
       "name": "ghostty-ls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "ghostty",
@@ -3035,6 +3226,7 @@
       "name": "gitlab-ci-ls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "gitlab-ci",
@@ -3064,6 +3256,7 @@
       "name": "gleam",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "gleam",
@@ -3100,6 +3293,7 @@
       "name": "glsl_analyzer",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "glsl",
@@ -3142,6 +3336,7 @@
       "name": "glsld",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "glsl",
@@ -3186,6 +3381,7 @@
       "name": "golangci-lint-langserver",
       "enabledByDefault": false,
       "automatic": true,
+      "role": "supplementary",
       "languages": [
         {
           "languageId": "go",
@@ -3225,13 +3421,14 @@
           "--issues-exit-code=1"
         ]
       },
-      "setupNote": "Optional diagnostics or formatting provider. Enable explicitly to use it as the primary server."
+      "setupNote": "Optional supplementary provider. Enable to add diagnostics or formatting alongside project analysis."
     },
     {
       "id": "graphql-language-service-cli",
       "name": "graphql-language-service-cli",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "graphql",
@@ -3271,6 +3468,7 @@
       "name": "hare-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "hare",
@@ -3303,6 +3501,7 @@
       "name": "harper-ls",
       "enabledByDefault": false,
       "automatic": true,
+      "role": "supplementary",
       "languages": [
         {
           "languageId": "rust",
@@ -3608,13 +3807,14 @@
         "revision": "ba40e547426b0f9896c8bdc699a4ab11f2b37dbc",
         "profile": "harper-ls"
       },
-      "setupNote": "Optional diagnostics or formatting provider. Enable explicitly to use it as the primary server."
+      "setupNote": "Optional supplementary provider. Enable to add diagnostics or formatting alongside project analysis."
     },
     {
       "id": "haskell-language-server",
       "name": "haskell-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "haskell",
@@ -3675,6 +3875,7 @@
       "name": "hdls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "hdl",
@@ -3705,6 +3906,7 @@
       "name": "helm-ls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "helm",
@@ -3743,6 +3945,7 @@
       "name": "html-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "html",
@@ -3816,6 +4019,7 @@
       "name": "hyprls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "hyprlang",
@@ -3849,6 +4053,7 @@
       "name": "hyuga",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "hy",
@@ -3883,6 +4088,7 @@
       "name": "idris2-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "idris",
@@ -3913,6 +4119,7 @@
       "name": "intelephense",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "php",
@@ -3962,6 +4169,7 @@
       "name": "jdtls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "java",
@@ -4004,6 +4212,7 @@
       "name": "jedi-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "python",
@@ -4071,6 +4280,7 @@
       "name": "jq-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "jq",
@@ -4101,6 +4311,7 @@
       "name": "json-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "json",
@@ -4238,6 +4449,7 @@
       "name": "jsonnet-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "jsonnet",
@@ -4277,6 +4489,7 @@
       "name": "julia",
       "enabledByDefault": false,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "julia",
@@ -4320,6 +4533,7 @@
       "name": "just-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "just",
@@ -4356,6 +4570,7 @@
       "name": "kcl",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "kcl",
@@ -4389,6 +4604,7 @@
       "name": "koka",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "koka",
@@ -4422,6 +4638,7 @@
       "name": "kotlin-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "kotlin",
@@ -4460,6 +4677,7 @@
       "name": "kotlin-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "kotlin",
@@ -4500,6 +4718,7 @@
       "name": "koto-ls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "koto",
@@ -4530,6 +4749,7 @@
       "name": "lean",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "lean",
@@ -4568,6 +4788,7 @@
       "name": "ltex-ls",
       "enabledByDefault": false,
       "automatic": true,
+      "role": "supplementary",
       "languages": [
         {
           "languageId": "latex",
@@ -4644,13 +4865,14 @@
         "revision": "ba40e547426b0f9896c8bdc699a4ab11f2b37dbc",
         "profile": "ltex-ls"
       },
-      "setupNote": "Optional diagnostics or formatting provider. Enable explicitly to use it as the primary server."
+      "setupNote": "Optional supplementary provider. Enable to add diagnostics or formatting alongside project analysis."
     },
     {
       "id": "ltex-ls-plus",
       "name": "ltex-ls-plus",
       "enabledByDefault": false,
       "automatic": true,
+      "role": "supplementary",
       "languages": [
         {
           "languageId": "latex",
@@ -4727,13 +4949,14 @@
         "revision": "ba40e547426b0f9896c8bdc699a4ab11f2b37dbc",
         "profile": "ltex-ls-plus"
       },
-      "setupNote": "Optional diagnostics or formatting provider. Enable explicitly to use it as the primary server."
+      "setupNote": "Optional supplementary provider. Enable to add diagnostics or formatting alongside project analysis."
     },
     {
       "id": "lua-language-server",
       "name": "lua-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "lua",
@@ -4790,6 +5013,7 @@
       "name": "luau-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "luau",
@@ -4840,6 +5064,7 @@
       "name": "markdoc-ls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "markdoc",
@@ -4872,6 +5097,7 @@
       "name": "markdown-oxide",
       "enabledByDefault": false,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "markdown",
@@ -4932,6 +5158,7 @@
       "name": "marksman",
       "enabledByDefault": false,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "markdown",
@@ -4994,6 +5221,7 @@
       "name": "mesonlsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "meson",
@@ -5027,6 +5255,7 @@
       "name": "metals",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "scala",
@@ -5088,6 +5317,7 @@
       "name": "millet",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "sml",
@@ -5126,6 +5356,7 @@
       "name": "mint",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "mint",
@@ -5159,6 +5390,7 @@
       "name": "mm-lsp-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "metamath",
@@ -5193,6 +5425,7 @@
       "name": "moonbit-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "moonbit",
@@ -5229,6 +5462,7 @@
       "name": "neocmakelsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "cmake",
@@ -5264,6 +5498,7 @@
       "name": "nginx-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "nginx",
@@ -5303,6 +5538,7 @@
       "name": "nickel-lang-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "nickel",
@@ -5333,6 +5569,7 @@
       "name": "nil",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "nix",
@@ -5363,6 +5600,7 @@
       "name": "nimlangserver",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "nim",
@@ -5397,6 +5635,7 @@
       "name": "nimlsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "nim",
@@ -5431,6 +5670,7 @@
       "name": "nixd",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "nix",
@@ -5461,6 +5701,7 @@
       "name": "nu-lint",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "nu",
@@ -5495,6 +5736,7 @@
       "name": "nu-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "nu",
@@ -5529,6 +5771,7 @@
       "name": "ocaml-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "ocaml",
@@ -5567,6 +5810,7 @@
       "name": "ols",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "odin",
@@ -5603,6 +5847,7 @@
       "name": "omnisharp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "c-sharp",
@@ -5648,6 +5893,7 @@
       "name": "openscad-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "openscad",
@@ -5680,6 +5926,7 @@
       "name": "oxlint",
       "enabledByDefault": false,
       "automatic": true,
+      "role": "supplementary",
       "languages": [
         {
           "languageId": "javascript",
@@ -5742,13 +5989,14 @@
         "profile": "oxlint-language-server"
       },
       "npmPackage": "oxlint",
-      "setupNote": "Optional diagnostics or formatting provider. Enable explicitly to use it as the primary server."
+      "setupNote": "Optional supplementary provider. Enable to add diagnostics or formatting alongside project analysis."
     },
     {
       "id": "pasls",
       "name": "pasls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "pascal",
@@ -5785,6 +6033,7 @@
       "name": "pbkit",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "protobuf",
@@ -5817,6 +6066,7 @@
       "name": "perlnavigator",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "perl",
@@ -5876,6 +6126,7 @@
       "name": "pest-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "pest",
@@ -5906,6 +6157,7 @@
       "name": "pkl-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "pkl",
@@ -5941,6 +6193,7 @@
       "name": "pony-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "ponylang",
@@ -5983,6 +6236,7 @@
       "name": "prisma-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "prisma",
@@ -6025,6 +6279,7 @@
       "name": "protols",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "protobuf",
@@ -6055,6 +6310,7 @@
       "name": "puppet-editor-services",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "puppet",
@@ -6087,6 +6343,7 @@
       "name": "purescript-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "purescript",
@@ -6128,6 +6385,7 @@
       "name": "pylyzer",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "python",
@@ -6196,6 +6454,7 @@
       "name": "pyrefly",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "python",
@@ -6265,6 +6524,7 @@
       "name": "pytest-language-server",
       "enabledByDefault": false,
       "automatic": true,
+      "role": "supplementary",
       "languages": [
         {
           "languageId": "python",
@@ -6326,13 +6586,14 @@
         "profile": "pytest-language-server"
       },
       "discovery": "python",
-      "setupNote": "Optional diagnostics or formatting provider. Enable explicitly to use it as the primary server."
+      "setupNote": "Optional supplementary provider. Enable to add diagnostics or formatting alongside project analysis."
     },
     {
       "id": "python-lsp-server",
       "name": "python-lsp-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "python",
@@ -6416,6 +6677,7 @@
       "name": "qmlls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "qml",
@@ -6446,6 +6708,7 @@
       "name": "quint-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "quint",
@@ -6478,6 +6741,7 @@
       "name": "r",
       "enabledByDefault": false,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "r",
@@ -6536,6 +6800,7 @@
       "name": "racket",
       "enabledByDefault": false,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "racket",
@@ -6578,6 +6843,7 @@
       "name": "regols",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "rego",
@@ -6608,6 +6874,7 @@
       "name": "rescript-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "rescript",
@@ -6645,6 +6912,7 @@
       "name": "ripple-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "ripple",
@@ -6681,6 +6949,7 @@
       "name": "robotcode",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "robotframework",
@@ -6717,6 +6986,7 @@
       "name": "robotframework-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "robotframework",
@@ -6750,6 +7020,7 @@
       "name": "ron-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "ron",
@@ -6784,6 +7055,7 @@
       "name": "roslyn-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "c-sharp",
@@ -6830,6 +7102,7 @@
       "name": "rshtml-analyzer",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "rshtml",
@@ -6867,6 +7140,7 @@
       "name": "ruby-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "ruby",
@@ -6948,6 +7222,7 @@
       "name": "ruff",
       "enabledByDefault": false,
       "automatic": true,
+      "role": "supplementary",
       "languages": [
         {
           "languageId": "python",
@@ -7010,13 +7285,14 @@
         "revision": "ba40e547426b0f9896c8bdc699a4ab11f2b37dbc",
         "profile": "ruff"
       },
-      "setupNote": "Optional diagnostics or formatting provider. Enable explicitly to use it as the primary server."
+      "setupNote": "Optional supplementary provider. Enable to add diagnostics or formatting alongside project analysis."
     },
     {
       "id": "rumdl",
       "name": "rumdl",
       "enabledByDefault": false,
       "automatic": true,
+      "role": "supplementary",
       "languages": [
         {
           "languageId": "markdown",
@@ -7072,13 +7348,14 @@
         "revision": "ba40e547426b0f9896c8bdc699a4ab11f2b37dbc",
         "profile": "rumdl"
       },
-      "setupNote": "Optional diagnostics or formatting provider. Enable explicitly to use it as the primary server."
+      "setupNote": "Optional supplementary provider. Enable to add diagnostics or formatting alongside project analysis."
     },
     {
       "id": "rust_hdl",
       "name": "rust_hdl",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "vhdl",
@@ -7111,6 +7388,7 @@
       "name": "serve-d",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "d",
@@ -7143,6 +7421,7 @@
       "name": "slang",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "slang",
@@ -7173,6 +7452,7 @@
       "name": "slint-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "slint",
@@ -7203,6 +7483,7 @@
       "name": "smalisp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "smali",
@@ -7233,6 +7514,7 @@
       "name": "solargraph",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "ruby",
@@ -7316,6 +7598,7 @@
       "name": "solidity",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "solidity",
@@ -7348,6 +7631,7 @@
       "name": "sourcekit-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "swift",
@@ -7384,6 +7668,7 @@
       "name": "sourcepawn-studio",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "sourcepawn",
@@ -7416,6 +7701,7 @@
       "name": "spade-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "spade",
@@ -7452,6 +7738,7 @@
       "name": "starpls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "starlark",
@@ -7498,6 +7785,7 @@
       "name": "styx",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "styx",
@@ -7530,6 +7818,7 @@
       "name": "superhtml",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "html",
@@ -7599,6 +7888,7 @@
       "name": "svelte-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "svelte",
@@ -7680,6 +7970,7 @@
       "name": "svlangserver",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "systemverilog",
@@ -7721,6 +8012,7 @@
       "name": "swipl",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "prolog",
@@ -7762,6 +8054,7 @@
       "name": "systemd-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "systemd",
@@ -7830,6 +8123,7 @@
       "name": "tailwindcss-language-server",
       "enabledByDefault": false,
       "automatic": true,
+      "role": "supplementary",
       "languages": [
         {
           "languageId": "css",
@@ -7857,13 +8151,14 @@
         "profile": "tailwindcss-ls"
       },
       "npmPackage": "@tailwindcss/language-server",
-      "setupNote": "Optional diagnostics or formatting provider. Enable explicitly to use it as the primary server."
+      "setupNote": "Optional supplementary provider. Enable to add diagnostics or formatting alongside project analysis."
     },
     {
       "id": "taplo",
       "name": "taplo",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "toml",
@@ -7952,6 +8247,7 @@
       "name": "teal-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "teal",
@@ -7986,6 +8282,7 @@
       "name": "templ",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "templ",
@@ -8024,6 +8321,7 @@
       "name": "termux-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "pkgbuild",
@@ -8054,6 +8352,7 @@
       "name": "terraform-ls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "terraform",
@@ -8097,6 +8396,7 @@
       "name": "texlab",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "latex",
@@ -8150,6 +8450,7 @@
       "name": "tilt",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "tilt",
@@ -8186,6 +8487,7 @@
       "name": "tinymist",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "typst",
@@ -8218,6 +8520,7 @@
       "name": "tombi",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "toml",
@@ -8305,6 +8608,7 @@
       "name": "ts_query_ls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "tsq",
@@ -8342,6 +8646,7 @@
       "name": "tsp-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "typespec",
@@ -8379,6 +8684,7 @@
       "name": "ty",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "python",
@@ -8444,136 +8750,11 @@
       "discovery": "python"
     },
     {
-      "id": "typescript-language-server",
-      "name": "typescript-language-server",
-      "enabledByDefault": true,
-      "automatic": true,
-      "languages": [
-        {
-          "languageId": "javascript",
-          "extensions": [
-            ".js",
-            ".mjs",
-            ".cjs",
-            ".rules",
-            ".es6",
-            ".pac",
-            ".gs"
-          ],
-          "filenames": [
-            ".node_repl_history",
-            "jakefile"
-          ]
-        },
-        {
-          "languageId": "javascriptreact",
-          "extensions": [
-            ".jsx"
-          ],
-          "monacoId": "javascript"
-        },
-        {
-          "languageId": "typescript",
-          "extensions": [
-            ".ts",
-            ".mts",
-            ".cts"
-          ]
-        },
-        {
-          "languageId": "typescriptreact",
-          "extensions": [
-            ".tsx"
-          ],
-          "monacoId": "typescript"
-        },
-        {
-          "languageId": "gjs",
-          "extensions": [
-            ".gjs"
-          ]
-        },
-        {
-          "languageId": "gts",
-          "extensions": [
-            ".gts"
-          ]
-        }
-      ],
-      "launch": {
-        "kind": "native",
-        "command": "typescript-language-server",
-        "args": [
-          "--stdio"
-        ]
-      },
-      "rootMarkers": [
-        "ember-cli-build.js",
-        "jsconfig.json",
-        "package.json",
-        "tsconfig.json"
-      ],
-      "settings": {
-        "typescript": {
-          "inlayHints": {
-            "includeInlayEnumMemberValueHints": true,
-            "includeInlayFunctionLikeReturnTypeHints": true,
-            "includeInlayFunctionParameterTypeHints": true,
-            "includeInlayParameterNameHints": "all",
-            "includeInlayParameterNameHintsWhenArgumentMatchesName": true,
-            "includeInlayPropertyDeclarationTypeHints": true,
-            "includeInlayVariableTypeHints": true
-          }
-        },
-        "javascript": {
-          "inlayHints": {
-            "includeInlayEnumMemberValueHints": true,
-            "includeInlayFunctionLikeReturnTypeHints": true,
-            "includeInlayFunctionParameterTypeHints": true,
-            "includeInlayParameterNameHints": "all",
-            "includeInlayParameterNameHintsWhenArgumentMatchesName": true,
-            "includeInlayPropertyDeclarationTypeHints": true,
-            "includeInlayVariableTypeHints": true
-          }
-        }
-      },
-      "watchExtensions": [
-        ".cjs",
-        ".cts",
-        ".es6",
-        ".gjs",
-        ".gs",
-        ".gts",
-        ".js",
-        ".jsx",
-        ".mjs",
-        ".mts",
-        ".pac",
-        ".rules",
-        ".ts",
-        ".tsx"
-      ],
-      "watchFiles": [
-        "ember-cli-build.js",
-        "jsconfig.json",
-        "package.json",
-        "tsconfig.json"
-      ],
-      "provenance": {
-        "source": "Helix",
-        "revision": "ba40e547426b0f9896c8bdc699a4ab11f2b37dbc",
-        "profile": "typescript-language-server"
-      },
-      "initializationOptions": {
-        "hostInfo": "setdown"
-      },
-      "npmPackage": "typescript-language-server"
-    },
-    {
       "id": "v-analyzer",
       "name": "v-analyzer",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "v",
@@ -8612,6 +8793,7 @@
       "name": "vala-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "vala",
@@ -8644,6 +8826,7 @@
       "name": "vale-ls",
       "enabledByDefault": false,
       "automatic": true,
+      "role": "supplementary",
       "languages": [
         {
           "languageId": "markdown",
@@ -8697,13 +8880,14 @@
         "revision": "ba40e547426b0f9896c8bdc699a4ab11f2b37dbc",
         "profile": "vale-ls"
       },
-      "setupNote": "Optional diagnostics or formatting provider. Enable explicitly to use it as the primary server."
+      "setupNote": "Optional supplementary provider. Enable to add diagnostics or formatting alongside project analysis."
     },
     {
       "id": "varlink-language-server",
       "name": "varlink-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "varlink",
@@ -8734,6 +8918,7 @@
       "name": "verible",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "verilog",
@@ -8775,6 +8960,7 @@
       "name": "vtsls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "javascript",
@@ -8864,6 +9050,7 @@
       "name": "vue-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "vue",
@@ -8906,6 +9093,7 @@
       "name": "wasm-language-tools",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "wat",
@@ -8936,6 +9124,7 @@
       "name": "wgsl-analyzer",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "wgsl",
@@ -8966,6 +9155,7 @@
       "name": "wikitext-lsp",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "wikitext",
@@ -9002,6 +9192,7 @@
       "name": "yaml-language-server",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "yaml",
@@ -9102,6 +9293,7 @@
       "name": "yls-yara",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "yara",
@@ -9137,6 +9329,7 @@
       "name": "zizmor",
       "enabledByDefault": false,
       "automatic": true,
+      "role": "supplementary",
       "languages": [
         {
           "languageId": "github-action",
@@ -9163,13 +9356,14 @@
         "revision": "ba40e547426b0f9896c8bdc699a4ab11f2b37dbc",
         "profile": "zizmor"
       },
-      "setupNote": "Optional diagnostics or formatting provider. Enable explicitly to use it as the primary server."
+      "setupNote": "Optional supplementary provider. Enable to add diagnostics or formatting alongside project analysis."
     },
     {
       "id": "zls",
       "name": "zls",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "zig",
@@ -9206,6 +9400,7 @@
       "name": "zuban",
       "enabledByDefault": true,
       "automatic": true,
+      "role": "primary",
       "languages": [
         {
           "languageId": "python",

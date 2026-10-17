@@ -34,7 +34,7 @@ function fixture(discovery?: ServerDiscovery) {
   const event = (id: number) => {
     const contents = Object.assign(new EventEmitter(), { id, mainFrame: {}, isDestroyed: () => false, send: vi.fn() });
     states.set(id, { webContentsId: id, projectRoot: root, currentDocument: { path: path.join(root, 'main.py') },
-      rendererTabs: ['other.py', 'main.cpp', 'helper.h', 'other.c', 'hello.f90', 'other.f90', 'main.ts', 'other.ts', 'Dockerfile', 'notes.ipynb'].map(name => ({ path: path.join(root, name), isUntitled: false })),
+      rendererTabs: ['other.py', 'main.cpp', 'helper.h', 'other.c', 'hello.f90', 'other.f90', 'main.ts', 'other.ts', 'main.json', 'other.json', 'Dockerfile', 'notes.ipynb'].map(name => ({ path: path.join(root, name), isUntitled: false })),
       window: { webContents: contents, isDestroyed: () => false } } as unknown as WindowState);
     return { sender: contents, senderFrame: contents.mainFrame };
   };
@@ -103,7 +103,7 @@ test('settings are owner-checked, stop previous sessions and notify every subscr
   await f.invoke('set-enabled', f.first, 'pyright', false);
   expect(mocks.servers[0].stop).toHaveBeenCalledOnce();
   for (const event of [f.first, f.second]) expect(event.sender.send).toHaveBeenCalledWith('language:event', { type: 'configuration', servers: expect.arrayContaining(['pyright']) });
-  expect((await f.invoke('configuration', f.second)).some((r: { server: string }) => r.server === 'pyright')).toBe(false);
+  expect((await f.invoke('configuration', f.second)).find((r: { server: string }) => r.server === 'pyright')).toMatchObject({ enabled: false });
   expect(await f.invoke('open', f.first, f.document('one'))).toEqual({ unavailable: 'missing' });
   await f.invoke('set-enabled', f.first, 'pyright', true);
   await f.invoke('open', f.first, { ...f.document('one'), text: 'unsaved buffer', version: 5 });
@@ -197,17 +197,17 @@ test('rescan during document discovery discards the stale plan and completes the
 test('an imported Node profile connects without configuration and launches the bin through its runtime', async () => {
   const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
   const find = vi.spyOn(discovery, 'find').mockImplementation(async command => {
-    const selected = command === 'typescript-language-server' ? { id: 'node-bin', path: '/global/typescript/lib/cli.mjs', runtime: process.execPath, source: 'npm' as const } : undefined;
+    const selected = command === 'vscode-json-language-server' ? { id: 'node-bin', path: '/global/json/bin/server.js', runtime: process.execPath, source: 'npm' as const } : undefined;
     return { selected, candidates: selected ? [selected] : [], environment: { env: {}, source: 'inherited' }, searched: [] };
   });
   const f = fixture(discovery);
-  const opened = await f.invoke('open', f.first, f.document('one', 'main.ts'));
-  expect(opened.server).toBe('typescript-language-server');
+  const opened = await f.invoke('open', f.first, f.document('one', 'main.json'));
+  expect(opened.server).toBe('json-lsp');
   expect(mocks.servers).toHaveLength(1);
-  expect(mocks.servers[0]).toMatchObject({ launch: { executable: process.execPath, args: ['/global/typescript/lib/cli.mjs', '--stdio'] } });
-  expect(mocks.servers[0].notify).toHaveBeenCalledWith('textDocument/didOpen', expect.objectContaining({ textDocument: expect.objectContaining({ languageId: 'typescript' }) }));
+  expect(mocks.servers[0]).toMatchObject({ launch: { executable: process.execPath, args: ['/global/json/bin/server.js', '--stdio'] } });
+  expect(mocks.servers[0].notify).toHaveBeenCalledWith('textDocument/didOpen', expect.objectContaining({ textDocument: expect.objectContaining({ languageId: 'json' }) }));
   const probes = find.mock.calls.length;
-  await f.invoke('open', f.first, f.document('two', 'other.ts'));
+  await f.invoke('open', f.first, f.document('two', 'other.json'));
   expect(find.mock.calls).toHaveLength(probes); // Reuse the actual selected session, not the first missing alternative.
   expect(mocks.servers).toHaveLength(1);
   discovery.dispose();
@@ -215,17 +215,18 @@ test('an imported Node profile connects without configuration and launches the b
 
 test('competing installed profiles wait for one choice, persist it, and never fall through a missing chosen server', async () => {
   const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
-  const installed = new Set(['typescript-language-server', 'deno']);
+  const installed = new Set(['vtsls', 'deno']);
   vi.spyOn(discovery, 'find').mockImplementation(async command => {
     const selected = installed.has(command) ? { id: command, path: process.execPath, source: 'path' as const } : undefined;
     return { selected, candidates: selected ? [selected] : [], environment: { env: {}, source: 'inherited' }, searched: [] };
   });
   const f = fixture(discovery);
+  await f.invoke('set-enabled', f.first, 'typescript-language-server', false);
   expect(await f.invoke('open', f.first, f.document('one', 'main.ts'))).toEqual({ unavailable: 'selection-needed' });
   expect(mocks.servers).toHaveLength(0);
-  await f.invoke('set-enabled', f.first, 'typescript-language-server', true);
-  expect((await f.invoke('open', f.first, f.document('one', 'main.ts'))).server).toBe('typescript-language-server');
-  await f.invoke('restart', f.first); installed.delete('typescript-language-server');
+  await f.invoke('set-enabled', f.first, 'vtsls', true);
+  expect((await f.invoke('open', f.first, f.document('one', 'main.ts'))).server).toBe('vtsls');
+  await f.invoke('restart', f.first); installed.delete('vtsls');
   await expect(f.invoke('open', f.first, f.document('one', 'main.ts'))).rejects.toThrow(/Executable not found/);
   expect(mocks.servers).toHaveLength(1); discovery.dispose();
 });

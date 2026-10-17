@@ -5,15 +5,16 @@ import { noCancellation, refreshEvent, textEdit, type LanguageFeatureContext } f
 
 export function installEditFeatures(c: LanguageFeatureContext): void {
   const { api, selector, capabilities: cap, scoped } = c;
-  if (cap.documentFormattingProvider) c.add(api.languages.registerDocumentFormattingEditProvider(selector, scoped({
+  const formatting = typeof selector === 'object' && !Array.isArray(selector) ? { ...selector, exclusive: true } : selector;
+  if (cap.documentFormattingProvider) c.add(api.languages.registerDocumentFormattingEditProvider(formatting, scoped({
     displayName: 'Language Server',
     provideDocumentFormattingEdits: async (_model, options, token) => (await c.request<L.TextEdit[]>('textDocument/formatting', { options }, token))?.map(textEdit),
   })));
-  if (cap.documentRangeFormattingProvider) c.add(api.languages.registerDocumentRangeFormattingEditProvider(selector, scoped({
+  if (cap.documentRangeFormattingProvider) c.add(api.languages.registerDocumentRangeFormattingEditProvider(formatting, scoped({
     displayName: 'Language Server',
     provideDocumentRangeFormattingEdits: async (_model, range, options, token) => (await c.request<L.TextEdit[]>('textDocument/rangeFormatting', { range: toRange(range), options }, token))?.map(textEdit),
   })));
-  if (cap.documentOnTypeFormattingProvider) c.add(api.languages.registerOnTypeFormattingEditProvider(selector, scoped({
+  if (cap.documentOnTypeFormattingProvider) c.add(api.languages.registerOnTypeFormattingEditProvider(formatting, scoped({
     autoFormatTriggerCharacters: [cap.documentOnTypeFormattingProvider.firstTriggerCharacter, ...(cap.documentOnTypeFormattingProvider.moreTriggerCharacter ?? [])],
     provideOnTypeFormattingEdits: async (_model, position, ch, options, token) => (await c.request<L.TextEdit[]>('textDocument/onTypeFormatting', { position: toPosition(position), ch, options }, token))?.map(textEdit),
   })));

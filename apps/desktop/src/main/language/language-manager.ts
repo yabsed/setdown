@@ -9,7 +9,6 @@ import type { WorkspaceEdit, ApplyWorkspaceEditResult, ServerCapabilities, TextD
 import { languageMethods, textSynchronization, type LanguageCapabilities, type LanguageCatalog, type LanguageCatalogEntry, type LanguageConnectionDraft, type LanguageServerOptions, type LanguageDocument, type LanguageEvent, type LanguageMethod } from '../../protocol/language';
 import { canonicalPath, isInside } from '../documents/file-system';
 import type { WindowState } from '../windows/window-state';
-import { languageSupport } from '../../core/document/language-support';
 import { ServerRegistry, findExecutable } from './server-registry';
 import { validateLanguageDefinition } from '../../core/document/language-definition';
 import { serverProfile } from './server-definitions';
@@ -43,7 +42,7 @@ export class LanguageManager {
   constructor(private readonly stateFor: (id: number) => WindowState | null, private readonly discovery = new ServerDiscovery()) {}
   private registryValue: ServerRegistry | undefined;
   private readonly subscribers = new Map<number, WindowState>();
-  private readonly sessions = new Map<ServerSession, { id: string; root: string; rootReason?: string; state: 'starting' | 'ready' | 'failed'; message?: string; features?: string[] }>();
+  private readonly sessions = new Map<ServerSession, { id: string; root: string; rootReason?: string; configuration?: string; state: 'starting' | 'ready' | 'failed'; message?: string; features?: string[] }>();
   private updating: Promise<void> = Promise.resolve();
   private get registry(): ServerRegistry { return this.registryValue ??= new ServerRegistry(app.getPath('userData')); }
   private async changed(task: () => unknown | Promise<unknown>): Promise<void> {
@@ -117,13 +116,15 @@ export class LanguageManager {
     for (const definition of definitions) if (!packages.some(item => item.id === definition.id))
       packages.push({ id: definition.id, languages: definition.languages.map(l => l.languageId), description: 'Custom language server connection.', homepage: '', licenses: [], source: { id: '' }, executables: [] } as typeof packages[number]);
     const entries: LanguageCatalogEntry[] = await mapLimited(packages, async item => {
-      const definition = definitions.find(d => d.id === item.id), options = definition && registry.options(item.id);
+      const definition = definitions.find(d => d.id === item.id), options = definition && registry.options(item.id, state.projectRoot ?? undefined);
       const bundled = definition?.launch.kind === 'bundledNode';
       const executable = definition ? registry.executable(item.id, this.discovery.environment.peek().env) : undefined;
       const found = await this.discover(item.id);
       const resolved = bundled ? executable : found?.selected?.path;
       const owner = this.owners.get(state.webContentsId);
       return { id: item.id, name: definition?.name ?? item.id, languages: item.languages, description: item.description, homepage: item.homepage,
+        role: definition ? registry.role(item.id, state.projectRoot ?? undefined) : undefined, projectRoot: state.projectRoot ?? undefined,
+        globalOptions: definition ? { args: registry.options(item.id).args ?? definition.launch.args, settings: registry.options(item.id).settings ?? definition.settings, initializationOptions: registry.options(item.id).initializationOptions ?? definition.initializationOptions ?? {}, root: registry.options(item.id).root, role: registry.role(item.id), formatting: registry.options(item.id).formatting } : undefined,
         configured: !!definition, bundled, custom: !!definition && registry.isCustom(item.id),
         managed: !!definition && (registry.isCustom(item.id) || Object.keys(options ?? {}).length > 0 || !!executable && path.isAbsolute(executable)),
         discoverable: definition ? registry.canDetect(item.id) : item.executables.length > 0,
@@ -133,7 +134,7 @@ export class LanguageManager {
         discoveryMessage: found?.environment.message, searched: found?.searched,
         profileSource: definition?.provenance ? `${definition.provenance.source} · ${definition.provenance.profile}` : undefined,
         setupNote: definition?.setupNote,
-        options: definition ? { args: options?.args ?? definition.launch.args, settings: options?.settings ?? definition.settings,
+        options: definition ? { role: registry.role(item.id, state.projectRoot ?? undefined), formatting: options?.formatting, scope: state.projectRoot ?? undefined, args: options?.args ?? definition.launch.args, settings: options?.settings ?? definition.settings,
           initializationOptions: serverProfile(definition, options).initializationOptions ?? {}, root: options?.root } : undefined,
         sessions: [...(owner?.servers.values() ?? [])].flatMap(server => {
           const info = this.sessions.get(server); return info?.id === item.id ? [{ root: info.root, rootReason: info.rootReason, state: info.state, message: info.message, features: info.features, context: [...server.context ?? []].map(([key, value]) => `${key}: ${value}`), logs: server.logs, progress: [...(server.progress?.values() ?? [])] }] : [];
@@ -142,11 +143,12 @@ export class LanguageManager {
     // Report the same primary-server policy as document opening. Multiple installed
     // alternatives require an explicit choice, never an arbitrary catalog ordering.
     for (const languageId of new Set(routes.map(r => r.languageId))) {
-      const matching = entries.filter(e => e.enabled && e.available && routes.some(r => r.languageId === languageId && r.server === e.id));
+      const matching = entries.filter(e => e.role !== 'supplementary' && e.enabled && e.available && routes.some(r => r.languageId === languageId && r.server === e.id));
       const preferred = registry.preferred(languageId);
       const chosen = matching.find(e => e.id === preferred) ?? (!preferred && (matching.find(e => e.bundled) ?? (matching.length === 1 ? matching[0] : undefined)));
       if (chosen) chosen.selected.push(languageId);
     }
+    for (const entry of entries) if (entry.role === 'supplementary' && entry.enabled && entry.available) entry.selected = entry.languages;
     entries.push({ id: 'notebook-python', name: 'Notebook Python', languages: ['python'],
       description: 'Cell-aware Python analysis for Jupyter notebooks, using the Python environment selected in the notebook.',
       homepage: '', configured: true, bundled: true, custom: false, enabled: true, selected: ['Python notebooks'],
@@ -240,7 +242,7 @@ export class LanguageManager {
       if (!owner.window.webContents.isDestroyed()) owner.window.webContents.send('language:event', { type: 'configuration', servers: ['notebook-python'] });
     });
     ipcMain.handle('language:configuration', async event => {
-      this.subscribe(state(event)); await this.updating; return this.registry.routes();
+      const owner = state(event); this.subscribe(owner); await this.updating; return this.registry.associations();
     });
     ipcMain.handle('language:catalog', event => this.catalogFor(state(event)));
     ipcMain.handle('language:rescan', event => { this.subscribe(state(event)); return this.rescan(); });
@@ -257,7 +259,7 @@ export class LanguageManager {
       state(event); return this.changed(() => this.registry.setEnabled(id, enabled));
     });
     ipcMain.handle('language:configure', (event, id: string, options: LanguageServerOptions) => {
-      state(event); return this.changed(() => this.registry.configure(id, options));
+      state(event); return this.changed(() => this.registry.configure(id, options, options.scope));
     });
     ipcMain.handle('language:remove', (event, id: string) => { state(event); return this.changed(() => this.registry.remove(id)); });
     ipcMain.handle('language:choose-executable', async (event, id: string) => {
@@ -326,11 +328,15 @@ export class LanguageManager {
     const languagePath = document?.path;
     if (!document || typeof document.id !== 'string' || document.id.length > 128
       || typeof document.generation !== 'string' || document.generation.length > 128
-      || typeof document.path !== 'string' || !path.isAbsolute(document.path) || !languageSupport(languagePath, routes)
+      || typeof document.path !== 'string' || !path.isAbsolute(document.path)
+      || (document.server !== undefined && (typeof document.server !== 'string' || !routes.some(route => route.server === document.server)))
+      || (document.languageId !== undefined && (typeof document.languageId !== 'string' || !routes.some(route => route.languageId === document.languageId)))
       || (document.notebook !== undefined)
       || typeof document.text !== 'string' || document.text.length > 16 * 1024 * 1024
       || !Number.isSafeInteger(document.version) || document.version < 1) throw new Error('Invalid language document.');
-    let support = languageSupport(languagePath, routes)!;
+    const candidates = this.registry.candidates(languagePath, document.server, document.languageId);
+    if (!candidates.length) return { unavailable: 'missing' as const };
+    let support = candidates[0];
     const file = canonicalPath(document.path);
     const owns = () => state.currentDocument?.path === file || state.rendererTabs.some(tab => !tab.isUntitled && tab.path === file)
       || state.rendererGitReview?.path === file;
@@ -349,15 +355,12 @@ export class LanguageManager {
       }
     }
     const uri = pathToFileURL(file).href;
-    if ([...owner.documents.values()].some(other => other.id !== document.id && other.uri === uri))
-      throw new Error('Language document is already connected.');
     this.close(state.webContentsId, document.id);
-    const candidates = this.registry.candidates(languagePath);
     const configurations = new Map(candidates.map(c => [c.server, this.registry.fingerprint(c.server)]));
     const roots = new Map<string, LanguageRoot>();
     const rootFor = (definition: LanguageServerDefinition) => {
       if (!roots.has(definition.id)) roots.set(definition.id, languageRoot(file, definition,
-        state.projectRoot ? canonicalPath(state.projectRoot) : undefined, this.registry.options(definition.id).root));
+        state.projectRoot ? canonicalPath(state.projectRoot) : undefined, this.registry.options(definition.id, file).root));
       return roots.get(definition.id)!.path;
     };
     let definition = this.registry.definition(support.server), root = rootFor(definition);
@@ -367,13 +370,13 @@ export class LanguageManager {
     const activeServer = () => [...owner.servers.values()].find(server => {
       const info = this.sessions.get(server);
       return info && candidates.some(c => c.server === info.id)
-        && info.root === rootFor(this.registry.definition(info.id)) && info.state !== 'failed';
+        && info.root === rootFor(this.registry.definition(info.id)) && info.configuration === JSON.stringify(this.registry.options(info.id, file)) && info.state !== 'failed';
     });
     let server = activeServer();
     let launch;
     const current = () => pending.get(document.id) === opening && this.owners.get(state.webContentsId) === owner
       && !state.window.isDestroyed() && !state.window.webContents.isDestroyed() && owns()
-      && JSON.stringify(this.registry.candidates(languagePath)) === JSON.stringify(candidates)
+      && JSON.stringify(this.registry.candidates(languagePath, document.server, document.languageId)) === JSON.stringify(candidates)
       && candidates.every(c => this.registry.fingerprint(c.server) === configurations.get(c.server));
     try {
       if (!server) for (;;) {
@@ -395,7 +398,7 @@ export class LanguageManager {
           support = installed[0].support;
           definition = this.registry.definition(support.server); root = rootFor(definition);
           const found = installed[0].found;
-          launch = this.registry.launch(support.server, app.isPackaged, found?.environment.env, found?.selected?.path);
+          launch = this.registry.launch(support.server, app.isPackaged, found?.environment.env, found?.selected?.path, file);
           if (found?.selected?.runtime) launch = { ...launch, executable: found.selected.runtime, args: [found.selected.path, ...launch.args] };
           break;
         } catch (error) { if (revision === this.discovery.generation) throw error; }
@@ -413,20 +416,25 @@ export class LanguageManager {
     const owned = owner;
     if (!server) {
       if (!launch) throw Error('Language session closed during discovery.');
-      const fingerprint = createHash('sha256').update(JSON.stringify([configuration, launch])).digest('hex').slice(0, 24);
+      const fingerprint = createHash('sha256').update(JSON.stringify([configuration, launch, this.registry.options(support.server, file)])).digest('hex').slice(0, 24);
       const key = `${support.server}:${root}:${fingerprint}`;
       server = new ServerSession(launch, root, params => {
         for (const binding of owned.documents.values()) {
           // Versionless push diagnostics are best-effort observations, never used as edit versions.
           if (binding.server === server && binding.uri === params.uri && (params.version === undefined || params.version === binding.version))
-            this.emit(owned, { type: 'diagnostics', id: binding.id, generation: binding.generation, version: binding.version, unversioned: params.version === undefined, diagnostics: params.diagnostics });
+            this.emit(owned, { type: 'diagnostics', server: this.sessions.get(binding.server)?.id, id: binding.id, generation: binding.generation, version: binding.version, unversioned: params.version === undefined, diagnostics: params.diagnostics });
         }
       }, message => {
         const info = server && this.sessions.get(server);
         if (info) { info.state = 'failed'; info.message = message; }
         this.emit(owned, { type: 'status', state: 'failed', message,
           documents: [...owned.documents.values()].filter(binding => binding.server === server).map(({ id, generation }) => ({ id, generation })) });
-      }, serverProfile(definition, this.registry.options(support.server)), {
+      }, serverProfile(definition, this.registry.options(support.server, file)), {
+        configuration: scopeUri => {
+          let resource = file;
+          try { if (scopeUri?.startsWith('file:')) resource = fileURLToPath(scopeUri); } catch { /* Use the session context for invalid scopes. */ }
+          return this.registry.options(definition.id, isInside(root, canonicalPath(resource)) ? resource : file).settings ?? definition.settings;
+        },
         refresh: feature => this.emit(owned, { type: 'refresh', feature,
           documents: [...owned.documents.values()].filter(b => b.server === server).map(({ id, generation }) => ({ id, generation })) }),
         capabilitiesChanged: () => {
@@ -437,7 +445,14 @@ export class LanguageManager {
           }
         },
         activity: () => {
-          if (!this.activityTimer) this.activityTimer = setTimeout(() => { this.activityTimer = undefined; this.broadcast({ type: 'activity' }); }, 500);
+          if (!this.activityTimer) this.activityTimer = setTimeout(() => {
+            this.activityTimer = undefined; this.broadcast({ type: 'activity' });
+            for (const owner of this.owners.values()) for (const binding of owner.documents.values()) {
+              const info = this.sessions.get(binding.server);
+              if (info) this.emit(owner, { type: 'context', id: binding.id, generation: binding.generation,
+                context: [`Project: ${info.root}`, ...[...binding.server.context ?? []].map(([key, value]) => `${key}: ${value}`), ...binding.server.progress?.values() ?? []] });
+            }
+          }, 500);
         },
         applyEdit: params => this.applyEdit(owned, server!, params.edit),
       });
@@ -452,10 +467,12 @@ export class LanguageManager {
         if (existsSync(path.join(root, '.clangd'))) server.context?.set('clangd configuration', path.join(root, '.clangd'));
       }
       this.items.set(server, new ServerItems());
-      this.sessions.set(server, { id: support.server, root, rootReason: roots.get(support.server)?.reason, state: 'starting' });
+      this.sessions.set(server, { id: support.server, root, rootReason: roots.get(support.server)?.reason, configuration: JSON.stringify(this.registry.options(support.server, file)), state: 'starting' });
       owner.servers.set(key, server);
       server.watch(root);
     }
+    if ([...owner.documents.values()].some(other => other.id !== document.id && other.uri === uri && other.server === server))
+      throw new Error('This provider already owns the document.');
     const binding = { languageId: support.languageId, id: document.id, generation: document.generation, uri, version: document.version, server, capabilities: {} as ServerCapabilities };
     owner.documents.set(document.id, binding);
     this.emit(owner, { type: 'status', state: 'starting', documents: [{ id: binding.id, generation: binding.generation }] });
@@ -472,14 +489,14 @@ export class LanguageManager {
     if (textSynchronization(capabilities).openClose) await server.notify('textDocument/didOpen', { textDocument: { uri: binding.uri, languageId: support.languageId,
       version: document.version, text: document.text } });
     this.emit(owner, { type: 'status', state: 'ready', documents: [{ id: binding.id, generation: binding.generation }] });
-    return { uri: binding.uri, capabilities, server: support.server };
+    return { name: definition.name, uri: binding.uri, capabilities, server: support.server, context: [`Project: ${root}`, `Root: ${roots.get(support.server)?.reason ?? 'server session'}`, ...[...server.context ?? []].map(([key, value]) => `${key}: ${value}`)] };
   }
   async fileOperation(state: WindowState, operation: LanguageFileOperation, phase: 'will' | 'did'): Promise<void> {
     const owner = this.owners.get(state.webContentsId);
     if (!owner) return;
-    const versions = [...owner.documents.values()].map(({ id, generation, version }) => ({ id, generation, version }));
     for (const server of owner.servers.values()) {
       if (this.sessions.get(server)?.state !== 'ready') continue;
+      const versions = [...owner.documents.values()].filter(binding => binding.server === server).map(({ id, generation, version }) => ({ id, generation, version }));
       const method = fileOperationMethod(operation, phase);
       const params = filteredFileOperation(operation, server.capabilities.fileOperation(method));
       if (!params.files.length) continue;

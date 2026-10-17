@@ -73,7 +73,9 @@ export function importGraph(root: string) {
 
 /** Process rules apply to type imports too; diagnostics keep their kind visible. */
 export function boundaryViolations(dependencies: Dependency[]): string[] {
-  const languagePublic = new Set(['language-client.ts', 'language-conversion.ts', 'language-feature-context.ts', 'LanguageSupport.svelte']);
+  // Runtime bootstrap, project-provider coordinator and current-document UI are
+  // separate public entries so basic editing does not import the project client.
+  const languagePublic = new Set(['language-runtime.ts', 'language-services.ts', 'DocumentLanguageStatus.svelte', 'language-client.ts', 'language-conversion.ts', 'language-feature-context.ts', 'LanguageSupport.svelte']);
   const notebookPublic = new Set(['document-content.ts', 'NotebookSurface.svelte']);
   return dependencies.flatMap(edge => {
     const { from, to, specifier } = edge;

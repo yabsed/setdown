@@ -20,7 +20,12 @@
           "--stdio"
         ]
       },
-      "rootMarkers": ["pyrightconfig.json", "pyproject.toml", "setup.py", "setup.cfg"],
+      "rootMarkers": [
+        "pyrightconfig.json",
+        "pyproject.toml",
+        "setup.py",
+        "setup.cfg"
+      ],
       "settings": {
         "python": {
           "analysis": {
@@ -37,7 +42,12 @@
         ".toml",
         ".json"
       ],
-      "watchFiles": ["pyrightconfig.json", "pyproject.toml", "setup.py", "setup.cfg"]
+      "watchFiles": [
+        "pyrightconfig.json",
+        "pyproject.toml",
+        "setup.py",
+        "setup.cfg"
+      ]
     },
     "clangd": {
       "id": "clangd",
@@ -238,6 +248,24 @@
         ".fortls.json",
         ".fortls"
       ]
+    },
+    "typescript-language-server": {
+      "name": "TypeScript and JavaScript",
+      "enabledByDefault": true,
+      "automatic": false,
+      "launch": {
+        "kind": "bundledNode",
+        "module": "typescript-language-server/lib/cli.mjs",
+        "args": [
+          "--stdio"
+        ]
+      },
+      "rootMarkers": [
+        "tsconfig.json",
+        "jsconfig.json",
+        "package.json"
+      ],
+      "setupNote": "Bundled project analysis. Uses the bundled TypeScript SDK unless a different SDK is selected."
     }
   },
   "aliases": {

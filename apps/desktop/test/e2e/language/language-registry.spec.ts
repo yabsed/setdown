@@ -27,7 +27,8 @@ test('the language sidebar searches all discoverable servers, shows language log
     const panel = page.getByRole('region', { name: 'Language Support', exact: true });
     const detected = panel.locator('[data-group="detected"]');
     const available = panel.locator('[data-group="available"]');
-    await expect(detected.locator('.server')).toHaveCount(2);
+    await expect(detected.locator('.server')).toHaveCount(3);
+    await expect(detected.locator('[data-server-id="typescript-language-server"]')).toContainText('Included');
     await expect(detected.locator('[data-server-id="pyright"]')).toContainText('Pyright');
     await expect(detected.locator('[data-server-id="notebook-python"]')).toContainText('Notebook Python');
     await expect(detected.getByRole('img', { name: 'Python logo' })).toHaveCount(2);
@@ -230,7 +231,8 @@ test('Edit menu imports a new server, negotiates Full sync, and reconnects the s
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     await management.getByRole('searchbox').fill('fixture-custom'); await management.locator('.server-list button').click();
     await management.getByText('Connection settings', { exact: true }).click();
-    await management.getByLabel('Server options (JSON)').fill(JSON.stringify({ args: [server], settings: { custom: { nested: { enabled: false } } }, initializationOptions: { test: 'reconfigured' } }));
+    await management.getByText('Advanced server options (JSON)', { exact: true }).click();
+    await management.getByLabel('Arguments, settings and initialization options').fill(JSON.stringify({ args: [server], settings: { custom: { nested: { enabled: false } } }, initializationOptions: { test: 'reconfigured' } }));
     await management.getByRole('button', { name: 'Apply settings', exact: true }).click();
     await expect.poll(async () => (await messages()).filter(m => m.method === 'open').length).toBe(2);
     expect((await messages()).filter(m => m.method === 'open').at(-1).params.textDocument.text).toBe('fixed\n// unsaved');
@@ -243,12 +245,12 @@ test('Edit menu imports a new server, negotiates Full sync, and reconnects the s
 
 test('an imported npm profile starts automatically and supplies completion without a connection form', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-profile-npm-'));
-  const file = path.join(root, 'main.ts'), log = path.join(root, 'messages.jsonl');
-  const prefix = path.join(root, 'npm-global'), folder = path.join(prefix, 'lib/node_modules/typescript-language-server');
+  const file = path.join(root, 'main.json'), log = path.join(root, 'messages.jsonl');
+  const prefix = path.join(root, 'npm-global'), folder = path.join(prefix, 'lib/node_modules/vscode-langservers-extracted');
   await mkdir(folder, { recursive: true }); await mkdir(path.join(root, 'bin'));
   await symlink(process.execPath, path.join(root, 'bin/node'));
-  await writeFile(file, 'const answer = 1;\n');
-  await writeFile(path.join(folder, 'package.json'), JSON.stringify({ name: 'typescript-language-server', bin: { 'typescript-language-server': './cli.cjs' } }));
+  await writeFile(file, '{ "answer": 1 }\n');
+  await writeFile(path.join(folder, 'package.json'), JSON.stringify({ name: 'vscode-langservers-extracted', bin: { 'vscode-json-language-server': './cli.cjs' } }));
   await writeFile(path.join(folder, 'cli.cjs'), `
     const fs = require('node:fs');
     const {createMessageConnection, StreamMessageReader, StreamMessageWriter} = require(${JSON.stringify(require.resolve('vscode-jsonrpc/node'))});
@@ -271,8 +273,8 @@ test('an imported npm profile starts automatically and supplies completion witho
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready');
     await expect.poll(async () => (await messages()).filter(m => m.method === 'open').length).toBe(1);
     const original = (await messages())[0];
-    expect(original.args).toEqual(['--stdio']); expect(original.params.initializationOptions.hostInfo).toBe('setdown');
-    expect((await messages()).find(m => m.method === 'open').params.textDocument.languageId).toBe('typescript');
+    expect(original.args).toEqual(['--stdio']); expect(original.params.initializationOptions.provideFormatter).toBe(true);
+    expect((await messages()).find(m => m.method === 'open').params.textDocument.languageId).toBe('json');
     const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
     await editor.press('Control+End'); await editor.press('Control+Space');
     await expect(page.locator('.suggest-widget')).toContainText('profileCompletion');
@@ -280,7 +282,7 @@ test('an imported npm profile starts automatically and supplies completion witho
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });
-    await management.getByRole('searchbox').fill('typescript-language-server'); await management.locator('.server-list button').click();
+    await management.getByRole('searchbox').fill('json-lsp'); await management.locator('.server-list button').click();
     await expect(management.locator('.state')).toHaveText('Running');
     await expect(management.locator('.details code').first()).toHaveText(path.join(folder, 'cli.cjs'));
     await management.getByRole('button', { name: 'Rescan installed servers' }).click();
@@ -288,6 +290,6 @@ test('an imported npm profile starts automatically and supplies completion witho
     expect(new Set((await messages()).map(m => m.pid))).toEqual(new Set([original.pid]));
     await management.getByRole('button', { name: 'Close language support' }).click();
     await editor.press('Control+z'); await editor.press('Control+s');
-    await expect.poll(() => readFile(file, 'utf8')).toBe('const answer = 1;\n');
+    await expect.poll(() => readFile(file, 'utf8')).toBe('{ "answer": 1 }\n');
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
 });

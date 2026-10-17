@@ -40,13 +40,54 @@ The [discovery design](../reports/2026_10_16_00_09_lsp_discovery_and_connection_
 explains the architecture and follow-up work. The behavior below describes the
 implemented catalog-wide discovery and imported connection profiles.
 
+## Current file support
+
+The language button in a code document's location bar describes that document,
+independently of other tabs. It shows the language mode, built-in features,
+connected providers, reported environment, and setup/restart/Problems actions.
+The mode chooser applies to the current open document; Auto-detect restores file
+association detection. It preserves the model, unsaved content and Undo. Disabling
+or uninstalling a server does not remove its language associations or grammar.
+Unknown languages open as plain text and can be assigned a mode explicitly.
+
+No applicable server is a supported editing state. Built-in JSON validates syntax
+and available schemas; CSS/SCSS/Less validate syntax and configured lint knowledge;
+HTML supplies completion, hover and formatting without a diagnostic adapter.
+JS/TS's isolated worker supplies syntax checks only. It has no filesystem/project
+model and therefore does not publish missing-import or type errors. Saved JS/TS
+files use the bundled project server when enabled. No diagnostic code blacklist
+is applied to project servers: genuine missing imports and type errors remain.
+
+JSONC files, TypeScript/JavaScript configuration files, VS Code workspace files
+and supported `.vscode/*.json` settings accept comments and trailing commas.
+Ordinary JSON stays strict. JSON Lines validates each line independently; a
+generic JSON language server is not connected to it unless its profile declares
+the JSON Lines language. These dialect choices follow the current resource even
+after Save As, while preserving the live model and Undo.
+
+JSON schema resolution failure (the JSON service's known code 768) appears as a
+service issue, separately from syntax and schema-violation diagnostics. The local
+worker has no filesystem schema resolver. Use an applicable project server for
+filesystem-backed schemas; syntax checks remain available meanwhile. CSS custom
+properties/dialects depend on the selected service's configuration; unknown-property
+warnings are not blindly removed. Built-in parser settings and external tool
+settings are distinct; the server configuration form configures that server.
+
+A shared diagnostic store supplies both editor markers and Problems, including
+built-in checks. Contributions are scoped to provider, document, session and
+push/pull channel. Configuration changes restart affected sessions. Edits clear
+previous live results; late versioned replies and disposed sessions cannot
+republish. Versionless push is explicitly best-effort, never assigned a fabricated
+analysis version. An empty Problems list means no diagnostics were reported, not
+that every possible check ran successfully.
+
 ## Choosing a server
 
 The offline catalog combines 331 packages from [Mason Registry](https://github.com/mason-org/mason-registry)
 with pinned [Helix language definitions](https://docs.helix-editor.com/languages.html).
 It currently contains **384 servers and 195 connection profiles**. Automatic
-discovery covers **378 servers**; bundled Pyright is shown separately as Included.
-The remaining five entries require manual executable selection. The sidebar
+discovery uses the catalog's executable metadata; bundled Pyright and the TypeScript project server are shown as Included.
+Five catalog entries without executable metadata require manual executable selection. The sidebar
 separates detected installations from available discovery profiles. Of the original
 331 Mason entries, 142 have an imported or retained connection profile; 189 still
 need connection metadata. The shared discovery flow checks every entry using its available executable
@@ -59,6 +100,7 @@ Install a server yourself, then open a matching saved file. Profiled servers kno
 their command, arguments, language IDs, file associations and root markers:
 
 - **Pyright** remains bundled and enabled for Python.
+- **TypeScript Language Server** and TypeScript 5.9.3 are included for saved JS/TS/JSX/TSX files. Automatic typings acquisition is disabled; project configuration and installed dependencies determine analysis.
 - **clangd**, **rust-analyzer**, **gopls** and **fortls** retain their existing
   identities and settings. `pip install fortls` followed by opening `.f90` needs
   no connection form; uppercase and other Fortran suffixes remain supported.
@@ -67,12 +109,14 @@ their command, arguments, language IDs, file associations and root markers:
   path globs, compound suffixes and JSX/TSX language IDs are included.
 - One installed primary server connects automatically. Multiple installed
   alternatives wait for **Use for these languages**. An explicit selection stays
-  selected even if its executable disappears. Bundled Python takes precedence
-  until the user chooses another Python server. Healthy sessions stay on their
+  selected even if its executable disappears. Bundled Python and TypeScript services take precedence
+  until the user chooses another primary server for those languages. Healthy sessions stay on their
   original server when new installations are discovered.
-- Optional writing/diagnostic providers remain disabled by default. Enabling one
-  selects it as the primary server; Setdown does not yet combine several servers'
-  features. Runtime-only profiles such as R/Julia explain the package that must
+- Optional writing/diagnostic providers remain disabled by default. Ruff, Biome
+  and other supplementary profiles can run beside the primary service. They
+  retain separate diagnostic/code-action ownership and do not replace the primary
+  rename or semantic-token provider. Connection settings select their role and
+  formatting participation independently. Runtime-only profiles such as R/Julia explain the package that must
   be installed before enabling them. TCP bridges and download-capable launcher
   recipes are excluded from generated connections.
 - Entries without a connection profile still detect their installed executable.
@@ -154,12 +198,22 @@ is implemented but the integration validation described below ran on Linux.
 
 ## Settings and lifetime
 
-**Connection settings** edits `args`, `settings` and `initializationOptions` as
-JSON. These replace the corresponding defaults. `settings` supports both nested
+**Connection settings** provides typed fields for analysis root, provider role,
+formatting choice, Python interpreter and clangd compilation-database directory.
+Advanced JSON edits `args`, `settings` and `initializationOptions`; the typed fields
+remain authoritative when applying the form. These replace the corresponding defaults. `settings` supports both nested
 objects and exact dotted section keys for `workspace/configuration`.
 `initializationOptions` is passed directly to the server's initialize request.
-Settings are user-wide, not project-specific. A scope URI currently receives that
-same connection's settings; there are no per-document overrides.
+Choose **All projects** or **This project**. Project overrides are keyed by absolute
+project directory and apply only beneath that boundary, with more specific scopes
+winning. `workspace/configuration` resolves the requested resource within the
+server workspace. Effective launch/settings contexts have separate sessions; a
+configuration change creates a new session epoch instead of accepting old push
+results as new-environment analysis.
+
+Enable/disable, executable selection and preferred primary selection remain
+application-wide. The scope selector applies to the connection fields in that
+form; it does not silently change these global controls.
 
 Settings persist atomically in `language-servers.json` in Electron's user-data
 directory (normally `~/.config/Setdown` on Linux). Invalid persisted settings are
@@ -169,8 +223,11 @@ on the selected environment's PATH. **Use automatic detection** bypasses the
 old path selection and executable environment override until another manual
 selection is made.
 
-Enable selects a server for its language IDs. One primary server serves each
-language; enabling another replaces that selection. Disabling the chosen server
+Enabling a primary selects it for its language IDs. Enabling a supplementary
+provider adds it without replacing that primary. Choose **Use this provider** for
+formatting to select one external formatter for overlapping languages in that
+settings scope. Supplementary formatting is otherwise off. Built-in formatting
+remains available where no selected external formatter advertises the feature. Disabling the chosen server
 allows another enabled connection; multiple automatic installations require a choice. Changing definitions,
 paths, selection or settings stops the affected servers in all windows and
 reconnects their models with current unsaved text. Unrelated servers keep running. It preserves document ownership,
@@ -235,12 +292,13 @@ or Incremental synchronization; open/close and save notifications honor the
 server's options. Save's optional text is the actual saved snapshot, not later
 typing. Requests and diagnostics retain connection and document-version checks.
 
-Only UTF-16 positions are supported. Unversioned push diagnostics are dropped;
-pull diagnostics and dynamic registration are not implemented or advertised.
-A server can therefore provide completion/hover while its diagnostics remain
-unavailable. Code actions, formatting, semantic tokens, additional URI schemes,
-server commands and unsolicited edits are not implemented. These are common
-client capabilities to add when needed, not features to duplicate per language.
+Only UTF-16 positions are supported. Versioned push, best-effort versionless push,
+pull diagnostics, dynamic registration, code actions, formatting and semantic
+tokens are supported as detailed below. Capability negotiation is per document.
+An initialize response does not prove project indexing has finished. Ordinary
+external providers connect saved files; notebook analysis retains its separate
+cell protocol. Untitled, immutable Git snapshots and arbitrary embedded resources
+do not masquerade as live saved documents.
 
 ## Catalog provenance and validation
 
@@ -282,7 +340,8 @@ Helix initialization `config` is imported as `initializationOptions`; user
 `settings` remains a separate LSP configuration channel.
 
 Generated profiles and both catalogs stay in the main process. Renderer
-configuration receives only lightweight enabled file associations. Source
+configuration receives lightweight file associations, enablement, role and
+formatting policy; disabled associations remain available for language recognition. Source
 attribution and `HELIX-LICENSE` ship in `dist-electron`; the generated data retains
 the upstream MPL-2.0 notice. To update, change the pinned source/checksum, regenerate,
 review coverage and policy changes, then run the profile/routing/discovery tests
@@ -295,10 +354,11 @@ installation followed by Rescan, current unsaved text, a stable server process
 through repeated scans and unrelated configuration changes. Discovery unit tests
 cover candidate precedence, caching, shell fallback, npm bin/runtime resolution,
 shared custom-prefix metadata, catalog-wide detection, ambiguous primary selection
-and metadata process limits. A real Electron fixture opens TypeScript through a
-generated npm profile with no form or user settings, verifies completion, Rescan
-with a stable process, and Undo. This fixture tests the launch/client integration;
-it is not a compatibility test of the upstream TypeScript server itself.
+and metadata process limits. Real Electron fixtures exercise generated npm-profile discovery, built-in
+workers with all servers disabled, and concurrent analysis/formatting providers
+with unified Problems. Unit tests also execute real Pyright, basedpyright and
+clangd. Each test records which server or fixture it exercises; profile presence
+alone is not an integration-test claim.
 
 The additional real-server gate requires an installed Rust toolchain, an explicit
 rust-analyzer path and `fortls` discoverable in the test environment:
@@ -338,6 +398,9 @@ Validation and matched preview measurements are recorded in the
 Features are registered per document from the connected server's capabilities,
 including supported dynamic registrations. Installing a server does not imply
 that it implements every feature below.
+Workspace-symbol and hierarchy actions prefer the primary provider when it
+supports the command, then an applicable companion. A companion's unsupported
+capability cannot disable another provider's working command.
 
 | Feature | Where to use it |
 | --- | --- |
@@ -401,6 +464,9 @@ arriving after a revision change are ignored. A server still initializing does
 not delay saving. Save still captures the current
 buffer and `didSave` receives the actual saved snapshot. This is not an automatic
 format-on-save setting.
+Save participants run sequentially across the connected providers, with existing
+version checks on each participant's edits. Each provider receives its negotiated
+save notifications; the selected formatting provider remains independent.
 
 Explorer create, rename/move/cut, copy/duplicate and trash operations send filtered
 `will*Files` / `did*Files` events to connected servers. The existing serialized
@@ -411,6 +477,6 @@ Explorer's explicitly reported partial result, and text edits retain per-file Un
 
 Server-requested creation/deletion/renaming **inside a WorkspaceEdit**, annotation
 confirmation, notebook synchronization, debugger inline values, monikers, virtual
-server documents, additional servers for one language, and nonstandard clangd
+server documents, nonstandard clangd
 extensions remain unadvertised. Those require their own document/transaction or
 product contract. The implementation does not add a VS Code extension runtime.

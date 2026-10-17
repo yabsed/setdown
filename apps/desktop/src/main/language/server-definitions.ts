@@ -16,6 +16,11 @@ export function serverProfile(definition: LanguageServerDefinition, options?: { 
   const bundledPyright = definition.id === 'pyright' && definition.launch.kind === 'bundledNode';
   const initializationOptions = { ...(bundledPyright ? { disablePullDiagnostics: true } : {}),
     ...(options?.initializationOptions ?? definition.initializationOptions) };
+  if (definition.id === 'typescript-language-server' && definition.launch.kind === 'bundledNode') {
+    const sdk = require.resolve('typescript/lib/tsserver.js').replace(/([\\/])app\.asar([\\/])/, '$1app.asar.unpacked$2');
+    Object.assign(initializationOptions, { disableAutomaticTypingAcquisition: true,
+      tsserver: { path: sdk, ...(initializationOptions as { tsserver?: object }).tsserver } });
+  }
   return { name: definition.name, configuration: options?.settings ?? definition.settings,
     // Pyright enumerates workspace sources asynchronously. A rename before the
     // first analysis can return only the open file. Its first push diagnostic is

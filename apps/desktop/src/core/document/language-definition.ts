@@ -1,6 +1,7 @@
 import { type LanguageRoute } from './language-support';
 
 export type LanguageServerDefinition = {
+  role?: 'primary' | 'supplementary';
   id: string; name: string; enabledByDefault?: boolean; automatic?: boolean; discovery?: 'python'; languages: Omit<LanguageRoute, 'server'>[];
   launch: { kind: 'native'; command: string; args: string[]; environmentVariable?: string; legacySettingsFile?: string }
     | { kind: 'bundledNode'; module: string; args: string[] };
@@ -45,7 +46,8 @@ export function validateLanguageDefinition(value: unknown): LanguageServerDefini
   for (const field of ['settings', 'initializationOptions'])
     if (value[field] !== undefined && !record(value[field])) throw new Error(`${field} must be a JSON object.`);
   if (JSON.stringify(value).length > 128 * 1024) throw new Error('Language definition is too large.');
-  return { id: value.id, name: value.name, languages: associations,
+  if (value.role !== undefined && !['primary', 'supplementary'].includes(value.role)) throw Error('Invalid provider role.');
+  return { id: value.id, name: value.name, languages: associations, role: value.role,
     launch: { kind: 'native', command: value.launch.command, args: value.launch.args },
     rootMarkers: value.rootMarkers ?? [], settings: value.settings ?? {}, initializationOptions: value.initializationOptions,
     watchExtensions: value.watchExtensions ?? associations.flatMap(l => l.extensions), watchFiles: value.watchFiles ?? [] };

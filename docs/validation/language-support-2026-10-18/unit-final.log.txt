@@ -1,0 +1,157 @@
+
+> @setdown/desktop@1.0.0 test
+> vitest run --config vitest.config.ts
+
+
+ RUN  v3.2.7 /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+
+ ✓ src/main/language/language-manager.test.ts (16 tests) 1306ms
+   ✓ save includeText uses the actual disk snapshot and a catalog read starts no process  495ms
+ ✓ src/main/language/clangd-session.test.ts (1 test) 1173ms
+   ✓ real clangd uses build flags, isolates buffers, and supplies C++ navigation and edits  1172ms
+ ✓ src/architecture-boundaries.test.ts (5 tests) 1093ms
+   ✓ architecture boundaries > resolved imports respect process, composition and feature boundaries  851ms
+ ✓ src/main/project/git-history-service.test.ts (5 tests) 601ms
+ ✓ src/main/language/server-session.test.ts (7 tests) 5478ms
+   ✓ real Pyright sees independent unsaved buffers and versioned incremental Unicode changes  862ms
+   ✓ watching a closed imported file refreshes analysis without overwriting the open buffer  602ms
+   ✓ workspace rename includes unopened Python files immediately after initialization  440ms
+   ✓ pyright off preset keeps core diagnostics and inference without type noise  1242ms
+   ✓ basedpyright off preset keeps core diagnostics and inference without type noise  1962ms
+ ✓ src/main/language/server-discovery.test.ts (12 tests) 473ms
+ ✓ src/main/terminal/terminal-manager.test.ts (12 tests) 496ms
+ ✓ src/main/project/engines/project-watcher.test.ts (2 tests) 349ms
+   ✓ project watcher engine > does not emit a project change when Git status only reads the index  335ms
+ ✓ src/renderer/language/language-client.test.ts (12 tests) 434ms
+ ✓ src/main/project/git-service.test.ts (7 tests) 156ms
+ ✓ src/main/documents/text-files.integration.test.ts (19 tests) 132ms
+ ✓ src/protocol/language-request.test.ts (4 tests) 135ms
+ ✓ src/core/preview/review-row-patch.test.ts (9 tests) 123ms
+ ✓ src/renderer/notebook/notebook-language.test.ts (7 tests) 125ms
+ ✓ src/preview-runtime/theme-controller.test.ts (2 tests) 110ms
+ ✓ src/main/terminal/terminal-screen.test.ts (11 tests) 87ms
+ ✓ src/main/language/server-registry.test.ts (14 tests) 84ms
+ ✓ src/main/language/server-items.test.ts (5 tests) 58ms
+ ✓ src/main/project/project-service.test.ts (6 tests) 59ms
+ ✓ src/main/language/catalog/profiles.test.ts (4 tests) 54ms
+ ✓ src/main/preview/source-anchors.test.ts (19 tests) 60ms
+ ✓ src/main/browser/browser-extensions.test.ts (10 tests) 58ms
+ ✓ src/core/preview/rendered-diff.test.ts (21 tests) 43ms
+ ✓ src/core/preview/viewport-anchor.test.ts (26 tests) 38ms
+ ✓ src/main/preview/review-row-cache.test.ts (6 tests) 38ms
+ ✓ src/renderer/workspace/text-workspace.test.ts (39 tests) 35ms
+ ✓ src/main/project/file-transfer.test.ts (7 tests) 29ms
+ ✓ src/core/browser/reader-export.test.ts (5 tests) 21ms
+ ✓ src/main/project/explorer-service.test.ts (5 tests) 22ms
+ ✓ src/renderer/project/source-control/source-control-controller.test.ts (20 tests) 18ms
+ ✓ src/renderer/editor/markdown-editing.test.ts (39 tests) 15ms
+ ✓ src/main/browser/browser-downloads.test.ts (4 tests) 17ms
+ ✓ src/renderer/notebook/notebook-execution.test.ts (7 tests) 18ms
+ ✓ src/core/notebook/notebook-document.test.ts (21 tests) 16ms
+ ✓ src/renderer/language/language-features.test.ts (7 tests) 17ms
+ ✓ src/main/tabs/tab-transfer-manager.test.ts (7 tests) 17ms
+ ✓ src/main/documents/draft-assets.test.ts (4 tests) 16ms
+ ✓ src/renderer/project/source-control/git-review-viewport.test.ts (16 tests) 15ms
+ ✓ src/core/notebook/notebook-tools.test.ts (6 tests) 15ms
+ ✓ src/renderer/language/builtin-diagnostics.test.ts (5 tests) 15ms
+ ✓ src/main/notebook/python-environments.test.ts (1 test) 16ms
+ ✓ src/main/documents/image-save.test.ts (2 tests) 15ms
+ ✓ src/main/browser/extensions/extension-policy.test.ts (3 tests) 14ms
+ ✓ src/main/language/server-capabilities.test.ts (6 tests) 16ms
+ ✓ src/main/documents/pasted-image.test.ts (3 tests) 11ms
+ ✓ src/main/browser/browser-permissions.test.ts (6 tests) 13ms
+ ✓ src/main/language/server-definitions.test.ts (3 tests) 13ms
+ ✓ src/main/documents/hwp-file.test.ts (2 tests) 14ms
+ ✓ src/main/language/language-root.test.ts (4 tests) 10ms
+ ✓ src/main/project/text-search.test.ts (4 tests) 11ms
+ ✓ src/renderer/workspace/auto-save.test.ts (9 tests) 11ms
+ ✓ src/renderer/editor/composition-guard.test.ts (7 tests) 10ms
+ ✓ src/main/preview/preview-reuse.test.ts (11 tests) 9ms
+ ✓ src/renderer/project/source-control/git-status-refresh.test.ts (6 tests) 10ms
+ ✓ src/main/preview/preview-presentation.test.ts (21 tests) 11ms
+ ✓ src/main/notebook/kernel-manager.test.ts (4 tests) 10ms
+ ✓ src/renderer/language/language-presentation.test.ts (4 tests) 10ms
+ ✓ src/renderer/project/source-control/git-review-freshness.test.ts (12 tests) 9ms
+ ✓ src/main/preview/render-output.test.ts (8 tests) 5ms
+ ✓ src/renderer/workspace/document-sessions.test.ts (3 tests) 11ms
+ ✓ src/main/documents/pdf-file.test.ts (1 test) 8ms
+ ✓ src/main/browser/extension-package.test.ts (7 tests) 11ms
+ ✓ src/main/documents/image-file.test.ts (2 tests) 10ms
+ ✓ src/preview-runtime/content-controller.test.ts (3 tests) 10ms
+ ✓ src/core/preview/preview-install.test.ts (9 tests) 10ms
+ ✓ src/main/documents/video-file.test.ts (2 tests) 8ms
+ ✓ src/main/terminal/terminal-resize.test.ts (8 tests) 10ms
+ ✓ src/main/windows/workspace-zoom.test.ts (26 tests) 9ms
+ ✓ src/renderer/project/explorer/explorer-presentation.test.ts (2 tests) 9ms
+ ✓ src/core/preview/preview-blocks.test.ts (12 tests) 8ms
+ ✓ src/renderer/project/source-control/text-review.test.ts (2 tests) 7ms
+ ✓ src/renderer/pdf/pdf-range.test.ts (2 tests) 9ms
+ ✓ src/core/preview/preview-checkpoints.test.ts (5 tests) 7ms
+ ✓ src/core/workspace/workspace-state.test.ts (3 tests) 5ms
+ ✓ src/renderer/project/explorer/explorer-controller.test.ts (4 tests) 10ms
+ ✓ src/main/reading/reading-position-store.test.ts (4 tests) 9ms
+ ✓ src/main/documents/document-save.test.ts (1 test) 8ms
+ ✓ src/preview-runtime/review-reveal-position.test.ts (22 tests) 8ms
+ ✓ src/main/project/visible-search.test.ts (2 tests) 6ms
+ ✓ src/renderer/project/source-control/git-graph-presentation.test.ts (2 tests) 4ms
+ ✓ src/core/theme/theme-catalog.test.ts (2 tests) 3ms
+ ✓ src/renderer/app/workspace-events.test.ts (3 tests) 6ms
+ ✓ src/core/document/language-policy.test.ts (5 tests) 5ms
+ ✓ src/renderer/project/project-controller.test.ts (1 test) 5ms
+ ✓ src/main/settings/auto-save-store.test.ts (3 tests) 5ms
+ ✓ src/renderer/project/source-control/git-graph-provider.test.ts (2 tests) 7ms
+ ✓ src/renderer/notebook/notebook-controller.test.ts (2 tests) 7ms
+ ✓ src/main/preview/preview-renderer.test.ts (4 tests) 7ms
+ ✓ src/main/browser/browser-auth.test.ts (2 tests) 7ms
+ ✓ src/renderer/project/source-control/git-review-latency.test.ts (5 tests) 7ms
+ ✓ src/renderer/editor/editor-viewport.test.ts (5 tests) 3ms
+ ✓ src/core/markdown/markdown-insertions.test.ts (6 tests) 3ms
+ ✓ src/core/preview/preview-render-coordinator.test.ts (7 tests) 6ms
+ ✓ src/core/diff/text-diff.test.ts (4 tests) 5ms
+ ✓ src/main/preview/preview-fragment-rendering.test.ts (7 tests) 6ms
+ ✓ src/core/workspace/editor-groups.test.ts (7 tests) 7ms
+ ✓ src/main/project/explorer-clipboard.test.ts (5 tests) 7ms
+ ✓ src/main/preview/review-preparation.test.ts (7 tests) 7ms
+ ✓ src/renderer/image/image-edit-sessions.test.ts (2 tests) 6ms
+ ✓ src/renderer/hwp/hwp-sessions.test.ts (3 tests) 6ms
+ ✓ src/main/preview/preview-navigation.test.ts (8 tests) 6ms
+ ✓ src/preview-runtime/source-atlas.test.ts (4 tests) 6ms
+ ✓ src/main/browser/browser-context-menu.test.ts (3 tests) 6ms
+ ✓ src/core/browser/browser-url.test.ts (12 tests) 7ms
+ ✓ src/renderer/adapters/shared-document-history.test.ts (8 tests) 5ms
+ ✓ src/renderer/workspace/media-cache.test.ts (3 tests) 8ms
+ ✓ src/core/preview/review-position-proof.test.ts (20 tests) 4ms
+ ✓ src/main/preview/preview-resources.test.ts (2 tests) 2ms
+ ✓ src/renderer/editor/live-document-model.test.ts (6 tests) 3ms
+ ✓ src/core/document/document-state.test.ts (6 tests) 3ms
+ ✓ src/renderer/language/diagnostic-store.test.ts (1 test) 5ms
+ ✓ src/renderer/project/source-control/review-presentation.test.ts (9 tests) 5ms
+ ✓ src/renderer/project/source-control/git-change-groups.test.ts (8 tests) 2ms
+ ✓ src/renderer/reader/reader-preparation.test.ts (3 tests) 5ms
+ ✓ src/core/preview/exact-pair-cache.test.ts (7 tests) 3ms
+ ✓ src/core/image/image-recipe.test.ts (3 tests) 4ms
+ ✓ src/core/browser/web-store.test.ts (2 tests) 4ms
+ ✓ src/preview-runtime/reader-tools.test.ts (3 tests) 2ms
+ ✓ src/core/browser/reader-article.test.ts (4 tests) 4ms
+ ✓ src/renderer/project/search/search-highlight.test.ts (2 tests) 6ms
+ ✓ src/protocol/preview-preparation.test.ts (2 tests) 4ms
+ ✓ src/core/document/file-location.test.ts (5 tests) 3ms
+ ✓ src/core/preview/review-viewport.test.ts (4 tests) 3ms
+ ✓ src/main/preview/review-baseline-cache.test.ts (3 tests) 2ms
+ ✓ src/renderer/shell/panel-resize.test.ts (2 tests) 2ms
+ ✓ src/renderer/project/explorer/explorer-selection.test.ts (3 tests) 3ms
+ ✓ src/core/browser/browser-failure.test.ts (6 tests) 3ms
+ ✓ src/core/workspace/tab-navigation.test.ts (2 tests) 4ms
+ ✓ src/preview-runtime/scroll-settlement.test.ts (2 tests) 3ms
+ ✓ src/core/preview/preview-preferences.test.ts (2 tests) 2ms
+ ✓ src/renderer/project/search/search-groups.test.ts (1 test) 3ms
+ ✓ src/main/preview/review-patch-ack.test.ts (2 tests) 2ms
+ ✓ src/main/documents/markdown-link.test.ts (1 test) 2ms
+ ✓ src/core/reading/reading-menu.test.ts (1 test) 3ms
+ ✓ src/preview-runtime/viewport-controller.test.ts (3 tests) 2ms
+
+ Test Files  135 passed (135)
+      Tests  907 passed (907)
+   Start at  02:04:12
+   Duration  26.18s (transform 1.71s, setup 0ms, collect 5.00s, tests 13.69s, environment 28ms, prepare 7.09s)
+

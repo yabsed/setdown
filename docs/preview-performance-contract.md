@@ -521,3 +521,19 @@ Dated validation evidence: [LSP 개혁 적용 검증](validation/2026-10-17-lsp-
 The shared Monaco worker dispatcher is covered by the contract's ordinary/Git/notebook
 checks and the new language worker/protocol regression scenarios. The independent
 baseline comparison completed 80 launches with all 48 comparisons inside the existing tolerances.
+
+## Document language support policy — 2026-10-18
+
+Language recognition and local checks do not depend on an installed server.
+The shared worker dispatcher preserves JSON/JSONC/JSON Lines, CSS and HTML's
+actual capabilities; isolated JS/TS workers run syntax checks only. External
+project diagnostics retain their own provider/session/version ownership.
+The code-document language status uses the existing location bar and must not
+alter Markdown, review, media or web bounds, preparation, model identity or IME.
+`language/language-policy.spec.ts` adds real worker, no-server, multi-provider and
+project-import checks alongside the existing language, ordinary/review and
+notebook scenarios in the contract manifest. Project clients remain lazy.
+Implementation and dated execution evidence: [Language support system validation](validation/2026-10-18-language-support-system.md).
+The final build passed all 149 isolated Electron contract scenarios. The separate
+baseline comparison completed 80 launches and all 48 timing buckets passed the
+unchanged tolerances; first, second and warm measurements are recorded separately.

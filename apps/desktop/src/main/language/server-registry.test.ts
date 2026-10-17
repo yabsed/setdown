@@ -147,3 +147,40 @@ test('an explicit analysis root is persisted, changes the session fingerprint an
   expect(new ServerRegistry(folder).options('pyright')).toMatchObject({ root: folder, settings: { python: { pythonPath: '/usr/bin/python3' } } });
   expect(() => registry.configure('pyright', { root: '../outside' })).toThrow();
 });
+
+test('language recognition survives disabled servers and supplementary tools do not replace the primary', async () => {
+  const root = await directory(), registry = new ServerRegistry(root);
+  registry.setEnabled('pyright', true); registry.setEnabled('ruff', true);
+  expect(registry.preferred('python')).toBe('pyright');
+  expect(registry.candidates('/project/test.py')).toEqual([{ server: 'pyright', languageId: 'python' }]);
+  expect(registry.candidates('/project/test.py', 'ruff')).toEqual([{ server: 'ruff', languageId: 'python' }]);
+  registry.setEnabled('pyright', false);
+  expect(registry.associations().find(route => route.server === 'pyright')).toMatchObject({ languageId: 'python', enabled: false });
+  expect(new ServerRegistry(root).role('ruff')).toBe('supplementary');
+});
+
+test('project settings follow resource boundaries, persist, and allow an independent formatter', async () => {
+  const root = await directory(), registry = new ServerRegistry(root), project = path.join(root, 'project');
+  registry.configure('pyright', { settings: { python: { pythonPath: '/global/python' } } });
+  const before = registry.fingerprint('pyright');
+  registry.configure('pyright', { settings: { python: { pythonPath: '/project/.venv/bin/python' } } }, project);
+  registry.configure('ruff', { formatting: true }, project);
+  const restored = new ServerRegistry(root);
+  expect(restored.fingerprint('pyright')).not.toBe(before);
+  expect(restored.options('pyright', path.join(project, 'src/test.py')).settings).toEqual({ python: { pythonPath: '/project/.venv/bin/python' } });
+  expect(restored.options('pyright', path.join(root, 'project-other/test.py')).settings).toEqual({ python: { pythonPath: '/global/python' } });
+  expect(restored.options('ruff', project).formatting).toBe(true);
+  expect(restored.options('pyright', project).formatting).toBe(false);
+  expect(restored.options('ruff').formatting).toBeUndefined();
+});
+
+test('partial project settings inherit global fields immediately and after restart', async () => {
+  const root = await directory(), registry = new ServerRegistry(root), project = path.join(root, 'project');
+  registry.configure('ruff', { args: ['server'], role: 'supplementary', settings: { lint: { preview: true } } });
+  registry.configure('ruff', { formatting: true }, project);
+  const expected = { args: ['server'], role: 'supplementary', settings: { lint: { preview: true } }, formatting: true };
+  expect(registry.options('ruff', project)).toEqual(expected);
+  expect(new ServerRegistry(root).options('ruff', project)).toEqual(expected);
+  registry.configure('ruff', {}, project);
+  expect(registry.options('ruff', project)).toEqual(registry.options('ruff'));
+});

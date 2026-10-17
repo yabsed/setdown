@@ -79,7 +79,7 @@ test('retarget preserves the model and rejects diagnostics from the previous con
   f.event({ type: 'diagnostics', id: previous.id, generation: previous.generation, version: 1, diagnostics: [] });
   expect(f.api.editor.setModelMarkers).not.toHaveBeenCalled();
   f.event({ type: 'diagnostics', id: previous.id, generation: f.opened[1].generation, version: 1, diagnostics: [] });
-  expect(f.api.editor.setModelMarkers).toHaveBeenCalledWith(f.model, 'setdown-language', []);
+  expect(f.api.editor.setModelMarkers).toHaveBeenCalledWith(f.model, `setdown:pyright:${f.opened[1].generation}`, []);
   f.client.dispose();
 });
 

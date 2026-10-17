@@ -3,7 +3,7 @@ import type { Diagnostic, DiagnosticOptions, ServerCapabilities, TextDocumentCon
 import type { LanguageRoute } from '../core/document/language-support';
 import type { LanguageServerDefinition } from '../core/document/language-definition';
 
-export type LanguageServerOptions = { args: string[]; settings: Record<string, unknown>; initializationOptions: Record<string, unknown>; root?: string };
+export type LanguageServerOptions = { role?: 'primary' | 'supplementary'; formatting?: boolean; scope?: string; args: string[]; settings: Record<string, unknown>; initializationOptions: Record<string, unknown>; root?: string };
 /** Local bridge metadata, never sent as an LSP ServerCapabilities object. */
 export type LanguageCapabilities = ServerCapabilities & { diagnosticProviders?: { id: string; options: DiagnosticOptions }[] };
 export type LanguageConnectionDraft = LanguageServerOptions & { id: string; name: string;
@@ -11,7 +11,7 @@ export type LanguageConnectionDraft = LanguageServerOptions & { id: string; name
 export type LanguageServerCandidate = { id: string; path: string; source: 'explicit' | 'path' | 'user' | 'python' | 'npm' };
 export type LanguageCatalogEntry = {
   id: string; name: string; description: string; homepage: string; languages: string[];
-  notebook?: boolean;
+  notebook?: boolean; role?: 'primary' | 'supplementary'; projectRoot?: string; globalOptions?: LanguageServerOptions;
   configured: boolean; bundled: boolean; custom: boolean; enabled: boolean; selected: string[];
   /** A user-owned connection or override, retained in management even when missing. */
   managed?: boolean;
@@ -52,15 +52,16 @@ export const languageMethods = [
 ] as const;
 export type LanguageMethod = typeof languageMethods[number];
 export type LanguageCell = { id: string; version: number; text: string };
-export type LanguageDocument = { notebook?: 'python'; cells?: LanguageCell[]; python?: string; id: string; generation: string; path: string; text: string; version: number };
-export type LanguageConnection = { uri: string; cells?: Record<string, string>; capabilities: LanguageCapabilities; server?: string };
+export type LanguageDocument = { server?: string; languageId?: string; notebook?: 'python'; cells?: LanguageCell[]; python?: string; id: string; generation: string; path: string; text: string; version: number };
+export type LanguageConnection = { name?: string; context?: string[]; uri: string; cells?: Record<string, string>; capabilities: LanguageCapabilities; server?: string };
 export type LanguageUnavailable = { unavailable: 'missing' | 'selection-needed' };
 export type LanguageEvent =
   | { type: 'configuration'; servers?: string[] }
   | { type: 'discovery' }
-  | { type: 'diagnostics'; id: string; generation: string; version: number; cell?: string; cellVersion?: number; unversioned?: boolean; diagnostics: Diagnostic[] }
+  | { type: 'diagnostics'; server?: string; id: string; generation: string; version: number; cell?: string; cellVersion?: number; unversioned?: boolean; diagnostics: Diagnostic[] }
   | { type: 'refresh'; documents: { id: string; generation: string }[]; feature: LanguageRefresh }
   | { type: 'capabilities'; id: string; generation: string; capabilities: LanguageCapabilities }
+  | { type: 'context'; id: string; generation: string; context: string[] }
   | { type: 'activity' }
   | { type: 'apply-edit'; id: string; generation: string; requestId: string; versions?: { id: string; generation: string; version: number }[]; edit: import('vscode-languageserver-protocol').WorkspaceEdit }
   | { type: 'status'; documents: { id: string; generation: string }[]; state: 'starting' | 'ready' | 'failed'; message?: string };

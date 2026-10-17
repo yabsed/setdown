@@ -35,7 +35,7 @@
       void tick().then(() => document.getElementById(`language-result-${selection}`)?.scrollIntoView({ block: 'nearest' }));
     } else if (event.key === 'Enter' && event.target === input && rows[selection]) { event.preventDefault(); void open(rows[selection]); }
   }
-  onMount(() => { input.focus(); void load(); return () => { live = false; request?.cancel(); clearTimeout(timer); }; });
+  onMount(() => { input.focus(); void load(); const unsubscribe = source.subscribe?.(() => { void load(); }); return () => { unsubscribe?.(); live = false; request?.cancel(); clearTimeout(timer); }; });
 </script>
 
 <!-- This is an editor-local panel; it cannot cover or capture native browser views. -->
@@ -51,7 +51,7 @@
         <button class="location" onclick={() => open(row)} title={row.detail}><span>{row.label}</span><small>{row.detail}</small></button>
         {#if row.children}<button class="expand" aria-label={`Explore ${row.label}`} onclick={() => children(row)}>›</button>{/if}
       </div>
-    {:else}<p>{busy ? 'Loading…' : 'No results.'}</p>{/each}
+    {:else}<p>{busy ? 'Loading…' : source.empty ?? 'No results.'}</p>{/each}
   </div>
 </div>
 

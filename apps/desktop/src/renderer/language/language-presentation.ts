@@ -12,7 +12,7 @@ export function serverStatus(entry: LanguageCatalogEntry): { label: string; tone
   if (entry.sessions.some(session => session.state === 'ready')) return { label: 'Running', tone: 'success' };
   if (entry.sessions.some(session => session.state === 'starting')) return { label: 'Starting', tone: 'neutral' };
   if (entry.selectionNeeded) return { label: 'Choose installation', tone: 'warning' };
-  if (!entry.selected.length) return { label: 'Choose primary', tone: 'warning' };
+  if (!entry.selected.length) return { label: entry.role === 'supplementary' ? 'Additional tools' : 'Choose primary', tone: entry.role === 'supplementary' ? 'neutral' : 'warning' };
   return { label: 'Detected', tone: 'neutral' };
 }
 

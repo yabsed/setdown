@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="850" viewBox="0 0 1500 850" role="img" aria-labelledby="title desc">
+  <title id="title">Setdown language support states</title>
+  <desc id="desc">Design proposal showing C++ basic editing without an analyzer, Python with an active project provider, and JSON with built-in syntax checks but an unavailable schema. Actual feature coverage, settings and actions are visible for each document.</desc>
+  <defs><style>
+    text { font-family: 'D2Coding', 'DejaVu Sans Mono', monospace; fill: #242424; font-size: 16px; }
+    .heading { font-size: 25px; font-weight: 700; }
+    .title { font-size: 22px; font-weight: 700; }
+    .small { font-size: 14px; }
+    .muted { fill: #6c6c67; }
+    .link { fill: #0969da; }
+  </style></defs>
+  <rect width="1500" height="850" fill="#f7f7f5"/>
+  <text x="46" y="55" class="heading">One language support system. Different available features.</text>
+  <text x="46" y="85" class="muted">The document shows what is checked, who checks it, and what needs configuration.</text>
+  <text x="46" y="136" class="small muted">NO ANALYSIS PROVIDER</text>
+  <text x="526" y="136" class="small muted">PROJECT PROVIDER AVAILABLE</text>
+  <text x="1006" y="136" class="small muted">BUILT-IN SERVICE, NO EXTERNAL LSP</text>
+  <g fill="#fff" stroke="#d8d8d2">
+    <rect x="46" y="154" width="448" height="555" rx="9"/>
+    <rect x="526" y="154" width="448" height="555" rx="9"/>
+    <rect x="1006" y="154" width="448" height="555" rx="9"/>
+  </g>
+  <g fill="#ecece8">
+    <rect x="60" y="169" width="420" height="38" rx="5"/>
+    <rect x="540" y="169" width="420" height="38" rx="5"/>
+    <rect x="1020" y="169" width="420" height="38" rx="5"/>
+  </g>
+  <text x="74" y="194" class="small">main.cpp</text>
+  <text x="280" y="194" class="small">C++ · Basic editing</text>
+  <text x="554" y="194" class="small">main.py</text>
+  <text x="734" y="194" class="small">Python · Analysis</text>
+  <text x="1034" y="194" class="small">config.json</text>
+  <text x="1212" y="194" class="small">JSON · Schema issue</text>
+  <text x="72" y="252" class="title">C++</text>
+  <text x="552" y="252" class="title">Python</text>
+  <text x="1032" y="252" class="title">JSON</text>
+  <text x="72" y="283" class="muted">Basic editing available</text>
+  <text x="552" y="283" class="muted">Analysis provided by Pyright</text>
+  <text x="1032" y="283" class="muted">Syntax checks available</text>
+  <text x="72" y="328">Highlighting</text><text x="374" y="328" class="small">Available</text>
+  <text x="72" y="365">Diagnostics</text><text x="374" y="365" class="small">Not active</text>
+  <text x="72" y="402">Navigation</text><text x="374" y="402" class="small">Not active</text>
+  <text x="72" y="439">Formatting</text><text x="374" y="439" class="small">Not active</text>
+  <text x="552" y="328">Type analysis</text><text x="850" y="328" class="small">Pyright</text>
+  <text x="552" y="365">Environment</text><text x="766" y="365" class="small">.venv/bin/python</text>
+  <text x="552" y="402">Additional lint</text><text x="850" y="402" class="small">Ruff</text>
+  <text x="552" y="439">Formatting</text><text x="850" y="439" class="small">Ruff</text>
+  <text x="1032" y="328">Syntax checks</text><text x="1330" y="328" class="small">Built-in</text>
+  <text x="1032" y="365">Schema checks</text><text x="1330" y="365" class="small">Unavailable</text>
+  <text x="1032" y="402">Completion</text><text x="1330" y="402" class="small">Built-in</text>
+  <text x="1032" y="439">Formatting</text><text x="1330" y="439" class="small">Built-in</text>
+  <g stroke="#d8d8d2"><path d="M72 466H468"/><path d="M552 466H948"/><path d="M1032 466H1428"/></g>
+  <text x="72" y="501" class="small muted">No analyzer is enabled for this file.</text>
+  <text x="72" y="525" class="small muted">Imports and types are not checked.</text>
+  <text x="552" y="501" class="small muted">Each provider keeps its own diagnostics.</text>
+  <text x="552" y="525" class="small muted">Formatter choice does not change analysis.</text>
+  <text x="1032" y="501" class="small muted">The configured schema could not be loaded.</text>
+  <text x="1032" y="525" class="small muted">This does not mean the JSON is invalid.</text>
+  <g fill="#f7f7f5" stroke="#d8d8d2"><rect x="72" y="560" width="220" height="38" rx="5"/><rect x="552" y="560" width="220" height="38" rx="5"/><rect x="1032" y="560" width="220" height="38" rx="5"/></g>
+  <text x="88" y="585" class="small link">Set up analysis…</text>
+  <text x="568" y="585" class="small link">Choose environment…</text>
+  <text x="1048" y="585" class="small link">Schema settings…</text>
+  <text x="72" y="641" class="small link">Change language mode…</text>
+  <text x="552" y="641" class="small link">Open Problems</text>
+  <text x="1032" y="641" class="small link">Retry schema loading</text>
+  <text x="72" y="680" class="small muted">Basic editing is a normal state.</text>
+  <text x="552" y="680" class="small muted">Settings apply to this project.</text>
+  <text x="1032" y="680" class="small muted">Service issues stay separate from code errors.</text>
+  <text x="46" y="761" class="small muted">Design concept. The same feature model applies to installed LSPs, bundled services and direct language APIs.</text>
+  <text x="46" y="787" class="small muted">Provider availability is per document. Language recognition and syntax highlighting do not require an LSP.</text>
+  <text x="46" y="813" class="small muted">The examples illustrate proposed behavior and settings; they are not screenshots of implemented features.</text>
+</svg>

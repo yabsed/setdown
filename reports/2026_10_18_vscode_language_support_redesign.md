@@ -1,5 +1,7 @@
 # VS Code 소스에 근거한 Setdown 언어 지원 개선안
 
+후속 구현 기준은 [Setdown 언어 지원 시스템 설계](2026_10_18_language_support_system_design.md)다. 이 문서는 TS 오진 재현과 초기 조사 자료로 보존한다.
+
 작성일: 2026년 10월 18일. 대상: Setdown의 코드 편집, 진단, 언어 서버 선택과 설정 UI.
 
 ## 핵심 판단

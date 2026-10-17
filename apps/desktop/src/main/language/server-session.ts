@@ -10,6 +10,7 @@ import { ServerCapabilitiesState } from './server-capabilities';
 import type { ApplyWorkspaceEditParams, ApplyWorkspaceEditResult, Registration, InitializeResult, PublishDiagnosticsParams, ServerCapabilities } from 'vscode-languageserver-protocol';
 
 export type SessionHooks = {
+  configuration?(scopeUri?: string): Record<string, unknown>;
   refresh?(feature: LanguageRefresh): void;
   capabilitiesChanged?(): void;
   activity?(): void;
@@ -89,8 +90,8 @@ export class ServerSession {
     });
     const python = configurationSection(profile.configuration, 'python.pythonPath');
     if (typeof python === 'string') this.context.set('Python interpreter', `${python} (configured)`);
-    this.connection.onRequest('workspace/configuration', (params: { items: { section?: string }[] }) =>
-      params.items.map(item => configurationSection(profile.configuration, item.section)));
+    this.connection.onRequest('workspace/configuration', (params: { items: { section?: string; scopeUri?: string }[] }) =>
+      params.items.map(item => configurationSection(hooks.configuration?.(item.scopeUri) ?? profile.configuration, item.section)));
     this.connection.onRequest('workspace/workspaceFolders', () => [{ uri: pathToFileURL(root).href, name: root }]);
     this.connection.onRequest('workspace/applyEdit', async (params: ApplyWorkspaceEditParams): Promise<ApplyWorkspaceEditResult> => hooks.applyEdit?.(params)
       ?? { applied: false, failureReason: 'No active user command accepts edits.' });
