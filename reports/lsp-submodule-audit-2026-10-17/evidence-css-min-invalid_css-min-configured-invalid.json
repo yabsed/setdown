@@ -1,0 +1,3757 @@
+{
+  "revision": "a00d7aef1c6c5868777fc5b04fb97ef225ce69a4",
+  "node": "v22.23.1",
+  "started": "2026-10-17T03:32:12.581Z",
+  "cases": [
+    {
+      "name": "css-min-invalid",
+      "file": "vendor/min/css/windowControls.css",
+      "root": "vendor/min",
+      "needle": "display: none",
+      "symbol": "display",
+      "tools": true,
+      "injectCss": true,
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 15,
+          "response": [
+            {
+              "name": "body",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 0,
+                  "character": 0
+                },
+                "end": {
+                  "line": 4,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 0,
+                  "character": 0
+                },
+                "end": {
+                  "line": 0,
+                  "character": 4
+                }
+              },
+              "$setdownItem": "6526bf0b-8567-4a76-89c8-25d3889bc27b"
+            },
+            {
+              "name": ".window-drag-area",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 7,
+                  "character": 0
+                },
+                "end": {
+                  "line": 9,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 7,
+                  "character": 0
+                },
+                "end": {
+                  "line": 7,
+                  "character": 17
+                }
+              },
+              "$setdownItem": "c0a075e0-40ca-4a1f-8224-bbd0522454fb"
+            },
+            {
+              "name": "body.windows:not(.maximized):not(.fullscreen):not(.separate-titlebar)",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 11,
+                  "character": 0
+                },
+                "end": {
+                  "line": 14,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 11,
+                  "character": 0
+                },
+                "end": {
+                  "line": 11,
+                  "character": 69
+                }
+              },
+              "$setdownItem": "d787b0d4-6e75-46df-b62d-36da1d3f5208"
+            },
+            {
+              "name": "body.linux:not(.maximized):not(.fullscreen):not(.separate-titlebar)",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 12,
+                  "character": 0
+                },
+                "end": {
+                  "line": 14,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 12,
+                  "character": 0
+                },
+                "end": {
+                  "line": 12,
+                  "character": 67
+                }
+              },
+              "$setdownItem": "86d61039-b53f-48f7-bc49-b9f52b1d1d45"
+            },
+            {
+              "name": "body.windows:not(.maximized):not(.fullscreen):not(.separate-titlebar) .window-drag-area",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 17,
+                  "character": 0
+                },
+                "end": {
+                  "line": 27,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 17,
+                  "character": 0
+                },
+                "end": {
+                  "line": 17,
+                  "character": 87
+                }
+              },
+              "$setdownItem": "e3fbb586-5b45-482d-add3-a5bd355ee4c1"
+            },
+            {
+              "name": "body.linux:not(.maximized):not(.fullscreen):not(.separate-titlebar) .window-drag-area",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 18,
+                  "character": 0
+                },
+                "end": {
+                  "line": 27,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 18,
+                  "character": 0
+                },
+                "end": {
+                  "line": 18,
+                  "character": 85
+                }
+              },
+              "$setdownItem": "b5a0bfc4-6704-4181-bdd1-c322069a09ad"
+            },
+            {
+              "name": "body.mac:not(.separate-titlebar):not(.fullscreen) .window-drag-area",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 29,
+                  "character": 0
+                },
+                "end": {
+                  "line": 37,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 29,
+                  "character": 0
+                },
+                "end": {
+                  "line": 29,
+                  "character": 67
+                }
+              },
+              "$setdownItem": "668bf7b1-f644-4c50-a48a-1b07e9d7f560"
+            },
+            {
+              "name": "body.mac:not(.is-edit-mode):not(.fullscreen):not(.separate-titlebar) #mac-window-drag-area",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 39,
+                  "character": 0
+                },
+                "end": {
+                  "line": 44,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 39,
+                  "character": 0
+                },
+                "end": {
+                  "line": 39,
+                  "character": 90
+                }
+              },
+              "$setdownItem": "7e9c3623-2dc1-4377-9834-f2198bc58859"
+            },
+            {
+              "name": "body.mac:not(.fullscreen):not(.separate-titlebar)",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 48,
+                  "character": 0
+                },
+                "end": {
+                  "line": 50,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 48,
+                  "character": 0
+                },
+                "end": {
+                  "line": 48,
+                  "character": 49
+                }
+              },
+              "$setdownItem": "983c4180-e26b-4a6e-8ad3-4eb6bd949504"
+            },
+            {
+              "name": "body.rtl.mac:not(.fullscreen):not(.separate-titlebar)",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 52,
+                  "character": 0
+                },
+                "end": {
+                  "line": 55,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 52,
+                  "character": 0
+                },
+                "end": {
+                  "line": 52,
+                  "character": 53
+                }
+              },
+              "$setdownItem": "b645d23c-413f-44b7-a0c1-83db91791fd8"
+            },
+            {
+              "name": "body.windows:not(.separate-titlebar)",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 59,
+                  "character": 0
+                },
+                "end": {
+                  "line": 61,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 59,
+                  "character": 0
+                },
+                "end": {
+                  "line": 59,
+                  "character": 36
+                }
+              },
+              "$setdownItem": "6b45031e-7f80-4a59-8e86-7685fdffcd89"
+            },
+            {
+              "name": ".windows-caption-buttons",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 63,
+                  "character": 0
+                },
+                "end": {
+                  "line": 65,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 63,
+                  "character": 0
+                },
+                "end": {
+                  "line": 63,
+                  "character": 24
+                }
+              },
+              "$setdownItem": "706d1835-cab0-40d4-8bf4-281c6f8765b3"
+            },
+            {
+              "name": "body.windows:not(.separate-titlebar) .windows-caption-buttons",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 67,
+                  "character": 0
+                },
+                "end": {
+                  "line": 73,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 67,
+                  "character": 0
+                },
+                "end": {
+                  "line": 67,
+                  "character": 61
+                }
+              },
+              "$setdownItem": "4f2b039e-ebd7-414b-ad26-9390a5c32a47"
+            },
+            {
+              "name": ".windows-caption-buttons .element",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 75,
+                  "character": 0
+                },
+                "end": {
+                  "line": 83,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 75,
+                  "character": 0
+                },
+                "end": {
+                  "line": 75,
+                  "character": 33
+                }
+              },
+              "$setdownItem": "3f541b91-1fc1-4019-a4c5-4daff22349c9"
+            },
+            {
+              "name": "body:not(.task-overlay-is-shown).dark-theme .windows-caption-buttons .element",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 85,
+                  "character": 0
+                },
+                "end": {
+                  "line": 87,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 85,
+                  "character": 0
+                },
+                "end": {
+                  "line": 85,
+                  "character": 77
+                }
+              },
+              "$setdownItem": "952a5631-18ac-48f1-b94a-ce8a46bbcabb"
+            },
+            {
+              "name": ".windows-caption-buttons .element > svg",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 89,
+                  "character": 0
+                },
+                "end": {
+                  "line": 92,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 89,
+                  "character": 0
+                },
+                "end": {
+                  "line": 89,
+                  "character": 39
+                }
+              },
+              "$setdownItem": "ccaef55f-08d7-4cde-909d-7c03337829fd"
+            },
+            {
+              "name": ".windows-caption-buttons .element",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 94,
+                  "character": 0
+                },
+                "end": {
+                  "line": 96,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 94,
+                  "character": 0
+                },
+                "end": {
+                  "line": 94,
+                  "character": 33
+                }
+              },
+              "$setdownItem": "ecab54e7-d8b1-4d57-92a3-cb559ffbe3b8"
+            },
+            {
+              "name": ".windows-caption-buttons .element:hover",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 97,
+                  "character": 0
+                },
+                "end": {
+                  "line": 100,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 97,
+                  "character": 0
+                },
+                "end": {
+                  "line": 97,
+                  "character": 39
+                }
+              },
+              "$setdownItem": "d5955541-9245-4603-803c-3a115ed74951"
+            },
+            {
+              "name": ".windows-caption-buttons .element:active",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 101,
+                  "character": 0
+                },
+                "end": {
+                  "line": 103,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 101,
+                  "character": 0
+                },
+                "end": {
+                  "line": 101,
+                  "character": 40
+                }
+              },
+              "$setdownItem": "cbd59925-f663-4182-ad0c-75d344074a61"
+            },
+            {
+              "name": ".windows-caption-buttons .element.caption-close:hover",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 104,
+                  "character": 0
+                },
+                "end": {
+                  "line": 106,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 104,
+                  "character": 0
+                },
+                "end": {
+                  "line": 104,
+                  "character": 53
+                }
+              },
+              "$setdownItem": "72d7fd01-ea84-45f4-954f-4c8e537cd342"
+            },
+            {
+              "name": ".windows-caption-buttons .element.caption-close:hover > svg",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 107,
+                  "character": 0
+                },
+                "end": {
+                  "line": 111,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 107,
+                  "character": 0
+                },
+                "end": {
+                  "line": 107,
+                  "character": 59
+                }
+              },
+              "$setdownItem": "9c5965ef-5871-4a37-944e-e9867e87ef77"
+            },
+            {
+              "name": ".windows-caption-buttons .element.caption-close:active > svg",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 108,
+                  "character": 0
+                },
+                "end": {
+                  "line": 111,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 108,
+                  "character": 0
+                },
+                "end": {
+                  "line": 108,
+                  "character": 60
+                }
+              },
+              "$setdownItem": "6bc7f76a-6c8c-4f6e-a5da-1ec942c186ea"
+            },
+            {
+              "name": ".windows-caption-buttons .element.caption-close:active",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 112,
+                  "character": 0
+                },
+                "end": {
+                  "line": 114,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 112,
+                  "character": 0
+                },
+                "end": {
+                  "line": 112,
+                  "character": 54
+                }
+              },
+              "$setdownItem": "042a6924-4641-416f-9606-9312c34643dc"
+            },
+            {
+              "name": "#linux-control-buttons",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 118,
+                  "character": 0
+                },
+                "end": {
+                  "line": 120,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 118,
+                  "character": 0
+                },
+                "end": {
+                  "line": 118,
+                  "character": 22
+                }
+              },
+              "$setdownItem": "a171cdca-3f29-4cb1-a628-f1fcd902c2c8"
+            },
+            {
+              "name": "body.linux:not(.separate-titlebar)",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 122,
+                  "character": 0
+                },
+                "end": {
+                  "line": 124,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 122,
+                  "character": 0
+                },
+                "end": {
+                  "line": 122,
+                  "character": 34
+                }
+              },
+              "$setdownItem": "ce8757a3-a9da-4271-acf9-004a60260577"
+            },
+            {
+              "name": "body.linux:not(.separate-titlebar) #linux-control-buttons",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 126,
+                  "character": 0
+                },
+                "end": {
+                  "line": 133,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 126,
+                  "character": 0
+                },
+                "end": {
+                  "line": 126,
+                  "character": 57
+                }
+              },
+              "$setdownItem": "a6ca3ce8-c143-4be6-bb42-fb619bbcc7bd"
+            },
+            {
+              "name": "body.task-overlay-is-shown #linux-control-buttons",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 135,
+                  "character": 0
+                },
+                "end": {
+                  "line": 137,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 135,
+                  "character": 0
+                },
+                "end": {
+                  "line": 135,
+                  "character": 49
+                }
+              },
+              "$setdownItem": "c3e98af1-8508-4109-9ca4-85ba7a9c4c9d"
+            },
+            {
+              "name": "body.dark-mode.task-overlay-is-shown #linux-control-buttons",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 139,
+                  "character": 0
+                },
+                "end": {
+                  "line": 141,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 139,
+                  "character": 0
+                },
+                "end": {
+                  "line": 139,
+                  "character": 59
+                }
+              },
+              "$setdownItem": "335bf804-8215-4489-928a-4843e0d30d15"
+            },
+            {
+              "name": "#linux-control-buttons .button-background",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 143,
+                  "character": 0
+                },
+                "end": {
+                  "line": 148,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 143,
+                  "character": 0
+                },
+                "end": {
+                  "line": 143,
+                  "character": 41
+                }
+              },
+              "$setdownItem": "be83c4d9-4c77-4918-b8f2-a09ba6f4ba9b"
+            },
+            {
+              "name": "#linux-control-buttons g:hover .button-background",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 150,
+                  "character": 0
+                },
+                "end": {
+                  "line": 153,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 150,
+                  "character": 0
+                },
+                "end": {
+                  "line": 150,
+                  "character": 49
+                }
+              },
+              "$setdownItem": "5a05190d-9523-4cdc-b480-b6dce1665303"
+            },
+            {
+              "name": "#linux-control-buttons g:active .button-background",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 155,
+                  "character": 0
+                },
+                "end": {
+                  "line": 158,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 155,
+                  "character": 0
+                },
+                "end": {
+                  "line": 155,
+                  "character": 50
+                }
+              },
+              "$setdownItem": "941b3f15-b59c-4506-9196-b2cc746d67b7"
+            },
+            {
+              "name": ".dark-theme #linux-control-buttons g:hover .button-background",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 160,
+                  "character": 0
+                },
+                "end": {
+                  "line": 163,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 160,
+                  "character": 0
+                },
+                "end": {
+                  "line": 160,
+                  "character": 61
+                }
+              },
+              "$setdownItem": "c9a9a168-a9e0-484a-9619-93300f262af5"
+            },
+            {
+              "name": ".dark-theme #linux-control-buttons g:active .button-background",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 165,
+                  "character": 0
+                },
+                "end": {
+                  "line": 168,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 165,
+                  "character": 0
+                },
+                "end": {
+                  "line": 165,
+                  "character": 62
+                }
+              },
+              "$setdownItem": "ab63f061-0452-4352-9498-db0771f8c759"
+            },
+            {
+              "name": ".audit",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 170,
+                  "character": 0
+                },
+                "end": {
+                  "line": 170,
+                  "character": 44
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 170,
+                  "character": 0
+                },
+                "end": {
+                  "line": 170,
+                  "character": 6
+                }
+              },
+              "$setdownItem": "c848b7e3-9129-4621-a8dd-20148ba00813"
+            }
+          ]
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 7,
+          "response": {
+            "contents": {
+              "kind": "markdown",
+              "value": "In combination with 'float' and 'position', determines the type of box or boxes that are generated for an element\\.\n\n![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAgMzAwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxzdHlsZT4KICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgIGZpbGw6ICNDNEVFRDA7IC8qIExpZ2h0IG1vZGUgKi8KICAgIH0KCiAgICBAbWVkaWEgKHByZWZlcnMtY29sb3Itc2NoZW1lOiBkYXJrKSB7CiAgICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgICAgZmlsbDogIzEyNTIyNTsgLyogRGFyayBtb2RlICovCiAgICAgIH0KICAgIH0KICA8L3N0eWxlPgogIDxwYXRoIGQ9Ik00MjAgMzBMMzkwIDYwTDQ4MCAxNTBMMzkwIDI0MEwzMzAgMTgwTDMwMCAyMTBMMzkwIDMwMEw1NDAgMTUwTDQyMCAzMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0xNTAgMEwzMCAxMjBMNjAgMTUwTDE1MCA2MEwyMTAgMTIwTDI0MCA5MEwxNTAgMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0zOTAgMEw0MjAgMzBMMTUwIDMwMEwwIDE1MEwzMCAxMjBMMTUwIDI0MEwzOTAgMFoiIGZpbGw9IiMxRUE0NDYiLz4KPC9zdmc+) _Widely available across major browsers (Baseline since 2015)_\n\nSyntax: \\[ &lt;display\\-outside&gt; || &lt;display\\-inside&gt; \\] | &lt;display\\-listitem&gt; | &lt;display\\-internal&gt; | &lt;display\\-box&gt; | &lt;display\\-legacy&gt;\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/display)"
+            },
+            "range": {
+              "start": {
+                "line": 8,
+                "character": 2
+              },
+              "end": {
+                "line": 8,
+                "character": 15
+              }
+            },
+            "$setdownItem": "39330d62-5177-4ad6-9b24-b2684a5deef4"
+          }
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 4,
+          "response": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 4,
+          "response": [
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "range": {
+                "start": {
+                  "line": 8,
+                  "character": 2
+                },
+                "end": {
+                  "line": 8,
+                  "character": 9
+                }
+              },
+              "$setdownItem": "8a6bca64-6f02-484e-b733-e0569abec5fb"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "range": {
+                "start": {
+                  "line": 19,
+                  "character": 2
+                },
+                "end": {
+                  "line": 19,
+                  "character": 9
+                }
+              },
+              "$setdownItem": "b3a98468-2223-4a97-a19f-3dd43d54f598"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "range": {
+                "start": {
+                  "line": 30,
+                  "character": 2
+                },
+                "end": {
+                  "line": 30,
+                  "character": 9
+                }
+              },
+              "$setdownItem": "6894452e-bd62-40d7-ad3e-8c82f9314577"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "range": {
+                "start": {
+                  "line": 64,
+                  "character": 2
+                },
+                "end": {
+                  "line": 64,
+                  "character": 9
+                }
+              },
+              "$setdownItem": "686d0d76-32d5-446c-838d-d98dbbd4a99e"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "range": {
+                "start": {
+                  "line": 68,
+                  "character": 2
+                },
+                "end": {
+                  "line": 68,
+                  "character": 9
+                }
+              },
+              "$setdownItem": "ef38928d-e8f5-4370-a06a-25469c84d95e"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "range": {
+                "start": {
+                  "line": 119,
+                  "character": 2
+                },
+                "end": {
+                  "line": 119,
+                  "character": 9
+                }
+              },
+              "$setdownItem": "f9d8b6c0-5c10-4afb-a2e4-90b57d1553c7"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "range": {
+                "start": {
+                  "line": 127,
+                  "character": 2
+                },
+                "end": {
+                  "line": 127,
+                  "character": 9
+                }
+              },
+              "$setdownItem": "99b02131-f9cc-40ed-a0e4-4c30ea6a70d0"
+            }
+          ]
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 216,
+          "response": {
+            "isIncomplete": false,
+            "count": 888,
+            "sample": [
+              {
+                "label": "additive-symbols",
+                "documentation": {
+                  "kind": "markdown",
+                  "value": "@counter\\-style descriptor\\. Specifies the symbols used by the marker\\-construction algorithm specified by the system descriptor\\. Needs to be specified if the counter system is 'additive'\\.\n\nSyntax: \\[ &lt;integer \\[0,∞\\]&gt; && &lt;symbol&gt; \\]\\#"
+                },
+                "tags": [],
+                "textEdit": {
+                  "range": {
+                    "start": {
+                      "line": 8,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 8,
+                      "character": 9
+                    }
+                  },
+                  "newText": "additive-symbols",
+                  "$setdownItem": "5ba36b8e-5087-4f73-9f28-8730dae91c91"
+                },
+                "insertTextFormat": 2,
+                "kind": 10,
+                "sortText": "d_cd",
+                "$setdownItem": "748fed41-8bad-4c68-80ec-c6c3ebc7f5fa"
+              },
+              {
+                "label": "align-content",
+                "documentation": {
+                  "kind": "markdown",
+                  "value": "Aligns a flex container's lines within the flex container when there is extra space in the cross\\-axis, similar to how 'justify\\-content' aligns individual items within the main\\-axis\\.\n\n![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAgMzAwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxzdHlsZT4KICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgIGZpbGw6ICNDNEVFRDA7IC8qIExpZ2h0IG1vZGUgKi8KICAgIH0KCiAgICBAbWVkaWEgKHByZWZlcnMtY29sb3Itc2NoZW1lOiBkYXJrKSB7CiAgICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgICAgZmlsbDogIzEyNTIyNTsgLyogRGFyayBtb2RlICovCiAgICAgIH0KICAgIH0KICA8L3N0eWxlPgogIDxwYXRoIGQ9Ik00MjAgMzBMMzkwIDYwTDQ4MCAxNTBMMzkwIDI0MEwzMzAgMTgwTDMwMCAyMTBMMzkwIDMwMEw1NDAgMTUwTDQyMCAzMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0xNTAgMEwzMCAxMjBMNjAgMTUwTDE1MCA2MEwyMTAgMTIwTDI0MCA5MEwxNTAgMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0zOTAgMEw0MjAgMzBMMTUwIDMwMEwwIDE1MEwzMCAxMjBMMTUwIDI0MEwzOTAgMFoiIGZpbGw9IiMxRUE0NDYiLz4KPC9zdmc+) _Widely available across major browsers (Baseline since 2015)_\n\nSyntax: normal | &lt;baseline\\-position&gt; | &lt;content\\-distribution&gt; | &lt;overflow\\-position&gt;? &lt;content\\-position&gt;\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/align-content)"
+                },
+                "tags": [],
+                "textEdit": {
+                  "range": {
+                    "start": {
+                      "line": 8,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 8,
+                      "character": 9
+                    }
+                  },
+                  "newText": "align-content",
+                  "$setdownItem": "5823b53a-03e3-4dab-98c2-a0b0774a2d15"
+                },
+                "insertTextFormat": 2,
+                "kind": 10,
+                "sortText": "d_bb",
+                "$setdownItem": "7c209fd2-8719-4313-a5b8-bb8bf1b86b01"
+              },
+              {
+                "label": "align-items",
+                "documentation": {
+                  "kind": "markdown",
+                  "value": "Aligns flex items along the cross axis of the current line of the flex container\\.\n\n![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAgMzAwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxzdHlsZT4KICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgIGZpbGw6ICNDNEVFRDA7IC8qIExpZ2h0IG1vZGUgKi8KICAgIH0KCiAgICBAbWVkaWEgKHByZWZlcnMtY29sb3Itc2NoZW1lOiBkYXJrKSB7CiAgICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgICAgZmlsbDogIzEyNTIyNTsgLyogRGFyayBtb2RlICovCiAgICAgIH0KICAgIH0KICA8L3N0eWxlPgogIDxwYXRoIGQ9Ik00MjAgMzBMMzkwIDYwTDQ4MCAxNTBMMzkwIDI0MEwzMzAgMTgwTDMwMCAyMTBMMzkwIDMwMEw1NDAgMTUwTDQyMCAzMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0xNTAgMEwzMCAxMjBMNjAgMTUwTDE1MCA2MEwyMTAgMTIwTDI0MCA5MEwxNTAgMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0zOTAgMEw0MjAgMzBMMTUwIDMwMEwwIDE1MEwzMCAxMjBMMTUwIDI0MEwzOTAgMFoiIGZpbGw9IiMxRUE0NDYiLz4KPC9zdmc+) _Widely available across major browsers (Baseline since 2015)_\n\nSyntax: normal | stretch | &lt;baseline\\-position&gt; | \\[ &lt;overflow\\-position&gt;? &lt;self\\-position&gt; \\] | anchor\\-center\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/align-items)"
+                },
+                "tags": [],
+                "textEdit": {
+                  "range": {
+                    "start": {
+                      "line": 8,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 8,
+                      "character": 9
+                    }
+                  },
+                  "newText": "align-items",
+                  "$setdownItem": "9b14f486-a58b-49cf-b6ad-5ab314eb5ae4"
+                },
+                "insertTextFormat": 2,
+                "kind": 10,
+                "sortText": "d_a5",
+                "$setdownItem": "2af8a77a-4fa8-4096-8123-ecbc59d5d218"
+              },
+              {
+                "label": "justify-items",
+                "documentation": {
+                  "kind": "markdown",
+                  "value": "Defines the default justify\\-self for all items of the box, giving them the default way of justifying each box along the appropriate axis\n\n![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAgMzAwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxzdHlsZT4KICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgIGZpbGw6ICNDNEVFRDA7IC8qIExpZ2h0IG1vZGUgKi8KICAgIH0KCiAgICBAbWVkaWEgKHByZWZlcnMtY29sb3Itc2NoZW1lOiBkYXJrKSB7CiAgICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgICAgZmlsbDogIzEyNTIyNTsgLyogRGFyayBtb2RlICovCiAgICAgIH0KICAgIH0KICA8L3N0eWxlPgogIDxwYXRoIGQ9Ik00MjAgMzBMMzkwIDYwTDQ4MCAxNTBMMzkwIDI0MEwzMzAgMTgwTDMwMCAyMTBMMzkwIDMwMEw1NDAgMTUwTDQyMCAzMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0xNTAgMEwzMCAxMjBMNjAgMTUwTDE1MCA2MEwyMTAgMTIwTDI0MCA5MEwxNTAgMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0zOTAgMEw0MjAgMzBMMTUwIDMwMEwwIDE1MEwzMCAxMjBMMTUwIDI0MEwzOTAgMFoiIGZpbGw9IiMxRUE0NDYiLz4KPC9zdmc+) _Widely available across major browsers (Baseline since 2016)_\n\nSyntax: normal | stretch | &lt;baseline\\-position&gt; | &lt;overflow\\-position&gt;? \\[ &lt;self\\-position&gt; | left | right \\] | legacy | legacy && \\[ left | right | center \\] | anchor\\-center\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/justify-items)"
+                },
+                "tags": [],
+                "textEdit": {
+                  "range": {
+                    "start": {
+                      "line": 8,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 8,
+                      "character": 9
+                    }
+                  },
+                  "newText": "justify-items",
+                  "$setdownItem": "514f1dec-da76-4742-bf4c-4ab1018ce7d3"
+                },
+                "insertTextFormat": 2,
+                "kind": 10,
+                "sortText": "d_c5",
+                "$setdownItem": "cd7ea7a2-de6a-43f8-b2b6-fcb56ac073a4"
+              },
+              {
+                "label": "justify-self",
+                "documentation": {
+                  "kind": "markdown",
+                  "value": "Defines the way of justifying a box inside its container along the appropriate axis\\.\n\n![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAgMzAwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxzdHlsZT4KICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgIGZpbGw6ICNDNEVFRDA7IC8qIExpZ2h0IG1vZGUgKi8KICAgIH0KCiAgICBAbWVkaWEgKHByZWZlcnMtY29sb3Itc2NoZW1lOiBkYXJrKSB7CiAgICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgICAgZmlsbDogIzEyNTIyNTsgLyogRGFyayBtb2RlICovCiAgICAgIH0KICAgIH0KICA8L3N0eWxlPgogIDxwYXRoIGQ9Ik00MjAgMzBMMzkwIDYwTDQ4MCAxNTBMMzkwIDI0MEwzMzAgMTgwTDMwMCAyMTBMMzkwIDMwMEw1NDAgMTUwTDQyMCAzMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0xNTAgMEwzMCAxMjBMNjAgMTUwTDE1MCA2MEwyMTAgMTIwTDI0MCA5MEwxNTAgMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0zOTAgMEw0MjAgMzBMMTUwIDMwMEwwIDE1MEwzMCAxMjBMMTUwIDI0MEwzOTAgMFoiIGZpbGw9IiMxRUE0NDYiLz4KPC9zdmc+) _Widely available across major browsers (Baseline since 2017)_\n\nSyntax: auto | normal | stretch | &lt;baseline\\-position&gt; | &lt;overflow\\-position&gt;? \\[ &lt;self\\-position&gt; | left | right \\] | anchor\\-center\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/justify-self)"
+                },
+                "tags": [],
+                "textEdit": {
+                  "range": {
+                    "start": {
+                      "line": 8,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 8,
+                      "character": 9
+                    }
+                  },
+                  "newText": "justify-self",
+                  "$setdownItem": "45a99a57-ae7e-4007-bba7-70a0d6830dc4"
+                },
+                "insertTextFormat": 2,
+                "kind": 10,
+                "sortText": "d_c4",
+                "$setdownItem": "c7368006-0700-4a22-ba5b-cbe1fd3b11d2"
+              },
+              {
+                "label": "align-self",
+                "documentation": {
+                  "kind": "markdown",
+                  "value": "Allows the default alignment along the cross axis to be overridden for individual flex items\\.\n\n![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAgMzAwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxzdHlsZT4KICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgIGZpbGw6ICNDNEVFRDA7IC8qIExpZ2h0IG1vZGUgKi8KICAgIH0KCiAgICBAbWVkaWEgKHByZWZlcnMtY29sb3Itc2NoZW1lOiBkYXJrKSB7CiAgICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgICAgZmlsbDogIzEyNTIyNTsgLyogRGFyayBtb2RlICovCiAgICAgIH0KICAgIH0KICA8L3N0eWxlPgogIDxwYXRoIGQ9Ik00MjAgMzBMMzkwIDYwTDQ4MCAxNTBMMzkwIDI0MEwzMzAgMTgwTDMwMCAyMTBMMzkwIDMwMEw1NDAgMTUwTDQyMCAzMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0xNTAgMEwzMCAxMjBMNjAgMTUwTDE1MCA2MEwyMTAgMTIwTDI0MCA5MEwxNTAgMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0zOTAgMEw0MjAgMzBMMTUwIDMwMEwwIDE1MEwzMCAxMjBMMTUwIDI0MEwzOTAgMFoiIGZpbGw9IiMxRUE0NDYiLz4KPC9zdmc+) _Widely available across major browsers (Baseline since 2015)_\n\nSyntax: auto | normal | stretch | &lt;baseline\\-position&gt; | &lt;overflow\\-position&gt;? &lt;self\\-position&gt; | anchor\\-center\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/align-self)"
+                },
+                "tags": [],
+                "textEdit": {
+                  "range": {
+                    "start": {
+                      "line": 8,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 8,
+                      "character": 9
+                    }
+                  },
+                  "newText": "align-self",
+                  "$setdownItem": "ca2b7fc5-4496-47f0-83eb-be24949ab8a2"
+                },
+                "insertTextFormat": 2,
+                "kind": 10,
+                "sortText": "d_b3",
+                "$setdownItem": "bb6e0e22-9d87-40ac-a4b9-bab63abd0b9f"
+              },
+              {
+                "label": "all",
+                "documentation": {
+                  "kind": "markdown",
+                  "value": "Shorthand that resets all properties except 'direction' and 'unicode\\-bidi'\\.\n\n![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAgMzAwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxzdHlsZT4KICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgIGZpbGw6ICNDNEVFRDA7IC8qIExpZ2h0IG1vZGUgKi8KICAgIH0KCiAgICBAbWVkaWEgKHByZWZlcnMtY29sb3Itc2NoZW1lOiBkYXJrKSB7CiAgICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgICAgZmlsbDogIzEyNTIyNTsgLyogRGFyayBtb2RlICovCiAgICAgIH0KICAgIH0KICA8L3N0eWxlPgogIDxwYXRoIGQ9Ik00MjAgMzBMMzkwIDYwTDQ4MCAxNTBMMzkwIDI0MEwzMzAgMTgwTDMwMCAyMTBMMzkwIDMwMEw1NDAgMTUwTDQyMCAzMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0xNTAgMEwzMCAxMjBMNjAgMTUwTDE1MCA2MEwyMTAgMTIwTDI0MCA5MEwxNTAgMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0zOTAgMEw0MjAgMzBMMTUwIDMwMEwwIDE1MEwzMCAxMjBMMTUwIDI0MEwzOTAgMFoiIGZpbGw9IiMxRUE0NDYiLz4KPC9zdmc+) _Widely available across major browsers (Baseline since 2020)_\n\nSyntax: initial | inherit | unset | revert | revert\\-layer\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/all)"
+                },
+                "tags": [],
+                "textEdit": {
+                  "range": {
+                    "start": {
+                      "line": 8,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 8,
+                      "character": 9
+                    }
+                  },
+                  "newText": "all",
+                  "$setdownItem": "8d918d73-1928-4fc9-aea2-0f636eb5a316"
+                },
+                "insertTextFormat": 2,
+                "kind": 10,
+                "sortText": "d_c7",
+                "$setdownItem": "a5cf9b52-247c-4344-b419-8ceea850cb29"
+              },
+              {
+                "label": "alt",
+                "documentation": {
+                  "kind": "markdown",
+                  "value": "Provides alternative text for assistive technology to replace the generated content of a ::before or ::after element\\.\n\n![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAgMzAwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxzdHlsZT4KICAgIC5ncmF5LXNoYXBlIHsKICAgICAgZmlsbDogI0M2QzZDNjsgLyogTGlnaHQgbW9kZSAqLwogICAgfQoKICAgIEBtZWRpYSAocHJlZmVycy1jb2xvci1zY2hlbWU6IGRhcmspIHsKICAgICAgLmdyYXktc2hhcGUgewogICAgICAgIGZpbGw6ICM1NjU2NTY7IC8qIERhcmsgbW9kZSAqLwogICAgICB9CiAgICB9CiAgPC9zdHlsZT4KICA8cGF0aCBkPSJNMTUwIDBMMjQwIDkwTDIxMCAxMjBMMTIwIDMwTDE1MCAwWiIgZmlsbD0iI0YwOTQwOSIvPgogIDxwYXRoIGQ9Ik00MjAgMzBMNTQwIDE1MEw0MjAgMjcwTDM5MCAyNDBMNDgwIDE1MEwzOTAgNjBMNDIwIDMwWiIgY2xhc3M9ImdyYXktc2hhcGUiLz4KICA8cGF0aCBkPSJNMzMwIDE4MEwzMDAgMjEwTDM5MCAzMDBMNDIwIDI3MEwzMzAgMTgwWiIgZmlsbD0iI0YwOTQwOSIvPgogIDxwYXRoIGQ9Ik0xMjAgMzBMMTUwIDYwTDYwIDE1MEwxNTAgMjQwTDEyMCAyNzBMMCAxNTBMMTIwIDMwWiIgY2xhc3M9ImdyYXktc2hhcGUiLz4KICA8cGF0aCBkPSJNMzkwIDBMNDIwIDMwTDE1MCAzMDBMMTIwIDI3MEwzOTAgMFoiIGZpbGw9IiNGMDk0MDkiLz4KPC9zdmc+) _Limited availability across major browsers_"
+                },
+                "tags": [],
+                "textEdit": {
+                  "range": {
+                    "start": {
+                      "line": 8,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 8,
+                      "character": 9
+                    }
+                  },
+                  "newText": "alt",
+                  "$setdownItem": "98938df4-723f-40ca-8923-887e2ceab192"
+                },
+                "insertTextFormat": 2,
+                "kind": 10,
+                "sortText": "d_cd",
+                "$setdownItem": "6441d999-d007-4e40-a74e-518125e2ac81"
+              }
+            ]
+          }
+        },
+        "folding": {
+          "method": "textDocument/foldingRange",
+          "ms": 5,
+          "response": [
+            {
+              "startLine": 0,
+              "endLine": 3
+            },
+            {
+              "startLine": 7,
+              "endLine": 8
+            },
+            {
+              "startLine": 12,
+              "endLine": 13
+            },
+            {
+              "startLine": 18,
+              "endLine": 26
+            },
+            {
+              "startLine": 29,
+              "endLine": 36
+            },
+            {
+              "startLine": 39,
+              "endLine": 43
+            },
+            {
+              "startLine": 48,
+              "endLine": 49
+            },
+            {
+              "startLine": 52,
+              "endLine": 54
+            },
+            {
+              "startLine": 59,
+              "endLine": 60
+            },
+            {
+              "startLine": 63,
+              "endLine": 64
+            },
+            {
+              "startLine": 67,
+              "endLine": 72
+            },
+            {
+              "startLine": 75,
+              "endLine": 82
+            },
+            {
+              "startLine": 85,
+              "endLine": 86
+            },
+            {
+              "startLine": 89,
+              "endLine": 91
+            },
+            {
+              "startLine": 94,
+              "endLine": 95
+            },
+            {
+              "startLine": 97,
+              "endLine": 99
+            },
+            {
+              "startLine": 101,
+              "endLine": 102
+            },
+            {
+              "startLine": 104,
+              "endLine": 105
+            },
+            {
+              "startLine": 108,
+              "endLine": 110
+            },
+            {
+              "startLine": 112,
+              "endLine": 113
+            },
+            {
+              "startLine": 118,
+              "endLine": 119
+            },
+            {
+              "startLine": 122,
+              "endLine": 123
+            },
+            {
+              "startLine": 126,
+              "endLine": 132
+            },
+            {
+              "startLine": 135,
+              "endLine": 136
+            },
+            {
+              "startLine": 139,
+              "endLine": 140
+            },
+            {
+              "startLine": 143,
+              "endLine": 147
+            },
+            {
+              "startLine": 150,
+              "endLine": 152
+            },
+            {
+              "startLine": 155,
+              "endLine": 157
+            },
+            {
+              "startLine": 160,
+              "endLine": 162
+            },
+            {
+              "startLine": 165,
+              "endLine": 167
+            }
+          ]
+        },
+        "formatting": {
+          "method": "textDocument/formatting",
+          "ms": 9,
+          "response": {
+            "editCount": 1,
+            "first": [
+              {
+                "range": {
+                  "start": {
+                    "line": 0,
+                    "character": 0
+                  },
+                  "end": {
+                    "line": 171,
+                    "character": 0
+                  }
+                },
+                "newText": "body {\n  --control-space-top: 0px;\n  --control-space-left: 0.3em;\n  --control-space-right: 0.3em;\n}\n\n/* window drag regions */\n\n.window-drag-area {\n  display: none;\n}\n\nbody.windows:not(.maximized):not(.fullscreen):not(.separate-titlebar),\nbody.linux:not(.maximized):not(.fullscreen):not(.separate-titlebar) {\n  --control-space-top: 12px;\n}\n\n/* On Windows, draggable regions aren't clickable, so the drag region is a separate area above the tabstrip */\nbody.windows:not(.maximized):not(.fullscreen):not(.separate-titlebar) .window-drag-area,\nbody.linux:not(.maximized):not(.fullscreen):not(.separate-titlebar) .window-drag-area {\n  display: block;\n  position: fixed;\n  /* leave an empty space around the edges of the drag area so that the window can be resized */\n  top: 3px;\n  left: 3px;\n  width: calc(100% - 6px);\n  height: 12px;\n  -webkit-app-region: drag;\n}\n\nbody.mac:not(.separate-titlebar):not(.fullscreen) .window-drag-area {\n  display: block;\n  position: fixed;\n  top: 0;\n  left: 0;\n  width: 100%;\n  height: 7px;\n  -webkit-app-region: drag;\n}\n\nbody.mac:not(.is-edit-mode):not(.fullscreen):not(.separate-titlebar) #mac-window-drag-area {\n  margin-left: calc(var(--control-space-left) * -1);\n  width: calc(var(--control-space-left) + 1.25em);\n  height: 100%;\n  -webkit-app-region: drag;\n}\n\n/* mac window buttons */\n\nbody.mac:not(.fullscreen):not(.separate-titlebar) {\n  --control-space-left: 75px;\n}\n\nbody.rtl.mac:not(.fullscreen):not(.separate-titlebar) {\n  --control-space-left: 0px;\n  --control-space-right: 75px;\n}\n\n/* Windows caption buttions */\n\nbody.windows:not(.separate-titlebar) {\n  --control-space-right: 138px;\n}\n\n.windows-caption-buttons {\n  display: none;\n}\n\nbody.windows:not(.separate-titlebar) .windows-caption-buttons {\n  display: flex;\n  position: absolute;\n  top: var(--control-space-top);\n  right: 0;\n  z-index: 10;\n}\n\n.windows-caption-buttons .element {\n  line-height: 36px;\n  width: 36px;\n  stroke: #000;\n  padding: 0 5px;\n  box-sizing: content-box;\n  fill: transparent;\n  text-align: center;\n}\n\nbody:not(.task-overlay-is-shown).dark-theme .windows-caption-buttons .element {\n  stroke: #fff;\n}\n\n.windows-caption-buttons .element>svg {\n  width: 12px;\n  height: 12px;\n}\n\n.windows-caption-buttons .element {\n  transition: background-color 0.1s linear, color 0.1s linear;\n}\n\n.windows-caption-buttons .element:hover {\n  background-color: rgba(196, 196, 196, 0.4);\n  transition: none;\n}\n\n.windows-caption-buttons .element:active {\n  background-color: rgba(168, 168, 168, 0.5);\n}\n\n.windows-caption-buttons .element.caption-close:hover {\n  background-color: #e81123;\n}\n\n.windows-caption-buttons .element.caption-close:hover>svg,\n.windows-caption-buttons .element.caption-close:active>svg {\n  stroke: #fff;\n  stroke-width: 1.1px;\n}\n\n.windows-caption-buttons .element.caption-close:active {\n  background-color: rgba(232, 17, 35, 0.6);\n}\n\n/* Linux buttons */\n\n#linux-control-buttons {\n  display: none;\n}\n\nbody.linux:not(.separate-titlebar) {\n  --control-space-right: 96px;\n}\n\nbody.linux:not(.separate-titlebar) #linux-control-buttons {\n  display: block;\n  position: absolute;\n  top: calc(9px + var(--control-space-top));\n  right: 9px;\n  z-index: 9;\n  width: 76px;\n}\n\nbody.task-overlay-is-shown #linux-control-buttons {\n  color: black !important;\n}\n\nbody.dark-mode.task-overlay-is-shown #linux-control-buttons {\n  color: white !important;\n}\n\n#linux-control-buttons .button-background {\n  fill: currentColor;\n  stroke: currentColor;\n  fill-opacity: 0;\n  stroke-opacity: 0;\n}\n\n#linux-control-buttons g:hover .button-background {\n  fill-opacity: 0.02;\n  stroke-opacity: 0.09;\n}\n\n#linux-control-buttons g:active .button-background {\n  fill-opacity: 0.18;\n  stroke-opacity: 0.24;\n}\n\n.dark-theme #linux-control-buttons g:hover .button-background {\n  fill-opacity: 0.2;\n  stroke-opacity: 0.35;\n}\n\n.dark-theme #linux-control-buttons g:active .button-background {\n  fill-opacity: 0.45;\n  stroke-opacity: 0.7;\n}\n\n.audit {\n  zzz-invalid-property: 1;\n  color: ;\n}",
+                "$setdownItem": "2852a202-36f4-429d-8e7b-2fc578ae6c74"
+              }
+            ]
+          }
+        },
+        "pullDiagnostics": {
+          "method": "textDocument/diagnostic",
+          "ms": 3,
+          "response": {
+            "kind": "full",
+            "items": []
+          }
+        }
+      },
+      "console": [
+        "Error: Missing requestHandler or method: doValidation\n    at We.$fmr (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:30:15921)\n    at ca._handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34642)\n    at Object.handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34136)\n    at ua._handleRequestMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:32917)\n    at ua._handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:32356)\n    at ua.handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:31967)\n    at ca.onmessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34262)\n    at globalThis.onmessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:35598)",
+        "Error: Missing requestHandler or method: doValidation\n    at We.$fmr (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:30:15921)\n    at ca._handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34642)\n    at Object.handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34136)\n    at ua._handleRequestMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:32917)\n    at ua._handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:32356)\n    at ua.handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:31967)\n    at ca.onmessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34262)\n    at globalThis.onmessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:35598)"
+      ],
+      "events": [
+        {
+          "type": "status",
+          "state": "starting",
+          "documents": [
+            {
+              "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+              "generation": "ab7d3efe-93d1-4b75-a3f7-9b8c2a1f8541"
+            }
+          ]
+        },
+        {
+          "type": "status",
+          "state": "ready",
+          "documents": [
+            {
+              "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+              "generation": "ab7d3efe-93d1-4b75-a3f7-9b8c2a1f8541"
+            }
+          ]
+        }
+      ],
+      "sourceSha256": "3dd2b40d6be2e16d4535adf635b5d7581e5a1883715d607b758eb3a9a50491f4",
+      "connection": {
+        "document": {
+          "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+          "generation": "ab7d3efe-93d1-4b75-a3f7-9b8c2a1f8541",
+          "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+          "version": 1
+        },
+        "response": {
+          "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "completionProvider": {
+              "resolveProvider": false,
+              "triggerCharacters": [
+                "/",
+                "-",
+                ":"
+              ]
+            },
+            "hoverProvider": true,
+            "documentSymbolProvider": true,
+            "referencesProvider": true,
+            "definitionProvider": true,
+            "documentHighlightProvider": true,
+            "documentLinkProvider": {
+              "resolveProvider": false
+            },
+            "codeActionProvider": true,
+            "renameProvider": true,
+            "colorProvider": {},
+            "foldingRangeProvider": true,
+            "selectionRangeProvider": true,
+            "diagnosticProvider": {
+              "documentSelector": null,
+              "interFileDependencies": false,
+              "workspaceDiagnostics": false
+            },
+            "documentRangeFormattingProvider": true,
+            "documentFormattingProvider": true
+          },
+          "server": "css-lsp"
+        },
+        "ms": 245
+      },
+      "openToConnectionMs": 369,
+      "unsavedInjection": "\n.audit { zzz-invalid-property: 1; color: ; }\n",
+      "position": {
+        "line": 8,
+        "character": 3
+      },
+      "completionCount": 888,
+      "sessions": [
+        {
+          "id": "css-lsp",
+          "name": "css-lsp",
+          "languages": [
+            "CSS",
+            "SCSS",
+            "LESS"
+          ],
+          "description": "Language Server Protocol implementation for CSS, SCSS & LESS.",
+          "homepage": "https://github.com/microsoft/vscode-css-languageservice",
+          "configured": true,
+          "bundled": false,
+          "custom": false,
+          "managed": false,
+          "discoverable": true,
+          "enabled": true,
+          "selected": [
+            "css",
+            "scss",
+            "less"
+          ],
+          "executable": "/tmp/setdown-lsp-audit-tools-20261017/node_modules/.bin/vscode-css-language-server",
+          "available": true,
+          "automatic": true,
+          "canDetect": true,
+          "candidates": [
+            {
+              "id": "c18244cfbc159aff9c117366",
+              "path": "/tmp/setdown-lsp-audit-tools-20261017/node_modules/.bin/vscode-css-language-server",
+              "source": "path"
+            }
+          ],
+          "selectionNeeded": false,
+          "searched": [
+            "/tmp/setdown-lsp-audit-tools-20261017/node_modules/.bin",
+            "/home/yabsed/.opam/default/bin",
+            "/home/yabsed/.kimi-code/bin",
+            "/home/yabsed/.opencode/bin",
+            "/home/yabsed/.elan/bin",
+            "/usr/lib/jvm/java-17-temurin-jdk/bin",
+            "/home/yabsed/opt/llvm-22.1.0/bin",
+            "/usr/lib/jvm/java-21-openjdk/bin",
+            "/home/yabsed/.codex/tmp/arg0/codex-arg0o79xEr",
+            "/home/yabsed/.cabal/bin",
+            "/home/yabsed/.ghcup/bin",
+            "/home/yabsed/.local/bin",
+            "/home/yabsed/miniconda3/bin",
+            "/home/yabsed/miniconda3/condabin",
+            "/home/yabsed/.cargo/bin",
+            "/usr/local/bin",
+            "/usr/bin",
+            "/home/yabsed/Android/Sdk/emulator",
+            "/home/yabsed/Android/Sdk/platform-tools",
+            "/home/yabsed/.vscode-insiders/extensions/openai.chatgpt-26.51007.21434-linux-x64/bin/linux-x86_64",
+            "/home/yabsed/go/bin"
+          ],
+          "profileSource": "Helix · vscode-css-language-server",
+          "options": {
+            "args": [
+              "--stdio"
+            ],
+            "settings": {},
+            "initializationOptions": {
+              "provideFormatter": true,
+              "css": {
+                "validate": {
+                  "enable": true
+                }
+              }
+            }
+          },
+          "sessions": [
+            {
+              "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min",
+              "state": "ready",
+              "features": [
+                "completion",
+                "hover",
+                "definition",
+                "references",
+                "documentSymbol",
+                "documentHighlight",
+                "selectionRange",
+                "foldingRange",
+                "documentLink",
+                "color",
+                "rename",
+                "codeAction",
+                "documentFormatting",
+                "documentRangeFormatting",
+                "diagnostic"
+              ],
+              "logs": [
+                "Error while computing diagnostics for file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css: Cannot read properties of null (reading 'validProperties')\nTypeError: Cannot read properties of null (reading 'validProperties')\n    at LintConfigurationSettings.getSetting (/tmp/setdown-lsp-audit-tools-20261017/node_modules/vscode-css-languageservice/lib/umd/services/lintRules.js:78:29)\n    at new LintVisitor (/tmp/setdown-lsp-audit-tools-20261017/node_modules/vscode-css-languageservice/lib/umd/services/lint.js:53:41)\n    at LintVisitor.entries (/tmp/setdown-lsp-audit-tools-20261017/node_modules/vscode-css-languageservice/lib/umd/services/lint.js:41:29)\n    at CSSValidation.doValidation (/tmp/setdown-lsp-audit-tools-20261017/node_modules/vscode-css-languageservice/lib/umd/services/cssValidation.js:34:60)\n    at _callee15$ (/tmp/setdown-lsp-audit-tools-20261017/node_modules/vscode-langservers-extracted/lib/css-language-server/cssServer.js:288:83)\n    at tryCatch (/tmp/setdown-lsp-audit-tools-20261017/node_modules/regenerator-runtime/runtime.js:64:40)\n    at Generator.invoke (/tmp/setdown-lsp-audit-tools-20261017/node_modules/regenerator-runtime/runtime.js:299:22)\n    at Generator.next (/tmp/setdown-lsp-audit-tools-20261017/node_modules/regenerator-runtime/runtime.js:124:21)\n    at asyncGeneratorStep (/tmp/setdown-lsp-audit-tools-20261017/node_modules/vscode-langservers-extracted/lib/css-language-server/cssServer.js:53:103)\n    at _next (/tmp/setdown-lsp-audit-tools-20261017/node_modules/vscode-langservers-extracted/lib/css-language-server/cssServer.js:55:194)",
+                "Error while computing diagnostics for file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css: Cannot read properties of null (reading 'validProperties')\nTypeError: Cannot read properties of null (reading 'validProperties')\n    at LintConfigurationSettings.getSetting (/tmp/setdown-lsp-audit-tools-20261017/node_modules/vscode-css-languageservice/lib/umd/services/lintRules.js:78:29)\n    at new LintVisitor (/tmp/setdown-lsp-audit-tools-20261017/node_modules/vscode-css-languageservice/lib/umd/services/lint.js:53:41)\n    at LintVisitor.entries (/tmp/setdown-lsp-audit-tools-20261017/node_modules/vscode-css-languageservice/lib/umd/services/lint.js:41:29)\n    at CSSValidation.doValidation (/tmp/setdown-lsp-audit-tools-20261017/node_modules/vscode-css-languageservice/lib/umd/services/cssValidation.js:34:60)\n    at _callee15$ (/tmp/setdown-lsp-audit-tools-20261017/node_modules/vscode-langservers-extracted/lib/css-language-server/cssServer.js:288:83)\n    at tryCatch (/tmp/setdown-lsp-audit-tools-20261017/node_modules/regenerator-runtime/runtime.js:64:40)\n    at Generator.invoke (/tmp/setdown-lsp-audit-tools-20261017/node_modules/regenerator-runtime/runtime.js:299:22)\n    at Generator.next (/tmp/setdown-lsp-audit-tools-20261017/node_modules/regenerator-runtime/runtime.js:124:21)\n    at asyncGeneratorStep (/tmp/setdown-lsp-audit-tools-20261017/node_modules/vscode-langservers-extracted/lib/css-language-server/cssServer.js:53:103)\n    at _next (/tmp/setdown-lsp-audit-tools-20261017/node_modules/vscode-langservers-extracted/lib/css-language-server/cssServer.js:55:194)"
+              ],
+              "progress": []
+            }
+          ]
+        }
+      ],
+      "ipc": {
+        "opens": [
+          {
+            "document": {
+              "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+              "generation": "ab7d3efe-93d1-4b75-a3f7-9b8c2a1f8541",
+              "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "version": 1
+            },
+            "response": {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "capabilities": {
+                "textDocumentSync": 2,
+                "completionProvider": {
+                  "resolveProvider": false,
+                  "triggerCharacters": [
+                    "/",
+                    "-",
+                    ":"
+                  ]
+                },
+                "hoverProvider": true,
+                "documentSymbolProvider": true,
+                "referencesProvider": true,
+                "definitionProvider": true,
+                "documentHighlightProvider": true,
+                "documentLinkProvider": {
+                  "resolveProvider": false
+                },
+                "codeActionProvider": true,
+                "renameProvider": true,
+                "colorProvider": {},
+                "foldingRangeProvider": true,
+                "selectionRangeProvider": true,
+                "diagnosticProvider": {
+                  "documentSelector": null,
+                  "interFileDependencies": false,
+                  "workspaceDiagnostics": false
+                },
+                "documentRangeFormattingProvider": true,
+                "documentFormattingProvider": true
+              },
+              "server": "css-lsp"
+            },
+            "ms": 245
+          }
+        ],
+        "changes": [
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 2
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 3
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 4
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 5
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 6
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 7
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 8
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 9
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 10
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 11
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 12
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 13
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 14
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 15
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 16
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 17
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 18
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 19
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 20
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 21
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 22
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 23
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 24
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 25
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 26
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 27
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 28
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 29
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 30
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 31
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 32
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 33
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 34
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 35
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 36
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 37
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 38
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 39
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 40
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 41
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 42
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 43
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 44
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 45
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 46
+          },
+          {
+            "id": "8ae7d6ee-dc25-48fc-b01a-1e231f32c682",
+            "version": 47
+          }
+        ],
+        "requests": [
+          {
+            "method": "textDocument/codeAction",
+            "ms": 10
+          },
+          {
+            "method": "textDocument/documentLink",
+            "ms": 10
+          },
+          {
+            "method": "textDocument/documentColor",
+            "ms": 13
+          },
+          {
+            "method": "textDocument/documentSymbol",
+            "ms": 7
+          },
+          {
+            "method": "textDocument/hover",
+            "ms": 4
+          },
+          {
+            "method": "textDocument/definition",
+            "ms": 2
+          },
+          {
+            "method": "textDocument/references",
+            "ms": 1
+          },
+          {
+            "method": "textDocument/completion",
+            "ms": 21
+          },
+          {
+            "method": "textDocument/diagnostic",
+            "ms": 4
+          },
+          {
+            "method": "textDocument/foldingRange",
+            "ms": 3
+          },
+          {
+            "method": "textDocument/foldingRange",
+            "ms": 2
+          },
+          {
+            "method": "textDocument/formatting",
+            "ms": 6
+          },
+          {
+            "method": "textDocument/diagnostic",
+            "ms": 2
+          }
+        ]
+      },
+      "sourceUnchanged": true
+    },
+    {
+      "name": "css-min-configured-invalid",
+      "file": "vendor/min/css/windowControls.css",
+      "root": "vendor/min",
+      "needle": "display: none",
+      "symbol": "display",
+      "tools": true,
+      "configureCss": true,
+      "injectCss": true,
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 14,
+          "response": [
+            {
+              "name": "body",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 0,
+                  "character": 0
+                },
+                "end": {
+                  "line": 4,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 0,
+                  "character": 0
+                },
+                "end": {
+                  "line": 0,
+                  "character": 4
+                }
+              },
+              "$setdownItem": "a8c5acf8-65a3-46e2-a2a3-0c59a516e200"
+            },
+            {
+              "name": ".window-drag-area",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 7,
+                  "character": 0
+                },
+                "end": {
+                  "line": 9,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 7,
+                  "character": 0
+                },
+                "end": {
+                  "line": 7,
+                  "character": 17
+                }
+              },
+              "$setdownItem": "587216c0-6014-4599-8c1f-b864803945ad"
+            },
+            {
+              "name": "body.windows:not(.maximized):not(.fullscreen):not(.separate-titlebar)",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 11,
+                  "character": 0
+                },
+                "end": {
+                  "line": 14,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 11,
+                  "character": 0
+                },
+                "end": {
+                  "line": 11,
+                  "character": 69
+                }
+              },
+              "$setdownItem": "ce670f4e-5695-4b74-94ab-77aa9d692fea"
+            },
+            {
+              "name": "body.linux:not(.maximized):not(.fullscreen):not(.separate-titlebar)",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 12,
+                  "character": 0
+                },
+                "end": {
+                  "line": 14,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 12,
+                  "character": 0
+                },
+                "end": {
+                  "line": 12,
+                  "character": 67
+                }
+              },
+              "$setdownItem": "d2bd366f-e114-4028-ac16-8f89b07a4d18"
+            },
+            {
+              "name": "body.windows:not(.maximized):not(.fullscreen):not(.separate-titlebar) .window-drag-area",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 17,
+                  "character": 0
+                },
+                "end": {
+                  "line": 27,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 17,
+                  "character": 0
+                },
+                "end": {
+                  "line": 17,
+                  "character": 87
+                }
+              },
+              "$setdownItem": "48a3f064-72b7-4fe6-9045-1db9620a731c"
+            },
+            {
+              "name": "body.linux:not(.maximized):not(.fullscreen):not(.separate-titlebar) .window-drag-area",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 18,
+                  "character": 0
+                },
+                "end": {
+                  "line": 27,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 18,
+                  "character": 0
+                },
+                "end": {
+                  "line": 18,
+                  "character": 85
+                }
+              },
+              "$setdownItem": "688bb13c-0613-41b4-a575-f4ab4bc8d79b"
+            },
+            {
+              "name": "body.mac:not(.separate-titlebar):not(.fullscreen) .window-drag-area",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 29,
+                  "character": 0
+                },
+                "end": {
+                  "line": 37,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 29,
+                  "character": 0
+                },
+                "end": {
+                  "line": 29,
+                  "character": 67
+                }
+              },
+              "$setdownItem": "2e5d7051-fd87-40cb-a401-abffc1635c1b"
+            },
+            {
+              "name": "body.mac:not(.is-edit-mode):not(.fullscreen):not(.separate-titlebar) #mac-window-drag-area",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 39,
+                  "character": 0
+                },
+                "end": {
+                  "line": 44,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 39,
+                  "character": 0
+                },
+                "end": {
+                  "line": 39,
+                  "character": 90
+                }
+              },
+              "$setdownItem": "2a876d61-9f29-489d-b8f6-fa506b3a0e02"
+            },
+            {
+              "name": "body.mac:not(.fullscreen):not(.separate-titlebar)",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 48,
+                  "character": 0
+                },
+                "end": {
+                  "line": 50,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 48,
+                  "character": 0
+                },
+                "end": {
+                  "line": 48,
+                  "character": 49
+                }
+              },
+              "$setdownItem": "0e08945f-2443-4b29-8ba2-d758b077444e"
+            },
+            {
+              "name": "body.rtl.mac:not(.fullscreen):not(.separate-titlebar)",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 52,
+                  "character": 0
+                },
+                "end": {
+                  "line": 55,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 52,
+                  "character": 0
+                },
+                "end": {
+                  "line": 52,
+                  "character": 53
+                }
+              },
+              "$setdownItem": "ad8b7be3-12f7-46d2-a210-32a6421be856"
+            },
+            {
+              "name": "body.windows:not(.separate-titlebar)",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 59,
+                  "character": 0
+                },
+                "end": {
+                  "line": 61,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 59,
+                  "character": 0
+                },
+                "end": {
+                  "line": 59,
+                  "character": 36
+                }
+              },
+              "$setdownItem": "1da8c5ae-c331-4f38-ad1b-5fe10eac72e5"
+            },
+            {
+              "name": ".windows-caption-buttons",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 63,
+                  "character": 0
+                },
+                "end": {
+                  "line": 65,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 63,
+                  "character": 0
+                },
+                "end": {
+                  "line": 63,
+                  "character": 24
+                }
+              },
+              "$setdownItem": "cc77462c-b022-40b5-a834-71fdd1c6a833"
+            },
+            {
+              "name": "body.windows:not(.separate-titlebar) .windows-caption-buttons",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 67,
+                  "character": 0
+                },
+                "end": {
+                  "line": 73,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 67,
+                  "character": 0
+                },
+                "end": {
+                  "line": 67,
+                  "character": 61
+                }
+              },
+              "$setdownItem": "bb37ff08-4306-48ac-a848-ab64bb7453f2"
+            },
+            {
+              "name": ".windows-caption-buttons .element",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 75,
+                  "character": 0
+                },
+                "end": {
+                  "line": 83,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 75,
+                  "character": 0
+                },
+                "end": {
+                  "line": 75,
+                  "character": 33
+                }
+              },
+              "$setdownItem": "45bc9c48-7633-45c4-9759-339ec64420dc"
+            },
+            {
+              "name": "body:not(.task-overlay-is-shown).dark-theme .windows-caption-buttons .element",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 85,
+                  "character": 0
+                },
+                "end": {
+                  "line": 87,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 85,
+                  "character": 0
+                },
+                "end": {
+                  "line": 85,
+                  "character": 77
+                }
+              },
+              "$setdownItem": "7c4464cf-fca7-44f8-807c-dfe769379ec4"
+            },
+            {
+              "name": ".windows-caption-buttons .element > svg",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 89,
+                  "character": 0
+                },
+                "end": {
+                  "line": 92,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 89,
+                  "character": 0
+                },
+                "end": {
+                  "line": 89,
+                  "character": 39
+                }
+              },
+              "$setdownItem": "64a787e8-fbc8-4d43-acad-cc9f267e17b4"
+            },
+            {
+              "name": ".windows-caption-buttons .element",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 94,
+                  "character": 0
+                },
+                "end": {
+                  "line": 96,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 94,
+                  "character": 0
+                },
+                "end": {
+                  "line": 94,
+                  "character": 33
+                }
+              },
+              "$setdownItem": "fbe774ed-33a3-4e64-b804-2589f6758d2b"
+            },
+            {
+              "name": ".windows-caption-buttons .element:hover",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 97,
+                  "character": 0
+                },
+                "end": {
+                  "line": 100,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 97,
+                  "character": 0
+                },
+                "end": {
+                  "line": 97,
+                  "character": 39
+                }
+              },
+              "$setdownItem": "a02b0285-10c0-44b5-81f9-c647c44822e4"
+            },
+            {
+              "name": ".windows-caption-buttons .element:active",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 101,
+                  "character": 0
+                },
+                "end": {
+                  "line": 103,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 101,
+                  "character": 0
+                },
+                "end": {
+                  "line": 101,
+                  "character": 40
+                }
+              },
+              "$setdownItem": "4733aba1-5f06-45c5-8040-2cefb6764e91"
+            },
+            {
+              "name": ".windows-caption-buttons .element.caption-close:hover",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 104,
+                  "character": 0
+                },
+                "end": {
+                  "line": 106,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 104,
+                  "character": 0
+                },
+                "end": {
+                  "line": 104,
+                  "character": 53
+                }
+              },
+              "$setdownItem": "6e442b73-d97f-4980-93c3-39a5ade00422"
+            },
+            {
+              "name": ".windows-caption-buttons .element.caption-close:hover > svg",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 107,
+                  "character": 0
+                },
+                "end": {
+                  "line": 111,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 107,
+                  "character": 0
+                },
+                "end": {
+                  "line": 107,
+                  "character": 59
+                }
+              },
+              "$setdownItem": "d1c72d93-6967-4a3c-9a34-9461b62cdaba"
+            },
+            {
+              "name": ".windows-caption-buttons .element.caption-close:active > svg",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 108,
+                  "character": 0
+                },
+                "end": {
+                  "line": 111,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 108,
+                  "character": 0
+                },
+                "end": {
+                  "line": 108,
+                  "character": 60
+                }
+              },
+              "$setdownItem": "aff07b77-7be9-40d9-a223-5ba479011b36"
+            },
+            {
+              "name": ".windows-caption-buttons .element.caption-close:active",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 112,
+                  "character": 0
+                },
+                "end": {
+                  "line": 114,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 112,
+                  "character": 0
+                },
+                "end": {
+                  "line": 112,
+                  "character": 54
+                }
+              },
+              "$setdownItem": "0cf04276-c192-40cb-98bc-6ab07c0cb4df"
+            },
+            {
+              "name": "#linux-control-buttons",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 118,
+                  "character": 0
+                },
+                "end": {
+                  "line": 120,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 118,
+                  "character": 0
+                },
+                "end": {
+                  "line": 118,
+                  "character": 22
+                }
+              },
+              "$setdownItem": "0225b38f-0724-46b2-939d-08dabc309af5"
+            },
+            {
+              "name": "body.linux:not(.separate-titlebar)",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 122,
+                  "character": 0
+                },
+                "end": {
+                  "line": 124,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 122,
+                  "character": 0
+                },
+                "end": {
+                  "line": 122,
+                  "character": 34
+                }
+              },
+              "$setdownItem": "f13e1daa-d5f7-4cb3-9328-af83ca202218"
+            },
+            {
+              "name": "body.linux:not(.separate-titlebar) #linux-control-buttons",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 126,
+                  "character": 0
+                },
+                "end": {
+                  "line": 133,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 126,
+                  "character": 0
+                },
+                "end": {
+                  "line": 126,
+                  "character": 57
+                }
+              },
+              "$setdownItem": "faca4136-37dd-46ab-ac08-aa67250b0821"
+            },
+            {
+              "name": "body.task-overlay-is-shown #linux-control-buttons",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 135,
+                  "character": 0
+                },
+                "end": {
+                  "line": 137,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 135,
+                  "character": 0
+                },
+                "end": {
+                  "line": 135,
+                  "character": 49
+                }
+              },
+              "$setdownItem": "3346a86b-aa5e-48ce-9972-42d8cf2d0fe5"
+            },
+            {
+              "name": "body.dark-mode.task-overlay-is-shown #linux-control-buttons",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 139,
+                  "character": 0
+                },
+                "end": {
+                  "line": 141,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 139,
+                  "character": 0
+                },
+                "end": {
+                  "line": 139,
+                  "character": 59
+                }
+              },
+              "$setdownItem": "4f336ef1-29bf-4b4b-9c4f-6aedd308350c"
+            },
+            {
+              "name": "#linux-control-buttons .button-background",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 143,
+                  "character": 0
+                },
+                "end": {
+                  "line": 148,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 143,
+                  "character": 0
+                },
+                "end": {
+                  "line": 143,
+                  "character": 41
+                }
+              },
+              "$setdownItem": "e6280692-4650-4fc3-9189-fc871952eb25"
+            },
+            {
+              "name": "#linux-control-buttons g:hover .button-background",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 150,
+                  "character": 0
+                },
+                "end": {
+                  "line": 153,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 150,
+                  "character": 0
+                },
+                "end": {
+                  "line": 150,
+                  "character": 49
+                }
+              },
+              "$setdownItem": "86fde3c3-5490-4bca-b9e7-0e33af5ed76d"
+            },
+            {
+              "name": "#linux-control-buttons g:active .button-background",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 155,
+                  "character": 0
+                },
+                "end": {
+                  "line": 158,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 155,
+                  "character": 0
+                },
+                "end": {
+                  "line": 155,
+                  "character": 50
+                }
+              },
+              "$setdownItem": "ef9f935d-341f-4b3c-9c05-66495af48fd1"
+            },
+            {
+              "name": ".dark-theme #linux-control-buttons g:hover .button-background",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 160,
+                  "character": 0
+                },
+                "end": {
+                  "line": 163,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 160,
+                  "character": 0
+                },
+                "end": {
+                  "line": 160,
+                  "character": 61
+                }
+              },
+              "$setdownItem": "ca54a2db-bb45-49ea-bea3-098b5432b609"
+            },
+            {
+              "name": ".dark-theme #linux-control-buttons g:active .button-background",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 165,
+                  "character": 0
+                },
+                "end": {
+                  "line": 168,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 165,
+                  "character": 0
+                },
+                "end": {
+                  "line": 165,
+                  "character": 62
+                }
+              },
+              "$setdownItem": "bc55c644-67cd-43f4-a5ba-fe9db251a38e"
+            },
+            {
+              "name": ".audit",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 170,
+                  "character": 0
+                },
+                "end": {
+                  "line": 170,
+                  "character": 44
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 170,
+                  "character": 0
+                },
+                "end": {
+                  "line": 170,
+                  "character": 6
+                }
+              },
+              "$setdownItem": "93c152cf-e228-4fdc-a518-f23d51513d07"
+            }
+          ]
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 6,
+          "response": {
+            "contents": {
+              "kind": "markdown",
+              "value": "In combination with 'float' and 'position', determines the type of box or boxes that are generated for an element\\.\n\n![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAgMzAwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxzdHlsZT4KICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgIGZpbGw6ICNDNEVFRDA7IC8qIExpZ2h0IG1vZGUgKi8KICAgIH0KCiAgICBAbWVkaWEgKHByZWZlcnMtY29sb3Itc2NoZW1lOiBkYXJrKSB7CiAgICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgICAgZmlsbDogIzEyNTIyNTsgLyogRGFyayBtb2RlICovCiAgICAgIH0KICAgIH0KICA8L3N0eWxlPgogIDxwYXRoIGQ9Ik00MjAgMzBMMzkwIDYwTDQ4MCAxNTBMMzkwIDI0MEwzMzAgMTgwTDMwMCAyMTBMMzkwIDMwMEw1NDAgMTUwTDQyMCAzMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0xNTAgMEwzMCAxMjBMNjAgMTUwTDE1MCA2MEwyMTAgMTIwTDI0MCA5MEwxNTAgMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0zOTAgMEw0MjAgMzBMMTUwIDMwMEwwIDE1MEwzMCAxMjBMMTUwIDI0MEwzOTAgMFoiIGZpbGw9IiMxRUE0NDYiLz4KPC9zdmc+) _Widely available across major browsers (Baseline since 2015)_\n\nSyntax: \\[ &lt;display\\-outside&gt; || &lt;display\\-inside&gt; \\] | &lt;display\\-listitem&gt; | &lt;display\\-internal&gt; | &lt;display\\-box&gt; | &lt;display\\-legacy&gt;\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/display)"
+            },
+            "range": {
+              "start": {
+                "line": 8,
+                "character": 2
+              },
+              "end": {
+                "line": 8,
+                "character": 15
+              }
+            },
+            "$setdownItem": "c206e9f5-a739-4738-aa15-4edf5f9f9784"
+          }
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 4,
+          "response": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 4,
+          "response": [
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "range": {
+                "start": {
+                  "line": 8,
+                  "character": 2
+                },
+                "end": {
+                  "line": 8,
+                  "character": 9
+                }
+              },
+              "$setdownItem": "e06447c3-a586-46b0-a445-9b7dedb72bdc"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "range": {
+                "start": {
+                  "line": 19,
+                  "character": 2
+                },
+                "end": {
+                  "line": 19,
+                  "character": 9
+                }
+              },
+              "$setdownItem": "bd1a5e85-c1cb-49e6-bfcd-6783d3b817a5"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "range": {
+                "start": {
+                  "line": 30,
+                  "character": 2
+                },
+                "end": {
+                  "line": 30,
+                  "character": 9
+                }
+              },
+              "$setdownItem": "a6413a9e-f22b-44bb-8a04-a5a756a2bb9b"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "range": {
+                "start": {
+                  "line": 64,
+                  "character": 2
+                },
+                "end": {
+                  "line": 64,
+                  "character": 9
+                }
+              },
+              "$setdownItem": "dab9ad9e-e34f-48ce-b202-971fcc0f2079"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "range": {
+                "start": {
+                  "line": 68,
+                  "character": 2
+                },
+                "end": {
+                  "line": 68,
+                  "character": 9
+                }
+              },
+              "$setdownItem": "4954c570-8c1c-44df-b762-45cb2d833248"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "range": {
+                "start": {
+                  "line": 119,
+                  "character": 2
+                },
+                "end": {
+                  "line": 119,
+                  "character": 9
+                }
+              },
+              "$setdownItem": "2f4e0182-9218-45d9-ac17-bf48901df0f7"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "range": {
+                "start": {
+                  "line": 127,
+                  "character": 2
+                },
+                "end": {
+                  "line": 127,
+                  "character": 9
+                }
+              },
+              "$setdownItem": "bd52333e-78b4-4005-924c-0459b5ab2966"
+            }
+          ]
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 210,
+          "response": {
+            "isIncomplete": false,
+            "count": 888,
+            "sample": [
+              {
+                "label": "additive-symbols",
+                "documentation": {
+                  "kind": "markdown",
+                  "value": "@counter\\-style descriptor\\. Specifies the symbols used by the marker\\-construction algorithm specified by the system descriptor\\. Needs to be specified if the counter system is 'additive'\\.\n\nSyntax: \\[ &lt;integer \\[0,∞\\]&gt; && &lt;symbol&gt; \\]\\#"
+                },
+                "tags": [],
+                "textEdit": {
+                  "range": {
+                    "start": {
+                      "line": 8,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 8,
+                      "character": 9
+                    }
+                  },
+                  "newText": "additive-symbols",
+                  "$setdownItem": "3f6e7105-f34f-433d-939f-7edf0699c169"
+                },
+                "insertTextFormat": 2,
+                "kind": 10,
+                "sortText": "d_cd",
+                "$setdownItem": "8653d2f5-98c2-4cdc-80be-2060f8aeee35"
+              },
+              {
+                "label": "align-content",
+                "documentation": {
+                  "kind": "markdown",
+                  "value": "Aligns a flex container's lines within the flex container when there is extra space in the cross\\-axis, similar to how 'justify\\-content' aligns individual items within the main\\-axis\\.\n\n![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAgMzAwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxzdHlsZT4KICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgIGZpbGw6ICNDNEVFRDA7IC8qIExpZ2h0IG1vZGUgKi8KICAgIH0KCiAgICBAbWVkaWEgKHByZWZlcnMtY29sb3Itc2NoZW1lOiBkYXJrKSB7CiAgICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgICAgZmlsbDogIzEyNTIyNTsgLyogRGFyayBtb2RlICovCiAgICAgIH0KICAgIH0KICA8L3N0eWxlPgogIDxwYXRoIGQ9Ik00MjAgMzBMMzkwIDYwTDQ4MCAxNTBMMzkwIDI0MEwzMzAgMTgwTDMwMCAyMTBMMzkwIDMwMEw1NDAgMTUwTDQyMCAzMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0xNTAgMEwzMCAxMjBMNjAgMTUwTDE1MCA2MEwyMTAgMTIwTDI0MCA5MEwxNTAgMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0zOTAgMEw0MjAgMzBMMTUwIDMwMEwwIDE1MEwzMCAxMjBMMTUwIDI0MEwzOTAgMFoiIGZpbGw9IiMxRUE0NDYiLz4KPC9zdmc+) _Widely available across major browsers (Baseline since 2015)_\n\nSyntax: normal | &lt;baseline\\-position&gt; | &lt;content\\-distribution&gt; | &lt;overflow\\-position&gt;? &lt;content\\-position&gt;\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/align-content)"
+                },
+                "tags": [],
+                "textEdit": {
+                  "range": {
+                    "start": {
+                      "line": 8,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 8,
+                      "character": 9
+                    }
+                  },
+                  "newText": "align-content",
+                  "$setdownItem": "82e2859e-4b91-4620-9338-95e093676b8a"
+                },
+                "insertTextFormat": 2,
+                "kind": 10,
+                "sortText": "d_bb",
+                "$setdownItem": "a2bac90d-777e-4108-a876-c92c8978c3bd"
+              },
+              {
+                "label": "align-items",
+                "documentation": {
+                  "kind": "markdown",
+                  "value": "Aligns flex items along the cross axis of the current line of the flex container\\.\n\n![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAgMzAwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxzdHlsZT4KICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgIGZpbGw6ICNDNEVFRDA7IC8qIExpZ2h0IG1vZGUgKi8KICAgIH0KCiAgICBAbWVkaWEgKHByZWZlcnMtY29sb3Itc2NoZW1lOiBkYXJrKSB7CiAgICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgICAgZmlsbDogIzEyNTIyNTsgLyogRGFyayBtb2RlICovCiAgICAgIH0KICAgIH0KICA8L3N0eWxlPgogIDxwYXRoIGQ9Ik00MjAgMzBMMzkwIDYwTDQ4MCAxNTBMMzkwIDI0MEwzMzAgMTgwTDMwMCAyMTBMMzkwIDMwMEw1NDAgMTUwTDQyMCAzMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0xNTAgMEwzMCAxMjBMNjAgMTUwTDE1MCA2MEwyMTAgMTIwTDI0MCA5MEwxNTAgMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0zOTAgMEw0MjAgMzBMMTUwIDMwMEwwIDE1MEwzMCAxMjBMMTUwIDI0MEwzOTAgMFoiIGZpbGw9IiMxRUE0NDYiLz4KPC9zdmc+) _Widely available across major browsers (Baseline since 2015)_\n\nSyntax: normal | stretch | &lt;baseline\\-position&gt; | \\[ &lt;overflow\\-position&gt;? &lt;self\\-position&gt; \\] | anchor\\-center\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/align-items)"
+                },
+                "tags": [],
+                "textEdit": {
+                  "range": {
+                    "start": {
+                      "line": 8,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 8,
+                      "character": 9
+                    }
+                  },
+                  "newText": "align-items",
+                  "$setdownItem": "679bf137-8b93-4cdb-88ed-1f57d44a5ae6"
+                },
+                "insertTextFormat": 2,
+                "kind": 10,
+                "sortText": "d_a5",
+                "$setdownItem": "f82440ba-1675-4e68-b26c-b5396ff9151f"
+              },
+              {
+                "label": "justify-items",
+                "documentation": {
+                  "kind": "markdown",
+                  "value": "Defines the default justify\\-self for all items of the box, giving them the default way of justifying each box along the appropriate axis\n\n![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAgMzAwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxzdHlsZT4KICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgIGZpbGw6ICNDNEVFRDA7IC8qIExpZ2h0IG1vZGUgKi8KICAgIH0KCiAgICBAbWVkaWEgKHByZWZlcnMtY29sb3Itc2NoZW1lOiBkYXJrKSB7CiAgICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgICAgZmlsbDogIzEyNTIyNTsgLyogRGFyayBtb2RlICovCiAgICAgIH0KICAgIH0KICA8L3N0eWxlPgogIDxwYXRoIGQ9Ik00MjAgMzBMMzkwIDYwTDQ4MCAxNTBMMzkwIDI0MEwzMzAgMTgwTDMwMCAyMTBMMzkwIDMwMEw1NDAgMTUwTDQyMCAzMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0xNTAgMEwzMCAxMjBMNjAgMTUwTDE1MCA2MEwyMTAgMTIwTDI0MCA5MEwxNTAgMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0zOTAgMEw0MjAgMzBMMTUwIDMwMEwwIDE1MEwzMCAxMjBMMTUwIDI0MEwzOTAgMFoiIGZpbGw9IiMxRUE0NDYiLz4KPC9zdmc+) _Widely available across major browsers (Baseline since 2016)_\n\nSyntax: normal | stretch | &lt;baseline\\-position&gt; | &lt;overflow\\-position&gt;? \\[ &lt;self\\-position&gt; | left | right \\] | legacy | legacy && \\[ left | right | center \\] | anchor\\-center\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/justify-items)"
+                },
+                "tags": [],
+                "textEdit": {
+                  "range": {
+                    "start": {
+                      "line": 8,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 8,
+                      "character": 9
+                    }
+                  },
+                  "newText": "justify-items",
+                  "$setdownItem": "9bc0196e-d9d7-44de-8b5c-eedfb3aaed68"
+                },
+                "insertTextFormat": 2,
+                "kind": 10,
+                "sortText": "d_c5",
+                "$setdownItem": "4bb8412a-e1f0-4b53-89bf-12eec3e7efb5"
+              },
+              {
+                "label": "justify-self",
+                "documentation": {
+                  "kind": "markdown",
+                  "value": "Defines the way of justifying a box inside its container along the appropriate axis\\.\n\n![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAgMzAwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxzdHlsZT4KICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgIGZpbGw6ICNDNEVFRDA7IC8qIExpZ2h0IG1vZGUgKi8KICAgIH0KCiAgICBAbWVkaWEgKHByZWZlcnMtY29sb3Itc2NoZW1lOiBkYXJrKSB7CiAgICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgICAgZmlsbDogIzEyNTIyNTsgLyogRGFyayBtb2RlICovCiAgICAgIH0KICAgIH0KICA8L3N0eWxlPgogIDxwYXRoIGQ9Ik00MjAgMzBMMzkwIDYwTDQ4MCAxNTBMMzkwIDI0MEwzMzAgMTgwTDMwMCAyMTBMMzkwIDMwMEw1NDAgMTUwTDQyMCAzMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0xNTAgMEwzMCAxMjBMNjAgMTUwTDE1MCA2MEwyMTAgMTIwTDI0MCA5MEwxNTAgMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0zOTAgMEw0MjAgMzBMMTUwIDMwMEwwIDE1MEwzMCAxMjBMMTUwIDI0MEwzOTAgMFoiIGZpbGw9IiMxRUE0NDYiLz4KPC9zdmc+) _Widely available across major browsers (Baseline since 2017)_\n\nSyntax: auto | normal | stretch | &lt;baseline\\-position&gt; | &lt;overflow\\-position&gt;? \\[ &lt;self\\-position&gt; | left | right \\] | anchor\\-center\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/justify-self)"
+                },
+                "tags": [],
+                "textEdit": {
+                  "range": {
+                    "start": {
+                      "line": 8,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 8,
+                      "character": 9
+                    }
+                  },
+                  "newText": "justify-self",
+                  "$setdownItem": "ef3d9da9-f6a6-4fb6-97fe-500955aba21c"
+                },
+                "insertTextFormat": 2,
+                "kind": 10,
+                "sortText": "d_c4",
+                "$setdownItem": "3316dd84-a8e1-4ce2-b374-67f039d8bab5"
+              },
+              {
+                "label": "align-self",
+                "documentation": {
+                  "kind": "markdown",
+                  "value": "Allows the default alignment along the cross axis to be overridden for individual flex items\\.\n\n![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAgMzAwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxzdHlsZT4KICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgIGZpbGw6ICNDNEVFRDA7IC8qIExpZ2h0IG1vZGUgKi8KICAgIH0KCiAgICBAbWVkaWEgKHByZWZlcnMtY29sb3Itc2NoZW1lOiBkYXJrKSB7CiAgICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgICAgZmlsbDogIzEyNTIyNTsgLyogRGFyayBtb2RlICovCiAgICAgIH0KICAgIH0KICA8L3N0eWxlPgogIDxwYXRoIGQ9Ik00MjAgMzBMMzkwIDYwTDQ4MCAxNTBMMzkwIDI0MEwzMzAgMTgwTDMwMCAyMTBMMzkwIDMwMEw1NDAgMTUwTDQyMCAzMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0xNTAgMEwzMCAxMjBMNjAgMTUwTDE1MCA2MEwyMTAgMTIwTDI0MCA5MEwxNTAgMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0zOTAgMEw0MjAgMzBMMTUwIDMwMEwwIDE1MEwzMCAxMjBMMTUwIDI0MEwzOTAgMFoiIGZpbGw9IiMxRUE0NDYiLz4KPC9zdmc+) _Widely available across major browsers (Baseline since 2015)_\n\nSyntax: auto | normal | stretch | &lt;baseline\\-position&gt; | &lt;overflow\\-position&gt;? &lt;self\\-position&gt; | anchor\\-center\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/align-self)"
+                },
+                "tags": [],
+                "textEdit": {
+                  "range": {
+                    "start": {
+                      "line": 8,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 8,
+                      "character": 9
+                    }
+                  },
+                  "newText": "align-self",
+                  "$setdownItem": "6919758a-4d96-4609-b583-8059ae2155ee"
+                },
+                "insertTextFormat": 2,
+                "kind": 10,
+                "sortText": "d_b3",
+                "$setdownItem": "c347dcaa-e993-4148-a70a-5b5a71108c19"
+              },
+              {
+                "label": "all",
+                "documentation": {
+                  "kind": "markdown",
+                  "value": "Shorthand that resets all properties except 'direction' and 'unicode\\-bidi'\\.\n\n![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAgMzAwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxzdHlsZT4KICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgIGZpbGw6ICNDNEVFRDA7IC8qIExpZ2h0IG1vZGUgKi8KICAgIH0KCiAgICBAbWVkaWEgKHByZWZlcnMtY29sb3Itc2NoZW1lOiBkYXJrKSB7CiAgICAgIC5ncmVlbi1zaGFwZSB7CiAgICAgICAgZmlsbDogIzEyNTIyNTsgLyogRGFyayBtb2RlICovCiAgICAgIH0KICAgIH0KICA8L3N0eWxlPgogIDxwYXRoIGQ9Ik00MjAgMzBMMzkwIDYwTDQ4MCAxNTBMMzkwIDI0MEwzMzAgMTgwTDMwMCAyMTBMMzkwIDMwMEw1NDAgMTUwTDQyMCAzMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0xNTAgMEwzMCAxMjBMNjAgMTUwTDE1MCA2MEwyMTAgMTIwTDI0MCA5MEwxNTAgMFoiIGNsYXNzPSJncmVlbi1zaGFwZSIvPgogIDxwYXRoIGQ9Ik0zOTAgMEw0MjAgMzBMMTUwIDMwMEwwIDE1MEwzMCAxMjBMMTUwIDI0MEwzOTAgMFoiIGZpbGw9IiMxRUE0NDYiLz4KPC9zdmc+) _Widely available across major browsers (Baseline since 2020)_\n\nSyntax: initial | inherit | unset | revert | revert\\-layer\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/all)"
+                },
+                "tags": [],
+                "textEdit": {
+                  "range": {
+                    "start": {
+                      "line": 8,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 8,
+                      "character": 9
+                    }
+                  },
+                  "newText": "all",
+                  "$setdownItem": "de4a6e36-52c2-4239-b574-3440413c4c13"
+                },
+                "insertTextFormat": 2,
+                "kind": 10,
+                "sortText": "d_c7",
+                "$setdownItem": "249f1f97-a54a-475e-b215-c7a3461b796b"
+              },
+              {
+                "label": "alt",
+                "documentation": {
+                  "kind": "markdown",
+                  "value": "Provides alternative text for assistive technology to replace the generated content of a ::before or ::after element\\.\n\n![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAgMzAwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxzdHlsZT4KICAgIC5ncmF5LXNoYXBlIHsKICAgICAgZmlsbDogI0M2QzZDNjsgLyogTGlnaHQgbW9kZSAqLwogICAgfQoKICAgIEBtZWRpYSAocHJlZmVycy1jb2xvci1zY2hlbWU6IGRhcmspIHsKICAgICAgLmdyYXktc2hhcGUgewogICAgICAgIGZpbGw6ICM1NjU2NTY7IC8qIERhcmsgbW9kZSAqLwogICAgICB9CiAgICB9CiAgPC9zdHlsZT4KICA8cGF0aCBkPSJNMTUwIDBMMjQwIDkwTDIxMCAxMjBMMTIwIDMwTDE1MCAwWiIgZmlsbD0iI0YwOTQwOSIvPgogIDxwYXRoIGQ9Ik00MjAgMzBMNTQwIDE1MEw0MjAgMjcwTDM5MCAyNDBMNDgwIDE1MEwzOTAgNjBMNDIwIDMwWiIgY2xhc3M9ImdyYXktc2hhcGUiLz4KICA8cGF0aCBkPSJNMzMwIDE4MEwzMDAgMjEwTDM5MCAzMDBMNDIwIDI3MEwzMzAgMTgwWiIgZmlsbD0iI0YwOTQwOSIvPgogIDxwYXRoIGQ9Ik0xMjAgMzBMMTUwIDYwTDYwIDE1MEwxNTAgMjQwTDEyMCAyNzBMMCAxNTBMMTIwIDMwWiIgY2xhc3M9ImdyYXktc2hhcGUiLz4KICA8cGF0aCBkPSJNMzkwIDBMNDIwIDMwTDE1MCAzMDBMMTIwIDI3MEwzOTAgMFoiIGZpbGw9IiNGMDk0MDkiLz4KPC9zdmc+) _Limited availability across major browsers_"
+                },
+                "tags": [],
+                "textEdit": {
+                  "range": {
+                    "start": {
+                      "line": 8,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 8,
+                      "character": 9
+                    }
+                  },
+                  "newText": "alt",
+                  "$setdownItem": "37a76675-1448-49dd-b806-5e3fdba0d870"
+                },
+                "insertTextFormat": 2,
+                "kind": 10,
+                "sortText": "d_cd",
+                "$setdownItem": "a383c201-0942-4ad4-bd6c-22fbb6109994"
+              }
+            ]
+          }
+        },
+        "folding": {
+          "method": "textDocument/foldingRange",
+          "ms": 6,
+          "response": [
+            {
+              "startLine": 0,
+              "endLine": 3
+            },
+            {
+              "startLine": 7,
+              "endLine": 8
+            },
+            {
+              "startLine": 12,
+              "endLine": 13
+            },
+            {
+              "startLine": 18,
+              "endLine": 26
+            },
+            {
+              "startLine": 29,
+              "endLine": 36
+            },
+            {
+              "startLine": 39,
+              "endLine": 43
+            },
+            {
+              "startLine": 48,
+              "endLine": 49
+            },
+            {
+              "startLine": 52,
+              "endLine": 54
+            },
+            {
+              "startLine": 59,
+              "endLine": 60
+            },
+            {
+              "startLine": 63,
+              "endLine": 64
+            },
+            {
+              "startLine": 67,
+              "endLine": 72
+            },
+            {
+              "startLine": 75,
+              "endLine": 82
+            },
+            {
+              "startLine": 85,
+              "endLine": 86
+            },
+            {
+              "startLine": 89,
+              "endLine": 91
+            },
+            {
+              "startLine": 94,
+              "endLine": 95
+            },
+            {
+              "startLine": 97,
+              "endLine": 99
+            },
+            {
+              "startLine": 101,
+              "endLine": 102
+            },
+            {
+              "startLine": 104,
+              "endLine": 105
+            },
+            {
+              "startLine": 108,
+              "endLine": 110
+            },
+            {
+              "startLine": 112,
+              "endLine": 113
+            },
+            {
+              "startLine": 118,
+              "endLine": 119
+            },
+            {
+              "startLine": 122,
+              "endLine": 123
+            },
+            {
+              "startLine": 126,
+              "endLine": 132
+            },
+            {
+              "startLine": 135,
+              "endLine": 136
+            },
+            {
+              "startLine": 139,
+              "endLine": 140
+            },
+            {
+              "startLine": 143,
+              "endLine": 147
+            },
+            {
+              "startLine": 150,
+              "endLine": 152
+            },
+            {
+              "startLine": 155,
+              "endLine": 157
+            },
+            {
+              "startLine": 160,
+              "endLine": 162
+            },
+            {
+              "startLine": 165,
+              "endLine": 167
+            }
+          ]
+        },
+        "formatting": {
+          "method": "textDocument/formatting",
+          "ms": 11,
+          "response": {
+            "editCount": 1,
+            "first": [
+              {
+                "range": {
+                  "start": {
+                    "line": 0,
+                    "character": 0
+                  },
+                  "end": {
+                    "line": 171,
+                    "character": 0
+                  }
+                },
+                "newText": "body {\n  --control-space-top: 0px;\n  --control-space-left: 0.3em;\n  --control-space-right: 0.3em;\n}\n\n/* window drag regions */\n\n.window-drag-area {\n  display: none;\n}\n\nbody.windows:not(.maximized):not(.fullscreen):not(.separate-titlebar),\nbody.linux:not(.maximized):not(.fullscreen):not(.separate-titlebar) {\n  --control-space-top: 12px;\n}\n\n/* On Windows, draggable regions aren't clickable, so the drag region is a separate area above the tabstrip */\nbody.windows:not(.maximized):not(.fullscreen):not(.separate-titlebar) .window-drag-area,\nbody.linux:not(.maximized):not(.fullscreen):not(.separate-titlebar) .window-drag-area {\n  display: block;\n  position: fixed;\n  /* leave an empty space around the edges of the drag area so that the window can be resized */\n  top: 3px;\n  left: 3px;\n  width: calc(100% - 6px);\n  height: 12px;\n  -webkit-app-region: drag;\n}\n\nbody.mac:not(.separate-titlebar):not(.fullscreen) .window-drag-area {\n  display: block;\n  position: fixed;\n  top: 0;\n  left: 0;\n  width: 100%;\n  height: 7px;\n  -webkit-app-region: drag;\n}\n\nbody.mac:not(.is-edit-mode):not(.fullscreen):not(.separate-titlebar) #mac-window-drag-area {\n  margin-left: calc(var(--control-space-left) * -1);\n  width: calc(var(--control-space-left) + 1.25em);\n  height: 100%;\n  -webkit-app-region: drag;\n}\n\n/* mac window buttons */\n\nbody.mac:not(.fullscreen):not(.separate-titlebar) {\n  --control-space-left: 75px;\n}\n\nbody.rtl.mac:not(.fullscreen):not(.separate-titlebar) {\n  --control-space-left: 0px;\n  --control-space-right: 75px;\n}\n\n/* Windows caption buttions */\n\nbody.windows:not(.separate-titlebar) {\n  --control-space-right: 138px;\n}\n\n.windows-caption-buttons {\n  display: none;\n}\n\nbody.windows:not(.separate-titlebar) .windows-caption-buttons {\n  display: flex;\n  position: absolute;\n  top: var(--control-space-top);\n  right: 0;\n  z-index: 10;\n}\n\n.windows-caption-buttons .element {\n  line-height: 36px;\n  width: 36px;\n  stroke: #000;\n  padding: 0 5px;\n  box-sizing: content-box;\n  fill: transparent;\n  text-align: center;\n}\n\nbody:not(.task-overlay-is-shown).dark-theme .windows-caption-buttons .element {\n  stroke: #fff;\n}\n\n.windows-caption-buttons .element>svg {\n  width: 12px;\n  height: 12px;\n}\n\n.windows-caption-buttons .element {\n  transition: background-color 0.1s linear, color 0.1s linear;\n}\n\n.windows-caption-buttons .element:hover {\n  background-color: rgba(196, 196, 196, 0.4);\n  transition: none;\n}\n\n.windows-caption-buttons .element:active {\n  background-color: rgba(168, 168, 168, 0.5);\n}\n\n.windows-caption-buttons .element.caption-close:hover {\n  background-color: #e81123;\n}\n\n.windows-caption-buttons .element.caption-close:hover>svg,\n.windows-caption-buttons .element.caption-close:active>svg {\n  stroke: #fff;\n  stroke-width: 1.1px;\n}\n\n.windows-caption-buttons .element.caption-close:active {\n  background-color: rgba(232, 17, 35, 0.6);\n}\n\n/* Linux buttons */\n\n#linux-control-buttons {\n  display: none;\n}\n\nbody.linux:not(.separate-titlebar) {\n  --control-space-right: 96px;\n}\n\nbody.linux:not(.separate-titlebar) #linux-control-buttons {\n  display: block;\n  position: absolute;\n  top: calc(9px + var(--control-space-top));\n  right: 9px;\n  z-index: 9;\n  width: 76px;\n}\n\nbody.task-overlay-is-shown #linux-control-buttons {\n  color: black !important;\n}\n\nbody.dark-mode.task-overlay-is-shown #linux-control-buttons {\n  color: white !important;\n}\n\n#linux-control-buttons .button-background {\n  fill: currentColor;\n  stroke: currentColor;\n  fill-opacity: 0;\n  stroke-opacity: 0;\n}\n\n#linux-control-buttons g:hover .button-background {\n  fill-opacity: 0.02;\n  stroke-opacity: 0.09;\n}\n\n#linux-control-buttons g:active .button-background {\n  fill-opacity: 0.18;\n  stroke-opacity: 0.24;\n}\n\n.dark-theme #linux-control-buttons g:hover .button-background {\n  fill-opacity: 0.2;\n  stroke-opacity: 0.35;\n}\n\n.dark-theme #linux-control-buttons g:active .button-background {\n  fill-opacity: 0.45;\n  stroke-opacity: 0.7;\n}\n\n.audit {\n  zzz-invalid-property: 1;\n  color: ;\n}",
+                "$setdownItem": "0f3a8520-4470-4f5b-af58-b37f8f7f1060"
+              }
+            ]
+          }
+        },
+        "pullDiagnostics": {
+          "method": "textDocument/diagnostic",
+          "ms": 4,
+          "response": {
+            "kind": "full",
+            "items": [
+              {
+                "code": "css-propertyvalueexpected",
+                "source": "css",
+                "message": "property value expected",
+                "severity": 1,
+                "range": {
+                  "start": {
+                    "line": 170,
+                    "character": 41
+                  },
+                  "end": {
+                    "line": 170,
+                    "character": 42
+                  }
+                },
+                "$setdownItem": "747a084f-52a3-477f-b640-ea1674e3a362"
+              },
+              {
+                "code": "unknownProperties",
+                "source": "css",
+                "message": "Unknown property: 'zzz-invalid-property'",
+                "severity": 2,
+                "range": {
+                  "start": {
+                    "line": 170,
+                    "character": 9
+                  },
+                  "end": {
+                    "line": 170,
+                    "character": 29
+                  }
+                },
+                "$setdownItem": "94d252df-87fe-44ba-b1d9-f992d157f209"
+              }
+            ]
+          }
+        }
+      },
+      "console": [
+        "Error: Missing requestHandler or method: doValidation\n    at We.$fmr (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:30:15921)\n    at ca._handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34642)\n    at Object.handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34136)\n    at ua._handleRequestMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:32917)\n    at ua._handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:32356)\n    at ua.handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:31967)\n    at ca.onmessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34262)\n    at globalThis.onmessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:35598)",
+        "Error: Missing requestHandler or method: doValidation\n    at We.$fmr (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:30:15921)\n    at ca._handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34642)\n    at Object.handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34136)\n    at ua._handleRequestMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:32917)\n    at ua._handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:32356)\n    at ua.handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:31967)\n    at ca.onmessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34262)\n    at globalThis.onmessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:35598)"
+      ],
+      "events": [
+        {
+          "type": "configuration",
+          "servers": [
+            "css-lsp"
+          ]
+        },
+        {
+          "type": "status",
+          "state": "starting",
+          "documents": [
+            {
+              "id": "321198de-9a4b-464d-ac00-10a030217967",
+              "generation": "00e62e84-c393-491c-a8d6-cf3a3823e6cc"
+            }
+          ]
+        },
+        {
+          "type": "status",
+          "state": "ready",
+          "documents": [
+            {
+              "id": "321198de-9a4b-464d-ac00-10a030217967",
+              "generation": "00e62e84-c393-491c-a8d6-cf3a3823e6cc"
+            }
+          ]
+        },
+        {
+          "type": "refresh",
+          "feature": "diagnostic",
+          "documents": [
+            {
+              "id": "321198de-9a4b-464d-ac00-10a030217967",
+              "generation": "00e62e84-c393-491c-a8d6-cf3a3823e6cc"
+            }
+          ]
+        }
+      ],
+      "sourceSha256": "3dd2b40d6be2e16d4535adf635b5d7581e5a1883715d607b758eb3a9a50491f4",
+      "connection": {
+        "document": {
+          "id": "321198de-9a4b-464d-ac00-10a030217967",
+          "generation": "00e62e84-c393-491c-a8d6-cf3a3823e6cc",
+          "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+          "version": 1
+        },
+        "response": {
+          "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "completionProvider": {
+              "resolveProvider": false,
+              "triggerCharacters": [
+                "/",
+                "-",
+                ":"
+              ]
+            },
+            "hoverProvider": true,
+            "documentSymbolProvider": true,
+            "referencesProvider": true,
+            "definitionProvider": true,
+            "documentHighlightProvider": true,
+            "documentLinkProvider": {
+              "resolveProvider": false
+            },
+            "codeActionProvider": true,
+            "renameProvider": true,
+            "colorProvider": {},
+            "foldingRangeProvider": true,
+            "selectionRangeProvider": true,
+            "diagnosticProvider": {
+              "documentSelector": null,
+              "interFileDependencies": false,
+              "workspaceDiagnostics": false
+            },
+            "documentRangeFormattingProvider": true,
+            "documentFormattingProvider": true
+          },
+          "server": "css-lsp"
+        },
+        "ms": 227
+      },
+      "openToConnectionMs": 360,
+      "unsavedInjection": "\n.audit { zzz-invalid-property: 1; color: ; }\n",
+      "position": {
+        "line": 8,
+        "character": 3
+      },
+      "completionCount": 888,
+      "sessions": [
+        {
+          "id": "css-lsp",
+          "name": "css-lsp",
+          "languages": [
+            "CSS",
+            "SCSS",
+            "LESS"
+          ],
+          "description": "Language Server Protocol implementation for CSS, SCSS & LESS.",
+          "homepage": "https://github.com/microsoft/vscode-css-languageservice",
+          "configured": true,
+          "bundled": false,
+          "custom": false,
+          "managed": true,
+          "discoverable": true,
+          "enabled": true,
+          "selected": [
+            "css",
+            "scss",
+            "less"
+          ],
+          "executable": "/tmp/setdown-lsp-audit-tools-20261017/node_modules/.bin/vscode-css-language-server",
+          "available": true,
+          "automatic": true,
+          "canDetect": true,
+          "candidates": [
+            {
+              "id": "c18244cfbc159aff9c117366",
+              "path": "/tmp/setdown-lsp-audit-tools-20261017/node_modules/.bin/vscode-css-language-server",
+              "source": "path"
+            }
+          ],
+          "selectionNeeded": false,
+          "searched": [
+            "/tmp/setdown-lsp-audit-tools-20261017/node_modules/.bin",
+            "/home/yabsed/.opam/default/bin",
+            "/home/yabsed/.kimi-code/bin",
+            "/home/yabsed/.opencode/bin",
+            "/home/yabsed/.elan/bin",
+            "/usr/lib/jvm/java-17-temurin-jdk/bin",
+            "/home/yabsed/opt/llvm-22.1.0/bin",
+            "/usr/lib/jvm/java-21-openjdk/bin",
+            "/home/yabsed/.codex/tmp/arg0/codex-arg0o79xEr",
+            "/home/yabsed/.cabal/bin",
+            "/home/yabsed/.ghcup/bin",
+            "/home/yabsed/.local/bin",
+            "/home/yabsed/miniconda3/bin",
+            "/home/yabsed/miniconda3/condabin",
+            "/home/yabsed/.cargo/bin",
+            "/usr/local/bin",
+            "/usr/bin",
+            "/home/yabsed/Android/Sdk/emulator",
+            "/home/yabsed/Android/Sdk/platform-tools",
+            "/home/yabsed/.vscode-insiders/extensions/openai.chatgpt-26.51007.21434-linux-x64/bin/linux-x86_64",
+            "/home/yabsed/go/bin"
+          ],
+          "profileSource": "Helix · vscode-css-language-server",
+          "options": {
+            "args": [
+              "--stdio"
+            ],
+            "settings": {
+              "css": {
+                "validate": true,
+                "lint": {},
+                "completion": {},
+                "hover": {}
+              },
+              "scss": {
+                "validate": true,
+                "lint": {},
+                "completion": {},
+                "hover": {}
+              },
+              "less": {
+                "validate": true,
+                "lint": {},
+                "completion": {},
+                "hover": {}
+              }
+            },
+            "initializationOptions": {
+              "provideFormatter": true,
+              "css": {
+                "validate": {
+                  "enable": true
+                }
+              }
+            }
+          },
+          "sessions": [
+            {
+              "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min",
+              "state": "ready",
+              "features": [
+                "completion",
+                "hover",
+                "definition",
+                "references",
+                "documentSymbol",
+                "documentHighlight",
+                "selectionRange",
+                "foldingRange",
+                "documentLink",
+                "color",
+                "rename",
+                "codeAction",
+                "documentFormatting",
+                "documentRangeFormatting",
+                "diagnostic"
+              ],
+              "logs": [],
+              "progress": []
+            }
+          ]
+        }
+      ],
+      "ipc": {
+        "opens": [
+          {
+            "document": {
+              "id": "321198de-9a4b-464d-ac00-10a030217967",
+              "generation": "00e62e84-c393-491c-a8d6-cf3a3823e6cc",
+              "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "version": 1
+            },
+            "response": {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "capabilities": {
+                "textDocumentSync": 2,
+                "completionProvider": {
+                  "resolveProvider": false,
+                  "triggerCharacters": [
+                    "/",
+                    "-",
+                    ":"
+                  ]
+                },
+                "hoverProvider": true,
+                "documentSymbolProvider": true,
+                "referencesProvider": true,
+                "definitionProvider": true,
+                "documentHighlightProvider": true,
+                "documentLinkProvider": {
+                  "resolveProvider": false
+                },
+                "codeActionProvider": true,
+                "renameProvider": true,
+                "colorProvider": {},
+                "foldingRangeProvider": true,
+                "selectionRangeProvider": true,
+                "diagnosticProvider": {
+                  "documentSelector": null,
+                  "interFileDependencies": false,
+                  "workspaceDiagnostics": false
+                },
+                "documentRangeFormattingProvider": true,
+                "documentFormattingProvider": true
+              },
+              "server": "css-lsp"
+            },
+            "ms": 227
+          }
+        ],
+        "changes": [
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 2
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 3
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 4
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 5
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 6
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 7
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 8
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 9
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 10
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 11
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 12
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 13
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 14
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 15
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 16
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 17
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 18
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 19
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 20
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 21
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 22
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 23
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 24
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 25
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 26
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 27
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 28
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 29
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 30
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 31
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 32
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 33
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 34
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 35
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 36
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 37
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 38
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 39
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 40
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 41
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 42
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 43
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 44
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 45
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 46
+          },
+          {
+            "id": "321198de-9a4b-464d-ac00-10a030217967",
+            "version": 47
+          }
+        ],
+        "requests": [
+          {
+            "method": "textDocument/codeAction",
+            "ms": 11
+          },
+          {
+            "method": "textDocument/documentLink",
+            "ms": 10
+          },
+          {
+            "method": "textDocument/documentColor",
+            "ms": 12
+          },
+          {
+            "method": "textDocument/documentSymbol",
+            "ms": 6
+          },
+          {
+            "method": "textDocument/hover",
+            "ms": 3
+          },
+          {
+            "method": "textDocument/definition",
+            "ms": 2
+          },
+          {
+            "method": "textDocument/references",
+            "ms": 2
+          },
+          {
+            "method": "textDocument/completion",
+            "ms": 24
+          },
+          {
+            "method": "textDocument/diagnostic",
+            "ms": 5
+          },
+          {
+            "method": "textDocument/foldingRange",
+            "ms": 3
+          },
+          {
+            "method": "textDocument/foldingRange",
+            "ms": 2
+          },
+          {
+            "method": "textDocument/formatting",
+            "ms": 8
+          },
+          {
+            "method": "textDocument/diagnostic",
+            "ms": 2
+          }
+        ]
+      },
+      "sourceUnchanged": true
+    }
+  ]
+}

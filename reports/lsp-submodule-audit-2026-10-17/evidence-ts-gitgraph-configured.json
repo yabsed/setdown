@@ -1,0 +1,1685 @@
+{
+  "revision": "a00d7aef1c6c5868777fc5b04fb97ef225ce69a4",
+  "node": "v22.23.1",
+  "started": "2026-10-17T03:22:58.298Z",
+  "cases": [
+    {
+      "name": "ts-gitgraph-configured",
+      "file": "vendor/gitgraph.js/packages/gitgraph-core/src/branches-order.ts",
+      "needle": "class BranchesOrder",
+      "symbol": "BranchesOrder",
+      "tools": true,
+      "configureHints": true,
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 549,
+          "response": [
+            {
+              "name": "BranchesOrder",
+              "detail": "",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 20,
+                  "character": 0
+                },
+                "end": {
+                  "line": 56,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 20,
+                  "character": 6
+                },
+                "end": {
+                  "line": 20,
+                  "character": 19
+                }
+              },
+              "children": [
+                {
+                  "name": "constructor",
+                  "detail": "",
+                  "kind": 9,
+                  "range": {
+                    "start": {
+                      "line": 24,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 35,
+                      "character": 3
+                    }
+                  },
+                  "selectionRange": {
+                    "start": {
+                      "line": 24,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 35,
+                      "character": 3
+                    }
+                  },
+                  "children": [
+                    {
+                      "name": "commits.forEach() callback",
+                      "detail": "",
+                      "kind": 12,
+                      "range": {
+                        "start": {
+                          "line": 30,
+                          "character": 20
+                        },
+                        "end": {
+                          "line": 30,
+                          "character": 73
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 30,
+                          "character": 20
+                        },
+                        "end": {
+                          "line": 30,
+                          "character": 73
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "fe8dee2e-cf8b-4ee2-9630-614c56cd5839"
+                    }
+                  ],
+                  "$setdownItem": "f3742b71-7479-4fb2-9f16-37b23f6c1462"
+                },
+                {
+                  "name": "branches",
+                  "detail": "",
+                  "kind": 7,
+                  "range": {
+                    "start": {
+                      "line": 21,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 21,
+                      "character": 52
+                    }
+                  },
+                  "selectionRange": {
+                    "start": {
+                      "line": 21,
+                      "character": 10
+                    },
+                    "end": {
+                      "line": 21,
+                      "character": 18
+                    }
+                  },
+                  "children": [],
+                  "$setdownItem": "97d3c77e-9f7e-4d44-88f7-daa45456992c"
+                },
+                {
+                  "name": "colors",
+                  "detail": "",
+                  "kind": 7,
+                  "range": {
+                    "start": {
+                      "line": 22,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 22,
+                      "character": 26
+                    }
+                  },
+                  "selectionRange": {
+                    "start": {
+                      "line": 22,
+                      "character": 10
+                    },
+                    "end": {
+                      "line": 22,
+                      "character": 16
+                    }
+                  },
+                  "children": [],
+                  "$setdownItem": "8949fd32-042b-4dfc-b451-f31dd5ba494c"
+                },
+                {
+                  "name": "get",
+                  "detail": "",
+                  "kind": 6,
+                  "range": {
+                    "start": {
+                      "line": 42,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 46,
+                      "character": 3
+                    }
+                  },
+                  "selectionRange": {
+                    "start": {
+                      "line": 42,
+                      "character": 9
+                    },
+                    "end": {
+                      "line": 42,
+                      "character": 12
+                    }
+                  },
+                  "children": [
+                    {
+                      "name": "findIndex() callback",
+                      "detail": "",
+                      "kind": 12,
+                      "range": {
+                        "start": {
+                          "line": 44,
+                          "character": 6
+                        },
+                        "end": {
+                          "line": 44,
+                          "character": 39
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 44,
+                          "character": 6
+                        },
+                        "end": {
+                          "line": 44,
+                          "character": 39
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "26c205a2-8180-488a-9b19-448d9ad19a33"
+                    }
+                  ],
+                  "$setdownItem": "f9c5dbc7-51bb-4338-9d6b-ca4e32b6bf1b"
+                },
+                {
+                  "name": "getColorOf",
+                  "detail": "",
+                  "kind": 6,
+                  "range": {
+                    "start": {
+                      "line": 53,
+                      "character": 2
+                    },
+                    "end": {
+                      "line": 55,
+                      "character": 3
+                    }
+                  },
+                  "selectionRange": {
+                    "start": {
+                      "line": 53,
+                      "character": 9
+                    },
+                    "end": {
+                      "line": 53,
+                      "character": 19
+                    }
+                  },
+                  "children": [],
+                  "$setdownItem": "37a6e11e-51c1-4844-8e44-291d05e155ed"
+                }
+              ],
+              "$setdownItem": "fbf38c88-5eac-4662-a66f-efc4087da053"
+            },
+            {
+              "name": "Color",
+              "detail": "",
+              "kind": 13,
+              "range": {
+                "start": {
+                  "line": 5,
+                  "character": 0
+                },
+                "end": {
+                  "line": 5,
+                  "character": 20
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 5,
+                  "character": 5
+                },
+                "end": {
+                  "line": 5,
+                  "character": 10
+                }
+              },
+              "children": [],
+              "$setdownItem": "94454aad-2359-4231-9f46-e3ffa29317bc"
+            },
+            {
+              "name": "CompareBranchesOrder",
+              "detail": "",
+              "kind": 13,
+              "range": {
+                "start": {
+                  "line": 15,
+                  "character": 0
+                },
+                "end": {
+                  "line": 18,
+                  "character": 12
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 15,
+                  "character": 5
+                },
+                "end": {
+                  "line": 15,
+                  "character": 25
+                }
+              },
+              "children": [],
+              "$setdownItem": "db7ed2a3-2f66-49b5-ac01-f2185847084f"
+            }
+          ]
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 14,
+          "response": {
+            "contents": {
+              "kind": "markdown",
+              "value": "\n```typescript\nclass BranchesOrder<TNode>\n```\n"
+            },
+            "range": {
+              "start": {
+                "line": 20,
+                "character": 6
+              },
+              "end": {
+                "line": 20,
+                "character": 19
+              }
+            },
+            "$setdownItem": "1d00bdc3-ed21-436a-97fb-e173ca0f05b0"
+          }
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 6,
+          "response": [
+            {
+              "originSelectionRange": {
+                "start": {
+                  "line": 20,
+                  "character": 6
+                },
+                "end": {
+                  "line": 20,
+                  "character": 19
+                }
+              },
+              "targetRange": {
+                "start": {
+                  "line": 20,
+                  "character": 0
+                },
+                "end": {
+                  "line": 56,
+                  "character": 1
+                }
+              },
+              "targetUri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core/src/branches-order.ts",
+              "targetSelectionRange": {
+                "start": {
+                  "line": 20,
+                  "character": 6
+                },
+                "end": {
+                  "line": 20,
+                  "character": 19
+                }
+              }
+            }
+          ]
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 9,
+          "response": [
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core/src/branches-order.ts",
+              "range": {
+                "start": {
+                  "line": 3,
+                  "character": 9
+                },
+                "end": {
+                  "line": 3,
+                  "character": 22
+                }
+              },
+              "$setdownItem": "26eee997-b058-4bc6-b862-e7ade8349b5b"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core/src/branches-order.ts",
+              "range": {
+                "start": {
+                  "line": 20,
+                  "character": 6
+                },
+                "end": {
+                  "line": 20,
+                  "character": 19
+                }
+              },
+              "$setdownItem": "e3b0ac43-af10-4c68-9875-5df53e500bcb"
+            }
+          ]
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 20,
+          "response": {
+            "isIncomplete": false,
+            "count": 0,
+            "sample": []
+          }
+        },
+        "semanticTokens": {
+          "method": "textDocument/semanticTokens/full",
+          "ms": 999,
+          "response": {
+            "integers": 300,
+            "sample": [
+              3,
+              9,
+              13,
+              0,
+              0,
+              0,
+              15,
+              20,
+              5,
+              0,
+              2,
+              5,
+              5,
+              5,
+              1,
+              10,
+              5,
+              20,
+              5,
+              1
+            ]
+          }
+        },
+        "inlayHints": {
+          "method": "textDocument/inlayHint",
+          "ms": 18,
+          "response": [
+            {
+              "position": {
+                "line": 30,
+                "character": 20
+              },
+              "label": [
+                {
+                  "value": "callbackfn",
+                  "location": {
+                    "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/typescript/lib/lib.es5.d.ts",
+                    "range": {
+                      "start": {
+                        "line": 1463,
+                        "character": 12
+                      },
+                      "end": {
+                        "line": 1463,
+                        "character": 22
+                      }
+                    },
+                    "$setdownItem": "21259b6a-306d-498b-8f77-aba32b3bda56"
+                  }
+                },
+                {
+                  "value": ":"
+                }
+              ],
+              "kind": 2,
+              "paddingRight": true,
+              "$setdownItem": "c6cd15ce-8be4-420a-a845-c3077bda3991"
+            },
+            {
+              "position": {
+                "line": 30,
+                "character": 27
+              },
+              "label": [
+                {
+                  "value": ": "
+                },
+                {
+                  "value": "Commit",
+                  "location": {
+                    "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core/src/commit.ts",
+                    "range": {
+                      "start": {
+                        "line": 41,
+                        "character": 6
+                      },
+                      "end": {
+                        "line": 41,
+                        "character": 12
+                      }
+                    },
+                    "$setdownItem": "9d84cfaf-19e1-4703-bd74-943a583e7870"
+                  }
+                },
+                {
+                  "value": "<"
+                },
+                {
+                  "value": "TNode",
+                  "location": {
+                    "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core/src/branches-order.ts",
+                    "range": {
+                      "start": {
+                        "line": 20,
+                        "character": 20
+                      },
+                      "end": {
+                        "line": 20,
+                        "character": 25
+                      }
+                    },
+                    "$setdownItem": "7921c918-cca0-413e-9985-1ac73858a812"
+                  }
+                },
+                {
+                  "value": ">"
+                }
+              ],
+              "kind": 1,
+              "paddingLeft": true,
+              "$setdownItem": "c5fe014a-5c61-476b-a68c-786e86effac1"
+            },
+            {
+              "position": {
+                "line": 30,
+                "character": 28
+              },
+              "label": [
+                {
+                  "value": ": "
+                },
+                {
+                  "value": "Set",
+                  "location": {
+                    "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/typescript/lib/lib.es2015.collection.d.ts",
+                    "range": {
+                      "start": {
+                        "line": 88,
+                        "character": 10
+                      },
+                      "end": {
+                        "line": 88,
+                        "character": 13
+                      }
+                    },
+                    "$setdownItem": "fe260163-aaca-462e-ac4a-d1687886043e"
+                  }
+                },
+                {
+                  "value": "<"
+                },
+                {
+                  "value": "string"
+                },
+                {
+                  "value": ">"
+                }
+              ],
+              "kind": 1,
+              "paddingLeft": true,
+              "$setdownItem": "4483284f-bef1-4d4e-9c90-0587e6519b13"
+            },
+            {
+              "position": {
+                "line": 30,
+                "character": 50
+              },
+              "label": [
+                {
+                  "value": "value",
+                  "location": {
+                    "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/typescript/lib/lib.es2015.collection.d.ts",
+                    "range": {
+                      "start": {
+                        "line": 92,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 92,
+                        "character": 13
+                      }
+                    },
+                    "$setdownItem": "7d81ec84-f907-4548-963c-8e5d46feea58"
+                  }
+                },
+                {
+                  "value": ":"
+                }
+              ],
+              "kind": 2,
+              "paddingRight": true,
+              "$setdownItem": "2a2d1995-2b87-4b8f-83ec-3a448e7d02e5"
+            },
+            {
+              "position": {
+                "line": 33,
+                "character": 30
+              },
+              "label": [
+                {
+                  "value": "iterable",
+                  "location": {
+                    "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/typescript/lib/lib.es2015.iterable.d.ts",
+                    "range": {
+                      "start": {
+                        "line": 236,
+                        "character": 12
+                      },
+                      "end": {
+                        "line": 236,
+                        "character": 20
+                      }
+                    },
+                    "$setdownItem": "b987120e-7d34-44b0-9640-75282d860622"
+                  }
+                },
+                {
+                  "value": ":"
+                }
+              ],
+              "kind": 2,
+              "paddingRight": true,
+              "$setdownItem": "093ccfcc-d2be-435f-841f-a4086ed5f1c7"
+            },
+            {
+              "position": {
+                "line": 33,
+                "character": 61
+              },
+              "label": [
+                {
+                  "value": "compareFn",
+                  "location": {
+                    "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/typescript/lib/lib.es5.d.ts",
+                    "range": {
+                      "start": {
+                        "line": 1394,
+                        "character": 9
+                      },
+                      "end": {
+                        "line": 1394,
+                        "character": 18
+                      }
+                    },
+                    "$setdownItem": "52f29382-7f6c-46cb-94f8-aacf5b8e4e40"
+                  }
+                },
+                {
+                  "value": ":"
+                }
+              ],
+              "kind": 2,
+              "paddingRight": true,
+              "$setdownItem": "29e52711-28cc-4306-a69f-10f0334d98ca"
+            },
+            {
+              "position": {
+                "line": 33,
+                "character": 41
+              },
+              "label": [
+                {
+                  "value": "iterable",
+                  "location": {
+                    "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/typescript/lib/lib.es2015.iterable.d.ts",
+                    "range": {
+                      "start": {
+                        "line": 100,
+                        "character": 12
+                      },
+                      "end": {
+                        "line": 100,
+                        "character": 20
+                      }
+                    },
+                    "$setdownItem": "3c75b103-3623-41ae-a6c2-bad8ee813e2e"
+                  }
+                },
+                {
+                  "value": ":"
+                }
+              ],
+              "kind": 2,
+              "paddingRight": true,
+              "$setdownItem": "d18d28f6-0e8e-4ca9-83f9-04af2442c371"
+            },
+            {
+              "position": {
+                "line": 44,
+                "character": 6
+              },
+              "label": [
+                {
+                  "value": "predicate",
+                  "location": {
+                    "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/typescript/lib/lib.es2015.core.d.ts",
+                    "range": {
+                      "start": {
+                        "line": 40,
+                        "character": 14
+                      },
+                      "end": {
+                        "line": 40,
+                        "character": 23
+                      }
+                    },
+                    "$setdownItem": "363c7063-04dd-4b09-9c5b-bc549722de60"
+                  }
+                },
+                {
+                  "value": ":"
+                }
+              ],
+              "kind": 2,
+              "paddingRight": true,
+              "$setdownItem": "df50143f-9659-4b08-b21f-78032d190ee8"
+            },
+            {
+              "position": {
+                "line": 43,
+                "character": 22
+              },
+              "label": [
+                {
+                  "value": "iterable",
+                  "location": {
+                    "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/typescript/lib/lib.es2015.iterable.d.ts",
+                    "range": {
+                      "start": {
+                        "line": 100,
+                        "character": 12
+                      },
+                      "end": {
+                        "line": 100,
+                        "character": 20
+                      }
+                    },
+                    "$setdownItem": "3666b86c-8326-4283-b91b-d3b2bb451b8d"
+                  }
+                },
+                {
+                  "value": ":"
+                }
+              ],
+              "kind": 2,
+              "paddingRight": true,
+              "$setdownItem": "9c2abdbd-cebf-40b9-a8cd-742bebf084aa"
+            },
+            {
+              "position": {
+                "line": 44,
+                "character": 13
+              },
+              "label": [
+                {
+                  "value": ": "
+                },
+                {
+                  "value": "string"
+                }
+              ],
+              "kind": 1,
+              "paddingLeft": true,
+              "$setdownItem": "b131a898-7848-493e-ba28-0dd83cfd2a0f"
+            },
+            {
+              "position": {
+                "line": 44,
+                "character": 14
+              },
+              "label": [
+                {
+                  "value": ": "
+                },
+                {
+                  "value": "boolean"
+                }
+              ],
+              "kind": 1,
+              "paddingLeft": true,
+              "$setdownItem": "d9fc2a8d-d05e-47aa-bcf3-7307473d9ce2"
+            }
+          ]
+        },
+        "folding": {
+          "method": "textDocument/foldingRange",
+          "ms": 4,
+          "response": [
+            {
+              "startLine": 0,
+              "endLine": 1,
+              "kind": "imports"
+            },
+            {
+              "startLine": 7,
+              "endLine": 14,
+              "kind": "comment"
+            },
+            {
+              "startLine": 20,
+              "endLine": 55
+            },
+            {
+              "startLine": 24,
+              "endLine": 34
+            },
+            {
+              "startLine": 32,
+              "endLine": 33
+            },
+            {
+              "startLine": 37,
+              "endLine": 41,
+              "kind": "comment"
+            },
+            {
+              "startLine": 42,
+              "endLine": 45
+            },
+            {
+              "startLine": 43,
+              "endLine": 45
+            },
+            {
+              "startLine": 48,
+              "endLine": 52,
+              "kind": "comment"
+            },
+            {
+              "startLine": 53,
+              "endLine": 54
+            }
+          ]
+        },
+        "formatting": {
+          "method": "textDocument/formatting",
+          "ms": 13,
+          "response": {
+            "editCount": 17,
+            "first": [
+              {
+                "range": {
+                  "start": {
+                    "line": 8,
+                    "character": 0
+                  },
+                  "end": {
+                    "line": 8,
+                    "character": 1
+                  }
+                },
+                "newText": " ",
+                "$setdownItem": "575e6f5e-35cc-4a9d-bc42-90361fe752f7"
+              },
+              {
+                "range": {
+                  "start": {
+                    "line": 9,
+                    "character": 0
+                  },
+                  "end": {
+                    "line": 9,
+                    "character": 1
+                  }
+                },
+                "newText": " ",
+                "$setdownItem": "696f0729-51e3-41cb-9c94-0822f50e1790"
+              }
+            ]
+          }
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 18,
+          "response": [
+            {
+              "location": {
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core/src/gitgraph.ts",
+                "range": {
+                  "start": {
+                    "line": 278,
+                    "character": 10
+                  },
+                  "end": {
+                    "line": 282,
+                    "character": 5
+                  }
+                },
+                "$setdownItem": "cac924be-12ec-41a5-b219-3a8565f8c43b"
+              },
+              "kind": 14,
+              "name": "branchesOrder",
+              "$setdownItem": "170b19cf-b4e5-4e70-bbbc-6fbdf238b9e1"
+            },
+            {
+              "location": {
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core/src/gitgraph.ts",
+                "range": {
+                  "start": {
+                    "line": 334,
+                    "character": 10
+                  },
+                  "end": {
+                    "line": 338,
+                    "character": 5
+                  }
+                },
+                "$setdownItem": "f38d54fb-6b18-4c4e-b5cf-dd4bb2e0dbba"
+              },
+              "kind": 14,
+              "name": "branchesOrder",
+              "$setdownItem": "a0b0fd48-15f2-4adf-855d-d052cb9c7119"
+            },
+            {
+              "location": {
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core/src/branches-order.ts",
+                "range": {
+                  "start": {
+                    "line": 3,
+                    "character": 9
+                  },
+                  "end": {
+                    "line": 3,
+                    "character": 22
+                  }
+                },
+                "$setdownItem": "861bef97-7ca2-4756-b7b9-3249adf387ae"
+              },
+              "kind": 13,
+              "name": "BranchesOrder",
+              "$setdownItem": "a664fdf2-3004-4251-978c-ffaa30f6af77"
+            },
+            {
+              "location": {
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core/src/branches-order.ts",
+                "range": {
+                  "start": {
+                    "line": 20,
+                    "character": 0
+                  },
+                  "end": {
+                    "line": 56,
+                    "character": 1
+                  }
+                },
+                "$setdownItem": "2ba29e93-2aec-409e-822b-7f2e361fd4ae"
+              },
+              "kind": 5,
+              "name": "BranchesOrder",
+              "$setdownItem": "0e600116-77d1-4cc9-912d-0f97ee19c7fe"
+            },
+            {
+              "location": {
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core/src/gitgraph.ts",
+                "range": {
+                  "start": {
+                    "line": 71,
+                    "character": 2
+                  },
+                  "end": {
+                    "line": 71,
+                    "character": 65
+                  }
+                },
+                "$setdownItem": "7b3565c7-b623-4b0a-8f55-875ec5e8112a"
+              },
+              "kind": 7,
+              "name": "branchesOrderFunction",
+              "$setdownItem": "96c9309a-318d-4c11-800c-6d7125ef0dff"
+            },
+            {
+              "location": {
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core/src/gitgraph.ts",
+                "range": {
+                  "start": {
+                    "line": 34,
+                    "character": 2
+                  },
+                  "end": {
+                    "line": 34,
+                    "character": 46
+                  }
+                },
+                "$setdownItem": "14b679b9-7256-4f4a-98e7-330a3f60ef02"
+              },
+              "kind": 7,
+              "name": "compareBranchesOrder",
+              "$setdownItem": "e8bd3604-927d-45b7-a580-222d8cfe125b"
+            },
+            {
+              "location": {
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core/src/branches-order.ts",
+                "range": {
+                  "start": {
+                    "line": 3,
+                    "character": 24
+                  },
+                  "end": {
+                    "line": 3,
+                    "character": 44
+                  }
+                },
+                "$setdownItem": "7a1c64cc-6627-41e5-88e5-b28635ed9307"
+              },
+              "kind": 13,
+              "name": "CompareBranchesOrder",
+              "$setdownItem": "0cbf1513-1987-400f-90d1-409912c4c2ac"
+            },
+            {
+              "location": {
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core/src/branches-order.ts",
+                "range": {
+                  "start": {
+                    "line": 15,
+                    "character": 0
+                  },
+                  "end": {
+                    "line": 18,
+                    "character": 12
+                  }
+                },
+                "$setdownItem": "c631b368-a217-40eb-bae8-e8ef56bdec9b"
+              },
+              "kind": 13,
+              "name": "CompareBranchesOrder",
+              "$setdownItem": "5263bd3c-ca0f-41c5-8bcd-3d81f381b6d4"
+            }
+          ]
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 4,
+          "response": [
+            {
+              "kind": 5,
+              "name": "BranchesOrder",
+              "detail": "",
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core/src/branches-order.ts",
+              "range": {
+                "start": {
+                  "line": 20,
+                  "character": 0
+                },
+                "end": {
+                  "line": 56,
+                  "character": 1
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 20,
+                  "character": 6
+                },
+                "end": {
+                  "line": 20,
+                  "character": 19
+                }
+              },
+              "$setdownItem": "d991fa21-92b2-4112-a8fa-ddc4e17eacc1"
+            }
+          ]
+        },
+        "incomingCalls": {
+          "method": "callHierarchy/incomingCalls",
+          "ms": 11,
+          "response": [
+            {
+              "from": {
+                "kind": 6,
+                "name": "computeRenderedCommits",
+                "detail": "GitgraphCore",
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core/src/gitgraph.ts",
+                "range": {
+                  "start": {
+                    "line": 214,
+                    "character": 2
+                  },
+                  "end": {
+                    "line": 304,
+                    "character": 3
+                  }
+                },
+                "selectionRange": {
+                  "start": {
+                    "line": 217,
+                    "character": 10
+                  },
+                  "end": {
+                    "line": 217,
+                    "character": 32
+                  }
+                },
+                "$setdownItem": "75e7f5e4-4c35-4706-bd18-8574e31bd9a7"
+              },
+              "fromRanges": [
+                {
+                  "start": {
+                    "line": 278,
+                    "character": 30
+                  },
+                  "end": {
+                    "line": 278,
+                    "character": 43
+                  }
+                }
+              ]
+            },
+            {
+              "from": {
+                "kind": 6,
+                "name": "computeBranchesColor",
+                "detail": "GitgraphCore",
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core/src/gitgraph.ts",
+                "range": {
+                  "start": {
+                    "line": 324,
+                    "character": 2
+                  },
+                  "end": {
+                    "line": 344,
+                    "character": 3
+                  }
+                },
+                "selectionRange": {
+                  "start": {
+                    "line": 330,
+                    "character": 10
+                  },
+                  "end": {
+                    "line": 330,
+                    "character": 30
+                  }
+                },
+                "$setdownItem": "eb1b9023-a386-447d-affd-fd02339e6e22"
+              },
+              "fromRanges": [
+                {
+                  "start": {
+                    "line": 334,
+                    "character": 30
+                  },
+                  "end": {
+                    "line": 334,
+                    "character": 43
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "console": [],
+      "events": [
+        {
+          "type": "configuration",
+          "servers": [
+            "typescript-language-server"
+          ]
+        },
+        {
+          "type": "status",
+          "state": "starting",
+          "documents": [
+            {
+              "id": "09e31cf5-fb3f-4744-a79c-bcd62c190355",
+              "generation": "eb9dcd38-c59e-47b8-8a7d-4e02539f6995"
+            }
+          ]
+        },
+        {
+          "type": "status",
+          "state": "ready",
+          "documents": [
+            {
+              "id": "09e31cf5-fb3f-4744-a79c-bcd62c190355",
+              "generation": "eb9dcd38-c59e-47b8-8a7d-4e02539f6995"
+            }
+          ]
+        },
+        {
+          "type": "refresh",
+          "feature": "inlayHint",
+          "documents": [
+            {
+              "id": "09e31cf5-fb3f-4744-a79c-bcd62c190355",
+              "generation": "eb9dcd38-c59e-47b8-8a7d-4e02539f6995"
+            }
+          ]
+        },
+        {
+          "type": "activity"
+        },
+        {
+          "type": "diagnostics",
+          "id": "09e31cf5-fb3f-4744-a79c-bcd62c190355",
+          "generation": "eb9dcd38-c59e-47b8-8a7d-4e02539f6995",
+          "version": 1,
+          "unversioned": true,
+          "diagnostics": []
+        }
+      ],
+      "sourceSha256": "a0605f7e046c2e4f479398a0e7074a1e22084ef6708653108f3b09bb651726e8",
+      "connection": {
+        "document": {
+          "id": "09e31cf5-fb3f-4744-a79c-bcd62c190355",
+          "generation": "eb9dcd38-c59e-47b8-8a7d-4e02539f6995",
+          "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core/src/branches-order.ts",
+          "version": 1
+        },
+        "response": {
+          "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core/src/branches-order.ts",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "\"",
+                "'",
+                "/",
+                "@",
+                "<"
+              ],
+              "resolveProvider": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "source.fixAll.ts",
+                "source.removeUnused.ts",
+                "source.addMissingImports.ts",
+                "quickfix",
+                "source.organizeImports.ts",
+                "source.removeUnusedImports.ts",
+                "source.sortImports.ts",
+                "refactor"
+              ],
+              "resolveProvider": true
+            },
+            "codeLensProvider": {
+              "resolveProvider": true
+            },
+            "definitionProvider": true,
+            "documentFormattingProvider": true,
+            "documentRangeFormattingProvider": true,
+            "documentHighlightProvider": true,
+            "documentSymbolProvider": true,
+            "executeCommandProvider": {
+              "commands": [
+                "_typescript.applyRefactoring",
+                "_typescript.configurePlugin",
+                "_typescript.organizeImports",
+                "_typescript.applyRenameFile",
+                "_typescript.goToSourceDefinition",
+                "_typescript.applyCodeActionCommand",
+                "_typescript.applyFixAllCodeAction",
+                "typescript.tsserverRequest"
+              ]
+            },
+            "hoverProvider": true,
+            "inlayHintProvider": true,
+            "linkedEditingRangeProvider": true,
+            "renameProvider": {
+              "prepareProvider": true
+            },
+            "referencesProvider": true,
+            "selectionRangeProvider": true,
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                "<"
+              ],
+              "retriggerCharacters": [
+                ")"
+              ]
+            },
+            "workspaceSymbolProvider": true,
+            "implementationProvider": true,
+            "typeDefinitionProvider": true,
+            "foldingRangeProvider": true,
+            "semanticTokensProvider": {
+              "documentSelector": null,
+              "legend": {
+                "tokenTypes": [
+                  "class",
+                  "enum",
+                  "interface",
+                  "namespace",
+                  "typeParameter",
+                  "type",
+                  "parameter",
+                  "variable",
+                  "enumMember",
+                  "property",
+                  "function",
+                  "member"
+                ],
+                "tokenModifiers": [
+                  "declaration",
+                  "static",
+                  "async",
+                  "readonly",
+                  "defaultLibrary",
+                  "local"
+                ]
+              },
+              "full": true,
+              "range": true
+            },
+            "workspace": {
+              "fileOperations": {
+                "willRename": {
+                  "filters": [
+                    {
+                      "scheme": "file",
+                      "pattern": {
+                        "glob": "**/*.{ts,js,jsx,tsx,mjs,mts,cjs,cts}",
+                        "matches": "file"
+                      }
+                    },
+                    {
+                      "scheme": "file",
+                      "pattern": {
+                        "glob": "**",
+                        "matches": "folder"
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "callHierarchyProvider": true
+          },
+          "server": "typescript-language-server"
+        },
+        "ms": 305
+      },
+      "openToConnectionMs": 372,
+      "position": {
+        "line": 20,
+        "character": 7
+      },
+      "completionCount": 0,
+      "sessions": [
+        {
+          "id": "typescript-language-server",
+          "name": "typescript-language-server",
+          "languages": [
+            "TypeScript",
+            "JavaScript"
+          ],
+          "description": "TypeScript & JavaScript Language Server.",
+          "homepage": "https://github.com/typescript-language-server/typescript-language-server",
+          "configured": true,
+          "bundled": false,
+          "custom": false,
+          "managed": true,
+          "discoverable": true,
+          "enabled": true,
+          "selected": [
+            "javascript",
+            "typescript",
+            "javascriptreact",
+            "typescriptreact",
+            "gjs",
+            "gts"
+          ],
+          "executable": "/tmp/setdown-lsp-audit-tools-20261017/node_modules/.bin/typescript-language-server",
+          "available": true,
+          "automatic": true,
+          "canDetect": true,
+          "candidates": [
+            {
+              "id": "f8f013530b7e3bdd68f5797f",
+              "path": "/tmp/setdown-lsp-audit-tools-20261017/node_modules/.bin/typescript-language-server",
+              "source": "path"
+            }
+          ],
+          "selectionNeeded": false,
+          "searched": [
+            "/tmp/setdown-lsp-audit-tools-20261017/node_modules/.bin",
+            "/home/yabsed/.opam/default/bin",
+            "/home/yabsed/.kimi-code/bin",
+            "/home/yabsed/.opencode/bin",
+            "/home/yabsed/.elan/bin",
+            "/usr/lib/jvm/java-17-temurin-jdk/bin",
+            "/home/yabsed/opt/llvm-22.1.0/bin",
+            "/usr/lib/jvm/java-21-openjdk/bin",
+            "/home/yabsed/.codex/tmp/arg0/codex-arg0o79xEr",
+            "/home/yabsed/.cabal/bin",
+            "/home/yabsed/.ghcup/bin",
+            "/home/yabsed/.local/bin",
+            "/home/yabsed/miniconda3/bin",
+            "/home/yabsed/miniconda3/condabin",
+            "/home/yabsed/.cargo/bin",
+            "/usr/local/bin",
+            "/usr/bin",
+            "/home/yabsed/Android/Sdk/emulator",
+            "/home/yabsed/Android/Sdk/platform-tools",
+            "/home/yabsed/.vscode-insiders/extensions/openai.chatgpt-26.51007.21434-linux-x64/bin/linux-x86_64",
+            "/home/yabsed/go/bin"
+          ],
+          "profileSource": "Helix · typescript-language-server",
+          "options": {
+            "args": [
+              "--stdio"
+            ],
+            "settings": {
+              "typescript": {
+                "inlayHints": {
+                  "includeInlayParameterNameHints": "all",
+                  "includeInlayFunctionParameterTypeHints": true,
+                  "includeInlayVariableTypeHints": true,
+                  "includeInlayFunctionLikeReturnTypeHints": true
+                }
+              }
+            },
+            "initializationOptions": {
+              "hostInfo": "setdown",
+              "typescript": {
+                "inlayHints": {
+                  "includeInlayEnumMemberValueHints": true,
+                  "includeInlayFunctionLikeReturnTypeHints": true,
+                  "includeInlayFunctionParameterTypeHints": true,
+                  "includeInlayParameterNameHints": "all",
+                  "includeInlayParameterNameHintsWhenArgumentMatchesName": true,
+                  "includeInlayPropertyDeclarationTypeHints": true,
+                  "includeInlayVariableTypeHints": true
+                }
+              },
+              "javascript": {
+                "inlayHints": {
+                  "includeInlayEnumMemberValueHints": true,
+                  "includeInlayFunctionLikeReturnTypeHints": true,
+                  "includeInlayFunctionParameterTypeHints": true,
+                  "includeInlayParameterNameHints": "all",
+                  "includeInlayParameterNameHintsWhenArgumentMatchesName": true,
+                  "includeInlayPropertyDeclarationTypeHints": true,
+                  "includeInlayVariableTypeHints": true
+                }
+              }
+            }
+          },
+          "sessions": [
+            {
+              "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core",
+              "state": "ready",
+              "features": [
+                "completion",
+                "hover",
+                "signatureHelp",
+                "definition",
+                "typeDefinition",
+                "implementation",
+                "references",
+                "documentSymbol",
+                "documentHighlight",
+                "selectionRange",
+                "foldingRange",
+                "semanticTokens",
+                "inlayHint",
+                "rename",
+                "codeAction",
+                "codeLens",
+                "documentFormatting",
+                "documentRangeFormatting",
+                "linkedEditingRange",
+                "workspaceSymbol",
+                "callHierarchy"
+              ],
+              "logs": [
+                "Using Typescript version (workspace) 5.9.3 from path \"/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/typescript/lib/tsserver.js\""
+              ],
+              "progress": []
+            }
+          ]
+        }
+      ],
+      "ipc": {
+        "opens": [
+          {
+            "document": {
+              "id": "09e31cf5-fb3f-4744-a79c-bcd62c190355",
+              "generation": "eb9dcd38-c59e-47b8-8a7d-4e02539f6995",
+              "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core/src/branches-order.ts",
+              "version": 1
+            },
+            "response": {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core/src/branches-order.ts",
+              "capabilities": {
+                "textDocumentSync": 2,
+                "completionProvider": {
+                  "triggerCharacters": [
+                    ".",
+                    "\"",
+                    "'",
+                    "/",
+                    "@",
+                    "<"
+                  ],
+                  "resolveProvider": true
+                },
+                "codeActionProvider": {
+                  "codeActionKinds": [
+                    "source.fixAll.ts",
+                    "source.removeUnused.ts",
+                    "source.addMissingImports.ts",
+                    "quickfix",
+                    "source.organizeImports.ts",
+                    "source.removeUnusedImports.ts",
+                    "source.sortImports.ts",
+                    "refactor"
+                  ],
+                  "resolveProvider": true
+                },
+                "codeLensProvider": {
+                  "resolveProvider": true
+                },
+                "definitionProvider": true,
+                "documentFormattingProvider": true,
+                "documentRangeFormattingProvider": true,
+                "documentHighlightProvider": true,
+                "documentSymbolProvider": true,
+                "executeCommandProvider": {
+                  "commands": [
+                    "_typescript.applyRefactoring",
+                    "_typescript.configurePlugin",
+                    "_typescript.organizeImports",
+                    "_typescript.applyRenameFile",
+                    "_typescript.goToSourceDefinition",
+                    "_typescript.applyCodeActionCommand",
+                    "_typescript.applyFixAllCodeAction",
+                    "typescript.tsserverRequest"
+                  ]
+                },
+                "hoverProvider": true,
+                "inlayHintProvider": true,
+                "linkedEditingRangeProvider": true,
+                "renameProvider": {
+                  "prepareProvider": true
+                },
+                "referencesProvider": true,
+                "selectionRangeProvider": true,
+                "signatureHelpProvider": {
+                  "triggerCharacters": [
+                    "(",
+                    ",",
+                    "<"
+                  ],
+                  "retriggerCharacters": [
+                    ")"
+                  ]
+                },
+                "workspaceSymbolProvider": true,
+                "implementationProvider": true,
+                "typeDefinitionProvider": true,
+                "foldingRangeProvider": true,
+                "semanticTokensProvider": {
+                  "documentSelector": null,
+                  "legend": {
+                    "tokenTypes": [
+                      "class",
+                      "enum",
+                      "interface",
+                      "namespace",
+                      "typeParameter",
+                      "type",
+                      "parameter",
+                      "variable",
+                      "enumMember",
+                      "property",
+                      "function",
+                      "member"
+                    ],
+                    "tokenModifiers": [
+                      "declaration",
+                      "static",
+                      "async",
+                      "readonly",
+                      "defaultLibrary",
+                      "local"
+                    ]
+                  },
+                  "full": true,
+                  "range": true
+                },
+                "workspace": {
+                  "fileOperations": {
+                    "willRename": {
+                      "filters": [
+                        {
+                          "scheme": "file",
+                          "pattern": {
+                            "glob": "**/*.{ts,js,jsx,tsx,mjs,mts,cjs,cts}",
+                            "matches": "file"
+                          }
+                        },
+                        {
+                          "scheme": "file",
+                          "pattern": {
+                            "glob": "**",
+                            "matches": "folder"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                "callHierarchyProvider": true
+              },
+              "server": "typescript-language-server"
+            },
+            "ms": 305
+          }
+        ],
+        "changes": [],
+        "requests": [
+          {
+            "method": "textDocument/documentSymbol",
+            "ms": 545
+          },
+          {
+            "method": "textDocument/foldingRange",
+            "ms": 267
+          },
+          {
+            "method": "textDocument/hover",
+            "ms": 11
+          },
+          {
+            "method": "textDocument/definition",
+            "ms": 4
+          },
+          {
+            "method": "textDocument/references",
+            "ms": 7
+          },
+          {
+            "method": "textDocument/completion",
+            "ms": 18
+          },
+          {
+            "method": "textDocument/linkedEditingRange",
+            "ms": 1541
+          },
+          {
+            "method": "textDocument/semanticTokens/range",
+            "ms": 1429
+          },
+          {
+            "method": "textDocument/semanticTokens/full",
+            "ms": 1129
+          },
+          {
+            "method": "textDocument/inlayHint",
+            "ms": 1608
+          },
+          {
+            "method": "textDocument/semanticTokens/full",
+            "ms": 993
+          },
+          {
+            "method": "textDocument/codeAction",
+            "ms": 1628
+          },
+          {
+            "method": "textDocument/inlayHint",
+            "ms": 13
+          },
+          {
+            "method": "textDocument/foldingRange",
+            "ms": 3
+          },
+          {
+            "method": "textDocument/formatting",
+            "ms": 8
+          },
+          {
+            "method": "workspace/symbol",
+            "ms": 15
+          },
+          {
+            "method": "textDocument/prepareCallHierarchy",
+            "ms": 2
+          },
+          {
+            "method": "callHierarchy/incomingCalls",
+            "ms": 8
+          }
+        ]
+      },
+      "sourceUnchanged": true
+    }
+  ]
+}

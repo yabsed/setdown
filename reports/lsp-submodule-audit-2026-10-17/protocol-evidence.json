@@ -1,0 +1,65 @@
+{
+  "revision": "a00d7aef1c6c5868777fc5b04fb97ef225ce69a4",
+  "findings": [
+    {
+      "id": "dynamic-diagnostic-providers",
+      "expected": "Both registration IDs remain dispatchable for the document",
+      "observed": {
+        "documentSelector": [
+          {
+            "language": "python"
+          }
+        ],
+        "identifier": "lint",
+        "interFileDependencies": false,
+        "workspaceDiagnostics": false
+      }
+    },
+    {
+      "id": "completion-handle-eviction",
+      "expected": "Every returned completion remains resolvable while its list is active",
+      "observed": {
+        "returned": 4097,
+        "first": "Error: Invalid or expired language item. Request it again.",
+        "last": {
+          "label": "symbol4096",
+          "data": {
+            "i": 4096
+          }
+        }
+      }
+    },
+    {
+      "id": "server-cancelled-semantic-tokens",
+      "expected": "Advertising serverCancelSupport requires retriggering ServerCancelled responses",
+      "observed": {
+        "advertised": true,
+        "requestCount": 1,
+        "semanticResult": null
+      }
+    },
+    {
+      "id": "notebook-completion-contract",
+      "expected": "Monaco 0/1/2 -> LSP 1/2/3, negotiated triggers and resolve support",
+      "observed": {
+        "sentTriggerKinds": [
+          0,
+          1,
+          2
+        ],
+        "triggers": [
+          "."
+        ],
+        "resolveInstalled": false,
+        "advertisedResolve": {
+          "properties": [
+            "documentation",
+            "detail",
+            "additionalTextEdits",
+            "command"
+          ]
+        }
+      }
+    }
+  ]
+}

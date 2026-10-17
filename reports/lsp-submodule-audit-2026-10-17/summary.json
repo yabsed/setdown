@@ -1,0 +1,1928 @@
+{
+  "revision": "a00d7aef1c6c5868777fc5b04fb97ef225ce69a4",
+  "note": "Observation inventory, not a pass-rate or benchmark. Earlier harness failures remain in original logs.",
+  "submodulesInventoried": 26,
+  "trackedFilesInventoried": 99209,
+  "scenarios": 26,
+  "uniqueFiles": 14,
+  "submodulesAttempted": [
+    "brave-core",
+    "crossnote",
+    "dolphin",
+    "gitgraph.js",
+    "jupyterlab",
+    "min",
+    "monaco-languageclient",
+    "nbformat",
+    "ptyxis",
+    "readability",
+    "sublime-lsp"
+  ],
+  "allSampleFilesUnchanged": true,
+  "cases": [
+    {
+      "name": "python-standalone",
+      "source": "evidence.json",
+      "file": "vendor/nbformat/nbformat/notebooknode.py",
+      "sourceSha256": "c2028aec0519f09f04aeaaa89c0664d45da6e71f0de64b7fe9b87ba0116e891a",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "pyright",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 61,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 90,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 4,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 8,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 23,
+          "error": null
+        },
+        "completionResolve": {
+          "method": "completionItem/resolve",
+          "ms": 6,
+          "error": null
+        },
+        "rename": {
+          "method": "textDocument/rename",
+          "ms": 292,
+          "error": null
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 62,
+          "error": null
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 3,
+          "error": null
+        },
+        "incomingCalls": {
+          "method": "callHierarchy/incomingCalls",
+          "ms": 7,
+          "error": null
+        }
+      },
+      "completionCount": 47,
+      "inlayCount": null,
+      "renameFiles": [
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/__init__.py"
+      ],
+      "renameTabs": null,
+      "uiCompletion": "value\nvalidate\nv4.nbbase\nvalidate\nvalidator\nvalidator\nValueError\nValuesView\ntyping\nValuesView\ncollections.abc\nValuesView\ntyping_extensions\nVALIDATORS\njson_compat\n_validate\nvalidator\n_validator_for_name\njson_compat\n_VALIDATOR_MAP\njson_compat",
+      "pullDiagnostics": null
+    },
+    {
+      "name": "python-project",
+      "source": "evidence.json",
+      "file": "vendor/nbformat/nbformat/notebooknode.py",
+      "sourceSha256": "c2028aec0519f09f04aeaaa89c0664d45da6e71f0de64b7fe9b87ba0116e891a",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "pyright",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 63,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 89,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 4,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 8,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 25,
+          "error": null
+        },
+        "completionResolve": {
+          "method": "completionItem/resolve",
+          "ms": 5,
+          "error": null
+        },
+        "rename": {
+          "method": "textDocument/rename",
+          "ms": 319,
+          "error": null
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 87,
+          "error": null
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 2,
+          "error": null
+        },
+        "incomingCalls": {
+          "method": "callHierarchy/incomingCalls",
+          "ms": 13,
+          "error": null
+        }
+      },
+      "completionCount": 47,
+      "inlayCount": null,
+      "renameFiles": [
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/__init__.py",
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/v4/nbjson.py",
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/tests/test_validator.py"
+      ],
+      "renameTabs": null,
+      "uiCompletion": null,
+      "pullDiagnostics": null
+    },
+    {
+      "name": "python-superproject",
+      "source": "evidence.json",
+      "file": "vendor/nbformat/nbformat/notebooknode.py",
+      "sourceSha256": "c2028aec0519f09f04aeaaa89c0664d45da6e71f0de64b7fe9b87ba0116e891a",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "pyright",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 62,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 87,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 3,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 9,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 25,
+          "error": null
+        },
+        "completionResolve": {
+          "method": "completionItem/resolve",
+          "ms": 4,
+          "error": null
+        },
+        "rename": {
+          "method": "textDocument/rename",
+          "ms": 5170,
+          "error": null
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 1736,
+          "error": null
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 3,
+          "error": null
+        },
+        "incomingCalls": {
+          "method": "callHierarchy/incomingCalls",
+          "ms": 125,
+          "error": null
+        }
+      },
+      "completionCount": 47,
+      "inlayCount": null,
+      "renameFiles": [
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/__init__.py"
+      ],
+      "renameTabs": null,
+      "uiCompletion": null,
+      "pullDiagnostics": null
+    },
+    {
+      "name": "python-sublime",
+      "source": "evidence.json",
+      "file": "vendor/sublime-lsp/plugin/core/url.py",
+      "sourceSha256": "3d09efc9ad7b7a062024af25f8163976c9792e90967887b0912f2fa0ec9845cc",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "pyright",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/sublime-lsp",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 82,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 61,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 3,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 5,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 84,
+          "error": null
+        },
+        "completionResolve": {
+          "method": "completionItem/resolve",
+          "ms": 4,
+          "error": null
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 2,
+          "error": null
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 2,
+          "error": null
+        },
+        "incomingCalls": {
+          "method": "callHierarchy/incomingCalls",
+          "ms": 2,
+          "error": null
+        }
+      },
+      "completionCount": 10,
+      "inlayCount": null,
+      "renameFiles": [],
+      "renameTabs": null,
+      "uiCompletion": null,
+      "pullDiagnostics": null
+    },
+    {
+      "name": "python-jupyterlab",
+      "source": "evidence.json",
+      "file": "vendor/jupyterlab/jupyterlab/commands.py",
+      "sourceSha256": "b4f56e5309ee446ff963b8c38b2b96621d06bc3ecc06098611d88f2e6ddee196",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "pyright",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/jupyterlab",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 218,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 781,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 5,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 11,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 3,
+          "error": null
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 132,
+          "error": null
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 5,
+          "error": null
+        },
+        "incomingCalls": {
+          "method": "callHierarchy/incomingCalls",
+          "ms": 19,
+          "error": null
+        }
+      },
+      "completionCount": 0,
+      "inlayCount": null,
+      "renameFiles": [],
+      "renameTabs": null,
+      "uiCompletion": null,
+      "pullDiagnostics": null
+    },
+    {
+      "name": "cpp-dolphin",
+      "source": "evidence.json",
+      "file": "vendor/dolphin/src/global.cpp",
+      "sourceSha256": "d17e9652399d33bf6d0a38fb94951a2c9b03437ffdb2db270d6373dc06b0b690",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "clangd",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/dolphin",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 4,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 2,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 1,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 1,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 6,
+          "error": null
+        },
+        "semanticTokens": {
+          "method": "textDocument/semanticTokens/full",
+          "ms": 3,
+          "error": null
+        },
+        "inlayHints": {
+          "method": "textDocument/inlayHint",
+          "ms": 2,
+          "error": null
+        },
+        "folding": {
+          "method": "textDocument/foldingRange",
+          "ms": 3,
+          "error": null
+        },
+        "formatting": {
+          "method": "textDocument/formatting",
+          "ms": 24,
+          "error": null
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 3,
+          "error": null
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 2,
+          "error": null
+        },
+        "incomingCalls": {
+          "method": "callHierarchy/incomingCalls",
+          "ms": 2,
+          "error": null
+        }
+      },
+      "completionCount": 1,
+      "inlayCount": 4,
+      "renameFiles": [],
+      "renameTabs": null,
+      "uiCompletion": null,
+      "pullDiagnostics": null
+    },
+    {
+      "name": "c-ptyxis",
+      "source": "evidence.json",
+      "file": "vendor/ptyxis/src/ptyxis-util.c",
+      "sourceSha256": "4db8883bef9f3047786df9af1bd059f4d9c7341c98ec469fafb637f6ed005647",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "clangd",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/ptyxis",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 10,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 10,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 2,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 1,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 35,
+          "error": null
+        },
+        "semanticTokens": {
+          "method": "textDocument/semanticTokens/full",
+          "ms": 7,
+          "error": null
+        },
+        "inlayHints": {
+          "method": "textDocument/inlayHint",
+          "ms": 4,
+          "error": null
+        },
+        "folding": {
+          "method": "textDocument/foldingRange",
+          "ms": 3,
+          "error": null
+        },
+        "formatting": {
+          "method": "textDocument/formatting",
+          "ms": 39,
+          "error": null
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 3,
+          "error": null
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 1,
+          "error": null
+        },
+        "incomingCalls": {
+          "method": "callHierarchy/incomingCalls",
+          "ms": 1,
+          "error": null
+        }
+      },
+      "completionCount": 100,
+      "inlayCount": 29,
+      "renameFiles": [],
+      "renameTabs": null,
+      "uiCompletion": null,
+      "pullDiagnostics": null
+    },
+    {
+      "name": "ts-missing-server",
+      "source": "evidence.json",
+      "file": "vendor/gitgraph.js/packages/gitgraph-core/src/branches-order.ts",
+      "sourceSha256": "a0605f7e046c2e4f479398a0e7074a1e22084ef6708653108f3b09bb651726e8",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": "missing",
+      "scenarioError": null,
+      "sessions": [],
+      "requests": {},
+      "completionCount": null,
+      "inlayCount": null,
+      "renameFiles": [],
+      "renameTabs": null,
+      "uiCompletion": null,
+      "pullDiagnostics": null
+    },
+    {
+      "name": "ts-gitgraph",
+      "source": "evidence.json",
+      "file": "vendor/gitgraph.js/packages/gitgraph-core/src/branches-order.ts",
+      "sourceSha256": "a0605f7e046c2e4f479398a0e7074a1e22084ef6708653108f3b09bb651726e8",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "typescript-language-server",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 501,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 14,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 5,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 10,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 21,
+          "error": null
+        },
+        "semanticTokens": {
+          "method": "textDocument/semanticTokens/full",
+          "ms": 1212,
+          "error": null
+        },
+        "inlayHints": {
+          "method": "textDocument/inlayHint",
+          "ms": 3,
+          "error": null
+        },
+        "folding": {
+          "method": "textDocument/foldingRange",
+          "ms": 4,
+          "error": null
+        },
+        "formatting": {
+          "method": "textDocument/formatting",
+          "ms": 12,
+          "error": null
+        },
+        "rename": {
+          "method": "textDocument/rename",
+          "ms": 26,
+          "error": null
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 18,
+          "error": null
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 4,
+          "error": null
+        },
+        "incomingCalls": {
+          "method": "callHierarchy/incomingCalls",
+          "ms": 8,
+          "error": null
+        }
+      },
+      "completionCount": 0,
+      "inlayCount": 0,
+      "renameFiles": [
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core/src/branches-order.ts"
+      ],
+      "renameTabs": null,
+      "uiCompletion": "Branch\nbefore\nboth\nbranch\nbranches\nbranchName\nbranchNameA\nbranchToDisplay\nCompareBranchesOrder\nbranchNameB",
+      "pullDiagnostics": null
+    },
+    {
+      "name": "ts-crossnote",
+      "source": "evidence.json",
+      "file": "vendor/crossnote/src/utility.ts",
+      "sourceSha256": "8a4d1bcdab76f96cdc96a42a00fb2959ad79b4a15d8d3f819323b3175cbbb9b9",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "typescript-language-server",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/crossnote",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 408,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 11,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 11,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 15,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 96,
+          "error": null
+        },
+        "completionResolve": {
+          "method": "completionItem/resolve",
+          "ms": 13,
+          "error": null
+        },
+        "semanticTokens": {
+          "method": "textDocument/semanticTokens/full",
+          "ms": 2529,
+          "error": null
+        },
+        "inlayHints": {
+          "method": "textDocument/inlayHint",
+          "ms": 3,
+          "error": null
+        },
+        "folding": {
+          "method": "textDocument/foldingRange",
+          "ms": 10,
+          "error": null
+        },
+        "formatting": {
+          "method": "textDocument/formatting",
+          "ms": 34,
+          "error": null
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 111,
+          "error": null
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 3,
+          "error": null
+        }
+      },
+      "completionCount": 1019,
+      "inlayCount": 0,
+      "renameFiles": [],
+      "renameTabs": null,
+      "uiCompletion": null,
+      "pullDiagnostics": null
+    },
+    {
+      "name": "ts-languageclient",
+      "source": "evidence.json",
+      "file": "vendor/monaco-languageclient/packages/vscode-ws-jsonrpc/src/socket/writer.ts",
+      "sourceSha256": "7d350fe669dc6292a2979ddf31a2d42b8236af68716cc346ea19617e902a01d4",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "typescript-language-server",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/monaco-languageclient",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 378,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 15,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 10,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 8,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 13,
+          "error": null
+        },
+        "semanticTokens": {
+          "method": "textDocument/semanticTokens/full",
+          "ms": 925,
+          "error": null
+        },
+        "inlayHints": {
+          "method": "textDocument/inlayHint",
+          "ms": 3,
+          "error": null
+        },
+        "folding": {
+          "method": "textDocument/foldingRange",
+          "ms": 3,
+          "error": null
+        },
+        "formatting": {
+          "method": "textDocument/formatting",
+          "ms": 11,
+          "error": null
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 29,
+          "error": null
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 5,
+          "error": null
+        },
+        "incomingCalls": {
+          "method": "callHierarchy/incomingCalls",
+          "ms": 9,
+          "error": null
+        }
+      },
+      "completionCount": 0,
+      "inlayCount": 0,
+      "renameFiles": [],
+      "renameTabs": null,
+      "uiCompletion": null,
+      "pullDiagnostics": null
+    },
+    {
+      "name": "js-readability",
+      "source": "evidence.json",
+      "file": "vendor/readability/Readability-readerable.js",
+      "sourceSha256": "e73600367067be2da322c0f26be9c4ec7759cd01b630dbb57278c326e5b5aba8",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "typescript-language-server",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/readability",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 370,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 30,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 5,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 8,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 230,
+          "error": null
+        },
+        "completionResolve": {
+          "method": "completionItem/resolve",
+          "ms": 10,
+          "error": null
+        },
+        "semanticTokens": {
+          "method": "textDocument/semanticTokens/full",
+          "ms": 1036,
+          "error": null
+        },
+        "inlayHints": {
+          "method": "textDocument/inlayHint",
+          "ms": 3,
+          "error": null
+        },
+        "folding": {
+          "method": "textDocument/foldingRange",
+          "ms": 4,
+          "error": null
+        },
+        "formatting": {
+          "method": "textDocument/formatting",
+          "ms": 14,
+          "error": null
+        },
+        "rename": {
+          "method": "textDocument/rename",
+          "ms": 21,
+          "error": null
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 6,
+          "error": null
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 4,
+          "error": null
+        },
+        "incomingCalls": {
+          "method": "callHierarchy/incomingCalls",
+          "ms": 4,
+          "error": null
+        }
+      },
+      "completionCount": 1004,
+      "inlayCount": 0,
+      "renameFiles": [
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/readability/Readability-readerable.js"
+      ],
+      "renameTabs": null,
+      "uiCompletion": null,
+      "pullDiagnostics": null
+    },
+    {
+      "name": "json-nbformat",
+      "source": "evidence.json",
+      "file": "vendor/nbformat/nbformat/v4/nbformat.v4.schema.json",
+      "sourceSha256": "523e3578ddbfcad52933d2423dc5951114ef73f48df180b6a601498ba5ca071a",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "json-lsp",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 74,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 4,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 10,
+          "error": null
+        },
+        "folding": {
+          "method": "textDocument/foldingRange",
+          "ms": 5,
+          "error": null
+        },
+        "formatting": {
+          "method": "textDocument/formatting",
+          "ms": 16,
+          "error": null
+        },
+        "pullDiagnostics": {
+          "method": "textDocument/diagnostic",
+          "ms": 5,
+          "error": null
+        }
+      },
+      "completionCount": 27,
+      "inlayCount": null,
+      "renameFiles": [],
+      "renameTabs": null,
+      "uiCompletion": null,
+      "pullDiagnostics": {
+        "kind": "full",
+        "items": []
+      }
+    },
+    {
+      "name": "html-readability",
+      "source": "evidence.json",
+      "file": "vendor/readability/test/test-pages/001/source.html",
+      "sourceSha256": "f6a1c98f318c67d423676a8cb0895c78198cf56f9c493e25beaf6f413f598799",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "html-lsp",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/readability",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 24,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 4,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 2,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 1,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 26,
+          "error": null
+        },
+        "completionResolve": {
+          "method": "completionItem/resolve",
+          "ms": 3,
+          "error": null
+        },
+        "folding": {
+          "method": "textDocument/foldingRange",
+          "ms": 4,
+          "error": null
+        },
+        "formatting": {
+          "method": "textDocument/formatting",
+          "ms": 30,
+          "error": null
+        },
+        "pullDiagnostics": {
+          "method": "textDocument/diagnostic",
+          "ms": 2,
+          "error": null
+        }
+      },
+      "completionCount": 116,
+      "inlayCount": null,
+      "renameFiles": [],
+      "renameTabs": null,
+      "uiCompletion": null,
+      "pullDiagnostics": {
+        "kind": "full",
+        "items": []
+      }
+    },
+    {
+      "name": "ts-gitgraph-configured",
+      "source": "evidence-ts-gitgraph-configured.json",
+      "file": "vendor/gitgraph.js/packages/gitgraph-core/src/branches-order.ts",
+      "sourceSha256": "a0605f7e046c2e4f479398a0e7074a1e22084ef6708653108f3b09bb651726e8",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "typescript-language-server",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 549,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 14,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 6,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 9,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 20,
+          "error": null
+        },
+        "semanticTokens": {
+          "method": "textDocument/semanticTokens/full",
+          "ms": 999,
+          "error": null
+        },
+        "inlayHints": {
+          "method": "textDocument/inlayHint",
+          "ms": 18,
+          "error": null
+        },
+        "folding": {
+          "method": "textDocument/foldingRange",
+          "ms": 4,
+          "error": null
+        },
+        "formatting": {
+          "method": "textDocument/formatting",
+          "ms": 13,
+          "error": null
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 18,
+          "error": null
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 4,
+          "error": null
+        },
+        "incomingCalls": {
+          "method": "callHierarchy/incomingCalls",
+          "ms": 11,
+          "error": null
+        }
+      },
+      "completionCount": 0,
+      "inlayCount": 11,
+      "renameFiles": [],
+      "renameTabs": null,
+      "uiCompletion": null,
+      "pullDiagnostics": null
+    },
+    {
+      "name": "css-min",
+      "source": "evidence-python-standalone-rename-ui_python-project-rename-ui_python-superproject-rename-ui_css-min_rust-brave_notebook-nbformat.json",
+      "file": "vendor/min/css/windowControls.css",
+      "sourceSha256": "3dd2b40d6be2e16d4535adf635b5d7581e5a1883715d607b758eb3a9a50491f4",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "css-lsp",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 11,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 7,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 4,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 4,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 248,
+          "error": null
+        },
+        "folding": {
+          "method": "textDocument/foldingRange",
+          "ms": 5,
+          "error": null
+        },
+        "formatting": {
+          "method": "textDocument/formatting",
+          "ms": 10,
+          "error": null
+        },
+        "pullDiagnostics": {
+          "method": "textDocument/diagnostic",
+          "ms": 3,
+          "error": null
+        }
+      },
+      "completionCount": 888,
+      "inlayCount": null,
+      "renameFiles": [],
+      "renameTabs": null,
+      "uiCompletion": null,
+      "pullDiagnostics": {
+        "kind": "full",
+        "items": []
+      }
+    },
+    {
+      "name": "rust-brave",
+      "source": "evidence-python-standalone-rename-ui_python-project-rename-ui_python-superproject-rename-ui_css-min_rust-brave_notebook-nbformat.json",
+      "file": "vendor/brave-core/tools/crates/vendor/itoa/src/lib.rs",
+      "sourceSha256": "f0822c71be6d3191b5f7aa52ed77dc0ef85f9eb5675aab38ab6187151f736590",
+      "sourceUnchanged": true,
+      "connectionError": "Error: rust-analyzer language server exited (1).\nerror: Unknown binary 'rust-analyzer' in official toolchain 'stable-x86_64-unknown-linux-gnu'.\n",
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "rust-analyzer",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/brave-core/tools/crates/vendor/itoa",
+          "state": "failed"
+        }
+      ],
+      "requests": {},
+      "completionCount": null,
+      "inlayCount": null,
+      "renameFiles": [],
+      "renameTabs": null,
+      "uiCompletion": null,
+      "pullDiagnostics": null
+    },
+    {
+      "name": "notebook-nbformat",
+      "source": "evidence-python-standalone-rename-ui_python-project-rename-ui_python-superproject-rename-ui_css-min_rust-brave_notebook-nbformat.json",
+      "file": "vendor/nbformat/tests/test4.5.ipynb",
+      "sourceSha256": "6f56a1d9334d3d7db41038515cee6d5a5e266fca30bd11b5ea51ee11fe373829",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "notebook-python",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/tests/test4.5.ipynb",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 223,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 5,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 23,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 69,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 724,
+          "error": null
+        },
+        "completionResolve": {
+          "method": "completionItem/resolve",
+          "ms": 4,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid notebook language request."
+        },
+        "semanticTokens": {
+          "method": "textDocument/semanticTokens/full",
+          "ms": 4,
+          "error": null
+        },
+        "inlayHints": {
+          "method": "textDocument/inlayHint",
+          "ms": 5,
+          "error": null
+        }
+      },
+      "completionCount": 551,
+      "inlayCount": 0,
+      "renameFiles": [],
+      "renameTabs": null,
+      "uiCompletion": null,
+      "pullDiagnostics": null
+    },
+    {
+      "name": "python-standalone-rename-ui",
+      "source": "evidence-python-standalone-rename-ui_python-project-rename-ui_python-superproject-rename-ui.json",
+      "file": "vendor/nbformat/nbformat/notebooknode.py",
+      "sourceSha256": "c2028aec0519f09f04aeaaa89c0664d45da6e71f0de64b7fe9b87ba0116e891a",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "pyright",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 65,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 102,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 5,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 10,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 25,
+          "error": null
+        },
+        "completionResolve": {
+          "method": "completionItem/resolve",
+          "ms": 6,
+          "error": null
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 2,
+          "error": null
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 3,
+          "error": null
+        },
+        "incomingCalls": {
+          "method": "callHierarchy/incomingCalls",
+          "ms": 3,
+          "error": null
+        }
+      },
+      "completionCount": 47,
+      "inlayCount": null,
+      "renameFiles": [],
+      "renameTabs": [
+        "start.txt   ×",
+        "notebooknode.py  • ×",
+        "__init__.py  • ×"
+      ],
+      "uiCompletion": null,
+      "pullDiagnostics": null
+    },
+    {
+      "name": "python-project-rename-ui",
+      "source": "evidence-python-standalone-rename-ui_python-project-rename-ui_python-superproject-rename-ui.json",
+      "file": "vendor/nbformat/nbformat/notebooknode.py",
+      "sourceSha256": "c2028aec0519f09f04aeaaa89c0664d45da6e71f0de64b7fe9b87ba0116e891a",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "pyright",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 61,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 91,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 10,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 5,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 28,
+          "error": null
+        },
+        "completionResolve": {
+          "method": "completionItem/resolve",
+          "ms": 4,
+          "error": null
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 2,
+          "error": null
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 2,
+          "error": null
+        },
+        "incomingCalls": {
+          "method": "callHierarchy/incomingCalls",
+          "ms": 3,
+          "error": null
+        }
+      },
+      "completionCount": 47,
+      "inlayCount": null,
+      "renameFiles": [],
+      "renameTabs": [
+        "start.txt   ×",
+        "notebooknode.py  • ×",
+        "test_validator.py  • ×",
+        "nbjson.py  • ×",
+        "__init__.py  • ×"
+      ],
+      "uiCompletion": null,
+      "pullDiagnostics": null
+    },
+    {
+      "name": "python-superproject-rename-ui",
+      "source": "evidence-python-standalone-rename-ui_python-project-rename-ui_python-superproject-rename-ui.json",
+      "file": "vendor/nbformat/nbformat/notebooknode.py",
+      "sourceSha256": "c2028aec0519f09f04aeaaa89c0664d45da6e71f0de64b7fe9b87ba0116e891a",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": "Error: expect(locator).toContainText(expected) failed\n\nLocator: locator('.editor-surface .view-lines')\nExpected substring: \"from_dict_audit\"\nReceived string:    \"from collections.abc import Mappingfrom copy import deepcopy as _deepcopyfrom ._struct import Struct# Values `deepcopy` returns as-is, so they can be stored without recursing._ATOMIC_TYPES = (str, int, float, bool, bytes, type(None), complex)class NotebookNode(Struct):    \\\"\\\"\\\"A dict-like node with attribute-access\\\"\\\"\\\"    def __setitem__(self, key, value):        \\\"\\\"\\\"Set an item on the notebook.\\\"\\\"\\\"        if isinstance(value, Mapping) and not isinstance(value, NotebookNode):            value = from_dict(value)        super().__setitem__(key, value)    def __deepcopy__(self, memo):        \\\"\\\"\\\"Deep-copy the node without going through `copy._reconstruct`.        `copy.deepcopy` only takes its fast path for exact `dict`s, so a `dict`        subclass falls back to the generic `__reduce_ex__` machinery once per        node. Notebooks get deep-copied on every `isvalid`, `normalize` and        `writes` call, which makes that fallback worth avoiding.        \\\"\\\"\\\"        new = self.__class__()        memo[id(self)] = new        for key, value in self.items():            value_type = type(value)            if value_type in _ATOMIC_TYPES:                dict.__setitem__(new, key, value)\"\nTimeout: 5000ms\n\nCall log:\n  - Expect \"toContainText\" locator('.editor-surface .view-lines') with timeout 5000ms\n  - waiting for locator('.editor-surface .view-lines')\n    14 × locator resolved to <div data-mprt=\"8\" aria-hidden=\"true\" role=\"presentation\" class=\"view-lines monaco-mouse-cursor-text\">…</div>\n       - unexpected value \"from collections.abc import Mappingfrom copy import deepcopy as _deepcopyfrom ._struct import Struct# Values `deepcopy` returns as-is, so they can be stored without recursing._ATOMIC_TYPES = (str, int, float, bool, bytes, type(None), complex)class NotebookNode(Struct):    \"\"\"A dict-like node with attribute-access\"\"\"    def __setitem__(self, key, value):        \"\"\"Set an item on the notebook.\"\"\"        if isinstance(value, Mapping) and not isinstance(value, NotebookNode):            value = from_dict(value)        super().__setitem__(key, value)    def __deepcopy__(self, memo):        \"\"\"Deep-copy the node without going through `copy._reconstruct`.        `copy.deepcopy` only takes its fast path for exact `dict`s, so a `dict`        subclass falls back to the generic `__reduce_ex__` machinery once per        node. Notebooks get deep-copied on every `isvalid`, `normalize` and        `writes` call, which makes that fallback worth avoiding.        \"\"\"        new = self.__class__()        memo[id(self)] = new        for key, value in self.items():            value_type = type(value)            if value_type in _ATOMIC_TYPES:                dict.__setitem__(new, key, value)\"\n",
+      "sessions": [],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 70,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 86,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 3,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 8,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 26,
+          "error": null
+        },
+        "completionResolve": {
+          "method": "completionItem/resolve",
+          "ms": 5,
+          "error": null
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 2,
+          "error": null
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 2,
+          "error": null
+        },
+        "incomingCalls": {
+          "method": "callHierarchy/incomingCalls",
+          "ms": 3,
+          "error": null
+        }
+      },
+      "completionCount": 47,
+      "inlayCount": null,
+      "renameFiles": [],
+      "renameTabs": null,
+      "uiCompletion": null,
+      "pullDiagnostics": null
+    },
+    {
+      "name": "ts-gitgraph-completion-ui",
+      "source": "evidence-python-completion-ui_ts-gitgraph-completion-ui_css-min-configured.json",
+      "file": "vendor/gitgraph.js/packages/gitgraph-core/src/branches-order.ts",
+      "sourceSha256": "a0605f7e046c2e4f479398a0e7074a1e22084ef6708653108f3b09bb651726e8",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "typescript-language-server",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/gitgraph.js/packages/gitgraph-core",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 409,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 29,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 6,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 37,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 23,
+          "error": null
+        },
+        "completionResolve": {
+          "method": "completionItem/resolve",
+          "ms": 6,
+          "error": null
+        },
+        "semanticTokens": {
+          "method": "textDocument/semanticTokens/full",
+          "ms": 874,
+          "error": null
+        },
+        "inlayHints": {
+          "method": "textDocument/inlayHint",
+          "ms": 3,
+          "error": null
+        },
+        "folding": {
+          "method": "textDocument/foldingRange",
+          "ms": 4,
+          "error": null
+        },
+        "formatting": {
+          "method": "textDocument/formatting",
+          "ms": 13,
+          "error": null
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 38,
+          "error": null
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 4,
+          "error": null
+        },
+        "incomingCalls": {
+          "method": "callHierarchy/incomingCalls",
+          "ms": 75,
+          "error": null
+        }
+      },
+      "completionCount": 4,
+      "inlayCount": 0,
+      "renameFiles": [],
+      "renameTabs": null,
+      "uiCompletion": "get\n(method) BranchesOrder<TNode>.get(branchName: Branch[\"name\"]): number\ngetColorOf",
+      "pullDiagnostics": null
+    },
+    {
+      "name": "css-min-configured",
+      "source": "evidence-python-completion-ui_ts-gitgraph-completion-ui_css-min-configured.json",
+      "file": "vendor/min/css/windowControls.css",
+      "sourceSha256": "3dd2b40d6be2e16d4535adf635b5d7581e5a1883715d607b758eb3a9a50491f4",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "css-lsp",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 11,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 5,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 4,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 3,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 205,
+          "error": null
+        },
+        "folding": {
+          "method": "textDocument/foldingRange",
+          "ms": 6,
+          "error": null
+        },
+        "formatting": {
+          "method": "textDocument/formatting",
+          "ms": 10,
+          "error": null
+        },
+        "pullDiagnostics": {
+          "method": "textDocument/diagnostic",
+          "ms": 4,
+          "error": null
+        }
+      },
+      "completionCount": 888,
+      "inlayCount": null,
+      "renameFiles": [],
+      "renameTabs": null,
+      "uiCompletion": null,
+      "pullDiagnostics": {
+        "kind": "full",
+        "items": []
+      }
+    },
+    {
+      "name": "python-completion-ui",
+      "source": "evidence-python-completion-ui_css-min-invalid_css-min-configured-invalid.json",
+      "file": "vendor/nbformat/nbformat/notebooknode.py",
+      "sourceSha256": "c2028aec0519f09f04aeaaa89c0664d45da6e71f0de64b7fe9b87ba0116e891a",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "pyright",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 71,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 94,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 3,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 6,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 26,
+          "error": null
+        },
+        "completionResolve": {
+          "method": "completionItem/resolve",
+          "ms": 6,
+          "error": null
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 3,
+          "error": null
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 3,
+          "error": null
+        },
+        "incomingCalls": {
+          "method": "callHierarchy/incomingCalls",
+          "ms": 5,
+          "error": null
+        }
+      },
+      "completionCount": 47,
+      "inlayCount": null,
+      "renameFiles": [],
+      "renameTabs": null,
+      "uiCompletion": "from_dict",
+      "pullDiagnostics": null
+    },
+    {
+      "name": "css-min-invalid",
+      "source": "evidence-css-min-invalid_css-min-configured-invalid.json",
+      "file": "vendor/min/css/windowControls.css",
+      "sourceSha256": "3dd2b40d6be2e16d4535adf635b5d7581e5a1883715d607b758eb3a9a50491f4",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "css-lsp",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 15,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 7,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 4,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 4,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 216,
+          "error": null
+        },
+        "folding": {
+          "method": "textDocument/foldingRange",
+          "ms": 5,
+          "error": null
+        },
+        "formatting": {
+          "method": "textDocument/formatting",
+          "ms": 9,
+          "error": null
+        },
+        "pullDiagnostics": {
+          "method": "textDocument/diagnostic",
+          "ms": 3,
+          "error": null
+        }
+      },
+      "completionCount": 888,
+      "inlayCount": null,
+      "renameFiles": [],
+      "renameTabs": null,
+      "uiCompletion": null,
+      "pullDiagnostics": {
+        "kind": "full",
+        "items": []
+      }
+    },
+    {
+      "name": "css-min-configured-invalid",
+      "source": "evidence-css-min-invalid_css-min-configured-invalid.json",
+      "file": "vendor/min/css/windowControls.css",
+      "sourceSha256": "3dd2b40d6be2e16d4535adf635b5d7581e5a1883715d607b758eb3a9a50491f4",
+      "sourceUnchanged": true,
+      "connectionError": null,
+      "unavailable": null,
+      "scenarioError": null,
+      "sessions": [
+        {
+          "server": "css-lsp",
+          "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min",
+          "state": "ready"
+        }
+      ],
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 14,
+          "error": null
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 6,
+          "error": null
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 4,
+          "error": null
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 4,
+          "error": null
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 210,
+          "error": null
+        },
+        "folding": {
+          "method": "textDocument/foldingRange",
+          "ms": 6,
+          "error": null
+        },
+        "formatting": {
+          "method": "textDocument/formatting",
+          "ms": 11,
+          "error": null
+        },
+        "pullDiagnostics": {
+          "method": "textDocument/diagnostic",
+          "ms": 4,
+          "error": null
+        }
+      },
+      "completionCount": 888,
+      "inlayCount": null,
+      "renameFiles": [],
+      "renameTabs": null,
+      "uiCompletion": null,
+      "pullDiagnostics": {
+        "kind": "full",
+        "items": [
+          {
+            "code": "css-propertyvalueexpected",
+            "source": "css",
+            "message": "property value expected",
+            "severity": 1,
+            "range": {
+              "start": {
+                "line": 170,
+                "character": 41
+              },
+              "end": {
+                "line": 170,
+                "character": 42
+              }
+            },
+            "$setdownItem": "747a084f-52a3-477f-b640-ea1674e3a362"
+          },
+          {
+            "code": "unknownProperties",
+            "source": "css",
+            "message": "Unknown property: 'zzz-invalid-property'",
+            "severity": 2,
+            "range": {
+              "start": {
+                "line": 170,
+                "character": 9
+              },
+              "end": {
+                "line": 170,
+                "character": 29
+              }
+            },
+            "$setdownItem": "94d252df-87fe-44ba-b1d9-f992d157f209"
+          }
+        ]
+      }
+    }
+  ]
+}

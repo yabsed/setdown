@@ -1,0 +1,2682 @@
+{
+  "revision": "a00d7aef1c6c5868777fc5b04fb97ef225ce69a4",
+  "node": "v22.23.1",
+  "started": "2026-10-17T03:29:09.343Z",
+  "cases": [
+    {
+      "name": "python-completion-ui",
+      "file": "vendor/nbformat/nbformat/notebooknode.py",
+      "needle": "value = from_dict(value)",
+      "symbol": "from_dict",
+      "ui": true,
+      "uiPrefix": "from_di",
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 71,
+          "response": [
+            {
+              "name": "_ATOMIC_TYPES",
+              "kind": 14,
+              "range": {
+                "start": {
+                  "line": 10,
+                  "character": 0
+                },
+                "end": {
+                  "line": 10,
+                  "character": 13
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 10,
+                  "character": 0
+                },
+                "end": {
+                  "line": 10,
+                  "character": 13
+                }
+              },
+              "children": [],
+              "$setdownItem": "a22e3efd-5323-4746-a337-fad812a362ea"
+            },
+            {
+              "name": "NotebookNode",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 13,
+                  "character": 0
+                },
+                "end": {
+                  "line": 69,
+                  "character": 29
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 13,
+                  "character": 6
+                },
+                "end": {
+                  "line": 13,
+                  "character": 18
+                }
+              },
+              "children": [
+                {
+                  "name": "__setitem__",
+                  "kind": 6,
+                  "range": {
+                    "start": {
+                      "line": 16,
+                      "character": 4
+                    },
+                    "end": {
+                      "line": 20,
+                      "character": 39
+                    }
+                  },
+                  "selectionRange": {
+                    "start": {
+                      "line": 16,
+                      "character": 8
+                    },
+                    "end": {
+                      "line": 16,
+                      "character": 19
+                    }
+                  },
+                  "children": [
+                    {
+                      "name": "key",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 16,
+                          "character": 26
+                        },
+                        "end": {
+                          "line": 16,
+                          "character": 29
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 16,
+                          "character": 26
+                        },
+                        "end": {
+                          "line": 16,
+                          "character": 29
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "586c45d2-e3b7-4791-8dc0-fe696d39005d"
+                    },
+                    {
+                      "name": "value",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 16,
+                          "character": 31
+                        },
+                        "end": {
+                          "line": 16,
+                          "character": 36
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 16,
+                          "character": 31
+                        },
+                        "end": {
+                          "line": 16,
+                          "character": 36
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "6aa525cb-38c3-437f-abdf-f9a375539806"
+                    }
+                  ],
+                  "$setdownItem": "a295f3bd-e6b9-4147-a7d9-17d5b85a01f5"
+                },
+                {
+                  "name": "__deepcopy__",
+                  "kind": 6,
+                  "range": {
+                    "start": {
+                      "line": 22,
+                      "character": 4
+                    },
+                    "end": {
+                      "line": 48,
+                      "character": 18
+                    }
+                  },
+                  "selectionRange": {
+                    "start": {
+                      "line": 22,
+                      "character": 8
+                    },
+                    "end": {
+                      "line": 22,
+                      "character": 20
+                    }
+                  },
+                  "children": [
+                    {
+                      "name": "memo",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 22,
+                          "character": 27
+                        },
+                        "end": {
+                          "line": 22,
+                          "character": 31
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 22,
+                          "character": 27
+                        },
+                        "end": {
+                          "line": 22,
+                          "character": 31
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "cabe579e-01b9-406e-8d32-4974a5889702"
+                    },
+                    {
+                      "name": "new",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 30,
+                          "character": 8
+                        },
+                        "end": {
+                          "line": 30,
+                          "character": 11
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 30,
+                          "character": 8
+                        },
+                        "end": {
+                          "line": 30,
+                          "character": 11
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "13d2c68f-6ba0-4e63-a878-d8698d056d9c"
+                    },
+                    {
+                      "name": "key",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 32,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 32,
+                          "character": 15
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 32,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 32,
+                          "character": 15
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "1e1206db-cfb9-4f1f-9e5b-a06f4d2e5346"
+                    },
+                    {
+                      "name": "value",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 32,
+                          "character": 17
+                        },
+                        "end": {
+                          "line": 32,
+                          "character": 22
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 32,
+                          "character": 17
+                        },
+                        "end": {
+                          "line": 32,
+                          "character": 22
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "f49041f9-5a67-4d79-a82a-0220606f549d"
+                    },
+                    {
+                      "name": "value_type",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 33,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 33,
+                          "character": 22
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 33,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 33,
+                          "character": 22
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "1823e9d0-37d7-4f87-8274-236d98732b62"
+                    }
+                  ],
+                  "$setdownItem": "b8741fe7-09ff-4948-8c3f-712c08647a36"
+                },
+                {
+                  "name": "update",
+                  "kind": 6,
+                  "range": {
+                    "start": {
+                      "line": 50,
+                      "character": 4
+                    },
+                    "end": {
+                      "line": 69,
+                      "character": 29
+                    }
+                  },
+                  "selectionRange": {
+                    "start": {
+                      "line": 50,
+                      "character": 8
+                    },
+                    "end": {
+                      "line": 50,
+                      "character": 14
+                    }
+                  },
+                  "children": [
+                    {
+                      "name": "args",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 50,
+                          "character": 21
+                        },
+                        "end": {
+                          "line": 50,
+                          "character": 26
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 50,
+                          "character": 21
+                        },
+                        "end": {
+                          "line": 50,
+                          "character": 26
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "979fc50f-b404-499b-aa2b-9131571a6f38"
+                    },
+                    {
+                      "name": "kwargs",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 50,
+                          "character": 28
+                        },
+                        "end": {
+                          "line": 50,
+                          "character": 36
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 50,
+                          "character": 28
+                        },
+                        "end": {
+                          "line": 50,
+                          "character": 36
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "de0240d8-f3a4-4a76-a9ca-4c55f86ae63b"
+                    },
+                    {
+                      "name": "other",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 58,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 58,
+                          "character": 17
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 58,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 58,
+                          "character": 17
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "5ec46516-fea5-404b-8c72-ea74e53011b7"
+                    },
+                    {
+                      "name": "key",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 60,
+                          "character": 20
+                        },
+                        "end": {
+                          "line": 60,
+                          "character": 23
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 60,
+                          "character": 20
+                        },
+                        "end": {
+                          "line": 60,
+                          "character": 23
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "2b82b3c5-1f6f-42d4-90ef-9ed9f9d12777"
+                    },
+                    {
+                      "name": "value",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 66,
+                          "character": 25
+                        },
+                        "end": {
+                          "line": 66,
+                          "character": 30
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 66,
+                          "character": 25
+                        },
+                        "end": {
+                          "line": 66,
+                          "character": 30
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "f67708b0-f92c-4ef4-b830-7ceb35add280"
+                    }
+                  ],
+                  "$setdownItem": "515e18d2-e9ee-4d6f-b3be-3801b25b81c6"
+                }
+              ],
+              "$setdownItem": "98fdc4ca-f86e-4820-b40e-cc768117b686"
+            },
+            {
+              "name": "from_dict",
+              "kind": 12,
+              "range": {
+                "start": {
+                  "line": 72,
+                  "character": 0
+                },
+                "end": {
+                  "line": 83,
+                  "character": 12
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 72,
+                  "character": 4
+                },
+                "end": {
+                  "line": 72,
+                  "character": 13
+                }
+              },
+              "children": [
+                {
+                  "name": "d",
+                  "kind": 13,
+                  "range": {
+                    "start": {
+                      "line": 72,
+                      "character": 14
+                    },
+                    "end": {
+                      "line": 72,
+                      "character": 15
+                    }
+                  },
+                  "selectionRange": {
+                    "start": {
+                      "line": 72,
+                      "character": 14
+                    },
+                    "end": {
+                      "line": 72,
+                      "character": 15
+                    }
+                  },
+                  "children": [],
+                  "$setdownItem": "26154489-7406-4d28-ab8f-f335c04a33dc"
+                }
+              ],
+              "$setdownItem": "7ad0114c-d50b-422b-a77b-fddd38968831"
+            }
+          ]
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 94,
+          "response": {
+            "contents": {
+              "kind": "markdown",
+              "value": "```python\n(function) def from_dict(d: Any) -> (NotebookNode | list[NotebookNode | list | Any] | Any)\n```\n---\nConvert dict to dict-like NotebookNode\n\nRecursively converts any dict in the container to a NotebookNode.\nThis does not check that the contents of the dictionary make a valid\nnotebook or part of a notebook."
+            },
+            "range": {
+              "start": {
+                "line": 19,
+                "character": 20
+              },
+              "end": {
+                "line": 19,
+                "character": 29
+              }
+            },
+            "$setdownItem": "1fb2ea3f-a30a-46bb-92b5-f73c16936f56"
+          }
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 3,
+          "response": [
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 72,
+                  "character": 4
+                },
+                "end": {
+                  "line": 72,
+                  "character": 13
+                }
+              },
+              "$setdownItem": "911e97f1-de92-4082-9f6a-bcbcda259c25"
+            }
+          ]
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 6,
+          "response": [
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 19,
+                  "character": 20
+                },
+                "end": {
+                  "line": 19,
+                  "character": 29
+                }
+              },
+              "$setdownItem": "2003c634-bba8-4bd0-849b-fb151fb10e1a"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 72,
+                  "character": 4
+                },
+                "end": {
+                  "line": 72,
+                  "character": 13
+                }
+              },
+              "$setdownItem": "85302f18-3dec-49f1-9135-8ef0f0d5f4ac"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 80,
+                  "character": 32
+                },
+                "end": {
+                  "line": 80,
+                  "character": 41
+                }
+              },
+              "$setdownItem": "6ef14c3a-301f-47ad-b59b-7cdf3c3f87cd"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 82,
+                  "character": 16
+                },
+                "end": {
+                  "line": 82,
+                  "character": 25
+                }
+              },
+              "$setdownItem": "f923375f-bf59-4808-832c-b300a68cd9f0"
+            }
+          ]
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 26,
+          "response": {
+            "isIncomplete": true,
+            "count": 47,
+            "sample": [
+              {
+                "label": "self",
+                "kind": 6,
+                "sortText": "12.9999.self",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "self"
+                },
+                "$setdownItem": "6f6a00b0-3e5b-4fac-93a6-ae839f9b2906"
+              },
+              {
+                "label": "__file__",
+                "kind": 6,
+                "sortText": "14.9999.__file__",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "__file__"
+                },
+                "$setdownItem": "0b1e7e91-3b52-4666-8ab4-b1879f503bc5"
+              },
+              {
+                "label": "from_dict",
+                "kind": 3,
+                "sortText": "12.9999.from_dict",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "from_dict"
+                },
+                "$setdownItem": "c3635891-205c-431b-b4ad-1675fe49414f"
+              },
+              {
+                "label": "float",
+                "kind": 7,
+                "sortText": "12.9999.float",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "float"
+                },
+                "$setdownItem": "e411a425-1627-4c2f-a974-ea95c679827f"
+              },
+              {
+                "label": "function",
+                "kind": 7,
+                "sortText": "12.9999.function",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "function"
+                },
+                "$setdownItem": "3433de91-e9f5-4bff-81ba-364bf4f174ce"
+              },
+              {
+                "label": "frozenset",
+                "kind": 7,
+                "sortText": "12.9999.frozenset",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "frozenset"
+                },
+                "$setdownItem": "bb46a092-c174-4f79-8c69-4049a72279b4"
+              },
+              {
+                "label": "filter",
+                "kind": 7,
+                "sortText": "12.9999.filter",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "filter"
+                },
+                "$setdownItem": "00fe37e8-9833-4b38-bc76-b5f5dff0adb9"
+              },
+              {
+                "label": "format",
+                "kind": 3,
+                "sortText": "12.9999.format",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "format"
+                },
+                "$setdownItem": "793557a7-f848-47a2-a509-bc4e5e83bc5f"
+              }
+            ]
+          }
+        },
+        "completionResolve": {
+          "method": "completionItem/resolve",
+          "ms": 6,
+          "response": {
+            "label": "from_dict",
+            "kind": 3,
+            "sortText": "12.9999.from_dict",
+            "data": {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "position": {
+                "line": 19,
+                "character": 21
+              },
+              "symbolLabel": "from_dict"
+            },
+            "documentation": {
+              "kind": "markdown",
+              "value": "```python\ndef from_dict(d: Any) -> (NotebookNode | list[NotebookNode | list | Any] | Any)\n```\n---\nConvert dict to dict-like NotebookNode\n\nRecursively converts any dict in the container to a NotebookNode.\nThis does not check that the contents of the dictionary make a valid\nnotebook or part of a notebook."
+            },
+            "$setdownItem": "82c84b72-d172-44c5-a958-afb1cbf3e364"
+          }
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 3,
+          "response": [
+            {
+              "name": "from_dict",
+              "kind": 12,
+              "location": {
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                "range": {
+                  "start": {
+                    "line": 72,
+                    "character": 4
+                  },
+                  "end": {
+                    "line": 72,
+                    "character": 13
+                  }
+                },
+                "$setdownItem": "13ab035d-485b-498a-9173-8f2aadec1252"
+              },
+              "$setdownItem": "360118ee-4b9c-4041-957c-e8f8ec7bfb91"
+            }
+          ]
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 3,
+          "response": [
+            {
+              "name": "from_dict",
+              "kind": 12,
+              "detail": "(notebooknode.py)",
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 72,
+                  "character": 4
+                },
+                "end": {
+                  "line": 72,
+                  "character": 13
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 72,
+                  "character": 4
+                },
+                "end": {
+                  "line": 72,
+                  "character": 13
+                }
+              },
+              "$setdownItem": "c4647136-ea37-462a-8385-e61549feccb0"
+            }
+          ]
+        },
+        "incomingCalls": {
+          "method": "callHierarchy/incomingCalls",
+          "ms": 5,
+          "response": [
+            {
+              "from": {
+                "name": "__setitem__",
+                "kind": 12,
+                "detail": "class NotebookNode (notebooknode.py)",
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                "range": {
+                  "start": {
+                    "line": 16,
+                    "character": 8
+                  },
+                  "end": {
+                    "line": 16,
+                    "character": 19
+                  }
+                },
+                "selectionRange": {
+                  "start": {
+                    "line": 16,
+                    "character": 8
+                  },
+                  "end": {
+                    "line": 16,
+                    "character": 19
+                  }
+                },
+                "$setdownItem": "e81df42f-be8d-481d-9750-01ac97e2685c"
+              },
+              "fromRanges": [
+                {
+                  "start": {
+                    "line": 19,
+                    "character": 20
+                  },
+                  "end": {
+                    "line": 19,
+                    "character": 29
+                  }
+                }
+              ]
+            },
+            {
+              "from": {
+                "name": "from_dict",
+                "kind": 12,
+                "detail": "(notebooknode.py)",
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                "range": {
+                  "start": {
+                    "line": 72,
+                    "character": 4
+                  },
+                  "end": {
+                    "line": 72,
+                    "character": 13
+                  }
+                },
+                "selectionRange": {
+                  "start": {
+                    "line": 72,
+                    "character": 4
+                  },
+                  "end": {
+                    "line": 72,
+                    "character": 13
+                  }
+                },
+                "$setdownItem": "b39c854b-038b-40e2-9ebc-3d4cc88770e6"
+              },
+              "fromRanges": [
+                {
+                  "start": {
+                    "line": 80,
+                    "character": 32
+                  },
+                  "end": {
+                    "line": 80,
+                    "character": 41
+                  }
+                },
+                {
+                  "start": {
+                    "line": 82,
+                    "character": 16
+                  },
+                  "end": {
+                    "line": 82,
+                    "character": 25
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "console": [],
+      "events": [
+        {
+          "type": "status",
+          "state": "starting",
+          "documents": [
+            {
+              "id": "022b62fc-52f9-4f64-bd2f-6f28d0638b3d",
+              "generation": "f6133c73-9655-48e0-90a3-c9fc95d6cd3b"
+            }
+          ]
+        },
+        {
+          "type": "status",
+          "state": "ready",
+          "documents": [
+            {
+              "id": "022b62fc-52f9-4f64-bd2f-6f28d0638b3d",
+              "generation": "f6133c73-9655-48e0-90a3-c9fc95d6cd3b"
+            }
+          ]
+        },
+        {
+          "type": "capabilities",
+          "id": "022b62fc-52f9-4f64-bd2f-6f28d0638b3d",
+          "generation": "f6133c73-9655-48e0-90a3-c9fc95d6cd3b",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          }
+        },
+        {
+          "type": "capabilities",
+          "id": "022b62fc-52f9-4f64-bd2f-6f28d0638b3d",
+          "generation": "f6133c73-9655-48e0-90a3-c9fc95d6cd3b",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          }
+        },
+        {
+          "type": "capabilities",
+          "id": "022b62fc-52f9-4f64-bd2f-6f28d0638b3d",
+          "generation": "f6133c73-9655-48e0-90a3-c9fc95d6cd3b",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          }
+        },
+        {
+          "type": "capabilities",
+          "id": "022b62fc-52f9-4f64-bd2f-6f28d0638b3d",
+          "generation": "f6133c73-9655-48e0-90a3-c9fc95d6cd3b",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          }
+        },
+        {
+          "type": "capabilities",
+          "id": "022b62fc-52f9-4f64-bd2f-6f28d0638b3d",
+          "generation": "f6133c73-9655-48e0-90a3-c9fc95d6cd3b",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          }
+        },
+        {
+          "type": "activity"
+        }
+      ],
+      "sourceSha256": "c2028aec0519f09f04aeaaa89c0664d45da6e71f0de64b7fe9b87ba0116e891a",
+      "connection": {
+        "document": {
+          "id": "022b62fc-52f9-4f64-bd2f-6f28d0638b3d",
+          "generation": "f6133c73-9655-48e0-90a3-c9fc95d6cd3b",
+          "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+          "version": 1
+        },
+        "response": {
+          "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          },
+          "server": "pyright"
+        },
+        "ms": 127
+      },
+      "openToConnectionMs": 376,
+      "position": {
+        "line": 19,
+        "character": 21
+      },
+      "completionCount": 47,
+      "uiCompletion": "from_dict",
+      "sessions": [
+        {
+          "id": "pyright",
+          "name": "Pyright",
+          "languages": [
+            "Python"
+          ],
+          "description": "Static type checker for Python.",
+          "homepage": "https://github.com/microsoft/pyright",
+          "configured": true,
+          "bundled": true,
+          "custom": false,
+          "managed": true,
+          "discoverable": false,
+          "enabled": true,
+          "selected": [
+            "python"
+          ],
+          "executable": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/node_modules/electron/dist/electron",
+          "available": true,
+          "automatic": true,
+          "canDetect": false,
+          "selectionNeeded": false,
+          "profileSource": "Helix · pyright",
+          "options": {
+            "args": [
+              "--stdio"
+            ],
+            "settings": {
+              "python": {
+                "analysis": {
+                  "autoSearchPaths": true,
+                  "useLibraryCodeForTypes": true,
+                  "diagnosticMode": "openFilesOnly",
+                  "typeCheckingMode": "off"
+                }
+              }
+            },
+            "initializationOptions": {
+              "disablePullDiagnostics": true
+            }
+          },
+          "sessions": [
+            {
+              "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat",
+              "state": "ready",
+              "features": [
+                "completion",
+                "hover",
+                "signatureHelp",
+                "definition",
+                "declaration",
+                "typeDefinition",
+                "references",
+                "documentSymbol",
+                "documentHighlight",
+                "rename",
+                "codeAction",
+                "workspaceSymbol",
+                "callHierarchy"
+              ],
+              "logs": [
+                "Pyright language server 1.1.414 starting",
+                "Server root directory: file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/pyright/dist",
+                "Starting service instance \"/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat\"",
+                "No include entries specified; assuming /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat",
+                "Auto-excluding **/node_modules",
+                "Auto-excluding **/__pycache__",
+                "Auto-excluding **/.*",
+                "Auto-excluding **/__editable__.*",
+                "Assuming Python version 3.13.11.final.0",
+                "No include entries specified; assuming /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat",
+                "Auto-excluding **/node_modules",
+                "Auto-excluding **/__pycache__",
+                "Auto-excluding **/.*",
+                "Auto-excluding **/__editable__.*",
+                "Assuming Python version 3.13.11.final.0"
+              ],
+              "progress": []
+            }
+          ]
+        }
+      ],
+      "ipc": {
+        "opens": [
+          {
+            "document": {
+              "id": "022b62fc-52f9-4f64-bd2f-6f28d0638b3d",
+              "generation": "f6133c73-9655-48e0-90a3-c9fc95d6cd3b",
+              "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "version": 1
+            },
+            "response": {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "capabilities": {
+                "textDocumentSync": 2,
+                "definitionProvider": {
+                  "workDoneProgress": true
+                },
+                "declarationProvider": {
+                  "workDoneProgress": true
+                },
+                "typeDefinitionProvider": {
+                  "workDoneProgress": true
+                },
+                "referencesProvider": {
+                  "workDoneProgress": true
+                },
+                "documentSymbolProvider": {
+                  "workDoneProgress": true
+                },
+                "workspaceSymbolProvider": {
+                  "workDoneProgress": true
+                },
+                "hoverProvider": {
+                  "workDoneProgress": true
+                },
+                "documentHighlightProvider": {
+                  "workDoneProgress": true
+                },
+                "renameProvider": {
+                  "prepareProvider": true,
+                  "workDoneProgress": true
+                },
+                "completionProvider": {
+                  "triggerCharacters": [
+                    ".",
+                    "[",
+                    "\"",
+                    "'"
+                  ],
+                  "resolveProvider": true,
+                  "workDoneProgress": true,
+                  "completionItem": {
+                    "labelDetailsSupport": true
+                  }
+                },
+                "signatureHelpProvider": {
+                  "triggerCharacters": [
+                    "(",
+                    ",",
+                    ")"
+                  ],
+                  "workDoneProgress": true
+                },
+                "codeActionProvider": {
+                  "codeActionKinds": [
+                    "quickfix",
+                    "source.organizeImports"
+                  ],
+                  "workDoneProgress": true
+                },
+                "executeCommandProvider": {
+                  "commands": [],
+                  "workDoneProgress": true
+                },
+                "callHierarchyProvider": true,
+                "workspace": {
+                  "workspaceFolders": {
+                    "supported": true,
+                    "changeNotifications": true
+                  }
+                }
+              },
+              "server": "pyright"
+            },
+            "ms": 127
+          }
+        ],
+        "changes": [
+          {
+            "id": "022b62fc-52f9-4f64-bd2f-6f28d0638b3d",
+            "version": 2
+          },
+          {
+            "id": "022b62fc-52f9-4f64-bd2f-6f28d0638b3d",
+            "version": 3
+          },
+          {
+            "id": "022b62fc-52f9-4f64-bd2f-6f28d0638b3d",
+            "version": 4
+          },
+          {
+            "id": "022b62fc-52f9-4f64-bd2f-6f28d0638b3d",
+            "version": 5
+          },
+          {
+            "id": "022b62fc-52f9-4f64-bd2f-6f28d0638b3d",
+            "version": 6
+          },
+          {
+            "id": "022b62fc-52f9-4f64-bd2f-6f28d0638b3d",
+            "version": 7
+          },
+          {
+            "id": "022b62fc-52f9-4f64-bd2f-6f28d0638b3d",
+            "version": 8
+          },
+          {
+            "id": "022b62fc-52f9-4f64-bd2f-6f28d0638b3d",
+            "version": 9
+          }
+        ],
+        "requests": [
+          {
+            "method": "textDocument/codeAction",
+            "ms": 1
+          },
+          {
+            "method": "textDocument/documentSymbol",
+            "ms": 65
+          },
+          {
+            "method": "textDocument/hover",
+            "ms": 91
+          },
+          {
+            "method": "textDocument/definition",
+            "ms": 2
+          },
+          {
+            "method": "textDocument/references",
+            "ms": 3
+          },
+          {
+            "method": "textDocument/completion",
+            "ms": 14
+          },
+          {
+            "method": "completionItem/resolve",
+            "ms": 2
+          },
+          {
+            "method": "workspace/symbol",
+            "ms": 1
+          },
+          {
+            "method": "textDocument/prepareCallHierarchy",
+            "ms": 1
+          },
+          {
+            "method": "callHierarchy/incomingCalls",
+            "ms": 2
+          },
+          {
+            "method": "textDocument/completion",
+            "ms": 7
+          },
+          {
+            "method": "completionItem/resolve",
+            "ms": 13
+          },
+          {
+            "method": "textDocument/codeAction",
+            "ms": 1
+          }
+        ]
+      },
+      "sourceUnchanged": true
+    },
+    {
+      "name": "css-min-invalid",
+      "file": "vendor/min/css/windowControls.css",
+      "root": "vendor/min",
+      "needle": "display: none",
+      "symbol": "display",
+      "tools": true,
+      "injectCss": true,
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 5,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 44,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 2,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 44,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 2,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "folding": {
+          "method": "textDocument/foldingRange",
+          "ms": 45,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "formatting": {
+          "method": "textDocument/formatting",
+          "ms": 2,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "pullDiagnostics": {
+          "method": "textDocument/diagnostic",
+          "ms": 44,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        }
+      },
+      "console": [
+        "Error: Missing requestHandler or method: doValidation\n    at We.$fmr (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:30:15921)\n    at ca._handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34642)\n    at Object.handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34136)\n    at ua._handleRequestMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:32917)\n    at ua._handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:32356)\n    at ua.handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:31967)\n    at ca.onmessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34262)\n    at globalThis.onmessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:35598)"
+      ],
+      "events": [
+        {
+          "type": "status",
+          "state": "starting",
+          "documents": [
+            {
+              "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+              "generation": "163c0881-4276-49c5-b850-d21c9f5d400c"
+            }
+          ]
+        },
+        {
+          "type": "status",
+          "state": "ready",
+          "documents": [
+            {
+              "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+              "generation": "163c0881-4276-49c5-b850-d21c9f5d400c"
+            }
+          ]
+        }
+      ],
+      "sourceSha256": "3dd2b40d6be2e16d4535adf635b5d7581e5a1883715d607b758eb3a9a50491f4",
+      "connection": {
+        "document": {
+          "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+          "generation": "163c0881-4276-49c5-b850-d21c9f5d400c",
+          "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+          "version": 1
+        },
+        "response": {
+          "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "completionProvider": {
+              "resolveProvider": false,
+              "triggerCharacters": [
+                "/",
+                "-",
+                ":"
+              ]
+            },
+            "hoverProvider": true,
+            "documentSymbolProvider": true,
+            "referencesProvider": true,
+            "definitionProvider": true,
+            "documentHighlightProvider": true,
+            "documentLinkProvider": {
+              "resolveProvider": false
+            },
+            "codeActionProvider": true,
+            "renameProvider": true,
+            "colorProvider": {},
+            "foldingRangeProvider": true,
+            "selectionRangeProvider": true,
+            "diagnosticProvider": {
+              "documentSelector": null,
+              "interFileDependencies": false,
+              "workspaceDiagnostics": false
+            },
+            "documentRangeFormattingProvider": true,
+            "documentFormattingProvider": true
+          },
+          "server": "css-lsp"
+        },
+        "ms": 236
+      },
+      "openToConnectionMs": 361,
+      "unsavedInjection": "\n.audit { zzz-invalid-property: 1; color: ; }\n",
+      "position": {
+        "line": 8,
+        "character": 3
+      },
+      "completionCount": 0,
+      "sessions": [
+        {
+          "id": "css-lsp",
+          "name": "css-lsp",
+          "languages": [
+            "CSS",
+            "SCSS",
+            "LESS"
+          ],
+          "description": "Language Server Protocol implementation for CSS, SCSS & LESS.",
+          "homepage": "https://github.com/microsoft/vscode-css-languageservice",
+          "configured": true,
+          "bundled": false,
+          "custom": false,
+          "managed": false,
+          "discoverable": true,
+          "enabled": true,
+          "selected": [
+            "css",
+            "scss",
+            "less"
+          ],
+          "executable": "/tmp/setdown-lsp-audit-tools-20261017/node_modules/.bin/vscode-css-language-server",
+          "available": true,
+          "automatic": true,
+          "canDetect": true,
+          "candidates": [
+            {
+              "id": "c18244cfbc159aff9c117366",
+              "path": "/tmp/setdown-lsp-audit-tools-20261017/node_modules/.bin/vscode-css-language-server",
+              "source": "path"
+            }
+          ],
+          "selectionNeeded": false,
+          "searched": [
+            "/tmp/setdown-lsp-audit-tools-20261017/node_modules/.bin",
+            "/home/yabsed/.opam/default/bin",
+            "/home/yabsed/.kimi-code/bin",
+            "/home/yabsed/.opencode/bin",
+            "/home/yabsed/.elan/bin",
+            "/usr/lib/jvm/java-17-temurin-jdk/bin",
+            "/home/yabsed/opt/llvm-22.1.0/bin",
+            "/usr/lib/jvm/java-21-openjdk/bin",
+            "/home/yabsed/.codex/tmp/arg0/codex-arg0o79xEr",
+            "/home/yabsed/.cabal/bin",
+            "/home/yabsed/.ghcup/bin",
+            "/home/yabsed/.local/bin",
+            "/home/yabsed/miniconda3/bin",
+            "/home/yabsed/miniconda3/condabin",
+            "/home/yabsed/.cargo/bin",
+            "/usr/local/bin",
+            "/usr/bin",
+            "/home/yabsed/Android/Sdk/emulator",
+            "/home/yabsed/Android/Sdk/platform-tools",
+            "/home/yabsed/.vscode-insiders/extensions/openai.chatgpt-26.51007.21434-linux-x64/bin/linux-x86_64",
+            "/home/yabsed/go/bin"
+          ],
+          "profileSource": "Helix · vscode-css-language-server",
+          "options": {
+            "args": [
+              "--stdio"
+            ],
+            "settings": {},
+            "initializationOptions": {
+              "provideFormatter": true,
+              "css": {
+                "validate": {
+                  "enable": true
+                }
+              }
+            }
+          },
+          "sessions": [
+            {
+              "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min",
+              "state": "ready",
+              "features": [
+                "completion",
+                "hover",
+                "definition",
+                "references",
+                "documentSymbol",
+                "documentHighlight",
+                "selectionRange",
+                "foldingRange",
+                "documentLink",
+                "color",
+                "rename",
+                "codeAction",
+                "documentFormatting",
+                "documentRangeFormatting",
+                "diagnostic"
+              ],
+              "logs": [
+                "Error while computing diagnostics for file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css: Cannot read properties of null (reading 'validProperties')\nTypeError: Cannot read properties of null (reading 'validProperties')\n    at LintConfigurationSettings.getSetting (/tmp/setdown-lsp-audit-tools-20261017/node_modules/vscode-css-languageservice/lib/umd/services/lintRules.js:78:29)\n    at new LintVisitor (/tmp/setdown-lsp-audit-tools-20261017/node_modules/vscode-css-languageservice/lib/umd/services/lint.js:53:41)\n    at LintVisitor.entries (/tmp/setdown-lsp-audit-tools-20261017/node_modules/vscode-css-languageservice/lib/umd/services/lint.js:41:29)\n    at CSSValidation.doValidation (/tmp/setdown-lsp-audit-tools-20261017/node_modules/vscode-css-languageservice/lib/umd/services/cssValidation.js:34:60)\n    at _callee15$ (/tmp/setdown-lsp-audit-tools-20261017/node_modules/vscode-langservers-extracted/lib/css-language-server/cssServer.js:288:83)\n    at tryCatch (/tmp/setdown-lsp-audit-tools-20261017/node_modules/regenerator-runtime/runtime.js:64:40)\n    at Generator.invoke (/tmp/setdown-lsp-audit-tools-20261017/node_modules/regenerator-runtime/runtime.js:299:22)\n    at Generator.next (/tmp/setdown-lsp-audit-tools-20261017/node_modules/regenerator-runtime/runtime.js:124:21)\n    at asyncGeneratorStep (/tmp/setdown-lsp-audit-tools-20261017/node_modules/vscode-langservers-extracted/lib/css-language-server/cssServer.js:53:103)\n    at _next (/tmp/setdown-lsp-audit-tools-20261017/node_modules/vscode-langservers-extracted/lib/css-language-server/cssServer.js:55:194)"
+              ],
+              "progress": []
+            }
+          ]
+        }
+      ],
+      "ipc": {
+        "opens": [
+          {
+            "document": {
+              "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+              "generation": "163c0881-4276-49c5-b850-d21c9f5d400c",
+              "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "version": 1
+            },
+            "response": {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "capabilities": {
+                "textDocumentSync": 2,
+                "completionProvider": {
+                  "resolveProvider": false,
+                  "triggerCharacters": [
+                    "/",
+                    "-",
+                    ":"
+                  ]
+                },
+                "hoverProvider": true,
+                "documentSymbolProvider": true,
+                "referencesProvider": true,
+                "definitionProvider": true,
+                "documentHighlightProvider": true,
+                "documentLinkProvider": {
+                  "resolveProvider": false
+                },
+                "codeActionProvider": true,
+                "renameProvider": true,
+                "colorProvider": {},
+                "foldingRangeProvider": true,
+                "selectionRangeProvider": true,
+                "diagnosticProvider": {
+                  "documentSelector": null,
+                  "interFileDependencies": false,
+                  "workspaceDiagnostics": false
+                },
+                "documentRangeFormattingProvider": true,
+                "documentFormattingProvider": true
+              },
+              "server": "css-lsp"
+            },
+            "ms": 236
+          }
+        ],
+        "changes": [
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 2
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 3
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 4
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 5
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 6
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 7
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 8
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 9
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 10
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 11
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 12
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 13
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 14
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 15
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 16
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 17
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 18
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 19
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 20
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 21
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 22
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 23
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 24
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 25
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 26
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 27
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 28
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 29
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 30
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 31
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 32
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 33
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 34
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 35
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 36
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 37
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 38
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 39
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 40
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 41
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 42
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 43
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 44
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 45
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 46
+          },
+          {
+            "id": "c6ac03e1-2ff4-43c6-aca9-09df2b598c5c",
+            "version": 47
+          }
+        ],
+        "requests": [
+          {
+            "method": "textDocument/codeAction",
+            "ms": 11
+          },
+          {
+            "method": "textDocument/documentLink",
+            "ms": 11
+          },
+          {
+            "method": "textDocument/documentColor",
+            "ms": 12
+          },
+          {
+            "method": "textDocument/diagnostic",
+            "ms": 11
+          },
+          {
+            "method": "textDocument/foldingRange",
+            "ms": 9
+          }
+        ]
+      },
+      "sourceUnchanged": true
+    },
+    {
+      "name": "css-min-configured-invalid",
+      "file": "vendor/min/css/windowControls.css",
+      "root": "vendor/min",
+      "needle": "display: none",
+      "symbol": "display",
+      "tools": true,
+      "configureCss": true,
+      "injectCss": true,
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 3,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 45,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 2,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 44,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 2,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "folding": {
+          "method": "textDocument/foldingRange",
+          "ms": 45,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "formatting": {
+          "method": "textDocument/formatting",
+          "ms": 2,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "pullDiagnostics": {
+          "method": "textDocument/diagnostic",
+          "ms": 45,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        }
+      },
+      "console": [
+        "Error: Missing requestHandler or method: doValidation\n    at We.$fmr (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:30:15921)\n    at ca._handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34642)\n    at Object.handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34136)\n    at ua._handleRequestMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:32917)\n    at ua._handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:32356)\n    at ua.handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:31967)\n    at ca.onmessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34262)\n    at globalThis.onmessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:35598)"
+      ],
+      "events": [
+        {
+          "type": "configuration",
+          "servers": [
+            "css-lsp"
+          ]
+        },
+        {
+          "type": "status",
+          "state": "starting",
+          "documents": [
+            {
+              "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+              "generation": "a9dfebfe-c882-4649-b45a-f5e0939d5c11"
+            }
+          ]
+        },
+        {
+          "type": "status",
+          "state": "ready",
+          "documents": [
+            {
+              "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+              "generation": "a9dfebfe-c882-4649-b45a-f5e0939d5c11"
+            }
+          ]
+        },
+        {
+          "type": "refresh",
+          "feature": "diagnostic",
+          "documents": [
+            {
+              "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+              "generation": "a9dfebfe-c882-4649-b45a-f5e0939d5c11"
+            }
+          ]
+        }
+      ],
+      "sourceSha256": "3dd2b40d6be2e16d4535adf635b5d7581e5a1883715d607b758eb3a9a50491f4",
+      "connection": {
+        "document": {
+          "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+          "generation": "a9dfebfe-c882-4649-b45a-f5e0939d5c11",
+          "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+          "version": 1
+        },
+        "response": {
+          "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "completionProvider": {
+              "resolveProvider": false,
+              "triggerCharacters": [
+                "/",
+                "-",
+                ":"
+              ]
+            },
+            "hoverProvider": true,
+            "documentSymbolProvider": true,
+            "referencesProvider": true,
+            "definitionProvider": true,
+            "documentHighlightProvider": true,
+            "documentLinkProvider": {
+              "resolveProvider": false
+            },
+            "codeActionProvider": true,
+            "renameProvider": true,
+            "colorProvider": {},
+            "foldingRangeProvider": true,
+            "selectionRangeProvider": true,
+            "diagnosticProvider": {
+              "documentSelector": null,
+              "interFileDependencies": false,
+              "workspaceDiagnostics": false
+            },
+            "documentRangeFormattingProvider": true,
+            "documentFormattingProvider": true
+          },
+          "server": "css-lsp"
+        },
+        "ms": 228
+      },
+      "openToConnectionMs": 360,
+      "unsavedInjection": "\n.audit { zzz-invalid-property: 1; color: ; }\n",
+      "position": {
+        "line": 8,
+        "character": 3
+      },
+      "completionCount": 0,
+      "sessions": [
+        {
+          "id": "css-lsp",
+          "name": "css-lsp",
+          "languages": [
+            "CSS",
+            "SCSS",
+            "LESS"
+          ],
+          "description": "Language Server Protocol implementation for CSS, SCSS & LESS.",
+          "homepage": "https://github.com/microsoft/vscode-css-languageservice",
+          "configured": true,
+          "bundled": false,
+          "custom": false,
+          "managed": true,
+          "discoverable": true,
+          "enabled": true,
+          "selected": [
+            "css",
+            "scss",
+            "less"
+          ],
+          "executable": "/tmp/setdown-lsp-audit-tools-20261017/node_modules/.bin/vscode-css-language-server",
+          "available": true,
+          "automatic": true,
+          "canDetect": true,
+          "candidates": [
+            {
+              "id": "c18244cfbc159aff9c117366",
+              "path": "/tmp/setdown-lsp-audit-tools-20261017/node_modules/.bin/vscode-css-language-server",
+              "source": "path"
+            }
+          ],
+          "selectionNeeded": false,
+          "searched": [
+            "/tmp/setdown-lsp-audit-tools-20261017/node_modules/.bin",
+            "/home/yabsed/.opam/default/bin",
+            "/home/yabsed/.kimi-code/bin",
+            "/home/yabsed/.opencode/bin",
+            "/home/yabsed/.elan/bin",
+            "/usr/lib/jvm/java-17-temurin-jdk/bin",
+            "/home/yabsed/opt/llvm-22.1.0/bin",
+            "/usr/lib/jvm/java-21-openjdk/bin",
+            "/home/yabsed/.codex/tmp/arg0/codex-arg0o79xEr",
+            "/home/yabsed/.cabal/bin",
+            "/home/yabsed/.ghcup/bin",
+            "/home/yabsed/.local/bin",
+            "/home/yabsed/miniconda3/bin",
+            "/home/yabsed/miniconda3/condabin",
+            "/home/yabsed/.cargo/bin",
+            "/usr/local/bin",
+            "/usr/bin",
+            "/home/yabsed/Android/Sdk/emulator",
+            "/home/yabsed/Android/Sdk/platform-tools",
+            "/home/yabsed/.vscode-insiders/extensions/openai.chatgpt-26.51007.21434-linux-x64/bin/linux-x86_64",
+            "/home/yabsed/go/bin"
+          ],
+          "profileSource": "Helix · vscode-css-language-server",
+          "options": {
+            "args": [
+              "--stdio"
+            ],
+            "settings": {
+              "css": {
+                "validate": true,
+                "lint": {},
+                "completion": {},
+                "hover": {}
+              },
+              "scss": {
+                "validate": true,
+                "lint": {},
+                "completion": {},
+                "hover": {}
+              },
+              "less": {
+                "validate": true,
+                "lint": {},
+                "completion": {},
+                "hover": {}
+              }
+            },
+            "initializationOptions": {
+              "provideFormatter": true,
+              "css": {
+                "validate": {
+                  "enable": true
+                }
+              }
+            }
+          },
+          "sessions": [
+            {
+              "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min",
+              "state": "ready",
+              "features": [
+                "completion",
+                "hover",
+                "definition",
+                "references",
+                "documentSymbol",
+                "documentHighlight",
+                "selectionRange",
+                "foldingRange",
+                "documentLink",
+                "color",
+                "rename",
+                "codeAction",
+                "documentFormatting",
+                "documentRangeFormatting",
+                "diagnostic"
+              ],
+              "logs": [],
+              "progress": []
+            }
+          ]
+        }
+      ],
+      "ipc": {
+        "opens": [
+          {
+            "document": {
+              "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+              "generation": "a9dfebfe-c882-4649-b45a-f5e0939d5c11",
+              "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "version": 1
+            },
+            "response": {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "capabilities": {
+                "textDocumentSync": 2,
+                "completionProvider": {
+                  "resolveProvider": false,
+                  "triggerCharacters": [
+                    "/",
+                    "-",
+                    ":"
+                  ]
+                },
+                "hoverProvider": true,
+                "documentSymbolProvider": true,
+                "referencesProvider": true,
+                "definitionProvider": true,
+                "documentHighlightProvider": true,
+                "documentLinkProvider": {
+                  "resolveProvider": false
+                },
+                "codeActionProvider": true,
+                "renameProvider": true,
+                "colorProvider": {},
+                "foldingRangeProvider": true,
+                "selectionRangeProvider": true,
+                "diagnosticProvider": {
+                  "documentSelector": null,
+                  "interFileDependencies": false,
+                  "workspaceDiagnostics": false
+                },
+                "documentRangeFormattingProvider": true,
+                "documentFormattingProvider": true
+              },
+              "server": "css-lsp"
+            },
+            "ms": 228
+          }
+        ],
+        "changes": [
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 2
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 3
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 4
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 5
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 6
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 7
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 8
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 9
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 10
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 11
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 12
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 13
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 14
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 15
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 16
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 17
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 18
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 19
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 20
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 21
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 22
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 23
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 24
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 25
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 26
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 27
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 28
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 29
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 30
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 31
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 32
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 33
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 34
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 35
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 36
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 37
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 38
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 39
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 40
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 41
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 42
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 43
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 44
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 45
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 46
+          },
+          {
+            "id": "4240c10a-c19a-4d05-8804-d856f093c7ae",
+            "version": 47
+          }
+        ],
+        "requests": [
+          {
+            "method": "textDocument/codeAction",
+            "ms": 11
+          },
+          {
+            "method": "textDocument/documentLink",
+            "ms": 11
+          },
+          {
+            "method": "textDocument/documentColor",
+            "ms": 13
+          },
+          {
+            "method": "textDocument/diagnostic",
+            "ms": 9
+          },
+          {
+            "method": "textDocument/foldingRange",
+            "ms": 7
+          }
+        ]
+      },
+      "sourceUnchanged": true
+    }
+  ]
+}

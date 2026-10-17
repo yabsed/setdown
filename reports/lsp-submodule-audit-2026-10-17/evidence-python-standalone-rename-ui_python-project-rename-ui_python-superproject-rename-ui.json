@@ -1,0 +1,5484 @@
+{
+  "revision": "a00d7aef1c6c5868777fc5b04fb97ef225ce69a4",
+  "node": "v22.23.1",
+  "started": "2026-10-17T03:26:21.276Z",
+  "cases": [
+    {
+      "name": "python-standalone-rename-ui",
+      "file": "vendor/nbformat/nbformat/notebooknode.py",
+      "needle": "value = from_dict(value)",
+      "symbol": "from_dict",
+      "uiRename": true,
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 65,
+          "response": [
+            {
+              "name": "_ATOMIC_TYPES",
+              "kind": 14,
+              "range": {
+                "start": {
+                  "line": 10,
+                  "character": 0
+                },
+                "end": {
+                  "line": 10,
+                  "character": 13
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 10,
+                  "character": 0
+                },
+                "end": {
+                  "line": 10,
+                  "character": 13
+                }
+              },
+              "children": [],
+              "$setdownItem": "432bd3ad-8f2b-4fdc-8a9d-c7cd6b0eff9b"
+            },
+            {
+              "name": "NotebookNode",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 13,
+                  "character": 0
+                },
+                "end": {
+                  "line": 69,
+                  "character": 29
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 13,
+                  "character": 6
+                },
+                "end": {
+                  "line": 13,
+                  "character": 18
+                }
+              },
+              "children": [
+                {
+                  "name": "__setitem__",
+                  "kind": 6,
+                  "range": {
+                    "start": {
+                      "line": 16,
+                      "character": 4
+                    },
+                    "end": {
+                      "line": 20,
+                      "character": 39
+                    }
+                  },
+                  "selectionRange": {
+                    "start": {
+                      "line": 16,
+                      "character": 8
+                    },
+                    "end": {
+                      "line": 16,
+                      "character": 19
+                    }
+                  },
+                  "children": [
+                    {
+                      "name": "key",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 16,
+                          "character": 26
+                        },
+                        "end": {
+                          "line": 16,
+                          "character": 29
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 16,
+                          "character": 26
+                        },
+                        "end": {
+                          "line": 16,
+                          "character": 29
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "4779ad3d-337e-4c99-b852-bb0eb32fb6b6"
+                    },
+                    {
+                      "name": "value",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 16,
+                          "character": 31
+                        },
+                        "end": {
+                          "line": 16,
+                          "character": 36
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 16,
+                          "character": 31
+                        },
+                        "end": {
+                          "line": 16,
+                          "character": 36
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "a6999e7c-66bf-48ee-8440-cea421ec9e29"
+                    }
+                  ],
+                  "$setdownItem": "47cba242-c4d5-4072-bd0e-2a88e6cd4e2f"
+                },
+                {
+                  "name": "__deepcopy__",
+                  "kind": 6,
+                  "range": {
+                    "start": {
+                      "line": 22,
+                      "character": 4
+                    },
+                    "end": {
+                      "line": 48,
+                      "character": 18
+                    }
+                  },
+                  "selectionRange": {
+                    "start": {
+                      "line": 22,
+                      "character": 8
+                    },
+                    "end": {
+                      "line": 22,
+                      "character": 20
+                    }
+                  },
+                  "children": [
+                    {
+                      "name": "memo",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 22,
+                          "character": 27
+                        },
+                        "end": {
+                          "line": 22,
+                          "character": 31
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 22,
+                          "character": 27
+                        },
+                        "end": {
+                          "line": 22,
+                          "character": 31
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "1dc69e33-a980-40e6-ab52-e22895dc45b2"
+                    },
+                    {
+                      "name": "new",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 30,
+                          "character": 8
+                        },
+                        "end": {
+                          "line": 30,
+                          "character": 11
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 30,
+                          "character": 8
+                        },
+                        "end": {
+                          "line": 30,
+                          "character": 11
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "577b487d-0bf3-4d7e-8143-87b7a5f74940"
+                    },
+                    {
+                      "name": "key",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 32,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 32,
+                          "character": 15
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 32,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 32,
+                          "character": 15
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "22d5622f-d909-45c7-8063-7bc887867dd0"
+                    },
+                    {
+                      "name": "value",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 32,
+                          "character": 17
+                        },
+                        "end": {
+                          "line": 32,
+                          "character": 22
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 32,
+                          "character": 17
+                        },
+                        "end": {
+                          "line": 32,
+                          "character": 22
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "08cbc120-0362-4f3b-9df3-38fa6586eb19"
+                    },
+                    {
+                      "name": "value_type",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 33,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 33,
+                          "character": 22
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 33,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 33,
+                          "character": 22
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "0a77a310-dc6f-4677-bbbc-797e762bb9ad"
+                    }
+                  ],
+                  "$setdownItem": "39a39315-a244-448d-9d2c-4384f265570c"
+                },
+                {
+                  "name": "update",
+                  "kind": 6,
+                  "range": {
+                    "start": {
+                      "line": 50,
+                      "character": 4
+                    },
+                    "end": {
+                      "line": 69,
+                      "character": 29
+                    }
+                  },
+                  "selectionRange": {
+                    "start": {
+                      "line": 50,
+                      "character": 8
+                    },
+                    "end": {
+                      "line": 50,
+                      "character": 14
+                    }
+                  },
+                  "children": [
+                    {
+                      "name": "args",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 50,
+                          "character": 21
+                        },
+                        "end": {
+                          "line": 50,
+                          "character": 26
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 50,
+                          "character": 21
+                        },
+                        "end": {
+                          "line": 50,
+                          "character": 26
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "b3b6525a-bac9-41d2-914d-c090e40b2c8f"
+                    },
+                    {
+                      "name": "kwargs",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 50,
+                          "character": 28
+                        },
+                        "end": {
+                          "line": 50,
+                          "character": 36
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 50,
+                          "character": 28
+                        },
+                        "end": {
+                          "line": 50,
+                          "character": 36
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "c0853eaf-73d8-4a0f-ab6a-a0a510252ce3"
+                    },
+                    {
+                      "name": "other",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 58,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 58,
+                          "character": 17
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 58,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 58,
+                          "character": 17
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "c48a5064-b27d-4d32-9bec-0643df1eb79c"
+                    },
+                    {
+                      "name": "key",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 60,
+                          "character": 20
+                        },
+                        "end": {
+                          "line": 60,
+                          "character": 23
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 60,
+                          "character": 20
+                        },
+                        "end": {
+                          "line": 60,
+                          "character": 23
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "6bd17721-e74b-4910-9656-6fafcb9687e3"
+                    },
+                    {
+                      "name": "value",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 66,
+                          "character": 25
+                        },
+                        "end": {
+                          "line": 66,
+                          "character": 30
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 66,
+                          "character": 25
+                        },
+                        "end": {
+                          "line": 66,
+                          "character": 30
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "c6da49e0-60c9-4469-817f-ad7d1e0499a8"
+                    }
+                  ],
+                  "$setdownItem": "ed8d2a34-3d1c-49b2-9f8f-bf9f349700d5"
+                }
+              ],
+              "$setdownItem": "648e6449-5057-4091-b48b-19d83ce64e21"
+            },
+            {
+              "name": "from_dict",
+              "kind": 12,
+              "range": {
+                "start": {
+                  "line": 72,
+                  "character": 0
+                },
+                "end": {
+                  "line": 83,
+                  "character": 12
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 72,
+                  "character": 4
+                },
+                "end": {
+                  "line": 72,
+                  "character": 13
+                }
+              },
+              "children": [
+                {
+                  "name": "d",
+                  "kind": 13,
+                  "range": {
+                    "start": {
+                      "line": 72,
+                      "character": 14
+                    },
+                    "end": {
+                      "line": 72,
+                      "character": 15
+                    }
+                  },
+                  "selectionRange": {
+                    "start": {
+                      "line": 72,
+                      "character": 14
+                    },
+                    "end": {
+                      "line": 72,
+                      "character": 15
+                    }
+                  },
+                  "children": [],
+                  "$setdownItem": "baa62fd2-057f-48ba-93c3-2849eeadb200"
+                }
+              ],
+              "$setdownItem": "949aa248-03b6-4673-bf20-ab708fe0e1c3"
+            }
+          ]
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 102,
+          "response": {
+            "contents": {
+              "kind": "markdown",
+              "value": "```python\n(function) def from_dict(d: Any) -> (NotebookNode | list[NotebookNode | list | Any] | Any)\n```\n---\nConvert dict to dict-like NotebookNode\n\nRecursively converts any dict in the container to a NotebookNode.\nThis does not check that the contents of the dictionary make a valid\nnotebook or part of a notebook."
+            },
+            "range": {
+              "start": {
+                "line": 19,
+                "character": 20
+              },
+              "end": {
+                "line": 19,
+                "character": 29
+              }
+            },
+            "$setdownItem": "64574d96-7f41-489b-9e31-d88b4d7c5eb6"
+          }
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 5,
+          "response": [
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 72,
+                  "character": 4
+                },
+                "end": {
+                  "line": 72,
+                  "character": 13
+                }
+              },
+              "$setdownItem": "a1a5ad79-289f-42f8-9f21-0bba6d73be76"
+            }
+          ]
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 10,
+          "response": [
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 19,
+                  "character": 20
+                },
+                "end": {
+                  "line": 19,
+                  "character": 29
+                }
+              },
+              "$setdownItem": "9734da71-46e8-4634-980d-0d62788ade82"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 72,
+                  "character": 4
+                },
+                "end": {
+                  "line": 72,
+                  "character": 13
+                }
+              },
+              "$setdownItem": "a96bfe36-06dc-434e-a520-d3aa2b34601d"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 80,
+                  "character": 32
+                },
+                "end": {
+                  "line": 80,
+                  "character": 41
+                }
+              },
+              "$setdownItem": "81157b17-c87a-4f44-8d92-583d959b6a2d"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 82,
+                  "character": 16
+                },
+                "end": {
+                  "line": 82,
+                  "character": 25
+                }
+              },
+              "$setdownItem": "78d7d7df-dbf1-40fb-adde-5c45557e3882"
+            }
+          ]
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 25,
+          "response": {
+            "isIncomplete": true,
+            "count": 47,
+            "sample": [
+              {
+                "label": "self",
+                "kind": 6,
+                "sortText": "12.9999.self",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "self"
+                },
+                "$setdownItem": "71f2e32d-a5c4-4818-ba7d-66f0677cb481"
+              },
+              {
+                "label": "__file__",
+                "kind": 6,
+                "sortText": "14.9999.__file__",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "__file__"
+                },
+                "$setdownItem": "dc75bd4e-35b4-4b49-9c1b-5b01aee79806"
+              },
+              {
+                "label": "from_dict",
+                "kind": 3,
+                "sortText": "12.9999.from_dict",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "from_dict"
+                },
+                "$setdownItem": "6e0fc148-37a1-4f64-aecc-e2bc7d421eb4"
+              },
+              {
+                "label": "float",
+                "kind": 7,
+                "sortText": "12.9999.float",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "float"
+                },
+                "$setdownItem": "db3c50bd-c7dc-4e3e-bfb8-f10be90a2c4d"
+              },
+              {
+                "label": "function",
+                "kind": 7,
+                "sortText": "12.9999.function",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "function"
+                },
+                "$setdownItem": "708e219f-a942-4326-8b0b-b93080418f45"
+              },
+              {
+                "label": "frozenset",
+                "kind": 7,
+                "sortText": "12.9999.frozenset",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "frozenset"
+                },
+                "$setdownItem": "fa5228db-f0ae-4ba6-81a4-a50823704ba5"
+              },
+              {
+                "label": "filter",
+                "kind": 7,
+                "sortText": "12.9999.filter",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "filter"
+                },
+                "$setdownItem": "18d319fd-4d3c-4634-be57-1b9499a7ee67"
+              },
+              {
+                "label": "format",
+                "kind": 3,
+                "sortText": "12.9999.format",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "format"
+                },
+                "$setdownItem": "471eb8d2-df3b-434f-ba9b-4f8681a7f3e4"
+              }
+            ]
+          }
+        },
+        "completionResolve": {
+          "method": "completionItem/resolve",
+          "ms": 6,
+          "response": {
+            "label": "from_dict",
+            "kind": 3,
+            "sortText": "12.9999.from_dict",
+            "data": {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "position": {
+                "line": 19,
+                "character": 21
+              },
+              "symbolLabel": "from_dict"
+            },
+            "documentation": {
+              "kind": "markdown",
+              "value": "```python\ndef from_dict(d: Any) -> (NotebookNode | list[NotebookNode | list | Any] | Any)\n```\n---\nConvert dict to dict-like NotebookNode\n\nRecursively converts any dict in the container to a NotebookNode.\nThis does not check that the contents of the dictionary make a valid\nnotebook or part of a notebook."
+            },
+            "$setdownItem": "eed2cab6-17b0-4da0-a477-7b58e2c2812b"
+          }
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 2,
+          "response": [
+            {
+              "name": "from_dict",
+              "kind": 12,
+              "location": {
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                "range": {
+                  "start": {
+                    "line": 72,
+                    "character": 4
+                  },
+                  "end": {
+                    "line": 72,
+                    "character": 13
+                  }
+                },
+                "$setdownItem": "2ac391b4-5074-4f4e-a351-51bae6f47692"
+              },
+              "$setdownItem": "10698a9c-49b1-4558-aa50-c06b6c995dfa"
+            }
+          ]
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 3,
+          "response": [
+            {
+              "name": "from_dict",
+              "kind": 12,
+              "detail": "(notebooknode.py)",
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 72,
+                  "character": 4
+                },
+                "end": {
+                  "line": 72,
+                  "character": 13
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 72,
+                  "character": 4
+                },
+                "end": {
+                  "line": 72,
+                  "character": 13
+                }
+              },
+              "$setdownItem": "719d1501-2ab9-4cca-96f2-57c1c6ba4190"
+            }
+          ]
+        },
+        "incomingCalls": {
+          "method": "callHierarchy/incomingCalls",
+          "ms": 3,
+          "response": [
+            {
+              "from": {
+                "name": "__setitem__",
+                "kind": 12,
+                "detail": "class NotebookNode (notebooknode.py)",
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                "range": {
+                  "start": {
+                    "line": 16,
+                    "character": 8
+                  },
+                  "end": {
+                    "line": 16,
+                    "character": 19
+                  }
+                },
+                "selectionRange": {
+                  "start": {
+                    "line": 16,
+                    "character": 8
+                  },
+                  "end": {
+                    "line": 16,
+                    "character": 19
+                  }
+                },
+                "$setdownItem": "1ffe146b-3d53-4259-959a-7fb99acb16e2"
+              },
+              "fromRanges": [
+                {
+                  "start": {
+                    "line": 19,
+                    "character": 20
+                  },
+                  "end": {
+                    "line": 19,
+                    "character": 29
+                  }
+                }
+              ]
+            },
+            {
+              "from": {
+                "name": "from_dict",
+                "kind": 12,
+                "detail": "(notebooknode.py)",
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                "range": {
+                  "start": {
+                    "line": 72,
+                    "character": 4
+                  },
+                  "end": {
+                    "line": 72,
+                    "character": 13
+                  }
+                },
+                "selectionRange": {
+                  "start": {
+                    "line": 72,
+                    "character": 4
+                  },
+                  "end": {
+                    "line": 72,
+                    "character": 13
+                  }
+                },
+                "$setdownItem": "5bed35c6-16bc-44d4-8530-e3136fb5a9db"
+              },
+              "fromRanges": [
+                {
+                  "start": {
+                    "line": 80,
+                    "character": 32
+                  },
+                  "end": {
+                    "line": 80,
+                    "character": 41
+                  }
+                },
+                {
+                  "start": {
+                    "line": 82,
+                    "character": 16
+                  },
+                  "end": {
+                    "line": 82,
+                    "character": 25
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "console": [],
+      "events": [
+        {
+          "type": "status",
+          "state": "starting",
+          "documents": [
+            {
+              "id": "238b4087-cbe2-4297-9a02-5d29b38d44f7",
+              "generation": "5a2c92bd-7a30-4431-be7b-0f86c1827db5"
+            }
+          ]
+        },
+        {
+          "type": "status",
+          "state": "ready",
+          "documents": [
+            {
+              "id": "238b4087-cbe2-4297-9a02-5d29b38d44f7",
+              "generation": "5a2c92bd-7a30-4431-be7b-0f86c1827db5"
+            }
+          ]
+        },
+        {
+          "type": "capabilities",
+          "id": "238b4087-cbe2-4297-9a02-5d29b38d44f7",
+          "generation": "5a2c92bd-7a30-4431-be7b-0f86c1827db5",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          }
+        },
+        {
+          "type": "capabilities",
+          "id": "238b4087-cbe2-4297-9a02-5d29b38d44f7",
+          "generation": "5a2c92bd-7a30-4431-be7b-0f86c1827db5",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          }
+        },
+        {
+          "type": "capabilities",
+          "id": "238b4087-cbe2-4297-9a02-5d29b38d44f7",
+          "generation": "5a2c92bd-7a30-4431-be7b-0f86c1827db5",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          }
+        },
+        {
+          "type": "capabilities",
+          "id": "238b4087-cbe2-4297-9a02-5d29b38d44f7",
+          "generation": "5a2c92bd-7a30-4431-be7b-0f86c1827db5",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          }
+        },
+        {
+          "type": "capabilities",
+          "id": "238b4087-cbe2-4297-9a02-5d29b38d44f7",
+          "generation": "5a2c92bd-7a30-4431-be7b-0f86c1827db5",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          }
+        },
+        {
+          "type": "activity"
+        },
+        {
+          "type": "diagnostics",
+          "id": "238b4087-cbe2-4297-9a02-5d29b38d44f7",
+          "generation": "5a2c92bd-7a30-4431-be7b-0f86c1827db5",
+          "version": 1,
+          "unversioned": false,
+          "diagnostics": []
+        },
+        {
+          "type": "status",
+          "state": "starting",
+          "documents": [
+            {
+              "id": "938d9e0a-0a9b-468b-a000-7ef21d274be8",
+              "generation": "a35d22d4-5b43-4d5c-be3d-8c10f6bbf803"
+            }
+          ]
+        },
+        {
+          "type": "status",
+          "state": "ready",
+          "documents": [
+            {
+              "id": "938d9e0a-0a9b-468b-a000-7ef21d274be8",
+              "generation": "a35d22d4-5b43-4d5c-be3d-8c10f6bbf803"
+            }
+          ]
+        }
+      ],
+      "sourceSha256": "c2028aec0519f09f04aeaaa89c0664d45da6e71f0de64b7fe9b87ba0116e891a",
+      "connection": {
+        "document": {
+          "id": "238b4087-cbe2-4297-9a02-5d29b38d44f7",
+          "generation": "5a2c92bd-7a30-4431-be7b-0f86c1827db5",
+          "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+          "version": 1
+        },
+        "response": {
+          "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          },
+          "server": "pyright"
+        },
+        "ms": 132
+      },
+      "openToConnectionMs": 373,
+      "position": {
+        "line": 19,
+        "character": 21
+      },
+      "completionCount": 47,
+      "renameTabs": [
+        "start.txt   ×",
+        "notebooknode.py  • ×",
+        "__init__.py  • ×"
+      ],
+      "renameOpenedPaths": [
+        "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+        "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/__init__.py"
+      ],
+      "sessions": [
+        {
+          "id": "pyright",
+          "name": "Pyright",
+          "languages": [
+            "Python"
+          ],
+          "description": "Static type checker for Python.",
+          "homepage": "https://github.com/microsoft/pyright",
+          "configured": true,
+          "bundled": true,
+          "custom": false,
+          "managed": true,
+          "discoverable": false,
+          "enabled": true,
+          "selected": [
+            "python"
+          ],
+          "executable": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/node_modules/electron/dist/electron",
+          "available": true,
+          "automatic": true,
+          "canDetect": false,
+          "selectionNeeded": false,
+          "profileSource": "Helix · pyright",
+          "options": {
+            "args": [
+              "--stdio"
+            ],
+            "settings": {
+              "python": {
+                "analysis": {
+                  "autoSearchPaths": true,
+                  "useLibraryCodeForTypes": true,
+                  "diagnosticMode": "openFilesOnly",
+                  "typeCheckingMode": "off"
+                }
+              }
+            },
+            "initializationOptions": {
+              "disablePullDiagnostics": true
+            }
+          },
+          "sessions": [
+            {
+              "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat",
+              "state": "ready",
+              "features": [
+                "completion",
+                "hover",
+                "signatureHelp",
+                "definition",
+                "declaration",
+                "typeDefinition",
+                "references",
+                "documentSymbol",
+                "documentHighlight",
+                "rename",
+                "codeAction",
+                "workspaceSymbol",
+                "callHierarchy"
+              ],
+              "logs": [
+                "Pyright language server 1.1.414 starting",
+                "Server root directory: file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/pyright/dist",
+                "Starting service instance \"/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat\"",
+                "No include entries specified; assuming /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat",
+                "Auto-excluding **/node_modules",
+                "Auto-excluding **/__pycache__",
+                "Auto-excluding **/.*",
+                "Auto-excluding **/__editable__.*",
+                "Assuming Python version 3.13.11.final.0",
+                "No include entries specified; assuming /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat",
+                "Auto-excluding **/node_modules",
+                "Auto-excluding **/__pycache__",
+                "Auto-excluding **/.*",
+                "Auto-excluding **/__editable__.*",
+                "Assuming Python version 3.13.11.final.0",
+                "Found 40 source files"
+              ],
+              "progress": []
+            }
+          ]
+        }
+      ],
+      "ipc": {
+        "opens": [
+          {
+            "document": {
+              "id": "238b4087-cbe2-4297-9a02-5d29b38d44f7",
+              "generation": "5a2c92bd-7a30-4431-be7b-0f86c1827db5",
+              "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "version": 1
+            },
+            "response": {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "capabilities": {
+                "textDocumentSync": 2,
+                "definitionProvider": {
+                  "workDoneProgress": true
+                },
+                "declarationProvider": {
+                  "workDoneProgress": true
+                },
+                "typeDefinitionProvider": {
+                  "workDoneProgress": true
+                },
+                "referencesProvider": {
+                  "workDoneProgress": true
+                },
+                "documentSymbolProvider": {
+                  "workDoneProgress": true
+                },
+                "workspaceSymbolProvider": {
+                  "workDoneProgress": true
+                },
+                "hoverProvider": {
+                  "workDoneProgress": true
+                },
+                "documentHighlightProvider": {
+                  "workDoneProgress": true
+                },
+                "renameProvider": {
+                  "prepareProvider": true,
+                  "workDoneProgress": true
+                },
+                "completionProvider": {
+                  "triggerCharacters": [
+                    ".",
+                    "[",
+                    "\"",
+                    "'"
+                  ],
+                  "resolveProvider": true,
+                  "workDoneProgress": true,
+                  "completionItem": {
+                    "labelDetailsSupport": true
+                  }
+                },
+                "signatureHelpProvider": {
+                  "triggerCharacters": [
+                    "(",
+                    ",",
+                    ")"
+                  ],
+                  "workDoneProgress": true
+                },
+                "codeActionProvider": {
+                  "codeActionKinds": [
+                    "quickfix",
+                    "source.organizeImports"
+                  ],
+                  "workDoneProgress": true
+                },
+                "executeCommandProvider": {
+                  "commands": [],
+                  "workDoneProgress": true
+                },
+                "callHierarchyProvider": true,
+                "workspace": {
+                  "workspaceFolders": {
+                    "supported": true,
+                    "changeNotifications": true
+                  }
+                }
+              },
+              "server": "pyright"
+            },
+            "ms": 132
+          },
+          {
+            "document": {
+              "id": "938d9e0a-0a9b-468b-a000-7ef21d274be8",
+              "generation": "a35d22d4-5b43-4d5c-be3d-8c10f6bbf803",
+              "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/__init__.py",
+              "version": 1
+            },
+            "response": {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/__init__.py",
+              "capabilities": {
+                "textDocumentSync": 2,
+                "definitionProvider": {
+                  "workDoneProgress": true
+                },
+                "declarationProvider": {
+                  "workDoneProgress": true
+                },
+                "typeDefinitionProvider": {
+                  "workDoneProgress": true
+                },
+                "referencesProvider": {
+                  "workDoneProgress": true
+                },
+                "documentSymbolProvider": {
+                  "workDoneProgress": true
+                },
+                "workspaceSymbolProvider": {
+                  "workDoneProgress": true
+                },
+                "hoverProvider": {
+                  "workDoneProgress": true
+                },
+                "documentHighlightProvider": {
+                  "workDoneProgress": true
+                },
+                "renameProvider": {
+                  "prepareProvider": true,
+                  "workDoneProgress": true
+                },
+                "completionProvider": {
+                  "triggerCharacters": [
+                    ".",
+                    "[",
+                    "\"",
+                    "'"
+                  ],
+                  "resolveProvider": true,
+                  "workDoneProgress": true,
+                  "completionItem": {
+                    "labelDetailsSupport": true
+                  }
+                },
+                "signatureHelpProvider": {
+                  "triggerCharacters": [
+                    "(",
+                    ",",
+                    ")"
+                  ],
+                  "workDoneProgress": true
+                },
+                "codeActionProvider": {
+                  "codeActionKinds": [
+                    "quickfix",
+                    "source.organizeImports"
+                  ],
+                  "workDoneProgress": true
+                },
+                "executeCommandProvider": {
+                  "commands": [],
+                  "workDoneProgress": true
+                },
+                "callHierarchyProvider": true,
+                "workspace": {
+                  "workspaceFolders": {
+                    "supported": true,
+                    "changeNotifications": true
+                  }
+                }
+              },
+              "server": "pyright"
+            },
+            "ms": 6
+          }
+        ],
+        "changes": [
+          {
+            "id": "238b4087-cbe2-4297-9a02-5d29b38d44f7",
+            "version": 2
+          },
+          {
+            "id": "938d9e0a-0a9b-468b-a000-7ef21d274be8",
+            "version": 2
+          }
+        ],
+        "requests": [
+          {
+            "method": "textDocument/codeAction",
+            "ms": 58
+          },
+          {
+            "method": "textDocument/codeAction",
+            "ms": 1
+          },
+          {
+            "method": "textDocument/documentSymbol",
+            "ms": 58
+          },
+          {
+            "method": "textDocument/hover",
+            "ms": 96
+          },
+          {
+            "method": "textDocument/definition",
+            "ms": 1
+          },
+          {
+            "method": "textDocument/references",
+            "ms": 7
+          },
+          {
+            "method": "textDocument/completion",
+            "ms": 12
+          },
+          {
+            "method": "completionItem/resolve",
+            "ms": 2
+          },
+          {
+            "method": "workspace/symbol",
+            "ms": 1
+          },
+          {
+            "method": "textDocument/prepareCallHierarchy",
+            "ms": 1
+          },
+          {
+            "method": "callHierarchy/incomingCalls",
+            "ms": 1
+          },
+          {
+            "method": "textDocument/prepareRename",
+            "ms": 1
+          },
+          {
+            "method": "textDocument/documentHighlight",
+            "ms": 1
+          },
+          {
+            "method": "textDocument/rename",
+            "ms": 175
+          },
+          {
+            "method": "textDocument/codeAction",
+            "ms": 3
+          },
+          {
+            "method": "textDocument/rename",
+            "ms": 3
+          }
+        ]
+      },
+      "sourceUnchanged": true
+    },
+    {
+      "name": "python-project-rename-ui",
+      "file": "vendor/nbformat/nbformat/notebooknode.py",
+      "root": "vendor/nbformat",
+      "needle": "value = from_dict(value)",
+      "symbol": "from_dict",
+      "uiRename": true,
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 61,
+          "response": [
+            {
+              "name": "_ATOMIC_TYPES",
+              "kind": 14,
+              "range": {
+                "start": {
+                  "line": 10,
+                  "character": 0
+                },
+                "end": {
+                  "line": 10,
+                  "character": 13
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 10,
+                  "character": 0
+                },
+                "end": {
+                  "line": 10,
+                  "character": 13
+                }
+              },
+              "children": [],
+              "$setdownItem": "36cb2514-7c84-4944-9c4e-e7339f7f9efd"
+            },
+            {
+              "name": "NotebookNode",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 13,
+                  "character": 0
+                },
+                "end": {
+                  "line": 69,
+                  "character": 29
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 13,
+                  "character": 6
+                },
+                "end": {
+                  "line": 13,
+                  "character": 18
+                }
+              },
+              "children": [
+                {
+                  "name": "__setitem__",
+                  "kind": 6,
+                  "range": {
+                    "start": {
+                      "line": 16,
+                      "character": 4
+                    },
+                    "end": {
+                      "line": 20,
+                      "character": 39
+                    }
+                  },
+                  "selectionRange": {
+                    "start": {
+                      "line": 16,
+                      "character": 8
+                    },
+                    "end": {
+                      "line": 16,
+                      "character": 19
+                    }
+                  },
+                  "children": [
+                    {
+                      "name": "key",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 16,
+                          "character": 26
+                        },
+                        "end": {
+                          "line": 16,
+                          "character": 29
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 16,
+                          "character": 26
+                        },
+                        "end": {
+                          "line": 16,
+                          "character": 29
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "02e413df-2509-4a4f-b5e2-ab42d7318f92"
+                    },
+                    {
+                      "name": "value",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 16,
+                          "character": 31
+                        },
+                        "end": {
+                          "line": 16,
+                          "character": 36
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 16,
+                          "character": 31
+                        },
+                        "end": {
+                          "line": 16,
+                          "character": 36
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "0cb0459e-2065-4579-b161-b7a50642385f"
+                    }
+                  ],
+                  "$setdownItem": "ef3fe07e-d606-421a-87d1-870bbad7c641"
+                },
+                {
+                  "name": "__deepcopy__",
+                  "kind": 6,
+                  "range": {
+                    "start": {
+                      "line": 22,
+                      "character": 4
+                    },
+                    "end": {
+                      "line": 48,
+                      "character": 18
+                    }
+                  },
+                  "selectionRange": {
+                    "start": {
+                      "line": 22,
+                      "character": 8
+                    },
+                    "end": {
+                      "line": 22,
+                      "character": 20
+                    }
+                  },
+                  "children": [
+                    {
+                      "name": "memo",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 22,
+                          "character": 27
+                        },
+                        "end": {
+                          "line": 22,
+                          "character": 31
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 22,
+                          "character": 27
+                        },
+                        "end": {
+                          "line": 22,
+                          "character": 31
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "9007d7f8-a180-4b6c-b147-72970d0eaccb"
+                    },
+                    {
+                      "name": "new",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 30,
+                          "character": 8
+                        },
+                        "end": {
+                          "line": 30,
+                          "character": 11
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 30,
+                          "character": 8
+                        },
+                        "end": {
+                          "line": 30,
+                          "character": 11
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "9493f7ff-bdaa-4b5d-a44c-19994f236baf"
+                    },
+                    {
+                      "name": "key",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 32,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 32,
+                          "character": 15
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 32,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 32,
+                          "character": 15
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "3dada30f-5d5a-4530-af4e-d11dcaeedf44"
+                    },
+                    {
+                      "name": "value",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 32,
+                          "character": 17
+                        },
+                        "end": {
+                          "line": 32,
+                          "character": 22
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 32,
+                          "character": 17
+                        },
+                        "end": {
+                          "line": 32,
+                          "character": 22
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "c2da50fb-d095-4c6b-8ae4-aabaa6f2484c"
+                    },
+                    {
+                      "name": "value_type",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 33,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 33,
+                          "character": 22
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 33,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 33,
+                          "character": 22
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "af4fad86-3f01-4feb-ab6b-4bb29d843169"
+                    }
+                  ],
+                  "$setdownItem": "dc5ed5f8-624d-4011-bda0-4311e88f2cfd"
+                },
+                {
+                  "name": "update",
+                  "kind": 6,
+                  "range": {
+                    "start": {
+                      "line": 50,
+                      "character": 4
+                    },
+                    "end": {
+                      "line": 69,
+                      "character": 29
+                    }
+                  },
+                  "selectionRange": {
+                    "start": {
+                      "line": 50,
+                      "character": 8
+                    },
+                    "end": {
+                      "line": 50,
+                      "character": 14
+                    }
+                  },
+                  "children": [
+                    {
+                      "name": "args",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 50,
+                          "character": 21
+                        },
+                        "end": {
+                          "line": 50,
+                          "character": 26
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 50,
+                          "character": 21
+                        },
+                        "end": {
+                          "line": 50,
+                          "character": 26
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "220c56b2-e117-45e4-ac69-53297b94268d"
+                    },
+                    {
+                      "name": "kwargs",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 50,
+                          "character": 28
+                        },
+                        "end": {
+                          "line": 50,
+                          "character": 36
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 50,
+                          "character": 28
+                        },
+                        "end": {
+                          "line": 50,
+                          "character": 36
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "7cbaa2c5-d8ad-4426-b91f-12766b8e6394"
+                    },
+                    {
+                      "name": "other",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 58,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 58,
+                          "character": 17
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 58,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 58,
+                          "character": 17
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "df44cf18-84b4-4f44-bf85-8e2af986a147"
+                    },
+                    {
+                      "name": "key",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 60,
+                          "character": 20
+                        },
+                        "end": {
+                          "line": 60,
+                          "character": 23
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 60,
+                          "character": 20
+                        },
+                        "end": {
+                          "line": 60,
+                          "character": 23
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "4bd7c76a-eb49-4566-a8ef-f23e2405a521"
+                    },
+                    {
+                      "name": "value",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 66,
+                          "character": 25
+                        },
+                        "end": {
+                          "line": 66,
+                          "character": 30
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 66,
+                          "character": 25
+                        },
+                        "end": {
+                          "line": 66,
+                          "character": 30
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "e8dfb8b8-5957-4905-afe6-19baaa459980"
+                    }
+                  ],
+                  "$setdownItem": "f2170746-d33d-4794-8c3d-bedd09356d4e"
+                }
+              ],
+              "$setdownItem": "0b332251-1c90-4a84-8ae0-a5a7741353a3"
+            },
+            {
+              "name": "from_dict",
+              "kind": 12,
+              "range": {
+                "start": {
+                  "line": 72,
+                  "character": 0
+                },
+                "end": {
+                  "line": 83,
+                  "character": 12
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 72,
+                  "character": 4
+                },
+                "end": {
+                  "line": 72,
+                  "character": 13
+                }
+              },
+              "children": [
+                {
+                  "name": "d",
+                  "kind": 13,
+                  "range": {
+                    "start": {
+                      "line": 72,
+                      "character": 14
+                    },
+                    "end": {
+                      "line": 72,
+                      "character": 15
+                    }
+                  },
+                  "selectionRange": {
+                    "start": {
+                      "line": 72,
+                      "character": 14
+                    },
+                    "end": {
+                      "line": 72,
+                      "character": 15
+                    }
+                  },
+                  "children": [],
+                  "$setdownItem": "5fe12081-73ec-476e-868e-b4db44720a0e"
+                }
+              ],
+              "$setdownItem": "4bae7c07-c57c-4249-ac1d-ff44df086a34"
+            }
+          ]
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 91,
+          "response": {
+            "contents": {
+              "kind": "markdown",
+              "value": "```python\n(function) def from_dict(d: Any) -> (NotebookNode | list[NotebookNode | list | Any] | Any)\n```\n---\nConvert dict to dict-like NotebookNode\n\nRecursively converts any dict in the container to a NotebookNode.\nThis does not check that the contents of the dictionary make a valid\nnotebook or part of a notebook."
+            },
+            "range": {
+              "start": {
+                "line": 19,
+                "character": 20
+              },
+              "end": {
+                "line": 19,
+                "character": 29
+              }
+            },
+            "$setdownItem": "40a489e9-58dd-47ad-9fa5-3c53ba30714f"
+          }
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 10,
+          "response": [
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 72,
+                  "character": 4
+                },
+                "end": {
+                  "line": 72,
+                  "character": 13
+                }
+              },
+              "$setdownItem": "367dc97c-8fb1-4b47-a749-e8e5f4cc63ef"
+            }
+          ]
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 5,
+          "response": [
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 19,
+                  "character": 20
+                },
+                "end": {
+                  "line": 19,
+                  "character": 29
+                }
+              },
+              "$setdownItem": "4be527df-34fb-407a-bf25-3bdbe2a3c9d1"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 72,
+                  "character": 4
+                },
+                "end": {
+                  "line": 72,
+                  "character": 13
+                }
+              },
+              "$setdownItem": "ccb5fcbd-539b-4e7e-bafd-43729e3a892f"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 80,
+                  "character": 32
+                },
+                "end": {
+                  "line": 80,
+                  "character": 41
+                }
+              },
+              "$setdownItem": "5816c570-db7e-4845-8506-5e366b36e750"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 82,
+                  "character": 16
+                },
+                "end": {
+                  "line": 82,
+                  "character": 25
+                }
+              },
+              "$setdownItem": "5749a7df-da7e-4714-8288-5bcf22559b81"
+            }
+          ]
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 28,
+          "response": {
+            "isIncomplete": true,
+            "count": 47,
+            "sample": [
+              {
+                "label": "self",
+                "kind": 6,
+                "sortText": "12.9999.self",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "self"
+                },
+                "$setdownItem": "00cc6fea-3cf1-47a7-a878-6e801e20e83b"
+              },
+              {
+                "label": "__file__",
+                "kind": 6,
+                "sortText": "14.9999.__file__",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "__file__"
+                },
+                "$setdownItem": "517509f2-d1ec-4e1a-b8e4-0e2e2eee6b8d"
+              },
+              {
+                "label": "from_dict",
+                "kind": 3,
+                "sortText": "12.9999.from_dict",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "from_dict"
+                },
+                "$setdownItem": "7574f037-1810-41a7-9371-260fb363dcfe"
+              },
+              {
+                "label": "float",
+                "kind": 7,
+                "sortText": "12.9999.float",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "float"
+                },
+                "$setdownItem": "1bf1b357-7d99-4942-9104-44c1fb84d77c"
+              },
+              {
+                "label": "function",
+                "kind": 7,
+                "sortText": "12.9999.function",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "function"
+                },
+                "$setdownItem": "d1c0e0c1-0725-4a50-afa7-586287aa9748"
+              },
+              {
+                "label": "frozenset",
+                "kind": 7,
+                "sortText": "12.9999.frozenset",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "frozenset"
+                },
+                "$setdownItem": "fd6e61cb-d9c2-47cc-b32d-47221d5b8f59"
+              },
+              {
+                "label": "filter",
+                "kind": 7,
+                "sortText": "12.9999.filter",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "filter"
+                },
+                "$setdownItem": "0f884ad4-6a53-4c97-9d49-b0f44943c7af"
+              },
+              {
+                "label": "format",
+                "kind": 3,
+                "sortText": "12.9999.format",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "format"
+                },
+                "$setdownItem": "65e407e9-4628-42a1-b218-ecf813a9c02e"
+              }
+            ]
+          }
+        },
+        "completionResolve": {
+          "method": "completionItem/resolve",
+          "ms": 4,
+          "response": {
+            "label": "from_dict",
+            "kind": 3,
+            "sortText": "12.9999.from_dict",
+            "data": {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "position": {
+                "line": 19,
+                "character": 21
+              },
+              "symbolLabel": "from_dict"
+            },
+            "documentation": {
+              "kind": "markdown",
+              "value": "```python\ndef from_dict(d: Any) -> (NotebookNode | list[NotebookNode | list | Any] | Any)\n```\n---\nConvert dict to dict-like NotebookNode\n\nRecursively converts any dict in the container to a NotebookNode.\nThis does not check that the contents of the dictionary make a valid\nnotebook or part of a notebook."
+            },
+            "$setdownItem": "354c58e4-e928-4d83-808e-3d8238b9be4f"
+          }
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 2,
+          "response": [
+            {
+              "name": "from_dict",
+              "kind": 12,
+              "location": {
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                "range": {
+                  "start": {
+                    "line": 72,
+                    "character": 4
+                  },
+                  "end": {
+                    "line": 72,
+                    "character": 13
+                  }
+                },
+                "$setdownItem": "b9128a68-78fd-405e-97da-5ab9943611d1"
+              },
+              "$setdownItem": "1786ead0-5930-4acc-8cf7-3a940a2d5713"
+            }
+          ]
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 2,
+          "response": [
+            {
+              "name": "from_dict",
+              "kind": 12,
+              "detail": "(notebooknode.py)",
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 72,
+                  "character": 4
+                },
+                "end": {
+                  "line": 72,
+                  "character": 13
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 72,
+                  "character": 4
+                },
+                "end": {
+                  "line": 72,
+                  "character": 13
+                }
+              },
+              "$setdownItem": "966e5ea6-6805-405e-a65f-3f3a49cbe3a6"
+            }
+          ]
+        },
+        "incomingCalls": {
+          "method": "callHierarchy/incomingCalls",
+          "ms": 3,
+          "response": [
+            {
+              "from": {
+                "name": "__setitem__",
+                "kind": 12,
+                "detail": "class NotebookNode (notebooknode.py)",
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                "range": {
+                  "start": {
+                    "line": 16,
+                    "character": 8
+                  },
+                  "end": {
+                    "line": 16,
+                    "character": 19
+                  }
+                },
+                "selectionRange": {
+                  "start": {
+                    "line": 16,
+                    "character": 8
+                  },
+                  "end": {
+                    "line": 16,
+                    "character": 19
+                  }
+                },
+                "$setdownItem": "5ce0cec9-a038-43f8-9f48-ab5ebb6d23c8"
+              },
+              "fromRanges": [
+                {
+                  "start": {
+                    "line": 19,
+                    "character": 20
+                  },
+                  "end": {
+                    "line": 19,
+                    "character": 29
+                  }
+                }
+              ]
+            },
+            {
+              "from": {
+                "name": "from_dict",
+                "kind": 12,
+                "detail": "(notebooknode.py)",
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                "range": {
+                  "start": {
+                    "line": 72,
+                    "character": 4
+                  },
+                  "end": {
+                    "line": 72,
+                    "character": 13
+                  }
+                },
+                "selectionRange": {
+                  "start": {
+                    "line": 72,
+                    "character": 4
+                  },
+                  "end": {
+                    "line": 72,
+                    "character": 13
+                  }
+                },
+                "$setdownItem": "cc22353a-8265-41a7-a455-2de9468066c8"
+              },
+              "fromRanges": [
+                {
+                  "start": {
+                    "line": 80,
+                    "character": 32
+                  },
+                  "end": {
+                    "line": 80,
+                    "character": 41
+                  }
+                },
+                {
+                  "start": {
+                    "line": 82,
+                    "character": 16
+                  },
+                  "end": {
+                    "line": 82,
+                    "character": 25
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "console": [],
+      "events": [
+        {
+          "type": "status",
+          "state": "starting",
+          "documents": [
+            {
+              "id": "4e9e091f-b2d4-4023-9fab-5a6ccebedaba",
+              "generation": "84898b0f-7b93-4e8b-bd51-22a5e34367f8"
+            }
+          ]
+        },
+        {
+          "type": "status",
+          "state": "ready",
+          "documents": [
+            {
+              "id": "4e9e091f-b2d4-4023-9fab-5a6ccebedaba",
+              "generation": "84898b0f-7b93-4e8b-bd51-22a5e34367f8"
+            }
+          ]
+        },
+        {
+          "type": "capabilities",
+          "id": "4e9e091f-b2d4-4023-9fab-5a6ccebedaba",
+          "generation": "84898b0f-7b93-4e8b-bd51-22a5e34367f8",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          }
+        },
+        {
+          "type": "capabilities",
+          "id": "4e9e091f-b2d4-4023-9fab-5a6ccebedaba",
+          "generation": "84898b0f-7b93-4e8b-bd51-22a5e34367f8",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          }
+        },
+        {
+          "type": "capabilities",
+          "id": "4e9e091f-b2d4-4023-9fab-5a6ccebedaba",
+          "generation": "84898b0f-7b93-4e8b-bd51-22a5e34367f8",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          }
+        },
+        {
+          "type": "capabilities",
+          "id": "4e9e091f-b2d4-4023-9fab-5a6ccebedaba",
+          "generation": "84898b0f-7b93-4e8b-bd51-22a5e34367f8",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          }
+        },
+        {
+          "type": "capabilities",
+          "id": "4e9e091f-b2d4-4023-9fab-5a6ccebedaba",
+          "generation": "84898b0f-7b93-4e8b-bd51-22a5e34367f8",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          }
+        },
+        {
+          "type": "activity"
+        },
+        {
+          "type": "diagnostics",
+          "id": "4e9e091f-b2d4-4023-9fab-5a6ccebedaba",
+          "generation": "84898b0f-7b93-4e8b-bd51-22a5e34367f8",
+          "version": 1,
+          "unversioned": false,
+          "diagnostics": []
+        },
+        {
+          "type": "status",
+          "state": "starting",
+          "documents": [
+            {
+              "id": "7190abce-80f2-43de-966a-897670fc5a73",
+              "generation": "2b1e2c82-2fff-4d2d-915e-fc4026967bda"
+            }
+          ]
+        },
+        {
+          "type": "status",
+          "state": "ready",
+          "documents": [
+            {
+              "id": "7190abce-80f2-43de-966a-897670fc5a73",
+              "generation": "2b1e2c82-2fff-4d2d-915e-fc4026967bda"
+            }
+          ]
+        },
+        {
+          "type": "status",
+          "state": "starting",
+          "documents": [
+            {
+              "id": "6477ad55-de7b-408c-bcfc-9ed2f001a3d6",
+              "generation": "87071969-7522-4b32-8521-4fae9825beac"
+            }
+          ]
+        },
+        {
+          "type": "status",
+          "state": "ready",
+          "documents": [
+            {
+              "id": "6477ad55-de7b-408c-bcfc-9ed2f001a3d6",
+              "generation": "87071969-7522-4b32-8521-4fae9825beac"
+            }
+          ]
+        },
+        {
+          "type": "status",
+          "state": "starting",
+          "documents": [
+            {
+              "id": "73522e31-c944-4bd7-ada2-f25918a8af4e",
+              "generation": "ca9a669a-4db2-451d-9750-1d065737e406"
+            }
+          ]
+        },
+        {
+          "type": "status",
+          "state": "ready",
+          "documents": [
+            {
+              "id": "73522e31-c944-4bd7-ada2-f25918a8af4e",
+              "generation": "ca9a669a-4db2-451d-9750-1d065737e406"
+            }
+          ]
+        }
+      ],
+      "sourceSha256": "c2028aec0519f09f04aeaaa89c0664d45da6e71f0de64b7fe9b87ba0116e891a",
+      "connection": {
+        "document": {
+          "id": "4e9e091f-b2d4-4023-9fab-5a6ccebedaba",
+          "generation": "84898b0f-7b93-4e8b-bd51-22a5e34367f8",
+          "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+          "version": 1
+        },
+        "response": {
+          "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          },
+          "server": "pyright"
+        },
+        "ms": 133
+      },
+      "openToConnectionMs": 363,
+      "position": {
+        "line": 19,
+        "character": 21
+      },
+      "completionCount": 47,
+      "renameTabs": [
+        "start.txt   ×",
+        "notebooknode.py  • ×",
+        "test_validator.py  • ×",
+        "nbjson.py  • ×",
+        "__init__.py  • ×"
+      ],
+      "renameOpenedPaths": [
+        "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+        "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/__init__.py",
+        "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/v4/nbjson.py",
+        "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/tests/test_validator.py"
+      ],
+      "sessions": [
+        {
+          "id": "pyright",
+          "name": "Pyright",
+          "languages": [
+            "Python"
+          ],
+          "description": "Static type checker for Python.",
+          "homepage": "https://github.com/microsoft/pyright",
+          "configured": true,
+          "bundled": true,
+          "custom": false,
+          "managed": true,
+          "discoverable": false,
+          "enabled": true,
+          "selected": [
+            "python"
+          ],
+          "executable": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/node_modules/electron/dist/electron",
+          "available": true,
+          "automatic": true,
+          "canDetect": false,
+          "selectionNeeded": false,
+          "profileSource": "Helix · pyright",
+          "options": {
+            "args": [
+              "--stdio"
+            ],
+            "settings": {
+              "python": {
+                "analysis": {
+                  "autoSearchPaths": true,
+                  "useLibraryCodeForTypes": true,
+                  "diagnosticMode": "openFilesOnly",
+                  "typeCheckingMode": "off"
+                }
+              }
+            },
+            "initializationOptions": {
+              "disablePullDiagnostics": true
+            }
+          },
+          "sessions": [
+            {
+              "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat",
+              "state": "ready",
+              "features": [
+                "completion",
+                "hover",
+                "signatureHelp",
+                "definition",
+                "declaration",
+                "typeDefinition",
+                "references",
+                "documentSymbol",
+                "documentHighlight",
+                "rename",
+                "codeAction",
+                "workspaceSymbol",
+                "callHierarchy"
+              ],
+              "logs": [
+                "Pyright language server 1.1.414 starting",
+                "Server root directory: file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/pyright/dist",
+                "Starting service instance \"/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat\"",
+                "Loading pyproject.toml file at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/pyproject.toml",
+                "No include entries specified; assuming /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat",
+                "Auto-excluding **/node_modules",
+                "Auto-excluding **/__pycache__",
+                "Auto-excluding **/.*",
+                "Auto-excluding **/__editable__.*",
+                "Assuming Python version 3.13.11.final.0",
+                "Loading pyproject.toml file at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/pyproject.toml",
+                "No include entries specified; assuming /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat",
+                "Auto-excluding **/node_modules",
+                "Auto-excluding **/__pycache__",
+                "Auto-excluding **/.*",
+                "Auto-excluding **/__editable__.*",
+                "Assuming Python version 3.13.11.final.0",
+                "Found 72 source files"
+              ],
+              "progress": []
+            }
+          ]
+        }
+      ],
+      "ipc": {
+        "opens": [
+          {
+            "document": {
+              "id": "4e9e091f-b2d4-4023-9fab-5a6ccebedaba",
+              "generation": "84898b0f-7b93-4e8b-bd51-22a5e34367f8",
+              "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "version": 1
+            },
+            "response": {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "capabilities": {
+                "textDocumentSync": 2,
+                "definitionProvider": {
+                  "workDoneProgress": true
+                },
+                "declarationProvider": {
+                  "workDoneProgress": true
+                },
+                "typeDefinitionProvider": {
+                  "workDoneProgress": true
+                },
+                "referencesProvider": {
+                  "workDoneProgress": true
+                },
+                "documentSymbolProvider": {
+                  "workDoneProgress": true
+                },
+                "workspaceSymbolProvider": {
+                  "workDoneProgress": true
+                },
+                "hoverProvider": {
+                  "workDoneProgress": true
+                },
+                "documentHighlightProvider": {
+                  "workDoneProgress": true
+                },
+                "renameProvider": {
+                  "prepareProvider": true,
+                  "workDoneProgress": true
+                },
+                "completionProvider": {
+                  "triggerCharacters": [
+                    ".",
+                    "[",
+                    "\"",
+                    "'"
+                  ],
+                  "resolveProvider": true,
+                  "workDoneProgress": true,
+                  "completionItem": {
+                    "labelDetailsSupport": true
+                  }
+                },
+                "signatureHelpProvider": {
+                  "triggerCharacters": [
+                    "(",
+                    ",",
+                    ")"
+                  ],
+                  "workDoneProgress": true
+                },
+                "codeActionProvider": {
+                  "codeActionKinds": [
+                    "quickfix",
+                    "source.organizeImports"
+                  ],
+                  "workDoneProgress": true
+                },
+                "executeCommandProvider": {
+                  "commands": [],
+                  "workDoneProgress": true
+                },
+                "callHierarchyProvider": true,
+                "workspace": {
+                  "workspaceFolders": {
+                    "supported": true,
+                    "changeNotifications": true
+                  }
+                }
+              },
+              "server": "pyright"
+            },
+            "ms": 133
+          },
+          {
+            "document": {
+              "id": "7190abce-80f2-43de-966a-897670fc5a73",
+              "generation": "2b1e2c82-2fff-4d2d-915e-fc4026967bda",
+              "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/__init__.py",
+              "version": 1
+            },
+            "response": {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/__init__.py",
+              "capabilities": {
+                "textDocumentSync": 2,
+                "definitionProvider": {
+                  "workDoneProgress": true
+                },
+                "declarationProvider": {
+                  "workDoneProgress": true
+                },
+                "typeDefinitionProvider": {
+                  "workDoneProgress": true
+                },
+                "referencesProvider": {
+                  "workDoneProgress": true
+                },
+                "documentSymbolProvider": {
+                  "workDoneProgress": true
+                },
+                "workspaceSymbolProvider": {
+                  "workDoneProgress": true
+                },
+                "hoverProvider": {
+                  "workDoneProgress": true
+                },
+                "documentHighlightProvider": {
+                  "workDoneProgress": true
+                },
+                "renameProvider": {
+                  "prepareProvider": true,
+                  "workDoneProgress": true
+                },
+                "completionProvider": {
+                  "triggerCharacters": [
+                    ".",
+                    "[",
+                    "\"",
+                    "'"
+                  ],
+                  "resolveProvider": true,
+                  "workDoneProgress": true,
+                  "completionItem": {
+                    "labelDetailsSupport": true
+                  }
+                },
+                "signatureHelpProvider": {
+                  "triggerCharacters": [
+                    "(",
+                    ",",
+                    ")"
+                  ],
+                  "workDoneProgress": true
+                },
+                "codeActionProvider": {
+                  "codeActionKinds": [
+                    "quickfix",
+                    "source.organizeImports"
+                  ],
+                  "workDoneProgress": true
+                },
+                "executeCommandProvider": {
+                  "commands": [],
+                  "workDoneProgress": true
+                },
+                "callHierarchyProvider": true,
+                "workspace": {
+                  "workspaceFolders": {
+                    "supported": true,
+                    "changeNotifications": true
+                  }
+                }
+              },
+              "server": "pyright"
+            },
+            "ms": 5
+          },
+          {
+            "document": {
+              "id": "6477ad55-de7b-408c-bcfc-9ed2f001a3d6",
+              "generation": "87071969-7522-4b32-8521-4fae9825beac",
+              "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/v4/nbjson.py",
+              "version": 1
+            },
+            "response": {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/v4/nbjson.py",
+              "capabilities": {
+                "textDocumentSync": 2,
+                "definitionProvider": {
+                  "workDoneProgress": true
+                },
+                "declarationProvider": {
+                  "workDoneProgress": true
+                },
+                "typeDefinitionProvider": {
+                  "workDoneProgress": true
+                },
+                "referencesProvider": {
+                  "workDoneProgress": true
+                },
+                "documentSymbolProvider": {
+                  "workDoneProgress": true
+                },
+                "workspaceSymbolProvider": {
+                  "workDoneProgress": true
+                },
+                "hoverProvider": {
+                  "workDoneProgress": true
+                },
+                "documentHighlightProvider": {
+                  "workDoneProgress": true
+                },
+                "renameProvider": {
+                  "prepareProvider": true,
+                  "workDoneProgress": true
+                },
+                "completionProvider": {
+                  "triggerCharacters": [
+                    ".",
+                    "[",
+                    "\"",
+                    "'"
+                  ],
+                  "resolveProvider": true,
+                  "workDoneProgress": true,
+                  "completionItem": {
+                    "labelDetailsSupport": true
+                  }
+                },
+                "signatureHelpProvider": {
+                  "triggerCharacters": [
+                    "(",
+                    ",",
+                    ")"
+                  ],
+                  "workDoneProgress": true
+                },
+                "codeActionProvider": {
+                  "codeActionKinds": [
+                    "quickfix",
+                    "source.organizeImports"
+                  ],
+                  "workDoneProgress": true
+                },
+                "executeCommandProvider": {
+                  "commands": [],
+                  "workDoneProgress": true
+                },
+                "callHierarchyProvider": true,
+                "workspace": {
+                  "workspaceFolders": {
+                    "supported": true,
+                    "changeNotifications": true
+                  }
+                }
+              },
+              "server": "pyright"
+            },
+            "ms": 5
+          },
+          {
+            "document": {
+              "id": "73522e31-c944-4bd7-ada2-f25918a8af4e",
+              "generation": "ca9a669a-4db2-451d-9750-1d065737e406",
+              "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/tests/test_validator.py",
+              "version": 1
+            },
+            "response": {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/tests/test_validator.py",
+              "capabilities": {
+                "textDocumentSync": 2,
+                "definitionProvider": {
+                  "workDoneProgress": true
+                },
+                "declarationProvider": {
+                  "workDoneProgress": true
+                },
+                "typeDefinitionProvider": {
+                  "workDoneProgress": true
+                },
+                "referencesProvider": {
+                  "workDoneProgress": true
+                },
+                "documentSymbolProvider": {
+                  "workDoneProgress": true
+                },
+                "workspaceSymbolProvider": {
+                  "workDoneProgress": true
+                },
+                "hoverProvider": {
+                  "workDoneProgress": true
+                },
+                "documentHighlightProvider": {
+                  "workDoneProgress": true
+                },
+                "renameProvider": {
+                  "prepareProvider": true,
+                  "workDoneProgress": true
+                },
+                "completionProvider": {
+                  "triggerCharacters": [
+                    ".",
+                    "[",
+                    "\"",
+                    "'"
+                  ],
+                  "resolveProvider": true,
+                  "workDoneProgress": true,
+                  "completionItem": {
+                    "labelDetailsSupport": true
+                  }
+                },
+                "signatureHelpProvider": {
+                  "triggerCharacters": [
+                    "(",
+                    ",",
+                    ")"
+                  ],
+                  "workDoneProgress": true
+                },
+                "codeActionProvider": {
+                  "codeActionKinds": [
+                    "quickfix",
+                    "source.organizeImports"
+                  ],
+                  "workDoneProgress": true
+                },
+                "executeCommandProvider": {
+                  "commands": [],
+                  "workDoneProgress": true
+                },
+                "callHierarchyProvider": true,
+                "workspace": {
+                  "workspaceFolders": {
+                    "supported": true,
+                    "changeNotifications": true
+                  }
+                }
+              },
+              "server": "pyright"
+            },
+            "ms": 5
+          }
+        ],
+        "changes": [
+          {
+            "id": "4e9e091f-b2d4-4023-9fab-5a6ccebedaba",
+            "version": 2
+          },
+          {
+            "id": "7190abce-80f2-43de-966a-897670fc5a73",
+            "version": 2
+          },
+          {
+            "id": "6477ad55-de7b-408c-bcfc-9ed2f001a3d6",
+            "version": 2
+          },
+          {
+            "id": "73522e31-c944-4bd7-ada2-f25918a8af4e",
+            "version": 2
+          }
+        ],
+        "requests": [
+          {
+            "method": "textDocument/codeAction",
+            "ms": 0
+          },
+          {
+            "method": "textDocument/documentSymbol",
+            "ms": 56
+          },
+          {
+            "method": "textDocument/hover",
+            "ms": 89
+          },
+          {
+            "method": "textDocument/definition",
+            "ms": 8
+          },
+          {
+            "method": "textDocument/references",
+            "ms": 2
+          },
+          {
+            "method": "textDocument/completion",
+            "ms": 16
+          },
+          {
+            "method": "completionItem/resolve",
+            "ms": 2
+          },
+          {
+            "method": "workspace/symbol",
+            "ms": 1
+          },
+          {
+            "method": "textDocument/prepareCallHierarchy",
+            "ms": 1
+          },
+          {
+            "method": "callHierarchy/incomingCalls",
+            "ms": 1
+          },
+          {
+            "method": "textDocument/prepareRename",
+            "ms": 1
+          },
+          {
+            "method": "textDocument/documentHighlight",
+            "ms": 1
+          },
+          {
+            "method": "textDocument/rename",
+            "ms": 205
+          },
+          {
+            "method": "textDocument/codeAction",
+            "ms": 0
+          },
+          {
+            "method": "textDocument/codeAction",
+            "ms": 0
+          },
+          {
+            "method": "textDocument/codeAction",
+            "ms": 1
+          },
+          {
+            "method": "textDocument/codeAction",
+            "ms": 1
+          },
+          {
+            "method": "textDocument/rename",
+            "ms": 7
+          },
+          {
+            "method": "textDocument/codeAction",
+            "ms": 1
+          }
+        ]
+      },
+      "sourceUnchanged": true
+    },
+    {
+      "name": "python-superproject-rename-ui",
+      "file": "vendor/nbformat/nbformat/notebooknode.py",
+      "root": ".",
+      "needle": "value = from_dict(value)",
+      "symbol": "from_dict",
+      "uiRename": true,
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 70,
+          "response": [
+            {
+              "name": "_ATOMIC_TYPES",
+              "kind": 14,
+              "range": {
+                "start": {
+                  "line": 10,
+                  "character": 0
+                },
+                "end": {
+                  "line": 10,
+                  "character": 13
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 10,
+                  "character": 0
+                },
+                "end": {
+                  "line": 10,
+                  "character": 13
+                }
+              },
+              "children": [],
+              "$setdownItem": "4086e2d4-163f-4b2e-92a1-e307015610fe"
+            },
+            {
+              "name": "NotebookNode",
+              "kind": 5,
+              "range": {
+                "start": {
+                  "line": 13,
+                  "character": 0
+                },
+                "end": {
+                  "line": 69,
+                  "character": 29
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 13,
+                  "character": 6
+                },
+                "end": {
+                  "line": 13,
+                  "character": 18
+                }
+              },
+              "children": [
+                {
+                  "name": "__setitem__",
+                  "kind": 6,
+                  "range": {
+                    "start": {
+                      "line": 16,
+                      "character": 4
+                    },
+                    "end": {
+                      "line": 20,
+                      "character": 39
+                    }
+                  },
+                  "selectionRange": {
+                    "start": {
+                      "line": 16,
+                      "character": 8
+                    },
+                    "end": {
+                      "line": 16,
+                      "character": 19
+                    }
+                  },
+                  "children": [
+                    {
+                      "name": "key",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 16,
+                          "character": 26
+                        },
+                        "end": {
+                          "line": 16,
+                          "character": 29
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 16,
+                          "character": 26
+                        },
+                        "end": {
+                          "line": 16,
+                          "character": 29
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "5ead15ee-3d73-4fc0-b0b6-13a6bcc10658"
+                    },
+                    {
+                      "name": "value",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 16,
+                          "character": 31
+                        },
+                        "end": {
+                          "line": 16,
+                          "character": 36
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 16,
+                          "character": 31
+                        },
+                        "end": {
+                          "line": 16,
+                          "character": 36
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "3fef9f33-91c0-4a1a-8c0a-22f0ac1e7894"
+                    }
+                  ],
+                  "$setdownItem": "7b04e0c3-6a2d-4301-b50b-1a4c7a77f0b2"
+                },
+                {
+                  "name": "__deepcopy__",
+                  "kind": 6,
+                  "range": {
+                    "start": {
+                      "line": 22,
+                      "character": 4
+                    },
+                    "end": {
+                      "line": 48,
+                      "character": 18
+                    }
+                  },
+                  "selectionRange": {
+                    "start": {
+                      "line": 22,
+                      "character": 8
+                    },
+                    "end": {
+                      "line": 22,
+                      "character": 20
+                    }
+                  },
+                  "children": [
+                    {
+                      "name": "memo",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 22,
+                          "character": 27
+                        },
+                        "end": {
+                          "line": 22,
+                          "character": 31
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 22,
+                          "character": 27
+                        },
+                        "end": {
+                          "line": 22,
+                          "character": 31
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "f877fc4d-18c6-4e0a-8838-4bdd8bee57a2"
+                    },
+                    {
+                      "name": "new",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 30,
+                          "character": 8
+                        },
+                        "end": {
+                          "line": 30,
+                          "character": 11
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 30,
+                          "character": 8
+                        },
+                        "end": {
+                          "line": 30,
+                          "character": 11
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "6dadbaec-281c-49f8-9538-3a944d58e28f"
+                    },
+                    {
+                      "name": "key",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 32,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 32,
+                          "character": 15
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 32,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 32,
+                          "character": 15
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "e9fbebfb-8829-46f8-8802-a271c40013a2"
+                    },
+                    {
+                      "name": "value",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 32,
+                          "character": 17
+                        },
+                        "end": {
+                          "line": 32,
+                          "character": 22
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 32,
+                          "character": 17
+                        },
+                        "end": {
+                          "line": 32,
+                          "character": 22
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "72e4a4ad-0be4-4847-84fa-071b6b57a373"
+                    },
+                    {
+                      "name": "value_type",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 33,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 33,
+                          "character": 22
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 33,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 33,
+                          "character": 22
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "346af697-b07e-4f22-9875-67c03a764da6"
+                    }
+                  ],
+                  "$setdownItem": "1f4ada39-7183-4737-bf10-800b2d63e862"
+                },
+                {
+                  "name": "update",
+                  "kind": 6,
+                  "range": {
+                    "start": {
+                      "line": 50,
+                      "character": 4
+                    },
+                    "end": {
+                      "line": 69,
+                      "character": 29
+                    }
+                  },
+                  "selectionRange": {
+                    "start": {
+                      "line": 50,
+                      "character": 8
+                    },
+                    "end": {
+                      "line": 50,
+                      "character": 14
+                    }
+                  },
+                  "children": [
+                    {
+                      "name": "args",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 50,
+                          "character": 21
+                        },
+                        "end": {
+                          "line": 50,
+                          "character": 26
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 50,
+                          "character": 21
+                        },
+                        "end": {
+                          "line": 50,
+                          "character": 26
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "575bb83b-8ce5-4f3f-89f7-d838d36b48f7"
+                    },
+                    {
+                      "name": "kwargs",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 50,
+                          "character": 28
+                        },
+                        "end": {
+                          "line": 50,
+                          "character": 36
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 50,
+                          "character": 28
+                        },
+                        "end": {
+                          "line": 50,
+                          "character": 36
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "c2acca61-5c75-4a4a-ab40-6fd80941c025"
+                    },
+                    {
+                      "name": "other",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 58,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 58,
+                          "character": 17
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 58,
+                          "character": 12
+                        },
+                        "end": {
+                          "line": 58,
+                          "character": 17
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "c5cc6824-1ec9-47e2-9fd0-e1580743017b"
+                    },
+                    {
+                      "name": "key",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 60,
+                          "character": 20
+                        },
+                        "end": {
+                          "line": 60,
+                          "character": 23
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 60,
+                          "character": 20
+                        },
+                        "end": {
+                          "line": 60,
+                          "character": 23
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "11ec18e7-2ad3-469a-ae9c-1e5082009043"
+                    },
+                    {
+                      "name": "value",
+                      "kind": 13,
+                      "range": {
+                        "start": {
+                          "line": 66,
+                          "character": 25
+                        },
+                        "end": {
+                          "line": 66,
+                          "character": 30
+                        }
+                      },
+                      "selectionRange": {
+                        "start": {
+                          "line": 66,
+                          "character": 25
+                        },
+                        "end": {
+                          "line": 66,
+                          "character": 30
+                        }
+                      },
+                      "children": [],
+                      "$setdownItem": "525b2f87-b1f9-4854-b608-365a3ef6a7be"
+                    }
+                  ],
+                  "$setdownItem": "84cd1977-e657-4ebd-8b73-f69ad3885c6c"
+                }
+              ],
+              "$setdownItem": "808f40bf-e9fb-485c-8742-70dcd7b652f2"
+            },
+            {
+              "name": "from_dict",
+              "kind": 12,
+              "range": {
+                "start": {
+                  "line": 72,
+                  "character": 0
+                },
+                "end": {
+                  "line": 83,
+                  "character": 12
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 72,
+                  "character": 4
+                },
+                "end": {
+                  "line": 72,
+                  "character": 13
+                }
+              },
+              "children": [
+                {
+                  "name": "d",
+                  "kind": 13,
+                  "range": {
+                    "start": {
+                      "line": 72,
+                      "character": 14
+                    },
+                    "end": {
+                      "line": 72,
+                      "character": 15
+                    }
+                  },
+                  "selectionRange": {
+                    "start": {
+                      "line": 72,
+                      "character": 14
+                    },
+                    "end": {
+                      "line": 72,
+                      "character": 15
+                    }
+                  },
+                  "children": [],
+                  "$setdownItem": "45f60b67-ba15-4c91-bb83-3cedf2845670"
+                }
+              ],
+              "$setdownItem": "673a8659-c7a0-44fb-a858-97ea1be9dadc"
+            }
+          ]
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 86,
+          "response": {
+            "contents": {
+              "kind": "markdown",
+              "value": "```python\n(function) def from_dict(d: Any) -> (NotebookNode | list[NotebookNode | list | Any] | Any)\n```\n---\nConvert dict to dict-like NotebookNode\n\nRecursively converts any dict in the container to a NotebookNode.\nThis does not check that the contents of the dictionary make a valid\nnotebook or part of a notebook."
+            },
+            "range": {
+              "start": {
+                "line": 19,
+                "character": 20
+              },
+              "end": {
+                "line": 19,
+                "character": 29
+              }
+            },
+            "$setdownItem": "dda4960d-b5ea-43fa-a3c2-9367aa7fc8a2"
+          }
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 3,
+          "response": [
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 72,
+                  "character": 4
+                },
+                "end": {
+                  "line": 72,
+                  "character": 13
+                }
+              },
+              "$setdownItem": "85d5f7bd-e0df-48e6-bbb7-fb2ccfe74b4e"
+            }
+          ]
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 8,
+          "response": [
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 19,
+                  "character": 20
+                },
+                "end": {
+                  "line": 19,
+                  "character": 29
+                }
+              },
+              "$setdownItem": "6916cd4d-1086-4a14-9307-8e20adafc300"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 72,
+                  "character": 4
+                },
+                "end": {
+                  "line": 72,
+                  "character": 13
+                }
+              },
+              "$setdownItem": "35bc5892-4230-43b9-81bd-2b87e47b5b43"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 80,
+                  "character": 32
+                },
+                "end": {
+                  "line": 80,
+                  "character": 41
+                }
+              },
+              "$setdownItem": "2ae3fd0a-8524-44f5-9d02-8bd42cdf71ea"
+            },
+            {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 82,
+                  "character": 16
+                },
+                "end": {
+                  "line": 82,
+                  "character": 25
+                }
+              },
+              "$setdownItem": "841eac5b-3546-4f2a-8a62-0b262486c5b1"
+            }
+          ]
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 26,
+          "response": {
+            "isIncomplete": true,
+            "count": 47,
+            "sample": [
+              {
+                "label": "self",
+                "kind": 6,
+                "sortText": "12.9999.self",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "self"
+                },
+                "$setdownItem": "2dc91bbf-ddc3-4c30-8d06-b4b69f230713"
+              },
+              {
+                "label": "__file__",
+                "kind": 6,
+                "sortText": "14.9999.__file__",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "__file__"
+                },
+                "$setdownItem": "499d1312-40da-417c-bbae-be2348761bdf"
+              },
+              {
+                "label": "from_dict",
+                "kind": 3,
+                "sortText": "12.9999.from_dict",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "from_dict"
+                },
+                "$setdownItem": "7c0d0eb8-370a-43a3-9535-569f13e812b2"
+              },
+              {
+                "label": "float",
+                "kind": 7,
+                "sortText": "12.9999.float",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "float"
+                },
+                "$setdownItem": "ae5c4d20-1af5-4a62-ba9b-073929c616d2"
+              },
+              {
+                "label": "function",
+                "kind": 7,
+                "sortText": "12.9999.function",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "function"
+                },
+                "$setdownItem": "b75cb953-4a0a-4b89-8a13-530bc3240258"
+              },
+              {
+                "label": "frozenset",
+                "kind": 7,
+                "sortText": "12.9999.frozenset",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "frozenset"
+                },
+                "$setdownItem": "be5a8e5a-f7db-4680-b976-186aa79e1372"
+              },
+              {
+                "label": "filter",
+                "kind": 7,
+                "sortText": "12.9999.filter",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "filter"
+                },
+                "$setdownItem": "0f2855b4-3e65-4f26-8b56-b25c429fe19f"
+              },
+              {
+                "label": "format",
+                "kind": 3,
+                "sortText": "12.9999.format",
+                "data": {
+                  "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                  "position": {
+                    "line": 19,
+                    "character": 21
+                  },
+                  "symbolLabel": "format"
+                },
+                "$setdownItem": "10a663c6-1423-45a6-912d-8ff9b51a45c0"
+              }
+            ]
+          }
+        },
+        "completionResolve": {
+          "method": "completionItem/resolve",
+          "ms": 5,
+          "response": {
+            "label": "from_dict",
+            "kind": 3,
+            "sortText": "12.9999.from_dict",
+            "data": {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "position": {
+                "line": 19,
+                "character": 21
+              },
+              "symbolLabel": "from_dict"
+            },
+            "documentation": {
+              "kind": "markdown",
+              "value": "```python\ndef from_dict(d: Any) -> (NotebookNode | list[NotebookNode | list | Any] | Any)\n```\n---\nConvert dict to dict-like NotebookNode\n\nRecursively converts any dict in the container to a NotebookNode.\nThis does not check that the contents of the dictionary make a valid\nnotebook or part of a notebook."
+            },
+            "$setdownItem": "dd216e0b-d87a-4a15-826e-f0f01cdb095d"
+          }
+        },
+        "workspaceSymbols": {
+          "method": "workspace/symbol",
+          "ms": 2,
+          "response": [
+            {
+              "name": "from_dict",
+              "kind": 12,
+              "location": {
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                "range": {
+                  "start": {
+                    "line": 72,
+                    "character": 4
+                  },
+                  "end": {
+                    "line": 72,
+                    "character": 13
+                  }
+                },
+                "$setdownItem": "8a19a6ff-1f19-4904-a101-9185183aa8c2"
+              },
+              "$setdownItem": "d1482a5a-27ae-4d2c-a28e-06fa6a9a45eb"
+            }
+          ]
+        },
+        "callHierarchy": {
+          "method": "textDocument/prepareCallHierarchy",
+          "ms": 2,
+          "response": [
+            {
+              "name": "from_dict",
+              "kind": 12,
+              "detail": "(notebooknode.py)",
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "range": {
+                "start": {
+                  "line": 72,
+                  "character": 4
+                },
+                "end": {
+                  "line": 72,
+                  "character": 13
+                }
+              },
+              "selectionRange": {
+                "start": {
+                  "line": 72,
+                  "character": 4
+                },
+                "end": {
+                  "line": 72,
+                  "character": 13
+                }
+              },
+              "$setdownItem": "eda39c22-627e-44b1-a214-d866cfdeb172"
+            }
+          ]
+        },
+        "incomingCalls": {
+          "method": "callHierarchy/incomingCalls",
+          "ms": 3,
+          "response": [
+            {
+              "from": {
+                "name": "__setitem__",
+                "kind": 12,
+                "detail": "class NotebookNode (notebooknode.py)",
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                "range": {
+                  "start": {
+                    "line": 16,
+                    "character": 8
+                  },
+                  "end": {
+                    "line": 16,
+                    "character": 19
+                  }
+                },
+                "selectionRange": {
+                  "start": {
+                    "line": 16,
+                    "character": 8
+                  },
+                  "end": {
+                    "line": 16,
+                    "character": 19
+                  }
+                },
+                "$setdownItem": "d9e015c8-e80e-42c5-a576-ac4dcb9e84e3"
+              },
+              "fromRanges": [
+                {
+                  "start": {
+                    "line": 19,
+                    "character": 20
+                  },
+                  "end": {
+                    "line": 19,
+                    "character": 29
+                  }
+                }
+              ]
+            },
+            {
+              "from": {
+                "name": "from_dict",
+                "kind": 12,
+                "detail": "(notebooknode.py)",
+                "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+                "range": {
+                  "start": {
+                    "line": 72,
+                    "character": 4
+                  },
+                  "end": {
+                    "line": 72,
+                    "character": 13
+                  }
+                },
+                "selectionRange": {
+                  "start": {
+                    "line": 72,
+                    "character": 4
+                  },
+                  "end": {
+                    "line": 72,
+                    "character": 13
+                  }
+                },
+                "$setdownItem": "64a65a61-7c3d-4c66-8f50-b3a1a12624a3"
+              },
+              "fromRanges": [
+                {
+                  "start": {
+                    "line": 80,
+                    "character": 32
+                  },
+                  "end": {
+                    "line": 80,
+                    "character": 41
+                  }
+                },
+                {
+                  "start": {
+                    "line": 82,
+                    "character": 16
+                  },
+                  "end": {
+                    "line": 82,
+                    "character": 25
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "console": [],
+      "events": [
+        {
+          "type": "status",
+          "state": "starting",
+          "documents": [
+            {
+              "id": "4e3c10c1-293e-422e-87a5-4f8fb52cc4ce",
+              "generation": "c06937fd-1554-411b-b7e1-6cd5eb7fb867"
+            }
+          ]
+        },
+        {
+          "type": "status",
+          "state": "ready",
+          "documents": [
+            {
+              "id": "4e3c10c1-293e-422e-87a5-4f8fb52cc4ce",
+              "generation": "c06937fd-1554-411b-b7e1-6cd5eb7fb867"
+            }
+          ]
+        },
+        {
+          "type": "capabilities",
+          "id": "4e3c10c1-293e-422e-87a5-4f8fb52cc4ce",
+          "generation": "c06937fd-1554-411b-b7e1-6cd5eb7fb867",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          }
+        },
+        {
+          "type": "capabilities",
+          "id": "4e3c10c1-293e-422e-87a5-4f8fb52cc4ce",
+          "generation": "c06937fd-1554-411b-b7e1-6cd5eb7fb867",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          }
+        },
+        {
+          "type": "capabilities",
+          "id": "4e3c10c1-293e-422e-87a5-4f8fb52cc4ce",
+          "generation": "c06937fd-1554-411b-b7e1-6cd5eb7fb867",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          }
+        },
+        {
+          "type": "capabilities",
+          "id": "4e3c10c1-293e-422e-87a5-4f8fb52cc4ce",
+          "generation": "c06937fd-1554-411b-b7e1-6cd5eb7fb867",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          }
+        },
+        {
+          "type": "capabilities",
+          "id": "4e3c10c1-293e-422e-87a5-4f8fb52cc4ce",
+          "generation": "c06937fd-1554-411b-b7e1-6cd5eb7fb867",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          }
+        },
+        {
+          "type": "activity"
+        },
+        {
+          "type": "activity"
+        },
+        {
+          "type": "diagnostics",
+          "id": "4e3c10c1-293e-422e-87a5-4f8fb52cc4ce",
+          "generation": "c06937fd-1554-411b-b7e1-6cd5eb7fb867",
+          "version": 1,
+          "unversioned": false,
+          "diagnostics": []
+        },
+        {
+          "type": "status",
+          "state": "starting",
+          "documents": [
+            {
+              "id": "7cf76f3c-e2c9-418f-861f-4cc67d4b4457",
+              "generation": "dd935bea-7845-4225-ad44-6aa338dfe167"
+            }
+          ]
+        },
+        {
+          "type": "status",
+          "state": "ready",
+          "documents": [
+            {
+              "id": "7cf76f3c-e2c9-418f-861f-4cc67d4b4457",
+              "generation": "dd935bea-7845-4225-ad44-6aa338dfe167"
+            }
+          ]
+        }
+      ],
+      "sourceSha256": "c2028aec0519f09f04aeaaa89c0664d45da6e71f0de64b7fe9b87ba0116e891a",
+      "connection": {
+        "document": {
+          "id": "4e3c10c1-293e-422e-87a5-4f8fb52cc4ce",
+          "generation": "c06937fd-1554-411b-b7e1-6cd5eb7fb867",
+          "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+          "version": 1
+        },
+        "response": {
+          "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "definitionProvider": {
+              "workDoneProgress": true
+            },
+            "declarationProvider": {
+              "workDoneProgress": true
+            },
+            "typeDefinitionProvider": {
+              "workDoneProgress": true
+            },
+            "referencesProvider": {
+              "workDoneProgress": true
+            },
+            "documentSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "workspaceSymbolProvider": {
+              "workDoneProgress": true
+            },
+            "hoverProvider": {
+              "workDoneProgress": true
+            },
+            "documentHighlightProvider": {
+              "workDoneProgress": true
+            },
+            "renameProvider": {
+              "prepareProvider": true,
+              "workDoneProgress": true
+            },
+            "completionProvider": {
+              "triggerCharacters": [
+                ".",
+                "[",
+                "\"",
+                "'"
+              ],
+              "resolveProvider": true,
+              "workDoneProgress": true,
+              "completionItem": {
+                "labelDetailsSupport": true
+              }
+            },
+            "signatureHelpProvider": {
+              "triggerCharacters": [
+                "(",
+                ",",
+                ")"
+              ],
+              "workDoneProgress": true
+            },
+            "codeActionProvider": {
+              "codeActionKinds": [
+                "quickfix",
+                "source.organizeImports"
+              ],
+              "workDoneProgress": true
+            },
+            "executeCommandProvider": {
+              "commands": [],
+              "workDoneProgress": true
+            },
+            "callHierarchyProvider": true,
+            "workspace": {
+              "workspaceFolders": {
+                "supported": true,
+                "changeNotifications": true
+              }
+            }
+          },
+          "server": "pyright"
+        },
+        "ms": 150
+      },
+      "openToConnectionMs": 365,
+      "position": {
+        "line": 19,
+        "character": 21
+      },
+      "completionCount": 47,
+      "error": "Error: expect(locator).toContainText(expected) failed\n\nLocator: locator('.editor-surface .view-lines')\nExpected substring: \"from_dict_audit\"\nReceived string:    \"from collections.abc import Mappingfrom copy import deepcopy as _deepcopyfrom ._struct import Struct# Values `deepcopy` returns as-is, so they can be stored without recursing._ATOMIC_TYPES = (str, int, float, bool, bytes, type(None), complex)class NotebookNode(Struct):    \\\"\\\"\\\"A dict-like node with attribute-access\\\"\\\"\\\"    def __setitem__(self, key, value):        \\\"\\\"\\\"Set an item on the notebook.\\\"\\\"\\\"        if isinstance(value, Mapping) and not isinstance(value, NotebookNode):            value = from_dict(value)        super().__setitem__(key, value)    def __deepcopy__(self, memo):        \\\"\\\"\\\"Deep-copy the node without going through `copy._reconstruct`.        `copy.deepcopy` only takes its fast path for exact `dict`s, so a `dict`        subclass falls back to the generic `__reduce_ex__` machinery once per        node. Notebooks get deep-copied on every `isvalid`, `normalize` and        `writes` call, which makes that fallback worth avoiding.        \\\"\\\"\\\"        new = self.__class__()        memo[id(self)] = new        for key, value in self.items():            value_type = type(value)            if value_type in _ATOMIC_TYPES:                dict.__setitem__(new, key, value)\"\nTimeout: 5000ms\n\nCall log:\n  - Expect \"toContainText\" locator('.editor-surface .view-lines') with timeout 5000ms\n  - waiting for locator('.editor-surface .view-lines')\n    14 × locator resolved to <div data-mprt=\"8\" aria-hidden=\"true\" role=\"presentation\" class=\"view-lines monaco-mouse-cursor-text\">…</div>\n       - unexpected value \"from collections.abc import Mappingfrom copy import deepcopy as _deepcopyfrom ._struct import Struct# Values `deepcopy` returns as-is, so they can be stored without recursing._ATOMIC_TYPES = (str, int, float, bool, bytes, type(None), complex)class NotebookNode(Struct):    \"\"\"A dict-like node with attribute-access\"\"\"    def __setitem__(self, key, value):        \"\"\"Set an item on the notebook.\"\"\"        if isinstance(value, Mapping) and not isinstance(value, NotebookNode):            value = from_dict(value)        super().__setitem__(key, value)    def __deepcopy__(self, memo):        \"\"\"Deep-copy the node without going through `copy._reconstruct`.        `copy.deepcopy` only takes its fast path for exact `dict`s, so a `dict`        subclass falls back to the generic `__reduce_ex__` machinery once per        node. Notebooks get deep-copied on every `isvalid`, `normalize` and        `writes` call, which makes that fallback worth avoiding.        \"\"\"        new = self.__class__()        memo[id(self)] = new        for key, value in self.items():            value_type = type(value)            if value_type in _ATOMIC_TYPES:                dict.__setitem__(new, key, value)\"\n",
+      "ipc": {
+        "opens": [
+          {
+            "document": {
+              "id": "4e3c10c1-293e-422e-87a5-4f8fb52cc4ce",
+              "generation": "c06937fd-1554-411b-b7e1-6cd5eb7fb867",
+              "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "version": 1
+            },
+            "response": {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+              "capabilities": {
+                "textDocumentSync": 2,
+                "definitionProvider": {
+                  "workDoneProgress": true
+                },
+                "declarationProvider": {
+                  "workDoneProgress": true
+                },
+                "typeDefinitionProvider": {
+                  "workDoneProgress": true
+                },
+                "referencesProvider": {
+                  "workDoneProgress": true
+                },
+                "documentSymbolProvider": {
+                  "workDoneProgress": true
+                },
+                "workspaceSymbolProvider": {
+                  "workDoneProgress": true
+                },
+                "hoverProvider": {
+                  "workDoneProgress": true
+                },
+                "documentHighlightProvider": {
+                  "workDoneProgress": true
+                },
+                "renameProvider": {
+                  "prepareProvider": true,
+                  "workDoneProgress": true
+                },
+                "completionProvider": {
+                  "triggerCharacters": [
+                    ".",
+                    "[",
+                    "\"",
+                    "'"
+                  ],
+                  "resolveProvider": true,
+                  "workDoneProgress": true,
+                  "completionItem": {
+                    "labelDetailsSupport": true
+                  }
+                },
+                "signatureHelpProvider": {
+                  "triggerCharacters": [
+                    "(",
+                    ",",
+                    ")"
+                  ],
+                  "workDoneProgress": true
+                },
+                "codeActionProvider": {
+                  "codeActionKinds": [
+                    "quickfix",
+                    "source.organizeImports"
+                  ],
+                  "workDoneProgress": true
+                },
+                "executeCommandProvider": {
+                  "commands": [],
+                  "workDoneProgress": true
+                },
+                "callHierarchyProvider": true,
+                "workspace": {
+                  "workspaceFolders": {
+                    "supported": true,
+                    "changeNotifications": true
+                  }
+                }
+              },
+              "server": "pyright"
+            },
+            "ms": 150
+          },
+          {
+            "document": {
+              "id": "7cf76f3c-e2c9-418f-861f-4cc67d4b4457",
+              "generation": "dd935bea-7845-4225-ad44-6aa338dfe167",
+              "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/__init__.py",
+              "version": 1
+            },
+            "response": {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/__init__.py",
+              "capabilities": {
+                "textDocumentSync": 2,
+                "definitionProvider": {
+                  "workDoneProgress": true
+                },
+                "declarationProvider": {
+                  "workDoneProgress": true
+                },
+                "typeDefinitionProvider": {
+                  "workDoneProgress": true
+                },
+                "referencesProvider": {
+                  "workDoneProgress": true
+                },
+                "documentSymbolProvider": {
+                  "workDoneProgress": true
+                },
+                "workspaceSymbolProvider": {
+                  "workDoneProgress": true
+                },
+                "hoverProvider": {
+                  "workDoneProgress": true
+                },
+                "documentHighlightProvider": {
+                  "workDoneProgress": true
+                },
+                "renameProvider": {
+                  "prepareProvider": true,
+                  "workDoneProgress": true
+                },
+                "completionProvider": {
+                  "triggerCharacters": [
+                    ".",
+                    "[",
+                    "\"",
+                    "'"
+                  ],
+                  "resolveProvider": true,
+                  "workDoneProgress": true,
+                  "completionItem": {
+                    "labelDetailsSupport": true
+                  }
+                },
+                "signatureHelpProvider": {
+                  "triggerCharacters": [
+                    "(",
+                    ",",
+                    ")"
+                  ],
+                  "workDoneProgress": true
+                },
+                "codeActionProvider": {
+                  "codeActionKinds": [
+                    "quickfix",
+                    "source.organizeImports"
+                  ],
+                  "workDoneProgress": true
+                },
+                "executeCommandProvider": {
+                  "commands": [],
+                  "workDoneProgress": true
+                },
+                "callHierarchyProvider": true,
+                "workspace": {
+                  "workspaceFolders": {
+                    "supported": true,
+                    "changeNotifications": true
+                  }
+                }
+              },
+              "server": "pyright"
+            },
+            "ms": 6
+          }
+        ],
+        "changes": [
+          {
+            "id": "4e3c10c1-293e-422e-87a5-4f8fb52cc4ce",
+            "version": 2
+          },
+          {
+            "id": "7cf76f3c-e2c9-418f-861f-4cc67d4b4457",
+            "version": 2
+          }
+        ],
+        "requests": [
+          {
+            "method": "textDocument/codeAction",
+            "ms": 76
+          },
+          {
+            "method": "textDocument/codeAction",
+            "ms": 0
+          },
+          {
+            "method": "textDocument/documentSymbol",
+            "ms": 64
+          },
+          {
+            "method": "textDocument/hover",
+            "ms": 83
+          },
+          {
+            "method": "textDocument/definition",
+            "ms": 1
+          },
+          {
+            "method": "textDocument/references",
+            "ms": 6
+          },
+          {
+            "method": "textDocument/completion",
+            "ms": 13
+          },
+          {
+            "method": "completionItem/resolve",
+            "ms": 2
+          },
+          {
+            "method": "workspace/symbol",
+            "ms": 1
+          },
+          {
+            "method": "textDocument/prepareCallHierarchy",
+            "ms": 1
+          },
+          {
+            "method": "callHierarchy/incomingCalls",
+            "ms": 1
+          },
+          {
+            "method": "textDocument/prepareRename",
+            "ms": 1
+          },
+          {
+            "method": "textDocument/documentHighlight",
+            "ms": 1
+          },
+          {
+            "method": "textDocument/codeAction",
+            "ms": 102
+          },
+          {
+            "method": "textDocument/rename",
+            "ms": 4874
+          },
+          {
+            "method": "textDocument/codeAction",
+            "ms": 1
+          },
+          {
+            "method": "textDocument/rename",
+            "ms": 27
+          }
+        ]
+      },
+      "sourceUnchanged": true
+    }
+  ]
+}

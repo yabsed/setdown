@@ -1,0 +1,995 @@
+{
+  "revision": "a00d7aef1c6c5868777fc5b04fb97ef225ce69a4",
+  "node": "v22.23.1",
+  "started": "2026-10-17T03:28:15.240Z",
+  "cases": [
+    {
+      "name": "css-min-invalid",
+      "file": "vendor/min/css/windowControls.css",
+      "root": "vendor/min",
+      "needle": "display: none",
+      "symbol": "display",
+      "tools": true,
+      "injectCss": true,
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 9,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 6,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 2,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 2,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 1,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "folding": {
+          "method": "textDocument/foldingRange",
+          "ms": 1,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "formatting": {
+          "method": "textDocument/formatting",
+          "ms": 1,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "pullDiagnostics": {
+          "method": "textDocument/diagnostic",
+          "ms": 1,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        }
+      },
+      "console": [
+        "Error: Missing requestHandler or method: doValidation\n    at We.$fmr (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:30:15921)\n    at ca._handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34642)\n    at Object.handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34136)\n    at ua._handleRequestMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:32917)\n    at ua._handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:32356)\n    at ua.handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:31967)\n    at ca.onmessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34262)\n    at globalThis.onmessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:35598)"
+      ],
+      "events": [
+        {
+          "type": "status",
+          "state": "starting",
+          "documents": [
+            {
+              "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+              "generation": "68fc96dd-fbf7-4fd6-8d29-d3a0f812e47b"
+            }
+          ]
+        },
+        {
+          "type": "status",
+          "state": "ready",
+          "documents": [
+            {
+              "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+              "generation": "68fc96dd-fbf7-4fd6-8d29-d3a0f812e47b"
+            }
+          ]
+        }
+      ],
+      "sourceSha256": "3dd2b40d6be2e16d4535adf635b5d7581e5a1883715d607b758eb3a9a50491f4",
+      "connection": {
+        "document": {
+          "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+          "generation": "68fc96dd-fbf7-4fd6-8d29-d3a0f812e47b",
+          "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+          "version": 1
+        },
+        "response": {
+          "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "completionProvider": {
+              "resolveProvider": false,
+              "triggerCharacters": [
+                "/",
+                "-",
+                ":"
+              ]
+            },
+            "hoverProvider": true,
+            "documentSymbolProvider": true,
+            "referencesProvider": true,
+            "definitionProvider": true,
+            "documentHighlightProvider": true,
+            "documentLinkProvider": {
+              "resolveProvider": false
+            },
+            "codeActionProvider": true,
+            "renameProvider": true,
+            "colorProvider": {},
+            "foldingRangeProvider": true,
+            "selectionRangeProvider": true,
+            "diagnosticProvider": {
+              "documentSelector": null,
+              "interFileDependencies": false,
+              "workspaceDiagnostics": false
+            },
+            "documentRangeFormattingProvider": true,
+            "documentFormattingProvider": true
+          },
+          "server": "css-lsp"
+        },
+        "ms": 245
+      },
+      "openToConnectionMs": 365,
+      "unsavedInjection": "\n.audit { zzz-invalid-property: 1; color: ; }\n",
+      "position": {
+        "line": 8,
+        "character": 3
+      },
+      "completionCount": 0,
+      "sessions": [
+        {
+          "id": "css-lsp",
+          "name": "css-lsp",
+          "languages": [
+            "CSS",
+            "SCSS",
+            "LESS"
+          ],
+          "description": "Language Server Protocol implementation for CSS, SCSS & LESS.",
+          "homepage": "https://github.com/microsoft/vscode-css-languageservice",
+          "configured": true,
+          "bundled": false,
+          "custom": false,
+          "managed": false,
+          "discoverable": true,
+          "enabled": true,
+          "selected": [
+            "css",
+            "scss",
+            "less"
+          ],
+          "executable": "/tmp/setdown-lsp-audit-tools-20261017/node_modules/.bin/vscode-css-language-server",
+          "available": true,
+          "automatic": true,
+          "canDetect": true,
+          "candidates": [
+            {
+              "id": "c18244cfbc159aff9c117366",
+              "path": "/tmp/setdown-lsp-audit-tools-20261017/node_modules/.bin/vscode-css-language-server",
+              "source": "path"
+            }
+          ],
+          "selectionNeeded": false,
+          "searched": [
+            "/tmp/setdown-lsp-audit-tools-20261017/node_modules/.bin",
+            "/home/yabsed/.opam/default/bin",
+            "/home/yabsed/.kimi-code/bin",
+            "/home/yabsed/.opencode/bin",
+            "/home/yabsed/.elan/bin",
+            "/usr/lib/jvm/java-17-temurin-jdk/bin",
+            "/home/yabsed/opt/llvm-22.1.0/bin",
+            "/usr/lib/jvm/java-21-openjdk/bin",
+            "/home/yabsed/.codex/tmp/arg0/codex-arg0o79xEr",
+            "/home/yabsed/.cabal/bin",
+            "/home/yabsed/.ghcup/bin",
+            "/home/yabsed/.local/bin",
+            "/home/yabsed/miniconda3/bin",
+            "/home/yabsed/miniconda3/condabin",
+            "/home/yabsed/.cargo/bin",
+            "/usr/local/bin",
+            "/usr/bin",
+            "/home/yabsed/Android/Sdk/emulator",
+            "/home/yabsed/Android/Sdk/platform-tools",
+            "/home/yabsed/.vscode-insiders/extensions/openai.chatgpt-26.51007.21434-linux-x64/bin/linux-x86_64",
+            "/home/yabsed/go/bin"
+          ],
+          "profileSource": "Helix · vscode-css-language-server",
+          "options": {
+            "args": [
+              "--stdio"
+            ],
+            "settings": {},
+            "initializationOptions": {
+              "provideFormatter": true,
+              "css": {
+                "validate": {
+                  "enable": true
+                }
+              }
+            }
+          },
+          "sessions": [
+            {
+              "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min",
+              "state": "ready",
+              "features": [
+                "completion",
+                "hover",
+                "definition",
+                "references",
+                "documentSymbol",
+                "documentHighlight",
+                "selectionRange",
+                "foldingRange",
+                "documentLink",
+                "color",
+                "rename",
+                "codeAction",
+                "documentFormatting",
+                "documentRangeFormatting",
+                "diagnostic"
+              ],
+              "logs": [],
+              "progress": []
+            }
+          ]
+        }
+      ],
+      "ipc": {
+        "opens": [
+          {
+            "document": {
+              "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+              "generation": "68fc96dd-fbf7-4fd6-8d29-d3a0f812e47b",
+              "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "version": 1
+            },
+            "response": {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "capabilities": {
+                "textDocumentSync": 2,
+                "completionProvider": {
+                  "resolveProvider": false,
+                  "triggerCharacters": [
+                    "/",
+                    "-",
+                    ":"
+                  ]
+                },
+                "hoverProvider": true,
+                "documentSymbolProvider": true,
+                "referencesProvider": true,
+                "definitionProvider": true,
+                "documentHighlightProvider": true,
+                "documentLinkProvider": {
+                  "resolveProvider": false
+                },
+                "codeActionProvider": true,
+                "renameProvider": true,
+                "colorProvider": {},
+                "foldingRangeProvider": true,
+                "selectionRangeProvider": true,
+                "diagnosticProvider": {
+                  "documentSelector": null,
+                  "interFileDependencies": false,
+                  "workspaceDiagnostics": false
+                },
+                "documentRangeFormattingProvider": true,
+                "documentFormattingProvider": true
+              },
+              "server": "css-lsp"
+            },
+            "ms": 245
+          }
+        ],
+        "changes": [
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 2
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 3
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 4
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 5
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 6
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 7
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 8
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 9
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 10
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 11
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 12
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 13
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 14
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 15
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 16
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 17
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 18
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 19
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 20
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 21
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 22
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 23
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 24
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 25
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 26
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 27
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 28
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 29
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 30
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 31
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 32
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 33
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 34
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 35
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 36
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 37
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 38
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 39
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 40
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 41
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 42
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 43
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 44
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 45
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 46
+          },
+          {
+            "id": "b63d21e7-95f6-4a37-b32b-64d6d459eb1c",
+            "version": 47
+          }
+        ],
+        "requests": [
+          {
+            "method": "textDocument/codeAction",
+            "ms": 11
+          },
+          {
+            "method": "textDocument/documentLink",
+            "ms": 12
+          },
+          {
+            "method": "textDocument/documentColor",
+            "ms": 12
+          }
+        ]
+      },
+      "sourceUnchanged": true
+    },
+    {
+      "name": "css-min-configured-invalid",
+      "file": "vendor/min/css/windowControls.css",
+      "root": "vendor/min",
+      "needle": "display: none",
+      "symbol": "display",
+      "tools": true,
+      "configureCss": true,
+      "injectCss": true,
+      "requests": {
+        "symbols": {
+          "method": "textDocument/documentSymbol",
+          "ms": 8,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "hover": {
+          "method": "textDocument/hover",
+          "ms": 6,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "definition": {
+          "method": "textDocument/definition",
+          "ms": 1,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "references": {
+          "method": "textDocument/references",
+          "ms": 1,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "completion": {
+          "method": "textDocument/completion",
+          "ms": 1,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "folding": {
+          "method": "textDocument/foldingRange",
+          "ms": 1,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "formatting": {
+          "method": "textDocument/formatting",
+          "ms": 1,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        },
+        "pullDiagnostics": {
+          "method": "textDocument/diagnostic",
+          "ms": 1,
+          "error": "Error: page.evaluate: Error: Error invoking remote method 'language:request': Error: Invalid or stale language request."
+        }
+      },
+      "console": [
+        "Error: Missing requestHandler or method: doValidation\n    at We.$fmr (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:30:15921)\n    at ca._handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34642)\n    at Object.handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34136)\n    at ua._handleRequestMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:32917)\n    at ua._handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:32356)\n    at ua.handleMessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:31967)\n    at ca.onmessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:34262)\n    at globalThis.onmessage (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist/assets/editor.worker-CRaYpIdo.js:7:35598)"
+      ],
+      "events": [
+        {
+          "type": "configuration",
+          "servers": [
+            "css-lsp"
+          ]
+        },
+        {
+          "type": "status",
+          "state": "starting",
+          "documents": [
+            {
+              "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+              "generation": "a79561de-ddf3-4872-a4ea-34ebf6da6fc3"
+            }
+          ]
+        },
+        {
+          "type": "status",
+          "state": "ready",
+          "documents": [
+            {
+              "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+              "generation": "a79561de-ddf3-4872-a4ea-34ebf6da6fc3"
+            }
+          ]
+        },
+        {
+          "type": "refresh",
+          "feature": "diagnostic",
+          "documents": [
+            {
+              "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+              "generation": "a79561de-ddf3-4872-a4ea-34ebf6da6fc3"
+            }
+          ]
+        }
+      ],
+      "sourceSha256": "3dd2b40d6be2e16d4535adf635b5d7581e5a1883715d607b758eb3a9a50491f4",
+      "connection": {
+        "document": {
+          "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+          "generation": "a79561de-ddf3-4872-a4ea-34ebf6da6fc3",
+          "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+          "version": 1
+        },
+        "response": {
+          "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+          "capabilities": {
+            "textDocumentSync": 2,
+            "completionProvider": {
+              "resolveProvider": false,
+              "triggerCharacters": [
+                "/",
+                "-",
+                ":"
+              ]
+            },
+            "hoverProvider": true,
+            "documentSymbolProvider": true,
+            "referencesProvider": true,
+            "definitionProvider": true,
+            "documentHighlightProvider": true,
+            "documentLinkProvider": {
+              "resolveProvider": false
+            },
+            "codeActionProvider": true,
+            "renameProvider": true,
+            "colorProvider": {},
+            "foldingRangeProvider": true,
+            "selectionRangeProvider": true,
+            "diagnosticProvider": {
+              "documentSelector": null,
+              "interFileDependencies": false,
+              "workspaceDiagnostics": false
+            },
+            "documentRangeFormattingProvider": true,
+            "documentFormattingProvider": true
+          },
+          "server": "css-lsp"
+        },
+        "ms": 238
+      },
+      "openToConnectionMs": 361,
+      "unsavedInjection": "\n.audit { zzz-invalid-property: 1; color: ; }\n",
+      "position": {
+        "line": 8,
+        "character": 3
+      },
+      "completionCount": 0,
+      "sessions": [
+        {
+          "id": "css-lsp",
+          "name": "css-lsp",
+          "languages": [
+            "CSS",
+            "SCSS",
+            "LESS"
+          ],
+          "description": "Language Server Protocol implementation for CSS, SCSS & LESS.",
+          "homepage": "https://github.com/microsoft/vscode-css-languageservice",
+          "configured": true,
+          "bundled": false,
+          "custom": false,
+          "managed": true,
+          "discoverable": true,
+          "enabled": true,
+          "selected": [
+            "css",
+            "scss",
+            "less"
+          ],
+          "executable": "/tmp/setdown-lsp-audit-tools-20261017/node_modules/.bin/vscode-css-language-server",
+          "available": true,
+          "automatic": true,
+          "canDetect": true,
+          "candidates": [
+            {
+              "id": "c18244cfbc159aff9c117366",
+              "path": "/tmp/setdown-lsp-audit-tools-20261017/node_modules/.bin/vscode-css-language-server",
+              "source": "path"
+            }
+          ],
+          "selectionNeeded": false,
+          "searched": [
+            "/tmp/setdown-lsp-audit-tools-20261017/node_modules/.bin",
+            "/home/yabsed/.opam/default/bin",
+            "/home/yabsed/.kimi-code/bin",
+            "/home/yabsed/.opencode/bin",
+            "/home/yabsed/.elan/bin",
+            "/usr/lib/jvm/java-17-temurin-jdk/bin",
+            "/home/yabsed/opt/llvm-22.1.0/bin",
+            "/usr/lib/jvm/java-21-openjdk/bin",
+            "/home/yabsed/.codex/tmp/arg0/codex-arg0o79xEr",
+            "/home/yabsed/.cabal/bin",
+            "/home/yabsed/.ghcup/bin",
+            "/home/yabsed/.local/bin",
+            "/home/yabsed/miniconda3/bin",
+            "/home/yabsed/miniconda3/condabin",
+            "/home/yabsed/.cargo/bin",
+            "/usr/local/bin",
+            "/usr/bin",
+            "/home/yabsed/Android/Sdk/emulator",
+            "/home/yabsed/Android/Sdk/platform-tools",
+            "/home/yabsed/.vscode-insiders/extensions/openai.chatgpt-26.51007.21434-linux-x64/bin/linux-x86_64",
+            "/home/yabsed/go/bin"
+          ],
+          "profileSource": "Helix · vscode-css-language-server",
+          "options": {
+            "args": [
+              "--stdio"
+            ],
+            "settings": {
+              "css": {
+                "validate": true,
+                "lint": {},
+                "completion": {},
+                "hover": {}
+              },
+              "scss": {
+                "validate": true,
+                "lint": {},
+                "completion": {},
+                "hover": {}
+              },
+              "less": {
+                "validate": true,
+                "lint": {},
+                "completion": {},
+                "hover": {}
+              }
+            },
+            "initializationOptions": {
+              "provideFormatter": true,
+              "css": {
+                "validate": {
+                  "enable": true
+                }
+              }
+            }
+          },
+          "sessions": [
+            {
+              "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min",
+              "state": "ready",
+              "features": [
+                "completion",
+                "hover",
+                "definition",
+                "references",
+                "documentSymbol",
+                "documentHighlight",
+                "selectionRange",
+                "foldingRange",
+                "documentLink",
+                "color",
+                "rename",
+                "codeAction",
+                "documentFormatting",
+                "documentRangeFormatting",
+                "diagnostic"
+              ],
+              "logs": [],
+              "progress": []
+            }
+          ]
+        }
+      ],
+      "ipc": {
+        "opens": [
+          {
+            "document": {
+              "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+              "generation": "a79561de-ddf3-4872-a4ea-34ebf6da6fc3",
+              "path": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "version": 1
+            },
+            "response": {
+              "uri": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/min/css/windowControls.css",
+              "capabilities": {
+                "textDocumentSync": 2,
+                "completionProvider": {
+                  "resolveProvider": false,
+                  "triggerCharacters": [
+                    "/",
+                    "-",
+                    ":"
+                  ]
+                },
+                "hoverProvider": true,
+                "documentSymbolProvider": true,
+                "referencesProvider": true,
+                "definitionProvider": true,
+                "documentHighlightProvider": true,
+                "documentLinkProvider": {
+                  "resolveProvider": false
+                },
+                "codeActionProvider": true,
+                "renameProvider": true,
+                "colorProvider": {},
+                "foldingRangeProvider": true,
+                "selectionRangeProvider": true,
+                "diagnosticProvider": {
+                  "documentSelector": null,
+                  "interFileDependencies": false,
+                  "workspaceDiagnostics": false
+                },
+                "documentRangeFormattingProvider": true,
+                "documentFormattingProvider": true
+              },
+              "server": "css-lsp"
+            },
+            "ms": 238
+          }
+        ],
+        "changes": [
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 2
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 3
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 4
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 5
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 6
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 7
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 8
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 9
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 10
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 11
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 12
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 13
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 14
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 15
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 16
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 17
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 18
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 19
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 20
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 21
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 22
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 23
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 24
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 25
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 26
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 27
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 28
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 29
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 30
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 31
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 32
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 33
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 34
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 35
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 36
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 37
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 38
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 39
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 40
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 41
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 42
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 43
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 44
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 45
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 46
+          },
+          {
+            "id": "87ccf204-a3a2-48e0-aba3-516e5422aecc",
+            "version": 47
+          }
+        ],
+        "requests": [
+          {
+            "method": "textDocument/codeAction",
+            "ms": 12
+          },
+          {
+            "method": "textDocument/documentLink",
+            "ms": 12
+          },
+          {
+            "method": "textDocument/documentColor",
+            "ms": 14
+          }
+        ]
+      },
+      "sourceUnchanged": true
+    }
+  ]
+}
