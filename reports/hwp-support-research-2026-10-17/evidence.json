@@ -1,0 +1,135 @@
+{
+  "observed_at": "2026-10-17T18:19:04.126767+09:00",
+  "scope": "Source analysis and report only; no product implementation or dependency changes.",
+  "setdown_revision": "214c26a165a58826dce2c70d79c511003723f182",
+  "hop_revision": "80888af2b8c8a18aea16f824d2d92309a290b1ad",
+  "rhwp_revision": "1a76570e833917d15817415a53c09ad61ab3203f",
+  "hop_rhwp_baseline": {
+    "schemaVersion": 1,
+    "source": "https://github.com/edwardkim/rhwp",
+    "version": "0.8.7",
+    "tag": "v0.8.7",
+    "commit": "1a76570e833917d15817415a53c09ad61ab3203f",
+    "rustToolchain": "1.93.1",
+    "wasmPackVersion": "0.14.0",
+    "cargoPatches": {
+      "svg2pdf": {
+        "path": "vendor/svg2pdf",
+        "version": "0.13.0"
+      }
+    }
+  },
+  "hop_nested_rhwp_initialized": false,
+  "artifact_integrity": [
+    {
+      "file": "rhwp_bg.wasm",
+      "expected": {
+        "bytes": 11803733,
+        "sha256": "5a77a0f5156c7fbf6db1745095d7886d057b5d05bfba25759112cb46be8e97ec"
+      },
+      "actual": {
+        "bytes": 11803733,
+        "sha256": "5a77a0f5156c7fbf6db1745095d7886d057b5d05bfba25759112cb46be8e97ec"
+      },
+      "matches": true
+    },
+    {
+      "file": "rhwp.js",
+      "expected": {
+        "bytes": 454520,
+        "sha256": "70cde06a369fa7fd4fc8bc8f3d6acaee158596ba1a116a2c72159002b0b5654e"
+      },
+      "actual": {
+        "bytes": 454520,
+        "sha256": "70cde06a369fa7fd4fc8bc8f3d6acaee158596ba1a116a2c72159002b0b5654e"
+      },
+      "matches": true
+    },
+    {
+      "file": "rhwp.d.ts",
+      "expected": {
+        "bytes": 183636,
+        "sha256": "4742243ad37a992ba3deec56a3e3e7b57f05073e49806027147acc054b5fce85"
+      },
+      "actual": {
+        "bytes": 183636,
+        "sha256": "4742243ad37a992ba3deec56a3e3e7b57f05073e49806027147acc054b5fce85"
+      },
+      "matches": true
+    },
+    {
+      "file": "rhwp_bg.wasm.d.ts",
+      "expected": {
+        "bytes": 61666,
+        "sha256": "8c9f8bbb336094aa5017fdc03b1059cbe60e8af67086fec1287000a0e322f151"
+      },
+      "actual": {
+        "bytes": 61666,
+        "sha256": "8c9f8bbb336094aa5017fdc03b1059cbe60e8af67086fec1287000a0e322f151"
+      },
+      "matches": true
+    },
+    {
+      "file": "package.json",
+      "expected": {
+        "bytes": 414,
+        "sha256": "53d26a44ad282d5a4d8c8f4137fcc14493bbc1e6e45cde9b79051061b73d8ac8"
+      },
+      "actual": {
+        "bytes": 414,
+        "sha256": "53d26a44ad282d5a4d8c8f4137fcc14493bbc1e6e45cde9b79051061b73d8ac8"
+      },
+      "matches": true
+    },
+    {
+      "file": "LICENSE",
+      "expected": {
+        "bytes": 1072,
+        "sha256": "1c3a7d5643b163a3ead4965e1bea33b832caee5bfca265efe42afcd7bc696b5b"
+      },
+      "actual": {
+        "bytes": 1072,
+        "sha256": "1c3a7d5643b163a3ead4965e1bea33b832caee5bfca265efe42afcd7bc696b5b"
+      },
+      "matches": true
+    }
+  ],
+  "node_version": "v22.23.1",
+  "checks": [
+    {
+      "command": "node --test vendor/rhwp/npm/editor/tests/*.test.mjs",
+      "exit_code": 0,
+      "reported_file_tests": 9,
+      "failures": 0,
+      "skipped": 0,
+      "log": "sdk-tests.log",
+      "scope": "SDK contract and mocked transport; not real browser or HWP rendering"
+    },
+    {
+      "command": "node vendor/rhwp/npm/editor/tests/transport.test.mjs",
+      "exit_code": 0,
+      "reported_tests": 15,
+      "failures": 0,
+      "skipped": 0,
+      "log": "transport-tests.log",
+      "scope": "Direct execution of existing transport tests"
+    },
+    {
+      "check": "Construct EditorTransport({}, file:///tmp/rhwp/index.html)",
+      "result": "Throws studioUrl must use HTTP(S); assertion passed"
+    },
+    {
+      "command": "node --test --test-isolation=none vendor/rhwp/npm/editor/tests/*.test.mjs",
+      "exit_code": 9,
+      "result": "Node option unsupported; no tests executed",
+      "log": "unsupported-node-option.log"
+    }
+  ],
+  "not_executed": [
+    "Setdown GUI/Electron tests",
+    "Preview contract and comparative benchmarks",
+    "RHWP real-document rendering and round-trip compatibility",
+    "Native Rust or WASM rebuild",
+    "Hancom interoperability validation"
+  ]
+}
