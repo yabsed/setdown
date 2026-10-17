@@ -7,6 +7,57 @@ checks, isolated-display rules and the comparative performance gate.
 
 ## Reading surface capabilities
 
+### Static image editing
+
+PNG, JPEG and static WebP tabs expose **Edit image**. Svelte owns the controls;
+the lazy Fabric 7.4 adapter applies the same geometry and color recipe in the
+preview and export runtimes. Crop coordinates belong to the upright original
+after quarter turns/flips, independent of window size, zoom and DPR. Rotation
+in the existing image reader remains a reading preference. Editing starts from
+the upright file, without silently committing the reader's rotation.
+
+`core/image/image-recipe.ts` owns geometry and bounded recipe history.
+`renderer/image/image-edit-sessions.ts` owns original-source handles, saved
+checkpoints and pending saves independently of media surfaces. Cache eviction
+must preserve edits and Undo/Redo. A save acknowledges its captured recipe;
+later changes stay dirty and Undo back to the saved recipe becomes clean.
+Toolbar, keyboard/menu, save-before-close, navigation and save-before-staging
+dispatch through the same content owner. Image edits use explicit saves.
+Dirty image tabs must be saved before dragging to another group/window; recipe
+transfer and crash recovery are outside this first implementation.
+
+Main retains immutable encoded originals under window-owned opaque IDs (64 MiB
+per source, 256 MiB total). Source acquisition rejects animation, more than
+24 million pixels, and edges over 8192 pixels. GIF, APNG, animated WebP, AVIF and
+SVG remain viewing formats. Opening an unsupported edit must preserve the viewer.
+Preview bitmap decoding uses an upright image with a maximum edge of 2048 pixels;
+zoom requiring finer detail replaces it with a full-resolution render. Export
+and detailed previews run one at a time in a separate, never-shown sandboxed
+BrowserWindow, with only its dedicated job/result bridge. They cannot show or
+focus Markdown previews or the desktop shell and do not depend on hidden rAF.
+
+`main/documents/image-edit-ipc.ts` validates ownership, dimensions, recipe and
+output format. Saves serialize per canonical destination across windows, compare
+the expected content hash and disk version, and check the destination again
+before a temporary-file rename. Failures remove the temporary file and retain
+the edit session. A closed/reloaded session cannot commit a delayed save.
+External changes preserve dirty recipes; **Keep My Changes** retains that recipe
+without granting overwrite permission. Save As to a different file or Reload
+resolves the conflict. An external process can still race the final check/rename;
+this is optimistic conflict detection, not filesystem compare-and-swap.
+
+Output is a flattened 8-bit browser raster. PNG/WebP preserve transparency;
+JPEG flattens onto white. EXIF orientation is applied once. Metadata and original
+color profiles are not preserved. Repeated saves in one session render the
+immutable original, avoiding cumulative JPEG recompression.
+
+`image-recipe.test.ts`, `image-save.test.ts`, `image-edit-sessions.test.ts` and
+`media/image-editor.spec.ts` cover geometry/history, save races, file replacement,
+cache eviction, crop after resize, EXIF 1–8, alpha, formats and size limits.
+They join the existing `media/image-reader.spec.ts` and full preview contract gate.
+
+### Document and web readers
+
 Rendered Markdown/Git and web Reader snapshots share the small capability-based
 menu in `core/reading/reading-menu.ts`. Main owns native menu presentation,
 clipboard writes and Google-search/new-tab navigation. A menu belongs to its

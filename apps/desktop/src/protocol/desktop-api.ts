@@ -220,7 +220,7 @@ export type ApplicationMenuEntry = {
 
 export type CloseDecision = 'cancel' | 'discard' | 'save';
 
-export type AppCommand =
+export type AppCommand = 'image:undo' | 'image:redo'
   | `explorer:${import('./explorer').ExplorerEditCommand}`
   | 'new-web-tab'
   | 'reopen-web-tab'
@@ -251,6 +251,7 @@ export type MarkTexApi = {
   flushReadingPositions(): void;
   readPdfRange(path: string, begin: number, end: number, version: DiskVersion): Promise<Uint8Array>;
   showPdfSelectionMenu(path: string, selection: string): Promise<void>;
+  imageEdit: import('./image-edit').ImageEditApi;
   readImageBytes(path: string, version: DiskVersion): Promise<Uint8Array>;
   mediaUrl(path: string): string;
   terminal: import('./terminal').TerminalApi;

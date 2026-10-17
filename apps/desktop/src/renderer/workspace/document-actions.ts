@@ -15,6 +15,7 @@ type Options = {
   reload: (document: DocumentSnapshot) => Promise<void>;
   saved: (document: DocumentSnapshot) => void | Promise<void>;
   renderTabs: () => void; updateChrome: () => void;
+  saveTab?(tab: WorkspaceTab, saveAs?: boolean): Promise<import('../../protocol/desktop-api').SaveResult>;
   beforeSave?(tab: WorkspaceTab): Promise<void>;
   autoSave?: { cancel(tabId?: string): void };
 };
@@ -28,12 +29,12 @@ export class DocumentActions {
   }
   async save(saveAs = false) {
     const tab = this.options.active();
-    if (!tab || tab.document.kind !== undefined) return false;
+    if (!tab || (tab.document.kind !== undefined && tab.document.kind !== 'image')) return false;
     try {
       await this.options.beforeSave?.(tab);
       if (this.options.active() !== tab || !this.options.tabs.includes(tab)) return false;
       const text = this.options.text(tab);
-      const result = saveAs
+      const result = this.options.saveTab ? await this.options.saveTab(tab, saveAs) : saveAs
         ? await this.options.desktop.saveDocumentAs(text, tab.revision)
         : await this.options.desktop.saveDocument(text, tab.revision);
       if (result.canceled || !result.document) return false;
@@ -54,7 +55,7 @@ export class DocumentActions {
         if (!selected.has(tab.document.path) || !this.options.dirty(tab)) continue;
         await this.options.beforeSave?.(tab);
         if (!this.options.tabs.includes(tab)) continue;
-        const result = await this.options.desktop.saveTabDocument(tab.document, this.options.text(tab), tab.revision);
+        const result = this.options.saveTab ? await this.options.saveTab(tab) : await this.options.desktop.saveTabDocument(tab.document, this.options.text(tab), tab.revision);
         if (result.canceled || !result.document) return false;
         await this.accept(tab, result.document);
         await this.options.saved(result.document);
@@ -72,7 +73,7 @@ export class DocumentActions {
         if (!this.options.dirty(tab)) continue;
         await this.options.beforeSave?.(tab);
         if (!this.options.tabs.includes(tab)) continue;
-        const result = await this.options.desktop.saveTabDocument(tab.document, this.options.text(tab), tab.revision);
+        const result = this.options.saveTab ? await this.options.saveTab(tab) : await this.options.desktop.saveTabDocument(tab.document, this.options.text(tab), tab.revision);
         if (result.canceled || !result.document) { this.options.desktop.finishWindowClose(false); return; }
         await this.accept(tab, result.document);
         await this.options.saved(result.document);
@@ -107,6 +108,7 @@ export class DocumentActions {
   keepExternalChange() {
     const tab = this.options.active();
     if (!tab) return;
+    if (tab.document.kind === 'image') { view.notice = false; return; }
     const { id, revision } = tab;
     const path = tab.document.path;
     const text = this.options.text(tab);

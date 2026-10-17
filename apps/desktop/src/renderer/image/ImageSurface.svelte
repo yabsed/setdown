@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { imageSessions } from './image-edit-sessions';
   import { onMount, tick, untrack, flushSync } from 'svelte';
   import { ContentZoomInput } from '../../core/wheel-zoom';
   import type { DocumentSnapshot } from '../../core/document/document';
@@ -7,11 +8,19 @@
   import type { ImagePort } from '../ports/desktop-port';
   import { mediaZoom } from '../zoom-state.svelte';
 
-  let { tabId, document: file, initialPosition, desktop, onposition, active }: {
-    tabId: string; document: DocumentSnapshot; initialPosition?: ReadingPosition; desktop: ImagePort; active: boolean;
+  let { tabId, document: file, initialPosition, desktop, onposition, active, focused, onfocus }: {
+    tabId: string; document: DocumentSnapshot; initialPosition?: ReadingPosition; desktop: ImagePort; active: boolean; focused: boolean; onfocus(): void;
     onposition(position: ImageReadingPosition): void;
   } = $props();
   const initial = untrack(() => initialPosition?.kind === 'image' ? initialPosition : undefined);
+  let editing = $state(!!untrack(() => imageSessions.get(tabId)));
+  let editSession = $state.raw(untrack(() => imageSessions.get(tabId)));
+  let editError = $state(''), openingEditor = $state(false);
+  async function edit() {
+    openingEditor = true; editError = '';
+    try { editSession = await imageSessions.open(tabId); if (!dead) editing = true; }
+    catch (cause) { editError = String(cause); } finally { openingEditor = false; }
+  }
   let zoom = $state<ImageReadingPosition['zoom']>(initial?.zoom ?? 'fit');
   let rotation = $state(initial?.rotation ?? 0);
   let centerX = initial?.centerX ?? .5;
@@ -43,7 +52,7 @@
     onposition({ kind: 'image', zoom, rotation, centerX, centerY });
   }
   async function layout() {
-    if (!host || dead) return;
+    if (!host || dead || editing) return;
     const request = ++layoutRequest;
     adjusting = true;
     // A shrinking pane can briefly show scrollbars for the old image size.
@@ -63,7 +72,7 @@
     remember(); zoom = value === 'fit' || value === 'fit-width' ? value : Number(value); void layout();
   }
   $effect(() => {
-    if (src) mediaZoom[tabId] = { percent: scale * 100, max: 800, change: steps => {
+    if (src && !editing) mediaZoom[tabId] = { percent: scale * 100, max: 800, change: steps => {
       if (active && !dead) changeZoom(String(steps === 0 ? 1 : Math.max(.1, Math.min(8, scale * 1.1 ** steps))));
     } };
   });
@@ -112,9 +121,10 @@
   });
 </script>
 
-<section class="image-surface" class:inactive={!active} inert={!active} aria-hidden={!active} aria-label="Image reader" data-image-ready={!!src}>
+<section class="image-surface" class:inactive={!active} class:editing inert={!active} aria-hidden={!active} aria-label="Image reader" data-image-ready={!!src}>
   <div class="image-toolbar">
     <span>{file.name}</span>
+    {#if /\.(png|jpe?g|webp)$/i.test(file.path)}<button disabled={!src || openingEditor} onclick={() => { onfocus(); void edit(); }}>{openingEditor ? 'Opening editor…' : 'Edit image'}</button>{/if}
     <span class="image-dimensions">{#if width}{width} × {height}{/if}</span>
     <select aria-label="Image zoom" disabled={!src} value={String(zoom)} onchange={(event) => changeZoom(event.currentTarget.value)}>
       <option value="fit">Fit image</option><option value="fit-width">Fit width</option>
@@ -127,10 +137,17 @@
     <button type="button" disabled={!src} onclick={() => changeZoom('fit-width')}>Fit width</button>
     <button type="button" aria-label="Rotate image" disabled={!src} onclick={rotate}>↻</button>
   </div>
+  {#if editError}<p role="alert">{editError}</p>{/if}
+  {#if editing && editSession}
+    {#await import('./ImageEditorSurface.svelte') then module}
+      <module.default {tabId} session={editSession} {active} {focused} {onfocus} ondone={() => { editing = false; void layout(); }} />
+    {:catch cause}<p role="alert">Could not open image editor: {String(cause)}</p>{/await}
+  {/if}
   <!-- The scrollable image region accepts keyboard scrolling as well as pointer panning. -->
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
   <div class="image-viewport" bind:this={host} onscroll={remember} role="region" aria-label="Image canvas" tabindex="0"
     onpointerdown={(event) => {
+      onfocus();
       if (event.button !== 0 || !src) return;
       drag = { x: event.clientX, y: event.clientY, left: host.scrollLeft, top: host.scrollTop };
       host.setPointerCapture(event.pointerId);
@@ -149,6 +166,7 @@
 
 <style>
   .image-surface { grid-column: 2; grid-row: 3; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--app-canvas); }
+  .editing > .image-toolbar, .editing > .image-viewport { display: none; }
   .inactive { visibility: hidden; pointer-events: none; }
   .image-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 6px 10px; border-bottom: 1px solid var(--app-border); font-size: 12px; background: var(--app-chrome); }
   .image-toolbar > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

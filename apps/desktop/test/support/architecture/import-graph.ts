@@ -81,9 +81,10 @@ export function boundaryViolations(dependencies: Dependency[]): string[] {
     let forbidden = false;
     if (from.startsWith('core/')) forbidden = node || !!to && !to.startsWith('core/');
     if (from.startsWith('protocol/')) forbidden = !!to && !/^(core|protocol)\//.test(to);
-    if (from.startsWith('renderer/')) forbidden = node || !!to && /^(main|preload|preview-runtime|browser-runtime)\//.test(to);
-    if (from.startsWith('main/')) forbidden = !!to && /^(renderer|preload|preview-runtime|browser-runtime)\//.test(to);
-    if (/^(preview-runtime|browser-runtime)\//.test(from)) forbidden = !!to && /^(renderer|main)\//.test(to);
+    if (from.startsWith('renderer/')) forbidden = node || !!to && /^(main|preload|preview-runtime|browser-runtime|image-export-runtime)\//.test(to);
+    if (from.startsWith('main/')) forbidden = !!to && /^(renderer|preload|preview-runtime|browser-runtime|image-export-runtime)\//.test(to);
+    if (/^(preview-runtime|browser-runtime|image-export-runtime)\//.test(from)) forbidden = !!to && /^(renderer|main)\//.test(to);
+    if (from.startsWith('image-runtime/')) forbidden = node || !!to && !/^(core|image-runtime)\//.test(to);
     if (to?.startsWith('renderer/app/') && from !== 'renderer/main.ts' && !from.startsWith('renderer/app/')) forbidden = true;
     for (const [feature, publicFiles] of [['language', languagePublic], ['notebook', notebookPublic]] as const) {
       const prefix = `renderer/${feature}/`;

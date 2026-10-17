@@ -118,6 +118,10 @@ const api: MarkTexApi = {
   flushReadingPositions: () => ipcRenderer.sendSync('reading:flush'),
   readPdfRange: (path, begin, end, version) => ipcRenderer.invoke('pdf:range', path, begin, end, version),
   showPdfSelectionMenu: (path, selection) => ipcRenderer.invoke('pdf:selection-menu', path, selection),
+  imageEdit: { open: (path, version) => ipcRenderer.invoke('image-edit:open', path, version),
+    render: (id, recipe) => ipcRenderer.invoke('image-edit:render', id, recipe),
+    release: id => ipcRenderer.send('image-edit:release', id),
+    save: request => ipcRenderer.invoke('image-edit:save', request) },
   readImageBytes: (path, version) => ipcRenderer.invoke('image:read', path, version),
   mediaUrl: (path) => resourceUrl(path),
   terminal: {

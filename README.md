@@ -76,7 +76,8 @@ you need file navigation, search, Git review, or a terminal.
 | Jupyter (`.ipynb`) | Markdown/code cells, multi-cell clipboard and drag reordering, notebook-aware Python LSP, shared Python environment, queued execution, output tools, outline, search/replace and variables; JupyterLab widgets/debugging and nbconvert/nbdime exports/comparison through explicit tool integration; see [notebooks](docs/notebooks.md) |
 | Text, source, and configuration files | Source editing with Monaco syntax highlighting and text Git diffs |
 | PDF | Read-only viewer with continuous scrolling, page navigation, outline, text search and selection, zoom, rotation, and password entry |
-| PNG, JPEG, WebP, GIF, AVIF, SVG | Read-only image viewer with fit, zoom, rotation, and drag-to-pan controls |
+| PNG, JPEG, WebP | Image viewer plus editing for static images: crop, rotate, flip, resize, brightness, contrast, saturation, Undo/Redo and Save As |
+| GIF, AVIF, SVG, animated images | Image viewer with fit, zoom, rotation, and drag-to-pan controls |
 | HTTP and HTTPS pages | Browser tabs with back/forward navigation, bookmarks, history, search, and uBlock Origin |
 
 Open a web tab with `Ctrl/Cmd+T`, or enter a URL with `Ctrl/Cmd+L`. Every editor
@@ -178,7 +179,12 @@ arbitrary server commands and filesystem operations from language servers are
 not enabled yet.
 
 PDF search uses the document's embedded text; scanned pages need an existing OCR
-text layer. Image files can be up to 64 MiB. PDF and image positions, zoom, and
+text layer. Image files can be up to 64 MiB. Open a static PNG, JPEG or WebP and
+choose **Edit image** to edit it, then **Save** (`Ctrl+S`) or **Save As…**.
+Editing supports up to 24 megapixels and 8192 pixels per side. Changes survive
+tab switches; closing an unsaved image prompts to save. JPEG uses a white
+background and saved images omit metadata. Save edited images before dragging
+their tabs to another group or window. PDF and image positions, zoom, and
 rotation persist across restarts. The three most recently visited PDF/image
 surfaces stay in memory per window; older surfaces reload at their saved position.
 

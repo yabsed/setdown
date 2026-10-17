@@ -10,6 +10,8 @@ export interface DocumentContentOwner {
   dirty(tab: DocumentTab): boolean;
   saved(tab: DocumentTab): void;
   replace(tab: DocumentTab, snapshot: DocumentSnapshot): void;
+  save?(tab: DocumentTab, saveAs?: boolean): Promise<import('../../protocol/desktop-api').SaveResult>;
+  retarget?(tab: DocumentTab): void;
   release(id: string): void;
   releaseAll(): void;
 }

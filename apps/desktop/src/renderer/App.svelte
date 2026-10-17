@@ -81,7 +81,7 @@ import type { AppActions } from './ports/ui-actions';
     {:else}
       {#await import('./image/ImageSurface.svelte') then module}
         <module.default tabId={tab.id} document={tab.document} initialPosition={tab.position} {active}
-          {desktop} onposition={(position) => mediaPosition(tab.id, position)} />
+          focused={group?.id === view.focusedGroupId} onfocus={() => { if (view.focusedGroupId !== group?.id) actions.activateTab(tab.id); }} {desktop} onposition={(position) => mediaPosition(tab.id, position)} />
       {:catch error}{#if active}<div role="alert">Could not load the image reader: {String(error)}</div>{/if}{/await}
     {/if}
     </div>

@@ -60,7 +60,7 @@ function fixture() {
     surfaces: { set(surface: 'viewer' | 'editor') { session.surface = surface; }, publishAnchor() {} },
     confirmClose: async (): Promise<'save' | 'discard' | 'cancel'> => 'discard', shouldSchedulePreview: () => true, workspaceChanged() {},
   };
-  const controller = new TabController(Object.assign(options, { documents: new DocumentSessions(options.editor) }) as unknown as ConstructorParameters<typeof TabController>[0]);
+  const controller = new TabController(Object.assign(options, { documents: new DocumentSessions(options.editor, [], Object.assign(options.desktop, { saveDocumentAs: async () => ({ canceled: true }) })) }) as unknown as ConstructorParameters<typeof TabController>[0]);
   return { controller, workspace, session, preview, options };
 }
 const previewOpen = (controller: TabController, document: DocumentSnapshot) =>

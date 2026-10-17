@@ -1,3 +1,4 @@
+import { imageSessions } from '../image/image-edit-sessions';
 import { DocumentSessions } from '../workspace/document-sessions';
 import { notebookContent, notebookViews } from '../notebook/document-content';
 import { createBrowserActions } from '../browser/browser-actions';
@@ -214,7 +215,19 @@ export function startWorkspace(desktop: DesktopPort) {
     focusTab: (id) => actions.activateTab(id),
     changed: (tab, text) => tabs.editorChanged(tab, text), scrolled: () => surfaces.editorScrolled(),
     escape: () => void surfaces.enterViewer(), insertLink: () => insertions.openLink(), insertTable: () => insertions.openTable() });
-  const documentSessions = new DocumentSessions(editor, [notebookContent]);
+  const documentSessions = new DocumentSessions(editor, [notebookContent, imageSessions], desktop);
+  imageSessions.configure(desktop.imageEdit, () => workspace.documents, () => tabs?.updateChrome());
+  imageSessions.saveFromToolbar = (id, saveAs) => {
+    const tab = workspace.documents.find(t => t.id === id);
+    if (!tab) return Promise.resolve();
+    const task = fileMutation.then(async () => {
+      try {
+        const result = await documentSessions.save(tab, saveAs);
+        if (result.document && !result.canceled) { await tabs.acceptSaved(tab, result.document); await projects.documentSaved(result.document); }
+      } catch (error) { imageSessions.fail(id, error); }
+    });
+    fileMutation = task.catch(() => {}); return task;
+  };
   surfaces = new SurfaceController({ workspace, session, shell, editor, reader, preview,
     changed: () => { projectContextChanged(); positions?.schedule(); } });
   positions = new ReadingPositionController({ desktop, editor, active, suspended: () => project.gitDiffActive });
@@ -255,7 +268,7 @@ export function startWorkspace(desktop: DesktopPort) {
     text: tabs.text, dirty: tabs.dirty, beforeSave: tab => documentSessions.beforeSave(tab, 2), acceptSaved: tabs.acceptSaved,
     saved: (document) => projects.documentSaved(document) });
   const documents = new DocumentActions({ desktop, get tabs() { return workspace.documents; }, active, text: tabs.text, dirty: tabs.dirty,
-    preview, beforeSave: tab => documentSessions.beforeSave(tab), installModel: tabs.installModel, acceptSaved: tabs.acceptSaved,
+    preview, saveTab: documentSessions.save, beforeSave: tab => documentSessions.beforeSave(tab), installModel: tabs.installModel, acceptSaved: tabs.acceptSaved,
     show: (document, surface) => { projectOpenRequest++; projects.deactivateGitDiff(); return tabs.show(document, surface); },
     reload: tabs.reload, saved: (document) => projects.documentSaved(document),
     renderTabs: tabs.render, updateChrome: tabs.updateChrome, autoSave });
@@ -418,6 +431,11 @@ export function startWorkspace(desktop: DesktopPort) {
         if (command === 'open-find') { window.dispatchEvent(new Event('setdown:browser-find')); return; }
         if (command === 'export-pdf' && browser.readers[workspace.active.id]) { void actions.browserReaderExport(workspace.active.id, 'pdf'); return; }
         if (command === 'save' || command === 'save-as') { actions.browserCommand(workspace.active.id, 'save'); return; }
+      }
+      if (command === 'image:undo' || command === 'image:redo') {
+        if (document.activeElement?.matches('input, textarea, [contenteditable="true"]')) document.execCommand(command.slice(6));
+        else if (active()) { if (command === 'image:undo') imageSessions.undo(active()!.id); else imageSessions.redo(active()!.id); }
+        return;
       }
       if (command === 'toggle-terminal') { projects.select('terminal'); return; }
       if (command === 'escape' && terminalOwnsInput()) return;

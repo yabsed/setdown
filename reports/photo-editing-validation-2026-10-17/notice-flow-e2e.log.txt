@@ -1,0 +1,85 @@
+
+Running 6 tests using 1 worker
+
+(node:45784) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[1/6] test/e2e/media/image-editor.spec.ts:22:1 › edits geometry and color, survives media eviction, exports correct pixels and keeps saved undo checkpoints
+dbus-daemon[45700]: [session uid=1000 pid=45700] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=45798 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[45700]: [session uid=1000 pid=45700] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=45798 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[45700]: [session uid=1000 pid=45700] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[45700]: [session uid=1000 pid=45700] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.3' (uid=1000 pid=45856 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[45700]: [session uid=1000 pid=45700] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[45700]: [session uid=1000 pid=45700] Activating service name='org.freedesktop.portal.Documents' requested by ':1.3' (uid=1000 pid=45856 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[45700]: [session uid=1000 pid=45700] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[45700]: [session uid=1000 pid=45700] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.3' (uid=1000 pid=45856 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[45700]: [session uid=1000 pid=45700] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=45904 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[45700]: [session uid=1000 pid=45700] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[45700]: [session uid=1000 pid=45700] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[45700]: [session uid=1000 pid=45700] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.3' (uid=1000 pid=45856 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[45700]: [session uid=1000 pid=45700] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:45856): xdg-desktop-portal-WARNING **: 16:28:06.962: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[45700]: [session uid=1000 pid=45700] Activating service name='org.freedesktop.secrets' requested by ':1.3' (uid=1000 pid=45856 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+** Message: 16:28:06.973: couldn't access control socket: /tmp/setdown-display-runtime.I3A3vk/keyring/control: No such file or directory
+discover_other_daemon: 0dbus-daemon[45700]: [session uid=1000 pid=45700] Successfully activated service 'org.freedesktop.secrets'
+dbus-daemon[45700]: [session uid=1000 pid=45700] Successfully activated service 'org.freedesktop.portal.Desktop'
+[2/6] test/e2e/media/image-editor.spec.ts:63:1 › disk conflict preserves edits, canceled Save As stays dirty, and a delayed save preserves newer edits
+  1) test/e2e/media/image-editor.spec.ts:63:1 › disk conflict preserves edits, canceled Save As stays dirty, and a delayed save preserves newer edits 
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for locator('.image-editor').visible().getByRole('button', { name: 'Save', exact: true })
+        - locator resolved to <button class="svelte-1g316lk">Save</button>
+      - attempting click action
+        2 × waiting for element to be visible, enabled and stable
+          - element is visible, enabled and stable
+          - scrolling into view if needed
+          - done scrolling
+          - <div class="notice">…</div> from <div class="group-content focused-content" data-zoom-tab="531d65ad-1faf-45a6-9639-ee5035831609">…</div> subtree intercepts pointer events
+        - retrying click action
+        - waiting 20ms
+        2 × waiting for element to be visible, enabled and stable
+          - element is visible, enabled and stable
+          - scrolling into view if needed
+          - done scrolling
+          - <div class="notice">…</div> from <div class="group-content focused-content" data-zoom-tab="531d65ad-1faf-45a6-9639-ee5035831609">…</div> subtree intercepts pointer events
+        - retrying click action
+          - waiting 100ms
+        58 × waiting for element to be visible, enabled and stable
+           - element is visible, enabled and stable
+           - scrolling into view if needed
+           - done scrolling
+           - <div class="notice">…</div> from <div class="group-content focused-content" data-zoom-tab="531d65ad-1faf-45a6-9639-ee5035831609">…</div> subtree intercepts pointer events
+         - retrying click action
+           - waiting 500ms
+
+
+      68 |     await writeFile(f.file, external);
+      69 |     await expect(f.page.locator('.notice')).toBeVisible();
+    > 70 |     await f.edit.getByRole('button', { name: 'Save', exact: true }).click();
+         |                                                                     ^
+      71 |     await expect(f.edit.getByRole('alert')).toContainText('changed on disk');
+      72 |     await expect(f.edit).toHaveAttribute('data-dirty', 'true'); expect(await readFile(f.file)).toEqual(external);
+      73 |     await f.app.evaluate(({ dialog }) => { dialog.showSaveDialog = async () => ({ canceled: true, filePath: '' }); });
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/media/image-editor.spec.ts:70:69
+
+    Error Context: test-results/media-image-editor-disk-co-93807--save-preserves-newer-edits/error-context.md
+
+
+(node:47186) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[3/6] test/e2e/media/image-editor.spec.ts:93:1 › EXIF 1–8 export upright pixels once and rejects animated or unowned inputs
+[4/6] test/e2e/media/image-editor.spec.ts:132:1 › PNG/WebP keep alpha, JPEG flattens white, pointer crop survives resize and close saves binary content
+[5/6] test/e2e/media/image-reader.spec.ts:18:1 › opens every supported image format, preserves the bitmap across tab switches and prevents text saves
+[6/6] test/e2e/media/image-reader.spec.ts:68:1 › restores image zoom, rotation and pan after restart; reloads changed content and reports invalid images
+  1 failed
+    test/e2e/media/image-editor.spec.ts:63:1 › disk conflict preserves edits, canceled Save As stays dirty, and a delayed save preserves newer edits 
+  5 passed (45.1s)

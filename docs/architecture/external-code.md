@@ -9,6 +9,8 @@
 | `vendor/ublock-origin` | 고정한 소스와 uAssets로 번들 확장을 생성 | `scripts/browser/build-ublock.mjs`, `setdown-build.json`, browser/ublock E2E |
 | uAssets | recipe에 고정한 main/prod 커밋, `node_modules/.cache/setdown-browser`에 다운로드 | 두 asset pin과 recipe fingerprint, 필터링·재시작 검증 |
 | `vendor/readability` | Readability.js와 LICENSE.md를 dist-electron으로 복사 | `scripts/build-browser.mjs`, browser/reader E2E |
+| npm `fabric@7.4.0` (MIT) | `src/image-runtime/fabric-adapter.ts`에서만 사용. Svelte 편집 화면은 지연 로드, 전체 크기 내보내기는 별도 숨김 렌더러에서 실행 | 패키지 `LICENSE`, `image-export-runtime/`, `media/image-editor.spec.ts`. 원본 소스 패치 없음. canvas와 bitmap 해제는 어댑터·각 화면이 소유 |
+| npm `sharp@0.35.4` (Apache-2.0) | main에서 이미지 형식·애니메이션·픽셀 한도를 확인하고 방향을 보정한 작은 미리보기 생성 | 패키지 `LICENSE`, `main/documents/image-edit-ipc.ts`, EXIF·형식 E2E. 기존 전이 의존성을 명시적 의존성으로 선언 |
 | Min에서 가져온 places 구현 | `src/browser-runtime/min-places.js`; Min 라이선스 복사, 로컬 fallback 포함 | `src/browser-runtime/MIN-LICENSE.txt`, places·history E2E |
 | npm `electron-chrome-extensions` | main 확장 host와 가공한 preload | `scripts/browser/extension-preload.mjs`, 해당 Node 테스트, browser 확장 E2E |
 | npm Crossnote·Monaco·PDF.js·xterm·web-git-graph 등 | `apps/desktop/package.json`에 선언한 실제 실행 의존성 | lockfile, 각 기능 어댑터, 관련 계약 및 패키징 |

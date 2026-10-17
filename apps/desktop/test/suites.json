@@ -74,7 +74,10 @@
       "src/renderer/workspace/auto-save.test.ts",
       "src/renderer/workspace/document-sessions.test.ts",
       "src/renderer/workspace/media-cache.test.ts",
-      "src/renderer/workspace/text-workspace.test.ts"
+      "src/renderer/workspace/text-workspace.test.ts",
+      "src/core/image/image-recipe.test.ts",
+      "src/main/documents/image-save.test.ts",
+      "src/renderer/image/image-edit-sessions.test.ts"
     ]
   },
   "e2e": {
@@ -262,6 +265,9 @@
       "previewContract": true
     },
     "language/language-reform.spec.ts": {
+      "previewContract": true
+    },
+    "media/image-editor.spec.ts": {
       "previewContract": true
     }
   },

@@ -144,7 +144,7 @@ export class TabNavigationController {
           if (decision === 'save') {
             await this.options.documents.beforeSave(tab);
             if (!current() || workspace.find(id) !== tab) return false;
-            const saved = await desktop.saveTabDocument(tab.document, this.options.text(tab), tab.revision);
+            const saved = await this.options.documents.save(tab);
             if (saved.canceled || !saved.document) return false;
             await this.options.acceptSaved(tab, saved.document);
             if (!current() || this.options.dirty(tab)) return false;

@@ -6,9 +6,12 @@ const shared = {
   platform: 'node',
   target: 'node22',
   sourcemap: true,
-  external: ['electron', 'jsonc-parser', 'crossnote', '@parcel/watcher', '@vscode/ripgrep', 'node-pty', '@xterm/headless', '@xterm/addon-serialize', 'electron-chrome-extensions', 'electron-chrome-web-store', 'turndown', 'turndown-plugin-gfm', 'sanitize-html', 'pyright', 'basedpyright'],
+  external: ['sharp', 'electron', 'jsonc-parser', 'crossnote', '@parcel/watcher', '@vscode/ripgrep', 'node-pty', '@xterm/headless', '@xterm/addon-serialize', 'electron-chrome-extensions', 'electron-chrome-web-store', 'turndown', 'turndown-plugin-gfm', 'sanitize-html', 'pyright', 'basedpyright'],
 };
 await Promise.all([
+  build({ ...shared, entryPoints: ['src/image-export-runtime/preload.ts'], outfile: 'dist-electron/image-export-preload.cjs', format: 'cjs' }),
+  build({ bundle: true, platform: 'browser', target: 'chrome120', format: 'iife', entryPoints: ['src/image-export-runtime/index.ts'], outfile: 'dist-electron/image-export.js' }),
+  copyFile('src/image-export-runtime/index.html', 'dist-electron/image-export.html'),
   build({ ...shared, entryPoints: ['src/main/main.ts'], outfile: 'dist-electron/main.cjs', format: 'cjs' }),
   build({ ...shared, entryPoints: ['src/preload/index.ts'], outfile: 'dist-electron/preload.cjs', format: 'cjs' }),
   build({ ...shared, entryPoints: ['src/main/preview/render-worker.ts'], outfile: 'dist-electron/render-worker.cjs', format: 'cjs' }),

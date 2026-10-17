@@ -66,6 +66,7 @@ export function installApplicationMenu(context: MenuContext) {
   const contents = () => state()?.window.webContents;
   const command = context.sendCommand;
   const history = (action: 'undo' | 'redo') => {
+    if (state()?.currentDocument?.kind === 'image') { command(`image:${action}`); return; }
     if (!state()?.explorerEditTarget) contents()?.[action]();
   };
   const edit = (name: 'cut' | 'copy' | 'paste' | 'select-all') => {

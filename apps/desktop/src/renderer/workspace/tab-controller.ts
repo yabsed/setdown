@@ -390,7 +390,7 @@ export class TabController {
       if (decision === 'save') {
         await this.options.documents.beforeSave(tab);
         if (workspace.find(tab.id) !== tab) return true;
-        const result = await desktop.saveTabDocument(tab.document, this.text(tab), tab.revision);
+        const result = await this.options.documents.save(tab);
         if (result.canceled || !result.document) return false;
         await this.acceptSaved(tab, result.document);
         if (this.dirty(tab)) return false;
@@ -424,7 +424,7 @@ export class TabController {
       if (decision === 'save') for (const tab of dirty) {
         await this.options.documents.beforeSave(tab);
         if (!this.options.workspace.documents.includes(tab)) continue;
-        const result = await this.options.desktop.saveTabDocument(tab.document, this.text(tab), tab.revision);
+        const result = await this.options.documents.save(tab);
         if (result.canceled || !result.document) return false;
         await this.acceptSaved(tab, result.document);
         if (this.dirty(tab)) return false;
