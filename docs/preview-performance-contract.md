@@ -483,3 +483,10 @@ Dated validation evidence: [Notebook reform validation — 2026-10-16](validatio
 ## Notebook convenience validation — 2026-10-16
 
 Dated validation evidence: [Notebook convenience validation — 2026-10-16](validation/2026-10-16-feature-regressions.md#notebook-convenience-validation--2026-10-16).
+
+## LSP conformance reform validation 2026-10-17
+
+Dated validation evidence: [LSP 개혁 적용 검증](validation/2026-10-17-lsp-reform.md).
+The shared Monaco worker dispatcher is covered by the contract's ordinary/Git/notebook
+checks and the new language worker/protocol regression scenarios. The independent
+baseline comparison completed 80 launches with all 48 comparisons inside the existing tolerances.

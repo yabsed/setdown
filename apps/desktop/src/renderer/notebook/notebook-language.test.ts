@@ -20,13 +20,13 @@ function fixture() {
   entry.models.set(b, model);
   let event: (event: LanguageEvent) => void = () => {};
   const port = { open: vi.fn(async () => ({ uri: 'file:///project/notebook.ipynb', cells: { [a]: 'vscode-notebook-cell:/project/notebook.ipynb#a', [b]: 'vscode-notebook-cell:/project/notebook.ipynb#b' }, capabilities: {
-    renameProvider: true, codeActionProvider: true, completionProvider: { triggerCharacters: ['.'] }, hoverProvider: true, textDocumentSync: 1 }, server: 'notebook-python' })),
-    change: vi.fn(async () => {}), changeNotebook: vi.fn(async () => ({ [a]: 'vscode-notebook-cell:/project/notebook.ipynb#a', [b]: 'vscode-notebook-cell:/project/notebook.ipynb#b' })), close: vi.fn(), cancel: vi.fn(), request: vi.fn(async (): Promise<unknown> => []),
+    renameProvider: true, codeActionProvider: true, completionProvider: { triggerCharacters: ['.', ':'], resolveProvider: true }, hoverProvider: true, textDocumentSync: 1 }, server: 'notebook-python' })),
+    change: vi.fn(async () => {}), changeNotebook: vi.fn(async () => ({ [a]: 'vscode-notebook-cell:/project/notebook.ipynb#a', [b]: 'vscode-notebook-cell:/project/notebook.ipynb#b' })), close: vi.fn(), releaseItems: vi.fn(), cancel: vi.fn(), request: vi.fn(async (): Promise<unknown> => []),
     onEvent: (listener: typeof event) => { event = listener; return () => {}; } } as unknown as LanguageApi;
   const client = new NotebookLanguage(api, port, entry, '/project/notebook.ipynb', () => {}, async () => {}, async () => {});
   const token: M.CancellationToken = { isCancellationRequested: false, onCancellationRequested: () => ({ dispose() {} }) };
-  const complete = () => providers.get('registerCompletionItemProvider').provideCompletionItems(model, { lineNumber: 1, column: 9 }, { triggerKind: 1 }, token);
-  return { api, entry, a, b, port, client, complete, event: (value: LanguageEvent) => event(value) };
+  const complete = (triggerKind = 1) => providers.get('registerCompletionItemProvider').provideCompletionItems(model, { lineNumber: 1, column: 9 }, { triggerKind, triggerCharacter: ':' }, token);
+  return { api, entry, a, b, port, client, complete, providers, token, event: (value: LanguageEvent) => event(value) };
 }
 test('notebook completion flushes native cells and preserves local coordinates after earlier edits', async () => {
   const f = fixture(); await vi.waitFor(() => expect(f.port.open).toHaveBeenCalledOnce()); await Promise.resolve();
@@ -91,5 +91,53 @@ test('rename applies cell-local edits atomically and a code action expires after
   vi.mocked(f.port.request).mockResolvedValue([{ title: 'Safe edit', edit: { changes } }, { title: 'Unsafe command', command: { command: 'execute', title: 'execute' } }]);
   const actions = await f.client.actions(f.b, 2); expect(actions).toHaveLength(1);
   f.entry.document.setSource(f.a, 'numbers = []'); expect(() => actions[0].apply()).toThrow(/changed/); expect(f.entry.document.cells[1].source).toBe('numbers.');
+  f.client.dispose(); f.entry.dispose();
+});
+
+test('notebook completion negotiates triggers, translates all trigger kinds and resolves server items', async () => {
+  const f = fixture(); await Promise.resolve(); await Promise.resolve();
+  const provider = f.providers.get('registerCompletionItemProvider');
+  expect(provider.triggerCharacters).toEqual(['.', ':']);
+  const raw = { label: 'append', data: { opaque: 7 }, $setdownItem: 'list-handle' };
+  vi.mocked(f.port.request).mockResolvedValue([raw]);
+  for (const kind of [0, 1, 2]) {
+    const result = await f.complete(kind);
+    expect(f.port.request).toHaveBeenLastCalledWith(expect.any(String), 1, expect.any(String), 'textDocument/completion',
+      expect.objectContaining({ context: { triggerKind: kind + 1, triggerCharacter: ':' } }));
+    result.dispose();
+  }
+  const result = await f.complete();
+  vi.mocked(f.port.request).mockResolvedValue({ ...raw, detail: 'resolved documentation', $setdownItem: 'resolved-handle', additionalTextEdits: [
+    { range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } }, newText: '# import\n' },
+  ] });
+  const resolved = await provider.resolveCompletionItem(result.suggestions[0], f.token);
+  expect(f.port.request).toHaveBeenLastCalledWith(expect.any(String), 1, expect.any(String), 'completionItem/resolve', { ...raw, cell: f.b });
+  expect(resolved.detail).toBe('resolved documentation'); expect(resolved.additionalTextEdits).toHaveLength(1);
+  result.dispose(); expect(f.port.releaseItems).toHaveBeenLastCalledWith(expect.any(String), ['list-handle', 'resolved-handle']);
+  f.client.dispose(); f.entry.dispose();
+});
+
+test('notebook resolve refuses stale results, cross-cell edits, commands and disposed-list responses', async () => {
+  const f = fixture(); await Promise.resolve(); await Promise.resolve();
+  const provider = f.providers.get('registerCompletionItemProvider');
+  vi.mocked(f.port.request).mockResolvedValue([{ label: 'append', $setdownItem: 'initial' }]);
+  const result = await f.complete(), item = result.suggestions[0];
+  vi.mocked(f.port.request).mockResolvedValue({ label: 'append', additionalTextEdits: [
+    { range: { start: { line: 4, character: 0 }, end: { line: 4, character: 0 } }, newText: 'outside' },
+  ] });
+  expect((await provider.resolveCompletionItem(item, f.token)).additionalTextEdits ?? []).toEqual([]);
+  vi.mocked(f.port.request).mockResolvedValue({ label: 'unsafe', command: { command: 'run', title: 'Run' } });
+  expect((await provider.resolveCompletionItem(item, f.token)).label).toBe('append');
+  let finish!: (value: unknown) => void;
+  vi.mocked(f.port.request).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  const pending = provider.resolveCompletionItem(item, f.token);
+  await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
+  result.dispose(); finish({ label: 'late', $setdownItem: 'late' });
+  expect((await pending).label).toBe('append');
+  expect(f.port.releaseItems).toHaveBeenLastCalledWith(expect.any(String), ['late']);
+  const calls = vi.mocked(f.port.request).mock.calls.length;
+  f.entry.document.setSource(f.a, '# dependency changed');
+  expect((await provider.resolveCompletionItem(item, f.token)).additionalTextEdits).toBeUndefined();
+  expect(f.port.request).toHaveBeenCalledTimes(calls);
   f.client.dispose(); f.entry.dispose();
 });

@@ -7,12 +7,13 @@ import { canonicalPath } from '../documents/file-system';
 import { ServerSession } from './server-session';
 import { notebookPythonAnalysis } from './python-analysis';
 import { notebookPython } from '../notebook/python-environments';
+import { notebookClientCapabilities, notebookLanguageMethods } from '../../protocol/language-features';
+import { ServerItems } from './server-items';
+import { languageRoot } from './language-root';
+import { builtinLanguageServers } from './catalog/profiles';
 
-const methods = new Set<LanguageMethod>(['textDocument/completion', 'textDocument/hover', 'textDocument/signatureHelp',
-  'textDocument/definition', 'textDocument/references', 'textDocument/documentHighlight', 'textDocument/documentSymbol',
-  'textDocument/semanticTokens/full', 'textDocument/inlayHint', 'textDocument/rename', 'textDocument/prepareRename', 'textDocument/codeAction']);
 type Cell = LanguageCell & { uri: string };
-type Session = { state: WindowState; document: LanguageDocument; cells: Cell[]; server: ServerSession;
+type Session = { state: WindowState; document: LanguageDocument; cells: Cell[]; server: ServerSession; items: ServerItems; root: string; rootReason: string;
   phase: 'starting' | 'ready' | 'failed'; message?: string; uri: string; epoch: number; requests: Map<string, CancellationTokenSource>; ready: boolean };
 export function validateLanguageCells(cells: unknown): asserts cells is LanguageCell[] {
   if (!Array.isArray(cells) || cells.length > 10000) throw Error('Invalid notebook cells.');
@@ -69,27 +70,29 @@ export class NotebookLanguageHost {
       const entry = require.resolve('basedpyright/langserver.index.js').replace(/([\\/])app\.asar([\\/])/, '$1app.asar.unpacked$2');
       const { NODE_OPTIONS: _options, NODE_PATH: _nodePath, ...env } = environment.env;
       const uri = pathToFileURL(file).href;
-      const session = { state, document: { ...document }, cells: this.cells(uri, document.cells), uri, phase: 'starting', epoch: 0, requests: new Map(), ready: false } as Session;
+      const root = languageRoot(file, builtinLanguageServers.find(profile => profile.id === 'pyright')!, state.projectRoot ?? undefined);
+      const session = { state, document: { ...document }, cells: this.cells(uri, document.cells), uri, phase: 'starting', epoch: 0,
+        items: new ServerItems(), root: root.path, rootReason: root.reason, requests: new Map(), ready: false } as Session;
       // Notebook mode supplies display(); the hidden first cell binds IPython's
       // runtime get_ipython() with its installed types. Neither source is rewritten.
       // Match VS Code's lightweight Python diagnostics; inference still powers
       // completion/hover. Let the server's off preset own the diagnostic rules.
       const analysis = notebookPythonAnalysis;
       session.server = new ServerSession({ executable: process.execPath, args: [entry, '--stdio'], env: { ...env, ELECTRON_RUN_AS_NODE: '1' } },
-        state.projectRoot ?? path.dirname(file), params => {
+        root.path, params => {
           if (this.sessions.get(key) !== session) return;
           const cell = session.cells.find(cell => cell.uri === params.uri);
           if (!cell?.id || params.version !== session.document.version) return; // This bundled server provides versions; no guessed positions.
           this.emit(session, { type: 'diagnostics', id: document.id, generation: document.generation, version: session.document.version,
             cell: cell.id, cellVersion: cell.version, diagnostics: params.diagnostics });
         }, message => { if (this.sessions.get(key) === session) { session.ready = false; this.status(session, 'failed', message); } },
-        { name: 'Notebook Python', watches: file => /\.(py|pyi|toml|json)$/.test(file), initializationOptions: { disablePullDiagnostics: true },
+        { name: 'Notebook Python', capabilities: notebookClientCapabilities(), watches: file => /\.(py|pyi|toml|json)$/.test(file), initializationOptions: { disablePullDiagnostics: true },
           configuration: { python: { pythonPath: environment.python, analysis }, basedpyright: { analysis } } });
       this.sessions.set(key, session); this.status(session, 'starting');
       const capabilities = await session.server.ready;
       if (this.sessions.get(key) !== session || !owns()) throw Error('Notebook closed during language initialization.');
       if (!capabilities.notebookDocumentSync) { this.close(owner, document.id); throw Error('The notebook server does not support cell synchronization.'); }
-      session.server.watch(state.projectRoot ?? path.dirname(file));
+      session.server.watch(root.path);
       await session.server.notify('notebookDocument/didOpen', {
         notebookDocument: { uri, notebookType: 'jupyter-notebook', version: document.version,
           cells: session.cells.map(cell => ({ kind: 2, document: cell.uri })) },
@@ -119,6 +122,7 @@ export class NotebookLanguageHost {
     if (structure) session.epoch = version;
     const next = this.cells(session.uri, cells, session.epoch);
     session.cells = next; session.document.version = version;
+    session.items.forget(id);
     if (structure) {
       await session.server.notify('notebookDocument/didClose', { notebookDocument: { uri: session.uri }, cellTextDocuments: previous.map(cell => ({ uri: cell.uri })) });
       await session.server.notify('notebookDocument/didOpen', {
@@ -136,21 +140,25 @@ export class NotebookLanguageHost {
   }
   async request(owner: number, id: string, version: number, requestId: string, method: LanguageMethod, value: unknown): Promise<unknown> {
     const session = this.sessions.get(this.key(owner, id));
-    if (!session?.ready || version !== session.document.version || !methods.has(method) || typeof requestId !== 'string' || requestId.length > 128
+    if (!session?.ready || version !== session.document.version || !notebookLanguageMethods.has(method) || typeof requestId !== 'string' || requestId.length > 128
       || session.requests.size >= 64 || session.requests.has(requestId) || !value || typeof value !== 'object' || JSON.stringify(value).length > 4 * 1024 * 1024) throw Error('Invalid notebook language request.');
     const { cell: cellId, ...params } = value as Record<string, unknown>;
     if (method === 'textDocument/rename' && (typeof params.newName !== 'string' || !/^[\p{ID_Start}_][\p{ID_Continue}]*$/u.test(params.newName) || !params.position)) throw Error('Invalid notebook rename request.');
     const cell = session.cells.find(cell => cell.id === cellId); if (!cell) throw Error('Notebook cell is closed.');
+    const origin = { document: id, generation: `${session.document.generation}:${cell.id}`, version };
+    const request = method === 'completionItem/resolve' ? session.items.resolve(method, params, origin)
+      : { ...params, textDocument: { uri: cell.uri } };
     const token = new CancellationTokenSource(); session.requests.set(requestId, token);
     try {
-      const result = await session.server.request(method, { ...params, textDocument: { uri: cell.uri } }, token);
-      return this.sessions.get(this.key(owner, id)) === session && session.document.version === version ? result : null;
+      const result = await session.server.request(method, request, token);
+      return this.sessions.get(this.key(owner, id)) === session && session.document.version === version ? session.items.remember(method, result, origin) : null;
     } catch (error) {
       if (token.token.isCancellationRequested || this.sessions.get(this.key(owner, id)) !== session) return null;
       throw error;
     } finally { session.requests.delete(requestId); token.dispose(); }
   }
   cancel(owner: number, id: string): void { for (const s of this.sessions.values()) if (s.state.webContentsId === owner) s.requests.get(id)?.cancel(); }
+  releaseItems(owner: number, id: string, handles: string[]): void { this.sessions.get(this.key(owner, id))?.items.release(handles, { document: id }); }
   close(owner: number, id: string): void {
     const key = this.key(owner, id); this.openings.delete(key);
     const session = this.sessions.get(key); if (!session) return;
@@ -163,7 +171,7 @@ export class NotebookLanguageHost {
   }
   snapshot(owner: number) {
     return [...this.sessions.values()].filter(session => session.state.webContentsId === owner).map(session => ({
-      root: session.document.path, state: session.phase, message: session.message, logs: session.server.logs, features: ['Notebook cells', 'Completion', 'Hover', 'Definition'],
+      root: session.root, rootReason: session.rootReason, state: session.phase, message: session.message, context: [...session.server.context ?? []].map(([key, value]) => `${key}: ${value}`), logs: session.server.logs, features: ['Notebook cells', 'Completion', 'Hover', 'Definition'],
     }));
   }
   async dispose(owner?: number): Promise<void> {

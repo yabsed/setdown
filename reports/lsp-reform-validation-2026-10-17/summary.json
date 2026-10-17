@@ -1,0 +1,80 @@
+{
+  "scenarios": 26,
+  "connectedCases": 24,
+  "expectedMissingServer": 1,
+  "unavailableToolchain": 1,
+  "rename": [
+    {
+      "kind": "standalone",
+      "files": [
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/__init__.py",
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/v4/nbjson.py",
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/tests/test_validator.py"
+      ],
+      "ms": 312,
+      "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat"
+    },
+    {
+      "kind": "project",
+      "files": [
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/__init__.py",
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/v4/nbjson.py",
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/tests/test_validator.py"
+      ],
+      "ms": 299,
+      "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat"
+    },
+    {
+      "kind": "superproject",
+      "files": [
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/__init__.py",
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/notebooknode.py",
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/nbformat/v4/nbjson.py",
+        "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat/tests/test_validator.py"
+      ],
+      "ms": 294,
+      "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/nbformat"
+    }
+  ],
+  "defaultTypeScriptHints": 12,
+  "cssDiagnostics": [
+    {
+      "code": "css-propertyvalueexpected",
+      "source": "css",
+      "message": "property value expected",
+      "severity": 1,
+      "range": {
+        "start": {
+          "line": 170,
+          "character": 41
+        },
+        "end": {
+          "line": 170,
+          "character": 42
+        }
+      }
+    },
+    {
+      "code": "unknownProperties",
+      "source": "css",
+      "message": "Unknown property: 'zzz-invalid-property'",
+      "severity": 2,
+      "range": {
+        "start": {
+          "line": 170,
+          "character": 9
+        },
+        "end": {
+          "line": 170,
+          "character": 29
+        }
+      }
+    }
+  ],
+  "notebookResolve": true,
+  "allSourcesUnchanged": true,
+  "initialRunExpectationMismatch": "ts-gitgraph: declaration returns no LSP completions; the old widget contained built-in word suggestions",
+  "corrections": "The final run asserts the no-suggestions message after the LSP reply and one CSS error plus one warning in real Monaco."
+}

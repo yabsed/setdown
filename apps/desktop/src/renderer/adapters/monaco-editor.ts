@@ -16,6 +16,7 @@ import { installMarkdownEditorActions } from '../editor/markdown-editor-actions'
 import { monacoThemeName, registerMonacoThemes } from '../theme';
 import { languageSupport, type LanguageRoute } from '../../core/document/language-support';
 import type { LanguageClient, LanguageOptions } from '../language/language-client';
+import { loadMonaco } from '../editor/monaco-runtime';
 
 type Options = {
   releaseDocuments?(): void;
@@ -130,12 +131,8 @@ export class MonacoEditor {
     if (this.editorValue) return;
     if (this.loading) return this.loading;
     this.options.status('loading');
-    this.loading = Promise.all([
-      import('monaco-editor/editor/editor.main'),
-      import('monaco-editor/editor/editor.worker?worker'),
-    ]).then(([api, workerModule]) => {
+    this.loading = loadMonaco().then(api => {
       this.apiValue = api;
-      window.MonacoEnvironment = { getWorker: () => new workerModule.default() };
       registerMonacoThemes(api);
       // Keep Markdown's complete editor configuration unchanged. Syntax selection
       // lives on each model; introducing text tabs cannot leak different wrapping.

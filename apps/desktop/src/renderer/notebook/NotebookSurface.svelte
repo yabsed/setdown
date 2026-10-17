@@ -6,6 +6,7 @@
   import type { PreviewThemeId } from '../../core/preview/preview-preferences';
   import { registerMonacoThemes, monacoThemeName } from '../theme';
   import { textZoomFactor, onTextZoom } from '../editor/text-zoom';
+  import { loadMonaco } from '../editor/monaco-runtime';
   import { NotebookLanguage } from './notebook-language';
   import type { NotebookEnvironments } from '../../protocol/notebook';
   import { NotebookExecution } from './notebook-execution';
@@ -278,10 +279,10 @@
     updateZoom(); const zoom = onTextZoom(updateZoom);
     const updateTheme = (next: PreviewThemeId) => { theme = next; api?.editor.setTheme(monacoThemeName(next)); };
     const themes = desktop.onThemeChanged(snapshot => updateTheme(snapshot.id));
-    void Promise.all([import('monaco-editor/editor/editor.main'), import('monaco-editor/editor/editor.worker?worker'), desktop.getTheme()])
-      .then(([monaco, worker, snapshot]) => {
+    void Promise.all([loadMonaco(), desktop.getTheme()])
+      .then(([monaco, snapshot]) => {
         if (disposed) return;
-        window.MonacoEnvironment = { getWorker: () => new worker.default() }; registerMonacoThemes(monaco);
+        registerMonacoThemes(monaco);
         theme = snapshot.id; api = monaco; monaco.editor.setTheme(monacoThemeName(theme));
       }).catch(error => { if (!disposed) loadError = String(error); });
     return () => { window.removeEventListener('setdown:notebook-find', findNotebook); disposed = true; cancelAnimationFrame(scrollFrame); dragEnd(); selectionChanges(); unsubscribe(); executionChanges(); themes(); zoom(); };

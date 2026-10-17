@@ -1,9 +1,11 @@
 import type { LanguageRefresh } from './language-features';
-import type { Diagnostic, ServerCapabilities, TextDocumentContentChangeEvent } from 'vscode-languageserver-protocol';
+import type { Diagnostic, DiagnosticOptions, ServerCapabilities, TextDocumentContentChangeEvent } from 'vscode-languageserver-protocol';
 import type { LanguageRoute } from '../core/document/language-support';
 import type { LanguageServerDefinition } from '../core/document/language-definition';
 
-export type LanguageServerOptions = { args: string[]; settings: Record<string, unknown>; initializationOptions: Record<string, unknown> };
+export type LanguageServerOptions = { args: string[]; settings: Record<string, unknown>; initializationOptions: Record<string, unknown>; root?: string };
+/** Local bridge metadata, never sent as an LSP ServerCapabilities object. */
+export type LanguageCapabilities = ServerCapabilities & { diagnosticProviders?: { id: string; options: DiagnosticOptions }[] };
 export type LanguageConnectionDraft = LanguageServerOptions & { id: string; name: string;
   languages: LanguageServerDefinition['languages']; rootMarkers: string[]; candidateId?: string };
 export type LanguageServerCandidate = { id: string; path: string; source: 'explicit' | 'path' | 'user' | 'python' | 'npm' };
@@ -19,7 +21,7 @@ export type LanguageCatalogEntry = {
   automatic?: boolean; canDetect?: boolean; candidates?: LanguageServerCandidate[];
   discoveryMessage?: string; selectionNeeded?: boolean; searched?: string[];
   profileSource?: string; setupNote?: string;
-  sessions: { root: string; state: 'starting' | 'ready' | 'failed'; message?: string; features?: string[]; logs?: string[]; progress?: string[] }[];
+  sessions: { root: string; rootReason?: string; context?: string[]; state: 'starting' | 'ready' | 'failed'; message?: string; features?: string[]; logs?: string[]; progress?: string[] }[];
 };
 export type LanguageCatalog = { release: string; profileSource?: string; profiles?: number; entries: LanguageCatalogEntry[] };
 
@@ -51,14 +53,14 @@ export const languageMethods = [
 export type LanguageMethod = typeof languageMethods[number];
 export type LanguageCell = { id: string; version: number; text: string };
 export type LanguageDocument = { notebook?: 'python'; cells?: LanguageCell[]; python?: string; id: string; generation: string; path: string; text: string; version: number };
-export type LanguageConnection = { uri: string; cells?: Record<string, string>; capabilities: ServerCapabilities; server?: string };
+export type LanguageConnection = { uri: string; cells?: Record<string, string>; capabilities: LanguageCapabilities; server?: string };
 export type LanguageUnavailable = { unavailable: 'missing' | 'selection-needed' };
 export type LanguageEvent =
   | { type: 'configuration'; servers?: string[] }
   | { type: 'discovery' }
   | { type: 'diagnostics'; id: string; generation: string; version: number; cell?: string; cellVersion?: number; unversioned?: boolean; diagnostics: Diagnostic[] }
   | { type: 'refresh'; documents: { id: string; generation: string }[]; feature: LanguageRefresh }
-  | { type: 'capabilities'; id: string; generation: string; capabilities: ServerCapabilities }
+  | { type: 'capabilities'; id: string; generation: string; capabilities: LanguageCapabilities }
   | { type: 'activity' }
   | { type: 'apply-edit'; id: string; generation: string; requestId: string; versions?: { id: string; generation: string; version: number }[]; edit: import('vscode-languageserver-protocol').WorkspaceEdit }
   | { type: 'status'; documents: { id: string; generation: string }[]; state: 'starting' | 'ready' | 'failed'; message?: string };
@@ -69,6 +71,7 @@ export type LanguageApi = {
   close(id: string): void;
   saved(id: string, text?: string): void;
   request(id: string, version: number, requestId: string, method: LanguageMethod, params: unknown): Promise<unknown>;
+  releaseItems?(id: string, handles: string[]): void;
   cancel(requestId: string): void;
   editApplied(requestId: string, applied: boolean, failureReason?: string): void;
   restart(): Promise<void>;

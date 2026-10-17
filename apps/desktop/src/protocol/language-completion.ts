@@ -1,5 +1,9 @@
 import type * as L from 'vscode-languageserver-protocol';
 
+export function completionContext(context: { triggerKind: number; triggerCharacter?: string }): L.CompletionContext {
+  return { triggerKind: (context.triggerKind + 1) as L.CompletionTriggerKind, triggerCharacter: context.triggerCharacter };
+}
+
 export function completionDefaults(item: L.CompletionItem, defaults?: L.CompletionList['itemDefaults']): L.CompletionItem {
   if (!defaults) return item;
   const result = { ...item, commitCharacters: item.commitCharacters ?? defaults.commitCharacters,

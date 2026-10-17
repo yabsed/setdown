@@ -10,7 +10,7 @@ import { ServerEnvironment } from './server-environment';
 
 const mocks = vi.hoisted(() => ({ directory: '', handles: new Map<string, (...args: any[]) => any>(),
   events: new Map<string, (...args: any[]) => void>(), app: new Map<string, (...args: any[]) => void>(),
-  servers: [] as { notify: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn>; root: string; diagnostics: (params: any) => void }[] }));
+  servers: [] as { notify: ReturnType<typeof vi.fn>; request: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn>; root: string; diagnostics: (params: any) => void }[] }));
 vi.mock('electron', () => ({ app: { getPath: () => mocks.directory, on: (key: string, fn: (...args: any[]) => void) => mocks.app.set(key, fn), quit: vi.fn() },
   ipcMain: { handle: (key: string, fn: (...args: any[]) => any) => mocks.handles.set(key, fn),
     on: (key: string, fn: (...args: any[]) => void) => mocks.events.set(key, fn) } }));
@@ -282,4 +282,31 @@ test('quit is not delayed when there are no language processes to drain', () => 
   fixture(); const event = { preventDefault: vi.fn() };
   mocks.app.get('will-quit')!(event);
   expect(event.preventDefault).not.toHaveBeenCalled();
+});
+
+test('notebook resolve restores opaque data and rejects another cell, stale revisions and forged handles', async () => {
+  const f = fixture(), document = { ...f.document('notebook', 'notes.ipynb'), notebook: 'python', text: '', cells: [
+    { id: 'one', version: 1, text: 'value' }, { id: 'two', version: 1, text: 'other' },
+  ] };
+  await f.invoke('open', f.first, document);
+  const server = mocks.servers[0], item = { label: 'value', data: { private: 42 } };
+  server.request.mockResolvedValueOnce([item]);
+  const [result] = await f.invoke('request', f.first, document.id, 1, 'completion', 'textDocument/completion', { cell: 'one', position: { line: 0, character: 1 } });
+  server.request.mockResolvedValueOnce({ ...item, detail: 'resolved' });
+  await f.invoke('request', f.first, document.id, 1, 'resolve', 'completionItem/resolve', { ...result, cell: 'one', data: 'injected' });
+  expect(server.request).toHaveBeenLastCalledWith('completionItem/resolve', item, expect.anything());
+  for (const value of [{ ...result, cell: 'two' }, { label: 'forged', cell: 'one' }])
+    await expect(f.invoke('request', f.first, document.id, 1, 'invalid', 'completionItem/resolve', value)).rejects.toThrow(/Invalid/);
+  await f.invoke('notebook-change', f.first, document.id, 2, [{ ...document.cells[0], version: 2, text: 'changed' }, document.cells[1]]);
+  await expect(f.invoke('request', f.first, document.id, 2, 'stale', 'completionItem/resolve', { ...result, cell: 'one' })).rejects.toThrow(/Invalid/);
+  f.send('close', f.first, document.id);
+});
+
+test('server cancellation code and data survive the main IPC handler', async () => {
+  const f = fixture(), document = f.document('ordinary');
+  await f.invoke('open', f.first, document);
+  mocks.servers[0].request.mockRejectedValueOnce(Object.assign(Error('reschedule'), { code: -32802, data: { retriggerRequest: true } }));
+  expect(await f.invoke('request', f.first, document.id, 1, 'tokens', 'textDocument/semanticTokens/full', {}))
+    .toEqual({ $setdownError: { code: -32802, message: 'reschedule', data: { retriggerRequest: true } } });
+  f.send('close', f.first, document.id);
 });

@@ -62,3 +62,16 @@ test('file-operation registrations filter both rename paths and file/folder kind
   ] }, state.fileOperation('workspace/willRenameFiles'));
   expect(result.files).toEqual([{ oldUri: 'file:///project/source.txt', newUri: 'file:///project/main.py' }]);
 });
+
+test('static and multiple dynamic diagnostic registrations keep independent identities and selectors', () => {
+  const state = new ServerCapabilitiesState('/project');
+  state.base = { diagnosticProvider: { identifier: 'syntax', interFileDependencies: false, workspaceDiagnostics: false } };
+  state.register(['types', 'lint'].map(identifier => ({ id: identifier, method: 'textDocument/diagnostic', registerOptions: {
+    identifier, interFileDependencies: true, workspaceDiagnostics: false, documentSelector: [{ language: 'python' }],
+  } })));
+  expect(state.forDocument('file:///project/a.py', 'python').diagnosticProviders?.map(p => [p.id, p.options.identifier]))
+    .toEqual([['static', 'syntax'], ['registration:types', 'types'], ['registration:lint', 'lint']]);
+  expect(state.forDocument('file:///project/a.ts', 'typescript').diagnosticProviders).toHaveLength(1);
+  state.unregister(['types']);
+  expect(state.forDocument('file:///project/a.py', 'python').diagnosticProviders?.map(p => p.options.identifier)).toEqual(['syntax', 'lint']);
+});

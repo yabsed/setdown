@@ -16,6 +16,7 @@
   import { gitDiffViewport } from './git-diff-viewport';
   import { workingTreeMarkdownEditor, isMarkdownPath } from '../../editor/markdown-editor-port';
   import { installMarkdownEditorActions } from '../../editor/markdown-editor-actions';
+  import { loadMonaco } from '../../editor/monaco-runtime';
 
   type CachedModels = {
     original: Monaco.editor.ITextModel;
@@ -88,11 +89,7 @@
 
   function loadApi(): Promise<typeof Monaco> {
     if (api) return Promise.resolve(api);
-    apiPromise ??= Promise.all([
-      import('monaco-editor/editor/editor.main'),
-      import('monaco-editor/editor/editor.worker?worker'),
-    ]).then(([monaco, workerModule]) => {
-      window.MonacoEnvironment = { getWorker: () => new workerModule.default() };
+    apiPromise ??= loadMonaco().then(monaco => {
       registerMonacoThemes(monaco);
       api = monaco;
       return monaco;

@@ -83,3 +83,29 @@ export function clientCapabilities(): ClientCapabilities {
     },
   };
 }
+
+/** Notebook editing supports cell-local completion and transactional edits, but
+ * not arbitrary commands, pull diagnostics or the ordinary editor's providers. */
+export function notebookClientCapabilities(): ClientCapabilities {
+  const all = clientCapabilities(), text = all.textDocument!;
+  return { general: all.general, notebookDocument: all.notebookDocument, window: all.window,
+    workspace: { configuration: true, workspaceFolders: true,
+      didChangeWatchedFiles: all.workspace!.didChangeWatchedFiles },
+    textDocument: {
+      completion: { ...text.completion, dynamicRegistration: false, completionItem: { ...text.completion!.completionItem,
+        resolveSupport: { properties: ['documentation', 'detail', 'additionalTextEdits'] } } },
+      hover: { ...text.hover, dynamicRegistration: false },
+      signatureHelp: { ...text.signatureHelp, dynamicRegistration: false },
+      definition: { ...text.definition, dynamicRegistration: false },
+      rename: { ...text.rename, dynamicRegistration: false },
+      codeAction: { ...text.codeAction, dynamicRegistration: false, resolveSupport: undefined },
+      publishDiagnostics: text.publishDiagnostics,
+    },
+  };
+}
+
+export const notebookLanguageMethods = new Set([
+  'textDocument/completion', 'completionItem/resolve', 'textDocument/hover', 'textDocument/signatureHelp',
+  'textDocument/definition', 'textDocument/references', 'textDocument/documentHighlight', 'textDocument/documentSymbol',
+  'textDocument/semanticTokens/full', 'textDocument/inlayHint', 'textDocument/rename', 'textDocument/prepareRename', 'textDocument/codeAction',
+]);

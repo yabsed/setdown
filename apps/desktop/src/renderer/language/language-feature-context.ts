@@ -1,6 +1,6 @@
 import type * as M from 'monaco-editor';
 import type * as L from 'vscode-languageserver-protocol';
-import type { LanguageMethod } from '../../protocol/language';
+import type { LanguageCapabilities, LanguageMethod } from '../../protocol/language';
 import type { LanguageRefresh } from '../../protocol/language-features';
 
 /** Features share the client's real model, version guard and edit coordinator. */
@@ -8,7 +8,7 @@ export interface LanguageFeatureContext {
   api: typeof M;
   model: M.editor.ITextModel;
   selector: M.languages.LanguageSelector;
-  capabilities: L.ServerCapabilities;
+  capabilities: LanguageCapabilities;
   scoped<T extends object>(provider: T): T;
   add(...disposables: M.IDisposable[]): void;
   request<T>(method: LanguageMethod, params: unknown, token: M.CancellationToken): Promise<T | null>;

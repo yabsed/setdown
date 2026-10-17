@@ -9,6 +9,17 @@ import { validateLanguageDefinition } from '../../../core/document/language-defi
 import { languageSupport } from '../../../core/document/language-support';
 import { ServerRegistry } from '../server-registry';
 
+test('TypeScript and CSS workspace settings are delivered separately from initialization options', () => {
+  const ts = builtinLanguageServers.find(d => d.id === 'typescript-language-server')!;
+  expect(ts.settings.typescript).toMatchObject({ inlayHints: { includeInlayParameterNameHints: 'all' } });
+  expect(ts.initializationOptions).not.toHaveProperty('typescript');
+  const css = builtinLanguageServers.find(d => d.id === 'css-lsp')!;
+  for (const language of ['css', 'scss', 'less']) {
+    expect(css.settings[language]).toMatchObject({ validate: true, lint: {} });
+    expect(css.initializationOptions).not.toHaveProperty(language);
+  }
+});
+
 test('every catalog entry has explicit coverage and generated native profiles satisfy the connection schema', () => {
   expect(new Set(data.coverage.map(c => c.id))).toEqual(new Set(mason.packages.map(p => p.id)));
   expect(new Set(languageCatalog.map(p => p.id)).size).toBe(languageCatalog.length);

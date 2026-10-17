@@ -7,7 +7,7 @@ import { builtinLanguageServers } from './catalog/profiles';
 import { languageSupport, type LanguageRoute } from '../../core/document/language-support';
 import type { ServerLaunch } from './server-session';
 
-type Options = { enabled?: boolean; executable?: string; automaticExecutable?: boolean; args?: string[]; settings?: Record<string, unknown>; initializationOptions?: Record<string, unknown> };
+type Options = { enabled?: boolean; executable?: string; automaticExecutable?: boolean; args?: string[]; settings?: Record<string, unknown>; initializationOptions?: Record<string, unknown>; root?: string };
 type Settings = { version: 1; servers: Record<string, Options>; custom: LanguageServerDefinition[]; preferred: Record<string, string> };
 export class ServerRegistry {
   private data: Settings = { version: 1, servers: {}, custom: [], preferred: {} };
@@ -88,14 +88,15 @@ export class ServerRegistry {
     if (!options || typeof options !== 'object' || Array.isArray(options)
       || (options.enabled !== undefined && typeof options.enabled !== 'boolean')
       || (options.automaticExecutable !== undefined && typeof options.automaticExecutable !== 'boolean')
+      || (options.root !== undefined && (typeof options.root !== 'string' || options.root.length > 4096 || options.root.includes('\0') || !path.isAbsolute(options.root)))
       || (options.executable !== undefined && (typeof options.executable !== 'string' || !path.isAbsolute(options.executable))))
       throw Error('Invalid language server options.');
     validateLanguageDefinition({ id: 'options', name: 'Options', launch: { kind: 'native', command: 'server', args: options.args ?? [] },
       languages: [{ languageId: 'text', extensions: ['.txt'] }], settings: options.settings, initializationOptions: options.initializationOptions });
   }
-  configure(id: string, options: Pick<Options, 'args' | 'settings' | 'initializationOptions'>): void {
+  configure(id: string, options: Pick<Options, 'args' | 'settings' | 'initializationOptions' | 'root'>): void {
     this.definition(id); this.validateOptions(options);
-    this.data.servers[id] = { ...this.options(id), args: options.args, settings: options.settings, initializationOptions: options.initializationOptions };
+    this.data.servers[id] = { ...this.options(id), args: options.args, settings: options.settings, initializationOptions: options.initializationOptions, root: options.root };
     this.save();
   }
   setEnabled(id: string, enabled: boolean): void {

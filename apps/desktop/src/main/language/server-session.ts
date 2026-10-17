@@ -46,6 +46,8 @@ export class ServerSession {
   private readonly fail: (reason: string) => void;
   readonly capabilities: ServerCapabilitiesState;
   readonly logs: string[] = [];
+  readonly context = new Map<string, string>();
+  private phase = 'initialization';
   readonly progress = new Map<string | number, string>();
   readonly ready: Promise<ServerCapabilities>;
 
@@ -61,7 +63,7 @@ export class ServerSession {
     const fail = this.fail = (reason: string) => {
       if (this.stopped) return;
       this.stopped = true;
-      this.failureMessage = `${reason}${this.stderr ? `\n${this.stderr}` : ''}`;
+      this.failureMessage = `${this.phase}: ${reason}${this.stderr ? `\n${this.stderr}` : ''}`;
       this.connection.dispose();
       for (const token of this.pending) token.cancel();
       this.child.kill();
@@ -80,6 +82,13 @@ export class ServerSession {
       for (const ready of [...this.analysisWaiters]) ready();
       diagnostics(params);
     });
+    this.connection.onNotification('$/typescriptVersion', (params: { version?: unknown; source?: unknown }) => {
+      if (typeof params.version !== 'string' || typeof params.source !== 'string') return;
+      this.context.set('TypeScript', `${params.version.slice(0, 80)} (${params.source.slice(0, 80)}, reported by server)`);
+      hooks.activity?.();
+    });
+    const python = configurationSection(profile.configuration, 'python.pythonPath');
+    if (typeof python === 'string') this.context.set('Python interpreter', `${python} (configured)`);
     this.connection.onRequest('workspace/configuration', (params: { items: { section?: string }[] }) =>
       params.items.map(item => configurationSection(profile.configuration, item.section)));
     this.connection.onRequest('workspace/workspaceFolders', () => [{ uri: pathToFileURL(root).href, name: root }]);
@@ -112,14 +121,16 @@ export class ServerSession {
       processId: process.pid, clientInfo: { name: 'Setdown', version: '1.0.0' },
       rootUri: pathToFileURL(root).href, workspaceFolders: [{ uri: pathToFileURL(root).href, name: root }],
       initializationOptions: profile.initializationOptions,
-      capabilities: clientCapabilities(),
+      capabilities: profile.capabilities ?? clientCapabilities(),
     }, undefined, 20_000).then(async result => {
       if (result.capabilities.positionEncoding && result.capabilities.positionEncoding !== 'utf-16')
         throw new Error('The language server must use UTF-16 positions.');
       this.capabilities.base = result.capabilities;
+      if (result.serverInfo?.name) this.context.set('Server', `${result.serverInfo.name}${result.serverInfo.version ? ` ${result.serverInfo.version}` : ''}`.slice(0, 200));
       await this.notify('initialized', {});
       if (Object.keys(profile.configuration).length)
         await this.notify('workspace/didChangeConfiguration', { settings: profile.configuration });
+      this.phase = 'running';
       return result.capabilities;
     }).catch(error => { fail(String(error)); throw new Error(this.failureMessage ?? String(error)); });
     // The owner may close a window before the first caller awaits initialization.

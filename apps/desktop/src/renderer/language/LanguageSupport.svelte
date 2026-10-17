@@ -154,7 +154,9 @@
           <p>Choose Python in the notebook toolbar. Analysis and execution share that environment.</p>
           <button disabled={busy} onclick={() => window.dispatchEvent(new Event('setdown:restart-language'))}>Restart servers in this window</button>
           {#each selected.sessions as session}
-            <p class="session"><code>{session.root}</code><br />{session.state}{session.message ? ` · ${session.message}` : ''}</p>
+            <p class="session"><code>{session.root}</code><br />{session.state}{session.message ? ` · ${session.message}` : ''}
+              {#if session.rootReason}<br />{session.rootReason}{/if}</p>
+            {#if session.context?.length}<p class="session">{session.context.join(" · ")}</p>{/if}
             {#if session.logs?.length}<details><summary>Server output</summary><pre class="server-output">{session.logs.join('\n')}</pre></details>{/if}
           {/each}
         {:else if selected.configured}
@@ -179,8 +181,10 @@
           </div>
           {#each selected.sessions as session}
             <p class="session"><code>{session.root}</code><br />{session.state}{session.message ? ` · ${session.message}` : ''}
+              {#if session.rootReason}<br />{session.rootReason}{/if}
               {#if session.features?.length}<br />{session.features.join(', ')}{/if}</p>
             {#if session.progress?.length}<p class="session" role="status">{session.progress.join(' · ')}</p>{/if}
+            {#if session.context?.length}<p class="session">{session.context.join(" · ")}</p>{/if}
             {#if session.logs?.length}<details><summary>Server output</summary><pre class="server-output">{session.logs.join('\n')}</pre></details>{/if}
           {/each}
           <details>
@@ -192,6 +196,8 @@
             {#if selected.profileSource}<p>Profile: {selected.profileSource}</p>{/if}
             {#if selected.searched?.length}<p>Searched: {selected.searched.join(', ')}</p>{/if}
             <label>Server options (JSON)<textarea rows="12" spellcheck="false" bind:value={optionsText}></textarea></label>
+            <p>Optional <code>root</code>: an absolute analysis directory for files beneath it. Omit it to detect each project automatically.</p>
+            {#if selected.languages.includes('python')}<p>Set <code>settings.python.pythonPath</code> to choose the Python interpreter used for imports. Otherwise the server uses its project configuration and defaults.</p>{/if}
             <button disabled={busy} onclick={() => perform(() => api.configure(selected!.id, JSON.parse(optionsText)))}>Apply settings</button>
           </details>
           {#if selected.custom}<button disabled={busy} onclick={() => perform(async () => { await api.remove(selected!.id); selectedId = ''; back(); })}>Remove connection</button>{/if}

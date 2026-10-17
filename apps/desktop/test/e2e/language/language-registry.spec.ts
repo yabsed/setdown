@@ -60,7 +60,8 @@ test('the language sidebar searches all discoverable servers, shows language log
       dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [executable] })) as typeof dialog.showOpenDialog;
     }, executable);
     await panel.getByRole('button', { name: 'Choose executable and connect…' }).click();
-    await expect(panel.locator('.state')).toHaveText('Ready');
+    // Finding an executable is not evidence that initialization succeeded.
+    await expect(panel.locator('.state')).toHaveText('Detected');
     await panel.getByRole('button', { name: 'Back to language servers' }).click();
     await panel.getByRole('searchbox').fill('');
     await expect(panel.locator('.server-group').filter({ hasText: 'Manual connections' })).toContainText('Manual Fixture');

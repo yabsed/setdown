@@ -49,7 +49,12 @@
           "--stdio"
         ]
       },
-      "rootMarkers": [],
+      "rootMarkers": [
+        "pyrightconfig.json",
+        "pyproject.toml",
+        "setup.py",
+        "setup.cfg"
+      ],
       "settings": {
         "python": {
           "analysis": {
@@ -66,7 +71,12 @@
         ".toml",
         ".json"
       ],
-      "watchFiles": [],
+      "watchFiles": [
+        "pyrightconfig.json",
+        "pyproject.toml",
+        "setup.py",
+        "setup.cfg"
+      ],
       "provenance": {
         "source": "Helix",
         "revision": "ba40e547426b0f9896c8bdc699a4ab11f2b37dbc",
@@ -1722,7 +1732,26 @@
         ]
       },
       "rootMarkers": [],
-      "settings": {},
+      "settings": {
+        "css": {
+          "validate": true,
+          "lint": {},
+          "completion": {},
+          "hover": {}
+        },
+        "scss": {
+          "validate": true,
+          "lint": {},
+          "completion": {},
+          "hover": {}
+        },
+        "less": {
+          "validate": true,
+          "lint": {},
+          "completion": {},
+          "hover": {}
+        }
+      },
       "watchExtensions": [
         ".css",
         ".less",
@@ -1735,12 +1764,7 @@
         "profile": "vscode-css-language-server"
       },
       "initializationOptions": {
-        "provideFormatter": true,
-        "css": {
-          "validate": {
-            "enable": true
-          }
-        }
+        "provideFormatter": true
       },
       "npmPackage": "vscode-langservers-extracted"
     },
@@ -8489,7 +8513,30 @@
         "package.json",
         "tsconfig.json"
       ],
-      "settings": {},
+      "settings": {
+        "typescript": {
+          "inlayHints": {
+            "includeInlayEnumMemberValueHints": true,
+            "includeInlayFunctionLikeReturnTypeHints": true,
+            "includeInlayFunctionParameterTypeHints": true,
+            "includeInlayParameterNameHints": "all",
+            "includeInlayParameterNameHintsWhenArgumentMatchesName": true,
+            "includeInlayPropertyDeclarationTypeHints": true,
+            "includeInlayVariableTypeHints": true
+          }
+        },
+        "javascript": {
+          "inlayHints": {
+            "includeInlayEnumMemberValueHints": true,
+            "includeInlayFunctionLikeReturnTypeHints": true,
+            "includeInlayFunctionParameterTypeHints": true,
+            "includeInlayParameterNameHints": "all",
+            "includeInlayParameterNameHintsWhenArgumentMatchesName": true,
+            "includeInlayPropertyDeclarationTypeHints": true,
+            "includeInlayVariableTypeHints": true
+          }
+        }
+      },
       "watchExtensions": [
         ".cjs",
         ".cts",
@@ -8518,29 +8565,7 @@
         "profile": "typescript-language-server"
       },
       "initializationOptions": {
-        "hostInfo": "setdown",
-        "typescript": {
-          "inlayHints": {
-            "includeInlayEnumMemberValueHints": true,
-            "includeInlayFunctionLikeReturnTypeHints": true,
-            "includeInlayFunctionParameterTypeHints": true,
-            "includeInlayParameterNameHints": "all",
-            "includeInlayParameterNameHintsWhenArgumentMatchesName": true,
-            "includeInlayPropertyDeclarationTypeHints": true,
-            "includeInlayVariableTypeHints": true
-          }
-        },
-        "javascript": {
-          "inlayHints": {
-            "includeInlayEnumMemberValueHints": true,
-            "includeInlayFunctionLikeReturnTypeHints": true,
-            "includeInlayFunctionParameterTypeHints": true,
-            "includeInlayParameterNameHints": "all",
-            "includeInlayParameterNameHintsWhenArgumentMatchesName": true,
-            "includeInlayPropertyDeclarationTypeHints": true,
-            "includeInlayVariableTypeHints": true
-          }
-        }
+        "hostInfo": "setdown"
       },
       "npmPackage": "typescript-language-server"
     },

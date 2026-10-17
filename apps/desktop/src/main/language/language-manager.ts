@@ -3,15 +3,17 @@ import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { app, dialog, ipcMain, shell } from 'electron';
 import { readFile, stat } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { CancellationTokenSource } from 'vscode-jsonrpc/node';
 import type { WorkspaceEdit, ApplyWorkspaceEditResult, ServerCapabilities, TextDocumentContentChangeEvent } from 'vscode-languageserver-protocol';
-import { languageMethods, textSynchronization, type LanguageCatalog, type LanguageCatalogEntry, type LanguageConnectionDraft, type LanguageServerOptions, type LanguageDocument, type LanguageEvent, type LanguageMethod } from '../../protocol/language';
+import { languageMethods, textSynchronization, type LanguageCapabilities, type LanguageCatalog, type LanguageCatalogEntry, type LanguageConnectionDraft, type LanguageServerOptions, type LanguageDocument, type LanguageEvent, type LanguageMethod } from '../../protocol/language';
 import { canonicalPath, isInside } from '../documents/file-system';
 import type { WindowState } from '../windows/window-state';
 import { languageSupport } from '../../core/document/language-support';
 import { ServerRegistry, findExecutable } from './server-registry';
 import { validateLanguageDefinition } from '../../core/document/language-definition';
-import { serverProfile, standaloneLanguageRoot } from './server-definitions';
+import { serverProfile } from './server-definitions';
+import { languageRoot, type LanguageRoot } from './language-root';
 import { fileOperationMethod, filteredFileOperation, type LanguageFileOperation } from './file-operations';
 import { ServerItems } from './server-items';
 import { featureNames, isDocumentMethod, resolveMethods } from '../../protocol/language-features';
@@ -20,8 +22,9 @@ import { ServerDiscovery, type Discovery } from './server-discovery';
 import { languageCatalog, packageDiscovery, profileSource } from './catalog/profiles';
 import type { LanguageServerDefinition } from '../../core/document/language-definition';
 import { NotebookLanguageHost } from './notebook-language-host';
+import { languageFailure } from '../../protocol/language-request';
 
-type Binding = { languageId: string; id: string; generation: string; uri: string; version: number; server: ServerSession; capabilities: ServerCapabilities };
+type Binding = { languageId: string; id: string; generation: string; uri: string; version: number; server: ServerSession; capabilities: LanguageCapabilities };
 type Owner = { state: WindowState; documents: Map<string, Binding>; servers: Map<string, ServerSession>;
   requests: Map<string, CancellationTokenSource> };
 
@@ -40,7 +43,7 @@ export class LanguageManager {
   constructor(private readonly stateFor: (id: number) => WindowState | null, private readonly discovery = new ServerDiscovery()) {}
   private registryValue: ServerRegistry | undefined;
   private readonly subscribers = new Map<number, WindowState>();
-  private readonly sessions = new Map<ServerSession, { id: string; root: string; state: 'starting' | 'ready' | 'failed'; message?: string; features?: string[] }>();
+  private readonly sessions = new Map<ServerSession, { id: string; root: string; rootReason?: string; state: 'starting' | 'ready' | 'failed'; message?: string; features?: string[] }>();
   private updating: Promise<void> = Promise.resolve();
   private get registry(): ServerRegistry { return this.registryValue ??= new ServerRegistry(app.getPath('userData')); }
   private async changed(task: () => unknown | Promise<unknown>): Promise<void> {
@@ -131,9 +134,9 @@ export class LanguageManager {
         profileSource: definition?.provenance ? `${definition.provenance.source} · ${definition.provenance.profile}` : undefined,
         setupNote: definition?.setupNote,
         options: definition ? { args: options?.args ?? definition.launch.args, settings: options?.settings ?? definition.settings,
-          initializationOptions: serverProfile(definition, options).initializationOptions ?? {} } : undefined,
+          initializationOptions: serverProfile(definition, options).initializationOptions ?? {}, root: options?.root } : undefined,
         sessions: [...(owner?.servers.values() ?? [])].flatMap(server => {
-          const info = this.sessions.get(server); return info?.id === item.id ? [{ root: info.root, state: info.state, message: info.message, features: info.features, logs: server.logs, progress: [...(server.progress?.values() ?? [])] }] : [];
+          const info = this.sessions.get(server); return info?.id === item.id ? [{ root: info.root, rootReason: info.rootReason, state: info.state, message: info.message, features: info.features, context: [...server.context ?? []].map(([key, value]) => `${key}: ${value}`), logs: server.logs, progress: [...(server.progress?.values() ?? [])] }] : [];
         }) };
     });
     // Report the same primary-server policy as document opening. Multiple installed
@@ -170,7 +173,7 @@ export class LanguageManager {
     });
     ipcMain.handle('language:request', async (event, id: string, version: number, requestId: string, method: LanguageMethod, params: unknown) => {
       const sender = state(event);
-      if (this.notebooks.has(sender.webContentsId, id)) return this.notebooks.request(sender.webContentsId, id, version, requestId, method, params);
+      if (this.notebooks.has(sender.webContentsId, id)) return this.notebooks.request(sender.webContentsId, id, version, requestId, method, params).catch(languageFailure);
       const owner = this.owners.get(state(event).webContentsId);
       const binding = this.binding(event.sender.id, id);
       if (!owner || binding.version !== version || !languageMethods.includes(method)
@@ -196,7 +199,7 @@ export class LanguageManager {
         const result = await binding.server.request(method, requestParams, token, method === 'textDocument/willSaveWaitUntil' ? 1500 : undefined);
         return owner.documents.get(id) === binding && binding.version === version
           ? items.remember(method, result, origin) : null;
-      } finally {
+      } catch (error) { return languageFailure(error); } finally {
         owner.requests.delete(requestId);
         if (command) this.commands.delete(binding.server);
       }
@@ -217,6 +220,13 @@ export class LanguageManager {
     };
     listen('language:cancel', (owner, id) => { this.notebooks.cancel(owner.webContentsId, id); this.owners.get(owner.webContentsId)?.requests.get(id)?.cancel(); });
     listen('language:close', (owner, id) => this.close(owner.webContentsId, id));
+    ipcMain.on('language:release-items', (event, id: string, handles: unknown) => {
+      let sender: WindowState; try { sender = state(event); } catch { return; }
+      if (!Array.isArray(handles) || handles.length > 100000 || handles.some(value => typeof value !== 'string' || value.length > 128)) return;
+      if (this.notebooks.has(sender.webContentsId, id)) { this.notebooks.releaseItems(sender.webContentsId, id, handles); return; }
+      const binding = this.owners.get(sender.webContentsId)?.documents.get(id);
+      if (binding) this.items.get(binding.server)?.release(handles, { document: id, generation: binding.generation });
+    });
     ipcMain.on('language:saved', (event, id: string, text?: string) => {
       let owner: WindowState; try { owner = state(event); } catch { return; }
       const binding = this.owners.get(owner.webContentsId)?.documents.get(id);
@@ -344,8 +354,12 @@ export class LanguageManager {
     this.close(state.webContentsId, document.id);
     const candidates = this.registry.candidates(languagePath);
     const configurations = new Map(candidates.map(c => [c.server, this.registry.fingerprint(c.server)]));
-    const rootFor = (definition: LanguageServerDefinition) => state.projectRoot && isInside(canonicalPath(state.projectRoot), file)
-      ? canonicalPath(state.projectRoot) : standaloneLanguageRoot(file, definition);
+    const roots = new Map<string, LanguageRoot>();
+    const rootFor = (definition: LanguageServerDefinition) => {
+      if (!roots.has(definition.id)) roots.set(definition.id, languageRoot(file, definition,
+        state.projectRoot ? canonicalPath(state.projectRoot) : undefined, this.registry.options(definition.id).root));
+      return roots.get(definition.id)!.path;
+    };
     let definition = this.registry.definition(support.server), root = rootFor(definition);
     const pending = this.pendingOpens.get(state.webContentsId) ?? new Map<string, symbol>();
     this.pendingOpens.set(state.webContentsId, pending);
@@ -427,8 +441,18 @@ export class LanguageManager {
         },
         applyEdit: params => this.applyEdit(owned, server!, params.edit),
       });
+      if (definition.id === 'clangd') {
+        const option = launch.args.findIndex(arg => arg === '--compile-commands-dir' || arg.startsWith('--compile-commands-dir='));
+        const directory = option < 0 ? undefined : launch.args[option].split('=').slice(1).join('=') || launch.args[option + 1];
+        const candidates = directory ? [path.resolve(root, directory, 'compile_commands.json')]
+          : [path.join(root, 'compile_commands.json'), path.join(root, 'build', 'compile_commands.json')];
+        const database = candidates.find(file => existsSync(file));
+        server.context?.set('Compilation database', database ? `${database} (detected)`
+          : directory ? `${candidates[0]} (configured, missing)` : 'Not found at the root or build directory; see server output for fallback flags');
+        if (existsSync(path.join(root, '.clangd'))) server.context?.set('clangd configuration', path.join(root, '.clangd'));
+      }
       this.items.set(server, new ServerItems());
-      this.sessions.set(server, { id: support.server, root, state: 'starting' });
+      this.sessions.set(server, { id: support.server, root, rootReason: roots.get(support.server)?.reason, state: 'starting' });
       owner.servers.set(key, server);
       server.watch(root);
     }

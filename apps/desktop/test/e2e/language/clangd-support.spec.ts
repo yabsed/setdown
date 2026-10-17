@@ -90,6 +90,9 @@ test('clangd honors compile commands and .clangd, with completion, rename, Undo 
     await focusApplication(application);
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 25_000 });
     await expect(page.locator('.squiggly-error')).toHaveCount(1, { timeout: 20_000 });
+    const session = await page.evaluate(async () => (await window.marktex.language.catalog()).entries.find(entry => entry.id === 'clangd')!.sessions[0]);
+    expect(session.root).toBe(root);
+    expect(session.context?.join(' ')).toContain(path.join(root, 'compile_commands.json'));
     const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
     // Repair the error in the unsaved model; clangd clears versioned diagnostics.
     // Use ordinary editing, without reaching into Monaco or replacing its model.
@@ -98,12 +101,29 @@ test('clangd honors compile commands and .clangd, with completion, rename, Undo 
     await editor.press('Home'); await editor.press('Shift+End');
     await editor.pressSequentially('  int count = 4;');
     await expect(page.locator('.squiggly-error')).toHaveCount(0, { timeout: 20_000 });
-    // Manual completion is supplied by clangd, including its function snippet.
-    await editor.press('Control+End');
-    await editor.pressSequentially('greet'); await editor.press('Control+Space');
+    // A function is valid in an expression. At file scope clangd may return no
+    // items and Monaco's word suggestions can falsely look like an LSP result.
+    await application.evaluate(({ ipcMain }) => {
+      const handlers = (ipcMain as unknown as { _invokeHandlers: Map<string, (...args: any[]) => Promise<any>> })._invokeHandlers;
+      const original = handlers.get('language:request')!;
+      ipcMain.removeHandler('language:request');
+      ipcMain.handle('language:request', async (event, ...args) => {
+        const result = await original(event, ...args);
+        if (args[3] === 'textDocument/completion') (globalThis as any).clangdCompletions = result;
+        return result;
+      });
+    });
+    await editor.press('Control+Home');
+    for (let index = 0; index < 4; index++) await editor.press('ArrowDown');
+    await editor.press('Home'); await editor.press('Shift+End');
+    await editor.pressSequentially('  return greet'); await editor.press('Control+Space');
     await expect(page.locator('.suggest-widget.visible')).toContainText('greeting', { timeout: 15_000 });
+    await expect.poll(() => application.evaluate(() => {
+      const result = (globalThis as any).clangdCompletions;
+      return (Array.isArray(result) ? result : result?.items ?? []).some((item: { label: string }) => item.label.includes('greeting'));
+    })).toBe(true);
     await editor.press('Escape');
-    await editor.press('Home'); await editor.press('Shift+End'); await editor.press('Backspace');
+    await editor.press('Home'); await editor.press('Shift+End'); await editor.pressSequentially('  return greeting(3);');
     // Rename the definition and call, then undo both edits in the same document.
     await editor.press('Control+Home'); await editor.press('ArrowDown'); await editor.press('Home');
     for (let index = 0; index < 5; index++) await editor.press('ArrowRight');

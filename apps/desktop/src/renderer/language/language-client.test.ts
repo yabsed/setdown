@@ -8,7 +8,7 @@ import { fromRange, markdown, toRange } from './language-conversion';
 
 function fixture(file = '/project/main.py', capabilities: import('vscode-languageserver-protocol').ServerCapabilities = { hoverProvider: true, textDocumentSync: 2 }, routes?: LanguageRoute[]) {
   let version = 1;
-  let listener: ((event: M.editor.IModelContentChangedEvent) => void) | undefined;
+  const listeners = new Set<(event: M.editor.IModelContentChangedEvent) => void>();
   let event: (event: LanguageEvent) => void = () => {};
   const opened: LanguageDocument[] = [];
   const hover: { current?: M.languages.HoverProvider } = {};
@@ -26,7 +26,7 @@ function fixture(file = '/project/main.py', capabilities: import('vscode-languag
   const model = {
     uri: { fsPath: file, toString: () => `file://${file}?tab-1` },
     getValue: () => 'text', getVersionId: () => version, getLanguageId: () => file.endsWith('.py') ? 'python' : 'cpp', isDisposed: () => false,
-    onDidChangeContent: (callback: typeof listener) => { listener = callback; return { dispose: () => { listener = undefined; } }; },
+    onDidChangeContent: (callback: (event: M.editor.IModelContentChangedEvent) => void) => { listeners.add(callback); return { dispose: () => { listeners.delete(callback); } }; },
   } as unknown as M.editor.ITextModel;
   const tab = createWorkspaceTab('tab-1', { path: file, name: file.split('/').at(-1)!, text: 'text', savedText: 'text',
     revision: 0, savedRevision: 0, isUntitled: false, diskVersion: { mtimeMs: 0, size: 0 } }, 'editor',
@@ -42,7 +42,7 @@ function fixture(file = '/project/main.py', capabilities: import('vscode-languag
   const client = new LanguageClient(api, { port, route: file => languageSupport(file, routes), prepare: async () => ({ tab, model }), open: async () => {}, status: vi.fn() });
   const change = (changes: Partial<M.editor.IModelContentChange>[]) => {
     version++;
-    listener?.({ changes, versionId: version, isFlush: false, isEolChange: false } as M.editor.IModelContentChangedEvent);
+    for (const listener of listeners) listener({ changes, versionId: version, isFlush: false, isEolChange: false } as M.editor.IModelContentChangedEvent);
   };
   return { client, api, model, tab, port, event: (value: LanguageEvent) => event(value), opened, change, hover, providers };
 }

@@ -1,18 +1,21 @@
 import type * as M from 'monaco-editor';
 import type * as L from 'vscode-languageserver-protocol';
 import type { DocumentTab } from '../../core/workspace/workspace-state';
-import type { LanguageApi, LanguageConnection, LanguageUnavailable, LanguageMethod } from '../../protocol/language';
+import type { LanguageApi, LanguageCapabilities, LanguageConnection, LanguageUnavailable, LanguageMethod } from '../../protocol/language';
 import { textSynchronization } from '../../protocol/language';
 import { languageSupport } from '../../core/document/language-support';
 import { installNavigationFeatures } from './language-navigation-features';
 import { installSemanticFeatures } from './language-semantic-features';
 import { installEditFeatures } from './language-edit-features';
-import { installPullDiagnostics } from './language-diagnostics';
+import { installPullDiagnostics, type DiagnosticCache } from './language-diagnostics';
 import { noCancellation, type LanguageFeatureContext } from './language-feature-context';
 import type { LanguageRefresh } from '../../protocol/language-features';
 import { completionDefaults, completion, fromRange, markdown, marker, toPosition, toRange } from './language-conversion';
+import { requestLanguageResult, LanguageRequestError, languageItemHandles } from '../../protocol/language-request';
+import { completionContext as toCompletionContext } from '../../protocol/language-completion';
+import { ownLanguageDiagnostics, hasBuiltinLanguageService } from './builtin-diagnostics';
 
-type Binding = { capabilities: L.ServerCapabilities; diagnostics: L.Diagnostic[]; refresh: Map<LanguageRefresh, Set<() => void>>; serverId: string; tab: DocumentTab; model: M.editor.ITextModel; path: string; generation: string; connected: Promise<LanguageConnection | LanguageUnavailable>;
+type Binding = { capabilities: LanguageCapabilities; diagnosticCache: DiagnosticCache; diagnostics: L.Diagnostic[]; refresh: Map<LanguageRefresh, Set<() => void>>; serverId: string; tab: DocumentTab; model: M.editor.ITextModel; path: string; generation: string; connected: Promise<LanguageConnection | LanguageUnavailable>;
   uri?: string; sync?: ReturnType<typeof textSynchronization>; queue: Promise<unknown>; listener: M.IDisposable; providers: M.IDisposable[]; failed: boolean; state: 'starting' | 'ready' | 'failed' | 'unavailable'; message?: string };
 export type LanguageOptions = {
   port: LanguageApi;
@@ -26,7 +29,7 @@ export type LanguageOptions = {
 export class LanguageClient {
   private readonly bindings = new Map<M.editor.ITextModel, Binding>();
   private readonly disposables: M.IDisposable[] = [];
-  private readonly completionItems = new WeakMap<M.languages.CompletionItem, { binding: Binding; version: number; item: L.CompletionItem }>();
+  private readonly completionItems = new WeakMap<M.languages.CompletionItem, { binding: Binding; version: number; item: L.CompletionItem; lease: { handles: Set<string>; disposed: boolean } }>();
   private readonly requests = new Map<string, Binding>();
   private restarting: Promise<void> | undefined;
   private restartDocuments: Map<M.editor.ITextModel, DocumentTab> | undefined;
@@ -78,6 +81,7 @@ export class LanguageClient {
         this.publishStatus();
         if (event.state === 'failed') for (const binding of affected) {
           binding.failed = true; binding.diagnostics = []; api.editor.setModelMarkers(binding.model, 'setdown-language', []);
+          for (const provider of binding.providers) provider.dispose(); binding.providers = [];
         }
         return;
       }
@@ -103,7 +107,7 @@ export class LanguageClient {
     const generation = crypto.randomUUID();
     const connected = this.options.port.open({ id: tab.id, generation, path: tab.document.path,
       text: model.getValue(), version: model.getVersionId() });
-    const binding: Binding = { capabilities: {}, diagnostics: [], refresh: new Map(), serverId: (this.options.route ?? languageSupport)(tab.document.path)!.server, tab, model, path: tab.document.path, generation, connected, queue: connected,
+    const binding: Binding = { capabilities: {}, diagnosticCache: new Map(), diagnostics: [], refresh: new Map(), serverId: (this.options.route ?? languageSupport)(tab.document.path)!.server, tab, model, path: tab.document.path, generation, connected, queue: connected,
       failed: false, state: 'starting', providers: [], listener: { dispose() {} } };
     this.bindings.set(model, binding);
     const fail = (error: unknown) => {
@@ -183,10 +187,12 @@ export class LanguageClient {
     const cancel = token.onCancellationRequested(() => this.options.port.cancel(id));
     try {
       if (commandVersions) this.commandEdits.set(binding, commandVersions);
-      const result = await this.options.port.request(binding.tab.id, version, id, method, params);
+      const result = await requestLanguageResult<T>(method, () => this.options.port.request(binding.tab.id, version, id, method, params),
+        () => this.bindings.get(model) === binding && !binding.failed && !model.isDisposed() && model.getVersionId() === version, token);
       return this.bindings.get(model) === binding && !model.isDisposed() && model.getVersionId() === version
         && !token.isCancellationRequested ? result as T : null;
     } catch (error) {
+      if (error instanceof LanguageRequestError && [-32800, -32801, -32802].includes(error.code)) return null;
       if (!token.isCancellationRequested && !model.isDisposed() && model.getVersionId() === version && !binding.failed)
         console.warn('Language request failed:', method, error);
       return null;
@@ -307,28 +313,31 @@ export class LanguageClient {
     try { for (const [model, edits] of grouped) { model.pushStackElement(); model.pushEditOperations([], edits, () => null); model.pushStackElement(); } }
     finally { this.applying = false; }
   }
-  private installProviders(owner: Binding, capabilities: L.ServerCapabilities): void {
+  private installProviders(owner: Binding, capabilities: LanguageCapabilities): void {
     for (const provider of owner.providers) provider.dispose();
     owner.providers = []; owner.capabilities = capabilities;
     const { api } = this;
-    const language = { language: owner.model.getLanguageId(), scheme: 'file', pattern: owner.model.uri.fsPath };
+    const language = { language: owner.model.getLanguageId(), scheme: 'file', pattern: owner.model.uri.fsPath, exclusive: hasBuiltinLanguageService(owner.model.getLanguageId()) };
+    owner.providers.push(ownLanguageDiagnostics(api, owner.model));
     // Each provider belongs to one live model and its negotiated capabilities.
     // Different roots/servers may advertise different triggers or resolve support.
     const scoped = <T extends object>(provider: T): T => Object.fromEntries(Object.entries(provider).map(([key, value]) =>
       [key, typeof value === 'function' && (key.startsWith('provide') || key === 'resolveRenameLocation')
         ? (model: M.editor.ITextModel, ...args: unknown[]) => model === owner.model && this.bindings.get(model) === owner
           ? value(model, ...args) : null : value])) as T;
-    const callbacks = new Map<string, () => Promise<void>>();
+    const callbacks = new Map<string, { version: number; run: () => Promise<void> }>();
+    owner.providers.push(owner.model.onDidChangeContent(() => {
+      for (const [id, callback] of callbacks) if (callback.version < owner.model.getVersionId() - 1) callbacks.delete(id);
+    }), { dispose: () => callbacks.clear() });
     const commandId = `setdown.language.${crypto.randomUUID()}`;
     const action = (title: string, run: () => Promise<void>): M.languages.Command => {
-      const id = crypto.randomUUID(); callbacks.set(id, run);
-      while (callbacks.size > 4096) callbacks.delete(callbacks.keys().next().value!);
+      const id = crypto.randomUUID(); callbacks.set(id, { version: owner.model.getVersionId(), run });
       return { id: commandId, title, arguments: [id] };
     };
     // Registered only for this live binding. Server command names never become editor commands.
     if (api.editor.registerCommand) owner.providers.push(api.editor.registerCommand(commandId, async (_accessor, id: string) => {
-      const run = callbacks.get(id); callbacks.delete(id);
-      if (run && this.bindings.get(owner.model) === owner && !owner.failed) await run();
+      const callback = callbacks.get(id); callbacks.delete(id);
+      if (callback && this.bindings.get(owner.model) === owner && !owner.failed) await callback.run();
     }));
     const context: LanguageFeatureContext = {
       api, model: owner.model, selector: language, capabilities, scoped,
@@ -343,32 +352,37 @@ export class LanguageClient {
       }),
     };
     installNavigationFeatures(context); installSemanticFeatures(context); installEditFeatures(context);
-    installPullDiagnostics(context, diagnostics => this.diagnostics(owner, diagnostics));
+    installPullDiagnostics(context, diagnostics => this.diagnostics(owner, diagnostics), owner.diagnosticCache);
     this.publishStatus();
     if (capabilities.completionProvider) owner.providers.push(api.languages.registerCompletionItemProvider(language, scoped({
       triggerCharacters: capabilities.completionProvider!.triggerCharacters,
       provideCompletionItems: async (model, position, completionContext, token) => {
         const response = await this.request<L.CompletionItem[] | L.CompletionList>(model, 'textDocument/completion',
-          { position: toPosition(position), context: { triggerKind: completionContext.triggerKind + 1, triggerCharacter: completionContext.triggerCharacter } }, token);
+          { position: toPosition(position), context: toCompletionContext(completionContext) }, token);
         if (!response) return null;
         const word = model.getWordUntilPosition(position);
         const fallback = { startLineNumber: position.lineNumber, endLineNumber: position.lineNumber, startColumn: word.startColumn, endColumn: word.endColumn };
         const binding = this.bindings.get(model)!;
+        const lease = { handles: new Set(languageItemHandles(response)), disposed: false };
         const suggestions = (Array.isArray(response) ? response : response.items).map(original => {
           const item = completionDefaults(original, Array.isArray(response) ? undefined : response.itemDefaults);
           const converted = completion(api, item, fallback);
           if (item.command) converted.command = context.command(item.command, model.getVersionId(), true);
-          this.completionItems.set(converted, { binding, version: model.getVersionId(), item });
+          this.completionItems.set(converted, { binding, version: model.getVersionId(), item, lease });
           return converted;
         });
-        return { suggestions, incomplete: !Array.isArray(response) && response.isIncomplete };
+        return { suggestions, incomplete: !Array.isArray(response) && response.isIncomplete,
+          dispose: () => { lease.disposed = true; this.options.port.releaseItems?.(binding.tab.id, [...lease.handles]); } };
       },
       resolveCompletionItem: !capabilities.completionProvider!.resolveProvider ? undefined : async (item, token) => {
         const data = this.completionItems.get(item);
-        const valid = () => !!data && data.binding === owner && this.bindings.get(data.binding.model) === data.binding
+        const valid = () => !!data && !data.lease.disposed && data.binding === owner && this.bindings.get(data.binding.model) === data.binding
           && !data.binding.model.isDisposed() && data.binding.model.getVersionId() === data.version;
         if (!data || !valid()) return { ...item, additionalTextEdits: undefined };
         const resolved = await this.request<L.CompletionItem>(data.binding.model, 'completionItem/resolve', data.item, token);
+        const handles = languageItemHandles(resolved);
+        if (data.lease.disposed) this.options.port.releaseItems?.(data.binding.tab.id, handles);
+        else for (const handle of handles) data.lease.handles.add(handle);
         if (!valid()) return { ...item, additionalTextEdits: undefined };
         if (!resolved) return item;
         const fallback = 'insert' in item.range ? item.range.insert : item.range;

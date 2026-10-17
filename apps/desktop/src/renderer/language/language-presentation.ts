@@ -13,7 +13,7 @@ export function serverStatus(entry: LanguageCatalogEntry): { label: string; tone
   if (entry.sessions.some(session => session.state === 'starting')) return { label: 'Starting', tone: 'neutral' };
   if (entry.selectionNeeded) return { label: 'Choose installation', tone: 'warning' };
   if (!entry.selected.length) return { label: 'Choose primary', tone: 'warning' };
-  return { label: 'Ready', tone: 'success' };
+  return { label: 'Detected', tone: 'neutral' };
 }
 
 export function connectionSource(entry: LanguageCatalogEntry): string {

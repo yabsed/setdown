@@ -2,6 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Registration, ServerCapabilities, DocumentSelector, FileSystemWatcher, FileOperationRegistrationOptions } from 'vscode-languageserver-protocol';
 import { languageFeatures } from '../../protocol/language-features';
+import type { LanguageCapabilities } from '../../protocol/language';
 
 const methods = new Map<string, keyof ServerCapabilities>(Object.entries(languageFeatures).map(([name, key]) =>
   [name === 'workspaceSymbol' ? 'workspace/symbol' : `textDocument/${name === 'color' ? 'documentColor' : name === 'documentFormatting' ? 'formatting' : name === 'documentRangeFormatting' ? 'rangeFormatting' : name === 'documentOnTypeFormatting' ? 'onTypeFormatting' : name}`, key]));
@@ -24,18 +25,26 @@ export class ServerCapabilitiesState {
     for (const registration of registrations) this.registrations.set(registration.id, registration);
   }
   unregister(ids: string[]): void { for (const id of ids) this.registrations.delete(id); }
-  forDocument(uri: string, language: string): ServerCapabilities {
-    const result = { ...this.base };
+  forDocument(uri: string, language: string): LanguageCapabilities {
+    const result: LanguageCapabilities = { ...this.base };
     for (const key of Object.values(languageFeatures)) {
       const options = result[key];
       if (options && typeof options === 'object' && 'documentSelector' in options
         && !this.matches(options.documentSelector, uri, language)) delete result[key];
     }
+    const diagnostics: NonNullable<LanguageCapabilities['diagnosticProviders']> = result.diagnosticProvider
+      ? [{ id: 'static', options: result.diagnosticProvider }] : [];
     for (const registration of this.registrations.values()) {
       const key = methods.get(registration.method);
       const options = registration.registerOptions ?? {};
-      if (key && this.matches(options.documentSelector, uri, language))
-        Object.assign(result, { [key]: options });
+      if (!key || !this.matches(options.documentSelector, uri, language)) continue;
+      if (key === 'diagnosticProvider') diagnostics.push({ id: `registration:${registration.id}`, options });
+      else Object.assign(result, { [key]: options });
+    }
+    if (diagnostics.length) {
+      result.diagnosticProviders = diagnostics;
+      result.diagnosticProvider = { ...diagnostics[0].options,
+        interFileDependencies: diagnostics.some(provider => provider.options.interFileDependencies) };
     }
     return result;
   }

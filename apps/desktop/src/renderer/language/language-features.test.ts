@@ -4,17 +4,18 @@ import type * as L from 'vscode-languageserver-protocol';
 import { installSemanticFeatures, semanticData } from './language-semantic-features';
 import { installNavigationFeatures } from './language-navigation-features';
 import { installEditFeatures } from './language-edit-features';
+import type { LanguageCapabilities } from '../../protocol/language';
 import { installPullDiagnostics } from './language-diagnostics';
 import { completionDefaults } from './language-conversion';
 import { noCancellation, type LanguageFeatureContext } from './language-feature-context';
 
-function fixture(capabilities: L.ServerCapabilities) {
+function fixture(capabilities: LanguageCapabilities) {
   const providers: Record<string, any> = {}, listeners = new Map<string, Set<() => void>>(), disposables: M.IDisposable[] = [];
   let version = 1;
   const api = { languages: new Proxy({ FoldingRangeKind: { Comment: 'comment', Imports: 'imports', Region: 'region' } }, {
     get: (target, key) => key in target ? target[key as keyof typeof target] : (_selector: unknown, provider: unknown) => { providers[String(key)] = provider; return { dispose() {} }; },
   }), Uri: { parse: (value: string) => ({ scheme: value.split(':')[0] }) } } as unknown as typeof M;
-  const model = { getVersionId: () => version, onDidChangeContent: (fn: () => void) => { listeners.set('change', new Set([fn])); return { dispose() {} }; } } as M.editor.ITextModel;
+  const model = { getVersionId: () => version, onDidChangeContent: (fn: () => void) => { const set = listeners.get('change') ?? new Set(); set.add(fn); listeners.set('change', set); return { dispose: () => { set.delete(fn); } }; } } as M.editor.ITextModel;
   const context: LanguageFeatureContext = { api, model, capabilities, selector: 'test', scoped: p => p,
     add: (...items) => disposables.push(...items), request: vi.fn(async () => null), uri: value => value as unknown as M.Uri,
     alive: v => v === version, onRefresh: (feature, fn) => { const set = listeners.get(feature) ?? new Set(); set.add(fn); listeners.set(feature, set); return { dispose: () => { set.delete(fn); } }; },
@@ -107,4 +108,28 @@ test('completion list defaults preserve per-item overrides and insert/replace ra
   const range = { start: { line: 0, character: 1 }, end: { line: 0, character: 3 } };
   expect(completionDefaults({ label: 'call', textEditText: 'call($1)', data: 'own' }, { insertTextFormat: 2, editRange: { insert: range, replace: range }, data: 'default' }))
     .toMatchObject({ data: 'own', insertTextFormat: 2, textEdit: { insert: range, replace: range, newText: 'call($1)' } });
+});
+
+test('diagnostic providers retain separate result IDs, aggregate unchanged results and retire only removed providers', async () => {
+  vi.useFakeTimers();
+  try {
+    const providers = ['types', 'lint'].map(id => ({ id, options: { identifier: id, interFileDependencies: false, workspaceDiagnostics: false } }));
+    const f = fixture({ diagnosticProviders: providers }), publish = vi.fn(), cache = new Map();
+    f.request.mockImplementation(async (_method, params: any) => ({ kind: 'full', resultId: `${params.identifier}-1`, items: [{ message: params.identifier }] }));
+    installPullDiagnostics(f.context, publish, cache);
+    await vi.advanceTimersByTimeAsync(250);
+    expect(publish).toHaveBeenLastCalledWith([{ message: 'types' }, { message: 'lint' }]);
+    f.request.mockImplementation(async (_method, params: any) => ({ kind: 'unchanged', resultId: `${params.identifier}-2` }));
+    f.change(); await vi.advanceTimersByTimeAsync(250);
+    expect(f.request.mock.calls.slice(-2).map(call => call[1])).toEqual([
+      { identifier: 'types', previousResultId: 'types-1' }, { identifier: 'lint', previousResultId: 'lint-1' },
+    ]);
+    expect(publish).toHaveBeenLastCalledWith([{ message: 'types' }, { message: 'lint' }]);
+    f.dispose(); f.context.capabilities = { diagnosticProviders: [providers[1]] };
+    installPullDiagnostics(f.context, publish, cache);
+    expect(publish).toHaveBeenLastCalledWith([{ message: 'lint' }]);
+    await vi.advanceTimersByTimeAsync(250);
+    expect(f.request).toHaveBeenLastCalledWith('textDocument/diagnostic', { identifier: 'lint', previousResultId: 'lint-2' }, noCancellation);
+    f.dispose();
+  } finally { vi.useRealTimers(); }
 });

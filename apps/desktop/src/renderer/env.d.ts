@@ -4,7 +4,7 @@ declare global {
   interface Window {
     marktex: MarkTexApi;
     MonacoEnvironment: {
-      getWorker(): Worker;
+      getWorker(workerId: string, label: string): Worker | Promise<Worker>;
     };
   }
 }

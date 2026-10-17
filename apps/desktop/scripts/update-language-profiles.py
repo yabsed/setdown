@@ -102,6 +102,17 @@ def generate():
             definition['initializationOptions'] = dict(server['config'])
             if definition['initializationOptions'].get('hostInfo') == 'helix':
                 definition['initializationOptions']['hostInfo'] = 'setdown'
+        # Helix's config is initialization data, not a universal settings schema.
+        # These servers document language-scoped workspace settings separately.
+        if identity == 'typescript-language-server':
+            for language in ('typescript', 'javascript'):
+                config = definition.get('initializationOptions', {}).pop(language, None)
+                if config is not None:
+                    definition['settings'][language] = config
+        if identity == 'css-lsp':
+            for language in ('css', 'scss', 'less'):
+                definition.get('initializationOptions', {}).pop(language, None)
+                definition['settings'][language] = {'validate': True, 'lint': {}, 'completion': {}, 'hover': {}}
         if source.startswith('pkg:pypi/'):
             definition['discovery'] = 'python'
         if npm:

@@ -1,0 +1,35 @@
+
+> @setdown/desktop@1.0.0 test
+> vitest run --config vitest.config.ts --run src/main/language src/renderer/language src/renderer/notebook/notebook-language.test.ts src/protocol/language-request.test.ts
+
+
+ RUN  v3.2.7 /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+
+ ✓ src/main/language/clangd-session.test.ts (1 test) 1324ms
+   ✓ real clangd uses build flags, isolates buffers, and supplies C++ navigation and edits  1324ms
+ ✓ src/main/language/language-manager.test.ts (16 tests) 707ms
+ ✓ src/main/language/server-discovery.test.ts (12 tests) 471ms
+ ✓ src/renderer/language/language-client.test.ts (12 tests) 436ms
+ ✓ src/protocol/language-request.test.ts (4 tests) 138ms
+ ✓ src/renderer/notebook/notebook-language.test.ts (7 tests) 132ms
+ ✓ src/main/language/server-items.test.ts (5 tests) 69ms
+ ✓ src/main/language/server-registry.test.ts (11 tests) 76ms
+ ✓ src/main/language/server-session.test.ts (7 tests) 5767ms
+   ✓ real Pyright sees independent unsaved buffers and versioned incremental Unicode changes  897ms
+   ✓ watching a closed imported file refreshes analysis without overwriting the open buffer  573ms
+   ✓ workspace rename includes unopened Python files immediately after initialization  431ms
+   ✓ pyright off preset keeps core diagnostics and inference without type noise  1242ms
+   ✓ basedpyright off preset keeps core diagnostics and inference without type noise  2270ms
+ ✓ src/renderer/language/language-features.test.ts (7 tests) 21ms
+ ✓ src/main/language/catalog/profiles.test.ts (4 tests) 56ms
+ ✓ src/main/language/server-capabilities.test.ts (6 tests) 18ms
+ ✓ src/main/language/server-definitions.test.ts (3 tests) 16ms
+ ✓ src/renderer/language/language-presentation.test.ts (4 tests) 12ms
+ ✓ src/main/language/language-root.test.ts (4 tests) 15ms
+ ✓ src/renderer/language/builtin-diagnostics.test.ts (1 test) 6ms
+
+ Test Files  16 passed (16)
+      Tests  104 passed (104)
+   Start at  13:12:01
+   Duration  7.58s (transform 422ms, setup 0ms, collect 1.01s, tests 9.26s, environment 4ms, prepare 995ms)
+

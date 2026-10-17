@@ -139,3 +139,11 @@ test('upstream solution globs find standalone C# roots and watch actual project 
   expect(serverProfile(server).watches(path.join(root, 'Project.csproj'))).toBe(true);
   expect(serverProfile(server).watches(path.join(root, 'unrelated.txt'))).toBe(false);
 });
+
+test('an explicit analysis root is persisted, changes the session fingerprint and rejects relative paths', async () => {
+  const folder = await directory(), registry = new ServerRegistry(folder), before = registry.fingerprint('pyright');
+  registry.configure('pyright', { root: folder, settings: { python: { pythonPath: '/usr/bin/python3' } } });
+  expect(registry.fingerprint('pyright')).not.toBe(before);
+  expect(new ServerRegistry(folder).options('pyright')).toMatchObject({ root: folder, settings: { python: { pythonPath: '/usr/bin/python3' } } });
+  expect(() => registry.configure('pyright', { root: '../outside' })).toThrow();
+});

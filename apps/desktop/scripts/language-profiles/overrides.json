@@ -20,7 +20,7 @@
           "--stdio"
         ]
       },
-      "rootMarkers": [],
+      "rootMarkers": ["pyrightconfig.json", "pyproject.toml", "setup.py", "setup.cfg"],
       "settings": {
         "python": {
           "analysis": {
@@ -37,7 +37,7 @@
         ".toml",
         ".json"
       ],
-      "watchFiles": []
+      "watchFiles": ["pyrightconfig.json", "pyproject.toml", "setup.py", "setup.cfg"]
     },
     "clangd": {
       "id": "clangd",
