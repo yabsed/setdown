@@ -1,5 +1,5 @@
 import { build } from 'esbuild';
-import { copyFile } from 'node:fs/promises';
+import { copyFile, mkdir } from 'node:fs/promises';
 
 const shared = {
   bundle: true,
@@ -8,6 +8,7 @@ const shared = {
   sourcemap: true,
   external: ['sharp', 'electron', 'jsonc-parser', 'crossnote', '@parcel/watcher', '@vscode/ripgrep', 'node-pty', '@xterm/headless', '@xterm/addon-serialize', 'electron-chrome-extensions', 'electron-chrome-web-store', 'turndown', 'turndown-plugin-gfm', 'sanitize-html', 'pyright', 'basedpyright'],
 };
+await mkdir('dist-electron', { recursive: true });
 await Promise.all([
   build({ ...shared, entryPoints: ['src/image-export-runtime/preload.ts'], outfile: 'dist-electron/image-export-preload.cjs', format: 'cjs' }),
   build({ bundle: true, platform: 'browser', target: 'chrome120', format: 'iife', entryPoints: ['src/image-export-runtime/index.ts'], outfile: 'dist-electron/image-export.js' }),

@@ -7,9 +7,11 @@ import { electron, disposeApplication, focusApplication } from '../../support/el
 import { initialRecipe } from '../../../src/core/image/image-recipe';
 
 const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100"><rect width="100" height="100" fill="#ff0000"/><rect x="100" width="100" height="100" fill="#0000ff"/></svg>';
-async function fixture() {
+async function fixture(size?: { width: number; height: number }) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-image-edit-')), file = path.join(root, 'photo.png');
-  await writeFile(file, await sharp(Buffer.from(svg)).png().toBuffer());
+  const image = sharp(Buffer.from(svg));
+  if (size) image.resize(size.width, size.height);
+  await writeFile(file, await image.png().toBuffer());
   const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
   const app = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
   await focusApplication(app); const page = await app.firstWindow();
@@ -17,6 +19,52 @@ async function fixture() {
   await page.getByRole('button', { name: 'Edit image', exact: true }).click();
   await expect(edit.getByAltText('Edited preview')).toBeVisible();
   return { root, file, app, page, edit, dispose: async () => { await disposeApplication(app); await rm(root, { recursive: true, force: true }); } };
+}
+
+for (const [width, height, appZoom] of [[1281, 1037, 120], [921, 775, 130], [921, 775, 90]]) {
+  test(`fit editing stays still without input at ${appZoom}% app zoom and ${width}×${height}`, async () => {
+    const f = await fixture({ width: 1920, height: 1080 });
+    try {
+      await f.app.evaluate(({ BrowserWindow }, { width, height }) => {
+        BrowserWindow.getAllWindows().find(w => w.isVisible())!.setSize(width, height);
+      }, { width, height });
+      await f.page.evaluate(steps => window.marktex.changeZoom(steps, 'app'), (appZoom - 100) / 10);
+      await expect.poll(() => f.page.evaluate(async () => (await window.marktex.getZoom()).app)).toBe(appZoom);
+      const geometry = async () => f.edit.evaluate(element => new Promise<Array<{ x: number; y: number; width: number; height: number; clientWidth: number; clientHeight: number; scrollWidth: number; scrollHeight: number }>>(resolve => {
+        const viewport = element.querySelector<HTMLElement>('.preview')!, image = viewport.querySelector('img')!;
+        const frames: Array<{ x: number; y: number; width: number; height: number; clientWidth: number; clientHeight: number; scrollWidth: number; scrollHeight: number }> = [];
+        const sample = () => {
+          const { x, y, width, height } = image.getBoundingClientRect();
+          frames.push({ x, y, width, height, clientWidth: viewport.clientWidth, clientHeight: viewport.clientHeight,
+            scrollWidth: viewport.scrollWidth, scrollHeight: viewport.scrollHeight });
+          if (frames.length < 90) requestAnimationFrame(sample); else resolve(frames);
+        };
+        requestAnimationFrame(sample);
+      }));
+      const assertStill = async (name: string) => {
+        const frames = await geometry();
+        await writeFile(test.info().outputPath(`${name}.json`), JSON.stringify(frames, null, 2));
+        const steady = frames.slice(20);
+        for (const key of ['x', 'y', 'width', 'height'] as const)
+          expect(Math.max(...steady.map(f => f[key])) - Math.min(...steady.map(f => f[key])), `${name}: ${key} drift`).toBeLessThan(1);
+        for (const frame of steady) {
+          expect(frame.scrollWidth - frame.clientWidth, `${name}: horizontal overflow`).toBeLessThanOrEqual(1);
+          expect(frame.scrollHeight - frame.clientHeight, `${name}: vertical overflow`).toBeLessThanOrEqual(1);
+        }
+      };
+      await assertStill('initial-fit');
+      await f.edit.getByRole('button', { name: '100%', exact: true }).click();
+      await f.edit.locator('.preview').evaluate(node => { node.scrollLeft = 137; node.scrollTop = 83; });
+      await expect.poll(() => f.edit.locator('.preview').evaluate(node =>
+        Math.abs(node.scrollLeft - 137) < 1 && Math.abs(node.scrollTop - 83) < 1)).toBe(true);
+      await f.edit.getByRole('button', { name: 'Fit', exact: true }).click();
+      await assertStill('return-to-fit');
+      await expect(f.edit).toHaveAttribute('data-dirty', 'false');
+      await expect(f.edit.getByLabel('Crop width', { exact: true })).toHaveValue('1920');
+      await expect(f.edit.getByLabel('Crop height', { exact: true })).toHaveValue('1080');
+      await f.page.screenshot({ path: test.info().outputPath('stable-fit.png') });
+    } finally { await f.dispose(); }
+  });
 }
 
 test('edits geometry and color, survives media eviction, exports correct pixels and keeps saved undo checkpoints', async () => {

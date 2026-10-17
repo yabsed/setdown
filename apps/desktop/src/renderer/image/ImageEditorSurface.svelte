@@ -18,8 +18,6 @@
   let pan: { x: number; y: number; left: number; top: number } | undefined;
   const scale = $derived(zoom === 'fit' ? Math.min(1, Math.max(1, viewportWidth - 40) / recipe.width,
     Math.max(1, viewportHeight - 40) / recipe.height) : zoom);
-  const stageWidth = $derived(Math.max(viewportWidth, recipe.width * scale + 40));
-  const stageHeight = $derived(Math.max(viewportHeight, recipe.height * scale + 40));
   const detail = $derived(Math.max(recipe.width, recipe.height) > 2048 && scale > 2048 / Math.max(recipe.width, recipe.height));
   let source: ImageBitmap | undefined, dead = false, running = false, requested = 0;
   const dirty = $derived.by(() => { revision; return session.history.dirty; });
@@ -78,7 +76,13 @@
     change: steps => { if (active) zoom = steps === 0 ? 1 : Math.max(.1, Math.min(8, scale * 1.1 ** steps)); } }; });
   onMount(() => {
     const unsubscribe = imageSessions.subscribe(sync);
-    const observer = new ResizeObserver(() => { viewportWidth = viewport.clientWidth; viewportHeight = viewport.clientHeight; });
+    const observer = new ResizeObserver(() => {
+      // clientWidth/clientHeight round fractional CSS pixels and subtract the
+      // current scrollbars. Feeding those back into fit sizing can alternate
+      // both scrollbars and image size forever at fractional application zoom.
+      const bounds = viewport.getBoundingClientRect();
+      viewportWidth = bounds.width; viewportHeight = bounds.height;
+    });
     observer.observe(viewport);
     const input = new ContentZoomInput();
     const wheel = (event: WheelEvent) => {
@@ -120,13 +124,13 @@
   </div>
   <div class="body">
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="preview" bind:this={viewport} aria-label="Image edit preview" onpointerdown={event => {
+    <div class="preview" class:fit={zoom === 'fit'} bind:this={viewport} aria-label="Image edit preview" onpointerdown={event => {
       if (cropping || event.button !== 0) return;
       pan = { x: event.clientX, y: event.clientY, left: viewport.scrollLeft, top: viewport.scrollTop }; viewport.setPointerCapture(event.pointerId);
     }} onpointermove={event => { if (pan) { viewport.scrollLeft = pan.left + pan.x - event.clientX; viewport.scrollTop = pan.top + pan.y - event.clientY; } }}
       onpointerup={() => pan = undefined} onpointercancel={() => pan = undefined} onlostpointercapture={() => pan = undefined}>
       {#if url}
-        <div class="stage" style:width={`${stageWidth}px`} style:height={`${stageHeight}px`}>
+        <div class="stage" style:width={`${recipe.width * scale + 40}px`} style:height={`${recipe.height * scale + 40}px`}>
         <!-- Pointer selection has equivalent pixel-coordinate fields below. -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div class="picture" class:cropping style:width={`${recipe.width * scale}px`} style:height={`${recipe.height * scale}px`} onpointerdown={(event) => {
@@ -178,7 +182,8 @@
   .spacer { flex: 1; }
   .body { display: flex; flex: 1; min-height: 0; }
   .preview { flex: 1; min-width: 0; min-height: 0; overflow: auto; touch-action: none; }
-  .stage { display: flex; align-items: center; justify-content: center; }
+  .preview.fit { overflow: hidden; }
+  .stage { display: flex; align-items: center; justify-content: center; min-width: 100%; min-height: 100%; }
   .picture { position: relative; flex-shrink: 0; background: repeating-conic-gradient(#999 0% 25%, #ccc 0% 50%) 0 / 16px 16px; }
   img { display: block; width: 100%; height: 100%; max-width: none; user-select: none; }
   .cropping { cursor: crosshair; touch-action: none; }
