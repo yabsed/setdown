@@ -35,16 +35,19 @@ export function createTabDrag(options: Options) {
   let activeStrip: HTMLElement | null = null;
   // The painted guide and the committed placement must describe the same move.
   let guidedTarget: Target | null = null;
+  let detachTarget: { x: number; y: number } | null = null;
   let scrollFrame = 0;
   let scrollList: HTMLElement | null = null;
   let scrollPointer = 0;
   const clearTarget = () => {
     guidedTarget = null;
+    detachTarget = null;
     overlay.hidden = indicator.hidden = true;
     activeStrip?.classList.remove('is-drop-target'); activeStrip = null;
     cancelAnimationFrame(scrollFrame); scrollFrame = 0; scrollList = null;
   };
   function stripTarget(strip: HTMLElement, x: number): Target {
+    detachTarget = null;
     if (activeStrip !== strip) activeStrip?.classList.remove('is-drop-target');
     activeStrip = strip; strip.classList.add('is-drop-target');
     const list = strip.querySelector<HTMLElement>('.tab-list')!;
@@ -93,9 +96,17 @@ export function createTabDrag(options: Options) {
       if (point.y < strip.getBoundingClientRect().bottom) return stripTarget(strip, point.x);
       clearTarget();
       const body = element.querySelector('.group-body')!.getBoundingClientRect();
+      if (point.y < body.top || point.y >= body.bottom) return null;
       const direction = splitDirection(point.x - body.left, point.y - body.top, body.width, body.height);
       const source = tabId ? options.groups.owner(tabId) : null;
       const split = source?.id === groupId && source.tabs.length === 1 ? null : direction;
+      // Returning to the source group's body is not a useful merge. Reserve
+      // its center for tear-off, including when a maximized window fills the
+      // screen. Other groups still accept center drops with a blue merge guide.
+      if (source?.id === groupId && !split) {
+        detachTarget = { x: event.screenX, y: event.screenY };
+        return null;
+      }
       const left = body.left + (split === 'right' ? body.width / 2 : 0);
       const top = body.top + (split === 'down' ? body.height / 2 : 0);
       Object.assign(overlay.style, { left: `${left}px`, top: `${top}px`,
@@ -120,7 +131,7 @@ export function createTabDrag(options: Options) {
     if (!supported(event)) return;
     leftWindow = false;
     const destination = target(event);
-    if (!destination) return;
+    if (!destination && !detachTarget) return;
     event.preventDefault();
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
     // A native Markdown view otherwise intercepts the next dragover/drop.
@@ -133,8 +144,17 @@ export function createTabDrag(options: Options) {
   }, true);
   window.addEventListener('drop', event => {
     if (!supported(event)) return;
-    const destination = guidedTarget ?? target(event);
-    if (!destination) { reset(); return; }
+    const destination = guidedTarget ?? (detachTarget ? null : target(event));
+    if (!destination) {
+      const detach = !canceled && detachTarget ? transferId : null;
+      const point = detachTarget;
+      if (detach) { event.preventDefault(); event.stopPropagation(); }
+      const pending = transferId;
+      reset();
+      if (detach && point) options.desktop.detachTabToWindow(detach, point.x, point.y, true);
+      else if (pending) options.desktop.cancelTabTransfer(pending);
+      return;
+    }
     event.preventDefault(); event.stopPropagation();
     const localId = tabId;
     const incoming = event.dataTransfer?.getData(MIME);
@@ -167,7 +187,7 @@ export function createTabDrag(options: Options) {
       // Crossing a native child surface can emit a null-relatedTarget leave
       // inside this window. Keep its guide/placement until another dragover,
       // a real boundary crossing, cancellation, or completion replaces it.
-      if (guidedTarget && !pointerOutside(event)) return;
+      if ((guidedTarget || detachTarget) && !pointerOutside(event)) return;
       leftWindow = true; clearTarget();
       // Native child surfaces can emit this while the pointer is still inside
       // the window. A source drag owns its capture until drop/end/cancel;
@@ -196,7 +216,10 @@ export function createTabDrag(options: Options) {
     end(event: DragEvent) {
       const id = transferId;
       const localId = tabId, destination = guidedTarget;
-      if (id && localId && destination) {
+      // A native boundary leave can report (0, 0), retaining the last guide
+      // even after a real window exit. The release point supersedes that guide.
+      const outside = leftWindow || pointerOutside(event);
+      if (id && localId && destination && !outside) {
         // A native surface can consume drop. The still-visible guide is the
         // accepted local destination, not an invitation to detach a new window.
         // Chromium cancels an OS drag with Escape before dispatching keydown;
@@ -207,16 +230,13 @@ export function createTabDrag(options: Options) {
         if (commit) move(localId, destination);
         return;
       }
-      // Chromium may report (0, 0) or the last in-window client coordinate for a
-      // real OS dragend. Use the boundary leave only after the visible guide
-      // has been invalidated; an internal native leave is not an outside drop.
-      const outside = leftWindow || pointerOutside(event);
       // An external application may accept the OS drag with dropEffect "move".
       // A Setdown drop consumes and resets this transfer before dragend, so an
       // unconsumed transfer outside this window is always a detach.
-      const detach = id && !canceled && outside;
+      const detach = id && !canceled && (outside || (detachTarget && event.dataTransfer?.dropEffect === 'move'));
+      const point = !outside && detachTarget;
       reset();
-      if (detach) options.desktop.detachTabToWindow(id, event.screenX, event.screenY);
+      if (detach) options.desktop.detachTabToWindow(id, point ? point.x : event.screenX, point ? point.y : event.screenY, !!point);
       else if (id) options.desktop.cancelTabTransfer(id);
     },
     cancel() { canceled = true; clearTarget(); setDragging(false); options.shell.classList.remove('is-tab-dragging'); }, reset,

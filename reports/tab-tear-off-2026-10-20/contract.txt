@@ -1,0 +1,223 @@
+
+> setdown-workspace@0.1.0 test:preview-contract
+> npm run test:preview-contract --workspace @setdown/desktop
+
+
+> @setdown/desktop@1.0.0 test:preview-contract
+> npm run test:preview-contract:unit && npm run build && npm run test:preview-contract:e2e
+
+
+> @setdown/desktop@1.0.0 test:preview-contract:unit
+> vitest run --config vitest.preview-contract.config.ts && npm run test:tooling
+
+
+ RUN  v3.2.7 /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+
+ ✓ src/main/language/language-manager.test.ts (16 tests) 1247ms
+   ✓ save includeText uses the actual disk snapshot and a catalog read starts no process  500ms
+ ✓ src/main/language/clangd-session.test.ts (1 test) 1148ms
+   ✓ real clangd uses build flags, isolates buffers, and supplies C++ navigation and edits  1147ms
+ ✓ src/architecture-boundaries.test.ts (5 tests) 1017ms
+   ✓ architecture boundaries > resolved imports respect process, composition and feature boundaries  806ms
+ ✓ src/main/project/git-history-service.test.ts (5 tests) 607ms
+ ✓ src/main/language/server-session.test.ts (7 tests) 5510ms
+   ✓ real Pyright sees independent unsaved buffers and versioned incremental Unicode changes  847ms
+   ✓ watching a closed imported file refreshes analysis without overwriting the open buffer  632ms
+   ✓ workspace rename includes unopened Python files immediately after initialization  472ms
+   ✓ pyright off preset keeps core diagnostics and inference without type noise  1234ms
+   ✓ basedpyright off preset keeps core diagnostics and inference without type noise  1966ms
+ ✓ src/main/language/server-discovery.test.ts (12 tests) 554ms
+ ✓ src/main/terminal/terminal-manager.test.ts (12 tests) 497ms
+ ✓ src/renderer/language/language-client.test.ts (12 tests) 432ms
+ ✓ src/main/project/engines/project-watcher.test.ts (3 tests) 420ms
+   ✓ project watcher engine > does not emit a project change when Git status only reads the index  345ms
+ ✓ src/renderer/notebook/notebook-language.test.ts (7 tests) 120ms
+ ✓ src/preview-runtime/theme-controller.test.ts (2 tests) 109ms
+ ✓ src/main/terminal/terminal-screen.test.ts (11 tests) 96ms
+ ✓ src/main/language/server-registry.test.ts (14 tests) 86ms
+ ✓ src/main/browser/browser-extensions.test.ts (10 tests) 61ms
+ ✓ src/renderer/project/project-controller.test.ts (3 tests) 60ms
+ ✓ src/main/language/catalog/profiles.test.ts (4 tests) 49ms
+ ✓ src/main/project/file-transfer.test.ts (7 tests) 33ms
+ ✓ src/main/project/project-service.test.ts (8 tests) 68ms
+ ✓ src/main/project/explorer-service.test.ts (5 tests) 23ms
+ ✓ src/renderer/workspace/text-workspace.test.ts (39 tests) 31ms
+ ✓ src/core/notebook/notebook-document.test.ts (21 tests) 16ms
+ ✓ src/core/browser/reader-export.test.ts (5 tests) 20ms
+ ✓ src/renderer/project/source-control/source-control-controller.test.ts (20 tests) 18ms
+ ✓ src/main/language/server-definitions.test.ts (3 tests) 13ms
+ ✓ src/main/browser/browser-downloads.test.ts (4 tests) 16ms
+ ✓ src/renderer/notebook/notebook-execution.test.ts (7 tests) 15ms
+ ✓ src/main/tabs/tab-transfer-manager.test.ts (11 tests) 20ms
+ ✓ src/main/notebook/python-environments.test.ts (1 test) 31ms
+ ✓ src/core/notebook/notebook-tools.test.ts (6 tests) 13ms
+ ✓ src/renderer/language/language-features.test.ts (7 tests) 14ms
+ ✓ src/renderer/language/builtin-diagnostics.test.ts (5 tests) 13ms
+ ✓ src/main/documents/hwp-file.test.ts (2 tests) 14ms
+ ✓ src/main/documents/image-save.test.ts (2 tests) 13ms
+ ✓ src/main/browser/browser-permissions.test.ts (6 tests) 12ms
+ ✓ src/main/language/server-capabilities.test.ts (6 tests) 13ms
+ ✓ src/main/browser/extensions/extension-policy.test.ts (3 tests) 12ms
+ ✓ src/renderer/workspace/auto-save.test.ts (9 tests) 11ms
+ ✓ src/renderer/workspace/document-sessions.test.ts (3 tests) 10ms
+ ✓ src/main/reading/reading-position-store.test.ts (4 tests) 8ms
+ ✓ src/renderer/language/language-presentation.test.ts (4 tests) 11ms
+ ✓ src/main/browser/extension-package.test.ts (7 tests) 10ms
+ ✓ src/main/notebook/kernel-manager.test.ts (4 tests) 10ms
+ ✓ src/main/preview/preview-presentation.test.ts (21 tests) 10ms
+ ✓ src/main/terminal/terminal-resize.test.ts (8 tests) 8ms
+ ✓ src/main/documents/image-file.test.ts (2 tests) 9ms
+ ✓ src/renderer/project/explorer/explorer-presentation.test.ts (2 tests) 8ms
+ ✓ src/main/project/recent-folders.test.ts (2 tests) 9ms
+ ✓ src/renderer/project/explorer/explorer-controller.test.ts (4 tests) 8ms
+ ✓ src/preview-runtime/content-controller.test.ts (3 tests) 8ms
+ ✓ src/main/windows/workspace-zoom.test.ts (26 tests) 8ms
+ ✓ src/core/preview/preview-install.test.ts (9 tests) 8ms
+ ✓ src/renderer/project/source-control/git-review-latency.test.ts (5 tests) 6ms
+ ✓ src/renderer/notebook/notebook-controller.test.ts (2 tests) 7ms
+ ✓ src/main/browser/browser-auth.test.ts (2 tests) 7ms
+ ✓ src/main/preview/preview-renderer.test.ts (4 tests) 6ms
+ ✓ src/main/documents/document-save.test.ts (1 test) 7ms
+ ✓ src/core/workspace/editor-groups.test.ts (7 tests) 6ms
+ ✓ src/main/project/explorer-clipboard.test.ts (5 tests) 6ms
+ ✓ src/renderer/language/diagnostic-store.test.ts (1 test) 4ms
+ ✓ src/renderer/image/image-edit-sessions.test.ts (2 tests) 6ms
+ ✓ src/renderer/project/source-control/git-graph-provider.test.ts (2 tests) 6ms
+ ✓ src/core/browser/browser-url.test.ts (12 tests) 6ms
+ ✓ src/renderer/hwp/hwp-sessions.test.ts (3 tests) 6ms
+ ✓ src/preview-runtime/source-atlas.test.ts (4 tests) 5ms
+ ✓ src/main/preview/review-preparation.test.ts (7 tests) 6ms
+ ✓ src/core/browser/web-store.test.ts (2 tests) 4ms
+ ✓ src/main/browser/browser-context-menu.test.ts (3 tests) 5ms
+ ✓ src/renderer/reader/reader-preparation.test.ts (3 tests) 4ms
+ ✓ src/renderer/adapters/shared-document-history.test.ts (8 tests) 6ms
+ ✓ src/renderer/workspace/media-cache.test.ts (3 tests) 4ms
+ ✓ src/core/theme/theme-catalog.test.ts (3 tests) 4ms
+ ✓ src/renderer/project/source-control/review-presentation.test.ts (9 tests) 4ms
+ ✓ src/protocol/preview-preparation.test.ts (2 tests) 3ms
+ ✓ src/core/image/image-recipe.test.ts (3 tests) 4ms
+ ✓ src/core/workspace/tab-navigation.test.ts (2 tests) 3ms
+ ✓ src/core/browser/reader-article.test.ts (4 tests) 5ms
+ ✓ src/renderer/project/explorer/explorer-selection.test.ts (3 tests) 3ms
+ ✓ src/core/document/file-location.test.ts (5 tests) 4ms
+ ✓ src/core/browser/browser-failure.test.ts (6 tests) 3ms
+ ✓ src/core/reading/reading-menu.test.ts (1 test) 2ms
+ ✓ src/preview-runtime/scroll-settlement.test.ts (2 tests) 2ms
+ ✓ src/preview-runtime/viewport-controller.test.ts (3 tests) 3ms
+
+ Test Files  82 passed (82)
+      Tests  519 passed (519)
+   Start at  01:21:38
+   Duration  17.53s (transform 1.30s, setup 0ms, collect 3.27s, tests 12.70s, environment 15ms, prepare 3.83s)
+
+
+> @setdown/desktop@1.0.0 test:tooling
+> node --test scripts/*.test.mjs scripts/browser/*.test.mjs
+
+TAP version 13
+# Subtest: patched preload preserves native headers, disables managed storage and aliases browser before freezing
+ok 1 - patched preload preserves native headers, disables managed storage and aliases browser before freezing
+  ---
+  duration_ms: 2.265036
+  type: 'test'
+  ...
+# Subtest: missing and ambiguous upstream patch sites require review
+ok 2 - missing and ambiguous upstream patch sites require review
+  ---
+  duration_ms: 0.451134
+  type: 'test'
+  ...
+# Subtest: the installed compatibility library still matches every guarded patch
+ok 3 - the installed compatibility library still matches every guarded patch
+  ---
+  duration_ms: 2.358229
+  type: 'test'
+  ...
+# Subtest: extensions without webRequest still initialize and additions preserve literal dollar expressions
+ok 4 - extensions without webRequest still initialize and additions preserve literal dollar expressions
+  ---
+  duration_ms: 0.637682
+  type: 'test'
+  ...
+# Subtest: production additions compile and never enable upstream API payload logging
+ok 5 - production additions compile and never enable upstream API payload logging
+  ---
+  duration_ms: 2.507599
+  type: 'test'
+  ...
+# Subtest: first and second cycle regressions cannot be hidden by warm cycles or another scenario
+ok 6 - first and second cycle regressions cannot be hidden by warm cycles or another scenario
+  ---
+  duration_ms: 2.561741
+  type: 'test'
+  ...
+# Subtest: requires both relative and absolute tolerances and tolerates a single outlier
+ok 7 - requires both relative and absolute tolerances and tolerates a single outlier
+  ---
+  duration_ms: 3.830203
+  type: 'test'
+  ...
+# Subtest: incomplete, duplicate, stale and invalid measurements fail closed
+ok 8 - incomplete, duplicate, stale and invalid measurements fail closed
+  ---
+  duration_ms: 0.778115
+  type: 'test'
+  ...
+# Subtest: every Electron, external tool and Python test is classified and every suite path exists
+ok 9 - every Electron, external tool and Python test is classified and every suite path exists
+  ---
+  duration_ms: 3.93067
+  type: 'test'
+  ...
+# Subtest: new or moved specs cannot silently drop out of the manifest
+ok 10 - new or moved specs cannot silently drop out of the manifest
+  ---
+  duration_ms: 3.34712
+  type: 'test'
+  ...
+# Subtest: contract membership and benchmark inputs cannot become ambiguous
+ok 11 - contract membership and benchmark inputs cannot become ambiguous
+  ---
+  duration_ms: 2.802731
+  type: 'test'
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 125.459685
+
+> @setdown/desktop@1.0.0 build
+> npm run typecheck && node --max-old-space-size=4096 scripts/build-renderer.mjs && npm run build:electron
+
+
+> @setdown/desktop@1.0.0 typecheck
+> tsc --noEmit && tsc --noEmit -p test/tsconfig.json && svelte-check --config ./svelte.config.js --tsconfig ./tsconfig.json --fail-on-warnings
+
+test/e2e/workspace/tab-detach.spec.ts(486,23): error TS2339: Property 'screenX' does not exist on type 'JSHandle<any>'.
+test/e2e/workspace/tab-detach.spec.ts(486,74): error TS2339: Property 'screenY' does not exist on type 'JSHandle<any>'.
+npm error Lifecycle script `typecheck` failed with error:
+npm error code 2
+npm error path /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error workspace @setdown/desktop@1.0.0
+npm error location /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error command failed
+npm error command sh -c tsc --noEmit && tsc --noEmit -p test/tsconfig.json && svelte-check --config ./svelte.config.js --tsconfig ./tsconfig.json --fail-on-warnings
+npm error Lifecycle script `build` failed with error:
+npm error code 2
+npm error path /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error workspace @setdown/desktop@1.0.0
+npm error location /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error command failed
+npm error command sh -c npm run typecheck && node --max-old-space-size=4096 scripts/build-renderer.mjs && npm run build:electron
+npm error Lifecycle script `test:preview-contract` failed with error:
+npm error code 2
+npm error path /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error workspace @setdown/desktop@1.0.0
+npm error location /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error command failed
+npm error command sh -c npm run test:preview-contract:unit && npm run build && npm run test:preview-contract:e2e

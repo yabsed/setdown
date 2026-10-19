@@ -1,0 +1,72 @@
+
+> @setdown/desktop@1.0.0 test:preview-contract:e2e
+> bash scripts/with-isolated-display.sh playwright test --config playwright.preview-contract.config.ts --grep source group center clears the guide during native drag: detach --output /tmp/setdown-tab-center-before
+
+
+Running 1 test using 1 worker
+
+(node:501176) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[1/1] test/e2e/workspace/tab-detach.spec.ts:89:1 › source group center clears the guide during native drag: detach
+dbus-daemon[501164]: [session uid=1000 pid=501164] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=501187 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[501164]: [session uid=1000 pid=501164] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[501164]: [session uid=1000 pid=501164] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=501187 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[501164]: [session uid=1000 pid=501164] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.4' (uid=1000 pid=501288 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[501164]: [session uid=1000 pid=501164] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[501164]: [session uid=1000 pid=501164] Activating service name='org.freedesktop.portal.Documents' requested by ':1.4' (uid=1000 pid=501288 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[501164]: [session uid=1000 pid=501164] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[501164]: [session uid=1000 pid=501164] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.4' (uid=1000 pid=501288 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[501164]: [session uid=1000 pid=501164] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=501312 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[501164]: [session uid=1000 pid=501164] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[501164]: [session uid=1000 pid=501164] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[501164]: [session uid=1000 pid=501164] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.4' (uid=1000 pid=501288 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[501164]: [session uid=1000 pid=501164] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:501288): xdg-desktop-portal-WARNING **: 01:08:16.648: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[501164]: [session uid=1000 pid=501164] Activating service name='org.freedesktop.secrets' requested by ':1.4' (uid=1000 pid=501288 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+** Message: 01:08:16.666: couldn't access control socket: /tmp/setdown-display-runtime.Sldopv/keyring/control: No such file or directory
+discover_other_daemon: 0dbus-daemon[501164]: [session uid=1000 pid=501164] Successfully activated service 'org.freedesktop.secrets'
+dbus-daemon[501164]: [session uid=1000 pid=501164] Successfully activated service 'org.freedesktop.portal.Desktop'
+  1) test/e2e/workspace/tab-detach.spec.ts:89:1 › source group center clears the guide during native drag: detach 
+
+    Error: expect(locator).toBeHidden() failed
+
+    Locator:  locator('.group-drop-overlay')
+    Expected: hidden
+    Received: visible
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toBeHidden" locator('.group-drop-overlay') with timeout 5000ms
+      - waiting for locator('.group-drop-overlay')
+        14 × locator resolved to <div class="group-drop-overlay"></div>
+           - unexpected value "visible"
+
+
+      117 |     // Feedback must disappear before release, while the OS drag is still held.
+      118 |     await expect(page.locator('.tab-drop-indicator')).toBeHidden();
+    > 119 |     await expect(page.locator('.group-drop-overlay')).toBeHidden();
+          |                                                       ^
+      120 |     await page.screenshot({ path: test.info().outputPath('center-no-guide.png') });
+      121 |     if (outcome === 'cancel') await nativeInput({ keys: ['Escape'] });
+      122 |     if (outcome === 'return') {
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/workspace/tab-detach.spec.ts:119:55
+
+    Error Context: ../../../../../../../../../tmp/setdown-tab-center-before/workspace-tab-detach-sourc-3801b-e-during-native-drag-detach/error-context.md
+
+
+  1 failed
+    test/e2e/workspace/tab-detach.spec.ts:89:1 › source group center clears the guide during native drag: detach 
+npm error Lifecycle script `test:preview-contract:e2e` failed with error:
+npm error code 1
+npm error path /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error workspace @setdown/desktop@1.0.0
+npm error location /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error command failed
+npm error command sh -c bash scripts/with-isolated-display.sh playwright test --config playwright.preview-contract.config.ts --grep 'source group center clears the guide during native drag: detach' --output /tmp/setdown-tab-center-before

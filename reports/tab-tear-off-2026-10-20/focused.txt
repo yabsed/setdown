@@ -1,0 +1,202 @@
+
+> @setdown/desktop@1.0.0 test:preview-contract:e2e
+> bash scripts/with-isolated-display.sh playwright test --config playwright.preview-contract.config.ts tab-detach.spec.ts editor-groups.spec.ts --output /tmp/setdown-tab-center-focused
+
+
+Running 37 tests using 1 worker
+
+(node:505137) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[1/37] test/e2e/workspace/editor-groups.spec.ts:29:1 › wheel scrolls without selection; nested groups retain live native readers and collapse on close
+dbus-daemon[505125]: [session uid=1000 pid=505125] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=505148 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[505125]: [session uid=1000 pid=505125] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=505148 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[505125]: [session uid=1000 pid=505125] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[505125]: [session uid=1000 pid=505125] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.3' (uid=1000 pid=505207 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[505125]: [session uid=1000 pid=505125] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[505125]: [session uid=1000 pid=505125] Activating service name='org.freedesktop.portal.Documents' requested by ':1.3' (uid=1000 pid=505207 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[505125]: [session uid=1000 pid=505125] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[505125]: [session uid=1000 pid=505125] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.3' (uid=1000 pid=505207 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[505125]: [session uid=1000 pid=505125] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=505260 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[505125]: [session uid=1000 pid=505125] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[505125]: [session uid=1000 pid=505125] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[505125]: [session uid=1000 pid=505125] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.3' (uid=1000 pid=505207 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[505125]: [session uid=1000 pid=505125] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:505207): xdg-desktop-portal-WARNING **: 01:10:12.939: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[505125]: [session uid=1000 pid=505125] Activating service name='org.freedesktop.secrets' requested by ':1.3' (uid=1000 pid=505207 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+** Message: 01:10:12.953: couldn't access control socket: /tmp/setdown-display-runtime.l6Oalo/keyring/control: No such file or directory
+discover_other_daemon: 0dbus-daemon[505125]: [session uid=1000 pid=505125] Successfully activated service 'org.freedesktop.secrets'
+dbus-daemon[505125]: [session uid=1000 pid=505125] Successfully activated service 'org.freedesktop.portal.Desktop'
+[2/37] test/e2e/workspace/editor-groups.spec.ts:232:1 › editing another visible source group preserves scroll and the newly clicked caret
+[3/37] test/e2e/workspace/editor-groups.spec.ts:319:1 › real tab drags use strip padding and insertion positions while preserving source edits and Undo
+[4/37] test/e2e/workspace/editor-groups.spec.ts:374:1 › real Markdown tab drag splits right with native boundary leave=false
+[5/37] test/e2e/workspace/editor-groups.spec.ts:374:1 › real Markdown tab drag splits down with native boundary leave=false
+[6/37] test/e2e/workspace/editor-groups.spec.ts:374:1 › real Markdown tab drag splits right with native boundary leave=true
+[7/37] test/e2e/workspace/editor-groups.spec.ts:374:1 › real Markdown tab drag splits down with native boundary leave=true
+[8/37] test/e2e/workspace/editor-groups.spec.ts:436:1 › Monaco find tooltip stays stable while hovering Close
+[9/37] test/e2e/workspace/editor-groups.spec.ts:505:1 › Monaco find closes with its X button and keeps editor input usable
+[10/37] test/e2e/workspace/tab-detach.spec.ts:18:1 › native drag above the window after showing an insertion guide
+[11/37] test/e2e/workspace/tab-detach.spec.ts:18:1 › native drag left the window after showing an insertion guide
+[12/37] test/e2e/workspace/tab-detach.spec.ts:18:1 › native drag right the window after showing an insertion guide
+[13/37] test/e2e/workspace/tab-detach.spec.ts:18:1 › native drag below the window after showing an insertion guide
+[14/37] test/e2e/workspace/tab-detach.spec.ts:18:1 › native drag cancel the window after showing an insertion guide
+  1) test/e2e/workspace/tab-detach.spec.ts:18:1 › native drag cancel the window after showing an insertion guide 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 2
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      68 |       await expect(page.locator('.tab-name')).toHaveText(outcome === 'cancel'
+      69 |         ? ['Untitled.md', 'Untitled 2.md'] : ['Untitled 2.md', 'Untitled.md']);
+    > 70 |       await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
+         |                                                                                                          ^
+      71 |     } else {
+      72 |       await expect.poll(async () => (await shellWindows(app)).length).toBe(2);
+      73 |       await expect(page.locator('.tab-name')).toHaveText(['Untitled.md']);
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/workspace/tab-detach.spec.ts:70:106
+
+    Error Context: ../../../../../../../../../tmp/setdown-tab-center-focused/workspace-tab-detach-nativ-cd3e9--showing-an-insertion-guide/error-context.md
+
+
+(node:512725) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[15/37] test/e2e/workspace/tab-detach.spec.ts:18:1 › native drag return the window after showing an insertion guide
+  2) test/e2e/workspace/tab-detach.spec.ts:18:1 › native drag return the window after showing an insertion guide 
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: locator('.tab-name')
+    Timeout: 5000ms
+    - Expected  - 1
+    + Received  + 1
+
+      Array [
+    -   "Untitled 2.md",
+        "Untitled.md",
+    +   "Untitled 2.md",
+      ]
+
+    Call log:
+      - Expect "toHaveText" locator('.tab-name') with timeout 5000ms
+      - waiting for locator('.tab-name')
+        14 × locator resolved to 2 elements
+
+
+      66 |     await expect(page.locator('.tab-drop-indicator')).toBeHidden();
+      67 |     if (outcome === 'cancel' || outcome === 'return') {
+    > 68 |       await expect(page.locator('.tab-name')).toHaveText(outcome === 'cancel'
+         |                                               ^
+      69 |         ? ['Untitled.md', 'Untitled 2.md'] : ['Untitled 2.md', 'Untitled.md']);
+      70 |       await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
+      71 |     } else {
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/workspace/tab-detach.spec.ts:68:47
+
+    Error Context: ../../../../../../../../../tmp/setdown-tab-center-focused/workspace-tab-detach-nativ-d81bb--showing-an-insertion-guide/error-context.md
+
+
+(node:513220) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[16/37] test/e2e/workspace/tab-detach.spec.ts:89:1 › source group center clears the guide during native drag: detach
+[17/37] test/e2e/workspace/tab-detach.spec.ts:89:1 › source group center clears the guide during native drag: cancel
+[18/37] test/e2e/workspace/tab-detach.spec.ts:89:1 › source group center clears the guide during native drag: return
+[19/37] test/e2e/workspace/tab-detach.spec.ts:89:1 › source group center clears the guide during native drag: split
+[20/37] test/e2e/workspace/tab-detach.spec.ts:89:1 › source group center clears the guide during native drag: sole
+  3) test/e2e/workspace/tab-detach.spec.ts:89:1 › source group center clears the guide during native drag: sole 
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: locator('.tab-name')
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "Untitled.md",
+    + ]
+
+    Call log:
+      - Expect "toHaveText" locator('.tab-name') with timeout 5000ms
+      - waiting for locator('.tab-name')
+        - locator resolved to 1 element
+      - Target page, context or browser has been closed
+
+
+      134 |       const detached = (await shellWindows(app)).find(candidate => candidate !== page)!;
+      135 |       await expect(detached.locator('.tab-name')).toHaveText([tabName]);
+    > 136 |       await expect(page.locator('.tab-name')).toHaveText(outcome === 'sole' ? [] : ['Untitled.md']);
+          |                                               ^
+      137 |     } else {
+      138 |       await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
+      139 |       await expect(page.locator('.editor-group')).toHaveCount(outcome === 'split' ? 2 : 1);
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/workspace/tab-detach.spec.ts:136:47
+
+    Error Context: ../../../../../../../../../tmp/setdown-tab-center-focused/workspace-tab-detach-sourc-87832-ide-during-native-drag-sole/error-context.md
+
+
+(node:515586) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[21/37] test/e2e/workspace/tab-detach.spec.ts:153:56 › detaching a tab restores its preview at the same position via body
+[22/37] test/e2e/workspace/tab-detach.spec.ts:153:56 › detaching a tab restores its preview at the same position via tab strip
+[23/37] test/e2e/workspace/tab-detach.spec.ts:344:1 › detaching the middle tab leaves documents one and three in the original window
+[24/37] test/e2e/workspace/tab-detach.spec.ts:416:3 › outside client dragend overrides a stale guide with dropEffect=none
+[25/37] test/e2e/workspace/tab-detach.spec.ts:416:3 › outside client dragend overrides a stale guide with dropEffect=move
+[26/37] test/e2e/workspace/tab-detach.spec.ts:416:3 › outside screen dragend overrides a stale guide with dropEffect=none
+[27/37] test/e2e/workspace/tab-detach.spec.ts:416:3 › outside screen dragend overrides a stale guide with dropEffect=move
+[28/37] test/e2e/workspace/tab-detach.spec.ts:456:5 › the painted tab strip guide owns placement on drop after an internal native leave
+[29/37] test/e2e/workspace/tab-detach.spec.ts:456:5 › the painted other group guide owns placement on drop after an internal native leave
+[30/37] test/e2e/workspace/tab-detach.spec.ts:456:5 › the painted other group body guide owns placement on drop after an internal native leave
+[31/37] test/e2e/workspace/tab-detach.spec.ts:456:5 › the painted split guide owns placement on drop after an internal native leave
+[32/37] test/e2e/workspace/tab-detach.spec.ts:456:5 › the painted tab strip guide owns placement on dragend after an internal native leave
+[33/37] test/e2e/workspace/tab-detach.spec.ts:456:5 › the painted other group guide owns placement on dragend after an internal native leave
+[34/37] test/e2e/workspace/tab-detach.spec.ts:456:5 › the painted other group body guide owns placement on dragend after an internal native leave
+[35/37] test/e2e/workspace/tab-detach.spec.ts:456:5 › the painted split guide owns placement on dragend after an internal native leave
+[36/37] test/e2e/workspace/tab-detach.spec.ts:530:1 › a guide is cleared by cancellation, a rejected area, or a real window exit
+[37/37] test/e2e/workspace/tab-detach.spec.ts:569:1 › pointer release follows the insertion guide and Escape cancels it
+  4) test/e2e/workspace/tab-detach.spec.ts:569:1 › pointer release follows the insertion guide and Escape cancels it 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 2
+
+      594 |         : ['Untitled 3.md', 'Untitled.md', 'Untitled 2.md']);
+      595 |       await page.waitForTimeout(300);
+    > 596 |       expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
+          |                                                                                               ^
+      597 |     }
+      598 |   } finally {
+      599 |     await disposeApplication(app);
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/workspace/tab-detach.spec.ts:596:95
+
+    Error Context: ../../../../../../../../../tmp/setdown-tab-center-focused/workspace-tab-detach-point-54cc7-guide-and-Escape-cancels-it/error-context.md
+
+
+  4 failed
+    test/e2e/workspace/tab-detach.spec.ts:18:1 › native drag cancel the window after showing an insertion guide 
+    test/e2e/workspace/tab-detach.spec.ts:18:1 › native drag return the window after showing an insertion guide 
+    test/e2e/workspace/tab-detach.spec.ts:89:1 › source group center clears the guide during native drag: sole 
+    test/e2e/workspace/tab-detach.spec.ts:569:1 › pointer release follows the insertion guide and Escape cancels it 
+  33 passed (1.6m)
+npm error Lifecycle script `test:preview-contract:e2e` failed with error:
+npm error code 1
+npm error path /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error workspace @setdown/desktop@1.0.0
+npm error location /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error command failed
+npm error command sh -c bash scripts/with-isolated-display.sh playwright test --config playwright.preview-contract.config.ts tab-detach.spec.ts editor-groups.spec.ts --output /tmp/setdown-tab-center-focused

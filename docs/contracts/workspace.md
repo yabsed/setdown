@@ -218,14 +218,42 @@ uses that same placement, including when a native child surface consumes an
 accepted move drop or reports a null-relatedTarget leave inside the window.
 Such a leave must not erase the guide or turn a local move into window detachment.
 A subsequent dragover replaces the guide; a rejected area, confirmed window exit,
-or explicit cancellation clears it. Chromium's canceled drag (`dropEffect: none`) must not
+or explicit cancellation clears it. A confirmed outside release takes precedence
+over a retained guide: Chromium can report a real boundary leave at `(0, 0)`
+and provide the outside coordinates only on `dragend`. Native pointer tear-off
+tests exercise this path after hovering the strip, alongside Escape cancellation.
+Chromium's canceled drag (`dropEffect: none`) must not
 commit a guide even when Escape never reaches the DOM. `tab-detach.spec.ts`
 covers guide placement and these invalidation paths in Electron, alongside
 actual outside detachment.
+For a local tab drag, the source group's body center is a tear-off area:
+the blue guide disappears before release and dropping there creates a new
+window. This provides a reachable detach area even in a maximized window.
+The existing outer 10% split bands retain their guides; a source group's sole
+tab cannot split itself, so its whole body is available for tear-off. Tab strips
+still reorder, and another group's center still shows a blue merge guide.
+The location bar and unrelated shell areas are not drop destinations.
+Returning from tear-off to a strip or split replaces that intent with the new
+visible guide; Escape cancels without moving or detaching. Source native
+surfaces remain captured throughout the drag, including over the guide-free
+center. Native pointer tests in `tab-detach.spec.ts` check feedback before
+release, detach, cancellation, return, split and the sole-tab case; its accepted
+native-drop cases also retain center merging into another group.
+An accepted center tear-off retains its last screen position when native drop
+completion reports zero coordinates. Its explicit in-source request is checked
+against the source window bounds, so an overlapping window behind it does not
+intercept the tear-off; outside drops still allow the destination window to
+claim the transfer. Main observes native Escape keydown and keyup while a
+transfer is unclaimed, since an OS drag can consume keydown before it reaches
+the shell. Cancellation destroys the prepared window and defeats a late
+detach request. `tab-transfer-manager.test.ts` checks these ownership rules.
 The detach test forces source `dragend` to reach main before an existing window's
 drop claim and verifies that the existing window still receives the live native
 preview. Keep ordinary single-group preview and Git-review cycles in the same
 48-bucket performance comparison.
+
+Dated reproduction, native input evidence, and validation:
+[Tab tear-off area — 2026-10-20](../validation/2026-10-20-tab-tear-off.md).
 
 ## Preview tabs
 

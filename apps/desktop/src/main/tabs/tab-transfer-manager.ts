@@ -27,6 +27,7 @@ const DETACH_CLAIM_GRACE_MS = 120;
 
 export class TabTransferManager {
   private readonly transfers = new Map<string, Transfer>();
+  private readonly watchedSources = new WeakSet<BrowserWindow>();
   constructor(private readonly options: Options) {}
   private contentSize(ownerId: number) {
     const owner = this.options.stateFor(ownerId)?.window;
@@ -44,6 +45,18 @@ export class TabTransferManager {
     if (typeof transferId !== 'string' || !incoming || typeof incoming.id !== 'string'
       || !this.options.stateFor(sourceId)
       || (incoming.kind === 'terminal' ? !this.options.terminals?.owns(sourceId, incoming.sessionId ?? incoming.id) : incoming.kind === 'web' ? !this.options.browsers?.owns(sourceId, incoming.id) : typeof incoming.document?.path !== 'string')) return;
+    const source = this.options.stateFor(sourceId)!.window;
+    if (!this.watchedSources.has(source)) {
+      this.watchedSources.add(source);
+      // The OS drag loop can consume Escape keydown. Its native keyup still
+      // arrives, including before an outside dragend requests detachment.
+      source.webContents.on('before-input-event', (_event, input) => {
+        if (input.key !== 'Escape' || input.isComposing) return;
+        for (const [id, transfer] of this.transfers) {
+          if (transfer.sourceWebContentsId === sourceId) this.cancel(sourceId, id);
+        }
+      });
+    }
     const markdown = incoming.kind !== 'web' && incoming.kind !== 'terminal' && isMarkdownDocument(incoming.document.path);
     const tab: TransferableTab = incoming.kind === 'terminal' || incoming.kind === 'web' || markdown ? incoming : { ...incoming, surface: documentSurface(incoming.document.path),
       previewUrl: null, previewRevision: null, previewTheme: null, viewerScrollRatio: null,
@@ -155,7 +168,14 @@ export class TabTransferManager {
     }
     destination.focus();
   }
-  private detach(sourceId: number, transferId: string, x: unknown, y: unknown) {
+  private cancel(sourceId: number, transferId: string) {
+    const transfer = this.transfers.get(transferId);
+    if (transfer?.sourceWebContentsId !== sourceId || transfer.claimedByWebContentsId !== null) return;
+    if (transfer.detachTimer) clearTimeout(transfer.detachTimer);
+    if (transfer.preparedWindow && !transfer.preparedWindow.isDestroyed()) transfer.preparedWindow.destroy();
+    this.transfers.delete(transferId);
+  }
+  private detach(sourceId: number, transferId: string, x: unknown, y: unknown, withinSource: unknown = false) {
     const transfer = this.transfers.get(transferId);
     if (!transfer || transfer.sourceWebContentsId !== sourceId || transfer.claimedByWebContentsId !== null) return;
     const screenX = Number(x), screenY = Number(y);
@@ -163,12 +183,17 @@ export class TabTransferManager {
     transfer.detachPosition = { x: Math.round(screenX - 120), y: Math.round(screenY - 18) };
     if (transfer.detachTimer) clearTimeout(transfer.detachTimer);
     transfer.detachTimer = null;
+    const sourceBounds = this.options.stateFor(sourceId)?.window.getContentBounds();
+    const localTearOff = withinSource === true && sourceBounds
+      && screenX >= sourceBounds.x && screenX < sourceBounds.x + sourceBounds.width
+      && screenY >= sourceBounds.y && screenY < sourceBounds.y + sourceBounds.height;
     // Source dragend and destination drop run in different renderers. A busy
     // destination can claim well after the grace period, even though it already
     // accepted dragover. Dropping over another visible Setdown window is never
     // an outside detach: leave the transfer available for its actual drop.
     // If that window rejects the drop, expiry cleans up and the source stays put.
     for (const { window } of this.options.windows()) {
+      if (localTearOff) break; // An overlapping window behind the source is not this drop's destination.
       if (window.isDestroyed() || window.webContents.id === sourceId
         || !window.isVisible() || window.isMinimized()) continue;
       const bounds = window.getContentBounds();
@@ -213,13 +238,7 @@ export class TabTransferManager {
         'tabs:transfer-completed', { transferId: id, tabId: transfer.tab.id });
     });
     ipcMain.on('tabs:release-source', (event, id) => this.release(event.sender.id, id));
-    ipcMain.on('tabs:cancel-transfer', (event, id) => {
-      const transfer = this.transfers.get(id);
-      if (transfer?.sourceWebContentsId !== event.sender.id || transfer.claimedByWebContentsId !== null) return;
-      if (transfer.detachTimer) clearTimeout(transfer.detachTimer);
-      if (transfer.preparedWindow && !transfer.preparedWindow.isDestroyed()) transfer.preparedWindow.destroy();
-      this.transfers.delete(id);
-    });
-    ipcMain.on('tabs:detach-to-window', (event, { transferId, x, y }) => this.detach(event.sender.id, transferId, x, y));
+    ipcMain.on('tabs:cancel-transfer', (event, id) => this.cancel(event.sender.id, id));
+    ipcMain.on('tabs:detach-to-window', (event, { transferId, x, y, withinSource }) => this.detach(event.sender.id, transferId, x, y, withinSource));
   }
 }

@@ -23,6 +23,7 @@ function fakeWindow(id: number) {
   const messages: Array<{ channel: string; payload: unknown }> = [];
   const webContents = {
     id,
+    on: vi.fn(),
     send: vi.fn((channel: string, payload: unknown) => messages.push({ channel, payload })),
     isLoadingMainFrame: () => false,
     once: vi.fn(),
@@ -111,10 +112,31 @@ test('an unclaimed outside drop still detaches after claim arbitration', async (
     expect.objectContaining({ transferId: 'move' }));
 });
 
-test('a drop over an existing window allows its claim after the detach grace period', async () => {
+for (const type of ['keyDown', 'keyUp']) test(`native Escape ${type} cancels an outside transfer without DOM keydown`, async () => {
+  const f = fixture(); f.register(); f.detach();
+  const input = f.source.webContents.on.mock.calls.find(([name]) => name === 'before-input-event')![1];
+  input({}, { type, key: 'Escape', isComposing: false });
+  f.detach(); // A late renderer dragend cannot recreate the canceled transfer.
+  await vi.advanceTimersByTimeAsync(1_000);
+  expect(f.prepared.window.destroy).toHaveBeenCalledOnce();
+  expect(f.prepared.window.showInactive).not.toHaveBeenCalled();
+  expect(await f.claim()).toBeNull();
+});
+
+test('a source-center tear-off ignores a window behind the source', async () => {
+  const f = fixture(); f.register();
+  electron.listeners.get('tabs:detach-to-window')!({ sender: { id: 1 } },
+    { transferId: 'move', x: 1200, y: 400, withinSource: true });
+  await vi.advanceTimersByTimeAsync(1_000);
+  expect(f.prepared.window.showInactive).toHaveBeenCalledOnce();
+  expect(f.prepared.webContents.send).toHaveBeenCalledWith('tabs:transfer-incoming', expect.objectContaining({ transferId: 'move' }));
+});
+
+for (const withinSource of [false, true]) test(`a drop outside the source allows the destination claim with withinSource=${withinSource}`, async () => {
   const f = fixture();
   f.existing.setBounds({ x: 600, y: 300, width: 900, height: 700 });
-  f.register(); f.detach();
+  f.register();
+  electron.listeners.get('tabs:detach-to-window')!({ sender: { id: 1 } }, { transferId: 'move', x: 700, y: 400, withinSource });
   await vi.advanceTimersByTimeAsync(1_000);
   expect(f.prepared.window.showInactive).not.toHaveBeenCalled();
   expect(await f.claim()).toMatchObject({ transferId: 'move', tab: { id: 'document' } });

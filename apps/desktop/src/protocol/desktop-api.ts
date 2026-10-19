@@ -275,7 +275,7 @@ export type MarkTexApi = {
   claimTabTransfer(transferId: string): Promise<ClaimedTabTransfer | null>;
   completeTabTransfer(transferId: string): void;
   cancelTabTransfer(transferId: string): void;
-  detachTabToWindow(transferId: string, x: number, y: number): void;
+  detachTabToWindow(transferId: string, x: number, y: number, withinSource?: boolean): void;
   adoptTabTransfer(transferId: string): Promise<boolean>;
   releaseTabTransferSource(transferId: string): void;
   createPreview(tabId: string): void;

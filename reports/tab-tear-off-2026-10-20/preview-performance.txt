@@ -1,0 +1,94 @@
+
+> setdown-workspace@0.1.0 bench:preview
+> npm run bench:preview --workspace @setdown/desktop -- --baseline /tmp/setdown-notebook-readability-base --skip-build --output /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/test-results/tab-tear-off-performance-2026-10-20
+
+
+> @setdown/desktop@1.0.0 bench:preview
+> bash scripts/with-isolated-display.sh node scripts/preview-benchmark.mjs --baseline /tmp/setdown-notebook-readability-base --skip-build --output /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/test-results/tab-tear-off-performance-2026-10-20
+
+Measuring 1-baseline: 8 scenarios, each in a fresh Electron process
+dbus-daemon[668436]: [session uid=1000 pid=668436] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=669128 comm="/tmp/setdown-notebook-readability-base/apps/deskto" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[668436]: [session uid=1000 pid=668436] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=669128 comm="/tmp/setdown-notebook-readability-base/apps/deskto" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[668436]: [session uid=1000 pid=668436] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[668436]: [session uid=1000 pid=668436] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.3' (uid=1000 pid=669188 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[668436]: [session uid=1000 pid=668436] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[668436]: [session uid=1000 pid=668436] Activating service name='org.freedesktop.portal.Documents' requested by ':1.3' (uid=1000 pid=669188 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[668436]: [session uid=1000 pid=668436] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[668436]: [session uid=1000 pid=668436] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.3' (uid=1000 pid=669188 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[668436]: [session uid=1000 pid=668436] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=669243 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[668436]: [session uid=1000 pid=668436] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[668436]: [session uid=1000 pid=668436] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[668436]: [session uid=1000 pid=668436] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.3' (uid=1000 pid=669188 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[668436]: [session uid=1000 pid=668436] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:669188): xdg-desktop-portal-WARNING **: 01:32:35.406: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[668436]: [session uid=1000 pid=668436] Activating service name='org.freedesktop.secrets' requested by ':1.3' (uid=1000 pid=669188 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+** Message: 01:32:35.413: couldn't access control socket: /tmp/setdown-display-runtime.plDkGA/keyring/control: No such file or directory
+discover_other_daemon: 0dbus-daemon[668436]: [session uid=1000 pid=668436] Successfully activated service 'org.freedesktop.secrets'
+dbus-daemon[668436]: [session uid=1000 pid=668436] Successfully activated service 'org.freedesktop.portal.Desktop'
+Measuring 1-candidate: 8 scenarios, each in a fresh Electron process
+Measuring 2-candidate: 8 scenarios, each in a fresh Electron process
+Measuring 2-baseline: 8 scenarios, each in a fresh Electron process
+Measuring 3-baseline: 8 scenarios, each in a fresh Electron process
+Measuring 3-candidate: 8 scenarios, each in a fresh Electron process
+Measuring 4-candidate: 8 scenarios, each in a fresh Electron process
+Measuring 4-baseline: 8 scenarios, each in a fresh Electron process
+Measuring 5-baseline: 8 scenarios, each in a fresh Electron process
+Measuring 5-candidate: 8 scenarios, each in a fresh Electron process
+┌─────────┬───────────────────────────────────────────────────────────────┬────────────┬─────────────┬────────────┐
+│ (index) │ scenario                                                      │ baselineMs │ candidateMs │ regression │
+├─────────┼───────────────────────────────────────────────────────────────┼────────────┼─────────────┼────────────┤
+│ 0       │ 'document/idle=3000/edits=true/first/captureMs'               │ 115        │ 97          │ false      │
+│ 1       │ 'document/idle=3000/edits=true/second/captureMs'              │ 103        │ 96          │ false      │
+│ 2       │ 'document/idle=3000/edits=true/warm/captureMs'                │ 90         │ 93          │ false      │
+│ 3       │ 'document/idle=3000/edits=true/first/doubleClickToEditorMs'   │ 20         │ 16          │ false      │
+│ 4       │ 'document/idle=3000/edits=true/second/doubleClickToEditorMs'  │ 16         │ 12          │ false      │
+│ 5       │ 'document/idle=3000/edits=true/warm/doubleClickToEditorMs'    │ 16         │ 15          │ false      │
+│ 6       │ 'document/idle=0/edits=true/first/captureMs'                  │ 453        │ 465         │ false      │
+│ 7       │ 'document/idle=0/edits=true/second/captureMs'                 │ 106        │ 103         │ false      │
+│ 8       │ 'document/idle=0/edits=true/warm/captureMs'                   │ 91         │ 94          │ false      │
+│ 9       │ 'document/idle=0/edits=true/first/doubleClickToEditorMs'      │ 20         │ 19          │ false      │
+│ 10      │ 'document/idle=0/edits=true/second/doubleClickToEditorMs'     │ 14         │ 15          │ false      │
+│ 11      │ 'document/idle=0/edits=true/warm/doubleClickToEditorMs'       │ 17         │ 14          │ false      │
+│ 12      │ 'document/idle=0/edits=false/first/captureMs'                 │ 38         │ 47          │ false      │
+│ 13      │ 'document/idle=0/edits=false/second/captureMs'                │ 22         │ 34          │ false      │
+│ 14      │ 'document/idle=0/edits=false/warm/captureMs'                  │ 21         │ 27          │ false      │
+│ 15      │ 'document/idle=0/edits=false/first/doubleClickToEditorMs'     │ 23         │ 30          │ false      │
+│ 16      │ 'document/idle=0/edits=false/second/doubleClickToEditorMs'    │ 36         │ 34          │ false      │
+│ 17      │ 'document/idle=0/edits=false/warm/doubleClickToEditorMs'      │ 12         │ 12          │ false      │
+│ 18      │ 'document/idle=3000/edits=false/first/captureMs'              │ 48         │ 43          │ false      │
+│ 19      │ 'document/idle=3000/edits=false/second/captureMs'             │ 19         │ 23          │ false      │
+│ 20      │ 'document/idle=3000/edits=false/warm/captureMs'               │ 22         │ 20          │ false      │
+│ 21      │ 'document/idle=3000/edits=false/first/doubleClickToEditorMs'  │ 17         │ 18          │ false      │
+│ 22      │ 'document/idle=3000/edits=false/second/doubleClickToEditorMs' │ 12         │ 12          │ false      │
+│ 23      │ 'document/idle=3000/edits=false/warm/doubleClickToEditorMs'   │ 12         │ 11          │ false      │
+│ 24      │ 'review/idle=3000/edits=true/first/captureMs'                 │ 233        │ 232         │ false      │
+│ 25      │ 'review/idle=3000/edits=true/second/captureMs'                │ 182        │ 191         │ false      │
+│ 26      │ 'review/idle=3000/edits=true/warm/captureMs'                  │ 184        │ 185         │ false      │
+│ 27      │ 'review/idle=3000/edits=true/first/doubleClickToEditorMs'     │ 23         │ 24          │ false      │
+│ 28      │ 'review/idle=3000/edits=true/second/doubleClickToEditorMs'    │ 20         │ 18          │ false      │
+│ 29      │ 'review/idle=3000/edits=true/warm/doubleClickToEditorMs'      │ 18         │ 17          │ false      │
+│ 30      │ 'review/idle=0/edits=false/first/captureMs'                   │ 979        │ 989         │ false      │
+│ 31      │ 'review/idle=0/edits=false/second/captureMs'                  │ 24         │ 26          │ false      │
+│ 32      │ 'review/idle=0/edits=false/warm/captureMs'                    │ 30         │ 30          │ false      │
+│ 33      │ 'review/idle=0/edits=false/first/doubleClickToEditorMs'       │ 23         │ 23          │ false      │
+│ 34      │ 'review/idle=0/edits=false/second/doubleClickToEditorMs'      │ 12         │ 12          │ false      │
+│ 35      │ 'review/idle=0/edits=false/warm/doubleClickToEditorMs'        │ 13         │ 12          │ false      │
+│ 36      │ 'review/idle=0/edits=true/first/captureMs'                    │ 1050       │ 992         │ false      │
+│ 37      │ 'review/idle=0/edits=true/second/captureMs'                   │ 1497       │ 1500        │ false      │
+│ 38      │ 'review/idle=0/edits=true/warm/captureMs'                     │ 190        │ 187         │ false      │
+│ 39      │ 'review/idle=0/edits=true/first/doubleClickToEditorMs'        │ 23         │ 23          │ false      │
+│ 40      │ 'review/idle=0/edits=true/second/doubleClickToEditorMs'       │ 22         │ 22          │ false      │
+│ 41      │ 'review/idle=0/edits=true/warm/doubleClickToEditorMs'         │ 20         │ 20          │ false      │
+│ 42      │ 'review/idle=3000/edits=false/first/captureMs'                │ 24         │ 28          │ false      │
+│ 43      │ 'review/idle=3000/edits=false/second/captureMs'               │ 22         │ 20          │ false      │
+│ 44      │ 'review/idle=3000/edits=false/warm/captureMs'                 │ 28         │ 18          │ false      │
+│ 45      │ 'review/idle=3000/edits=false/first/doubleClickToEditorMs'    │ 25         │ 25          │ false      │
+│ 46      │ 'review/idle=3000/edits=false/second/doubleClickToEditorMs'   │ 12         │ 12          │ false      │
+│ 47      │ 'review/idle=3000/edits=false/warm/doubleClickToEditorMs'     │ 18         │ 18          │ false      │
+└─────────┴───────────────────────────────────────────────────────────────┴────────────┴─────────────┴────────────┘
+PASS: 0 regressions. /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/test-results/tab-tear-off-performance-2026-10-20/comparison.json
