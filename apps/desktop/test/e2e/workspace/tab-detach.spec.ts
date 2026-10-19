@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { previews } from '../../support/preview/preview-view';
-import { disposeApplication } from '../../support/electron/electron-app';
+import { disposeApplication, focusApplication } from '../../support/electron/electron-app';
 
 async function shellWindows(application: Awaited<ReturnType<typeof electron.launch>>) {
   const candidates = application.windows();
@@ -272,5 +272,154 @@ test('detaching the middle tab leaves documents one and three in the original wi
   } finally {
     await disposeApplication(application);
     await rm(configRoot, { recursive: true, force: true });
+  }
+});
+
+for (const completion of ['drop', 'dragend'] as const) {
+  for (const guide of ['tab strip', 'other group', 'split'] as const) {
+    test(`the painted ${guide} guide owns placement on ${completion} after an internal native leave`, async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-tab-guide-'));
+      const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+      const app = await electron.launch({ args: ['.'], env: { ...env, XDG_CONFIG_HOME: root } });
+      try {
+        const page = await app.firstWindow();
+        await focusApplication(app);
+        await app.evaluate(({ Menu }) => Menu.getApplicationMenu()!.getMenuItemById('menu-new-document')!.click());
+        for (let i = 0; i < 2; i++) await page.locator('.new-tab-button').click();
+        await expect(page.locator('.tab-name')).toHaveText(['Untitled.md', 'Untitled 2.md', 'Untitled 3.md']);
+        if (guide === 'other group') {
+          const setupData = await page.evaluateHandle(() => new DataTransfer());
+          await page.locator('.document-tab').first().dispatchEvent('dragstart', { dataTransfer: setupData });
+          const body = page.locator('.group-body');
+          const box = (await body.boundingBox())!;
+          const point = { dataTransfer: setupData, clientX: box.x + box.width - 2, clientY: box.y + box.height / 2 };
+          await body.dispatchEvent('dragover', point);
+          await body.dispatchEvent('drop', point);
+          await setupData.dispose();
+          await expect(page.locator('.editor-group')).toHaveCount(2);
+        }
+        const source = page.locator('.document-tab').filter({ hasText: 'Untitled 3.md' });
+        const sourceId = await source.getAttribute('data-tab-id');
+        const data = await page.evaluateHandle(() => new DataTransfer());
+        await source.dispatchEvent('dragstart', { dataTransfer: data });
+        const target = guide === 'other group'
+          ? page.locator('.editor-group').nth(1).locator('.document-tab').first()
+          : page.locator(guide === 'tab strip' ? '.document-tab' : '.group-body').first();
+        const box = (await target.boundingBox())!;
+        const point = { clientX: box.x + 2, clientY: box.y + box.height / 2, dataTransfer: data };
+        await target.dispatchEvent('dragover', point);
+        const painted = page.locator(guide === 'split' ? '.group-drop-overlay' : '.tab-drop-indicator');
+        await expect(painted).toBeVisible();
+        const guideBox = (await painted.boundingBox())!;
+        // Native child boundaries report relatedTarget=null without leaving the
+        // window. Neither that notification nor stale completion coordinates
+        // may replace the placement that the user was actually shown.
+        await source.dispatchEvent('dragleave', { ...point, relatedTarget: null });
+        await expect(painted).toBeVisible();
+        expect(await painted.boundingBox()).toEqual(guideBox);
+        if (completion === 'dragend') {
+          // Model an accepted native move whose drop never reached the shell.
+          // A constructed DataTransfer otherwise retains "none" (cancellation).
+          await data.evaluate(transfer => Object.defineProperty(transfer, 'dropEffect', { value: 'move' }));
+        }
+        await source.dispatchEvent(completion, { dataTransfer: data, clientX: 0, clientY: 0 });
+        if (completion === 'drop') await source.dispatchEvent('dragend', { dataTransfer: data });
+        await data.dispose();
+        await expect(page.locator('.editor-group')).toHaveCount(guide === 'tab strip' ? 1 : 2);
+        if (guide === 'tab strip') {
+          await expect(page.locator('.tab-name')).toHaveText(['Untitled 3.md', 'Untitled.md', 'Untitled 2.md']);
+        } else if (guide === 'other group') {
+          await expect(page.locator('.editor-group').nth(0).locator('.tab-name')).toHaveText(['Untitled 2.md']);
+          await expect(page.locator('.editor-group').nth(1).locator('.tab-name')).toHaveText(['Untitled 3.md', 'Untitled.md']);
+        } else {
+          const movedGroup = page.locator('.editor-group').filter({ has: page.locator(`[data-tab-id="${sourceId}"]`) });
+          await expect(movedGroup.locator('.tab-name')).toHaveText(['Untitled 3.md']);
+          const remaining = page.locator('.editor-group').filter({ has: page.locator('.tab-name').filter({ hasText: /^Untitled\.md$/ }) });
+          expect((await movedGroup.boundingBox())!.x).toBeLessThan((await remaining.boundingBox())!.x);
+        }
+        await expect(painted).toBeHidden();
+        // Wait past main's detach arbitration: no visible or prepared window
+        // may survive a completed local placement.
+        await page.waitForTimeout(300);
+        expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
+      } finally {
+        await disposeApplication(app);
+        await rm(root, { recursive: true, force: true });
+      }
+    });
+  }
+}
+
+test('a guide is cleared by cancellation, a rejected area, or a real window exit', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-tab-guide-clear-'));
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.'], env: { ...env, XDG_CONFIG_HOME: root } });
+  try {
+    const page = await app.firstWindow();
+    await focusApplication(app);
+    await app.evaluate(({ Menu }) => Menu.getApplicationMenu()!.getMenuItemById('menu-new-document')!.click());
+    await page.locator('.new-tab-button').click();
+    for (const outcome of ['cancel', 'reject', 'outside'] as const) {
+      const source = page.locator('.document-tab').last();
+      const data = await page.evaluateHandle(() => new DataTransfer());
+      await source.dispatchEvent('dragstart', { dataTransfer: data });
+      const box = (await page.locator('.document-tab').first().boundingBox())!;
+      await source.dispatchEvent('dragover', { dataTransfer: data, clientX: box.x + 2, clientY: box.y + box.height / 2 });
+      await expect(page.locator('.tab-drop-indicator')).toBeVisible();
+      if (outcome === 'cancel') await page.keyboard.press('Escape');
+      else await source.dispatchEvent(outcome === 'reject' ? 'dragover' : 'dragleave', {
+        dataTransfer: data, clientX: outcome === 'outside' ? -10 : 0, clientY: 0, relatedTarget: null,
+      });
+      await expect(page.locator('.tab-drop-indicator')).toBeHidden();
+      await source.dispatchEvent('dragend', { dataTransfer: data,
+        clientX: outcome === 'outside' ? -10 : box.x, clientY: box.y, screenX: 700, screenY: 400 });
+      await data.dispose();
+      if (outcome === 'outside') {
+        await expect.poll(async () => (await shellWindows(app)).length).toBe(2);
+        await expect(page.locator('.tab-name')).toHaveText(['Untitled.md']);
+      } else {
+        await page.waitForTimeout(300);
+        expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
+        await expect(page.locator('.tab-name')).toHaveText(['Untitled.md', 'Untitled 2.md']);
+      }
+    }
+  } finally {
+    await disposeApplication(app);
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('pointer release follows the insertion guide and Escape cancels it', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-tab-guide-pointer-'));
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.'], env: { ...env, XDG_CONFIG_HOME: root } });
+  try {
+    const page = await app.firstWindow();
+    await focusApplication(app);
+    await app.evaluate(({ Menu }) => Menu.getApplicationMenu()!.getMenuItemById('menu-new-document')!.click());
+    for (let i = 0; i < 2; i++) await page.locator('.new-tab-button').click();
+    for (const cancel of [true, false]) {
+      const from = (await page.locator('.document-tab').last().boundingBox())!;
+      const to = (await page.locator('.document-tab').first().boundingBox())!;
+      await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(to.x + 3, to.y + to.height / 2, { steps: 15 });
+      await expect(page.locator('.tab-drop-indicator')).toBeVisible();
+      await page.evaluate(point => window.dispatchEvent(new DragEvent('dragleave', {
+        bubbles: true, clientX: point.x, clientY: point.y, relatedTarget: null,
+      })), { x: to.x + 3, y: to.y + to.height / 2 });
+      await expect(page.locator('.tab-drop-indicator')).toBeVisible();
+      if (cancel) await page.keyboard.press('Escape');
+      await page.mouse.up();
+      await expect(page.locator('.tab-drop-indicator')).toBeHidden();
+      await expect(page.locator('.tab-name')).toHaveText(cancel
+        ? ['Untitled.md', 'Untitled 2.md', 'Untitled 3.md']
+        : ['Untitled 3.md', 'Untitled.md', 'Untitled 2.md']);
+      await page.waitForTimeout(300);
+      expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
+    }
+  } finally {
+    await disposeApplication(app);
+    await rm(root, { recursive: true, force: true });
   }
 });

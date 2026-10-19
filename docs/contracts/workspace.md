@@ -205,6 +205,15 @@ cases in `text-workspace.test.ts` cover this distinction.
 
 `editor-groups.spec.ts`, `tab-detach.spec.ts`, `editor-groups.test.ts`,
 `preview-presentation.test.ts`, and `media-cache.test.ts` cover these guarantees.
+The blue tab insertion/split guide is the accepted drop placement. Completion
+uses that same placement, including when a native child surface consumes an
+accepted move drop or reports a null-relatedTarget leave inside the window.
+Such a leave must not erase the guide or turn a local move into window detachment.
+A subsequent dragover replaces the guide; a rejected area, confirmed window exit,
+or explicit cancellation clears it. Chromium's canceled drag (`dropEffect: none`) must not
+commit a guide even when Escape never reaches the DOM. `tab-detach.spec.ts`
+covers guide placement and these invalidation paths in Electron, alongside
+actual outside detachment.
 The detach test forces source `dragend` to reach main before an existing window's
 drop claim and verifies that the existing window still receives the live native
 preview. Keep ordinary single-group preview and Git-review cycles in the same

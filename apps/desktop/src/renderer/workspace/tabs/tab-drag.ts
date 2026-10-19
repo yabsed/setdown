@@ -33,10 +33,13 @@ export function createTabDrag(options: Options) {
   indicator.className = 'tab-drop-indicator'; indicator.hidden = true;
   options.shell.append(overlay, indicator);
   let activeStrip: HTMLElement | null = null;
+  // The painted guide and the committed placement must describe the same move.
+  let guidedTarget: Target | null = null;
   let scrollFrame = 0;
   let scrollList: HTMLElement | null = null;
   let scrollPointer = 0;
   const clearTarget = () => {
+    guidedTarget = null;
     overlay.hidden = indicator.hidden = true;
     activeStrip?.classList.remove('is-drop-target'); activeStrip = null;
     cancelAnimationFrame(scrollFrame); scrollFrame = 0; scrollList = null;
@@ -53,7 +56,7 @@ export function createTabDrag(options: Options) {
     Object.assign(indicator.style, { left: `${Math.max(bounds.left, Math.min(edge, bounds.right)) - 1}px`,
       top: `${stripBounds.top + 5}px`, height: `${stripBounds.height - 7}px` });
     indicator.hidden = false; overlay.hidden = true;
-    return { groupId: strip.dataset.groupId!, direction: null, index: at };
+    return guidedTarget = { groupId: strip.dataset.groupId!, direction: null, index: at };
   }
   function scrollStrip() {
     if (!scrollList || !activeStrip) { scrollFrame = 0; return; }
@@ -70,6 +73,15 @@ export function createTabDrag(options: Options) {
     setDragging(false);
   };
   const supported = (event: DragEvent) => !!transferId || Array.from(event.dataTransfer?.types ?? []).some(type => type === MIME || type === FILE || type === PROJECT_FILES);
+  const pointerOutside = (event: DragEvent) => {
+    const clientOutside = event.clientX < 0 || event.clientY < 0
+      || event.clientX >= innerWidth || event.clientY >= innerHeight;
+    const screenPositionKnown = event.screenX !== 0 || event.screenY !== 0;
+    return clientOutside || (screenPositionKnown
+      && (event.screenX < window.screenX || event.screenY < window.screenY
+        || event.screenX >= window.screenX + window.outerWidth
+        || event.screenY >= window.screenY + window.outerHeight));
+  };
   function target(event: DragEvent): Target | null {
     const area = document.querySelector('.editor-area')!;
     const point = { x: event.clientX, y: event.clientY };
@@ -90,7 +102,7 @@ export function createTabDrag(options: Options) {
         width: `${body.width / (split === 'left' || split === 'right' ? 2 : 1)}px`,
         height: `${body.height / (split === 'up' || split === 'down' ? 2 : 1)}px` });
       overlay.hidden = false;
-      return { groupId, direction: split };
+      return guidedTarget = { groupId, direction: split };
     }
     clearTarget();
     return null;
@@ -121,7 +133,7 @@ export function createTabDrag(options: Options) {
   }, true);
   window.addEventListener('drop', event => {
     if (!supported(event)) return;
-    const destination = target(event);
+    const destination = guidedTarget ?? target(event);
     if (!destination) { reset(); return; }
     event.preventDefault(); event.stopPropagation();
     const localId = tabId;
@@ -152,6 +164,10 @@ export function createTabDrag(options: Options) {
   }, true);
   window.addEventListener('dragleave', event => {
     if (!event.relatedTarget) {
+      // Crossing a native child surface can emit a null-relatedTarget leave
+      // inside this window. Keep its guide/placement until another dragover,
+      // a real boundary crossing, cancellation, or completion replaces it.
+      if (guidedTarget && !pointerOutside(event)) return;
       leftWindow = true; clearTarget();
       // Native child surfaces can emit this while the pointer is still inside
       // the window. A source drag owns its capture until drop/end/cancel;
@@ -179,17 +195,22 @@ export function createTabDrag(options: Options) {
     },
     end(event: DragEvent) {
       const id = transferId;
-      const clientOutside = event.clientX < 0 || event.clientY < 0
-        || event.clientX >= innerWidth || event.clientY >= innerHeight;
-      const screenPositionKnown = event.screenX !== 0 || event.screenY !== 0;
-      const screenOutside = screenPositionKnown
-        && (event.screenX < window.screenX || event.screenY < window.screenY
-          || event.screenX >= window.screenX + window.outerWidth
-          || event.screenY >= window.screenY + window.outerHeight);
+      const localId = tabId, destination = guidedTarget;
+      if (id && localId && destination) {
+        // A native surface can consume drop. The still-visible guide is the
+        // accepted local destination, not an invitation to detach a new window.
+        // Chromium cancels an OS drag with Escape before dispatching keydown;
+        // its dropEffect is then "none", even though our guide is still visible.
+        const commit = !canceled && event.dataTransfer?.dropEffect === 'move';
+        reset();
+        options.desktop.cancelTabTransfer(id);
+        if (commit) move(localId, destination);
+        return;
+      }
       // Chromium may report (0, 0) or the last in-window client coordinate for a
-      // real OS dragend. The top-level dragleave is the reliable signal that the
-      // pointer crossed the window boundary.
-      const outside = leftWindow || clientOutside || screenOutside;
+      // real OS dragend. Use the boundary leave only after the visible guide
+      // has been invalidated; an internal native leave is not an outside drop.
+      const outside = leftWindow || pointerOutside(event);
       // An external application may accept the OS drag with dropEffect "move".
       // A Setdown drop consumes and resets this transfer before dragend, so an
       // unconsumed transfer outside this window is always a detach.
