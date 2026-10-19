@@ -202,6 +202,10 @@ connected editor hosts use an atomic DOM move to retain focus and IME state. Tex
 that are newly mounted still restore their saved view against the final shell
 geometry. The source-group focus case in `editor-groups.spec.ts` and activation
 cases in `text-workspace.test.ts` cover this distinction.
+Monaco Find actions must receive their click before mouse focus can activate and
+reparent a background editor. The Close button works while another split owns
+focus, including with no search results, and returns input to its own editor.
+Keyboard activation remains available. `editor-groups.spec.ts` covers both paths.
 
 `editor-groups.spec.ts`, `tab-detach.spec.ts`, `editor-groups.test.ts`,
 `preview-presentation.test.ts`, and `media-cache.test.ts` cover these guarantees.

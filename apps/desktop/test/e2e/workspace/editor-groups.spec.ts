@@ -432,3 +432,55 @@ test(`real Markdown tab drag splits ${side} with native boundary leave=${boundar
     await disposeApplication(app); await rm(root, { recursive: true, force: true });
   }
 });
+
+test('Monaco find closes with its X button and keeps editor input usable', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-find-close-'));
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', path.resolve('test/fixtures/sample.md')],
+    env: { ...env, XDG_CONFIG_HOME: root } });
+  try {
+    const page = await app.firstWindow();
+    await focusApplication(app);
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(710, 500));
+    await page.locator('.new-tab-button').click();
+    const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
+    await editor.pressSequentially('Find close marker');
+    await editor.press('Enter');
+    await editor.pressSequentially('Second line');
+    await editor.press('Control+f');
+    const find = page.locator('.editor-surface .find-widget');
+    await expect(find).toBeVisible();
+    await find.getByRole('textbox', { name: 'Find', exact: true }).fill('dfa');
+    await expect(find).toContainText('No results');
+    const close = find.getByRole('button', { name: /^Close/ });
+    await close.click();
+    await expect(find).not.toHaveClass(/visible/);
+    await expect(page.locator('.shell')).toHaveAttribute('data-surface', 'editor');
+    await editor.press('Control+End');
+    await editor.pressSequentially(' still editable');
+    await expect(page.locator('.editor-surface .view-lines')).toContainText('still editable');
+    await drop(page, 'Untitled.md', 0, 'right');
+    await expect(page.locator('.editor-group')).toHaveCount(2);
+    await editor.press('Control+f');
+    await page.locator('.editor-surface .find-widget').getByRole('textbox', { name: 'Find', exact: true }).fill('dfa');
+    await expect(page.locator('.editor-surface .find-widget')).toContainText('No results');
+    await page.getByRole('tab', { name: /sample\.md/ }).click();
+    const backgroundFind = page.locator('.group-editor-host .find-widget');
+    await expect(backgroundFind).toHaveClass(/visible/);
+    await backgroundFind.getByRole('button', { name: /^Close/ }).click();
+    await expect(page.locator('.find-widget.visible')).toHaveCount(0);
+    await expect(page.locator('.editor-group.focused .tab-name')).toHaveText(['Untitled.md']);
+    await expect(page.locator('.shell')).toHaveAttribute('data-surface', 'editor');
+    await editor.press('Control+End');
+    await editor.pressSequentially(' after split');
+    await expect(page.locator('.editor-surface .view-lines')).toContainText('still editable after split');
+    await editor.press('Control+f');
+    const keyboardClose = page.locator('.editor-surface .find-widget').getByRole('button', { name: /^Close/ });
+    await keyboardClose.focus();
+    await keyboardClose.press('Enter');
+    await expect(page.locator('.find-widget.visible')).toHaveCount(0);
+  } finally {
+    await disposeApplication(app);
+    await rm(root, { recursive: true, force: true });
+  }
+});

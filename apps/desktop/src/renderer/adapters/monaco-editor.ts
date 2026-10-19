@@ -173,6 +173,17 @@ export class MonacoEditor {
         renderWhitespace: 'selection', bracketPairColorization: { enabled: true }, stickyScroll: { enabled: false },
       });
 
+      // A find button's default mouse focus activates a background group and
+      // reparents its editor before click can reach the button. Let the action
+      // run first (Close then focuses the editor itself). Keyboard focus and
+      // activation still use Monaco's normal tabindex/keydown handling.
+      const keepFindActionTarget = (event: MouseEvent) => {
+        if (event.button === 0 && event.target instanceof Element
+          && event.target.closest('.find-widget [role="button"]')) event.preventDefault();
+      };
+      host.addEventListener('mousedown', keepFindActionTarget, true);
+      editor.onDidDispose(() => host.removeEventListener('mousedown', keepFindActionTarget, true));
+
       this.installBindings(api, editor);
       editor.onDidFocusEditorText(() => {
         const tab = this.options.tabs().find(t => this.models.get(t.id) === editor.getModel());
