@@ -94,7 +94,11 @@ short pinches and the full latency comparison, are in
 App typography uses the locally installed D2Coding family with a monospace
 fallback across shell controls, ordinary/Git editors, terminals, and Markdown
 body, heading, and code styles in every theme. Math and diagram renderers retain
-their specialized fonts. Preview font overrides are present during hidden
+their specialized fonts. Notebooks intentionally use a separate content/UI font
+stack for prose and HTML tables; their code and plain-text outputs retain
+D2Coding. This notebook-only exception and its real Electron coverage are
+specified in [the notebook reading contract](contracts/notebook.md#reading-and-interaction-hierarchy--2026-10-19).
+Preview font overrides are present during hidden
 preparation and remain applied when themes change. `document-preparation.spec.ts`
 and `review-document-styles.spec.ts` check the computed text font alongside the
 existing real math geometry comparisons. Hidden theme updates use main's native

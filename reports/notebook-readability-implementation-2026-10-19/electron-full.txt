@@ -1,0 +1,288 @@
+
+> @setdown/desktop@1.0.0 test:preview-contract:e2e
+> bash scripts/with-isolated-display.sh playwright test --config playwright.preview-contract.config.ts
+
+
+Running 166 tests using 1 worker
+
+(node:348526) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[1/166] test/e2e/browser/browser-extensions.spec.ts:10:1 › Web Store links install only after confirmation, update with stable identity and restore across restart
+dbus-daemon[348514]: [session uid=1000 pid=348514] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=348537 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[348514]: [session uid=1000 pid=348514] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[348514]: [session uid=1000 pid=348514] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=348537 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[348514]: [session uid=1000 pid=348514] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.4' (uid=1000 pid=348632 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[348514]: [session uid=1000 pid=348514] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[348514]: [session uid=1000 pid=348514] Activating service name='org.freedesktop.portal.Documents' requested by ':1.4' (uid=1000 pid=348632 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[348514]: [session uid=1000 pid=348514] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[348514]: [session uid=1000 pid=348514] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.4' (uid=1000 pid=348632 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[348514]: [session uid=1000 pid=348514] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=348662 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[348514]: [session uid=1000 pid=348514] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[348514]: [session uid=1000 pid=348514] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[348514]: [session uid=1000 pid=348514] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.4' (uid=1000 pid=348632 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[348514]: [session uid=1000 pid=348514] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:348632): xdg-desktop-portal-WARNING **: 22:13:24.973: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[348514]: [session uid=1000 pid=348514] Activating service name='org.freedesktop.secrets' requested by ':1.4' (uid=1000 pid=348632 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+** Message: 22:13:24.980: couldn't access control socket: /tmp/setdown-display-runtime.TPoKoz/keyring/control: No such file or directory
+discover_other_daemon: 0dbus-daemon[348514]: [session uid=1000 pid=348514] Successfully activated service 'org.freedesktop.secrets'
+dbus-daemon[348514]: [session uid=1000 pid=348514] Successfully activated service 'org.freedesktop.portal.Desktop'
+[2/166] test/e2e/browser/browser-extensions.spec.ts:112:1 › user-installed extensions load, run content scripts, and can be disabled
+[3/166] test/e2e/browser/downloads.spec.ts:7:1 › downloads expose native progress and controls, retain completed files across restart, and remove only records
+[4/166] test/e2e/browser/extension-runtime.spec.ts:9:1 › MV3 popup targets its web tab; worker grants, proxy, WebRTC, cookies and downloads have real effects
+[5/166] test/e2e/browser/find.spec.ts:5:1 › browser details: page find discards cleared searches and Escape respects editable controls
+[6/166] test/e2e/browser/focus.spec.ts:9:36 › native address click owns keyboard focus with inactive split=false
+[7/166] test/e2e/browser/focus.spec.ts:9:36 › native address click owns keyboard focus with inactive split=true
+[8/166] test/e2e/browser/focus.spec.ts:52:1 › mouse-focused address edits survive empty suggestions and keep typing, caret and composition
+[9/166] test/e2e/browser/focus.spec.ts:109:1 › new web tabs take selection without selecting the address, including after a stale native focus event
+[10/166] test/e2e/browser/focus.spec.ts:159:1 › address focus selects the whole URL for mouse, keyboard, and native page shortcuts
+[11/166] test/e2e/browser/layout.spec.ts:8:61 › address suggestions preserve live video beside markdown
+[12/166] test/e2e/browser/layout.spec.ts:8:61 › address suggestions preserve live video beside reader
+[13/166] test/e2e/browser/layout.spec.ts:8:61 › address suggestions preserve live video beside web
+[14/166] test/e2e/browser/layout.spec.ts:134:1 › application menus preserve live video frames, playback and web view visibility
+[15/166] test/e2e/browser/layout.spec.ts:176:1 › language sidebar leaves the native web page live and Escape belongs to its search
+[16/166] test/e2e/browser/layout.spec.ts:209:1 › website draggable CSS cannot consume home navigation input in web tab frames
+[17/166] test/e2e/browser/layout.spec.ts:253:1 › tab widths stay stable when adding tabs and updating web page titles
+[18/166] test/e2e/browser/lifecycle.spec.ts:5:1 › browser details: hidden pages retain forms, mute remains accessible and closed tabs reopen without stale forms
+[19/166] test/e2e/browser/lifecycle.spec.ts:41:1 › browser details: cancelling native beforeunload preserves the form and does not add a closed tab
+[20/166] test/e2e/browser/lifecycle.spec.ts:67:1 › closing a window with audible web contents releases pages without main-process exceptions
+[21/166] test/e2e/browser/lifecycle.spec.ts:96:51 › canceling close preserves audible pages, confirmed exit releases them
+[22/166] test/e2e/browser/lifecycle.spec.ts:96:51 › canceling quit preserves audible pages, confirmed exit releases them
+[23/166] test/e2e/browser/menus.spec.ts:5:1 › browser details: native image copying and link menus preserve pixels, URLs and source ownership
+[24/166] test/e2e/browser/menus.spec.ts:50:53 › Explorer menus cover native markdown panels and restore their live state
+[25/166] test/e2e/browser/menus.spec.ts:50:53 › Explorer menus cover native web panels and restore their live state
+[26/166] test/e2e/browser/navigation.spec.ts:10:1 › terminal addresses navigate through web and files while sessions and tab zoom stay independent
+[27/166] test/e2e/browser/navigation.spec.ts:49:1 › web pages share document tabs, retain live state, navigate, bookmark, and split
+[28/166] test/e2e/browser/navigation.spec.ts:108:1 › the first web page opens from a fresh empty workspace and popups preserve their opener
+[29/166] test/e2e/browser/navigation.spec.ts:127:1 › closing an opener preserves child and descendant tabs with their live state
+[30/166] test/e2e/browser/navigation.spec.ts:182:1 › file URLs and web addresses replace the current tab, including PDFs outside the project
+[31/166] test/e2e/browser/navigation.spec.ts:226:1 › address navigation asks to save edited files and cancellation preserves the current tab
+[32/166] test/e2e/browser/navigation.spec.ts:259:1 › Back and Forward traverse file and web boundaries while restoring the native web stack
+[33/166] test/e2e/browser/privacy.spec.ts:7:1 › browser details: notification requests stay quiet, coalesce and expire with their document
+[34/166] test/e2e/browser/privacy.spec.ts:41:1 › browser details: HTTP authentication is an owned opt-in prompt and error reload preserves its URL
+[35/166] test/e2e/browser/privacy.spec.ts:64:1 › browser details: site reset preserves other sites and PDF completion leaves the active tab alone
+[36/166] test/e2e/browser/privacy.spec.ts:95:1 › history deletion updates persistent places while preserving bookmarks and page state
+[37/166] test/e2e/browser/reader.spec.ts:8:1 › reading surfaces offer native copy/search menus and local Markdown PDF export
+[38/166] test/e2e/browser/reader.spec.ts:39:1 › web reader searches the visible article and exports its snapshot as Markdown and PDF
+[39/166] test/e2e/browser/reader.spec.ts:106:1 › Namu reader extracts hashed div layouts, keeps tables and anchors and restores the live paragraph
+[40/166] test/e2e/browser/reader.spec.ts:160:1 › Esc opens reader mode at the same block and double-click returns to the live page at the clicked block
+[41/166] test/e2e/browser/reader.spec.ts:257:1 › reader toolbar and wheel use tab text zoom independently of other Markdown tabs and live website zoom
+[42/166] test/e2e/browser/reader.spec.ts:304:1 › native Markdown reader shortcuts select the address and go back to the previous file
+[43/166] test/e2e/browser/reader.spec.ts:339:1 › web Reader keeps location controls stationary and the compact extension strip available
+[44/166] test/e2e/browser/transfer.spec.ts:8:1 › native web tab drag into another window preserves the page and uses the indicated tab strip
+[45/166] test/e2e/browser/transfer.spec.ts:74:1 › a popup moved to another window survives closing its original window
+[46/166] test/e2e/browser/transfer.spec.ts:118:1 › moving a web tab to another window preserves its live page and enforces ownership
+[47/166] test/e2e/browser/ublock.spec.ts:5:1 › bundled uBlock blocks requests, scripts and frame cosmetics, and enforces response-header filters
+[48/166] test/e2e/browser/ublock.spec.ts:59:1 › uBlock migrates the recursive managed cache and preserves filtering across restarts
+[49/166] test/e2e/browser/zoom.spec.ts:6:1 › browser Ctrl+wheel zooms websites and frames independently of the app and documents
+  1) test/e2e/browser/zoom.spec.ts:6:1 › browser Ctrl+wheel zooms websites and frames independently of the app and documents 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 1
+    Received:   1
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      47 |     const original = await state();
+      48 |     await pinch(f.app, 1.3, undefined, f.origin);
+    > 49 |     await expect.poll(async () => (await state()).factor).toBeGreaterThan(1);
+         |                                                           ^
+      50 |     await f.page.getByRole('button', { name: 'Reset website zoom' }).click();
+      51 |     await expect.poll(async () => (await state()).factor).toBeCloseTo(1, 4);
+      52 |     const preferences = await f.page.evaluate(() => window.marktex.getZoom());
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/browser/zoom.spec.ts:49:59
+
+    Error Context: test-results/browser-zoom-browser-Ctrl--fac20-ly-of-the-app-and-documents/error-context.md
+
+
+(node:375953) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[50/166] test/e2e/git/git-history.spec.ts:12:1 › Graph resizes, refreshes and opens immutable Markdown revisions in existing review
+[51/166] test/e2e/git/git-review-first-open.spec.ts:13:1 › first Working Tree opens directly in Monaco without an ordinary Viewer
+[52/166] test/e2e/git/git-review-ime.spec.ts:17:1 › Korean composition survives working-tree preview navigation without a single blur
+[53/166] test/e2e/git/review-document-styles.spec.ts:30:1 › review document styles preserve real math geometry across widths and zoom
+[54/166] test/e2e/git/review-preparation-layout.spec.ts:15:1 › warm review positions reuse geometry and preserve side/weighted-band semantics
+[55/166] test/e2e/git/review-preparation-layout.spec.ts:49:1 › hidden preparation acknowledges without waiting for animation frames
+[56/166] test/e2e/git/source-atlas-review.spec.ts:8:1 › review source coordinates, weighted band and block bookmarks survive layout changes
+[57/166] test/e2e/git/verified-review-position.spec.ts:23:1 › atlas skips the hidden responsive tree and rebuilds when the breakpoint changes
+[58/166] test/e2e/git/verified-review-position.spec.ts:55:1 › real layout: first/current target, warm no-op and invalidated prewarming
+[59/166] test/e2e/git/verified-review-position.spec.ts:99:1 › a late font-ready operation cannot overwrite the latest Esc position
+[60/166] test/e2e/language/clangd-support.spec.ts:23:1 › first-line LSP hovers remain fully visible above ordinary and split editors
+[61/166] test/e2e/language/clangd-support.spec.ts:72:1 › clangd honors compile commands and .clangd, with completion, rename, Undo and header navigation
+[62/166] test/e2e/language/clangd-support.spec.ts:165:1 › missing clangd keeps C editable and a native executable selection repairs language support
+[63/166] test/e2e/language/language-features.spec.ts:15:1 › negotiated semantic colors, formatting Undo, quick-fix command edits, workspace navigation and versionless diagnostics use real Monaco
+[64/166] test/e2e/language/language-policy.spec.ts:16:1 › without servers, language modes and real local errors survive; project guesses and schema loading failures are not code errors
+[65/166] test/e2e/language/language-policy.spec.ts:74:1 › project analysis, a supplementary formatter and local validation share one document without overwriting diagnostics
+[66/166] test/e2e/language/language-policy.spec.ts:149:1 › the bundled project service resolves installed and sibling imports while preserving real missing-import and type errors
+[67/166] test/e2e/language/language-reform.spec.ts:9:1 › real IPC preserves cancellation, independent diagnostic registrations and a 4,097-item completion list
+[68/166] test/e2e/language/language-reform.spec.ts:60:1 › built-in JSON, CSS and HTML workers work with external servers disabled
+[69/166] test/e2e/language/language-registry.spec.ts:13:1 › the language sidebar searches all discoverable servers, shows language logos and keeps manual connections repairable
+[70/166] test/e2e/language/language-registry.spec.ts:99:1 › installing a server while editing and rescanning connects the current model without replacing healthy sessions
+[71/166] test/e2e/language/language-registry.spec.ts:159:1 › Edit menu imports a new server, negotiates Full sync, and reconnects the same unsaved model with Undo intact
+[72/166] test/e2e/language/language-registry.spec.ts:246:1 › an imported npm profile starts automatically and supplies completion without a connection form
+[73/166] test/e2e/language/language-support.spec.ts:10:1 › Python diagnostics, completion, rename and Undo use the ordinary document
+[74/166] test/e2e/language/language-support.spec.ts:52:1 › definition opens the existing Setdown tab and Python diagnostics survive restart
+[75/166] test/e2e/language/language-support.spec.ts:84:1 › rename includes unopened files without saving them or stealing focus
+[76/166] test/e2e/language/language-support.spec.ts:116:1 › Save As reconnects Python at the new path and preserves Undo
+[77/166] test/e2e/language/language-support.spec.ts:144:1 › server crash preserves unsaved edits; restart recovers and window close reaps the server
+[78/166] test/e2e/language/language-support.spec.ts:198:1 › first Python Working Tree shares diagnostics and Undo with the ordinary editor
+[79/166] test/e2e/media/hwp-editor.spec.ts:15:1 › Explorer creates a blank HWP in the selected folder and opens an editable, saveable document
+[80/166] test/e2e/media/hwp-editor.spec.ts:82:48 › hwp: local Canvas editor, input, save, reopen, retained undo and isolation
+[81/166] test/e2e/media/hwp-editor.spec.ts:82:48 › hwpx: local Canvas editor, input, save, reopen, retained undo and isolation
+[82/166] test/e2e/media/image-editor.spec.ts:25:3 › fit editing stays still without input at 120% app zoom and 1281×1037
+[83/166] test/e2e/media/image-editor.spec.ts:25:3 › fit editing stays still without input at 130% app zoom and 921×775
+[84/166] test/e2e/media/image-editor.spec.ts:25:3 › fit editing stays still without input at 90% app zoom and 921×775
+[85/166] test/e2e/media/image-editor.spec.ts:70:1 › edits geometry and color, survives media eviction, exports correct pixels and keeps saved undo checkpoints
+[86/166] test/e2e/media/image-editor.spec.ts:113:1 › disk conflict preserves edits, canceled Save As stays dirty, and a delayed save preserves newer edits
+[87/166] test/e2e/media/image-editor.spec.ts:144:1 › EXIF 1–8 export upright pixels once and rejects animated or unowned inputs
+[88/166] test/e2e/media/image-editor.spec.ts:183:1 › PNG/WebP keep alpha, JPEG flattens white, pointer crop survives resize and close saves binary content
+[89/166] test/e2e/media/image-editor.spec.ts:220:1 › 1, 6 and 24 MP previews resolve full detail at 100%; 48 MP editing is rejected before decode
+[90/166] test/e2e/media/image-editor.spec.ts:248:1 › hidden full-resolution rendering preserves native focus and an unfinished Korean composition
+[91/166] test/e2e/media/image-editor.spec.ts:279:1 › releasing an original cancels a stalled export and destroys its hidden window
+[92/166] test/e2e/media/image-reader.spec.ts:18:1 › opens every supported image format, preserves the bitmap across tab switches and prevents text saves
+[93/166] test/e2e/media/image-reader.spec.ts:68:1 › restores image zoom, rotation and pan after restart; reloads changed content and reports invalid images
+[94/166] test/e2e/media/image-terminal-layout.spec.ts:10:1 › fit image stays still beside the explorer and terminal
+[95/166] test/e2e/media/media-tabs.spec.ts:9:1 › PDF tabs retain canvases and isolate focus; eviction, hidden resize and changed-file reload remain correct
+[96/166] test/e2e/media/pdf-selection.spec.ts:20:1 › PDF text selection is visible during and after dragging, and both copy paths preserve it
+[97/166] test/e2e/media/reading-positions.spec.ts:21:1 › PDF reader restores page coordinates and zoom across restart, and supports search and outline
+[98/166] test/e2e/media/reading-positions.spec.ts:71:1 › text cursor and scroll survive closing the tab and restarting Setdown
+[99/166] test/e2e/media/reading-positions.spec.ts:98:1 › a PDF beyond the initial byte range keeps its position across Markdown tab switches
+[100/166] test/e2e/media/reading-positions.spec.ts:132:1 › Markdown restores its source anchor after restarting
+[101/166] test/e2e/media/video-reader.spec.ts:19:1 › opens video files, streams them with range requests and prevents text saves
+[102/166] test/e2e/media/video-reader.spec.ts:102:1 › restores the playback position after restart
+[103/166] test/e2e/notebook/notebook.spec.ts:16:1 › notebook reading hierarchy keeps content, actions and focus distinct, including narrow split panes
+[104/166] test/e2e/notebook/notebook.spec.ts:109:1 › notebook cells reuse Markdown and Python, preserve outputs on save, and retain Undo across deletion
+test/e2e/notebook/notebook.spec.ts:109:1 › notebook cells reuse Markdown and Python, preserve outputs on save, and retain Undo across deletion
+notebook process: (node:398536) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `exe --trace-warnings ...` to show where the warning was created)
+
+
+notebook process: [398233:1019/221905.022182:ERROR:ui/gfx/x/atom_cache.cc:236] Add application/vnd.portal.filetransfer to kAtomsToCache
+
+
+notebook process: [398233:1019/221905.022253:ERROR:ui/gfx/x/atom_cache.cc:236] Add application/vnd.portal.files to kAtomsToCache
+
+
+notebook process: Error occurred in handler for 'notebook:markdown': Error: The window no longer exists.
+    at requireState (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/main.cjs:23410:23)
+    at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/main.cjs:23415:78
+    at Session.<anonymous> (node:electron/js2c/browser_init:1:119988)
+    at Session.emit (node:events:514:28)
+(node:398233) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+
+
+notebook main: Error occurred in handler for 'notebook:markdown': Error: The window no longer exists.
+    at requireState (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/main.cjs:23410:23)
+    at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/main.cjs:23415:78
+    at Session.<anonymous> (node:electron/js2c/browser_init:1:119988)
+    at Session.emit (node:events:514:28)
+
+notebook main: (node:398233) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+
+notebook process: Debugger ending on ws://127.0.0.1:40751/fb58976f-365b-4031-9264-d79c37912251
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[105/166] test/e2e/notebook/notebook.spec.ts:186:1 › unsupported notebook versions remain read-only and byte-identical
+test/e2e/notebook/notebook.spec.ts:186:1 › unsupported notebook versions remain read-only and byte-identical
+notebook process: Debugger ending on ws://127.0.0.1:33033/451ced91-360d-428f-99c6-fccdfa70928a
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[106/166] test/e2e/notebook/notebook.spec.ts:203:1 › long cells grow with their contents and scroll only the notebook, including keyboard navigation
+[107/166] test/e2e/notebook/notebook.spec.ts:241:1 › Python cells run in one kernel, persist results, and reset discards variables
+[108/166] test/e2e/notebook/notebook.spec.ts:290:1 › native notebook analysis uses lightweight diagnostics with IPython and isolated cell ranges
+test/e2e/notebook/notebook.spec.ts:290:1 › native notebook analysis uses lightweight diagnostics with IPython and isolated cell ranges
+
+
+
+
+[109/166] test/e2e/notebook/notebook.spec.ts:338:1 › scrolling preserves focused editors and measured output height; cell copy and reader search keep their scope
+[110/166] test/e2e/notebook/notebook.spec.ts:384:1 › notebook convenience commands preserve data through replace, split, clear and image export
+[111/166] test/e2e/notebook/notebook.spec.ts:437:1 › notebook stdin, variables and restart-all use the live kernel with scoped state
+[112/166] test/e2e/preview/document-preparation.spec.ts:8:1 › hidden ordinary math document is prepared without focus changes and keeps its typography
+[113/166] test/e2e/preview/document-preparation.spec.ts:105:1 › ordinary position caches refresh after a disclosure changes layout
+[114/166] test/e2e/preview/document-preparation.spec.ts:137:1 › an owned background reader can prepare without changing the foreground document
+[115/166] test/e2e/preview/preview-reading-tools.spec.ts:9:1 › uses the rendered document for TOC, search, and Crossnote themes
+[116/166] test/e2e/preview/preview-tabs.spec.ts:38:1 › Explorer replaces only the temporary tab, releases its native reader, and editing stays pinned after save
+[117/166] test/e2e/preview/preview-tabs.spec.ts:71:1 › double-click, middle-click, Enter and explicit open keep files without demoting existing tabs
+[118/166] test/e2e/preview/preview-tabs.spec.ts:107:1 › each group owns one preview and dragging a preview keeps its tab
+[119/166] test/e2e/preview/preview-tabs.spec.ts:136:1 › a late file read cannot replace the last selected file or an explicit native open
+[120/166] test/e2e/preview/preview-tabs.spec.ts:194:1 › Explorer preview files share Back and Forward history and a new browse truncates the old branch
+[121/166] test/e2e/preview/zero-latency-architecture.spec.ts:8:1 › keeps one live preview WebContents through Esc and window transfer
+[122/166] test/e2e/project/explorer-selection.spec.ts:28:1 › Explorer clipboard shortcuts, Edit menu, duplicate and cut use real files and invalidate on text copy
+[123/166] test/e2e/project/explorer-selection.spec.ts:74:1 › Explorer paste conflicts keep both explicitly and preserve existing destination contents
+[124/166] test/e2e/project/explorer-selection.spec.ts:91:1 › Explorer rename selects basename, respects composition, and retains selection across sidebar switches and refresh
+[125/166] test/e2e/project/explorer-selection.spec.ts:128:1 › a failed OS trash operation keeps the unsaved tab, text and selection
+[126/166] test/e2e/project/explorer-selection.spec.ts:146:1 › Explorer modifier and keyboard selection, context actions, and a real multi-file folder drop preserve dirty text
+[127/166] test/e2e/project/explorer-selection.spec.ts:192:1 › Explorer batch conflicts leave all sources and destination contents intact
+[128/166] test/e2e/project/explorer-selection.spec.ts:207:1 › dropping selected files on tab-strip padding opens every file in order as a pinned tab
+[129/166] test/e2e/terminal/terminal.spec.ts:14:1 › horizontal resizing preserves a two-line right prompt, input and prior output
+[130/166] test/e2e/terminal/terminal.spec.ts:45:1 › ctrl+wheel over the terminal changes terminal zoom only and refits the grid in both directions
+[131/166] test/e2e/terminal/terminal.spec.ts:112:53 › terminal tabs split right, preserve PTYs, and manage sessions in the sidebar
+[132/166] test/e2e/terminal/terminal.spec.ts:112:53 › terminal tabs split down, preserve PTYs, and manage sessions in the sidebar
+[133/166] test/e2e/terminal/terminal.spec.ts:201:1 › terminal list opens without creating a process; a terminal tab uses project cwd and cleans up on reload
+[134/166] test/e2e/terminal/terminal.spec.ts:225:1 › detaching a terminal transfers the same shell and restores its screen
+[135/166] test/e2e/terminal/terminal.spec.ts:265:1 › two visible terminal groups receive input independently and survive tab-strip merging
+[136/166] test/e2e/terminal/terminal.spec.ts:304:1 › a live Vim alternate screen retains visible text and insert mode across window transfer
+[137/166] test/e2e/workspace/editor-groups.spec.ts:29:1 › wheel scrolls without selection; nested groups retain live native readers and collapse on close
+[138/166] test/e2e/workspace/editor-groups.spec.ts:232:1 › editing another visible source group preserves scroll and the newly clicked caret
+[139/166] test/e2e/workspace/editor-groups.spec.ts:319:1 › real tab drags use strip padding and insertion positions while preserving source edits and Undo
+[140/166] test/e2e/workspace/editor-groups.spec.ts:374:1 › real Markdown tab drag splits right with native boundary leave=false
+[141/166] test/e2e/workspace/editor-groups.spec.ts:374:1 › real Markdown tab drag splits down with native boundary leave=false
+[142/166] test/e2e/workspace/editor-groups.spec.ts:374:1 › real Markdown tab drag splits right with native boundary leave=true
+[143/166] test/e2e/workspace/editor-groups.spec.ts:374:1 › real Markdown tab drag splits down with native boundary leave=true
+[144/166] test/e2e/workspace/editor-groups.spec.ts:436:1 › Monaco find tooltip stays stable while hovering Close
+[145/166] test/e2e/workspace/editor-groups.spec.ts:505:1 › Monaco find closes with its X button and keeps editor input usable
+[146/166] test/e2e/workspace/folder-history.spec.ts:6:1 › starts empty, keeps five recent folders, and None preserves unsaved file tabs
+[147/166] test/e2e/workspace/folder-history.spec.ts:55:1 › Reload retains the current folder and live pages; restarting keeps only folder history
+[148/166] test/e2e/workspace/folder-history.spec.ts:95:1 › an explicit startup file opens alone, and a missing recent folder keeps the current workspace
+[149/166] test/e2e/workspace/folder-history.spec.ts:119:1 › the folder menu owns Escape and reselecting the current folder keeps Explorer state
+[150/166] test/e2e/workspace/tab-detach.spec.ts:16:56 › detaching a tab restores its preview at the same position via body
+[151/166] test/e2e/workspace/tab-detach.spec.ts:16:56 › detaching a tab restores its preview at the same position via tab strip
+[152/166] test/e2e/workspace/tab-detach.spec.ts:207:1 › detaching the middle tab leaves documents one and three in the original window
+[153/166] test/e2e/workspace/tab-detach.spec.ts:280:5 › the painted tab strip guide owns placement on drop after an internal native leave
+[154/166] test/e2e/workspace/tab-detach.spec.ts:280:5 › the painted other group guide owns placement on drop after an internal native leave
+[155/166] test/e2e/workspace/tab-detach.spec.ts:280:5 › the painted split guide owns placement on drop after an internal native leave
+[156/166] test/e2e/workspace/tab-detach.spec.ts:280:5 › the painted tab strip guide owns placement on dragend after an internal native leave
+[157/166] test/e2e/workspace/tab-detach.spec.ts:280:5 › the painted other group guide owns placement on dragend after an internal native leave
+[158/166] test/e2e/workspace/tab-detach.spec.ts:280:5 › the painted split guide owns placement on dragend after an internal native leave
+[159/166] test/e2e/workspace/tab-detach.spec.ts:353:1 › a guide is cleared by cancellation, a rejected area, or a real window exit
+[160/166] test/e2e/workspace/tab-detach.spec.ts:392:1 › pointer release follows the insertion guide and Escape cancels it
+[161/166] test/e2e/workspace/workspace-zoom.spec.ts:47:40 › text wheel zoom and app shortcuts have independent scopes in md
+[162/166] test/e2e/workspace/workspace-zoom.spec.ts:47:40 › text wheel zoom and app shortcuts have independent scopes in txt
+[163/166] test/e2e/workspace/workspace-zoom.spec.ts:98:1 › PDF and image wheel zoom preserve the cursor point, file state and fit mode across app zoom
+[164/166] test/e2e/workspace/workspace-zoom.spec.ts:190:1 › Git review, ordinary editors and a second window retain independent text zoom without replacing models
+test/e2e/workspace/workspace-zoom.spec.ts:190:1 › Git review, ordinary editors and a second window retain independent text zoom without replacing models
+
+
+
+
+
+
+
+
+
+
+[165/166] test/e2e/workspace/workspace-zoom.spec.ts:254:1 › two Markdown tabs retain independent zoom in native readers and Monaco
+[166/166] test/e2e/workspace/workspace-zoom.spec.ts:300:1 › touchpad pinch zooms text, notebook outputs and terminal tabs independently
+  1 failed
+    test/e2e/browser/zoom.spec.ts:6:1 › browser Ctrl+wheel zooms websites and frames independently of the app and documents 
+  165 passed (8.1m)
+npm error Lifecycle script `test:preview-contract:e2e` failed with error:
+npm error code 1
+npm error path /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error workspace @setdown/desktop@1.0.0
+npm error location /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error command failed
+npm error command sh -c bash scripts/with-isolated-display.sh playwright test --config playwright.preview-contract.config.ts

@@ -56,10 +56,11 @@
         // Monaco's supported textarea input keeps Chromium's native EditContext
         // from retaining an input target after an offscreen cell is retired.
         editContext: false,
+        renderLineHighlightOnlyWhenFocus: true,
         fontFamily: APP_FONT_FAMILY, ...textZoomOptions(entry.id), minimap: { enabled: false },
         scrollBeyondLastLine: false, wordWrap: 'on', lineNumbers: syntax === 'code' && lineNumbers ? 'on' : 'off',
         folding: false, stickyScroll: { enabled: false }, glyphMargin: false, lineDecorationsWidth: 8,
-        lineNumbersMinChars: 3, padding: { top: 10, bottom: 10 }, fixedOverflowWidgets: true,
+        lineNumbersMinChars: 3, padding: { top: 16, bottom: 12 }, fixedOverflowWidgets: true,
         ariaLabel: `${syntax === 'code' ? 'Code' : syntax === 'markdown' ? 'Markdown' : 'Raw'} cell editor`,
         scrollbar: { vertical: 'hidden', horizontal: 'hidden', handleMouseWheel: false,
           alwaysConsumeMouseWheel: false, useShadows: false }, overviewRulerLanes: 0 });
@@ -154,24 +155,27 @@
   }
 </script>
 
-<section role="group" aria-label="Notebook cell" tabindex="-1" class="notebook-cell" class:selected class:markdown-cell={kind === 'markdown'} bind:this={container} data-cell-id={cell.id} data-cell-kind={kind}>
-  <div class="cell-toolbar">
+<section role="group" aria-label="Notebook cell" tabindex="-1" class="notebook-cell" class:selected class:editor-focused={focused} class:markdown-cell={kind === 'markdown'} class:reading={!sourceMode} bind:this={container} data-cell-id={cell.id} data-cell-kind={kind}>
+  <div class="cell-gutter">
+    {#if kind === 'code' && entry.document.language === 'python'}<button class="run-cell" aria-label="Run cell" title="Run cell (Ctrl/Cmd+Enter)" onclick={() => run()}>▷</button>{/if}
     <button class="drag-handle" draggable="true" {ondragstart} {ondragend} title="Drag to move cell" aria-label="Drag to move cell">⠿</button>
-    <button class="execution" aria-label="Select cell" title="Select cell · Shift selects a range · Ctrl/Cmd toggles selection" onclick={onselect}>{kind === 'code' ? `[${executionState === 'running' ? '*' : executionState === 'queued' ? '…' : clear ? ' ' : count ?? ' '}]` : kind === 'raw' ? 'Raw' : 'Md'}</button>
+    <button class="execution" aria-label="Select cell" aria-pressed={selected} title="Select cell · Shift selects a range · Ctrl/Cmd toggles selection" onclick={onselect}>{kind === 'code' ? `[${executionState === 'running' ? '*' : executionState === 'queued' ? '…' : clear ? ' ' : count ?? ' '}]` : kind === 'raw' ? 'Raw' : 'Md'}</button>
+  </div>
+  <div class="cell-toolbar" role="group" aria-label="Cell actions">
     <select aria-label="Cell type" value={kind} onchange={event => entry.document.convert(cell.id, event.currentTarget.value as CellKind)}>
       <option value="code">Code</option><option value="markdown">Markdown</option><option value="raw">Raw</option>
     </select>
     {#if kind === 'markdown'}<button onclick={() => editing ? editing = false : void edit()}>{editing ? 'Preview' : 'Edit'}</button>{/if}
-    {#if kind === 'code' && entry.document.language === 'python'}<button aria-label="Run cell" title="Run cell (Ctrl/Cmd+Enter)" onclick={() => run()}>▶ Run</button>{/if}
-    <span class="cell-state" title={duration === undefined ? executionState : `${executionState} · ${(duration / 1000).toFixed(2)} s`}>{executionState === 'succeeded' ? '✓' : executionState === 'error' ? 'Error' : executionState === 'queued' ? 'Queued' : executionState === 'canceled' ? 'Canceled' : executionState === 'skipped' ? 'Skipped' : ''}</span>
-    <span class="spacer"></span>
     <div class="cell-actions">
     <button aria-label="Collapse cell input" title="Collapse input" onclick={() => entry.controller.toggleInput(cell.id)}>−</button>
     <button title="Move cell up" aria-label="Move cell up" onclick={() => entry.document.move(cell.id, -1)}>↑</button>
     <button title="Move cell down" aria-label="Move cell down" onclick={() => entry.document.move(cell.id, 1)}>↓</button>
     <button title="Add code cell below" aria-label="Add code cell below" onclick={() => entry.document.add('code', cell.id)}>+</button>
     <button title="Duplicate cell" aria-label="Duplicate cell" onclick={() => entry.document.duplicate(cell.id)}>⧉</button>
-    {#if kind === 'code' && outputs.length && !clear}<button onclick={() => entry.document.clear(cell.id)}>Clear output</button>{/if}
+    {#if kind === 'code' && outputs.length && !clear}
+      <button onclick={() => entry.controller.toggleOutput(cell.id)} aria-label={collapsedOutput ? 'Expand cell output' : 'Collapse cell output'} title={collapsedOutput ? 'Expand output' : 'Collapse output'}>{collapsedOutput ? '▸' : '▾'}</button>
+      <button onclick={() => entry.document.clear(cell.id)}>Clear output</button>
+    {/if}
     <button title="Delete cell (Undo Cell Operation restores it)" aria-label="Delete cell" onclick={() => entry.document.remove(cell.id)}>×</button>
     </div>
   </div>
@@ -185,17 +189,18 @@
   {:else}
     <!-- The reader remains selectable; a separate Edit button also supports keyboards. -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="cell-markdown" ondblclick={edit} onclick={link} onkeydown={event => { if (event.key === 'Enter') link(event); }}>
+    <div class="cell-markdown notebook-prose" ondblclick={edit} onclick={link} onkeydown={event => { if (event.key === 'Enter') link(event); }}>
       {#if renderError}<p role="alert">{renderError}</p><pre>{source.slice(0, 4000)}</pre>
       {:else if !source}<p class="hint">Double-click to write Markdown.</p>
       {:else if !html || renderedSource !== source}<pre>{source.slice(0, 4000)}</pre>{:else}{@html html}{/if}
     </div>
   {/if}
+  {#if executionState}
+    <div class="cell-state" class:error-state={executionState === 'error'} role="status">{executionState === 'succeeded' ? '✓ Completed' : executionState === 'running' ? 'Running…' : executionState === 'error' ? 'Error' : executionState === 'queued' ? 'Queued' : executionState === 'canceled' ? 'Canceled' : 'Skipped'}{#if duration !== undefined} · {(duration / 1000).toFixed(2)} s{/if}</div>
+  {/if}
   {#if kind === 'code' && outputs.length && !clear}
-    <div class="output-toolbar">
-      <button onclick={() => entry.controller.toggleOutput(cell.id)} aria-label={collapsedOutput ? 'Expand cell output' : 'Collapse cell output'}>{collapsedOutput ? '▸ Show output' : '▾ Output'}</button>
-      {#if source !== executedSource}<span>From an earlier version of this cell</span>{/if}
-    </div>
+    {#if source !== executedSource}<div class="output-stale" role="status">From an earlier version of this cell</div>{/if}
+    {#if collapsedOutput}<button class="collapsed-output" onclick={() => entry.controller.toggleOutput(cell.id)}>▸ Show output</button>{/if}
     {#if !collapsedOutput}
       {#if nearby || focused || selectionHeld}<div use:measureOutput><NotebookOutputs {outputs} {path} {desktop} {ontrace} /></div>
       {:else}<div class="output-placeholder" style:height={`${outputHeight}px`} aria-hidden="true"></div>{/if}
@@ -204,29 +209,35 @@
 </section>
 
 <style>
-  .notebook-cell { margin: 0 0 18px; border: 1px solid var(--app-border); border-radius: 5px; background: var(--app-editor-background); min-width: 0; }
-  .notebook-cell.selected, .notebook-cell:focus-within { border-color: var(--app-accent); }
-  .cell-toolbar { display: flex; align-items: center; gap: 5px; padding: 4px 8px; min-height: 32px; color: var(--app-muted-text); background: var(--app-surface); border-radius: 5px 5px 0 0; font-size: 12px; }
-  button, select { font: inherit; color: inherit; background: transparent; border: 1px solid transparent; border-radius: 3px; padding: 3px 6px; cursor: pointer; }
+  .notebook-cell { position: relative; margin: 0 0 28px; padding-left: 54px; min-width: 0; min-height: 64px; outline: none; }
+  .notebook-cell::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: transparent; }
+  .notebook-cell.selected::before { background: var(--app-accent); }
+  .notebook-cell:focus-visible::before { outline: 2px solid var(--app-focus-ring); outline-offset: 2px; }
+  .cell-gutter { position: absolute; left: 4px; top: 5px; width: 48px; display: grid; grid-template-columns: 24px 24px; align-items: center; color: var(--notebook-secondary-text); font-size: 12px; }
+  .cell-gutter button { padding: 0; min-width: 24px; }
+  .run-cell { font-size: 20px; grid-column: 1; }
+  .execution { grid-column: 1 / -1; font-family: var(--notebook-code-font); font-variant-numeric: tabular-nums; font-size: 11px; }
+  .cell-toolbar { position: absolute; right: 8px; top: 0; transform: translateY(-50%); z-index: 2; display: flex; align-items: center; gap: 2px; max-width: calc(100% - 54px); overflow-x: auto; scrollbar-width: thin; padding: 2px; color: var(--app-text); background: var(--app-surface); border: 1px solid var(--app-border); border-radius: 5px; font-size: 12px; opacity: 0; }
+  button, select { font: inherit; color: inherit; background: transparent; border: 1px solid transparent; border-radius: 3px; min-height: 26px; padding: 3px 6px; cursor: pointer; white-space: nowrap; }
   select { max-width: 110px; } option { background: var(--app-surface); }
   button:hover, select:hover { background: var(--app-hover); color: var(--app-text); }
   button:focus-visible, select:focus-visible { outline: 1px solid var(--app-focus-ring); }
-  .drag-handle { cursor: grab; font-size: 16px; }
+  .drag-handle { cursor: grab; font-size: 16px; grid-column: 2; opacity: 0; }
   button:disabled { opacity: .4; cursor: default; }
-  .cell-actions { display: flex; gap: 2px; opacity: 0; }
-  .notebook-cell:hover .cell-actions, .notebook-cell:focus-within .cell-actions, .notebook-cell.selected .cell-actions { opacity: 1; }
-  .cell-state, .output-toolbar { font-size: 11px; color: var(--app-muted-text); }
-  .output-toolbar { display: flex; align-items: center; gap: 12px; padding: 2px 10px; border-top: 1px solid var(--app-border); }
+  .cell-actions { display: flex; gap: 2px; }
+  .notebook-cell:hover .cell-toolbar, .notebook-cell:focus-within .cell-toolbar, .notebook-cell.selected .cell-toolbar,
+  .notebook-cell:hover .drag-handle, .notebook-cell:focus-within .drag-handle, .notebook-cell.selected .drag-handle { opacity: 1; }
+  .cell-state { padding: 4px 12px 0; font-size: 12px; color: var(--notebook-secondary-text); }
+  .error-state { color: var(--app-danger-text); }
+  .output-stale { margin: 8px 0 4px; padding: 6px 12px; border-left: 2px solid var(--app-warning-border); background: var(--app-warning-surface); color: var(--app-warning-text); font-size: 12px; }
+  .collapsed-output { color: var(--notebook-secondary-text); margin: 8px 0; }
   .collapsed-input { display: block; padding: 10px 16px; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  .spacer { flex: 1; } .execution { min-width: 35px; font-variant-numeric: tabular-nums; }
-  .cell-editor { min-height: 65px; position: relative; }
+  .cell-editor { min-height: 65px; position: relative; outline: 1px solid var(--app-border); outline-offset: -1px; border-radius: 5px; background: var(--app-editor-background); }
+  .editor-focused .cell-editor { outline-color: var(--app-focus-ring); }
   .editor-viewport { position: sticky; top: 0; }
-  .cell-editor > pre { margin: 0; padding: 12px; } pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 12px; font: inherit; }
-  .cell-markdown { padding: 8px 22px 18px; overflow-wrap: anywhere; line-height: 1.7; contain: content; }
-  .cell-markdown :global(img) { max-width: 100%; }
-  .cell-markdown :global(table) { border-collapse: collapse; }
-  .cell-markdown :global(td), .cell-markdown :global(th) { border: 1px solid var(--app-border); padding: 5px 10px; }
-  .cell-markdown :global(pre) { white-space: pre-wrap; overflow-wrap: anywhere; }
-  .cell-markdown :global(a) { color: var(--app-accent); }
-  .hint { color: var(--app-muted-text); font-size: 12px; }
+  .cell-editor > pre { margin: 0; padding: 16px 12px 12px; } pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 12px; font-family: var(--notebook-code-font); }
+  .cell-markdown { padding: 14px 12px 6px; contain: content; }
+  .reading .execution { opacity: 0; }
+  .reading:hover .execution, .reading.selected .execution, .reading:focus-within .execution { opacity: 1; }
+  .hint { color: var(--notebook-secondary-text); }
 </style>

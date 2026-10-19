@@ -17,6 +17,7 @@
   import SearchWorker from './notebook-search.worker?worker';
   import NotebookVariables from './NotebookVariables.svelte';
   import NotebookCell from './NotebookCell.svelte';
+  import './notebook-typography.css';
   let { entry, path, active, desktop, onfocus, openFile }: { entry: NotebookEntry; path: string; active: boolean; desktop: DesktopPort; openFile(path: string, selection?: M.IRange | M.IPosition): Promise<void>; onfocus(): void } = $props();
   let api = $state.raw<typeof M | null>(null), revision = $state(0), loadError = $state('');
   let theme = $state<PreviewThemeId>('github-light'), language = $state(''), factor = $state(1);
@@ -28,6 +29,7 @@
   const controller = $derived(entry.controller);
   const selected = $derived.by(() => { void controllerRevision; return new Set(controller.selected); });
   const selectedPython = $derived.by(() => { void executionRevision; return execution?.selectedPython; });
+  const environmentLabel = $derived(environments.candidates.find(item => item.path === selectedPython)?.name ?? 'Python');
   async function refreshEnvironments() {
     try { environments = await desktop.notebook.environments(path); await execution?.loadEnvironment(); }
     catch (error) { actionError = String(error); }
@@ -164,6 +166,7 @@
     } catch (error) { actionError = String(error); } finally { toolBusy = false; }
   }
   const commands = [
+    ['undo', 'Undo cell operation'], ['redo', 'Redo cell operation'], ['outline', 'Toggle outline'], ['variables', 'Toggle variables'], ['reset', 'Reset kernel'],
     ['run-above', 'Run cells above'], ['run-below', 'Run from current cell to end'], ['restart-all', 'Restart kernel and run all'],
     ['clear-all', 'Clear all outputs'], ['collapse-inputs', 'Collapse all inputs'], ['expand-inputs', 'Expand all inputs'],
     ['collapse-outputs', 'Collapse all outputs'], ['expand-outputs', 'Expand all outputs'], ['split', 'Split cell at cursor'], ['join', 'Join selected adjacent cells'],
@@ -176,7 +179,12 @@
   async function command(id: string) {
     commandOpen = false; actionError = ''; const index = cells.findIndex(cell => cell.id === controller.active);
     try {
-      if (id === 'run-above') await execution?.run(cells.slice(0, Math.max(0, index)).map(cell => cell.id));
+      if (id === 'undo') entry.document.undo();
+      else if (id === 'redo') entry.document.redo();
+      else if (id === 'outline') outline = !outline;
+      else if (id === 'variables') variables = !variables;
+      else if (id === 'reset') await execution?.shutdown();
+      else if (id === 'run-above') await execution?.run(cells.slice(0, Math.max(0, index)).map(cell => cell.id));
       else if (id === 'run-below') await execution?.run(cells.slice(Math.max(0, index)).map(cell => cell.id));
       else if (id === 'restart-all') { await execution?.shutdown(); await execution?.run(); }
       else if (id === 'clear-all') entry.document.clearMany();
@@ -245,6 +253,10 @@
     if (mod && event.shiftKey && key === '-') { event.preventDefault(); void command('split'); return; }
     if (key === 'f2') { event.preventDefault(); void command('rename'); return; }
     if (isEditing(event.target)) return;
+    // Native action activation belongs to the focused control, not whichever
+    // cell was previously selected. The gutter selector still owns command mode.
+    if (key === 'enter' && !mod && !event.shiftKey && !event.altKey && event.target instanceof Element
+      && event.target.closest('button:not(.execution), a[href], summary')) return;
     const index = cells.findIndex(cell => cell.id === controller.active);
     if ((key === 'arrowdown' || key === 'arrowup') && !mod && !event.altKey) {
       const next = cells[Math.max(0, Math.min(cells.length - 1, index + (key === 'arrowup' ? -1 : 1)))];
@@ -303,23 +315,26 @@
   <div class="notebook-toolbar" role="toolbar" aria-label="Notebook">
     <button onclick={() => controller.insert('code')} disabled={!!entry.document.error}>+ Code</button>
     <button onclick={() => controller.insert('markdown')} disabled={!!entry.document.error}>+ Markdown</button>
-    <button title="Undo the last cell operation (text uses editor Undo)" aria-label="Undo cell operation" disabled={!canUndo} onclick={() => entry.document.undo()}>↶</button>
-    <button title="Redo cell operation" aria-label="Redo cell operation" disabled={!canRedo} onclick={() => entry.document.redo()}>↷</button>
-    <button onclick={() => outline = !outline} aria-pressed={outline}>Outline</button>
-    <button onclick={() => variables = !variables} aria-pressed={variables}>Variables</button>
+    <button class="secondary-tool" title="Undo the last cell operation (text uses editor Undo)" aria-label="Undo cell operation" disabled={!canUndo} onclick={() => entry.document.undo()}>↶</button>
+    <button class="secondary-tool" title="Redo cell operation" aria-label="Redo cell operation" disabled={!canRedo} onclick={() => entry.document.redo()}>↷</button>
+    <button class="secondary-tool" onclick={() => outline = !outline} aria-pressed={outline}>Outline</button>
+    <button class="secondary-tool" onclick={() => variables = !variables} aria-pressed={variables}>Variables</button>
     <button onclick={() => commandOpen = !commandOpen} aria-expanded={commandOpen}>Commands…</button>
     {#if toolBusy}<span role="status">Notebook tool running…</span><button onclick={() => desktop.notebook.cancelTools(path)}>Cancel tool</button>{/if}
     <span class="summary">{cells.length} cells · {entry.document.language}</span>
     {#if entry.document.language === 'python' && !entry.document.error}
       <button aria-label="Run all cells" onclick={() => execution?.run()}>▶ Run All</button>
       {#if busy}<button aria-label="Interrupt kernel" onclick={() => execution?.interrupt()}>■ Interrupt</button>{/if}
-      <button title="Discard Python variables and stop the kernel. Run starts a fresh kernel." onclick={() => execution?.shutdown()} disabled={kernelState === 'stopped'}>Reset kernel</button>
-      <select class="execution-note" aria-label="Python environment" title={python || 'Choose Python with ipykernel installed'} value={selectedPython ?? ''} onchange={event => void chooseEnvironment(event.currentTarget.value)}>
+      <button class="secondary-tool" title="Discard Python variables and stop the kernel. Run starts a fresh kernel." onclick={() => execution?.shutdown()} disabled={kernelState === 'stopped'}>Reset kernel</button>
+      <div class="execution-note" title={selectedPython || python || 'Choose Python with ipykernel installed'}>
+      <span aria-hidden="true">{selectedPython ? environmentLabel : 'Select Python…'} ▾</span>
+      <select aria-label="Python environment" value={selectedPython ?? ''} onchange={event => void chooseEnvironment(event.currentTarget.value)}>
         <option value="" disabled>Select Python…</option>
         {#if selectedPython && !environments.candidates.some(item => item.path === selectedPython)}<option value={selectedPython}>{selectedPython} (unavailable)</option>{/if}
         {#each environments.candidates as candidate}<option value={candidate.path}>{candidate.name} · {candidate.source} · {candidate.path}</option>{/each}
         <option value="__choose__">Choose executable…</option>
       </select>
+      </div>
       <span class="kernel-state" role="status">{kernelState}</span>
     {/if}
   </div>
@@ -362,7 +377,7 @@
     {:else}
       {#each cells as cell (cell.id)}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div class="cell-drop" hidden={hiddenSections.has(cell.id)} oncontextmenu={event => { if (event.target instanceof Element && event.target.closest('.cell-toolbar')) { event.preventDefault(); controller.select(cell.id); commandOpen = true; } }} class:drop-before={dropTarget === cell.id && !dropAfter} class:drop-after={dropTarget === cell.id && dropAfter}
+        <div class="cell-drop" hidden={hiddenSections.has(cell.id)} oncontextmenu={event => { if (event.target instanceof Element && event.target.closest('.cell-toolbar, .cell-gutter')) { event.preventDefault(); controller.select(cell.id); commandOpen = true; } }} class:drop-before={dropTarget === cell.id && !dropAfter} class:drop-after={dropTarget === cell.id && dropAfter}
           ondragover={event => dragOver(event, cell.id)} ondrop={event => drop(event, cell.id)}>
         <NotebookCell {entry} {cell} {revision} {api} {active} {path} {desktop} {theme} {onfocus} {reveal} ontrace={target => trace(target, cell.id)} lineNumbers={controllerRevision >= 0 && !controller.hiddenLineNumbers.has(cell.id)} onmodel={() => client?.updateMarkers()}
           selected={selected.has(cell.id)} collapsedInput={controllerRevision >= 0 && controller.collapsedInputs.has(cell.id)} collapsedOutput={controllerRevision >= 0 && controller.collapsedOutputs.has(cell.id)}
@@ -389,15 +404,23 @@
   .drop-before::before, .drop-after::after { content: ''; position: absolute; height: 3px; background: var(--app-accent); left: 0; right: 0; z-index: 1; pointer-events: none; }
   .drop-before::before { top: -9px; } .drop-after::after { bottom: -9px; }
   .kernel-error { padding: 8px 16px; color: var(--app-danger-text); font-size: 12px; overflow-wrap: anywhere; }
-  .kernel-state { color: var(--app-muted-text); }
-  .notebook-surface { display: flex; flex-direction: column; position: absolute; inset: 0; background: var(--app-canvas); color: var(--app-text); min-width: 0; }
-  .notebook-toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-height: 38px; padding: 4px 14px; border-bottom: 1px solid var(--app-border); font-size: 12px; background: var(--app-surface); }
+  .kernel-state { color: var(--notebook-secondary-text); white-space: nowrap; }
+  .notebook-surface { display: flex; flex-direction: column; position: absolute; inset: 0; background: var(--app-canvas); color: var(--app-text); min-width: 0; container-type: inline-size; }
+  .notebook-toolbar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; flex-shrink: 0; min-height: 38px; padding: 4px 12px; border-bottom: 1px solid var(--app-border); font-size: 13px; background: var(--app-surface); }
   button { font: inherit; color: var(--app-text); background: transparent; border: 1px solid transparent; border-radius: 3px; padding: 4px 8px; cursor: pointer; }
   button:hover:not(:disabled) { background: var(--app-hover); } button:disabled { opacity: .4; cursor: default; }
   button:focus-visible { outline: 1px solid var(--app-focus-ring); }
   select { font: inherit; background: var(--app-surface); color: var(--app-text); border: 1px solid var(--app-border); border-radius: 3px; padding: 4px; max-width: 300px; }
-  .summary { color: var(--app-muted-text); margin-left: 8px; } .execution-note { color: var(--app-muted-text); margin-left: auto; }
-  .notebook-scroll { overflow: auto; flex: 1; padding: 22px clamp(12px, 4vw, 64px) 100px; min-height: 0; scrollbar-gutter: stable; }
+  .summary { color: var(--notebook-secondary-text); margin-left: 8px; white-space: nowrap; }
+  .execution-note { position: relative; margin-left: auto; max-width: 200px; min-width: 80px; height: 28px; }
+  .execution-note > span { display: block; padding: 4px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .execution-note select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
+  .execution-note:focus-within { outline: 2px solid var(--app-focus-ring); border-radius: 3px; }
+  .execution-note:hover { background: var(--app-hover); }
+  .notebook-scroll { overflow: auto; flex: 1; padding: 30px clamp(12px, 2.5cqw, 40px) 100px 12px; min-height: 0; scrollbar-gutter: stable; }
+  @container (max-width: 1100px) { .summary { display: none; } }
+  @container (max-width: 900px) { .secondary-tool { display: none; } }
+  @container (max-width: 540px) { .notebook-toolbar { gap: 2px; padding-inline: 6px; font-size: 12px; } .notebook-toolbar button { padding-inline: 5px; } .execution-note { max-width: 120px; } .notebook-scroll { padding-inline: 6px; } }
   .notebook-empty { text-align: center; padding: 60px 12px; color: var(--app-muted-text); }
   .notebook-error pre { white-space: pre-wrap; overflow-wrap: anywhere; }
   .notebook-search, .notebook-replace { display: flex; align-items: center; gap: 5px; padding: 6px 14px; font-size: 12px; border-bottom: 1px solid var(--app-border); }

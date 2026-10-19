@@ -13,6 +13,99 @@ const notebook = () => ({ nbformat: 4, nbformat_minor: 5, metadata: { language_i
   { id: 'use', cell_type: 'code', metadata: {}, source: 'numbers.append(4)', execution_count: null, outputs: [] },
 ] });
 
+test('notebook reading hierarchy keeps content, actions and focus distinct, including narrow split panes', async () => {
+  test.setTimeout(90_000);
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-reading-'));
+  const file = path.join(root, 'reading.ipynb'), other = path.join(root, 'other.ipynb');
+  const value = notebook();
+  value.cells[0].source = ['## 출력에 남기는 오류 정보\n\n' + '오류는 고정된 분류와 건수로 요약한다. 상세 원인은 내부 오류 파일에서 확인한다. '.repeat(4) + '`numbers`는 코드에 정의된 값이다.'];
+  value.cells[1].source = ['# A readable comment\nnumbers = [1, 2, 3]\n'];
+  value.cells[1].outputs = [{ output_type: 'execute_result', execution_count: 1, metadata: {}, data: {
+    'text/plain': 'Two-line 2.117', 'text/html': '<style>table{position:fixed}</style><table class="dataframe"><thead><tr><th>Model</th><th>Test RMSE</th><th>Note</th></tr></thead><tbody><tr><th>Two-line</th><td>2.117</td><td>other_error</td></tr></tbody></table>',
+  } }] as any;
+  await writeFile(file, JSON.stringify(value)); await writeFile(other, JSON.stringify(notebook()));
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+  const application = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await application.firstWindow(); await focusApplication(application);
+    await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1440, 1000));
+    const md = page.locator('[data-cell-id="intro"]'), code = page.locator('[data-cell-id="define"]');
+    await expect(md.locator('.cell-markdown h2')).toHaveText('출력에 남기는 오류 정보');
+    await expect(code.locator('.output-html td').first()).toHaveCSS('text-align', 'right');
+    await expect(code.locator('.output-html td').last()).toHaveCSS('text-align', 'left');
+    await expect(code.locator('.output-html style')).toHaveCount(0);
+    const measure = await page.evaluate(() => {
+      const prose = document.querySelector('.cell-markdown p')!, editor = document.querySelector('.cell-editor')!;
+      return { prose: prose.getBoundingClientRect().width, editor: editor.getBoundingClientRect().width,
+        proseFont: getComputedStyle(prose).fontFamily, inlineFont: getComputedStyle(prose.querySelector('code')!).fontFamily,
+        codeFont: getComputedStyle(document.querySelector('.view-lines')!).fontFamily,
+        tableFont: getComputedStyle(document.querySelector('.output-html td')!).fontFamily };
+    });
+    expect(measure.prose).toBeLessThanOrEqual(640.5); expect(measure.prose).toBeLessThan(measure.editor * .75);
+    expect(measure.proseFont).not.toContain('D2Coding'); expect(measure.tableFont).not.toContain('D2Coding');
+    expect(measure.inlineFont).toContain('D2Coding'); expect(measure.codeFont).toContain('D2Coding');
+    await expect(md).toHaveCSS('border-top-width', '0px');
+    await page.mouse.move(1, 1);
+    await expect(code.locator('.cell-toolbar')).toHaveCSS('opacity', '0');
+    const before = await code.boundingBox();
+    await code.hover(); await expect(code.locator('.cell-toolbar')).toHaveCSS('opacity', '1');
+    expect(await code.boundingBox()).toEqual(before);
+    const input = code.getByRole('textbox', { name: /Code cell editor/ });
+    await input.focus(); await input.press('Control+Home');
+    await expect(code.locator('.view-overlays .current-line')).toHaveCount(1);
+    await expect(page.locator('[data-cell-id="use"] .view-overlays .current-line')).toHaveCount(0);
+    await code.getByRole('button', { name: 'Select cell', exact: true }).click();
+    await expect(code.locator('.view-overlays .current-line')).toHaveCount(0);
+    await code.getByRole('combobox', { name: 'Output format' }).selectOption('text/plain');
+    await expect(code.locator('.notebook-outputs pre')).toHaveText('Two-line 2.117');
+    await expect(code.locator('.notebook-outputs pre')).toHaveCSS('font-family', /D2Coding/);
+    await code.getByRole('combobox', { name: 'Output format' }).selectOption('');
+    await expect(code.locator('.output-html td').first()).toHaveCSS('text-align', 'right');
+    await code.getByRole('button', { name: 'Collapse cell output', exact: true }).click();
+    await expect(code.locator('.notebook-outputs')).toHaveCount(0);
+    await code.getByRole('button', { name: '▸ Show output', exact: true }).click();
+    await expect(code.locator('.output-html table')).toBeVisible();
+    // A keyboard path must reveal actions without needing hover or double-click.
+    await md.getByRole('button', { name: 'Select cell', exact: true }).focus();
+    await expect(md.locator('.cell-toolbar')).toHaveCSS('opacity', '1');
+    await md.getByRole('button', { name: 'Edit', exact: true }).focus(); await page.keyboard.press('Enter');
+    const markdownEditor = md.getByRole('textbox', { name: /Markdown cell editor/ });
+    await markdownEditor.press('Control+End'); await page.keyboard.insertText('\n\n키보드 편집 유지');
+    await markdownEditor.press('Escape'); await expect(md.locator('.cell-markdown')).toContainText('키보드 편집 유지');
+    await page.keyboard.press('Control+s');
+    await expect.poll(async () => JSON.parse(await readFile(file, 'utf8')).cells[1].outputs).toEqual(value.cells[1].outputs);
+    for (const theme of ['one-dark', 'github-light']) {
+      await application.evaluate(({ Menu }, id) => Menu.getApplicationMenu()!.getMenuItemById(`preview-theme-${id}`)!.click(), theme);
+      await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--app-editor-background').trim())).toBe(theme === 'one-dark' ? '#282c34' : '#ffffff');
+      await page.mouse.move(1, 1); await page.screenshot({ path: test.info().outputPath(`reading-${theme}.png`) });
+    }
+    // Use a real group split: a narrow standalone window doesn't test pane-local sizing.
+    await page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), other);
+    await expect(page.getByRole('tab', { name: /other.ipynb/ })).toHaveAttribute('aria-selected', 'true');
+    const data = await page.evaluateHandle(() => new DataTransfer());
+    await page.getByRole('tab', { name: /other.ipynb/ }).dispatchEvent('dragstart', { dataTransfer: data });
+    const body = page.locator('.group-body').first(), box = (await body.boundingBox())!;
+    const point = { clientX: box.x + box.width * .98, clientY: box.y + box.height / 2, dataTransfer: data };
+    await body.dispatchEvent('dragover', point); await expect(page.locator('.group-drop-overlay')).toBeVisible();
+    await body.dispatchEvent('drop', point); await data.dispose();
+    await expect(page.locator('.editor-group')).toHaveCount(2);
+    // Notebook surfaces are retained siblings of the group chrome, keyed by tab.
+    const tabId = await page.getByRole('tab', { name: /reading.ipynb/ }).getAttribute('data-tab-id');
+    const surface = page.locator(`[data-notebook-tab="${tabId}"]`);
+    await expect(page.locator('.notebook-content:not(.inactive)')).toHaveCount(2);
+    expect((await surface.boundingBox())!.width).toBeLessThan(750);
+    const toolbar = surface.locator('.notebook-toolbar');
+    expect((await toolbar.boundingBox())!.height).toBeLessThanOrEqual(44);
+    expect(await toolbar.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
+    await expect(toolbar.getByRole('button', { name: 'Outline', exact: true })).toBeHidden();
+    await toolbar.getByRole('button', { name: 'Commands…', exact: true }).click();
+    await surface.getByRole('button', { name: 'Toggle outline', exact: true }).click();
+    await expect(surface.getByRole('navigation', { name: 'Notebook outline' })).toBeVisible();
+    await expect(surface.getByRole('combobox', { name: 'Python environment', exact: true })).toBeVisible();
+    await page.screenshot({ path: test.info().outputPath('reading-split.png') });
+  } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
+});
+
 test('notebook cells reuse Markdown and Python, preserve outputs on save, and retain Undo across deletion', async () => {
   test.setTimeout(90_000);
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-')), config = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-config-'));
@@ -169,7 +262,8 @@ test('Python cells run in one kernel, persist results, and reset discards variab
     await page.keyboard.press('Control+s');
     await expect.poll(async () => JSON.parse(await readFile(file, 'utf8')).cells[2].outputs[0]?.text).toContain('10');
     await cell.getByRole('button', { name: 'Copy cell output', exact: true }).click();
-    await expect(cell.locator('.output-actions [role="status"]')).toHaveText('Copied');
+    await expect(cell.locator('.output-feedback[role="status"]')).toHaveText('Copied');
+    await expect(cell.locator('.output-feedback[role="status"]')).toBeVisible();
     expect((await application.evaluate(({ clipboard }) => clipboard.readText())).trim()).toBe('10');
     // Cancel before window closing starts: variables must survive the canceled quit.
     await application.evaluate(({ app }) => { app.once('before-quit', event => event.preventDefault()); app.quit(); });

@@ -9,6 +9,17 @@ import {
 } from './theme-catalog';
 
 describe('theme catalog', () => {
+  it('keeps informational comments and default editor text readable in every theme', () => {
+    const luminance = (hex: string) => [1, 3, 5].map(index => parseInt(hex.slice(index, index + 2), 16) / 255)
+      .map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4)
+      .reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
+    for (const profile of THEME_PROFILES) {
+      for (const token of ['comment', 'foreground'] as const) {
+        const [low, high] = [luminance(profile.syntax[token]), luminance(profile.palette.editorBackground)].sort((a, b) => a - b);
+        expect((high + .05) / (low + .05), `${profile.id}: ${token}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
   it('모든 theme id에 Preview, Shell, Monaco용 palette를 하나씩 제공한다', () => {
     expect(THEME_PROFILES.map((profile) => profile.id)).toEqual(THEME_IDS);
     for (const profile of THEME_PROFILES) {

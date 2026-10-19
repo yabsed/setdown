@@ -88,19 +88,19 @@ export const THEME_PROFILES: readonly ThemeProfile[] = [
     id: 'paper', label: 'Paper', appearance: 'light',
     preview: { stylesheet: 'newsprint.css', prismStylesheet: 'pen-paper-coffee.css', background: '#f3f2ee' },
     palette: { ...lightBase, canvas: '#ebe9e3', surface: '#f3f2ee', raisedSurface: '#fbfaf6', chrome: '#dfddd6', editorBackground: '#f3f2ee', text: '#2d2520', mutedText: '#746d65', border: '#d0ccc2', strongBorder: '#b8b1a5', hover: '#e4e0d7', selected: '#f3f2ee', accent: '#065588', focusRing: '#4c7d98' },
-    syntax: { foreground: '#342b26', comment: '#8a8178', keyword: '#8a3b32', string: '#48643f', number: '#765b2f', link: '#065588', heading: '#6b493b', code: '#3e5f57', punctuation: '#716960' },
+    syntax: { foreground: '#342b26', comment: '#6e655d', keyword: '#8a3b32', string: '#48643f', number: '#765b2f', link: '#065588', heading: '#6b493b', code: '#3e5f57', punctuation: '#716960' },
   },
   {
     id: 'medium', label: 'Medium', appearance: 'light',
     preview: { stylesheet: 'medium.css', prismStylesheet: 'github.css', background: '#ffffff' },
     palette: { ...lightBase, canvas: '#f7f7f7', surface: '#ffffff', chrome: '#f0f0ed', editorBackground: '#ffffff', text: '#202123', mutedText: '#71737a', border: '#dededb', hover: '#ededeb', selected: '#fafafa', accent: '#2484c1', focusRing: '#4b96c5' },
-    syntax: { foreground: '#404247', comment: '#8a8d94', keyword: '#a43f4b', string: '#376b54', number: '#7657a6', link: '#2484c1', heading: '#202123', code: '#3f6577', punctuation: '#707279' },
+    syntax: { foreground: '#404247', comment: '#6c7078', keyword: '#a43f4b', string: '#376b54', number: '#7657a6', link: '#2484c1', heading: '#202123', code: '#3f6577', punctuation: '#707279' },
   },
   {
     id: 'solarized-light', label: 'Solarized Light', appearance: 'light',
     preview: { stylesheet: 'solarized-light.css', prismStylesheet: 'solarized-light.css', background: '#fdf6e3' },
     palette: { ...lightBase, canvas: '#eee8d5', surface: '#fdf6e3', raisedSurface: '#fffaf0', chrome: '#e7dfca', editorBackground: '#fdf6e3', text: '#586e75', mutedText: '#657b83', subtleText: '#93a1a1', border: '#d8cfb8', strongBorder: '#b9ae91', hover: '#e9e1cb', selected: '#f7efd9', accent: '#268bd2', focusRing: '#268bd2' },
-    syntax: { foreground: '#657b83', comment: '#93a1a1', keyword: '#859900', string: '#2aa198', number: '#d33682', link: '#268bd2', heading: '#b58900', code: '#6c71c4', punctuation: '#586e75' },
+    syntax: { foreground: '#586e75', comment: '#586e75', keyword: '#859900', string: '#2aa198', number: '#d33682', link: '#268bd2', heading: '#b58900', code: '#6c71c4', punctuation: '#586e75' },
   },
   {
     id: 'github-dark', label: 'GitHub Dark', appearance: 'dark',
@@ -112,19 +112,19 @@ export const THEME_PROFILES: readonly ThemeProfile[] = [
     id: 'night', label: 'Night', appearance: 'dark',
     preview: { stylesheet: 'night.css', prismStylesheet: 'darcula.css', background: '#363b40' },
     palette: { ...darkBase, canvas: '#2f3439', surface: '#363b40', raisedSurface: '#41474d', chrome: '#2c3136', editorBackground: '#363b40', text: '#dedede', mutedText: '#a9b0b6', border: '#474d54', strongBorder: '#606870', hover: '#41474d', selected: '#3c434a', accent: '#4a89dc', focusRing: '#5a9bea' },
-    syntax: { foreground: '#d8d8d8', comment: '#808080', keyword: '#cc7832', string: '#6a8759', number: '#6897bb', link: '#589df6', heading: '#ffc66d', code: '#a5c261', punctuation: '#a9b7c6' },
+    syntax: { foreground: '#d8d8d8', comment: '#aaaeb3', keyword: '#cc7832', string: '#6a8759', number: '#6897bb', link: '#589df6', heading: '#ffc66d', code: '#a5c261', punctuation: '#a9b7c6' },
   },
   {
     id: 'one-dark', label: 'One Dark', appearance: 'dark',
     preview: { stylesheet: 'one-dark.css', prismStylesheet: 'one-dark.css', background: '#272b33' },
     palette: { ...darkBase, canvas: '#21252b', surface: '#272b33', raisedSurface: '#303640', chrome: '#1f2329', editorBackground: '#282c34', text: '#abb2bf', mutedText: '#828997', border: '#3e4451', strongBorder: '#5c6370', hover: '#353b45', selected: '#2f3540', accent: '#61afef', focusRing: '#528bff' },
-    syntax: { foreground: '#abb2bf', comment: '#5c6370', keyword: '#c678dd', string: '#98c379', number: '#d19a66', link: '#61afef', heading: '#e5c07b', code: '#56b6c2', punctuation: '#abb2bf' },
+    syntax: { foreground: '#abb2bf', comment: '#929ba9', keyword: '#c678dd', string: '#98c379', number: '#d19a66', link: '#61afef', heading: '#e5c07b', code: '#56b6c2', punctuation: '#abb2bf' },
   },
   {
     id: 'solarized-dark', label: 'Solarized Dark', appearance: 'dark',
     preview: { stylesheet: 'solarized-dark.css', prismStylesheet: 'solarized-dark.css', background: '#002b36' },
     palette: { ...darkBase, canvas: '#00212a', surface: '#002b36', raisedSurface: '#073642', chrome: '#002630', editorBackground: '#002b36', text: '#93a1a1', mutedText: '#839496', subtleText: '#657b83', border: '#174550', strongBorder: '#2b5963', hover: '#073642', selected: '#0b3b47', accent: '#268bd2', focusRing: '#268bd2' },
-    syntax: { foreground: '#839496', comment: '#586e75', keyword: '#859900', string: '#2aa198', number: '#d33682', link: '#268bd2', heading: '#b58900', code: '#6c71c4', punctuation: '#93a1a1' },
+    syntax: { foreground: '#839496', comment: '#8b9b9d', keyword: '#859900', string: '#2aa198', number: '#d33682', link: '#268bd2', heading: '#b58900', code: '#6c71c4', punctuation: '#93a1a1' },
   },
 ];
 

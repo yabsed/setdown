@@ -26,7 +26,7 @@ Monaco's supported textarea input (`editContext: false`): native EditContext lef
 an ordinary focused find input receiving `beforeinput` without committing text
 after offscreen editor retirement. The regression checks real Korean composition
 across scrolling, subsequent normal input, and both fill and keyboard typing. Dragging starts only from
-a cell header handle, with insertion position, edge auto-scroll, selected-cell grouping
+a cell gutter handle, with insertion position, edge auto-scroll, selected-cell grouping
 and a single structural Undo. Cell selection and native text selection have separate
 clipboard scopes; copied metadata, attachments and output bundles retain exact JSON.
 
@@ -53,6 +53,43 @@ Coverage lives in `notebook-document.test.ts`, `notebook-language.test.ts`,
 The separate real-kernel integration test is
 `python3 apps/desktop/test/notebook/kernel-bridge.test.py`; it requires
 `ipykernel` and `jupyter_client` and loopback socket access.
+
+## Reading and interaction hierarchy — 2026-10-19
+
+Notebook prose and HTML tables use the local system UI/content font stack;
+code, inline code, raw text, logs and tracebacks retain D2Coding. Math retains
+its renderer font. Reading paragraphs have a 40em maximum measure, while code,
+tables and figures can use the available pane width. Rendered Markdown has no
+card header or border. A left indicator identifies selection; only the editor
+with input focus paints its current-line highlight and focus outline.
+
+Run, execution count and a dedicated drag handle occupy the left gutter.
+Structural actions appear at the cell boundary on hover, selection or keyboard
+focus without changing cell height. Output actions share a footer after the
+result, preserving the connection between code and result. Critical execution,
+error and earlier-source-output states remain visible independently of hover.
+An earlier-source notice only compares that cell's source with its recorded
+execution source; it is not proof of dependency or kernel freshness.
+
+Output HTML remains sanitized, including removal of authored CSS. App-owned
+table styles and numeric-cell alignment do not alter stored outputs or values.
+Narrow panes retain primary commands and the environment picker; secondary
+commands remain reachable through Commands. The full environment path remains
+in the native selection list and picker tooltip. Keyboard editing, text
+selection, popup Escape ownership, IME, structural Undo, full logical heights,
+and offscreen output placeholders remain governed by the guarantees above.
+
+`theme-catalog.test.ts` verifies at least 4.5:1 contrast for comments and default
+editor text against every editor background. `notebook.spec.ts` covers the
+reading layout, output formats, numeric alignment, hover geometry, focused
+highlight, keyboard editing and narrow split controls alongside existing
+IME, long-cell, output-height, execution and Undo scenarios.
+
+Implementation screenshots, measured typography, functional results and the
+separate transition benchmark are recorded in
+[Notebook readability validation](../validation/2026-10-19-notebook-readability.md).
+
+## Historical notebook validation — 2026-10-16
 
 Final functional validation passed **65 unit files / 436 tests**, **three
 benchmark comparator tests**, production build/typecheck with **zero Svelte errors
