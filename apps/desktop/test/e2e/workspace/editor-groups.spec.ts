@@ -433,6 +433,75 @@ test(`real Markdown tab drag splits ${side} with native boundary leave=${boundar
   }
 });
 
+test('Monaco find tooltip stays stable while hovering Close', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-find-hover-'));
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', path.resolve('test/fixtures/sample.md')],
+    env: { ...env, XDG_CONFIG_HOME: root } });
+  try {
+    const page = await app.firstWindow();
+    await focusApplication(app);
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(710, 500));
+    await page.locator('.new-tab-button').click();
+    const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
+    await editor.pressSequentially('dasfdsaf');
+    await editor.press('Control+f');
+    const find = page.locator('.find-widget.visible');
+    await find.getByRole('textbox', { name: 'Find', exact: true }).fill('dasfdsaf');
+    const sampleHover = async (name: string) => {
+      const close = find.getByRole('button', { name: /^Close/ });
+      await close.hover();
+      await expect(page.locator('.monaco-hover.workbench-hover')).toHaveText('Close (Escape)');
+      await expect(page.locator('.monaco-hover.workbench-hover')).toBeVisible();
+      const stability = await close.evaluate(async element => {
+        const rect = element.getBoundingClientRect();
+        const hover = document.querySelector('.monaco-hover.workbench-hover')!;
+        const initialRect = hover.getBoundingClientRect();
+        const focused = document.activeElement;
+        const start = performance.now();
+        let frames = 0, replacements = 0, intercepted = 0, resized = 0, clipped = 0, focusChanges = 0;
+        await new Promise<void>(resolve => {
+          const frame = () => {
+            frames++;
+            if (document.querySelector('.monaco-hover.workbench-hover') !== hover) replacements++;
+            if (document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2) !== element) intercepted++;
+            const currentRect = hover.getBoundingClientRect();
+            if (currentRect.width !== initialRect.width || currentRect.height !== initialRect.height) resized++;
+            // Playwright visibility alone does not catch ancestor clipping.
+            for (const x of [currentRect.left + 4, currentRect.right - 4]) {
+              for (const y of [currentRect.top + 4, currentRect.bottom - 4]) {
+                if (!hover.contains(document.elementFromPoint(x, y))) clipped++;
+              }
+            }
+            if (document.activeElement !== focused) focusChanges++;
+            if (performance.now() - start >= 1500) resolve();
+            else requestAnimationFrame(frame);
+          };
+          frame();
+        });
+        return { frames, replacements, intercepted, resized, clipped, focusChanges };
+      });
+      await writeFile(test.info().outputPath(`${name}.json`), JSON.stringify(stability, null, 2));
+      await page.screenshot({ path: test.info().outputPath(`${name}.png`) });
+      expect(stability.frames).toBeGreaterThan(1);
+      expect(stability).toMatchObject({ replacements: 0, intercepted: 0, resized: 0, clipped: 0, focusChanges: 0 });
+      await page.mouse.move(15, 400);
+      await expect(page.locator('.monaco-hover.workbench-hover')).toBeHidden();
+    };
+    await sampleHover('single');
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1400, 700));
+    await drop(page, 'Untitled.md', 0, 'right');
+    await editor.press('Control+f');
+    await find.getByRole('textbox', { name: 'Find', exact: true }).fill('dasfdsaf');
+    await sampleHover('split-active');
+    await find.getByRole('button', { name: /^Close/ }).click();
+    await expect(page.locator('.find-widget.visible')).toHaveCount(0);
+  } finally {
+    await disposeApplication(app);
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('Monaco find closes with its X button and keeps editor input usable', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-find-close-'));
   const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;

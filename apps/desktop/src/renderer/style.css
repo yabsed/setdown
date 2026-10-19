@@ -800,6 +800,9 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 .shortcut { margin-top: 9px; color: var(--app-subtle-text); font-size: 11px; }
 
 .viewer-surface, .editor-surface { position: relative; overflow: hidden; }
+/* Monaco clips code in its own overflow guard. Let toolbar tooltips extend
+   above the editor; the enclosing group still bounds them to their pane. */
+.editor-surface { overflow: visible; }
 .viewer-surface, .reader-body, .preview-frames { background: var(--preview-background); }
 .viewer-surface { display: block; }
 .reader-body { display: flex; width: 100%; height: 100%; min-width: 0; min-height: 0; }
@@ -1179,6 +1182,10 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
   background-size: 100% 100%;
 }
 .group-editor-host, .group-monaco-instance { width: 100%; height: 100%; }
+/* Monaco measures tooltips before positioning their context view. A split edge
+   must not shrink/wrap them afterward: the extra line can cover the hovered
+   button and repeatedly dismiss/recreate its own tooltip. */
+.group-monaco-instance .workbench-hover-container { width: max-content; }
 .group-content { position: absolute; padding-top: 74px; pointer-events: none; min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); overflow: hidden; }
 .group-content > * { grid-column: 1; grid-row: 2; min-width: 0; min-height: 0; pointer-events: auto; }
 .group-content > .notice { grid-column: 1; grid-row: 1; }

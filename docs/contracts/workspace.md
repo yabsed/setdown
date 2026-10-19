@@ -206,6 +206,10 @@ Monaco Find actions must receive their click before mouse focus can activate and
 reparent a background editor. The Close button works while another split owns
 focus, including with no search results, and returns input to its own editor.
 Keyboard activation remains available. `editor-groups.spec.ts` covers both paths.
+Find tooltips remain visible above the editor and retain their measured size at
+split edges. Positioning must not wrap a tooltip onto its own target and trigger repeated mouseout/recreation;
+the same Electron test file holds a real pointer over Close and checks stable
+tooltip identity, dimensions, clipping, hit testing, and keyboard focus across frames.
 
 `editor-groups.spec.ts`, `tab-detach.spec.ts`, `editor-groups.test.ts`,
 `preview-presentation.test.ts`, and `media-cache.test.ts` cover these guarantees.
