@@ -69,7 +69,8 @@
       // CSS sticky placement and the synchronized offset keep a single user scroll.
       const scroll = container.closest('.notebook-scroll') as HTMLElement;
       const syncScroll = () => {
-        const offset = Math.max(0, Math.min(height - element.clientHeight, scroll.getBoundingClientRect().top - frame.getBoundingClientRect().top));
+        // Follow the actual sticky placement, including its clamp at the cell's end.
+        const offset = Math.max(0, Math.min(height - element.clientHeight, element.getBoundingClientRect().top - frame.getBoundingClientRect().top));
         if (Math.abs(view.getScrollTop() - offset) > .5) view.setScrollPosition({ scrollTop: offset, scrollLeft: 0 });
       };
       const updateHeight = () => {

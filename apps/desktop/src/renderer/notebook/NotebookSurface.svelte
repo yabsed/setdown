@@ -417,7 +417,12 @@
   .execution-note select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
   .execution-note:focus-within { outline: 2px solid var(--app-focus-ring); border-radius: 3px; }
   .execution-note:hover { background: var(--app-hover); }
-  .notebook-scroll { overflow: auto; flex: 1; padding: 30px clamp(12px, 2.5cqw, 40px) 100px 12px; min-height: 0; scrollbar-gutter: stable; }
+  .notebook-scroll { overflow: auto; flex: 1; padding: 0 clamp(12px, 2.5cqw, 40px) 0 12px; min-height: 0; scrollbar-gutter: stable; }
+  /* Vertical scroll padding offsets sticky editors too. Keep document spacing
+     in the scrolling flow so a long cell can meet the viewport's top edge. */
+  .notebook-scroll::before, .notebook-scroll::after { content: ''; display: block; }
+  .notebook-scroll::before { height: 30px; }
+  .notebook-scroll::after { height: 100px; }
   @container (max-width: 1100px) { .summary { display: none; } }
   @container (max-width: 900px) { .secondary-tool { display: none; } }
   @container (max-width: 540px) { .notebook-toolbar { gap: 2px; padding-inline: 6px; font-size: 12px; } .notebook-toolbar button { padding-inline: 5px; } .execution-note { max-width: 120px; } .notebook-scroll { padding-inline: 6px; } }

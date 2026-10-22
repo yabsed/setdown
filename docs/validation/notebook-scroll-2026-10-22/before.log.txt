@@ -1,0 +1,55 @@
+
+Running 1 test using 1 worker
+
+(node:291654) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[1/1] test/e2e/notebook/notebook.spec.ts:241:39 › long notebook cells meet the scroll viewport without a blank strip at 100% app zoom
+dbus-daemon[291642]: [session uid=1000 pid=291642] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=291665 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[291642]: [session uid=1000 pid=291642] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=291665 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[291642]: [session uid=1000 pid=291642] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.2' (uid=1000 pid=291767 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[291642]: [session uid=1000 pid=291642] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[291642]: [session uid=1000 pid=291642] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[291642]: [session uid=1000 pid=291642] Activating service name='org.freedesktop.portal.Documents' requested by ':1.2' (uid=1000 pid=291767 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[291642]: [session uid=1000 pid=291642] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[291642]: [session uid=1000 pid=291642] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.2' (uid=1000 pid=291767 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[291642]: [session uid=1000 pid=291642] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=291802 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[291642]: [session uid=1000 pid=291642] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[291642]: [session uid=1000 pid=291642] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[291642]: [session uid=1000 pid=291642] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.2' (uid=1000 pid=291767 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[291642]: [session uid=1000 pid=291642] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:291767): xdg-desktop-portal-WARNING **: 19:21:02.486: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[291642]: [session uid=1000 pid=291642] Activating service name='org.freedesktop.secrets' requested by ':1.2' (uid=1000 pid=291767 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+** Message: 19:21:02.507: couldn't access control socket: /tmp/setdown-display-runtime.3iNsX6/keyring/control: No such file or directory
+discover_other_daemon: 0dbus-daemon[291642]: [session uid=1000 pid=291642] Successfully activated service 'org.freedesktop.portal.Desktop'
+dbus-daemon[291642]: [session uid=1000 pid=291642] Successfully activated service 'org.freedesktop.secrets'
+  1) test/e2e/notebook/notebook.spec.ts:241:39 › long notebook cells meet the scroll viewport without a blank strip at 100% app zoom 
+
+    Error: expect(received).toBeLessThan(expected)
+
+    Expected: < 1
+    Received:   30
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      277 |       await scroll.evaluate((node, offset) => node.scrollTop = offset, offset);
+      278 |       await expect(page.locator('.notebook-sticky')).toHaveText('Tiles');
+    > 279 |       await expect.poll(async () => Math.abs((await geometry()).gap)).toBeLessThan(1);
+          |                                                                       ^
+      280 |       await expect.poll(async () => Math.abs((await geometry()).bottomGap)).toBeLessThan(1);
+      281 |       await expect.poll(async () => Math.abs((await geometry()).lineError)).toBeLessThan(1);
+      282 |     }
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/notebook/notebook.spec.ts:279:71
+
+    Error Context: ../../../../../../../../../tmp/setdown-notebook-clip-before-tests/notebook-notebook-long-not-0df03-blank-strip-at-100-app-zoom/error-context.md
+
+
+  1 failed
+    test/e2e/notebook/notebook.spec.ts:241:39 › long notebook cells meet the scroll viewport without a blank strip at 100% app zoom 

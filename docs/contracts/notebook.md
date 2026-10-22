@@ -20,7 +20,15 @@ zoom. There is no 600px cell or output height cap. Notebook scrolling owns wheel
 input over code and keyboard caret reveal; shrinking/Undo and view restoration
 must not leave an independent editor scroll offset. Monaco renders a viewport-sized
 sticky inner editor whose offset follows the outer scroll; its full logical height
-is reserved. Offscreen focused/composing editors are retained, and output placeholders
+is reserved. Document start/end spacing scrolls with the content and must not
+inset the sticky editor's viewport. The editor's internal offset follows its actual
+position inside the logical cell, including the clamp at the cell's end. Scrolling
+through a long cell must not leave a blank strip below the section heading or
+shift visible lines from their logical positions. `notebook.spec.ts` checks both
+viewport edges and line coordinates at 90%, 100% and 130% app zoom, after resizing
+and after returning to the document start.
+Execution evidence: [Notebook scroll validation](../validation/2026-10-22-notebook-scroll.md).
+Offscreen focused/composing editors are retained, and output placeholders
 reserve measured height without margin-collapse shifts. These virtual views use
 Monaco's supported textarea input (`editContext: false`): native EditContext left
 an ordinary focused find input receiving `beforeinput` without committing text

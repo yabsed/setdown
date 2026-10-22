@@ -238,6 +238,73 @@ test('long cells grow with their contents and scroll only the notebook, includin
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
 });
 
+for (const appZoom of [100, 130, 90]) test(`long notebook cells meet the scroll viewport without a blank strip at ${appZoom}% app zoom`, async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-sticky-')), file = path.join(root, 'sticky.ipynb');
+  const source = Array.from({ length: 140 }, (_, index) => `value_${index} = ${index}`).join('\n');
+  await writeFile(file, JSON.stringify({ nbformat: 4, nbformat_minor: 5, metadata: {}, cells: [
+    { id: 'heading', cell_type: 'markdown', metadata: {}, source: '### Tiles\n\nSection heading.' },
+    { id: 'long', cell_type: 'code', metadata: {}, source, outputs: [], execution_count: null },
+    { id: 'end', cell_type: 'markdown', metadata: {}, source: '## End\n\nAfter the long cell.' },
+  ] }));
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+  const application = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await application.firstWindow(); await focusApplication(application);
+    await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1041, 801));
+    await page.evaluate(steps => window.marktex.changeZoom(steps, 'app'), (appZoom - 100) / 10);
+    await expect.poll(() => page.evaluate(async () => (await window.marktex.getZoom()).app)).toBe(appZoom);
+    const scroll = page.locator('.notebook-scroll'), cell = page.locator('[data-cell-id="long"]');
+    await expect(page.locator('[data-cell-id="heading"] h3')).toHaveText('Tiles');
+    await expect.poll(() => cell.locator('.cell-editor').evaluate(node => node.clientHeight)).toBeGreaterThan(2500);
+    const initial = await page.evaluate(() => {
+      const scroll = document.querySelector('.notebook-scroll')!, heading = document.querySelector('[data-cell-id="heading"]')!;
+      const frame = document.querySelector('[data-cell-id="long"] .cell-editor')!, line = frame.querySelector('.view-line')!;
+      return { startGap: heading.getBoundingClientRect().top - scroll.getBoundingClientRect().top,
+        lineInset: line.getBoundingClientRect().top - frame.getBoundingClientRect().top };
+    });
+    expect(initial.startGap).toBeCloseTo(30, 0);
+    const geometry = () => page.evaluate(lineInset => {
+      const scroll = document.querySelector('.notebook-scroll')!.getBoundingClientRect();
+      const frame = document.querySelector('[data-cell-id="long"] .cell-editor')!.getBoundingClientRect();
+      const editor = document.querySelector('[data-cell-id="long"] .editor-viewport')!.getBoundingClientRect();
+      const line = [...document.querySelectorAll('[data-cell-id="long"] .view-line')]
+        .find(node => node.getBoundingClientRect().top >= scroll.top && node.getBoundingClientRect().bottom <= scroll.bottom);
+      const rect = line?.getBoundingClientRect(), index = Number(/value_(\d+)/.exec(line?.textContent ?? '')?.[1]);
+      // A zoomed DOMRect height is pixel-quantized; multiplying that rounding by
+      // the line index invents drift. Monaco lays out lines in logical CSS pixels.
+      const lineHeight = line ? parseFloat(getComputedStyle(line).lineHeight) : 0;
+      return { gap: editor.top - scroll.top, bottomGap: editor.bottom - scroll.bottom, endGap: frame.bottom - editor.bottom,
+        lineError: rect ? rect.top - (frame.top + lineInset + index * lineHeight) : Infinity, line: line?.textContent };
+    }, initial.lineInset);
+    for (const offset of [1100, 1257, 900]) {
+      await scroll.evaluate((node, offset) => node.scrollTop = offset, offset);
+      await expect(page.locator('.notebook-sticky')).toHaveText('Tiles');
+      await expect.poll(async () => Math.abs((await geometry()).gap)).toBeLessThan(1);
+      await expect.poll(async () => Math.abs((await geometry()).bottomGap)).toBeLessThan(1);
+      await expect.poll(async () => Math.abs((await geometry()).lineError)).toBeLessThan(1);
+    }
+    await writeFile(test.info().outputPath('sticky-geometry.json'), JSON.stringify({ appZoom, initial, scrolled: await geometry() }, null, 2));
+    await page.screenshot({ path: test.info().outputPath('sticky-scroll.png') });
+    // The editor also follows a resized viewport while still inside the long cell.
+    await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(941, 701));
+    await expect.poll(async () => Math.abs((await geometry()).gap)).toBeLessThan(1);
+    await expect.poll(async () => Math.abs((await geometry()).bottomGap)).toBeLessThan(1);
+    await expect.poll(async () => Math.abs((await geometry()).lineError)).toBeLessThan(1);
+    await scroll.evaluate(node => {
+      const frame = node.querySelector('[data-cell-id="long"] .cell-editor')!;
+      node.scrollTop += frame.getBoundingClientRect().bottom - node.getBoundingClientRect().top - 100;
+    });
+    await expect.poll(async () => Math.abs((await geometry()).endGap)).toBeLessThan(1);
+    await expect.poll(async () => Math.abs((await geometry()).lineError)).toBeLessThan(1);
+    await expect(cell.locator('.view-line').filter({ hasText: /^value_139\s*=\s*139$/ })).toBeInViewport();
+    await scroll.evaluate(node => node.scrollTop = 0);
+    await expect(page.locator('.notebook-sticky')).toHaveCount(0);
+    await expect.poll(() => page.locator('[data-cell-id="heading"]').evaluate(node =>
+      node.getBoundingClientRect().top - node.closest('.notebook-scroll')!.getBoundingClientRect().top)).toBeCloseTo(30, 0);
+    expect(JSON.parse(await readFile(file, 'utf8')).cells[1].source).toBe(source);
+  } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
+});
+
 test('Python cells run in one kernel, persist results, and reset discards variables', async () => {
   test.setTimeout(90_000);
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-run-')), file = path.join(root, 'run.ipynb');
