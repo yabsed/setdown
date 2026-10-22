@@ -1,0 +1,455 @@
+{
+  "date": "2026-10-23",
+  "basedpyright": "1.40.2",
+  "notebook": "/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final/results/02/02_03_selector_sweep.ipynb",
+  "notebookSha256": "b1787516b407070529a2dce75f34322aeab62fa2decdb905b3bc0226abb8f3dd",
+  "python": "/home/yabsed/miniconda3/bin/python3",
+  "root": {
+    "path": "/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final",
+    "reason": "Repository boundary (.git)"
+  },
+  "sourceDirectory": "/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final/vlm-flash/src",
+  "nativeNotebookSync": true,
+  "kernelStarted": false,
+  "guiStarted": false,
+  "projectConfig": {
+    "extraPaths": [
+      "./vlm-flash/src"
+    ],
+    "typeCheckingMode": "off",
+    "reportMissingImports": "warning",
+    "reportMissingModuleSource": "warning",
+    "reportInvalidTypeForm": "warning",
+    "reportUndefinedVariable": "warning"
+  },
+  "results": [
+    {
+      "name": "current-settings",
+      "root": "/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final",
+      "target": {
+        "uri": "vscode-notebook-cell:///home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final/results/02/02_03_selector_sweep.ipynb#cell-4.0",
+        "version": 1,
+        "diagnostics": [
+          {
+            "range": {
+              "start": {
+                "line": 1,
+                "character": 7
+              },
+              "end": {
+                "line": 1,
+                "character": 15
+              }
+            },
+            "message": "Import \"vlmflash\" could not be resolved",
+            "severity": 2,
+            "code": "reportMissingImports",
+            "source": "basedpyright",
+            "codeDescription": {
+              "href": "https://docs.basedpyright.com/v1.40.2/configuration/config-files/#reportMissingImports"
+            }
+          }
+        ]
+      },
+      "negativeControl": {
+        "uri": "vscode-notebook-cell:///home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final/results/02/02_03_selector_sweep.ipynb#negative-control.0",
+        "version": 1,
+        "diagnostics": [
+          {
+            "range": {
+              "start": {
+                "line": 0,
+                "character": 7
+              },
+              "end": {
+                "line": 0,
+                "character": 46
+              }
+            },
+            "message": "Import \"setdown_import_probe_nonexistent_8fd913\" could not be resolved",
+            "severity": 2,
+            "code": "reportMissingImports",
+            "source": "basedpyright",
+            "codeDescription": {
+              "href": "https://docs.basedpyright.com/v1.40.2/configuration/config-files/#reportMissingImports"
+            }
+          },
+          {
+            "range": {
+              "start": {
+                "line": 0,
+                "character": 7
+              },
+              "end": {
+                "line": 0,
+                "character": 46
+              }
+            },
+            "message": "Import \"setdown_import_probe_nonexistent_8fd913\" is not accessed",
+            "severity": 4,
+            "code": "reportUnusedImport",
+            "source": "basedpyright",
+            "tags": [
+              1
+            ],
+            "data": {
+              "category": 3,
+              "rule": "reportUnusedImport"
+            },
+            "codeDescription": {
+              "href": "https://docs.basedpyright.com/v1.40.2/configuration/config-files/#reportUnusedImport"
+            }
+          }
+        ]
+      },
+      "hover": null,
+      "definition": null,
+      "logs": [
+        "basedpyright language server 1.40.2 starting",
+        "Server root directory: file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/basedpyright/dist",
+        "Starting service instance \"/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final\"",
+        "Setting pythonPath for service \"/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final\": \"/home/yabsed/miniconda3/bin/python3\"",
+        "No include entries specified; assuming /home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final",
+        "Auto-excluding **/node_modules",
+        "Auto-excluding **/__pycache__",
+        "Auto-excluding **/.*",
+        "Auto-excluding **/__editable__.*",
+        "Assuming Python version 3.13.11.final.0",
+        "Setting pythonPath for service \"/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final\": \"/home/yabsed/miniconda3/bin/python3\"",
+        "No include entries specified; assuming /home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final",
+        "Auto-excluding **/node_modules",
+        "Auto-excluding **/__pycache__",
+        "Auto-excluding **/.*",
+        "Auto-excluding **/__editable__.*",
+        "Assuming Python version 3.13.11.final.0",
+        "Found 31 source files"
+      ]
+    },
+    {
+      "name": "python-extraPaths-only",
+      "root": "/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final",
+      "target": {
+        "uri": "vscode-notebook-cell:///home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final/results/02/02_03_selector_sweep.ipynb#cell-4.0",
+        "version": 1,
+        "diagnostics": [
+          {
+            "range": {
+              "start": {
+                "line": 1,
+                "character": 7
+              },
+              "end": {
+                "line": 1,
+                "character": 15
+              }
+            },
+            "message": "Import \"vlmflash\" could not be resolved",
+            "severity": 2,
+            "code": "reportMissingImports",
+            "source": "basedpyright",
+            "codeDescription": {
+              "href": "https://docs.basedpyright.com/v1.40.2/configuration/config-files/#reportMissingImports"
+            }
+          }
+        ]
+      },
+      "negativeControl": {
+        "uri": "vscode-notebook-cell:///home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final/results/02/02_03_selector_sweep.ipynb#negative-control.0",
+        "version": 1,
+        "diagnostics": [
+          {
+            "range": {
+              "start": {
+                "line": 0,
+                "character": 7
+              },
+              "end": {
+                "line": 0,
+                "character": 46
+              }
+            },
+            "message": "Import \"setdown_import_probe_nonexistent_8fd913\" could not be resolved",
+            "severity": 2,
+            "code": "reportMissingImports",
+            "source": "basedpyright",
+            "codeDescription": {
+              "href": "https://docs.basedpyright.com/v1.40.2/configuration/config-files/#reportMissingImports"
+            }
+          },
+          {
+            "range": {
+              "start": {
+                "line": 0,
+                "character": 7
+              },
+              "end": {
+                "line": 0,
+                "character": 46
+              }
+            },
+            "message": "Import \"setdown_import_probe_nonexistent_8fd913\" is not accessed",
+            "severity": 4,
+            "code": "reportUnusedImport",
+            "source": "basedpyright",
+            "tags": [
+              1
+            ],
+            "data": {
+              "category": 3,
+              "rule": "reportUnusedImport"
+            },
+            "codeDescription": {
+              "href": "https://docs.basedpyright.com/v1.40.2/configuration/config-files/#reportUnusedImport"
+            }
+          }
+        ]
+      },
+      "hover": null,
+      "definition": null,
+      "logs": [
+        "basedpyright language server 1.40.2 starting",
+        "Server root directory: file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/basedpyright/dist",
+        "Starting service instance \"/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final\"",
+        "Setting pythonPath for service \"/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final\": \"/home/yabsed/miniconda3/bin/python3\"",
+        "No include entries specified; assuming /home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final",
+        "Auto-excluding **/node_modules",
+        "Auto-excluding **/__pycache__",
+        "Auto-excluding **/.*",
+        "Auto-excluding **/__editable__.*",
+        "Assuming Python version 3.13.11.final.0",
+        "Setting pythonPath for service \"/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final\": \"/home/yabsed/miniconda3/bin/python3\"",
+        "No include entries specified; assuming /home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final",
+        "Auto-excluding **/node_modules",
+        "Auto-excluding **/__pycache__",
+        "Auto-excluding **/.*",
+        "Auto-excluding **/__editable__.*",
+        "Assuming Python version 3.13.11.final.0",
+        "Found 31 source files"
+      ]
+    },
+    {
+      "name": "basedpyright-extraPaths",
+      "root": "/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final",
+      "target": {
+        "uri": "vscode-notebook-cell:///home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final/results/02/02_03_selector_sweep.ipynb#cell-4.0",
+        "version": 1,
+        "diagnostics": []
+      },
+      "negativeControl": {
+        "uri": "vscode-notebook-cell:///home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final/results/02/02_03_selector_sweep.ipynb#negative-control.0",
+        "version": 1,
+        "diagnostics": [
+          {
+            "range": {
+              "start": {
+                "line": 0,
+                "character": 7
+              },
+              "end": {
+                "line": 0,
+                "character": 46
+              }
+            },
+            "message": "Import \"setdown_import_probe_nonexistent_8fd913\" could not be resolved",
+            "severity": 2,
+            "code": "reportMissingImports",
+            "source": "basedpyright",
+            "codeDescription": {
+              "href": "https://docs.basedpyright.com/v1.40.2/configuration/config-files/#reportMissingImports"
+            }
+          },
+          {
+            "range": {
+              "start": {
+                "line": 0,
+                "character": 7
+              },
+              "end": {
+                "line": 0,
+                "character": 46
+              }
+            },
+            "message": "Import \"setdown_import_probe_nonexistent_8fd913\" is not accessed",
+            "severity": 4,
+            "code": "reportUnusedImport",
+            "source": "basedpyright",
+            "tags": [
+              1
+            ],
+            "data": {
+              "category": 3,
+              "rule": "reportUnusedImport"
+            },
+            "codeDescription": {
+              "href": "https://docs.basedpyright.com/v1.40.2/configuration/config-files/#reportUnusedImport"
+            }
+          }
+        ]
+      },
+      "hover": {
+        "contents": {
+          "kind": "markdown",
+          "value": "```python\n(module) vlmflash\n```\n---\nvlmflash: Neuron Chunking, I/O-efficient activation sparsification.\n\nReference implementation of \"VLM in a flash: I/O-Efficient Sparsification\nof Vision-Language Model via Neuron Chunking\" (NeurIPS 2025,  \narXiv:2511.18692)."
+        },
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 7
+          },
+          "end": {
+            "line": 1,
+            "character": 15
+          }
+        }
+      },
+      "definition": [
+        {
+          "uri": "file:///home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final/vlm-flash/src/vlmflash/__init__.py",
+          "range": {
+            "start": {
+              "line": 0,
+              "character": 0
+            },
+            "end": {
+              "line": 0,
+              "character": 0
+            }
+          }
+        }
+      ],
+      "logs": [
+        "basedpyright language server 1.40.2 starting",
+        "Server root directory: file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/basedpyright/dist",
+        "Starting service instance \"/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final\"",
+        "Setting pythonPath for service \"/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final\": \"/home/yabsed/miniconda3/bin/python3\"",
+        "No include entries specified; assuming /home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final",
+        "Auto-excluding **/node_modules",
+        "Auto-excluding **/__pycache__",
+        "Auto-excluding **/.*",
+        "Auto-excluding **/__editable__.*",
+        "Assuming Python version 3.13.11.final.0",
+        "Setting pythonPath for service \"/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final\": \"/home/yabsed/miniconda3/bin/python3\"",
+        "No include entries specified; assuming /home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final",
+        "Auto-excluding **/node_modules",
+        "Auto-excluding **/__pycache__",
+        "Auto-excluding **/.*",
+        "Auto-excluding **/__editable__.*",
+        "Assuming Python version 3.13.11.final.0",
+        "Found 31 source files"
+      ]
+    },
+    {
+      "name": "project-config",
+      "root": "/tmp/setdown-import-config-KtHWUZ",
+      "target": {
+        "uri": "vscode-notebook-cell:///tmp/setdown-import-config-KtHWUZ/results/02/02_03_selector_sweep.ipynb#cell-4.0",
+        "version": 1,
+        "diagnostics": []
+      },
+      "negativeControl": {
+        "uri": "vscode-notebook-cell:///tmp/setdown-import-config-KtHWUZ/results/02/02_03_selector_sweep.ipynb#negative-control.0",
+        "version": 1,
+        "diagnostics": [
+          {
+            "range": {
+              "start": {
+                "line": 0,
+                "character": 7
+              },
+              "end": {
+                "line": 0,
+                "character": 46
+              }
+            },
+            "message": "Import \"setdown_import_probe_nonexistent_8fd913\" could not be resolved",
+            "severity": 2,
+            "code": "reportMissingImports",
+            "source": "basedpyright",
+            "codeDescription": {
+              "href": "https://docs.basedpyright.com/v1.40.2/configuration/config-files/#reportMissingImports"
+            }
+          },
+          {
+            "range": {
+              "start": {
+                "line": 0,
+                "character": 7
+              },
+              "end": {
+                "line": 0,
+                "character": 46
+              }
+            },
+            "message": "Import \"setdown_import_probe_nonexistent_8fd913\" is not accessed",
+            "severity": 4,
+            "code": "reportUnusedImport",
+            "source": "basedpyright",
+            "tags": [
+              1
+            ],
+            "data": {
+              "category": 3,
+              "rule": "reportUnusedImport"
+            },
+            "codeDescription": {
+              "href": "https://docs.basedpyright.com/v1.40.2/configuration/config-files/#reportUnusedImport"
+            }
+          }
+        ]
+      },
+      "hover": {
+        "contents": {
+          "kind": "markdown",
+          "value": "```python\n(module) vlmflash\n```\n---\nvlmflash: Neuron Chunking, I/O-efficient activation sparsification.\n\nReference implementation of \"VLM in a flash: I/O-Efficient Sparsification\nof Vision-Language Model via Neuron Chunking\" (NeurIPS 2025,  \narXiv:2511.18692)."
+        },
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 7
+          },
+          "end": {
+            "line": 1,
+            "character": 15
+          }
+        }
+      },
+      "definition": [
+        {
+          "uri": "file:///tmp/setdown-import-config-KtHWUZ/vlm-flash/src/vlmflash/__init__.py",
+          "range": {
+            "start": {
+              "line": 0,
+              "character": 0
+            },
+            "end": {
+              "line": 0,
+              "character": 0
+            }
+          }
+        }
+      ],
+      "logs": [
+        "basedpyright language server 1.40.2 starting",
+        "Server root directory: file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/basedpyright/dist",
+        "Starting service instance \"/tmp/setdown-import-config-KtHWUZ\"",
+        "Loading configuration file at /tmp/setdown-import-config-KtHWUZ/pyrightconfig.json",
+        "Setting pythonPath for service \"/tmp/setdown-import-config-KtHWUZ\": \"/home/yabsed/miniconda3/bin/python3\"",
+        "No include entries specified; assuming /tmp/setdown-import-config-KtHWUZ",
+        "Auto-excluding **/node_modules",
+        "Auto-excluding **/__pycache__",
+        "Auto-excluding **/.*",
+        "Auto-excluding **/__editable__.*",
+        "Assuming Python version 3.13.11.final.0",
+        "Loading configuration file at /tmp/setdown-import-config-KtHWUZ/pyrightconfig.json",
+        "Setting pythonPath for service \"/tmp/setdown-import-config-KtHWUZ\": \"/home/yabsed/miniconda3/bin/python3\"",
+        "No include entries specified; assuming /tmp/setdown-import-config-KtHWUZ",
+        "Auto-excluding **/node_modules",
+        "Auto-excluding **/__pycache__",
+        "Auto-excluding **/.*",
+        "Auto-excluding **/__editable__.*",
+        "Assuming Python version 3.13.11.final.0",
+        "No source files found."
+      ]
+    }
+  ]
+}

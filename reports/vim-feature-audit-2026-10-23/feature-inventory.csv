@@ -1,0 +1,126 @@
+﻿id,vim_behavior,user_benefit,setdown_status,priority,recommendation
+A01,"operator + motion, `d`/`c`/`y` + 범위",선택과 작업을 조합,제안,P1,키 문법보다 범위 계산과 명령의 분리를 먼저 구현
+A02,"count, `3w`, `2d3w`",같은 동작을 수량으로 지정,제안,P2,숫자 prefix 전체 구현은 Vim 모드 단계; 일반 명령은 반복 횟수 입력으로 가능
+A03,`w/b/e`와 `W/B/E`,식별자 단위와 공백 구분 덩어리 단위를 선택,기반/부분,P1,Monaco word/subword 이동과 비교해 빈 부분만 추가
+A04,"`f/F/t/T`, `;`, `,`",현재 줄의 특정 문자까지 빠르게 이동·선택,제안,P1,다음 문자 찾기와 직전 문자 찾기 반복을 명령으로 제공
+A05,`iw/aw`,단어만 또는 주변 공백까지 처리,기반/부분,P1,delete에 따른 공백 처리까지 명세해야 smart select와 구분됨
+A06,"`i""/a""`, `i'/a'`",문자열 내용 교체 시 따옴표 보존,기반/부분,P1,"escape, 빈 문자열, 줄 경계를 테스트; Vim quote 객체는 기본적으로 한 줄 범위"
+A07,"`i)/a)`, `i]/a]`, `i}/a}`",중첩 괄호 안팎의 범위 선택,기반/부분,P1,Monaco bracket/selection provider 활용; 잘못된 문법의 fallback 정의
+A08,`it/at`,HTML/XML tag 내부·전체 처리,기반/부분,P2,언어 provider 우선; 정규식만으로 JSX까지 정확하다고 약속하지 않기
+A09,"`is/as`, `ip/ap`",문장·문단 단위 편집,제안,P1,"한국어 문장, Markdown 목록·코드 fence는 Vim 휴리스틱과 별도 정책"
+A10,"`gv`, Visual의 `o`","마지막 선택 복원, 선택의 반대 끝 조작",기반/부분,P1,cursor undo와 별개인 ‘마지막 범위 다시 선택’의 가치가 큼
+A11,"Visual block, `I/A`",여러 행의 같은 열에 삽입,기반/부분,P1,"Monaco column selection·multicursor 재사용, 탭·한글·짧은 행 차이 확인"
+A12,"`gj/gk`, `g0/g$`",실제 행과 화면에 줄바꿈된 행을 구별,기반/부분,P1,긴 Markdown 문단에서 중요; soft wrap과 파일 개행을 섞지 않기
+B01,"`J`, `gJ`",공백을 넣거나 그대로 행 결합,기반/부분,P0,`editor.action.joinLines` 노출; 공백 없는 결합은 별도 의미로 확인
+B02,"`>`, `<`, `=`",들여쓰기 이동·재정렬,제품/기반,P0,기존 indent와 formatter를 명령 이름으로 구분
+B03,"`gq`, `gw`","문단을 폭에 맞춰 재배치, 커서 유지 옵션",부분,P1,Markdown 구조를 보존하는 reflow; wrap 보기와 다른 편집
+B04,"`gu`, `gU`, `g~`",선택 범위의 소문자·대문자·case 반전,기반,P0,Monaco uppercase/lowercase 재사용; Unicode 정책 확인
+B05,`:sort`,행 정렬,기반,P0,"기본 명령 재사용, locale·숫자·키 기준은 명시적 옵션"
+B06,"`:sort u`, `:sort n` 등",중복 제거·숫자 기준 정렬,부분,P1,단순 사전순 정렬과 구분; 원래 순서 보존 중복 제거도 별도 명령 후보
+B07,`Ctrl-A/Ctrl-X`,커서 근처 정수 증감,제안,P1,부호·진법·선행 0·날짜처럼 보이는 텍스트의 범위를 명시
+B08,Visual의 `g Ctrl-A`,여러 행에 증가하는 번호 부여,제안,P1,목록 번호·실험 번호 작성에 직접 유용
+B09,"`:move`, `:copy`",행 범위의 이동·복제,기반,P0,Monaco 행 이동·복제 이용; 목록 구조 편집은 후속
+B10,"`:retab`, 탭 관련 옵션",탭과 공백 정리,기반/부분,P1,문자열 내용·Makefile 탭을 파괴하지 않도록 언어별 범위 구분
+B11,선택 `comment` 패키지,언어의 commentstring에 맞춘 주석 토글,기반,P0,Monaco comment contribution 활용; Vim core 명령이라고 오기하지 않기
+B12,"`r`, `R`, `gR`",글자 교체·덮어쓰기·화면 열을 고려한 교체,기반/부분,P2,virtual replace까지 복제할 수요는 낮음; 조합 문자 검증 비용 큼
+C01,`.`,마지막 편집을 새 위치에서 반복,제안,P1,확정된 명령·범위 의도를 기록하는 Setdown 방식 권장
+C02,count와 dot,직전 편집의 반복 수 교체,제안,P2,기존 count를 곱하는지 대체하는지 UI에서 모호하지 않게
+C03,"`q{reg}`, `@{reg}`, `@@`",작업 기록·재생·직전 매크로 재생,제안,P2,키 입력 녹화보다 명령 실행 이력 기반 설계
+C04,"`:normal`, `:argdo`, `:bufdo`",범위·파일 집합에 동일 작업,부분/제안,P2,임의 Ex 실행 대신 검토 가능한 배치 편집 계획
+C05,`:global`,조건에 맞는 행에 작업 적용,제안,P1,일치 행 삭제·변환 UI; 두 단계의 대상 수집과 적용
+C06,"`u`, `Ctrl-R`, Undo 경계",사용자가 생각한 작업 단위로 취소,제품,P0,새 명령도 기존 Monaco Undo에 들어가게 함
+C07,"`:undolist`, `g-/g+`",되돌린 뒤 새 편집을 해도 이전 가지 방문,보류,P2,Monaco 선형 Undo와 구조가 다름; 작은 버튼 추가가 아님
+C08,"`:earlier 10s`, `:earlier 1f`",시간·저장 경계를 기준으로 복귀,보류,P2,문서 checkpoint가 우선; 정확한 시간 이동은 별도 이력 저장 필요
+C09,"`undofile`, `:wundo/:rundo`",파일을 다시 열어도 Undo 유지,보류,P2,"디스크 내용 hash, 수명, 용량, 버전 호환성 설계 필요"
+C10,"`:undojoin`, `Ctrl-G u`",자동 수정 합치기·입력 그룹 분리,부분,P1,붙여넣기·자동 서식·다중 view 전환에서 사용자 의도대로 묶기
+D01,"이름 있는 `""a`–`""z`",여러 조각을 이름별로 보관,제안,P0,문자 이름 강제보다 제목·미리보기 있는 저장소 UI
+D02,uppercase register append,여러 곳에서 복사한 내용을 하나로 모음,제안,P1,구분 개행과 문자/행 타입의 결합 규칙 필요
+D03,yank register `0`,삭제 후에도 마지막 복사 유지,제안,P0,OS 클립보드와 별도로 마지막 명시적 복사 보존
+D04,numbered delete / small-delete,삭제한 조각을 다시 찾음,제안,P1,크기·개수 상한 있는 삭제 기록; 모든 키 입력 로그는 필요 없음
+D05,black-hole `_`,저장소를 바꾸지 않는 삭제,부분,P1,Setdown 기본 Delete의 의미와 구별; 매크로·배치 삭제에 저장 여부 옵션
+D06,character/line/block register type,붙여넣기 형태 보존,기반/부분,P1,멀티커서 순서·행끝 개행·직사각형을 명시적으로 저장
+D07,"`:registers`, register 선택 후 삽입",내용 확인 후 정확한 조각 붙이기,제안,P0,"복사 이력 검색, pin, 삭제를 같은 UI로 제공"
+D08,hlyank / 선택적 put highlight,방금 복사·붙인 범위가 눈에 보임,제안,P0,"짧은 decoration, view 종료 시 해제; 움직임 감소 설정 존중"
+E01,`incsearch`,"입력 중 일치 위치 확인, 취소하면 원위치",기반/부분,P0,검색창 취소 시 selection·scroll 복귀까지 확인
+E02,"`hlsearch`, `:nohlsearch`",검색어를 유지하며 강조만 잠시 숨김,기반/부분,P1,query 삭제와 highlight 숨기기를 구분
+E03,"`*`, `#`, `g*`, `g#`",커서 단어/부분 문자열의 다음 사용처,기반/부분,P0,검색어 escape와 whole-word 설정을 자동 구성
+E04,"`ignorecase`, `smartcase`, `\c/\C`",대문자 입력 여부에 따른 검색 정책,부분,P1,프로젝트 검색 현재 literal case-insensitive 경로와 구분
+E05,"`n/N`, wrapscan, search count",방향·끝 도달·현재 결과 번호를 알 수 있음,기반/부분,P0,reader·source·프로젝트의 결과 수 의미를 일관되게 표시
+E06,`/`·`?` history,직전 검색을 재사용,기반/부분,P0,Monaco 파일 내 history와 프로젝트 결과 history는 별개
+E07,"`gn/gN`, `cgn` 뒤 `.`",다음 일치 구간만 선택·교체 반복,부분,P1,replace all 전 단계로 유용; 검색 query에 연결된 범위 명령
+E08,`:s`의 `g/c/n`,전체·확인하며 교체·개수만 확인,기반/부분,P1,"Monaco 치환 재사용, 프로젝트 치환은 별도 미리보기 필요"
+E09,range/marks에 대한 substitute,선택 범위·특정 행 구간에서만 변환,기반/부분,P0,find in selection을 노출; 숨은 범위 상태를 눈에 보이게
+E10,capture·표현식 치환·multiline pattern,구조적인 반복 텍스트 변환,기반/부분,P2,JS regex와 Vim regex 문법을 섞지 않기; 임의 eval은 도입 불필요
+F01,파일 위치의 공통 entry,검색·진단·빌드 결과를 같은 방식으로 이동,부분,P0,provider는 유지하고 위치 참조·탐색 정책만 공통화
+F02,"list ID, `:colder/:cnewer`",이전 결과 목록으로 복귀,제안,P0,query만 재실행하는 history와 별도로 snapshot 보관
+F03,"title, context, changedtick",결과의 출처·갱신 상태를 확인,부분,P0,root·revision·실행 시점·취소 여부를 기록
+F04,window-local location list,분할 창마다 다른 탐색 작업 유지,부분/제안,P1,그룹별 결과 소유권; 전역 Problems와 혼동하지 않기
+F05,"`:cnext/:cprev`, 파일별 이동",패널에 다시 손을 대지 않고 검토,부분,P0,focus를 강탈하지 않는 다음 결과 명령
+F06,"`:Cfilter`, invalid 항목 처리",기존 결과를 좁히고 파싱 실패 로그도 확인,제안,P1,Cfilter처럼 새 목록을 만들고 원본 목록으로 돌아갈 수 있게 함
+F07,`:cdo/:cfdo`,결과에 해당하는 위치·파일만 일괄 작업,제안,P2,"preview, version guard, 파일별 실패·Undo 결과 필요"
+F08,"`:make`, `errorformat`, compiler",도구 출력에서 위치로 이동,부분/제안,P1,터미널 텍스트 링크에서 작업 결과 수집으로 확장; compiler별 parser
+G01,`Ctrl-O/Ctrl-I` jumplist,같은 파일·다른 파일에서 이전 탐색 위치 복귀,부분,P0,탭 URL history와 독립된 정확한 위치 이력
+G02,"`g;`, `g,` changelist",읽은 곳과 별개로 수정한 곳 복귀,제안,P0,연속 타이핑은 합치고 의미 있는 편집 구간을 기록
+G03,lowercase marks,현재 문서의 이름 있는 위치,제안,P1,메모 이름·목록 UI; 숫자 줄번호 고정 대신 anchor
+G04,uppercase marks,여러 파일 사이의 작업 책갈피,부분/제안,P1,브라우저 bookmark와 코드 위치 bookmark는 다른 모델
+G05,last insert/change/operation marks,마지막 삽입점·수정 범위 재방문,부분,P1,편집 후 해당 영역 보기·다시 선택 명령
+G06,tag stack,정의를 연쇄로 따라간 뒤 역순 복귀,부분,P0,LSP definition 요청에서 출발점 기록; 이전 결과 UI와 연결
+G07,`:keepjumps`,내부 자동 이동이 사용자 이력을 오염시키지 않음,제안,P0,format·preview sync·scroll restoration에 origin 필드
+G08,edit에 따른 mark 위치 보정,위에 행을 삽입해도 같은 문맥으로 복귀,부분,P0,살아 있는 model의 decoration anchor; 닫힌 문서는 재확인
+H01,"`Ctrl-^`, alternate file",직전 작업 파일과 빠르게 왕복,부분,P0,최근 탭 순환과 고정된 두 파일 왕복을 구별
+H02,"`:buffers`, `:b`, buffer MRU",열린 문서 중 필요한 것을 찾음,부분,P1,탭이 많을 때 검색 가능한 open-document 목록
+H03,하나의 buffer를 여러 window에서 표시,문서 위·아래를 동시에 독립적으로 편집,부분,P1,shared model 기반 확장; 탭 이동을 복제 view와 혼동하지 않기
+H04,split focus·resize·equalize·maximize,키보드로 작업 공간 정리,제품/부분,P1,editor groups 재사용; 임시 최대화 후 비율 복원
+H05,"`scrollbind`, `cursorbind`",유사 문서의 대응 위치 비교,부분/제안,P2,Git diff의 동기 스크롤과 일반 문서 연동을 구별
+H06,argument list,열린 탭과 별개인 작업 대상 파일 집합,제안,P2,고정한 검색 결과의 파일 집합으로 시작 가능
+H07,"`gf/gF`, `path`, `suffixesadd`",텍스트 속 파일명·행 번호를 열기,부분,P1,Markdown 링크·LSP link 외 일반 경로 텍스트도 지원
+H08,"`includeexpr`, `:find`",모듈 이름을 파일 후보로 변환,부분/제안,P1,파일 열기 fallback로만 사용; LSP import 진단과 독립
+H09,global/tab/window current directory,서로 다른 프로젝트의 상대 경로 구별,부분,P1,process.cwd 변경 대신 resource별 root·base URI를 전달
+I01,buffer words completion,서버가 없어도 문서의 단어 재사용,기반,P0,Monaco word suggestions의 범위·성능·중복 정책 노출
+I02,whole-line completion,비슷한 행 전체 재사용,부분/제안,P1,반복 표·설정·문서 문구에 유용; 현재 문서부터
+I03,file-name completion,문자열·문서 속 상대 경로 입력 보조,부분,P1,"현재 파일의 디렉터리 기준, 공백·한글 경로 처리"
+I04,dictionary/thesaurus/register completion,분야 용어·동의어·보관 문구 재사용,제안,P2,프로젝트 용어집과 snippet 활용; 대형 사전 내장보다 수요 확인
+I05,"`omnifunc`, `completefunc`",언어별 후보 생성기 연결,제품/부분,P0,기존 LSP provider 유지; Vim Python introspection 직접 이식 불필요
+I06,"`autocomplete`, delay/timeout, fuzzy 옵션",자동 후보 표시의 지연·비용 조절,제품/부분,P1,"분석 pin에는 옵션 존재, autocomplete 기본 off; Setdown debounce·취소 정책 비교"
+I07,"Python `]m/[m`, class/function motions",현재 함수·다음 함수로 이동,부분,P1,LSP symbol 범위 우선; regex fallback의 오탐을 구별
+I08,"Markdown `[[/]]`, heading fold",문서 절 단위 이동·접기,제품/부분,P0,기존 outline·source mapping 활용; 코드 fence 안의 `#` 제외
+I09,"`K`, `keywordprg`, tag/preview",커서의 개념에 대한 도움말,제품/부분,P1,hover와 공식 문서 열기를 구분; 외부 실행은 별도 사용자 명령
+I10,"spell, next misspelling, user dictionary",영문 논문·문서 오타 교정,제안,P1,코드/fence/URL 제외; 한국어 문법 교정까지 되는 기능으로 소개 금지
+I11,"digraph, abbreviation",특수문자·자주 쓰는 문구 입력,기반/부분,P1,수식 기호 picker·명시적 snippet; 한글 입력 중 자동 치환 금지
+J01,global / buffer-local / window-local,파일별 편집 정책과 view별 표시 정책 분리,부분,P0,언어 연결 scope는 이미 있음; 일반 편집 설정 모델로 확대
+J02,`:setlocal`,현재 파일만 임시 조정,부분/제안,P1,“이 파일에서만” 옵션과 영구 프로젝트 설정을 구분
+J03,ftplugin,언어별 주석·들여쓰기·이동 규칙 적용,부분,P1,language profile의 선언적 정책으로 구성
+J04,`b:undo_ftplugin`,언어·파일 전환 시 이전 규칙 제거,부분,P0,재사용 view에 설정이 남는 버그 예방; lease/dispose 패턴
+J05,"`:verbose set`, `:verbose map`",마지막 설정·매핑의 출처 확인,부분/제안,P0,"effective value, source, override 이유를 표시"
+J06,선택 EditorConfig 패키지,저장소의 들여쓰기·개행 규칙 일치,제안,P1,지원 가능한 속성부터; Markdown trailing spaces는 신중히 적용
+J07,modeline,파일 자체가 일부 편집 설정 전달,보류,P3,자동 코드 실행·무제한 옵션 허용 대신 선언적 설정으로 충분
+J08,"reset/default, local override 해제",왜 달라졌는지 알고 원래 정책으로 복귀,부분,P0,“자동 감지”·“상속값 사용”·“기본값”을 구별
+K01,swap/recovery,비정상 종료 후 미저장 텍스트 회수,부분,P1,draft 존재와 crash recovery 보장을 구분; 복구 가능한 snapshot 계약 필요
+K02,backup/writebackup,저장 과정·덮어쓰기 후 이전 파일 회수,부분,P2,기존 atomic write 보존; 사용자 local history는 별도 가치
+K03,외부 변경 감지·checktime,디스크 변경을 모른 채 덮어쓰지 않음,제품,P0,새 batch/macro도 기존 conflict 경로 사용
+K04,mksession,열었던 작업 공간 복원,부분/제안,P1,그룹·탭·문서·dirty snapshot을 선언형 manifest로 저장
+K05,mkview/loadview,커서·접힘·스크롤 상태 복원,부분,P1,현재 viewstate 수명과 재시작 후 수명을 명시
+K06,viminfo,검색·register·mark 등 작업 맥락 지속,부분/제안,P2,복사 내용·최근 위치별 보존 정책을 분리
+K07,fileformat/fileencoding/BOM/EOL,파일 형식을 알고 보존·변환,부분,P1,현 UTF-8/LF/CRLF 계약 내 표시부터; 추가 인코딩은 별도 작업
+K08,readonly / nomodifiable,실수 편집·변경 불가 상태 구분,제품/부분,P0,Git immutable snapshot 등에서 모든 새 명령의 enable 조건 통일
+L01,fold open/close/all/level,큰 문서를 원하는 깊이로 보기,기반/제품,P0,"Monaco folding·LSP folding 활용, 명령 노출"
+L02,manual/indent/expr/syntax/marker/diff folds,다양한 문서 구조에 맞는 접기,부분,P2,Markdown·코드 provider 위주; 모든 방식 이식 불필요
+L03,"foldtext, fold 상태",접힌 부분의 내용·규모를 이해,기반/부분,P1,heading·숨긴 행 수·diagnostic 유무 등 가벼운 정보
+L04,"`zz/zt/zb`, scrolloff",커서를 중심·위·아래에 놓고 문맥 확보,기반/부분,P0,source reveal 정책과 reader anchor 이동을 구분
+L05,"relativenumber, cursorline, colorcolumn",현재 위치·거리·권장 폭 파악,기반/부분,P1,Monaco options 노출; 상대 번호는 취향 옵션
+L06,"listchars, whitespace 표시",탭·후행 공백·공백 차이 확인,기반/부분,P0,현재 selection-only 표시와 항상 표시 전환
+L07,diff 이동·부분 적용·동기 스크롤,변경 부분 검토·선택 반영,제품/부분,P2,기존 Git review 경로 우선; 독립 Vim diff 엔진 이식 불필요
+L08,statusline·showcmd·recording 상태,현재 모드·대기 명령·기록 여부 확인,부분,P1,새 모드/매크로 도입 시 필수; 상태를 색만으로 전달하지 않기
+M01,command name completion,명령을 외우지 않고 찾음,기반/부분,P0,Monaco와 앱 명령의 검색 가능한 공통 목록
+M02,명령별 argument completion,현재 문맥에 맞는 파일·옵션 후보,부분,P1,모든 것을 문자열로 받기보다 typed argument
+M03,"command history, `q:`",이전 명령을 고쳐 다시 실행,부분/제안,P1,성공한 명령과 인수만 기록; 취소·실패를 재생 목록과 구분
+M04,"fuzzy matching, lastused, wildmenu",후보가 많아도 최근 작업을 빨리 찾음,부분,P1,정렬 이유·prefix 우선·최근성 보정; 대형 목록 취소 처리
+M05,"`:map`, verbose mapping",단축키·범위·출처 확인,부분/제안,P0,“이 키가 지금 무엇을 실행하는가” UI와 충돌 진단
+M06,"`:help {topic}`, helptags, tutor",기능 발견에서 연습까지 연결,부분/제안,P1,명령 설명·예시·도움말 링크를 같은 metadata로 제공
+M07,"`:messages`, verbose logs",사라진 오류·상태 설명 다시 보기,제품/부분,P0,언어 로그 외에도 실패한 편집·결과 갱신 이유를 추적
+N01,autocommand·augroup,열기·저장·언어 변경에 규칙 적용,부분,P1,"타입 있는 lifecycle hook, 해제·중복 등록 방지; 임의 스크립트는 후순위"
+N02,job/channel,외부 도구 실행 중에도 편집 유지,제품/부분,P1,기존 language/terminal process host 재사용; 취소·종료 결과 통일
+N03,`!` filter,선택 텍스트를 외부 도구로 변환,제안,P2,명시적 도구 설정·입출력 preview·revision 검사로 한정
+N04,terminal buffer·terminal normal mode,실행 출력에서 검색·선택·위치 이동,제품/부분,P2,xterm 기반과 Vim terminal 의미 차이 확인; core 교체 불필요
+N05,선택 matchit,괄호를 넘어 if/endif·tag 등 짝 이동,기반/부분,P2,언어 provider와 구조별 pairing; 단순 bracket matching과 구분
+N06,선택 netrw·termdebug·OSC52 등,파일·원격·디버그·터미널 복사 통합,보류,P3,"기존 Explorer·터미널·Electron 클립보드 우선, 별도 수요가 생길 때 검토"

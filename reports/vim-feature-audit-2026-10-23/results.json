@@ -1,0 +1,119 @@
+{
+  "assertion_count": 34,
+  "vim_version": "\n\nVIM - Vi IMproved 9.2 (2026 Feb 14, compiled Sep 25 2026 00:00:00)\nIncluded patches: 1-1129\nModified by https://bugzilla.redhat.com/\nCompiled by https://bugzilla.redhat.com/\nHuge version without GUI.  Features included (+) or not (-):\n+acl                +float              +mouse_urxvt        +tag_binary\n+arabic             +folding            +mouse_xterm        -tag_old_static\n+autochdir          -footer             -mouseshape         -tcl\n+autocmd            +fork()             +multi_byte         +termguicolors\n-autoservername     +gettext            +multi_lang         +terminal\n-balloon_eval       -hangul_input       -mzscheme           +terminfo\n+balloon_eval_term  +iconv              +netbeans_intg      +termresponse\n-browse             +image              +num64              +textobjects\n++builtin_terms     -image_cairo        +packages           +textprop\n+byte_offset        -image_gdi          -pango              +timers\n+channel            -image_gdk          +path_extra         +title\n+cindent            +image_kitty        +perl/dyn           -toolbar\n+clientserver       +image_sixel        +persistent_undo    +user_commands\n-clipboard          +insert_expand      +popupwin           +vartabs\n+clipboard_provider +ipv6               +postscript         +vertsplit\n+cmdline_compl      +job                +printer            +vim9script\n+cmdline_hist       +jumplist           +profile            +viminfo\n+cmdline_info       +keymap             -python             +virtualedit\n+comments           +lambda             +python3/dyn-stable +visual\n+conceal            +langmap            +quickfix           +visualextra\n+cryptv             +libcall            +reltime            +vreplace\n+cscope             +linebreak          +rightleft          -wayland\n+cursorbind         +lispindent         +ruby/dyn           -wayland_clipboard\n+cursorshape        +listcmds           +scrollbind         +wildignore\n+dialog_con         +localmap           +signs              +wildmenu\n+diff               +lua/dyn            +smartindent        +windows\n+digraphs           +menu               +socketserver       +writebackup\n-dnd                +mksession          +sodium             -X11\n-ebcdic             +modify_fname       -sound              +xattr\n+emacs_tags         +mouse              +spell              -xfontset\n+eval               +mouse_dec          +startuptime        -xim\n+ex_extra           +mouse_gpm          +statusline         -xpm\n+extra_search       -mouse_jsbterm      -sun_workshop       -xsmp\n-farsi              +mouse_netterm      +syntax             -xterm_clipboard\n+file_in_path       +mouse_sgr          +tabpanel           -xterm_save\n+find_in_path       -mouse_sysmouse     -tag_any_white      \n   system vimrc file: \"/etc/vimrc\"\n     user vimrc file: \"$HOME/.vimrc\"\n 2nd user vimrc file: \"~/.vim/vimrc\"\n 3rd user vimrc file: \"~/.config/vim/vimrc\"\n      user exrc file: \"$HOME/.exrc\"\n       defaults file: \"$VIMRUNTIME/defaults.vim\"\n  fall-back for $VIM: \"/usr/share/vim\"\nCompilation: gcc -c -I. -Iproto -DHAVE_CONFIG_H -O2 -flto=auto -ffat-lto-objects -fexceptions -g -grecord-gcc-switches -pipe -Wall -Wno-complain-wrong-lang -Werror=format-security -Wp,-D_GLIBCXX_ASSERTIONS -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -fstack-protector-strong -specs=/usr/lib/rpm/redhat/redhat-annobin-cc1 -m64 -march=x86-64 -mtune=generic -fasynchronous-unwind-tables -fstack-clash-protection -fcf-protection -mtls-dialect=gnu2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -std=c17 -DSYS_VIMRC_FILE=/etc/vimrc -D_REENTRANT -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=1 \nLinking: gcc -Wl,--enable-new-dtags -Wl,-z,relro -Wl,--as-needed -Wl,-z,pack-relative-relocs -Wl,-z,now -Wl,--build-id=sha1 -Wl,-z,relro -Wl,--as-needed -Wl,-z,pack-relative-relocs -Wl,-z,now -specs=/usr/lib/rpm/redhat/redhat-hardened-ld -specs=/usr/lib/rpm/redhat/redhat-hardened-ld-errors -specs=/usr/lib/rpm/redhat/redhat-annobin-cc1 -Wl,--build-id=sha1 -specs=/usr/lib/rpm/redhat/redhat-package-notes -L/usr/local/lib -o vim -lcairo -lz -lpangocairo-1.0 -lpango-1.0 -lcairo -lharfbuzz -lgobject-2.0 -lglib-2.0 -lm -lselinux -lncurses -lsodium -lacl -lattr -lgpm ",
+  "cases": [
+    {
+      "passed": 1,
+      "name": "TextObjects",
+      "errors": [],
+      "checks": 2,
+      "exception": ""
+    },
+    {
+      "passed": 1,
+      "name": "DotRepeat",
+      "errors": [],
+      "checks": 1,
+      "exception": ""
+    },
+    {
+      "passed": 1,
+      "name": "Registers",
+      "errors": [],
+      "checks": 4,
+      "exception": ""
+    },
+    {
+      "passed": 1,
+      "name": "MacroReplay",
+      "errors": [],
+      "checks": 1,
+      "exception": ""
+    },
+    {
+      "passed": 1,
+      "name": "Marks",
+      "errors": [],
+      "checks": 2,
+      "exception": ""
+    },
+    {
+      "passed": 1,
+      "name": "JumpHistory",
+      "errors": [],
+      "checks": 2,
+      "exception": ""
+    },
+    {
+      "passed": 1,
+      "name": "Quickfix",
+      "errors": [],
+      "checks": 4,
+      "exception": ""
+    },
+    {
+      "passed": 1,
+      "name": "LocationList",
+      "errors": [],
+      "checks": 2,
+      "exception": ""
+    },
+    {
+      "passed": 1,
+      "name": "SharedBuffer",
+      "errors": [],
+      "checks": 3,
+      "exception": ""
+    },
+    {
+      "passed": 1,
+      "name": "LocalOptions",
+      "errors": [],
+      "checks": 1,
+      "exception": ""
+    },
+    {
+      "passed": 1,
+      "name": "PathResolution",
+      "errors": [],
+      "checks": 2,
+      "exception": ""
+    },
+    {
+      "passed": 1,
+      "name": "GlobalEdit",
+      "errors": [],
+      "checks": 2,
+      "exception": ""
+    },
+    {
+      "passed": 1,
+      "name": "UndoBranches",
+      "errors": [],
+      "checks": 2,
+      "exception": ""
+    },
+    {
+      "passed": 1,
+      "name": "PersistentUndo",
+      "errors": [],
+      "checks": 1,
+      "exception": ""
+    },
+    {
+      "passed": 1,
+      "name": "PythonFtplugin",
+      "errors": [],
+      "checks": 5,
+      "exception": ""
+    }
+  ],
+  "failed_cases": 0,
+  "case_count": 15,
+  "binary": "/usr/bin/vim",
+  "audited_vim_commit": "f9b3d0d8dd1a4345375fb401861d5f60ff7c7df1",
+  "setdown_head": "62e2c88cfd32bee6d3ef922c242a8c301465279d",
+  "scope": "Installed Vim behavior probes plus pinned Python ftplugin; not a build of the audited Vim commit or a Setdown GUI test.",
+  "process_exit_code": 0,
+  "stderr": ""
+}
