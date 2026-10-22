@@ -1,0 +1,602 @@
+
+ RUN  v3.2.7 /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts (25 tests | 25 failed) 425ms
+   × F01 stopping one window watcher must preserve another window watcher 13ms
+     → expected +0 to be 1 // Object.is equality
+   × F02 deleting the watched file must publish an external change 2ms
+     → expected "spy" to be called at least once
+   × F03 same-millisecond atomic saves must not share a temporary file 4ms
+     → expected [ 'fulfilled', 'rejected' ] to deeply equal [ 'fulfilled', 'fulfilled' ]
+   × F04 saving must preserve original group write permissions under umask 2ms
+     → expected 420 to be 438 // Object.is equality
+   × F05 Save As to a symbolic link must update its target and keep the link 4ms
+     → expected { link: false, text: 'target' } to deeply equal { link: true, text: 'new content' }
+   × F06 draft relocation must not rewrite code and external URLs 2ms
+     → expected 'Example: `report.assets/a.png`\nhttps…' to be 'Example: `Untitled.assets/a.png`\nhtt…' // Object.is equality
+   × F07 draft relocation must update percent-encoded local asset links 5ms
+     → expected '![x](Untitled%202.assets/image.png)' to be '![x](saved.assets/image.png)' // Object.is equality
+   × F08 Git changed content beginning with -- or ++ must remain in the hunk 1ms
+     → expected [] to deeply equal [ { oldStart: 1, oldLines: 1, …(2) } ]
+   × F09 staged rename must read HEAD from the old pathname 46ms
+     → expected '' to be 'unchanged body\n' // Object.is equality
+   × F10 stage and discard must treat Git metacharacters as a literal filename 44ms
+     → expected { staged: [ '[ab].txt', …(2) ], …(1) } to deeply equal { staged: [ '[ab].txt' ], …(1) }
+   × F11 externally initialized repositories must be detected by refresh 10ms
+     → expected false to be true // Object.is equality
+   × F12 stage and discard must operate on a symlink entry, not the linked file 43ms
+     → expected { staged: 'other.txt', …(1) } to deeply equal { staged: 'link.txt', …(1) }
+   × F13 Unicode case folding must preserve source offsets across text nodes 2ms
+     → expected [ { line: 1, column: 2 } ] to deeply equal [ { line: 2, column: 1 } ]
+   × F14 copying a read-only directory tree must complete and preserve its mode 2ms
+     → EACCES: permission denied, unlink '/tmp/setdown-audit-jyAZLB/.setdown-copy-h6QXdA/entry/note.txt'
+   × F15 markdown-to-code conversion must not keep a markdown-only attachments field 3ms
+     → expected { id: 'one', cell_type: 'code', …(5) } to not have property "attachments"
+   × F16 a Markdown read must not associate stale contents with a newer disk version 2ms
+     → expected false to be true // Object.is equality
+   × F17 an edit during first draft save must retain relocated asset references 2ms
+     → expected '![x](<Untitled.assets/image.png>)\nne…' to be '![x](<saved.assets/image.png>)\nnew t…' // Object.is equality
+   × F18 pasted image and local link paths must encode URL delimiters in filenames 2ms
+     → expected { …(2) } to deeply equal { …(2) }
+   × F19 New File for a supported HWPX document must create an openable document 3ms
+     → promise rejected "Error: HWP 파일 크기는 128 MiB 이하여야 합니다." instead of resolving
+   × F20 discarded language completion commands must not exhaust the item budget forever 1ms
+     → expected [Function] to not throw an error but 'Error: Language results exceed the ac…' was thrown
+   × F21 a non-regular HWP file must fail before waiting for a FIFO writer 106ms
+     → expected false to be true // Object.is equality
+   × F22 disabling auto save must cancel saves still waiting in its queue 52ms
+     → expected [ '/a.txt', '/b.txt' ] to deeply equal [ '/a.txt' ]
+   × F23 a Markdown Git blob above 4 MB must not be presented as an empty version 65ms
+     → expected false to be true // Object.is equality
+   × F24 reader Markdown export must preserve IDs attached to headings themselves 9ms
+     → expected '# Article\n\nSource: <https://example…' to contain '<a id="section-123"></a>'
+   × F25 visible search must exclude text hidden with an important inline declaration 1ms
+     → expected [ { line: 1, column: 1, …(3) } ] to deeply equal []
+ ❯ reports/bug-audit-2026-10-22/links.test.ts (1 test | 1 failed) 11ms
+   × F26 the open-link IPC must not decode URL delimiters before parsing 10ms
+     → expected { openedFile: undefined, …(1) } to deeply equal { …(2) }
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 26 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  reports/bug-audit-2026-10-22/links.test.ts > F26 the open-link IPC must not decode URL delimiters before parsing
+AssertionError: expected { openedFile: undefined, …(1) } to deeply equal { …(2) }
+
+- Expected
++ Received
+
+  {
+-   "openedFile": "/tmp/setdown-audit-links-QoP0oh/note#part.md",
+-   "openedURL": "https://example.test/search?q=a%26b",
++   "openedFile": undefined,
++   "openedURL": "https://example.test/search?q=a&b",
+  }
+
+ ❯ reports/bug-audit-2026-10-22/links.test.ts:26:8
+     24|     await handlers.get('document:open-link')!(owner, url);
+     25|     expect({ openedFile: documents.open.mock.calls[0]?.[1], openedURL:…
+     26|       .toEqual({ openedFile: file, openedURL: url });
+       |        ^
+     27|   } finally { await fs.rm(root, { recursive: true, force: true }); }
+     28| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F01 stopping one window watcher must preserve another window watcher
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:67:43
+     65|   expect(watcher.listenerCount('change')).toBe(2);
+     66|   manager.stopWatching(a);
+     67|   expect(watcher.listenerCount('change')).toBe(1);
+       |                                           ^
+     68| });
+     69| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F02 deleting the watched file must publish an external change
+AssertionError: expected "spy" to be called at least once
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:79:41
+     77|   // The zeroed stat is exactly the missing-file branch delivered by f…
+     78|   watcher.emit('change', { nlink: 0, mtimeMs: 0, size: 0 }, { nlink: 1…
+     79|   expect(owner.window.webContents.send).toHaveBeenCalled();
+       |                                         ^
+     80| });
+     81| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F03 same-millisecond atomic saves must not share a temporary file
+AssertionError: expected [ 'fulfilled', 'rejected' ] to deeply equal [ 'fulfilled', 'fulfilled' ]
+
+- Expected
++ Received
+
+  [
+    "fulfilled",
+-   "fulfilled",
++   "rejected",
+  ]
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:86:48
+     84|   await fs.writeFile(file, 'base'); vi.spyOn(Date, 'now').mockReturnVa…
+     85|   const results = await Promise.allSettled([atomicWrite(file, 'first')…
+     86|   expect(results.map(result => result.status)).toEqual(['fulfilled', '…
+       |                                                ^
+     87| });
+     88| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F04 saving must preserve original group write permissions under umask
+AssertionError: expected 420 to be 438 // Object.is equality
+
+- Expected
++ Received
+
+- 438
++ 420
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:94:46
+     92|   expect(process.umask() & 0o022).not.toBe(0);
+     93|   await atomicWrite(file, 'changed');
+     94|   expect((await fs.stat(file)).mode & 0o777).toBe(0o666);
+       |                                              ^
+     95| });
+     96| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F05 Save As to a symbolic link must update its target and keep the link
+AssertionError: expected { link: false, text: 'target' } to deeply equal { link: true, text: 'new content' }
+
+- Expected
++ Received
+
+  {
+-   "link": true,
+-   "text": "new content",
++   "link": false,
++   "text": "target",
+  }
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:108:6
+    106|   expect(result.canceled).toBe(false);
+    107|   expect({ link: (await fs.lstat(link)).isSymbolicLink(), text: await …
+    108|     .toEqual({ link: true, text: 'new content' });
+       |      ^
+    109| });
+    110| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F06 draft relocation must not rewrite code and external URLs
+AssertionError: expected 'Example: `report.assets/a.png`\nhttps…' to be 'Example: `Untitled.assets/a.png`\nhtt…' // Object.is equality
+
+- Expected
++ Received
+
+- Example: `Untitled.assets/a.png`
++ Example: `report.assets/a.png`
+- https://example.test/Untitled.assets/b.png
++ https://example.test/report.assets/b.png
+  ![x](<report.assets/a.png>)
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:114:6
+    112|   const original = 'Example: `Untitled.assets/a.png`\nhttps://example.…
+    113|   expect(rewriteDraftAssetReferences(original, 'Untitled.assets', 'rep…
+    114|     .toBe('Example: `Untitled.assets/a.png`\nhttps://example.test/Unti…
+       |      ^
+    115| });
+    116| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F07 draft relocation must update percent-encoded local asset links
+AssertionError: expected '![x](Untitled%202.assets/image.png)' to be '![x](saved.assets/image.png)' // Object.is equality
+
+Expected: "![x](saved.assets/image.png)"
+Received: "![x](Untitled%202.assets/image.png)"
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:123:23
+    121|   const destination = path.join(root, 'saved.md');
+    122|   const result = await saveDraftBundle(drafts, source, destination, '!…
+    123|   expect(result.text).toBe('![x](saved.assets/image.png)');
+       |                       ^
+    124| });
+    125| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F08 Git changed content beginning with -- or ++ must remain in the hunk
+AssertionError: expected [] to deeply equal [ { oldStart: 1, oldLines: 1, …(2) } ]
+
+- Expected
++ Received
+
+- [
+-   {
+-     "newLines": 1,
+-     "newStart": 1,
+-     "oldLines": 1,
+-     "oldStart": 1,
+-   },
+- ]
++ []
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:128:36
+    126| test('F08 Git changed content beginning with -- or ++ must remain in t…
+    127|   const patch = '--- a/a.md\n+++ b/a.md\n@@ -1,2 +1,2 @@\n---old\n+++n…
+    128|   expect(parseGitDiffHunks(patch)).toEqual([{ oldStart: 1, oldLines: 1…
+       |                                    ^
+    129| });
+    130| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F09 staged rename must read HEAD from the old pathname
+AssertionError: expected '' to be 'unchanged body\n' // Object.is equality
+
+- Expected
++ Received
+
+- unchanged body
+-
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:136:29
+    134|   await GitCli.run(f.root, ['mv', 'old.md', 'new.md']);
+    135|   const diff = await f.service.diff(f.state, path.join(f.root, 'new.md…
+    136|   expect(diff.originalText).toBe('unchanged body\n');
+       |                             ^
+    137| });
+    138| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F10 stage and discard must treat Git metacharacters as a literal filename
+AssertionError: expected { staged: [ '[ab].txt', …(2) ], …(1) } to deeply equal { staged: [ '[ab].txt' ], …(1) }
+
+- Expected
++ Received
+
+  {
+    "staged": [
+      "[ab].txt",
++     "a.txt",
++     "b.txt",
+    ],
+-   "unselected": "new unsaved work",
++   "unselected": "changed",
+  }
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:149:6
+    147|   await f.service.discard(f.state, [path.join(f.root, '[ab].txt')]);
+    148|   expect({ staged, unselected: await fs.readFile(path.join(f.root, 'a.…
+    149|     .toEqual({ staged: ['[ab].txt'], unselected: 'new unsaved work' });
+       |      ^
+    150| });
+    151| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F11 externally initialized repositories must be detected by refresh
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:156:52
+    154|   expect((await service.status(owner)).repository).toBe(false);
+    155|   await GitCli.run(root, ['init']);
+    156|   expect((await service.status(owner)).repository).toBe(true);
+       |                                                    ^
+    157| });
+    158| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F12 stage and discard must operate on a symlink entry, not the linked file
+AssertionError: expected { staged: 'other.txt', …(1) } to deeply equal { staged: 'link.txt', …(1) }
+
+- Expected
++ Received
+
+  {
+-   "staged": "link.txt",
+-   "target": "new target work",
++   "staged": "other.txt",
++   "target": "modified target",
+  }
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:168:64
+    166|   await fs.writeFile(other, 'new target work');
+    167|   await f.service.discard(f.state, [link]);
+    168|   expect({ staged, target: await fs.readFile(other, 'utf8') }).toEqual…
+       |                                                                ^
+    169| });
+    170| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F13 Unicode case folding must preserve source offsets across text nodes
+AssertionError: expected [ { line: 1, column: 2 } ] to deeply equal [ { line: 2, column: 1 } ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "column": 1,
+-     "line": 2,
++     "column": 2,
++     "line": 1,
+    },
+  ]
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:174:65
+    172|   const index = indexVisibleHtml('<p data-source-line="1">İ</p><p data…
+    173|   const matches = searchVisibleText(index, 'x', 10);
+    174|   expect(matches.map(({ line, column }) => ({ line, column }))).toEqua…
+       |                                                                 ^
+    175| });
+    176| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F14 copying a read-only directory tree must complete and preserve its mode
+Error: EACCES: permission denied, unlink '/tmp/setdown-audit-jyAZLB/.setdown-copy-h6QXdA/entry/note.txt'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F15 markdown-to-code conversion must not keep a markdown-only attachments field
+AssertionError: expected { id: 'one', cell_type: 'code', …(5) } to not have property "attachments"
+
+- Expected: 
+undefined
+
++ Received: 
+{
+  "x.png": {
+    "image/png": "aGVsbG8=",
+  },
+}
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:192:47
+    190|   const serialized = notebook.serialize();
+    191|   await fs.writeFile(new URL('./converted-code-cell.ipynb', import.met…
+    192|   expect(JSON.parse(serialized).cells[0]).not.toHaveProperty('attachme…
+       |                                               ^
+    193| });
+    194| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F16 a Markdown read must not associate stale contents with a newer disk version
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:209:27
+    207|   vi.restoreAllMocks();
+    208|   const result = await manager.saveSnapshot(state(root), snapshot, 'ed…
+    209|   expect(result.canceled).toBe(true);
+       |                           ^
+    210| });
+    211| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F17 an edit during first draft save must retain relocated asset references
+AssertionError: expected '![x](<Untitled.assets/image.png>)\nne…' to be '![x](<saved.assets/image.png>)\nnew t…' // Object.is equality
+
+- Expected
++ Received
+
+- ![x](<saved.assets/image.png>)
++ ![x](<Untitled.assets/image.png>)
+  new typing
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:220:24
+    218|   const manager = new DocumentManager(() => {}), snapshot = { ...await…
+    219|   const current = retainUnsavedRevision(snapshot, oldText + '\nnew typ…
+    220|   expect(current.text).toBe(saved.text + '\nnew typing');
+       |                        ^
+    221| });
+    222| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F18 pasted image and local link paths must encode URL delimiters in filenames
+AssertionError: expected { …(2) } to deeply equal { …(2) }
+
+- Expected
++ Received
+
+  {
+-   "image": "/tmp/setdown-audit-hIGRfq/notes#1.assets/pasted-20261022-091555.png",
+-   "link": "/tmp/setdown-audit-hIGRfq/reference#2.pdf",
++   "image": "/tmp/setdown-audit-hIGRfq/notes",
++   "link": "/tmp/setdown-audit-hIGRfq/reference",
+  }
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:228:64
+    226|   const link = markdownDestinationForFile(file, path.join(root, 'refer…
+    227|   expect({ image: fileURLToPath(new URL(image.markdownPath, pathToFile…
+    228|     link: fileURLToPath(new URL(link, pathToFileURL(file))) }).toEqual…
+       |                                                                ^
+    229| });
+    230| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F19 New File for a supported HWPX document must create an openable document
+AssertionError: promise rejected "Error: HWP 파일 크기는 128 MiB 이하여야 합니다." instead of resolving
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:234:63
+    232|   const root = await temp(), service = new ExplorerService(new Project…
+    233|   const result = await service.create(state(root), root, 'new.hwpx', '…
+    234|   await expect(new DocumentManager(() => {}).read(result.path)).resolv…
+       |                                                               ^
+    235| });
+    236| 
+
+Caused by: Error: HWP 파일 크기는 128 MiB 이하여야 합니다.
+ ❯ readHwp apps/desktop/src/main/documents/hwp-file.ts:19:77
+ ❯ readHwpMetadata apps/desktop/src/main/documents/hwp-file.ts:34:18
+ ❯ DocumentManager.read apps/desktop/src/main/documents/document-manager.ts:41:46
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:234:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F20 discarded language completion commands must not exhaust the item budget forever
+AssertionError: expected [Function] to not throw an error but 'Error: Language results exceed the ac…' was thrown
+
+- Expected: 
+undefined
+
++ Received: 
+"Error: Language results exceed the active item budget. Close results or narrow the query."
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:247:10
+    245|       items.forget('doc', false);
+    246|     }
+    247|   }).not.toThrow();
+       |          ^
+    248| });
+    249| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F21 a non-regular HWP file must fail before waiting for a FIFO writer
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:260:32
+    258|   if (!settled) { const writer = await fs.open(file, constants.O_WRONL…
+    259|   await reading;
+    260|   expect(rejectedBeforeWriter).toBe(true);
+       |                                ^
+    261| });
+    262| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F22 disabling auto save must cancel saves still waiting in its queue
+AssertionError: expected [ '/a.txt', '/b.txt' ] to deeply equal [ '/a.txt' ]
+
+- Expected
++ Received
+
+  [
+    "/a.txt",
++   "/b.txt",
+  ]
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:276:18
+    274|   // Drain without introducing hold()'s additional pause behavior.
+    275|   await (controller as any).queue;
+    276|   expect(writes).toEqual(['/a.txt']);
+       |                  ^
+    277| });
+    278| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F23 a Markdown Git blob above 4 MB must not be presented as an empty version
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:285:49
+    283|   const git = await GitCli.connect(f.root);
+    284|   const result = await readGitDocument(git!, 'HEAD:large.md', file);
+    285|   expect(result === null || result === content).toBe(true);
+       |                                                 ^
+    286| });
+    287| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F24 reader Markdown export must preserve IDs attached to headings themselves
+AssertionError: expected '# Article\n\nSource: <https://example…' to contain '<a id="section-123"></a>'
+
+- Expected
++ Received
+
+- <a id="section-123"></a>
++ # Article
++
++ Source: <https://example.test/article>
++
++ ---
++
++ [Jump](#section-123)
++
++ ## Heading
++
++ Body
++
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:291:18
+    289|   const result = readerMarkdown({ url: 'https://example.test/article',…
+    290|     content: '<a href="#section-123">Jump</a><h2 id="section-123">Head…
+    291|   expect(result).toContain('<a id="section-123"></a>');
+       |                  ^
+    292| });
+    293| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/26]⎯
+
+ FAIL  reports/bug-audit-2026-10-22/reproductions.test.ts > F25 visible search must exclude text hidden with an important inline declaration
+AssertionError: expected [ { line: 1, column: 1, …(3) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "column": 1,
++     "line": 1,
++     "lineOccurrence": 0,
++     "ordinal": 0,
++     "preview": "secretshown",
++   },
++ ]
+
+ ❯ reports/bug-audit-2026-10-22/reproductions.test.ts:296:50
+    294| test('F25 visible search must exclude text hidden with an important in…
+    295|   const index = indexVisibleHtml('<p style="display: none !important" …
+    296|   expect(searchVisibleText(index, 'secret', 10)).toEqual([]);
+       |                                                  ^
+    297| });
+    298| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/26]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  26 failed (26)
+   Start at  18:15:54
+   Duration  1.26s (transform 228ms, setup 0ms, collect 381ms, tests 436ms, environment 0ms, prepare 90ms)
+

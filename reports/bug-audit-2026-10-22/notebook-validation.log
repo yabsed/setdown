@@ -1,0 +1,22 @@
+nbformat 5.11.0
+Traceback (most recent call last):
+  File "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/reports/bug-audit-2026-10-22/validate-notebook.py", line 8, in <module>
+    nbformat.validate(document)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/home/yabsed/miniconda3/lib/python3.13/site-packages/nbformat/validator.py", line 434, in validate
+    _validate(nbdict, ref, version, version_minor, relax_add_props)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/yabsed/miniconda3/lib/python3.13/site-packages/nbformat/validator.py", line 486, in _validate
+    raise error
+nbformat.validator.NotebookValidationError: Additional properties are not allowed ('attachments' was unexpected)
+
+Failed validating 'additionalProperties' in code_cell:
+
+On instance['cells'][0]:
+{'attachments': {'x.png': {'image/png': 'aGVsbG8='}},
+ 'cell_type': 'code',
+ 'execution_count': None,
+ 'id': 'one',
+ 'metadata': {},
+ 'outputs': ['...0 outputs...'],
+ 'source': '![x](attachment:x.png)'}

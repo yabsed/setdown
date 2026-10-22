@@ -1,0 +1,237 @@
+dbus-daemon[59871]: [session uid=1000 pid=59871] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=59892 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[59871]: [session uid=1000 pid=59871] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[59871]: [session uid=1000 pid=59871] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=59892 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[59871]: [session uid=1000 pid=59871] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.4' (uid=1000 pid=59966 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[59871]: [session uid=1000 pid=59871] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[59871]: [session uid=1000 pid=59871] Activating service name='org.freedesktop.portal.Documents' requested by ':1.4' (uid=1000 pid=59966 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[59871]: [session uid=1000 pid=59871] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[59871]: [session uid=1000 pid=59871] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.4' (uid=1000 pid=59966 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[59871]: [session uid=1000 pid=59871] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=59989 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+{
+  "environment": {
+    "electron": "44.7.2",
+    "chromium": "152.0.7977.149"
+  },
+  "cases": [
+    {
+      "finding": "F13",
+      "expected": [
+        "x"
+      ],
+      "observed": [],
+      "passed": false
+    },
+    {
+      "finding": "F25",
+      "expected": [],
+      "observed": [
+        "secret"
+      ],
+      "computedDisplay": "none",
+      "passed": false
+    }
+  ]
+}
+
+** (xdg-desktop-portal-gnome:59989): WARNING **: 18:07:23.394: error: Error calling StartServiceByName for org.gnome.Settings.GlobalShortcutsProvider: The connection is closed
+
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.395: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.395: Error while sending GetNameOwner() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.395: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.395: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.401: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.401: Error while sending GetNameOwner() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.401: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.401: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.401: Failed to create GameMode proxy: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending GetNameOwner() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.403: Failed to create settings proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.gnome: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending GetNameOwner() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.403: Failed to create settings proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.gtk: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.403: Not providing Settings portal: No working backend
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending GetNameOwner() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.403: Failed to create file chooser proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.gnome: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending GetNameOwner() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.403: Failed to create app chooser proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.gnome: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending GetNameOwner() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.403: Failed to create print proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.gnome: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending GetNameOwner() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.403: Failed to create notification proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.gnome: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending GetNameOwner() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.403: Failed to create inhibit proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.gtk: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.403: The location portal requires an access impl
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.403: The camera portal requires an access impl
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.403: The screenshot portal requires an access impl
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.403: The background portal requires an access impl
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.403: The wallpaper portal requires an access impl
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending GetNameOwner() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.403: Failed to create account proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.gnome: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending GetNameOwner() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.403: Failed to create email proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.gtk: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending GetNameOwner() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending GetNameOwner() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.403: Failed to create global_shortcuts proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.gnome: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending GetNameOwner() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.403: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.404: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.404: Failed to create dynamic_launcher proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.gnome: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.404: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.404: Error while sending GetNameOwner() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.404: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.404: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.404: Failed to create screen cast proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.gnome: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.404: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.404: Error while sending GetNameOwner() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.404: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.404: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.404: Failed to create remote desktop proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.gnome: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.404: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.404: Error while sending GetNameOwner() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.404: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.404: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.404: Failed to create clipboard: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.gnome: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.404: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.404: Error while sending GetNameOwner() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.404: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.404: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.404: Failed to create input capture proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.gnome: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.404: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.404: Error while sending GetNameOwner() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.404: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): GLib-GIO-CRITICAL **: 18:07:23.404: Error while sending AddMatch() message: The connection is closed
+
+(/usr/libexec/xdg-desktop-portal:59966): xdg-desktop-portal-WARNING **: 18:07:23.404: Failed to create USB proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.gnome: The connection is closed

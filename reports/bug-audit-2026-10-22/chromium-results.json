@@ -1,0 +1,25 @@
+{
+  "environment": {
+    "electron": "44.7.2",
+    "chromium": "152.0.7977.149"
+  },
+  "cases": [
+    {
+      "finding": "F13",
+      "expected": [
+        "x"
+      ],
+      "observed": [],
+      "passed": false
+    },
+    {
+      "finding": "F25",
+      "expected": [],
+      "observed": [
+        "secret"
+      ],
+      "computedDisplay": "none",
+      "passed": false
+    }
+  ]
+}
