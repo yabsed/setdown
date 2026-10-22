@@ -39,6 +39,7 @@ export const view = $state({
   mediaTabs: [] as import('./media-cache').MediaTab[],
   activeMediaId: null as string | null,
   notice: false,
+  unavailablePath: null as string | null,
   tocOpen: false,
   headings: [] as HeadingView[],
   activeHeadingId: null as string | null,

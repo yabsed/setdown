@@ -3,6 +3,7 @@ import { mkdir, cp, readFile, writeFile, access, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { pathToFileURL } from 'node:url';
 const root = path.resolve('../..');
 const hop = path.join(root, 'vendor/hop/apps/studio-host');
 const upstream = path.join(root, 'vendor/rhwp/rhwp-studio/src');
@@ -46,6 +47,23 @@ await writeFile(path.join(output, 'index.html'), html);
 await cp(path.join(wasm, 'rhwp_bg.wasm'), path.join(output, 'rhwp_bg.wasm'));
 // Use the same complete blank document template as RHWP's createBlankDocument().
 await cp(path.join(root, 'vendor/rhwp/saved/blank2010.hwp'), path.join(output, 'blank.hwp'));
+// Upstream's blank_hwpx fixture contains sample text. Export the actual empty
+// HWP template with the pinned engine, and validate the generated container.
+const core = await import(pathToFileURL(path.join(wasm, 'rhwp.js')).href);
+core.initSync({ module: await readFile(path.join(wasm, 'rhwp_bg.wasm')) });
+const blank = new core.HwpDocument(new Uint8Array(await readFile(path.join(output, 'blank.hwp'))));
+try {
+  const exported = blank.exportHwpxWithReport();
+  try {
+    if (JSON.parse(exported.contentLoss()).count !== 0) throw Error('HWPX template export reported content loss.');
+    const bytes = exported.takeBytes();
+    const check = new core.HwpDocument(bytes);
+    try {
+      if (JSON.parse(check.getTextFileText()) !== '') throw Error('Generated HWPX template is not empty.');
+    } finally { check.free(); }
+    await writeFile(path.join(output, 'blank.hwpx'), bytes);
+  } finally { exported.free(); }
+} finally { blank.free(); }
 await cp(path.join(hop, 'public/images'), path.join(output, 'images'), { recursive: true });
 await rm(path.join(output, 'fonts'), { recursive: true, force: true });
 await cp(path.join(root, 'vendor/hop/assets/fonts'), path.join(output, 'fonts'), { recursive: true,

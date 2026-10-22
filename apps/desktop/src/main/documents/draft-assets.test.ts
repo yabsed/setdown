@@ -73,8 +73,12 @@ describe('draft asset bundles', () => {
     expect(await discardDraftBundle(drafts, path.join(root, 'outside.md'))).toBe(false);
   });
 
-  it('rewrites only when directory names differ', () => {
+  it('preserves prose and rewrites only destinations when directory names differ', () => {
     expect(rewriteDraftAssetReferences('a.assets/x.png', 'a.assets', 'b.assets'))
-      .toBe('b.assets/x.png');
+      .toBe('a.assets/x.png');
+    expect(rewriteDraftAssetReferences('![x](a.assets/x.png)', 'a.assets', 'b.assets'))
+      .toBe('![x](b.assets/x.png)');
+    expect(rewriteDraftAssetReferences('![x](a.assets/x.png)', 'a.assets', 'a.assets'))
+      .toBe('![x](a.assets/x.png)');
   });
 });

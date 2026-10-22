@@ -6,6 +6,28 @@ import path from 'node:path';
 import { previews } from '../../support/preview/preview-view';
 import { disposeApplication } from '../../support/electron/electron-app';
 
+test('preview find keeps Unicode offsets and excludes authored hidden text', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-find-boundaries-'));
+  const file = path.join(root, 'search.md');
+  await writeFile(file, '<p>İxvisible</p>\n\n<p style="display: none !important">invisible-secret</p>');
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await app.firstWindow(), reading = previews(app);
+    await expect.poll(() => reading.evaluate("document.querySelector('.markdown-preview')?.textContent || ''")).toContain('İxvisible');
+    await page.locator('.application-menu button', { hasText: 'View' }).click();
+    await page.locator('.application-menu-popup button', { hasText: 'Find in Preview' }).click();
+    const input = page.locator('.preview-search input');
+    await input.fill('xvisible');
+    await expect(page.locator('.find-count')).toHaveText('1 / 1');
+    await expect(input).toBeFocused();
+    expect(await reading.evaluate("getComputedStyle([...document.querySelectorAll('.markdown-preview p')].find(p => p.textContent === 'invisible-secret')).display")).toBe('none');
+    await input.fill('invisible-secret');
+    await expect(page.locator('.find-count')).toHaveText('0 / 0');
+    await expect(input).toBeFocused();
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
 test('uses the rendered document for TOC, search, and Crossnote themes', async () => {
   const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-reader-tools-e2e-'));
   const configRoot = path.join(temporaryRoot, 'config');

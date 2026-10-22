@@ -30,6 +30,7 @@ export function parseGitDiffHunks(patch: string): GitDiffHunk[] {
   let oldLine = 0;
   let newLine = 0;
   let active: GitDiffHunk | null = null;
+  let inHunk = false;
   const flush = () => {
     if (active && (active.oldLines > 0 || active.newLines > 0)) hunks.push(active);
     active = null;
@@ -38,16 +39,18 @@ export function parseGitDiffHunks(patch: string): GitDiffHunk[] {
     const header = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(line);
     if (header) {
       flush();
+      inHunk = true;
       oldLine = Number(header[1]);
       newLine = Number(header[2]);
       continue;
     }
-    if (!oldLine && !newLine) continue;
-    if (line.startsWith('-') && !line.startsWith('---')) {
+    if (line.startsWith('diff --git ')) { flush(); inHunk = false; }
+    if (!inHunk) continue;
+    if (line.startsWith('-')) {
       active ??= { oldStart: oldLine, oldLines: 0, newStart: newLine, newLines: 0 };
       active.oldLines += 1;
       oldLine += 1;
-    } else if (line.startsWith('+') && !line.startsWith('+++')) {
+    } else if (line.startsWith('+')) {
       active ??= { oldStart: oldLine, oldLines: 0, newStart: newLine, newLines: 0 };
       active.newLines += 1;
       newLine += 1;
@@ -80,7 +83,8 @@ export function parseGitStatus(output: string): ParsedStatus {
       const renamed = /^2 (\S{2}) \S+ \S+ \S+ \S+ \S+ \S+ \S+ ([\s\S]*)$/.exec(record);
       const unmerged = /^u (\S{2}) \S+ \S+ \S+ \S+ \S+ \S+ \S+ \S+ ([\s\S]*)$/.exec(record);
       const match = ordinary ?? renamed ?? unmerged;
-      if (match) parsed.changes.push(change(match[1], match[2]));
+      if (match) parsed.changes.push({ ...change(match[1], match[2]),
+        ...(renamed ? { previousPath: records[index + 1] } : {}) });
       if (renamed) index += 1;
     }
   }
@@ -128,7 +132,8 @@ export class GitService {
       ...parsed,
       changes: parsed.changes.map((change) => {
         const filePath = path.join(repository.repositoryRoot, change.path);
-        return { ...change, path: path.relative(root, filePath), filePath };
+        return { ...change, path: path.relative(root, filePath), filePath,
+          ...(change.previousPath === undefined ? {} : { previousPath: path.relative(root, path.join(repository.repositoryRoot, change.previousPath)) }) };
       }),
     };
   }
@@ -144,10 +149,12 @@ export class GitService {
     const root = this.paths.root(state);
     const repository = await this.repository(root);
     if (!repository) throw new Error('The open folder is not a Git repository.');
-    const filePath = this.paths.inside(state, candidate);
-    const relative = this.paths.relative(state, filePath);
+    const filePath = this.paths.entry(state, candidate);
+    const relative = path.relative(root, filePath);
     const repositoryRelative = path.relative(repository.repositoryRoot, filePath).split(path.sep).join('/');
     const change = (await this.status(state)).changes.find((item) => item.filePath === filePath);
+    const originalPath = change?.previousPath === undefined ? repositoryRelative
+      : path.relative(repository.repositoryRoot, path.resolve(root, change.previousPath)).split(path.sep).join('/');
     let patch: string;
     if (!staged && change?.indexStatus === '?' && change.workingTreeStatus === '?') {
       const text = await readWorkingDocument(filePath);
@@ -158,10 +165,11 @@ export class GitService {
       }
     } else {
       patch = await this.run(root, ['diff', '--no-ext-diff', '--no-color',
-        ...(staged ? ['--cached'] : []), '--', relative]);
+        ...(staged ? ['--cached'] : []), '--', relative,
+        ...(staged && change?.previousPath ? [change.previousPath] : [])]);
     }
     const originalText = staged
-      ? await readGitDocument(repository, `HEAD:${repositoryRelative}`, filePath)
+      ? await readGitDocument(repository, `HEAD:${originalPath}`, filePath)
       : change?.indexStatus === '?' ? '' : await readGitDocument(repository, `:${repositoryRelative}`, filePath);
     const modifiedText = staged
       ? await readGitDocument(repository, `:${repositoryRelative}`, filePath)
@@ -207,7 +215,7 @@ export class GitService {
       const change = byPath.get(filePath);
       if (!change?.unstaged) continue;
       if (change.indexStatus === '?' && change.workingTreeStatus === '?') await this.trash(filePath);
-      else tracked.push(this.paths.relative(state, filePath));
+      else tracked.push(path.relative(this.paths.root(state), filePath));
     }
     if (tracked.length) await this.run(this.paths.root(state), ['restore', '--worktree', '--', ...tracked]);
     return this.status(state);
@@ -234,17 +242,20 @@ export class GitService {
 
   private absolutePaths(state: WindowState, candidates: string[]): string[] {
     return [...new Set((Array.isArray(candidates) ? candidates : [])
-      .map((candidate) => this.paths.inside(state, String(candidate))))];
+      .map((candidate) => this.paths.entry(state, String(candidate))))];
   }
 
   private relativePaths(state: WindowState, candidates: string[]): string[] {
-    return this.absolutePaths(state, candidates).map((candidate) => this.paths.relative(state, candidate));
+    return this.absolutePaths(state, candidates).map((candidate) => path.relative(this.paths.root(state), candidate));
   }
 
   private repository(root: string): Promise<GitCli | null> {
     const cached = this.repositories.get(root);
     if (cached) return cached;
-    const repository = GitCli.connect(root);
+    const repository = GitCli.connect(root).then(value => {
+      if (!value && this.repositories.get(root) === repository) this.repositories.delete(root);
+      return value;
+    });
     this.repositories.set(root, repository);
     return repository;
   }

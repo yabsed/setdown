@@ -22,10 +22,12 @@ export class AutoSaveController {
   private pendingTabId: string | null = null;
   private queue: Promise<void> = Promise.resolve();
   private pauses = 0;
+  private generation = 0;
 
   constructor(private readonly options: Options) {}
 
   setEnabled(enabled: boolean): void {
+    this.generation++;
     this.enabled = enabled;
     this.cancel();
     if (enabled) void this.saveDirtyTabs();
@@ -72,11 +74,13 @@ export class AutoSaveController {
   }
 
   private enqueue(tabId: string, requireActive: boolean): void {
-    this.queue = this.queue.then(() => this.save(tabId, requireActive));
+    const generation = this.generation;
+    this.queue = this.queue.then(() => this.save(tabId, requireActive, generation));
   }
 
-  private async save(tabId: string, requireActive: boolean): Promise<void> {
-    if (this.pauses) return;
+  private async save(tabId: string, requireActive: boolean, generation: number): Promise<void> {
+    const canceled = () => this.pauses || !this.enabled || generation !== this.generation;
+    if (canceled()) return;
     const { desktop, tabs, text, dirty, acceptSaved, saved } = this.options;
     const tab = tabs.find((candidate) => candidate.id === tabId);
     if (!tab || !dirty(tab)) return;
@@ -84,7 +88,7 @@ export class AutoSaveController {
     if (requireActive && tab.id !== this.options.activeId()) return;
     try {
       await this.options.beforeSave?.(tab);
-      if (!tabs.includes(tab) || (requireActive && tab.id !== this.options.activeId())) return;
+      if (canceled() || !tabs.includes(tab) || (requireActive && tab.id !== this.options.activeId())) return;
       const result = await desktop.saveTabDocument(tab.document, text(tab), tab.revision, true);
       // A conflict-canceled save stays dirty; the external-change banner informs the user.
       if (result.canceled || !result.document || !tabs.includes(tab)) return;

@@ -1,5 +1,6 @@
 import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
+import { encodePathSegments } from '../../core/markdown/asset-references';
 
 const IMAGE_EXTENSIONS = new Set([
   '.avif', '.bmp', '.gif', '.jpeg', '.jpg', '.png', '.svg', '.tif', '.tiff', '.webp',
@@ -16,7 +17,7 @@ function timestampForFile(date: Date) {
 }
 
 function markdownPath(relativePath: string) {
-  return relativePath.split(path.sep).join('/');
+  return encodePathSegments(relativePath.split(path.sep));
 }
 
 export function isSupportedImagePath(filePath: string) {
@@ -48,8 +49,7 @@ async function savePastedAsset(
       return {
         absolutePath,
         markdownPath: relativePath,
-        // angle destination은 공백을 보존하면서 Markdown parser가 실제 파일
-        // 경로를 URL 인코딩된 별도 파일명으로 오해하지 않게 한다.
+        // Keep URI delimiters encoded inside the Markdown destination.
         markdown: `![Pasted image](<${relativePath}>)`,
       };
     } catch (error) {

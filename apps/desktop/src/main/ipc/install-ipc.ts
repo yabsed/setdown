@@ -235,9 +235,8 @@ export function installIpc(options: Options): void {
   channels.handle('document:open-link', (state, href: string) => openLink(documents, state, href, options.browsers));
 }
 async function openLink(documents: DocumentManager, state: Parameters<DocumentManager['open']>[0], href: string, browsers: BrowserManager): Promise<void> {
-  let decodedHref: string;
-  try { decodedHref = decodeURIComponent(String(href)); } catch { return; }
-  const localPath = pathFromResourceUrl(decodedHref);
+  if (typeof href !== 'string') return;
+  const localPath = pathFromResourceUrl(href);
   if (localPath) {
     const checked = canonicalPath(localPath);
     try { if (!(await fs.stat(checked)).isFile()) return; } catch { return; }
@@ -250,7 +249,7 @@ async function openLink(documents: DocumentManager, state: Parameters<DocumentMa
     return;
   }
   try {
-    const url = new URL(decodedHref);
+    const url = new URL(href);
     if (['http:', 'https:'].includes(url.protocol)) await browsers.openLink(state.webContentsId, url.href);
     else if (['mailto:', 'tel:'].includes(url.protocol)) await shell.openExternal(url.href);
   } catch { /* Unrecognised protocols are not opened. */ }

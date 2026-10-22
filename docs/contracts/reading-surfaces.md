@@ -75,6 +75,22 @@ operate on the addressed reading surface. Ordinary Markdown retains PDF export;
 Git review does not export the current ordinary document by accident.
 
 Find follows the **visible surface**, not merely the tab's resource type.
+Literal search uses Unicode case-insensitive matching with offsets in the original
+text; lowercasing must not shift matches after expanding characters such as `İ`.
+Rendered find excludes CSS-hidden text and ancestors, including `!important`
+declarations. Static project indexing also excludes inline hidden declarations.
+Reader Markdown export retains IDs on headings themselves as well as descendant
+anchors. The preview reading-tools Electron tests and audit regression suite
+cover these cases.
+
+Local Markdown destinations encode path segments once. The pinned Crossnote
+resolver adapter in `main/preview/render-worker.ts` interprets authored URL paths
+before the filesystem hook encodes them for the resource protocol. Reader click
+messages remove Crossnote's transport envelope exactly once; IPC then receives
+an ordinary URL with its escaped filename, query and fragment preserved.
+`preview-local-links.spec.ts` covers real image loading and document navigation
+with `#` and `%` in filenames, as well as parent-relative links.
+
 `core/reading/rendered-search.ts` retains Markdown's existing cross-inline text
 range algorithm; `renderer/browser/rendered-find.ts` uses it for scoped Reader
 highlights, counts, wrapping next/previous matches and scrolling. Native website
@@ -216,6 +232,12 @@ Text workspace edits validate every target before mutation, preserve ordinary
 dirty state and per-file Undo, and reject resource operations and annotations.
 Server-issued commands and resolvable items retain main-owned, expiring handles;
 renderer-supplied command arguments cannot replace the original server payload.
+Disposed completion commands have a bounded grace lease for the post-insertion
+callback: one document change and at most 30 seconds. A later change, session
+close or lease expiry retires them. When memory is needed, disposed commands are
+reclaimed before rejecting a new reply; visible results retain their handles.
+The server-item tests retain command execution after completion disposal and
+check that unused commands cannot exhaust the active-result budget indefinitely.
 Unsolicited `workspace/applyEdit` is rejected outside an owned user command or
 Explorer operation. Save preprocessing skips initializing/failed servers, bounds
 `willSaveWaitUntil`, and rejects edits for a superseded buffer. Explorer will/did

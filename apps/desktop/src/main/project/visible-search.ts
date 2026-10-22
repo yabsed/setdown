@@ -1,4 +1,5 @@
 import { Parser } from 'htmlparser2';
+import { literalSearch } from '../../core/reading/search-text';
 
 export type VisibleSearchMatch = {
   line: number;
@@ -19,7 +20,7 @@ const excludedElement = (name: string, attributes: Record<string, string>) =>
   || 'hidden' in attributes
   || attributes.class?.split(/\s+/).some((value) =>
     ['katex-mathml', 'MathJax_Preview', 'mjx-assistive-mml'].includes(value)) === true
-  || /(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*hidden)\s*(?:;|$)/i
+  || /(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*(?:hidden|collapse)|content-visibility\s*:\s*hidden)\s*(?:!\s*important\s*)?(?:;|$)/i
     .test(attributes.style ?? '');
 
 function sourceSpan(attributes: Record<string, string>): SourceSpan | null {
@@ -66,13 +67,11 @@ export function searchVisibleText(
   rawQuery: string,
   limit: number,
 ): VisibleSearchMatch[] {
-  const query = rawQuery.toLocaleLowerCase();
-  if (!query || limit <= 0) return [];
-  const folded = index.text.toLocaleLowerCase();
+  if (!rawQuery || limit <= 0) return [];
   const matches: Array<VisibleSearchMatch & { source: SourceSpan | null }> = [];
   let nodeIndex = 0;
-  for (let found = folded.indexOf(query); found >= 0 && matches.length < limit;
-    found = folded.indexOf(query, found + query.length)) {
+  for (const { start: found, end: matchEnd } of literalSearch(index.text, rawQuery)) {
+    if (matches.length >= limit) break;
     while (nodeIndex + 1 < index.nodes.length && index.nodes[nodeIndex].end <= found) nodeIndex += 1;
     const node = index.nodes[nodeIndex];
     const source = node?.start <= found && node.end > found ? node.source : null;
@@ -80,7 +79,7 @@ export function searchVisibleText(
     const lineOccurrence = matches.filter((match) =>
       match.source && match.source.start <= line && match.source.end >= line).length;
     const start = Math.max(0, found - 60);
-    const end = Math.min(index.text.length, found + query.length + 120);
+    const end = Math.min(index.text.length, matchEnd + 120);
     matches.push({
       line,
       column: Math.max(1, found - (node?.start ?? found) + 1),

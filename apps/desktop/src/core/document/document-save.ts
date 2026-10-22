@@ -3,6 +3,7 @@ import { isNotebookDocument } from './document-profile';
 import type { DocumentSnapshot } from './document';
 import { isMarkdownDocument, isTextCandidate, isReadOnlyDocument } from './document-profile';
 import { decodeTextBytes, encodedText } from './text-codec';
+import { rewriteAssetReferences } from '../markdown/asset-references';
 
 /** Validate a newly selected text destination before any disk/state mutation. */
 export function prepareDocumentSave(document: DocumentSnapshot, text: string, destination: string) {
@@ -23,5 +24,7 @@ export function prepareDocumentSave(document: DocumentSnapshot, text: string, de
 
 /** Saving an older revision must not erase edits made while the dialog/IO ran. */
 export function retainUnsavedRevision(saved: DocumentSnapshot, text: string, revision: number): DocumentSnapshot {
-  return revision > saved.revision ? { ...saved, text, revision } : saved;
+  const { assetRelocation, ...snapshot } = saved;
+  return revision > saved.revision ? { ...snapshot,
+    text: assetRelocation ? rewriteAssetReferences(text, assetRelocation) : text, revision } : snapshot;
 }

@@ -12,6 +12,34 @@ async function engine() {
   return module;
 }
 
+test('New File creates a valid HWPX container that the actual engine opens', async () => {
+  test.setTimeout(90_000);
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-new-hwpx-'));
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.'], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await app.firstWindow();
+    await page.evaluate(root => window.marktex.restoreProjectFolder(root), root);
+    await page.reload();
+    await page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
+    await page.getByRole('button', { name: 'Explorer', exact: true }).click();
+    await page.getByRole('button', { name: 'New File', exact: true }).click();
+    const input = page.getByRole('textbox', { name: 'New file name', exact: true });
+    await input.fill('새 문서.hwpx'); await input.press('Enter');
+    await expect(page.locator('.shell')).toHaveAttribute('data-surface', 'hwp');
+    const file = path.join(root, '새 문서.hwpx');
+    const core = await engine(), blank = new core.HwpDocument(new Uint8Array(await readFile(file)));
+    try {
+      expect(JSON.parse(blank.getTextFileText())).toBe('');
+      expect(JSON.parse(blank.getDocumentInfo())).toMatchObject({ sectionCount: 1 });
+    } finally { blank.free(); }
+    await expect.poll(() => app.evaluate(({ webContents }) => {
+      const child = webContents.getAllWebContents().find(contents => contents.getURL().startsWith('setdown-hwp:'));
+      return child?.executeJavaScript('document.documentElement.dataset.hwpReady');
+    }), { timeout: 45_000 }).toBe('true');
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
 test('Explorer creates a blank HWP in the selected folder and opens an editable, saveable document', async () => {
   test.setTimeout(90_000);
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-new-hwp-'));

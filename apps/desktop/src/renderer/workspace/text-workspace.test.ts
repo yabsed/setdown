@@ -278,6 +278,23 @@ test('saving an older revision retains new input and a correct saved baseline', 
   assert.equal(tab.document.savedText, 'saved\r\n');
   assert.equal(f.controller.dirty(tab), true);
 });
+test('a first save relocates assets in both the latest buffer and its live model', async () => {
+  const f = fixture();
+  const old = '![x](Untitled.assets/a.png)', saved = '![x](saved.assets/a.png)';
+  await f.controller.show({ ...snapshot('/draft/Untitled.md', old), isUntitled: true });
+  const tab = f.workspace.activeDocument!;
+  tab.text = old + '\nnew typing'; tab.revision = 3;
+  const replace = vi.spyOn(f.options.editor, 'replace');
+  await f.controller.acceptSaved(tab, { ...tab.document, path: '/project/saved.md', isUntitled: false,
+    text: saved, savedText: saved, revision: 2, savedRevision: 2,
+    assetRelocation: { sourceDirectoryName: 'Untitled.assets', destinationDirectoryName: 'saved.assets' } });
+  assert.equal(tab.text, saved + '\nnew typing');
+  assert.equal(tab.revision, 3);
+  assert.equal(tab.document.savedText, saved);
+  assert.equal(tab.document.assetRelocation, undefined);
+  assert.equal(replace.mock.calls.length, 1);
+  assert.equal(f.controller.dirty(tab), true);
+});
 test('text transfer cannot reintroduce an advertised Viewer or a stale preview URL', async () => {
   const f = fixture();
   const doc = snapshot('/project/main.cpp');

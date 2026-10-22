@@ -34,7 +34,10 @@ Explicit Run starts one Python kernel per notebook; opening does not. Source/ord
 snapshots, unique run IDs, kernel generations, owner window and stable cell IDs prevent results
 from attaching to a different cell. Closing the owner or resetting releases the
 kernel. Output changes must not invalidate Python LSP requests. Source-only edits
-preserve unrelated JSON spans, metadata, outputs and attachments. Runs join a serial
+preserve unrelated JSON spans, metadata, outputs and attachments. Converting a
+Markdown/raw cell to code omits attachments from serialized code-cell JSON, while
+the original attachment data remains available to structural Undo/Redo. The audit
+regression test checks this nbformat boundary. Runs join a serial
 queue; errors stop queued work, interrupt cancels it, and delayed results from an
 older run cannot overwrite a rerun of the same cell.
 

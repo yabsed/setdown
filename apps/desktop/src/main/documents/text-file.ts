@@ -2,6 +2,22 @@ import { constants, promises as fs } from 'node:fs';
 import { isTextCandidate } from '../../core/document/document-profile';
 import { decodeTextBytes, MAX_TEXT_FILE_BYTES } from '../../core/document/text-codec';
 
+/** Markdown retains its unbounded UTF-8 policy, but the bytes and version must agree. */
+export async function readMarkdownFile(filePath: string) {
+  const handle = await fs.open(filePath, constants.O_RDONLY | (constants.O_NONBLOCK ?? 0));
+  try {
+    const before = await handle.stat();
+    if (!before.isFile()) throw new Error('Only regular text files can be opened.');
+    const text = await handle.readFile('utf8');
+    const after = await handle.stat(), current = await fs.stat(filePath);
+    if (before.size !== after.size || before.mtimeMs !== after.mtimeMs || before.ctimeMs !== after.ctimeMs
+      || current.dev !== after.dev || current.ino !== after.ino || current.mtimeMs !== after.mtimeMs || current.ctimeMs !== after.ctimeMs) {
+      throw new Error('The file changed while it was being opened. Please retry.');
+    }
+    return { text, diskVersion: { mtimeMs: after.mtimeMs, size: after.size } };
+  } finally { await handle.close(); }
+}
+
 /** Bounded read on the opened handle; O_NONBLOCK prevents a raced FIFO from hanging. */
 export async function readTextFile(filePath: string, limit = MAX_TEXT_FILE_BYTES) {
   if (!isTextCandidate(filePath)) throw new Error('This file type is binary and cannot be edited as text.');

@@ -71,6 +71,34 @@ choices, basename/IME handling, selection persistence and failed trash in real
 Electron. Existing native web/Markdown overlay identity and focus tests remain
 required. These guarantees do not imply large-tree virtualization or file Undo.
 
+## Text saves, Git paths and external changes
+
+Text saves serialize conflict checks and publication per canonical destination
+across windows. Each write uses an exclusive unique temporary file and restores
+the original permissions independently of umask. Save As follows symbolic links,
+including a dangling leaf link. Markdown reads verify one opened handle before
+and after reading and reject replacement of its path. A final save conflict check
+precedes rename; this is optimistic detection, not filesystem compare-and-swap.
+Each window owns only its own file-watch listener. Deletion or loss of access
+produces an external-change notice and retains the buffer; autosave never
+recreates a missing file. Disabling autosave invalidates queued work and work
+awaiting save preprocessing, while already-started I/O completes normally.
+
+Draft relocation rewrites parsed local Markdown/HTML destinations, including
+reference definitions and encoded filenames. Code, prose and external URLs stay
+byte-for-byte intact. A one-shot relocation mapping also updates edits made
+during saving, without replacing them with the older saved revision. Generated
+local destinations encode filesystem segments; URL consumers parse before
+decoding. Saved baselines and live model text retain separate revisions.
+
+Git selections are literal paths and preserve symbolic-link entries. Staged
+renames read HEAD using the previous path. Hunk bodies beginning with `---` or
+`+++` remain changes. An absent repository is not permanently cached, and a blob
+read failure or size limit is never reported as an empty original. Read-only
+directory copies restore their mode after publication and clean writable staging
+trees on failure. The audit integration suite, draft parser tests, and actual
+preview local-link tests cover these boundaries.
+
 ## Editor groups
 
 Web pages share the editor-group tab strip and its address/file-path bar. The bar

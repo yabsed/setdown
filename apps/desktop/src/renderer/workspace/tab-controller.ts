@@ -478,7 +478,7 @@ export class TabController {
     tab.revision = tab.document.revision;
     tab.text = tab.document.text;
     // Only actual draft-asset text rewriting replaces content, not a pure rename.
-    if (revision <= saved.revision && text !== saved.text) this.options.documents.replace(tab, saved);
+    if (text !== tab.document.text) this.options.documents.replace(tab, tab.document);
     if (oldPath !== saved.path) await this.retarget(tab, oldPath);
     this.options.documents.saved(tab);
     this.updateChrome();

@@ -1,6 +1,8 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { atomicWrite, isInside } from './file-system';
+import { rewriteAssetReferences, type AssetRelocation } from '../../core/markdown/asset-references';
 
 function assetDirectoryFor(documentPath: string) {
   const extension = path.extname(documentPath);
@@ -23,23 +25,12 @@ async function unusedAssetDirectory(destinationDocumentPath: string) {
   }
 }
 
-async function atomicWrite(filePath: string, text: string) {
-  const stat = await fs.stat(filePath).catch(() => null);
-  const temporary = path.join(
-    path.dirname(filePath),
-    `.${path.basename(filePath)}.${process.pid}.${Date.now()}.tmp`,
-  );
-  await fs.writeFile(temporary, text, { encoding: 'utf8', mode: stat?.mode });
-  await fs.rename(temporary, filePath);
-}
-
 export function rewriteDraftAssetReferences(
   text: string,
   sourceDirectoryName: string,
   destinationDirectoryName: string,
 ) {
-  if (sourceDirectoryName === destinationDirectoryName) return text;
-  return text.split(`${sourceDirectoryName}/`).join(`${destinationDirectoryName}/`);
+  return rewriteAssetReferences(text, { sourceDirectoryName, destinationDirectoryName });
 }
 
 export function isDraftDocumentPath(draftsRoot: string, documentPath: string) {
@@ -57,12 +48,14 @@ export async function saveDraftBundle(
     throw new Error('The temporary document is outside the Setdown drafts directory.');
   }
   const sourceRoot = path.dirname(sourceDocumentPath);
+  if (isInside(sourceRoot, path.resolve(destinationDocumentPath))) throw new Error('Choose a destination outside this temporary draft folder.');
   const sourceAssets = assetDirectoryFor(sourceDocumentPath);
   const hasAssets = await exists(sourceAssets);
   await fs.mkdir(path.dirname(destinationDocumentPath), { recursive: true });
 
   let savedText = text;
   let committedAssets: string | null = null;
+  let assetRelocation: AssetRelocation | undefined;
   if (hasAssets) {
     committedAssets = await unusedAssetDirectory(destinationDocumentPath);
     const staging = path.join(
@@ -76,15 +69,13 @@ export async function saveDraftBundle(
       await fs.rm(staging, { recursive: true, force: true }).catch(() => undefined);
       throw error;
     }
-    savedText = rewriteDraftAssetReferences(
-      text,
-      path.basename(sourceAssets),
-      path.basename(committedAssets),
-    );
+    assetRelocation = { sourceDirectoryName: path.basename(sourceAssets), destinationDirectoryName: path.basename(committedAssets) };
+    savedText = rewriteAssetReferences(text, assetRelocation);
   }
 
+  let diskVersion;
   try {
-    await atomicWrite(destinationDocumentPath, savedText);
+    diskVersion = await atomicWrite(destinationDocumentPath, savedText);
   } catch (error) {
     if (committedAssets) {
       await fs.rm(committedAssets, { recursive: true, force: true }).catch(() => undefined);
@@ -93,7 +84,7 @@ export async function saveDraftBundle(
   }
   // 목적지 commit 이후의 draft 청소 실패가 성공한 저장을 실패로 뒤집으면 안 된다.
   await fs.rm(sourceRoot, { recursive: true, force: true }).catch(() => undefined);
-  return { text: savedText, assetDirectory: committedAssets };
+  return { text: savedText, assetDirectory: committedAssets, assetRelocation, diskVersion };
 }
 
 export async function discardDraftBundle(draftsRoot: string, documentPath: string) {

@@ -10,14 +10,15 @@ function fixture(path = '/sample.md') {
     anchor:{sourceLine:2,yRatio:.5},find:{open:false},previewUrl:'marktex-preview://document/1',previewTheme:'github-light'};
   const commands: unknown[] = [];
   const shown: unknown[] = [];
+  const links: string[] = [];
   const controller = new ReaderController({
     active:()=>tab,activeId:()=>tab.id,tabs:[tab],initialTheme:{id:'github-light',revision:0},
     desktop:{sendPreviewCommand:(_id:string,m:unknown)=>commands.push(m),showPreview:(id:unknown)=>shown.push(id),
-      setBackgroundPreviews() {}},
+      setBackgroundPreviews() {}, openLink:(href:string)=>links.push(href)},
     frames:{getBoundingClientRect:()=>({left:12,top:76,width:800,height:744})},
     anchorChanged() {},
   } as unknown as ConstructorParameters<typeof ReaderController>[0]);
-  return {tab,commands,shown,controller};
+  return {tab,commands,shown,links,controller};
 }
 
 test('source mode primes the reader layout without requesting a visible native view', () => {
@@ -40,4 +41,15 @@ test('background layout cannot overwrite the source editor anchor', () => {
   expect(f.tab.anchor.sourceLine).toBe(2);
   f.tab.surface='viewer'; f.controller.handleMessage(payload);
   expect(f.tab.anchor.sourceLine).toBe(1);
+});
+
+test('reader link messages remove only the transport encoding and preserve URL escapes', () => {
+  const f=fixture();
+  for (const href of ['file:///notes/note%23part%2525.md', 'https://example.test/?q=a%26b']) {
+    f.controller.handleMessage({tabId:'doc',message:{source:'crossnote',command:'clickTagA',
+      args:[{href:encodeURIComponent(href)}]}});
+    expect(f.links.at(-1)).toBe(href);
+  }
+  f.controller.handleMessage({tabId:'doc',message:{source:'crossnote',command:'clickTagA',args:[{href:'%invalid'}]}});
+  expect(f.links).toHaveLength(2);
 });

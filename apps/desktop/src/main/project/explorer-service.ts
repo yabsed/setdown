@@ -33,7 +33,8 @@ export class ExplorerService {
   transfer = (state: WindowState, request: ExplorerTransfer) => this.serialize(() => this.transferEntries(state, request));
   constructor(private readonly paths: ProjectPaths,
     private readonly trash: (filePath: string) => Promise<void> = (filePath) => shell.trashItem(filePath),
-    private readonly beforeMutation: (state: WindowState, paths: string[]) => void = () => {}) {}
+    private readonly beforeMutation: (state: WindowState, paths: string[]) => void = () => {},
+    private readonly hwpTemplates = path.join(__dirname, 'hwp')) {}
   async readDirectory(state: WindowState, candidate: string): Promise<ProjectEntry[]> {
     const directory = this.paths.inside(state, candidate);
     const entries = await fs.readdir(directory, { withFileTypes: true });
@@ -50,7 +51,7 @@ export class ExplorerService {
     await this.languageOperation?.(state, operation, 'will');
     if (kind === 'directory') await fs.mkdir(target);
     else if (kind === 'file') {
-      const content = /\.hwp$/i.test(target) ? await fs.readFile(path.join(__dirname, 'hwp', 'blank.hwp'))
+      const content = /\.hwpx?$/i.test(target) ? await fs.readFile(path.join(this.hwpTemplates, /\.hwpx$/i.test(target) ? 'blank.hwpx' : 'blank.hwp'))
         : /\.ipynb$/i.test(target) ? emptyNotebook() : '';
       await fs.writeFile(target, content, { flag: 'wx' });
     }

@@ -1,5 +1,5 @@
 import { app, clipboard, dialog } from 'electron';
-import { promises as fs, watchFile, unwatchFile } from 'node:fs';
+import { promises as fs, watchFile, unwatchFile, type Stats } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -17,11 +17,11 @@ import { readImageMetadata } from './image-file';
 import { readPdfMetadata } from './pdf-file';
 import { readVideoMetadata } from './video-file';
 import { readHwpMetadata } from './hwp-file';
-import { readTextFile } from './text-file';
+import { readMarkdownFile, readTextFile } from './text-file';
 import { discardDraftBundle, saveDraftBundle } from './draft-assets';
 import { isSupportedImagePath, savePastedImageFile, savePastedPng } from './pasted-image';
 import { markdownDestinationForFile } from './markdown-link';
-import { atomicWrite, canonicalPath, diskVersion, sameDiskVersion } from './file-system';
+import { atomicWrite, canonicalPath, canonicalSavePath, diskVersion, sameDiskVersion, serializeFileSave } from './file-system';
 import type { WindowState } from '../windows/window-state';
 
 const MARKDOWN_FILTER = { name: 'Markdown', extensions: MARKDOWN_EXTENSIONS };
@@ -31,6 +31,7 @@ const saveFilters = (filePath: string) => isMarkdownDocument(filePath)
 
 export class DocumentManager {
   private untitledSequence = 0;
+  private readonly watchers = new WeakMap<WindowState, (current: Stats) => void>();
 
   constructor(private readonly resetPreviewCache: () => void, readonly positions?: ReadingPositionStore) {}
 
@@ -39,7 +40,7 @@ export class DocumentManager {
     // Preserve Markdown's existing unbounded read policy. New text formats use
     // the bounded, strict decoder and retain their BOM/EOL metadata.
     const loaded = isHwpDocument(absolute) ? await readHwpMetadata(absolute) : isVideoDocument(absolute) ? await readVideoMetadata(absolute) : isImageDocument(absolute) ? await readImageMetadata(absolute) : isPdfDocument(absolute) ? await readPdfMetadata(absolute) : isMarkdownDocument(absolute)
-      ? { text: await fs.readFile(absolute, 'utf8'), diskVersion: diskVersion(absolute) }
+      ? await readMarkdownFile(absolute)
       : await readTextFile(absolute);
     return {
       ...loaded,
@@ -64,7 +65,9 @@ export class DocumentManager {
   }
 
   stopWatching(state: WindowState) {
-    if (state.watchedPath) unwatchFile(state.watchedPath);
+    const listener = this.watchers.get(state);
+    if (state.watchedPath && listener) unwatchFile(state.watchedPath, listener);
+    this.watchers.delete(state);
     state.watchedPath = null;
   }
 
@@ -74,14 +77,16 @@ export class DocumentManager {
     if (!document || document.isUntitled) return;
     state.watchedPath = document.path;
     const watchedPath = document.path;
-    watchFile(watchedPath, { interval: 750 }, (current) => {
+    const listener = (current: Stats) => {
       const watchedDocument = state.currentDocument;
       if (!watchedDocument || watchedDocument.path !== watchedPath) return;
       const next = { mtimeMs: current.mtimeMs, size: current.size };
-      if (current.nlink > 0 && !sameDiskVersion(next, watchedDocument.diskVersion)) {
-        state.window.webContents.send('document:external-change', { path: watchedDocument.path, diskVersion: next });
+      if (current.nlink === 0 || !sameDiskVersion(next, watchedDocument.diskVersion)) {
+        state.window.webContents.send('document:external-change', { path: watchedDocument.path, diskVersion: next, unavailable: current.nlink === 0 });
       }
-    });
+    };
+    this.watchers.set(state, listener);
+    watchFile(watchedPath, { interval: 750 }, listener);
   }
 
   async open(state: WindowState, filePath: string, notify = true) {
@@ -121,7 +126,10 @@ export class DocumentManager {
         if (!sameDiskVersion(actual, state.currentDocument.diskVersion)) {
           state.window.webContents.send('document:external-change', { path: state.currentDocument.path, diskVersion: actual });
         }
-      } catch { /* The next save/reload reports inaccessible files. */ }
+      } catch {
+        state.window.webContents.send('document:external-change', { path: state.currentDocument.path,
+          diskVersion: { mtimeMs: 0, size: 0 }, unavailable: true });
+      }
     }
     return state.currentDocument;
   }
@@ -136,16 +144,21 @@ export class DocumentManager {
   }
 
   private async confirmOverwrite(state: WindowState, document: DocumentSnapshot) {
-    if (this.unchangedOnDisk(document)) return true;
+    if (this.unchangedOnDisk(document)) return document.diskVersion;
     const { response } = await dialog.showMessageBox(state.window, {
       type: 'warning', message: 'This file was changed by another application.',
       detail: 'Do you want to overwrite it with your current changes?',
       buttons: ['Cancel', 'Overwrite'], defaultId: 0, cancelId: 0,
     });
-    return response === 1;
+    if (response !== 1) return false;
+    try { return diskVersion(document.path); } catch { return null; }
   }
 
   async saveSnapshot(state: WindowState, document: DocumentSnapshot, text: string, revision: number, auto = false): Promise<SaveResult> {
+    return serializeFileSave(document.path, () => this.writeSnapshot(state, document, text, revision, auto));
+  }
+
+  private async writeSnapshot(state: WindowState, document: DocumentSnapshot, text: string, revision: number, auto: boolean): Promise<SaveResult> {
     if (document.kind !== undefined || isReadOnlyDocument(document.path)) throw new Error('PDF and image documents are read-only.');
     const updated = applyTextRevision(document, text, revision);
     if (updated.isUntitled) {
@@ -155,32 +168,53 @@ export class DocumentManager {
         defaultPath: path.join(app.getPath('documents'), updated.name), filters: saveFilters(updated.path),
       });
       if (selected.canceled || !selected.filePath) return { canceled: true };
-      const output = prepareDocumentSave(updated, text, selected.filePath);
-      let savedText = output.text;
-      if (isMarkdownDocument(selected.filePath)) {
-        const saved = await saveDraftBundle(path.join(app.getPath('userData'), 'drafts'),
-          updated.path, selected.filePath, output.bytes);
-        savedText = saved.text;
-      } else {
-        await atomicWrite(selected.filePath, output.bytes);
-      }
-      const absolute = canonicalPath(selected.filePath);
-      return { canceled: false, document: { ...updated,
-        path: absolute, name: path.basename(absolute), text: savedText, savedText,
-        encoding: output.encoding, eol: output.eol,
-        revision, savedRevision: revision, diskVersion: diskVersion(absolute), isUntitled: false } };
+      const absolute = canonicalSavePath(selected.filePath);
+      // A draft bundle is removed after publication; never publish into itself.
+      if (path.dirname(absolute) === path.dirname(updated.path)) throw new Error('Choose a destination outside this temporary draft folder.');
+      return serializeFileSave(absolute, async () => {
+        const output = prepareDocumentSave(updated, text, absolute);
+        let savedText = output.text;
+        let assetRelocation: DocumentSnapshot['assetRelocation'];
+        let version: DocumentSnapshot['diskVersion'];
+        if (isMarkdownDocument(absolute)) {
+          const saved = await saveDraftBundle(path.join(app.getPath('userData'), 'drafts'),
+            updated.path, absolute, output.bytes);
+          savedText = saved.text;
+          assetRelocation = saved.assetRelocation;
+          version = saved.diskVersion;
+        } else {
+          version = await atomicWrite(absolute, output.bytes);
+        }
+        return { canceled: false, document: { ...updated,
+          path: absolute, name: path.basename(absolute), text: savedText, savedText,
+          encoding: output.encoding, eol: output.eol, assetRelocation,
+          revision, savedRevision: revision, diskVersion: version, isUntitled: false } };
+      });
     }
     const output = prepareDocumentSave(updated, text, updated.path);
     // Auto save silently skips an externally changed file; the external-change
     // banner already tells the user. Manual saves still ask before overwriting.
-    if (auto ? !this.unchangedOnDisk(updated) : !(await this.confirmOverwrite(state, updated))) return { canceled: true };
+    const expected = auto ? this.unchangedOnDisk(updated) ? updated.diskVersion : false
+      : await this.confirmOverwrite(state, updated);
+    if (expected === false) return { canceled: true };
     await fs.mkdir(path.dirname(updated.path), { recursive: true });
-    await atomicWrite(updated.path, output.bytes);
+    let conflict = false;
+    let version: DocumentSnapshot['diskVersion'];
+    try {
+      version = await atomicWrite(updated.path, output.bytes, () => {
+        let current: ReturnType<typeof diskVersion> | null = null;
+        try { current = diskVersion(updated.path); } catch { /* Missing destination. */ }
+        if (!!current !== !!expected || (current && expected && !sameDiskVersion(current, expected))) {
+          conflict = true;
+          throw new Error('The file changed while saving. Reload it or save a copy.');
+        }
+      });
+    } catch (error) { if (auto && conflict) return { canceled: true }; throw error; }
     const absolute = canonicalPath(updated.path);
     return { canceled: false, document: { ...updated,
       path: absolute, name: path.basename(absolute), text: output.text, savedText: output.text,
-      encoding: output.encoding, eol: output.eol,
-      revision, savedRevision: revision, diskVersion: diskVersion(absolute), isUntitled: false } };
+      encoding: output.encoding, eol: output.eol, assetRelocation: undefined,
+      revision, savedRevision: revision, diskVersion: version, isUntitled: false } };
   }
 
   private acceptSaved(state: WindowState, result: SaveResult, expectedPath: string) {
@@ -208,14 +242,16 @@ export class DocumentManager {
       defaultPath: document.path, filters: saveFilters(document.path),
     });
     if (selected.canceled || !selected.filePath) return { canceled: true };
-    const output = prepareDocumentSave(document, text, selected.filePath);
-    await atomicWrite(selected.filePath, output.bytes);
-    const absolute = canonicalPath(selected.filePath);
-    if (isMarkdownDocument(absolute)) this.resetPreviewCache();
-    return this.acceptSaved(state, { canceled: false, document: { ...document,
-      path: absolute, name: path.basename(absolute), text: output.text, savedText: output.text,
-      encoding: output.encoding, eol: output.eol,
-      revision, savedRevision: revision, diskVersion: diskVersion(absolute), isUntitled: false } }, document.path);
+    const absolute = canonicalSavePath(selected.filePath);
+    return serializeFileSave(absolute, async () => {
+      const output = prepareDocumentSave(document, text, absolute);
+      const version = await atomicWrite(absolute, output.bytes);
+      if (isMarkdownDocument(absolute)) this.resetPreviewCache();
+      return this.acceptSaved(state, { canceled: false, document: { ...document,
+        path: absolute, name: path.basename(absolute), text: output.text, savedText: output.text,
+        encoding: output.encoding, eol: output.eol, assetRelocation: undefined,
+        revision, savedRevision: revision, diskVersion: version, isUntitled: false } }, document.path);
+    });
   }
 
   async pasteImage(state: WindowState): Promise<PasteImageResult> {

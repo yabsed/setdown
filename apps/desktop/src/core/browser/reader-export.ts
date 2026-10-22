@@ -27,9 +27,10 @@ export function readerMarkdown(article: ReaderArticle): string {
     replacement: (_content, node) => `\n\n${node.outerHTML}\n\n` });
   converter.addRule('section-anchors', { filter: node => node.nodeName === 'A' && !!node.getAttribute('id') && !node.textContent,
     replacement: (_content, node) => `<a id="${node.getAttribute('id')!.replace(/["<>]/g, '')}"></a>` });
-  converter.addRule('section-headings', { filter: node => /^H[1-6]$/.test(node.nodeName) && !!node.querySelector('[id]'),
+  converter.addRule('section-headings', { filter: node => /^H[1-6]$/.test(node.nodeName) && (!!node.id || !!node.querySelector('[id]')),
     replacement: (content, node) => {
-      const anchors = [...node.querySelectorAll('[id]')].map(el => `<a id="${el.id.replace(/["<>]/g, '')}"></a>`).join('');
+      const anchors = [...new Set([node.id, ...[...node.querySelectorAll('[id]')].map(el => el.id)].filter(Boolean))]
+        .map(id => `<a id="${id.replace(/["<>]/g, '')}"></a>`).join('');
       return `\n\n${anchors}\n\n${'#'.repeat(Number(node.nodeName.slice(1)))} ${content.replace(/<a id="[^"]*"><\/a>/g, '').trim()}\n\n`;
     } });
   const body = converter.turndown(sanitizedReaderHtml(article));

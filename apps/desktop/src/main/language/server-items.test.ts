@@ -1,7 +1,22 @@
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { ServerItems } from './server-items';
 
 const origin = { document: 'document', generation: 'generation', version: 1 };
+
+test('a disposed completion command survives its insertion once, but expires after the grace lease', () => {
+  vi.useFakeTimers();
+  try {
+    const store = new ServerItems();
+    const [item] = store.remember('textDocument/completion', [{ label: 'x', command: { title: 'Insert', command: 'after.insert' } }], origin) as any[];
+    store.release([item.$setdownItem, item.command.$setdownItem], origin);
+    store.forget(origin.document, false);
+    expect(store.resolve('workspace/executeCommand', item.command, { ...origin, version: 2 })).toMatchObject({ command: 'after.insert' });
+    const [other] = store.remember('textDocument/completion', [{ label: 'y', command: { title: 'Unused', command: 'unused' } }], origin) as any[];
+    store.release([other.$setdownItem, other.command.$setdownItem], origin);
+    vi.advanceTimersByTime(30_001);
+    expect(() => store.resolve('workspace/executeCommand', other.command, origin)).toThrow(/expired/);
+  } finally { vi.useRealTimers(); }
+});
 
 test('every item of a 4,097-item completion remains resolvable until its list is released', () => {
   const store = new ServerItems();

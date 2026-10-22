@@ -29,8 +29,20 @@ export class GitCli {
     return run(this.workingDirectory, args, timeout);
   }
 
+  async objectExists(specification: string): Promise<boolean> {
+    try {
+      await exec('git', ['rev-parse', '--verify', '--quiet', specification], {
+        cwd: this.workingDirectory, timeout: 10_000, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+      });
+      return true;
+    } catch (error) {
+      if ((error as { code?: number }).code === 1) return false;
+      throw error;
+    }
+  }
+
   async runBytes(args: string[], timeout = 10_000): Promise<Buffer> {
-    const { stdout } = await exec('git', args, {
+    const { stdout } = await exec('git', ['--literal-pathspecs', ...args], {
       cwd: this.workingDirectory, encoding: 'buffer', timeout,
       maxBuffer: MAX_TEXT_FILE_BYTES + 1,
       env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
@@ -41,7 +53,7 @@ export class GitCli {
 
 async function run(workingDirectory: string, args: string[], timeout = 10_000): Promise<string> {
   try {
-    const { stdout } = await exec('git', args, {
+    const { stdout } = await exec('git', ['--literal-pathspecs', ...args], {
       cwd: workingDirectory,
       encoding: 'utf8',
       timeout,

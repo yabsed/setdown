@@ -26,7 +26,7 @@ import {
 } from '../../core/preview/preview-preferences';
 import { lineCount } from '../../core/document/document-state';
 import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
-import { previewRelativeReference } from './preview-resources';
+import { previewRelativeReference, resolvePreviewFileReference } from './preview-resources';
 import { resourceUrl } from './resource-url';
 import { canonicalPath, isInside } from '../documents/file-system';
 import { buildRenderOutput, type InstalledPreview } from './render-output';
@@ -407,6 +407,8 @@ utility.useExternalAddFileProtocolFunction((filePath: string) =>
   previewFileReference(filePath),
 );
 
+const referenceEngines = new WeakSet<object>();
+
 async function render(request: Extract<RenderWorkerRequest, { kind: 'render' }>) {
   allowedRoots = Array.isArray(request.roots) ? request.roots.filter(Boolean) : [];
   deferredMath = [];
@@ -414,6 +416,23 @@ async function render(request: Extract<RenderWorkerRequest, { kind: 'render' }>)
   const renderPath = request.documentPath;
   const notebook = await getNotebook(renderPath, themeId);
   const engine = notebook.getNoteMarkdownEngine(renderPath);
+  if (!referenceEngines.has(engine)) {
+    // Crossnote otherwise joins URL-encoded destinations as literal filesystem
+    // names, causing the file-protocol hook to encode percent escapes twice.
+    // This adapter targets the pinned Crossnote 0.9.35 resolver; its declaration
+    // is private, so real preview-local-links tests guard the integration seam.
+    const resolver = engine as unknown as {
+      resolveFilePath(reference: string, relative: boolean, directory?: string): string;
+    };
+    const original = resolver.resolveFilePath.bind(engine);
+    resolver.resolveFilePath = (reference = '', relative, directory = '') => {
+      const root = reference.startsWith('/') ? path.dirname(renderPath)
+        : directory || path.dirname(renderPath);
+      return (!relative && resolvePreviewFileReference(reference, root, previewFileReference))
+        || original(reference, relative, directory);
+    };
+    referenceEngines.add(engine);
+  }
   const baseHref = resourceUrl(path.join(path.dirname(renderPath), path.sep));
   const config: WebviewConfig = {
     ...notebook.config,

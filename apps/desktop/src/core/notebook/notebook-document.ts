@@ -303,6 +303,7 @@ export class NotebookDocument {
     for (const property of node.children ?? []) {
       const [key] = property.children!; const name = key.value as string;
       if (cell.kind !== 'code' && ['outputs', 'execution_count'].includes(name)) continue;
+      if (cell.kind === 'code' && name === 'attachments') continue;
       if (replace.has(name)) { properties.push(`${JSON.stringify(name)}: ${replace.get(name)}`); replace.delete(name); }
       else properties.push(original.slice(property.offset, property.offset + property.length));
     }

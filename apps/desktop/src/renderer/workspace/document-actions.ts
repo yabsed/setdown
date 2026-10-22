@@ -108,6 +108,7 @@ export class DocumentActions {
   keepExternalChange() {
     const tab = this.options.active();
     if (!tab) return;
+    if (view.unavailablePath === tab.document.path) { view.notice = false; return; }
     if (tab.document.kind === 'image' || tab.document.kind === 'hwp') { view.notice = false; return; }
     const { id, revision } = tab;
     const path = tab.document.path;

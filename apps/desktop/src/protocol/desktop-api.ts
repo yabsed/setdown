@@ -16,6 +16,7 @@ export type SaveResult = {
 };
 
 export type ExternalChange = {
+  unavailable?: boolean;
   path: string;
   diskVersion: DiskVersion;
 };
@@ -89,6 +90,7 @@ export type PreviewLayoutGuide = {
 };
 
 export type GitChange = {
+  previousPath?: string;
   path: string;
   filePath: string;
   status: string;

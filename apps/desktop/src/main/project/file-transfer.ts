@@ -69,13 +69,31 @@ async function copyTree(from: string, to: string): Promise<void> {
   } else throw new Error(`Cannot copy this file type: ${from}`);
 }
 
+/** Only our staging tree is made writable; never follow links during cleanup. */
+async function removeStaging(directory: string): Promise<void> {
+  await fs.chmod(directory, 0o700);
+  for (const entry of await fs.readdir(directory, { withFileTypes: true })) {
+    if (entry.isDirectory()) await removeStaging(path.join(directory, entry.name));
+  }
+  await fs.rm(directory, { recursive: true, force: true });
+}
+
 /** Stage on the destination volume. Failed copies never expose a partial file/tree. */
 export async function copyExclusive(from: string, to: string): Promise<void> {
   await ensureMissing(to);
   const staging = await fs.mkdtemp(path.join(path.dirname(to), '.setdown-copy-'));
+  let failed = false;
   try {
     const staged = path.join(staging, 'entry');
     await copyTree(from, staged);
+    const stat = await fs.lstat(staged);
+    // Moving a directory between parents can require write access to update '..'.
+    if (stat.isDirectory()) await fs.chmod(staged, stat.mode | 0o700);
     await moveExclusive(staged, to);
-  } finally { await fs.rm(staging, { recursive: true, force: true }); }
+    if (stat.isDirectory()) await fs.chmod(to, stat.mode);
+  } catch (error) { failed = true; throw error; }
+  finally {
+    try { await removeStaging(staging); }
+    catch (error) { if (!failed) throw error; }
+  }
 }

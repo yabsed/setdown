@@ -411,7 +411,8 @@ export function startWorkspace(desktop: DesktopPort) {
         if (background && !tabs.dirty(background)) void tabs.reloadDocumentPaths([change.path], true).catch(error => console.error('Could not refresh background document', error));
         return;
       }
-      if (tabs.dirty(active)) { view.notice = true; return; }
+      view.unavailablePath = change.unavailable ? change.path : null;
+      if (change.unavailable || tabs.dirty(active)) { view.notice = true; return; }
       const revision = active.revision;
       void desktop.reloadDocument().then((documentSnapshot) => {
         if (documentSnapshot && workspace.active?.id === active.id && active.revision === revision

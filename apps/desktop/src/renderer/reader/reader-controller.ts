@@ -239,7 +239,12 @@ export class ReaderController {
     }
     if (message.command === 'clickTagA') {
       const href = (message.args as Array<{ href?: string }> | undefined)?.[0]?.href;
-      if (href) void this.options.desktop.openLink(href);
+      // Crossnote transports the entire URL as one encoded message argument.
+      // Remove that envelope here; the IPC boundary accepts an ordinary URL.
+      if (href) {
+        try { void this.options.desktop.openLink(decodeURIComponent(href)); }
+        catch { /* Ignore a malformed Crossnote transport argument. */ }
+      }
     }
   }
 

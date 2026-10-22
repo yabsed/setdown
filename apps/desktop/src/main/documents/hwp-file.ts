@@ -1,4 +1,4 @@
-import { promises as fs } from 'node:fs';
+import { constants, promises as fs } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
 import type { DiskVersion } from '../../core/document/document';
@@ -13,7 +13,7 @@ export function hwpContainer(bytes: Uint8Array): 'hwp' | 'hwpx' | 'hwp3' {
   throw Error('지원하지 않는 HWP 파일입니다. 암호화·DRM 문서는 한글에서 해제한 사본을 사용하세요.');
 }
 export async function readHwp(file: string) {
-  const handle = await fs.open(file, 'r');
+  const handle = await fs.open(file, constants.O_RDONLY | (constants.O_NONBLOCK ?? 0));
   try {
     const stat = await handle.stat();
     if (!stat.isFile() || stat.size < 8 || stat.size > MAX_HWP_BYTES) throw Error('HWP 파일 크기는 128 MiB 이하여야 합니다.');

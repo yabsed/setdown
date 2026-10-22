@@ -4,7 +4,7 @@ import { resolveMethods } from '../../protocol/language-features';
 
 const handleKey = '$setdownItem';
 type Origin = { document: string; generation: string; version: number };
-type Stored = Origin & { method: string; value: Record<string, unknown>; bytes: number };
+type Stored = Origin & { method: string; value: Record<string, unknown>; bytes: number; expiresAt?: number; changed?: boolean };
 const resolvable = new Set<string>([...Object.keys(resolveMethods), ...Object.values(resolveMethods)]);
 
 /** Opaque handles prevent renderer-supplied commands, data or hierarchy items reaching a server. */
@@ -14,6 +14,7 @@ export class ServerItems {
   constructor(private readonly byteLimit = 32 * 1024 * 1024) {}
   remember(method: string, result: unknown, origin: Origin): unknown {
     if (!resolvable.has(method)) return result;
+    this.expire();
     const pending = new Map<string, Stored>();
     let bytes = 0;
     const visit = (value: unknown): unknown => {
@@ -27,6 +28,12 @@ export class ServerItems {
         const handle = randomUUID();
         const size = JSON.stringify(object).length * 2 + 256;
         bytes += size;
+        // Disposed commands have a short grace lease for Monaco's post-insertion
+        // callback. They must never displace a visible result or exhaust its budget.
+        if (this.bytes + bytes > this.byteLimit) for (const [id, item] of this.items) {
+          if (item.expiresAt !== undefined) this.remove(id);
+          if (this.bytes + bytes <= this.byteLimit) break;
+        }
         if (this.bytes + bytes > this.byteLimit) throw Error('Language results exceed the active item budget. Close results or narrow the query.');
         pending.set(handle, { ...origin, method, value: object, bytes: size });
         copy[handleKey] = handle;
@@ -47,6 +54,7 @@ export class ServerItems {
     return resultWithHandles;
   }
   resolve(method: string, params: unknown, origin: Origin): Record<string, unknown> {
+    this.expire();
     const item = params as Record<string, unknown>;
     const incoming = method.startsWith('callHierarchy/') || method.startsWith('typeHierarchy/') ? item.item : item;
     const id = incoming && typeof incoming === 'object' ? (incoming as Record<string, unknown>)[handleKey] : undefined;
@@ -66,12 +74,24 @@ export class ServerItems {
     return family ? { item: stored.value } : stored.value;
   }
   private remove(id: string): void { const item = this.items.get(id); if (item) { this.bytes -= item.bytes; this.items.delete(id); } }
+  private expire(): void {
+    const now = Date.now();
+    for (const [id, item] of this.items) if (item.expiresAt !== undefined && item.expiresAt <= now) this.remove(id);
+  }
   release(ids: string[], origin: { document: string; generation?: string }): void {
     for (const id of ids) {
       const item = this.items.get(id);
       // Completion disposal can precede its post-insertion command.
-      if (item?.document === origin.document && (origin.generation === undefined || item.generation === origin.generation) && typeof item.value.command !== 'string') this.remove(id);
+      if (item?.document !== origin.document || (origin.generation !== undefined && item.generation !== origin.generation)) continue;
+      if (typeof item.value.command === 'string') item.expiresAt ??= Date.now() + 30_000;
+      else this.remove(id);
     }
   }
-  forget(document: string, commands = true): void { for (const [id, item] of this.items) if (item.document === document && (commands || typeof item.value.command !== 'string')) this.remove(id); }
+  forget(document: string, commands = true): void {
+    this.expire();
+    for (const [id, item] of this.items) if (item.document === document) {
+      if (commands || typeof item.value.command !== 'string' || item.changed) this.remove(id);
+      else { item.changed = true; item.expiresAt ??= Date.now() + 30_000; }
+    }
+  }
 }

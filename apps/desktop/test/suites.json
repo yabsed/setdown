@@ -12,6 +12,7 @@
       "src/core/browser/reader-export.test.ts",
       "src/core/browser/web-store.test.ts",
       "src/core/document/file-location.test.ts",
+      "src/core/markdown/asset-references.test.ts",
       "src/core/notebook/notebook-document.test.ts",
       "src/core/notebook/notebook-tools.test.ts",
       "src/core/theme/theme-catalog.test.ts",
@@ -27,6 +28,8 @@
       "src/main/browser/extension-package.test.ts",
       "src/main/browser/extensions/extension-policy.test.ts",
       "src/main/documents/document-save.test.ts",
+      "src/main/documents/bug-audit.integration.test.ts",
+      "src/main/ipc/open-link.test.ts",
       "src/main/documents/image-file.test.ts",
       "src/main/project/recent-folders.test.ts",
       "src/main/project/project-service.test.ts",
@@ -211,7 +214,7 @@
       "previewContract": true
     },
     "preview/preview-local-links.spec.ts": {
-      "previewContract": false
+      "previewContract": true
     },
     "preview/preview-reading-tools.spec.ts": {
       "previewContract": true

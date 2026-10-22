@@ -42,7 +42,7 @@ import type { AppActions } from './ports/ui-actions';
   <div class="group-content focused-content" style={geometry(focused)}
     data-zoom-tab={project.gitDiffActive ? `git-diff:${project.activeGitDiffId}` : view.groups.find(group => group.id === view.focusedGroupId)?.activeId}>
   <div class="notice" hidden={!view.notice}>
-    <span>This file was changed by another application.</span>
+    <span>{view.unavailablePath === view.tabs.find(tab => tab.active)?.path ? 'This file was deleted or is no longer accessible. Your open content is preserved.' : 'This file was changed by another application.'}</span>
     <div>
       <button class="notice-keep" type="button" onclick={actions.keepExternalChange}>Keep My Changes</button>
       <button class="notice-reload" type="button" onclick={actions.reloadExternalChange}>Reload</button>

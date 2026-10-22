@@ -1,5 +1,10 @@
 # Preview performance contract
 
+The 2026-10-22 audit fixes and their execution evidence are recorded in
+[Audit fix validation](validation/2026-10-22-bug-audit-fixes.md). Local-link URL
+resolution, visible Unicode search, and draft revision/asset preservation are
+covered by the linked reading-surface/workspace contracts and regression tests.
+
 This is the maintained contract behind `57729a8b0c738aa7ed4580408cbaedde1f6d5fd2`
 and `d77e6526e89d009ef12842d133ac27a43b84d607`. Those commits optimize math-heavy
 Markdown, particularly the first two Esc → double-click cycles. Correct-looking
