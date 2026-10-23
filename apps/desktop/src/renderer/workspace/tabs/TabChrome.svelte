@@ -58,11 +58,6 @@ import type { AppActions } from '../../ports/ui-actions';
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3H5v18h14V9M13 3v6h6M13 3l6 6M8 15h8m-3-3 3 3-3 3"/></svg>
       </button>
     {/if}
-    {#if selected && tabs.find(tab => tab.id === selected)?.canSplit}
-      <button class="new-resource-button split-editor-button" type="button" title="Split editor right" aria-label="Split editor right" onclick={() => actions.splitEditor(selected, 'right')}>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v16H3zM12 4v16"/></svg>
-      </button>
-    {/if}
     <button class="new-resource-button new-tab-button" type="button" title="New Markdown document (Ctrl/Cmd+N)" aria-label="New document" onclick={() => { actions.focusGroup(groupId); actions.newDocument(); }}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6M13 3v5h5M13 3l5 5v3M8 12h4M8 16h2M18 14v7M14.5 17.5h7"/></svg>
     </button>

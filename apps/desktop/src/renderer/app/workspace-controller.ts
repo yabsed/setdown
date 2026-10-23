@@ -118,7 +118,6 @@ export function startWorkspace(desktop: DesktopPort) {
       navigateHistory: (id, direction) => actions.navigateHistory(id, direction),
       sync: () => browsers?.sync(true),
     }),
-    splitEditor: (id, direction) => { const group = workspace.groups.owner(id); if (group) void tabs.copyToGroup(id, group.id, direction); },
     focusGroup: (id) => {
       projectOpenRequest++;
       const group = workspace.groups.groups.find(group => group.id === id);

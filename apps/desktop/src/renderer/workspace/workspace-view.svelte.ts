@@ -11,7 +11,6 @@ export type TabView = {
   preview: boolean;
   canGoBack: boolean;
   canGoForward: boolean;
-  canSplit?: boolean;
 };
 
 export type HeadingView = {

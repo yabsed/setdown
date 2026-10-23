@@ -236,7 +236,6 @@ export class TabController {
       // Dirty documents never remain eligible for replacement, including shared models.
       if (dirty) workspace.groups.pin(tab.id);
       return { id: tab.id, name: tabTitle(tab), path: tabLocation(tab), kind: tab.kind,
-        canSplit: tab.kind === 'diff' || isDocumentTab(tab) && !tab.document.kind && !isNotebookDocument(tab.document.path),
         canGoBack: this.canGoBack(tab.id), canGoForward: this.canGoForward(tab.id),
         ...(tab.kind === 'web' ? { page: { ...tab.page } } : {}),
         ...(tab.kind === 'terminal' ? { exited: tab.exited, sessionId: tab.sessionId ?? tab.id } : {}),

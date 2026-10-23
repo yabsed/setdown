@@ -145,7 +145,10 @@ test('two Working Tree groups and an ordinary view share edits, Undo and indepen
     await page.getByRole('button', { name: 'Source Control', exact: true }).click();
     await page.locator('.git-change-open').click();
     await expect(page.locator('.git-diff-tab')).toHaveCount(1);
-    await page.getByRole('button', { name: 'Split editor right' }).click();
+    await page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-editor-commands'));
+    const commands = page.getByRole('dialog', { name: 'Commands', exact: true });
+    await commands.getByRole('searchbox').fill('Split editor right');
+    await commands.getByRole('option').filter({ hasText: 'Split editor right' }).click();
     await expect(page.locator('.editor-group')).toHaveCount(2);
     await expect(page.locator('.git-diff-tab')).toHaveCount(2);
     const panes = page.locator('.review-content:not(.inactive) .modified-in-monaco-diff-editor');

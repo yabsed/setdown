@@ -24,7 +24,6 @@ export type AppActions = BrowserActions & TerminalActions & {
   navigateLocation(groupId: string, input: string): Promise<void>;
   navigateHistory(id: string, direction: -1 | 1): void;
   focusGroup(id: string): void;
-  splitEditor(id: string, direction: import('../../core/workspace/editor-groups').SplitDirection): void;
   resizeGroup(id: string, ratio: number): void;
   loadMenu(id: string): Promise<ApplicationMenuEntry[]>;
   executeMenuItem(id: string): void;
