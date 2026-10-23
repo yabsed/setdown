@@ -1,0 +1,28 @@
+[
+  {
+    "type": "dragover",
+    "trusted": true,
+    "x": 200,
+    "y": 420,
+    "screenX": 300,
+    "screenY": 520,
+    "types": [
+      "application/x-setdown-tab",
+      "chromium/x-drag-id"
+    ],
+    "effect": "move"
+  },
+  {
+    "type": "dragleave",
+    "trusted": true,
+    "x": 0,
+    "y": 0,
+    "screenX": 0,
+    "screenY": 0,
+    "types": [
+      "application/x-setdown-tab",
+      "chromium/x-drag-id"
+    ],
+    "effect": "none"
+  }
+]

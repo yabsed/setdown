@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { GitChange } from '../../../protocol/desktop-api';
+  import SideViewMenu from '../SideViewMenu.svelte';
+  import type { EditorOpenOptions } from '../../../core/workspace/editor-groups';
   import { project } from '../project-state.svelte';
 
   let {
@@ -18,8 +20,8 @@
     primaryLabel: string;
     primary(paths: string[]): void;
     discard?: (paths: string[]) => void;
-    review(path: string): void;
-    open(path: string): void;
+    review(path: string, options?: EditorOpenOptions): void;
+    open(path: string, options?: EditorOpenOptions): void;
     expanded: boolean;
     toggle(): void;
   } = $props();
@@ -64,6 +66,12 @@
             {#if markdown(change.path)}<button type="button" title="Open File" aria-label={`Open ${change.path}`}
               onclick={() => open(change.filePath)}>↗</button>{/if}
           </div>
+          <SideViewMenu label={`Actions for ${change.path}`} items={[
+            { label: 'Open Changes', run: () => review(change.filePath) },
+            { label: 'Open Changes to the Side', run: () => review(change.filePath, { side: true, pinned: true }) },
+            { label: 'Open File', disabled: change.workingTreeStatus === 'D', run: () => open(change.filePath, { pinned: true }) },
+            { label: 'Open File to the Side', disabled: change.workingTreeStatus === 'D', run: () => open(change.filePath, { side: true, pinned: true }) },
+          ]} />
           <b class:is-conflict={change.conflict}>{change.status}</b>
         </div>
       {/each}

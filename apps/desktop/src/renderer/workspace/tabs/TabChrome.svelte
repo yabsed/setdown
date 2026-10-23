@@ -3,12 +3,10 @@
   import { tick } from 'svelte';
   import { view } from '../workspace-view.svelte';
 import type { AppActions } from '../../ports/ui-actions';
-  import { project } from '../../project/project-state.svelte';
   let { actions, groupId = 'group-0' }: { actions: AppActions; groupId?: string } = $props();
   let list: HTMLDivElement;
   const group = $derived(view.groups.find(g => g.id === groupId));
   const selected = $derived(group?.activeId);
-  const focused = $derived(view.focusedGroupId === groupId);
   const tabs = $derived((group?.tabs ?? []).flatMap(id => view.tabs.find(tab => tab.id === id) ?? []));
   $effect(() => {
     const id = selected;
@@ -21,14 +19,13 @@ import type { AppActions } from '../../ports/ui-actions';
     });
   });
 
-  const base = (candidate: string) => candidate.split(/[\\/]/).at(-1) ?? candidate;
 </script>
 
 <nav class="tab-strip" data-group-id={groupId} aria-label="Open documents">
   <div class="tab-list" role="tablist" bind:this={list} use:tabScroll>
     {#each tabs as tab (tab.id)}
-      <button class="document-tab" class:is-dragging={view.draggedTabId === tab.id}
-        type="button" role="tab" aria-selected={tab.id === selected && !(focused && project.gitDiffActive)}
+      <button class="document-tab" class:is-dragging={view.draggedTabId === tab.id} class:git-diff-tab={tab.kind === 'diff'}
+        type="button" role="tab" aria-selected={tab.id === selected}
         title={tab.preview ? `${tab.path}\nDouble-click to keep open` : tab.path}
         draggable="true" data-tab-id={tab.id} data-preview={tab.preview}
         onclick={() => actions.activateTab(tab.id)}
@@ -52,21 +49,20 @@ import type { AppActions } from '../../ports/ui-actions';
           }}>×</span>
       </button>
     {/each}
-    {#each (focused ? project.gitDiffTabs : []) as diffTab (diffTab.id)}
-      <button class="document-tab git-diff-tab" type="button" role="tab"
-        aria-selected={project.gitDiffActive && project.activeGitDiffId === diffTab.id}
-        title={diffTab.filePath} onclick={() => actions.activateProjectGitDiff(diffTab.id)}>
-        <span class="tab-name">{base(diffTab.filePath)} ({diffTab.history ? diffTab.history.head.slice(0, 8) : diffTab.staged ? 'Index' : 'Working Tree'})</span>
-        <span class="tab-close" title="Close diff" role="button" tabindex="0"
-          onclick={(event) => { event.stopPropagation(); actions.closeProjectGitDiff(diffTab.id); }}
-          onkeydown={(event) => {
-            if (event.key !== 'Enter' && event.key !== ' ') return;
-            event.preventDefault(); event.stopPropagation(); actions.closeProjectGitDiff(diffTab.id);
-          }}>×</span>
-      </button>
-    {/each}
+
   </div>
   <div class="tab-creation-actions">
+    {#if selected && tabs.find(tab => tab.id === selected)?.kind === 'diff'}
+      <button class="new-resource-button open-file-side-button" type="button" title="Open File to the Side" aria-label="Open File to the Side"
+        onclick={() => { const tab = tabs.find(tab => tab.id === selected); if (tab) actions.openProjectFile(tab.path, { groupId, side: true, pinned: true }); }}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3H5v18h14V9M13 3v6h6M13 3l6 6M8 15h8m-3-3 3 3-3 3"/></svg>
+      </button>
+    {/if}
+    {#if selected && tabs.find(tab => tab.id === selected)?.canSplit}
+      <button class="new-resource-button split-editor-button" type="button" title="Split editor right" aria-label="Split editor right" onclick={() => actions.splitEditor(selected, 'right')}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v16H3zM12 4v16"/></svg>
+      </button>
+    {/if}
     <button class="new-resource-button new-tab-button" type="button" title="New Markdown document (Ctrl/Cmd+N)" aria-label="New document" onclick={() => { actions.focusGroup(groupId); actions.newDocument(); }}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6M13 3v5h5M13 3l5 5v3M8 12h4M8 16h2M18 14v7M14.5 17.5h7"/></svg>
     </button>

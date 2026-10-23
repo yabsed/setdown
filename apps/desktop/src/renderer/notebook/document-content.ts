@@ -3,6 +3,9 @@ import type { DocumentTab, WorkspaceState } from '../../core/workspace/workspace
 import type { DocumentContentOwner } from '../ports/document-content';
 import { notebooks } from './notebook-store';
 export type { NotebookEntry } from './notebook-store';
+export function notebookHasCell(tab: DocumentTab, id: string): boolean {
+  return isNotebookDocument(tab.document.path) && notebooks.get(tab).document.cells.some(cell => cell.id === id);
+}
 
 export const notebookContent: DocumentContentOwner = {
   accepts: tab => isNotebookDocument(tab.document.path),

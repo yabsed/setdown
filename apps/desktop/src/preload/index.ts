@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, webUtils } from 'electron';
+import { contextBridge, ipcRenderer, webUtils, webFrame } from 'electron';
 import { installAppZoom, installWheelZoom } from './wheel-zoom';
 import type {
   AppCommand,
@@ -10,6 +10,7 @@ import type {
   PreviewMessage,
   ProjectFilesChanged,
   TabStateSummary,
+  TabDragState,
   ThemeSnapshot,
   TransferableTab,
 } from '../protocol/desktop-api';
@@ -35,6 +36,26 @@ function initialThemeSnapshot(): ThemeSnapshot {
 }
 
 const api: MarkTexApi = {
+  editorTools: {
+    policy: path => ipcRenderer.invoke('editor:policy', path),
+    paths: (path, prefix, modules) => ipcRenderer.invoke('editor:paths', path, prefix, modules),
+    spelling: async words => {
+      if (!await ipcRenderer.invoke('editor:spell-language')) throw Error('An English spelling dictionary is unavailable.');
+      if (!Array.isArray(words) || words.length > 2000 || words.some(word => typeof word !== 'string' || word.length > 80)) throw Error('Spelling accepts at most 2,000 words at a time.');
+      // Electron returns false for every word before its dictionary loads.
+      // Never report a clean document from that indeterminate state.
+      const ready = () => webFrame.isWordMisspelled('zzqwxspellingprobezz');
+      for (let attempt = 0; attempt < 30 && !ready(); attempt++) await new Promise(resolve => setTimeout(resolve, 100));
+      if (!ready()) throw Error('The English spelling dictionary is not loaded. Check its download/connectivity and try again.');
+      return words.filter(word => webFrame.isWordMisspelled(word)).map(word => ({ word, suggestions: webFrame.getWordSuggestions(word).slice(0, 10) }));
+    },
+    learnWord: word => ipcRenderer.invoke('editor:learn-word', word),
+    snapshots: {
+      list: () => ipcRenderer.invoke('editor:snapshots-list'), read: id => ipcRenderer.invoke('editor:snapshots-read', id),
+      write: (name, value, recovery) => ipcRenderer.invoke('editor:snapshots-write', name, value, recovery),
+      remove: id => ipcRenderer.invoke('editor:snapshots-remove', id),
+    },
+  },
   notebook: {
     run: request => ipcRenderer.invoke('notebook:run', request),
     interrupt: (id, generation) => ipcRenderer.invoke('notebook:interrupt', id, generation),
@@ -163,7 +184,8 @@ const api: MarkTexApi = {
   claimTabTransfer: (transferId) => ipcRenderer.invoke('tabs:claim-transfer', transferId),
   completeTabTransfer: (transferId: string) => ipcRenderer.send('tabs:complete-transfer', transferId),
   cancelTabTransfer: (transferId: string) => ipcRenderer.send('tabs:cancel-transfer', transferId),
-  detachTabToWindow: (transferId, x, y, withinSource) => ipcRenderer.send('tabs:detach-to-window', { transferId, x, y, withinSource }),
+  updateTabDragTarget: (transferId, accepted) => ipcRenderer.send('tabs:drag-target', { transferId, accepted }),
+  detachTabToWindow: (transferId, x, y, withinSource, dropEffect) => ipcRenderer.send('tabs:detach-to-window', { transferId, x, y, withinSource, dropEffect }),
   adoptTabTransfer: (transferId) => ipcRenderer.invoke('tabs:adopt-transfer', transferId),
   releaseTabTransferSource: (transferId) => ipcRenderer.send('tabs:release-source', transferId),
   createPreview: (tabId) => ipcRenderer.send('preview:create', tabId),
@@ -256,6 +278,7 @@ const api: MarkTexApi = {
     return () => ipcRenderer.removeListener('app:save-before-close', handler);
   },
   onTabTransferIncoming: (listener) => subscribe<ClaimedTabTransfer>('tabs:transfer-incoming', listener),
+  onTabDragState: (listener) => subscribe<TabDragState>('tabs:drag-state', listener),
   onTabTransferCompleted: (listener) => subscribe<{ transferId: string; tabId: string }>('tabs:transfer-completed', listener),
   onPreviewMessage: (listener) => subscribe<PreviewMessage>('preview:message', listener),
   onPreviewFindRequested: (listener) => subscribe<string>('preview:open-find', listener),

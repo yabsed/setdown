@@ -11,10 +11,12 @@ import { ExplorerController } from './explorer/explorer-controller';
 import { project, rememberProjectState, type ProjectView } from './project-state.svelte';
 import { SearchController } from './search/search-controller';
 import { SourceControlController } from './source-control/source-control-controller';
+import { ReviewWorkspaceController, type ReviewWorkspaceOptions } from './source-control/review-workspace';
 import type { ExplorerTransfer } from '../../protocol/explorer';
 
 type SearchTarget = Pick<ProjectSearchResult, 'surface' | 'line' | 'column' | 'lineOccurrence' | 'ordinal'>;
 type Options = {
+  reviewWorkspace?: Omit<ReviewWorkspaceOptions, keyof import('./source-control/source-control-controller').SourceControlOptions>;
   folderChanged?(root: string | null): void;
   desktop: DesktopPort;
   searchDocuments(query: string): ProjectSearchDocument[];
@@ -36,7 +38,7 @@ type Options = {
 export class ProjectController {
   private readonly explorer: ExplorerController;
   private readonly searcher: SearchController;
-  private readonly sourceControl: SourceControlController;
+  private readonly sourceControl: SourceControlController | ReviewWorkspaceController;
   private changeTimer?: number;
   private changedPaths = new Set<string>();
   private fullRefresh = false;
@@ -49,10 +51,13 @@ export class ProjectController {
     this.searcher = new SearchController({ desktop: options.desktop, documents: options.searchDocuments,
       // The composition root deactivates the old review only after a successful read.
       open: (path) => this.explorer.open(path), highlight: options.highlight });
-    this.sourceControl = new SourceControlController({ desktop: options.desktop,
+    const sourceOptions = { desktop: options.desktop,
       openWorkingTree: options.openWorkingTree, activateWorkingTree: options.activateWorkingTree,
       workingTreeBuffer: options.workingTreeBuffer, workingTreeChanged: options.workingTreeChanged,
-      reviewChanged: options.reviewChanged });
+      reviewChanged: options.reviewChanged };
+    this.sourceControl = options.reviewWorkspace
+      ? new ReviewWorkspaceController({ ...sourceOptions, ...options.reviewWorkspace })
+      : new SourceControlController(sourceOptions);
   }
 
   toggle = (): void => {
@@ -160,10 +165,18 @@ export class ProjectController {
     rememberProjectState();
   };
   reviewGitHistory = (selection: GitHistorySelection): Promise<void> => this.sourceControl.reviewHistory(selection);
-  reviewGitChange = (path: string, staged: boolean): Promise<void> => this.sourceControl.review(path, staged);
-  activateGitDiff = (id: string): void => void this.sourceControl.activateDiff(id);
+  reviewGitChange = (path: string, staged: boolean, options?: EditorOpenOptions): Promise<void> => this.sourceControl instanceof ReviewWorkspaceController
+    ? this.sourceControl.review(path, staged, options) : this.sourceControl.review(path, staged);
+  syncReviews = (): void => { if (this.sourceControl instanceof ReviewWorkspaceController) this.sourceControl.sync(); };
+  copyReview = async (id: string, groupId: string, direction: import('../../core/workspace/editor-groups').SplitDirection | null): Promise<void> => {
+    if (this.sourceControl instanceof ReviewWorkspaceController) await this.sourceControl.copyToGroup(id, groupId, direction);
+  };
+  activateGitDiff = (id: string): Promise<void> => this.sourceControl.activateDiff(id);
   deactivateGitDiff = (): void => this.sourceControl.deactivateDiff();
-  closeGitDiff = (id?: string): void => this.sourceControl.closeDiff(id);
+  closeGitDiff = async (id?: string, confirmed = false): Promise<void> => {
+    if (this.sourceControl instanceof ReviewWorkspaceController) await this.sourceControl.closeDiff(id, confirmed);
+    else this.sourceControl.closeDiff(id);
+  };
   closeWorkingTreeReviews = (path: string): void => this.sourceControl.closeWorkingTreeReviews(path);
   layoutGitDiff = (bounds: PreviewBounds | null): void => this.sourceControl.layoutDiff(bounds);
   updateGitDiffLine = (line: number): void => this.sourceControl.updateSourceLine(line);

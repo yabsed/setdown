@@ -5,7 +5,7 @@
 
   type MenuItem = { label: string; disabled?: boolean; run(): void };
 
-  let { items }: { items: MenuItem[] } = $props();
+  let { items, label = 'More Actions' }: { items: MenuItem[]; label?: string } = $props();
   let open = $state(false);
   let menu = $state<HTMLDivElement>();
 
@@ -39,7 +39,7 @@
 }} />
 
 <div class="side-view-overflow">
-  <button class="side-view-more" type="button" title="More Actions" aria-label="More Actions"
+  <button class="side-view-more" type="button" title={label} aria-label={label}
     aria-haspopup="menu" aria-expanded={open} onclick={(event) => {
       event.stopPropagation();
       void toggle();

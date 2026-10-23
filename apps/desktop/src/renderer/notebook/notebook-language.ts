@@ -38,6 +38,7 @@ export class NotebookLanguage {
     const events = port.onEvent(event => {
       if (event.type === 'discovery') { if (!this.connection && !this.connecting) void this.reconnect(); return; }
       if (event.type === 'configuration') {
+        if (event.documents && !event.documents.some(document => document.id === this.id && document.generation === this.generation)) return;
         if (!this.connection?.server || !event.servers || event.servers.includes(this.connection.server)) void this.reconnect();
         return;
       }

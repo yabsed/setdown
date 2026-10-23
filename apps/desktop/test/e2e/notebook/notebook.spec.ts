@@ -531,3 +531,35 @@ test('notebook stdin, variables and restart-all use the live kernel with scoped 
     await expect(page.locator('[data-cell-id="use"] .execution')).toHaveText('[2]'); await page.keyboard.press('Control+s');
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
 });
+
+test('notebook project extraPaths resolve imports and hover, reload live, and retain real missing-import diagnostics', async () => {
+  test.setTimeout(90_000);
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-paths-')), config = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-paths-config-'));
+  const file = path.join(root, 'imports.ipynb'), settings = path.join(root, '.vscode', 'settings.json');
+  await mkdir(path.join(root, '.git')); await mkdir(path.dirname(settings));
+  await mkdir(path.join(root, 'src 한글', 'vlmflash_demo'), { recursive: true });
+  await writeFile(path.join(root, 'src 한글', 'vlmflash_demo', '__init__.py'), '"""Local VLM module documentation."""\nVALUE = 42\n');
+  const source = 'import vlmflash_demo\nimport definitely_missing_setdown_control';
+  await writeFile(file, JSON.stringify({ nbformat: 4, nbformat_minor: 5, metadata: { language_info: { name: 'python' } }, cells: [{ id: 'imports', cell_type: 'code', metadata: {}, source, execution_count: null, outputs: [] }] }));
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+  const application = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: config } });
+  try {
+    const page = await application.firstWindow(); await focusApplication(application);
+    const cell = page.locator('[data-cell-id="imports"]');
+    await expect(page.locator('.notebook-surface')).toHaveAttribute('data-notebook-language', 'ready', { timeout: 30000 });
+    await expect(cell.locator('.squiggly-warning')).toHaveCount(2, { timeout: 30000 });
+    await writeFile(settings, '{\n// Workspace-relative path, including Unicode\n"python.analysis.extraPaths": ["${workspaceFolder}/src 한글"],\n}\n');
+    await expect(cell.locator('.squiggly-warning')).toHaveCount(1, { timeout: 30000 });
+    const info = await page.evaluate(async ({ file, source }) => {
+      const api = (window as any).marktex.language;
+      const connection = await api.open({ id: 'paths-probe', generation: 'paths', path: file, notebook: 'python', text: '', version: 1, cells: [{ id: 'imports', version: 1, text: source }] });
+      const hover = await api.request('paths-probe', 1, 'paths-hover', 'textDocument/hover', { cell: 'imports', position: { line: 0, character: 10 } });
+      api.close('paths-probe'); return { connection, hover };
+    }, { file, source });
+    expect(JSON.stringify(info.connection.context)).toContain('.vscode'); expect(JSON.stringify(info.connection.context)).toContain('src 한글');
+    expect(JSON.stringify(info.hover)).toContain('Local VLM module documentation');
+    await writeFile(settings, '{"python.analysis.extraPaths": []}\n');
+    await expect(cell.locator('.squiggly-warning')).toHaveCount(2, { timeout: 30000 });
+    expect(await readFile(file, 'utf8')).toContain('definitely_missing_setdown_control');
+  } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); await rm(config, { recursive: true, force: true }); }
+});

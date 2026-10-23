@@ -21,6 +21,7 @@ import { ServerDiscovery, type Discovery } from './server-discovery';
 import { languageCatalog, packageDiscovery, profileSource } from './catalog/profiles';
 import type { LanguageServerDefinition } from '../../core/document/language-definition';
 import { NotebookLanguageHost } from './notebook-language-host';
+import { applyPythonProjectSettings, isPythonSettingsFile, pythonProjectSettings, pythonSettingsContext } from './python-project-settings';
 import { languageFailure } from '../../protocol/language-request';
 
 type Binding = { languageId: string; id: string; generation: string; uri: string; version: number; server: ServerSession; capabilities: LanguageCapabilities };
@@ -418,6 +419,11 @@ export class LanguageManager {
       if (!launch) throw Error('Language session closed during discovery.');
       const fingerprint = createHash('sha256').update(JSON.stringify([configuration, launch, this.registry.options(support.server, file)])).digest('hex').slice(0, 24);
       const key = `${support.server}:${root}:${fingerprint}`;
+      const pythonServer = /basedpyright/.test(definition.id) ? 'basedpyright' : 'pyright';
+      const python = definition.languages.some(language => language.languageId === 'python');
+      const projectSettings = python ? pythonProjectSettings(root) : undefined;
+      const profile = serverProfile(definition, this.registry.options(support.server, file));
+      if (projectSettings) profile.configuration = applyPythonProjectSettings(profile.configuration, projectSettings, pythonServer);
       server = new ServerSession(launch, root, params => {
         for (const binding of owned.documents.values()) {
           // Versionless push diagnostics are best-effort observations, never used as edit versions.
@@ -429,11 +435,21 @@ export class LanguageManager {
         if (info) { info.state = 'failed'; info.message = message; }
         this.emit(owned, { type: 'status', state: 'failed', message,
           documents: [...owned.documents.values()].filter(binding => binding.server === server).map(({ id, generation }) => ({ id, generation })) });
-      }, serverProfile(definition, this.registry.options(support.server, file)), {
+      }, profile, {
+        filesChanged: paths => {
+          if (!python || !paths.some(file => isPythonSettingsFile(root, file)) || !server || !this.sessions.has(server)) return;
+          const affected = [...owned.documents.values()].filter(binding => binding.server === server);
+          for (const binding of affected) owned.documents.delete(binding.id);
+          for (const [key, instance] of owned.servers) if (instance === server) owned.servers.delete(key);
+          void this.stop(server);
+          this.emit(owned, { type: 'configuration', servers: [definition.id],
+            documents: affected.map(({ id, generation }) => ({ id, generation })) });
+        },
         configuration: scopeUri => {
           let resource = file;
           try { if (scopeUri?.startsWith('file:')) resource = fileURLToPath(scopeUri); } catch { /* Use the session context for invalid scopes. */ }
-          return this.registry.options(definition.id, isInside(root, canonicalPath(resource)) ? resource : file).settings ?? definition.settings;
+          const settings = this.registry.options(definition.id, isInside(root, canonicalPath(resource)) ? resource : file).settings ?? definition.settings;
+          return projectSettings ? applyPythonProjectSettings(settings, projectSettings, pythonServer) : settings;
         },
         refresh: feature => this.emit(owned, { type: 'refresh', feature,
           documents: [...owned.documents.values()].filter(b => b.server === server).map(({ id, generation }) => ({ id, generation })) }),
@@ -456,6 +472,7 @@ export class LanguageManager {
         },
         applyEdit: params => this.applyEdit(owned, server!, params.edit),
       });
+      if (projectSettings) for (const [key, value] of pythonSettingsContext(projectSettings, profile.configuration, pythonServer)) server.context?.set(key, value);
       if (definition.id === 'clangd') {
         const option = launch.args.findIndex(arg => arg === '--compile-commands-dir' || arg.startsWith('--compile-commands-dir='));
         const directory = option < 0 ? undefined : launch.args[option].split('=').slice(1).join('=') || launch.args[option + 1];

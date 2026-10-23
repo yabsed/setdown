@@ -5,10 +5,17 @@ import { installWheelZoom } from '../preload/wheel-zoom';
 // navigation). In Setdown's frameless window, app-region: drag swallows native
 // pointer input. Only the shell owns window dragging, never a web tab's frame.
 // USER !important also overrides authored inline/important draggable regions.
-const excludeWindowDrag = () => {
-  webFrame.insertCSS('*, *::before, *::after { -webkit-app-region: no-drag !important; }', { cssOrigin: 'user' });
+const excludeWindowDrag = (frame = webFrame) => {
+  frame.insertCSS('*, *::before, *::after { -webkit-app-region: no-drag !important; }', { cssOrigin: 'user' });
 };
 excludeWindowDrag();
+// The live ancestor can address a committed same-process child even when that
+// child's provisional document discarded its early preload stylesheet/listener.
+// This remains a USER-origin sheet; no privileged API enters website JS.
+ipcRenderer.on('browser:child-frame-policy', (_event, token: string) => {
+  const frame = webFrame.findFrameByToken(token);
+  if (frame) excludeWindowDrag(frame);
+});
 // Commit the policy through the owning native frame after document creation.
 // A provisional child-frame document may discard an early inserted stylesheet.
 let removeWheel: (() => void) | undefined;
@@ -21,7 +28,12 @@ ipcRenderer.on('browser:frame-policy', (_event, committed: boolean) => {
     removeWheel = installWheelZoom(steps => ipcRenderer.send('browser:wheel-zoom', steps), true);
   }
 });
-const frameReady = () => ipcRenderer.send('browser:frame-ready');
+const frameReady = () => {
+  // Install against the committed child document as well as acknowledging it.
+  // Its provisional document can discard the first sheet before a native reply.
+  excludeWindowDrag();
+  ipcRenderer.send('browser:frame-ready');
+};
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', frameReady, { once: true });
 else frameReady();
 window.addEventListener('load', frameReady, { once: true });

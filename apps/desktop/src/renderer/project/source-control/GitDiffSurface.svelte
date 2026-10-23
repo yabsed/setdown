@@ -1,11 +1,13 @@
 <script lang="ts">
   import { onDestroy, untrack } from 'svelte';
   import type { AppActions } from '../../ports/ui-actions';
-  import { project } from '../project-state.svelte';
+  import type { ReviewView } from './review-workspace';
   import GitDiffEditor from './GitDiffEditor.svelte';
-  import { gitDiffViewport } from './git-diff-viewport';
 
-  let { actions }: { actions: AppActions } = $props();
+
+  let { actions, entry, focused }: { actions: AppActions; entry: ReviewView; focused: boolean } = $props();
+  const project = $derived(entry.state);
+  const gitDiffViewport = $derived(entry.viewport);
   let previewHost = $state<HTMLDivElement>();
   let observer: ResizeObserver | null = null;
   let active = $derived(project.gitDiffActive && (!!project.gitDiff || project.gitDiffLoading));
@@ -14,11 +16,11 @@
 
   function layout() {
     if (!previewHost || !active) {
-      actions.layoutProjectGitDiff(null);
+      entry.controller.layoutDiff(null);
       return;
     }
     const rect = previewHost.getBoundingClientRect();
-    actions.layoutProjectGitDiff({ x: rect.left, y: rect.top, width: rect.width, height: rect.height });
+    entry.controller.layoutDiff({ x: rect.left, y: rect.top, width: rect.width, height: rect.height });
   }
   $effect(() => {
     const enabled = active;
@@ -31,7 +33,7 @@
       observer = new ResizeObserver(() => untrack(layout));
       observer.observe(host);
       untrack(layout);
-    } else untrack(() => actions.layoutProjectGitDiff(null));
+    } else untrack(() => entry.controller.layoutDiff(null));
   });
   $effect(() => {
     const source = previewHost?.parentElement?.querySelector('.git-diff-source-layer');
@@ -45,7 +47,7 @@
   });
   onDestroy(() => {
     observer?.disconnect();
-    actions.layoutProjectGitDiff(null);
+    entry.controller.layoutDiff(null);
   });
 </script>
 
@@ -56,7 +58,7 @@
       <div class="git-diff-source-layer"
         class:is-active={project.gitDiffActive && project.gitDiffMode === 'source'
           && project.gitDiff?.originalText !== null && project.gitDiff?.modifiedText !== null}>
-        <GitDiffEditor {actions} />
+        <GitDiffEditor {actions} {project} viewport={entry.viewport} {focused} onfocus={() => { if (!focused) actions.activateTab(entry.id); }} updateLine={entry.controller.updateSourceLine} />
       </div>
       <div class="git-diff-preview-host" aria-busy={refreshing}
         class:is-active={project.gitDiffActive && project.gitDiffMode === 'rendered'}

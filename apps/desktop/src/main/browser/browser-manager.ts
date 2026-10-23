@@ -281,7 +281,17 @@ export class BrowserManager {
     });
     wc.on('did-frame-finish-load', (_event, _main, processId, routingId) => {
       const frame = webFrameMain.fromId(processId, routingId);
-      if (frame && !frame.isDestroyed()) frame.send('browser:frame-policy', true);
+      if (!frame || frame.isDestroyed()) return;
+      frame.send('browser:frame-policy', true);
+      // Frame-local insertion is also available from a live ancestor in the
+      // same renderer process, independent of the child's provisional Window.
+      let policyParent: Electron.WebFrameMain | null = null;
+      for (let parent = frame.parent; parent; parent = parent.parent) {
+        if (!parent.isDestroyed() && parent.processId === frame.processId) {
+          policyParent = parent;
+        }
+      }
+      policyParent?.send('browser:child-frame-policy', frame.frameToken);
     });
     wc.on('zoom-changed', (_event, direction) => this.zoomPage(entry, direction === 'in' ? 1 : -1));
     wc.on('did-start-navigation', (_event, _url, inPlace, main) => {

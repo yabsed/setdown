@@ -1,6 +1,6 @@
 import type * as M from 'monaco-editor';
 import type * as L from 'vscode-languageserver-protocol';
-import type { DocumentTab } from '../../core/workspace/workspace-state';
+import type { DocumentContent as DocumentTab } from '../../core/workspace/document-store';
 import type { LanguageApi, LanguageCapabilities, LanguageConnection, LanguageUnavailable, LanguageMethod } from '../../protocol/language';
 import { textSynchronization } from '../../protocol/language';
 import { languageSupport } from '../../core/document/language-support';
@@ -214,8 +214,8 @@ export class LanguageClient {
       return null;
     } finally { cancel.dispose(); this.requests.delete(id); if (commandVersions) this.commandEdits.delete(binding); }
   }
-  invalidate(servers: string[]): void {
-    for (const binding of [...this.bindings.values()]) if (servers.includes(binding.serverId)) this.unbind(binding.model);
+  invalidate(servers: string[], documents?: Array<{ id: string; generation: string }>): void {
+    for (const binding of [...this.bindings.values()]) if (servers.includes(binding.serverId) && (!documents || documents.some(document => document.id === binding.id && document.generation === binding.generation))) this.unbind(binding.model);
   }
   retryUnavailable(): void {
     for (const binding of [...this.bindings.values()]) if (binding.state === 'unavailable' || binding.state === 'failed') {
@@ -259,6 +259,15 @@ export class LanguageClient {
   capabilitiesFor(model: M.editor.ITextModel | null): L.ServerCapabilities {
     const binding = model && this.bindings.get(model); return binding && !binding.failed ? binding.capabilities : {};
   }
+  async documentSymbols(model: M.editor.ITextModel): Promise<Array<{ name: string; line: number; column: number; kind: number }>> {
+    if (!this.capabilitiesFor(model).documentSymbolProvider) return [];
+    const symbols = await this.request<Array<L.DocumentSymbol | L.SymbolInformation>>(model, 'textDocument/documentSymbol', {}, noCancellation);
+    const flatten = (items: Array<L.DocumentSymbol | L.SymbolInformation>): Array<{ name: string; line: number; column: number; kind: number }> => items.flatMap(item => {
+      const range = 'selectionRange' in item ? item.selectionRange : item.location.range;
+      return [{ name: item.name, line: range.start.line + 1, column: range.start.character + 1, kind: item.kind }, ...('children' in item ? flatten(item.children ?? []) : [])];
+    });
+    return flatten(symbols ?? []);
+  }
   async showNavigation(kind: 'symbols' | 'incoming' | 'outgoing' | 'supertypes' | 'subtypes' | 'problems', editor: M.editor.IStandaloneCodeEditor): Promise<void> {
     const model = editor.getModel(), position = editor.getPosition();
     if (!model || !position) return;
@@ -272,6 +281,8 @@ export class LanguageClient {
     const valid = () => this.bindings.get(model) === binding && !model.isDisposed() && model.getVersionId() === version;
     const location = (label: string, uri: string, range?: L.Range): import('./language-results').LanguageResult => ({ label,
       detail: `${this.api.Uri.parse(uri).fsPath}${range ? `:${range.start.line + 1}` : ''}`,
+      location: { path: this.uri(uri).fsPath, line: (range?.start.line ?? 0) + 1, column: (range?.start.character ?? 0) + 1,
+        endLine: range ? range.end.line + 1 : undefined, endColumn: range ? range.end.character + 1 : undefined },
       open: async () => { await this.options.open(this.uri(uri).fsPath, range && fromRange(range)); },
     });
     const hierarchy = (item: L.CallHierarchyItem | L.TypeHierarchyItem): import('./language-results').LanguageResult => ({
@@ -322,6 +333,8 @@ export class LanguageClient {
       subscribe: listener => diagnosticsFor(this.api).subscribe(listener),
       load: async () => diagnosticsFor(this.api).entries().map(({ model, batch, item }) => ({
         label: item.message, detail: `${item.source ?? batch.provider} · ${diagnosticsFor(this.api).resource(model)}:${item.startLineNumber}`,
+        location: { path: diagnosticsFor(this.api).resource(model), line: item.startLineNumber, column: item.startColumn,
+          endLine: item.endLineNumber, endColumn: item.endColumn, context: model.getLineContent(item.startLineNumber), version: model.getVersionId() },
         open: async () => { await this.options.open(diagnosticsFor(this.api).resource(model), item); },
       })),
     }, () => editor.focus());

@@ -8,6 +8,7 @@ import { resourceUrl } from '../../main/preview/resource-url';
 vi.mock('electron', () => ({ ipcMain: { handle: vi.fn(), on: vi.fn() }, shell: {}, app: { on: vi.fn() } }));
 vi.mock('../../main/notebook/notebook-ipc', () => ({ installNotebookIpc: () => {} }));
 vi.mock('../../main/documents/image-edit-ipc', () => ({ installImageEditIpc: () => {} }));
+vi.mock('../../main/editor/editor-tools-ipc', () => ({ installEditorToolsIpc: () => {} }));
 
 test('F26 the open-link IPC must not decode URL delimiters before parsing', async () => {
   const handlers = new Map<string, Function>();

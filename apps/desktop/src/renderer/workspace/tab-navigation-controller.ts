@@ -1,4 +1,5 @@
 import { fileLocation, isFileLocation } from '../../core/document/file-location';
+import { sharedTextDocument } from '../../core/workspace/document-store';
 import { browserURL } from '../../core/browser/browser-url';
 import { hasMarkdownPreview } from '../../core/document/document-capabilities';
 import { recordVisit, type TabNavigation, type TabVisit } from '../../core/workspace/tab-navigation';
@@ -43,6 +44,7 @@ export class TabNavigationController {
     return this.replacing.has(id) ? (this.navigationTasks.get(id) ?? Promise.resolve(false)) : undefined;
   }
   visit(tab: WorkspaceTab): TabVisit | null {
+    if (tab.kind === 'diff') return null;
     if (tab.kind === 'terminal') return { kind: 'terminal', url: tabLocation(tab) };
     if (tab.kind === 'web') return { kind: 'web', url: tab.page.url };
     return tab.document.isUntitled ? null : { kind: 'file', url: fileLocation(tab.document.path), position: tab.readingPosition };
@@ -138,7 +140,8 @@ export class TabNavigationController {
       let createdWeb = false;
       let outgoingWeb: TabVisit | undefined;
       try {
-        if (isDocumentTab(tab) && this.options.dirty(tab)) {
+        if (isDocumentTab(tab) && this.options.dirty(tab)
+          && (!tab.documentId || (workspace.documentStore.get(tab.documentId)?.references.size ?? 0) <= 1)) {
           const decision = await this.options.confirmClose([tab.document.name]);
           if (!current() || decision === 'cancel') return false;
           if (decision === 'save') {
@@ -177,7 +180,8 @@ export class TabNavigationController {
             else navigation.entries[navigation.index] = outgoing;
           }
         }
-        if (isDocumentTab(tab) && tab.document.isUntitled) await desktop.discardDocument(tab.document);
+        if (isDocumentTab(tab) && tab.document.isUntitled
+          && (!tab.documentId || (workspace.documentStore.get(tab.documentId)?.references.size ?? 0) <= 1)) await desktop.discardDocument(tab.document);
         const index = workspace.tabs.indexOf(tab);
         if (index < 0) return false;
         const active = workspace.activeId === id;
@@ -189,6 +193,7 @@ export class TabNavigationController {
           const visit = this.visit(replacement);
           if (visit) recordVisit(navigation, visit);
         } else navigation.index = historyIndex;
+        if (isDocumentTab(replacement) && sharedTextDocument(replacement.document)) workspace.documentStore.attach(replacement);
         workspace.tabs[index] = replacement;
         if (historyIndex === undefined) workspace.groups.pin(id);
         if (isDocumentTab(replacement)) this.options.restoreDocumentTab(replacement);

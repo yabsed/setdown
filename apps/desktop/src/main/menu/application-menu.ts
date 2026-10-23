@@ -82,6 +82,7 @@ export function installApplicationMenu(context: MenuContext) {
   const menu = Menu.buildFromTemplate([
     {
       id: 'application-menu-file', label: 'File', submenu: [
+        { id: 'menu-editor-commands', label: 'Commands…', accelerator: 'CmdOrCtrl+Shift+P', click: () => command('editor-commands') },
         { id: 'menu-new-window', label: 'New Window', accelerator: 'CmdOrCtrl+Shift+N', click: () => context.createWindow() },
         { id: 'menu-new-web', label: 'New Web Tab', accelerator: 'CmdOrCtrl+T', click: () => command('new-web-tab') },
         { id: 'menu-reopen-web', label: 'Reopen Closed Web Tab', accelerator: 'CmdOrCtrl+Shift+T', click: () => command('reopen-web-tab') },

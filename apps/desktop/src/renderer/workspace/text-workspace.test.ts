@@ -685,3 +685,71 @@ test('a canceled dirty file navigation cannot replace it with a terminal session
   assert.equal(tab.text, 'unsaved');
   assert.equal(f.workspace.terminals.has(session), true);
 });
+
+test('opening to the side retains the source and shares its dirty buffer', async () => {
+  const f = fixture();
+  await f.controller.show(snapshot('/project/shared.txt'));
+  const first = f.workspace.activeDocument!;
+  f.controller.editorChanged(first, 'UNSAVED');
+  await f.controller.show(snapshot('/project/shared.txt'), 'editor', 'document', undefined, { side: true });
+  const second = f.workspace.activeDocument!;
+  assert.notEqual(second.id, first.id); assert.equal(second.documentId, first.documentId);
+  assert.equal(second.text, 'UNSAVED'); assert.equal(f.workspace.contents.length, 1);
+  assert.equal(f.workspace.groups.groups.length, 2);
+  assert.equal(f.workspace.groups.owner(first.id)?.activeId, first.id);
+  const confirm = vi.spyOn(f.options, 'confirmClose');
+  assert.equal(await f.controller.close(first.id), true); assert.equal(confirm.mock.calls.length, 0);
+  assert.equal(f.workspace.contents.length, 1); assert.equal(second.text, 'UNSAVED');
+  assert.equal(await f.controller.close(second.id), true); assert.equal(confirm.mock.calls.length, 1);
+  assert.equal(f.workspace.contents.length, 0);
+});
+
+test('copies a sole view into a split and reuses an existing target view', async () => {
+  const f = fixture(); await f.controller.show(snapshot('/project/a.txt'));
+  const original = f.workspace.activeDocument!;
+  const originalGroup = f.workspace.groups.focusedId;
+  await f.controller.copyToGroup(original.id, originalGroup, 'right');
+  const copy = f.workspace.activeDocument!;
+  assert.notEqual(copy.id, original.id); assert.equal(f.workspace.groups.groups.length, 2);
+  const group = f.workspace.groups.focusedId;
+  await f.controller.copyToGroup(original.id, group);
+  assert.equal(f.workspace.activeId, copy.id); assert.equal(f.workspace.documents.length, 2);
+  assert.equal(f.workspace.contents.length, 1);
+});
+
+test('replacing one view with a URL preserves another view of its dirty document', async () => {
+  const f = fixture(); await f.controller.show(snapshot('/project/a.txt'));
+  const first = f.workspace.activeDocument!;
+  await f.controller.copyToGroup(first.id, f.workspace.groups.focusedId, 'right');
+  f.controller.editorChanged(first, 'dirty');
+  const confirm = vi.spyOn(f.options, 'confirmClose');
+  await f.controller.navigateLocation(first.id, 'https://example.com');
+  assert.equal(confirm.mock.calls.length, 0);
+  assert.equal(f.workspace.contents[0].text, 'dirty');
+  assert.equal(f.workspace.documentStore.documents[0].references.size, 1);
+});
+
+test('navigating one untitled view preserves its draft until the last view leaves', async () => {
+  const f = fixture(); await f.controller.show({ ...snapshot('/project/draft.md'), isUntitled: true });
+  const first = f.workspace.activeDocument!;
+  await f.controller.copyToGroup(first.id, f.workspace.groups.focusedId, 'right');
+  const second = f.workspace.activeDocument!, discard = vi.spyOn(f.options.desktop, 'discardDocument');
+  f.controller.editorChanged(first, 'unsaved draft');
+  await f.controller.navigateLocation(first.id, 'https://example.com');
+  assert.equal(discard.mock.calls.length, 0); assert.equal(second.text, 'unsaved draft');
+  await f.controller.navigateLocation(second.id, 'https://example.com/next');
+  assert.equal(discard.mock.calls.length, 1); assert.equal(f.workspace.contents.length, 0);
+});
+
+test('Save As retargets all ordinary references without changing shared content identity', async () => {
+  const f = fixture(); await f.controller.show(snapshot('/project/before.txt'));
+  const first = f.workspace.activeDocument!;
+  await f.controller.copyToGroup(first.id, f.workspace.groups.focusedId, 'right');
+  const second = f.workspace.activeDocument!, identity = first.documentId;
+  f.controller.editorChanged(second, 'new text');
+  await f.controller.acceptSaved(second, { ...snapshot('/project/after.txt', 'new text'), revision: second.revision, savedRevision: second.revision });
+  assert.equal(first.documentId, identity); assert.equal(second.documentId, identity);
+  assert.equal(first.document.path, '/project/after.txt'); assert.equal(second.document.path, '/project/after.txt');
+  assert.equal(f.controller.dirty(first), false); assert.equal(f.controller.dirty(second), false);
+  assert.equal(f.workspace.contents.length, 1);
+});

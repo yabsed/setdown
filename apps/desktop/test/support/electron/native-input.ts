@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 export async function nativeInput(input: {
   click?: { x: number; y: number }; text?: string; keys?: string[];
   pointer?: { x: number; y: number }[]; button?: 'down' | 'up';
+  pointerIntervalMs?: number;
 }) {
   if (process.env.SETDOWN_ISOLATED_DISPLAY !== '1' || !process.env.DISPLAY) throw Error('Native input requires isolated Xvfb.');
   await promisify(execFile)('python3', ['-c', `
@@ -22,7 +23,7 @@ d=x.XOpenDisplay(None)
 if not d: raise RuntimeError('No isolated X display')
 data=json.loads(sys.argv[1])
 for p in data.get('pointer',[]):
- t.XTestFakeMotionEvent(d,-1,round(p['x']),round(p['y']),0); x.XFlush(d); time.sleep(.04)
+ t.XTestFakeMotionEvent(d,-1,round(p['x']),round(p['y']),0); x.XFlush(d); time.sleep(data.get('pointerIntervalMs',40)/1000)
 if 'button' in data:
  t.XTestFakeButtonEvent(d,1,int(data['button']=='down'),0); x.XFlush(d)
 if 'click' in data:

@@ -120,6 +120,8 @@ export type GitDiffHunk = {
 };
 
 export type GitDiff = {
+  /** Deleted files and unsupported mutable formats are comparison snapshots. */
+  readOnly?: boolean;
   history?: GitHistorySelection;
   path: string;
   filePath: string;
@@ -200,6 +202,8 @@ export type ClaimedTabTransfer = {
   tab: TransferableTab;
 };
 
+export type TabDragState = { transferId: string; active: boolean; commitGuide?: boolean };
+
 export type { PreviewBounds } from './preview-preparation';
 export type PreviewMessage = { tabId: string; message: Record<string, unknown> };
 
@@ -241,10 +245,12 @@ export type AppCommand = `hwp:${'undo' | 'redo' | 'cut' | 'copy' | 'paste' | 'se
   | 'open-find'
   | 'escape'
   | 'language-support'
+  | 'editor-commands'
   | 'toggle-folder-tools'
   | 'toggle-surface';
 
 export type MarkTexApi = {
+  editorTools: import('./editor-tools').EditorToolsApi;
   notebook: NotebookApi;
   renderNotebookMarkdown(path: string, source: string): Promise<{ html: string; baseHref: string }>;
   explorer: import('./explorer').ExplorerApi;
@@ -277,7 +283,8 @@ export type MarkTexApi = {
   claimTabTransfer(transferId: string): Promise<ClaimedTabTransfer | null>;
   completeTabTransfer(transferId: string): void;
   cancelTabTransfer(transferId: string): void;
-  detachTabToWindow(transferId: string, x: number, y: number, withinSource?: boolean): void;
+  updateTabDragTarget(transferId: string, accepted: boolean): void;
+  detachTabToWindow(transferId: string, x: number, y: number, withinSource?: boolean, dropEffect?: string): void;
   adoptTabTransfer(transferId: string): Promise<boolean>;
   releaseTabTransferSource(transferId: string): void;
   createPreview(tabId: string): void;
@@ -383,6 +390,7 @@ export type MarkTexApi = {
   onWindowCloseRequested(listener: (names: string[]) => void): () => void;
   onSaveBeforeClose(listener: () => void): () => void;
   onTabTransferIncoming(listener: (transfer: ClaimedTabTransfer) => void): () => void;
+  onTabDragState(listener: (state: TabDragState) => void): () => void;
   onTabTransferCompleted(listener: (transfer: { transferId: string; tabId: string }) => void): () => void;
   onPreviewMessage(listener: (payload: PreviewMessage) => void): () => void;
   onPreviewFindRequested(listener: (tabId: string) => void): () => void;

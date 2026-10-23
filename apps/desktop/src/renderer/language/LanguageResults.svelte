@@ -3,20 +3,25 @@
   import { LanguageCancellation } from './language-cancellation';
   import type { LanguageResult, LanguageResultsSource } from './language-results';
   import { isComposingInput } from '../editor/composition-guard';
+  import { resultGroup, recordEditorResults, editorToolsNow } from '../editor/tools/tools-runtime';
   let { source, close }: { source: LanguageResultsSource; close(): void } = $props();
   let input: HTMLInputElement;
   let query = $state(''), rows = $state<LanguageResult[]>([]), busy = $state(false), error = $state('');
   let selection = $state(0), trail = $state<{ label: string; rows: LanguageResult[] }[]>([]);
   let request: LanguageCancellation | undefined, timer: ReturnType<typeof setTimeout> | undefined, live = true;
   async function load() {
+    const group = resultGroup();
     request?.cancel(); const token = request = new LanguageCancellation();
     busy = true; error = ''; trail = [];
-    try { const result = await source.load(query, token); if (live && !token.isCancellationRequested) { rows = result.slice(0, 1000); selection = 0; } }
+    try { const result = await source.load(query, token); if (live && !token.isCancellationRequested) {
+      rows = result.slice(0, 1000); selection = 0; recordEditorResults(source.title, 'Language services', rows, query, group, result.length > 1000);
+    } }
     catch (reason) { if (live && !token.isCancellationRequested) error = String(reason); }
     finally { if (live && request === token) busy = false; }
   }
   function changed() { request?.cancel(); clearTimeout(timer); timer = setTimeout(() => { void load(); }, 150); }
   async function open(row: LanguageResult) {
+    editorToolsNow()?.rememberJump();
     try { await row.open(); close(); } catch (reason) { error = String(reason); }
   }
   async function children(row: LanguageResult) {

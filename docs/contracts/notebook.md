@@ -166,3 +166,27 @@ The comparison covers existing ordinary Markdown/Git transition latency. The
 notebook GUI scenarios establish behavior, not large-notebook memory budgets or
 kernel startup/indexing performance; those are not measured by this benchmark.
 
+
+
+## Python analysis project paths
+
+The Python analysis host reads the owning root's `.vscode/settings.json` as JSONC.
+It accepts `basedpyright.analysis.extraPaths` or `python.analysis.extraPaths`
+(flat or nested), preferring basedpyright and preserving an explicit empty list.
+Relative paths and `${workspaceFolder}` resolve against that root. Unknown
+variables, malformed/oversized input and nonstring paths are rejected with context;
+settings from an outer repository do not leak into a nested project. Explicit
+language connection paths take precedence over this compatibility layer.
+
+The selected server still interprets `pyrightconfig.json`/`pyproject.toml`, including
+its native execution-environment rules; Setdown does not flatten or claim to know
+those final effective paths. Language Support distinguishes client configuration,
+its provenance, selected interpreter/root and server project configuration. Settings
+file changes retire only affected analysis sessions and rebuild their configuration.
+This does not execute `sys.path` expressions or change the notebook kernel.
+
+`python-project-settings.test.ts` covers JSONC, precedence, empty/removal cases,
+provenance and project isolation. The notebook Electron test creates a Unicode
+source directory, observes a real missing-import diagnostic disappear and module
+hover appear after changing project paths, retains a negative-control diagnostic,
+and verifies that an explicit empty list restores the original missing imports.

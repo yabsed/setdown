@@ -40,7 +40,7 @@ afterEach(async () => {
 });
 async function temp() { const root = await fs.mkdtemp(path.join(os.tmpdir(), 'setdown-audit-')); roots.push(root); return root; }
 function state(root: string): WindowState {
-  return { projectRoot: root, watchedPath: null, currentDocument: null,
+  return { projectRoot: root, watchedPath: null, currentDocument: null, rendererTabs: [],
     window: { webContents: { send: vi.fn() } } } as unknown as WindowState;
 }
 async function repository() {

@@ -11,6 +11,7 @@ import { notebookClientCapabilities, notebookLanguageMethods } from '../../proto
 import { ServerItems } from './server-items';
 import { languageRoot } from './language-root';
 import { builtinLanguageServers } from './catalog/profiles';
+import { applyPythonProjectSettings, isPythonSettingsFile, pythonProjectSettings, pythonSettingsContext } from './python-project-settings';
 
 type Cell = LanguageCell & { uri: string };
 type Session = { state: WindowState; document: LanguageDocument; cells: Cell[]; server: ServerSession; items: ServerItems; root: string; rootReason: string;
@@ -78,6 +79,8 @@ export class NotebookLanguageHost {
       // Match VS Code's lightweight Python diagnostics; inference still powers
       // completion/hover. Let the server's off preset own the diagnostic rules.
       const analysis = notebookPythonAnalysis;
+      const projectSettings = pythonProjectSettings(root.path);
+      const configuration = applyPythonProjectSettings({ python: { pythonPath: environment.python, analysis }, basedpyright: { analysis } }, projectSettings, 'basedpyright');
       session.server = new ServerSession({ executable: process.execPath, args: [entry, '--stdio'], env: { ...env, ELECTRON_RUN_AS_NODE: '1' } },
         root.path, params => {
           if (this.sessions.get(key) !== session) return;
@@ -87,7 +90,15 @@ export class NotebookLanguageHost {
             cell: cell.id, cellVersion: cell.version, diagnostics: params.diagnostics });
         }, message => { if (this.sessions.get(key) === session) { session.ready = false; this.status(session, 'failed', message); } },
         { name: 'Notebook Python', capabilities: notebookClientCapabilities(), watches: file => /\.(py|pyi|toml|json)$/.test(file), initializationOptions: { disablePullDiagnostics: true },
-          configuration: { python: { pythonPath: environment.python, analysis }, basedpyright: { analysis } } });
+          configuration }, { filesChanged: paths => {
+            if (this.sessions.get(key) !== session || !paths.some(file => isPythonSettingsFile(root.path, file))) return;
+            // Retire the wire epoch before requesting a reconnect. Old diagnostics
+            // can no longer be relabelled with the unchanged notebook revision.
+            this.close(owner, document.id);
+            this.emit(session, { type: 'configuration', servers: ['notebook-python'],
+              documents: [{ id: document.id, generation: document.generation }] });
+          } });
+      for (const [key, value] of pythonSettingsContext(projectSettings, configuration, 'basedpyright')) session.server.context?.set(key, value);
       this.sessions.set(key, session); this.status(session, 'starting');
       const capabilities = await session.server.ready;
       if (this.sessions.get(key) !== session || !owns()) throw Error('Notebook closed during language initialization.');
@@ -99,7 +110,8 @@ export class NotebookLanguageHost {
         cellTextDocuments: session.cells.map(cell => ({ uri: cell.uri, languageId: 'python', version: session.document.version, text: cell.text })),
       });
       session.ready = true; this.status(session, 'ready');
-      return { uri, cells: Object.fromEntries(session.cells.filter(cell => cell.id).map(cell => [cell.id, cell.uri])), capabilities, server: 'notebook-python' };
+      return { uri, cells: Object.fromEntries(session.cells.filter(cell => cell.id).map(cell => [cell.id, cell.uri])), capabilities, server: 'notebook-python',
+        context: [`Project: ${root.path}`, `Root: ${root.reason}`, ...[...session.server.context ?? []].map(([key, value]) => `${key}: ${value}`)] };
     } catch (error) {
       if (this.openings.get(key) === token) {
         const session = this.sessions.get(key);

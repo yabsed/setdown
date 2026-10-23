@@ -246,6 +246,23 @@ test('website draggable CSS cannot consume home navigation input in web tab fram
     await f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(650, 820));
     await expect.poll(async () => (await inspect()).width).toBeLessThan(800);
     expect((await inspect()).button).toBe('no-drag');
+    // A child navigation and a dynamically replaced frame must receive the
+    // policy in their committed documents, including nested frame creation.
+    const framePolicies = () => evaluatePage<string[]>(f.app, f.origin, `(() => {
+      const read = doc => {
+        const button = doc.querySelector('#home');
+        return [button ? doc.defaultView.getComputedStyle(button).getPropertyValue('-webkit-app-region') : 'loading',
+          ...Array.from(doc.querySelectorAll('iframe')).flatMap(frame => frame.contentDocument ? read(frame.contentDocument) : ['loading'])];
+      };
+      return read(document);
+    })()`);
+    await evaluatePage(f.app, f.origin, `document.querySelector('iframe').src = '/draggable'; true`);
+    await expect.poll(framePolicies).toEqual(['no-drag', 'no-drag', 'no-drag']);
+    await evaluatePage(f.app, f.origin, `(() => {
+      const frame = document.createElement('iframe'); frame.src = '/draggable-frame';
+      document.querySelector('iframe').replaceWith(frame); return true;
+    })()`);
+    await expect.poll(framePolicies).toEqual(['no-drag', 'no-drag']);
     expect(f.errors).toEqual([]);
   } finally { await f.dispose(); }
 });

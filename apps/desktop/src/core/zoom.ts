@@ -7,4 +7,4 @@ export function appZoomStep(input: { type: string; isComposing?: boolean; contro
   if (input.key === '0' && !input.shift) return 0;
 }
 export type ZoomSnapshot = { app: number; text: number; terminal: number; revision: number; tabs?: Record<string, number> };
-export const tabZoomKey = (id: string) => /^git-diff:.*:[ab]$/.test(id) ? id.slice(0, -2) : id;
+export const tabZoomKey = (id: string) => id.startsWith('git-diff:') ? id.slice('git-diff:'.length).replace(/:[ab]$/, '') : id;

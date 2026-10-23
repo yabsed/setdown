@@ -19,4 +19,4 @@ export type GitGraphResult = GitGraphMethods[keyof GitGraphMethods]['result'];
 export type GitGraphReply = GitGraphResult | null;
 
 /** Immutable comparison. Omitted base means the selected commit's first parent. */
-export type GitHistorySelection = { root: string; head: string; base?: string; path: string };
+export type { GitHistorySelection } from '../core/project/git-history';

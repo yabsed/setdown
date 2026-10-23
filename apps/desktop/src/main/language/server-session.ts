@@ -10,6 +10,7 @@ import { ServerCapabilitiesState } from './server-capabilities';
 import type { ApplyWorkspaceEditParams, ApplyWorkspaceEditResult, Registration, InitializeResult, PublishDiagnosticsParams, ServerCapabilities } from 'vscode-languageserver-protocol';
 
 export type SessionHooks = {
+  filesChanged?(paths: string[]): void;
   configuration?(scopeUri?: string): Record<string, unknown>;
   refresh?(feature: LanguageRefresh): void;
   capabilitiesChanged?(): void;
@@ -200,6 +201,7 @@ export class ServerSession {
   watch(root: string): void {
     this.watcher = subscribe(root, (error, events) => {
       if (error || this.stopped || this.stopping) return;
+      this.hooks.filesChanged?.(events.map(event => event.path));
       const changes = events.filter(event => this.profile.watches(event.path) || this.capabilities.watches(event.path, event.type === 'create' ? 1 : event.type === 'delete' ? 3 : 2))
         .map(event => ({ uri: pathToFileURL(event.path).href, type: event.type === 'create' ? 1 : event.type === 'delete' ? 3 : 2 }));
       if (changes.length) void this.ready.then(() => this.notify('workspace/didChangeWatchedFiles', { changes })).catch(() => {});

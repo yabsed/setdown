@@ -1,4 +1,5 @@
 import { installImageEditIpc } from '../documents/image-edit-ipc';
+import { installEditorToolsIpc } from '../editor/editor-tools-ipc';
 import { installNotebookIpc } from '../notebook/notebook-ipc';
 import type { BrowserManager } from '../browser/browser-manager';
 import { GitHistoryService } from '../project/git-history-service';
@@ -47,6 +48,7 @@ function documentMenus(items: ApplicationMenuEntry[], markdown: boolean, review:
   }));
 }
 export function installIpc(options: Options): void {
+  installEditorToolsIpc(options.channels);
   installNotebookIpc(options.channels, options.browsers);
   installImageEditIpc(options.channels, options.documents);
   const { channels, documents, previews, projects, renderer, themes, transfers, autoSave } = options;
@@ -242,7 +244,12 @@ async function openLink(documents: DocumentManager, state: Parameters<DocumentMa
     try { if (!(await fs.stat(checked)).isFile()) return; } catch { return; }
     if (isOpenableDocument(checked)) {
       if (state.currentDocument && canonicalPath(state.currentDocument.path) === checked
-        && state.rendererTabs.some((tab) => canonicalPath(tab.path) === checked)) return;
+        && state.rendererTabs.some((tab) => canonicalPath(tab.path) === checked)) {
+        // Content may be owned only by a review, or visible in another group.
+        // The renderer resolves the ordinary input within the requested group.
+        state.window.webContents.send('document:opened', state.currentDocument);
+        return;
+      }
       const document = await documents.open(state, checked, false);
       state.window.webContents.send('document:opened', document);
     } else await shell.openPath(checked);

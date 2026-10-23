@@ -169,6 +169,8 @@ export class DocumentManager {
       });
       if (selected.canceled || !selected.filePath) return { canceled: true };
       const absolute = canonicalSavePath(selected.filePath);
+      if (state.rendererTabs.some(tab => tab.path === absolute && tab.path !== updated.path))
+        throw Error('This destination is already open. Close that document before saving another document over it.');
       // A draft bundle is removed after publication; never publish into itself.
       if (path.dirname(absolute) === path.dirname(updated.path)) throw new Error('Choose a destination outside this temporary draft folder.');
       return serializeFileSave(absolute, async () => {
@@ -243,6 +245,8 @@ export class DocumentManager {
     });
     if (selected.canceled || !selected.filePath) return { canceled: true };
     const absolute = canonicalSavePath(selected.filePath);
+    if (state.rendererTabs.some(tab => tab.path === absolute && tab.path !== document.path))
+      throw Error('This destination is already open. Close that document before saving another document over it.');
     return serializeFileSave(absolute, async () => {
       const output = prepareDocumentSave(document, text, absolute);
       const version = await atomicWrite(absolute, output.bytes);

@@ -15,6 +15,7 @@ import type { TerminalActions } from '../terminal/terminal-actions';
 
 /** Final shell action contract. Feature implementations own their action types. */
 export type AppActions = BrowserActions & TerminalActions & {
+  restoreWorkspace(): void;
   openLanguageLocation(path: string, selection?: import('monaco-editor').IRange | import('monaco-editor').IPosition): Promise<void>;
   locationSuggestions: import('../../protocol/desktop-api').MarkTexApi['locationSuggestions'];
   menuOverlay: import('../../protocol/desktop-api').MarkTexApi['menuOverlay'];
@@ -23,6 +24,7 @@ export type AppActions = BrowserActions & TerminalActions & {
   navigateLocation(groupId: string, input: string): Promise<void>;
   navigateHistory(id: string, direction: -1 | 1): void;
   focusGroup(id: string): void;
+  splitEditor(id: string, direction: import('../../core/workspace/editor-groups').SplitDirection): void;
   resizeGroup(id: string, ratio: number): void;
   loadMenu(id: string): Promise<ApplicationMenuEntry[]>;
   executeMenuItem(id: string): void;
@@ -61,7 +63,7 @@ export type AppActions = BrowserActions & TerminalActions & {
   refreshProjectGit(): void;
   toggleProjectGitGroup(title: string): void;
   reviewGitHistory(selection: GitHistorySelection): void;
-  reviewProjectGitChange(path: string, staged: boolean): void;
+  reviewProjectGitChange(path: string, staged: boolean, options?: import('../../core/workspace/editor-groups').EditorOpenOptions): void;
   activateProjectGitDiff(id: string): void;
   closeProjectGitDiff(id: string): void;
   layoutProjectGitDiff(bounds: PreviewBounds | null): void;

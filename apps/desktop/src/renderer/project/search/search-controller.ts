@@ -2,6 +2,7 @@ import type { ProjectSearchDocument, ProjectSearchResult } from '../../../protoc
 import type { DesktopPort } from '../../ports/desktop-port';
 import { project, rememberProjectState } from '../project-state.svelte';
 import { searchScope } from './search-scope.svelte';
+import { resultGroup, recordEditorResults, editorToolsNow } from '../../editor/tools/tools-runtime';
 type SearchTarget = Pick<ProjectSearchResult, 'surface' | 'line' | 'column' | 'lineOccurrence' | 'ordinal'>;
 type Options = {
   desktop: DesktopPort; documents(query: string): ProjectSearchDocument[];
@@ -13,6 +14,7 @@ export class SearchController {
   constructor(private readonly options: Options) {}
   search = (query: string): void => {
     const request = ++this.request;
+    const group = resultGroup();
     if (query !== project.searchQuery) project.expandedSearchGroups = [];
     project.searchQuery = query;
     rememberProjectState(); this.highlight(); window.clearTimeout(this.timer);
@@ -22,9 +24,10 @@ export class SearchController {
       return;
     }
     project.searching = true;
-    this.timer = window.setTimeout(() => void this.run(query, request), 200);
+    this.timer = window.setTimeout(() => void this.run(query, request, group), 200);
   };
   open = async (result: ProjectSearchResult): Promise<void> => {
+    editorToolsNow()?.rememberJump();
     if (await this.options.open(result.path)) this.options.highlight(project.searchQuery.trim(), result);
   };
   contextChanged = (): void => { if (project.searchQuery.trim()) this.search(project.searchQuery); };
@@ -46,7 +49,7 @@ export class SearchController {
     rememberProjectState(); this.options.highlight('');
     if (project.folder) void this.options.desktop.searchProject({ query: '', documents: [] });
   };
-  private async run(query: string, request: number): Promise<void> {
+  private async run(query: string, request: number, group = resultGroup()): Promise<void> {
     const root = project.folder?.path;
     const scope = searchScope.value;
     const current = () => request === this.request && query === project.searchQuery
@@ -54,7 +57,11 @@ export class SearchController {
     try {
       const payload = { query, documents: this.options.documents(query), scope };
       const results = await this.options.desktop.searchProject(payload);
-      if (current()) { project.searchResults = results; project.error = ''; }
+      if (current()) {
+        project.searchResults = results; project.error = '';
+        recordEditorResults(`Project search: ${query}`, 'Project search', results.map(result => ({ label: `${result.relativePath}:${result.line}`, detail: result.preview,
+          location: { path: result.path, line: result.line, column: result.column } })), query, group, results.length >= 1000);
+      }
     } catch (error) {
       if (current()) project.error = error instanceof Error ? error.message : String(error);
     } finally { if (current()) project.searching = false; }

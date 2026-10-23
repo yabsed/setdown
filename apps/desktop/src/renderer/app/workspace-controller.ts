@@ -30,6 +30,7 @@ import { ProjectController } from '../project/project-controller';
 import { project } from '../project/project-state.svelte';
 import { installFolderDrop } from '../project/folder-drop';
 import { PreviewSession } from '../reader/preview-session';
+import { PreviewLayoutCoordinator } from '../reader/preview-layout-coordinator';
 import { ReaderController } from '../reader/reader-controller';
 import { createTabDrag } from '../workspace/tabs/tab-drag';
 import { applyShellTheme } from '../theme';
@@ -40,6 +41,8 @@ import type { AppActions } from '../ports/ui-actions';
 import { DocumentActions } from '../workspace/document-actions';
 import { AutoSaveController } from '../workspace/auto-save';
 import { TabController } from '../workspace/tab-controller';
+import { installWorkspaceTools } from './editor-tools-controller';
+import { openEditorCommands, editorToolsNow, runEditorCommand } from '../editor/tools/tools-runtime';
 import '../style.css';
 
 const EMPTY_ANCHOR: ViewportAnchor = {
@@ -48,6 +51,7 @@ const EMPTY_ANCHOR: ViewportAnchor = {
 
 /** Renderer composition root. Document capabilities gate Markdown-only actions. */
 export function startWorkspace(desktop: DesktopPort) {
+  const layouts = new PreviewLayoutCoordinator(desktop);
   const initialTheme: ThemeSnapshot = {
     id: normalizePreviewTheme(desktop.initialTheme.id), revision: Math.max(0, desktop.initialTheme.revision),
   };
@@ -59,8 +63,13 @@ export function startWorkspace(desktop: DesktopPort) {
     fileMutation = result.catch(() => {}); return result;
   };
   const actions: AppActions = {
+    restoreWorkspace: () => { void runEditorCommand('setdown.session.restore').catch(error => window.alert(String(error))); },
     openLanguageLocation: async (path, selection) => {
-        const tab = await tabs.prepareLanguageDocument(path);
+        const origin = workspace.activeId, revision = workspace.activeContent?.revision, group = workspace.groups.focusedId;
+        const caret = JSON.stringify(editor.editor?.getSelections());
+        editorToolsNow()?.rememberJump();
+        const tab = await tabs.prepareLanguageDocument(path, group);
+        if (workspace.activeId !== origin || workspace.activeContent?.revision !== revision || JSON.stringify(editor.editor?.getSelections()) !== caret) return;
         await tabs.activate(tab.id);
         await surfaces.enterEditor();
         if (selection && editor.editor) {
@@ -81,6 +90,11 @@ export function startWorkspace(desktop: DesktopPort) {
       const previous = id ? workspace.find(id) : null;
       if (id && workspace.activeId !== id) await tabs.activate(id);
       projects.deactivateGitDiff();
+      if (previous?.kind === 'diff') {
+        if (isFileLocation(input)) await tabs.show(await desktop.readDocumentLocation(input), 'viewer', 'document', undefined, { groupId, pinned: true });
+        else await tabs.openWeb(input);
+        return;
+      }
       if (id) {
         if (await tabs.navigateLocation(id, input) && previous && isDocumentTab(previous)
           && workspace.find(id) !== previous) projects.closeWorkingTreeReviews(previous.document.path);
@@ -104,6 +118,7 @@ export function startWorkspace(desktop: DesktopPort) {
       navigateHistory: (id, direction) => actions.navigateHistory(id, direction),
       sync: () => browsers?.sync(true),
     }),
+    splitEditor: (id, direction) => { const group = workspace.groups.owner(id); if (group) void tabs.copyToGroup(id, group.id, direction); },
     focusGroup: (id) => {
       projectOpenRequest++;
       const group = workspace.groups.groups.find(group => group.id === id);
@@ -153,7 +168,7 @@ export function startWorkspace(desktop: DesktopPort) {
     refreshProjectGit: () => void projects.refreshGit(),
     toggleProjectGitGroup: (title) => projects.toggleGitGroup(title),
     reviewGitHistory: (selection) => void projects.reviewGitHistory(selection),
-    reviewProjectGitChange: (path, staged) => void projects.reviewGitChange(path, staged),
+    reviewProjectGitChange: (path, staged, options) => void projects.reviewGitChange(path, staged, options),
     activateProjectGitDiff: (id) => projects.activateGitDiff(id),
     closeProjectGitDiff: (id) => projects.closeGitDiff(id),
     layoutProjectGitDiff: (bounds) => projects.layoutGitDiff(bounds),
@@ -197,7 +212,7 @@ export function startWorkspace(desktop: DesktopPort) {
   let projectContextChanged = () => {};
   let groups: ReturnType<typeof createGroupRuntime> | undefined;
   let browsers: ReturnType<typeof createBrowserRuntime> | undefined;
-  const reader = new ReaderController({ desktop, shell, frames: previewFrames, get tabs() { return workspace.documents; }, active,
+  const reader = new ReaderController({ desktop: layouts.port('documents'), shell, frames: previewFrames, get tabs() { return workspace.documents; }, active,
     activeId: () => workspace.activeId, initialTheme,
     syncBackgrounds: () => groups?.backgrounds() ?? [],
     layoutGuide: (previews) => groups?.layoutGuide(previews),
@@ -207,6 +222,9 @@ export function startWorkspace(desktop: DesktopPort) {
     activeId: () => workspace.activeId, text: () => tabs.currentText(), lineCount: () => tabs.lineCount(), reader });
   const editor: MonacoEditor = new MonacoEditor({ host: editorHost, tabs: () => workspace.documents, active,
     releaseDocuments: () => documentSessions.releaseAll(),
+    contents: () => workspace.contents,
+    viewIds: content => workspace.tabs.filter(tab => 'documentId' in tab && tab.documentId === (content.documentId ?? content.id)).map(tab => tab.id),
+    content: tab => workspace.documentStore.get(tab.documentId ?? tab.id) ?? tab,
     pythonCells: async (path, source) => {
       try { const file = await desktop.notebook.pythonCells(path, source); if (file) await projects.openFile(file, { pinned: true }); }
       catch (error) { window.alert(String(error)); }
@@ -219,6 +237,7 @@ export function startWorkspace(desktop: DesktopPort) {
     focusTab: (id) => actions.activateTab(id),
     changed: (tab, text) => tabs.editorChanged(tab, text), scrolled: () => surfaces.editorScrolled(),
     escape: () => void surfaces.enterViewer(), insertLink: () => insertions.openLink(), insertTable: () => insertions.openTable() });
+  workspace.documentStore.onRelease(record => editor.disposeDocument(record.id));
   const documentSessions = new DocumentSessions(editor, [notebookContent, imageSessions, hwpSessions], desktop);
   const stopHwp = hwpSessions.configure(desktop.hwp, () => workspace.documents, () => tabs?.updateChrome());
   const stopHwpActions = desktop.hwp.onAction(({ id, command }) => {
@@ -249,15 +268,17 @@ export function startWorkspace(desktop: DesktopPort) {
   tabs = new TabController({ documents: documentSessions,
     publishDocuments: () => { view.notebookTabs = notebookViews(workspace, (tab, refresh) => {
       if (refresh) tabs.updateChrome();
-      autoSave.schedule(tab);
+      autoSave.schedule(workspace.content(tab));
     }); },
     desktop, workspace, session, shell, editor, reader, preview, surfaces,
     shouldFocusWeb: () => !document.activeElement?.matches('.location-bar input'),
     capturePosition: (tab) => positions.capture(tab),
-    reviewZoomId: () => project.gitDiffActive && project.activeGitDiffId ? `git-diff:${project.activeGitDiffId}` : null,
+    reviewZoomId: () => null,
     shouldSchedulePreview: () => !project.gitDiffActive,
-    confirmClose: (names) => closePrompt.request('tab', names), workspaceChanged: () => projectContextChanged(), groupsChanged: () => { groups?.sync(); browsers?.sync(true); },
-    autoSave: { schedule: (tab) => autoSave.schedule(tab), cancel: (tabId) => autoSave.cancel(tabId) } });
+    copyReview: (id, group, direction) => projects.copyReview(id, group, direction),
+    activateReview: id => projects.activateGitDiff(id), closeReview: (id, confirmed) => projects.closeGitDiff(id, confirmed),
+    confirmClose: (names) => closePrompt.request('tab', names), workspaceChanged: () => projectContextChanged(), groupsChanged: () => { groups?.sync(); projects?.syncReviews(); browsers?.sync(true); },
+    autoSave: { schedule: (tab) => autoSave.schedule(workspace.documentStore.get(tab.documentId ?? tab.id) ?? tab), cancel: (tabId) => autoSave.cancel(tabId) } });
   groups = createGroupRuntime({ workspace, desktop, editor, reader, activate: id => actions.activateTab(id) });
   browsers = createBrowserRuntime(workspace, desktop, tabs, actions.activateTab, actions.navigateHistory,
     id => actions.browserReaderEnter(id));
@@ -277,20 +298,38 @@ export function startWorkspace(desktop: DesktopPort) {
     },
     activeId: () => workspace.activeId,
     activate: (id) => { projects.deactivateGitDiff(); void tabs.activate(id); },
+    copy: (id, target) => { void tabs.copyToGroup(id, target.groupId, target.direction); },
+    move: (id, target) => { void tabs.moveToGroup(id, target); },
     serialize: tabs.transferable, render: tabs.render,
     install: (transfer, placement) => tabs.installTransferred(transfer, placement) });
-  autoSave = new AutoSaveController({ desktop, get tabs() { return workspace.documents; }, activeId: () => workspace.activeId,
+  autoSave = new AutoSaveController({ desktop, get tabs() { return workspace.contents; }, activeId: () => workspace.activeContent?.id ?? null,
     text: tabs.text, dirty: tabs.dirty, beforeSave: tab => documentSessions.beforeSave(tab, 2), acceptSaved: tabs.acceptSaved,
     saved: (document) => projects.documentSaved(document) });
-  const documents = new DocumentActions({ desktop, get tabs() { return workspace.documents; }, active, text: tabs.text, dirty: tabs.dirty,
+  const documents = new DocumentActions({ desktop, get tabs() { return workspace.contents; }, active: () => workspace.activeContent, text: tabs.text, dirty: tabs.dirty,
     preview, saveTab: documentSessions.save, beforeSave: tab => documentSessions.beforeSave(tab), installModel: tabs.installModel, acceptSaved: tabs.acceptSaved,
     show: (document, surface) => { projectOpenRequest++; projects.deactivateGitDiff(); return tabs.show(document, surface); },
     reload: tabs.reload, saved: (document) => projects.documentSaved(document),
     renderTabs: tabs.render, updateChrome: tabs.updateChrome, autoSave });
   projects = new ProjectController({ desktop,
+    reviewWorkspace: { workspace, layouts, empty: () => { editor.clear(); surfaces.set('empty'); tabs.updateChrome(); }, convertToFile: id => tabs.convertReviewToFile(id),
+      activate: id => tabs.activate(id), render: () => tabs.render(),
+      confirmRelease: async content => {
+        if (!documentSessions.dirty(content)) return true;
+        const revision = content.revision;
+        const decision = await closePrompt.request('tab', [content.document.name]);
+        if (decision === 'cancel') return false;
+        if (decision === 'discard') return content.revision === revision;
+        await documentSessions.beforeSave(content);
+        const saved = await documentSessions.save(content);
+        if (saved.canceled || !saved.document) return false;
+        await tabs.acceptSaved(content, saved.document);
+        return !documentSessions.dirty(content);
+      },
+    },
     searchDocuments: (query) => workspace.documents.filter((tab) => !tab.document.kind).map((tab) => ({ path: tab.document.path, text: tabs.text(tab),
       surface: tab.surface === 'viewer' ? 'viewer' : 'editor', matches: tab.surface === 'editor' ? editor.projectMatches(tab, query.trim()) : undefined })),
     showDocument: async (path, options) => {
+      options = { ...options, groupId: options?.groupId ?? workspace.groups.focusedId };
       const request = ++projectOpenRequest;
       const documentSnapshot = await desktop.openProjectFile(path);
       if (!documentSnapshot || request !== projectOpenRequest) return false;
@@ -316,15 +355,9 @@ export function startWorkspace(desktop: DesktopPort) {
       fileMutation = result.catch(() => {}); return result;
     },
     reviewChanged: (open, activeReview) => {
-      const wasOpen = shell.dataset.gitDiff === 'true';
       shell.dataset.gitDiff = String(open);
       reader.setSuspended(activeReview); browsers?.sync();
-      if (activeReview) { positions.capture(); preview.cancelSchedule(); }
-      else if (wasOpen && !open && workspace.activeId) {
-        // A first-open review may never have prepared the ordinary document.
-        // Closing the last review is an explicit return to that document.
-        void tabs.activate(workspace.activeId);
-      }
+      if (activeReview) preview.cancelSchedule();
     },
     highlight: (query, target) => {
       const editing = workspace.active?.surface === 'editor';
@@ -339,7 +372,7 @@ export function startWorkspace(desktop: DesktopPort) {
   void projects.restore();
   const editorContext = { desktop, host: shell,
     target: (): MarkdownEditingTarget | null => {
-      const document = session.document;
+      const document = workspace.activeContent?.document;
       if (!document || !hasMarkdownPreview(document)) return null;
       if (project.gitDiffActive) {
         const target = workingTreeMarkdownEditor.read();
@@ -373,20 +406,17 @@ export function startWorkspace(desktop: DesktopPort) {
     finally { stagingChanges = false; }
   }
   async function closeDocumentTab(id: string) {
-    const path = workspace.documents.find(tab => tab.id === id)?.document.path;
-    if (await tabs.close(id) && path) projects.closeWorkingTreeReviews(path);
+    await tabs.close(id);
   }
   function cycleTab(direction: -1 | 1) {
-    const all = [...workspace.groups.focused.tabs.flatMap(id => workspace.find(id) ?? []).map((tab) => ({ id: tab.id, diff: false })),
-      ...project.gitDiffTabs.map((tab) => ({ id: tab.id, diff: true }))];
-    if (all.length < 2) return;
-    const activeId = project.gitDiffActive ? project.activeGitDiffId : workspace.activeId;
-    const current = Math.max(0, all.findIndex((tab) => tab.id === activeId));
-    const next = all[(current + direction + all.length) % all.length];
-    if (next.diff) projects.activateGitDiff(next.id);
-    else { projects.deactivateGitDiff(); void tabs.activate(next.id); }
+    const ids = workspace.groups.focused.tabs;
+    if (ids.length < 2) return;
+    const current = Math.max(0, ids.indexOf(workspace.activeId ?? ''));
+    actions.activateTab(ids[(current + direction + ids.length) % ids.length]);
   }
+
   const renderedReview = () => !!project.gitDiff && isMarkdownDocument(project.gitDiff.filePath);
+  installWorkspaceTools({ desktop, workspace, tabs, surfaces, editor, projects, save: saveDocument });
   installWorkspaceEvents(desktop, {
     previewMessage: (payload) => {
       if (payload.message.type === 'marktex:focus' && payload.tabId !== workspace.activeId
@@ -405,14 +435,15 @@ export function startWorkspace(desktop: DesktopPort) {
     previewFindRequested: (tabId) => { if (tabId === workspace.activeId && session.surface === 'viewer') reader.openFind(); },
     documentOpened: (opened) => { projectOpenRequest++; projects.deactivateGitDiff(); void tabs.show(opened); },
     externalChange: (change) => {
-      const active = workspace.activeDocument;
+      const active = workspace.activeContent;
       if (!active || active.document.path !== change.path) {
-        const background = workspace.documents.find(tab => tab.document.path === change.path);
+        const background = workspace.contents.find(tab => tab.document.path === change.path);
         if (background && !tabs.dirty(background)) void tabs.reloadDocumentPaths([change.path], true).catch(error => console.error('Could not refresh background document', error));
         return;
       }
       view.unavailablePath = change.unavailable ? change.path : null;
       if (change.unavailable || tabs.dirty(active)) { view.notice = true; return; }
+      if (workspace.active?.kind === 'diff') { void tabs.reloadDocumentPaths([change.path], true); return; }
       const revision = active.revision;
       void desktop.reloadDocument().then((documentSnapshot) => {
         if (documentSnapshot && workspace.active?.id === active.id && active.revision === revision
@@ -425,6 +456,10 @@ export function startWorkspace(desktop: DesktopPort) {
       void closePrompt.request('window', names).then((decision) => desktop.resolveWindowClose(decision));
     },
     command: (command) => {
+      if (command === 'escape' && document.querySelector('dialog.editor-tool-dialog[open]')) {
+        document.querySelector('dialog.editor-tool-dialog[open]')?.dispatchEvent(new Event('cancel', { cancelable: true })); return;
+      }
+      if (command === 'editor-commands') { void openEditorCommands(); return; }
       if (command === 'escape' && sidebarOwnsEscape()) return;
       if (command.startsWith('explorer:')) {
         window.dispatchEvent(new CustomEvent('setdown:explorer-command', { detail: command.slice('explorer:'.length) })); return;
@@ -495,6 +530,10 @@ export function startWorkspace(desktop: DesktopPort) {
       tabDrag.reset(); void tabs.removeTransferred(tabId).finally(() => desktop.releaseTabTransferSource(transferId));
     },
     keydown: (event) => {
+      if (event.target instanceof Element && event.target.closest('dialog.editor-tool-dialog')) return;
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && !event.altKey && event.key.toLowerCase() === 'p') {
+        event.preventDefault(); event.stopImmediatePropagation(); void openEditorCommands(); return;
+      }
       if (event.key === 'Escape' && sidebarOwnsEscape(event.target instanceof Element ? event.target : null)) return;
       if (!event.isComposing && event.altKey && !event.ctrlKey && !event.metaKey && !terminalOwnsInput(event.target)
         && ['ArrowLeft', 'ArrowRight'].includes(event.key) && !project.gitDiffActive && workspace.activeId) {

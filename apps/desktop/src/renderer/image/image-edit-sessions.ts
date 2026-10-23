@@ -1,5 +1,5 @@
 import { ImageHistory, initialRecipe, validRecipe, type ImageRecipe } from '../../core/image/image-recipe';
-import type { DocumentTab } from '../../core/workspace/workspace-state';
+import type { DocumentContent as DocumentTab } from '../../core/workspace/document-store';
 import type { DocumentContentOwner } from '../ports/document-content';
 import type { ImageEditApi, ImageSource } from '../../protocol/image-edit';
 import type { SaveResult } from '../../protocol/desktop-api';

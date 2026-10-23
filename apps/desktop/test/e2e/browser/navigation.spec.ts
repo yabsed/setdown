@@ -6,6 +6,7 @@ import path from 'node:path';
 import { pdfFixture } from '../../support/media/pdf-fixture';
 
 import { fixture, evaluatePage } from '../../support/browser/browser-fixture';
+import { nativeInput } from '../../support/electron/native-input';
 
 test('terminal addresses navigate through web and files while sessions and tab zoom stay independent', async () => {
   const f = await fixture();
@@ -49,6 +50,16 @@ test('terminal addresses navigate through web and files while sessions and tab z
 test('web pages share document tabs, retain live state, navigate, bookmark, and split', async () => {
   test.setTimeout(90_000);
   const f = await fixture();
+  await f.page.evaluate(() => {
+    const events: unknown[] = []; (globalThis as any).navigationDragEvents = events;
+    window.marktex.onTabDragState(state => events.push({ at: Date.now(), type: 'shared', ...state }));
+    for (const type of ['pointerdown', 'pointercancel', 'pointerup', 'mousedown', 'mousemove', 'mouseup', 'focus', 'blur', 'dragstart', 'dragenter', 'dragover', 'dragleave', 'drop', 'dragend']) window.addEventListener(type, event => {
+      const e = event as DragEvent;
+      events.push({ at: Date.now(), type, target: (e.target as Element | null)?.className, x: e.clientX, y: e.clientY,
+        screenX: e.screenX, screenY: e.screenY, effect: e.dataTransfer?.dropEffect, prevented: e.defaultPrevented, detail: e.detail, buttons: e.buttons,
+        active: document.activeElement?.className, draggable: (e.target as Element | null)?.closest?.('[draggable]')?.getAttribute('draggable') });
+    }, true);
+  });
   try {
     await expect(f.page.getByRole('tab', { name: /notes.md/ })).toBeVisible();
     await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
@@ -93,7 +104,21 @@ test('web pages share document tabs, retain live state, navigate, bookmark, and 
     await f.page.screenshot({ path: 'test-results/browser-split.png' });
     await evaluatePage(f.app, f.origin, 'document.querySelector("#draft").value="strip move draft";window.stripIdentity={value:73};true');
     const strip = f.page.locator('.tab-strip').first(), stripBox = (await strip.boundingBox())!;
-    await webTab.dragTo(strip, { targetPosition: { x: stripBox.width - 16, y: 2 } });
+    // CDP mouse.down does not press the OS button. Hiding a native child can
+    // then inject a real buttons=0 mousemove at the X11 cursor, canceling that
+    // synthetic press before dragstart. Keep this fast return gesture native,
+    // with no pointer pacing or readiness wait, so both input streams agree.
+    const nativeWindow = await f.app.browserWindow(f.page), movingBox = (await webTab.boundingBox())!;
+    const points = await nativeWindow.evaluate((window, { movingBox, stripBox }) => {
+      const b = window.getContentBounds(), z = window.webContents.getZoomFactor();
+      return { from: { x: b.x + (movingBox.x + movingBox.width / 2) * z, y: b.y + (movingBox.y + movingBox.height / 2) * z },
+        to: { x: b.x + (stripBox.x + stripBox.width - 16) * z, y: b.y + (stripBox.y + 2) * z } };
+    }, { movingBox, stripBox });
+    await nativeInput({ pointer: [points.from], button: 'down', pointerIntervalMs: 0 });
+    await nativeInput({ pointer: [{ x: points.from.x + 12, y: points.from.y }], pointerIntervalMs: 0 });
+    await nativeInput({ pointer: [points.to], pointerIntervalMs: 0 });
+    await nativeInput({ button: 'up' });
+    await nativeWindow.dispose();
     await expect(f.page.locator('.editor-group')).toHaveCount(1);
     await expect(f.page.locator('.tab-name')).toHaveText(['notes.md', 'Research page']);
     await expect.poll(() => f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children.filter(v => v.getVisible()).length)).toBe(1);
@@ -102,7 +127,11 @@ test('web pages share document tabs, retain live state, navigate, bookmark, and 
       .toEqual({ draft: 'strip move draft', identity: 73 });
 
     expect(f.errors).toEqual([]);
-  } finally { await f.dispose(); }
+  } finally {
+    await writeFile(test.info().outputPath('navigation-drag.json'), JSON.stringify(await f.page.evaluate(() => (globalThis as any).navigationDragEvents ?? null), null, 2));
+    await f.page.screenshot({ path: test.info().outputPath('navigation-final.png') });
+    await f.dispose();
+  }
 });
 
 test('the first web page opens from a fresh empty workspace and popups preserve their opener', async () => {

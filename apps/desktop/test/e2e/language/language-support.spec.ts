@@ -181,7 +181,7 @@ test('server crash preserves unsaved edits; restart recovers and window close re
     await management.getByRole('searchbox').fill('pyright');
     await management.locator('[data-server-id="pyright"]').click();
     await expect(management.locator('.state')).toHaveText('Failed');
-    await expect(management.locator('.session')).toContainText(/failed\s*·\s*\S+/);
+    await expect(management.locator('[data-session-state="failed"]')).toContainText(/failed\s*·\s*\S+/);
     await management.getByRole('button', { name: 'Restart servers in this window' }).click();
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 25_000 });
     await expect(management.locator('.state')).toHaveText('Running');
@@ -219,8 +219,10 @@ test('first Python Working Tree shares diagnostics and Undo with the ordinary ed
     const modified = page.locator('.modified-in-monaco-diff-editor');
     await expect(modified.locator('.squiggly-warning').first()).toBeVisible({ timeout: 25_000 });
     await expect(page.locator('.original-in-monaco-diff-editor .squiggly-warning')).toHaveCount(0);
+    await expect(page.locator('.document-tab:not(.git-diff-tab)')).toHaveCount(0);
     const source = modified.getByRole('textbox');
     await source.press('Control+End'); await source.pressSequentially('unknown_name');
+    await page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), file);
     await page.locator('.git-diff-tab .tab-close').click();
     const ordinary = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
     await expect(page.locator('.editor-surface .view-lines')).toContainText('unknown_name');

@@ -263,10 +263,10 @@ export class ReaderController {
 
   syncView = () => {
     const backgrounds = this.options.syncBackgrounds?.() ?? [];
-    // Git review owns the shared native preview layer while it is active.
-    // Document resize/overlay callbacks must not hide that view afterward.
+    // Relinquish this reader's foreground contribution. The layout coordinator
+    // keeps every other visible group's independent contribution intact.
     if (this.suspended) {
-      this.options.desktop.setBackgroundPreviews(backgrounds);
+      this.options.desktop.showPreview(null, null, backgrounds, this.options.layoutGuide?.(backgrounds));
       return;
     }
     const tab = this.options.active();

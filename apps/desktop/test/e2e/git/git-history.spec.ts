@@ -93,14 +93,21 @@ test('Graph resizes, refreshes and opens immutable Markdown revisions in existin
     await toggle.click(); await expect(graph.locator('.row')).toHaveCount(2);
     await graph.locator(`.row[data-oid="${second}"]`).click();
     await graph.locator('.tree-file').click();
-    const modified = window.locator('.modified-in-monaco-diff-editor');
-    await expect(modified.locator('.view-lines')).toContainText('Second revision');
-    await expect(window.locator('.original-in-monaco-diff-editor .view-lines')).toContainText('First revision');
+    const modified = window.locator('.review-content:not(.inactive) .modified-in-monaco-diff-editor');
+    await expect(modified.locator('.view-lines:not([monaco-view-zone])')).toContainText('Second revision');
+    await expect(window.locator('.review-content:not(.inactive) .original-in-monaco-diff-editor .view-lines:not([monaco-view-zone])')).toContainText('First revision');
     await expect(window.locator('.git-diff-tab')).toContainText(second.slice(0, 8));
     await window.screenshot({ path: test.info().outputPath('git-history.png') });
     await modified.getByRole('textbox').press('Control+End');
     await modified.getByRole('textbox').pressSequentially('MUST NOT EDIT');
-    await expect(modified.locator('.view-lines')).not.toContainText('MUST NOT EDIT');
+    await expect(modified.locator('.view-lines:not([monaco-view-zone])')).not.toContainText('MUST NOT EDIT');
+    await window.evaluate(() => globalThis.window.marktex.executeApplicationMenuItem('menu-editor-commands'));
+    const commands = window.getByRole('dialog', { name: 'Commands', exact: true });
+    await commands.getByRole('searchbox').fill('Increment integer');
+    const increment = commands.getByRole('option').filter({ hasText: 'Increment integer' }).first();
+    await expect(increment).toHaveAttribute('aria-disabled', 'true');
+    await expect(increment).toContainText('read-only');
+    await commands.getByRole('searchbox').press('Escape');
     expect(await readFile(file, 'utf8')).toBe('# Working document\n');
     await window.getByRole('button', { name: 'View Rendered Diff' }).click();
     await expect.poll(async () => ({ visible: await previews(app!).hasVisible(), error: await window.locator('.project-error').allTextContents() })).toEqual({ visible: true, error: [] });
@@ -108,18 +115,18 @@ test('Graph resizes, refreshes and opens immutable Markdown revisions in existin
     await window.getByRole('button', { name: 'View Source Diff' }).click();
     await graph.locator(`.row[data-oid="${first}"]`).click();
     await graph.locator('.tree-file').click();
-    await expect(modified.locator('.view-lines')).toContainText('First revision');
+    await expect(modified.locator('.view-lines:not([monaco-view-zone])')).toContainText('First revision');
     await expect(window.locator('.git-diff-tab')).toHaveCount(2);
     await graph.getByRole('treegrid').press('Escape');
     await expect(window.getByRole('button', { name: 'View Rendered Diff' })).toBeVisible();
     await git('commit', '-am', 'External commit');
     await expect(graph.locator('.row').filter({ hasText: 'External commit' })).toHaveCount(1);
     // An immutable review keeps its content when the local branch changes.
-    await expect(modified.locator('.view-lines')).toContainText('First revision');
+    await expect(modified.locator('.view-lines:not([monaco-view-zone])')).toContainText('First revision');
     const height = (await pane.boundingBox())!.height;
     await Promise.all([window.waitForEvent('load'), window.reload()]);
     await expect(graph.locator('.row')).toHaveCount(3);
-    await expect(modified.locator('.view-lines')).toContainText('First revision');
+    await expect(modified.locator('.view-lines:not([monaco-view-zone])')).toContainText('First revision');
     expect(Math.abs((await pane.boundingBox())!.height - height)).toBeLessThan(2);
     // Exercise the toolbar against a local bare remote, never a real server.
     await exec('git', ['clone', '-b', 'main', remote, peer]);

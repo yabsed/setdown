@@ -1,7 +1,7 @@
 /** Editor groups own selection; the workspace owns documents and command focus. */
 export type SplitDirection = 'left' | 'right' | 'up' | 'down';
 export type EditorGroupPlacement = { groupId: string; direction: SplitDirection | null; index?: number };
-export type EditorOpenOptions = { pinned?: boolean };
+export type EditorOpenOptions = { pinned?: boolean; groupId?: string; side?: boolean };
 export type Group = { id: string; tabs: string[]; activeId: string | null; previewId: string | null };
 export type GroupTree = { kind: 'group'; id: string } | {
   kind: 'split'; id: string; axis: 'x' | 'y'; ratio: number; first: GroupTree; second: GroupTree;
@@ -39,12 +39,22 @@ export class EditorGroups {
   readonly groups: Group[] = [{ id: 'group-0', tabs: [], activeId: null, previewId: null }];
   tree: GroupTree = { kind: 'group', id: 'group-0' };
   focusedId = 'group-0';
+  private maximized: { tree: GroupTree; id: string } | null = null;
+  get displayTree(): GroupTree { return this.maximized ? { kind: 'group', id: this.maximized.id } : this.tree; }
+  equalize(): void {
+    this.maximized = null;
+    const visit = (node: GroupTree): void => { if (node.kind === 'split') { node.ratio = .5; visit(node.first); visit(node.second); } };
+    visit(this.tree);
+  }
+  pruneEmpty(): void { this.prune(); }
+  toggleMaximize(): void { this.maximized = this.maximized ? null : { tree: this.tree, id: this.focusedId }; }
   get focused() { return this.groups.find(g => g.id === this.focusedId)!; }
   owner(tabId: string) { return this.groups.find(g => g.tabs.includes(tabId)); }
   /** VS Code EditorGroupModel: one replaceable preview per group; other tabs stay pinned. */
-  add(tabId: string, pinned = true): string | null {
+  add(tabId: string, pinned = true, groupId = this.focusedId): string | null {
     if (this.owner(tabId)) return null;
-    const group = this.focused;
+    const group = this.groups.find(group => group.id === groupId);
+    if (!group) throw Error('The target editor group was closed.');
     const previous = pinned ? null : group.previewId;
     let at = group.activeId ? group.tabs.indexOf(group.activeId) + 1 : group.tabs.length;
     if (previous) {
@@ -66,7 +76,28 @@ export class EditorGroups {
   }
   activate(tabId: string) {
     const group = this.owner(tabId);
-    if (group) { group.activeId = tabId; this.focusedId = group.id; }
+    if (group) { group.activeId = tabId; this.focusedId = group.id; if (this.maximized) this.maximized.id = group.id; }
+  }
+  split(targetId: string, direction: SplitDirection): Group {
+    this.maximized = null;
+    if (!this.groups.some(group => group.id === targetId)) throw Error('The target editor group was closed.');
+    const destination: Group = { id: `group-${++this.serial}`, tabs: [], activeId: null, previewId: null };
+    this.groups.push(destination);
+    const before = direction === 'left' || direction === 'up';
+    const leaf: GroupTree = { kind: 'group', id: destination.id };
+    const replace = (node: GroupTree): GroupTree => node.kind === 'group'
+      ? node.id === targetId ? { kind: 'split', id: `split-${++this.serial}`, axis: direction === 'left' || direction === 'right' ? 'x' : 'y',
+        ratio: .5, first: before ? leaf : node, second: before ? node : leaf } : node
+      : { ...node, first: replace(node.first), second: replace(node.second) };
+    this.tree = replace(this.tree);
+    return destination;
+  }
+  side(targetId: string): Group {
+    const boxes = groupLayout(this.tree).groups, target = boxes.find(box => box.id === targetId);
+    if (!target) throw Error('The target editor group was closed.');
+    const right = boxes.filter(box => box.id !== targetId && box.x >= target.x + target.width - .001
+      && box.y < target.y + target.height && box.y + box.height > target.y).sort((a, b) => a.x - b.x)[0];
+    return right ? this.groups.find(group => group.id === right.id)! : this.split(targetId, 'right');
   }
   remove(tabId: string) {
     const group = this.owner(tabId);
@@ -84,17 +115,7 @@ export class EditorGroups {
     // Splitting a group's sole tab back into itself leaves exactly the same group.
     if (source === target && source.tabs.length === 1 && direction) return;
     let destination = target;
-    if (direction) {
-      destination = { id: `group-${++this.serial}`, tabs: [], activeId: null, previewId: null };
-      this.groups.push(destination);
-      const before = direction === 'left' || direction === 'up';
-      const leaf: GroupTree = { kind: 'group', id: destination.id };
-      const replace = (node: GroupTree): GroupTree => node.kind === 'group'
-        ? node.id === targetId ? { kind: 'split', id: `split-${++this.serial}`, axis: direction === 'left' || direction === 'right' ? 'x' : 'y',
-          ratio: .5, first: before ? leaf : node, second: before ? node : leaf } : node
-        : { ...node, first: replace(node.first), second: replace(node.second) };
-      this.tree = replace(this.tree);
-    }
+    if (direction) destination = this.split(targetId, direction);
     const from = source.tabs.indexOf(tabId);
     source.tabs.splice(from, 1);
     if (source.activeId === tabId) source.activeId = source.tabs[Math.min(from, source.tabs.length - 1)] ?? null;
@@ -113,6 +134,7 @@ export class EditorGroups {
     visit(this.tree);
   }
   private prune() {
+    if (this.maximized && !this.groups.find(group => group.id === this.maximized?.id)?.tabs.length) this.maximized = null;
     if (this.groups.length === 1) return;
     const empty = new Set(this.groups.filter(g => !g.tabs.length).map(g => g.id));
     const prune = (node: GroupTree): GroupTree | null => {

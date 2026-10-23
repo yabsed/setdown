@@ -185,7 +185,7 @@
           <p>Choose Python in the notebook toolbar. Analysis and execution share that environment.</p>
           <button disabled={busy} onclick={() => window.dispatchEvent(new Event('setdown:restart-language'))}>Restart servers in this window</button>
           {#each selected.sessions as session}
-            <p class="session"><code>{session.root}</code><br />{session.state}{session.message ? ` · ${session.message}` : ''}
+            <p class="session" data-session-state={session.state}><code>{session.root}</code><br />{session.state}{session.message ? ` · ${session.message}` : ''}
               {#if session.rootReason}<br />{session.rootReason}{/if}</p>
             {#if session.context?.length}<p class="session">{session.context.join(" · ")}</p>{/if}
             {#if session.logs?.length}<details><summary>Server output</summary><pre class="server-output">{session.logs.join('\n')}</pre></details>{/if}
@@ -211,7 +211,7 @@
             {#if selected.sessions.length}<button disabled={busy} onclick={() => window.dispatchEvent(new Event('setdown:restart-language'))}>Restart servers in this window</button>{/if}
           </div>
           {#each selected.sessions as session}
-            <p class="session"><code>{session.root}</code><br />{session.state}{session.message ? ` · ${session.message}` : ''}
+            <p class="session" data-session-state={session.state}><code>{session.root}</code><br />{session.state}{session.message ? ` · ${session.message}` : ''}
               {#if session.rootReason}<br />{session.rootReason}{/if}
               {#if session.features?.length}<br />{session.features.join(', ')}{/if}</p>
             {#if session.progress?.length}<p class="session" role="status">{session.progress.join(' · ')}</p>{/if}

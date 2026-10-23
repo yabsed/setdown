@@ -207,6 +207,48 @@ that never run the page preload or never acknowledge a style request
 a bounded wait; one such frame must not reject the extension's call, delay
 other frames, or spam the main-process log.
 
+Shared text content and views have separate identities. `DocumentStore` owns one
+mutable record per normalized resource path; tab IDs identify views, not files.
+Ordinary and editable Working Tree inputs borrow the same Monaco model and Undo
+history. Saving, autosave, Stage-before-save, close/quit confirmation and external
+file reconciliation enumerate unique contents, including documents with only a
+Working Tree view. Closing a nonfinal view does not prompt or dispose the content;
+the last reference follows the existing revision-checked save/discard contract.
+Index/history, notebooks, media and HWP retain their separate content owners.
+
+Opening a comparison creates no ordinary tab. Input deduplication is group-local:
+ordinary versus comparison are different inputs, as are Working Tree versus Index
+and different immutable commit selections. Side opens target the right neighbor;
+explicit split/copy creates a new view, with its own caret/folds/scroll/mode/zoom.
+Move to a group already containing the input reuses its existing view. Linux/Windows
+Ctrl-drag and macOS Alt-drag copy eligible views; unsupported singleton surfaces
+remain singleton. New comparisons are pinned. Explorer preview replacement remains
+local to its group.
+
+Each review owns its controller, viewport port, presentation requests and native
+IDs. Its shared repository status does not own another review's display. Native
+layout is aggregated across ordinary readers and review sides by
+`PreviewLayoutCoordinator`; drag/overlay freezing, clipping and focus isolation
+apply to every visible group. Group maximize temporarily displays one leaf while
+retaining the original split geometry; restore reuses the original ratios.
+
+Rename/Save As keeps content identity and retargets all views. A destination
+already owned by a different live content is rejected, preserving both buffers.
+A mutable comparison moved outside its repository becomes an ordinary view with
+its edits intact. Closing the folder similarly keeps mutable content in ordinary
+inputs. Immutable comparisons are closed. Cross-window comparison transfer and
+cross-window shared Undo are excluded; ordinary transfers retain acknowledgments
+and cannot silently overwrite a destination's existing buffer.
+
+Session restore is explicit and additive. It validates a versioned manifest and
+restores the recorded project, groups, text views, cursor/fold/scroll/display state
+and comparison presentation when available. Missing projects and individual file
+failures are reported. Dirty buffers with changed/missing disk baselines or an
+existing dirty owner recover into separate untitled documents. Automatic recovery
+writes at five-second intervals; only the latest completed snapshot is promised.
+New windows/processes still start empty, with a recovery affordance when artifacts
+exist. Retention and size bounds are specified in [editor tools](../editor-tools.md).
+
 Document command focus and presentation are separate: each editor group selects
 one document, and several groups may remain visible. The focused group owns the
 existing source/reader command session. `renderer/groups/group-runtime.ts` owns
@@ -245,7 +287,9 @@ The blue tab insertion/split guide is the accepted drop placement. Completion
 uses that same placement, including when a native child surface consumes an
 accepted move drop or reports a null-relatedTarget leave inside the window.
 Such a leave must not erase the guide or turn a local move into window detachment.
-A subsequent dragover replaces the guide; a rejected area, confirmed window exit,
+A new dragenter or dragover replaces the guide; a fast boundary crossing must
+not retain the previous strip's placement while waiting for another dragover.
+A rejected area, confirmed window exit,
 or explicit cancellation clears it. A confirmed outside release takes precedence
 over a retained guide: Chromium can report a real boundary leave at `(0, 0)`
 and provide the outside coordinates only on `dragend`. Native pointer tear-off
@@ -254,6 +298,23 @@ Chromium's canceled drag (`dropEffect: none`) must not
 commit a guide even when Escape never reaches the DOM. `tab-detach.spec.ts`
 covers guide placement and these invalidation paths in Electron, alongside
 actual outside detachment.
+The tab's primary pointer press starts native capture preparation before the OS
+drag loop. A click, pointer cancellation or blur without a drag releases that
+preparation; a real drag keeps the same capture lifetime. This avoids hiding a
+native child while the new drag is already crossing it. Close/audio controls
+do not start this preparation, and preparation must not activate another tab.
+Cross-window drags share their lifetime with every visible shell before entering
+native web/Markdown content. Each shell covers its native children for that
+lifetime; claim, cancellation, source closure and expiry release all participants.
+A receiver records its accepted guide with main. If Electron acknowledges a
+move/copy but omits its DOM drop, main may commit only the last accepting receiver,
+and only when the release is inside that still-visible window. A normal claim
+wins once, and Escape/`none`, a rejected area, a confirmed exit, or another
+receiver invalidates fallback ownership. A source-center tear-off retains priority
+over an overlapping window behind it. `browser/transfer.spec.ts` exercises
+repeated native web/terminal body transfers between overlapping windows, including
+remote cancellation and preserving the live page/PTY; manager tests cover
+arbitration and invalidation. No synthetic DOM drag events stand in for OS input.
 For a local tab drag, the source group's body center is a tear-off area:
 the blue guide disappears before release and dropping there creates a new
 window. This provides a reachable detach area even in a maximized window.
@@ -261,6 +322,11 @@ The existing outer 10% split bands retain their guides; a source group's sole
 tab cannot split itself, so its whole body is available for tear-off. Tab strips
 still reorder, and another group's center still shows a blue merge guide.
 The location bar and unrelated shell areas are not drop destinations.
+An internal tab transport still accepts native enter/over while traversing that
+chrome: X11 can otherwise retain the rejected operation across a subsequent
+valid entry and cancel a quick release. The guide remains cleared in chrome;
+release there cancels without moving, copying or detaching. Transport acceptance
+never substitutes for an accepted placement, and Escape/`none` still cancel.
 Returning from tear-off to a strip or split replaces that intent with the new
 visible guide; Escape cancels without moving or detaching. Source native
 surfaces remain captured throughout the drag, including over the guide-free
@@ -282,6 +348,9 @@ preview. Keep ordinary single-group preview and Git-review cycles in the same
 
 Dated reproduction, native input evidence, and validation:
 [Tab tear-off area — 2026-10-20](../validation/2026-10-20-tab-tear-off.md).
+[Cross-window tab drag — 2026-10-23](../validation/2026-10-23-cross-window-tab-drag.md)
+records the missing-drop reproduction, native lifecycle/entry fixes and repeated
+web/terminal transfers between overlapping windows.
 
 ## Preview tabs
 

@@ -18,7 +18,12 @@ import type { WorkingTreeEdit } from '../../../core/document/text-edit';
 import { project, type GitDiffTabState } from '../project-state.svelte';
 import { ReviewPresentation } from './review-presentation';
 
-type Options = {
+export type SourceControlOptions = {
+  state?: typeof project;
+  createId?(): string;
+  stateChanged?(): void;
+  retargetWorkingTree?(from: string, to: string): void;
+  workingTreeEditable?(path: string): boolean;
   desktop: DesktopPort;
   viewport?: GitDiffViewportPort;
   models?: LiveDocumentModelPort;
@@ -40,9 +45,10 @@ type ReviewReadingState = {
 };
 
 export class SourceControlController {
+  private get state() { return this.options.state ?? project; }
   private readonly loadGenerations = new Map<string, number>();
   private readonly checkpoints = new PreviewCheckpoints((id) => {
-    const tab = project.gitDiffTabs.find((candidate) => candidate.id === id);
+    const tab = this.state.gitDiffTabs.find((candidate) => candidate.id === id);
     if (tab) void this.preparePreview(tab);
   }, 32, 120);
   private readonly preparedPreviews = new Map<string, { diff: GitDiff; revision: number; themeId: PreviewThemeId }>();
@@ -62,64 +68,70 @@ export class SourceControlController {
   private overlayDepth = 0;
   private overlayToken = 0;
   private overlayFrozen = false;
+  private readonly stopViewport: (() => void) | undefined;
+  private readonly overlayListener = ((event: CustomEvent<boolean>) => {
+    if (event.detail) void this.freezePreview(); else this.unfreezePreview();
+  }) as EventListener;
 
-  constructor(private readonly options: Options) {
+  constructor(private readonly options: SourceControlOptions) {
     this.presentation = new ReviewPresentation(options.desktop);
-    window.addEventListener('setdown:native-overlay-visibility', ((event: CustomEvent<boolean>) => {
-      if (event.detail) void this.freezePreview();
-      else this.unfreezePreview();
-    }) as EventListener);
-    this.viewport.onChange?.(() => this.schedulePrime());
+    window.addEventListener('setdown:native-overlay-visibility', this.overlayListener);
+    this.stopViewport = this.viewport.onChange?.(() => this.schedulePrime());
   }
+
+  dispose = (): void => {
+    this.clear(); this.stopViewport?.();
+    window.removeEventListener('setdown:native-overlay-visibility', this.overlayListener);
+  };
 
   restore = async (): Promise<void> => {
     this.observeDocuments();
     const saved = await this.options.desktop.getGitReviewState();
-    if (!saved || !project.folder || project.gitDiffTabs.length) return;
+    if (!saved || !this.state.folder || this.state.gitDiffTabs.length) return;
     if (saved.active && !saved.staged && !saved.history && !await this.options.activateWorkingTree(saved.path)
       && !await this.options.openWorkingTree(saved.path)) return;
     const created = this.createTab(saved.path, saved.staged, saved.mode, saved.line);
     created.history = saved.history;
-    project.gitDiffTabs.push(created);
-    const tab = project.gitDiffTabs.find((candidate) => candidate.id === created.id)!;
+    this.state.gitDiffTabs.push(created);
+    const tab = this.state.gitDiffTabs.find((candidate) => candidate.id === created.id)!;
     if (saved.active) this.activateTabState(tab);
     else this.options.reviewChanged(true, false);
     void this.reloadTab(tab);
   };
 
   refresh = (): Promise<void> => {
-    if (!project.folder) return Promise.resolve();
+    if (!this.state.folder) return Promise.resolve();
     this.refreshRequested = true;
     if (this.refreshTask) return this.refreshTask;
-    if (project.gitBusy) return Promise.resolve();
+    if (this.state.gitBusy) return Promise.resolve();
     this.refreshTask = this.drainStatusRefreshes().finally(() => {
       this.refreshTask = null;
-      if (this.refreshRequested && project.folder && !project.gitBusy) void this.refresh();
+      if (this.refreshRequested && this.state.folder && !this.state.gitBusy) void this.refresh();
     });
     return this.refreshTask;
   };
 
   private async drainStatusRefreshes(): Promise<void> {
-    project.gitLoading = true;
+    this.state.gitLoading = true;
     try {
-      while (this.refreshRequested && project.folder && !project.gitBusy) {
+      while (this.refreshRequested && this.state.folder && !this.state.gitBusy) {
         this.refreshRequested = false;
-        const root = project.folder.path;
+        const root = this.state.folder.path;
         const generation = this.statusGeneration;
         const current = () => generation === this.statusGeneration
-          && root === project.folder?.path && !project.gitBusy;
+          && root === this.state.folder?.path && !this.state.gitBusy;
         try {
           const snapshot = await this.options.desktop.getGitStatus();
-          if (current()) project.git = snapshot;
+          if (current()) this.state.git = snapshot;
         } catch (error) {
-          if (current()) project.error = error instanceof Error ? error.message : String(error);
+          if (current()) this.state.error = error instanceof Error ? error.message : String(error);
         }
       }
-    } finally { project.gitLoading = false; }
+    } finally { this.state.gitLoading = false; }
   }
 
   documentSaved = async (document: DocumentSnapshot): Promise<void> => {
-    const tabs = project.gitDiffTabs.filter((tab) => !tab.staged && !tab.history && tab.filePath === document.path);
+    const tabs = this.state.gitDiffTabs.filter((tab) => !tab.staged && !tab.history && tab.filePath === document.path);
     await Promise.all(tabs.map((tab) => this.reloadTab(tab)));
     await this.refresh();
   };
@@ -129,57 +141,58 @@ export class SourceControlController {
     this.observeDocuments();
     if (!staged && !await this.options.activateWorkingTree(filePath)
       && !await this.options.openWorkingTree(filePath)) return;
-    let tab = project.gitDiffTabs.find((candidate) => !candidate.history && candidate.filePath === filePath && candidate.staged === staged);
+    let tab = this.state.gitDiffTabs.find((candidate) => !candidate.history && candidate.filePath === filePath && candidate.staged === staged);
     if (!tab) {
       const created = this.createTab(filePath, staged);
-      project.gitDiffTabs.push(created);
-      tab = project.gitDiffTabs.find((candidate) => candidate.id === created.id)!;
+      this.state.gitDiffTabs.push(created);
+      tab = this.state.gitDiffTabs.find((candidate) => candidate.id === created.id)!;
     }
+    if (!this.tabExists(tab)) return;
     this.activateTabState(tab);
     if (!tab.diff && !tab.loading) void this.reloadTab(tab);
   };
 
   reviewHistory = async (selection: GitHistorySelection): Promise<void> => {
     const generation = ++this.historyOpenGeneration;
-    if (selection.root !== project.folder?.path) return;
+    if (selection.root !== this.state.folder?.path) return;
     const key = JSON.stringify(selection);
-    let tab = project.gitDiffTabs.find((candidate) => candidate.history && JSON.stringify(candidate.history) === key);
+    let tab = this.state.gitDiffTabs.find((candidate) => candidate.history && JSON.stringify(candidate.history) === key);
     if (!tab) {
       try {
         const diff = await this.options.desktop.getGitHistoryDiff(selection);
-        if (selection.root !== project.folder?.path || generation !== this.historyOpenGeneration) return;
+        if (selection.root !== this.state.folder?.path || generation !== this.historyOpenGeneration) return;
         const created = this.createTab(diff.filePath, false);
         created.history = selection;
         created.diff = diff;
         created.line = this.firstChangedLine(diff);
         // A double click may finish the same request twice.
-        tab = project.gitDiffTabs.find((candidate) => candidate.history && JSON.stringify(candidate.history) === key);
-        if (!tab) { project.gitDiffTabs.push(created); tab = project.gitDiffTabs.at(-1)!; }
+        tab = this.state.gitDiffTabs.find((candidate) => candidate.history && JSON.stringify(candidate.history) === key);
+        if (!tab) { this.state.gitDiffTabs.push(created); tab = this.state.gitDiffTabs.at(-1)!; }
       } catch (error) {
-        if (selection.root === project.folder?.path && generation === this.historyOpenGeneration) project.error = error instanceof Error ? error.message : String(error);
+        if (selection.root === this.state.folder?.path && generation === this.historyOpenGeneration) this.state.error = error instanceof Error ? error.message : String(error);
         return;
       }
     }
     this.activateTabState(tab);
   };
 
-  closeDiff = (id = project.activeGitDiffId): void => {
+  closeDiff = (id = this.state.activeGitDiffId): void => {
     this.historyOpenGeneration += 1;
     if (!id) return;
-    const index = project.gitDiffTabs.findIndex((tab) => tab.id === id);
+    const index = this.state.gitDiffTabs.findIndex((tab) => tab.id === id);
     if (index < 0) return;
-    const tab = project.gitDiffTabs[index];
-    const wasActive = id === project.activeGitDiffId;
+    const tab = this.state.gitDiffTabs[index];
+    const wasActive = id === this.state.activeGitDiffId;
     this.disposeTab(tab);
-    project.gitDiffTabs.splice(index, 1);
+    this.state.gitDiffTabs.splice(index, 1);
     if (!wasActive) {
-      this.options.reviewChanged(project.gitDiffTabs.length > 0, project.gitDiffActive);
+      this.options.reviewChanged(this.state.gitDiffTabs.length > 0, this.state.gitDiffActive);
       return;
     }
     this.options.desktop.showPreview(null, null);
     this.overlayFrozen = false;
-    const replacement = project.gitDiffTabs[Math.min(index, project.gitDiffTabs.length - 1)];
-    project.activeGitDiffId = null;
+    const replacement = this.state.gitDiffTabs[Math.min(index, this.state.gitDiffTabs.length - 1)];
+    this.state.activeGitDiffId = null;
     this.resetActiveState();
     if (replacement) void this.activateDiff(replacement.id);
     else {
@@ -189,17 +202,18 @@ export class SourceControlController {
   };
 
   closeWorkingTreeReviews = (filePath: string): void => {
-    const ids = project.gitDiffTabs.filter((tab) => !tab.staged && !tab.history && tab.filePath === filePath).map((tab) => tab.id);
+    const ids = this.state.gitDiffTabs.filter((tab) => !tab.staged && !tab.history && tab.filePath === filePath).map((tab) => tab.id);
     for (const id of ids) this.closeDiff(id);
   };
 
-  activateDiff = async (id = project.activeGitDiffId): Promise<void> => {
+  activateDiff = async (id = this.state.activeGitDiffId): Promise<void> => {
     this.historyOpenGeneration += 1;
     this.observeDocuments();
-    const tab = project.gitDiffTabs.find((candidate) => candidate.id === id);
+    const tab = this.state.gitDiffTabs.find((candidate) => candidate.id === id);
     if (!tab) return;
     if (!tab.staged && !tab.history && !await this.options.activateWorkingTree(tab.filePath)
       && !await this.options.openWorkingTree(tab.filePath)) return;
+    if (!this.tabExists(tab)) return;
     this.activateTabState(tab);
     if (!tab.diff && !tab.loading) void this.reloadTab(tab);
   };
@@ -207,13 +221,13 @@ export class SourceControlController {
   deactivateDiff = (): void => {
     this.historyOpenGeneration += 1;
     this.presentation.cancel();
-    if (!project.gitDiffActive) return;
+    if (!this.state.gitDiffActive) return;
     this.rememberActiveTab();
-    project.gitDiffActive = false;
+    this.state.gitDiffActive = false;
     this.bounds = null;
     this.pendingPreviewPosition = null;
     this.options.desktop.showPreview(null, null);
-    this.options.reviewChanged(project.gitDiffTabs.length > 0, false);
+    this.options.reviewChanged(this.state.gitDiffTabs.length > 0, false);
     this.publishReview();
   };
 
@@ -221,7 +235,7 @@ export class SourceControlController {
     // Both surfaces share a live box; hiding the entire review invalidates it.
     this.bounds = bounds && [bounds.x, bounds.y, bounds.width, bounds.height].every(Number.isFinite)
       && bounds.width > 0 && bounds.height > 0 ? bounds : null;
-    if (project.gitDiffActive) {
+    if (this.state.gitDiffActive) {
       this.syncPreview();
       this.schedulePrime();
     }
@@ -229,14 +243,14 @@ export class SourceControlController {
 
   updateSourceLine = (line: number): void => {
     const tab = this.activeTab();
-    if (!tab || !project.gitDiffActive || project.gitDiffMode !== 'source') return;
+    if (!tab || !this.state.gitDiffActive || this.state.gitDiffMode !== 'source') return;
     tab.line = Math.max(1, Math.round(line) || 1);
     this.schedulePrime();
   };
 
   toggleDiffMode = (): void => {
-    if (!project.gitDiff || !this.renderable(project.gitDiff)) return;
-    if (project.gitDiffMode === 'rendered') {
+    if (!this.state.gitDiff || !this.renderable(this.state.gitDiff)) return;
+    if (this.state.gitDiffMode === 'rendered') {
       const tab = this.activeTab();
       if (tab) this.showSource(this.readingState(tab).viewer ?? this.readingState(tab).source);
     } else this.showRendered();
@@ -244,7 +258,7 @@ export class SourceControlController {
 
   showRendered = (): void => {
     const tab = this.activeTab();
-    if (!tab?.diff || project.gitDiffMode === 'rendered') return;
+    if (!tab?.diff || this.state.gitDiffMode === 'rendered') return;
     const diff = this.latestDiff(tab)!;
     if (!this.renderable(diff)) return;
     if (!sameReviewContent(tab.diff, diff)) { tab.diff = diff; this.invalidatePreview(tab); }
@@ -254,9 +268,9 @@ export class SourceControlController {
     reading.observationId = null;
     reading.observedId = null;
     tab.mode = 'rendered';
-    project.gitDiffLine = tab.line || 1;
-    project.gitDiff = diff;
-    project.gitDiffMode = 'rendered';
+    this.state.gitDiffLine = tab.line || 1;
+    this.state.gitDiff = diff;
+    this.state.gitDiffMode = 'rendered';
     this.copyPreviewState(tab);
     this.syncPreview('source');
     if (!tab.previewLoading && (tab.previewDirty || !tab.previewId)) this.schedulePreview(tab, 0);
@@ -264,7 +278,7 @@ export class SourceControlController {
   };
 
   previewMessage = (payload: PreviewMessage): boolean => {
-    const tab = project.gitDiffTabs.find((candidate) => this.previewIds(candidate).includes(payload.tabId));
+    const tab = this.state.gitDiffTabs.find((candidate) => this.previewIds(candidate).includes(payload.tabId));
     if (!tab) return false;
     const message = payload.message;
     if (this.presentation.receive(payload.tabId, message)) return true;
@@ -286,8 +300,8 @@ export class SourceControlController {
       return true;
     }
     if (message.type === 'edit-at-anchor') {
-      if (!project.gitDiffActive || project.activeGitDiffId !== tab.id
-        || project.gitDiffMode !== 'rendered' || payload.tabId !== tab.previewId) return true;
+      if (!this.state.gitDiffActive || this.state.activeGitDiffId !== tab.id
+        || this.state.gitDiffMode !== 'rendered' || payload.tabId !== tab.previewId) return true;
       const bookmark = readReviewBookmark(message.anchor);
       if (bookmark) this.showSource(bookmark);
     }
@@ -297,7 +311,7 @@ export class SourceControlController {
   applyTheme = async (themeId: PreviewThemeId): Promise<void> => {
     this.presentation.cancel();
     this.themeId = themeId;
-    const previews = project.gitDiffTabs.filter((tab) => isMarkdownDocument(tab.filePath))
+    const previews = this.state.gitDiffTabs.filter((tab) => isMarkdownDocument(tab.filePath))
       .flatMap((tab) => this.previewIds(tab));
     if (!previews.length) return;
     const assets = await this.options.desktop.getPreviewThemeAssets(themeId);
@@ -319,7 +333,7 @@ export class SourceControlController {
   remote = (action: GitRemoteAction): Promise<void> => this.mutate(() => this.options.desktop.runGitRemote(action));
   commit = async (message: string): Promise<void> => {
     await this.mutate(() => this.options.desktop.commitGit(message));
-    if (!project.error) project.commitMessage = '';
+    if (!this.state.error) this.state.commitMessage = '';
   };
 
   changeWorkingTree = (text: string, edits?: WorkingTreeEdit[]): void => {
@@ -346,27 +360,30 @@ export class SourceControlController {
     this.checkpoints.clear();
     if (this.primeFrame !== null) cancelAnimationFrame(this.primeFrame);
     this.primeFrame = null;
-    for (const tab of [...project.gitDiffTabs]) this.disposeTab(tab);
-    project.git = null;
-    project.gitDiffTabs.splice(0);
-    project.activeGitDiffId = null;
+    for (const tab of [...this.state.gitDiffTabs]) this.disposeTab(tab);
+    if (!this.options.state) this.state.git = null;
+    this.state.gitDiffTabs.splice(0);
+    this.state.activeGitDiffId = null;
     this.options.desktop.showPreview(null, null);
     this.overlayFrozen = false;
     this.resetActiveState();
     this.options.desktop.updateGitReviewState(null);
     this.options.reviewChanged(false, false);
-    project.commitMessage = '';
+    this.state.commitMessage = '';
   };
 
   private observeDocuments(): void {
     if (this.unsubscribeModels) return;
     this.unsubscribeModels = (this.options.models ?? liveDocumentModels).subscribe((event) => {
       if (event.type !== 'changed') {
+        if (event.type === 'retargeted' && this.options.retargetWorkingTree) {
+          this.options.retargetWorkingTree(event.path, event.nextPath); return;
+        }
         // A moved/closed document must not stay editable under an obsolete Git path.
         this.closeWorkingTreeReviews(event.path);
         return;
       }
-      for (const tab of project.gitDiffTabs) {
+      for (const tab of this.state.gitDiffTabs) {
         const diff = tab.diff;
         if (tab.staged || tab.history || tab.filePath !== event.path || !diff
           || diff.originalText === null || diff.modifiedText === null || diff.modifiedText === event.text) continue;
@@ -379,15 +396,31 @@ export class SourceControlController {
     });
   }
 
+  retarget = (from: string, to: string): void => {
+    for (const tab of this.state.gitDiffTabs) {
+      if (tab.staged || tab.history || tab.filePath !== from) continue;
+      this.presentation.cancel(); this.pauseObservation(tab); this.checkpoints.cancel(tab.id);
+      tab.filePath = to;
+      if (tab.diff) tab.diff = { ...tab.diff, filePath: to };
+      this.invalidatePreview(tab);
+      this.options.desktop.showPreview(null, null);
+      for (const id of this.previewIds(tab)) { this.options.desktop.destroyPreview(id); this.preparedPreviews.delete(id); }
+      tab.previewId = tab.pendingPreviewId = null;
+      if (!isMarkdownDocument(to)) tab.mode = 'source';
+      this.activateTabState(tab);
+      void this.reloadTab(tab);
+    }
+  };
+
   private createTab(filePath: string, staged: boolean,
     mode: GitDiffTabState['mode'] = 'source', line = 0): GitDiffTabState {
     const markdown = isMarkdownDocument(filePath);
-    return { id: crypto.randomUUID(), filePath, staged, mode: markdown ? mode : 'source', line, diff: null, loading: false,
+    return { id: this.options.createId?.() ?? crypto.randomUUID(), filePath, staged, mode: markdown ? mode : 'source', line, diff: null, loading: false,
       previewId: null, pendingPreviewId: null, previewLoading: false, previewDirty: markdown };
   }
 
   private activeTab(): GitDiffTabState | null {
-    return project.gitDiffTabs.find((candidate) => candidate.id === project.activeGitDiffId) ?? null;
+    return this.state.gitDiffTabs.find((candidate) => candidate.id === this.state.activeGitDiffId) ?? null;
   }
 
   private activateTabState(tab: GitDiffTabState): void {
@@ -401,14 +434,14 @@ export class SourceControlController {
       }
     }
     if (tab.diff && !this.renderable(tab.diff)) tab.mode = 'source';
-    project.activeGitDiffId = tab.id;
-    Object.assign(project, { gitDiff: tab.diff, gitDiffTarget: { filePath: tab.filePath, staged: tab.staged },
+    this.state.activeGitDiffId = tab.id;
+    Object.assign(this.state, { gitDiff: tab.diff, gitDiffTarget: { filePath: tab.filePath, staged: tab.staged },
       gitDiffActive: true, gitDiffLoading: tab.loading, gitDiffMode: tab.mode,
       gitDiffFrozen: false, gitDiffSnapshot: '',
       gitDiffLine: tab.line || (tab.diff ? this.firstChangedLine(tab.diff) : 1) });
     this.copyPreviewState(tab);
     this.options.reviewChanged(true, true);
-    project.error = '';
+    this.state.error = '';
     this.syncPreview('resume');
     this.schedulePrime();
     if (tab.diff && this.renderable(tab.diff) && !tab.previewLoading
@@ -422,7 +455,7 @@ export class SourceControlController {
     if (!tab) return;
     if (tab.diff) {
       tab.diff = this.effectiveDiff(tab.diff);
-      project.gitDiff = tab.diff;
+      this.state.gitDiff = tab.diff;
     }
     this.pauseObservation(tab);
     const reading = this.readingState(tab);
@@ -432,10 +465,10 @@ export class SourceControlController {
     const line = target.anchor.sourceLine;
     tab.line = line;
     tab.mode = 'source';
-    project.gitDiffLine = line;
-    project.gitDiffMode = 'source';
+    this.state.gitDiffLine = line;
+    this.state.gitDiffMode = 'source';
     this.pendingPreviewPosition = null;
-    if (project.gitDiffActive) this.options.desktop.showPreview(null, null);
+    if (this.state.gitDiffActive) this.options.desktop.showPreview(null, null);
     this.schedulePrime();
     this.publishReview();
   }
@@ -444,7 +477,7 @@ export class SourceControlController {
     const generation = (this.loadGenerations.get(tab.id) ?? 0) + 1;
     this.loadGenerations.set(tab.id, generation);
     tab.loading = true;
-    if (this.activeTab()?.id === tab.id) project.gitDiffLoading = true;
+    if (this.activeTab()?.id === tab.id) this.state.gitDiffLoading = true;
     try {
       const stored = tab.history ? await this.options.desktop.getGitHistoryDiff({ ...tab.history })
         : await this.options.desktop.getGitDiff(tab.filePath, tab.staged);
@@ -456,45 +489,46 @@ export class SourceControlController {
       if (!this.renderable(diff)) tab.mode = 'source';
       if (changed) this.invalidatePreview(tab);
       if (this.activeTab()?.id === tab.id) {
-        Object.assign(project, { gitDiff: diff, gitDiffMode: tab.mode, gitDiffLine: tab.line });
+        Object.assign(this.state, { gitDiff: diff, gitDiffMode: tab.mode, gitDiffLine: tab.line });
         this.copyPreviewState(tab);
         this.publishReview();
       }
       if (this.renderable(diff) && (tab.previewDirty || !tab.previewId)) this.schedulePreview(tab, 0);
     } catch (error) {
-      if (this.isCurrentLoad(tab, generation)) project.error = error instanceof Error ? error.message : String(error);
+      if (this.isCurrentLoad(tab, generation)) this.state.error = error instanceof Error ? error.message : String(error);
     } finally {
       if (this.isCurrentLoad(tab, generation)) {
         tab.loading = false;
-        if (this.activeTab()?.id === tab.id) project.gitDiffLoading = false;
+        if (this.activeTab()?.id === tab.id) this.state.gitDiffLoading = false;
       }
     }
   }
 
   private isCurrentLoad(tab: GitDiffTabState, generation: number): boolean {
-    return project.gitDiffTabs.some((candidate) => candidate.id === tab.id)
+    return this.state.gitDiffTabs.some((candidate) => candidate.id === tab.id)
       && this.loadGenerations.get(tab.id) === generation;
   }
 
   private rememberActiveTab(): void {
     this.presentation.cancel();
     const tab = this.activeTab();
-    if (!tab || !project.gitDiffActive) return;
-    tab.mode = project.gitDiffMode;
+    if (!tab || !this.state.gitDiffActive) return;
+    tab.mode = this.state.gitDiffMode;
     if (tab.mode === 'rendered') this.pauseObservation(tab);
   }
 
   private resetActiveState(): void {
     this.bounds = null;
     this.pendingPreviewPosition = null;
-    Object.assign(project, { gitDiff: null, gitDiffTarget: null, gitDiffActive: false,
+    Object.assign(this.state, { gitDiff: null, gitDiffTarget: null, gitDiffActive: false,
       gitDiffLoading: false, gitDiffPreviewLoading: false, gitDiffPreviewReady: false,
       gitDiffFrozen: false, gitDiffSnapshot: '', gitDiffLine: 1 });
   }
 
   private copyPreviewState(tab: GitDiffTabState): void {
-    project.gitDiffPreviewLoading = tab.previewLoading || this.presentation.waiting;
-    project.gitDiffPreviewReady = this.latestPreview(tab) && !this.presentation.waiting;
+    this.state.gitDiffPreviewLoading = tab.previewLoading || this.presentation.waiting;
+    this.state.gitDiffPreviewReady = this.latestPreview(tab) && !this.presentation.waiting;
+    this.options.stateChanged?.();
   }
 
   private readingState(tab: GitDiffTabState): ReviewReadingState {
@@ -518,13 +552,13 @@ export class SourceControlController {
   private syncPreview(intent?: 'source' | 'resume'): void {
     const tab = this.activeTab();
     if (intent) {
-      if (!project.gitDiffActive || project.gitDiffMode !== 'rendered' || !tab) this.pendingPreviewPosition = null;
+      if (!this.state.gitDiffActive || this.state.gitDiffMode !== 'rendered' || !tab) this.pendingPreviewPosition = null;
       else if (intent === 'source' || this.pendingPreviewPosition?.tabId !== tab.id) {
         this.pendingPreviewPosition = { tabId: tab.id, intent };
       }
     }
-    if (!project.gitDiffActive || this.overlayFrozen || this.overlayDepth > 0) return;
-    const shownId = project.gitDiffMode === 'rendered' && tab && this.latestPreview(tab) ? tab.previewId : null;
+    if (!this.state.gitDiffActive || this.overlayFrozen || this.overlayDepth > 0) return;
+    const shownId = this.state.gitDiffMode === 'rendered' && tab && this.latestPreview(tab) ? tab.previewId : null;
     if (!tab || !shownId || !this.bounds) {
       this.presentation.cancel();
       this.options.desktop.showPreview(null, null);
@@ -542,8 +576,8 @@ export class SourceControlController {
       const themeId = this.themeId;
       const position = reviewPositionCommand(target);
       this.presentation.present({ id: shownId, revision: ready.revision, bounds, position },
-        () => project.gitDiffActive && project.activeGitDiffId === tab.id && tab.mode === 'rendered'
-          && project.gitDiffMode === 'rendered' && !this.overlayFrozen && this.overlayDepth === 0
+        () => this.state.gitDiffActive && this.state.activeGitDiffId === tab.id && tab.mode === 'rendered'
+          && this.state.gitDiffMode === 'rendered' && !this.overlayFrozen && this.overlayDepth === 0
           && this.themeId === themeId && tab.previewId === shownId && this.latestPreview(tab)
           && this.preparedPreviews.get(shownId) === ready && JSON.stringify(this.bounds) === JSON.stringify(bounds),
         () => {
@@ -554,7 +588,7 @@ export class SourceControlController {
           this.didPresent(tab, shownId, ready.revision, bounds);
           this.copyPreviewState(tab);
         },
-        (error) => { project.error = error; this.showSource(reading.source); this.copyPreviewState(tab); });
+        (error) => { this.state.error = error; this.showSource(reading.source); this.copyPreviewState(tab); });
       this.copyPreviewState(tab);
       return;
     }
@@ -611,13 +645,13 @@ export class SourceControlController {
   private schedulePrime(): void {
     const active = this.activeTab();
     if (!active?.diff || !this.renderable(active.diff)) return;
-    if (!project.gitDiffActive || project.gitDiffMode !== 'source' || this.primeFrame !== null
+    if (!this.state.gitDiffActive || this.state.gitDiffMode !== 'source' || this.primeFrame !== null
       || typeof requestAnimationFrame !== 'function') return;
     this.primeFrame = requestAnimationFrame(() => {
       this.primeFrame = null;
       const tab = this.activeTab();
       if (!tab?.diff || !this.renderable(tab.diff)
-        || !project.gitDiffActive || project.gitDiffMode !== 'source' || !this.bounds) return;
+        || !this.state.gitDiffActive || this.state.gitDiffMode !== 'source' || !this.bounds) return;
       const reading = this.readingState(tab);
       reading.source = this.viewport.read(tab.id) ?? reading.source;
       for (const id of new Set([tab.previewId, tab.pendingPreviewId])) {
@@ -628,7 +662,7 @@ export class SourceControlController {
 
   private primePreview(tab: GitDiffTabState, previewId: string, target?: ReviewViewport): void {
     if (!tab.diff || !this.renderable(tab.diff)) return;
-    if (!this.bounds || !project.gitDiffActive || this.activeTab()?.id !== tab.id) return;
+    if (!this.bounds || !this.state.gitDiffActive || this.activeTab()?.id !== tab.id) return;
     const reading = this.readingState(tab);
     const viewport = target ?? (tab.mode === 'source'
       ? this.viewport.read(tab.id) ?? reading.source : reading.viewer ?? reading.source);
@@ -657,7 +691,7 @@ export class SourceControlController {
   }
 
   private tabExists(tab: GitDiffTabState): boolean {
-    return project.gitDiffTabs.some((candidate) => candidate.id === tab.id);
+    return this.state.gitDiffTabs.some((candidate) => candidate.id === tab.id);
   }
 
   private async preparePreview(tab: GitDiffTabState): Promise<void> {
@@ -700,8 +734,8 @@ export class SourceControlController {
         this.preparedPreviews.set(candidateId, { diff, revision: rendered.revision, themeId: requestedTheme });
         tab.previewId = candidateId;
         if (this.activeTab()?.id === tab.id) {
-          project.gitDiff = tab.diff;
-          project.gitDiffMode = tab.mode;
+          this.state.gitDiff = tab.diff;
+          this.state.gitDiffMode = tab.mode;
           this.copyPreviewState(tab);
           this.syncPreview('resume');
           this.schedulePrime();
@@ -721,7 +755,7 @@ export class SourceControlController {
         const superseded = !!latest && (!sameReviewContent(latest, diff) || requestedTheme !== this.themeId);
         if (this.activeTab()?.id === tab.id) {
           this.copyPreviewState(tab);
-          if (!superseded) project.error = error instanceof Error ? error.message : String(error);
+          if (!superseded) this.state.error = error instanceof Error ? error.message : String(error);
         }
         // Never spin on the same failing input. Only a genuinely newer request
         // gets the immediate retry; current failures still require user retry.
@@ -745,32 +779,33 @@ export class SourceControlController {
   }
 
   private async mutate(action: () => Promise<GitSnapshot>, afterAction?: () => Promise<void>): Promise<void> {
-    if (project.gitBusy) return;
+    if (this.state.gitBusy) return;
     this.statusGeneration += 1;
-    project.gitBusy = true;
+    this.state.gitBusy = true;
     try {
       await this.perform(action);
-      if (!project.error) await afterAction?.();
-      if (!project.error) await this.refreshOpenDiffs();
-    } catch (error) { project.error = error instanceof Error ? error.message : String(error); }
+      if (!this.state.error) await afterAction?.();
+      if (!this.state.error) await this.refreshOpenDiffs();
+    } catch (error) { this.state.error = error instanceof Error ? error.message : String(error); }
     finally {
-      project.gitBusy = false;
+      this.state.gitBusy = false;
       if (this.refreshRequested) void this.refresh();
     }
   }
 
   private async perform(action: () => Promise<GitSnapshot>, clear = true): Promise<void> {
-    if (clear) project.error = '';
-    try { project.git = await action(); project.error = ''; }
-    catch (error) { project.error = error instanceof Error ? error.message : String(error); }
+    if (clear) this.state.error = '';
+    try { this.state.git = await action(); this.state.error = ''; }
+    catch (error) { this.state.error = error instanceof Error ? error.message : String(error); }
   }
 
-  private async refreshOpenDiffs(): Promise<void> {
-    await Promise.all(project.gitDiffTabs.filter((tab) => !tab.history).map((tab) => this.reloadTab(tab)));
+  async refreshOpenDiffs(): Promise<void> {
+    await Promise.all(this.state.gitDiffTabs.filter((tab) => !tab.history).map((tab) => this.reloadTab(tab)));
   }
 
   private publishReview(): void {
-    const target = project.gitDiffTarget;
+    this.options.stateChanged?.();
+    const target = this.state.gitDiffTarget;
     if (!target) return this.options.desktop.updateGitReviewState(null);
     const name = target.filePath.split(/[\\/]/).at(-1) ?? target.filePath;
     const history = this.activeTab()?.history;
@@ -778,15 +813,17 @@ export class SourceControlController {
     const state: GitReviewState = {
       name: `${name} (${side})`, path: target.filePath, dirty: false, isUntitled: false,
       ...(history ? { history: { ...history } } : {}),
-      staged: target.staged, active: project.gitDiffActive, mode: project.gitDiffMode,
-      line: project.gitDiffMode === 'rendered'
-        ? this.readingStates.get(project.activeGitDiffId ?? '')?.viewer?.anchor.sourceLine ?? project.gitDiffLine
-        : project.gitDiffLine,
+      staged: target.staged, active: this.state.gitDiffActive, mode: this.state.gitDiffMode,
+      line: this.state.gitDiffMode === 'rendered'
+        ? this.readingStates.get(this.state.activeGitDiffId ?? '')?.viewer?.anchor.sourceLine ?? this.state.gitDiffLine
+        : this.state.gitDiffLine,
     };
     this.options.desktop.updateGitReviewState(state);
   }
 
   private effectiveDiff(diff: GitDiff): GitDiff {
+    if (!diff.staged && !diff.history && this.options.workingTreeEditable?.(diff.filePath) === false)
+      return { ...diff, readOnly: true };
     if (diff.staged || diff.history || diff.originalText === null || diff.modifiedText === null) return diff;
     const modifiedText = this.options.workingTreeBuffer(diff.filePath) ?? diff.modifiedText;
     return { ...diff, modifiedText, modifiedLabel: 'WORKTREE', hunks: textDiffHunks(diff.originalText, modifiedText) };
@@ -810,12 +847,12 @@ export class SourceControlController {
     if (this.overlayDepth > 1) return;
     const token = ++this.overlayToken;
     const previewId = this.activeTab()?.previewId;
-    if (!project.gitDiffActive || project.gitDiffMode !== 'rendered' || !previewId) return;
+    if (!this.state.gitDiffActive || this.state.gitDiffMode !== 'rendered' || !previewId) return;
     const image = await this.options.desktop.capturePreview(previewId).catch(() => null);
     if (token !== this.overlayToken || this.overlayDepth === 0) return;
     if (image) {
-      project.gitDiffSnapshot = image;
-      project.gitDiffFrozen = true;
+      this.state.gitDiffSnapshot = image;
+      this.state.gitDiffFrozen = true;
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       if (token !== this.overlayToken || this.overlayDepth === 0) return;
     }
@@ -829,8 +866,8 @@ export class SourceControlController {
     this.syncPreview();
     requestAnimationFrame(() => requestAnimationFrame(() => {
       if (this.overlayDepth > 0) return;
-      project.gitDiffFrozen = false;
-      project.gitDiffSnapshot = '';
+      this.state.gitDiffFrozen = false;
+      this.state.gitDiffSnapshot = '';
     }));
   }
 }

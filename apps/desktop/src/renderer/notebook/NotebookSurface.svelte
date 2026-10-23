@@ -278,6 +278,11 @@
   }
   onMount(() => {
     let disposed = false;
+    const navigateCell = (event: Event) => {
+      const target = (event as CustomEvent<{ id: string; cellId: string; range: M.IRange }>).detail;
+      if (target?.id === entry.id && entry.document.cells.some(cell => cell.id === target.cellId)) void showCell(target.cellId, target.range);
+    };
+    window.addEventListener('setdown:notebook-location', navigateCell);
     const findNotebook = () => { if (active) { searchOpen = true; void tick().then(() => searchInput?.focus()); } };
     window.addEventListener('setdown:notebook-find', findNotebook);
     revision = entry.document.revision;
@@ -297,7 +302,7 @@
         registerMonacoThemes(monaco);
         theme = snapshot.id; api = monaco; monaco.editor.setTheme(monacoThemeName(theme));
       }).catch(error => { if (!disposed) loadError = String(error); });
-    return () => { window.removeEventListener('setdown:notebook-find', findNotebook); disposed = true; cancelAnimationFrame(scrollFrame); dragEnd(); selectionChanges(); unsubscribe(); executionChanges(); themes(); zoom(); };
+    return () => { window.removeEventListener('setdown:notebook-location', navigateCell); window.removeEventListener('setdown:notebook-find', findNotebook); disposed = true; cancelAnimationFrame(scrollFrame); dragEnd(); selectionChanges(); unsubscribe(); executionChanges(); themes(); zoom(); };
   });
   $effect(() => {
     if (!active || !api || !environmentReady || entry.document.error || entry.document.language !== 'python') return;

@@ -1,5 +1,6 @@
 import type { DocumentSnapshot } from '../../core/document/document';
 import { hasUnsavedText } from '../../core/document/document-state';
+import type { DocumentContent } from '../../core/workspace/document-store';
 import type { DocumentTab } from '../../core/workspace/workspace-state';
 import type { DocumentContentOwner } from '../ports/document-content';
 import type { MonacoEditor } from '../adapters/monaco-editor';
@@ -11,26 +12,26 @@ type TextDocuments = Pick<MonacoEditor, 'text' | 'beforeSave' | 'replace' | 'ret
 export class DocumentSessions {
   constructor(private readonly editor: TextDocuments, private readonly owners: readonly DocumentContentOwner[] = [],
     private readonly desktop?: Pick<import('../ports/desktop-port').DesktopPort, 'saveDocumentAs' | 'saveTabDocument'>) {}
-  private owner(tab: DocumentTab) { return this.owners.find(owner => owner.accepts(tab)); }
-  text = (tab: DocumentTab): string => this.owner(tab)?.text(tab) ?? this.editor.text(tab);
-  dirty = (tab: DocumentTab): boolean => this.owner(tab)?.dirty(tab) ?? hasUnsavedText(tab.document, this.text(tab));
-  beforeSave = (tab: DocumentTab, reason: 1 | 2 = 1): Promise<void> => tab.document.kind ? Promise.resolve() : this.editor.beforeSave(tab, reason);
-  save = (tab: DocumentTab, saveAs = false): Promise<import('../../protocol/desktop-api').SaveResult> => {
+  private owner(tab: DocumentContent) { return this.owners.find(owner => owner.accepts(tab)); }
+  text = (tab: DocumentContent): string => this.owner(tab)?.text(tab) ?? this.editor.text(tab);
+  dirty = (tab: DocumentContent): boolean => this.owner(tab)?.dirty(tab) ?? hasUnsavedText(tab.document, this.text(tab));
+  beforeSave = (tab: DocumentContent, reason: 1 | 2 = 1): Promise<void> => tab.document.kind ? Promise.resolve() : this.editor.beforeSave(tab, reason);
+  save = (tab: DocumentContent, saveAs = false): Promise<import('../../protocol/desktop-api').SaveResult> => {
     const owner = this.owner(tab);
     if (owner?.save) return owner.save(tab, saveAs);
     if (!this.desktop) throw Error('Document saving is unavailable.');
     return saveAs ? this.desktop.saveDocumentAs(this.text(tab), tab.revision)
       : this.desktop.saveTabDocument(tab.document, this.text(tab), tab.revision);
   };
-  saved(tab: DocumentTab): void {
+  saved(tab: DocumentContent): void {
     const owner = this.owner(tab);
     if (owner) owner.saved(tab); else this.editor.saved?.(tab);
   }
-  replace(tab: DocumentTab, snapshot: DocumentSnapshot): void {
+  replace(tab: DocumentContent, snapshot: DocumentSnapshot): void {
     const owner = this.owner(tab);
     if (owner) owner.replace(tab, snapshot); else this.editor.replace(tab, snapshot);
   }
-  retarget(tab: DocumentTab): void {
+  retarget(tab: DocumentContent): void {
     for (const owner of this.owners) if (!owner.accepts(tab)) owner.release(tab.id);
     this.owner(tab)?.retarget?.(tab);
     this.editor.retarget(tab);

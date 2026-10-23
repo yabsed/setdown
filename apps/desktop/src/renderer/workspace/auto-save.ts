@@ -1,5 +1,5 @@
 import type { DocumentSnapshot } from '../../protocol/desktop-api';
-import type { DocumentTab as WorkspaceTab } from '../../core/workspace/workspace-state';
+import type { DocumentContent as WorkspaceTab } from '../../core/workspace/document-store';
 import type { DesktopPort } from '../ports/desktop-port';
 
 export const AUTO_SAVE_DELAY = 1000;
@@ -88,10 +88,10 @@ export class AutoSaveController {
     if (requireActive && tab.id !== this.options.activeId()) return;
     try {
       await this.options.beforeSave?.(tab);
-      if (canceled() || !tabs.includes(tab) || (requireActive && tab.id !== this.options.activeId())) return;
+      if (canceled() || !this.options.tabs.includes(tab) || (requireActive && tab.id !== this.options.activeId())) return;
       const result = await desktop.saveTabDocument(tab.document, text(tab), tab.revision, true);
       // A conflict-canceled save stays dirty; the external-change banner informs the user.
-      if (result.canceled || !result.document || !tabs.includes(tab)) return;
+      if (result.canceled || !result.document || !this.options.tabs.includes(tab)) return;
       await acceptSaved(tab, result.document);
       await saved(result.document);
     } catch (error) {

@@ -4,6 +4,7 @@
   import EmptyState from './shell/EmptyState.svelte';
   import InsertionDialogs from './editor/InsertionDialogs.svelte';
   import ReaderSurface from './reader/ReaderSurface.svelte';
+  import { reviewViews } from './project/source-control/review-workspace';
   import GitDiffSurface from './project/source-control/GitDiffSurface.svelte';
   import ProjectSidebar from './project/ProjectSidebar.svelte';
   import EditorGroups from './workspace/groups/EditorGroups.svelte';
@@ -38,9 +39,12 @@ import type { AppActions } from './ports/ui-actions';
 <section class="shell" data-surface="empty" data-tabs="false">
   <ProjectSidebar {actions} languageApi={desktop.language} />
   <div class="editor-area" class:split={view.groups.length > 1}>
+  {#if view.recoveryCount && view.tabs.length === 0}
+    <div class="notice recovery-notice"><span>{view.recoveryCount} unsaved workspace recovery {view.recoveryCount === 1 ? 'snapshot is' : 'snapshots are'} available.</span><button type="button" onclick={actions.restoreWorkspace}>Review Recovery</button></div>
+  {/if}
   <EditorGroups {actions} />
   <div class="group-content focused-content" style={geometry(focused)}
-    data-zoom-tab={project.gitDiffActive ? `git-diff:${project.activeGitDiffId}` : view.groups.find(group => group.id === view.focusedGroupId)?.activeId}>
+    data-zoom-tab={project.gitDiffActive ? project.activeGitDiffId : view.groups.find(group => group.id === view.focusedGroupId)?.activeId}>
   <div class="notice" hidden={!view.notice}>
     <span>{view.unavailablePath === view.tabs.find(tab => tab.active)?.path ? 'This file was deleted or is no longer accessible. Your open content is preserved.' : 'This file was changed by another application.'}</span>
     <div>
@@ -50,8 +54,16 @@ import type { AppActions } from './ports/ui-actions';
   </div>
   <EmptyState {actions} />
   <ReaderSurface {actions} />
-  <GitDiffSurface {actions} />
+
   </div>
+  {#each reviewViews.entries as entry (entry.id)}
+    {@const group = view.groups.find(g => g.activeId === entry.id)}
+    {@const box = boxes.find(box => box.id === group?.id) ?? focused}
+    <div class="group-content review-content" class:inactive={!group} inert={!group}
+      style={geometry(box)} data-group-id={group?.id} data-zoom-tab={entry.id}>
+      <GitDiffSurface {actions} {entry} focused={view.tabs.some(tab => tab.id === entry.id && tab.active)} />
+    </div>
+  {/each}
   {#each view.notebookTabs as tab (tab.id)}
     {@const group = view.groups.find(g => g.activeId === tab.id)}
     {@const active = !!group && !(group.id === view.focusedGroupId && project.gitDiffActive)}
@@ -115,5 +127,5 @@ import type { AppActions } from './ports/ui-actions';
 </section>
 
 <style>
-  .notebook-content.inactive { display: none; }
+  .notebook-content.inactive, .review-content.inactive { display: none; }
 </style>

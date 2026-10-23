@@ -282,6 +282,25 @@ The document retains its own surface, position, unsaved text and shared undo
 history. `text-workspace.test.ts` and `git-review-first-open.spec.ts` cover first
 opening without an ordinary preview and returning to the shared document.
 
+Review views now have independent controllers and presentation ports. Opening
+Working Tree creates only the comparison input; shared text belongs to the
+workspace document store. Ordinary/review and review/review groups can be visible
+at once. `preview-layout-coordinator.ts` aggregates their native rectangles and
+visibility, preserving positive bounds, app-only DIP conversion, exact revision
+acknowledgments, overlay freezing and hidden preparation's focus/IME isolation.
+Review-side native IDs normalize to their owning review tab's zoom factor; separate
+review tabs remain separate zoom scopes. This extends the owners and visible-view
+cardinality, not the timing guarantees or benchmark tolerances.
+`git-review-first-open.spec.ts`, `review-workspace.test.ts`, and
+`preview-layout-coordinator.test.ts` cover simultaneous views and lifetime boundaries;
+all existing first/second/warm and edited/prepared buckets remain required.
+Opening a Working Tree retains its content before mounting the comparison. Its
+source editor borrows the shared model through `liveDocumentModels`; it must not
+load/activate an ordinary editor as a prerequisite. Native review preparation
+and Monaco loading can proceed concurrently. `shared-document-history.test.ts`
+checks model ownership without an ordinary editor; the cold benchmark covers the
+observable first-display cost of this boundary.
+
 Git history reviews carry an immutable commit selection. Their source models
 are read-only and must never borrow a Working Tree model or receive its unsaved
 text. Source/rendered transitions use the same review preparation guarantees.

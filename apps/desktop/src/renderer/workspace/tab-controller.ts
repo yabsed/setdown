@@ -1,3 +1,6 @@
+import { documentIdentity, type DocumentContent } from '../../core/workspace/document-store';
+import { editorInputKey } from '../../core/workspace/workspace-state';
+import { copyDisplayOptions } from '../editor/tools/view-display';
 import { TabNavigationController } from './tab-navigation-controller';
 import type { DocumentSessions } from './document-sessions';
 import { isNotebookDocument } from '../../core/document/document-profile';
@@ -19,9 +22,12 @@ import type { WorkingTreeEdit } from '../../core/document/text-edit';
 import { restoredOutlineOpen } from '../shell/layout-session';
 import { tick } from 'svelte';
 import { MediaCache } from './media-cache';
-import type { EditorGroupPlacement, EditorOpenOptions } from '../../core/workspace/editor-groups';
+import { groupLayout, type EditorGroupPlacement, type EditorOpenOptions } from '../../core/workspace/editor-groups';
 
 type Options = {
+  activateReview?(id: string): Promise<void>;
+  closeReview?(id: string, confirmed?: boolean): Promise<void>;
+  copyReview?(id: string, groupId: string, direction: import('../../core/workspace/editor-groups').SplitDirection | null): Promise<void>;
   documents: DocumentSessions;
   publishDocuments?(): void;
   desktop: DesktopPort; workspace: WorkspaceState; session: TabSession; shell: HTMLElement;
@@ -33,7 +39,7 @@ type Options = {
   groupsChanged?(): void;
   shouldFocusWeb?(): boolean;
   reviewZoomId?(): string | null;
-  autoSave?: { schedule(tab: DocumentTab): void; cancel(tabId?: string): void };
+  autoSave?: { schedule(tab: DocumentContent): void; cancel(tabId?: string): void };
 };
 const TRANSFER_ANNOUNCE_GRACE_MS = 150;
 
@@ -56,14 +62,18 @@ export class TabController {
       invalidateActive: () => { ++this.activation; options.preview.newSession(); },
     });
   }
-  text = (tab: WorkspaceTab): string => isDocumentTab(tab) ? this.options.documents.text(tab) : '';
-  dirty = (tab: WorkspaceTab): boolean => isDocumentTab(tab) && this.options.documents.dirty(tab);
+  text = (tab: WorkspaceTab | DocumentContent): string => 'document' in tab ? this.options.documents.text(tab) : '';
+  dirty = (tab: WorkspaceTab | DocumentContent): boolean => {
+    if ('document' in tab) return this.options.documents.dirty(tab);
+    const content = tab.kind === 'diff' && tab.documentId ? this.options.workspace.documentStore.get(tab.documentId) : null;
+    return !!content && this.options.documents.dirty(content);
+  };
   currentText = (): string | null => {
-    const tab = this.options.workspace.active;
+    const tab = this.options.workspace.activeContent;
     return tab ? this.text(tab) : this.options.session.document?.text ?? null;
   };
   documentBuffer = (path: string): string | null => {
-    const tab = this.options.workspace.documents.find((candidate) => !candidate.document.isUntitled && candidate.document.path === path);
+    const tab = this.options.workspace.contents.find((candidate) => !candidate.document.isUntitled && candidate.document.path === path);
     return tab ? this.text(tab) : null;
   };
   activateWorkingTreePath = async (path: string): Promise<boolean> => {
@@ -93,8 +103,8 @@ export class TabController {
 
   reloadDocumentPaths = async (paths: string[], preserveChanges = false): Promise<void> => {
     const selected = new Set(paths);
-    const { desktop, preview, reader, session, workspace } = this.options;
-    const targets = workspace.documents.filter((tab) => !tab.document.isUntitled && selected.has(tab.document.path));
+    const { desktop, preview, reader, workspace } = this.options;
+    const targets = workspace.contents.filter((tab) => !tab.document.isUntitled && selected.has(tab.document.path));
     let activeReloaded = false;
     for (const tab of targets) {
       const revision = tab.revision;
@@ -103,18 +113,20 @@ export class TabController {
       try { diskDocument = await desktop.readDocumentLocation(fileLocation(tab.document.path)); }
       catch (error) {
         // Decoder/permission failures must not masquerade as a discarded file.
-        if (/ENOENT|no such file/i.test(String(error))) await this.close(tab.id, true);
+        if (/ENOENT|no such file/i.test(String(error))) {
+          for (const candidate of [...workspace.tabs]) if ('documentId' in candidate && candidate.documentId === documentIdentity(tab) || candidate.id === tab.id) await this.close(candidate.id, true);
+        }
         else throw error;
         continue;
       }
-      if (!diskDocument || workspace.find(tab.id) !== tab
+      if (!diskDocument || (!workspace.documentStore.contains(tab) && workspace.find(tab.id) !== tab)
         || (preserveChanges && (this.dirty(tab) || tab.revision !== revision))) continue;
-      const active = workspace.activeId === tab.id;
+      const active = workspace.activeContent && documentIdentity(workspace.activeContent) === documentIdentity(tab);
       tab.document = diskDocument;
-      Object.assign(tab, { previewUrl: null, previewRevision: null, previewTheme: null });
+      for (const candidate of workspace.documents) if (documentIdentity(candidate) === documentIdentity(tab))
+        Object.assign(candidate, { previewUrl: null, previewRevision: null, previewTheme: null });
       this.options.documents.replace(tab, diskDocument);
       if (active) {
-        session.document = diskDocument;
         if (hasMarkdownPreview(diskDocument)) preview.reset();
         view.notice = false;
         activeReloaded = true;
@@ -204,6 +216,7 @@ export class TabController {
   navigateHistory = (id: string, direction: -1 | 1): Promise<boolean> => this.navigation.navigateHistory(id, direction);
   navigateLocation = (id: string, input: string, historyIndex?: number): Promise<boolean> => this.navigation.navigateLocation(id, input, historyIndex);
   transferable = (tab: WorkspaceTab): TransferableTab => {
+    if (tab.kind === 'diff') throw Error('Git review tabs can be moved between groups in this window. Cross-window transfer is not supported.');
     if (tab.kind === 'terminal') return { kind: 'terminal', id: tab.id, sessionId: tab.sessionId ?? tab.id,
       title: tab.title, cwd: tab.cwd, exited: tab.exited, navigation: tab.navigation };
     if (tab.kind === 'web') return { kind: 'web', id: tab.id, page: { ...tab.page }, navigation: tab.navigation };
@@ -223,13 +236,15 @@ export class TabController {
       // Dirty documents never remain eligible for replacement, including shared models.
       if (dirty) workspace.groups.pin(tab.id);
       return { id: tab.id, name: tabTitle(tab), path: tabLocation(tab), kind: tab.kind,
+        canSplit: tab.kind === 'diff' || isDocumentTab(tab) && !tab.document.kind && !isNotebookDocument(tab.document.path),
         canGoBack: this.canGoBack(tab.id), canGoForward: this.canGoForward(tab.id),
         ...(tab.kind === 'web' ? { page: { ...tab.page } } : {}),
         ...(tab.kind === 'terminal' ? { exited: tab.exited, sessionId: tab.sessionId ?? tab.id } : {}),
         active: tab.id === workspace.activeId, dirty, preview: !workspace.groups.isPinned(tab.id) };
     });
-    view.groups = workspace.groups.groups.map(group => ({ ...group, tabs: [...group.tabs] }));
-    view.groupTree = structuredClone(workspace.groups.tree);
+    const visibleGroups = new Set(groupLayout(workspace.groups.displayTree).groups.map(group => group.id));
+    view.groups = workspace.groups.groups.filter(group => visibleGroups.has(group.id)).map(group => ({ ...group, tabs: [...group.tabs] }));
+    view.groupTree = structuredClone(workspace.groups.displayTree);
     view.focusedGroupId = workspace.groups.focusedId;
     view.tabs = summaries;
     this.options.publishDocuments?.();
@@ -242,7 +257,7 @@ export class TabController {
     view.activeMediaId = workspace.activeDocument?.document.kind ? workspace.activeId : null;
     shell.dataset.tabs = summaries.length > 0 ? 'true' : 'false';
     shell.dataset.dirtyTabs = String(summaries.filter((tab) => tab.dirty).length);
-    desktop.updateTabState(workspace.documents.map((tab) => ({ name: tab.document.name, path: tab.document.path,
+    desktop.updateTabState(workspace.contents.map((tab) => ({ name: tab.document.name, path: tab.document.path,
       dirty: this.dirty(tab), isUntitled: tab.document.isUntitled })));
     this.options.workspaceChanged();
   };
@@ -259,6 +274,18 @@ export class TabController {
     const { desktop, editor, preview, reader, session, surfaces, workspace } = this.options;
     const next = workspace.find(tabId);
     if (!next) return;
+    if (next.kind === 'diff') {
+      ++this.activation;
+      if (workspace.activeId !== next.id) { this.saveActiveState(); preview.newSession(); }
+      workspace.activeId = next.id;
+      reader.setSuspended(true);
+      surfaces.set('diff');
+      const content = workspace.activeContent;
+      if (content) await desktop.activateDocument(content.document, content.text, content.revision);
+      await this.options.activateReview?.(next.id);
+      view.notice = false; this.updateChrome();
+      return;
+    }
     if (next.kind === 'terminal') {
       ++this.activation;
       if (workspace.activeId !== next.id) { this.saveActiveState(); this.options.autoSave?.cancel(); preview.newSession(); }
@@ -379,15 +406,19 @@ export class TabController {
     let index = workspace.tabs.findIndex((tab) => tab.id === tabId);
     if (index < 0) return true;
     const tab = workspace.tabs[index];
+    if (tab.kind === 'diff') { await this.options.closeReview?.(tab.id, confirmed); return !workspace.find(tab.id); }
     if (tab.kind === 'web') {
       if (!confirmed) {
         try { if (!await desktop.browser.close(tab.id, true)) return false; }
         catch (error) { tab.page.error = String(error); this.render(); return false; }
       }
     }
-    if (isDocumentTab(tab) && this.dirty(tab) && !confirmed) {
+    if (isDocumentTab(tab) && this.dirty(tab) && !confirmed
+      && (!tab.documentId || (workspace.documentStore.get(tab.documentId)?.references.size ?? 0) <= 1)) {
+      const revision = tab.revision;
       const decision = await this.options.confirmClose([tab.document.name]);
       if (decision === 'cancel') return false;
+      if (decision === 'discard' && tab.revision !== revision) return false;
       if (decision === 'save') {
         await this.options.documents.beforeSave(tab);
         if (workspace.find(tab.id) !== tab) return true;
@@ -397,7 +428,8 @@ export class TabController {
         if (this.dirty(tab)) return false;
       }
     }
-    if (isDocumentTab(tab) && tab.document.isUntitled) await desktop.discardDocument(tab.document);
+    if (isDocumentTab(tab) && tab.document.isUntitled
+      && (!tab.documentId || (workspace.documentStore.get(tab.documentId)?.references.size ?? 0) <= 1)) await desktop.discardDocument(tab.document);
     index = workspace.tabs.findIndex((candidate) => candidate.id === tabId);
     if (index < 0 || workspace.tabs[index] !== tab) return true;
     if (workspace.activeId === tab.id) this.saveActiveState();
@@ -417,14 +449,14 @@ export class TabController {
   };
   prepareRemove = async (entryPath: string): Promise<boolean> => {
     this.removalApprovals.delete(entryPath);
-    const affected = this.options.workspace.documents.filter((tab) => this.pathUnder(tab.document.path, entryPath));
+    const affected = this.options.workspace.contents.filter((tab) => this.pathUnder(tab.document.path, entryPath));
     const dirty = affected.filter(this.dirty);
     if (dirty.length) {
       const decision = await this.options.confirmClose(dirty.map((tab) => tab.document.name));
       if (decision === 'cancel') return false;
       if (decision === 'save') for (const tab of dirty) {
         await this.options.documents.beforeSave(tab);
-        if (!this.options.workspace.documents.includes(tab)) continue;
+        if (!this.options.workspace.contents.includes(tab)) continue;
         const result = await this.options.documents.save(tab);
         if (result.canceled || !result.document) return false;
         await this.acceptSaved(tab, result.document);
@@ -438,10 +470,13 @@ export class TabController {
   commitRemove = async (entryPath: string): Promise<void> => {
     const approved = this.removalApprovals.get(entryPath);
     this.removalApprovals.delete(entryPath);
-    const affected = this.options.workspace.documents.filter(tab => this.pathUnder(tab.document.path, entryPath));
+    const affected = this.options.workspace.contents.filter(tab => this.pathUnder(tab.document.path, entryPath));
     // New edits made while the OS trash job was pending were never approved for
     // discard. Retain their buffer; autosave skips the now-missing backing file.
-    for (const tab of affected) if (approved?.get(tab.id) === tab.revision) await this.close(tab.id, true);
+    for (const content of affected) if (approved?.get(content.id) === content.revision) {
+      const views = this.options.workspace.tabs.filter(tab => isDocumentTab(tab) ? documentIdentity(tab) === documentIdentity(content) : tab.kind === 'diff' && tab.documentId === documentIdentity(content));
+      for (const tab of views) await this.close(tab.id, true);
+    }
   };
 
   /** One path-change boundary for Save As and Explorer rename/move. */
@@ -468,9 +503,11 @@ export class TabController {
     else preview.schedule(tab.revision);
   }
 
-  acceptSaved = async (tab: DocumentTab, saved: DocumentSnapshot): Promise<void> => {
-    if (this.options.workspace.find(tab.id) !== tab) return;
-    this.options.workspace.groups.pin(tab.id);
+  acceptSaved = async (tab: DocumentContent, saved: DocumentSnapshot): Promise<void> => {
+    const workspace = this.options.workspace;
+    if (!workspace.documentStore.contains(tab) && workspace.find(tab.id) !== tab) return;
+    const views = workspace.documents.filter(view => documentIdentity(view) === documentIdentity(tab));
+    for (const view of views) workspace.groups.pin(view.id);
     const oldPath = tab.document.path;
     const text = this.text(tab);
     const revision = tab.revision;
@@ -479,23 +516,28 @@ export class TabController {
     tab.text = tab.document.text;
     // Only actual draft-asset text rewriting replaces content, not a pure rename.
     if (text !== tab.document.text) this.options.documents.replace(tab, tab.document);
-    if (oldPath !== saved.path) await this.retarget(tab, oldPath);
+    if (oldPath !== saved.path) {
+      for (const view of views) await this.retarget(view, oldPath);
+      this.options.editor.retarget(tab);
+    }
     this.options.documents.saved(tab);
     this.updateChrome();
   };
 
   relocatePath = async (from: string, to: string): Promise<void> => {
     const { workspace } = this.options;
-    for (const tab of workspace.documents) {
-      if (!this.pathUnder(tab.document.path, from)) continue;
-      const previousPath = tab.document.path;
+    for (const content of workspace.contents) {
+      if (!this.pathUnder(content.document.path, from)) continue;
+      const previousPath = content.document.path;
       const nextPath = `${to}${previousPath.slice(from.length)}`;
-      // Materialize the current owner before changing the extension, including
-      // unsaved cells that have not yet been serialized for a disk save.
-      tab.text = this.text(tab);
-      tab.document = { ...tab.document, path: nextPath,
-        name: nextPath.split(/[\\/]/).at(-1) || tab.document.name };
-      await this.retarget(tab, previousPath);
+      const collision = workspace.contents.find(other => other.id !== content.id && other.document.path === nextPath);
+      if (collision) throw Error('The destination is already open as another document. Close that document before moving this file.');
+      const views = workspace.documents.filter(tab => documentIdentity(tab) === documentIdentity(content));
+      content.text = this.text(content);
+      content.document = { ...content.document, path: nextPath,
+        name: nextPath.split(/[\\/]/).at(-1) || content.document.name };
+      for (const tab of views) await this.retarget(tab, previousPath);
+      this.options.editor.retarget(content);
     }
     this.updateChrome();
   };
@@ -505,10 +547,10 @@ export class TabController {
     if (!removed) return;
     const { tab } = removed;
     if (tab.kind === 'terminal') workspace.terminals.delete(tab.sessionId ?? tab.id);
-    if (!removed.wasActive) { this.options.documents.release(tab.id); return this.render(); }
+    if (!removed.wasActive) { this.release(tab); return this.render(); }
     const replacement = workspace.replacement(removed.index);
-    if (replacement) { await this.activate(replacement.id); this.options.documents.release(tab.id); return; }
-    this.options.documents.release(tab.id);
+    if (replacement) { await this.activate(replacement.id); this.release(tab); return; }
+    this.release(tab);
     preview.reset();
     session.document = null;
     surfaces.set('empty');
@@ -520,18 +562,18 @@ export class TabController {
     const next = this.options.workspace.cycle(direction);
     if (next) void this.activate(next.id);
   }
-  editorChanged = (tab: DocumentTab, text: string): void => {
+  editorChanged = (tab: DocumentContent, text: string): void => {
     const { desktop, preview, workspace } = this.options;
-    if (workspace.find(tab.id) !== tab) return;
-    workspace.groups.pin(tab.id);
+    if (!workspace.documentStore.contains(tab) && workspace.find(tab.id) !== tab) return;
+    const views = workspace.documents.filter(view => documentIdentity(view) === documentIdentity(tab));
+    for (const view of views) workspace.groups.pin(view.id);
     tab.text = text;
     tab.revision += 1;
-    const active = tab.id === workspace.activeId;
-    if (active) desktop.updateText(text, tab.revision);
+    const active = workspace.activeDocument;
+    const ownsActive = workspace.activeContent && documentIdentity(workspace.activeContent) === documentIdentity(tab);
+    if (ownsActive) desktop.updateText(text, tab.revision);
     this.updateChrome();
-    if (active && hasMarkdownPreview(tab.document) && tab.surface === 'editor' && this.options.shouldSchedulePreview()) {
-      preview.schedule(tab.revision);
-    }
+    if (ownsActive && hasMarkdownPreview(tab.document) && active?.surface === 'editor' && this.options.shouldSchedulePreview()) preview.schedule(tab.revision);
     this.options.autoSave?.schedule(tab);
   };
   installModel = (documentSnapshot: DocumentSnapshot): void => {
@@ -539,18 +581,20 @@ export class TabController {
     if (tab && isDocumentTab(tab)) this.options.documents.replace(tab, documentSnapshot);
   };
   /** Load a language edit target as an ordinary, unsaved-capable tab without stealing focus. */
-  prepareLanguageDocument = async (path: string): Promise<DocumentTab> => {
+  prepareLanguageDocument = async (path: string, groupId?: string): Promise<DocumentTab> => {
     const { workspace } = this.options;
-    const existing = workspace.documents.find(tab => tab.document.path === path && !tab.document.isUntitled);
+    const inGroup = (tab: DocumentTab) => !groupId || workspace.groups.owner(tab.id)?.id === groupId;
+    const existing = workspace.documents.find(tab => inGroup(tab) && tab.document.path === path && !tab.document.isUntitled);
     if (existing) { if (isNotebookDocument(path)) throw Error('Edit notebook cells in the notebook tab.'); return existing; }
     const document = await this.options.desktop.readDocumentLocation(fileLocation(path));
     if (document.kind !== undefined || isNotebookDocument(path)) throw new Error('Language edits require an ordinary text document.');
     // A concurrent definition/rename may have opened it during the disk read.
-    const opened = workspace.documents.find(tab => tab.document.path === document.path);
+    if (groupId && !workspace.groups.groups.some(group => group.id === groupId)) throw Error('The requesting editor group was closed.');
+    const opened = workspace.documents.find(tab => inGroup(tab) && tab.document.path === document.path);
     if (opened) return opened;
     const tab = this.documentTab(crypto.randomUUID(), document, 'editor');
     const activeId = workspace.activeId;
-    workspace.add(tab);
+    workspace.add(tab, true, groupId ?? workspace.groups.focusedId);
     if (activeId) workspace.groups.activate(activeId);
     this.restoreDocumentTab(tab);
     this.render(); this.updateChrome();
@@ -559,16 +603,20 @@ export class TabController {
   show = async (documentSnapshot: DocumentSnapshot, initialSurface: 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'notebook' = 'viewer',
     presentation: 'document' | 'review' = 'document', placement?: EditorGroupPlacement, openOptions: EditorOpenOptions = {}): Promise<void> => {
     const { editor, workspace } = this.options;
+    const requested = placement?.groupId ?? openOptions.groupId ?? workspace.groups.focusedId;
+    if (!workspace.groups.groups.some(group => group.id === requested)) return;
+    // Singleton content owners must be resolved before allocating a split.
+    if (!documentSnapshot.isUntitled && (documentSnapshot.kind || isNotebookDocument(documentSnapshot.path))) {
+      const singleton = workspace.documents.find(tab => tab.document.path === documentSnapshot.path);
+      if (singleton) return void await this.activate(singleton.id, presentation);
+    }
+    const target = placement?.direction ? workspace.groups.split(requested, placement.direction)
+      : openOptions.side ? workspace.groups.side(requested) : workspace.groups.groups.find(group => group.id === requested)!;
     if (!documentSnapshot.isUntitled) {
-      const existing = workspace.documents.find((tab) => !tab.document.isUntitled && tab.document.path === documentSnapshot.path);
+      const existing = workspace.documents.find(tab => target.tabs.includes(tab.id)
+        && !tab.document.isUntitled && tab.document.path === documentSnapshot.path);
       if (existing) {
-        // A preview request never demotes an already pinned editor.
         if (openOptions.pinned !== false || placement || presentation === 'review') this.pin(existing.id);
-        if (placement) {
-          if (existing.id === workspace.activeId) this.saveActiveState(); else this.options.documents.saveView(existing);
-          workspace.groups.move(existing.id, placement.groupId, placement.direction, placement.index);
-          this.render();
-        }
         return void await this.activate(existing.id, presentation);
       }
     }
@@ -577,10 +625,10 @@ export class TabController {
     this.restoreDocumentTab(created);
     const pinned = openOptions.pinned !== false || !!placement || presentation === 'review'
       || documentSnapshot.isUntitled || this.dirty(created);
-    const previous = pinned ? null : workspace.find(workspace.groups.focused.previewId ?? '');
+    const previous = pinned ? null : workspace.find(target.previewId ?? '');
     if (previous && this.dirty(previous)) workspace.groups.pin(previous.id);
     if (previous?.id === workspace.activeId) this.saveActiveState();
-    const replaced = workspace.add(created, pinned);
+    const replaced = workspace.add(created, pinned, target.id);
     if (replaced) {
       created.navigation = this.navigation.history(replaced);
       const outgoing = this.navigation.visit(replaced);
@@ -589,12 +637,65 @@ export class TabController {
       if (incoming) recordVisit(created.navigation, incoming);
       this.release(replaced);
     }
-    if (placement) workspace.groups.move(id, placement.groupId, placement.direction, placement.index);
+    if (placement?.index !== undefined) workspace.groups.move(id, target.id, null, placement.index);
     this.render();
     await this.activate(id, presentation);
     if (presentation === 'document' && created.surface === 'viewer' && hasMarkdownPreview(documentSnapshot)) window.setTimeout(() => {
       void editor.load().catch((error) => console.error('Failed to load editor', error));
     }, 0);
+  };
+  copyToGroup = async (id: string, groupId: string, direction: import('../../core/workspace/editor-groups').SplitDirection | null = null): Promise<void> => {
+    const { workspace, editor } = this.options;
+    const source = workspace.find(id);
+    if (source?.kind === 'diff') { await this.options.copyReview?.(id, groupId, direction); return; }
+    if (!source || !isDocumentTab(source) || !source.documentId || !workspace.groups.groups.some(group => group.id === groupId)) return;
+    if (!direction && workspace.groups.owner(id)?.id === groupId) { await this.activate(id); return; }
+    editor.saveView(source);
+    const initialView = editor.exportView(source.id);
+    const target = direction ? workspace.groups.split(groupId, direction) : workspace.groups.groups.find(group => group.id === groupId)!;
+    const existing = workspace.documents.find(tab => target.tabs.includes(tab.id) && tab.documentId === source.documentId);
+    if (existing) { this.pin(existing.id); await this.activate(existing.id); return; }
+    const copy = this.documentTab(crypto.randomUUID(), source.document, source.surface);
+    copyDisplayOptions(source.id, copy.id);
+    copy.anchor = { ...source.anchor }; copy.surface = source.surface;
+    workspace.add(copy, true, target.id);
+    this.restoreDocumentTab(copy);
+    editor.importView(copy.id, initialView);
+    this.render(); await this.activate(copy.id);
+  };
+  moveToGroup = async (id: string, placement: EditorGroupPlacement): Promise<void> => {
+    const { workspace } = this.options;
+    const source = workspace.find(id), target = workspace.groups.groups.find(group => group.id === placement.groupId);
+    if (!source || !target) return;
+    const existing = !placement.direction && workspace.tabs.find(tab => tab.id !== id && target.tabs.includes(tab.id)
+      && editorInputKey(tab) === editorInputKey(source));
+    if (existing) {
+      // The destination already retains the same content. Closing the source
+      // cannot discard its buffer or ask for a redundant save.
+      await this.close(id); await this.activate(existing.id); return;
+    }
+    if (isDocumentTab(source)) this.options.documents.saveView(source);
+    workspace.groups.move(id, placement.groupId, placement.direction, placement.index);
+    this.render(); await this.activate(id);
+  };
+  convertReviewToFile = (id: string): void => {
+    const { workspace } = this.options;
+    const review = workspace.find(id);
+    const content = review?.kind === 'diff' && review.documentId ? workspace.documentStore.get(review.documentId) : null;
+    if (!review || !content) return;
+    const group = workspace.groups.owner(id);
+    const existing = workspace.documents.find(tab => group?.tabs.includes(tab.id) && documentIdentity(tab) === content.id);
+    if (existing) {
+      const wasActive = workspace.activeId === id;
+      workspace.remove(id); workspace.documentStore.release(content.id, id);
+      if (wasActive) void this.activate(existing.id);
+      this.render(); return;
+    }
+    const tab = this.documentTab(id, content.document, 'editor');
+    workspace.documentStore.attach(tab);
+    workspace.tabs[workspace.tabs.indexOf(review)] = tab;
+    this.restoreDocumentTab(tab); this.render();
+    if (workspace.activeId === id) void this.activate(id, 'document', true);
   };
   private documentTab(id: string, snapshot: DocumentSnapshot, surface: DocumentTab['surface'] = 'viewer'): DocumentTab {
     const saved = snapshot.readingPosition;
@@ -613,13 +714,21 @@ export class TabController {
   }
   private release(tab: WorkspaceTab): void {
     if (!isDocumentTab(tab)) return;
-    this.options.autoSave?.cancel(tab.id);
+    if (!tab.documentId || (this.options.workspace.documentStore.get(tab.documentId)?.references.size ?? 0) <= 1)
+      this.options.autoSave?.cancel(documentIdentity(tab));
     if (hasMarkdownPreview(tab.document)) this.options.reader.destroy(tab.id);
     this.options.documents.release(tab.id);
+    if (tab.documentId) this.options.workspace.documentStore.release(tab.documentId, tab.id);
   }
   installTransferred = async (transfer: ClaimedTabTransfer, placement?: EditorGroupPlacement): Promise<void> => {
     const { desktop, editor, preview, reader, shell, surfaces, workspace } = this.options;
     const incoming = transfer.tab;
+    if (incoming.kind !== 'web' && incoming.kind !== 'terminal'
+      && workspace.contents.some(content => content.document.path === incoming.document.path)) {
+      desktop.cancelTabTransfer(transfer.transferId);
+      window.alert('This file is already open in this window. The source tab and its unsaved content were kept.');
+      return;
+    }
     if (incoming.kind === 'terminal') {
       if (!await desktop.adoptTabTransfer(transfer.transferId)) return;
       const sessionId = incoming.sessionId ?? incoming.id;

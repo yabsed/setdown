@@ -1,6 +1,6 @@
 import type { NotebookExecution } from './notebook-execution';
 import { NotebookDocument, type NotebookCell } from '../../core/notebook/notebook-document';
-import type { DocumentTab } from '../../core/workspace/workspace-state';
+import type { DocumentContent as DocumentTab } from '../../core/workspace/document-store';
 import type * as Monaco from 'monaco-editor';
 import { NotebookController } from './notebook-controller';
 import type { NotebookChange } from '../../core/notebook/notebook-document';

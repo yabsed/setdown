@@ -1,0 +1,63 @@
+[
+  {
+    "type": "dragstart",
+    "trusted": true,
+    "x": 255,
+    "y": 57,
+    "screenX": 1105,
+    "screenY": 187,
+    "types": [],
+    "effect": "none"
+  },
+  {
+    "type": "dragover",
+    "trusted": true,
+    "x": 275,
+    "y": 72,
+    "screenX": 1125,
+    "screenY": 202,
+    "types": [
+      "application/x-setdown-tab",
+      "chromium/x-drag-id"
+    ],
+    "effect": "move"
+  },
+  {
+    "type": "dragleave",
+    "trusted": true,
+    "x": 275,
+    "y": 390,
+    "screenX": 1125,
+    "screenY": 520,
+    "types": [
+      "application/x-setdown-tab",
+      "chromium/x-drag-id"
+    ],
+    "effect": "none"
+  },
+  {
+    "type": "dragleave",
+    "trusted": true,
+    "x": 0,
+    "y": 0,
+    "screenX": 0,
+    "screenY": 0,
+    "types": [
+      "application/x-setdown-tab",
+      "chromium/x-drag-id"
+    ],
+    "effect": "none"
+  },
+  {
+    "type": "dragend",
+    "trusted": true,
+    "x": -550,
+    "y": 390,
+    "screenX": 300,
+    "screenY": 520,
+    "types": [
+      "application/x-setdown-tab"
+    ],
+    "effect": "move"
+  }
+]

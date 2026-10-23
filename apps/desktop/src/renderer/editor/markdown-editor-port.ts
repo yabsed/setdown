@@ -10,12 +10,12 @@ export type MarkdownEditorSurface = {
 
 /** Synchronous renderer-local access; registering does not create models or touch focus. */
 export class MarkdownEditorPort {
-  private reader: (() => MarkdownEditorSurface | null) | null = null;
+  private readonly readers = new Set<() => MarkdownEditorSurface | null>();
   register(reader: () => MarkdownEditorSurface | null): () => void {
-    this.reader = reader;
-    return () => { if (this.reader === reader) this.reader = null; };
+    this.readers.add(reader);
+    return () => { this.readers.delete(reader); };
   }
-  read(): MarkdownEditorSurface | null { return this.reader?.() ?? null; }
+  read(): MarkdownEditorSurface | null { for (const read of this.readers) { const surface = read(); if (surface) return surface; } return null; }
 }
 export const workingTreeMarkdownEditor = new MarkdownEditorPort();
 

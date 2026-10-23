@@ -489,6 +489,9 @@
     {#if menu.entry}
       {#if selectedEntries.some(entry => entry.kind === 'document')}<button type="button" role="menuitem"
         onclick={() => void actions.openProjectFiles(selectedEntries.filter(entry => entry.kind === 'document').map(entry => entry.path))}>Open</button>{/if}
+      {#if selectedEntries.length === 1 && selectedEntries[0].kind === 'document'}
+        <button type="button" role="menuitem" onclick={() => { const path = selectedEntries[0].path; menu = null; actions.openProjectFile(path, { side: true, pinned: true }); }}>Open to the Side</button>
+      {/if}
       <button type="button" role="menuitem" onclick={() => copy(selectedPaths().join('\n'))}>Copy Path</button>
       <button type="button" role="menuitem" onclick={() => copy(selectedPaths().map(relativeToRoot).join('\n'))}>Copy Relative Path</button>
       <span class="menu-separator"></span>

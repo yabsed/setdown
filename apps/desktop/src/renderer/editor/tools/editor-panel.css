@@ -1,0 +1,16 @@
+.editor-tool-dialog { position: fixed; inset: 12vh auto auto 50%; transform: translateX(-50%); margin: 0; padding: 16px; width: min(660px, calc(100vw - 40px)); max-height: 75vh; overflow: hidden; color: var(--app-text); background: var(--app-raised-surface); border: 1px solid var(--app-border); border-radius: 8px; box-shadow: 0 12px 50px var(--app-shadow); font: 13px system-ui; }
+.editor-tool-dialog::backdrop { background: #0005; }
+.editor-tool-dialog h2 { font-size: 15px; margin: 0 28px 14px 0; }
+.editor-tool-dialog input { box-sizing: border-box; width: 100%; padding: 9px; margin: 6px 0; color: inherit; background: var(--app-surface); border: 1px solid var(--app-border); font: inherit; }
+.editor-tool-dialog button { color: inherit; font: inherit; background: transparent; border: 1px solid var(--app-border); padding: 7px 10px; cursor: pointer; }
+.editor-tool-dialog button:focus-visible, .editor-tool-dialog input:focus { outline: 2px solid var(--app-focus-ring); outline-offset: -2px; }
+.editor-tool-close { position: absolute; top: 6px; right: 6px; }
+.editor-tool-list { overflow-y: auto; max-height: 52vh; }
+.editor-tool-dialog .editor-tool-row { display: flex; flex-direction: column; width: 100%; gap: 4px; border: 0; text-align: left; padding: 9px; }
+.editor-tool-row[aria-selected=true], .editor-tool-row:hover { background: var(--app-hover); }
+.editor-tool-row[aria-disabled=true] { opacity: .65; }
+.editor-tool-row small, .editor-tool-count { color: var(--app-muted-text); font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.editor-tool-count { margin: 5px 0; }
+.editor-tool-dialog form { display: grid; gap: 12px; }
+.monaco-editor .setdown-edit-feedback { background: color-mix(in srgb, var(--app-accent) 28%, transparent); outline: 1px solid color-mix(in srgb, var(--app-accent) 45%, transparent); }
+.monaco-editor .setdown-search-highlight { background: color-mix(in srgb, var(--app-accent) 24%, transparent); }

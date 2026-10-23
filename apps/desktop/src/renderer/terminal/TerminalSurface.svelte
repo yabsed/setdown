@@ -5,6 +5,7 @@
   import '@xterm/xterm/css/xterm.css';
   import { APP_FONT_FAMILY } from '../../core/theme/typography';
   import { onTerminalZoom, terminalZoomFactor } from '../editor/text-zoom';
+  import { registerTerminalOutput } from './terminal-output';
   import type { TerminalApi, TerminalEvent, TerminalSize } from '../../protocol/terminal';
   let { api, id, tabId, active, focused, changed }: { api: TerminalApi; id: string; tabId?: string; active: boolean; focused: boolean;
     changed(info: { title?: string; cwd?: string; exited?: boolean }): void } = $props();
@@ -14,6 +15,7 @@
   let ready = false, alive = true, starting = true;
   let pending: TerminalEvent[] = [];
   let requested: TerminalSize | undefined;
+  let directory = '';
   let resizeTimer: ReturnType<typeof setTimeout> | undefined;
   function theme() {
     const style = getComputedStyle(document.documentElement);
@@ -55,6 +57,11 @@
     });
   });
   onMount(() => {
+    const unregisterOutput = registerTerminalOutput(tabId ?? id, () => {
+      const buffer = term?.buffer.active, lines: string[] = [];
+      if (buffer) for (let line = Math.max(0, buffer.length - 5000); line < buffer.length; line++) lines.push(buffer.getLine(line)?.translateToString(true) ?? '');
+      return { directory, text: lines.join('\n') };
+    });
     term = new Terminal({ cursorBlink: true, fontSize: terminalFont(), scrollback: 5000, fontFamily: APP_FONT_FAMILY,
       theme: theme(), allowProposedApi: false, screenReaderMode: true });
     fit = new FitAddon(); term.loadAddon(fit); term.open(container);
@@ -98,6 +105,7 @@
     void api.create(id, { cols: term.cols, rows: term.rows }).then(async info => {
       if (!alive || !term) return;
       changed({ title: info.title, cwd: info.cwd, exited: info.exitCode !== undefined });
+      directory = info.cwd;
       requested = info.size;
       // Restore the live VT buffers, cursor, attributes and input modes before new output.
       // Keep the original terminal dimensions during restore, then fit this group.
@@ -113,6 +121,7 @@
       resize(true); if (focused && active) term?.focus();
     }).catch(cause => { if (alive) { error = String(cause); starting = false; changed({ title: 'Terminal failed', exited: true }); } });
     return () => {
+      unregisterOutput();
       alive = false; unsubscribe(); unsubscribeZoom(); observer.disconnect(); themes.disconnect();
       clearTimeout(resizeTimer); resizeTimer = undefined;
       window.removeEventListener('setdown:focus-terminal', focus);

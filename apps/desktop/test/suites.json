@@ -89,7 +89,12 @@
       "src/main/documents/hwp-file.test.ts",
       "src/renderer/hwp/hwp-sessions.test.ts",
       "src/renderer/language/builtin-diagnostics.test.ts",
-      "src/renderer/language/diagnostic-store.test.ts"
+      "src/renderer/language/diagnostic-store.test.ts",
+      "src/core/editor/editor-tools.test.ts",
+      "src/main/editor/editor-tools.test.ts",
+      "src/core/workspace/document-store.test.ts",
+      "src/renderer/project/source-control/review-workspace.test.ts",
+      "src/renderer/reader/preview-layout-coordinator.test.ts"
     ]
   },
   "e2e": {
@@ -289,6 +294,9 @@
       "previewContract": true
     },
     "language/language-policy.spec.ts": {
+      "previewContract": true
+    },
+    "workspace/editor-tools.spec.ts": {
       "previewContract": true
     }
   },

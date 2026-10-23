@@ -35,7 +35,7 @@ import type { AppActions } from '../../ports/ui-actions';
   const media = $derived(view.mediaTabs.find(item => item.id === tab?.id));
   const fileZoom = $derived(tab ? mediaZoom[tab.id] : undefined);
   const zoomScope = $derived(tab?.kind === 'terminal' && !review ? 'terminal' : 'text');
-  const zoomId = $derived(review && project.activeGitDiffId ? `git-diff:${project.activeGitDiffId}` : tab?.id);
+  const zoomId = $derived(tab?.id);
   const reading = $derived(!!tab && !!browser.readers[tab.id]);
   // Markdown surface actions live in the address bar. They act on the focused
   // session, so only the focused group's bar shows them (as the tab strip did).

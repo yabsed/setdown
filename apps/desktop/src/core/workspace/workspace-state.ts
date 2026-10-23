@@ -1,4 +1,5 @@
 import { EditorGroups } from './editor-groups';
+import { DocumentStore, sharedTextDocument, type DocumentContent } from './document-store';
 import type { DocumentSnapshot } from '../document/document';
 import { documentSurface } from '../document/document-profile';
 import type { PreviewHeading } from '../preview/preview-state';
@@ -6,6 +7,7 @@ import type { PreviewThemeId } from '../preview/preview-preferences';
 import type { ViewportAnchor } from '../preview/viewport-anchor';
 
 export type DocumentTab = {
+  documentId?: string;
   navigation?: import('./tab-navigation').TabNavigation;
   kind?: 'document';
   id: string;
@@ -31,10 +33,16 @@ export type BrowserTab = { kind: 'web'; id: string; surface: 'web'; page: import
 export type TerminalSession = { id: string; title: string; cwd: string; exited: boolean };
 export type TerminalTab = { kind: 'terminal'; id: string; surface: 'terminal'; sessionId?: string;
   title: string; cwd: string; exited: boolean; navigation?: import('./tab-navigation').TabNavigation };
-export type WorkspaceTab = DocumentTab | BrowserTab | TerminalTab;
-export const isDocumentTab = (tab: WorkspaceTab): tab is DocumentTab => tab.kind !== 'web' && tab.kind !== 'terminal';
-export const tabTitle = (tab: WorkspaceTab): string => tab.kind === 'terminal' ? `${tab.title}${tab.exited ? ' (exited)' : ''}` : tab.kind === 'web' ? tab.page.title || 'New web tab' : tab.document.name;
-export const tabLocation = (tab: WorkspaceTab): string => tab.kind === 'terminal' ? `terminal://${tab.sessionId ?? tab.id}` : tab.kind === 'web' ? tab.page.url : tab.document.path;
+export type DiffTab = { kind: 'diff'; surface: 'diff'; id: string; documentId?: string; filePath: string;
+  staged: boolean; history?: import('../project/git-history').GitHistorySelection;
+  navigation?: import('./tab-navigation').TabNavigation };
+export type WorkspaceTab = DocumentTab | BrowserTab | TerminalTab | DiffTab;
+export const isDocumentTab = (tab: WorkspaceTab): tab is DocumentTab => tab.kind === undefined || tab.kind === 'document';
+export const tabTitle = (tab: WorkspaceTab): string => tab.kind === 'terminal' ? `${tab.title}${tab.exited ? ' (exited)' : ''}` : tab.kind === 'web' ? tab.page.title || 'New web tab' : tab.kind === 'diff' ? `${tab.filePath.split(/[\\/]/).at(-1)} (${tab.history ? tab.history.head.slice(0, 8) : tab.staged ? 'Index' : 'Working Tree'})` : tab.document.name;
+export const tabLocation = (tab: WorkspaceTab): string => tab.kind === 'terminal' ? `terminal://${tab.sessionId ?? tab.id}` : tab.kind === 'web' ? tab.page.url : tab.kind === 'diff' ? tab.filePath : tab.document.path;
+export const editorInputKey = (tab: WorkspaceTab): string => tab.kind === 'diff'
+  ? JSON.stringify(['diff', tab.filePath, tab.staged, tab.history ?? null])
+  : isDocumentTab(tab) ? JSON.stringify(['file', tab.documentId ?? tab.document.path]) : tab.id;
 
 export function createWorkspaceTab(
   id: string,
@@ -62,6 +70,7 @@ export function createWorkspaceTab(
 }
 
 export class WorkspaceState {
+  readonly documentStore = new DocumentStore();
   readonly tabs: WorkspaceTab[] = [];
   readonly terminals = new Map<string, TerminalSession>();
   readonly groups = new EditorGroups();
@@ -69,11 +78,19 @@ export class WorkspaceState {
   get activeId() { return this.activeTabId; }
   set activeId(id: string | null) { this.activeTabId = id; if (id) this.groups.activate(id); }
   get documents(): DocumentTab[] { return this.tabs.filter(isDocumentTab); }
+  get contents(): DocumentContent[] { return [...this.documentStore.documents, ...this.documents.filter(tab => !tab.documentId)]; }
+  content(tab: DocumentTab): DocumentContent { return tab.documentId ? this.documentStore.get(tab.documentId) ?? tab : tab; }
+  get activeContent(): DocumentContent | null {
+    const tab = this.active;
+    if (tab?.kind === 'diff') return tab.documentId ? this.documentStore.get(tab.documentId) ?? null : null;
+    return tab && isDocumentTab(tab) ? this.content(tab) : null;
+  }
   get activeDocument(): DocumentTab | null { const tab = this.active; return tab && isDocumentTab(tab) ? tab : null; }
   get active(): WorkspaceTab | null { return this.tabs.find((tab) => tab.id === this.activeId) ?? null; }
   find(id: string): WorkspaceTab | null { return this.tabs.find((tab) => tab.id === id) ?? null; }
-  add(tab: WorkspaceTab, pinned = true): WorkspaceTab | null {
-    const previousId = this.groups.add(tab.id, pinned);
+  add(tab: WorkspaceTab, pinned = true, groupId = this.groups.focusedId): WorkspaceTab | null {
+    if (isDocumentTab(tab) && sharedTextDocument(tab.document)) this.documentStore.attach(tab);
+    const previousId = this.groups.add(tab.id, pinned, groupId);
     const previous = previousId ? this.find(previousId) : null;
     if (previous) {
       this.tabs.splice(this.tabs.indexOf(previous), 1, tab);
@@ -111,10 +128,10 @@ export function createTabSession(active: () => WorkspaceTab | null, emptyAnchor:
       const tab = documentTab();
       if (tab) tab.revision = value;
     },
-    get surface(): 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'hwp' | 'notebook' | 'web' | 'terminal' { return active()?.surface ?? 'empty'; },
-    set surface(value: 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'hwp' | 'notebook' | 'web' | 'terminal') {
+    get surface(): 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'hwp' | 'notebook' | 'web' | 'terminal' | 'diff' { return active()?.surface ?? 'empty'; },
+    set surface(value: 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'hwp' | 'notebook' | 'web' | 'terminal' | 'diff') {
       const tab = documentTab();
-      if (tab && value !== 'empty' && value !== 'web' && value !== 'terminal') tab.surface = documentSurface(tab.document.path, value);
+      if (tab && value !== 'empty' && value !== 'web' && value !== 'terminal' && value !== 'diff') tab.surface = documentSurface(tab.document.path, value);
     },
     get anchor() { return documentTab()?.anchor ?? emptyAnchor; },
     set anchor(value: ViewportAnchor) {

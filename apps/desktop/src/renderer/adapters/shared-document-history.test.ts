@@ -4,6 +4,7 @@ import type * as Monaco from 'monaco-editor';
 import type { DocumentTab as WorkspaceTab } from '../../core/workspace/workspace-state';
 import { MonacoEditor } from './monaco-editor';
 import { liveDocumentModels } from '../editor/live-document-model';
+import { DEFAULT_PREVIEW_THEME } from '../../core/preview/preview-preferences';
 
 vi.mock('../theme', () => ({ monacoThemeName: () => 'test', registerMonacoThemes() {} }));
 vi.mock('../editor/markdown-editor-actions', () => ({ installMarkdownEditorActions() {} }));
@@ -21,6 +22,7 @@ class Model {
   eol = '\n';
   constructor(text: string, language: string) { this.text = text; this.language = language; }
   getValue() { return this.text; }
+  isDisposed() { return this.disposed; }
   getEOL() { return this.eol; }
   getLanguageId() { return this.language; }
   getLineContent(n: number) { return this.text.split(/\r?\n/)[n - 1] ?? ''; }
@@ -39,7 +41,7 @@ class Model {
   applyEdits(): never { throw new Error('Non-undoable mirroring must not be used'); }
   dispose() { assert.equal(this.disposed, false); this.disposed = true; this.listeners.clear(); }
 }
-function fixture() {
+function fixture(reviewOnly = false) {
   const tab = { id: 'document', document: { path: '/project/note.md', eol: 'lf', text: 'base', savedText: 'base' },
     text: 'base', revision: 0, surface: 'editor' } as WorkspaceTab;
   const tabs = [tab]; let changes = 0;
@@ -47,20 +49,38 @@ function fixture() {
     editor: { createModel: (text: string, language: string) => new Model(text, language),
       setModelLanguage: (model: Model, language: string) => { model.language = language; },
       EndOfLineSequence: { LF: 0, CRLF: 1 } } } as unknown as typeof Monaco;
-  const adapter = new MonacoEditor({ tabs: () => tabs, active: () => tab,
+  const adapter = new MonacoEditor({ tabs: () => reviewOnly ? [] : tabs, contents: () => tabs, active: () => reviewOnly ? null : tab,
+    host: {} as HTMLElement, theme: () => DEFAULT_PREVIEW_THEME, status() {}, scrolled() {}, escape() {}, insertLink() {}, insertTable() {},
     changed: (owner, text) => { changes++; owner.text = text; owner.revision++; },
-  } as ConstructorParameters<typeof MonacoEditor>[0]);
+  });
   const borrow = (path = tab.document.path) => liveDocumentModels.acquire(path, api)!;
   const lease = borrow();
   const live = lease.model as unknown as Model;
   let shown: Model | null = null;
   const editor = { getModel: () => shown, setModel: (model: Model | null) => { shown = model; },
-    restoreViewState() {}, updateOptions() {}, dispose() {} };
-  (adapter as unknown as { editorValue: unknown }).editorValue = editor;
-  adapter.activate(tab);
+    saveViewState: () => null, restoreViewState() {}, updateOptions() {}, dispose() {} };
+  if (!reviewOnly) {
+    (adapter as unknown as { editorValue: unknown }).editorValue = editor;
+    const group = adapter as unknown as { groupId: string; groupEditors: Map<string, unknown> };
+    group.groupId = 'test-group'; group.groupEditors.set('test-group', { tabId: null, editor, host: { remove() {} } });
+    adapter.activate(tab);
+  }
   return { adapter, tab, tabs, lease, live, borrow, editor, changes: () => changes,
     dispose: () => { lease.release(); adapter.disposeWorkspace(); } };
 }
+
+test('review-only content acquires its shared model without constructing an ordinary editor', () => {
+  const f = fixture(true);
+  try {
+    assert.equal(f.adapter.loaded, false);
+    assert.strictEqual(f.adapter.modelFor(f.tab), f.lease.model);
+    f.live.pushEditOperations(null, [{ text: 'review-first edit' }]);
+    assert.equal(f.tab.text, 'review-first edit');
+    assert.equal(f.changes(), 1);
+    f.live.undo(); assert.equal(f.tab.text, 'base');
+    assert.equal(f.adapter.loaded, false);
+  } finally { f.dispose(); }
+});
 
 test('ordinary editor and Working Tree use the same object and one change callback', () => {
   const f = fixture();

@@ -30,7 +30,8 @@ test('source mode primes the reader layout without requesting a visible native v
 test('plain text and suspended Git ownership do not prepare an ordinary preview', () => {
   const text=fixture('/sample.txt'); text.controller.syncView(); expect(text.commands).toEqual([]);
   const git=fixture(); git.controller.setSuspended(true); git.controller.syncView();
-  expect(git.commands).toEqual([]); expect(git.shown).toEqual([]);
+  expect(git.commands).toEqual([]); expect(git.shown.every(id => id === null)).toBe(true);
+  expect(git.shown.length).toBeGreaterThan(0);
 });
 
 test('background layout cannot overwrite the source editor anchor', () => {

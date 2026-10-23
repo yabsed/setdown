@@ -1,4 +1,4 @@
-import type { DocumentTab } from '../../core/workspace/workspace-state';
+import type { DocumentContent as DocumentTab } from '../../core/workspace/document-store';
 import type { DocumentSnapshot } from '../../core/document/document';
 import type { HwpApi, HwpState } from '../../protocol/hwp';
 import type { DocumentContentOwner } from '../ports/document-content';

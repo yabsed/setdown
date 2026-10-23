@@ -56,7 +56,7 @@ export type LanguageDocument = { server?: string; languageId?: string; notebook?
 export type LanguageConnection = { name?: string; context?: string[]; uri: string; cells?: Record<string, string>; capabilities: LanguageCapabilities; server?: string };
 export type LanguageUnavailable = { unavailable: 'missing' | 'selection-needed' };
 export type LanguageEvent =
-  | { type: 'configuration'; servers?: string[] }
+  | { type: 'configuration'; servers?: string[]; documents?: { id: string; generation: string }[] }
   | { type: 'discovery' }
   | { type: 'diagnostics'; server?: string; id: string; generation: string; version: number; cell?: string; cellVersion?: number; unversioned?: boolean; diagnostics: Diagnostic[] }
   | { type: 'refresh'; documents: { id: string; generation: string }[]; feature: LanguageRefresh }

@@ -1,5 +1,5 @@
 import type * as M from 'monaco-editor';
-import type { DocumentTab } from '../../core/workspace/workspace-state';
+import type { DocumentContent as DocumentTab } from '../../core/workspace/document-store';
 import type { LanguageRoute } from '../../core/document/language-support';
 import { jsonDialect } from '../../core/document/language-policy';
 import { languageSupport, resourceLanguageRoutes } from '../../core/document/language-support';
@@ -83,13 +83,17 @@ export class LanguageServices {
     return Object.assign({}, ...[...this.clients.values()].map(client => Object.fromEntries(
       Object.entries(client.capabilitiesFor(model)).filter(([, value]) => !!value))));
   }
+  async documentSymbols(model: M.editor.ITextModel) {
+    const client = [...this.clients.values()].find(client => client.capabilitiesFor(model).documentSymbolProvider);
+    return client ? client.documentSymbols(model) : [];
+  }
   async beforeSave(model: M.editor.ITextModel, reason: 1 | 2) {
     // Each provider sees the result of the preceding save participant. Their
     // existing version guards still reject edits if the user types meanwhile.
     for (const client of [...this.clients.values()]) await client.beforeSave(model, reason);
   }
   saved(model: M.editor.ITextModel, text?: string) { for (const client of this.clients.values()) client.saved(model, text); }
-  invalidate(servers: string[]) { for (const client of this.clients.values()) client.invalidate(servers); }
+  invalidate(servers: string[], documents?: Array<{ id: string; generation: string }>) { for (const client of this.clients.values()) client.invalidate(servers, documents); }
   retryUnavailable() { for (const client of this.clients.values()) client.retryUnavailable(); }
   async restart(): Promise<void> {
     if (this.restarting) return this.restarting;

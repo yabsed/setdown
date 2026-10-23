@@ -17,7 +17,7 @@ These are separate mechanisms in VS Code, rather than mini-tabs inside a tab:
 | --- | --- | --- |
 | Wheel scrolling | `src/vs/workbench/browser/parts/editor/multiEditorTabsControl.ts`, `createTabsScrollbar`: `ScrollableElement` with `scrollYToX: true`, applying `scrollLeft` from its scroll event. A separate wheel handler implements the configurable `scrollToSwitchTabs` behavior. | `renderer/tabs/tab-scroll.ts` maps the dominant wheel axis to horizontal scrolling, normalizes pixel/line/page units, and leaves Ctrl/Meta gestures alone. It never calls activation. Selection changes reveal their tab separately. |
 | Local drop target | `src/vs/workbench/browser/parts/editor/editorDropTarget.ts`, `DropOverlay.positionOverlay`: individual editors split only inside the outer 10% band. With the default rightward preference, the left/right thirds win at corners; the central third chooses up/down. Center drops have no split direction. | `core/workspace/editor-groups.ts:splitDirection` implements that decision independently of DOM state. The overlay covers the proposed half, or the complete body for a center drop. The tab strip has separate insertion logic and edge auto-scroll. |
-| Drop execution | `editorDropTarget.ts:handleDrop` resolves the target group, calls `addGroup` when necessary, then moves or copies editors. Moving a singleton group to itself must not create an empty split. | `EditorGroups.move` keeps document identity, chooses local neighboring selection, inserts the moved tab, focuses the destination, and prunes empty branches. This implementation moves tabs; modifier-based duplication of an editor is not introduced. |
+| Drop execution | `editorDropTarget.ts:handleDrop` resolves the target group, calls `addGroup` when necessary, then moves or copies editors. Moving a singleton group to itself must not create an empty split. | `EditorGroups.move` keeps document identity, chooses local neighboring selection, inserts the moved tab, focuses the destination, and prunes empty branches. Ctrl-drag on Linux/Windows and Alt-drag on macOS copy shareable text/review views. An identical input already in the destination is reused; singleton surfaces retain their own owners. |
 | Group selection | `src/vs/workbench/common/editor/editorGroupModel.ts` keeps ordered editors, selection, and MRU inside each group. `doCloseEditor` selects either the recent editor or an adjacent editor, depending on settings. | `WorkspaceState` retains document/model ownership. `EditorGroups` separately owns each group's ordered tab IDs and selected tab, plus the focused group. Closing selects the adjacent tab in that group. |
 | Layout | `src/vs/workbench/browser/parts/editor/editorPart.ts:addGroup` adds a group view to `gridWidget` with direction and sizing policy; it restores focus after reparenting. `src/vs/base/browser/ui/grid/grid.ts:addView/removeView` resolves relative locations and split sizing. `gridview.ts` composes orthogonal `SplitView` instances with sashes and constraints. | A small binary split tree stores axis and ratio; `groupLayout` produces stable leaf rectangles and sash rectangles. Svelte keys leaf hosts by group identity, rather than remounting resources whenever nesting changes. Pointer capture drives resizing; native view gutters preserve sash hit targets. |
 
@@ -45,11 +45,29 @@ No vendor sources or dependency versions are changed.
 - Visible image/PDF readers are pinned in the media cache even when more than three
   groups are open. Hidden resources remain subject to cache eviction. PDF Find
   targets the focused group, while each visible reader keeps its own page/zoom.
-- Git review retains its existing window-level review session; Git diff tabs are
-  not draggable editor-group members in this change. Ordinary Markdown, source,
-  text, image and PDF document tabs can be moved into groups. Layout restoration
-  across application restarts and duplicate views of the same document are also
-  outside this change.
+- `DocumentStore` owns shared mutable text independently of tabs. Ordinary and
+  Working Tree inputs share its model, dirty state, save checkpoint and Undo.
+  Index/history inputs own immutable snapshots. Each review has its own controller,
+  viewport, source/rendered mode, native view IDs and presentation state; global
+  SCM fields are only the focused view's command projection.
+- The same input is deduplicated within its target group. Different groups may
+  contain ordinary or comparison views of the same text. Each view keeps its
+  selection, folds, scroll, zoom and source/reader mode. Split copies the current
+  input even when it is the group's only tab. Copying starts a new zoom scope.
+- SCM offers Open Changes, Open Changes to the Side, Open File, and Open File to
+  the Side. A side open reuses the right neighbor or creates it. A late response
+  cannot replace a newer group request or take focus from a different group.
+- `PreviewLayoutCoordinator` combines the ordinary readers and all visible reviews
+  into one native layout update. Overlays and drag freezes apply to all of them;
+  hiding one review cannot remove another group's native reader.
+- Sessions and recovery snapshots restore files/groups only on explicit request.
+  New processes still start empty. Dirty content whose saved disk hash no longer
+  matches restores to a separate untitled document. Browser and terminal process
+  lifetimes remain separate. See [editor tools](editor-tools.md).
+- Cross-window diff tear-off and shared Undo across Electron windows remain outside
+  this contract. Unsupported diff drops preserve their source. Ordinary transfers
+  retain the existing acknowledgment protocol; a destination already owning the
+  same path rejects the incoming transfer without discarding either buffer.
 
 ## Verification
 
@@ -57,7 +75,8 @@ No vendor sources or dependency versions are changed.
 splits, pointer resizing, multiple live Monaco editors, editing/Undo across focus,
 empty-group collapse, direct background-editor focus, and wheel scroll without selection changes.
 `git-review-first-open.spec.ts` additionally checks that canceling a document drag
-restores the active rendered Git review. Core tests cover
+restores the active rendered Git review. `workspace/editor-tools.spec.ts` also checks explicit recovery after process loss,
+and `review-workspace.test.ts` checks side reuse and late request ownership. Core tests cover
 drop geometry and tree/membership invariants. Native presentation tests cover
 owner validation and background/foreground visibility. Media tests cover pinning
 beyond the normal cache capacity.

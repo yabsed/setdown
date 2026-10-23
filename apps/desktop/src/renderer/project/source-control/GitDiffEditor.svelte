@@ -10,10 +10,10 @@
   import { monacoThemeName, registerMonacoThemes } from '../../theme';
   import { CompositionGuard } from '../../editor/composition-guard';
   import { liveDocumentModels, type ModelLease } from '../../editor/live-document-model';
-  import { project } from '../project-state.svelte';
+  import type { project as ProjectState } from '../project-state.svelte';
   import { readEditorViewport } from '../../editor/editor-viewport';
   import { reviewViewport, type ReviewSourceSide } from '../../../core/preview/review-viewport';
-  import { gitDiffViewport } from './git-diff-viewport';
+  import type { GitDiffViewportPort } from './git-diff-viewport';
   import { workingTreeMarkdownEditor, isMarkdownPath } from '../../editor/markdown-editor-port';
   import { installMarkdownEditorActions } from '../../editor/markdown-editor-actions';
   import { loadMonaco } from '../../editor/monaco-runtime';
@@ -31,18 +31,21 @@
     viewState: Monaco.editor.IDiffEditorViewState | null;
   };
 
-  let { actions }: { actions: AppActions } = $props();
+  let { actions, project, viewport: gitDiffViewport, focused, onfocus, updateLine }: {
+    actions: AppActions; project: typeof ProjectState; viewport: GitDiffViewportPort; focused: boolean;
+    onfocus(): void; updateLine(line: number): void;
+  } = $props();
   let host = $state<HTMLDivElement>();
   let loading = $state(true);
   let error = $state('');
   let editor: Monaco.editor.IStandaloneDiffEditor | null = null;
   const unregisterZoom = onTextZoom(id => {
-    if (id && id !== `git-diff:${project.activeGitDiffId}`) return;
+    if (id && id !== project.activeGitDiffId) return;
     if (!editor || !api) return;
     const original = editor.getOriginalEditor(), modified = editor.getModifiedEditor();
     const originalLabel = original.getOption(api.editor.EditorOption.ariaLabel);
     const modifiedLabel = modified.getOption(api.editor.EditorOption.ariaLabel);
-    editor.updateOptions(textZoomOptions(project.activeGitDiffId ? `git-diff:${project.activeGitDiffId}` : undefined));
+    editor.updateOptions(textZoomOptions(project.activeGitDiffId ? project.activeGitDiffId : undefined));
     // Diff option updates regenerate child accessibility labels. Preserve the
     // active snapshot names established by applySnapshots.
     original.updateOptions({ ariaLabel: originalLabel });
@@ -58,7 +61,7 @@
   const input = new CompositionGuard(() => untrack(reconcileCurrent));
   const inputListeners: Monaco.IDisposable[] = [];
   function writableMarkdown() {
-    if (!editor || !api || !shownId || shownId !== project.activeGitDiffId
+    if (!focused || !editor || !api || !shownId || shownId !== project.activeGitDiffId
       || !project.gitDiffActive || project.gitDiffMode !== 'source' || input.active
       || (project.gitDiff?.staged || project.gitDiff?.history)) return null;
     const cached = models.get(shownId);
@@ -68,7 +71,7 @@
       editor: editor.getModifiedEditor(), monaco: api, model: cached.modified };
   }
   const unregisterMarkdown = workingTreeMarkdownEditor.register(writableMarkdown);
-  const unregisterViewport = gitDiffViewport.register((tabId) => {
+  const unregisterViewport = untrack(() => gitDiffViewport).register((tabId) => {
     if (!editor || !api || shownId !== tabId || !project.gitDiffActive
       || project.gitDiffMode !== 'source') return null;
     const cached = models.get(tabId);
@@ -83,6 +86,7 @@
   });
 
   function rememberSourceSide(side: ReviewSourceSide) {
+    onfocus();
     const cached = shownId ? models.get(shownId) : null;
     if (cached) cached.sourceSide = side;
   }
@@ -128,7 +132,7 @@
       scrollBeyondLastLine: false,
       renderOverviewRuler: false,
       fontFamily: APP_FONT_FAMILY,
-      ...textZoomOptions(project.activeGitDiffId ? `git-diff:${project.activeGitDiffId}` : undefined),
+      ...textZoomOptions(project.activeGitDiffId ? project.activeGitDiffId : undefined),
       padding: { top: 16, bottom: 48 },
     });
     const modifiedEditor = editor.getModifiedEditor();
@@ -147,6 +151,7 @@
       }),
       modifiedEditor.onDidCompositionEnd(() => input.end()),
       modifiedEditor.onDidBlurEditorText(() => {
+        saveShownView();
         interruptReveal();
         input.end();
       }),
@@ -155,7 +160,7 @@
       modifiedEditor.onDidChangeModelContent(interruptReveal),
       modifiedEditor.onDidChangeCursorPosition(({ position }) => {
         if (project.gitDiffActive && project.gitDiffMode === 'source') {
-          actions.updateProjectGitDiffLine(position.lineNumber);
+          updateLine(position.lineNumber);
         }
       }),
     );
@@ -186,8 +191,8 @@
     const modelId = crypto.randomUUID();
     // The ordinary document owns the editable model, including its entire
     // undo/redo stack. HEAD/INDEX snapshots remain independent and read-only.
-    const lease = (diff.staged || diff.history || /\.ipynb$/i.test(diff.filePath)) ? null : liveDocumentModels.acquire(diff.filePath, monaco);
-    if (!diff.staged && !diff.history && !/\.ipynb$/i.test(diff.filePath) && !lease) throw new Error('Open the document before editing its Working Tree.');
+    const lease = (diff.readOnly || diff.staged || diff.history || /\.ipynb$/i.test(diff.filePath)) ? null : liveDocumentModels.acquire(diff.filePath, monaco);
+    if (!diff.readOnly && !diff.staged && !diff.history && !/\.ipynb$/i.test(diff.filePath) && !lease) throw new Error('The Working Tree document buffer is no longer available.');
     let original: Monaco.editor.ITextModel | null = null;
     let modified: Monaco.editor.ITextModel;
     try {
@@ -198,7 +203,7 @@
     } catch (cause) { original?.dispose(); lease?.release(); throw cause; }
     const cached: CachedModels = {
       original, modified, lease, originalText: diff.originalText, modifiedText: modified.getValue(),
-      sourceSide: 'after', readOnly: Boolean(diff.staged || diff.history || /\.ipynb$/i.test(diff.filePath)), filePath: diff.filePath,
+      sourceSide: 'after', readOnly: Boolean(diff.readOnly || diff.staged || diff.history || /\.ipynb$/i.test(diff.filePath)), filePath: diff.filePath,
       listener: { dispose() {} }, viewState: null,
     };
     // Borrowed models have exactly one document-state listener, in the owner.
@@ -212,7 +217,7 @@
     const existing = models.get(id);
     if (existing && existing.originalText === diff.originalText
       && (!!existing.lease || existing.modifiedText === diff.modifiedText)
-      && existing.readOnly === Boolean(diff.staged || diff.history || /\.ipynb$/i.test(diff.filePath)) && existing.filePath === diff.filePath) {
+      && existing.readOnly === Boolean(diff.readOnly || diff.staged || diff.history || /\.ipynb$/i.test(diff.filePath)) && existing.filePath === diff.filePath) {
       if (!existing.lease) existing.modifiedText = diff.modifiedText;
       return existing;
     }
@@ -271,13 +276,13 @@
       saveShownView();
       editor.setModel({ original: cached.original, modified: cached.modified });
       shownId = activeId;
-      editor.updateOptions(textZoomOptions(`git-diff:${activeId}`));
-      editor.updateOptions({ readOnly: Boolean(active.diff.staged || active.diff.history || /\.ipynb$/i.test(active.diff.filePath)), originalEditable: false,
-        renderMarginRevertIcon: !active.diff.staged && !active.diff.history && !/\.ipynb$/i.test(active.diff.filePath) });
+      editor.updateOptions(textZoomOptions(activeId ?? undefined));
+      editor.updateOptions({ readOnly: Boolean(active.diff.readOnly || active.diff.staged || active.diff.history || /\.ipynb$/i.test(active.diff.filePath)), originalEditable: false,
+        renderMarginRevertIcon: !active.diff.readOnly && !active.diff.staged && !active.diff.history && !/\.ipynb$/i.test(active.diff.filePath) });
       if (cached.viewState) editor.restoreViewState(cached.viewState);
       layout = true;
     }
-    const originalAriaLabel = active.diff.staged || active.diff.history || /\.ipynb$/i.test(active.diff.filePath) ? `${active.diff.originalLabel} version`
+    const originalAriaLabel = active.diff.readOnly || active.diff.staged || active.diff.history || /\.ipynb$/i.test(active.diff.filePath) ? `${active.diff.originalLabel} version`
       : active.diff.originalLabel === 'EMPTY' ? 'Empty staged version' : 'Staged version';
     editor.getOriginalEditor().updateOptions({ ariaLabel: originalAriaLabel });
     editor.getModifiedEditor().updateOptions({ ariaLabel: active.diff.history ? `${active.diff.modifiedLabel} version` : active.diff.staged ? 'Staged version' : 'Current document' });
@@ -295,7 +300,7 @@
         targetEditor.setPosition(position);
         targetEditor.setScrollTop(targetEditor.getTopForPosition(position.lineNumber, position.column)
           - targetEditor.getLayoutInfo().height * requested.anchor.yRatio, monaco.editor.ScrollType.Immediate);
-        targetEditor.focus();
+        if (focused) targetEditor.focus();
       } else if (!cached.viewState) {
         const target = Math.min(Math.max(1, line), cached.modified.getLineCount());
         const modifiedEditor = editor.getModifiedEditor();
@@ -304,9 +309,9 @@
         const first = active.diff.hunks[0];
         const firstChangedLine = first ? Math.max(1, first.newStart || first.oldStart || 1) : 1;
         if (target === firstChangedLine) revealFirstChangeWhenReady(monaco, active.id, cached, target);
-        if (!active.diff.staged && !active.diff.history) modifiedEditor.focus();
+        if (focused && !active.diff.readOnly && !active.diff.staged && !active.diff.history) modifiedEditor.focus();
       } else {
-        (cached.sourceSide === 'before' ? editor.getOriginalEditor() : editor.getModifiedEditor()).focus();
+        if (focused) (cached.sourceSide === 'before' ? editor.getOriginalEditor() : editor.getModifiedEditor()).focus();
       }
       layout = true;
     }
