@@ -1,0 +1,654 @@
+{
+  "schemaVersion": 1,
+  "collectedAt": "2026-10-24",
+  "method": "Read-only static source and extension package.json inspection; no extension activation or runtime compatibility test. Manifest presence does not establish enabled/current use or redistribution rights. Only selected extension metadata was collected.",
+  "repositories": [
+    {
+      "path": ".",
+      "commit": "d7645a9c6c8095af7d4c86fcffe489dbe6a2cda1",
+      "packageVersion": "0.1.0",
+      "trackedStatus": ""
+    },
+    {
+      "path": "vendor/vscode",
+      "commit": "d3d31f62268b169a2dfab62ffb2d7d38158a5b7c",
+      "packageVersion": "1.142.0",
+      "trackedStatus": ""
+    },
+    {
+      "path": "vendor/theia",
+      "commit": "71ee592eab40c0e7c1d808aef884b29db956097e",
+      "packageVersion": "0.0.0",
+      "trackedStatus": ""
+    },
+    {
+      "path": "vendor/monaco-languageclient",
+      "commit": "c52125a809e5993509d53f10f5b478c989b18f5d",
+      "packageVersion": null,
+      "trackedStatus": ""
+    }
+  ],
+  "desktopDeclaredDependencies": {
+    "electron": "44.7.2",
+    "monaco-editor": "0.56.0",
+    "crossnote": "0.9.35",
+    "svelte": "^5.57.0",
+    "typescript": "5.9.3",
+    "typescript-language-server": "6.0.2",
+    "pyright": "1.1.414",
+    "basedpyright": "1.40.2",
+    "vscode-jsonrpc": "9.0.1",
+    "vscode-languageserver-protocol": "3.18.3"
+  },
+  "extensionManifests": [
+    {
+      "installation": "stable",
+      "directory": "llvm-vs-code-extensions.vscode-clangd-0.6.0",
+      "id": "llvm-vs-code-extensions.vscode-clangd",
+      "version": "0.6.0",
+      "engines": {
+        "vscode": "^1.75.0"
+      },
+      "main": "./out/bundle",
+      "browser": null,
+      "extensionKind": null,
+      "extensionDependencies": [],
+      "extensionPack": [],
+      "enabledApiProposals": [],
+      "typescriptServerPlugins": [],
+      "license": "MIT",
+      "packageJsonSha256": "5d4f1ebc69f0d0722affee4d1409c2a84d2c00dd39cfa26700935c802c6cee2d"
+    },
+    {
+      "installation": "stable",
+      "directory": "ms-python.debugpy-2026.6.0-linux-x64",
+      "id": "ms-python.debugpy",
+      "version": "2026.6.0",
+      "engines": {
+        "vscode": "^1.92.0"
+      },
+      "main": "./dist/extension.js",
+      "browser": null,
+      "extensionKind": null,
+      "extensionDependencies": [
+        "ms-python.python"
+      ],
+      "extensionPack": [],
+      "enabledApiProposals": [
+        "portsAttributes",
+        "debugVisualization",
+        "contribViewsWelcome"
+      ],
+      "typescriptServerPlugins": [],
+      "license": "MIT",
+      "packageJsonSha256": "89fa21660f762872241bab3d6dd241cea55222e4185a8f01a3eef1bf8765b9ea"
+    },
+    {
+      "installation": "stable",
+      "directory": "ms-python.python-2026.10.0-linux-x64",
+      "id": "ms-python.python",
+      "version": "2026.10.0",
+      "engines": {
+        "vscode": "^1.95.0"
+      },
+      "main": "./out/client/extension",
+      "browser": "./dist/extension.browser.js",
+      "extensionKind": null,
+      "extensionDependencies": [],
+      "extensionPack": [
+        "ms-python.vscode-pylance",
+        "ms-python.debugpy",
+        "ms-python.vscode-python-envs"
+      ],
+      "enabledApiProposals": [
+        "contribEditorContentMenu",
+        "quickPickSortByLabel",
+        "testObserver",
+        "quickPickItemTooltip",
+        "terminalDataWriteEvent",
+        "terminalExecuteCommandEvent",
+        "codeActionAI",
+        "notebookReplDocument",
+        "notebookVariableProvider"
+      ],
+      "typescriptServerPlugins": [],
+      "license": "MIT",
+      "packageJsonSha256": "cb3894394b7f7d7f5ffeec6e6ba445add6d76e6decb581c44bd7607181f8b133"
+    },
+    {
+      "installation": "stable",
+      "directory": "ms-python.vscode-pylance-2026.4.1",
+      "id": "ms-python.vscode-pylance",
+      "version": "2026.4.1",
+      "engines": {
+        "vscode": "^1.107.0"
+      },
+      "main": "./dist/extension.bundle.js",
+      "browser": "./dist/browser.extension.bundle.js",
+      "extensionKind": null,
+      "extensionDependencies": [],
+      "extensionPack": [],
+      "enabledApiProposals": [
+        "portsAttributes",
+        "codeActionAI"
+      ],
+      "typescriptServerPlugins": [],
+      "license": "SEE LICENSE IN LICENSE.txt",
+      "packageJsonSha256": "150d22c8599d5033efc122f51ccc83fd4a362c9d2f2386615154884800d68f3b"
+    },
+    {
+      "installation": "stable",
+      "directory": "ms-python.vscode-python-envs-1.40.0-linux-x64",
+      "id": "ms-python.vscode-python-envs",
+      "version": "1.40.0",
+      "engines": {
+        "vscode": "^1.110.0-20260204"
+      },
+      "main": "./dist/extension.js",
+      "browser": null,
+      "extensionKind": null,
+      "extensionDependencies": [],
+      "extensionPack": [],
+      "enabledApiProposals": [
+        "terminalShellEnv",
+        "terminalDataWriteEvent",
+        "taskExecutionTerminal"
+      ],
+      "typescriptServerPlugins": [],
+      "license": null,
+      "packageJsonSha256": "09b1c9d2e84fb24657fd08e2761ea990ad0c544ea865076b104ea8fccd3e595e"
+    },
+    {
+      "installation": "stable",
+      "directory": "ms-toolsai.jupyter-2025.9.1-linux-x64",
+      "id": "ms-toolsai.jupyter",
+      "version": "2025.9.1",
+      "engines": {
+        "vscode": "^1.105.0"
+      },
+      "main": "./dist/extension.node.proxy.js",
+      "browser": null,
+      "extensionKind": [
+        "workspace"
+      ],
+      "extensionDependencies": [],
+      "extensionPack": [
+        "ms-toolsai.jupyter-keymap",
+        "ms-toolsai.jupyter-renderers",
+        "ms-toolsai.vscode-jupyter-slideshow",
+        "ms-toolsai.vscode-jupyter-cell-tags"
+      ],
+      "enabledApiProposals": [
+        "notebookDeprecated",
+        "notebookMessaging",
+        "notebookMime",
+        "contribNotebookStaticPreloads",
+        "portsAttributes",
+        "quickPickSortByLabel",
+        "notebookKernelSource",
+        "interactiveWindow",
+        "quickPickItemTooltip",
+        "notebookExecution",
+        "notebookCellExecution",
+        "notebookVariableProvider",
+        "notebookReplDocument"
+      ],
+      "typescriptServerPlugins": [],
+      "license": "MIT",
+      "packageJsonSha256": "4e242c64ea7cf77082e80d5f2ed10baf288f76dc4ae304ac922647f86990b47c"
+    },
+    {
+      "installation": "stable",
+      "directory": "ms-toolsai.jupyter-renderers-1.3.0",
+      "id": "ms-toolsai.jupyter-renderers",
+      "version": "1.3.0",
+      "engines": {
+        "vscode": "^1.95.0"
+      },
+      "main": "./out/extension_renderer/index.js",
+      "browser": "./out/extension_renderer/index.js",
+      "extensionKind": null,
+      "extensionDependencies": [],
+      "extensionPack": [],
+      "enabledApiProposals": [
+        "contribNotebookStaticPreloads"
+      ],
+      "typescriptServerPlugins": [],
+      "license": "MIT",
+      "packageJsonSha256": "b91645650ac1a6939fc275e7853a671a9edd358fb65fb030782687c8ff9d57db"
+    },
+    {
+      "installation": "stable",
+      "directory": "ms-vscode-remote.remote-containers-0.469.0",
+      "id": "ms-vscode-remote.remote-containers",
+      "version": "0.469.0",
+      "engines": {
+        "vscode": "^1.101.0"
+      },
+      "main": "./dist/extension/extension",
+      "browser": null,
+      "extensionKind": [
+        "ui"
+      ],
+      "extensionDependencies": [],
+      "extensionPack": [],
+      "enabledApiProposals": [
+        "resolvers",
+        "tunnels",
+        "workspaceTrust",
+        "terminalDimensions",
+        "contribEditSessions",
+        "contribViewsRemote",
+        "contribRemoteHelp"
+      ],
+      "typescriptServerPlugins": [],
+      "license": "SEE LICENSE IN LICENSE.txt",
+      "packageJsonSha256": "57c3db435dda22244c74c28e0bf2b56ca5b2e66be50a2295dc2638924415b60b"
+    },
+    {
+      "installation": "stable",
+      "directory": "ms-vscode-remote.remote-ssh-0.128.0",
+      "id": "ms-vscode-remote.remote-ssh",
+      "version": "0.128.0",
+      "engines": {
+        "vscode": "^1.133.0"
+      },
+      "main": "./out/extension",
+      "browser": null,
+      "extensionKind": [
+        "ui"
+      ],
+      "extensionDependencies": [],
+      "extensionPack": [
+        "ms-vscode-remote.remote-ssh-edit",
+        "ms-vscode.remote-explorer"
+      ],
+      "enabledApiProposals": [
+        "resolvers",
+        "tunnels",
+        "terminalDataWriteEvent",
+        "contribViewsRemote",
+        "telemetry",
+        "contribRemoteHelp"
+      ],
+      "typescriptServerPlugins": [],
+      "license": "SEE LICENSE IN LICENSE.txt",
+      "packageJsonSha256": "11d5b5c0a7e89422c302eefffe670d7f246ca25ded79950a9acda5f96c48ac77"
+    },
+    {
+      "installation": "stable",
+      "directory": "openai.chatgpt-26.1002.51308-linux-x64",
+      "id": "openai.chatgpt",
+      "version": "26.1002.51308",
+      "engines": {
+        "vscode": "^1.96.2"
+      },
+      "main": "./out/extension.js",
+      "browser": null,
+      "extensionKind": null,
+      "extensionDependencies": [],
+      "extensionPack": [
+        "openai.codex-audio"
+      ],
+      "enabledApiProposals": [
+        "chatSessionsProvider",
+        "languageModelProxy"
+      ],
+      "typescriptServerPlugins": [],
+      "license": "SEE LICENSE IN LICENSE.md",
+      "packageJsonSha256": "72e41ccd3e2810610fd04f917b441568262b132d32d96c47982e429b315ae176"
+    },
+    {
+      "installation": "stable",
+      "directory": "svelte.svelte-vscode-110.3.2",
+      "id": "svelte.svelte-vscode",
+      "version": "110.3.2",
+      "engines": {
+        "vscode": "^1.82.0"
+      },
+      "main": "dist/src/extension.js",
+      "browser": null,
+      "extensionKind": null,
+      "extensionDependencies": [],
+      "extensionPack": [],
+      "enabledApiProposals": [],
+      "typescriptServerPlugins": [
+        {
+          "name": "typescript-svelte-plugin",
+          "enableForWorkspaceTypeScriptVersions": true
+        }
+      ],
+      "license": "MIT",
+      "packageJsonSha256": "190c5e252d4d305a35c8d4f397d7c7fab30c2ff2dd18da44aebb875aac09c1b3"
+    },
+    {
+      "installation": "insiders",
+      "directory": ".39c330ec-dcc6-4254-b4a6-4d3810996fbb",
+      "id": "openai.chatgpt",
+      "version": "26.1007.21434",
+      "engines": {
+        "vscode": "^1.96.2"
+      },
+      "main": "./out/extension.js",
+      "browser": null,
+      "extensionKind": null,
+      "extensionDependencies": [],
+      "extensionPack": [
+        "openai.codex-audio"
+      ],
+      "enabledApiProposals": [
+        "chatSessionsProvider",
+        "languageModelProxy"
+      ],
+      "typescriptServerPlugins": [],
+      "license": "SEE LICENSE IN LICENSE.md",
+      "packageJsonSha256": "fa0b6df79be88e4c7ec18fb647cd305edef557a3cc96d89e60c297c6f0990ae3"
+    },
+    {
+      "installation": "insiders",
+      "directory": "llvm-vs-code-extensions.vscode-clangd-0.6.0",
+      "id": "llvm-vs-code-extensions.vscode-clangd",
+      "version": "0.6.0",
+      "engines": {
+        "vscode": "^1.75.0"
+      },
+      "main": "./out/bundle",
+      "browser": null,
+      "extensionKind": null,
+      "extensionDependencies": [],
+      "extensionPack": [],
+      "enabledApiProposals": [],
+      "typescriptServerPlugins": [],
+      "license": "MIT",
+      "packageJsonSha256": "61e5a6d6c3ddd35ef0993c5e68ad10d3ebd826c091ae751e2c3b5d9b151caf16"
+    },
+    {
+      "installation": "insiders",
+      "directory": "ms-python.debugpy-2026.6.0-linux-x64",
+      "id": "ms-python.debugpy",
+      "version": "2026.6.0",
+      "engines": {
+        "vscode": "^1.92.0"
+      },
+      "main": "./dist/extension.js",
+      "browser": null,
+      "extensionKind": null,
+      "extensionDependencies": [
+        "ms-python.python"
+      ],
+      "extensionPack": [],
+      "enabledApiProposals": [
+        "portsAttributes",
+        "debugVisualization",
+        "contribViewsWelcome"
+      ],
+      "typescriptServerPlugins": [],
+      "license": "MIT",
+      "packageJsonSha256": "5777cfb37fe0ee2c75c4075dc8758478252f692753e6c1bf883435c26bd6eac9"
+    },
+    {
+      "installation": "insiders",
+      "directory": "ms-python.python-2026.10.0-linux-x64",
+      "id": "ms-python.python",
+      "version": "2026.10.0",
+      "engines": {
+        "vscode": "^1.95.0"
+      },
+      "main": "./out/client/extension",
+      "browser": "./dist/extension.browser.js",
+      "extensionKind": null,
+      "extensionDependencies": [],
+      "extensionPack": [
+        "ms-python.vscode-pylance",
+        "ms-python.debugpy",
+        "ms-python.vscode-python-envs"
+      ],
+      "enabledApiProposals": [
+        "contribEditorContentMenu",
+        "quickPickSortByLabel",
+        "testObserver",
+        "quickPickItemTooltip",
+        "terminalDataWriteEvent",
+        "terminalExecuteCommandEvent",
+        "codeActionAI",
+        "notebookReplDocument",
+        "notebookVariableProvider"
+      ],
+      "typescriptServerPlugins": [],
+      "license": "MIT",
+      "packageJsonSha256": "9c00119c379177e07f821a042bbf0b01d3f20015a7523f539d801c36eb8dcd80"
+    },
+    {
+      "installation": "insiders",
+      "directory": "ms-python.vscode-pylance-2026.4.1",
+      "id": "ms-python.vscode-pylance",
+      "version": "2026.4.1",
+      "engines": {
+        "vscode": "^1.107.0"
+      },
+      "main": "./dist/extension.bundle.js",
+      "browser": "./dist/browser.extension.bundle.js",
+      "extensionKind": null,
+      "extensionDependencies": [],
+      "extensionPack": [],
+      "enabledApiProposals": [
+        "portsAttributes",
+        "codeActionAI"
+      ],
+      "typescriptServerPlugins": [],
+      "license": "SEE LICENSE IN LICENSE.txt",
+      "packageJsonSha256": "ba10e670fa584cbbcf185f5ddd47b1bba14c95e263fbd2835eba31ed1fc73d4e"
+    },
+    {
+      "installation": "insiders",
+      "directory": "ms-python.vscode-python-envs-1.40.0-linux-x64",
+      "id": "ms-python.vscode-python-envs",
+      "version": "1.40.0",
+      "engines": {
+        "vscode": "^1.110.0-20260204"
+      },
+      "main": "./dist/extension.js",
+      "browser": null,
+      "extensionKind": null,
+      "extensionDependencies": [],
+      "extensionPack": [],
+      "enabledApiProposals": [
+        "terminalShellEnv",
+        "terminalDataWriteEvent",
+        "taskExecutionTerminal"
+      ],
+      "typescriptServerPlugins": [],
+      "license": null,
+      "packageJsonSha256": "1e5eeaf9f01931ad5fb5677167253fa65782e141e2b59e468b34bc74b93677ea"
+    },
+    {
+      "installation": "insiders",
+      "directory": "ms-toolsai.jupyter-2026.6.2026071501-linux-x64",
+      "id": "ms-toolsai.jupyter",
+      "version": "2026.6.2026071501",
+      "engines": {
+        "vscode": "^1.106.0"
+      },
+      "main": "./dist/extension.node.proxy.js",
+      "browser": null,
+      "extensionKind": [
+        "workspace"
+      ],
+      "extensionDependencies": [],
+      "extensionPack": [
+        "ms-toolsai.jupyter-keymap",
+        "ms-toolsai.jupyter-renderers",
+        "ms-toolsai.vscode-jupyter-slideshow",
+        "ms-toolsai.vscode-jupyter-cell-tags"
+      ],
+      "enabledApiProposals": [
+        "notebookDeprecated",
+        "notebookMessaging",
+        "notebookMime",
+        "contribNotebookStaticPreloads",
+        "portsAttributes",
+        "quickPickSortByLabel",
+        "notebookKernelSource",
+        "interactiveWindow",
+        "quickPickItemTooltip",
+        "notebookExecution",
+        "notebookCellExecution",
+        "notebookVariableProvider",
+        "notebookReplDocument"
+      ],
+      "typescriptServerPlugins": [],
+      "license": "MIT",
+      "packageJsonSha256": "882bc90e518b4e3993ac4a3836db6f9f5e995bc6bfc5de12cdbb0e07ef1d3209"
+    },
+    {
+      "installation": "insiders",
+      "directory": "ms-toolsai.jupyter-renderers-1.3.2025062701",
+      "id": "ms-toolsai.jupyter-renderers",
+      "version": "1.3.2025062701",
+      "engines": {
+        "vscode": "^1.95.0"
+      },
+      "main": "./out/extension_renderer/index.js",
+      "browser": "./out/extension_renderer/index.js",
+      "extensionKind": null,
+      "extensionDependencies": [],
+      "extensionPack": [],
+      "enabledApiProposals": [
+        "contribNotebookStaticPreloads"
+      ],
+      "typescriptServerPlugins": [],
+      "license": "MIT",
+      "packageJsonSha256": "02097c9c8d1ce19559ce2ccf6f8358034c79f7e9350b0bcecb52bc2cad05f873"
+    },
+    {
+      "installation": "insiders",
+      "directory": "ms-vscode-remote.remote-containers-0.470.0",
+      "id": "ms-vscode-remote.remote-containers",
+      "version": "0.470.0",
+      "engines": {
+        "vscode": "^1.101.0"
+      },
+      "main": "./dist/extension/extension",
+      "browser": null,
+      "extensionKind": [
+        "ui"
+      ],
+      "extensionDependencies": [],
+      "extensionPack": [],
+      "enabledApiProposals": [
+        "resolvers",
+        "tunnels",
+        "workspaceTrust",
+        "terminalDimensions",
+        "contribEditSessions",
+        "contribViewsRemote",
+        "contribRemoteHelp"
+      ],
+      "typescriptServerPlugins": [],
+      "license": "SEE LICENSE IN LICENSE.txt",
+      "packageJsonSha256": "f544c4b30383a6d9c2f53d9327a969fa95794981d90280368243cf6088b907e1"
+    },
+    {
+      "installation": "insiders",
+      "directory": "ms-vscode-remote.remote-ssh-0.128.0",
+      "id": "ms-vscode-remote.remote-ssh",
+      "version": "0.128.0",
+      "engines": {
+        "vscode": "^1.133.0"
+      },
+      "main": "./out/extension",
+      "browser": null,
+      "extensionKind": [
+        "ui"
+      ],
+      "extensionDependencies": [],
+      "extensionPack": [
+        "ms-vscode-remote.remote-ssh-edit",
+        "ms-vscode.remote-explorer"
+      ],
+      "enabledApiProposals": [
+        "resolvers",
+        "tunnels",
+        "terminalDataWriteEvent",
+        "contribViewsRemote",
+        "telemetry",
+        "contribRemoteHelp"
+      ],
+      "typescriptServerPlugins": [],
+      "license": "SEE LICENSE IN LICENSE.txt",
+      "packageJsonSha256": "121a2e7e1ad58aeb33511e6bae612d4296a02fa238a1cae362df56326d7ba87a"
+    },
+    {
+      "installation": "insiders",
+      "directory": "openai.chatgpt-26.51007.21434-linux-x64",
+      "id": "openai.chatgpt",
+      "version": "26.51007.21434",
+      "engines": {
+        "vscode": "^1.96.2"
+      },
+      "main": "./out/extension.js",
+      "browser": null,
+      "extensionKind": null,
+      "extensionDependencies": [],
+      "extensionPack": [
+        "openai.codex-audio"
+      ],
+      "enabledApiProposals": [
+        "chatSessionsProvider",
+        "languageModelProxy"
+      ],
+      "typescriptServerPlugins": [],
+      "license": "SEE LICENSE IN LICENSE.md",
+      "packageJsonSha256": "66cee31d74ef37b3801e3c18a2b97de5a42a68efa594c1ea143f2b5302a0e9b0"
+    },
+    {
+      "installation": "insiders",
+      "directory": "svelte.svelte-vscode-110.3.2",
+      "id": "svelte.svelte-vscode",
+      "version": "110.3.2",
+      "engines": {
+        "vscode": "^1.82.0"
+      },
+      "main": "dist/src/extension.js",
+      "browser": null,
+      "extensionKind": null,
+      "extensionDependencies": [],
+      "extensionPack": [],
+      "enabledApiProposals": [],
+      "typescriptServerPlugins": [
+        {
+          "name": "typescript-svelte-plugin",
+          "enableForWorkspaceTypeScriptVersions": true
+        }
+      ],
+      "license": "MIT",
+      "packageJsonSha256": "6e7eaf6cda86d8c66353a64a052ef325a0fb6d48f6c4a98f5dea031000e4fa99"
+    },
+    {
+      "installation": "insiders",
+      "directory": "typescriptteam.native-preview-1.0.1-linux-x64",
+      "id": "TypeScriptTeam.native-preview",
+      "version": "1.0.1",
+      "engines": {
+        "vscode": "^1.126.0"
+      },
+      "main": "./dist/extension.bundle.js",
+      "browser": null,
+      "extensionKind": [
+        "workspace"
+      ],
+      "extensionDependencies": [],
+      "extensionPack": [],
+      "enabledApiProposals": [],
+      "typescriptServerPlugins": [],
+      "license": null,
+      "packageJsonSha256": "c372ca8609a1e0ad53ece5e33222fdbbb9108170218e1ca1289b7e6a10e4ed4d"
+    }
+  ],
+  "reviewedPackageVersions": {
+    "vendor/theia/examples/electron/package.json": "1.76.0",
+    "vendor/theia/packages/plugin-ext-vscode/package.json": "1.76.0",
+    "vendor/monaco-languageclient/packages/client/package.json": "11.0.3-next.0"
+  },
+  "theiaDefaultSupportedApiVersion": "1.139.0"
+}
