@@ -25,6 +25,7 @@
     "build:electron": "node scripts/build-electron.mjs",
     "build": "npm run typecheck && node --max-old-space-size=4096 scripts/build-renderer.mjs && npm run build:electron",
     "typecheck": "tsc --noEmit && tsc --noEmit -p test/tsconfig.json && svelte-check --config ./svelte.config.js --tsconfig ./tsconfig.json --fail-on-warnings",
+    "pretest": "node -e \"require('electron')\"",
     "test": "vitest run --config vitest.config.ts",
     "test:e2e": "npm run build && bash scripts/with-isolated-display.sh playwright test",
     "start": "npm run build && electron .",
