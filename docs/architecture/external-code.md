@@ -26,7 +26,7 @@ commit-graph, commonmark-spec, crossnote, dolphin, fabric.js,
 filerobot-image-editor, gitgraph.js,
 jupyterlab, jupyterlab-desktop, linear-algebra, monaco-editor,
 monaco-languageclient, nbformat, ptyxis, pulsar, react-git-log,
-sublime-lsp, svelte-chop-chop, vscode, vscode-jupyter, vscode-languageserver-node,
+sublime-lsp, svelte-chop-chop, theia, vscode, vscode-jupyter, vscode-languageserver-node,
 vscode-markdown-preview-enhanced, web-git-graph
 ```
 
