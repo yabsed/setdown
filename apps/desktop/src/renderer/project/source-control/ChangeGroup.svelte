@@ -32,6 +32,14 @@
   let contentId = $derived(`git-change-group-${title.toLowerCase().replace(/[^a-z]+/g, '-')}`);
 </script>
 
+{#snippet primaryIcon()}
+  <svg viewBox="0 0 16 16" aria-hidden="true"><path d={primaryLabel === 'Stage' ? 'M3 8h10M8 3v10' : 'M3 8h10'}/></svg>
+{/snippet}
+
+{#snippet discardIcon()}
+  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 7a5 5 0 1 1 0 5M3 3v4h4"/></svg>
+{/snippet}
+
 {#if changes.length}
   <section class="scm-group">
     <header class="scm-heading">
@@ -43,11 +51,11 @@
       </button>
       <button type="button" title={`${primaryLabel} All`} aria-label={`${primaryLabel} All`}
         disabled={project?.gitBusy} onclick={() => primary(changes.map((change) => change.filePath))}>
-        {primaryLabel === 'Stage' ? '+' : '−'}
+        {@render primaryIcon()}
       </button>
       {#if discard}
         <button type="button" title="Discard All Changes" aria-label="Discard All Changes"
-          onclick={() => discard?.(changes.map((change) => change.filePath))}>↶</button>
+          onclick={() => discard?.(changes.map((change) => change.filePath))}>{@render discardIcon()}</button>
       {/if}
     </header>
     {#if expanded}
@@ -60,11 +68,13 @@
           </button>
           <div class="git-change-actions">
             <button type="button" title={primaryLabel} aria-label={`${primaryLabel} ${change.path}`}
-              onclick={() => primary([change.filePath])}>{primaryLabel === 'Stage' ? '+' : '−'}</button>
+              onclick={() => primary([change.filePath])}>{@render primaryIcon()}</button>
             {#if discard}<button type="button" title="Discard Changes" aria-label={`Discard ${change.path}`}
-              onclick={() => discard?.([change.filePath])}>↶</button>{/if}
+              onclick={() => discard?.([change.filePath])}>{@render discardIcon()}</button>{/if}
             {#if markdown(change.path)}<button type="button" title="Open File" aria-label={`Open ${change.path}`}
-              onclick={() => open(change.filePath)}>↗</button>{/if}
+              onclick={() => open(change.filePath)}>
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9 3h4v4M13 3 6 10M6 3H3v10h10v-3"/></svg>
+            </button>{/if}
           </div>
           <SideViewMenu label={`Actions for ${change.path}`} items={[
             { label: 'Open Changes', run: () => review(change.filePath) },
@@ -79,3 +89,12 @@
     {/if}
   </section>
 {/if}
+
+<style>
+  .scm-heading > button:not(.scm-heading-toggle), .git-change-actions button { width: 24px; height: 24px; }
+  .scm-heading > button:not(.scm-heading-toggle):focus-visible, .git-change-actions button:focus-visible {
+    outline: 1px solid var(--app-focus-ring);
+    outline-offset: -1px;
+  }
+  svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+</style>

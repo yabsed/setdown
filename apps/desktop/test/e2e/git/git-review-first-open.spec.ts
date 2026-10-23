@@ -10,6 +10,63 @@ import { previews } from '../../support/preview/preview-view';
 
 const exec = promisify(execFile);
 
+test('SCM row menus stay styled, unclipped and keyboard accessible in light and dark themes', async ({}, testInfo) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-scm-menu-'));
+  const config = await mkdtemp(path.join(os.tmpdir(), 'setdown-scm-menu-config-'));
+  const names = Array.from({ length: 24 }, (_, index) => `notes-${String(index).padStart(2, '0')}.md`);
+  await exec('git', ['init'], { cwd: root });
+  await exec('git', ['config', 'user.email', 'setdown@example.test'], { cwd: root });
+  await exec('git', ['config', 'user.name', 'Setdown Test'], { cwd: root });
+  await Promise.all(names.map(name => writeFile(path.join(root, name), '# Base\n')));
+  await exec('git', ['add', '.'], { cwd: root }); await exec('git', ['commit', '-m', 'base'], { cwd: root });
+  await Promise.all(names.map(name => writeFile(path.join(root, name), '# Changed\n')));
+  await exec('git', ['add', names[0]], { cwd: root });
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', path.join(root, names[0])], env: { ...env, XDG_CONFIG_HOME: config } });
+  try {
+    const page = await app.firstWindow();
+    await page.evaluate(root => window.marktex.restoreProjectFolder(root), root);
+    await Promise.all([page.waitForEvent('load'), page.reload()]); await focusApplication(app);
+    await page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
+    await page.getByRole('button', { name: 'Source Control', exact: true }).click();
+    await expect(page.locator('.git-change')).toHaveCount(names.length);
+    const more = page.getByRole('button', { name: `Actions for ${names.at(-1)}`, exact: true });
+    const list = page.locator('.scm-groups');
+    for (const theme of ['paper', 'night']) {
+      await page.evaluate(theme => window.marktex.executeApplicationMenuItem(`preview-theme-${theme}`), theme);
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      await more.scrollIntoViewIfNeeded(); await page.mouse.move(400, 100);
+      expect(await more.evaluate(node => getComputedStyle(node).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
+      expect(await more.locator('svg').evaluate(node => ({ width: node.getBoundingClientRect().width, fill: getComputedStyle(node).fill })))
+        .toEqual({ width: 16, fill: await more.evaluate(node => getComputedStyle(node).color) });
+      const scrollBefore = await list.evaluate(node => node.scrollTop);
+      await more.click();
+      const menu = page.getByRole('menu', { name: `Actions for ${names.at(-1)}`, exact: true });
+      await expect(menu.getByRole('menuitem')).toHaveCount(4);
+      await expect(menu.getByRole('menuitem').first()).toBeFocused();
+      expect(await list.evaluate(node => node.scrollTop)).toBe(scrollBefore);
+      await expect.poll(previews(app).hasVisible).toBe(false);
+      // DOM visibility alone does not detect overflow clipping. Every item must
+      // receive real pointer input, including the last item outside the list.
+      expect(await menu.getByRole('menuitem').evaluateAll(nodes => nodes.every(node => {
+        const bounds = node.getBoundingClientRect();
+        return bounds.height >= 28 && [bounds.left + 3, bounds.right - 3].every(x =>
+          [bounds.top + 3, bounds.bottom - 3].every(y => node.contains(document.elementFromPoint(x, y))));
+      }))).toBe(true);
+      const menuBounds = (await menu.boundingBox())!, listBounds = (await list.boundingBox())!;
+      expect(menuBounds.y + menuBounds.height).toBeGreaterThan(listBounds.y + listBounds.height);
+      expect(await menu.evaluate(node => node.scrollHeight <= node.clientHeight)).toBe(true);
+      await page.screenshot({ path: testInfo.outputPath(`scm-menu-${theme}.png`) });
+      await page.keyboard.press('End'); await expect(menu.getByRole('menuitem').last()).toBeFocused();
+      await page.keyboard.press('ArrowDown'); await expect(menu.getByRole('menuitem').first()).toBeFocused();
+      await page.keyboard.press('Escape'); await expect(menu).toHaveCount(0); await expect(more).toBeFocused();
+      await expect.poll(previews(app).hasVisible).toBe(true);
+      await more.click(); await page.getByText('SOURCE CONTROL', { exact: true }).click(); await expect(menu).toHaveCount(0);
+      await expect.poll(previews(app).hasVisible).toBe(true);
+    }
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); await rm(config, { recursive: true, force: true }); }
+});
+
 test('SCM offers file and comparison side opens, reuses the target group, and keeps shared edits', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-scm-side-')), config = await mkdtemp(path.join(os.tmpdir(), 'setdown-scm-side-config-'));
   const file = path.join(root, 'review.txt');
