@@ -20,6 +20,7 @@ export { isMarkdownDocument } from './project-paths';
 /** Thin project facade; text candidates are still validated by the byte loader. */
 export class ProjectService {
   readonly clipboard = new ExplorerClipboardStore();
+  cancelTransfer = (state: WindowState) => this.explorer.cancel(state);
   transfer = (state: WindowState, request: ExplorerTransfer) => this.explorer.transfer(state, request);
   async copySelection(state: WindowState, candidates: string[], cut: boolean) {
     if (!Array.isArray(candidates) || !candidates.length || candidates.length > 10000) throw new Error('Select files or folders first.');
@@ -32,8 +33,8 @@ export class ProjectService {
   }
   async paste(state: WindowState, target: string, conflict?: ExplorerTransfer['conflict']) {
     const selection = await this.clipboard.snapshot();
-    if (!selection) throw new Error('Copy or cut files in Setdown first.');
-    const result = await this.transfer(state, { kind: selection.cut ? 'move' : 'copy', paths: selection.paths, target, conflict });
+    if (!selection) throw new Error('Copy files in a file manager or Setdown first.');
+    const result = await this.transfer(state, { kind: selection.external ? 'import' : selection.cut ? 'move' : 'copy', paths: selection.paths, target, conflict });
     await this.clipboard.consume(selection, result);
     return result;
   }
@@ -69,8 +70,9 @@ export class ProjectService {
   }
   async close(state: WindowState): Promise<void> {
     this.beginFolderRequest(state);
-    state.projectRoot = null;
+    state.projectRoot = null; state.gitRoot = null; state.gitRepositories = [];
     state.explorerEditTarget = false;
+    this.git.watcher.unwatch(state.webContentsId);
     await this.watcher.unwatch(state.webContentsId);
   }
   private beginFolderRequest(state: WindowState): number {
@@ -83,12 +85,13 @@ export class ProjectService {
     const folderPath = canonicalPath(candidate);
     const stat = await fs.stat(folderPath).catch(() => null);
     if (!stat?.isDirectory() || this.folderRequests.get(state) !== request) return null;
+    if (state.projectRoot !== folderPath) { state.gitRoot = null; state.gitRepositories = []; }
     state.projectRoot = folderPath;
     this.recentFolders.visit(folderPath);
     this.watch(state, folderPath);
     return this.folder(folderPath);
   }
-  dispose = (): Promise<void> => this.watcher.dispose();
+  dispose = (): Promise<void> => { this.git.watcher.dispose(); return this.watcher.dispose(); };
   readDirectory = (state: WindowState, directoryPath: string) => this.explorer.readDirectory(state, directoryPath);
   createEntry = (state: WindowState, parentPath: string, name: string, kind: ProjectEntryKind) => this.explorer.create(state, parentPath, name, kind);
   renameEntry = (state: WindowState, entryPath: string, name: string) => this.explorer.rename(state, entryPath, name);
@@ -96,6 +99,7 @@ export class ProjectService {
   moveEntries = (state: WindowState, entryPaths: string[], targetDirectory: string) => this.explorer.moveMany(state, entryPaths, targetDirectory);
   trashEntry = (state: WindowState, entryPath: string) => this.explorer.trashEntry(state, entryPath);
   search = (state: WindowState, request: ProjectSearchRequest) => this.searcher.search(state, request);
+  selectGit = (state: WindowState, root: string) => this.git.select(state, root);
   gitStatus = (state: WindowState) => this.git.status(state);
   gitDiff = (state: WindowState, filePath: string, staged: boolean) => this.git.diff(state, filePath, staged);
   initializeGit = (state: WindowState) => this.git.initialize(state);

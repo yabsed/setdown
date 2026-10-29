@@ -54,6 +54,14 @@
 {#if project.gitDiffTabs.length}
   <section class="git-review" class:is-active={project.gitDiffActive}
     aria-hidden={!project.gitDiffActive} aria-label="Git diff review">
+    {#if project.gitDiff?.conflict}
+      <div class="notice" role="status">
+        <label>Unresolved conflict · Compare <select aria-label="Conflict comparison base" onchange={event => void entry.controller.selectConflictBase(event.currentTarget.value as 'base' | 'ours' | 'theirs')}>
+          <option value="ours">Ours</option><option value="theirs">Theirs</option><option value="base">Common ancestor</option>
+        </select> with the working file.</label>
+        <span>Resolve the file, then Stage to mark it resolved.</span>
+      </div>
+    {/if}
     <div class="git-review-body">
       <div class="git-diff-source-layer"
         class:is-active={project.gitDiffActive && project.gitDiffMode === 'source'

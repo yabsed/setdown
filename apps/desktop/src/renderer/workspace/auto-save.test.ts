@@ -100,7 +100,7 @@ test('each new edit restarts the debounce', async () => {
   assert.equal(f.desktop.saveTabDocument.mock.calls[0][1], 'two');
 });
 
-test('disabled, untitled, non-text and background tabs never schedule', async () => {
+test('disabled, untitled and non-text documents never schedule', async () => {
   const f = fixture();
   const active = f.add('/project/note.md');
   f.workspace.activeId = active.id;
@@ -125,7 +125,7 @@ test('disabled, untitled, non-text and background tabs never schedule', async ()
   assert.equal(f.desktop.saveTabDocument.mock.calls.length, 0);
 });
 
-test('the fire re-checks existence, dirtiness and active tab', async () => {
+test('a scheduled save survives tab switching and rechecks existence and dirtiness', async () => {
   const f = fixture();
   const tab = f.add('/project/note.md');
   const other = f.add('/project/other.md');
@@ -142,13 +142,13 @@ test('the fire re-checks existence, dirtiness and active tab', async () => {
   f.controller.schedule(tab);
   f.workspace.activeId = other.id;
   await f.settle();
-  assert.equal(f.desktop.saveTabDocument.mock.calls.length, 0);
+  assert.equal(f.desktop.saveTabDocument.mock.calls.length, 1);
 
   f.workspace.activeId = tab.id;
   f.controller.schedule(tab);
   f.workspace.remove(tab.id);
   await f.settle();
-  assert.equal(f.desktop.saveTabDocument.mock.calls.length, 0);
+  assert.equal(f.desktop.saveTabDocument.mock.calls.length, 1);
 });
 
 test('a canceled conflict save stays dirty and quiet', async () => {

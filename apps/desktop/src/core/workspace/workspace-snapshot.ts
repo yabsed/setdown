@@ -2,7 +2,7 @@ import type { GroupTree } from './editor-groups';
 import type { ViewportAnchor } from '../preview/viewport-anchor';
 import type { GitHistorySelection } from '../project/git-history';
 import { readReviewBookmark, type ReviewViewport } from '../preview/review-viewport';
-export type SnapshotContent = { key: string; path: string; untitled: boolean; savedHash: string; text?: string };
+export type SnapshotContent = { key: string; path: string; untitled: boolean; savedHash: string; text?: string; binary?: { data: string; extension: string; recipe?: import('../image/image-recipe').ImageRecipe } };
 export type SnapshotView = { key: string; content?: string; path: string; kind: 'document' | 'diff'; surface: string; staged?: boolean; history?: GitHistorySelection;
   editor?: unknown; anchor?: ViewportAnchor; display?: unknown; review?: { mode: 'source' | 'rendered'; viewport?: ReviewViewport } };
 export type WorkspaceSnapshot = { version: 1; root: string | null; contents: SnapshotContent[]; views: SnapshotView[];
@@ -21,6 +21,13 @@ export function parseWorkspaceSnapshot(value: unknown): WorkspaceSnapshot {
   for (const content of result.contents) {
     if (!content || !string(content.key, 100) || contentIds.has(content.key) || !string(content.path) || typeof content.untitled !== 'boolean'
       || !/^[a-f0-9]{64}$/.test(content.savedHash) || content.text !== undefined && typeof content.text !== 'string') throw Error('Damaged content record.');
+    if (content.binary) {
+      if (typeof content.binary.extension !== 'string' || typeof content.binary.data !== 'string'
+        || content.text !== undefined || content.binary.data.length > 24 * 1024 * 1024 || content.binary.data.length % 4 !== 0
+        || !/^(png|jpe?g|webp|hwpx?)$/i.test(content.binary.extension) || !/^[A-Za-z0-9+/]*={0,2}$/.test(content.binary.data))
+        throw Error('Invalid binary recovery content.');
+      total += content.binary.data.length;
+    }
     contentIds.add(content.key); total += typeof content.text === 'string' ? new TextEncoder().encode(content.text).byteLength : 0;
   }
   if (total > 24 * 1024 * 1024) throw Error('Recovery content exceeds 24 MiB.');

@@ -49,6 +49,11 @@ test('session validation enforces content identity, tree ownership and version b
     views: [{ key: 'a', content: 'content', path: '/project/a.md', kind: 'document', surface: 'editor' }],
     groups: [{ id: 'group', tabs: ['a'], active: 'a' }], tree: { kind: 'group', id: 'group' }, focused: 'group' };
   expect(parseWorkspaceSnapshot(value).contents[0].text).toBe('dirty');
+  const binary = { ...value, contents: [{ ...value.contents[0], text: undefined, binary: { extension: 'png', data: 'AAEC' } }] };
+  expect(parseWorkspaceSnapshot(binary).contents[0].binary?.data).toBe('AAEC');
+  for (const data of [1234, 'a', 'bad?']) {
+    expect(() => parseWorkspaceSnapshot({ ...binary, contents: [{ ...binary.contents[0], binary: { extension: 'png', data } }] })).toThrow('binary recovery');
+  }
   expect(() => parseWorkspaceSnapshot({ ...value, version: 2 })).toThrow();
   expect(() => parseWorkspaceSnapshot({ ...value, groups: [{ id: 'group', tabs: ['a', 'a'], active: 'a' }] })).toThrow();
   expect(() => parseWorkspaceSnapshot({ ...value, tree: { kind: 'group', id: 'missing' } })).toThrow();

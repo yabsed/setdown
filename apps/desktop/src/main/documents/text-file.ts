@@ -1,3 +1,4 @@
+import { versionFromStat } from './file-system';
 import { constants, promises as fs } from 'node:fs';
 import { isTextCandidate } from '../../core/document/document-profile';
 import { decodeTextBytes, MAX_TEXT_FILE_BYTES } from '../../core/document/text-codec';
@@ -14,7 +15,7 @@ export async function readMarkdownFile(filePath: string) {
       || current.dev !== after.dev || current.ino !== after.ino || current.mtimeMs !== after.mtimeMs || current.ctimeMs !== after.ctimeMs) {
       throw new Error('The file changed while it was being opened. Please retry.');
     }
-    return { text, diskVersion: { mtimeMs: after.mtimeMs, size: after.size } };
+    return { text, diskVersion: versionFromStat(after) };
   } finally { await handle.close(); }
 }
 
@@ -36,10 +37,11 @@ export async function readTextFile(filePath: string, limit = MAX_TEXT_FILE_BYTES
       if (!bytesRead) break;
       offset += bytesRead;
     }
-    const after = await handle.stat();
-    if (offset > stat.size || after.size !== offset || after.mtimeMs !== stat.mtimeMs || after.ctimeMs !== stat.ctimeMs) {
+    const after = await handle.stat(), current = await fs.stat(filePath);
+    if (offset > stat.size || after.size !== offset || after.mtimeMs !== stat.mtimeMs || after.ctimeMs !== stat.ctimeMs
+      || current.dev !== after.dev || current.ino !== after.ino || current.mtimeMs !== after.mtimeMs || current.ctimeMs !== after.ctimeMs) {
       throw new Error('The file changed while it was being opened. Please retry.');
     }
-    return { ...decodeTextBytes(bytes.subarray(0, offset)), diskVersion: { mtimeMs: after.mtimeMs, size: after.size } };
+    return { ...decodeTextBytes(bytes.subarray(0, offset)), diskVersion: versionFromStat(after) };
   } finally { await handle.close(); }
 }

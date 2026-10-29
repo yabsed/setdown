@@ -123,7 +123,9 @@ import type { AppActions } from '../../ports/ui-actions';
   {#if web}
     <button aria-label={web.loading ? 'Stop loading' : 'Reload page'} title={web.loading ? 'Stop loading' : 'Reload page'}
       onclick={event => actions.browserCommand(tab!.id, web.loading ? 'stop' : event.shiftKey ? 'reload-no-cache' : 'reload')}>{web.loading ? '×' : '↻'}</button>
-  {:else if review}<span class="location-kind" aria-hidden="true">±</span>{/if}
+  {:else if tab && tab.kind !== 'terminal'}
+    <button aria-label="Reload file" title={tab.isUntitled ? 'Save this document before reloading' : 'Reload file (Ctrl/Cmd+R)'} disabled={tab.isUntitled} onclick={() => void actions.reloadLocalDocument(tab.id)}>↻</button>
+  {/if}
   {#if finding}
     <input bind:this={finder} aria-label="Find in web page" placeholder="Find in page" maxlength="1000" bind:value={browser.query}
       oninput={event => { browser.query = event.currentTarget.value; if (!findComposing) actions.browserFind(tab!.id, browser.query); }}
@@ -235,7 +237,7 @@ import type { AppActions } from '../../ports/ui-actions';
   button { border: 0; border-radius: 5px; background: transparent; color: inherit; min-width: 26px; height: 26px; cursor: pointer; font-size: 16px; }
   button:hover { background: var(--app-hover); } button:disabled { opacity: .35; cursor: default; }
   input { width: 0; flex: 1; height: 25px; padding: 0 9px; border: 1px solid transparent; border-radius: 5px; background: var(--app-canvas); color: inherit; font: 12px/1.4 var(--app-font-family); outline: none; text-overflow: ellipsis; }
-  input:focus { border-color: var(--app-muted-text); } .location-kind { width: 20px; text-align: center; opacity: .5; }
+  input:focus { border-color: var(--app-muted-text); }
   .location-error { color: #b94f4f; }
   .bookmarked { color: var(--app-text); } .find-count { font: 11px var(--app-font-family); }
   .loading { box-shadow: inset 0 -2px var(--app-muted-text); }

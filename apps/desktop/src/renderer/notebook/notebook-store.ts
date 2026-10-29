@@ -19,6 +19,10 @@ export class NotebookEntry {
     this.document.markSaved(savedText);
     this.release = this.document.subscribe(event => {
       if (event === 'structure') {
+        const present = new Set(this.document.cells.map(cell => cell.id));
+        for (const [id, model] of this.models) if (!present.has(id)) {
+          model.dispose(); this.models.delete(id); this.views.delete(id);
+        }
         for (const cell of this.document.cells) {
           const model = this.models.get(cell.id);
           if (model && model.getValue() !== cell.source) {

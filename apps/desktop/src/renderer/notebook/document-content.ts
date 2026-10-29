@@ -13,7 +13,10 @@ export const notebookContent: DocumentContentOwner = {
   dirty: tab => notebooks.get(tab).document.dirty,
   saved: tab => notebooks.get(tab).document.markSaved(tab.document.savedText),
   replace: (tab, snapshot) => {
-    notebooks.dispose(tab.id);
+    const entry = notebooks.get(tab);
+    entry.execution?.prepareReload();
+    entry.document.replace(snapshot.text);
+    entry.document.markSaved(snapshot.savedText);
     tab.text = snapshot.text; tab.revision = snapshot.revision;
   },
   release: id => notebooks.dispose(id),

@@ -6,12 +6,13 @@ import type { DocumentSnapshot } from '../../core/document/document';
 import { TabController } from './tab-controller';
 import { SurfaceController } from './surface-controller';
 import { PreviewSession } from '../reader/preview-session';
+import { view } from './workspace-view.svelte';
 import { browserURL } from '../../core/browser/browser-url';
 import type { BrowserPage } from '../../core/browser/browser-state';
 import { fileURLToPath } from 'node:url';
 import type { WebHistory } from '../../core/workspace/tab-navigation';
 
-vi.mock('./workspace-view.svelte', () => ({ view: {} }));
+vi.mock('./workspace-view.svelte', () => ({ view: { documentNotices: {} } }));
 vi.mock('../shell/layout-session', () => ({ restoredOutlineOpen: () => false }));
 const anchor = { sourceLine: 1, yRatio: .372, reason: 'empty-document', confidence: 'fallback' } as const;
 const calls: string[] = [];
@@ -65,6 +66,40 @@ function fixture() {
 }
 const previewOpen = (controller: TabController, document: DocumentSnapshot) =>
   controller.show(document, 'viewer', 'document', undefined, { pinned: false });
+
+test('moving a dirty file refreshes its disk version without replacing its draft or model', async () => {
+  const f = fixture();
+  await f.controller.show(snapshot('/project/first.txt'));
+  const tab = f.workspace.documents[0], identity = tab.documentId;
+  tab.text = 'UNSAVED'; tab.revision++;
+  const moved = { ...snapshot('/project/destination/first.txt'), diskVersion: { mtimeMs: 0, size: 0, ctimeMs: 42 } };
+  f.options.desktop.readDocumentLocation = async () => moved;
+  const replace = vi.spyOn(f.options.editor, 'replace');
+  await f.controller.relocatePath('/project/first.txt', moved.path);
+  assert.equal(tab.document.path, moved.path);
+  assert.deepEqual(tab.document.diskVersion, moved.diskVersion);
+  assert.equal(tab.text, 'UNSAVED'); assert.equal(tab.revision, 1);
+  assert.equal(tab.document.savedText, 'body\r\n');
+  assert.equal(tab.documentId, identity); assert.equal(replace.mock.calls.length, 0);
+});
+
+test.each(['text', 'encoding', 'unreadable'])('moving a file retains overwrite protection when the disk is %s', async change => {
+  const f = fixture();
+  await f.controller.show(snapshot('/project/first.txt'));
+  const tab = f.workspace.documents[0], previous = tab.document.diskVersion;
+  tab.text = 'UNSAVED';
+  const moved = { ...snapshot('/project/destination/first.txt'), diskVersion: { mtimeMs: 0, size: 0, ctimeMs: 42 } };
+  if (change === 'text') moved.savedText = 'EXTERNAL CHANGE';
+  if (change === 'encoding') moved.encoding = 'utf8';
+  f.options.desktop.readDocumentLocation = async () => {
+    if (change === 'unreadable') throw Error('File is unavailable');
+    return moved;
+  };
+  await f.controller.relocatePath('/project/first.txt', moved.path);
+  assert.equal(tab.document.path, moved.path);
+  assert.deepEqual(tab.document.diskVersion, previous);
+  assert.equal(tab.text, 'UNSAVED');
+});
 
 test('late web activation retains a newer shell edit while still selecting the browser tab', async () => {
   const f = fixture();
@@ -640,6 +675,39 @@ test('external background refresh does not overwrite edits made while disk IO is
   await refresh;
   assert.equal(tab.text, 'typed while reading');
   assert.equal(f.workspace.active?.kind, 'terminal');
+});
+
+test('the newest reload wins even when an older disk read completes last', async () => {
+  const f = fixture(); await f.controller.show(snapshot('/project/reload.txt'));
+  const tab = f.workspace.activeDocument!, pending: Array<(value: DocumentSnapshot) => void> = [];
+  f.options.desktop.readDocumentLocation = () => new Promise(resolve => pending.push(resolve));
+  const older = f.controller.reloadDocumentPaths([tab.document.path]);
+  const newer = f.controller.reloadDocumentPaths([tab.document.path]);
+  pending[1](snapshot(tab.document.path, 'newest')); await newer;
+  pending[0](snapshot(tab.document.path, 'stale')); await older;
+  assert.equal(tab.document.savedText, 'newest');
+});
+
+test('a missing file retains its open content and notice until a later successful reload', async () => {
+  const f = fixture(); await f.controller.show(snapshot('/project/missing.txt', 'preserved'));
+  const tab = f.workspace.activeDocument!;
+  f.options.desktop.readDocumentLocation = async () => { throw Error('ENOENT: no such file'); };
+  await f.controller.reloadDocumentPaths([tab.document.path]);
+  assert.equal(f.workspace.activeDocument, tab); assert.equal(tab.text, 'preserved');
+  assert.equal(view.documentNotices[tab.document.path].unavailable, true);
+  f.options.desktop.readDocumentLocation = async () => snapshot(tab.document.path, 'restored');
+  await f.controller.reloadDocumentPaths([tab.document.path]);
+  assert.equal(tab.document.savedText, 'restored'); assert.equal(view.documentNotices[tab.document.path], undefined);
+});
+
+test('a late external change notice is retained when accepting an earlier successful save', async () => {
+  const f = fixture(); await f.controller.show(snapshot('/project/save.txt'));
+  const tab = f.workspace.activeDocument!;
+  view.documentNotices[tab.document.path] = { message: 'External replacement', diskVersion: { size: 8, mtimeMs: 2 } };
+  await f.controller.acceptSaved(tab, { ...snapshot(tab.document.path, 'saved'), diskVersion: { size: 5, mtimeMs: 1 } });
+  assert.equal(view.documentNotices[tab.document.path].message, 'External replacement');
+  await f.controller.acceptSaved(tab, { ...snapshot(tab.document.path, 'external'), diskVersion: { size: 8, mtimeMs: 2 } });
+  assert.equal(view.documentNotices[tab.document.path], undefined);
 });
 
 test('terminal addresses retain their session through file/web history and reject missing sessions', async () => {

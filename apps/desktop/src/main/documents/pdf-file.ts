@@ -1,3 +1,4 @@
+import { versionFromStat } from './file-system';
 import { constants, promises as fs } from 'node:fs';
 import type { DiskVersion } from '../../core/document/document';
 
@@ -9,7 +10,7 @@ export async function readPdfMetadata(file: string) {
     const header = Buffer.alloc(1024);
     const { bytesRead } = await handle.read(header, 0, header.length, 0);
     if (!header.subarray(0, bytesRead).includes(Buffer.from('%PDF-'))) throw new Error('This file is not a PDF document.');
-    return { kind: 'pdf' as const, text: '', diskVersion: { size: stat.size, mtimeMs: stat.mtimeMs } };
+    return { kind: 'pdf' as const, text: '', diskVersion: versionFromStat(stat) };
   } finally { await handle.close(); }
 }
 

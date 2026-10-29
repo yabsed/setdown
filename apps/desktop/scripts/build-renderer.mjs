@@ -1,6 +1,8 @@
 import { build } from 'vite';
+import { compilerWorkerBuild } from './compiler-worker-build.mjs';
 
-// Monaco's TypeScript worker bundles the compiler as well as the editor.
-// The npm script grants this build process a 4 GiB heap; app runtimes retain
-// their normal limits and load language workers only when requested.
-await build();
+await build({ plugins: [await compilerWorkerBuild()],
+  // Debug maps are optional build artifacts, never a runtime requirement.
+  // Low-memory validation builds use the same setting for both compared apps.
+  build: { sourcemap: process.env.SETDOWN_BUILD_SOURCEMAP !== '0' },
+});

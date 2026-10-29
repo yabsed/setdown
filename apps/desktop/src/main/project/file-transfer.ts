@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { constants, promises as fs } from 'node:fs';
 import path from 'node:path';
 
@@ -21,9 +22,34 @@ export function copyName(name: string, directory: boolean, index: number): strin
 
 /** Reserve destinations atomically: never rename over someone else's file.
  * Directories reserve an empty directory; rename fails if it becomes nonempty.
- * EXDEV is intentionally rejected, without deleting the source.
+ * Cross-volume moves publish a verified copy before removing the source.
  */
-export async function moveExclusive(from: string, to: string): Promise<void> {
+export async function treeVersion(root: string): Promise<string> {
+  const hash = createHash('sha256');
+  const visit = async (file: string) => {
+    const stat = await fs.lstat(file);
+    hash.update(JSON.stringify([path.relative(root, file), stat.dev, stat.ino, stat.size, stat.mtimeMs, stat.ctimeMs, stat.mode]));
+    if (stat.isDirectory()) for (const name of (await fs.readdir(file)).sort()) await visit(path.join(file, name));
+  };
+  await visit(root); return hash.digest('hex');
+}
+
+export async function moveExclusive(from: string, to: string, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
+  try { await moveWithinVolume(from, to); }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error;
+    const before = await treeVersion(from);
+    await copyExclusive(from, to, signal);
+    if (before !== await treeVersion(from))
+      throw Error('The source changed while moving across volumes. Both copies were kept; inspect them before retrying.');
+    // Once a complete destination is published, cancellation cannot delete it.
+    try { await fs.rm(from, { recursive: true }); }
+    catch (error) { throw Error(`The destination was copied, but the source could not be completely removed. Both paths were kept: ${String(error)}`); }
+  }
+}
+
+async function moveWithinVolume(from: string, to: string): Promise<void> {
   const stat = await fs.lstat(from);
   if (stat.isDirectory()) {
     await fs.mkdir(to, { mode: stat.mode });
@@ -51,7 +77,8 @@ export async function moveExclusive(from: string, to: string): Promise<void> {
   }
 }
 
-async function copyTree(from: string, to: string): Promise<void> {
+async function copyTree(from: string, to: string, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
   const stat = await fs.lstat(from);
   if (stat.isSymbolicLink()) {
     await fs.symlink(await fs.readlink(from), to);
@@ -59,7 +86,7 @@ async function copyTree(from: string, to: string): Promise<void> {
     // Keep the staging directory writable until every child has been copied.
     await fs.mkdir(to, { mode: 0o700 });
     const entries = await fs.opendir(from);
-    for await (const entry of entries) await copyTree(path.join(from, entry.name), path.join(to, entry.name));
+    for await (const entry of entries) await copyTree(path.join(from, entry.name), path.join(to, entry.name), signal);
     await fs.chmod(to, stat.mode);
     await fs.utimes(to, stat.atime, stat.mtime);
   } else if (stat.isFile()) {
@@ -79,13 +106,15 @@ async function removeStaging(directory: string): Promise<void> {
 }
 
 /** Stage on the destination volume. Failed copies never expose a partial file/tree. */
-export async function copyExclusive(from: string, to: string): Promise<void> {
+export async function copyExclusive(from: string, to: string, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
   await ensureMissing(to);
   const staging = await fs.mkdtemp(path.join(path.dirname(to), '.setdown-copy-'));
   let failed = false;
   try {
     const staged = path.join(staging, 'entry');
-    await copyTree(from, staged);
+    await copyTree(from, staged, signal);
+    signal?.throwIfAborted();
     const stat = await fs.lstat(staged);
     // Moving a directory between parents can require write access to update '..'.
     if (stat.isDirectory()) await fs.chmod(staged, stat.mode | 0o700);

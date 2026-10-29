@@ -111,14 +111,14 @@ test('new staged and working-tree reviews open source diff at the first change',
     await expect(changed.locator('.git-changes')).toBeVisible();
     await staged.locator('.git-change-open').click();
     await expect(window.getByRole('button', { name: 'View Rendered Diff' })).toBeVisible();
-    await expect(window.locator('.original-in-monaco-diff-editor .view-lines'))
+    await expect(window.locator('.git-diff-editor:visible .original-in-monaco-diff-editor .view-lines'))
       .toContainText('Base');
-    await expect(window.locator('.modified-in-monaco-diff-editor .view-lines'))
+    await expect(window.locator('.git-diff-editor:visible .modified-in-monaco-diff-editor .view-lines'))
       .toContainText('Staged');
 
     await changed.locator('.git-change-open').click();
     await expect(window.getByRole('button', { name: 'View Rendered Diff' })).toBeVisible();
-    await expect(window.locator('.modified-in-monaco-diff-editor .view-lines'))
+    await expect(window.locator('.git-diff-editor:visible .modified-in-monaco-diff-editor .view-lines'))
       .toContainText('Working tree change');
   } finally {
     await disposeApplication(application);
@@ -163,7 +163,7 @@ test('keeps word wrap in the original diff pane after tab roundtrips', async () 
       has: window.getByText('CHANGES', { exact: true }),
     });
     await changed.locator('.git-change-open').click();
-    await expect(window.locator('.original-in-monaco-diff-editor .view-lines'))
+    await expect(window.locator('.git-diff-editor:visible .original-in-monaco-diff-editor .view-lines'))
       .toContainText('Long line:');
 
     await expect.poll(originalViewLineCount, { timeout: 10_000 })
@@ -172,7 +172,7 @@ test('keeps word wrap in the original diff pane after tab roundtrips', async () 
     await window.locator('.document-tab:not(.git-diff-tab)').click();
     await expect(window.locator('.git-diff-editor')).toBeHidden();
     await window.locator('.git-diff-tab').click();
-    await expect(window.locator('.original-in-monaco-diff-editor .view-lines'))
+    await expect(window.locator('.git-diff-editor:visible .original-in-monaco-diff-editor .view-lines'))
       .toContainText('Long line:');
 
     await expect.poll(originalViewLineCount, { timeout: 10_000 })
@@ -234,9 +234,9 @@ test('keeps staged and live working-tree reviews in separate tabs', async () => 
     await expect(window.locator('.git-diff-tab')).toHaveCount(1);
     await expect(window.locator('.git-diff-tab')).toContainText('review.md (Index)');
     await expect(window.getByRole('button', { name: 'View Rendered Diff' })).toBeVisible();
-    await expect(window.locator('.original-in-monaco-diff-editor .view-lines'))
+    await expect(window.locator('.git-diff-editor:visible .original-in-monaco-diff-editor .view-lines'))
       .toContainText('Base');
-    await expect(window.locator('.modified-in-monaco-diff-editor .view-lines'))
+    await expect(window.locator('.git-diff-editor:visible .modified-in-monaco-diff-editor .view-lines'))
       .toContainText('Staged');
 
     await changed.locator('.git-change-open').click();
@@ -244,7 +244,7 @@ test('keeps staged and live working-tree reviews in separate tabs', async () => 
     await expect(window.locator('.git-diff-tab').nth(0)).toContainText('review.md (Index)');
     await expect(window.locator('.git-diff-tab').nth(1)).toContainText('review.md (Working Tree)');
     await expect(window.getByRole('button', { name: 'View Rendered Diff' })).toBeVisible();
-    await expect(window.locator('.modified-in-monaco-diff-editor .view-lines'))
+    await expect(window.locator('.git-diff-editor:visible .modified-in-monaco-diff-editor .view-lines'))
       .toContainText('Working tree ?');
 
     await window.getByRole('button', { name: 'View Rendered Diff' }).click();
@@ -309,13 +309,13 @@ test('keeps staged and live working-tree reviews in separate tabs', async () => 
     expect(alignment?.tail).toBeLessThan(2);
 
     await window.getByRole('button', { name: 'View Source Diff' }).click();
-    await expect(window.locator('.original-in-monaco-diff-editor .view-lines'))
+    await expect(window.locator('.git-diff-editor:visible .original-in-monaco-diff-editor .view-lines'))
       .toContainText('Staged');
-    await expect(window.locator('.modified-in-monaco-diff-editor .view-lines'))
+    await expect(window.locator('.git-diff-editor:visible .modified-in-monaco-diff-editor .view-lines'))
       .toContainText('Working tree');
     await window.locator('.git-diff-tab').nth(0).click();
     await window.getByRole('button', { name: 'View Source Diff' }).click();
-    await expect(window.locator('.original-in-monaco-diff-editor .view-lines'))
+    await expect(window.locator('.git-diff-editor:visible .original-in-monaco-diff-editor .view-lines'))
       .toContainText('Base');
     const sourceFirstFrame = await window.evaluate(async () => {
       const tabs = document.querySelectorAll<HTMLButtonElement>('.git-diff-tab');
@@ -324,14 +324,14 @@ test('keeps staged and live working-tree reviews in separate tabs', async () => 
       return await new Promise<{ elapsed: number; text: string }>((resolve) => {
         requestAnimationFrame(() => resolve({
           elapsed: performance.now() - started,
-          text: (document.querySelector('.modified-in-monaco-diff-editor .view-lines')
+          text: (Array.from(document.querySelectorAll<HTMLElement>('.modified-in-monaco-diff-editor .view-lines')).find(node => node.checkVisibility())
             ?.textContent ?? '').replace(/\s+/g, ' '),
         }));
       });
     });
     expect(sourceFirstFrame.elapsed).toBeLessThan(80);
     expect(sourceFirstFrame.text).toContain('Inserted one');
-    const workingTreeEditor = window.locator('.git-diff-editor').getByRole('textbox').nth(1);
+    const workingTreeEditor = window.locator('.git-diff-editor:visible').getByRole('textbox').nth(1);
     await expect(workingTreeEditor).toBeEditable();
     await workingTreeEditor.press('Control+End');
     await workingTreeEditor.pressSequentially('\nShared draft');
@@ -343,7 +343,7 @@ test('keeps staged and live working-tree reviews in separate tabs', async () => 
     expect(await window.evaluate(() => document.hasFocus())).toBe(true);
     await expect.poll(() => shellHasKeyboardFocus(application)).toBe(true);
     await workingTreeEditor.pressSequentially(' continues');
-    await expect(window.locator('.modified-in-monaco-diff-editor .view-lines'))
+    await expect(window.locator('.git-diff-editor:visible .modified-in-monaco-diff-editor .view-lines'))
       .toContainText('Shared draft continues');
 
     await workingTreeEditor.press('Escape');
@@ -400,7 +400,7 @@ test('returning from a review, discarding, and saving keep the document usable',
     });
     await changed.locator('.git-change-open').click();
     await expect(window.getByRole('button', { name: 'View Rendered Diff' })).toBeVisible();
-    const workingTreeEditor = window.locator('.git-diff-editor').getByRole('textbox').nth(1);
+    const workingTreeEditor = window.locator('.git-diff-editor:visible').getByRole('textbox').nth(1);
     await workingTreeEditor.press('Control+End');
     await workingTreeEditor.pressSequentially('\nUnsaved buffer text');
     await expect(window.locator('.document-tab:not(.git-diff-tab) .tab-dirty')).toHaveCount(1);
@@ -413,7 +413,12 @@ test('returning from a review, discarding, and saving keep the document usable',
 
     await window.locator('.git-diff-tab').click();
     await changed.getByRole('button', { name: 'Discard All Changes' }).click();
-    await expect(window.getByText('Discard this change?', { exact: true })).toHaveCount(0);
+    const confirmation = window.getByRole('alertdialog');
+    await expect(confirmation).toContainText('Unsaved editor edits are kept');
+    await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click();
+    expect(await readFile(documentPath, 'utf8')).toBe('# Changed on disk\n');
+    await changed.getByRole('button', { name: 'Discard All Changes' }).click();
+    await confirmation.getByRole('button', { name: 'Discard Changes', exact: true }).click();
     await window.locator('.document-tab:not(.git-diff-tab)').click();
     await window.getByRole('button', { name: 'Switch to Editor' }).click();
     await expect(window.locator('.editor-surface')).toBeVisible();
@@ -426,6 +431,7 @@ test('returning from a review, discarding, and saving keep the document usable',
     await expect.poll(() => readFile(documentPath, 'utf8')).toBe('# Base\n');
     await expect(changed.locator('.git-change-open')).toHaveCount(0);
     await expect(window.locator('.document-tab:not(.git-diff-tab) .tab-dirty')).toHaveCount(1);
+    await expect(window.locator('.editor-surface .view-lines')).toContainText('Unsaved buffer text');
     await expect.poll(async () => (await reading.evaluateAll<string>('document.body.innerText'))
       .some((text) => text?.includes('Saved after discard')), { timeout: 20_000 }).toBe(true);
     await window.waitForTimeout(3_000);
@@ -433,10 +439,20 @@ test('returning from a review, discarding, and saving keep the document usable',
     expect(await window.evaluate(() => document.hasFocus())).toBe(true);
     await expect.poll(() => shellHasKeyboardFocus(application)).toBe(true);
     await documentEditor.pressSequentially(' continues');
+    await application.evaluate(({ dialog }) => {
+      const messages: string[] = [];
+      (globalThis as typeof globalThis & { saveConflicts: string[] }).saveConflicts = messages;
+      dialog.showMessageBox = async (...args: unknown[]) => {
+        messages.push((args.at(-1) as { message: string }).message);
+        return { response: 1, checkboxChecked: false };
+      };
+    });
     await window.keyboard.press('Control+S');
     await expect.poll(() => readFile(documentPath, 'utf8')).toContain('Saved after discard continues');
     await expect(window.locator('.document-tab:not(.git-diff-tab) .tab-dirty')).toHaveCount(0);
     await expect(documentEditor).toBeFocused();
+    expect(await application.evaluate(() => (globalThis as typeof globalThis & { saveConflicts: string[] }).saveConflicts))
+      .toEqual(['This file was changed by another application.']);
   } finally {
     await disposeApplication(application);
     await rm(root, { recursive: true, force: true });

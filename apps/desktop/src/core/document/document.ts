@@ -3,7 +3,17 @@ import type { TextEncoding, TextEol } from './text-codec';
 export type DiskVersion = {
   mtimeMs: number;
   size: number;
+  ctimeMs?: number;
+  ino?: number;
+  dev?: number;
 };
+
+export const sameDiskVersion = (a: DiskVersion, b: DiskVersion): boolean => (
+  a.mtimeMs === b.mtimeMs && a.size === b.size
+  && (a.ctimeMs === undefined || b.ctimeMs === undefined || a.ctimeMs === b.ctimeMs)
+  && (a.ino === undefined || b.ino === undefined || a.ino === b.ino)
+  && (a.dev === undefined || b.dev === undefined || a.dev === b.dev)
+);
 
 export type DocumentSnapshot = {
   /** One-shot save metadata, consumed when merging a draft save into a live buffer. */

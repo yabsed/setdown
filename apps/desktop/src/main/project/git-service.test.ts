@@ -96,7 +96,7 @@ describe('Git status parser', () => {
     expect(trashed).toEqual([filePath]);
   });
 
-  test('maps repository-relative porcelain paths back into an open subfolder', async () => {
+  test('keeps repository-relative paths when an Explorer subfolder is open', async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-git-subfolder-'));
     temporaryDirectories.push(root);
     const service = new GitService(new ProjectPaths());
@@ -107,7 +107,7 @@ describe('Git status parser', () => {
     await writeFile(filePath, '# Chapter\n', 'utf8');
 
     const snapshot = await service.status({ projectRoot: folder } as WindowState);
-    expect(snapshot.changes).toMatchObject([{ path: 'chapter.md', filePath, status: 'U' }]);
+    expect(snapshot.changes).toMatchObject([{ path: 'notes/chapter.md', filePath, status: 'U' }]);
   });
 
   test('compares unstaged changes with the staged Index, not HEAD', async () => {

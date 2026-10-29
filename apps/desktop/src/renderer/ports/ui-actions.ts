@@ -69,6 +69,7 @@ export type AppActions = BrowserActions & TerminalActions & {
   updateProjectGitDiffLine(line: number): void;
   changeProjectGitWorkingTree(text: string, edits?: WorkingTreeEdit[]): void;
   saveProjectGitWorkingTree(): void;
+  selectGitRepository(root: string): void;
   initializeProjectGit(): void;
   stageProjectGit(paths: string[]): void;
   unstageProjectGit(paths: string[]): void;
@@ -88,6 +89,8 @@ export type AppActions = BrowserActions & TerminalActions & {
   closeFind(): void;
   scrollToHeading(id: string): void;
   keepExternalChange(): void;
+  pathsForDroppedFiles(files: File[]): string[];
+  reloadLocalDocument(id: string, confirmed?: boolean): Promise<void>;
   reloadExternalChange(): void;
   showRenderError(): void;
 };

@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { AppActions } from '../../ports/ui-actions';
   import { project } from '../project-state.svelte';
+  import NativeOverlay from '../../shell/NativeOverlay.svelte';
+  import { confirmationFocus } from '../../shell/confirmation-focus';
   import SideViewMenu from '../SideViewMenu.svelte';
   import GitHistoryPane from './GitHistoryPane.svelte';
   import ChangeGroup from './ChangeGroup.svelte';
@@ -13,8 +15,13 @@
   let changed = $derived(groups.changed);
   const groupExpanded = (title: string) => !project.collapsedGitGroups.includes(title);
 
-  function requestDiscard(paths: string[]) {
-    actions.discardProjectGit([...paths]);
+  let discardPaths = $state<string[] | null>(null);
+  let discardRoot: string | undefined;
+  function requestDiscard(paths: string[]) { discardRoot = project.git?.root; discardPaths = [...paths]; }
+  function confirmDiscard() {
+    // Svelte state arrays are proxies; IPC requires a plain, cloneable value.
+    const paths = discardPaths && [...discardPaths]; discardPaths = null;
+    if (paths && discardRoot === project.git?.root) actions.discardProjectGit(paths);
   }
 
   function commit(event?: KeyboardEvent) {
@@ -48,6 +55,8 @@
     <button type="button" onclick={actions.chooseProjectFolder}>Open Folder</button></div>
 {:else if project.gitLoading && !project.git}
   <p class="side-view-message">Reading repository…</p>
+{:else if project.gitError && !project.git}
+  <p class="side-view-message" role="alert">Could not read repository status. {project.gitError}</p>
 {:else if !project.git?.repository}
   <div class="scm-empty"><p>The open folder is not a Git repository.</p>
     <button type="button" disabled={project.gitBusy} onclick={actions.initializeProjectGit}>Initialize Repository</button></div>
@@ -56,10 +65,16 @@
   <div class="scm-changes-pane">
   <div class="git-branch">
     <svg viewBox="0 0 16 16"><circle cx="4" cy="3" r="1.5"/><circle cx="4" cy="13" r="1.5"/><circle cx="12" cy="5" r="1.5"/><path d="M4 4.5v7M5.5 4c3 0 2 3 5 2.5"/></svg>
-    <strong>{project.git.branch}</strong>
+    <strong title={project.git.root}>{project.git.branch}</strong>
     {#if project.git.upstream}<span title={project.git.upstream}>⇣{project.git.behind} ⇡{project.git.ahead}</span>{/if}
     {#if project.gitBusy}<small>Running…</small>{/if}
   </div>
+  {#if (project.git.roots?.length ?? 0) > 1}
+    <label class="git-branch">Repository <select aria-label="Git repository" value={project.git.root} disabled={project.gitBusy} onchange={event => actions.selectGitRepository(event.currentTarget.value)}>
+      {#each project.git.roots ?? [] as root}<option value={root}>{root}</option>{/each}
+    </select></label>
+  {/if}
+  {#if project.git.discoveryLimited}<p class="side-view-message">Repository discovery reached its folder limit. Open a more specific folder to discover additional repositories.</p>{/if}
   <div class="scm-commit">
     <textarea rows="2" placeholder="Message (Ctrl+Enter to commit)" aria-label="Commit message"
       bind:value={project.commitMessage} onkeydown={commit}></textarea>
@@ -83,7 +98,18 @@
     {#if project.git.changes.length === 0}<p class="side-view-message">No changes.</p>{/if}
   </div>
   </div>
-  {#key project.folder.path}<GitHistoryPane {actions} root={project.folder.path} />{/key}
+  {#key project.git.root ?? project.folder.path}<GitHistoryPane {actions} root={project.git.root ?? project.folder.path} />{/key}
+  </div>
+{/if}
+
+{#if discardPaths}
+  <NativeOverlay />
+  <div class="project-confirm" role="alertdialog" aria-modal="true" aria-labelledby="discard-title" use:confirmationFocus={() => discardPaths = null}>
+    <strong id="discard-title">Discard changes in {discardPaths.length} file(s)?</strong>
+    <span>Tracked files revert to the index. Untracked files move to Trash. Unsaved editor edits are kept.</span>
+    <span>{discardPaths.map(path => path.split(/[\\/]/).at(-1)).join(', ')}</span>
+    <div><button type="button" class="ghost" onclick={() => discardPaths = null}>Cancel</button>
+      <button type="button" class="danger" onclick={confirmDiscard}>Discard Changes</button></div>
   </div>
 {/if}
 

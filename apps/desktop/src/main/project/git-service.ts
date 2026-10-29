@@ -1,3 +1,6 @@
+import { discoverRepositories } from './engines/git-repositories';
+import { isInside } from '../documents/file-system';
+import { GitMetadataWatcher } from './engines/git-metadata-watcher';
 import path from 'node:path';
 import { shell } from 'electron';
 import type {
@@ -111,6 +114,9 @@ function change(rawCode: string, changePath: string): GitChange {
 }
 
 export class GitService {
+  private readonly discoveries = new Map<string, { time: number; task: ReturnType<typeof discoverRepositories> }>();
+  readonly watcher = new GitMetadataWatcher();
+  private readonly mutations = new Map<string, Promise<unknown>>();
   private readonly repositories = new Map<string, Promise<GitCli | null>>();
 
   constructor(
@@ -118,17 +124,24 @@ export class GitService {
     private readonly trash: (filePath: string) => Promise<void> = (filePath) => shell.trashItem(filePath),
   ) {}
 
-  async status(state: WindowState): Promise<GitSnapshot> {
-    const root = this.paths.root(state);
-    const repository = await this.repository(root);
-    if (!repository) return { ...EMPTY, changes: [] };
+  async status(state: WindowState, observe = true): Promise<GitSnapshot> {
+    const explorerRoot = this.paths.root(state);
+    const discovery = await this.discover(explorerRoot);
+    if (state.projectRoot !== explorerRoot) return { ...EMPTY, changes: [] };
+    state.gitRepositories = discovery.roots;
+    const selected = state.gitRoot && discovery.roots.includes(state.gitRoot) ? state.gitRoot : discovery.roots[0];
+    state.gitRoot = selected ?? null;
+    const repository = selected ? await this.repository(selected) : null;
+    const root = repository?.repositoryRoot ?? explorerRoot;
+    if (!repository) return { ...EMPTY, roots: discovery.roots, changes: [] };
+    if (observe) void this.watcher.watch(state, repository);
     // Read without rewriting .git/index and retriggering the project watcher.
     const parsed = parseGitStatus(await repository.run([
       '--no-optional-locks', 'status', '--porcelain=v2', '-z', '--branch', '--ahead-behind',
       '--untracked-files=all', '--', '.',
     ]));
     return {
-      repository: true,
+      repository: true, root, roots: discovery.roots, discoveryLimited: discovery.limited,
       ...parsed,
       changes: parsed.changes.map((change) => {
         const filePath = path.join(repository.repositoryRoot, change.path);
@@ -141,18 +154,23 @@ export class GitService {
   async initialize(state: WindowState): Promise<GitSnapshot> {
     const root = this.paths.root(state);
     await GitCli.run(root, ['init']);
-    this.repositories.delete(root);
+    this.repositories.delete(root); this.discoveries.delete(root);
     return this.status(state);
   }
 
   async diff(state: WindowState, candidate: string, staged: boolean): Promise<GitDiff> {
-    const root = this.paths.root(state);
+    const roots = (await this.discover(this.paths.root(state))).roots;
+    if (!path.isAbsolute(candidate) || !roots.some(root => isInside(root, candidate))) throw Error('The path is outside the open repositories.');
+    // Deleted files can have deleted parents too. Resolve against discovered
+    // repositories instead of using a possibly nonexistent directory as cwd.
+    const root = roots.filter(root => isInside(root, candidate)).sort((a, b) => b.length - a.length)[0];
     const repository = await this.repository(root);
-    if (!repository) throw new Error('The open folder is not a Git repository.');
-    const filePath = this.paths.entry(state, candidate);
+    if (!repository || !roots.includes(root)) throw new Error('The file is not in an open Git repository.');
+    const filePath = this.paths.entry({ ...state, projectRoot: root }, candidate);
     const relative = path.relative(root, filePath);
     const repositoryRelative = path.relative(repository.repositoryRoot, filePath).split(path.sep).join('/');
-    const change = (await this.status(state)).changes.find((item) => item.filePath === filePath);
+    const change = (await this.status({ ...state, gitRoot: root }, false)).changes.find((item) => item.filePath === filePath);
+    if (change?.conflict) staged = false;
     const originalPath = change?.previousPath === undefined ? repositoryRelative
       : path.relative(repository.repositoryRoot, path.resolve(root, change.previousPath)).split(path.sep).join('/');
     let patch: string;
@@ -170,7 +188,7 @@ export class GitService {
     }
     const originalText = staged
       ? await readGitDocument(repository, `HEAD:${originalPath}`, filePath)
-      : change?.indexStatus === '?' ? '' : await readGitDocument(repository, `:${repositoryRelative}`, filePath);
+      : change?.indexStatus === '?' ? '' : await readGitDocument(repository, `${change?.conflict ? ':2:' : ':'}${repositoryRelative}`, filePath);
     const modifiedText = staged
       ? await readGitDocument(repository, `:${repositoryRelative}`, filePath)
       : await readWorkingDocument(filePath);
@@ -179,35 +197,56 @@ export class GitService {
       filePath,
       staged: Boolean(staged),
       patch,
+      ...(change?.conflict ? { conflict: {
+        base: await readGitDocument(repository, `:1:${repositoryRelative}`, filePath),
+        ours: originalText,
+        theirs: await readGitDocument(repository, `:3:${repositoryRelative}`, filePath),
+      } } : {}),
       originalText,
       modifiedText,
-      originalLabel: staged ? 'HEAD' : change?.indexStatus === '?' ? 'EMPTY' : 'INDEX',
+      originalLabel: change?.conflict ? 'OURS (unresolved conflict)' : staged ? 'HEAD' : change?.indexStatus === '?' ? 'EMPTY' : 'INDEX',
       modifiedLabel: staged ? 'INDEX' : 'WORKTREE',
       hunks: parseGitDiffHunks(patch),
     };
   }
 
-  async stage(state: WindowState, candidates: string[]): Promise<GitSnapshot> {
-    const root = this.paths.root(state);
-    const selected = this.relativePaths(state, candidates);
+  stage(state: WindowState, candidates: string[]): Promise<GitSnapshot> {
+    return this.mutate(state, captured => this.stageOperation(captured, candidates));
+  }
+
+  private async stageOperation(state: WindowState, candidates: string[]): Promise<GitSnapshot> {
+    const root = (await this.requireRepository(state)).repositoryRoot;
+    const selected = this.relativePaths({ ...state, projectRoot: root }, candidates);
     await this.run(root, selected.length ? ['add', '--', ...selected] : ['add', '-A', '--', '.']);
-    return this.status(state);
+    return this.status(state, false);
   }
 
-  async unstage(state: WindowState, candidates: string[]): Promise<GitSnapshot> {
-    const root = this.paths.root(state);
-    const selected = this.relativePaths(state, candidates);
-    const scope = selected.length ? selected : ['.'];
-    try {
-      await this.run(root, ['reset', '-q', 'HEAD', '--', ...scope]);
-    } catch {
-      await this.run(root, ['rm', '-r', '--cached', '--ignore-unmatch', '--', ...scope]);
+  unstage(state: WindowState, candidates: string[]): Promise<GitSnapshot> {
+    return this.mutate(state, captured => this.unstageOperation(captured, candidates));
+  }
+
+  private async unstageOperation(state: WindowState, candidates: string[]): Promise<GitSnapshot> {
+    const root = (await this.requireRepository(state)).repositoryRoot;
+    const selected = this.relativePaths({ ...state, projectRoot: root }, candidates);
+    const changes = (await this.status(state)).changes;
+    for (const change of changes) {
+      if (change.previousPath && selected.includes(change.path)) selected.push(change.previousPath);
     }
-    return this.status(state);
+    const scope = selected.length ? [...new Set(selected)] : ['.'];
+    const repository = await this.requireRepository(state);
+    if (await repository.objectExists('HEAD'))
+      await repository.run(['reset', '-q', 'HEAD', '--', ...scope]);
+    else await repository.run(['rm', '-r', '--cached', '--ignore-unmatch', '--', ...scope]);
+    return this.status(state, false);
   }
 
-  async discard(state: WindowState, candidates: string[]): Promise<GitSnapshot> {
-    const selected = this.absolutePaths(state, candidates);
+  discard(state: WindowState, candidates: string[]): Promise<GitSnapshot> {
+    return this.mutate(state, captured => this.discardOperation(captured, candidates));
+  }
+
+  private async discardOperation(state: WindowState, candidates: string[]): Promise<GitSnapshot> {
+    const root = (await this.requireRepository(state)).repositoryRoot;
+    const selected = this.absolutePaths({ ...state, projectRoot: root }, candidates);
     const changes = await this.status(state);
     const byPath = new Map(changes.changes.map((change) => [change.filePath, change]));
     const tracked: string[] = [];
@@ -215,29 +254,72 @@ export class GitService {
       const change = byPath.get(filePath);
       if (!change?.unstaged) continue;
       if (change.indexStatus === '?' && change.workingTreeStatus === '?') await this.trash(filePath);
-      else tracked.push(path.relative(this.paths.root(state), filePath));
+      else tracked.push(path.relative(root, filePath));
     }
-    if (tracked.length) await this.run(this.paths.root(state), ['restore', '--worktree', '--', ...tracked]);
-    return this.status(state);
+    if (tracked.length) await this.run(root, ['restore', '--worktree', '--', ...tracked]);
+    return this.status(state, false);
   }
 
-  async commit(state: WindowState, rawMessage: string): Promise<GitSnapshot> {
+  commit(state: WindowState, rawMessage: string): Promise<GitSnapshot> {
+    return this.mutate(state, captured => this.commitOperation(captured, rawMessage));
+  }
+
+  private async commitOperation(state: WindowState, rawMessage: string): Promise<GitSnapshot> {
     const message = String(rawMessage).trim();
     if (!message) throw new Error('Enter a commit message.');
-    await this.run(this.paths.root(state), ['commit', '-m', message]);
-    return this.status(state);
+    await this.run(state.gitRoot ?? this.paths.root(state), ['commit', '-m', message]);
+    return this.status(state, false);
   }
 
-  async remote(state: WindowState, action: GitRemoteAction): Promise<GitSnapshot> {
-    const root = this.paths.root(state);
+  remote(state: WindowState, action: GitRemoteAction): Promise<GitSnapshot> {
+    return this.mutate(state, captured => this.remoteOperation(captured, action));
+  }
+
+  private async remoteOperation(state: WindowState, action: GitRemoteAction): Promise<GitSnapshot> {
+    const root = state.gitRoot ?? this.paths.root(state);
     if (action === 'fetch') await this.run(root, ['fetch', '--all', '--prune'], 30_000);
     else if (action === 'pull') await this.run(root, ['pull', '--ff-only'], 30_000);
     else if (action === 'push') await this.run(root, ['push'], 30_000);
     else if (action === 'sync') {
       await this.run(root, ['pull', '--ff-only'], 30_000);
-      await this.run(root, ['push'], 30_000);
+      try { await this.run(root, ['push'], 30_000); }
+      catch (error) { throw new Error(`Pull completed, but push failed. Local commits are preserved. ${String(error)}`); }
     } else throw new Error('Unknown Git remote action.');
+    return this.status(state, false);
+  }
+
+  async select(state: WindowState, root: string): Promise<GitSnapshot> {
+    const open = this.paths.root(state);
+    this.discoveries.delete(open);
+    const discovery = await this.discover(open);
+    if (state.projectRoot !== open || !discovery.roots.includes(root)) throw Error('Choose a repository in the open folder.');
+    this.watcher.unwatch(state.webContentsId); state.gitRoot = root;
     return this.status(state);
+  }
+  private discover(root: string): ReturnType<typeof discoverRepositories> {
+    let entry = this.discoveries.get(root);
+    if (!entry || Date.now() - entry.time > 60_000) {
+      entry = { time: Date.now(), task: discoverRepositories(root) }; this.discoveries.set(root, entry);
+      const task = entry.task;
+      void task.then(discovery => {
+        if (!discovery.roots.length && this.discoveries.get(root)?.task === task) this.discoveries.delete(root);
+      }, () => { if (this.discoveries.get(root)?.task === task) this.discoveries.delete(root); });
+    }
+    return entry.task;
+  }
+
+  private async mutate(state: WindowState, action: (state: WindowState) => Promise<GitSnapshot>): Promise<GitSnapshot> {
+    const captured = { ...state };
+    const root = (await this.requireRepository(captured)).repositoryRoot;
+    const task = (this.mutations.get(root) ?? Promise.resolve()).catch(() => {}).then(() => action(captured));
+    this.mutations.set(root, task);
+    try { return await task; } finally { if (this.mutations.get(root) === task) this.mutations.delete(root); }
+  }
+
+  private async requireRepository(state: WindowState): Promise<GitCli> {
+    const repository = await this.repository(state.gitRoot ?? this.paths.root(state));
+    if (!repository) throw new Error('The open folder is not a Git repository.');
+    return repository;
   }
 
   private absolutePaths(state: WindowState, candidates: string[]): string[] {
@@ -255,7 +337,7 @@ export class GitService {
     const repository = GitCli.connect(root).then(value => {
       if (!value && this.repositories.get(root) === repository) this.repositories.delete(root);
       return value;
-    });
+    }).catch(error => { this.repositories.delete(root); throw error; });
     this.repositories.set(root, repository);
     return repository;
   }

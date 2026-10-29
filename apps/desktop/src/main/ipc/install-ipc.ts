@@ -20,6 +20,7 @@ import { LocationOverlay } from '../browser/location-overlay';
 import { showReadingMenu } from '../menu/reading-menu';
 import { MenuOverlay } from '../menu/menu-overlay';
 import type { WindowState } from '../windows/window-state';
+import { windowDirtyFingerprint } from '../windows/window-state';
 import { exportPdf } from '../preview/pdf-exporter';
 import type { PreviewManager } from '../preview/preview-manager';
 import type { PreviewRenderer } from '../preview/preview-renderer';
@@ -104,8 +105,10 @@ export function installIpc(options: Options): void {
     document: DocumentSnapshot; text: string; revision: number;
   }) => documents.activate(state, document, text, revision));
   channels.on('tabs:update-state', (state, tabs: TabStateSummary[]) => {
+    state.rendererTabsReady = true;
     state.rendererTabs = Array.isArray(tabs) ? tabs.map((tab) => ({ name: String(tab.name), path: String(tab.path),
-      dirty: Boolean(tab.dirty), isUntitled: Boolean(tab.isUntitled) })) : [];
+      dirty: Boolean(tab.dirty), isUntitled: Boolean(tab.isUntitled), diskVersion: tab.diskVersion, revision: tab.revision })) : [];
+    documents.watch(state);
   });
   channels.handle('git-review:get-state', (state) => state.rendererGitReview);
   channels.on('git-review:update-state', (state, review: GitReviewState | null) => {
@@ -119,6 +122,14 @@ export function installIpc(options: Options): void {
     state.closeAfterConfirmation = true; state.window.close();
   });
   channels.handle('document:open', (state) => documents.chooseAndOpen(state, false));
+  channels.handle('document:dropped-path-kind', async (_state, candidate: unknown) => {
+    if (typeof candidate !== 'string' || candidate.length > 16384 || candidate.includes('\0') || !path.isAbsolute(candidate))
+      throw Error('Invalid dropped file path.');
+    const stat = await fs.stat(candidate);
+    if (stat.isDirectory()) return 'directory';
+    if (stat.isFile()) return 'file';
+    throw Error('Only files and folders can be opened.');
+  });
   channels.handle('document:read-location', (_state, location: unknown) => {
     if (typeof location !== 'string' || location.length > 16384) throw new Error('Invalid file location.');
     const value = location.trim();
@@ -147,7 +158,7 @@ export function installIpc(options: Options): void {
     // Recheck after IO/dialogs; a background save must never select another tab.
     if (current?.path === document.path && !result.canceled && result.document) {
       state.currentDocument = retainUnsavedRevision(result.document, current.text, current.revision);
-      state.activeRoot = path.dirname(result.document.path); documents.watch(state);
+      state.activeRoot = path.dirname(result.document.path); state.documentDirectory = state.activeRoot; documents.watch(state);
     }
     return result;
   });
@@ -157,16 +168,20 @@ export function installIpc(options: Options): void {
     state.closePromptOpen = false;
     if (decision === 'cancel') return;
     if (decision === 'save') { state.window.webContents.send('app:save-before-close'); return; }
+    if (state.closePromptFingerprint !== undefined && state.closePromptFingerprint !== windowDirtyFingerprint(state)) {
+      state.window.close(); return;
+    }
     const drafts = state.rendererTabs.filter((tab) => tab.isUntitled).map((tab) => tab.path);
     if (drafts.length === 0 && state.currentDocument?.isUntitled) drafts.push(state.currentDocument.path);
-    void Promise.all(drafts.map((draft) => documents.discardDraft(draft))).then(() => {
-      if (state.window.isDestroyed()) return;
-      state.closeAfterConfirmation = true; state.window.close();
+    state.window.once('closed', () => {
+      void Promise.all(drafts.map(draft => documents.discardDraft(draft))).catch(error => console.error('Could not clean closed drafts', error));
     });
+    state.closeAfterConfirmation = true; state.window.close();
   });
   channels.on('app:finish-window-close', (state, saved: boolean) => {
     state.closePromptOpen = false;
     if (!saved) return;
+    if (windowDirtyFingerprint(state) !== '[]') return;
     state.closeAfterConfirmation = true; state.window.close();
   });
   channels.handle('document:export-pdf', (state, { text, revision, documentPath }: {
@@ -189,6 +204,7 @@ export function installIpc(options: Options): void {
     }
     return result;
   };
+  channels.on('explorer:cancel', state => projects.cancelTransfer(state));
   channels.handle('explorer:transfer', async (state, request: ExplorerTransfer) => transferred(await projects.transfer(state, request)));
   channels.handle('explorer:clipboard', () => projects.clipboard.read());
   channels.handle('explorer:copy', (state, paths: string[], cut: boolean) => projects.copySelection(state, paths, cut));
@@ -216,6 +232,7 @@ export function installIpc(options: Options): void {
   channels.handle('project:trash-entry', (state, entryPath: string) => projects.trashEntry(state, entryPath));
   channels.handle('project:open-file', (state, filePath: string) => documents.open(state, projects.assertDocument(state, filePath), false));
   channels.handle('project:search', (state, request: ProjectSearchRequest) => projects.search(state, request));
+  channels.handle('project:git-select', (state, root: string) => projects.selectGit(state, root));
   channels.handle('project:git-status', (state) => projects.gitStatus(state));
   channels.handle('project:git-diff', (state, request: { filePath: string; staged: boolean }) => projects.gitDiff(state, request.filePath, Boolean(request.staged)));
   channels.handle('project:git-diff-preview', (state, request: {

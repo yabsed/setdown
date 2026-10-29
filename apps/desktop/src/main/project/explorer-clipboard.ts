@@ -1,3 +1,4 @@
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { clipboard, ClipboardItem } from 'electron';
 import type { ExplorerClipboard, ExplorerOperationResult } from '../../protocol/explorer';
@@ -13,8 +14,8 @@ export class ExplorerClipboardStore {
   }
   async snapshot(): Promise<(ExplorerClipboard & { token: string }) | null> {
     const value = this.value;
-    if (!value) return null;
-    if (!await clipboard.has(FORMAT)) { if (this.value === value) this.value = null; return null; }
+    if (!value) return this.external();
+    if (!await clipboard.has(FORMAT)) { if (this.value === value) this.value = null; return this.external(); }
     for (const item of await clipboard.read()) {
       if (item.types.includes(FORMAT) && await (await item.getType(FORMAT)).text() === value.token) {
         return this.value === value ? { ...value, paths: [...value.paths] } : null;
@@ -22,11 +23,26 @@ export class ExplorerClipboardStore {
     }
     // Copying text, an image, or a file in another program invalidates pending Cut.
     if (this.value === value) this.value = null;
-    return null;
+    return this.external();
+  }
+  private async external(): Promise<(ExplorerClipboard & { token: string }) | null> {
+    const paths: string[] = [];
+    for (const item of await clipboard.read()) for (const format of item.types) {
+      if (!/uri-list|gnome-copied-files|public\.file-url/i.test(format)) continue;
+      try {
+        const data = await item.getType(format);
+        if (!('text' in data)) continue;
+        for (const line of (await data.text()).replace(/\0/g, '').split(/\r?\n/)) {
+          try { if (line.startsWith('file:')) paths.push(fileURLToPath(line)); } catch { /* Invalid URL. */ }
+        }
+      } catch { /* Unavailable platform conversion. */ }
+    }
+    return paths.length ? { paths: [...new Set(paths)], cut: false, external: true, token: 'external' } : null;
   }
   async write(paths: string[], cut: boolean): Promise<ExplorerClipboard> {
     const value = { paths: [...paths], cut, token: randomUUID() };
-    await clipboard.write([new ClipboardItem({ [FORMAT]: new Blob([value.token]), 'text/plain': paths.join('\n') })]);
+    await clipboard.write([new ClipboardItem({ [FORMAT]: new Blob([value.token]), 'text/plain': paths.join('\n'),
+      'electron application/osclipboard;format="text/uri-list"': new Blob([paths.map(file => pathToFileURL(file).href).join('\r\n')]) })]);
     this.value = value;
     return { paths: [...paths], cut };
   }

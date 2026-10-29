@@ -30,9 +30,9 @@ function uniqueKeys(node: Node): void {
  * are never round-tripped through JS numbers or reserialized metadata objects. */
 export class NotebookDocument {
   readonly cells: NotebookCell[] = [];
-  readonly language: string;
-  readonly minor: number;
-  readonly error?: string;
+  language: string;
+  minor: number;
+  error?: string;
   revision = 0;
   private root?: Node;
   private cellsNode?: Node;
@@ -44,7 +44,7 @@ export class NotebookDocument {
   private listeners = new Set<(event: NotebookChange) => void>();
   private undoStack: { undo(): void; redo(): void }[] = [];
   private redoStack: { undo(): void; redo(): void }[] = [];
-  constructor(readonly original: string) {
+  constructor(public original: string) {
     let language = 'python', minor = 5;
     try {
       const errors: ParseError[] = [];
@@ -81,6 +81,15 @@ export class NotebookDocument {
       this.root = root; this.cellsNode = cells; this.initial = [...this.cells];
     } catch (error) { this.error = error instanceof Error ? error.message : String(error); this.cells.length = 0; }
     this.language = language; this.minor = minor; this.markSaved(original);
+  }
+  replace(text: string): void {
+    const next = new NotebookDocument(text);
+    if (next.error) throw Error(next.error);
+    this.original = next.original; this.language = next.language; this.minor = next.minor; this.error = undefined;
+    this.root = next.root; this.cellsNode = next.cellsNode; this.initial = next.initial;
+    this.cells.splice(0, this.cells.length, ...next.cells);
+    this.checkpoint = next.checkpoint; this.savedOrder = next.savedOrder;
+    this.undoStack = []; this.redoStack = []; this.serializations.clear(); this.changed();
   }
   subscribe(listener: (event: NotebookChange) => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }
   private changed(event: NotebookChange = 'structure'): void { this.revision++; this.serialized = undefined; for (const listener of this.listeners) listener(event); }

@@ -2,6 +2,7 @@ export type TabView = {
   sessionId?: string;
   kind?: 'document' | 'web' | 'terminal' | 'diff';
   exited?: boolean;
+  isUntitled?: boolean;
   page?: import('../../protocol/browser').BrowserPage;
   id: string;
   name: string;
@@ -28,6 +29,8 @@ export type ClosePromptView = {
 
 export const view = $state({
   recoveryCount: 0,
+  reloadPrompt: null as { id: string; name: string; revision: number; path: string } | null,
+  recoveryError: '',
   groups: [{ id: 'group-0', tabs: [], activeId: null, previewId: null }] as import('../../core/workspace/editor-groups').Group[],
   groupTree: { kind: 'group', id: 'group-0' } as import('../../core/workspace/editor-groups').GroupTree,
   focusedGroupId: 'group-0',
@@ -39,6 +42,8 @@ export const view = $state({
   notebookTabs: [] as { id: string; path: string; entry: import('../notebook/document-content').NotebookEntry }[],
   mediaTabs: [] as import('./media-cache').MediaTab[],
   activeMediaId: null as string | null,
+  documentNotices: {} as Record<string, { message: string; unavailable?: boolean; diskVersion?: import('../../core/document/document').DiskVersion }>,
+  noticeMessage: '',
   notice: false,
   unavailablePath: null as string | null,
   tocOpen: false,

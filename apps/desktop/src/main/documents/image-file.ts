@@ -1,3 +1,4 @@
+import { versionFromStat } from './file-system';
 import { constants, promises as fs } from 'node:fs';
 import type { DiskVersion } from '../../core/document/document';
 import { isImageDocument } from '../../core/document/document-profile';
@@ -10,7 +11,7 @@ async function openImage(file: string) {
     const stat = await handle.stat();
     if (!stat.isFile()) throw new Error('Only regular image files can be opened.');
     if (stat.size > MAX_IMAGE_BYTES) throw new Error('Images must be 64 MiB or smaller.');
-    return { handle, diskVersion: { size: stat.size, mtimeMs: stat.mtimeMs } };
+    return { handle, diskVersion: versionFromStat(stat) };
   } catch (error) { await handle.close(); throw error; }
 }
 export async function readImageMetadata(file: string) {

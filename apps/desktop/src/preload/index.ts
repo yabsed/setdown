@@ -51,6 +51,7 @@ const api: MarkTexApi = {
     },
     learnWord: word => ipcRenderer.invoke('editor:learn-word', word),
     snapshots: {
+      restoreBinary: (name, bytes) => ipcRenderer.invoke('editor:snapshots-binary', name, bytes),
       list: () => ipcRenderer.invoke('editor:snapshots-list'), read: id => ipcRenderer.invoke('editor:snapshots-read', id),
       write: (name, value, recovery) => ipcRenderer.invoke('editor:snapshots-write', name, value, recovery),
       remove: id => ipcRenderer.invoke('editor:snapshots-remove', id),
@@ -144,13 +145,14 @@ const api: MarkTexApi = {
     focus: id => ipcRenderer.send('hwp:focus', id),
     zoom: (id, steps) => ipcRenderer.send('hwp:zoom', id, steps),
     command: (id, command) => ipcRenderer.send('hwp:command', id, command),
+    backup: id => ipcRenderer.invoke('hwp:backup', id),
     save: (id, saveAs) => ipcRenderer.invoke('hwp:save', id, saveAs),
     reload: (id, document) => ipcRenderer.invoke('hwp:reload', id, document),
     retarget: (id, document) => ipcRenderer.invoke('hwp:retarget', id, document),
     release: id => ipcRenderer.send('hwp:release', id),
     onState: listener => subscribe('hwp:state', listener),
     onAction: listener => subscribe('hwp:action', listener) },
-  imageEdit: { open: (path, version) => ipcRenderer.invoke('image-edit:open', path, version),
+  imageEdit: { backup: id => ipcRenderer.invoke('image-edit:backup', id), open: (path, version) => ipcRenderer.invoke('image-edit:open', path, version),
     render: (id, recipe) => ipcRenderer.invoke('image-edit:render', id, recipe),
     release: id => ipcRenderer.send('image-edit:release', id),
     save: request => ipcRenderer.invoke('image-edit:save', request) },
@@ -170,6 +172,7 @@ const api: MarkTexApi = {
   newDocument: () => ipcRenderer.invoke('document:new'),
   openDocument: () => ipcRenderer.invoke('document:open'),
   readDocumentLocation: (location) => ipcRenderer.invoke('document:read-location', location),
+  droppedPathKind: (path) => ipcRenderer.invoke('document:dropped-path-kind', path),
   activateDocument: (document, text, revision) =>
     ipcRenderer.invoke('document:activate', { document, text, revision }),
   updateTabState: (tabs: TabStateSummary[]) =>
@@ -235,6 +238,9 @@ const api: MarkTexApi = {
   pickLinkTarget: (documentPath) => ipcRenderer.invoke('document:pick-link-target', documentPath),
   pathForFile: (file) => webUtils.getPathForFile(file),
   explorer: {
+    cancel: () => ipcRenderer.send('explorer:cancel'),
+    onProgress: listener => { const handler = (_event: Electron.IpcRendererEvent, progress: { completed: number; total: number; path: string }) => listener(progress);
+      ipcRenderer.on('explorer:progress', handler); return () => { ipcRenderer.removeListener('explorer:progress', handler); }; },
     transfer: request => ipcRenderer.invoke('explorer:transfer', request),
     clipboard: () => ipcRenderer.invoke('explorer:clipboard'),
     setClipboard: (paths, cut) => ipcRenderer.invoke('explorer:copy', paths, cut),
@@ -256,6 +262,7 @@ const api: MarkTexApi = {
   trashProjectEntry: (entryPath) => ipcRenderer.invoke('project:trash-entry', entryPath),
   openProjectFile: (filePath) => ipcRenderer.invoke('project:open-file', filePath),
   searchProject: (request) => ipcRenderer.invoke('project:search', request),
+  selectGitRepository: root => ipcRenderer.invoke('project:git-select', root),
   getGitStatus: () => ipcRenderer.invoke('project:git-status'),
   getGitDiff: (filePath, staged) => ipcRenderer.invoke('project:git-diff', { filePath, staged }),
   prepareGitDiffPreview: (tabId, diff, themeId) => ipcRenderer.invoke('project:git-diff-preview', { tabId, diff, themeId }),

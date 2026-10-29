@@ -55,6 +55,8 @@ export type ProjectEntryMove = {
   to: string;
 };
 
+export type ProjectSearchResponse = { results: ProjectSearchResult[]; limitHit: boolean; skipped: number };
+
 export type ProjectSearchResult = {
   path: string;
   name: string;
@@ -102,6 +104,9 @@ export type GitChange = {
 };
 
 export type GitSnapshot = {
+  roots?: string[];
+  discoveryLimited?: boolean;
+  root?: string;
   repository: boolean;
   branch: string;
   upstream: string;
@@ -120,6 +125,7 @@ export type GitDiffHunk = {
 };
 
 export type GitDiff = {
+  conflict?: { base: string | null; ours: string | null; theirs: string | null };
   /** Deleted files and unsupported mutable formats are comparison snapshots. */
   readOnly?: boolean;
   history?: GitHistorySelection;
@@ -138,6 +144,8 @@ export type GitDiff = {
 export type GitDiffPreviewResult = RenderResult & { supported: boolean };
 
 export type TabStateSummary = {
+  revision?: number;
+  diskVersion?: DiskVersion;
   name: string;
   path: string;
   dirty: boolean;
@@ -226,7 +234,7 @@ export type ApplicationMenuEntry = {
 
 export type CloseDecision = 'cancel' | 'discard' | 'save';
 
-export type AppCommand = `hwp:${'undo' | 'redo' | 'cut' | 'copy' | 'paste' | 'select-all'}` | 'image:undo' | 'image:redo'
+export type AppCommand = 'reload-document' | `hwp:${'undo' | 'redo' | 'cut' | 'copy' | 'paste' | 'select-all'}` | 'image:undo' | 'image:redo'
   | `explorer:${import('./explorer').ExplorerEditCommand}`
   | 'new-web-tab'
   | 'reopen-web-tab'
@@ -275,6 +283,7 @@ export type MarkTexApi = {
   openDocument(): Promise<DocumentSnapshot | null>;
   /** Read an address-bar file location without activating or replacing a document. */
   readDocumentLocation(location: string): Promise<DocumentSnapshot>;
+  droppedPathKind(path: string): Promise<'file' | 'directory'>;
   activateDocument(document: DocumentSnapshot, text: string, revision: number): Promise<DocumentSnapshot>;
   updateTabState(tabs: TabStateSummary[]): void;
   getGitReviewState(): Promise<GitReviewState | null>;
@@ -364,7 +373,8 @@ export type MarkTexApi = {
   moveProjectEntries(entryPaths: string[], targetDirectory: string): Promise<{ moves: ProjectEntryMove[]; error?: string }>;
   trashProjectEntry(entryPath: string): Promise<void>;
   openProjectFile(filePath: string): Promise<DocumentSnapshot | null>;
-  searchProject(request: ProjectSearchRequest): Promise<ProjectSearchResult[]>;
+  searchProject(request: ProjectSearchRequest): Promise<ProjectSearchResponse>;
+  selectGitRepository(root: string): Promise<GitSnapshot>;
   getGitStatus(): Promise<GitSnapshot>;
   requestGitGraph(request: GitGraphRequest): Promise<GitGraphReply>;
   cancelGitGraph(id: string): void;

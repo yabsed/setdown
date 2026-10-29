@@ -94,7 +94,8 @@
       "src/main/editor/editor-tools.test.ts",
       "src/core/workspace/document-store.test.ts",
       "src/renderer/project/source-control/review-workspace.test.ts",
-      "src/renderer/reader/preview-layout-coordinator.test.ts"
+      "src/renderer/reader/preview-layout-coordinator.test.ts",
+      "src/main/project/completeness.test.ts"
     ]
   },
   "e2e": {
@@ -162,7 +163,7 @@
       "previewContract": false
     },
     "git/git-review-tabs.spec.ts": {
-      "previewContract": false
+      "previewContract": true
     },
     "git/rendered-diff-layout.spec.ts": {
       "previewContract": false
@@ -258,7 +259,7 @@
       "previewContract": true
     },
     "workspace/external-change.spec.ts": {
-      "previewContract": false
+      "previewContract": true
     },
     "workspace/markdown-insertions.spec.ts": {
       "previewContract": false

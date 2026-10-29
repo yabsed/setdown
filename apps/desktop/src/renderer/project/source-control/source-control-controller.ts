@@ -46,6 +46,12 @@ type ReviewReadingState = {
 
 export class SourceControlController {
   private get state() { return this.options.state ?? project; }
+  private readonly conflictSides = new Map<string, 'base' | 'ours' | 'theirs'>();
+  selectConflictBase = async (side: 'base' | 'ours' | 'theirs'): Promise<void> => {
+    const tab = this.activeTab();
+    if (!tab?.diff?.conflict) return;
+    this.conflictSides.set(tab.filePath, side); await this.reloadTab(tab);
+  };
   private readonly loadGenerations = new Map<string, number>();
   private readonly checkpoints = new PreviewCheckpoints((id) => {
     const tab = this.state.gitDiffTabs.find((candidate) => candidate.id === id);
@@ -122,9 +128,12 @@ export class SourceControlController {
           && root === this.state.folder?.path && !this.state.gitBusy;
         try {
           const snapshot = await this.options.desktop.getGitStatus();
-          if (current()) this.state.git = snapshot;
+          if (current()) {
+            if (this.state.error === this.state.gitError) this.state.error = '';
+            this.state.gitError = ''; this.state.git = snapshot;
+          }
         } catch (error) {
-          if (current()) this.state.error = error instanceof Error ? error.message : String(error);
+          if (current()) this.state.error = this.state.gitError = error instanceof Error ? error.message : String(error);
         }
       }
     } finally { this.state.gitLoading = false; }
@@ -154,13 +163,16 @@ export class SourceControlController {
 
   reviewHistory = async (selection: GitHistorySelection): Promise<void> => {
     const generation = ++this.historyOpenGeneration;
-    if (selection.root !== this.state.folder?.path) return;
+    const folder = this.state.folder?.path;
+    const current = () => folder === this.state.folder?.path && generation === this.historyOpenGeneration
+      && (this.state.git?.roots ?? [this.state.git?.root ?? folder]).includes(selection.root);
+    if (!current()) return;
     const key = JSON.stringify(selection);
     let tab = this.state.gitDiffTabs.find((candidate) => candidate.history && JSON.stringify(candidate.history) === key);
     if (!tab) {
       try {
         const diff = await this.options.desktop.getGitHistoryDiff(selection);
-        if (selection.root !== this.state.folder?.path || generation !== this.historyOpenGeneration) return;
+        if (!current()) return;
         const created = this.createTab(diff.filePath, false);
         created.history = selection;
         created.diff = diff;
@@ -169,7 +181,7 @@ export class SourceControlController {
         tab = this.state.gitDiffTabs.find((candidate) => candidate.history && JSON.stringify(candidate.history) === key);
         if (!tab) { this.state.gitDiffTabs.push(created); tab = this.state.gitDiffTabs.at(-1)!; }
       } catch (error) {
-        if (selection.root === this.state.folder?.path && generation === this.historyOpenGeneration) this.state.error = error instanceof Error ? error.message : String(error);
+        if (current()) this.state.error = error instanceof Error ? error.message : String(error);
         return;
       }
     }
@@ -325,6 +337,7 @@ export class SourceControlController {
     this.schedulePrime();
   };
 
+  selectRepository = (root: string): Promise<void> => this.mutate(() => this.options.desktop.selectGitRepository(root));
   initialize = (): Promise<void> => this.mutate(() => this.options.desktop.initializeGit());
   stage = (paths: string[]): Promise<void> => this.mutate(() => this.options.desktop.stageGit(paths));
   unstage = (paths: string[]): Promise<void> => this.mutate(() => this.options.desktop.unstageGit(paths));
@@ -361,7 +374,7 @@ export class SourceControlController {
     if (this.primeFrame !== null) cancelAnimationFrame(this.primeFrame);
     this.primeFrame = null;
     for (const tab of [...this.state.gitDiffTabs]) this.disposeTab(tab);
-    if (!this.options.state) this.state.git = null;
+    if (!this.options.state) { this.state.git = null; this.state.gitError = ''; }
     this.state.gitDiffTabs.splice(0);
     this.state.activeGitDiffId = null;
     this.options.desktop.showPreview(null, null);
@@ -780,23 +793,23 @@ export class SourceControlController {
 
   private async mutate(action: () => Promise<GitSnapshot>, afterAction?: () => Promise<void>): Promise<void> {
     if (this.state.gitBusy) return;
-    this.statusGeneration += 1;
-    this.state.gitBusy = true;
+    const generation = ++this.statusGeneration, root = this.state.folder?.path;
+    const current = () => generation === this.statusGeneration && root === this.state.folder?.path;
+    this.state.gitBusy = true; this.state.error = '';
     try {
-      await this.perform(action);
-      if (!this.state.error) await afterAction?.();
-      if (!this.state.error) await this.refreshOpenDiffs();
-    } catch (error) { this.state.error = error instanceof Error ? error.message : String(error); }
+      const snapshot = await action();
+      if (!current()) return;
+      this.state.git = snapshot;
+      await afterAction?.();
+    } catch (error) { if (current()) this.state.error = error instanceof Error ? error.message : String(error); }
     finally {
-      this.state.gitBusy = false;
-      if (this.refreshRequested) void this.refresh();
+      if (current()) {
+        this.state.gitBusy = false;
+        // Hooks and remote operations can partially succeed before returning an error.
+        if (this.state.error || this.refreshRequested) void this.refresh();
+        await this.refreshOpenDiffs();
+      }
     }
-  }
-
-  private async perform(action: () => Promise<GitSnapshot>, clear = true): Promise<void> {
-    if (clear) this.state.error = '';
-    try { this.state.git = await action(); this.state.error = ''; }
-    catch (error) { this.state.error = error instanceof Error ? error.message : String(error); }
   }
 
   async refreshOpenDiffs(): Promise<void> {
@@ -822,6 +835,10 @@ export class SourceControlController {
   }
 
   private effectiveDiff(diff: GitDiff): GitDiff {
+    if (diff.conflict) {
+      const side = this.conflictSides.get(diff.filePath) ?? 'ours';
+      diff = { ...diff, originalText: diff.conflict[side], originalLabel: `${side.toUpperCase()} (unresolved conflict)` };
+    }
     if (!diff.staged && !diff.history && this.options.workingTreeEditable?.(diff.filePath) === false)
       return { ...diff, readOnly: true };
     if (diff.staged || diff.history || diff.originalText === null || diff.modifiedText === null) return diff;

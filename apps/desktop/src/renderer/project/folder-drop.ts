@@ -6,33 +6,45 @@ const hasFiles = (event: DragEvent) =>
 export function installFolderDrop(
   shell: HTMLElement,
   desktop: DesktopPort,
-  open: (path: string) => void,
+  open: (paths: string[]) => void,
 ): () => void {
+  const clear = () => shell.classList.remove('is-folder-drop-target');
+  const inExplorer = (event: DragEvent) => event.target instanceof Element
+    && !!event.target.closest('#project-explorer-tree, .explorer-root');
   const over = (event: DragEvent) => {
-    if (!hasFiles(event)) return;
+    if (!hasFiles(event) || inExplorer(event)) { clear(); return; }
     event.preventDefault();
+    event.stopPropagation();
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
     shell.classList.add('is-folder-drop-target');
   };
   const leave = (event: DragEvent) => {
-    if (event.relatedTarget === null) shell.classList.remove('is-folder-drop-target');
+    if (event.relatedTarget === null) clear();
   };
   const drop = (event: DragEvent) => {
-    if (!hasFiles(event)) return;
+    clear();
+    if (!hasFiles(event) || inExplorer(event)) return;
     event.preventDefault();
     event.stopPropagation();
-    shell.classList.remove('is-folder-drop-target');
-    const file = event.dataTransfer?.files.item(0);
-    if (!file) return;
-    const path = desktop.pathForFile(file);
-    if (path) open(path);
+    const paths = [...event.dataTransfer?.files ?? []].map(file => desktop.pathForFile(file)).filter(Boolean);
+    if (paths.length) open(paths);
   };
-  window.addEventListener('dragover', over, { capture: true });
-  window.addEventListener('dragleave', leave, { capture: true });
-  window.addEventListener('drop', drop, { capture: true });
+  const key = (event: KeyboardEvent) => { if (event.key === 'Escape') clear(); };
+  // Own file opening outside the tree before editor/browser defaults can paste
+  // the filename. The tree retains its own target-specific import handling.
+  window.addEventListener('dragover', over, true);
+  window.addEventListener('dragleave', leave, true);
+  window.addEventListener('drop', drop, true);
+  window.addEventListener('dragend', clear, true);
+  window.addEventListener('blur', clear);
+  window.addEventListener('keydown', key, true);
   return () => {
-    window.removeEventListener('dragover', over, { capture: true });
-    window.removeEventListener('dragleave', leave, { capture: true });
-    window.removeEventListener('drop', drop, { capture: true });
+    clear();
+    window.removeEventListener('dragover', over, true);
+    window.removeEventListener('dragleave', leave, true);
+    window.removeEventListener('drop', drop, true);
+    window.removeEventListener('dragend', clear, true);
+    window.removeEventListener('blur', clear);
+    window.removeEventListener('keydown', key, true);
   };
 }

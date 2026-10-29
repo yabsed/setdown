@@ -165,7 +165,8 @@ export class ExplorerController {
       }
     }
     if (project.folder) await this.reload(project.folder);
-    if (completed.length) selectPaths(completed.map(item => item.to));
+    if (completed.length && result.kind !== 'undo') selectPaths(completed.map(item => item.to));
+    if (result.warning) this.fail(new Error(result.warning));
     const failed = result.items.find(item => item.status === 'failed');
     if (failed) this.fail(new Error(`${completed.length} completed. ${failed.error} Remaining items were not changed.`));
   }

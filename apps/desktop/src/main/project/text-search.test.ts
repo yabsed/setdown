@@ -20,6 +20,19 @@ function listing(root: string) {
     text: async () => ['note.md', 'code.cpp', 'invalid.custom'].map(name => path.join(root, name)) } as unknown as RipgrepFiles;
 }
 
+test('search exposes truncation, unreadable candidates and ignored open Markdown buffers', async () => {
+  await fixture(async root => {
+    const file = path.join(root, 'many.txt'); await fs.writeFile(file, 'needle\n'.repeat(310));
+    const files = { text: async () => [path.join(root, 'missing.txt'), file], markdown: async () => [] } as unknown as RipgrepFiles;
+    const service = new SearchService(new ProjectPaths(), async () => [{ line: 1, column: 1, lineOccurrence: 0, ordinal: 0, preview: 'needle' }], files);
+    const limited = await service.search(state(root), { scope: 'text', query: 'needle', documents: [] });
+    assert.equal(limited.results.length, 300); assert.equal(limited.limitHit, true); assert.equal(limited.skipped, 1);
+    const ignored = path.join(root, 'ignored.md');
+    const open = await service.search(state(root), { query: 'needle', documents: [{ path: ignored, text: '# needle', surface: 'viewer' }] });
+    assert.equal(open.results[0].path, ignored); assert.equal(open.limitHit, false); assert.equal(open.skipped, 0);
+  });
+});
+
 test('default search keeps Markdown traversal and rendered semantics', async () => {
   await fixture(async root => {
     await fs.writeFile(path.join(root, 'note.md'), '# needle');
@@ -28,7 +41,7 @@ test('default search keeps Markdown traversal and rendered semantics', async () 
       rendered++;
       return [{ line: 1, column: 1, lineOccurrence: 0, ordinal: 0, preview: 'needle' }];
     }, listing(root));
-    const result = await service.search(state(root), { query: 'needle', documents: [] });
+    const { results: result } = await service.search(state(root), { query: 'needle', documents: [] });
     assert.equal(rendered, 1);
     assert.equal(result.length, 1);
     assert.equal(result[0].surface, 'viewer');
@@ -43,7 +56,7 @@ test('All Text Files uses live code buffers and never renders code through Cross
     await fs.writeFile(path.join(root, 'invalid.custom'), Buffer.from([0xff, 0x61]));
     const seen: string[] = [];
     const service = new SearchService(new ProjectPaths(), async file => { seen.push(file); return []; }, listing(root));
-    const result = await service.search(state(root), { scope: 'text', query: 'needle',
+    const { results: result } = await service.search(state(root), { scope: 'text', query: 'needle',
       documents: [{ path: path.join(root, 'code.cpp'), surface: 'editor', text: '😀live needle\r\n' }] });
     assert.deepEqual(seen, [path.join(root, 'note.md')]);
     assert.equal(result.length, 1);
@@ -64,9 +77,9 @@ test('a newer empty search cancels a slow rendered search result', async () => {
     const target = state(root);
     const pending = service.search(target, { query: 'needle', documents: [] });
     await started;
-    assert.deepEqual(await service.search(target, { query: '', documents: [] }), []);
+    assert.deepEqual(await service.search(target, { query: '', documents: [] }), { results: [], limitHit: false, skipped: 0 });
     complete([{ line: 1, column: 1, lineOccurrence: 0, ordinal: 0, preview: 'needle' }]);
-    assert.deepEqual(await pending, []);
+    assert.deepEqual(await pending, { results: [], limitHit: false, skipped: 0 });
   });
 });
 
@@ -74,7 +87,7 @@ test('an empty live buffer overrides matching text on disk', async () => {
   await fixture(async root => {
     await fs.writeFile(path.join(root, 'code.cpp'), 'needle on disk');
     const service = new SearchService(new ProjectPaths(), async () => [], listing(root));
-    const results = await service.search(state(root), { scope: 'text', query: 'needle',
+    const { results } = await service.search(state(root), { scope: 'text', query: 'needle',
       documents: [{ path: path.join(root, 'code.cpp'), surface: 'editor', text: '' }] });
     assert.deepEqual(results, []);
   });

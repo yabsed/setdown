@@ -1,7 +1,6 @@
 import { appZoomStep } from '../../core/zoom';
 import { BrowserWindow } from 'electron';
 import type { Event as ElectronEvent } from 'electron';
-import { unwatchFile } from 'node:fs';
 import path from 'node:path';
 import { isDirty } from '../../core/document/document-state';
 import { themeProfile } from '../../core/theme/theme-catalog';
@@ -9,6 +8,7 @@ import type { DocumentSnapshot } from '../../core/document/document';
 import type { PreviewManager } from '../preview/preview-manager';
 import type { ThemeManager } from '../theme/theme-manager';
 import type { WindowState } from './window-state';
+import { windowDirtyFingerprint } from './window-state';
 import type { WindowRegistry } from './window-registry';
 
 type Options = {
@@ -84,7 +84,7 @@ export class WindowManager {
         if (command) {
           event.preventDefault(); window.webContents.send('app:command', `explorer:${command}`); return;
         }
-        if (input.key.toLowerCase() === 'z') { event.preventDefault(); return; }
+        if (input.key.toLowerCase() === 'z') { event.preventDefault(); window.webContents.send('app:command', 'explorer:undo'); return; }
       }
       const zoomStep = appZoomStep(input);
       if (zoomStep !== undefined) {
@@ -97,14 +97,14 @@ export class WindowManager {
       }
     });
     if (showWhenReady) window.once('ready-to-show', () => window.show());
-    window.on('focus', () => this.options.registry.focus(webContentsId));
+    window.on('focus', () => { this.options.registry.focus(webContentsId); state.checkDocumentVersions?.(); });
     window.on('resize', () => {
       const [width, height] = window.getContentSize();
       this.options.previews.resizeOwner(webContentsId, width, height);
     });
     window.on('close', (event) => this.confirmClose(event, state));
     window.on('closed', () => {
-      if (state.watchedPath) unwatchFile(state.watchedPath);
+      state.disposeDocumentWatchers?.();
       this.options.previews.closeOwner(webContentsId);
       this.options.registry.remove(webContentsId);
     });
@@ -116,7 +116,7 @@ export class WindowManager {
 
   disposeWatchers(): void {
     for (const state of this.options.registry.values) {
-      if (state.watchedPath) unwatchFile(state.watchedPath);
+      state.disposeDocumentWatchers?.();
       state.watchedPath = null;
     }
   }
@@ -137,6 +137,7 @@ export class WindowManager {
     event.preventDefault();
     if (state.closePromptOpen) return;
     state.closePromptOpen = true;
+    state.closePromptFingerprint = windowDirtyFingerprint(state);
     state.window.webContents.send(
       'app:request-window-close',
       dirtyTabs.map((tab) => tab.name),

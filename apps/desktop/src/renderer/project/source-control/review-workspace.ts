@@ -49,7 +49,8 @@ export class ReviewWorkspaceController {
     if (saved.mode === 'rendered') entry.controller.showRendered();
     if (!saved.active && previous && this.options.workspace.find(previous)) await this.options.activate(previous);
   };
-  refresh = (): Promise<void> => this.status.refresh();
+  refresh = async (): Promise<void> => { await this.status.refresh(); await this.reload(); };
+  selectRepository = (root: string): Promise<void> => this.status.selectRepository(root);
   initialize = (): Promise<void> => this.status.initialize();
   stage = async (paths: string[]): Promise<void> => { await this.status.stage(paths); await this.reload(); };
   unstage = async (paths: string[]): Promise<void> => { await this.status.unstage(paths); await this.reload(); };

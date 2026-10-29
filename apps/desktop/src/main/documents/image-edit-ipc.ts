@@ -52,6 +52,12 @@ export function installImageEditIpc(channels: WindowIpc, documents: DocumentMana
     }
     return { id, width, height, format: metadata.format as ImageFormat, preview };
   });
+  channels.handle('image-edit:backup', (state, id: string) => {
+    const source = sources.get(id);
+    if (!source || source.owner !== state.webContentsId) throw Error('The image is no longer open.');
+    if (source.bytes.length > 18 * 1024 * 1024) throw Error('This image exceeds the recovery limit. Save a copy to protect your edits.');
+    return source.bytes;
+  });
   channels.handle('image-edit:render', async (state, id: string, recipe: unknown) => {
     const source = sources.get(id);
     if (!source || source.owner !== state.webContentsId || !validRecipe(recipe, source.width, source.height)) throw Error('Invalid image preview request.');

@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import NativeOverlay from './shell/NativeOverlay.svelte';
+  import { confirmationFocus } from './shell/confirmation-focus';
   import HwpSurface from './hwp/HwpSurface.svelte';
   import EmptyState from './shell/EmptyState.svelte';
   import InsertionDialogs from './editor/InsertionDialogs.svelte';
@@ -45,8 +47,9 @@ import type { AppActions } from './ports/ui-actions';
   <EditorGroups {actions} />
   <div class="group-content focused-content" style={geometry(focused)}
     data-zoom-tab={project.gitDiffActive ? project.activeGitDiffId : view.groups.find(group => group.id === view.focusedGroupId)?.activeId}>
+  {#if view.recoveryError}<div class="notice" role="alert">{view.recoveryError}</div>{/if}
   <div class="notice" hidden={!view.notice}>
-    <span>{view.unavailablePath === view.tabs.find(tab => tab.active)?.path ? 'This file was deleted or is no longer accessible. Your open content is preserved.' : 'This file was changed by another application.'}</span>
+    <span>{view.noticeMessage}</span>
     <div>
       <button class="notice-keep" type="button" onclick={actions.keepExternalChange}>Keep My Changes</button>
       <button class="notice-reload" type="button" onclick={actions.reloadExternalChange}>Reload</button>
@@ -129,3 +132,13 @@ import type { AppActions } from './ports/ui-actions';
 <style>
   .notebook-content.inactive, .review-content.inactive { display: none; }
 </style>
+
+{#if view.reloadPrompt}
+  <NativeOverlay />
+  <div class="project-confirm" role="alertdialog" aria-modal="true" aria-labelledby="reload-title" use:confirmationFocus={() => view.reloadPrompt = null}>
+    <strong id="reload-title">Reload “{view.reloadPrompt.name}”?</strong>
+    <span>Replace unsaved edits with the version on disk?</span>
+    <div><button type="button" class="ghost" onclick={() => view.reloadPrompt = null}>Keep Editing</button>
+      <button type="button" class="danger" onclick={() => { void actions.reloadLocalDocument(view.reloadPrompt!.id, true); }}>Reload from Disk</button></div>
+  </div>
+{/if}

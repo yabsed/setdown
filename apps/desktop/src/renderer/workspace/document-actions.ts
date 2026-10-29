@@ -1,3 +1,4 @@
+import { fileLocation } from '../../core/document/file-location';
 import type { DocumentSnapshot } from '../../protocol/desktop-api';
 import { hasMarkdownPreview } from '../../core/document/document-capabilities';
 import { retainUnsavedRevision } from '../../core/document/document-save';
@@ -83,6 +84,7 @@ export class DocumentActions {
         }
       }
       this.options.renderTabs();
+      if (this.options.tabs.some(tab => this.options.dirty(tab))) { this.options.desktop.finishWindowClose(false); return; }
       this.options.desktop.finishWindowClose(true);
     } catch (error) {
       window.alert(`Could not save the document.\n${error instanceof Error ? error.message : String(error)}`);
@@ -108,26 +110,26 @@ export class DocumentActions {
   keepExternalChange() {
     const tab = this.options.active();
     if (!tab) return;
-    if (view.unavailablePath === tab.document.path) { view.notice = false; return; }
-    if (tab.document.kind === 'image' || tab.document.kind === 'hwp') { view.notice = false; return; }
+    if (view.unavailablePath === tab.document.path) { delete view.documentNotices[tab.document.path]; view.notice = false; return; }
+    if (tab.document.kind === 'image' || tab.document.kind === 'hwp') { delete view.documentNotices[tab.document.path]; view.notice = false; return; }
     const { id, revision } = tab;
     const path = tab.document.path;
     const text = this.options.text(tab);
-    void this.options.desktop.reloadDocument().then(async (diskDocument) => {
+    void this.options.desktop.readDocumentLocation(fileLocation(tab.document.path)).then(async (diskDocument) => {
       if (!diskDocument || this.options.active()?.id !== id
         || this.options.active()?.document.path !== path || tab.revision !== revision) return;
       tab.document = { ...diskDocument, text, revision };
       tab.text = text;
       await this.options.desktop.activateDocument(tab.document, text, revision);
       if (this.options.active()?.id !== id) return;
-      view.notice = false; this.options.updateChrome();
+      delete view.documentNotices[tab.document.path]; view.notice = false; this.options.updateChrome();
     }).catch((error) => console.error('Failed to keep current document text', error));
   }
   async reloadExternalChange() {
     const tab = this.options.active();
     if (!tab) return;
     const { id, revision } = tab;
-    const document = await this.options.desktop.reloadDocument();
+    const document = await this.options.desktop.readDocumentLocation(fileLocation(tab.document.path));
     if (document && this.options.active()?.id === id && tab.revision === revision
       && document.path === tab.document.path) await this.options.reload(document);
   }

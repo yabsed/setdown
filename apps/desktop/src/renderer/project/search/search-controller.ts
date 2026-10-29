@@ -19,7 +19,7 @@ export class SearchController {
     project.searchQuery = query;
     rememberProjectState(); this.highlight(); window.clearTimeout(this.timer);
     if (!query.trim() || !project.folder) {
-      project.searchResults = []; project.searching = false;
+      project.searchResults = []; project.searchNotice = ''; project.searching = false;
       if (project.folder) void this.options.desktop.searchProject({ query: '', documents: [] });
       return;
     }
@@ -28,7 +28,9 @@ export class SearchController {
   };
   open = async (result: ProjectSearchResult): Promise<void> => {
     editorToolsNow()?.rememberJump();
-    if (await this.options.open(result.path)) this.options.highlight(project.searchQuery.trim(), result);
+    const query = project.searchQuery, request = this.request;
+    if (await this.options.open(result.path) && request === this.request && query === project.searchQuery)
+      this.options.highlight(query.trim(), result);
   };
   contextChanged = (): void => { if (project.searchQuery.trim()) this.search(project.searchQuery); };
   restore = (): void => {
@@ -45,7 +47,7 @@ export class SearchController {
   };
   clear = (): void => {
     ++this.request; window.clearTimeout(this.timer);
-    project.searchQuery = ''; project.searchResults = []; project.expandedSearchGroups = []; project.searching = false;
+    project.searchQuery = ''; project.searchNotice = ''; project.searchResults = []; project.expandedSearchGroups = []; project.searching = false;
     rememberProjectState(); this.options.highlight('');
     if (project.folder) void this.options.desktop.searchProject({ query: '', documents: [] });
   };
@@ -56,11 +58,12 @@ export class SearchController {
       && root === project.folder?.path && scope === searchScope.value;
     try {
       const payload = { query, documents: this.options.documents(query), scope };
-      const results = await this.options.desktop.searchProject(payload);
+      const { results, limitHit, skipped } = await this.options.desktop.searchProject(payload);
       if (current()) {
         project.searchResults = results; project.error = '';
+        project.searchNotice = [limitHit ? 'Result limit reached. Narrow your search to see remaining matches.' : '', skipped ? `${skipped} file(s) could not be searched (size, access or decoding).` : ''].filter(Boolean).join(' ');
         recordEditorResults(`Project search: ${query}`, 'Project search', results.map(result => ({ label: `${result.relativePath}:${result.line}`, detail: result.preview,
-          location: { path: result.path, line: result.line, column: result.column } })), query, group, results.length >= 1000);
+          location: { path: result.path, line: result.line, column: result.column } })), query, group, limitHit || skipped > 0);
       }
     } catch (error) {
       if (current()) project.error = error instanceof Error ? error.message : String(error);

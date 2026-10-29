@@ -1,0 +1,117 @@
+{
+  "final_implementation": "Own atomic save defers this window's watcher until the exact written version is known, then re-stats the file. Reader preparation/presentation code retains HEAD behavior.",
+  "baseline_commit": "860ec7e",
+  "build_env": {
+    "SETDOWN_BUILD_SOURCEMAP": "0"
+  },
+  "root_cause": {
+    "trigger": "double-click, edit, Escape before auto-save",
+    "cause": "Own atomic save was reported as an external change. The transient notice moved the native reader while DOM scrollY stayed fixed.",
+    "desktop_before_native_y": [
+      110,
+      151,
+      110
+    ],
+    "before_artifact": "desktop-before-watch-fix-native.json"
+  },
+  "regression": {
+    "baseline_expected_failure": {
+      "native": {
+        "bounds": [
+          {
+            "x": 0,
+            "y": 110,
+            "width": 1080,
+            "height": 710
+          },
+          {
+            "x": 0,
+            "y": 152,
+            "width": 1080,
+            "height": 668
+          },
+          {
+            "x": 0,
+            "y": 110,
+            "width": 1080,
+            "height": 710
+          }
+        ],
+        "externalChanges": [
+          [
+            {
+              "path": "/var/tmp/setdown-esc-position-GwNCs8/sample.md",
+              "diskVersion": {
+                "mtimeMs": 1793283301138.2886,
+                "size": 33951,
+                "ctimeMs": 1793283301139.2886,
+                "ino": 11751984,
+                "dev": 39
+              },
+              "unavailable": false
+            }
+          ]
+        ]
+      },
+      "log": "watch-only-baseline.log"
+    },
+    "candidate": {
+      "native": {
+        "bounds": [
+          {
+            "x": 0,
+            "y": 110,
+            "width": 1080,
+            "height": 710
+          }
+        ],
+        "externalChanges": []
+      },
+      "frames": 180,
+      "scroll_range_px": 0,
+      "stale_frames": 0,
+      "log": "watch-only-focused.log"
+    }
+  },
+  "final_desktop": {
+    "video": "desktop-watch-only.mp4",
+    "native_events": [],
+    "trace": "desktop-watch-only-trace.json",
+    "pixels": "desktop-watch-only-pixels.json",
+    "visible_dom_frames": 178,
+    "visible_dom_scroll_range_px": 0,
+    "note": "Heading settles in the initial Esc transition (video 2.700–2.733 s), then remains at y=308 through auto-save. No delayed native bounds movement or external-change notification. This is not a claim of zero motion in the initial transition. Video crops to the test document area; pixel coordinates refer to the original recording scaled to 734 px width."
+  },
+  "contract": {
+    "unit_passed": 634,
+    "tooling_passed": 11,
+    "e2e_passed": 208,
+    "e2e_failed": 1,
+    "failures": [
+      "test/e2e/browser/zoom.spec.ts:6:1 › browser Ctrl+wheel zooms websites and frames independently of the app and documents "
+    ],
+    "retries": 0,
+    "log": "contract-final.log"
+  },
+  "performance": {
+    "passed": true,
+    "runs": 3,
+    "thresholds": {
+      "relative": 0.25,
+      "absoluteMs": 50
+    },
+    "comparisons": 48,
+    "regressions": [],
+    "report": "benchmark-watch-only/comparison.json"
+  },
+  "additional_fixes_found_by_contract": "Plain array for discard IPC; verified disk version after moving an unchanged file; current IPC and visible-editor selectors in existing E2E checks. Existing performance thresholds remain unchanged.",
+  "historical_experiments": {
+    "record": "validation-experiments.json",
+    "failed_comparisons": [
+      "benchmark/comparison.json",
+      "benchmark-final/comparison.json"
+    ],
+    "note": "Temporary presentation ordering and compositor capture changes were removed after they caused benchmark regressions. Their tests and browser test experiments were removed with them. Historical results are not final validation."
+  },
+  "execution": "GUI contract and benchmark use isolated Xvfb, runtime directory and D-Bus. Only this symptom's desktop recording used the explicitly authorized real desktop."
+}

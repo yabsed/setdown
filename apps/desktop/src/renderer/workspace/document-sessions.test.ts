@@ -49,15 +49,15 @@ test('retarget releases the outgoing notebook owner after its current content is
   expect(sessions.dirty(tab)).toBe(true);
 });
 
-test('reload replaces the notebook session while tab release disposes the current owner once', () => {
+test('reload replaces notebook content while preserving the session until the tab closes', () => {
   const { tab, workspace, editor, sessions, entry } = fixture();
   const releaseOld = vi.spyOn(entry, 'dispose');
   const snapshot = { ...tab.document, text: tab.text.replace('original', 'reloaded'), revision: 2 };
   sessions.replace(tab, snapshot);
-  expect(releaseOld).toHaveBeenCalledTimes(1);
+  expect(releaseOld).not.toHaveBeenCalled();
   expect(editor.replace).not.toHaveBeenCalled();
   const current = notebookViews(workspace, () => {})[0].entry;
-  expect(current).not.toBe(entry);
+  expect(current).toBe(entry);
   expect(sessions.text(tab)).toContain('reloaded');
   const releaseCurrent = vi.spyOn(current, 'dispose');
   sessions.release(tab.id); sessions.releaseAll();

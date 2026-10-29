@@ -17,6 +17,9 @@ const hasFiles = (event: DragEvent) =>
 const showFolderDrop = (visible: boolean) => {
   document.documentElement?.toggleAttribute('data-setdown-folder-drop', visible);
 };
+window.addEventListener('dragend', () => showFolderDrop(false), true);
+window.addEventListener('blur', () => showFolderDrop(false));
+window.addEventListener('keydown', event => { if (event.key === 'Escape') showFolderDrop(false); }, true);
 
 window.addEventListener('dragover', (event) => {
   if (!hasFiles(event)) return;
@@ -28,14 +31,13 @@ window.addEventListener('dragleave', (event) => {
   if (event.relatedTarget === null) showFolderDrop(false);
 }, { capture: true });
 window.addEventListener('drop', (event) => {
+  showFolderDrop(false);
   if (!hasFiles(event)) return;
   event.preventDefault();
   event.stopPropagation();
   showFolderDrop(false);
-  const file = event.dataTransfer?.files.item(0);
-  if (!file) return;
-  const path = webUtils.getPathForFile(file);
-  if (path) ipcRenderer.send('preview:message', {
-    source: 'crossnote', type: 'marktex:folder-drop', path,
+  const paths = [...event.dataTransfer?.files ?? []].map(file => webUtils.getPathForFile(file)).filter(Boolean);
+  if (paths.length) ipcRenderer.send('preview:message', {
+    source: 'crossnote', type: 'marktex:folder-drop', path: paths[0], paths,
   });
 }, { capture: true });

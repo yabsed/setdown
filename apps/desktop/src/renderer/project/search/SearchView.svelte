@@ -44,6 +44,7 @@
       {groups.length} {groups.length === 1 ? 'file' : 'files'}
     {/if}
   </div>
+  {#if project.searchNotice}<p class="search-summary" role="status">{project.searchNotice}</p>{/if}
   <div class="project-results" aria-live="polite">
     {#each groups as group (group.path)}
       {@const expanded = project.expandedSearchGroups.includes(group.path)}

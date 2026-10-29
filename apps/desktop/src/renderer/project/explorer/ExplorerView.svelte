@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { tree, rememberTree, selectPaths, under } from './explorer-tree-state.svelte';
+  import { tree, rememberTree, under } from './explorer-tree-state.svelte';
   import { presentEntries, typeaheadMatch } from './explorer-presentation';
-  import type { ExplorerClipboard, ExplorerEditCommand } from '../../../protocol/explorer';
+  import type { ExplorerClipboard, ExplorerEditCommand, ExplorerTransfer } from '../../../protocol/explorer';
   import { selectEntry, topLevelPaths, draggedPaths, PROJECT_ENTRIES, PROJECT_FILES } from './explorer-selection';
   import NativeOverlay from '../../shell/NativeOverlay.svelte';
   import type { ProjectEntryKind } from '../../../protocol/desktop-api';
@@ -24,6 +24,7 @@
 
   let { actions }: { actions: AppActions } = $props();
   let busy = $state(false);
+  let progress = $state<{ completed: number; total: number; path: string } | null>(null);
   let dragged: string[] = [];
   let dragImage: HTMLElement | null = null;
   const visibleEntries = $derived(presentEntries(project.entries, tree.filter, tree.showHidden, tree.sort));
@@ -35,7 +36,7 @@
   let trashTarget = $state<VisibleProjectEntry[] | null>(null);
   let dropTarget = $state('');
   let clipboard = $state<ExplorerClipboard | null>(null);
-  let pasteConflict = $state<string | null>(null);
+  let pasteConflict = $state<ExplorerTransfer | { kind: 'paste'; target: string } | null>(null);
   let treeElement = $state<HTMLDivElement>();
   let popup = $state<HTMLDivElement>();
   let filterOpen = $state(false);
@@ -66,24 +67,25 @@
     const paths = topLevelPaths(selectedPaths());
     const target = targetOverride ?? createParent();
     menu = null;
-    if (command !== 'paste' && !paths.length) return;
+    if (command !== 'paste' && command !== 'undo' && !paths.length) return;
     busy = true;
     try {
       project.error = '';
       if (command === 'cut' || command === 'copy') clipboard = await actions.explorer.setClipboard(paths, command === 'cut');
       else {
-        await actions.transferProjectEntries(command === 'paste' ? { kind: 'paste', target, conflict } : { kind: 'duplicate', paths });
+        await actions.transferProjectEntries(command === 'paste' ? { kind: 'paste', target, conflict } : command === 'undo' ? { kind: 'undo', paths: [] } : { kind: 'duplicate', paths });
         await refreshClipboard();
       }
       if (tree.focused) await focusEntry(tree.focused);
     } catch (error) {
       fail(error);
-      if (command === 'paste' && !conflict && String(error).includes('already exists')) pasteConflict = target;
+      if (command === 'paste' && !conflict && String(error).includes('already exists')) pasteConflict = { kind: 'paste', target };
     }
     finally { busy = false; }
   }
 
   onMount(() => {
+    const stopProgress = actions.explorer.onProgress(value => { progress = value; });
     const menuTarget = '.application-menu, .application-menu-popup, .application-submenu-popup, .project-context-menu';
     const updateTarget = (event: Event) => {
       const target = event.target;
@@ -103,7 +105,7 @@
     void refreshClipboard();
     const timer = setInterval(() => { if (clipboard?.cut && document.hasFocus()) void refreshClipboard(); }, 1500);
     return () => {
-      clearInterval(timer); endDrag(); actions.explorer.setEditTarget(false);
+      stopProgress(); clearInterval(timer); endDrag(); actions.explorer.setEditTarget(false);
       document.removeEventListener('focusin', updateTarget);
       document.removeEventListener('pointerdown', updateTarget, true);
       window.removeEventListener('setdown:explorer-command', command);
@@ -316,11 +318,12 @@
     });
   }
 
+  const copying = (event: DragEvent) => /Mac/i.test(navigator.platform) ? event.altKey : event.ctrlKey;
   function dragOver(event: DragEvent, target: string) {
-    if (busy || !event.dataTransfer?.types.some(type => type === PROJECT_ENTRIES || type === 'application/x-setdown-project-entry')) return;
+    if (busy || !event.dataTransfer?.types.some(type => type === 'Files' || type === PROJECT_ENTRIES || type === 'application/x-setdown-project-entry')) return;
     event.preventDefault();
     const invalid = dragged.some(path => target === path || target.startsWith(`${path}/`) || target.startsWith(`${path}\\`));
-    event.dataTransfer.dropEffect = invalid ? 'none' : event.ctrlKey || event.altKey ? 'copy' : 'move';
+    event.dataTransfer.dropEffect = invalid ? 'none' : event.dataTransfer.types.includes('Files') || copying(event) ? 'copy' : 'move';
     dropTarget = invalid ? '' : target;
     if (hoverPath !== dropTarget) {
       clearTimeout(hoverTimer); hoverPath = dropTarget;
@@ -334,20 +337,22 @@
     }
   }
 
+  async function transfer(request: ExplorerTransfer | { kind: 'paste'; target: string; conflict?: ExplorerTransfer['conflict'] }) {
+    busy = true;
+    try { await actions.transferProjectEntries(request); await refreshClipboard(); }
+    catch (error) {
+      fail(error);
+      if (!request.conflict && String(error).includes('already exists')) pasteConflict = request;
+    } finally { busy = false; }
+  }
   async function drop(event: DragEvent, target: string) {
-    const sources = draggedPaths(event.dataTransfer, PROJECT_ENTRIES, 'application/x-setdown-project-entry');
+    const external = event.dataTransfer?.types.includes('Files');
+    const sources = external ? actions.pathsForDroppedFiles([...event.dataTransfer?.files ?? []])
+      : draggedPaths(event.dataTransfer, PROJECT_ENTRIES, 'application/x-setdown-project-entry');
     endDrag();
     if (busy || !sources.length) return;
     event.preventDefault(); event.stopPropagation();
-    busy = true;
-    try {
-      if (event.ctrlKey || event.altKey) await actions.transferProjectEntries({ kind: 'copy', paths: sources, target });
-      else {
-        const paths = await actions.moveProjectEntries(sources, target);
-        selectPaths(paths);
-      }
-    } catch { /* The controller displays the failure and leaves the tree.selection intact. */ }
-    finally { busy = false; }
+    await transfer({ kind: external ? 'import' : copying(event) ? 'copy' : 'move', paths: sources, target });
   }
 
   async function confirmTrash() {
@@ -382,6 +387,7 @@
     <svg viewBox="0 0 16 16"><path d="M1.5 4.5h5l1.5 2h6.5v7h-13v-9ZM8 8.5v3m-1.5-1.5h3"/></svg>
   </button>
   <SideViewMenu items={[
+    { label: 'Undo File Operation', disabled: busy, run: () => void fileCommand('undo') },
     { label: 'Refresh Explorer', disabled: !project.folder, run: actions.refreshProjectExplorer },
     { label: 'Collapse Folders', disabled: !project.folder, run: actions.collapseProjectExplorer },
     { label: 'Reveal Active File', disabled: !project.folder, run: () => void actions.revealActiveProjectEntry().then(() => { if (tree.focused) void focusEntry(tree.focused); }).catch(fail) },
@@ -443,9 +449,9 @@
           onkeydown={(event) => keyEntry(event, entry)}
           oncontextmenu={(event) => openMenu(event, entry)} ondragstart={(event) => startDrag(event, entry)}
           ondragend={endDrag}
-          ondragover={(event) => entry.kind === 'directory' && dragOver(event, entry.path)}
+          ondragover={(event) => dragOver(event, entry.kind === 'directory' ? entry.path : parentOf(entry.path))}
           ondragleave={(event) => { if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) { dropTarget = ''; clearTimeout(hoverTimer); hoverPath = ''; scrollSpeed = 0; } }}
-          ondrop={(event) => entry.kind === 'directory' && drop(event, entry.path)}>
+          ondrop={(event) => drop(event, entry.kind === 'directory' ? entry.path : parentOf(entry.path))}>
           {#if entry.kind === 'directory'}
             <svg class="tree-chevron" class:is-open={entry.expanded} viewBox="0 0 16 16"><path d="m5 4 4 4-4 4"/></svg>
             <svg class="tree-icon" viewBox="0 0 16 16"><path d="M1.5 4.5h5l1.5 2h6.5v7h-13v-9Z"/></svg>
@@ -466,7 +472,7 @@
   {/if}
 {/if}
 
-{#if busy}<div class="explorer-status" role="status">Working on files…</div>{/if}
+{#if busy}<div class="explorer-status" role="status">{progress ? `${progress.completed}/${progress.total} · ${progress.path.split(/[\\/]/).at(-1)}` : 'Working on files…'} <button type="button" onclick={() => actions.explorer.cancel()}>Cancel</button></div>{/if}
 
 {#if menu}
   <div class="project-context-menu explorer-context-menu" role="menu" tabindex="-1" bind:this={popup} onkeydown={menuKey}
@@ -524,8 +530,8 @@
     <span>Keep both with new names, or skip existing items. No files have been replaced.</span>
     <div>
       <button type="button" class="ghost" onclick={() => pasteConflict = null}>Cancel</button>
-      <button type="button" onclick={() => { const target = pasteConflict!; pasteConflict = null; void fileCommand('paste', 'skip', target); }}>Skip Existing</button>
-      <button type="button" onclick={() => { const target = pasteConflict!; pasteConflict = null; void fileCommand('paste', 'keep-both', target); }}>Keep Both</button>
+      <button type="button" onclick={() => { const request = pasteConflict!; pasteConflict = null; void transfer({ ...request, conflict: 'skip' }); }}>Skip Existing</button>
+      <button type="button" onclick={() => { const request = pasteConflict!; pasteConflict = null; void transfer({ ...request, conflict: 'keep-both' }); }}>Keep Both</button>
     </div>
   </div>
 {/if}

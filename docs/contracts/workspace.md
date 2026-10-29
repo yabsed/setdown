@@ -39,8 +39,8 @@ Explorer commands are scoped to the tree. Native accelerators, the main Edit
 menu, and context-menu actions must agree on the selected files; inline name
 inputs, Monaco, terminals and reading surfaces retain their own text clipboard.
 The native menu overlay retains the originating tree target across its focus
-change. File-operation Undo/Redo remains unavailable and must not accidentally
-undo the active editor while the tree owns the command.
+change. Tree-owned Undo reverses the latest recorded file operation in that
+window; it must not undo the active editor. Redo is not provided.
 
 `main/project/explorer-service.ts` serializes mutations. `file-transfer.ts` copies
 through a staging directory on the destination volume and reserves destinations
@@ -48,8 +48,20 @@ without replacing existing contents. It preserves nested symbolic links as
 links; unsupported file types fail instead of silently disappearing. The typed
 receipt identifies completed, skipped, failed and unstarted entries. Cut is
 consumed only for completed moves. A main-owned nonce on the system clipboard
-invalidates file selection when another copy replaces it; this is currently
-Setdown project clipboard support, not OS file-manager interoperability.
+invalidates file selection when another copy replaces it. Native file-URL/URI-list
+clipboard data can be imported as copies; an external Cut never authorizes
+Setdown to remove its source. Explorer native file drops import every selected
+file into the target folder (or a file row's parent). Editor drops open separate
+pinned tabs. Drop, paste and internal drag share collision handling. Shell and
+native-reader feedback must not cover the document or persist after cancellation.
+
+Copy/import are staged before publication. Cross-volume move verifies that its
+source metadata tree stayed unchanged before removing it; a changed source or
+failed removal preserves the destination and reports partial completion. Cancel
+stops unpublished work and preserves completed receipts. Up to 50 operations per
+window are undoable. Undo checks destination identity/metadata and open edited
+documents again, refusing to remove subsequently changed content. Recording Undo
+or notifying a language server cannot erase an already-completed disk receipt.
 
 `explorer-controller.ts` applies committed path mappings before watcher refresh,
 invalidates stale directory reads, and retains selection outside the mounted
@@ -69,7 +81,8 @@ stale reads, autosave draining and deletion lifecycle. `explorer-selection.spec.
 executes keyboard, context-menu and main-menu copy/paste, duplicate, conflict
 choices, basename/IME handling, selection persistence and failed trash in real
 Electron. Existing native web/Markdown overlay identity and focus tests remain
-required. These guarantees do not imply large-tree virtualization or file Undo.
+required. These guarantees do not imply large-tree virtualization, cross-window
+file Undo, or verification of the macOS Finder compositor on a Linux runner.
 
 ## Text saves, Git paths and external changes
 
@@ -83,6 +96,26 @@ Each window owns only its own file-watch listener. Deletion or loss of access
 produces an external-change notice and retains the buffer; autosave never
 recreates a missing file. Disabling autosave invalidates queued work and work
 awaiting save preprocessing, while already-started I/O completes normally.
+File versions include available device/inode/ctime metadata as well as size and
+mtime. Every backed open content, including background/shared views, has an
+owner-scoped parent-directory native watch, a two-second polling fallback and a
+focus reconciliation. Atomic replacement does not retire the parent watch.
+A window's own save defers its watcher observation across atomic publication,
+then compares the current file with the exact written version before reporting
+an external change. It must not flash a notice for its own write. Other windows
+remain notified, and concurrent replacement/deletion or a failed save still
+reconciles immediately; no elapsed-time ignore interval is used.
+Reloads coalesce per path and reject stale completions after another reload, new
+edits, retargeting or closing. Unavailable files retain their buffers and notices.
+The location-bar and native Reload commands reload local content without
+restarting the shell, terminals or web tabs; dirty reload requires confirmation.
+Untitled documents cannot reload. Autosave timers belong to each document and
+survive tab changes; errors remain visible on their owning document.
+
+First Save suggests the directory of the working document, or the open folder
+when there is no backed document; temporary draft directories are not suggested.
+Save As starts at the document's own path. Cancel leaves the draft untouched.
+Destructive terminal/watcher cleanup runs only after application quit is accepted.
 
 Draft relocation rewrites parsed local Markdown/HTML destinations, including
 reference definitions and encoded filenames. Code, prose and external URLs stay
@@ -98,6 +131,23 @@ read failure or size limit is never reported as an empty original. Read-only
 directory copies restore their mode after publication and clean writable staging
 trees on failure. The audit integration suite, draft parser tests, and actual
 preview local-link tests cover these boundaries.
+
+Git status and mutations operate on the actual repository root, even when Explorer
+shows a subfolder. Bounded discovery exposes nested repositories for explicit
+selection. Index/ref watches resolve the real gitdir and common directory,
+including linked worktrees. Mutable open comparisons refresh after repository
+changes; immutable history comparisons retain their commit identity. Mutation
+queues serialize per repository and late results cannot change a different
+folder's UI. Staged rename Unstage includes both names; unborn HEAD is detected
+explicitly instead of treating every reset error as an unborn repository.
+Unmerged comparisons expose base/ours/theirs against the working copy. Discard
+requires confirmation and preserves unsaved editor buffers. Remote partial
+success reports what completed, then refreshes status and comparisons.
+
+Project search returns result-limit and skipped-file information. Both search
+scopes include eligible open buffers, including ignored or deleted files. An
+empty ripgrep listing is an ordinary empty result. Opening a result cannot apply
+an obsolete query's highlights after a newer search.
 
 ## Editor groups
 
@@ -245,7 +295,12 @@ restores the recorded project, groups, text views, cursor/fold/scroll/display st
 and comparison presentation when available. Missing projects and individual file
 failures are reported. Dirty buffers with changed/missing disk baselines or an
 existing dirty owner recover into separate untitled documents. Automatic recovery
-writes at five-second intervals; only the latest completed snapshot is promised.
+writes after a 250ms edit debounce, with a one-second fallback and blur/visibility
+flush. Only the latest completed snapshot is promised. Image recovery retains
+owned original bytes and the edit recipe; HWP recovery requires an export without
+reported content loss. Binary restoration creates a separate recovery file and
+never overwrites the original. Aggregate content is bounded before encoding;
+failed writes are visible and back off for 30 seconds unless content changes.
 New windows/processes still start empty, with a recovery affordance when artifacts
 exist. Retention and size bounds are specified in [editor tools](../editor-tools.md).
 

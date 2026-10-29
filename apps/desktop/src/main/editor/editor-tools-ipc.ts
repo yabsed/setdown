@@ -55,6 +55,14 @@ export function installEditorToolsIpc(channels: WindowIpc): void {
     if (typeof word !== 'string' || !/^[a-zA-Z'-]{1,80}$/.test(word)) throw Error('Choose an English word.');
     if (!state.window.webContents.session.addWordToSpellCheckerDictionary(word)) throw Error('The spelling dictionary is unavailable.');
   });
+  channels.handle('editor:snapshots-binary', async (_state, name: string, bytes: Uint8Array) => {
+    if (typeof name !== 'string' || !/\.(png|jpe?g|webp|hwpx?)$/i.test(name) || !(bytes instanceof Uint8Array) || bytes.length > 24 * 1024 * 1024)
+      throw Error('Invalid binary recovery document.');
+    const directory = path.join(app.getPath('userData'), 'recovered-documents', randomUUID());
+    await fs.mkdir(directory, { recursive: true, mode: 0o700 });
+    const file = path.join(directory, `Recovered-${path.basename(name)}`);
+    await fs.writeFile(file, bytes, { flag: 'wx', mode: 0o600 }); return file;
+  });
   channels.handle('editor:snapshots-list', () => snapshots.list());
   channels.handle('editor:snapshots-read', (_state, id: string) => snapshots.read(id));
   channels.handle('editor:snapshots-write', (state, name: string, value: unknown, recovery: unknown) => snapshots.write(name, value, recovery === true ? `recovery-${run}-${state.webContentsId}` : undefined));

@@ -2,15 +2,15 @@ import { promises as fs, realpathSync, statSync, lstatSync, readlinkSync } from 
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { DiskVersion } from '../../protocol/desktop-api';
+export { sameDiskVersion } from '../../core/document/document';
 
-export function diskVersion(filePath: string): DiskVersion {
-  const stat = statSync(filePath);
-  return { mtimeMs: stat.mtimeMs, size: stat.size };
+export function versionFromStat(stat: { mtimeMs: number; size: number; ctimeMs: number; ino: number; dev: number }): DiskVersion {
+  return { mtimeMs: stat.mtimeMs, size: stat.size, ctimeMs: stat.ctimeMs, ino: stat.ino, dev: stat.dev };
 }
 
-export const sameDiskVersion = (a: DiskVersion, b: DiskVersion) => (
-  a.mtimeMs === b.mtimeMs && a.size === b.size
-);
+export function diskVersion(filePath: string): DiskVersion {
+  return versionFromStat(statSync(filePath));
+}
 
 export function canonicalPath(candidate: string) {
   try {
@@ -60,9 +60,11 @@ export async function atomicWrite(filePath: string, text: string, beforeCommit?:
   try {
     await fs.writeFile(temporary, text, { encoding: 'utf8', mode: stat?.mode, flag: 'wx' });
     if (stat) await fs.chmod(temporary, stat.mode);
-    const version = diskVersion(temporary);
-    beforeCommit?.();
-    await fs.rename(temporary, filePath);
-    return version;
+    const handle = await fs.open(temporary, 'r');
+    try {
+      beforeCommit?.();
+      await fs.rename(temporary, filePath);
+      return versionFromStat(await handle.stat());
+    } finally { await handle.close(); }
   } finally { await fs.rm(temporary, { force: true }); }
 }

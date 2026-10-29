@@ -52,6 +52,31 @@ async function repository() {
 }
 async function commit(root: string) { await GitCli.run(root, ['add', '-A']); await GitCli.run(root, ['commit', '-qm', 'fixture']); }
 
+test('first save starts beside the working document, never in the draft bundle', async () => {
+  const root = await temp(), directory = path.join(root, 'nested'); await fs.mkdir(directory);
+  const file = path.join(directory, '한국어.md'); await fs.writeFile(file, 'working');
+  const manager = new DocumentManager(() => {}), owner = state(root);
+  owner.currentDocument = await manager.read(file);
+  const draft = manager.newDocument(owner);
+  electron.save.mockResolvedValue({ canceled: true });
+  await manager.saveCurrent(owner, 'draft', 1);
+  expect(electron.save).toHaveBeenLastCalledWith(owner.window,
+    expect.objectContaining({ defaultPath: path.join(directory, draft.name) }));
+  expect(owner.currentDocument?.isUntitled).toBe(true);
+});
+
+test('first save in a folder-only workspace uses that folder and Save As uses the file path', async () => {
+  const root = await temp(), owner = state(root), manager = new DocumentManager(() => {});
+  const draft = manager.newDocument(owner); electron.save.mockResolvedValue({ canceled: true });
+  await manager.saveCurrent(owner, 'draft', 1);
+  expect(electron.save).toHaveBeenLastCalledWith(owner.window,
+    expect.objectContaining({ defaultPath: path.join(root, draft.name) }));
+  const file = path.join(root, 'original.md'); await fs.writeFile(file, 'original');
+  owner.currentDocument = await manager.read(file);
+  await manager.saveAs(owner, 'original', 0);
+  expect(electron.save).toHaveBeenLastCalledWith(owner.window, expect.objectContaining({ defaultPath: file }));
+});
+
 // Regression coverage for the 2026-10-22 audit. Real filesystem/Git boundaries
 // remain exercised; clocks and async completion are controlled only for races.
 test('F01 stopping one window watcher must preserve another window watcher', async () => {

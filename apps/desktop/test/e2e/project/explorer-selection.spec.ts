@@ -7,6 +7,47 @@ import { disposeApplication, focusApplication } from '../../support/electron/ele
 
 const entry = (page: Page, name: string) => page.getByRole('treeitem', { name, exact: true });
 const selected = (page: Page) => page.locator('.explorer-row[aria-selected="true"]');
+async function nativeFileDrag(page: Page, paths: string[], selector: string, drop = true) {
+  await page.evaluate(() => {
+    document.querySelector('#native-file-input')?.remove();
+    const input = Object.assign(document.createElement('input'), { type: 'file', multiple: true, id: 'native-file-input' });
+    input.hidden = true; document.body.append(input);
+  });
+  await page.locator('#native-file-input').setInputFiles(paths);
+  expect(await page.evaluate(() => [...document.querySelector<HTMLInputElement>('#native-file-input')!.files!]
+    .map(file => window.marktex.pathForFile(file)))).toEqual(paths);
+  await page.locator(selector).evaluate((target, drop) => {
+    const transfer = new DataTransfer();
+    for (const file of document.querySelector<HTMLInputElement>('#native-file-input')!.files!) transfer.items.add(file);
+    target.dispatchEvent(new DragEvent('dragover', { dataTransfer: transfer, bubbles: true, cancelable: true }));
+    if (drop) target.dispatchEvent(new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true }));
+  }, drop);
+}
+
+test('external files import into the target folder and editor drops open every file without a covering overlay', async () => {
+  const { root, app, page } = await launch();
+  const external = await mkdtemp(path.join(os.tmpdir(), 'setdown-native-drop-'));
+  const paths = ['first.txt', '한글 이름.txt'].map(name => path.join(external, name));
+  for (const file of paths) await writeFile(file, path.basename(file));
+  try {
+    await nativeFileDrag(page, paths, '.editor-surface', false);
+    const feedback = await page.locator('.shell').evaluate(shell => {
+      const style = getComputedStyle(shell, '::after'); return { text: style.content, height: parseFloat(style.height) };
+    });
+    expect(feedback.text).toContain('Open files or folder'); expect(feedback.height).toBeLessThan(100);
+    await nativeFileDrag(page, paths, '.explorer-row[data-path$="/destination"]');
+    await expect.poll(() => readdir(path.join(root, 'destination'))).toEqual(paths.map(file => path.basename(file)).sort());
+    await expect(page.locator('.shell')).not.toHaveClass(/is-folder-drop-target/);
+    for (const file of paths) expect(await readFile(file, 'utf8')).toBe(path.basename(file));
+    await nativeFileDrag(page, paths, '.editor-surface');
+    for (const file of paths) await expect(page.locator('.document-tab').filter({ hasText: path.basename(file) })).toBeVisible();
+    await expect(page.locator('.shell')).not.toHaveClass(/is-folder-drop-target/);
+    await expect(page.locator('.tab-dirty')).toHaveCount(0);
+    await nativeFileDrag(page, paths, '.editor-surface', false);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.shell')).not.toHaveClass(/is-folder-drop-target/);
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); await rm(external, { recursive: true, force: true }); }
+});
 async function launch() {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-selection-'));
   await mkdir(path.join(root, 'destination'));
@@ -182,8 +223,15 @@ test('Explorer modifier and keyboard selection, context actions, and a real mult
     await expect(selected(page)).toHaveText(['a.txt', 'b.txt']);
     await expect(page.getByRole('tab', { name: /a\.txt/ })).toHaveAttribute('title', path.join(root, 'destination', 'a.txt'));
     await expect(page.locator('.view-lines')).toContainText('UNSAVED_SELECTION');
+    await app.evaluate(({ dialog }) => {
+      dialog.showMessageBox = async (...args: unknown[]) => {
+        (globalThis as typeof globalThis & { moveSaveDialog: unknown }).moveSaveDialog = args.at(-1);
+        return { response: 0, checkboxChecked: false };
+      };
+    });
     await editor.press('Control+s');
     await expect.poll(() => readFile(path.join(root, 'destination', 'a.txt'), 'utf8')).toContain('UNSAVED_SELECTION');
+    expect(await app.evaluate(() => (globalThis as typeof globalThis & { moveSaveDialog: unknown }).moveSaveDialog)).toBeUndefined();
     expect((await readdir(root)).includes('a.txt')).toBe(false);
     await page.screenshot({ path: test.info().outputPath('selection-moved.png') });
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }

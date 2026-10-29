@@ -46,6 +46,45 @@ test('same-folder paste and duplicate reserve unique suffixes even for concurren
   expect(copyName('folder.v2', true, 1)).toBe('folder.v2 copy');
 });
 
+test('cross-volume moves publish a complete copy before removing their source', async () => {
+  const { root, target } = await fixture(), source = path.join(root, 'data.txt'), destination = path.join(target, 'data.txt');
+  await fs.writeFile(source, 'cross-volume content');
+  const link = fs.link.bind(fs);
+  vi.spyOn(fs, 'link').mockImplementation(async (from, to) => {
+    if (from === source) throw Object.assign(Error('cross-volume'), { code: 'EXDEV' });
+    return link(from, to);
+  });
+  await moveExclusive(source, destination);
+  expect(await fs.readFile(destination, 'utf8')).toBe('cross-volume content');
+  await expect(fs.stat(source)).rejects.toMatchObject({ code: 'ENOENT' });
+});
+
+test('canceling a copy before publication removes staging and keeps the source', async () => {
+  const { root, target } = await fixture(), source = path.join(root, 'data.txt'), destination = path.join(target, 'data.txt');
+  await fs.writeFile(source, 'source'); const controller = new AbortController(), copy = fs.copyFile.bind(fs);
+  vi.spyOn(fs, 'copyFile').mockImplementation(async (...args) => { await copy(...args); controller.abort(Error('Canceled')); });
+  await expect(copyExclusive(source, destination, controller.signal)).rejects.toThrow('Canceled');
+  expect(await fs.readdir(target)).toEqual([]); expect(await fs.readFile(source, 'utf8')).toBe('source');
+});
+
+test('completed receipts survive a post-commit notification failure', async () => {
+  const { root, target, service, state } = await fixture(), source = path.join(root, 'a.txt');
+  await fs.writeFile(source, 'original'); vi.spyOn(console, 'warn').mockImplementation(() => {});
+  service.languageOperation = async (_owner, _operation, phase) => { if (phase === 'did') throw Error('Server closed'); };
+  const result = await service.transfer(state, { kind: 'move', paths: [source], target });
+  expect(result.items).toEqual([{ from: source, to: path.join(target, 'a.txt'), status: 'completed' }]);
+  expect(result.undoable).toBe(true); expect(await fs.readFile(path.join(target, 'a.txt'), 'utf8')).toBe('original');
+});
+
+test('failure to record undo never hides an already-completed operation', async () => {
+  const { root, target, service, state } = await fixture(), source = path.join(root, 'a.txt'); await fs.writeFile(source, 'original');
+  service.languageOperation = async (_owner, operation, phase) => {
+    if (phase === 'did') await fs.unlink(operation.files[0].path);
+  };
+  const result = await service.transfer(state, { kind: 'copy', paths: [source], target });
+  expect(result.items[0].status).toBe('completed'); expect(result.undoable).toBe(false); expect(result.warning).toContain('Undo');
+});
+
 test('batch preflight rejects collisions without copying earlier entries; explicit policies preserve existing content', async () => {
   const { root, target, service, state } = await fixture();
   const paths = ['a.txt', 'b.txt'].map(name => path.join(root, name));

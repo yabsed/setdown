@@ -3,7 +3,8 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
-import { disposeApplication } from '../../support/electron/electron-app';
+import { disposeApplication, focusApplication } from '../../support/electron/electron-app';
+import { doubleClickPreview } from '../../support/preview/preview-cycle-input';
 
 test('hidden ordinary math document is prepared without focus changes and keeps its typography', async () => {
   test.setTimeout(120_000);
@@ -156,5 +157,89 @@ test('an owned background reader can prepare without changing the foreground doc
     expect(result.document?.text).toBe('# Second reader\n');
     await expect(page.getByRole('tab', { name: /second.md/ })).toHaveAttribute('aria-selected', 'true');
 
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
+test('auto save after edited Esc keeps the native reader in place without an external-change notice', async () => {
+  test.setTimeout(60_000);
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-esc-position-'));
+  const file = path.join(root, 'sample.md');
+  await writeFile(file, await readFile(path.resolve('test/fixtures/sample.md')));
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await app.firstWindow();
+    await focusApplication(app);
+    await expect(page.locator('.viewer-surface')).toBeVisible();
+    await page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-auto-save'));
+    expect(await page.evaluate(() => window.marktex.getAutoSave())).toBe(true);
+    const read = (script: string) => app.evaluate(async ({ BrowserWindow }, script) => {
+      const view = BrowserWindow.getAllWindows()[0].contentView.children.find(candidate =>
+        'webContents' in candidate && (candidate.webContents as Electron.WebContents).getURL().startsWith('marktex-preview://document/')
+        && !(candidate.webContents as Electron.WebContents).getURL().includes('/warmup-')) as Electron.WebContentsView;
+      return view ? view.webContents.executeJavaScript(script) : null;
+    }, script);
+    await expect.poll(() => read('document.body.dataset.setdownHydration')).toBe('complete');
+    await read('scrollTo(0, 2500)');
+    const id = await app.evaluate(({ BrowserWindow }) => (BrowserWindow.getAllWindows()[0].contentView.children
+      .find(candidate => 'webContents' in candidate && candidate.getVisible()) as Electron.WebContentsView).webContents.id);
+    await doubleClickPreview(app, id, false);
+    await app.evaluate(({ BrowserWindow, webContents }, id) => {
+      const owner = BrowserWindow.getAllWindows()[0];
+      const view = owner.contentView.children.find(candidate => 'webContents' in candidate && candidate.webContents === webContents.fromId(id))!;
+      const trace = { bounds: [] as Electron.Rectangle[], externalChanges: [] as unknown[] };
+      (globalThis as any).escNativeTrace = trace;
+      const setBounds = view.setBounds.bind(view), setVisible = view.setVisible.bind(view);
+      view.setBounds = bounds => { if (view.getVisible()) trace.bounds.push(bounds); setBounds(bounds); };
+      view.setVisible = visible => { if (visible) trace.bounds.push(view.getBounds()); setVisible(visible); };
+      const send = owner.webContents.send.bind(owner.webContents);
+      owner.webContents.send = (channel, ...args) => {
+        if (channel === 'document:external-change') trace.externalChanges.push(args);
+        send(channel, ...args);
+      };
+    }, id);
+    const editor = page.getByRole('textbox', { name: 'Editor content' });
+    await expect(editor).toBeEditable();
+    await editor.press('End');
+    await page.keyboard.insertText('\n\nESC_POSITION_MARKER\n\n');
+    await page.waitForTimeout(400);
+    await expect.poll(() => read('document.querySelector(".markdown-preview").textContent.includes("ESC_POSITION_MARKER")')).toBe(true);
+    await read(`window.escFrames = []; window.escCommands = [];
+      window.escRecording = false;
+      addEventListener('message', event => {
+        if (event.data?.command === 'marktex:position-preview' && event.data.requestId) escCommands.push(event.data);
+        if (event.data?.command === 'marktex:resume-hydration' && !escRecording) {
+          escRecording = true;
+          const record = () => {
+            escFrames.push({ y: scrollY, latest: document.querySelector('.markdown-preview').textContent.includes('ESC_POSITION_MARKER') });
+            if (escFrames.length < 180) requestAnimationFrame(record);
+          };
+          requestAnimationFrame(record);
+        }
+      });`);
+    await editor.press('Escape');
+    await expect(page.locator('.viewer-surface')).toBeVisible();
+    await expect.poll(() => read('escFrames.length'), { timeout: 10_000 }).toBe(180);
+    const recorded = await read('({ frames: escFrames, commands: escCommands })') as {
+      frames: Array<{ y: number; latest: boolean }>; commands: unknown[];
+    };
+    await writeFile(test.info().outputPath('esc-frames.json'), JSON.stringify(recorded, null, 2));
+    expect(recorded.frames.every(frame => frame.latest)).toBe(true);
+    const offsets = recorded.frames.map(frame => frame.y);
+    expect(Math.min(...offsets)).toBeGreaterThan(1000);
+    expect(Math.max(...offsets) - Math.min(...offsets)).toBeLessThanOrEqual(1);
+    await expect.poll(() => readFile(file, 'utf8')).toContain('ESC_POSITION_MARKER');
+    await expect(page.locator('.shell')).toHaveAttribute('data-dirty-tabs', '0');
+    const native = await app.evaluate(() => (globalThis as any).escNativeTrace) as { bounds: Electron.Rectangle[]; externalChanges: unknown[] };
+    await writeFile(test.info().outputPath('esc-native.json'), JSON.stringify(native, null, 2));
+    expect(native.externalChanges).toEqual([]);
+    expect(native.bounds.length).toBeGreaterThan(0);
+    for (const bounds of native.bounds) expect(bounds).toEqual(native.bounds[0]);
+    const capture = await app.evaluate(async ({ BrowserWindow }) => {
+      const view = BrowserWindow.getAllWindows()[0].contentView.children.find(candidate =>
+        'webContents' in candidate && candidate.getVisible()) as Electron.WebContentsView;
+      return (await view.webContents.capturePage()).toPNG();
+    });
+    await writeFile(test.info().outputPath('esc-reader.png'), capture);
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });

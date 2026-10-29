@@ -34,7 +34,7 @@ export class GitHistoryService {
   }
 
   private session(state: WindowState, root: string): Session {
-    if (!root || root !== state.projectRoot) throw new Error('The open repository changed.');
+    if (!root || ![state.projectRoot, ...(state.gitRepositories ?? [])].includes(root)) throw new Error('The open repository changed.');
     const old = this.sessions.get(state);
     if (old?.root === root) return old;
     if (old) for (const controller of old.requests.values()) controller.abort();
@@ -62,7 +62,7 @@ export class GitHistoryService {
     try {
       const { backend } = await session.backend;
       controller.signal.throwIfAborted();
-      if (state.projectRoot !== request.root) throw new Error('The open repository changed.');
+      if (![state.projectRoot, ...(state.gitRepositories ?? [])].includes(request.root)) throw new Error('The open repository changed.');
       switch (request.method) {
         case 'capabilities': return { ...await backend.getCapabilities(), workingTree: false };
         case 'history': {
@@ -116,7 +116,7 @@ export class GitHistoryService {
       read(baseOid, change.previousPath ?? change.path, change.kind === 'add'),
       read(selection.head, change.path, change.kind === 'delete'),
     ]);
-    if (state.projectRoot !== selection.root) throw new Error('The open repository changed.');
+    if (![state.projectRoot, ...(state.gitRepositories ?? [])].includes(selection.root)) throw new Error('The open repository changed.');
     return { path: change.path, filePath, staged: false, history: selection, patch: '',
       originalText, modifiedText, originalLabel: baseOid?.slice(0, 8) ?? 'EMPTY', modifiedLabel: selection.head.slice(0, 8),
       hunks: originalText !== null && modifiedText !== null ? textDiffHunks(originalText, modifiedText) : [] };

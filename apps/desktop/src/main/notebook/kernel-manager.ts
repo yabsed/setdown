@@ -34,7 +34,7 @@ export class NotebookKernelManager {
   async run(owner: number, request: NotebookRun, send: (event: NotebookKernelEvent) => void): Promise<void> {
     validateNotebookRun(request);
     const key = this.key(owner, request.id), existing = this.sessions.get(key);
-    if (existing && existing.request.generation === request.generation && existing.request.path === request.path
+    if (existing && existing.request.generation === request.generation
       && existing.request.python === request.python) {
       if (existing.busy) throw Error('A cell is already running. Interrupt it before starting another run.');
       existing.busy = true; existing.request = request;

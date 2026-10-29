@@ -1,5 +1,5 @@
 import { app, clipboard, dialog } from 'electron';
-import { promises as fs, watchFile, unwatchFile, type Stats } from 'node:fs';
+import { promises as fs, statSync as requireStat, watchFile, unwatchFile, watch, type FSWatcher, type Stats } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -21,7 +21,7 @@ import { readMarkdownFile, readTextFile } from './text-file';
 import { discardDraftBundle, saveDraftBundle } from './draft-assets';
 import { isSupportedImagePath, savePastedImageFile, savePastedPng } from './pasted-image';
 import { markdownDestinationForFile } from './markdown-link';
-import { atomicWrite, canonicalPath, canonicalSavePath, diskVersion, sameDiskVersion, serializeFileSave } from './file-system';
+import { atomicWrite, canonicalPath, canonicalSavePath, diskVersion, versionFromStat, sameDiskVersion, serializeFileSave } from './file-system';
 import type { WindowState } from '../windows/window-state';
 
 const MARKDOWN_FILTER = { name: 'Markdown', extensions: MARKDOWN_EXTENSIONS };
@@ -31,7 +31,9 @@ const saveFilters = (filePath: string) => isMarkdownDocument(filePath)
 
 export class DocumentManager {
   private untitledSequence = 0;
-  private readonly watchers = new WeakMap<WindowState, (current: Stats) => void>();
+  private readonly watchers = new WeakMap<WindowState, Map<string, {
+    expected: DocumentSnapshot['diskVersion']; saving: boolean; listener(current: Stats): void; native?: FSWatcher;
+  }>>();
 
   constructor(private readonly resetPreviewCache: () => void, readonly positions?: ReadingPositionStore) {}
 
@@ -65,34 +67,64 @@ export class DocumentManager {
   }
 
   stopWatching(state: WindowState) {
-    const listener = this.watchers.get(state);
-    if (state.watchedPath && listener) unwatchFile(state.watchedPath, listener);
+    for (const [file, entry] of this.watchers.get(state) ?? []) {
+      unwatchFile(file, entry.listener); entry.native?.close();
+    }
     this.watchers.delete(state);
+    state.checkDocumentVersions = undefined;
     state.watchedPath = null;
   }
 
   watch(state: WindowState) {
-    this.stopWatching(state);
-    const document = state.currentDocument;
-    if (!document || document.isUntitled) return;
-    state.watchedPath = document.path;
-    const watchedPath = document.path;
-    const listener = (current: Stats) => {
-      const watchedDocument = state.currentDocument;
-      if (!watchedDocument || watchedDocument.path !== watchedPath) return;
-      const next = { mtimeMs: current.mtimeMs, size: current.size };
-      if (current.nlink === 0 || !sameDiskVersion(next, watchedDocument.diskVersion)) {
-        state.window.webContents.send('document:external-change', { path: watchedDocument.path, diskVersion: next, unavailable: current.nlink === 0 });
+    let entries = this.watchers.get(state);
+    if (!entries) { entries = new Map(); this.watchers.set(state, entries); }
+    const documents = new Map(state.rendererTabs.filter(tab => !tab.isUntitled && tab.diskVersion)
+      .map(tab => [tab.path, tab.diskVersion!]));
+    const current = state.currentDocument;
+    if (!state.rendererTabsReady && current && !current.isUntitled && !documents.has(current.path)) documents.set(current.path, current.diskVersion);
+    state.watchedPath = current?.isUntitled ? null : current?.path ?? null;
+    state.disposeDocumentWatchers = () => this.stopWatching(state);
+    state.checkDocumentVersions = () => {
+      for (const [file, entry] of entries!) {
+        try { entry.listener(requireStat(file)); } catch { entry.listener({ nlink: 0, mtimeMs: 0, size: 0 } as Stats); }
       }
     };
-    this.watchers.set(state, listener);
-    watchFile(watchedPath, { interval: 750 }, listener);
+    for (const [file, entry] of entries) if (!documents.has(file)) {
+      unwatchFile(file, entry.listener); entry.native?.close(); entries.delete(file);
+    }
+    for (const [file, expected] of documents) {
+      const existing = entries.get(file);
+      if (existing) { existing.expected = expected; continue; }
+      let observed = expected, unavailable = false;
+      const entry = { expected, saving: false, listener: (stat: Stats) => {
+        if (this.watchers.get(state)?.get(file) !== entry || entry.saving) return;
+        const next = versionFromStat(stat), missing = stat.nlink === 0;
+        if (missing === unavailable && sameDiskVersion(next, observed)) return;
+        observed = next; unavailable = missing;
+        if (missing || !sameDiskVersion(next, entry.expected))
+          state.window.webContents.send('document:external-change', { path: file, diskVersion: next, unavailable: missing });
+      }, native: undefined as FSWatcher | undefined };
+      const check = () => {
+        try { entry.listener(requireStat(file)); } catch { entry.listener({ nlink: 0, mtimeMs: 0, size: 0 } as Stats); }
+      };
+      // Parent directory watches survive editor saves that replace the inode.
+      try {
+        entry.native = watch(path.dirname(file), { persistent: false }, (_event, name) => {
+          if (!name || String(name) === path.basename(file)) check();
+        });
+        entry.native.on('error', () => { entry.native?.close(); entry.native = undefined; });
+      } catch { /* Polling below also covers unavailable/network watchers. */ }
+      watchFile(file, { interval: 2000, persistent: false }, entry.listener);
+      entries.set(file, entry);
+      check();
+    }
   }
 
   async open(state: WindowState, filePath: string, notify = true) {
     const opened = await this.read(filePath); // Failure leaves the current document intact.
     state.currentDocument = opened;
     state.activeRoot = path.dirname(opened.path);
+    state.documentDirectory = path.dirname(opened.path);
     if (isMarkdownDocument(opened.path)) this.resetPreviewCache();
     this.watch(state);
     if (notify) state.window.webContents.send('document:opened', opened);
@@ -100,7 +132,9 @@ export class DocumentManager {
   }
 
   newDocument(state: WindowState) {
-    this.stopWatching(state);
+    if (state.currentDocument && !state.currentDocument.isUntitled)
+      state.documentDirectory = path.dirname(state.currentDocument.path);
+    else if (state.projectRoot) state.documentDirectory = state.projectRoot;
     this.resetPreviewCache();
     state.currentDocument = this.blank();
     state.activeRoot = path.dirname(state.currentDocument.path);
@@ -116,10 +150,10 @@ export class DocumentManager {
   }
 
   activate(state: WindowState, document: DocumentSnapshot, text: string, revision: number) {
-    this.stopWatching(state);
     state.currentDocument = applyTextRevision(document, text, revision);
     state.activeRoot = path.dirname(state.currentDocument.path);
     this.watch(state);
+    if (!state.currentDocument.isUntitled) state.documentDirectory = state.activeRoot;
     if (!state.currentDocument.isUntitled) {
       try {
         const actual = diskVersion(state.currentDocument.path);
@@ -158,6 +192,25 @@ export class DocumentManager {
     return serializeFileSave(document.path, () => this.writeSnapshot(state, document, text, revision, auto));
   }
 
+  private async writeWatchedFile(state: WindowState, file: string, write: () => Promise<DocumentSnapshot['diskVersion']>) {
+    const entry = this.watchers.get(state)?.get(file);
+    if (!entry) return write();
+    // Atomic rename can notify fs.watch before the save promise/renderer settles.
+    // Hold only this window's observation until we know the exact version written.
+    entry.saving = true;
+    try {
+      const version = await write();
+      entry.expected = version;
+      return version;
+    } finally {
+      entry.saving = false;
+      // Re-stat even on failure: a concurrent external replacement/deletion must
+      // still be reported, and other windows' watchers were never suspended.
+      try { entry.listener(requireStat(file)); }
+      catch { entry.listener({ nlink: 0, mtimeMs: 0, size: 0 } as Stats); }
+    }
+  }
+
   private async writeSnapshot(state: WindowState, document: DocumentSnapshot, text: string, revision: number, auto: boolean): Promise<SaveResult> {
     if (document.kind !== undefined || isReadOnlyDocument(document.path)) throw new Error('PDF and image documents are read-only.');
     const updated = applyTextRevision(document, text, revision);
@@ -165,7 +218,8 @@ export class DocumentManager {
       // Auto save never opens a dialog; untitled drafts stay in the drafts folder.
       if (auto) return { canceled: true };
       const selected = await dialog.showSaveDialog(state.window, {
-        defaultPath: path.join(app.getPath('documents'), updated.name), filters: saveFilters(updated.path),
+        defaultPath: path.join(state.documentDirectory ?? state.projectRoot ?? app.getPath('documents'), updated.name),
+        filters: saveFilters(updated.path),
       });
       if (selected.canceled || !selected.filePath) return { canceled: true };
       const absolute = canonicalSavePath(selected.filePath);
@@ -203,14 +257,14 @@ export class DocumentManager {
     let conflict = false;
     let version: DocumentSnapshot['diskVersion'];
     try {
-      version = await atomicWrite(updated.path, output.bytes, () => {
+      version = await this.writeWatchedFile(state, updated.path, () => atomicWrite(updated.path, output.bytes, () => {
         let current: ReturnType<typeof diskVersion> | null = null;
         try { current = diskVersion(updated.path); } catch { /* Missing destination. */ }
         if (!!current !== !!expected || (current && expected && !sameDiskVersion(current, expected))) {
           conflict = true;
           throw new Error('The file changed while saving. Reload it or save a copy.');
         }
-      });
+      }));
     } catch (error) { if (auto && conflict) return { canceled: true }; throw error; }
     const absolute = canonicalPath(updated.path);
     return { canceled: false, document: { ...updated,
@@ -224,6 +278,7 @@ export class DocumentManager {
     if (!result.canceled && result.document && current?.path === expectedPath) {
       state.currentDocument = retainUnsavedRevision(result.document, current.text, current.revision);
       state.activeRoot = path.dirname(result.document.path);
+      state.documentDirectory = state.activeRoot;
       this.watch(state);
     }
     return result;
@@ -305,7 +360,7 @@ export class DocumentManager {
   async reload(state: WindowState) {
     const document = state.currentDocument;
     if (!document || document.isUntitled) return document;
-    return this.open(state, document.path, false);
+    return this.read(document.path);
   }
 
   async discard(document: DocumentSnapshot) {

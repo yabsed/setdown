@@ -139,14 +139,14 @@ test('a late file read cannot replace the last selected file or an explicit nati
     await app.evaluate(({ ipcMain }, delayedPath) => {
       type Handler = (event: Electron.IpcMainInvokeEvent, file: string) => Promise<unknown>;
       const original = (ipcMain as typeof ipcMain & { _invokeHandlers: Map<string, Handler> })
-        ._invokeHandlers.get('project:open-file')!;
+        ._invokeHandlers.get('document:read-location')!;
       const state = { waiting: false, finished: false, release: () => {} };
       (globalThis as typeof globalThis & { heldOpen: typeof state }).heldOpen = state;
-      ipcMain.removeHandler('project:open-file');
-      ipcMain.handle('project:open-file', async (event, file: string) => {
+      ipcMain.removeHandler('document:read-location');
+      ipcMain.handle('document:read-location', async (event, file: string) => {
         if (file.endsWith('/fourth.txt')) throw new Error('Test read failure');
         const result = await original(event, file);
-        if (file === delayedPath) {
+        if (file === `file://${delayedPath}`) {
           state.waiting = true;
           await new Promise<void>(resolve => state.release = resolve);
           state.finished = true;

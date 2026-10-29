@@ -1,14 +1,14 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
-import { sameDiskVersion } from './file-system';
+import { sameDiskVersion, versionFromStat } from './file-system';
 import { readImageBytes } from './image-file';
 import type { DiskVersion } from '../../core/document/document';
 
 export const imageHash = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 export async function imageVersion(file: string): Promise<{ version: DiskVersion; hash: string } | null> {
   try {
-    const stat = await fs.stat(file); const version = { size: stat.size, mtimeMs: stat.mtimeMs };
+    const version = versionFromStat(await fs.stat(file));
     return { version, hash: imageHash(await readImageBytes(file, version)) };
   } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error; }
 }
@@ -24,7 +24,8 @@ export async function writeImage(file: string, bytes: Uint8Array, expected: Awai
     if (!!expected !== !!current || (expected && current &&
       (!sameDiskVersion(expected.version, current.version) || expected.hash !== current.hash)))
       throw Error('The image changed during export. Reload it or save to another file.');
-    await fs.rename(temporary, file);
-    const saved = await fs.stat(file); return { size: saved.size, mtimeMs: saved.mtimeMs };
+    const handle = await fs.open(temporary, 'r');
+    try { await fs.rename(temporary, file); return versionFromStat(await handle.stat()); }
+    finally { await handle.close(); }
   } finally { await fs.rm(temporary, { force: true }); }
 }

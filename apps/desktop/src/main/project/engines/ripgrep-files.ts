@@ -15,7 +15,10 @@ export class RipgrepFiles {
       '--files', '--null', '--hidden', '--no-config',
       ...EXCLUDED.flatMap((directory) => ['--glob', `!${directory}`, '--glob', `!**/${directory}/**`]),
     ], { cwd: root, encoding: 'buffer', timeout: 10_000, maxBuffer: 20_000_000,
-      env: { ...process.env, RIPGREP_CONFIG_PATH: '' } });
+      env: { ...process.env, RIPGREP_CONFIG_PATH: '' } }).catch(error => {
+        if (error.code === 1 && !error.stdout?.length && !error.stderr?.length) return { stdout: Buffer.alloc(0) };
+        throw error;
+      });
     return stdout.toString().split('\0').filter((entry) => entry.length > 0 && eligible(entry))
       .sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).map((relative) => path.join(root, relative));
   }

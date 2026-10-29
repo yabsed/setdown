@@ -16,6 +16,16 @@ function fixture() {
   return { document, a, b, markdown, port, execution, request, send, output };
 }
 afterEach(() => vi.useRealTimers());
+it('reload refuses in-flight execution and keeps the idle kernel session alive', async () => {
+  const f = fixture(); await f.execution.run([f.a]);
+  f.send({ type: 'state', state: 'busy' });
+  expect(() => f.execution.prepareReload()).toThrow();
+  f.send({ type: 'state', state: 'idle' });
+  f.execution.prepareReload(); f.document.replace(emptyNotebook());
+  expect(f.port.shutdown).not.toHaveBeenCalled(); expect(f.document.cells).toHaveLength(0);
+  expect(() => f.document.replace('invalid JSON')).toThrow();
+  expect(f.document.cells).toHaveLength(0); f.execution.dispose();
+});
 describe('notebook execution ownership', () => {
   it('starts only on request, queues cells in visible order and coalesces queued reruns', async () => {
     const f = fixture(); expect(f.port.run).not.toHaveBeenCalled();
@@ -68,12 +78,14 @@ describe('notebook execution ownership', () => {
     f.send({ type: 'state', state: 'failed', message: 'old kernel' }, old);
     expect(f.execution.state).toBe('starting'); expect(f.execution.message).toBe(''); f.execution.dispose();
   });
-  it('interrupts a running kernel and releases pending startup/changed path/closed notebook', async () => {
+  it('preserves the kernel across path changes and releases it on explicit reset or close', async () => {
     const f = fixture(); await f.execution.run(); f.send({ type: 'state', state: 'busy' });
     await f.execution.interrupt(); expect(f.port.interrupt).toHaveBeenCalledWith('notebook', f.request().generation);
-    f.execution.setPath('/new/location.ipynb'); expect(f.port.shutdown).toHaveBeenCalledTimes(1);
+    f.execution.setPath('/new/location.ipynb'); expect(f.port.shutdown).not.toHaveBeenCalled();
+    f.send({ type: 'state', state: 'idle' });
     await f.execution.run(); expect(f.request().path).toBe('/new/location.ipynb');
-    await f.execution.interrupt(); expect(f.execution.state).toBe('stopped');
+    await f.execution.interrupt(); expect(f.port.interrupt).toHaveBeenCalledTimes(2);
+    await f.execution.shutdown(); expect(f.execution.state).toBe('stopped');
     await f.execution.choosePython(); await f.execution.run(); expect(f.request().python).toBe('/opt/venv/bin/python');
     f.execution.dispose(); const calls = vi.mocked(f.port.run).mock.calls.length;
     await f.execution.run(); expect(f.port.run).toHaveBeenCalledTimes(calls);

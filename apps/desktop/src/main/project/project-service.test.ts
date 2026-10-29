@@ -126,7 +126,7 @@ describe('project service', () => {
     await writeFile(path.join(root, '.hidden.md'), 'hidden needle\n', 'utf8');
     await writeFile(path.join(root, '.ignore'), 'ignored.md\n', 'utf8');
     await writeFile(path.join(root, 'ignored.md'), 'needle\n', 'utf8');
-    const results = await service.search(state, { query: 'needle', documents: [] });
+    const { results } = await service.search(state, { query: 'needle', documents: [] });
     expect(results.map(({ relativePath, line, column, lineOccurrence, ordinal }) => ({
       relativePath, line, column, lineOccurrence, ordinal,
     }))).toEqual([
@@ -152,7 +152,7 @@ describe('project service', () => {
       return [];
     }, noWatcher);
 
-    expect(await service.search(state, { query: '**', documents: [] })).toEqual([]);
+    expect((await service.search(state, { query: '**', documents: [] })).results).toEqual([]);
     expect(viewerQueries).toEqual(['**']);
     const editorResults = await service.search(state, {
       query: '**',
@@ -166,7 +166,7 @@ describe('project service', () => {
         ],
       }],
     });
-    expect(editorResults).toMatchObject([
+    expect(editorResults.results).toMatchObject([
       { path: filePath, surface: 'editor', line: 1, column: 1 },
       { path: filePath, surface: 'editor', line: 1, column: 10 },
     ]);

@@ -4,7 +4,7 @@ import { installZoomSettings } from './windows/zoom-settings';
 /** Electron main process composition root. */
 import { ReadingPositionStore } from './reading/reading-position-store';
 import { installReadingIpc } from './reading/reading-ipc';
-import { app, BrowserWindow, dialog, net, protocol } from 'electron';
+import { app, BrowserWindow, dialog, net, protocol, powerMonitor } from 'electron';
 import { createReadStream } from 'node:fs';
 import { promises as fs } from 'node:fs';
 import { Readable } from 'node:stream';
@@ -168,14 +168,14 @@ else {
     hwp.register(channels);
     installReadingIpc(channels, positions, (id) => registry.stateForWebContents(id));
     app.on('will-quit', () => positions.flush());
+    powerMonitor.on('resume', () => { for (const state of registry.values) state.checkDocumentVersions?.(); });
     installTerminalIpc(channels, terminals);
-    app.on('before-quit', () => terminals.dispose());
+    app.on('will-quit', () => terminals.dispose());
     installApplicationMenu({ focusedState: () => registry.focused(), createWindow: windows.create,
       openDocument: (state) => documents.chooseAndOpen(state).catch(openError),
       reloadWindow: (state, ignoreCache) => {
         if (browsers.reloadFocused(state.webContentsId, ignoreCache)) return;
-        previews.closeOwner(state.webContentsId);
-        if (ignoreCache) state.window.webContents.reloadIgnoringCache(); else state.window.webContents.reload();
+        state.window.webContents.send('app:command', 'reload-document');
       },
       zoom: (steps, scope) => {
         const state = registry.focused();
@@ -204,7 +204,7 @@ else {
       if (state) void documents.open(state, filePath).catch(openError);
     }
   });
-  app.on('before-quit', () => { void browsers.flush(); windows.disposeWatchers(); void projects.dispose(); });
+  app.on('will-quit', () => { void browsers.flush(); windows.disposeWatchers(); void projects.dispose(); });
   app.on('will-quit', () => { browsers.dispose(); try { browsers.flushOnExit(); } catch (error) { console.error('Could not save browser tabs', error); } });
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) windows.create(); });

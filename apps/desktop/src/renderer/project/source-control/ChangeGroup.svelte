@@ -55,7 +55,7 @@
       </button>
       {#if discard}
         <button type="button" title="Discard All Changes" aria-label="Discard All Changes"
-          onclick={() => discard?.(changes.map((change) => change.filePath))}>{@render discardIcon()}</button>
+          disabled={project.gitBusy} onclick={() => discard?.(changes.map((change) => change.filePath))}>{@render discardIcon()}</button>
       {/if}
     </header>
     {#if expanded}
@@ -68,9 +68,9 @@
           </button>
           <div class="git-change-actions">
             <button type="button" title={primaryLabel} aria-label={`${primaryLabel} ${change.path}`}
-              onclick={() => primary([change.filePath])}>{@render primaryIcon()}</button>
+              disabled={project.gitBusy} onclick={() => primary([change.filePath])}>{@render primaryIcon()}</button>
             {#if discard}<button type="button" title="Discard Changes" aria-label={`Discard ${change.path}`}
-              onclick={() => discard?.([change.filePath])}>{@render discardIcon()}</button>{/if}
+              disabled={project.gitBusy} onclick={() => discard?.([change.filePath])}>{@render discardIcon()}</button>{/if}
             {#if markdown(change.path)}<button type="button" title="Open File" aria-label={`Open ${change.path}`}
               onclick={() => open(change.filePath)}>
               <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9 3h4v4M13 3 6 10M6 3H3v10h10v-3"/></svg>

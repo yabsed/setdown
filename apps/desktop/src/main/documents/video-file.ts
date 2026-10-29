@@ -1,3 +1,4 @@
+import { versionFromStat } from './file-system';
 import { constants, promises as fs } from 'node:fs';
 import { isVideoDocument } from '../../core/document/document-profile';
 
@@ -7,6 +8,6 @@ export async function readVideoMetadata(file: string) {
   try {
     const stat = await handle.stat();
     if (!stat.isFile()) throw new Error('Only regular video files can be opened.');
-    return { kind: 'video' as const, text: '', diskVersion: { size: stat.size, mtimeMs: stat.mtimeMs } };
+    return { kind: 'video' as const, text: '', diskVersion: versionFromStat(stat) };
   } finally { await handle.close(); }
 }

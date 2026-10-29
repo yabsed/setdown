@@ -9,32 +9,91 @@ import { readTextFile } from '../documents/text-file';
 import { ProjectPaths } from './project-paths';
 import type { ExplorerOperationItem, ExplorerOperationResult, ExplorerTransfer } from '../../protocol/explorer';
 import type { LanguageFileOperation } from '../language/file-operations';
-import { copyExclusive, copyName, ensureMissing, exists, moveExclusive } from './file-transfer';
+import { copyExclusive, copyName, ensureMissing, exists, moveExclusive, treeVersion } from './file-transfer';
 const HIDDEN_DIRECTORIES = new Set(['.git', '.hg', '.svn']);
 
 export class ExplorerService {
   languageOperation?: (state: WindowState, operation: LanguageFileOperation, phase: 'will' | 'did') => Promise<void>;
+  private readonly active = new Map<number, AbortController>();
+  private readonly history = new Map<number, Array<{ kind: ExplorerTransfer['kind']; items: Array<{ from: string; to: string; version: string }> }>>();
+  cancel(state: WindowState): void { this.active.get(state.webContentsId)?.abort(new Error('File operation canceled. Completed items were kept.')); }
+  private async remember(state: WindowState, result: ExplorerOperationResult): Promise<ExplorerOperationResult> {
+    const items = [];
+    for (const item of result.items.filter(item => item.status === 'completed')) {
+      try { items.push({ from: item.from, to: item.to, version: await treeVersion(item.to) }); }
+      catch { result.warning = 'Files were changed, but some destinations could not be recorded for Undo.'; }
+    }
+    if (items.length) {
+      const history = this.history.get(state.webContentsId) ?? [];
+      history.push({ kind: result.kind, items }); this.history.set(state.webContentsId, history.slice(-50));
+    }
+    return { ...result, undoable: items.length > 0 };
+  }
+  private async undo(state: WindowState): Promise<ExplorerOperationResult> {
+    const history = this.history.get(state.webContentsId), record = history?.at(-1);
+    if (!record) throw Error('No file operation to undo in this window.');
+    for (const item of record.items) {
+      this.paths.entry(state, item.to);
+      this.beforeMutation(state, [item.to]);
+      if (state.rendererTabs?.some(tab => tab.dirty && (tab.path === item.to || tab.path.startsWith(`${item.to}${path.sep}`))))
+        throw Error('Save or close edited documents in this selection before undoing the file operation.');
+      if (await treeVersion(item.to) !== item.version) throw Error('A destination changed after this operation. Undo stopped to preserve those changes.');
+      if (record.kind === 'move') await ensureMissing(item.from);
+    }
+    const items: ExplorerOperationItem[] = [];
+    for (const item of [...record.items].reverse()) {
+      try {
+        this.beforeMutation(state, [item.to]);
+        if (state.rendererTabs?.some(tab => tab.dirty && (tab.path === item.to || tab.path.startsWith(`${item.to}${path.sep}`))))
+          throw Error('A document was edited during Undo. Save or close it before trying again.');
+        if (await treeVersion(item.to) !== item.version) throw Error('A destination changed during Undo. Its contents were preserved.');
+        if (record.kind === 'move') await moveExclusive(item.to, item.from);
+        else await this.trash(item.to);
+        items.push({ from: item.to, to: record.kind === 'move' ? item.from : item.to, status: 'completed' });
+        record.items.splice(record.items.indexOf(item), 1);
+      } catch (error) { items.push({ from: item.to, to: item.from, status: 'failed', error: String(error) }); break; }
+    }
+    if (!record.items.length) history!.pop();
+    return { kind: record.kind === 'move' ? 'move' : 'undo', items, undoable: !!history?.length };
+  }
   private queue: Promise<unknown> = Promise.resolve();
   private serialize<T>(operation: () => Promise<T>): Promise<T> {
     const result = this.queue.then(operation);
     this.queue = result.catch(() => {});
     return result;
   }
+  private scoped<T>(state: WindowState, operation: (captured: WindowState) => Promise<T>): Promise<T> {
+    const root = state.projectRoot;
+    const captured = { ...state, get rendererTabs() { return state.rendererTabs; } };
+    return this.serialize(() => {
+      if (state.projectRoot !== root) throw Error('The open folder changed before the file operation started.');
+      return operation(captured);
+    });
+  }
   create = (state: WindowState, parent: string, name: string, kind: ProjectEntryKind) =>
-    this.serialize(() => this.createEntry(state, parent, name, kind));
-  rename = (state: WindowState, from: string, name: string) => this.serialize(() => this.renameEntry(state, from, name));
-  move = (state: WindowState, from: string, target: string) => this.serialize(() => this.moveEntry(state, from, target));
-  moveMany = (state: WindowState, paths: string[], target: string) => this.serialize(() => this.moveEntries(state, paths, target));
-  trashEntry = (state: WindowState, candidate: string) => this.serialize(async () => {
+    this.scoped(state, captured => this.createEntry(captured, parent, name, kind));
+  rename = (state: WindowState, from: string, name: string) => this.scoped(state, captured => this.renameEntry(captured, from, name));
+  move = (state: WindowState, from: string, target: string) => this.scoped(state, captured => this.moveEntry(captured, from, target));
+  moveMany = (state: WindowState, paths: string[], target: string) => this.scoped(state, captured => this.moveEntries(captured, paths, target));
+  trashEntry = (state: WindowState, candidate: string) => this.scoped(state, async state => {
     const source = this.mutableEntry(state, candidate); this.beforeMutation(state, [source]);
     const operation: LanguageFileOperation = { kind: 'delete', files: [{ path: source, directory: (await fs.lstat(source)).isDirectory() }] };
-    await this.languageOperation?.(state, operation, 'will'); await this.trash(source); await this.languageOperation?.(state, operation, 'did');
+    await this.languageOperation?.(state, operation, 'will'); await this.trash(source); await this.did(state, operation);
   });
-  transfer = (state: WindowState, request: ExplorerTransfer) => this.serialize(() => this.transferEntries(state, request));
+  transfer = (state: WindowState, request: ExplorerTransfer) => this.scoped(state, async state => {
+    if (request.kind === 'undo') return this.undo(state);
+    const controller = new AbortController(); this.active.set(state.webContentsId, controller);
+    try { return await this.remember(state, await this.transferEntries(state, request, controller.signal)); }
+    finally { this.active.delete(state.webContentsId); }
+  });
   constructor(private readonly paths: ProjectPaths,
     private readonly trash: (filePath: string) => Promise<void> = (filePath) => shell.trashItem(filePath),
     private readonly beforeMutation: (state: WindowState, paths: string[]) => void = () => {},
     private readonly hwpTemplates = path.join(__dirname, 'hwp')) {}
+  private async did(state: WindowState, operation: LanguageFileOperation): Promise<void> {
+    try { await this.languageOperation?.(state, operation, 'did'); }
+    catch (error) { console.warn('Files changed, but language-server notification failed.', error); }
+  }
   async readDirectory(state: WindowState, candidate: string): Promise<ProjectEntry[]> {
     const directory = this.paths.inside(state, candidate);
     const entries = await fs.readdir(directory, { withFileTypes: true });
@@ -56,7 +115,8 @@ export class ExplorerService {
       await fs.writeFile(target, content, { flag: 'wx' });
     }
     else throw new Error('Unknown project entry kind.');
-    await this.languageOperation?.(state, operation, 'did');
+    await this.did(state, operation);
+    await this.remember(state, { kind: 'copy', items: [{ from: target, to: target, status: 'completed' }], undoable: false });
     return this.entry(target, kind === 'directory');
   }
   private async renameEntry(state: WindowState, entryPath: string, name: string): Promise<ProjectEntryMove> {
@@ -71,7 +131,8 @@ export class ExplorerService {
     const operation: LanguageFileOperation = { kind: 'rename', files: [{ path: from, to, directory: (await fs.lstat(from)).isDirectory() }] };
     await this.languageOperation?.(state, operation, 'will');
     await moveExclusive(from, to);
-    await this.languageOperation?.(state, operation, 'did');
+    await this.did(state, operation);
+    await this.remember(state, { kind: 'move', items: [{ from, to, status: 'completed' }], undoable: false });
     return { from, to };
   }
   private async moveEntry(state: WindowState, entryPath: string, targetDirectory: string): Promise<ProjectEntryMove> {
@@ -86,7 +147,8 @@ export class ExplorerService {
     await this.ensureMissing(to);
     const operation: LanguageFileOperation = { kind: 'rename', files: [{ path: from, to, directory: (await fs.lstat(from)).isDirectory() }] };
     await this.languageOperation?.(state, operation, 'will'); await moveExclusive(from, to);
-    await this.languageOperation?.(state, operation, 'did');
+    await this.did(state, operation);
+    await this.remember(state, { kind: 'move', items: [{ from, to, status: 'completed' }], undoable: false });
     return { from, to };
   }
   private async moveEntries(state: WindowState, entryPaths: string[], targetDirectory: string): Promise<{ moves: ProjectEntryMove[]; error?: string }> {
@@ -118,21 +180,27 @@ export class ExplorerService {
         await this.ensureMissing(move.to);
         await moveExclusive(move.from, move.to);
         moves.push(move);
-        await this.languageOperation?.(state, { ...operation, files: operation.files.filter(file => file.path === move.from) }, 'did');
+        await this.did(state, { ...operation, files: operation.files.filter(file => file.path === move.from) });
       } catch (error) {
         // Disk errors after preflight can leave a partial move. Return the exact
         // completed paths so live documents and reading positions stay correct.
+        await this.remember(state, { kind: 'move', items: moves.map(move => ({ ...move, status: 'completed' })), undoable: false });
         return { moves, error: error instanceof Error ? error.message : String(error) };
       }
     }
+    await this.remember(state, { kind: 'move', items: moves.map(move => ({ ...move, status: 'completed' })), undoable: false });
     return { moves };
   }
-  private async transferEntries(state: WindowState, request: ExplorerTransfer): Promise<ExplorerOperationResult> {
-    if (!request || !['copy', 'move', 'duplicate'].includes(request.kind)
+  private async transferEntries(state: WindowState, request: ExplorerTransfer, signal?: AbortSignal): Promise<ExplorerOperationResult> {
+    if (!request || !['copy', 'move', 'duplicate', 'import'].includes(request.kind)
       || !Array.isArray(request.paths) || !request.paths.length || request.paths.length > 10000
       || request.paths.some(item => typeof item !== 'string')
       || (request.conflict !== undefined && !['error', 'keep-both', 'skip'].includes(request.conflict))) throw new Error('Invalid file operation.');
-    const sources = [...new Set(request.paths.map(item => this.mutableEntry(state, item)))];
+    const sources = [...new Set(request.paths.map(item => {
+      if (request.kind !== 'import') return this.mutableEntry(state, item);
+      if (!path.isAbsolute(item) || item.includes('\0')) throw new Error('Invalid imported file path.');
+      return path.resolve(item);
+    }))];
     if (request.kind === 'move') this.beforeMutation(state, sources);
     const roots = sources.filter(item => !sources.some(parent => parent !== item && item.startsWith(`${parent}${path.sep}`)));
     const target = request.kind === 'duplicate' ? null : this.paths.inside(state, request.target ?? '');
@@ -163,10 +231,12 @@ export class ExplorerService {
     for (const item of items) {
       if (item.status !== 'not-started') continue;
       try {
-        if (request.kind === 'move') await moveExclusive(item.from, item.to);
-        else await copyExclusive(item.from, item.to);
+        signal?.throwIfAborted();
+        state.window?.webContents.send('explorer:progress', { completed: items.filter(item => item.status === 'completed').length, total: items.length, path: item.from });
+        if (request.kind === 'move') await moveExclusive(item.from, item.to, signal);
+        else await copyExclusive(item.from, item.to, signal);
         item.status = 'completed';
-        await this.languageOperation?.(state, { ...operation, files: operation.files.filter(file => file.path === (request.kind === 'move' ? item.from : item.to)) }, 'did');
+        await this.did(state, { ...operation, files: operation.files.filter(file => file.path === (request.kind === 'move' ? item.from : item.to)) });
       } catch (error) {
         item.status = 'failed'; item.error = error instanceof Error ? error.message : String(error);
         break;

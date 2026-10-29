@@ -7,6 +7,7 @@ export type EditorToolsApi = {
   spelling(words: string[]): Promise<Array<{ word: string; suggestions: string[] }>>;
   learnWord(word: string): Promise<void>;
   snapshots: {
+    restoreBinary?(name: string, bytes: Uint8Array): Promise<string>;
     list(): Promise<Array<{ id: string; name: string; time: number; recovery: boolean }>>;
     read(id: string): Promise<unknown>;
     write(name: string, value: unknown, recovery?: boolean): Promise<string>;

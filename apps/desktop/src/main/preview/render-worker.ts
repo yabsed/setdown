@@ -346,16 +346,19 @@ function previewStyles(themeId: PreviewThemeId, screenTypography: boolean): stri
       }
       ${screenTypographyStyles}
       html[data-setdown-folder-drop] body::after {
-        content: 'Open Folder';
+        content: 'Open files or folder';
         position: fixed;
-        inset: 10px;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 12px 20px;
         z-index: 2147483647;
         display: grid;
         place-items: center;
         color: currentColor;
         border: 2px dashed rgba(72, 139, 218, .9);
         border-radius: 8px;
-        background: rgba(72, 139, 218, .16);
+        background: Canvas;
         font: 600 15px ${APP_FONT_FAMILY};
         pointer-events: none;
       }

@@ -1,3 +1,4 @@
+import { versionFromStat } from './file-system';
 import { constants, promises as fs } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
@@ -25,7 +26,7 @@ export async function readHwp(file: string) {
       offset += bytesRead;
     }
     const after = await handle.stat();
-    const version = { size: stat.size, mtimeMs: stat.mtimeMs };
+    const version = versionFromStat(stat);
     if (!sameDiskVersion(version, after)) throw Error('읽는 동안 HWP 파일이 변경되었습니다.');
     return { bytes, version, hash: hwpHash(bytes), format: hwpContainer(bytes) };
   } finally { await handle.close(); }
@@ -53,6 +54,6 @@ export async function writeHwp(file: string, bytes: Uint8Array, expected: Awaite
       (current.hash !== expected.hash || !sameDiskVersion(current.version, expected.version))))
       throw Error('파일이 외부에서 변경되었습니다. 다시 불러오거나 다른 이름으로 저장하세요.');
     await fs.rename(temporary, file);
-    const saved = await fs.stat(file); return { size: saved.size, mtimeMs: saved.mtimeMs };
+    const saved = await fs.stat(file); return versionFromStat(saved);
   } finally { await fs.rm(temporary, { force: true }); }
 }

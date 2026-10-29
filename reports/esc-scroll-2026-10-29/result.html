@@ -1,0 +1,24 @@
+<!doctype html><html lang="ko"><meta charset="utf-8"><title>Esc 지연된 화면 튐 수정 검증</title>
+<style>body{font:16px/1.6 system-ui,sans-serif;max-width:1250px;margin:40px auto;padding:0 24px;color:#18202a}table{border-collapse:collapse;width:100%;font-size:14px}td,th{border:1px solid #ccd2d8;padding:8px;text-align:left}th{background:#eef1f4}tr:nth-child(even){background:#f7f8fa}code{background:#eef1f4;padding:2px 5px}video{max-width:100%;max-height:600px}a{color:#1559b7}</style>
+<h1>Esc 지연된 화면 튐 수정 검증</h1>
+<p>더블클릭 → 입력 → Esc 뒤 자동 저장이 자기 쓰기를 외부 변경으로 잘못 알리면서 알림 줄이 잠깐 나타났다.
+실제 데스크톱에서 읽기 화면의 y 좌표가 <strong>110 → 151 → 110</strong>으로 바뀌었다.
+DOM 스크롤 좌표만 검사하면 이 움직임을 놓친다.</p>
+<p>자체 저장의 감시 처리를 정확한 저장 버전이 나온 뒤 재검사하도록 바꿨다. 다른 창과 실제 외부 교체·삭제, 실패한 저장은 계속 감지한다.
+읽기 화면 전환과 준비 코드는 기존 경로를 유지한다. 실험 중 추가했던 전환 대기와 픽셀 캡처는 성능 저하가 확인되어 제거했다.</p>
+<p>동일한 새 회귀 검사가 기준본에서 잘못된 외부 변경 알림과 네이티브 위치 110 → 152 → 110을 검출했다.
+수정본은 180 Chromium 프레임 동안 최신 내용과 스크롤을 유지했고, 잘못된 알림은 없었다.</p>
+<p>최종 수정본을 실제 데스크톱에서도 확인했다. Esc 최초 전환의 위치 적용 뒤 제목은 녹화 2.733초부터 y=308을 유지하며, 자동 저장 때 다시 움직이지 않았다.
+최초 전환의 한 프레임 위치 조정까지 없다고 주장하지 않는다.</p>
+<p><a href="desktop-after-paint.mp4">원인 수정 전 녹화</a> · <a href="desktop-watch-only.mp4">최종 수정 후 녹화</a> · <a href="validation.json">검증 내역</a></p>
+<h2>필수 검사</h2><p>단위 테스트 634개, 도구 검사 11개, 빌드·타입 검사를 통과했다. 전체 Electron 검사는 208개 통과, 1개 실패했다. 실패한 검사: test/e2e/browser/zoom.spec.ts:6:1 › browser Ctrl+wheel zooms websites and frames independently of the app and documents . 전체 실행을 성공으로 보고하지 않는다.</p>
+<h2>성능 비교 — 통과</h2><p>기준 커밋 <code>860ec7e</code>의 독립 설치와 수정본을 같은 Xvfb에서 번갈아 측정했다.
+각 버전·조건별 3회, 매 실행 5주기. 첫 번째와 두 번째 주기를 각각 비교하고, 3–5번째 중앙값을 warm으로 비교한다.
+수치는 ms이며 <strong>기존본 → 수정본</strong> 순서다. 편집 여부 및 준비 시간 0/3000 ms를 분리했다.
+Esc 수치는 IPC와 실제 최신 내용 캡처를 포함하며 모니터 표시 시각은 아니다.
+기존 허용치인 25%와 50 ms를 동시에 넘으면 회귀로 판정한다.</p>
+<table><thead><tr><th>문서</th><th>편집</th><th>준비 시간</th><th>측정</th><th>첫 번째</th><th>두 번째</th><th>Warm</th></tr></thead><tbody><tr><td>Markdown</td><td>없음</td><td>0 ms</td><td>Esc → 최신 내용 캡처</td><td>39.0 → 32.0</td><td>36.0 → 23.0</td><td>27.0 → 29.0</td></tr><tr><td>Markdown</td><td>없음</td><td>0 ms</td><td>더블클릭 → 편집 가능</td><td>24.0 → 20.0</td><td>39.0 → 38.0</td><td>11.0 → 12.0</td></tr><tr><td>Markdown</td><td>있음</td><td>0 ms</td><td>Esc → 최신 내용 캡처</td><td>442.0 → 430.0</td><td>102.0 → 103.0</td><td>93.0 → 89.0</td></tr><tr><td>Markdown</td><td>있음</td><td>0 ms</td><td>더블클릭 → 편집 가능</td><td>17.0 → 16.0</td><td>12.0 → 12.0</td><td>13.0 → 14.0</td></tr><tr><td>Markdown</td><td>없음</td><td>3000 ms</td><td>Esc → 최신 내용 캡처</td><td>41.0 → 33.0</td><td>18.0 → 16.0</td><td>21.0 → 23.0</td></tr><tr><td>Markdown</td><td>없음</td><td>3000 ms</td><td>더블클릭 → 편집 가능</td><td>16.0 → 17.0</td><td>12.0 → 11.0</td><td>11.0 → 11.0</td></tr><tr><td>Markdown</td><td>있음</td><td>3000 ms</td><td>Esc → 최신 내용 캡처</td><td>120.0 → 99.0</td><td>103.0 → 100.0</td><td>96.0 → 92.0</td></tr><tr><td>Markdown</td><td>있음</td><td>3000 ms</td><td>더블클릭 → 편집 가능</td><td>16.0 → 18.0</td><td>12.0 → 11.0</td><td>12.0 → 13.0</td></tr><tr><td>Git review</td><td>없음</td><td>0 ms</td><td>Esc → 최신 내용 캡처</td><td>992.0 → 1015.0</td><td>30.0 → 23.0</td><td>28.0 → 29.0</td></tr><tr><td>Git review</td><td>없음</td><td>0 ms</td><td>더블클릭 → 편집 가능</td><td>25.0 → 23.0</td><td>12.0 → 12.0</td><td>13.0 → 12.0</td></tr><tr><td>Git review</td><td>있음</td><td>0 ms</td><td>Esc → 최신 내용 캡처</td><td>1083.0 → 1094.0</td><td>1615.0 → 1585.0</td><td>178.0 → 186.0</td></tr><tr><td>Git review</td><td>있음</td><td>0 ms</td><td>더블클릭 → 편집 가능</td><td>26.0 → 28.0</td><td>20.0 → 22.0</td><td>20.0 → 19.0</td></tr><tr><td>Git review</td><td>없음</td><td>3000 ms</td><td>Esc → 최신 내용 캡처</td><td>28.0 → 27.0</td><td>23.0 → 18.0</td><td>23.0 → 18.0</td></tr><tr><td>Git review</td><td>없음</td><td>3000 ms</td><td>더블클릭 → 편집 가능</td><td>24.0 → 24.0</td><td>12.0 → 11.0</td><td>18.0 → 17.0</td></tr><tr><td>Git review</td><td>있음</td><td>3000 ms</td><td>Esc → 최신 내용 캡처</td><td>230.0 → 230.0</td><td>185.0 → 190.0</td><td>179.0 → 180.0</td></tr><tr><td>Git review</td><td>있음</td><td>3000 ms</td><td>더블클릭 → 편집 가능</td><td>23.0 → 22.0</td><td>18.0 → 18.0</td><td>18.0 → 17.0</td></tr></tbody></table>
+<p><a href="benchmark-watch-only/comparison.json">48개 비교와 원시 측정값·빌드 식별 정보</a> · <a href="contract-final.log">전체 검사 로그</a></p>
+<p>두 빌드 모두 SETDOWN_BUILD_SOURCEMAP=0. GUI 전체 검사 및 성능 비교는 격리된 Xvfb를 사용했다.
+이 증상의 실제 화면 녹화만 사용자의 명시적 허용에 따라 데스크톱에서 실행했다. 재시도 설정, 테스트 생략, 성능 허용치 변경은 없다.</p>
+<p>실험 중 실패 기록도 보존했다. <a href="validation-experiments.json">이전 진단 내역</a> · <a href="benchmark/comparison.json">첫 성능 실패</a> · <a href="benchmark-final/comparison.json">두 번째 성능 실패</a></p></html>

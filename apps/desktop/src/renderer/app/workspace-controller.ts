@@ -1,3 +1,4 @@
+import { fileLocation } from '../../core/document/file-location';
 import { hwpSessions } from '../hwp/hwp-sessions';
 import { imageSessions } from '../image/image-edit-sessions';
 import { DocumentSessions } from '../workspace/document-sessions';
@@ -29,6 +30,7 @@ import type { DesktopPort } from '../ports/desktop-port';
 import { ProjectController } from '../project/project-controller';
 import { project } from '../project/project-state.svelte';
 import { installFolderDrop } from '../project/folder-drop';
+import { sameDiskVersion } from '../../core/document/document';
 import { PreviewSession } from '../reader/preview-session';
 import { PreviewLayoutCoordinator } from '../reader/preview-layout-coordinator';
 import { ReaderController } from '../reader/reader-controller';
@@ -174,6 +176,7 @@ export function startWorkspace(desktop: DesktopPort) {
     updateProjectGitDiffLine: (line) => projects.updateGitDiffLine(line),
     changeProjectGitWorkingTree: (text, edits) => projects.changeGitWorkingTree(text, edits),
     saveProjectGitWorkingTree: () => void saveDocument(),
+    selectGitRepository: root => void projects.selectGitRepository(root),
     initializeProjectGit: () => void projects.initializeGit(),
     stageProjectGit: (paths) => void stageProjectChanges(paths),
     unstageProjectGit: (paths) => void projects.unstageGit(paths),
@@ -190,7 +193,19 @@ export function startWorkspace(desktop: DesktopPort) {
     find: (query, direction, next) => reader.find(query, direction, next),
     closeFind: () => reader.closeFind(false), scrollToHeading,
     keepExternalChange: () => documents.keepExternalChange(),
-    reloadExternalChange: () => void documents.reloadExternalChange(),
+    reloadExternalChange: () => { if (workspace.activeId) void actions.reloadLocalDocument(workspace.activeId); },
+    pathsForDroppedFiles: files => files.map(file => desktop.pathForFile(file)).filter(Boolean),
+    reloadLocalDocument: async (id, confirmed = false) => {
+      const tab = workspace.find(id);
+      if (tab?.kind === 'diff') { await projects.refreshGit(); return; }
+      if (!tab || !isDocumentTab(tab) || tab.document.isUntitled) return;
+      if (tabs.dirty(tab) && (!confirmed || view.reloadPrompt?.revision !== tab.revision || view.reloadPrompt?.path !== tab.document.path)) {
+        view.reloadPrompt = { id, name: tab.document.name, revision: tab.revision, path: tab.document.path }; return;
+      }
+      view.reloadPrompt = null;
+      const release = await autoSave.hold();
+      try { await tabs.reloadDocumentPaths([tab.document.path]); } finally { release(); }
+    },
     showRenderError: () => void surfaces.enterEditor(),
   };
   mount(App, { target: document.querySelector<HTMLDivElement>('#app')!, props: { actions, terminalApi: desktop.terminal, desktop,
@@ -303,7 +318,8 @@ export function startWorkspace(desktop: DesktopPort) {
     install: (transfer, placement) => tabs.installTransferred(transfer, placement) });
   autoSave = new AutoSaveController({ desktop, get tabs() { return workspace.contents; }, activeId: () => workspace.activeContent?.id ?? null,
     text: tabs.text, dirty: tabs.dirty, beforeSave: tab => documentSessions.beforeSave(tab, 2), acceptSaved: tabs.acceptSaved,
-    saved: (document) => projects.documentSaved(document) });
+    saved: document => { tabs.updateChrome(); return projects.documentSaved(document); },
+    failed: (tab, message) => { view.documentNotices[tab.document.path] = { message }; tabs.updateChrome(); } });
   const documents = new DocumentActions({ desktop, get tabs() { return workspace.contents; }, active: () => workspace.activeContent, text: tabs.text, dirty: tabs.dirty,
     preview, saveTab: documentSessions.save, beforeSave: tab => documentSessions.beforeSave(tab), installModel: tabs.installModel, acceptSaved: tabs.acceptSaved,
     show: (document, surface) => { projectOpenRequest++; projects.deactivateGitDiff(); return tabs.show(document, surface); },
@@ -330,7 +346,7 @@ export function startWorkspace(desktop: DesktopPort) {
     showDocument: async (path, options) => {
       options = { ...options, groupId: options?.groupId ?? workspace.groups.focusedId };
       const request = ++projectOpenRequest;
-      const documentSnapshot = await desktop.openProjectFile(path);
+      const documentSnapshot = await desktop.readDocumentLocation(fileLocation(path));
       if (!documentSnapshot || request !== projectOpenRequest) return false;
       projects.deactivateGitDiff();
       await tabs.show(documentSnapshot, 'viewer', 'document', undefined, options);
@@ -338,7 +354,7 @@ export function startWorkspace(desktop: DesktopPort) {
     },
     openWorkingTree: async (path) => {
       const request = ++projectOpenRequest;
-      const documentSnapshot = await desktop.openProjectFile(path);
+      const documentSnapshot = await desktop.readDocumentLocation(fileLocation(path));
       if (!documentSnapshot || request !== projectOpenRequest) return false;
       await tabs.show(documentSnapshot, 'viewer', 'review');
       return request === projectOpenRequest;
@@ -367,7 +383,17 @@ export function startWorkspace(desktop: DesktopPort) {
     resized: reader.syncView, folderChanged: root => editor.setLanguageRoot(root),
   });
   projectContextChanged = projects.contextChanged;
-  installFolderDrop(shell, desktop, (path) => void projects.openFolderPath(path));
+  const openDroppedPaths = async (paths: string[]) => {
+    const failures: string[] = [];
+    for (const path of [...new Set(paths)]) {
+      try {
+        if (await desktop.droppedPathKind(path) === 'directory') await projects.openFolderPath(path);
+        else { const snapshot = await desktop.readDocumentLocation(fileLocation(path)); await tabs.show(snapshot, undefined, 'document', undefined, { pinned: true }); }
+      } catch (error) { failures.push(`${path}: ${String(error)}`); }
+    }
+    if (failures.length) window.alert(`Could not open dropped files.\n${failures.join('\n')}`);
+  };
+  installFolderDrop(shell, desktop, paths => void openDroppedPaths(paths));
   void projects.restore();
   const editorContext = { desktop, host: shell,
     target: (): MarkdownEditingTarget | null => {
@@ -426,28 +452,22 @@ export function startWorkspace(desktop: DesktopPort) {
         void (async () => { await tabs.activate(payload.tabId); if (workspace.activeId === payload.tabId && !project.gitDiffActive) await documents.exportPdf(); })(); return;
       }
       if (payload.message.type === 'marktex:folder-drop' && typeof payload.message.path === 'string') {
-        void projects.openFolderPath(payload.message.path); return;
+        void openDroppedPaths(Array.isArray(payload.message.paths) ? payload.message.paths.filter((path): path is string => typeof path === 'string') : [payload.message.path]); return;
       }
       if (projects.previewMessage(payload)) return;
       preview.receive(payload); reader.handleMessage(payload);
     },
     previewFindRequested: (tabId) => { if (tabId === workspace.activeId && session.surface === 'viewer') reader.openFind(); },
     documentOpened: (opened) => { projectOpenRequest++; projects.deactivateGitDiff(); void tabs.show(opened); },
-    externalChange: (change) => {
-      const active = workspace.activeContent;
-      if (!active || active.document.path !== change.path) {
-        const background = workspace.contents.find(tab => tab.document.path === change.path);
-        if (background && !tabs.dirty(background)) void tabs.reloadDocumentPaths([change.path], true).catch(error => console.error('Could not refresh background document', error));
-        return;
-      }
-      view.unavailablePath = change.unavailable ? change.path : null;
-      if (change.unavailable || tabs.dirty(active)) { view.notice = true; return; }
-      if (workspace.active?.kind === 'diff') { void tabs.reloadDocumentPaths([change.path], true); return; }
-      const revision = active.revision;
-      void desktop.reloadDocument().then((documentSnapshot) => {
-        if (documentSnapshot && workspace.active?.id === active.id && active.revision === revision
-          && active.document.path === documentSnapshot.path) void tabs.reload(documentSnapshot);
-      }).catch((error) => { console.error('Could not reload changed file', error); view.notice = true; });
+    externalChange: change => {
+      const target = workspace.contents.find(tab => tab.document.path === change.path);
+      if (!target) return;
+      if (!change.unavailable && sameDiskVersion(change.diskVersion, target.document.diskVersion)) return;
+      if (change.unavailable || tabs.dirty(target)) {
+        view.documentNotices[change.path] = { unavailable: change.unavailable, diskVersion: change.diskVersion,
+          message: change.unavailable ? 'This file was deleted or is no longer accessible. Your open content is preserved.' : 'This file was changed by another application. Your edits are preserved.' };
+        tabs.updateChrome();
+      } else void tabs.refreshDocumentPaths([change.path]);
     },
     projectFilesChanged: (event) => projects.filesChanged(event.root, event.paths),
     themeChanged: (snapshot) => { void reader.applyTheme(snapshot); void projects.applyTheme(snapshot.id); },
@@ -455,6 +475,14 @@ export function startWorkspace(desktop: DesktopPort) {
       void closePrompt.request('window', names).then((decision) => desktop.resolveWindowClose(decision));
     },
     command: (command) => {
+      if (document.querySelector('[role="alertdialog"]')) {
+        if (command === 'escape') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        return;
+      }
+      if (command === 'escape' && shell.classList.contains('is-folder-drop-target')) {
+        shell.classList.remove('is-folder-drop-target'); return;
+      }
+      if (command === 'reload-document') { if (workspace.activeId) void actions.reloadLocalDocument(workspace.activeId); return; }
       if (command === 'escape' && document.querySelector('dialog.editor-tool-dialog[open]')) {
         document.querySelector('dialog.editor-tool-dialog[open]')?.dispatchEvent(new Event('cancel', { cancelable: true })); return;
       }

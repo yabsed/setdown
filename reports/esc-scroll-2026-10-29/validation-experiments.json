@@ -1,0 +1,282 @@
+{
+  "baseline_commit": "860ec7e",
+  "build_env": {
+    "SETDOWN_BUILD_SOURCEMAP": "0"
+  },
+  "regressions": {
+    "baseline-scroll": [
+      {
+        "prepared": false,
+        "frames": 30,
+        "scroll_min_px": 3499,
+        "scroll_max_px": 3500,
+        "scroll_range_px": 1,
+        "stale_frames": 2,
+        "position_requests": 1,
+        "artifact": "baseline-scroll/preview-document-preparati-1c65b--later-jump-prepared-false-/esc-frames.json"
+      },
+      {
+        "prepared": true,
+        "frames": 30,
+        "scroll_min_px": 3492,
+        "scroll_max_px": 3492,
+        "scroll_range_px": 0,
+        "stale_frames": 0,
+        "position_requests": 2,
+        "artifact": "baseline-scroll/preview-document-preparati-67f52-a-later-jump-prepared-true-/esc-frames.json"
+      }
+    ],
+    "after-scroll": [
+      {
+        "prepared": false,
+        "frames": 30,
+        "scroll_min_px": 3502,
+        "scroll_max_px": 3502,
+        "scroll_range_px": 0,
+        "stale_frames": 0,
+        "position_requests": 1,
+        "artifact": "after-scroll/preview-document-preparati-1c65b--later-jump-prepared-false-/esc-frames.json"
+      },
+      {
+        "prepared": true,
+        "frames": 30,
+        "scroll_min_px": 3492,
+        "scroll_max_px": 3492,
+        "scroll_range_px": 0,
+        "stale_frames": 0,
+        "position_requests": 1,
+        "artifact": "after-scroll/preview-document-preparati-67f52-a-later-jump-prepared-true-/esc-frames.json"
+      }
+    ]
+  },
+  "unit": {
+    "files_passed": 93,
+    "tests_passed": 656,
+    "log": "final-unit.log",
+    "final_coordinate_followup": "39 focused unit tests passed after final coordinate assertions and guard update"
+  },
+  "initial_contract_failures": [
+    {
+      "file": "test/e2e/git/git-review-tabs.spec.ts",
+      "line": 48,
+      "reason": "strict locator matches two retained diff editors",
+      "reproduced_on_baseline": true,
+      "resolution": "Scope assertions to the currently visible retained editor.",
+      "verification": "Passed in the final full 211-scenario run."
+    },
+    {
+      "file": "test/e2e/git/git-review-tabs.spec.ts",
+      "line": 187,
+      "reason": "strict locator matches two retained diff editors",
+      "reproduced_on_baseline": true,
+      "resolution": "Scope source content, editable pane and first-frame inspection to the visible review.",
+      "verification": "Passed in the final full 211-scenario run."
+    },
+    {
+      "file": "test/e2e/git/git-review-tabs.spec.ts",
+      "line": 370,
+      "reason": "discard leaves Changed on disk instead of expected Base",
+      "reproduced_on_baseline": true,
+      "resolution": "Copy the Svelte proxy array before crossing the Electron IPC boundary.",
+      "verification": "Passed in the final full 211-scenario run."
+    },
+    {
+      "file": "test/e2e/preview/preview-tabs.spec.ts",
+      "line": 136,
+      "reason": "held file-open hook is not reached",
+      "reproduced_on_baseline": true,
+      "resolution": "Hold the actual document:read-location request used by Explorer.",
+      "verification": "Passed in the final full 211-scenario run."
+    },
+    {
+      "file": "test/e2e/project/explorer-selection.spec.ts",
+      "line": 187,
+      "reason": "saving the moved dirty file leaves the original text on disk",
+      "reproduced_on_baseline": true,
+      "resolution": "Verify saved text and format at the moved path before adopting its new disk version.",
+      "verification": "Passed in the final full 211-scenario run."
+    }
+  ],
+  "environment_note": "An intermediate unit run saw a sandbox-created read-only /tmp/.git mount. The complete validation uses TMPDIR=/var/tmp to keep root-discovery fixtures independent of that mount. No test assertion or application root-discovery rule was changed.",
+  "full_contract": {
+    "status": "650 unit tests and build passed; full Electron run 210 passed / 1 failed; after correcting the failed browser input test, targeted verification passed (1/1). All 211 scenarios covered, not a claim that the single full-suite invocation exited successfully.",
+    "e2e_scenarios": 211,
+    "log": "contract-final.log",
+    "prior_full_run": {
+      "passed": 209,
+      "failed": 2,
+      "log": "contract-watch-fix.log",
+      "diagnosis": [
+        {
+          "test": "browser pinch zoom",
+          "reason": "Input point fell inside an iframe before its compositor hit region was registered; the existing wheel test already targets the top-level strip. Pinch now uses that same top-level strip. Explicit iframe input assertions remain."
+        },
+        {
+          "test": "reading tools, new empty Markdown tab",
+          "reason": "Never-presented warmup view can return an empty hidden capture. Only previously presented readers need old scroll-frame flushing; first presentation uses prepared layout. Added unit coverage and reran the full suite."
+        }
+      ]
+    },
+    "full_run_e2e_passed": 210,
+    "full_run_e2e_failed": 1,
+    "corrected_test_e2e_passed": 1,
+    "retries": 0
+  },
+  "root_cause": {
+    "trigger": "double-click, edit, Escape before auto-save",
+    "cause": "Own atomic save emitted document:external-change before renderer accepted saved disk version. Transient notice resized/moved native reader even though DOM scrollY was stable.",
+    "before_native_y": [
+      110,
+      151,
+      110
+    ],
+    "before_artifact": "desktop-before-watch-fix-native.json",
+    "fixed_native_events": [],
+    "fixed_artifact": "desktop-fixed-native.json",
+    "desktop_recording": "desktop-fixed.mp4",
+    "pixel_tracking": "desktop-fixed-pixel-positions.json",
+    "pixel_tracking_note": "Tracking source is original screen recording; the saved video crops the test window area. Heading was at y=438 after reader presentation and remained there through auto-save."
+  },
+  "early_dom_checks_limitation": "Earlier 30-frame DOM-only checks did not establish a fix: the user still saw a jump. A real desktop recording and every native bounds write exposed the transient notice. Final regression tests include auto-save, native bounds and notifications as well as 180 Chromium frames.",
+  "desktop_immediate_case": {
+    "trace": "desktop-fixed-immediate-trace.json",
+    "native": "desktop-fixed-immediate-native.json",
+    "video": "desktop-fixed-immediate.mp4",
+    "pixel_tracking": "desktop-fixed-immediate-pixel-positions.json",
+    "note": "No native bounds changes or external notices; final heading position remains stable after presentation."
+  },
+  "browser_zoom_followup": {
+    "before_fix": "Full run native frame input sometimes preceded current compositor hit regions despite updated getZoomFactor. Standalone baseline comparison passed, so baseline failure was not assumed.",
+    "change": "Use a top-level point for initial pinch; before the single explicit iframe wheel input, capture the current visible native frame and require a nonempty result. All factor/content/frame/focus assertions remain.",
+    "after_fix": "1 targeted Electron scenario passed in 5.6 seconds, retries=0",
+    "log": "browser-zoom-native-ready.log"
+  },
+  "final_esc_cases": [
+    {
+      "artifact": "final-regressions/preview-document-preparati-85e36-ared-false-auto-save-false-",
+      "frames": 180,
+      "scroll_range_px": 0,
+      "stale_frames": 0,
+      "requested_positions": 1,
+      "native": {
+        "bounds": [
+          {
+            "x": 0,
+            "y": 110,
+            "width": 1080,
+            "height": 710
+          }
+        ],
+        "externalChanges": []
+      }
+    },
+    {
+      "artifact": "final-regressions/preview-document-preparati-efe8f-pared-true-auto-save-false-",
+      "frames": 180,
+      "scroll_range_px": 0,
+      "stale_frames": 0,
+      "requested_positions": 1,
+      "native": {
+        "bounds": [
+          {
+            "x": 0,
+            "y": 110,
+            "width": 1080,
+            "height": 710
+          }
+        ],
+        "externalChanges": []
+      }
+    },
+    {
+      "artifact": "final-regressions/preview-document-preparati-dc7a2-epared-true-auto-save-true-",
+      "frames": 180,
+      "scroll_range_px": 0,
+      "stale_frames": 0,
+      "requested_positions": 1,
+      "native": {
+        "bounds": [
+          {
+            "x": 0,
+            "y": 110,
+            "width": 1080,
+            "height": 710
+          }
+        ],
+        "externalChanges": []
+      }
+    }
+  ],
+  "initial_performance_comparison": {
+    "passed": false,
+    "regressions": [
+      {
+        "key": "document/idle=0/edits=false/first/captureMs",
+        "baselineMs": 42,
+        "candidateMs": 113,
+        "deltaMs": 71,
+        "relativeChange": 1.6904761904761905,
+        "regression": true,
+        "baselineSamples": [
+          125,
+          41,
+          42
+        ],
+        "candidateSamples": [
+          113,
+          94,
+          114
+        ]
+      },
+      {
+        "key": "document/idle=0/edits=false/second/captureMs",
+        "baselineMs": 23,
+        "candidateMs": 112,
+        "deltaMs": 89,
+        "relativeChange": 3.869565217391304,
+        "regression": true,
+        "baselineSamples": [
+          36,
+          23,
+          20
+        ],
+        "candidateSamples": [
+          112,
+          115,
+          101
+        ]
+      }
+    ],
+    "report": "benchmark/comparison.json",
+    "resolution": "Only changed revisions need a hidden compositor capture. The already presented unchanged revision uses its prepared layout without another readback. Full contract and new independent comparative run required."
+  },
+  "current_validation": {
+    "status": "final benchmark running; full contract revalidation remains"
+  },
+  "final_desktop": [
+    {
+      "case": "no-edit",
+      "native_events": [],
+      "native": "desktop-final-no-edit-native.json",
+      "video": "desktop-final-no-edit.mp4",
+      "pixels": "desktop-final-no-edit-pixels.json",
+      "visible_dom_scroll_range": 0
+    },
+    {
+      "case": "edited",
+      "native_events": [],
+      "native": "desktop-final-edited-native.json",
+      "video": "desktop-final-edited.mp4",
+      "pixels": "desktop-final-edited-pixels.json",
+      "visible_dom_scroll_range": 0
+    }
+  ],
+  "desktop_recording_note": "An intermediate edited desktop recording was occluded by another desktop window and was not accepted as visual evidence. The final edited recording holds only the temporary test window on top, then closes it automatically. Saved videos crop to that test window.",
+  "origin_focused": {
+    "passed": 4,
+    "failed": 1,
+    "esc_and_reading_tools": "All 3 Esc cases and the reading-tools case including the unchanged <50ms small-document assertion passed.",
+    "remaining": "Browser iframe wheel intermittently does not change zoom. A native capture readiness attempt did not consistently fix it and was removed. No production browser change was made.",
+    "log": "origin-focused.log"
+  }
+}

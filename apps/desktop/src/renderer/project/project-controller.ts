@@ -25,7 +25,7 @@ type Options = {
   activateWorkingTree(path: string): Promise<boolean>;
   workingTreeBuffer(path: string): string | null;
   workingTreeChanged(path: string, text: string, edits?: WorkingTreeEdit[]): void;
-  reloadDocuments(paths: string[]): Promise<void>;
+  reloadDocuments(paths: string[], preserveChanges?: boolean): Promise<void>;
   highlight(query: string, target?: SearchTarget): void;
   pathMoved(from: string, to: string): Promise<void>;
   prepareRemove(path: string): Promise<boolean>;
@@ -185,12 +185,16 @@ export class ProjectController {
   changeGitWorkingTree = (text: string, edits?: WorkingTreeEdit[]): void => this.sourceControl.changeWorkingTree(text, edits);
   previewMessage = (payload: PreviewMessage): boolean => this.sourceControl.previewMessage(payload);
   applyTheme = (themeId: PreviewThemeId): Promise<void> => this.sourceControl.applyTheme(themeId);
+  selectGitRepository = (root: string): Promise<void> => this.sourceControl.selectRepository(root);
   initializeGit = (): Promise<void> => this.sourceControl.initialize();
   stageGit = (paths: string[]): Promise<void> => this.sourceControl.stage(paths);
   unstageGit = (paths: string[]): Promise<void> => this.sourceControl.unstage(paths);
   discardGit = async (paths: string[]): Promise<void> => {
-    await this.sourceControl.discard(paths, () => this.options.reloadDocuments(paths));
-    await this.explorer.refresh();
+    if (!paths.length || project.gitBusy) return;
+    await this.options.runMutation(async () => {
+      await this.sourceControl.discard(paths, () => this.options.reloadDocuments(paths, true));
+      await this.explorer.refresh();
+    });
   };
   commitGit = (message: string): Promise<void> => this.sourceControl.commit(message);
   runGitRemote = async (action: GitRemoteAction): Promise<void> => {

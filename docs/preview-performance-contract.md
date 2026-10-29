@@ -22,6 +22,19 @@ from current guarantees; moving it does not remove any required scenario.
 
 ## Guarantees and ownership
 
+Local Reload and external-change reconciliation must preserve these guarantees:
+only the current document revision can invalidate/install preview content, and
+neither action restarts the shell or steals focus from another tab. File-drop
+feedback is transient and does not cover the reading surface. The workspace
+contract describes dirty-buffer and cancellation behavior.
+
+Renderer builds prepare worker entries sequentially before Rollup to bound peak
+memory. Workers remain lazy local assets; their real Chromium execution is still
+required. `SETDOWN_BUILD_SOURCEMAP=0` omits renderer debug maps for memory-limited
+validation; use the same setting for both baseline and candidate and record it.
+This does not reduce scenarios, assertions or runtime content. Resource-limited
+runs must fail rather than silently retry or fall back to the user's display.
+
 | Guarantee and reason | Implementation owner | Required coverage |
 | --- | --- | --- |
 | A never-shown view must have a positive Blink viewport before preparation. Native `setBounds` alone can leave Blink at 0×0. Keep the desktop viewport override across show; natural DPR/zoom must survive. | `src/main/preview/preview-preparation.ts` owns readiness/cache invalidation; `preview-manager.ts` owns navigation and visibility. | `preview-presentation.test.ts`; real `document-preparation.spec.ts`, `review-document-styles.spec.ts` |
@@ -259,6 +272,18 @@ obsolete content immediately before patching it. The latest Esc anchor and
 weighted editor band still apply once that revision is installed.
 `source-atlas.test.ts` and the real edited document/reading-position cycles cover
 cache reuse, invalidation and latest-position behavior.
+
+Auto save after returning from source must not briefly move the native reader.
+A window's own atomic save holds its file observation until the written disk
+version is known, then checks the actual file against that version. It must not
+flash an external-change notice. Other windows still receive the change;
+concurrent external replacement/deletion and failed saves are reconciled without
+a time-based ignore window (`document-save.test.ts`).
+`document-preparation.spec.ts` edits a scrolled document, returns with Esc and
+observes auto save across 180 Chromium frames. It checks every native bounds
+write and external-change notification as well as current content and DOM scroll:
+DOM scroll stability alone cannot detect a native reader moving with a transient
+shell banner. Reader presentation and preparation retain their existing paths.
 
 Owned background document preparation uses its tab's file, without changing the
 foreground document or watcher. Per-tab main preparation keeps worker block

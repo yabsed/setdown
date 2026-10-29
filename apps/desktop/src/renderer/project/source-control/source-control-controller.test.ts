@@ -24,7 +24,7 @@ beforeEach(() => {
   Object.assign(project, {
     gitDiffTabs: [], activeGitDiffId: null, gitDiff: null, gitDiffActive: false,
     gitDiffMode: 'source', gitDiffLine: 1, gitDiffTarget: null,
-    gitLoading: false, gitBusy: false, error: '',
+    gitLoading: false, gitBusy: false, error: '', gitError: '', git: null, folder: null,
   });
 });
 afterEach(() => {
@@ -81,7 +81,7 @@ function fixture(staged = false, automaticRendering = true) {
   project.gitDiffTabs.push(tab);
   const preparations = () => calls.filter((call): call is Extract<Call, { kind: 'prepare' }> => call.kind === 'prepare');
   return {
-    controller, tab, calls, models, preparations,
+    controller, tab, calls, models, preparations, desktop,
     async activate(id = tab.id) { await controller.activateDiff(id); await flush(); },
     edit(text: string) { buffer = text; models.publish({ type: 'changed', path: tab.filePath, text }); },
     shown: () => calls.filter(call => call.kind === 'show' && call.id !== null),
@@ -98,6 +98,25 @@ function fixture(staged = false, automaticRendering = true) {
     },
   };
 }
+
+test('repository errors remain distinct from an absent repository and clear on recovery', async () => {
+  const f = fixture(); project.folder = { path: '/project', name: 'project' };
+  f.desktop.getGitStatus = async () => { throw Error('Permission denied'); };
+  await f.controller.refresh(); assert.equal(project.gitError, 'Permission denied'); assert.equal(project.git, null);
+  f.desktop.getGitStatus = async () => ({ repository: false, changes: [], branch: '', upstream: '', ahead: 0, behind: 0 });
+  await f.controller.refresh(); assert.equal(project.gitError, ''); assert.equal(project.error, '');
+  assert.deepEqual(project.git, { repository: false, changes: [], branch: '', upstream: '', ahead: 0, behind: 0 });
+});
+
+test('history in an opened subfolder uses the actual repository root', async () => {
+  const f = fixture(); project.folder = { path: '/project/subfolder', name: 'subfolder' };
+  project.git = { repository: true, root: '/project', roots: ['/project'], changes: [], branch: 'main', upstream: '', ahead: 0, behind: 0 };
+  const selection = { root: '/project', head: 'a'.repeat(40), path: 'history.txt' };
+  f.desktop.getGitHistoryDiff = async () => ({ ...f.tab.diff!, path: selection.path, filePath: '/project/history.txt', history: selection });
+  await f.controller.reviewHistory(selection);
+  assert.deepEqual(project.gitDiffTabs.at(-1)?.history, selection);
+  assert.equal(project.gitDiff?.filePath, '/project/history.txt');
+});
 
 for (const staged of [false, true]) test(`cold first Esc waits for bounds and ACK (${staged ? 'staged' : 'working tree'})`, async () => {
   const f = fixture(staged); await f.activate();

@@ -49,6 +49,14 @@ regression test checks this nbformat boundary. Runs join a serial
 queue; errors stop queued work, interrupt cancels it, and delayed results from an
 older run cannot overwrite a rerun of the same cell.
 
+Path changes preserve a running kernel's identity and variables. Reload replaces
+the notebook model in place while preserving an idle kernel and disposing cell
+models that disappeared. A starting/busy kernel blocks reload with an explanation
+until execution finishes or is interrupted. Invalid replacement JSON preserves
+the previous notebook. Explicit reset and closing retain their shutdown behavior.
+The existing kernel process keeps its working directory after a path change;
+reset starts the next process from the new notebook location.
+
 Python analysis uses native notebook cell synchronization with the bundled
 basedpyright, preserving magic-cell Python statements, top-level await and cell
 syntax boundaries. Core syntax/name/import diagnostics remain enabled; broad type

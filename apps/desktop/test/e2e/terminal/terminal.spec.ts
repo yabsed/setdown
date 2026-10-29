@@ -11,6 +11,38 @@ import { dragTerminal } from '../../support/terminal/terminal-drag';
 const run = async (input: Locator, command: string) => { await input.pressSequentially(command); await input.press('Enter'); };
 const input = (page: import('@playwright/test').Page) => page.locator('.terminal-content:not(.inactive) .xterm-helper-textarea');
 
+test('canceling quit and reloading a document retain the PTY and external file watcher', async () => {
+  test.skip(process.platform === 'win32', 'Commands use a POSIX shell.');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-quit-reload-'));
+  const file = path.join(root, 'quit.md'); await writeFile(file, '# Original\n');
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', file], env: { ...env, SHELL: '/bin/bash', XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    await focusApplication(app); const page = await app.firstWindow();
+    await page.getByRole('button', { name: 'Switch to Editor' }).click();
+    const editor = page.getByRole('textbox', { name: 'Editor content' });
+    await editor.press('Control+End'); await editor.pressSequentially('unsaved');
+    await page.locator('.new-terminal-tab-button').click();
+    await run(input(page), 'export SETDOWN_QUIT_MARKER=preserved-session');
+    await app.evaluate(({ app }) => app.quit());
+    const close = page.locator('dialog[aria-labelledby="close-prompt-title"]');
+    await expect(close).toBeVisible(); await close.locator('.close-cancel').click();
+    await run(input(page), 'printf "%s" "$SETDOWN_QUIT_MARKER" > after-quit.txt');
+    await expect.poll(() => readFile(path.join(root, 'after-quit.txt'), 'utf8').catch(() => '')).toBe('preserved-session');
+    await writeFile(file, '# External after cancel\n');
+    await page.getByRole('tab', { name: /quit.md/ }).click();
+    await expect(page.locator('.notice:not([hidden])')).toContainText('changed by another application');
+    const shellId = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.id);
+    await page.getByRole('button', { name: 'Reload file', exact: true }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Reload from Disk' }).click();
+    await expect(page.locator('.editor-surface .view-lines')).toContainText('External after cancel');
+    expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.id)).toBe(shellId);
+    await page.getByRole('tab', { name: /Terminal 1/ }).click();
+    await run(input(page), 'printf "%s" "$SETDOWN_QUIT_MARKER" > after-reload.txt');
+    await expect.poll(() => readFile(path.join(root, 'after-reload.txt'), 'utf8').catch(() => '')).toBe('preserved-session');
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
 test('horizontal resizing preserves a two-line right prompt, input and prior output', async () => {
   test.skip(process.platform === 'win32', 'Commands use a POSIX shell.');
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-terminal-resize-'));

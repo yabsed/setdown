@@ -7,6 +7,7 @@ export type HwpState = { id: string; path: string; generation: string; revision:
 export type HwpArtifact = { revision: number; bytes: Uint8Array;
   contentLoss: { schemaVersion: number; outputFormat: 'hwp' | 'hwpx'; count: number; losses: unknown[] } };
 export type HwpApi = {
+  backup?(id: string): Promise<HwpArtifact>;
   open(id: string, document: DocumentSnapshot): Promise<HwpState>;
   present(id: string, bounds: PreviewBounds | null): void;
   focus(id: string): void;

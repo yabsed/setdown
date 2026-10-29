@@ -1,6 +1,6 @@
 import { app, dialog, Menu, session, shell, webFrameMain, WebContentsView, type Session, type WebContents, type Rectangle, type BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
-import { promises as fs, unwatchFile, writeFileSync, renameSync } from 'node:fs';
+import { promises as fs, writeFileSync, renameSync } from 'node:fs';
 import path from 'node:path';
 import { browserURL, isWebURL } from '../../core/browser/browser-url';
 import { browserFailure, browserFailureMessage } from '../../core/browser/browser-failure';
@@ -646,7 +646,6 @@ export class BrowserManager {
       else if (command === 'site-info') this.siteMenu(entry);
       else if (command === 'stop') { entry.navigation++; wc.stop(); }
       else if (command === 'activate' || command === 'focus') {
-        if (state.watchedPath) { unwatchFile(state.watchedPath); state.watchedPath = null; }
         state.currentDocument = null;
         this.extensions?.host?.selectTab(wc);
         if (command === 'focus' && entry.view.getVisible()) wc.focus();

@@ -223,6 +223,12 @@ export class HwpManager {
     channels.on('hwp:zoom', (state, id: string, steps: unknown) => { const entry = this.entries.get(id);
       if (entry?.owner === state.webContentsId && typeof steps === 'number' && Number.isInteger(steps) && Math.abs(steps) <= 4) entry.contents.send('hwp-runtime:zoom', steps); });
     channels.on('hwp:release', (state, id: string) => { if (this.openingOwners.get(id) === state.webContentsId) this.canceled.add(id); const entry = this.entries.get(id); if (entry?.owner === state.webContentsId) this.close(entry); });
+    channels.handle('hwp:backup', async (state, id: string) => {
+      const entry = this.owned(state.webContentsId, id);
+      const artifact = await this.export(entry, /\.hwpx$/i.test(entry.document.path) ? 'hwpx' : 'hwp');
+      if (artifact.bytes.length > 18 * 1024 * 1024) throw Error('This document exceeds the recovery limit. Save a copy to protect your edits.');
+      return artifact;
+    });
     channels.handle('hwp:save', (state, id: string, saveAs: unknown) => this.save(state.webContentsId, id, saveAs === true));
     channels.handle('hwp:reload', async (state, id: string, document: DocumentSnapshot) => {
       const entry = this.owned(state.webContentsId, id); if (entry.saving) throw Error('저장 완료 후 다시 불러오세요.');

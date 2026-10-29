@@ -46,7 +46,11 @@ export class NotebookExecution {
   get busy(): boolean { return this.state === 'starting' || this.state === 'busy'; }
   subscribe(listener: () => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }
   private changed(): void { for (const listener of this.listeners) listener(); }
-  setPath(path: string): void { if (path !== this.path) { this.shutdown(); this.path = path; } }
+  setPath(path: string): void { this.path = path; }
+  prepareReload(): void {
+    if (this.busy) throw Error('Wait for notebook execution to finish, or interrupt it, before reloading. The kernel and your variables are preserved.');
+    this.flush(); this.queue.clear(); this.runs.clear(); this.cells.clear(); this.durations.clear(); this.changed();
+  }
   async run(ids?: string[]): Promise<void> {
     if (this.disposed || this.document.error || this.document.language !== 'python') return;
     for (const cell of this.document.cells.filter(cell => cell.kind === 'code' && (!ids || ids.includes(cell.id)))) {
