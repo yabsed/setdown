@@ -1,0 +1,24 @@
+dbus-daemon[1061315]: [session uid=1000 pid=1061315] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=1061350 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1061315]: [session uid=1000 pid=1061315] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[1061315]: [session uid=1000 pid=1061315] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=1061350 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1061315]: [session uid=1000 pid=1061315] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.4' (uid=1000 pid=1061427 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1061315]: [session uid=1000 pid=1061315] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[1061315]: [session uid=1000 pid=1061315] Activating service name='org.freedesktop.portal.Documents' requested by ':1.4' (uid=1000 pid=1061427 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1061315]: [session uid=1000 pid=1061315] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[1061315]: [session uid=1000 pid=1061315] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.4' (uid=1000 pid=1061427 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[1061315]: [session uid=1000 pid=1061315] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=1061450 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[1061315]: [session uid=1000 pid=1061315] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[1061315]: [session uid=1000 pid=1061315] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[1061315]: [session uid=1000 pid=1061315] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.4' (uid=1000 pid=1061427 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1061315]: [session uid=1000 pid=1061315] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:1061427): xdg-desktop-portal-WARNING **: 00:23:02.051: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[1061315]: [session uid=1000 pid=1061315] Activating service name='org.freedesktop.secrets' requested by ':1.4' (uid=1000 pid=1061427 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+** Message: 00:23:02.058: couldn't access control socket: /tmp/setdown-display-runtime.ohKxXW/keyring/control: No such file or directory
+discover_other_daemon: 0dbus-daemon[1061315]: [session uid=1000 pid=1061315] Successfully activated service 'org.freedesktop.secrets'
+dbus-daemon[1061315]: [session uid=1000 pid=1061315] Successfully activated service 'org.freedesktop.portal.Desktop'
+{"status":"passed","webThemes":8,"terminalCases":16,"output":"/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/reports/theme-research-2026-10-30/results"}

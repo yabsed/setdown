@@ -1,0 +1,1700 @@
+{
+  "upstream": "84f5db666b7bfb53d3520f9d6b233b1f2b644674",
+  "appCommit": "a19ce26567eae6ab88be53304cac38d621ff277e",
+  "isolatedDisplay": ":100",
+  "runtime": {
+    "node": "24.21.0",
+    "acorn": "8.18.0",
+    "ada": "4.0.0",
+    "amaro": "1.1.11",
+    "ares": "1.34.8",
+    "brotli": "1.2.0",
+    "cldr": "48.0",
+    "icu": "78.2",
+    "llhttp": "9.4.3",
+    "merve": "1.2.2",
+    "modules": "149",
+    "napi": "10",
+    "nbytes": "0.1.4",
+    "ncrypto": "0.0.1",
+    "nghttp2": "1.70.0",
+    "nghttp3": "",
+    "ngtcp2": "",
+    "openssl": "0.0.0",
+    "simdjson": "4.6.7",
+    "simdutf": "7.7.0",
+    "sqlite": "3.53.4",
+    "tz": "2026d",
+    "undici": "7.29.1",
+    "unicode": "17.0",
+    "uv": "1.52.1",
+    "uvwasi": "0.0.23",
+    "v8": "15.2.124.37-electron.0",
+    "zlib": "1.3.2.1-motley",
+    "zstd": "1.6.0",
+    "electron": "44.7.2",
+    "chrome": "152.0.7977.149"
+  },
+  "web": [
+    {
+      "theme": "github-light",
+      "body": {
+        "background": "rgb(255, 255, 255)",
+        "color": "rgb(36, 36, 36)"
+      },
+      "card": {
+        "background": "rgb(244, 244, 244)",
+        "color": "rgb(65, 65, 65)"
+      },
+      "link": {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(0, 124, 247)"
+      },
+      "cssom": {
+        "background": "rgb(240, 240, 240)",
+        "color": "rgb(51, 51, 51)"
+      },
+      "foreign": {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(36, 36, 36)"
+      },
+      "draft": "preserved draft 한글",
+      "focused": "draft",
+      "identity": "same-document",
+      "sheets": 9,
+      "leakedAPI": "undefined",
+      "svgFill": "rgb(0, 170, 0)",
+      "bodyContrast": 15.522910417680388,
+      "linkContrast": 4.018261480083508,
+      "dynamic": {
+        "background": "rgb(255, 255, 255)",
+        "color": "rgb(36, 36, 36)"
+      }
+    },
+    {
+      "theme": "paper",
+      "body": {
+        "background": "rgb(243, 242, 238)",
+        "color": "rgb(45, 37, 32)"
+      },
+      "card": {
+        "background": "rgb(234, 233, 226)",
+        "color": "rgb(76, 63, 54)"
+      },
+      "link": {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(0, 119, 239)"
+      },
+      "cssom": {
+        "background": "rgb(232, 230, 222)",
+        "color": "rgb(61, 50, 43)"
+      },
+      "foreign": {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(45, 37, 32)"
+      },
+      "draft": "preserved draft 한글",
+      "focused": "draft",
+      "identity": "same-document",
+      "sheets": 9,
+      "leakedAPI": "undefined",
+      "svgFill": "rgb(0, 170, 0)",
+      "bodyContrast": 13.418447040473614,
+      "linkContrast": 3.837441672366853,
+      "dynamic": {
+        "background": "rgb(243, 242, 238)",
+        "color": "rgb(45, 37, 32)"
+      }
+    },
+    {
+      "theme": "medium",
+      "body": {
+        "background": "rgb(255, 255, 255)",
+        "color": "rgb(32, 33, 35)"
+      },
+      "card": {
+        "background": "rgb(244, 244, 244)",
+        "color": "rgb(60, 62, 66)"
+      },
+      "link": {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(0, 122, 244)"
+      },
+      "cssom": {
+        "background": "rgb(240, 240, 240)",
+        "color": "rgb(46, 48, 50)"
+      },
+      "foreign": {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(32, 33, 35)"
+      },
+      "draft": "preserved draft 한글",
+      "focused": "draft",
+      "identity": "same-document",
+      "sheets": 9,
+      "leakedAPI": "undefined",
+      "svgFill": "rgb(0, 170, 0)",
+      "bodyContrast": 16.113838420027594,
+      "linkContrast": 4.12561987386826,
+      "dynamic": {
+        "background": "rgb(255, 255, 255)",
+        "color": "rgb(32, 33, 35)"
+      }
+    },
+    {
+      "theme": "solarized-light",
+      "body": {
+        "background": "rgb(253, 246, 227)",
+        "color": "rgb(88, 110, 117)"
+      },
+      "card": {
+        "background": "rgb(252, 242, 214)",
+        "color": "rgb(104, 130, 138)"
+      },
+      "link": {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(60, 158, 255)"
+      },
+      "cssom": {
+        "background": "rgb(252, 241, 210)",
+        "color": "rgb(96, 120, 127)"
+      },
+      "foreign": {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(88, 110, 117)"
+      },
+      "draft": "preserved draft 한글",
+      "focused": "draft",
+      "identity": "same-document",
+      "sheets": 9,
+      "leakedAPI": "undefined",
+      "svgFill": "rgb(0, 170, 0)",
+      "bodyContrast": 4.989012415947374,
+      "linkContrast": 2.586471108277454,
+      "dynamic": {
+        "background": "rgb(253, 246, 227)",
+        "color": "rgb(88, 110, 117)"
+      }
+    },
+    {
+      "theme": "github-dark",
+      "body": {
+        "background": "rgb(36, 41, 46)",
+        "color": "rgb(205, 217, 229)"
+      },
+      "card": {
+        "background": "rgb(41, 47, 53)",
+        "color": "rgb(178, 197, 215)"
+      },
+      "link": {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(77, 175, 255)"
+      },
+      "cssom": {
+        "background": "rgb(43, 49, 55)",
+        "color": "rgb(192, 207, 222)"
+      },
+      "foreign": {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(205, 217, 229)"
+      },
+      "draft": "preserved draft 한글",
+      "focused": "draft",
+      "identity": "same-document",
+      "sheets": 9,
+      "leakedAPI": "undefined",
+      "svgFill": "rgb(0, 170, 0)",
+      "bodyContrast": 10.234692591873522,
+      "linkContrast": 6.210739904102132,
+      "dynamic": {
+        "background": "rgb(36, 41, 46)",
+        "color": "rgb(205, 217, 229)"
+      }
+    },
+    {
+      "theme": "night",
+      "body": {
+        "background": "rgb(54, 59, 64)",
+        "color": "rgb(222, 222, 222)"
+      },
+      "card": {
+        "background": "rgb(58, 63, 69)",
+        "color": "rgb(200, 200, 200)"
+      },
+      "link": {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(79, 176, 255)"
+      },
+      "cssom": {
+        "background": "rgb(59, 65, 70)",
+        "color": "rgb(211, 211, 211)"
+      },
+      "foreign": {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(222, 222, 222)"
+      },
+      "draft": "preserved draft 한글",
+      "focused": "draft",
+      "identity": "same-document",
+      "sheets": 9,
+      "leakedAPI": "undefined",
+      "svgFill": "rgb(0, 170, 0)",
+      "bodyContrast": 8.40799497051676,
+      "linkContrast": 4.840677465225148,
+      "dynamic": {
+        "background": "rgb(54, 59, 64)",
+        "color": "rgb(222, 222, 222)"
+      }
+    },
+    {
+      "theme": "one-dark",
+      "body": {
+        "background": "rgb(39, 43, 51)",
+        "color": "rgb(171, 178, 191)"
+      },
+      "card": {
+        "background": "rgb(44, 49, 58)",
+        "color": "rgb(159, 167, 182)"
+      },
+      "link": {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(62, 169, 255)"
+      },
+      "cssom": {
+        "background": "rgb(46, 50, 60)",
+        "color": "rgb(165, 172, 186)"
+      },
+      "foreign": {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(171, 178, 191)"
+      },
+      "draft": "preserved draft 한글",
+      "focused": "draft",
+      "identity": "same-document",
+      "sheets": 9,
+      "leakedAPI": "undefined",
+      "svgFill": "rgb(0, 170, 0)",
+      "bodyContrast": 6.658502881058222,
+      "linkContrast": 5.6257739392077815,
+      "dynamic": {
+        "background": "rgb(39, 43, 51)",
+        "color": "rgb(171, 178, 191)"
+      }
+    },
+    {
+      "theme": "solarized-dark",
+      "body": {
+        "background": "rgb(0, 43, 54)",
+        "color": "rgb(147, 161, 161)"
+      },
+      "card": {
+        "background": "rgb(0, 55, 69)",
+        "color": "rgb(143, 158, 158)"
+      },
+      "link": {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(51, 164, 255)"
+      },
+      "cssom": {
+        "background": "rgb(0, 59, 74)",
+        "color": "rgb(145, 159, 159)"
+      },
+      "foreign": {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(147, 161, 161)"
+      },
+      "draft": "preserved draft 한글",
+      "focused": "draft",
+      "identity": "same-document",
+      "sheets": 9,
+      "leakedAPI": "undefined",
+      "svgFill": "rgb(0, 170, 0)",
+      "bodyContrast": 5.614162720031733,
+      "linkContrast": 5.644007161465111,
+      "dynamic": {
+        "background": "rgb(0, 43, 54)",
+        "color": "rgb(147, 161, 161)"
+      }
+    }
+  ],
+  "limitations": [
+    {
+      "variant": "dark",
+      "theme": "solarized-light",
+      "before": {
+        "body": {
+          "background": "rgb(96, 120, 127)",
+          "color": "rgb(252, 241, 210)"
+        },
+        "card": {
+          "background": "rgb(252, 242, 214)",
+          "color": "rgb(104, 130, 138)"
+        },
+        "link": {
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(60, 158, 255)"
+        },
+        "cssom": {
+          "background": "rgb(252, 241, 210)",
+          "color": "rgb(96, 120, 127)"
+        },
+        "foreign": {
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(252, 241, 210)"
+        },
+        "draft": "unsaved draft",
+        "focused": "",
+        "sheets": 9,
+        "leakedAPI": "undefined",
+        "svgFill": "rgb(0, 170, 0)"
+      },
+      "afterInsertRule": {
+        "body": {
+          "background": "rgb(96, 120, 127)",
+          "color": "rgb(252, 241, 210)"
+        },
+        "card": {
+          "background": "rgb(252, 242, 214)",
+          "color": "rgb(104, 130, 138)"
+        },
+        "link": {
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(60, 158, 255)"
+        },
+        "cssom": {
+          "background": "rgb(253, 246, 227)",
+          "color": "rgb(88, 110, 117)"
+        },
+        "foreign": {
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(252, 241, 210)"
+        },
+        "draft": "unsaved draft",
+        "focused": "",
+        "sheets": 9,
+        "leakedAPI": "undefined",
+        "svgFill": "rgb(0, 170, 0)"
+      },
+      "afterDeclarationChange": {
+        "body": {
+          "background": "rgb(96, 120, 127)",
+          "color": "rgb(252, 241, 210)"
+        },
+        "card": {
+          "background": "rgb(252, 242, 214)",
+          "color": "rgb(104, 130, 138)"
+        },
+        "link": {
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(60, 158, 255)"
+        },
+        "cssom": {
+          "background": "rgb(253, 246, 227)",
+          "color": "rgb(88, 110, 117)"
+        },
+        "foreign": {
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(252, 241, 210)"
+        },
+        "draft": "unsaved draft",
+        "focused": "",
+        "sheets": 9,
+        "leakedAPI": "undefined",
+        "svgFill": "rgb(0, 170, 0)"
+      }
+    },
+    {
+      "variant": "csp",
+      "theme": "github-dark",
+      "before": {
+        "body": {
+          "background": "rgb(36, 41, 46)",
+          "color": "rgb(205, 217, 229)"
+        },
+        "card": {
+          "background": "rgb(41, 47, 53)",
+          "color": "rgb(178, 197, 215)"
+        },
+        "link": {
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(77, 175, 255)"
+        },
+        "cssom": {
+          "background": "rgb(43, 49, 55)",
+          "color": "rgb(192, 207, 222)"
+        },
+        "foreign": {
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(205, 217, 229)"
+        },
+        "draft": "unsaved draft",
+        "focused": "",
+        "sheets": 9,
+        "leakedAPI": "undefined",
+        "svgFill": "rgb(0, 170, 0)"
+      },
+      "afterInsertRule": {
+        "body": {
+          "background": "rgb(36, 41, 46)",
+          "color": "rgb(205, 217, 229)"
+        },
+        "card": {
+          "background": "rgb(41, 47, 53)",
+          "color": "rgb(178, 197, 215)"
+        },
+        "link": {
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(77, 175, 255)"
+        },
+        "cssom": {
+          "background": "rgb(36, 41, 46)",
+          "color": "rgb(205, 217, 229)"
+        },
+        "foreign": {
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(205, 217, 229)"
+        },
+        "draft": "unsaved draft",
+        "focused": "",
+        "sheets": 9,
+        "leakedAPI": "undefined",
+        "svgFill": "rgb(0, 170, 0)"
+      },
+      "afterDeclarationChange": {
+        "body": {
+          "background": "rgb(36, 41, 46)",
+          "color": "rgb(205, 217, 229)"
+        },
+        "card": {
+          "background": "rgb(41, 47, 53)",
+          "color": "rgb(178, 197, 215)"
+        },
+        "link": {
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(77, 175, 255)"
+        },
+        "cssom": {
+          "background": "rgb(36, 41, 46)",
+          "color": "rgb(205, 217, 229)"
+        },
+        "foreign": {
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(205, 217, 229)"
+        },
+        "draft": "unsaved draft",
+        "focused": "",
+        "sheets": 9,
+        "leakedAPI": "undefined",
+        "svgFill": "rgb(0, 170, 0)"
+      }
+    },
+    {
+      "variant": "foreign",
+      "theme": "github-dark",
+      "before": {
+        "body": {
+          "background": "rgb(36, 41, 46)",
+          "color": "rgb(205, 217, 229)"
+        },
+        "card": {
+          "background": "rgb(41, 47, 53)",
+          "color": "rgb(178, 197, 215)"
+        },
+        "link": {
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(77, 175, 255)"
+        },
+        "cssom": {
+          "background": "rgb(43, 49, 55)",
+          "color": "rgb(192, 207, 222)"
+        },
+        "foreign": {
+          "background": "rgb(255, 255, 255)",
+          "color": "rgb(0, 0, 0)"
+        },
+        "draft": "unsaved draft",
+        "focused": "",
+        "sheets": 9,
+        "leakedAPI": "undefined",
+        "svgFill": "rgb(0, 170, 0)"
+      },
+      "afterInsertRule": {
+        "body": {
+          "background": "rgb(36, 41, 46)",
+          "color": "rgb(205, 217, 229)"
+        },
+        "card": {
+          "background": "rgb(41, 47, 53)",
+          "color": "rgb(178, 197, 215)"
+        },
+        "link": {
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(77, 175, 255)"
+        },
+        "cssom": {
+          "background": "rgb(36, 41, 46)",
+          "color": "rgb(205, 217, 229)"
+        },
+        "foreign": {
+          "background": "rgb(255, 255, 255)",
+          "color": "rgb(0, 0, 0)"
+        },
+        "draft": "unsaved draft",
+        "focused": "",
+        "sheets": 9,
+        "leakedAPI": "undefined",
+        "svgFill": "rgb(0, 170, 0)"
+      },
+      "afterDeclarationChange": {
+        "body": {
+          "background": "rgb(36, 41, 46)",
+          "color": "rgb(205, 217, 229)"
+        },
+        "card": {
+          "background": "rgb(41, 47, 53)",
+          "color": "rgb(178, 197, 215)"
+        },
+        "link": {
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(77, 175, 255)"
+        },
+        "cssom": {
+          "background": "rgb(36, 41, 46)",
+          "color": "rgb(205, 217, 229)"
+        },
+        "foreign": {
+          "background": "rgb(255, 255, 255)",
+          "color": "rgb(0, 0, 0)"
+        },
+        "draft": "unsaved draft",
+        "focused": "",
+        "sheets": 9,
+        "leakedAPI": "undefined",
+        "svgFill": "rgb(0, 170, 0)"
+      }
+    }
+  ],
+  "terminal": [
+    {
+      "theme": "github-light",
+      "minimumContrastRatio": 1,
+      "samples": [
+        {
+          "label": "bright white",
+          "color": "rgb(238, 238, 236)",
+          "background": "#ffffff",
+          "contrast": 1.1617313344702664
+        },
+        {
+          "label": "bright yellow",
+          "color": "rgb(252, 233, 79)",
+          "background": "#ffffff",
+          "contrast": 1.2420481283593234
+        },
+        {
+          "label": "bright cyan",
+          "color": "rgb(52, 226, 226)",
+          "background": "#ffffff",
+          "contrast": 1.6002739963926031
+        },
+        {
+          "label": "blue",
+          "color": "rgb(52, 101, 164)",
+          "background": "#ffffff",
+          "contrast": 5.9262566562262675
+        },
+        {
+          "label": "256-color yellow",
+          "color": "rgb(255, 255, 175)",
+          "background": "#ffffff",
+          "contrast": 1.0408906931304247
+        },
+        {
+          "label": "RGB near-white",
+          "color": "rgb(245, 245, 245)",
+          "background": "#ffffff",
+          "contrast": 1.090230993517392
+        },
+        {
+          "label": "RGB foreground + RGB background",
+          "color": "rgb(49, 49, 49)",
+          "background": "rgb(48, 48, 48)",
+          "contrast": 1.0145381512896792
+        },
+        {
+          "label": "inverse",
+          "color": "rgb(46, 52, 54)",
+          "background": "rgb(211, 215, 207)",
+          "contrast": 8.66594102684522
+        },
+        {
+          "label": "dim (separate policy)",
+          "color": "rgba(211, 215, 207, 0.5)",
+          "background": "#ffffff",
+          "contrast": 1.1998653205246845
+        },
+        {
+          "label": "",
+          "color": "rgb(245, 245, 245)",
+          "background": "#ffffff",
+          "contrast": 1.090230993517392
+        }
+      ]
+    },
+    {
+      "theme": "github-light",
+      "minimumContrastRatio": 4.5,
+      "samples": [
+        {
+          "label": "bright white",
+          "color": "rgb(111, 111, 110)",
+          "background": "#ffffff",
+          "contrast": 5.0301388325531216
+        },
+        {
+          "label": "bright yellow",
+          "color": "rgb(117, 109, 36)",
+          "background": "#ffffff",
+          "contrast": 5.2905891283903514
+        },
+        {
+          "label": "bright cyan",
+          "color": "rgb(28, 131, 131)",
+          "background": "#ffffff",
+          "contrast": 4.5418821461990415
+        },
+        {
+          "label": "blue",
+          "color": "rgb(52, 101, 164)",
+          "background": "#ffffff",
+          "contrast": 5.9262566562262675
+        },
+        {
+          "label": "256-color yellow",
+          "color": "rgb(120, 120, 81)",
+          "background": "#ffffff",
+          "contrast": 4.56123277776786
+        },
+        {
+          "label": "RGB near-white",
+          "color": "rgb(116, 116, 116)",
+          "background": "#ffffff",
+          "contrast": 4.67399125435606
+        },
+        {
+          "label": "RGB foreground + RGB background",
+          "color": "rgb(158, 158, 158)",
+          "background": "rgb(48, 48, 48)",
+          "contrast": 4.926219446489268
+        },
+        {
+          "label": "inverse",
+          "color": "rgb(46, 52, 54)",
+          "background": "rgb(211, 215, 207)",
+          "contrast": 8.66594102684522
+        },
+        {
+          "label": "dim (separate policy)",
+          "color": "rgb(170, 173, 167)",
+          "background": "#ffffff",
+          "contrast": 2.2715861508532558
+        },
+        {
+          "label": "",
+          "color": "rgb(245, 245, 245)",
+          "background": "#ffffff",
+          "contrast": 1.090230993517392
+        }
+      ]
+    },
+    {
+      "theme": "paper",
+      "minimumContrastRatio": 1,
+      "samples": [
+        {
+          "label": "bright white",
+          "color": "rgb(238, 238, 236)",
+          "background": "#f3f2ee",
+          "contrast": 1.0370609049828783
+        },
+        {
+          "label": "bright yellow",
+          "color": "rgb(252, 233, 79)",
+          "background": "#f3f2ee",
+          "contrast": 1.1087585552781503
+        },
+        {
+          "label": "bright cyan",
+          "color": "rgb(52, 226, 226)",
+          "background": "#f3f2ee",
+          "contrast": 1.4285416513072078
+        },
+        {
+          "label": "blue",
+          "color": "rgb(52, 101, 164)",
+          "background": "#f3f2ee",
+          "contrast": 5.290284344331007
+        },
+        {
+          "label": "256-color yellow",
+          "color": "rgb(255, 255, 175)",
+          "background": "#f3f2ee",
+          "contrast": 1.0762082461949312
+        },
+        {
+          "label": "RGB near-white",
+          "color": "rgb(245, 245, 245)",
+          "background": "#f3f2ee",
+          "contrast": 1.0275025696347078
+        },
+        {
+          "label": "RGB foreground + RGB background",
+          "color": "rgb(49, 49, 49)",
+          "background": "rgb(48, 48, 48)",
+          "contrast": 1.0145381512896792
+        },
+        {
+          "label": "inverse",
+          "color": "rgb(46, 52, 54)",
+          "background": "rgb(211, 215, 207)",
+          "contrast": 8.66594102684522
+        },
+        {
+          "label": "dim (separate policy)",
+          "color": "rgba(211, 215, 207, 0.5)",
+          "background": "#f3f2ee",
+          "contrast": 1.1376071891361983
+        },
+        {
+          "label": "",
+          "color": "rgb(245, 245, 245)",
+          "background": "#f3f2ee",
+          "contrast": 1.0275025696347078
+        }
+      ]
+    },
+    {
+      "theme": "paper",
+      "minimumContrastRatio": 4.5,
+      "samples": [
+        {
+          "label": "bright white",
+          "color": "rgb(99, 99, 99)",
+          "background": "#f3f2ee",
+          "contrast": 5.363106923209956
+        },
+        {
+          "label": "bright yellow",
+          "color": "rgb(117, 109, 36)",
+          "background": "#f3f2ee",
+          "contrast": 4.722833056648953
+        },
+        {
+          "label": "bright cyan",
+          "color": "rgb(25, 117, 117)",
+          "background": "#f3f2ee",
+          "contrast": 4.878417399446027
+        },
+        {
+          "label": "blue",
+          "color": "rgb(52, 101, 164)",
+          "background": "#f3f2ee",
+          "contrast": 5.290284344331007
+        },
+        {
+          "label": "256-color yellow",
+          "color": "rgb(108, 108, 72)",
+          "background": "#f3f2ee",
+          "contrast": 4.836245520561557
+        },
+        {
+          "label": "RGB near-white",
+          "color": "rgb(104, 104, 104)",
+          "background": "#f3f2ee",
+          "contrast": 4.974324210837418
+        },
+        {
+          "label": "RGB foreground + RGB background",
+          "color": "rgb(158, 158, 158)",
+          "background": "rgb(48, 48, 48)",
+          "contrast": 4.926219446489268
+        },
+        {
+          "label": "inverse",
+          "color": "rgb(46, 52, 54)",
+          "background": "rgb(211, 215, 207)",
+          "contrast": 8.66594102684522
+        },
+        {
+          "label": "dim (separate policy)",
+          "color": "rgb(153, 155, 150)",
+          "background": "#f3f2ee",
+          "contrast": 2.5050642289043785
+        },
+        {
+          "label": "",
+          "color": "rgb(245, 245, 245)",
+          "background": "#f3f2ee",
+          "contrast": 1.0275025696347078
+        }
+      ]
+    },
+    {
+      "theme": "medium",
+      "minimumContrastRatio": 1,
+      "samples": [
+        {
+          "label": "bright white",
+          "color": "rgb(238, 238, 236)",
+          "background": "#ffffff",
+          "contrast": 1.1617313344702664
+        },
+        {
+          "label": "bright yellow",
+          "color": "rgb(252, 233, 79)",
+          "background": "#ffffff",
+          "contrast": 1.2420481283593234
+        },
+        {
+          "label": "bright cyan",
+          "color": "rgb(52, 226, 226)",
+          "background": "#ffffff",
+          "contrast": 1.6002739963926031
+        },
+        {
+          "label": "blue",
+          "color": "rgb(52, 101, 164)",
+          "background": "#ffffff",
+          "contrast": 5.9262566562262675
+        },
+        {
+          "label": "256-color yellow",
+          "color": "rgb(255, 255, 175)",
+          "background": "#ffffff",
+          "contrast": 1.0408906931304247
+        },
+        {
+          "label": "RGB near-white",
+          "color": "rgb(245, 245, 245)",
+          "background": "#ffffff",
+          "contrast": 1.090230993517392
+        },
+        {
+          "label": "RGB foreground + RGB background",
+          "color": "rgb(49, 49, 49)",
+          "background": "rgb(48, 48, 48)",
+          "contrast": 1.0145381512896792
+        },
+        {
+          "label": "inverse",
+          "color": "rgb(46, 52, 54)",
+          "background": "rgb(211, 215, 207)",
+          "contrast": 8.66594102684522
+        },
+        {
+          "label": "dim (separate policy)",
+          "color": "rgba(211, 215, 207, 0.5)",
+          "background": "#ffffff",
+          "contrast": 1.1998653205246845
+        },
+        {
+          "label": "",
+          "color": "rgb(245, 245, 245)",
+          "background": "#ffffff",
+          "contrast": 1.090230993517392
+        }
+      ]
+    },
+    {
+      "theme": "medium",
+      "minimumContrastRatio": 4.5,
+      "samples": [
+        {
+          "label": "bright white",
+          "color": "rgb(111, 111, 110)",
+          "background": "#ffffff",
+          "contrast": 5.0301388325531216
+        },
+        {
+          "label": "bright yellow",
+          "color": "rgb(117, 109, 36)",
+          "background": "#ffffff",
+          "contrast": 5.2905891283903514
+        },
+        {
+          "label": "bright cyan",
+          "color": "rgb(28, 131, 131)",
+          "background": "#ffffff",
+          "contrast": 4.5418821461990415
+        },
+        {
+          "label": "blue",
+          "color": "rgb(52, 101, 164)",
+          "background": "#ffffff",
+          "contrast": 5.9262566562262675
+        },
+        {
+          "label": "256-color yellow",
+          "color": "rgb(120, 120, 81)",
+          "background": "#ffffff",
+          "contrast": 4.56123277776786
+        },
+        {
+          "label": "RGB near-white",
+          "color": "rgb(116, 116, 116)",
+          "background": "#ffffff",
+          "contrast": 4.67399125435606
+        },
+        {
+          "label": "RGB foreground + RGB background",
+          "color": "rgb(158, 158, 158)",
+          "background": "rgb(48, 48, 48)",
+          "contrast": 4.926219446489268
+        },
+        {
+          "label": "inverse",
+          "color": "rgb(46, 52, 54)",
+          "background": "rgb(211, 215, 207)",
+          "contrast": 8.66594102684522
+        },
+        {
+          "label": "dim (separate policy)",
+          "color": "rgb(170, 173, 167)",
+          "background": "#ffffff",
+          "contrast": 2.2715861508532558
+        },
+        {
+          "label": "",
+          "color": "rgb(245, 245, 245)",
+          "background": "#ffffff",
+          "contrast": 1.090230993517392
+        }
+      ]
+    },
+    {
+      "theme": "solarized-light",
+      "minimumContrastRatio": 1,
+      "samples": [
+        {
+          "label": "bright white",
+          "color": "rgb(238, 238, 236)",
+          "background": "#fdf6e3",
+          "contrast": 1.0769828382745539
+        },
+        {
+          "label": "bright yellow",
+          "color": "rgb(252, 233, 79)",
+          "background": "#fdf6e3",
+          "contrast": 1.1514405085440673
+        },
+        {
+          "label": "bright cyan",
+          "color": "rgb(52, 226, 226)",
+          "background": "#fdf6e3",
+          "contrast": 1.4835337392683365
+        },
+        {
+          "label": "blue",
+          "color": "rgb(52, 101, 164)",
+          "background": "#fdf6e3",
+          "contrast": 5.493935236649492
+        },
+        {
+          "label": "256-color yellow",
+          "color": "rgb(255, 255, 175)",
+          "background": "#fdf6e3",
+          "contrast": 1.036315025722283
+        },
+        {
+          "label": "RGB near-white",
+          "color": "rgb(245, 245, 245)",
+          "background": "#fdf6e3",
+          "contrast": 1.0106984592170343
+        },
+        {
+          "label": "RGB foreground + RGB background",
+          "color": "rgb(49, 49, 49)",
+          "background": "rgb(48, 48, 48)",
+          "contrast": 1.0145381512896792
+        },
+        {
+          "label": "inverse",
+          "color": "rgb(46, 52, 54)",
+          "background": "rgb(211, 215, 207)",
+          "contrast": 8.66594102684522
+        },
+        {
+          "label": "dim (separate policy)",
+          "color": "rgba(211, 215, 207, 0.5)",
+          "background": "#fdf6e3",
+          "contrast": 1.1582898475293186
+        },
+        {
+          "label": "",
+          "color": "rgb(245, 245, 245)",
+          "background": "#fdf6e3",
+          "contrast": 1.0106984592170343
+        }
+      ]
+    },
+    {
+      "theme": "solarized-light",
+      "minimumContrastRatio": 4.5,
+      "samples": [
+        {
+          "label": "bright white",
+          "color": "rgb(111, 111, 110)",
+          "background": "#fdf6e3",
+          "contrast": 4.663189358896271
+        },
+        {
+          "label": "bright yellow",
+          "color": "rgb(117, 109, 36)",
+          "background": "#fdf6e3",
+          "contrast": 4.904639761857238
+        },
+        {
+          "label": "bright cyan",
+          "color": "rgb(25, 117, 117)",
+          "background": "#fdf6e3",
+          "contrast": 5.066213365000094
+        },
+        {
+          "label": "blue",
+          "color": "rgb(52, 101, 164)",
+          "background": "#fdf6e3",
+          "contrast": 5.493935236649492
+        },
+        {
+          "label": "256-color yellow",
+          "color": "rgb(108, 108, 72)",
+          "background": "#fdf6e3",
+          "contrast": 5.022418068505798
+        },
+        {
+          "label": "RGB near-white",
+          "color": "rgb(104, 104, 104)",
+          "background": "#fdf6e3",
+          "contrast": 5.165812134412645
+        },
+        {
+          "label": "RGB foreground + RGB background",
+          "color": "rgb(158, 158, 158)",
+          "background": "rgb(48, 48, 48)",
+          "contrast": 4.926219446489268
+        },
+        {
+          "label": "inverse",
+          "color": "rgb(46, 52, 54)",
+          "background": "rgb(211, 215, 207)",
+          "contrast": 8.66594102684522
+        },
+        {
+          "label": "dim (separate policy)",
+          "color": "rgb(153, 155, 150)",
+          "background": "#fdf6e3",
+          "contrast": 2.601497337661221
+        },
+        {
+          "label": "",
+          "color": "rgb(245, 245, 245)",
+          "background": "#fdf6e3",
+          "contrast": 1.0106984592170343
+        }
+      ]
+    },
+    {
+      "theme": "github-dark",
+      "minimumContrastRatio": 1,
+      "samples": [
+        {
+          "label": "bright white",
+          "color": "rgb(238, 238, 236)",
+          "background": "#24292e",
+          "contrast": 12.626404687669265
+        },
+        {
+          "label": "bright yellow",
+          "color": "rgb(252, 233, 79)",
+          "background": "#24292e",
+          "contrast": 11.809920753025812
+        },
+        {
+          "label": "bright cyan",
+          "color": "rgb(52, 226, 226)",
+          "background": "#24292e",
+          "contrast": 9.166236532265033
+        },
+        {
+          "label": "blue",
+          "color": "rgb(52, 101, 164)",
+          "background": "#24292e",
+          "contrast": 2.4751695409540817
+        },
+        {
+          "label": "256-color yellow",
+          "color": "rgb(255, 255, 175)",
+          "background": "#24292e",
+          "contrast": 14.092248171854548
+        },
+        {
+          "label": "RGB near-white",
+          "color": "rgb(245, 245, 245)",
+          "background": "#24292e",
+          "contrast": 13.454478963254353
+        },
+        {
+          "label": "RGB foreground + RGB background",
+          "color": "rgb(49, 49, 49)",
+          "background": "rgb(48, 48, 48)",
+          "contrast": 1.0145381512896792
+        },
+        {
+          "label": "inverse",
+          "color": "rgb(46, 52, 54)",
+          "background": "rgb(211, 215, 207)",
+          "contrast": 8.66594102684522
+        },
+        {
+          "label": "dim (separate policy)",
+          "color": "rgba(211, 215, 207, 0.5)",
+          "background": "#24292e",
+          "contrast": 3.660915387873093
+        },
+        {
+          "label": "",
+          "color": "rgb(245, 245, 245)",
+          "background": "#24292e",
+          "contrast": 13.454478963254353
+        }
+      ]
+    },
+    {
+      "theme": "github-dark",
+      "minimumContrastRatio": 4.5,
+      "samples": [
+        {
+          "label": "bright white",
+          "color": "rgb(238, 238, 236)",
+          "background": "#24292e",
+          "contrast": 12.626404687669265
+        },
+        {
+          "label": "bright yellow",
+          "color": "rgb(252, 233, 79)",
+          "background": "#24292e",
+          "contrast": 11.809920753025812
+        },
+        {
+          "label": "bright cyan",
+          "color": "rgb(52, 226, 226)",
+          "background": "#24292e",
+          "contrast": 9.166236532265033
+        },
+        {
+          "label": "blue",
+          "color": "rgb(124, 156, 198)",
+          "background": "#24292e",
+          "contrast": 5.188347847202833
+        },
+        {
+          "label": "256-color yellow",
+          "color": "rgb(255, 255, 175)",
+          "background": "#24292e",
+          "contrast": 14.092248171854548
+        },
+        {
+          "label": "RGB near-white",
+          "color": "rgb(245, 245, 245)",
+          "background": "#24292e",
+          "contrast": 13.454478963254353
+        },
+        {
+          "label": "RGB foreground + RGB background",
+          "color": "rgb(158, 158, 158)",
+          "background": "rgb(48, 48, 48)",
+          "contrast": 4.926219446489268
+        },
+        {
+          "label": "inverse",
+          "color": "rgb(46, 52, 54)",
+          "background": "rgb(211, 215, 207)",
+          "contrast": 8.66594102684522
+        },
+        {
+          "label": "dim (separate policy)",
+          "color": "rgba(211, 215, 207, 0.5)",
+          "background": "#24292e",
+          "contrast": 3.660915387873093
+        },
+        {
+          "label": "",
+          "color": "rgb(245, 245, 245)",
+          "background": "#24292e",
+          "contrast": 13.454478963254353
+        }
+      ]
+    },
+    {
+      "theme": "night",
+      "minimumContrastRatio": 1,
+      "samples": [
+        {
+          "label": "bright white",
+          "color": "rgb(238, 238, 236)",
+          "background": "#363b40",
+          "contrast": 9.7369956837394
+        },
+        {
+          "label": "bright yellow",
+          "color": "rgb(252, 233, 79)",
+          "background": "#363b40",
+          "contrast": 9.107354804635486
+        },
+        {
+          "label": "bright cyan",
+          "color": "rgb(52, 226, 226)",
+          "background": "#363b40",
+          "contrast": 7.068647628406894
+        },
+        {
+          "label": "blue",
+          "color": "rgb(52, 101, 164)",
+          "background": "#363b40",
+          "contrast": 1.9087551629269004
+        },
+        {
+          "label": "256-color yellow",
+          "color": "rgb(255, 255, 175)",
+          "background": "#363b40",
+          "contrast": 10.867397570231152
+        },
+        {
+          "label": "RGB near-white",
+          "color": "rgb(245, 245, 245)",
+          "background": "#363b40",
+          "contrast": 10.375574586177223
+        },
+        {
+          "label": "RGB foreground + RGB background",
+          "color": "rgb(49, 49, 49)",
+          "background": "rgb(48, 48, 48)",
+          "contrast": 1.0145381512896792
+        },
+        {
+          "label": "inverse",
+          "color": "rgb(46, 52, 54)",
+          "background": "rgb(211, 215, 207)",
+          "contrast": 8.66594102684522
+        },
+        {
+          "label": "dim (separate policy)",
+          "color": "rgba(211, 215, 207, 0.5)",
+          "background": "#363b40",
+          "contrast": 3.188912878434812
+        },
+        {
+          "label": "",
+          "color": "rgb(245, 245, 245)",
+          "background": "#363b40",
+          "contrast": 10.375574586177223
+        }
+      ]
+    },
+    {
+      "theme": "night",
+      "minimumContrastRatio": 4.5,
+      "samples": [
+        {
+          "label": "bright white",
+          "color": "rgb(238, 238, 236)",
+          "background": "#363b40",
+          "contrast": 9.7369956837394
+        },
+        {
+          "label": "bright yellow",
+          "color": "rgb(252, 233, 79)",
+          "background": "#363b40",
+          "contrast": 9.107354804635486
+        },
+        {
+          "label": "bright cyan",
+          "color": "rgb(52, 226, 226)",
+          "background": "#363b40",
+          "contrast": 7.068647628406894
+        },
+        {
+          "label": "blue",
+          "color": "rgb(138, 166, 204)",
+          "background": "#363b40",
+          "contrast": 4.528516765445489
+        },
+        {
+          "label": "256-color yellow",
+          "color": "rgb(255, 255, 175)",
+          "background": "#363b40",
+          "contrast": 10.867397570231152
+        },
+        {
+          "label": "RGB near-white",
+          "color": "rgb(245, 245, 245)",
+          "background": "#363b40",
+          "contrast": 10.375574586177223
+        },
+        {
+          "label": "RGB foreground + RGB background",
+          "color": "rgb(158, 158, 158)",
+          "background": "rgb(48, 48, 48)",
+          "contrast": 4.926219446489268
+        },
+        {
+          "label": "inverse",
+          "color": "rgb(46, 52, 54)",
+          "background": "rgb(211, 215, 207)",
+          "contrast": 8.66594102684522
+        },
+        {
+          "label": "dim (separate policy)",
+          "color": "rgba(211, 215, 207, 0.5)",
+          "background": "#363b40",
+          "contrast": 3.188912878434812
+        },
+        {
+          "label": "",
+          "color": "rgb(245, 245, 245)",
+          "background": "#363b40",
+          "contrast": 10.375574586177223
+        }
+      ]
+    },
+    {
+      "theme": "one-dark",
+      "minimumContrastRatio": 1,
+      "samples": [
+        {
+          "label": "bright white",
+          "color": "rgb(238, 238, 236)",
+          "background": "#282c34",
+          "contrast": 12.050314271009018
+        },
+        {
+          "label": "bright yellow",
+          "color": "rgb(252, 233, 79)",
+          "background": "#282c34",
+          "contrast": 11.271083107977148
+        },
+        {
+          "label": "bright cyan",
+          "color": "rgb(52, 226, 226)",
+          "background": "#282c34",
+          "contrast": 8.748019220710315
+        },
+        {
+          "label": "blue",
+          "color": "rgb(52, 101, 164)",
+          "background": "#282c34",
+          "contrast": 2.362237832567963
+        },
+        {
+          "label": "256-color yellow",
+          "color": "rgb(255, 255, 175)",
+          "background": "#282c34",
+          "contrast": 13.449277403704563
+        },
+        {
+          "label": "RGB near-white",
+          "color": "rgb(245, 245, 245)",
+          "background": "#282c34",
+          "contrast": 12.840606955852499
+        },
+        {
+          "label": "RGB foreground + RGB background",
+          "color": "rgb(49, 49, 49)",
+          "background": "rgb(48, 48, 48)",
+          "contrast": 1.0145381512896792
+        },
+        {
+          "label": "inverse",
+          "color": "rgb(46, 52, 54)",
+          "background": "rgb(211, 215, 207)",
+          "contrast": 8.66594102684522
+        },
+        {
+          "label": "dim (separate policy)",
+          "color": "rgba(211, 215, 207, 0.5)",
+          "background": "#282c34",
+          "contrast": 3.5769463686291982
+        },
+        {
+          "label": "",
+          "color": "rgb(245, 245, 245)",
+          "background": "#282c34",
+          "contrast": 12.840606955852499
+        }
+      ]
+    },
+    {
+      "theme": "one-dark",
+      "minimumContrastRatio": 4.5,
+      "samples": [
+        {
+          "label": "bright white",
+          "color": "rgb(238, 238, 236)",
+          "background": "#282c34",
+          "contrast": 12.050314271009018
+        },
+        {
+          "label": "bright yellow",
+          "color": "rgb(252, 233, 79)",
+          "background": "#282c34",
+          "contrast": 11.271083107977148
+        },
+        {
+          "label": "bright cyan",
+          "color": "rgb(52, 226, 226)",
+          "background": "#282c34",
+          "contrast": 8.748019220710315
+        },
+        {
+          "label": "blue",
+          "color": "rgb(124, 156, 198)",
+          "background": "#282c34",
+          "contrast": 4.951625078765644
+        },
+        {
+          "label": "256-color yellow",
+          "color": "rgb(255, 255, 175)",
+          "background": "#282c34",
+          "contrast": 13.449277403704563
+        },
+        {
+          "label": "RGB near-white",
+          "color": "rgb(245, 245, 245)",
+          "background": "#282c34",
+          "contrast": 12.840606955852499
+        },
+        {
+          "label": "RGB foreground + RGB background",
+          "color": "rgb(158, 158, 158)",
+          "background": "rgb(48, 48, 48)",
+          "contrast": 4.926219446489268
+        },
+        {
+          "label": "inverse",
+          "color": "rgb(46, 52, 54)",
+          "background": "rgb(211, 215, 207)",
+          "contrast": 8.66594102684522
+        },
+        {
+          "label": "dim (separate policy)",
+          "color": "rgba(211, 215, 207, 0.5)",
+          "background": "#282c34",
+          "contrast": 3.5769463686291982
+        },
+        {
+          "label": "",
+          "color": "rgb(245, 245, 245)",
+          "background": "#282c34",
+          "contrast": 12.840606955852499
+        }
+      ]
+    },
+    {
+      "theme": "solarized-dark",
+      "minimumContrastRatio": 1,
+      "samples": [
+        {
+          "label": "bright white",
+          "color": "rgb(238, 238, 236)",
+          "background": "#002b36",
+          "contrast": 12.922663181020283
+        },
+        {
+          "label": "bright yellow",
+          "color": "rgb(252, 233, 79)",
+          "background": "#002b36",
+          "contrast": 12.087021750137303
+        },
+        {
+          "label": "bright cyan",
+          "color": "rgb(52, 226, 226)",
+          "background": "#002b36",
+          "contrast": 9.381307686082865
+        },
+        {
+          "label": "blue",
+          "color": "rgb(52, 101, 164)",
+          "background": "#002b36",
+          "contrast": 2.5332454554467883
+        },
+        {
+          "label": "256-color yellow",
+          "color": "rgb(255, 255, 175)",
+          "background": "#002b36",
+          "contrast": 14.422900349936521
+        },
+        {
+          "label": "RGB near-white",
+          "color": "rgb(245, 245, 245)",
+          "background": "#002b36",
+          "contrast": 13.770166901751157
+        },
+        {
+          "label": "RGB foreground + RGB background",
+          "color": "rgb(49, 49, 49)",
+          "background": "rgb(48, 48, 48)",
+          "contrast": 1.0145381512896792
+        },
+        {
+          "label": "inverse",
+          "color": "rgb(46, 52, 54)",
+          "background": "rgb(211, 215, 207)",
+          "contrast": 8.66594102684522
+        },
+        {
+          "label": "dim (separate policy)",
+          "color": "rgba(211, 215, 207, 0.5)",
+          "background": "#002b36",
+          "contrast": 3.6258162843619512
+        },
+        {
+          "label": "",
+          "color": "rgb(245, 245, 245)",
+          "background": "#002b36",
+          "contrast": 13.770166901751157
+        }
+      ]
+    },
+    {
+      "theme": "solarized-dark",
+      "minimumContrastRatio": 4.5,
+      "samples": [
+        {
+          "label": "bright white",
+          "color": "rgb(238, 238, 236)",
+          "background": "#002b36",
+          "contrast": 12.922663181020283
+        },
+        {
+          "label": "bright yellow",
+          "color": "rgb(252, 233, 79)",
+          "background": "#002b36",
+          "contrast": 12.087021750137303
+        },
+        {
+          "label": "bright cyan",
+          "color": "rgb(52, 226, 226)",
+          "background": "#002b36",
+          "contrast": 9.381307686082865
+        },
+        {
+          "label": "blue",
+          "color": "rgb(109, 144, 191)",
+          "background": "#002b36",
+          "contrast": 4.569470751273261
+        },
+        {
+          "label": "256-color yellow",
+          "color": "rgb(255, 255, 175)",
+          "background": "#002b36",
+          "contrast": 14.422900349936521
+        },
+        {
+          "label": "RGB near-white",
+          "color": "rgb(245, 245, 245)",
+          "background": "#002b36",
+          "contrast": 13.770166901751157
+        },
+        {
+          "label": "RGB foreground + RGB background",
+          "color": "rgb(158, 158, 158)",
+          "background": "rgb(48, 48, 48)",
+          "contrast": 4.926219446489268
+        },
+        {
+          "label": "inverse",
+          "color": "rgb(46, 52, 54)",
+          "background": "rgb(211, 215, 207)",
+          "contrast": 8.66594102684522
+        },
+        {
+          "label": "dim (separate policy)",
+          "color": "rgba(211, 215, 207, 0.5)",
+          "background": "#002b36",
+          "contrast": 3.6258162843619512
+        },
+        {
+          "label": "",
+          "color": "rgb(245, 245, 245)",
+          "background": "#002b36",
+          "contrast": 13.770166901751157
+        }
+      ]
+    }
+  ],
+  "errors": [
+    "Executing inline script violates the following Content Security Policy directive 'script-src 'self''. Either the 'unsafe-inline' keyword, a hash ('sha256-Pv+++ckX9AQssL9V61clGnNIOKTjAYMYavsUDHH5K5g='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked."
+  ],
+  "naiveUpdate": {
+    "from": "github-light",
+    "to": "paper",
+    "expectedBackground": "rgb(243, 242, 238)",
+    "actual": {
+      "body": {
+        "background": "rgb(255, 255, 255)",
+        "color": "rgb(36, 36, 36)"
+      },
+      "card": {
+        "background": "rgb(244, 244, 244)",
+        "color": "rgb(65, 65, 65)"
+      },
+      "link": {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(0, 124, 247)"
+      },
+      "cssom": {
+        "background": "rgb(240, 240, 240)",
+        "color": "rgb(51, 51, 51)"
+      },
+      "foreign": {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(36, 36, 36)"
+      },
+      "draft": "preserved draft 한글",
+      "focused": "draft",
+      "identity": "same-document",
+      "sheets": 9,
+      "leakedAPI": "undefined",
+      "svgFill": "rgb(0, 170, 0)"
+    }
+  },
+  "restored": {
+    "body": {
+      "background": "rgb(255, 255, 255)",
+      "color": "rgb(0, 0, 0)"
+    },
+    "card": {
+      "background": "rgb(242, 242, 242)",
+      "color": "rgb(34, 34, 34)"
+    },
+    "link": {
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(0, 102, 204)"
+    },
+    "cssom": {
+      "background": "rgb(238, 238, 238)",
+      "color": "rgb(17, 17, 17)"
+    },
+    "foreign": {
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(0, 0, 0)"
+    },
+    "draft": "preserved draft 한글",
+    "focused": "draft",
+    "identity": "same-document",
+    "sheets": 0,
+    "leakedAPI": "undefined",
+    "svgFill": "rgb(0, 170, 0)"
+  },
+  "status": "passed"
+}
