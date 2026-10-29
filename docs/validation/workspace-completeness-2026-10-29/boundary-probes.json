@@ -1,0 +1,45 @@
+{
+  "scope": "Isolated filesystem and Git probes, not application GUI tests",
+  "probes": [
+    {
+      "name": "unwatchFile without a listener removes both owners",
+      "before": 2,
+      "after": 0
+    },
+    {
+      "name": "same size and preserved mtime mask a content change",
+      "oldText": "old",
+      "newText": "new",
+      "sameDiskVersion": true
+    },
+    {
+      "name": "subfolder status hides sibling staged file but commit includes it",
+      "visibleStatus": [
+        "# branch.oid 302615c2c60d57343406c591cc9ef52f148ee052",
+        "# branch.head master",
+        "1 M. N... 100644 100644 100644 df967b96a579e45a18b8251732d16804b2e56a55 519c15ed8d400dfa4be08f404a5c5b21ad6d4a7a opened/a.md"
+      ],
+      "committedPaths": [
+        "opened/a.md",
+        "sibling/b.md"
+      ]
+    },
+    {
+      "name": "unstaging only the rename destination leaves the old path staged for deletion",
+      "before": "R  old.md -> new.md",
+      "after": "D  old.md\n?? new.md",
+      "staged": "D\told.md"
+    },
+    {
+      "name": "unmerged index has stages 1 2 3 and no stage zero",
+      "mergeExit": 1,
+      "stageZeroExit": 1,
+      "index": "100644 4b48deed3a433909bfd6b6ab3d4b91348b6af464 1\told.md\n100644 b19a1e93bec1317dc6097229e12afaffbfa74dc2 2\told.md\n100644 950b81b7eee953d050aa05a641f8e056c85dd1bd 3\told.md"
+    },
+    {
+      "name": "ripgrep file enumeration on an empty directory exits 1",
+      "code": 1,
+      "stdout": ""
+    }
+  ]
+}
