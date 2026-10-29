@@ -104,6 +104,8 @@ export type GitChange = {
 };
 
 export type GitSnapshot = {
+  /** Pending SCM resources across the discovered repositories, including partial staging. */
+  pendingChanges?: number;
   roots?: string[];
   discoveryLimited?: boolean;
   root?: string;

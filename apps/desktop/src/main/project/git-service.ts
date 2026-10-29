@@ -1,4 +1,5 @@
 import { discoverRepositories } from './engines/git-repositories';
+import { gitChangeGroups } from '../../core/project/git-change-groups';
 import { isInside } from '../documents/file-system';
 import { GitMetadataWatcher } from './engines/git-metadata-watcher';
 import path from 'node:path';
@@ -23,6 +24,7 @@ const EMPTY: GitSnapshot = {
   ahead: 0,
   behind: 0,
   changes: [],
+  pendingChanges: 0,
 };
 
 type ParsedStatus = Omit<GitSnapshot, 'repository'>;
@@ -134,21 +136,43 @@ export class GitService {
     const repository = selected ? await this.repository(selected) : null;
     const root = repository?.repositoryRoot ?? explorerRoot;
     if (!repository) return { ...EMPTY, roots: discovery.roots, changes: [] };
-    if (observe) void this.watcher.watch(state, repository);
-    // Read without rewriting .git/index and retriggering the project watcher.
-    const parsed = parseGitStatus(await repository.run([
-      '--no-optional-locks', 'status', '--porcelain=v2', '-z', '--branch', '--ahead-behind',
-      '--untracked-files=all', '--', '.',
-    ]));
+    const parsed = await this.readStatus(repository);
+    let pendingChanges = gitChangeGroups(parsed.changes).badge;
+    if (observe) {
+      const others: GitCli[] = [];
+      const remaining = discovery.roots.filter(candidate => candidate !== selected);
+      // VS Code's default SCM activity badge sums repository counts. Keep status
+      // subprocesses bounded even in workspaces with many nested repositories.
+      for (let offset = 0; offset < remaining.length; offset += 4) {
+        const counts = await Promise.all(remaining.slice(offset, offset + 4).map(async candidate => {
+          const other = await this.repository(candidate);
+          if (!other) return 0;
+          others.push(other);
+          return gitChangeGroups((await this.readStatus(other)).changes).badge;
+        }));
+        pendingChanges += counts.reduce((total, count) => total + count, 0);
+      }
+      if (state.projectRoot !== explorerRoot) return { ...EMPTY, changes: [] };
+      void this.watcher.watch(state, repository, others);
+    }
     return {
       repository: true, root, roots: discovery.roots, discoveryLimited: discovery.limited,
       ...parsed,
+      pendingChanges,
       changes: parsed.changes.map((change) => {
         const filePath = path.join(repository.repositoryRoot, change.path);
         return { ...change, path: path.relative(root, filePath), filePath,
           ...(change.previousPath === undefined ? {} : { previousPath: path.relative(root, path.join(repository.repositoryRoot, change.previousPath)) }) };
       }),
     };
+  }
+
+  private async readStatus(repository: GitCli): Promise<ParsedStatus> {
+    // Read without rewriting .git/index and retriggering the project watcher.
+    return parseGitStatus(await repository.run([
+      '--no-optional-locks', 'status', '--porcelain=v2', '-z', '--branch', '--ahead-behind',
+      '--untracked-files=all', '--', '.',
+    ]));
   }
 
   async initialize(state: WindowState): Promise<GitSnapshot> {

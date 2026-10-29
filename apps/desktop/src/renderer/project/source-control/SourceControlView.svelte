@@ -70,7 +70,7 @@
     {#if project.gitBusy}<small>Running…</small>{/if}
   </div>
   {#if (project.git.roots?.length ?? 0) > 1}
-    <label class="git-branch">Repository <select aria-label="Git repository" value={project.git.root} disabled={project.gitBusy} onchange={event => actions.selectGitRepository(event.currentTarget.value)}>
+    <label class="git-branch scm-repository">Repository <select aria-label="Git repository" title={project.git.root} value={project.git.root} disabled={project.gitBusy} onchange={event => actions.selectGitRepository(event.currentTarget.value)}>
       {#each project.git.roots ?? [] as root}<option value={root}>{root}</option>{/each}
     </select></label>
   {/if}
@@ -115,5 +115,13 @@
 
 <style>
   .scm-split { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
-  .scm-changes-pane { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: auto; }
+  .scm-changes-pane { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; overflow-x: hidden; overflow-y: auto; }
+  .scm-repository { min-width: 0; flex-shrink: 0; }
+  .scm-repository select {
+    flex: 1; width: 0; min-width: 0; padding: 3px 5px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    border: 1px solid var(--app-strong-border); border-radius: 3px;
+    background: var(--app-surface); color: var(--app-text); font: inherit;
+  }
+  .scm-repository select:focus-visible { outline: 1px solid var(--app-focus-ring); outline-offset: -1px; }
 </style>

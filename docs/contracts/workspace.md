@@ -86,6 +86,20 @@ file Undo, or verification of the macOS Finder compositor on a Linux runner.
 
 ## Text saves, Git paths and external changes
 
+The Source Control activity badge follows VS Code's defaults (`git.countBadge=all`,
+`git.untrackedChanges=mixed`, `scm.countBadge=all`): sum merge, index and working-tree
+resource counts across the discovered repositories. A partially staged file counts
+twice; a conflict counts once; untracked files count and ignored files do not.
+Zero hides the badge. Selecting a repository or collapsing a group does not change
+the total. Repository metadata watches include unselected repositories and linked
+worktrees. The repository picker must fit the sidebar, ellipsize long paths and
+expose the full path in its tooltip, without a horizontal scrollbar.
+The upstream implementations are
+[Repository.setCountBadge](https://github.com/microsoft/vscode/blob/1d7e3b013a0f4ed6c0e00fe11370e91797681e21/extensions/git/src/repository.ts)
+and [SCMActiveRepositoryController](https://github.com/microsoft/vscode/blob/1d7e3b013a0f4ed6c0e00fe11370e91797681e21/src/vs/workbench/contrib/scm/browser/activity.ts).
+The count, metadata and narrow-sidebar checks live in `git-change-groups.test.ts`,
+`git-service.test.ts`, `completeness.test.ts` and `git-activity-badge.spec.ts`.
+
 Text saves serialize conflict checks and publication per canonical destination
 across windows. Each write uses an exclusive unique temporary file and restores
 the original permissions independently of umask. Save As follows symbolic links,

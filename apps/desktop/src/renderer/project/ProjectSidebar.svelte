@@ -14,8 +14,9 @@
 
   let { actions, languageApi }: { actions: AppActions; languageApi: LanguageApi } = $props();
   let gitGroups = $derived(gitChangeGroups(project.git?.changes));
+  let gitCount = $derived(project.git?.pendingChanges ?? gitGroups.badge);
   let gitStatus = $derived(!project.git ? 'Repository status not loaded'
-    : `${gitGroups.badge} change groups: ${gitGroups.staged.length} staged files, ${gitGroups.changed.length} changed files${gitGroups.conflicts.length ? `, ${gitGroups.conflicts.length} conflicts` : ''}`);
+    : `${gitCount} pending changes${(project.git.roots?.length ?? 0) > 1 ? ` across ${project.git.roots!.length} repositories` : ''}`);
   const resize = { property: '--project-sidebar-width' as const, direction: 1 as const,
     min: 220, max: () => innerWidth * .46 };
 
@@ -41,7 +42,7 @@
       aria-expanded={project.open && project.activeView === 'git'}
       title={`Source Control — ${gitStatus}`} onclick={() => select('git')}>
       <svg viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 7v10M8 6.5c4.5 0 2.5 5.5 8 3"/></svg>
-      {#if gitGroups.badge > 0}<span class="scm-activity-badge" aria-hidden="true">{gitGroups.badge}</span>{/if}
+      {#if gitCount > 0}<span class="scm-activity-badge" aria-hidden="true">{gitCount}</span>{/if}
       <span id="source-control-status" class="scm-status-description">{gitStatus}</span>
     </button>
     <button type="button" class:is-active={project.open && project.activeView === 'browser'}
@@ -84,7 +85,7 @@
   .scm-activity { position: relative; }
   .scm-activity-badge {
     position: absolute;
-    top: 3px;
+    bottom: 3px;
     right: 3px;
     display: grid;
     place-items: center;

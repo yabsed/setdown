@@ -15,6 +15,9 @@
 - Preserve real Electron/Chromium execution, required scenarios, focus/IME
   checks, logs and artifacts. Hidden execution must not skip tests, add retries,
   weaken assertions or relax performance tolerances.
+- Esc transition regression tests also run through the isolated-display wrapper.
+  The one-off visible desktop investigation is complete; it is not continuing
+  permission to show test windows on the user's desktop.
 
 # Preview performance
 

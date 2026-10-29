@@ -110,6 +110,36 @@ describe('Git status parser', () => {
     expect(snapshot.changes).toMatchObject([{ path: 'notes/chapter.md', filePath, status: 'U' }]);
   });
 
+  test('sums pending resources across repositories without changing the selected changes', async () => {
+    const workspace = await mkdtemp(path.join(os.tmpdir(), 'setdown-git-count-'));
+    temporaryDirectories.push(workspace);
+    const first = path.join(workspace, 'first'), second = path.join(workspace, 'second');
+    for (const root of [first, second]) {
+      await mkdir(root);
+      await GitCli.run(root, ['init']);
+      await GitCli.run(root, ['config', 'user.name', 'Setdown Test']);
+      await GitCli.run(root, ['config', 'user.email', 'setdown@example.test']);
+      await writeFile(path.join(root, 'note.md'), 'base');
+      await GitCli.run(root, ['add', '.']);
+      await GitCli.run(root, ['commit', '-m', 'base']);
+    }
+    await writeFile(path.join(second, 'note.md'), 'staged');
+    await GitCli.run(second, ['add', '.']);
+    await writeFile(path.join(second, 'note.md'), 'working tree');
+    await writeFile(path.join(second, 'untracked.md'), 'new');
+    await writeFile(path.join(second, '.gitignore'), 'ignored.md\n');
+    await GitCli.run(second, ['add', '.gitignore']);
+    await writeFile(path.join(second, 'ignored.md'), 'ignored');
+    const service = new GitService(new ProjectPaths());
+    const state = { projectRoot: workspace, gitRoot: first } as WindowState;
+    expect(await service.status(state)).toMatchObject({ root: first, pendingChanges: 4, changes: [] });
+    const selected = await service.select(state, second);
+    expect(selected).toMatchObject({ root: second, pendingChanges: 4 });
+    expect(selected.changes).toHaveLength(3);
+    await GitCli.run(second, ['reset', 'HEAD', '--', 'note.md']);
+    expect((await service.status(state)).pendingChanges).toBe(3);
+  });
+
   test('compares unstaged changes with the staged Index, not HEAD', async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-git-index-diff-'));
     temporaryDirectories.push(root);

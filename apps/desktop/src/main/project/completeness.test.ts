@@ -107,6 +107,28 @@ test('disk versions distinguish equal-length edits with a restored mtime', async
   const before = diskVersion(file), previous = await stat(file); await writeFile(file, 'new'); await utimes(file, previous.atime, previous.mtime);
   expect(sameDiskVersion(before, diskVersion(file))).toBe(false);
 });
+
+test('all repository metadata watches remain active when the selected repository changes', async () => {
+  const root = await folder(), repositories: GitCli[] = [];
+  for (const name of ['first', 'second']) {
+    const directory = path.join(root, name); await mkdir(directory);
+    await GitCli.run(directory, ['init']);
+    repositories.push((await GitCli.connect(directory))!);
+  }
+  const send = vi.fn(), window = Object.assign(new EventEmitter(), { webContents: { send }, isDestroyed: () => false });
+  const target = { ...state(root), webContentsId: 12346, window } as unknown as WindowState;
+  const watcher = new GitMetadataWatcher(); cleanup.push(() => watcher.dispose());
+  await watcher.watch(target, repositories[0], [repositories[1]]);
+  await writeFile(path.join(repositories[1].repositoryRoot, '.git/HEAD'), 'ref: refs/heads/second\n');
+  await vi.waitFor(() => expect(send).toHaveBeenCalledWith('project:files-changed', { root, paths: [] }), { timeout: 2500 });
+  send.mockClear();
+  await watcher.watch(target, repositories[1], [repositories[0]]);
+  expect(window.listenerCount('focus')).toBe(1);
+  await writeFile(path.join(repositories[0].repositoryRoot, '.git/HEAD'), 'ref: refs/heads/first\n');
+  await vi.waitFor(() => expect(send).toHaveBeenCalledWith('project:files-changed', { root, paths: [] }), { timeout: 2500 });
+  watcher.unwatch(target.webContentsId);
+  expect(window.listenerCount('focus')).toBe(0); expect(window.listenerCount('closed')).toBe(0);
+});
 test('native watches include background documents and survive another owner closing and atomic replacement', async () => {
   const root = await folder(), a = path.join(root, 'a.txt'), b = path.join(root, 'b.txt'); await writeFile(a, 'a'); await writeFile(b, 'b');
   const manager = new DocumentManager(() => {}), first = state(root), second = state(root);

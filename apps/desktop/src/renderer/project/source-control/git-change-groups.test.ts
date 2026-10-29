@@ -10,10 +10,13 @@ const change = (staged: boolean, unstaged: boolean, conflict = false): GitChange
 for (const [name, changes, expected] of [
   ['clean', [], 0], ['staged only', [change(true, false)], 1],
   ['changed only', [change(false, true)], 1], ['both groups in one file', [change(true, true)], 2],
-  ['50 files in one group', Array.from({ length: 50 }, () => change(false, true)), 1],
+  ['72 files in one group', Array.from({ length: 72 }, () => change(false, true)), 72],
   ['both groups in separate files', [change(true, false), change(false, true)], 2],
-  ['conflicts form a separate group', [change(true, true, true)], 0],
-] as const) test(`SCM group badge: ${name}`, () => assert.equal(gitChangeGroups(changes).badge, expected));
+  ['conflicts count once', [change(true, true, true)], 1],
+  ['all groups contribute', [change(true, true), change(true, true, true), change(false, true)], 4],
+  ['untracked files count', [{ ...change(false, true), indexStatus: '?', workingTreeStatus: '?', status: 'U' }], 1],
+  ['renames count as one staged resource', [{ ...change(true, false), previousPath: 'old.md', indexStatus: 'R' }], 1],
+] as const) test(`SCM resource badge: ${name}`, () => assert.equal(gitChangeGroups(changes).badge, expected));
 test('unknown snapshot has no numeric badge and conflicts stay available separately', () => {
   assert.equal(gitChangeGroups().badge, 0);
   assert.equal(gitChangeGroups([change(true, true, true)]).conflicts.length, 1);

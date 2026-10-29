@@ -1,0 +1,47 @@
+{
+  "upstream": {
+    "revision": "1d7e3b013a0f4ed6c0e00fe11370e91797681e21",
+    "count": "https://github.com/microsoft/vscode/blob/1d7e3b013a0f4ed6c0e00fe11370e91797681e21/extensions/git/src/repository.ts",
+    "aggregation": "https://github.com/microsoft/vscode/blob/1d7e3b013a0f4ed6c0e00fe11370e91797681e21/src/vs/workbench/contrib/scm/browser/activity.ts",
+    "defaults": {
+      "git.countBadge": "all",
+      "git.untrackedChanges": "mixed",
+      "scm.countBadge": "all"
+    }
+  },
+  "behavior": {
+    "count": "Sum merge, index and working-tree resources across discovered repositories. Partial staging counts twice; conflicts once; untracked files included, ignored files excluded. Hide at zero. Independent of selected repository, active side view and collapsed groups.",
+    "layout": "Repository selector shrinks within the sidebar and ellipsizes; full path remains available in the title and native selector.",
+    "isolation": "All GUI runs, including Esc regression, use Xvfb with a private runtime directory and D-Bus and no inherited Wayland socket. One-off visible desktop permission has ended and is recorded in AGENTS.md."
+  },
+  "checks": {
+    "focused_unit_passed": 31,
+    "sidebar_e2e_passed": 2,
+    "esc_e2e_passed": 1,
+    "unit_passed": 654,
+    "tooling_passed": 11,
+    "e2e_passed": 210,
+    "e2e_failed": 1,
+    "failures": [
+      "test/e2e/browser/zoom.spec.ts:6:1 › browser Ctrl+wheel zooms websites and frames independently of the app and documents "
+    ],
+    "build": "passed",
+    "typecheck": "passed",
+    "retries": 0
+  },
+  "performance": {
+    "baseline": "860ec7e",
+    "runs": 3,
+    "passed": true,
+    "thresholds": {
+      "relative": 0.25,
+      "absoluteMs": 50
+    },
+    "regressions": [],
+    "report": "benchmark/comparison.json"
+  },
+  "screenshots": [
+    "sidebar/git-git-activity-badge-lon-17c48-includes-other-repositories/scm-220.png",
+    "sidebar/git-git-activity-badge-lon-17c48-includes-other-repositories/scm-400.png"
+  ]
+}

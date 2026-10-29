@@ -52,6 +52,7 @@
       "src/main/project/explorer-service.test.ts",
       "src/main/project/file-transfer.test.ts",
       "src/main/project/git-history-service.test.ts",
+      "src/main/project/git-service.test.ts",
       "src/main/reading/reading-position-store.test.ts",
       "src/main/tabs/tab-transfer-manager.test.ts",
       "src/main/terminal/terminal-manager.test.ts",
@@ -75,6 +76,7 @@
       "src/renderer/project/explorer/explorer-presentation.test.ts",
       "src/renderer/project/explorer/explorer-selection.test.ts",
       "src/renderer/project/source-control/git-graph-provider.test.ts",
+      "src/renderer/project/source-control/git-change-groups.test.ts",
       "src/renderer/project/source-control/git-review-latency.test.ts",
       "src/renderer/project/source-control/review-presentation.test.ts",
       "src/renderer/project/source-control/source-control-controller.test.ts",
@@ -139,7 +141,7 @@
       "previewContract": true
     },
     "git/git-activity-badge.spec.ts": {
-      "previewContract": false
+      "previewContract": true
     },
     "git/git-history.spec.ts": {
       "previewContract": true
