@@ -321,14 +321,19 @@ test('keeps staged and live working-tree reviews in separate tabs', async () => 
       const tabs = document.querySelectorAll<HTMLButtonElement>('.git-diff-tab');
       const started = performance.now();
       tabs[1]?.click();
-      return await new Promise<{ elapsed: number; text: string }>((resolve) => {
+      return await new Promise<{ elapsed: number; text: string; editors: unknown[] }>((resolve) => {
         requestAnimationFrame(() => resolve({
           elapsed: performance.now() - started,
           text: (Array.from(document.querySelectorAll<HTMLElement>('.modified-in-monaco-diff-editor .view-lines')).find(node => node.checkVisibility())
             ?.textContent ?? '').replace(/\s+/g, ' '),
+          editors: Array.from(document.querySelectorAll<HTMLElement>('.modified-in-monaco-diff-editor .view-lines')).map(node => ({
+            text: node.textContent?.slice(0, 160), visible: node.checkVisibility(), visibility: getComputedStyle(node).visibility,
+            review: node.closest('.git-review')?.className, parent: node.closest('.group-content')?.outerHTML.slice(0, 250),
+          })),
         }));
       });
     });
+    await writeFile(test.info().outputPath('source-first-frame.json'), JSON.stringify(sourceFirstFrame, null, 2));
     expect(sourceFirstFrame.elapsed).toBeLessThan(80);
     expect(sourceFirstFrame.text).toContain('Inserted one');
     const workingTreeEditor = window.locator('.git-diff-editor:visible').getByRole('textbox').nth(1);

@@ -1,0 +1,16 @@
+
+> setdown-workspace@0.1.0 bench:preview
+> npm run bench:preview --workspace @setdown/desktop -- --baseline /tmp/setdown-notebook-vscode-baseline --runs 5 --output /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/reports/notebook-vscode-implementation-2026-10-30/benchmark
+
+
+> @setdown/desktop@1.0.0 bench:preview
+> bash scripts/with-isolated-display.sh node scripts/preview-benchmark.mjs --baseline /tmp/setdown-notebook-vscode-baseline --runs 5 --output /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/reports/notebook-vscode-implementation-2026-10-30/benchmark
+
+Building baseline: /tmp/setdown-notebook-vscode-baseline
+npm error Lifecycle script `bench:preview` failed with error:
+npm error code 143
+npm error path /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error workspace @setdown/desktop@1.0.0
+npm error location /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error command failed
+npm error command sh -c bash scripts/with-isolated-display.sh node scripts/preview-benchmark.mjs --baseline /tmp/setdown-notebook-vscode-baseline --runs 5 --output /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/reports/notebook-vscode-implementation-2026-10-30/benchmark

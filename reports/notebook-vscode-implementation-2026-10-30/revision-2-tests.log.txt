@@ -1,0 +1,120 @@
+
+Running 14 tests using 1 worker
+
+(node:1095544) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[1/14] test/e2e/notebook/notebook.spec.ts:16:1 › notebook reading hierarchy keeps content, actions and focus distinct, including narrow split panes
+dbus-daemon[1095532]: [session uid=1000 pid=1095532] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=1095556 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1095532]: [session uid=1000 pid=1095532] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=1095556 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1095532]: [session uid=1000 pid=1095532] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[1095532]: [session uid=1000 pid=1095532] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.3' (uid=1000 pid=1095615 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1095532]: [session uid=1000 pid=1095532] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[1095532]: [session uid=1000 pid=1095532] Activating service name='org.freedesktop.portal.Documents' requested by ':1.3' (uid=1000 pid=1095615 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1095532]: [session uid=1000 pid=1095532] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[1095532]: [session uid=1000 pid=1095532] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.3' (uid=1000 pid=1095615 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[1095532]: [session uid=1000 pid=1095532] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=1095666 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[1095532]: [session uid=1000 pid=1095532] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[1095532]: [session uid=1000 pid=1095532] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[1095532]: [session uid=1000 pid=1095532] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.3' (uid=1000 pid=1095615 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1095532]: [session uid=1000 pid=1095532] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:1095615): xdg-desktop-portal-WARNING **: 01:13:32.771: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[1095532]: [session uid=1000 pid=1095532] Activating service name='org.freedesktop.secrets' requested by ':1.3' (uid=1000 pid=1095615 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+** Message: 01:13:32.785: couldn't access control socket: /tmp/setdown-display-runtime.UrTcQt/keyring/control: No such file or directory
+discover_other_daemon: 0dbus-daemon[1095532]: [session uid=1000 pid=1095532] Successfully activated service 'org.freedesktop.secrets'
+dbus-daemon[1095532]: [session uid=1000 pid=1095532] Successfully activated service 'org.freedesktop.portal.Desktop'
+[2/14] test/e2e/notebook/notebook.spec.ts:112:1 › notebook cells reuse Markdown and Python, preserve outputs on save, and retain Undo across deletion
+test/e2e/notebook/notebook.spec.ts:112:1 › notebook cells reuse Markdown and Python, preserve outputs on save, and retain Undo across deletion
+notebook process: (node:1096729) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `exe --trace-warnings ...` to show where the warning was created)
+
+
+notebook process: [1096249:1030/011336.750312:ERROR:ui/gfx/x/atom_cache.cc:236] Add application/vnd.portal.filetransfer to kAtomsToCache
+
+
+notebook process: [1096249:1030/011336.750351:ERROR:ui/gfx/x/atom_cache.cc:236] Add application/vnd.portal.files to kAtomsToCache
+
+
+notebook process: Debugger ending on ws://127.0.0.1:35527/f9bde2dd-5905-47e1-9492-af0644cf1b30
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[3/14] test/e2e/notebook/notebook.spec.ts:189:1 › unsupported notebook versions remain read-only and byte-identical
+test/e2e/notebook/notebook.spec.ts:189:1 › unsupported notebook versions remain read-only and byte-identical
+notebook process: Waiting for the debugger to disconnect...
+
+
+[4/14] test/e2e/notebook/notebook.spec.ts:206:1 › long cells grow with their contents and scroll only the notebook, including keyboard navigation
+[5/14] test/e2e/notebook/notebook.spec.ts:244:39 › long notebook cells meet the scroll viewport without a blank strip at 100% app zoom
+[6/14] test/e2e/notebook/notebook.spec.ts:244:39 › long notebook cells meet the scroll viewport without a blank strip at 130% app zoom
+[7/14] test/e2e/notebook/notebook.spec.ts:244:39 › long notebook cells meet the scroll viewport without a blank strip at 90% app zoom
+  1) test/e2e/notebook/notebook.spec.ts:244:39 › long notebook cells meet the scroll viewport without a blank strip at 90% app zoom 
+
+    Error: expect(received).toBeLessThan(expected)
+
+    Expected: < 1
+    Received:   1.010589599609375
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      303 |     });
+      304 |     await expect.poll(async () => Math.abs((await geometry()).endGap)).toBeLessThan(1);
+    > 305 |     await expect.poll(async () => Math.abs((await geometry()).lineError)).toBeLessThan(1);
+          |                                                                           ^
+      306 |     await expect(cell.locator('.view-line').filter({ hasText: /^value_139\s*=\s*139$/ })).toBeInViewport();
+      307 |     await scroll.evaluate(node => node.scrollTop = 0);
+      308 |     await expect(page.locator('.notebook-sticky')).toHaveCount(0);
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/notebook/notebook.spec.ts:305:75
+
+    Error Context: ../../reports/notebook-vscode-implementation-2026-10-30/revision-2/notebook-notebook-long-not-36abb--blank-strip-at-90-app-zoom/error-context.md
+
+
+(node:1098912) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[8/14] test/e2e/notebook/notebook.spec.ts:315:1 › Python cells run in one kernel, persist results, and reset discards variables
+[9/14] test/e2e/notebook/notebook.spec.ts:365:1 › native notebook analysis uses lightweight diagnostics with IPython and isolated cell ranges
+test/e2e/notebook/notebook.spec.ts:365:1 › native notebook analysis uses lightweight diagnostics with IPython and isolated cell ranges
+
+
+
+
+[10/14] test/e2e/notebook/notebook.spec.ts:413:1 › scrolling preserves focused editors and measured output height; cell copy and reader search keep their scope
+[11/14] test/e2e/notebook/notebook.spec.ts:459:1 › notebook convenience commands preserve data through replace, split, clear and image export
+[12/14] test/e2e/notebook/notebook.spec.ts:514:1 › notebook stdin, variables and restart-all use the live kernel with scoped state
+[13/14] test/e2e/notebook/notebook.spec.ts:545:1 › notebook project extraPaths resolve imports and hover, reload live, and retain real missing-import diagnostics
+[14/14] test/e2e/notebook/notebook.spec.ts:577:1 › VS Code notebook defaults preserve normal table wrapping, horizontal code scroll and command-mode execution focus
+  2) test/e2e/notebook/notebook.spec.ts:577:1 › VS Code notebook defaults preserve normal table wrapping, horizontal code scroll and command-mode execution focus 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1567
+    Received: 1555
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      613 |     await expect.poll(() => code.locator('.cell-editor').evaluate(node => node.clientHeight)).toBeGreaterThan(unwrappedHeight + 100);
+      614 |     await command('Toggle code word wrap');
+    > 615 |     await expect.poll(() => code.locator('.cell-editor').evaluate(node => node.clientHeight)).toBe(unwrappedHeight);
+          |                                                                                               ^
+      616 |     await code.locator('.execution').click();
+      617 |     await command('Toggle cell line numbers'); await expect(code.locator('.line-numbers').first()).toBeVisible();
+      618 |     await code.locator('.output-placeholder, .notebook-outputs').scrollIntoViewIfNeeded();
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/notebook/notebook.spec.ts:615:95
+
+    Error Context: ../../reports/notebook-vscode-implementation-2026-10-30/revision-2/notebook-notebook-VS-Code--a4ea4-ommand-mode-execution-focus/error-context.md
+
+
+  2 failed
+    test/e2e/notebook/notebook.spec.ts:244:39 › long notebook cells meet the scroll viewport without a blank strip at 90% app zoom 
+    test/e2e/notebook/notebook.spec.ts:577:1 › VS Code notebook defaults preserve normal table wrapping, horizontal code scroll and command-mode execution focus 
+  12 passed (50.4s)

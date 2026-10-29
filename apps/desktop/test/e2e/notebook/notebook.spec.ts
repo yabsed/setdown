@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { THEME_PROFILES } from '../../../src/core/theme/theme-catalog';
 import { electron, disposeApplication, focusApplication } from '../../support/electron/electron-app';
 
 const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j5N8AAAAASUVORK5CYII=';
@@ -32,7 +33,7 @@ test('notebook reading hierarchy keeps content, actions and focus distinct, incl
     const md = page.locator('[data-cell-id="intro"]'), code = page.locator('[data-cell-id="define"]');
     await expect(md.locator('.cell-markdown h2')).toHaveText('출력에 남기는 오류 정보');
     await expect(code.locator('.output-html td').first()).toHaveCSS('text-align', 'right');
-    await expect(code.locator('.output-html td').last()).toHaveCSS('text-align', 'left');
+    await expect(code.locator('.output-html td').last()).toHaveCSS('text-align', 'right');
     await expect(code.locator('.output-html style')).toHaveCount(0);
     const measure = await page.evaluate(() => {
       const prose = document.querySelector('.cell-markdown p')!, editor = document.querySelector('.cell-editor')!;
@@ -41,9 +42,9 @@ test('notebook reading hierarchy keeps content, actions and focus distinct, incl
         codeFont: getComputedStyle(document.querySelector('.view-lines')!).fontFamily,
         tableFont: getComputedStyle(document.querySelector('.output-html td')!).fontFamily };
     });
-    expect(measure.prose).toBeLessThanOrEqual(640.5); expect(measure.prose).toBeLessThan(measure.editor * .75);
+    expect(measure.prose).toBeGreaterThan(measure.editor * .95); expect(measure.prose).toBeLessThanOrEqual(measure.editor);
     expect(measure.proseFont).not.toContain('D2Coding'); expect(measure.tableFont).not.toContain('D2Coding');
-    expect(measure.inlineFont).toContain('D2Coding'); expect(measure.codeFont).toContain('D2Coding');
+    expect(measure.inlineFont).toBe(measure.codeFont); expect(measure.codeFont).toContain('monospace');
     await expect(md).toHaveCSS('border-top-width', '0px');
     await page.mouse.move(1, 1);
     await expect(code.locator('.cell-toolbar')).toHaveCSS('opacity', '0');
@@ -56,11 +57,14 @@ test('notebook reading hierarchy keeps content, actions and focus distinct, incl
     await expect(page.locator('[data-cell-id="use"] .view-overlays .current-line')).toHaveCount(0);
     await code.getByRole('button', { name: 'Select cell', exact: true }).click();
     await expect(code.locator('.view-overlays .current-line')).toHaveCount(0);
+    await code.getByRole('button', { name: 'Output 1 actions', exact: true }).click();
     await code.getByRole('combobox', { name: 'Output format' }).selectOption('text/plain');
     await expect(code.locator('.notebook-outputs pre')).toHaveText('Two-line 2.117');
-    await expect(code.locator('.notebook-outputs pre')).toHaveCSS('font-family', /D2Coding/);
+    await expect(code.locator('.notebook-outputs pre')).toHaveCSS('font-family', measure.codeFont);
     await code.getByRole('combobox', { name: 'Output format' }).selectOption('');
     await expect(code.locator('.output-html td').first()).toHaveCSS('text-align', 'right');
+    await code.getByRole('combobox', { name: 'Output format' }).press('Escape');
+    await code.getByRole('button', { name: 'More cell actions', exact: true }).click();
     await code.getByRole('button', { name: 'Collapse cell output', exact: true }).click();
     await expect(code.locator('.notebook-outputs')).toHaveCount(0);
     await code.getByRole('button', { name: '▸ Show output', exact: true }).click();
@@ -74,11 +78,28 @@ test('notebook reading hierarchy keeps content, actions and focus distinct, incl
     await markdownEditor.press('Escape'); await expect(md.locator('.cell-markdown')).toContainText('키보드 편집 유지');
     await page.keyboard.press('Control+s');
     await expect.poll(async () => JSON.parse(await readFile(file, 'utf8')).cells[1].outputs).toEqual(value.cells[1].outputs);
-    for (const theme of ['one-dark', 'github-light']) {
+    const contrasts = [];
+    for (const { id: theme, palette, syntax } of THEME_PROFILES) {
       await application.evaluate(({ Menu }, id) => Menu.getApplicationMenu()!.getMenuItemById(`preview-theme-${id}`)!.click(), theme);
-      await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--app-editor-background').trim())).toBe(theme === 'one-dark' ? '#282c34' : '#ffffff');
-      await page.mouse.move(1, 1); await page.screenshot({ path: test.info().outputPath(`reading-${theme}.png`) });
+      await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--app-editor-background').trim())).toBe(palette.editorBackground);
+      const color = `rgb(${[1, 3, 5].map(i => parseInt(syntax.comment.slice(i, i + 2), 16)).join(', ')})`;
+      await expect(code.locator('.view-line span span').filter({ hasText: 'A readable comment' }).first()).toHaveCSS('color', color);
+      // Theme changes replace token spans. Query both nodes in one synchronous
+      // evaluation on the retained cell, rather than holding a retired token.
+      const contrast = await code.evaluate(root => {
+        const node = [...root.querySelectorAll('.view-line span span')].find(node => node.textContent?.replace(/\s/g, ' ').includes('A readable comment'))!;
+        const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1; const context = canvas.getContext('2d')!;
+        const luminance = (color: string) => { context.fillStyle = color; context.fillRect(0, 0, 1, 1);
+          return [...context.getImageData(0, 0, 1, 1).data].slice(0, 3).map(v => v / 255).map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [.2126, .7152, .0722][i], 0); };
+        const foreground = getComputedStyle(node).color, background = getComputedStyle(root.querySelector('.monaco-editor')!).backgroundColor;
+        const a = luminance(foreground), b = luminance(background);
+        return { foreground, background, ratio: (Math.max(a, b) + .05) / (Math.min(a, b) + .05) };
+      });
+      expect(contrast.ratio, `${theme} notebook comment contrast`).toBeGreaterThanOrEqual(4.5); contrasts.push({ theme, ...contrast });
+      if (theme === 'one-dark' || theme === 'github-light') { await page.mouse.move(1, 1); await page.screenshot({ path: test.info().outputPath(`reading-${theme}.png`) }); }
+
     }
+    await writeFile(test.info().outputPath('notebook-contrast.json'), JSON.stringify(contrasts, null, 2));
     // Use a real group split: a narrow standalone window doesn't test pane-local sizing.
     await page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), other);
     await expect(page.getByRole('tab', { name: /other.ipynb/ })).toHaveAttribute('aria-selected', 'true');
@@ -254,6 +275,10 @@ for (const appZoom of [100, 130, 90]) test(`long notebook cells meet the scroll 
     await page.evaluate(steps => window.marktex.changeZoom(steps, 'app'), (appZoom - 100) / 10);
     await expect.poll(() => page.evaluate(async () => (await window.marktex.getZoom()).app)).toBe(appZoom);
     const scroll = page.locator('.notebook-scroll'), cell = page.locator('[data-cell-id="long"]');
+    // Sticky headings are opt-in, as in VS Code; still exercise their scroll contract.
+    await expect(page.locator('.notebook-sticky')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Commands…', exact: true }).click();
+    await page.getByRole('button', { name: 'Toggle sticky headings', exact: true }).click();
     await expect(page.locator('[data-cell-id="heading"] h3')).toHaveText('Tiles');
     await expect.poll(() => cell.locator('.cell-editor').evaluate(node => node.clientHeight)).toBeGreaterThan(2500);
     const initial = await page.evaluate(() => {
@@ -328,6 +353,7 @@ test('Python cells run in one kernel, persist results, and reset discards variab
     await expect(cell.locator('.execution')).toHaveText('[2]');
     await page.keyboard.press('Control+s');
     await expect.poll(async () => JSON.parse(await readFile(file, 'utf8')).cells[2].outputs[0]?.text).toContain('10');
+    await cell.getByRole('button', { name: 'Output 1 actions', exact: true }).click();
     await cell.getByRole('button', { name: 'Copy cell output', exact: true }).click();
     await expect(cell.locator('.output-feedback[role="status"]')).toHaveText('Copied');
     await expect(cell.locator('.output-feedback[role="status"]')).toBeVisible();
@@ -465,10 +491,12 @@ test('notebook convenience commands preserve data through replace, split, clear 
     await expect(page.getByRole('navigation', { name: 'Notebook outline' })).toContainText('Notebook');
     await page.getByRole('button', { name: 'Toggle notebook section' }).click(); await expect(page.locator('[data-cell-id="define"]')).toBeHidden();
     await page.getByRole('button', { name: 'Toggle notebook section' }).click(); await expect(page.locator('[data-cell-id="define"]')).toBeVisible();
+    await page.getByRole('button', { name: 'Output 1 actions', exact: true }).click();
     await page.getByRole('button', { name: 'View full size' }).click(); await expect(page.getByRole('dialog', { name: 'Notebook image viewer' })).toBeVisible();
     await page.getByRole('button', { name: 'Close image', exact: true }).click();
     const imageFile = path.join(root, 'image.png');
     await application.evaluate(({ dialog }, file) => { dialog.showSaveDialog = async () => ({ canceled: false, filePath: file }); }, imageFile);
+    await page.getByRole('button', { name: 'Output 1 actions', exact: true }).click();
     await page.getByRole('button', { name: 'Save image…', exact: true }).click();
     await expect.poll(async () => readFile(imageFile).then(data => data.toString('base64'), () => '')).toBe(png);
     await page.locator('[data-cell-id="use"]').getByRole('button', { name: 'Select cell', exact: true }).click(); await page.keyboard.press('Control+f');
@@ -562,4 +590,131 @@ test('notebook project extraPaths resolve imports and hover, reload live, and re
     await expect(cell.locator('.squiggly-warning')).toHaveCount(2, { timeout: 30000 });
     expect(await readFile(file, 'utf8')).toContain('definitely_missing_setdown_control');
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); await rm(config, { recursive: true, force: true }); }
+});
+
+test('VS Code notebook defaults preserve normal table wrapping, horizontal code scroll and command-mode execution focus', async () => {
+  test.setTimeout(90_000);
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-vscode-')), file = path.join(root, 'design.ipynb');
+  // The pandas 2.3.3 fixture used for the measured VS Code comparison.
+  const html = await readFile('test/fixtures/notebook/dataframe.html', 'utf8');
+  const value = { nbformat: 4, nbformat_minor: 5, metadata: {}, cells: [
+    { id: 'intro', cell_type: 'markdown', metadata: {}, source: '# Notebook\n\nAn introduction.' },
+    { id: 'code', cell_type: 'code', metadata: {}, source: `label = "${'long_source_'.repeat(80)}"\n` + Array.from({ length: 80 }, (_, i) => `value_${i} = ${i}`).join('\n'), execution_count: 20,
+      outputs: [{ output_type: 'display_data', data: { 'text/html': html, 'image/png': png, 'text/plain': 'table fallback' }, metadata: {} }] },
+    { id: 'end', cell_type: 'markdown', metadata: {}, source: '## Conclusion' },
+  ] };
+  await writeFile(file, JSON.stringify(value));
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+  const application = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await application.firstWindow(); await focusApplication(application);
+    const code = page.locator('[data-cell-id="code"]'), intro = page.locator('[data-cell-id="intro"]'), end = page.locator('[data-cell-id="end"]');
+    const scroll = page.locator('.notebook-scroll');
+    const command = async (name: string) => { await page.getByRole('button', { name: 'Commands…', exact: true }).click(); await page.getByRole('region', { name: 'Notebook commands' }).getByRole('button', { name, exact: true }).click(); };
+    await expect(intro.locator('h1')).toHaveText('Notebook');
+    await expect(code.locator('.line-numbers')).toHaveCount(0);
+    await expect(page.locator('.notebook-sticky')).toHaveCount(0);
+    await intro.getByRole('button', { name: 'Edit', exact: true }).click();
+    await intro.getByRole('textbox', { name: /Markdown cell editor/ }).press('Shift+Enter');
+    await expect(code).toBeFocused();
+    await expect(page.locator('.notebook-cell')).toHaveCount(3);
+    await code.press('Enter');
+    const editor = code.getByRole('textbox', { name: /Code cell editor/ });
+    await editor.press('Control+Home'); await editor.press('End');
+    const horizontal = () => code.locator('.view-lines').evaluate(node => node.getBoundingClientRect().left - node.closest('.cell-editor')!.getBoundingClientRect().left);
+    await expect.poll(horizontal).toBeLessThan(-500);
+    const before = await horizontal();
+    await scroll.evaluate(node => node.scrollTop += 300);
+    await expect.poll(horizontal).toBeCloseTo(before, 0);
+    const unwrappedHeight = await code.locator('.cell-editor').evaluate(node => node.clientHeight);
+    await command('Toggle code word wrap');
+    await expect.poll(() => code.locator('.cell-editor').evaluate(node => node.clientHeight)).toBeGreaterThan(unwrappedHeight + 100);
+    await command('Toggle code word wrap');
+    // Restore the long line to the viewport so the horizontal scrollbar is present
+    // in both height measurements (Monaco measures visible line widths).
+    await editor.press('Control+Home'); await editor.press('End');
+    await expect.poll(() => code.locator('.cell-editor').evaluate(node => node.clientHeight)).toBe(unwrappedHeight);
+    await code.locator('.execution').click();
+    await command('Toggle cell line numbers'); await expect(code.locator('.line-numbers').first()).toBeVisible();
+    await code.locator('.output-placeholder, .notebook-outputs').scrollIntoViewIfNeeded();
+    // HTML precedes raster fallbacks, but the original MIME bundle remains intact.
+    await expect(code.locator('.output-html table')).toBeVisible();
+    await expect(code.locator('.notebook-outputs img')).toHaveCount(0);
+    const measures = [];
+    for (const width of [420, 560, 780]) {
+      await code.locator('.output-body').evaluate((node, width) => { node.style.width = `${width + 16}px`; node.style.boxSizing = 'border-box'; }, width);
+      const result = await code.locator('.output-body').evaluate(node => {
+        const table = node.querySelector('table')!, label = table.querySelector('tbody th')!;
+        const word = label.firstChild!, range = document.createRange(); range.setStart(word, 0); range.setEnd(word, 8);
+        return { tableWidth: table.getBoundingClientRect().width, tableHeight: table.getBoundingClientRect().height,
+          wordLines: range.getClientRects().length, overflow: node.scrollWidth > node.clientWidth,
+          bodyHeight: node.clientHeight, tableBottom: table.getBoundingClientRect().bottom - node.getBoundingClientRect().top };
+      });
+      expect(result.wordLines).toBe(1); expect(result.tableHeight).toBeLessThan(340);
+      if (width === 420) expect(result.overflow).toBe(true);
+      // No permanent action footer under the output; only padding and a scrollbar.
+      expect(result.bodyHeight - result.tableBottom).toBeLessThan(25);
+      measures.push({ width, ...result });
+      await code.locator('.output-body').screenshot({ path: test.info().outputPath(`dataframe-${width}.png`) });
+    }
+    await writeFile(test.info().outputPath('dataframe-geometry.json'), JSON.stringify(measures, null, 2));
+    await code.getByRole('button', { name: 'More cell actions', exact: true }).click();
+    await page.keyboard.press('Delete'); await expect(page.locator('.notebook-cell')).toHaveCount(3);
+    await page.keyboard.press('Escape'); await expect(code.getByRole('button', { name: 'More cell actions', exact: true })).toBeFocused();
+    await end.getByRole('button', { name: 'Edit', exact: true }).click();
+    await end.getByRole('textbox', { name: /Markdown cell editor/ }).press('Shift+Enter');
+    await expect(page.locator('.notebook-cell')).toHaveCount(4);
+    const added = page.locator('.notebook-cell').last();
+    await expect(added).toHaveAttribute('data-cell-kind', 'markdown');
+    await expect(added.getByRole('textbox', { name: /Markdown cell editor/ })).toBeFocused();
+    await page.keyboard.press('Alt+Enter');
+    await expect(page.locator('.notebook-cell')).toHaveCount(5);
+    await expect(page.locator('.notebook-cell').last()).toHaveAttribute('data-cell-kind', 'code');
+    await page.keyboard.press('Control+s');
+    await expect.poll(async () => JSON.parse(await readFile(file, 'utf8')).cells[1].outputs).toEqual(value.cells[1].outputs);
+  } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
+});
+
+test('opening and switching notebooks and Markdown Escape never paint raw preview source', async () => {
+  test.setTimeout(90_000);
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-presentation-'));
+  const first = path.join(root, 'first.ipynb'), second = path.join(root, 'second.ipynb');
+  const value = notebook(); await writeFile(first, JSON.stringify(value));
+  value.cells[0].source = ['# Second notebook\n\nA **rendered** introduction.']; await writeFile(second, JSON.stringify(value));
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+  const application = await electron.launch({ args: ['.', first], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await application.firstWindow(); await focusApplication(application);
+    await page.addInitScript(() => {
+      const result = { visibleFrames: 0, rawFrames: [] as string[] }; (window as any).notebookPaints = result;
+      function frame() {
+        for (const surface of document.querySelectorAll('.notebook-content:not(.inactive) .notebook-scroll')) {
+          if (getComputedStyle(surface).visibility === 'hidden') continue;
+          result.visibleFrames++;
+          const bounds = surface.getBoundingClientRect();
+          for (const node of surface.querySelectorAll('.cell-markdown > pre, .markdown-placeholder, .editor-placeholder')) {
+            const rect = node.getBoundingClientRect();
+            if (rect.height && rect.bottom > bounds.top && rect.top < bounds.bottom) result.rawFrames.push(node.className || node.textContent || 'raw');
+          }
+        }
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    });
+    await page.reload();
+    await expect(page.locator('.notebook-scroll:not(.preparing) h1')).toHaveText('Notebook');
+    await page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), second);
+    const visible = page.locator('.notebook-content:not(.inactive)');
+    await expect(visible.locator('.notebook-scroll:not(.preparing) h1')).toHaveText('Second notebook');
+    const md = visible.locator('[data-cell-id="intro"]');
+    await md.getByRole('button', { name: 'Edit', exact: true }).click();
+    const editor = md.getByRole('textbox', { name: /Markdown cell editor/ });
+    await editor.press('Control+End'); await page.keyboard.insertText('\n\nLatest rendered revision.'); await editor.press('Escape');
+    await expect(md.locator('.cell-markdown')).toContainText('Latest rendered revision.');
+    await page.getByRole('tab', { name: /first.ipynb/ }).click();
+    await expect(visible.locator('h1')).toHaveText('Notebook');
+    await expect.poll(() => page.evaluate(() => (window as any).notebookPaints.visibleFrames)).toBeGreaterThan(10);
+    expect(await page.evaluate(() => (window as any).notebookPaints.rawFrames)).toEqual([]);
+    await writeFile(test.info().outputPath('presentation-frames.json'), JSON.stringify(await page.evaluate(() => (window as any).notebookPaints), null, 2));
+  } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
 });

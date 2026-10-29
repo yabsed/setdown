@@ -1,8 +1,9 @@
 <script lang="ts">
+  import NotebookMenu from './NotebookMenu.svelte';
   import { tracebackTargets, type TraceTarget } from '../../core/notebook/notebook-tools';
   import { staticOutput, notebookHtml, outputText } from './notebook-content';
   import type { DesktopPort } from '../ports/desktop-port';
-  let { outputs, path, desktop, ontrace }: { outputs: unknown[]; path: string; desktop: DesktopPort; ontrace(target: TraceTarget): Promise<void> } = $props();
+  let { outputs, path, desktop, ontrace, wordWrap }: { outputs: unknown[]; wordWrap: boolean; path: string; desktop: DesktopPort; ontrace(target: TraceTarget): Promise<void> } = $props();
   let preferences = $state<Record<number, string>>({}), copied = $state('');
   let zoom = $state(''), scale = $state(1);
   async function save(content: string) {
@@ -21,38 +22,31 @@
     event.preventDefault(); const href = anchor.getAttribute('href');
     if (href && /^https?:/i.test(href)) void desktop.openLink(href);
   }
-  // Only annotate numeric cells after sanitization. Keep values and authored
-  // HTML intact; text columns and row labels retain their reading alignment.
-  function alignNumbers(node: HTMLElement, _content: string) {
-    const update = () => queueMicrotask(() => {
-      for (const cell of node.querySelectorAll('td')) {
-        const value = cell.textContent?.trim() ?? '';
-        cell.classList.toggle('notebook-number', /^[+−-]?(?:(?:\d+(?:,\d{3})*)(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?%?$/.test(value));
-      }
-    });
-    update(); return { update };
-  }
 </script>
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="notebook-outputs" aria-label="Cell outputs" onclick={link} onkeydown={event => { if (event.key === 'Enter') link(event); }}>
   {#each rendered as output, index}
+    <div class="output-item">
+    <div class="output-body">
     {#if output.kind === 'image'}<img src={output.content} alt="Notebook output" loading="lazy" />
-    {:else if output.kind === 'html'}<div class="output-html notebook-prose" use:alignNumbers={output.content}>{@html output.content}</div>
+    {:else if output.kind === 'html'}<div class="output-html notebook-rich-output">{@html output.content}</div>
     {:else if output.kind === 'markdown'}
       {#await desktop.renderNotebookMarkdown(path, output.content)}<pre>{output.content}</pre>
-      {:then rendered}<div class="output-html notebook-prose" use:alignNumbers={rendered.html}>{@html notebookHtml(rendered.html, rendered.baseHref)}</div>
+      {:then rendered}<div class="output-html notebook-prose">{@html notebookHtml(rendered.html, rendered.baseHref)}</div>
       {:catch}<pre>{output.content}</pre>{/await}
     {:else if output.kind === 'unsupported'}<p class="output-note">{output.content}</p>
-    {:else}<pre class:error={output.kind === 'error'}>{output.content}</pre>{#if output.kind === 'error'}<div class="traceback-links">{#each tracebackTargets(output.content) as target}<button onclick={() => ontrace(target)}>{target.label}</button>{/each}</div>{/if}{/if}
+    {:else}<pre class:wrapped={wordWrap} class:error={output.kind === 'error'}>{output.content}</pre>{#if output.kind === 'error'}<div class="traceback-links">{#each tracebackTargets(output.content) as target}<button onclick={() => ontrace(target)}>{target.label}</button>{/each}</div>{/if}{/if}
+    </div>
     {#if formats(index).length > 1 || output.kind === 'image' || index === rendered.length - 1}
-      <div class="output-actions">
-        {#if formats(index).length > 1}<select aria-label="Output format" title={`Output ${index + 1} format`} value={preferences[index] ?? ''} onchange={event => preferences[index] = event.currentTarget.value}>
+      <div class="output-actions"><NotebookMenu label={`Output ${index + 1} actions`}>
+        {#if formats(index).length > 1}<label>Format<select aria-label="Output format" title={`Output ${index + 1} format`} value={preferences[index] ?? ''} onchange={event => preferences[index] = event.currentTarget.value}>
           <option value="">Rich output</option>{#each formats(index) as mime}<option value={mime}>{mime}</option>{/each}
-        </select>{/if}
+        </select></label>{/if}
         {#if output.kind === 'image'}<button onclick={() => { zoom = output.content; scale = 1; }}>View full size</button><button onclick={() => save(output.content)}>Save image…</button>{/if}
         {#if index === rendered.length - 1}<button aria-label="Copy cell output" onclick={copy}>Copy output</button>{/if}
-      </div>
+      </NotebookMenu></div>
     {/if}
+    </div>
   {/each}
   {#if copied}<div class="output-feedback" role="status">{copied}</div>{/if}
   {#if outputs.length > 100}<p class="output-note">Showing 100 outputs. All {outputs.length} outputs are preserved.</p>{/if}
@@ -72,18 +66,18 @@
   .viewer-toolbar, .traceback-links { display: flex; gap: 8px; padding: 6px 0; flex-wrap: wrap; }
   .viewer-toolbar { padding: 8px; } .image-scroll { overflow: auto; flex: 1; } .image-scroll img { max-width: none; }
 
-  .notebook-outputs { padding: 12px 12px 0; overflow-x: auto; contain: content; }
-  .output-actions { display: flex; align-items: center; gap: 6px; min-height: 30px; flex-wrap: wrap; color: var(--app-text); font-size: 12px; opacity: 0; }
+  .notebook-outputs { padding: 0; display: flow-root; }
+  .output-item { position: relative; }
+  .output-body { padding: 8px; overflow-x: auto; contain: content; }
+  .output-actions { position: absolute; left: -30px; top: 4px; color: var(--notebook-secondary-text); opacity: 0; }
   :global(.notebook-cell:hover) .output-actions, :global(.notebook-cell.selected) .output-actions, :global(.notebook-cell:focus-within) .output-actions { opacity: 1; }
   .output-feedback { color: var(--app-text); font-size: 12px; padding: 4px 0; overflow-wrap: anywhere; }
-  button, select { font: inherit; color: var(--app-text); background: var(--app-surface); border: 1px solid var(--app-border); border-radius: 3px; min-height: 26px; padding: 3px 7px; }
-  button:focus-visible, select:focus-visible { outline: 2px solid var(--app-focus-ring); outline-offset: 1px; }
+  button { font: inherit; color: var(--app-text); background: var(--app-surface); border: 1px solid var(--app-border); border-radius: 3px; min-height: 26px; padding: 3px 7px; }
+  button:focus-visible { outline: 2px solid var(--app-focus-ring); outline-offset: 1px; }
   button { cursor: pointer; } button:hover { color: var(--app-text); }
-  pre { margin: 0 0 8px; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--notebook-code-font); line-height: 1.5; }
+  pre { margin: 0; white-space: pre; font-family: var(--notebook-code-font); line-height: 1.4; }
+  pre.wrapped { white-space: pre-wrap; overflow-wrap: anywhere; }
   img { max-width: 100%; height: auto; display: block; }
   .error { color: var(--app-danger-text); }
   .output-note { color: var(--notebook-secondary-text); font-size: 12px; }
-  .output-html { font-size: 1.07143em; }
-  .output-html :global(td.notebook-number) { text-align: right; white-space: nowrap; }
-  .output-html :global(.dataframe thead th:not(:first-child)) { text-align: right; }
 </style>

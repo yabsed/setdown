@@ -59,10 +59,10 @@ export function staticOutput(output: unknown, preferred?: string): StaticOutput 
   const data = item.data as Record<string, unknown> | undefined;
   if (data && typeof data === 'object') {
     if (preferred && Object.hasOwn(data, preferred)) return staticOutput({ ...item, data: { [preferred]: data[preferred] } });
+    if (data['text/html']) return { kind: 'html', content: notebookHtml(displayText(data['text/html'])) };
     for (const mime of ['image/png', 'image/jpeg', 'image/gif', 'image/webp']) {
       const image = rasterData(mime, data[mime]); if (image) return { kind: 'image', content: image };
     }
-    if (data['text/html']) return { kind: 'html', content: notebookHtml(displayText(data['text/html'])) };
     if (data['text/markdown']) return { kind: 'markdown', content: displayText(data['text/markdown']) };
     if (data['text/latex']) return { kind: 'markdown', content: displayText(data['text/latex']) };
     if (Object.hasOwn(data, 'application/json')) return { kind: 'text', content: JSON.stringify(data['application/json'], null, 2).slice(0, DISPLAY_TEXT_LIMIT) };

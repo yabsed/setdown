@@ -16,9 +16,20 @@
   import type { NotebookTool } from '../../protocol/notebook';
   import SearchWorker from './notebook-search.worker?worker';
   import NotebookVariables from './NotebookVariables.svelte';
+  import NotebookIcon from './NotebookIcon.svelte';
   import NotebookCell from './NotebookCell.svelte';
   import './notebook-typography.css';
   let { entry, path, active, desktop, onfocus, openFile }: { entry: NotebookEntry; path: string; active: boolean; desktop: DesktopPort; openFile(path: string, selection?: M.IRange | M.IPosition): Promise<void>; onfocus(): void } = $props();
+  let presented = $state(false);
+  let pendingCells = $state(new Set(untrack(() => entry.document.cells.map(cell => cell.id))));
+  function cellReady(id: string, ready: boolean) {
+    if (presented || pendingCells.has(id) === !ready) return;
+    const next = new Set(pendingCells); if (ready) next.delete(id); else next.add(id); pendingCells = next;
+  }
+  $effect(() => {
+    if (presented || !active || !api || pendingCells.size) return;
+    const frame = requestAnimationFrame(() => presented = true); return () => cancelAnimationFrame(frame);
+  });
   let api = $state.raw<typeof M | null>(null), revision = $state(0), loadError = $state('');
   let theme = $state<PreviewThemeId>('github-light'), language = $state(''), factor = $state(1);
   let reveal = $state<{ id: string; range: M.IRange; sequence: number; edit?: boolean }>();
@@ -74,10 +85,18 @@
     controller.move(dropAfter ? cells[index + 1]?.id : id); dragEnd();
   }
   const cells = $derived.by(() => { void revision; return [...entry.document.cells]; });
+  $effect(() => {
+    if (!active) { presented = false; pendingCells = new Set(cells.map(cell => cell.id)); }
+    else if (!presented) {
+      const ids = new Set(cells.map(cell => cell.id)), next = new Set([...pendingCells].filter(id => ids.has(id)));
+      if (next.size !== pendingCells.size) pendingCells = next;
+    }
+  });
   const canUndo = $derived.by(() => { void revision; return entry.document.canUndo; });
   const canRedo = $derived.by(() => { void revision; return entry.document.canRedo; });
   let matchCase = $state(false), regex = $state(false), searchScope = $state('source'), replacement = $state('');
   let outline = $state(false), variables = $state(false), commandOpen = $state(false), commandFilter = $state(''), toolBusy = $state(false), notice = $state(''), remote = $state(false), remoteUrl = $state('');
+  let stickyEnabled = $state(false);
   let inputValue = $state(''), sticky = $state(''), scrollFrame = 0, lastDelete = 0;
   const inputRequest = $derived.by(() => { void executionRevision; return execution?.inputRequest; });
   $effect(() => { void inputRequest?.request; inputValue = ''; });
@@ -127,6 +146,7 @@
   function toggleSection(id: string) { if (controller.foldedSections.has(id)) controller.foldedSections.delete(id); else controller.foldedSections.add(id); controller.changed(); }
   function scrolled() {
     if (!scroll) return; controller.scrollTop = scroll.scrollTop;
+    if (!stickyEnabled) { sticky = ''; return; }
     if (scrollFrame) return;
     scrollFrame = requestAnimationFrame(() => {
       scrollFrame = 0; if (!scroll) return; const top = scroll.getBoundingClientRect().top;
@@ -172,6 +192,7 @@
     ['collapse-outputs', 'Collapse all outputs'], ['expand-outputs', 'Expand all outputs'], ['split', 'Split cell at cursor'], ['join', 'Join selected adjacent cells'],
     ['insert-above', 'Insert code cell above'], ['insert-below', 'Insert code cell below'], ['code', 'Convert selected cell to code'], ['markdown', 'Convert selected cell to Markdown'],
     ['move-up', 'Move selected cells up'], ['move-down', 'Move selected cells down'], ['line', 'Toggle cell line numbers'], ['lines', 'Toggle all line numbers'],
+    ['wrap-code', 'Toggle code word wrap'], ['wrap-output', 'Toggle output word wrap'], ['sticky', 'Toggle sticky headings'],
     ['rename', 'Rename symbol across cells'], ['fix', 'Apply code action at cursor'], ['format', 'Format notebook with Ruff'], ['fix-code', 'Apply Ruff safe fixes across cells'],
     ['export-html', 'Export HTML'], ['export-markdown', 'Export Markdown'], ['export-script', 'Export script'], ['export-webpdf', 'Export PDF'],
     ['diff', 'Compare notebook with Git HEAD'], ['jupyterlab', 'Open JupyterLab: widgets, plots and debugger'], ['stop-tools', 'Stop external notebook sessions'], ['remote', 'Connect to remote JupyterLab'], ['install-tools', 'Install notebook tools'],
@@ -182,6 +203,9 @@
       if (id === 'undo') entry.document.undo();
       else if (id === 'redo') entry.document.redo();
       else if (id === 'outline') outline = !outline;
+      else if (id === 'wrap-code') { controller.wrapCode = !controller.wrapCode; controller.changed(); }
+      else if (id === 'wrap-output') { controller.wrapOutput = !controller.wrapOutput; controller.changed(); }
+      else if (id === 'sticky') { stickyEnabled = !stickyEnabled; scrolled(); }
       else if (id === 'variables') variables = !variables;
       else if (id === 'reset') await execution?.shutdown();
       else if (id === 'run-above') await execution?.run(cells.slice(0, Math.max(0, index)).map(cell => cell.id));
@@ -224,8 +248,11 @@
   async function runNext(id: string, insert: boolean) {
     const index = cells.findIndex(cell => cell.id === id);
     if (cells[index]?.kind === 'code') void execution?.run([id]);
-    const next = insert || !cells[index + 1] ? controller.insert('code', id) : cells[index + 1].id;
-    await showCell(next, { startLineNumber: 1, endLineNumber: 1, startColumn: 1, endColumn: 1 });
+    const created = insert || !cells[index + 1];
+    const next = created ? controller.insert(!insert && cells[index]?.kind === 'markdown' ? 'markdown' : 'code', id) : cells[index + 1].id;
+    controller.select(next);
+    await showCell(next, { startLineNumber: 1, endLineNumber: 1, startColumn: 1, endColumn: 1 }, created);
+    if (!created) scroll?.querySelector<HTMLElement>(`[data-cell-id="${next}"]`)?.focus({ preventScroll: true });
   }
   function clipboard(event: ClipboardEvent) {
     if (!active || isEditing(event.target) || !event.clipboardData || window.getSelection()?.toString()) return;
@@ -244,7 +271,7 @@
     } catch (error) { actionError = String(error); }
   }
   function keydown(event: KeyboardEvent) {
-    if (!active || event.isComposing) return;
+    if (!active || event.isComposing || (event.target instanceof Element && event.target.closest('[data-notebook-menu]'))) return;
     const mod = event.ctrlKey || event.metaKey, key = event.key.toLowerCase();
     if (mod && key === 'f') {
       event.preventDefault(); event.stopPropagation(); searchOpen = true; void tick().then(() => { searchInput?.focus(); searchInput?.select(); }); return;
@@ -316,23 +343,23 @@
 
 <!-- Key capture is scoped to this notebook, including its embedded editors. -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="notebook-surface" data-notebook-language={language} onfocusin={() => onfocus()} onkeydowncapture={keydown} oncopy={clipboard} oncut={clipboard} onpaste={clipboard} style:font-size={`${14 * factor}px`}>
+<div class="notebook-surface" data-notebook-language={language} onfocusin={() => onfocus()} onkeydowncapture={keydown} oncopy={clipboard} oncut={clipboard} onpaste={clipboard} style:font-size={`${14 * factor}px`} style:--notebook-code-font={api?.editor.EditorOptions.fontFamily.defaultValue}>
   <div class="notebook-toolbar" role="toolbar" aria-label="Notebook">
-    <button onclick={() => controller.insert('code')} disabled={!!entry.document.error}>+ Code</button>
-    <button onclick={() => controller.insert('markdown')} disabled={!!entry.document.error}>+ Markdown</button>
+    <button onclick={() => controller.insert('code')} disabled={!!entry.document.error} aria-label="+ Code"><NotebookIcon name="add" /> Code</button>
+    <button onclick={() => controller.insert('markdown')} disabled={!!entry.document.error} aria-label="+ Markdown"><NotebookIcon name="add" /> Markdown</button>
     <button class="secondary-tool" title="Undo the last cell operation (text uses editor Undo)" aria-label="Undo cell operation" disabled={!canUndo} onclick={() => entry.document.undo()}>↶</button>
     <button class="secondary-tool" title="Redo cell operation" aria-label="Redo cell operation" disabled={!canRedo} onclick={() => entry.document.redo()}>↷</button>
     <button class="secondary-tool" onclick={() => outline = !outline} aria-pressed={outline}>Outline</button>
     <button class="secondary-tool" onclick={() => variables = !variables} aria-pressed={variables}>Variables</button>
-    <button onclick={() => commandOpen = !commandOpen} aria-expanded={commandOpen}>Commands…</button>
+    <button class="commands-button" onclick={() => commandOpen = !commandOpen} aria-expanded={commandOpen} aria-label="Commands…" title="Notebook commands"><NotebookIcon name="more" /></button>
     {#if toolBusy}<span role="status">Notebook tool running…</span><button onclick={() => desktop.notebook.cancelTools(path)}>Cancel tool</button>{/if}
     <span class="summary">{cells.length} cells · {entry.document.language}</span>
     {#if entry.document.language === 'python' && !entry.document.error}
-      <button aria-label="Run all cells" onclick={() => execution?.run()}>▶ Run All</button>
-      {#if busy}<button aria-label="Interrupt kernel" onclick={() => execution?.interrupt()}>■ Interrupt</button>{/if}
+      <button aria-label="Run all cells" onclick={() => execution?.run()} title="Run all cells"><NotebookIcon name="runAll" /><span class="tool-label">Run All</span></button>
+      {#if busy}<button aria-label="Interrupt kernel" onclick={() => execution?.interrupt()} title="Interrupt kernel"><NotebookIcon name="stop" /><span class="tool-label">Interrupt</span></button>{/if}
       <button class="secondary-tool" title="Discard Python variables and stop the kernel. Run starts a fresh kernel." onclick={() => execution?.shutdown()} disabled={kernelState === 'stopped'}>Reset kernel</button>
       <div class="execution-note" title={selectedPython || python || 'Choose Python with ipykernel installed'}>
-      <span aria-hidden="true">{selectedPython ? environmentLabel : 'Select Python…'} ▾</span>
+      <span aria-hidden="true"><NotebookIcon name="kernel" />{selectedPython ? environmentLabel : 'Select Python…'}</span>
       <select aria-label="Python environment" value={selectedPython ?? ''} onchange={event => void chooseEnvironment(event.currentTarget.value)}>
         <option value="" disabled>Select Python…</option>
         {#if selectedPython && !environments.candidates.some(item => item.path === selectedPython)}<option value={selectedPython}>{selectedPython} (unavailable)</option>{/if}
@@ -340,7 +367,7 @@
         <option value="__choose__">Choose executable…</option>
       </select>
       </div>
-      <span class="kernel-state" role="status">{kernelState}</span>
+      <span class="kernel-state" role="status" aria-label={`Kernel ${kernelState}`} title={`Kernel ${kernelState}`}>{#if busy}<NotebookIcon name="sync" spinning />{:else if kernelState === 'idle'}<NotebookIcon name="check" />{/if}<span class="kernel-state-text">{kernelState}</span></span>
     {/if}
   </div>
   {#if commandOpen}<div class="command-panel" role="region" aria-label="Notebook commands">
@@ -374,21 +401,23 @@
   {/if}
   {#if outline}<nav class="notebook-outline" aria-label="Notebook outline">{#each headings as heading}<span style:padding-left={`${(heading.level - 1) * 12}px`}><button aria-label="Toggle notebook section" aria-expanded={!controller.foldedSections.has(heading.id)} onclick={() => toggleSection(heading.id)}>{controller.foldedSections.has(heading.id) ? '▸' : '▾'}</button><button onclick={() => showCell(heading.id, { startLineNumber: heading.line, endLineNumber: heading.line, startColumn: 1, endColumn: 1 }, false)}>{heading.text}</button></span>{/each}</nav>{/if}
   {#if sticky}<div class="notebook-sticky">{sticky}</div>{/if}
-  <div class="notebook-scroll" bind:this={scroll} onscroll={scrolled}>
+  <div class="notebook-scroll" class:preparing={!presented && !loadError && !entry.document.error} aria-busy={!presented && !loadError && !entry.document.error} bind:this={scroll} onscroll={scrolled}>
     {#if entry.document.error}
       <div class="notebook-error" role="alert"><h3>Notebook could not be edited</h3><p>{entry.document.error}</p><p>The original file has not been changed.</p>
         <pre>{entry.document.original.slice(0, 200_000)}</pre></div>
     {:else if loadError}<p role="alert">Could not load the cell editor: {loadError}</p>
     {:else}
+      {#if cells.length}<div class="insert-toolbar" role="group" aria-label="Insert cell at start"><button onclick={() => { const id = controller.insert('code'); entry.document.moveManyBefore([id], cells[0]?.id); void showCell(id, offsetRange('', 0)); }}><NotebookIcon name="add" /> Code</button><button onclick={() => { const id = controller.insert('markdown'); entry.document.moveManyBefore([id], cells[0]?.id); void showCell(id, offsetRange('', 0)); }}><NotebookIcon name="add" /> Markdown</button></div>{/if}
       {#each cells as cell (cell.id)}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div class="cell-drop" hidden={hiddenSections.has(cell.id)} oncontextmenu={event => { if (event.target instanceof Element && event.target.closest('.cell-toolbar, .cell-gutter')) { event.preventDefault(); controller.select(cell.id); commandOpen = true; } }} class:drop-before={dropTarget === cell.id && !dropAfter} class:drop-after={dropTarget === cell.id && dropAfter}
           ondragover={event => dragOver(event, cell.id)} ondrop={event => drop(event, cell.id)}>
-        <NotebookCell {entry} {cell} {revision} {api} {active} {path} {desktop} {theme} {onfocus} {reveal} ontrace={target => trace(target, cell.id)} lineNumbers={controllerRevision >= 0 && !controller.hiddenLineNumbers.has(cell.id)} onmodel={() => client?.updateMarkers()}
+        <NotebookCell onready={cellReady} {entry} {cell} {revision} {api} {active} {path} {desktop} {theme} {onfocus} {reveal} ontrace={target => trace(target, cell.id)} lineNumbers={controllerRevision >= 0 && controller.visibleLineNumbers.has(cell.id)} wordWrap={controllerRevision >= 0 && controller.wrapCode} outputWordWrap={controllerRevision >= 0 && controller.wrapOutput} onmodel={() => client?.updateMarkers()}
           selected={selected.has(cell.id)} collapsedInput={controllerRevision >= 0 && controller.collapsedInputs.has(cell.id)} collapsedOutput={controllerRevision >= 0 && controller.collapsedOutputs.has(cell.id)}
           onselect={event => selectCell(cell.id, event)} onrunNext={insert => void runNext(cell.id, insert)} duration={executionRevision >= 0 ? execution?.durations.get(cell.id) : undefined}
           run={() => execution?.run([cell.id])} executionState={executionRevision >= 0 ? execution?.cells.get(cell.id) : undefined}
           ondragstart={event => dragStart(event, cell.id)} ondragend={dragEnd} />
+          <div class="insert-toolbar" role="group" aria-label="Insert cell below"><button onclick={() => showCell(controller.insert('code', cell.id), offsetRange('', 0))}><NotebookIcon name="add" /> Code</button><button onclick={() => showCell(controller.insert('markdown', cell.id), offsetRange('', 0))}><NotebookIcon name="add" /> Markdown</button></div>
         </div>
       {/each}
       {#if !cells.length}<div class="notebook-empty"><p>This notebook has no cells yet.</p><button onclick={() => controller.insert('code')}>Add a code cell</button></div>{/if}
@@ -410,27 +439,33 @@
   .drop-before::before { top: -9px; } .drop-after::after { bottom: -9px; }
   .kernel-error { padding: 8px 16px; color: var(--app-danger-text); font-size: 12px; overflow-wrap: anywhere; }
   .kernel-state { color: var(--notebook-secondary-text); white-space: nowrap; }
-  .notebook-surface { display: flex; flex-direction: column; position: absolute; inset: 0; background: var(--app-canvas); color: var(--app-text); min-width: 0; container-type: inline-size; }
-  .notebook-toolbar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; flex-shrink: 0; min-height: 38px; padding: 4px 12px; border-bottom: 1px solid var(--app-border); font-size: 13px; background: var(--app-surface); }
+  .notebook-surface { display: flex; flex-direction: column; position: absolute; inset: 0; background: var(--app-editor-background); color: var(--app-text); min-width: 0; container-type: inline-size; }
+  .notebook-toolbar { display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; flex-shrink: 0; height: 34px; padding: 2px 8px; border-bottom: 1px solid var(--app-border); font-size: 13px; background: var(--app-surface); }
   button { font: inherit; color: var(--app-text); background: transparent; border: 1px solid transparent; border-radius: 3px; padding: 4px 8px; cursor: pointer; }
   button:hover:not(:disabled) { background: var(--app-hover); } button:disabled { opacity: .4; cursor: default; }
   button:focus-visible { outline: 1px solid var(--app-focus-ring); }
   select { font: inherit; background: var(--app-surface); color: var(--app-text); border: 1px solid var(--app-border); border-radius: 3px; padding: 4px; max-width: 300px; }
+  .notebook-toolbar > button { display: inline-flex; align-items: center; gap: 4px; height: 26px; white-space: nowrap; }
   .summary { color: var(--notebook-secondary-text); margin-left: 8px; white-space: nowrap; }
-  .execution-note { position: relative; margin-left: auto; max-width: 200px; min-width: 80px; height: 28px; }
-  .execution-note > span { display: block; padding: 4px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .execution-note { flex: 0 1 200px; position: relative; margin-left: auto; max-width: 200px; min-width: 50px; height: 26px; }
+  .execution-note > span { display: flex; align-items: center; gap: 6px; padding: 4px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .execution-note select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
   .execution-note:focus-within { outline: 2px solid var(--app-focus-ring); border-radius: 3px; }
   .execution-note:hover { background: var(--app-hover); }
-  .notebook-scroll { overflow: auto; flex: 1; padding: 0 clamp(12px, 2.5cqw, 40px) 0 12px; min-height: 0; scrollbar-gutter: stable; }
+  .notebook-scroll.preparing { visibility: hidden; }
+  .notebook-scroll { overflow: auto; flex: 1; padding: 0 16px 0 8px; min-height: 0; scrollbar-gutter: stable; }
   /* Vertical scroll padding offsets sticky editors too. Keep document spacing
      in the scrolling flow so a long cell can meet the viewport's top edge. */
   .notebook-scroll::before, .notebook-scroll::after { content: ''; display: block; }
-  .notebook-scroll::before { height: 30px; }
+  .notebook-scroll::before { height: 6px; }
   .notebook-scroll::after { height: 100px; }
   @container (max-width: 1100px) { .summary { display: none; } }
-  @container (max-width: 900px) { .secondary-tool { display: none; } }
-  @container (max-width: 540px) { .notebook-toolbar { gap: 2px; padding-inline: 6px; font-size: 12px; } .notebook-toolbar button { padding-inline: 5px; } .execution-note { max-width: 120px; } .notebook-scroll { padding-inline: 6px; } }
+  @container (max-width: 900px) { .notebook-toolbar > .secondary-tool { display: none; } }
+  @container (max-width: 540px) { .notebook-toolbar { gap: 2px; padding-inline: 6px; font-size: 12px; } .notebook-toolbar button { padding-inline: 5px; } .execution-note { max-width: 120px; } .tool-label { display: none; } }
+  .kernel-state-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .insert-toolbar { height: 24px; margin-left: 36px; display: flex; justify-content: center; align-items: center; gap: 8px; }
+  .insert-toolbar button { display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px; height: 22px; font-size: 12px; opacity: 0; }
+  .insert-toolbar:hover button, .insert-toolbar:focus-within button { opacity: 1; }
   .notebook-empty { text-align: center; padding: 60px 12px; color: var(--app-muted-text); }
   .notebook-error pre { white-space: pre-wrap; overflow-wrap: anywhere; }
   .notebook-search, .notebook-replace { display: flex; align-items: center; gap: 5px; padding: 6px 14px; font-size: 12px; border-bottom: 1px solid var(--app-border); }

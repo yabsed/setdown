@@ -1,0 +1,22 @@
+{
+  "version": "1.143.0",
+  "commit": "2d0b7506a36c1d6db9a466440131a8e01eab2289",
+  "defaults": {
+    "git.countBadge": "all",
+    "git.untrackedChanges": "mixed",
+    "git.ignoreSubmodules": false,
+    "git.detectSubmodules": true,
+    "git.detectSubmodulesLimit": 10,
+    "git.detectWorktrees": false,
+    "git.autoRepositoryDetection": true,
+    "git.repositoryScanMaxDepth": 1,
+    "git.repositoryScanIgnoredFolders": [
+      "node_modules"
+    ],
+    "git.scanRepositories": [],
+    "git.statusLimit": 10000,
+    "git.similarityThreshold": 50,
+    "git.openRepositoryInParentFolders": "prompt"
+  },
+  "scope": "Installed package defaults; repository.ts, activity.ts, model.ts and git.ts verified against the same commit on microsoft/vscode. Actual VS Code GUI badge was not measured."
+}

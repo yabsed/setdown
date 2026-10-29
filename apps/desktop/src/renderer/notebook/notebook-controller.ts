@@ -8,7 +8,9 @@ export class NotebookController {
   readonly collapsedInputs = new Set<string>();
   readonly collapsedOutputs = new Set<string>();
   scrollTop = 0;
-  readonly hiddenLineNumbers = new Set<string>();
+  readonly visibleLineNumbers = new Set<string>();
+  wrapCode = false;
+  wrapOutput = false;
   readonly foldedSections = new Set<string>();
   readonly cursors = new Map<string, number>();
   collapseAll(kind: 'input' | 'output', collapse: boolean): void {
@@ -16,8 +18,8 @@ export class NotebookController {
     target.clear(); if (collapse) for (const cell of this.document.cells) target.add(cell.id); this.changed();
   }
   lineNumbers(id?: string): void {
-    const ids = id ? [id] : this.document.cells.map(cell => cell.id), hide = ids.some(id => !this.hiddenLineNumbers.has(id));
-    for (const id of ids) { if (hide) this.hiddenLineNumbers.add(id); else this.hiddenLineNumbers.delete(id); } this.changed();
+    const ids = id ? [id] : this.document.cells.map(cell => cell.id), show = ids.some(id => !this.visibleLineNumbers.has(id));
+    for (const id of ids) { if (show) this.visibleLineNumbers.add(id); else this.visibleLineNumbers.delete(id); } this.changed();
   }
   split(): string | undefined {
     if (!this.active) return;

@@ -1,0 +1,274 @@
+
+Running 14 tests using 1 worker
+
+(node:1082072) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[1/14] test/e2e/notebook/notebook.spec.ts:16:1 › notebook reading hierarchy keeps content, actions and focus distinct, including narrow split panes
+dbus-daemon[1082059]: [session uid=1000 pid=1082059] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=1082084 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1082059]: [session uid=1000 pid=1082059] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=1082084 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1082059]: [session uid=1000 pid=1082059] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[1082059]: [session uid=1000 pid=1082059] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.3' (uid=1000 pid=1082148 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1082059]: [session uid=1000 pid=1082059] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[1082059]: [session uid=1000 pid=1082059] Activating service name='org.freedesktop.portal.Documents' requested by ':1.3' (uid=1000 pid=1082148 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1082059]: [session uid=1000 pid=1082059] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[1082059]: [session uid=1000 pid=1082059] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.3' (uid=1000 pid=1082148 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[1082059]: [session uid=1000 pid=1082059] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=1082198 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[1082059]: [session uid=1000 pid=1082059] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[1082059]: [session uid=1000 pid=1082059] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[1082059]: [session uid=1000 pid=1082059] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.3' (uid=1000 pid=1082148 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1082059]: [session uid=1000 pid=1082059] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:1082148): xdg-desktop-portal-WARNING **: 01:06:29.026: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[1082059]: [session uid=1000 pid=1082059] Activating service name='org.freedesktop.secrets' requested by ':1.3' (uid=1000 pid=1082148 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+** Message: 01:06:29.038: couldn't access control socket: /tmp/setdown-display-runtime.bVTOZW/keyring/control: No such file or directory
+discover_other_daemon: 0dbus-daemon[1082059]: [session uid=1000 pid=1082059] Successfully activated service 'org.freedesktop.secrets'
+dbus-daemon[1082059]: [session uid=1000 pid=1082059] Successfully activated service 'org.freedesktop.portal.Desktop'
+  1) test/e2e/notebook/notebook.spec.ts:16:1 › notebook reading hierarchy keeps content, actions and focus distinct, including narrow split panes 
+
+    Error: expect(locator).toBeHidden() failed
+
+    Locator:  locator('[data-notebook-tab="b67ae6f1-7a1c-49a7-8ec7-ac7ee80f65f4"]').locator('.notebook-toolbar').getByRole('button', { name: 'Outline', exact: true })
+    Expected: hidden
+    Received: visible
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toBeHidden" locator('[data-notebook-tab="b67ae6f1-7a1c-49a7-8ec7-ac7ee80f65f4"]').locator('.notebook-toolbar').getByRole('button', { name: 'Outline', exact: true }) with timeout 5000ms
+      - waiting for locator('[data-notebook-tab="b67ae6f1-7a1c-49a7-8ec7-ac7ee80f65f4"]').locator('.notebook-toolbar').getByRole('button', { name: 'Outline', exact: true })
+        14 × locator resolved to <button aria-pressed="false" class="secondary-tool svelte-yxkx1d">Outline</button>
+           - unexpected value "visible"
+
+
+      101 |     expect((await toolbar.boundingBox())!.height).toBeLessThanOrEqual(44);
+      102 |     expect(await toolbar.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
+    > 103 |     await expect(toolbar.getByRole('button', { name: 'Outline', exact: true })).toBeHidden();
+          |                                                                                 ^
+      104 |     await toolbar.getByRole('button', { name: 'Commands…', exact: true }).click();
+      105 |     await surface.getByRole('button', { name: 'Toggle outline', exact: true }).click();
+      106 |     await expect(surface.getByRole('navigation', { name: 'Notebook outline' })).toBeVisible();
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/notebook/notebook.spec.ts:103:81
+
+    Error Context: ../../reports/notebook-vscode-implementation-2026-10-30/initial/notebook-notebook-notebook-c2bdc-ncluding-narrow-split-panes/error-context.md
+
+
+(node:1083055) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[2/14] test/e2e/notebook/notebook.spec.ts:112:1 › notebook cells reuse Markdown and Python, preserve outputs on save, and retain Undo across deletion
+test/e2e/notebook/notebook.spec.ts:112:1 › notebook cells reuse Markdown and Python, preserve outputs on save, and retain Undo across deletion
+notebook process: (node:1083433) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `exe --trace-warnings ...` to show where the warning was created)
+
+
+notebook process: [1083067:1030/010637.565865:ERROR:ui/gfx/x/atom_cache.cc:236] Add application/vnd.portal.filetransfer to kAtomsToCache
+
+
+notebook process: [1083067:1030/010637.565903:ERROR:ui/gfx/x/atom_cache.cc:236] Add application/vnd.portal.files to kAtomsToCache
+
+
+notebook process: Debugger ending on ws://127.0.0.1:40329/62db25dd-49e3-44a5-bf91-2b0c725b8c0e
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+  2) test/e2e/notebook/notebook.spec.ts:112:1 › notebook cells reuse Markdown and Python, preserve outputs on save, and retain Undo across deletion 
+
+    TimeoutError: locator.dragTo: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for locator('[data-cell-id="use"]').getByRole('button', { name: 'Drag to move cell' })
+        - locator resolved to <button draggable="true" title="Drag to move cell" aria-label="Drag to move cell" class="drag-handle svelte-1ig84k">…</button>
+      - attempting move and down action
+        2 × waiting for element to be visible and stable
+          - element is visible and stable
+          - scrolling into view if needed
+          - done scrolling
+          - <button aria-pressed="false" aria-label="Select cell" class="execution svelte-1ig84k" title="Select cell · Shift selects a range · Ctrl/Cmd toggles selection">[ ]</button> from <div class="cell-input svelte-1ig84k source-mode">…</div> subtree intercepts pointer events
+        - retrying move and down action
+        - waiting 20ms
+        2 × waiting for element to be visible and stable
+          - element is visible and stable
+          - scrolling into view if needed
+          - done scrolling
+          - <button aria-pressed="false" aria-label="Select cell" class="execution svelte-1ig84k" title="Select cell · Shift selects a range · Ctrl/Cmd toggles selection">[ ]</button> from <div class="cell-input svelte-1ig84k source-mode">…</div> subtree intercepts pointer events
+        - retrying move and down action
+          - waiting 100ms
+        58 × waiting for element to be visible and stable
+           - element is visible and stable
+           - scrolling into view if needed
+           - done scrolling
+           - <button aria-pressed="false" aria-label="Select cell" class="execution svelte-1ig84k" title="Select cell · Shift selects a range · Ctrl/Cmd toggles selection">[ ]</button> from <div class="cell-input svelte-1ig84k source-mode">…</div> subtree intercepts pointer events
+         - retrying move and down action
+           - waiting 500ms
+
+
+      154 |     await markdownEditor.press('Escape');
+      155 |     await page.locator('[data-cell-id="use"]').getByRole('button', { name: 'Drag to move cell' })
+    > 156 |       .dragTo(markdown, { targetPosition: { x: 40, y: 5 } });
+          |        ^
+      157 |     await expect(page.locator('.notebook-cell').first()).toHaveAttribute('data-cell-id', 'use');
+      158 |     await page.getByRole('button', { name: 'Undo cell operation', exact: true }).click();
+      159 |     await expect(page.locator('.notebook-cell').first()).toHaveAttribute('data-cell-id', 'intro');
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/notebook/notebook.spec.ts:156:8
+
+    Error Context: ../../reports/notebook-vscode-implementation-2026-10-30/initial/notebook-notebook-notebook-11185-retain-Undo-across-deletion/error-context.md
+
+
+(node:1083909) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[3/14] test/e2e/notebook/notebook.spec.ts:189:1 › unsupported notebook versions remain read-only and byte-identical
+test/e2e/notebook/notebook.spec.ts:189:1 › unsupported notebook versions remain read-only and byte-identical
+notebook process: Waiting for the debugger to disconnect...
+
+
+[4/14] test/e2e/notebook/notebook.spec.ts:206:1 › long cells grow with their contents and scroll only the notebook, including keyboard navigation
+[5/14] test/e2e/notebook/notebook.spec.ts:244:39 › long notebook cells meet the scroll viewport without a blank strip at 100% app zoom
+[6/14] test/e2e/notebook/notebook.spec.ts:244:39 › long notebook cells meet the scroll viewport without a blank strip at 130% app zoom
+[7/14] test/e2e/notebook/notebook.spec.ts:244:39 › long notebook cells meet the scroll viewport without a blank strip at 90% app zoom
+[8/14] test/e2e/notebook/notebook.spec.ts:315:1 › Python cells run in one kernel, persist results, and reset discards variables
+  3) test/e2e/notebook/notebook.spec.ts:315:1 › Python cells run in one kernel, persist results, and reset discards variables 
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator:  locator('.kernel-state')
+    Expected: "idle"
+    Received: "idle"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveText" locator('.kernel-state') with timeout 5000ms
+      - waiting for locator('.kernel-state')
+        14 × locator resolved to <span role="status" title="Kernel idle" aria-label="Kernel idle" class="kernel-state svelte-yxkx1d">…</span>
+           - unexpected value "idle"
+
+
+      332 |     const cell = page.locator('[data-cell-id="use"]');
+      333 |     await expect(cell.locator('.notebook-outputs')).toContainText('10', { timeout: 60_000 });
+    > 334 |     await expect(page.locator('.kernel-state')).toHaveText('idle');
+          |                                                 ^
+      335 |     await expect(cell.locator('.execution')).toHaveText('[2]');
+      336 |     await page.keyboard.press('Control+s');
+      337 |     await expect.poll(async () => JSON.parse(await readFile(file, 'utf8')).cells[2].outputs[0]?.text).toContain('10');
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/notebook/notebook.spec.ts:334:49
+
+    Error Context: ../../reports/notebook-vscode-implementation-2026-10-30/initial/notebook-notebook-Python-c-169b3-nd-reset-discards-variables/error-context.md
+
+
+(node:1086164) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[9/14] test/e2e/notebook/notebook.spec.ts:365:1 › native notebook analysis uses lightweight diagnostics with IPython and isolated cell ranges
+test/e2e/notebook/notebook.spec.ts:365:1 › native notebook analysis uses lightweight diagnostics with IPython and isolated cell ranges
+
+
+
+
+  4) test/e2e/notebook/notebook.spec.ts:365:1 › native notebook analysis uses lightweight diagnostics with IPython and isolated cell ranges 
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator:  locator('.kernel-state')
+    Expected: "idle"
+    Received: "idle"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveText" locator('.kernel-state') with timeout 5000ms
+      - waiting for locator('.kernel-state')
+        14 × locator resolved to <span role="status" title="Kernel idle" aria-label="Kernel idle" class="kernel-state svelte-yxkx1d">…</span>
+           - unexpected value "idle"
+
+
+      406 |     await page.getByRole('button', { name: 'Run all cells', exact: true }).click();
+      407 |     await expect(page.locator('[data-cell-id="cell1"] .notebook-outputs')).toContainText('42', { timeout: 60_000 });
+    > 408 |     await expect(page.locator('.kernel-state')).toHaveText('idle');
+          |                                                 ^
+      409 |     await page.evaluate(() => { (window as any).marktex.language.close('analysis-probe'); (window as any).marktex.language.close('analysis-other'); });
+      410 |   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
+      411 | });
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/notebook/notebook.spec.ts:408:49
+
+    Error Context: ../../reports/notebook-vscode-implementation-2026-10-30/initial/notebook-notebook-native-n-e2f19-on-and-isolated-cell-ranges/error-context.md
+
+
+(node:1086833) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[10/14] test/e2e/notebook/notebook.spec.ts:413:1 › scrolling preserves focused editors and measured output height; cell copy and reader search keep their scope
+[11/14] test/e2e/notebook/notebook.spec.ts:459:1 › notebook convenience commands preserve data through replace, split, clear and image export
+[12/14] test/e2e/notebook/notebook.spec.ts:514:1 › notebook stdin, variables and restart-all use the live kernel with scoped state
+  5) test/e2e/notebook/notebook.spec.ts:514:1 › notebook stdin, variables and restart-all use the live kernel with scoped state 
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator:  locator('.kernel-state')
+    Expected: "idle"
+    Received: "idle"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveText" locator('.kernel-state') with timeout 5000ms
+      - waiting for locator('.kernel-state')
+        - locator resolved to <span role="status" title="Kernel busy" aria-label="Kernel busy" class="kernel-state svelte-yxkx1d">…</span>
+        - unexpected value "busy"
+        13 × locator resolved to <span role="status" title="Kernel idle" aria-label="Kernel idle" class="kernel-state svelte-yxkx1d">…</span>
+           - unexpected value "idle"
+
+
+      528 |     await page.getByRole('button', { name: 'Run all cells', exact: true }).click();
+      529 |     await page.getByRole('textbox', { name: 'Kernel input' }).fill('한글'); await page.getByRole('button', { name: 'Send input' }).click();
+    > 530 |     await expect(page.locator('.kernel-state')).toHaveText('idle');
+          |                                                 ^
+      531 |     await expect(page.locator('[data-cell-id="use"] .notebook-outputs')).toContainText('250');
+      532 |     await page.getByRole('button', { name: 'Variables', exact: true }).click();
+      533 |     const variables = page.getByRole('region', { name: 'Notebook variables' });
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/notebook/notebook.spec.ts:530:49
+
+    Error Context: ../../reports/notebook-vscode-implementation-2026-10-30/initial/notebook-notebook-notebook-9bfd9-ve-kernel-with-scoped-state/error-context.md
+
+
+(node:1088523) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[13/14] test/e2e/notebook/notebook.spec.ts:545:1 › notebook project extraPaths resolve imports and hover, reload live, and retain real missing-import diagnostics
+[14/14] test/e2e/notebook/notebook.spec.ts:577:1 › VS Code notebook defaults preserve normal table wrapping, horizontal code scroll and command-mode execution focus
+  6) test/e2e/notebook/notebook.spec.ts:577:1 › VS Code notebook defaults preserve normal table wrapping, horizontal code scroll and command-mode execution focus 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 1800
+    Received:   1567
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      610 |     await expect.poll(horizontal).toBeCloseTo(before, 0);
+      611 |     await command('Toggle code word wrap');
+    > 612 |     await expect.poll(() => code.locator('.cell-editor').evaluate(node => node.clientHeight)).toBeGreaterThan(1800);
+          |                                                                                               ^
+      613 |     await command('Toggle code word wrap');
+      614 |     await expect.poll(() => code.locator('.cell-editor').evaluate(node => node.clientHeight)).toBeLessThan(1800);
+      615 |     await code.locator('.execution').click();
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/notebook/notebook.spec.ts:612:95
+
+    Error Context: ../../reports/notebook-vscode-implementation-2026-10-30/initial/notebook-notebook-VS-Code--a4ea4-ommand-mode-execution-focus/error-context.md
+
+
+  6 failed
+    test/e2e/notebook/notebook.spec.ts:16:1 › notebook reading hierarchy keeps content, actions and focus distinct, including narrow split panes 
+    test/e2e/notebook/notebook.spec.ts:112:1 › notebook cells reuse Markdown and Python, preserve outputs on save, and retain Undo across deletion 
+    test/e2e/notebook/notebook.spec.ts:315:1 › Python cells run in one kernel, persist results, and reset discards variables 
+    test/e2e/notebook/notebook.spec.ts:365:1 › native notebook analysis uses lightweight diagnostics with IPython and isolated cell ranges 
+    test/e2e/notebook/notebook.spec.ts:514:1 › notebook stdin, variables and restart-all use the live kernel with scoped state 
+    test/e2e/notebook/notebook.spec.ts:577:1 › VS Code notebook defaults preserve normal table wrapping, horizontal code scroll and command-mode execution focus 
+  8 passed (1.5m)

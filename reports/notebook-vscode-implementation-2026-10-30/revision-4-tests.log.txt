@@ -1,0 +1,76 @@
+
+> @setdown/desktop@1.0.0 test:preview-contract:e2e
+> bash scripts/with-isolated-display.sh playwright test --config playwright.preview-contract.config.ts test/e2e/notebook/notebook.spec.ts --output ../../reports/notebook-vscode-implementation-2026-10-30/revision-4
+
+
+Running 15 tests using 1 worker
+
+(node:1114667) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[1/15] test/e2e/notebook/notebook.spec.ts:16:1 › notebook reading hierarchy keeps content, actions and focus distinct, including narrow split panes
+dbus-daemon[1114639]: [session uid=1000 pid=1114639] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=1114679 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1114639]: [session uid=1000 pid=1114639] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=1114679 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1114639]: [session uid=1000 pid=1114639] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[1114639]: [session uid=1000 pid=1114639] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.3' (uid=1000 pid=1114738 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1114639]: [session uid=1000 pid=1114639] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[1114639]: [session uid=1000 pid=1114639] Activating service name='org.freedesktop.portal.Documents' requested by ':1.3' (uid=1000 pid=1114738 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1114639]: [session uid=1000 pid=1114639] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[1114639]: [session uid=1000 pid=1114639] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.3' (uid=1000 pid=1114738 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[1114639]: [session uid=1000 pid=1114639] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=1114783 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[1114639]: [session uid=1000 pid=1114639] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[1114639]: [session uid=1000 pid=1114639] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[1114639]: [session uid=1000 pid=1114639] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.3' (uid=1000 pid=1114738 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[1114639]: [session uid=1000 pid=1114639] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:1114738): xdg-desktop-portal-WARNING **: 01:24:09.022: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[1114639]: [session uid=1000 pid=1114639] Activating service name='org.freedesktop.secrets' requested by ':1.3' (uid=1000 pid=1114738 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+** Message: 01:24:09.030: couldn't access control socket: /tmp/setdown-display-runtime.uEvvLv/keyring/control: No such file or directory
+discover_other_daemon: 0dbus-daemon[1114639]: [session uid=1000 pid=1114639] Successfully activated service 'org.freedesktop.secrets'
+dbus-daemon[1114639]: [session uid=1000 pid=1114639] Successfully activated service 'org.freedesktop.portal.Desktop'
+[2/15] test/e2e/notebook/notebook.spec.ts:112:1 › notebook cells reuse Markdown and Python, preserve outputs on save, and retain Undo across deletion
+test/e2e/notebook/notebook.spec.ts:112:1 › notebook cells reuse Markdown and Python, preserve outputs on save, and retain Undo across deletion
+notebook process: (node:1115857) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `exe --trace-warnings ...` to show where the warning was created)
+
+
+notebook process: [1115486:1030/012411.938276:ERROR:ui/gfx/x/atom_cache.cc:236] Add application/vnd.portal.filetransfer to kAtomsToCache
+
+
+notebook process: [1115486:1030/012411.938321:ERROR:ui/gfx/x/atom_cache.cc:236] Add application/vnd.portal.files to kAtomsToCache
+
+
+notebook process: Debugger ending on ws://127.0.0.1:35423/5beeab55-6aee-4e3d-ab1e-ac20dd80b014
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[3/15] test/e2e/notebook/notebook.spec.ts:189:1 › unsupported notebook versions remain read-only and byte-identical
+test/e2e/notebook/notebook.spec.ts:189:1 › unsupported notebook versions remain read-only and byte-identical
+notebook process: Waiting for the debugger to disconnect...
+Debugger ending on ws://127.0.0.1:35505/11cb29be-689b-4542-80fe-537b9ad93880
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[4/15] test/e2e/notebook/notebook.spec.ts:206:1 › long cells grow with their contents and scroll only the notebook, including keyboard navigation
+[5/15] test/e2e/notebook/notebook.spec.ts:244:39 › long notebook cells meet the scroll viewport without a blank strip at 100% app zoom
+[6/15] test/e2e/notebook/notebook.spec.ts:244:39 › long notebook cells meet the scroll viewport without a blank strip at 130% app zoom
+[7/15] test/e2e/notebook/notebook.spec.ts:244:39 › long notebook cells meet the scroll viewport without a blank strip at 90% app zoom
+[8/15] test/e2e/notebook/notebook.spec.ts:315:1 › Python cells run in one kernel, persist results, and reset discards variables
+[9/15] test/e2e/notebook/notebook.spec.ts:365:1 › native notebook analysis uses lightweight diagnostics with IPython and isolated cell ranges
+test/e2e/notebook/notebook.spec.ts:365:1 › native notebook analysis uses lightweight diagnostics with IPython and isolated cell ranges
+
+
+
+
+[10/15] test/e2e/notebook/notebook.spec.ts:413:1 › scrolling preserves focused editors and measured output height; cell copy and reader search keep their scope
+[11/15] test/e2e/notebook/notebook.spec.ts:459:1 › notebook convenience commands preserve data through replace, split, clear and image export
+[12/15] test/e2e/notebook/notebook.spec.ts:514:1 › notebook stdin, variables and restart-all use the live kernel with scoped state
+[13/15] test/e2e/notebook/notebook.spec.ts:545:1 › notebook project extraPaths resolve imports and hover, reload live, and retain real missing-import diagnostics
+[14/15] test/e2e/notebook/notebook.spec.ts:577:1 › VS Code notebook defaults preserve normal table wrapping, horizontal code scroll and command-mode execution focus
+[15/15] test/e2e/notebook/notebook.spec.ts:660:1 › opening and switching notebooks and Markdown Escape never paint raw preview source
+  15 passed (34.2s)

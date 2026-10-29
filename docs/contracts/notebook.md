@@ -13,16 +13,24 @@ selection and text Undo. Structural Undo is separate. No native browser view is
 created per cell. Markdown fragments reuse the existing serialized Crossnote
 worker and are sanitized before entering the shell. A late fragment must not
 replace a newer source revision. Escape returns a Markdown cell to its latest
-preview while respecting composition and Monaco popup ownership.
+preview while respecting composition and Monaco popup ownership. The first frame
+on opening or reactivating a notebook waits for viewport observation, mounted
+code editors and current visible Markdown. Raw Markdown is never used as a
+transient preview. Escape keeps the editor until the current revision is rendered;
+late requests cannot dismiss a newer edit. `notebook.spec.ts` samples animation
+frames across initial load, a new notebook, return to a retained tab, and edited
+Markdown Escape to check that raw/empty preparation frames are not presented.
 
-Logical code-cell heights follow the full wrapped content at the current width and
-zoom. There is no 600px cell or output height cap. Notebook scrolling owns wheel
+Logical code-cell heights follow the full content at the current width, wrap setting
+and zoom. Code defaults to no wrapping; an explicit command enables wrapping. There is no 600px cell or output height cap. Notebook scrolling owns wheel
 input over code and keyboard caret reveal; shrinking/Undo and view restoration
 must not leave an independent editor scroll offset. Monaco renders a viewport-sized
 sticky inner editor whose offset follows the outer scroll; its full logical height
 is reserved. Document start/end spacing scrolls with the content and must not
 inset the sticky editor's viewport. The editor's internal offset follows its actual
-position inside the logical cell, including the clamp at the cell's end. Scrolling
+position inside the logical cell, including the clamp at the cell's end. Fractional
+CSS geometry at noninteger app zoom is reconciled with Monaco's integer scroll
+offset without moving the outer viewport or altering the logical content height. Scrolling
 through a long cell must not leave a blank strip below the section heading or
 shift visible lines from their logical positions. `notebook.spec.ts` checks both
 viewport edges and line coordinates at 90%, 100% and 130% app zoom, after resizing
@@ -73,40 +81,55 @@ The separate real-kernel integration test is
 `python3 apps/desktop/test/notebook/kernel-bridge.test.py`; it requires
 `ipykernel` and `jupyter_client` and loopback socket access.
 
-## Reading and interaction hierarchy — 2026-10-19
+## Reading and interaction hierarchy — 2026-10-30
 
-Notebook prose and HTML tables use the local system UI/content font stack;
-code, inline code, raw text, logs and tracebacks retain D2Coding. Math retains
-its renderer font. Reading paragraphs have a 40em maximum measure, while code,
-tables and figures can use the available pane width. Rendered Markdown has no
-card header or border. A left indicator identifies selection; only the editor
-with input focus paints its current-line highlight and focus outline.
+The notebook adopts VS Code's compact layout and renderer hierarchy (studied at
+commit `2d0b7506a36c1d6db9a466440131a8e01eab2289`). This intentionally replaces the
+2026-10-19 reading measure and permanent output-action footer.
 
-Run, execution count and a dedicated drag handle occupy the left gutter.
-Structural actions appear at the cell boundary on hover, selection or keyboard
-focus without changing cell height. Output actions share a footer after the
-result, preserving the connection between code and result. Critical execution,
-error and earlier-source-output states remain visible independently of hover.
-An earlier-source notice only compares that cell's source with its recorded
-execution source; it is not proof of dependency or kernel freshness.
+Code, inline code and plain output use Monaco's platform-default monospace font;
+prose, rich HTML and notebook controls use the system UI font. Markdown is 1.2 times
+the code size and uses the available cell width. Rich HTML uses the base size,
+normal word breaking, natural table sizing and an output-local horizontal scrollbar.
+Table headings and row labels wrap at normal boundaries; narrow panes must not
+split words into individual letters to avoid horizontal scrolling. Author CSS is
+still stripped. These display rules never modify output bundles on disk.
 
-Output HTML remains sanitized, including removal of authored CSS. App-owned
-table styles and numeric-cell alignment do not alter stored outputs or values.
-Narrow panes retain primary commands and the environment picker; secondary
-commands remain reachable through Commands. The full environment path remains
-in the native selection list and picker tooltip. Keyboard editing, text
-selection, popup Escape ownership, IME, structural Undo, full logical heights,
-and offscreen output placeholders remain governed by the guarantees above.
+The compact left margin/run gutter is 8px + 36px, the right margin is 16px.
+Code padding is 12px above and 4px below, with a stable 22px status/language slot.
+Execution count stays in the gutter beside that slot. Cell actions use Codicons,
+appear at the upper right on hover/selection/focus, and do not change geometry.
+Less frequent cell actions and output actions use keyboard-accessible popovers;
+output actions sit beside their result without a reserved footer. Insert controls
+appear between cells without changing height on hover. The global toolbar stays
+on one row; commands and the kernel picker remain reachable in split panes.
 
-`theme-catalog.test.ts` verifies at least 4.5:1 contrast for comments and default
-editor text against every editor background. `notebook.spec.ts` covers the
-reading layout, output formats, numeric alignment, hover geometry, focused
-highlight, keyboard editing and narrow split controls alongside existing
-IME, long-cell, output-height, execution and Undo scenarios.
+Code wrapping, output wrapping, line numbers and sticky headings default off.
+Notebook commands toggle each independently. Full logical heights, outer vertical
+scroll ownership and viewport-sized editors remain required in both wrap modes;
+horizontal source scrolling must survive outer vertical scrolling. Shift+Enter
+selects an existing next cell in command mode; at the end it creates a same-kind
+cell (Markdown or code) and enters editing. Alt+Enter creates a code cell below.
+Find still leaves input focus intact. Cell/output popover keys never become cell
+commands; Escape closes the popover and returns focus to its trigger.
 
-Implementation screenshots, measured typography, functional results and the
-separate transition benchmark are recorded in
-[Notebook readability validation](../validation/2026-10-19-notebook-readability.md).
+Selection and input focus remain distinct. Only the focused editor highlights its
+current line. Running, error and earlier-source-output states remain visible
+independently of hover. The earlier-source notice compares the cell's source with
+its recorded execution source; it does not establish dependency/kernel freshness.
+Keyboard editing, selection, popup/IME Escape ownership, structural Undo, output
+placeholders, sanitization and exact serialization retain the guarantees above.
+
+Comments retain at least 4.5:1 contrast against the actual notebook input background
+in all eight themes; the GitHub palettes keep their validated editor background
+instead of adding a tint. The real Electron notebook scenarios cover typography, DataFrame wrapping and
+horizontal overflow, menus, insertion/keyboard focus, output formats, narrow panes,
+IME, long-cell geometry, output-height preservation, execution and Undo.
+Reference research and measured VS Code screenshots are in
+`reports/notebook-vscode-study-2026-10-30/` at the repository root.
+Implementation screenshots, real Electron results (including intermittent Git
+test failures), and the independent preview latency comparison are recorded in
+[the notebook implementation validation](../../reports/notebook-vscode-implementation-2026-10-30/index.html).
 
 ## Historical notebook validation — 2026-10-16
 
