@@ -7,7 +7,7 @@
   import { documentLanguage } from '../../../core/document/document-profile';
   import type { GitDiff } from '../../../protocol/desktop-api';
   import type { AppActions } from '../../ports/ui-actions';
-  import { monacoThemeName, registerMonacoThemes } from '../../theme';
+  import { applyMonacoTheme, monacoThemeName, registerMonacoThemes } from '../../theme';
   import { CompositionGuard } from '../../editor/composition-guard';
   import { liveDocumentModels, type ModelLease } from '../../editor/live-document-model';
   import type { project as ProjectState } from '../project-state.svelte';
@@ -95,6 +95,7 @@
     if (api) return Promise.resolve(api);
     apiPromise ??= loadMonaco().then(monaco => {
       registerMonacoThemes(monaco);
+      applyMonacoTheme(monaco, normalizePreviewTheme(document.documentElement.dataset.theme));
       api = monaco;
       return monaco;
     });

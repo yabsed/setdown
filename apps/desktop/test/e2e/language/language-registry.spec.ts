@@ -19,7 +19,8 @@ test('the language sidebar searches all discoverable servers, shows language log
   const application = await electron.launch({ args: ['.', file], env: { ...env, HOME: root,
     XDG_CONFIG_HOME: path.join(root, 'config'), PATH: '', CONDA_PREFIX: '', VIRTUAL_ENV: '',
     CARGO_HOME: path.join(root, '.cargo'), GOPATH: path.join(root, 'go'), GOBIN: '',
-    PIPX_BIN_DIR: '', UV_TOOL_BIN_DIR: '', XDG_BIN_HOME: '', SETDOWN_LSP_INHERIT_ENV: '1' } });
+    PIPX_BIN_DIR: '', UV_TOOL_BIN_DIR: '', XDG_BIN_HOME: '', npm_config_prefix: '', NPM_CONFIG_PREFIX: '',
+    SETDOWN_LSP_INHERIT_ENV: '1' } });
   try {
     const page = await application.firstWindow(); await focusApplication(application);
     await page.getByRole('button', { name: 'Edit', exact: true }).click();

@@ -69,6 +69,7 @@
       "src/renderer/language/language-client.test.ts",
       "src/renderer/language/language-features.test.ts",
       "src/renderer/language/language-presentation.test.ts",
+      "src/renderer/language/textmate-runtime.test.ts",
       "src/renderer/notebook/notebook-controller.test.ts",
       "src/renderer/notebook/notebook-execution.test.ts",
       "src/renderer/notebook/notebook-language.test.ts",
@@ -188,6 +189,7 @@
     "git/verified-review-position.spec.ts": {
       "previewContract": true
     },
+    "language/syntax-highlighting.spec.ts": { "previewContract": true },
     "language/clangd-support.spec.ts": {
       "previewContract": true
     },

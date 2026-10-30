@@ -1,6 +1,8 @@
 import type * as Monaco from 'monaco-editor';
 import type { PreviewThemeId } from '../core/preview/preview-preferences';
 import { vscodeMonacoTheme } from './editor/vscode-monaco-theme';
+import { syntaxThemeRules } from './language/syntax-themes';
+import { setSyntaxTheme } from './language/syntax-runtime';
 import {
   THEME_PROFILES,
   themeProfile,
@@ -32,13 +34,18 @@ const SHELL_THEME_VARIABLES: Record<keyof ThemePalette, string> = {
 
 export const monacoThemeName = (themeId: PreviewThemeId) => `setdown-${themeId}`;
 
+export function applyMonacoTheme(monaco: typeof Monaco, themeId: PreviewThemeId): void {
+  const name = monacoThemeName(themeId);
+  setSyntaxTheme(name); monaco.editor.setTheme(name);
+}
+
 export function registerMonacoThemes(monaco: typeof Monaco) {
   const withAlpha = (color: string, alpha: string) => (
     /^#[0-9a-f]{6}$/i.test(color) ? `${color}${alpha}` : color
   );
   for (const { id, appearance, palette, syntax } of THEME_PROFILES) {
     if (id === 'vscode-dark-2026') {
-      monaco.editor.defineTheme(monacoThemeName(id), vscodeMonacoTheme);
+      monaco.editor.defineTheme(monacoThemeName(id), { ...vscodeMonacoTheme, rules: [...vscodeMonacoTheme.rules, ...syntaxThemeRules(monacoThemeName(id))] });
       continue;
     }
     const dark = appearance === 'dark';
@@ -93,6 +100,7 @@ export function registerMonacoThemes(monaco: typeof Monaco) {
         { token: 'markup.heading.markdown', foreground: syntax.heading.slice(1), fontStyle: 'bold' },
         { token: 'markup.inline.raw.markdown', foreground: syntax.code.slice(1) },
         { token: 'delimiter', foreground: syntax.punctuation.slice(1) },
+        ...syntaxThemeRules(monacoThemeName(id)),
       ],
     });
   }

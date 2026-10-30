@@ -1,6 +1,7 @@
 import type * as Monaco from 'monaco-editor';
 import { createLanguageWorker, installBuiltinDiagnostics } from '../language/language-runtime';
 import { installEditorTools } from './tools/tools-runtime';
+import { installSyntaxHighlighting } from '../language/syntax-runtime';
 
 let loading: Promise<typeof Monaco> | undefined;
 /** All editor surfaces share one worker dispatcher. Language workers are loaded
@@ -15,6 +16,7 @@ export function loadMonaco(): Promise<typeof Monaco> {
     installMonacoContextMenus();
     installBuiltinDiagnostics(api);
     installEditorTools(api);
+    installSyntaxHighlighting(api);
     return api;
   }).catch(error => { loading = undefined; throw error; });
 }

@@ -54,11 +54,12 @@ for (const surface of ['text', 'notebook'] as const) test(`Monaco ${surface} con
     await expect(menu).toBeHidden();
     await expect(f.page.locator('.quick-input-widget')).toBeVisible();
     await f.page.keyboard.press('Escape');
+    await expect(f.page.locator('.quick-input-widget')).toBeHidden();
     await expect.poll(nativeVisible).toBe(true);
     await expect(frozen).toHaveCount(0);
     expect(await evaluatePage(f.app, f.origin, '({identity:window.__menuIdentity, draft:document.querySelector("#draft").value})')).toEqual({ identity, draft: 'Unsaved draft' });
 
-    const input = editor.getByRole('textbox');
+    const input = editor.getByRole('textbox', { name: surface === 'notebook' ? 'Code cell editor' : 'Editor content', exact: true });
     await input.focus(); await input.press('Shift+F10');
     await expect(menu).toBeVisible(); await expect.poll(nativeVisible).toBe(false);
     await f.page.keyboard.press('Escape');

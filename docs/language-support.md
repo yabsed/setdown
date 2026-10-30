@@ -84,6 +84,35 @@ republish. Versionless push is explicitly best-effort, never assigned a fabricat
 analysis version. An empty Problems list means no diagnostics were reported, not
 that every possible check ran successfully.
 
+## Syntax colors without a server
+
+Svelte files now have local TextMate syntax highlighting through Shiki. Opening
+`.svelte` automatically colors tags, attributes, template blocks, expressions,
+JavaScript/TypeScript inside `<script>`, and CSS inside `<style>`, including Svelte
+5 rune expressions. No language server, project installation or setting is needed
+for these colors. The optional Svelte language server still supplies diagnostics,
+completion, navigation and semantic tokens; semantic colors overlay lexical colors.
+
+The shared grammar registry in `renderer/language/syntax-runtime.ts` declares a
+language ID, file associations and a lazy grammar import. Adding another grammar
+does not require a branch in each editor surface. Monaco's existing tokenizers
+remain in place for Python, JavaScript/TypeScript, Markdown and other built-in
+languages. Svelte is the first registered TextMate language; arbitrary imported
+LSP profiles do not automatically install their syntax grammars. Additional
+preprocessors such as Pug and SCSS inside Svelte need their own embedded grammars.
+
+The engine, Oniguruma WASM and Svelte grammar are bundled local assets, loaded on
+first Svelte use. Opening only Markdown or Python does not load them. All nine app
+themes supply corresponding TextMate colors, including the pinned VS Code Dark
+2026 rules. Namespaced token rules preserve existing Monaco and LSP colors.
+Ordinary editors, split groups and both Git comparison models share the same
+provider; changing the theme retokenizes without replacing document models or
+their Undo histories. The upstream adapter's 20,000-character line cutoff and
+500 ms soft tokenization time budget limit lexical work; a skipped oversized
+line keeps its incoming grammar state and can temporarily affect following colors.
+
+Implementation and execution evidence: [Svelte syntax highlighting validation](validation/2026-10-30-svelte-syntax-highlighting.md).
+
 ## Project environments and recovery
 
 The current file’s language button now includes **Project environment**. Select

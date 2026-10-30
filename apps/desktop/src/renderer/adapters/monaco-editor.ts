@@ -14,7 +14,7 @@ import type { WorkingTreeEdit } from '../../core/document/text-edit';
 import { readEditorViewport } from '../editor/editor-viewport';
 import { DocumentModelOwner, liveDocumentModels } from '../editor/live-document-model';
 import { installMarkdownEditorActions } from '../editor/markdown-editor-actions';
-import { monacoThemeName, registerMonacoThemes } from '../theme';
+import { applyMonacoTheme, monacoThemeName, registerMonacoThemes } from '../theme';
 import { languageSupport, type LanguageRoute } from '../../core/document/language-support';
 import type { LanguageOptions } from '../language/language-client';
 import type { LanguageServices } from '../language/language-services';
@@ -148,6 +148,7 @@ export class MonacoEditor {
     this.loading = loadMonaco().then(api => {
       this.apiValue = api;
       registerMonacoThemes(api);
+      applyMonacoTheme(api, this.options.theme());
       // Keep Markdown's complete editor configuration unchanged. Syntax selection
       // lives on each model; introducing text tabs cannot leak different wrapping.
       this.selectGroup(this.groupId);
@@ -336,7 +337,7 @@ export class MonacoEditor {
     if (path) liveDocumentModels.publish({ type: 'closed', path });
   }
   clear(): void { this.editorValue?.setModel(null); }
-  setTheme(theme: PreviewThemeId): void { window.dispatchEvent(new CustomEvent('setdown:notebook-theme', { detail: theme })); this.apiValue?.editor.setTheme(monacoThemeName(theme)); }
+  setTheme(theme: PreviewThemeId): void { window.dispatchEvent(new CustomEvent('setdown:notebook-theme', { detail: theme })); if (this.apiValue) applyMonacoTheme(this.apiValue, theme); }
   layout(): void { this.editorValue?.layout(); }
   restoreView(tab: WorkspaceTab): void {
     const editor = this.editorValue;

@@ -651,3 +651,22 @@ CMake/Meson preparation unit/integration checks. Existing focus/IME, ordinary an
 Git-review transition guarantees and benchmark tolerances are unchanged.
 
 Execution evidence: [Builder analysis environment implementation](validation/2026-10-30-builder-analysis-environments.md).
+
+## Lazy TextMate syntax highlighting — 2026-10-30
+
+`renderer/language/syntax-runtime.ts` owns local grammar associations and lazy
+activation; `textmate-runtime.ts` owns the shared Shiki/Oniguruma engine and
+per-language tokenization. `syntax-themes.ts` maps existing app palettes into
+namespaced syntax rules; `renderer/theme.ts` applies one theme to both engines.
+The lexical engine and Svelte grammar must remain absent when opening only
+Markdown or Python. Existing Monarch and LSP providers retain their own rules.
+Theme changes must preserve document models, selections and Undo histories.
+
+The contract includes `textmate-runtime.test.ts` and
+`language/syntax-highlighting.spec.ts`: real grammar state continuity, all theme
+mappings, actual no-server Svelte colors, lazy asset loading, unchanged Python
+colors, LSP semantic overlays, Undo/Redo, and both Git comparison models in a
+split workspace. The ordinary/review focus, IME, latest-content and timing
+guarantees and tolerances remain unchanged.
+
+Execution evidence: [Svelte syntax highlighting validation](validation/2026-10-30-svelte-syntax-highlighting.md).

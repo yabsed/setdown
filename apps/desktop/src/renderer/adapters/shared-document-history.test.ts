@@ -6,7 +6,7 @@ import { MonacoEditor } from './monaco-editor';
 import { liveDocumentModels } from '../editor/live-document-model';
 import { DEFAULT_PREVIEW_THEME } from '../../core/preview/preview-preferences';
 
-vi.mock('../theme', () => ({ monacoThemeName: () => 'test', registerMonacoThemes() {} }));
+vi.mock('../theme', () => ({ monacoThemeName: () => 'test', registerMonacoThemes() {}, applyMonacoTheme() {} }));
 vi.mock('../editor/markdown-editor-actions', () => ({ installMarkdownEditorActions() {} }));
 vi.mock('../editor/editor-viewport', () => ({ readEditorViewport() {} }));
 

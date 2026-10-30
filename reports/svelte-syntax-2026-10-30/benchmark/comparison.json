@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "startedAt": "2026-10-30T12:55:08.632Z",
+  "runs": 5,
+  "thresholds": {
+    "relative": 0.25,
+    "absoluteMs": 50
+  },
+  "harness": "candidate; same tests for both apps; five cycles per fresh process",
+  "measurement": "Escape keydown to latest-content nonempty native capture; includes polling/IPC/readback, not monitor presentation",
+  "fixtureHash": "a0ce32593f31ce0b79bc63e3867c0a227532954c45d50c92e2dfdc5518541314",
+  "harnessHash": "e28b096e76be9bedf3c5f060e37b791aea029b07c744cfa5def4d232b0f53b5d",
+  "machine": {
+    "hostname": "fedora",
+    "platform": "linux",
+    "release": "7.2.10-200.fc44.x86_64",
+    "arch": "x64",
+    "cpu": "AMD Ryzen 7 8845HS w/ Radeon 780M Graphics",
+    "cpus": 16,
+    "node": "v22.23.1",
+    "display": ":99"
+  },
+  "baseline": {
+    "root": "/tmp/setdown-syntax-baseline-109c9bc",
+    "commit": "109c9bcd966ccc5e3cfb93b2fcd8328f5e65d47c",
+    "status": "",
+    "diffHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "lockHash": "a041c36f087eb571c6f2833042e5f8d0422c1da2e0175e733215d66bca68d766",
+    "electron": "44.7.2"
+  },
+  "candidate": {
+    "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer",
+    "commit": "109c9bcd966ccc5e3cfb93b2fcd8328f5e65d47c",
+    "status": "M apps/desktop/package.json\n M apps/desktop/src/renderer/adapters/monaco-editor.ts\n M apps/desktop/src/renderer/adapters/shared-document-history.test.ts\n M apps/desktop/src/renderer/editor/monaco-runtime.ts\n M apps/desktop/src/renderer/notebook/NotebookSurface.svelte\n M apps/desktop/src/renderer/project/source-control/GitDiffEditor.svelte\n M apps/desktop/src/renderer/theme.ts\n M apps/desktop/test/e2e/browser/menus.spec.ts\n M apps/desktop/test/e2e/language/language-registry.spec.ts\n M apps/desktop/test/suites.json\n M apps/desktop/test/support/architecture/import-graph.ts\n M docs/language-support.md\n M docs/preview-performance-contract.md\n M package-lock.json\n?? apps/desktop/src/renderer/language/syntax-runtime.ts\n?? apps/desktop/src/renderer/language/syntax-themes.ts\n?? apps/desktop/src/renderer/language/textmate-runtime.test.ts\n?? apps/desktop/src/renderer/language/textmate-runtime.ts\n?? apps/desktop/test/e2e/language/syntax-highlighting.spec.ts\n?? docs/validation/2026-10-30-svelte-syntax-highlighting.md\n?? reports/svelte-syntax-2026-10-30/",
+    "diffHash": "699cbbbd8948b3c1b3fd6f047062210ac1050b5ee8675de25bb1ddd87cd44dfd",
+    "lockHash": "6592a07a8f90d32ba3f5c9cea4b1fb3e8104b82a992ab09be46c05e8b23f39a3",
+    "electron": "44.7.2"
+  },
+  "order": [],
+  "measurements": {
+    "baseline": [],
+    "candidate": []
+  }
+}
