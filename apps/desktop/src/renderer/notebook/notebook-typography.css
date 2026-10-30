@@ -11,7 +11,7 @@
 }
 /* These palettes have little spare comment contrast. Keep their validated
    editor background instead of shading the cell toward its foreground. */
-:root:is([data-theme="github-light"], [data-theme="github-dark"]) .notebook-surface { --notebook-input-background: var(--app-editor-background); }
+:root:is([data-theme="github-light"], [data-theme="github-dark"], [data-theme="github-dark-high-contrast"], [data-theme="night-owl"], [data-theme="dracula"]) .notebook-surface { --notebook-input-background: var(--app-editor-background); }
 .notebook-surface .notebook-prose { font-family: var(--notebook-ui-font); font-size: 1.2em; line-height: 1.5; overflow-wrap: break-word; }
 .notebook-prose :is(h1, h2, h3, h4, h5, h6) { line-height: 1.2; font-weight: 400; margin: 1em 0 .5em; }
 .notebook-prose h1 { font-size: 2.3em; }

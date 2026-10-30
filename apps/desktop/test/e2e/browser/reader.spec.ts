@@ -273,6 +273,12 @@ test('reader toolbar and wheel use tab text zoom independently of other Markdown
     await expect(websiteReset).toHaveText('110%');
     await f.page.getByRole('button', { name: 'Zoom website in', exact: true }).click();
     await expect(websiteReset).toHaveText('120%');
+    // Shell zoom controls exist before native navigation commits. Wait for
+    // the actual form before writing it; keep all zoom/identity assertions.
+    await expect.poll(() => f.app.evaluate(async ({ webContents }, origin) => {
+      const page = webContents.getAllWebContents().find(page => page.getURL() === `${origin}/article`);
+      return page ? page.executeJavaScript('!!document.querySelector("#draft")') : false;
+    }, f.origin)).toBe(true);
     await evaluatePage(f.app, f.origin, "document.querySelector('#draft').value = 'keep zoom state'");
     await enter.click();
     const reader = f.page.getByRole('region', { name: 'Reader mode', exact: true });

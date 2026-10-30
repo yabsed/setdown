@@ -1,6 +1,6 @@
 import type * as Monaco from 'monaco-editor';
 import type { PreviewThemeId } from '../core/preview/preview-preferences';
-import { vscodeMonacoTheme } from './editor/vscode-monaco-theme';
+import { communityMonacoTheme, vscodeMonacoTheme } from './editor/vscode-monaco-theme';
 import { syntaxThemeRules } from './language/syntax-themes';
 import { setSyntaxTheme } from './language/syntax-runtime';
 import {
@@ -43,9 +43,14 @@ export function registerMonacoThemes(monaco: typeof Monaco) {
   const withAlpha = (color: string, alpha: string) => (
     /^#[0-9a-f]{6}$/i.test(color) ? `${color}${alpha}` : color
   );
-  for (const { id, appearance, palette, syntax } of THEME_PROFILES) {
+  for (const { id, appearance, palette, syntax, vscodeTheme } of THEME_PROFILES) {
     if (id === 'vscode-dark-2026') {
       monaco.editor.defineTheme(monacoThemeName(id), { ...vscodeMonacoTheme, rules: [...vscodeMonacoTheme.rules, ...syntaxThemeRules(monacoThemeName(id))] });
+      continue;
+    }
+    if (vscodeTheme) {
+      const theme = communityMonacoTheme(vscodeTheme);
+      monaco.editor.defineTheme(monacoThemeName(id), { ...theme, rules: [...theme.rules, ...syntaxThemeRules(monacoThemeName(id))] });
       continue;
     }
     const dark = appearance === 'dark';
@@ -111,12 +116,13 @@ export function applyShellTheme(themeId: PreviewThemeId) {
   const root = document.documentElement;
   root.dataset.theme = profile.id;
   root.dataset.appearance = profile.appearance;
+  root.dataset.vscodeTheme = String(!!profile.workbenchColors);
   root.style.colorScheme = profile.appearance;
   root.style.setProperty('--preview-background', profile.preview.background);
   for (const [name, value] of Object.entries(profile.palette)) {
     root.style.setProperty(SHELL_THEME_VARIABLES[name as keyof ThemePalette], value);
   }
-  // Component-specific VS Code roles are scoped to its new theme. Clear them
+  // Component-specific VS Code roles belong to imported themes. Clear them
   // when returning to an existing theme, including native shell menu overlays.
   for (const name of Array.from(root.style)) if (name.startsWith('--vscode-')) root.style.removeProperty(name);
   for (const [name, value] of Object.entries(profile.workbenchColors ?? {})) {

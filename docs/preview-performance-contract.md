@@ -158,6 +158,19 @@ showing/replacing the native view, and is removed when selecting another theme.
 identity, Undo, menu selection and restart persistence; existing all-theme
 notebook, terminal and browser scenarios include the new choice.
 
+GitHub Dark High Contrast, Night Owl and Dracula are additional imported choices.
+Pinned upstream JSON, original licenses and adaptation notices live beside the
+VS Code snapshot. Their workbench, ANSI and ordered token palettes feed shell,
+Monaco lexical/LSP roles, lazy TextMate grammars and ordinary/Git Markdown
+readers; missing app roles use colors from the same palette. Night Owl and
+Dracula comment tokens are brightened to retain the existing 4.5:1 notebook/editor
+guarantee. Existing choices and the default remain unchanged. Switching between
+imports updates the retained reader stylesheet, including while hidden; selecting
+a legacy palette removes it. Theme changes preserve native/editor/terminal/page
+identity, focus, unsaved content and Undo. The workspace theme and Git document
+style E2E tests cover these transitions, colors and restart persistence; the
+existing all-theme notebook, browser and terminal checks include all three.
+
 Browser coarse Ctrl+wheel changes website zoom from 50% to 300% in 10-point steps;
 fine pixel input changes it continuously within those same limits.
 The isolated page preload registers the bounded wheel accumulator in each

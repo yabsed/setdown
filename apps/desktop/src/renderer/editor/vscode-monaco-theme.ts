@@ -1,3 +1,4 @@
+import { vscodeToken, type VscodeTheme } from '../../core/theme/vscode-token';
 import type { editor } from 'monaco-editor';
 import { vscodeDark2026Colors, vscodeDark2026Token, vscodeDark2026SemanticColors } from '../../core/theme/vscode-dark-2026';
 
@@ -37,3 +38,14 @@ export const vscodeMonacoTheme: editor.IStandaloneThemeData = {
     ...Object.entries(vscodeDark2026SemanticColors).map(([token, color]) => ({ token, foreground: color.slice(1) })),
   ],
 };
+
+export function communityMonacoTheme(theme: VscodeTheme): editor.IStandaloneThemeData {
+  const foreground = theme.colors['editor.foreground'].slice(1);
+  return { base: 'vs-dark', inherit: true, colors: { ...theme.colors }, rules: [
+    { token: '', foreground, fontStyle: '' },
+    ...Object.entries({ ...scopes, delimiter: 'punctuation', operator: 'keyword.operator' }).map(([token, scope]) => {
+      const style = vscodeToken(theme, scope);
+      return { token, foreground: style.foreground?.slice(1) ?? foreground, fontStyle: style.fontStyle ?? '' };
+    }),
+  ] };
+}

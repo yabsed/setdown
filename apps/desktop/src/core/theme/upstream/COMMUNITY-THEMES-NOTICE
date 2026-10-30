@@ -1,0 +1,37 @@
+Community VS Code themes for Setdown
+
+GitHub Dark High Contrast
+Original: https://github.com/primer/github-vscode-theme
+Copyright (c) 2020 Primer. MIT; see GITHUB-THEME-LICENSE.
+Compiled source: shikijs/textmate-grammars-themes, packages/tm-themes/themes/github-dark-high-contrast.json
+Git blob: 77d97f26dbaf4d055a16ee86ee0ffeca7416a70b
+
+Dracula
+Original: https://github.com/dracula/visual-studio-code
+MIT; see DRACULA-LICENSE for the original copyright notice.
+Compiled source: shikijs/textmate-grammars-themes, packages/tm-themes/themes/dracula.json
+Git blob: 2172cba9ad7577d524d4ee0e25755d502d7662b0
+
+The two compiled JSON snapshots above are distributed by
+https://github.com/shikijs/textmate-grammars-themes under MIT (SHIKI-THEMES-LICENSE).
+Their immutable blobs are available through the repository's Git blobs API.
+No extension code is loaded or executed by Setdown.
+
+Night Owl
+Original: https://github.com/sdras/night-owl-vscode-theme
+Commit: cc291eba7976b20d7c66bde6883c27b902196b07
+Source: themes/Night Owl-color-theme.json
+Git blob: 729b426531cb574f5d9c8dd425209c83a8103056
+MIT; see NIGHT-OWL-LICENSE for the original copyright notice.
+
+All three JSON snapshots retain upstream values. community-themes.ts filters
+non-string/null workbench entries, supplies missing UI/reader roles from the
+same palette, and maps lexical/LSP/Prism roles to the ordered token rules.
+Full TextMate selectors are retained for the existing Shiki grammar engine.
+For Setdown's existing >=4.5:1 editor/notebook comment contrast guarantee,
+Night Owl's #637777 becomes #7c9090 and Dracula's #6272A4 becomes #8293bf
+in token rules only. Original terminal ANSI colors are retained; xterm keeps
+its existing 4.5 minimum contrast correction. No upstream default/settings
+code is imported. These adaptations preserve the document layout and fonts.
+Fenced reader code uses each theme's editor background so its syntax colors
+retain the same contrast as source editing.

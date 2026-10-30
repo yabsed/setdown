@@ -42,7 +42,7 @@ test('theme changes use current TextMate rules without replacing existing Monaco
   const create = api.editor.create, setTheme = api.editor.setTheme;
   for (const theme of syntaxThemes) {
     const [, code] = tokenize(['<script lang="ts">', 'const message = "hello";'], theme.name!);
-    expect(code.color('const')).toBeTruthy(); expect(code.color('hello')).toBeTruthy();
+    expect(code.color('const'), theme.name).toBeTruthy(); expect(code.color('hello'), theme.name).toBeTruthy();
     expect(code.color('const')).not.toBe(code.color('hello'));
     expect(code.tokens.every(token => token.scopes.startsWith(syntaxScope('')))).toBe(true);
   }

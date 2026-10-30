@@ -40,6 +40,20 @@ test('VS Code reader colors apply while hidden and retire when returning to an e
   expect(f.sourceAtlas.position).toHaveBeenCalledWith(15, .372);
 });
 
+test('switching imported palettes updates the retained hidden style and clears it on exit', async () => {
+  const f = fixture();
+  f.controller.initialize('github-dark-high-contrast');
+  const style = f.styles[0];
+  for (const [id, background] of [['night-owl', '#011627'], ['dracula', '#282A36'], ['github-dark-high-contrast', '#0a0c10']]) {
+    await f.controller.apply(id, f.urls[0], f.urls[1], true);
+    expect(f.styles).toEqual([style]); expect(style.textContent).toContain(background);
+    expect(f.body.dataset.setdownPreviewTheme).toBe(id);
+    expect(f.frames).toHaveLength(0);
+  }
+  await f.controller.apply('github-light', f.urls[0], f.urls[1], true);
+  expect(f.styles).toHaveLength(0);
+});
+
 test('native hidden theme completion does not wait for frames when DOM visibility says visible', async () => {
   const f = fixture();
   await f.controller.apply('night', f.urls[0], f.urls[1], true);

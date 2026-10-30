@@ -46,7 +46,7 @@ test('VS Code Dark 2026 matches workbench and syntax colors, retains edits and p
     await expect(page.locator('.view-lines').first()).toContainText('themeEdit');
     await page.getByRole('button', { name: 'View', exact: true }).click();
     await page.locator('[data-menu-item-id="menu-theme"]').hover();
-    await expect(page.locator('[data-menu-item-id^="preview-theme-"]')).toHaveCount(9);
+    await expect(page.locator('[data-menu-item-id^="preview-theme-"]')).toHaveCount(12);
     await expect(page.locator('[data-menu-item-id="preview-theme-vscode-dark-2026"]')).toHaveAttribute('aria-checked', 'true');
     await expect(page.locator('.application-menu-popup')).toHaveCSS('background-color', 'rgb(32, 33, 34)');
     await page.keyboard.press('Escape');
@@ -108,5 +108,75 @@ test('VS Code Dark 2026 colors native Markdown and hidden previews without repla
     await input.press('Escape'); await expect.poll(reading.hasVisible).toBe(true);
     expect(await reading.evaluate('window.__themeIdentity')).toBe(identity);
     await expect.poll(colors).toMatchObject({ background: 'rgb(18, 19, 20)', dark: 'dark', math: 1 });
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
+const communityThemes = [
+  { id: 'github-dark-high-contrast', background: 'rgb(10, 12, 16)', foreground: 'rgb(240, 243, 246)',
+    comment: 'rgb(189, 196, 204)', string: 'rgb(173, 220, 255)', link: 'rgb(113, 183, 255)' },
+  { id: 'night-owl', background: 'rgb(1, 22, 39)', foreground: 'rgb(214, 222, 235)',
+    comment: 'rgb(124, 144, 144)', string: 'rgb(236, 196, 141)', link: 'rgb(130, 170, 255)' },
+  { id: 'dracula', background: 'rgb(40, 42, 54)', foreground: 'rgb(248, 248, 242)',
+    comment: 'rgb(130, 147, 191)', string: 'rgb(241, 250, 140)', link: 'rgb(139, 233, 253)' },
+];
+for (const theme of communityThemes) test(`${theme.id} colors editor and retained native readers, preserves Undo, focus and restart`, async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-community-theme-'));
+  const file = path.join(root, 'colors.ts'), markdown = path.join(root, 'colors.md');
+  await writeFile(file, '// A theme comment\nconst greeting = "palette";\n');
+  await writeFile(markdown, '# Theme colors\n\n[Reference](https://example.com)\n\n> Quotation\n\n```python\n# A theme comment\nprint("palette")\n```\n\n$$a^2+b^2=c^2$$\n');
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const launch = () => electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  let app = await launch();
+  try {
+    await focusApplication(app); let page = await app.firstWindow();
+    const input = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
+    await input.focus(); await input.press('Control+End'); await page.keyboard.insertText('//keepThemeUndo');
+    const identity = await page.locator('.editor-surface .monaco-editor').elementHandle();
+    await chooseTheme(page, theme.id);
+    await expect(page.locator('.monaco-editor').first()).toHaveCSS('background-color', theme.background);
+    await expect(page.locator('.view-line span span').filter({ hasText: 'A theme comment' }).first()).toHaveCSS('color', theme.comment);
+    await expect(page.locator('.view-line span span').filter({ hasText: '"palette"' }).first()).toHaveCSS('color', theme.string);
+    expect(await identity!.evaluate(node => node === document.querySelector('.editor-surface .monaco-editor'))).toBe(true);
+    await input.focus(); await input.press('Control+z'); await expect(page.locator('.view-lines')).not.toContainText('keepThemeUndo');
+    await input.press('Control+y'); await expect(page.locator('.view-lines')).toContainText('keepThemeUndo');
+    await input.press('Control+s'); await expect.poll(() => readFile(file, 'utf8')).toContain('keepThemeUndo');
+    await page.screenshot({ path: test.info().outputPath(`${theme.id}-editor.png`) });
+    await page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), markdown);
+    const reading = previews(app);
+    await expect.poll(reading.hasVisible).toBe(true);
+    const readerIdentity = await reading.evaluate('window.__themeIdentity = crypto.randomUUID()');
+    const colors = () => reading.evaluate(`(() => {
+      const style = selector => getComputedStyle(document.querySelector(selector));
+      return { background: style('.markdown-preview').backgroundColor, foreground: style('.markdown-preview').color,
+        link: style('.markdown-preview a').color, comment: style('.token.comment').color,
+        math: document.querySelectorAll('.katex').length };
+    })()`);
+    const expected = { background: theme.background, foreground: theme.foreground, link: theme.link, comment: theme.comment, math: 1 };
+    await expect.poll(colors).toEqual(expected);
+    // Switching directly between imports must replace the colors of the same
+    // style node; returning to a legacy theme must remove that override.
+    const other = communityThemes.find(candidate => candidate.id !== theme.id)!;
+    await chooseTheme(page, other.id);
+    await expect.poll(colors).toMatchObject({ background: other.background, comment: other.comment });
+    await chooseTheme(page, 'github-light');
+    expect(await reading.evaluate("!!document.getElementById('setdown-vscode-preview-theme')")).toBe(false);
+    await page.locator('.mode-toggle').click(); await input.focus();
+    await app.evaluate(({ Menu }, id) => Menu.getApplicationMenu()!.getMenuItemById(`preview-theme-${id}`)!.click(), theme.id);
+    await expect.poll(() => reading.evaluate('document.body.dataset.setdownPreviewTheme')).toBe(theme.id);
+    await expect(input).toBeFocused(); expect(await reading.hasVisible()).toBe(false);
+    await input.press('Escape'); await expect.poll(reading.hasVisible).toBe(true);
+    await expect.poll(colors).toEqual(expected);
+    expect(await reading.evaluate('window.__themeIdentity')).toBe(readerIdentity);
+    const capture = await app.evaluate(async ({ BrowserWindow }) => {
+      const view = BrowserWindow.getAllWindows()[0].contentView.children.find(candidate =>
+        candidate.getVisible() && 'webContents' in candidate &&
+        (candidate.webContents as Electron.WebContents).getURL().startsWith('marktex-preview://document/')) as Electron.WebContentsView;
+      return (await view.webContents.capturePage()).toPNG();
+    });
+    await writeFile(test.info().outputPath(`${theme.id}-reader.png`), Buffer.from(capture));
+    await disposeApplication(app); app = await launch(); await focusApplication(app); page = await app.firstWindow();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme.id);
+    await expect(page.locator('.monaco-editor').first()).toHaveCSS('background-color', theme.background);
+    await expect(page.locator('.view-lines').first()).toContainText('keepThemeUndo');
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });

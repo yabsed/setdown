@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { vscodeDark2026Token } from './vscode-dark-2026';
+import { vscodeToken } from './vscode-token';
+import { communityMonacoTheme } from '../../renderer/editor/vscode-monaco-theme';
+import { syntaxThemes } from '../../renderer/language/syntax-themes';
 import { terminalTheme } from './terminal-theme';
 
 import {
@@ -13,11 +16,27 @@ import {
 describe('theme catalog', () => {
   it('adds the pinned VS Code theme without changing the default or existing choices', () => {
     expect(DEFAULT_THEME).toBe('github-light');
-    expect(THEME_IDS).toEqual(['github-light', 'paper', 'medium', 'solarized-light', 'github-dark', 'night', 'one-dark', 'solarized-dark', 'vscode-dark-2026']);
+    expect(THEME_IDS).toEqual(['github-light', 'paper', 'medium', 'solarized-light', 'github-dark', 'night', 'one-dark', 'solarized-dark', 'vscode-dark-2026', 'github-dark-high-contrast', 'night-owl', 'dracula']);
     expect(themeProfile('vscode-dark-2026')).toMatchObject({ label: 'VS Code Dark 2026', appearance: 'dark',
       palette: { editorBackground: '#121314', chrome: '#191A1B' },
       workbenchColors: { 'editor.selectionBackground': '#276782dd', 'editor.lineHighlightBackground': '#242526' } });
     expect(terminalTheme('vscode-dark-2026')).toMatchObject({ background: '#191A1B', foreground: '#CCCCCC', blue: '#2472c8', selectionBackground: '#3994BC33' });
+  });
+  it.each([
+    ['github-dark-high-contrast', '#0a0c10', '#f0f3f6', '#bdc4cc', '#dbb7ff', '#ff9492'],
+    ['night-owl', '#011627', '#d6deeb', '#7c9090', '#82AAFF', '#EF5350'],
+    ['dracula', '#282A36', '#F8F8F2', '#8293bf', '#50FA7B', '#FF5555'],
+  ])('keeps %s source roles across lexical, TextMate and terminal surfaces', (id, background, foreground, comment, fn, red) => {
+    const profile = themeProfile(id), theme = profile.vscodeTheme!;
+    expect(profile.palette.editorBackground).toBe(background);
+    expect(profile.syntax).toMatchObject({ foreground, comment });
+    expect(vscodeToken(theme, 'entity.name.function').foreground).toBe(fn);
+    const monaco = communityMonacoTheme(theme);
+    expect(monaco.rules.find(rule => rule.token === 'function')?.foreground).toBe(fn.slice(1));
+    expect(monaco.rules.find(rule => rule.token === 'comment')?.foreground).toBe(comment.slice(1));
+    expect(syntaxThemes.find(theme => theme.name === `setdown-${id}`)?.tokenColors).toEqual(theme.tokenColors);
+    expect(terminalTheme(id)).toMatchObject({ background, foreground, red });
+    expect(Object.values(theme.colors).every(color => typeof color === 'string')).toBe(true);
   });
   it('preserves VS Code inherited specific token colors and the new theme overrides', () => {
     expect(vscodeDark2026Token('entity.name.type.class').foreground).toBe('#4EC9B0');

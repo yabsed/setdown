@@ -19,8 +19,9 @@ async function reviews(app: Application) {
       const result = await contents.executeJavaScript(`(() => {
         if (!document.querySelector('.setdown-rendered-diff-split')) return null;
         window.__latencyContext ??= Math.random().toString(36);
-        return { text: document.body.innerText, context: window.__latencyContext, scroll: scrollY };
-      })()`).catch(() => null) as { text: string; context: string; scroll: number } | null;
+        return { text: document.body.innerText, context: window.__latencyContext, scroll: scrollY,
+          theme: document.body.dataset.setdownPreviewTheme, background: getComputedStyle(document.querySelector('.markdown-preview')).backgroundColor };
+      })()`).catch(() => null) as { text: string; context: string; scroll: number; theme: string; background: string } | null;
       return result ? { id: contents.id, url: contents.getURL(), visible: view.getVisible(), ...result } : null;
     }));
     return data.filter((row): row is NonNullable<typeof row> => row !== null);
@@ -125,6 +126,15 @@ test('review document styles preserve real math geometry across widths and zoom'
       expect(result.textFonts.length).toBeGreaterThan(0);
       for (const font of result.textFonts) expect(font.split(',')[0].replaceAll('"', '').trim()).toBe('D2Coding');
       expect(result.differences, JSON.stringify({ width, zoom, ...result })).toEqual([]);
+    }
+    const identity = (await reviews(app)).map(({ id, context }) => ({ id, context }));
+    for (const [theme, background] of [
+      ['github-dark-high-contrast', 'rgb(10, 12, 16)'], ['night-owl', 'rgb(1, 22, 39)'], ['dracula', 'rgb(40, 42, 54)'],
+    ]) {
+      await app.evaluate(({ Menu }, theme) => Menu.getApplicationMenu()!.getMenuItemById(`preview-theme-${theme}`)!.click(), theme);
+      await expect.poll(async () => (await reviews(app!)).map(row => ({ theme: row.theme, background: row.background })))
+        .toEqual([{ theme, background }, { theme, background }]);
+      expect((await reviews(app)).map(({ id, context }) => ({ id, context }))).toEqual(identity);
     }
   } finally {
     if (app) await disposeApplication(app);

@@ -91,7 +91,7 @@ test('Svelte has lazy local grammar colors without servers; Python, theme change
     await page.screenshot({ path: info.outputPath('svelte-light-no-server.png') });
     await input.press('Control+End'); await page.keyboard.insertText('keepUndo');
     const identity = await page.locator('.editor-surface .monaco-editor').elementHandle();
-    for (const id of ['github-dark', 'vscode-dark-2026', 'github-light']) {
+    for (const id of ['github-dark', 'vscode-dark-2026', 'github-dark-high-contrast', 'night-owl', 'dracula', 'github-light']) {
       await theme(page, id);
       await expect.poll(() => color(view, 'import type', 'import')).not.toBe(await color(view, 'Hello Svelte', 'Hello Svelte'));
       expect(await identity!.evaluate(node => node === document.querySelector('.editor-surface .monaco-editor'))).toBe(true);

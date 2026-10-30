@@ -1,24 +1,26 @@
 /* Colors from the pinned VS Code workbench; layout and existing themes stay
-   owned by their components. Every override is limited to the new option. */
-:root[data-theme="vscode-dark-2026"] .activity-bar {
+   owned by their components. Overrides apply only to imported VS Code themes. */
+:root[data-vscode-theme="true"] .activity-bar {
   background: var(--vscode-activityBar-background);
 }
-:root[data-theme="vscode-dark-2026"] .activity-bar button { color: var(--vscode-activityBar-inactiveForeground); }
-:root[data-theme="vscode-dark-2026"] .activity-bar button.is-active { color: var(--vscode-activityBar-foreground); }
-:root[data-theme="vscode-dark-2026"] .activity-bar button.is-active::before { background: var(--vscode-activityBar-activeBorder); }
-:root[data-theme="vscode-dark-2026"] .location-bar { background: var(--vscode-breadcrumb-background); }
-:root[data-theme="vscode-dark-2026"] .document-tab { background: var(--vscode-tab-inactiveBackground); color: var(--vscode-tab-inactiveForeground); }
-:root[data-theme="vscode-dark-2026"] .document-tab:hover { background: var(--vscode-tab-hoverBackground); color: var(--vscode-tab-hoverForeground); }
-:root[data-theme="vscode-dark-2026"] .document-tab[aria-selected="true"] { background: var(--vscode-tab-activeBackground); color: var(--vscode-tab-activeForeground); }
-:root[data-theme="vscode-dark-2026"] .explorer-row.is-selected { background: var(--vscode-list-inactiveSelectionBackground); color: var(--vscode-list-inactiveSelectionForeground); }
-:root[data-theme="vscode-dark-2026"] .explorer-tree:focus-within .explorer-row.is-selected { background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }
-:root[data-theme="vscode-dark-2026"] :is(.application-menu-popup, .application-submenu-popup, .project-context-menu) {
+:root[data-vscode-theme="true"] .activity-bar button { color: var(--vscode-activityBar-inactiveForeground); }
+:root[data-vscode-theme="true"] .activity-bar button.is-active { color: var(--vscode-activityBar-foreground); }
+:root[data-vscode-theme="true"] .activity-bar button.is-active::before { background: var(--vscode-activityBar-activeBorder); }
+:root[data-vscode-theme="true"] .location-bar { background: var(--vscode-breadcrumb-background); }
+:root[data-vscode-theme="true"] .document-tab { background: var(--vscode-tab-inactiveBackground); color: var(--vscode-tab-inactiveForeground); }
+:root[data-vscode-theme="true"] .document-tab:hover { background: var(--vscode-tab-hoverBackground); color: var(--vscode-tab-hoverForeground); }
+:root[data-vscode-theme="true"] .document-tab[aria-selected="true"] { background: var(--vscode-tab-activeBackground); color: var(--vscode-tab-activeForeground); }
+:root[data-vscode-theme="true"] .explorer-row.is-selected { background: var(--vscode-list-inactiveSelectionBackground); color: var(--vscode-list-inactiveSelectionForeground); }
+:root[data-vscode-theme="true"] .explorer-tree:focus-within .explorer-row.is-selected { background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }
+:root[data-vscode-theme="true"] :is(.application-menu-popup, .application-submenu-popup, .project-context-menu) {
   background: var(--vscode-menu-background); color: var(--vscode-menu-foreground); border-color: var(--vscode-menu-border);
 }
-:root[data-theme="vscode-dark-2026"] :is(.product-menu-row > button:hover, .product-menu-row > button:focus-visible, .product-menu-row.is-submenu-open > button, .project-context-menu button:hover, .project-context-menu button:focus-visible) {
+:root[data-vscode-theme="true"] :is(.product-menu-row > button:hover, .product-menu-row > button:focus-visible, .product-menu-row.is-submenu-open > button, .project-context-menu button:hover, .project-context-menu button:focus-visible) {
   background: var(--vscode-menu-selectionBackground); color: var(--vscode-menu-selectionForeground);
 }
-:root[data-theme="vscode-dark-2026"] :is(.explorer-edit input, .explorer-row input, .project-search-box input, .scm-commit textarea, .editor-tool-dialog input) {
+:root[data-vscode-theme="true"] :is(.explorer-edit input, .explorer-row input, .project-search-box input, .scm-commit textarea, .editor-tool-dialog input) {
   background: var(--vscode-input-background); color: var(--vscode-input-foreground);
 }
-:root[data-theme="vscode-dark-2026"] .terminal-surface { background: var(--vscode-terminal-background); }
+:root[data-vscode-theme="true"] .terminal-surface { background: var(--vscode-terminal-background); }
+
+:root[data-vscode-theme="true"]:not([data-theme="vscode-dark-2026"]) .project-sidebar { background: var(--vscode-sideBar-background); color: var(--vscode-sideBar-foreground); }

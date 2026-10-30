@@ -5,7 +5,7 @@ const names = ['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'wh
   'brightBlack', 'brightRed', 'brightGreen', 'brightYellow', 'brightBlue', 'brightMagenta', 'brightCyan', 'brightWhite'] as const;
 // ANSI colors are terminal roles, independent of syntax-token colors. Extended
 // indexed/truecolor SGR remains intact; xterm adjusts its displayed contrast.
-const palettes: Record<ThemeId, string> = {
+const palettes: Partial<Record<ThemeId, string>> = {
   'github-light': '24292f cf222e 116329 7d4e00 0550ae 8250df 1b7c83 6e7781 57606a a40e26 1a7f37 633c01 0969da 6639ba 055d64 424a53',
   paper: '2d2520 a1322b 426329 86540b 275d82 80517e 346b68 746b60 645b50 a83930 4c6c2d 80551a 326c96 835287 397b77 514a43',
   medium: '202123 b52a35 28723a 806000 1b5aa3 7950a5 176d76 666666 555555 c22e3a 247338 785900 225eb0 834baa 176977 444444',
@@ -18,9 +18,9 @@ const palettes: Record<ThemeId, string> = {
 };
 export const TERMINAL_MINIMUM_CONTRAST = 4.5;
 export function terminalTheme(id: unknown): ITheme {
-  const profile = themeProfile(id), colors = palettes[profile.id].split(' ');
+  const profile = themeProfile(id), colors = palettes[profile.id]?.split(' ');
   const workbench = profile.workbenchColors;
-  return { ...Object.fromEntries(names.map((name, i) => [name, `#${colors[i]}`])),
+  return { ...Object.fromEntries(names.map((name, i) => [name, workbench?.[`terminal.ansi${name[0].toUpperCase()}${name.slice(1)}`] ?? `#${colors![i]}`])),
     background: workbench?.['terminal.background'] ?? profile.palette.editorBackground, foreground: workbench?.['terminal.foreground'] ?? profile.palette.text,
     cursor: workbench?.['terminalCursor.foreground'] ?? profile.palette.text, cursorAccent: workbench?.['terminalCursor.background'] ?? profile.palette.editorBackground,
     selectionBackground: workbench?.['terminal.selectionBackground'] ?? `${profile.palette.accent}55`, selectionForeground: workbench ? undefined : profile.palette.text,

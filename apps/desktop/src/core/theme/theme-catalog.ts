@@ -1,3 +1,5 @@
+import { COMMUNITY_THEMES } from './community-themes';
+import type { VscodeTheme } from './vscode-token';
 import { vscodeDark2026Colors as vscode, vscodeDark2026Token } from './vscode-dark-2026';
 
 export const THEME_IDS = [
@@ -10,6 +12,9 @@ export const THEME_IDS = [
   'one-dark',
   'solarized-dark',
   'vscode-dark-2026',
+  'github-dark-high-contrast',
+  'night-owl',
+  'dracula',
 ] as const;
 
 export type ThemeId = typeof THEME_IDS[number];
@@ -66,6 +71,7 @@ export type ThemeProfile = {
   preview: { stylesheet: PreviewStylesheet; prismStylesheet: string; background: string };
   palette: ThemePalette;
   syntax: SyntaxPalette;
+  vscodeTheme?: VscodeTheme;
   workbenchColors?: Readonly<Record<string, string>>;
 };
 
@@ -145,6 +151,7 @@ export const THEME_PROFILES: readonly ThemeProfile[] = [
       heading: vscodeDark2026Token('markup.heading').foreground!, code: vscodeDark2026Token('markup.inline.raw').foreground!, punctuation: vscode['editor.foreground'] },
     workbenchColors: vscode,
   },
+  ...COMMUNITY_THEMES,
 ];
 
 export const DEFAULT_THEME: ThemeId = 'github-light';

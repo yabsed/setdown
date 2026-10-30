@@ -1,0 +1,19 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: browser/reader.spec.ts >> reader toolbar and wheel use tab text zoom independently of other Markdown tabs and live website zoom
+- Location: test/e2e/browser/reader.spec.ts:257:1
+
+# Error details
+
+```
+Error: electronApplication.evaluate: Error: Web page not found
+    at eval (eval at evaluate (:311:30), <anonymous>:8:22)
+    at UtilityScript.evaluate (<anonymous>:313:16)
+    at UtilityScript.<anonymous> (<anonymous>:1:44)
+```
