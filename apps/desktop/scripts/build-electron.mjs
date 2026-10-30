@@ -9,6 +9,7 @@ const shared = {
   external: ['sharp', 'electron', 'jsonc-parser', 'crossnote', '@parcel/watcher', '@vscode/ripgrep', 'node-pty', '@xterm/headless', '@xterm/addon-serialize', 'electron-chrome-extensions', 'electron-chrome-web-store', 'turndown', 'turndown-plugin-gfm', 'sanitize-html', 'pyright', 'basedpyright', 'typescript', 'typescript-language-server'],
 };
 await mkdir('dist-electron', { recursive: true });
+await copyFile('../../LICENSE', 'dist-electron/SETDOWN-LICENSE.txt');
 // Retire outputs from builds that included the removed document editor.
 await Promise.all(['hwp', 'hwp-preload.cjs', 'hwp-preload.cjs.map'].map(file =>
   rm(`dist-electron/${file}`, { recursive: true, force: true })));

@@ -559,6 +559,14 @@ Performance-path changes still require this comparison locally or manually;
 timing noise is not an automatic PR gate. CI policy and the publishing lifecycle
 can be checked with `node --test scripts/ci/*.test.mjs`.
 
+## License
+
+Setdown's original code is licensed under the [GNU General Public License,
+version 3 only](LICENSE) (`GPL-3.0-only`). It is provided without warranty.
+Third-party code, dependencies, submodules, fonts and other assets retain their
+own copyrights and license terms. Their notices must be preserved when
+redistributing Setdown; the root license does not replace those terms.
+
 Further documentation:
 
 - [Preview guarantees, ownership, and benchmark procedure](docs/preview-performance-contract.md)

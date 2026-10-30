@@ -57,6 +57,7 @@ if (!await exists(readability)) {
 }
 await fs.copyFile(readability, path.join(output, 'readability.js'));
 await fs.copyFile(path.join(root, 'vendor/readability/LICENSE.md'), path.join(output, 'READABILITY-LICENSE.txt'));
+await fs.copyFile(path.join(root, 'vendor/readability/NOTICE'), path.join(output, 'READABILITY-NOTICE.txt'));
 await fs.copyFile(path.join(root, 'vendor/min/LICENSE.txt'), path.join(output, 'MIN-LICENSE.txt')).catch(async () => {
   await fs.copyFile('src/browser-runtime/MIN-LICENSE.txt', path.join(output, 'MIN-LICENSE.txt'));
 });
