@@ -1,7 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import type { AppActions } from '../ports/ui-actions';
-  import NativeOverlay from '../shell/NativeOverlay.svelte';
   import { project } from './project-state.svelte';
 
   let { actions }: { actions: AppActions } = $props();
@@ -47,7 +46,6 @@
     <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg>
   </button>
   {#if open}
-    <NativeOverlay />
     <div class="folder-menu" role="menu" aria-label="Choose workspace folder" tabindex="-1" bind:this={menu} onkeydown={navigate}>
       <button type="button" role="menuitemradio" aria-checked={!project.folder} onclick={() => choose(null)}>
         <span>None</span><small>Keep open files, without a folder</small>
@@ -69,7 +67,8 @@
   .folder-trigger { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; padding: 7px 8px; border: 1px solid var(--app-border); border-radius: 5px; background: transparent; color: var(--app-text); font: inherit; font-size: 12px; cursor: pointer; }
   .folder-trigger span { flex: 1; overflow: hidden; text-overflow: ellipsis; text-align: left; white-space: nowrap; }
   svg { flex: 0 0 16px; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4; }
-  .folder-menu { position: absolute; z-index: 95; top: calc(100% + 4px); left: 0; width: 100%; min-width: 200px; max-height: min(460px, calc(100vh - 160px)); overflow: auto; padding: 4px; box-sizing: border-box; border: 1px solid var(--app-strong-border); border-radius: 5px; background: var(--app-raised-surface); box-shadow: 0 6px 18px var(--app-shadow); }
+  /* Stay inside the sidebar: this menu never needs to hide native web views. */
+  .folder-menu { position: absolute; z-index: 95; top: calc(100% + 4px); left: 0; width: 100%; min-width: 0; max-height: min(460px, calc(100vh - 160px)); overflow: auto; padding: 4px; box-sizing: border-box; border: 1px solid var(--app-strong-border); border-radius: 5px; background: var(--app-raised-surface); box-shadow: 0 6px 18px var(--app-shadow); }
   .folder-menu button { display: block; width: 100%; padding: 7px 8px; border: 0; border-radius: 3px; background: transparent; color: var(--app-text); text-align: left; font: inherit; font-size: 12px; cursor: pointer; }
   .folder-menu button[aria-checked="true"] { background: var(--app-hover); }
   .folder-menu button:hover, .folder-trigger:hover { background: var(--app-hover); }

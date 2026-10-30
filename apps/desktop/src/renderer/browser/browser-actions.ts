@@ -4,6 +4,8 @@ import type { WorkspaceTab } from '../../core/workspace/workspace-state';
 import { browser } from './browser-state.svelte';
 
 export type BrowserActions = {
+  browserThemeSettings: BrowserApi['themeSettings'];
+  browserUpdateThemeSettings: BrowserApi['updateThemeSettings'];
   browserCommand(id: string, command: import('../../protocol/browser').BrowserCommand): void;
   browserPlaces(query: string, scope?: import('../../protocol/browser').BrowserPlaceScope): Promise<import('../../protocol/browser').BrowserPlace[]>;
   browserBookmark(url: string, title: string, bookmarked: boolean): Promise<void>;
@@ -36,6 +38,8 @@ type Options = {
 export function createBrowserActions(options: Options): BrowserActions {
   const { api } = options;
   const actions: BrowserActions = {
+    browserThemeSettings: () => api.themeSettings(),
+    browserUpdateThemeSettings: update => api.updateThemeSettings(update),
     browserCommand: (id, command) => {
       if (command === 'back' || command === 'forward') { options.navigateHistory(id, command === 'back' ? -1 : 1); return; }
       void api.command(id, command).catch(error => { browser.error = String(error); });

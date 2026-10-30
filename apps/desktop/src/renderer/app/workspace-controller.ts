@@ -176,6 +176,7 @@ export function startWorkspace(desktop: DesktopPort) {
     updateProjectGitDiffLine: (line) => projects.updateGitDiffLine(line),
     changeProjectGitWorkingTree: (text, edits) => projects.changeGitWorkingTree(text, edits),
     saveProjectGitWorkingTree: () => void saveDocument(),
+    configureGit: update => void projects.configureGit(update),
     selectGitRepository: root => void projects.selectGitRepository(root),
     initializeProjectGit: () => void projects.initializeGit(),
     stageProjectGit: (paths) => void stageProjectChanges(paths),

@@ -38,6 +38,7 @@ afterEach(() => {
  */
 function fixture(staged = false, automaticRendering = true) {
   const calls: Call[] = [];
+  const loadingStates: boolean[] = [];
   const models = new LiveDocumentModelPort();
   let buffer = 'after';
   const diff: GitDiff = {
@@ -76,12 +77,13 @@ function fixture(staged = false, automaticRendering = true) {
   const controller = new SourceControlController({ desktop, models,
     openWorkingTree: async () => true, activateWorkingTree: () => true,
     workingTreeBuffer: () => buffer, workingTreeChanged() {}, reviewChanged() {},
+    stateChanged: () => loadingStates.push(project.gitDiffLoading),
   });
   controllers.push(controller);
   project.gitDiffTabs.push(tab);
   const preparations = () => calls.filter((call): call is Extract<Call, { kind: 'prepare' }> => call.kind === 'prepare');
   return {
-    controller, tab, calls, models, preparations, desktop,
+    controller, tab, calls, models, preparations, desktop, loadingStates,
     async activate(id = tab.id) { await controller.activateDiff(id); await flush(); },
     edit(text: string) { buffer = text; models.publish({ type: 'changed', path: tab.filePath, text }); },
     shown: () => calls.filter(call => call.kind === 'show' && call.id !== null),
@@ -98,6 +100,20 @@ function fixture(staged = false, automaticRendering = true) {
     },
   };
 }
+
+test('review controls receive both pending and completed reload state, including a failed reload', async () => {
+  const f = fixture(); await f.activate();
+  for (const failed of [false, true]) {
+    let finish!: () => void;
+    f.desktop.getGitDiff = () => new Promise((resolve, reject) => {
+      finish = () => failed ? reject(Error('Read failed')) : resolve(f.tab.diff!);
+    });
+    const reload = f.controller.refreshOpenDiffs();
+    assert.equal(f.loadingStates.at(-1), true);
+    finish(); await reload;
+    assert.equal(f.loadingStates.at(-1), false, 'the projected toolbar must become available again');
+  }
+});
 
 test('repository errors remain distinct from an absent repository and clear on recovery', async () => {
   const f = fixture(); project.folder = { path: '/project', name: 'project' };

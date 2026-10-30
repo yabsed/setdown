@@ -104,6 +104,13 @@ export type GitChange = {
 };
 
 export type GitSnapshot = {
+  settings?: import('../core/project/git-settings').GitSettings;
+  visibleRoots?: string[];
+  parentRepository?: string;
+  errors?: Array<{ root: string; command: string; message: string }>;
+  selectedError?: boolean;
+  countIncomplete?: boolean;
+  statusLimited?: boolean;
   /** Pending SCM resources across the discovered repositories, including partial staging. */
   pendingChanges?: number;
   roots?: string[];
@@ -212,7 +219,7 @@ export type ClaimedTabTransfer = {
   tab: TransferableTab;
 };
 
-export type TabDragState = { transferId: string; active: boolean; commitGuide?: boolean };
+export type TabDragState = { transferId: string; active: boolean; commitGuide?: boolean; copy?: boolean };
 
 export type { PreviewBounds } from './preview-preparation';
 export type PreviewMessage = { tabId: string; message: Record<string, unknown> };
@@ -290,12 +297,15 @@ export type MarkTexApi = {
   updateTabState(tabs: TabStateSummary[]): void;
   getGitReviewState(): Promise<GitReviewState | null>;
   updateGitReviewState(review: GitReviewState | null): void;
+  setNativeTabDrag(transferId: string | null): void;
+  setNativeTabDragGuide(guide: import('./tab-drag').TabDragGuide): void;
+  onNativeTabDrag(listener: (event: import('./tab-drag').NativeTabDrag) => void): () => void;
   registerTabTransfer(transferId: string, tab: TransferableTab): void;
   claimTabTransfer(transferId: string): Promise<ClaimedTabTransfer | null>;
   completeTabTransfer(transferId: string): void;
   cancelTabTransfer(transferId: string): void;
-  updateTabDragTarget(transferId: string, accepted: boolean): void;
-  detachTabToWindow(transferId: string, x: number, y: number, withinSource?: boolean, dropEffect?: string): void;
+  updateTabDragTarget(transferId: string, accepted: boolean, inside?: boolean, retainGuide?: boolean): void;
+  detachTabToWindow(transferId: string, x: number, y: number, withinSource?: boolean, dropEffect?: string, release?: { x: number; y: number }): void;
   adoptTabTransfer(transferId: string): Promise<boolean>;
   releaseTabTransferSource(transferId: string): void;
   createPreview(tabId: string): void;
@@ -376,6 +386,7 @@ export type MarkTexApi = {
   trashProjectEntry(entryPath: string): Promise<void>;
   openProjectFile(filePath: string): Promise<DocumentSnapshot | null>;
   searchProject(request: ProjectSearchRequest): Promise<ProjectSearchResponse>;
+  configureGit(update: { settings?: Partial<import('../core/project/git-settings').GitSettings>; visibleRoots?: string[] }): Promise<GitSnapshot>;
   selectGitRepository(root: string): Promise<GitSnapshot>;
   getGitStatus(): Promise<GitSnapshot>;
   requestGitGraph(request: GitGraphRequest): Promise<GitGraphReply>;

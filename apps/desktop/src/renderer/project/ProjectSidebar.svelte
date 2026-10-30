@@ -13,10 +13,10 @@
   import TerminalSidebar from '../terminal/TerminalSidebar.svelte';
 
   let { actions, languageApi }: { actions: AppActions; languageApi: LanguageApi } = $props();
-  let gitGroups = $derived(gitChangeGroups(project.git?.changes));
+  let gitGroups = $derived(gitChangeGroups(project.git?.changes, project.git?.settings));
   let gitCount = $derived(project.git?.pendingChanges ?? gitGroups.badge);
   let gitStatus = $derived(!project.git ? 'Repository status not loaded'
-    : `${gitCount} pending changes${(project.git.roots?.length ?? 0) > 1 ? ` across ${project.git.roots!.length} repositories` : ''}`);
+    : `${gitCount}${project.git.countIncomplete ? '+' : ''} pending changes${(project.git.roots?.length ?? 0) > 1 ? ` across ${project.git.roots!.length} repositories` : ''}`);
   const resize = { property: '--project-sidebar-width' as const, direction: 1 as const,
     min: 220, max: () => innerWidth * .46 };
 
@@ -42,7 +42,7 @@
       aria-expanded={project.open && project.activeView === 'git'}
       title={`Source Control — ${gitStatus}`} onclick={() => select('git')}>
       <svg viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 7v10M8 6.5c4.5 0 2.5 5.5 8 3"/></svg>
-      {#if gitCount > 0}<span class="scm-activity-badge" aria-hidden="true">{gitCount}</span>{/if}
+      {#if gitCount > 0 || project.git?.countIncomplete}<span class="scm-activity-badge" aria-hidden="true">{gitCount}{project.git?.countIncomplete ? "+" : ""}</span>{/if}
       <span id="source-control-status" class="scm-status-description">{gitStatus}</span>
     </button>
     <button type="button" class:is-active={project.open && project.activeView === 'browser'}

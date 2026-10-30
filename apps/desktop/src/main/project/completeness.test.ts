@@ -26,7 +26,10 @@ async function repository() {
 test('a subfolder shows every staged file that the subsequent commit contains', async () => {
   const { root, git } = await repository(); const opened = path.join(root, 'opened'); await mkdir(opened);
   const a = path.join(opened, 'a.txt'), b = path.join(root, 'b.txt'); await writeFile(a, 'a'); await writeFile(b, 'b');
-  const owner = state(opened); await git.stage(owner, [a, b]);
+  const owner = state(opened);
+  expect(await git.status(owner)).toMatchObject({ repository: false, parentRepository: root });
+  await expect(git.stage(owner, [a, b])).rejects.toThrow(/parent repository/);
+  await git.select(owner, root); await git.stage(owner, [a, b]);
   expect((await git.status(owner)).changes.map(change => change.path).sort()).toEqual(['b.txt', 'opened/a.txt']);
   await git.commit(owner, 'both'); expect((await GitCli.run(root, ['show', '--pretty=', '--name-only', 'HEAD'])).trim().split('\n')).toEqual(['b.txt', 'opened/a.txt']);
 });

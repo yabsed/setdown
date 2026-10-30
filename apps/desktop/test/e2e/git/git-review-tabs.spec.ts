@@ -120,6 +120,22 @@ test('new staged and working-tree reviews open source diff at the first change',
     await expect(window.getByRole('button', { name: 'View Rendered Diff' })).toBeVisible();
     await expect(window.locator('.git-diff-editor:visible .modified-in-monaco-diff-editor .view-lines'))
       .toContainText('Working tree change');
+    // A review is local-only, but still owns its accepted split when Chromium
+    // substitutes a coordinate-less terminal leave for the DOM drop.
+    const moving = window.locator('.git-diff-tab[aria-selected="true"]');
+    const data = await window.evaluateHandle(() => new DataTransfer());
+    await moving.dispatchEvent('dragstart', { dataTransfer: data });
+    const body = (await window.locator('.group-body').boundingBox())!;
+    await moving.dispatchEvent('dragover', { dataTransfer: data,
+      clientX: body.x + body.width - 5, clientY: body.y + body.height / 2 });
+    await expect(window.locator('.group-drop-overlay')).toBeVisible();
+    await moving.dispatchEvent('dragleave', { dataTransfer: data, relatedTarget: null });
+    await data.evaluate(transfer => Object.defineProperty(transfer, 'dropEffect', { value: 'move' }));
+    await moving.dispatchEvent('dragend', { dataTransfer: data });
+    await data.dispose();
+    await expect(window.locator('.editor-group')).toHaveCount(2);
+    await expect(window.locator('.group-drop-overlay')).toBeHidden();
+    await expect(window.locator('.git-diff-editor:visible').filter({ hasText: 'Working tree change' })).toHaveCount(1);
   } finally {
     await disposeApplication(application);
     await rm(root, { recursive: true, force: true });

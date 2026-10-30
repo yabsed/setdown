@@ -4,6 +4,20 @@ import type { TransferableTab } from '../../protocol/desktop-api';
 import type { PreviewManager } from '../preview/preview-manager';
 import type { WindowState } from '../windows/window-state';
 import { TabTransferManager } from './tab-transfer-manager';
+import { displayBackend, hasGlobalWindowPositions } from '../windows/display-backend';
+
+test('Linux selects XWayland only when available and respects explicit display choices', () => {
+  const env = { DISPLAY: ':9', WAYLAND_DISPLAY: 'private', XDG_SESSION_TYPE: 'wayland' };
+  expect(displayBackend('linux', env, '')).toBe('x11');
+  expect(displayBackend('linux', env, 'auto')).toBe('x11');
+  expect(displayBackend('linux', env, 'wayland')).toBe('wayland');
+  expect(displayBackend('linux', env, 'headless')).toBe('headless');
+  expect(displayBackend('linux', { WAYLAND_DISPLAY: 'private' }, '')).toBe('');
+  expect(displayBackend('darwin', env, '')).toBe('');
+  expect(hasGlobalWindowPositions('linux', env, 'x11')).toBe(true);
+  expect(hasGlobalWindowPositions('linux', env, 'wayland')).toBe(false);
+  expect(hasGlobalWindowPositions('linux', { WAYLAND_SOCKET: '3' }, '')).toBe(false);
+});
 
 const electron = vi.hoisted(() => ({
   listeners: new Map<string, (...args: any[]) => unknown>(),
@@ -26,6 +40,7 @@ function fakeWindow(id: number) {
     on: vi.fn(),
     send: vi.fn((channel: string, payload: unknown) => messages.push({ channel, payload })),
     isLoadingMainFrame: () => false,
+    getZoomFactor: () => 1,
     once: vi.fn(),
   };
   const window = {
@@ -79,13 +94,15 @@ function fixture() {
   manager.registerIpc();
   const event = (id: number) => ({ sender: { id } });
   const register = () => electron.listeners.get('tabs:register-transfer')!(event(1), { transferId: 'move', tab });
-  const detach = () => electron.listeners.get('tabs:detach-to-window')!(event(1), { transferId: 'move', x: 700, y: 400 });
+  const hover = (id: number, accepted = true, inside = true) => electron.listeners.get('tabs:drag-target')!(event(id), { transferId: 'move', accepted, inside });
+  const end = (withinSource = false, dropEffect?: string) => electron.listeners.get('tabs:detach-to-window')!(event(1), { transferId: 'move', x: 700, y: 400, withinSource, dropEffect });
+  const detach = () => { hover(1, false, false); end(); };
   const claim = () => electron.handlers.get('tabs:claim-transfer')!(event(2), 'move') as Promise<unknown>;
-  return { source, existing, prepared, register, detach, claim };
+  return { source, existing, prepared, register, hover, end, detach, claim };
 }
 
 beforeEach(() => vi.useFakeTimers());
-afterEach(() => vi.useRealTimers());
+afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
 
 test('an existing-window claim wins when source dragend requests detach first', async () => {
   const f = fixture();
@@ -135,8 +152,7 @@ test('a source-center tear-off ignores a window behind the source', async () => 
 for (const withinSource of [false, true]) test(`a drop outside the source allows the destination claim with withinSource=${withinSource}`, async () => {
   const f = fixture();
   f.existing.setBounds({ x: 600, y: 300, width: 900, height: 700 });
-  f.register();
-  electron.listeners.get('tabs:detach-to-window')!({ sender: { id: 1 } }, { transferId: 'move', x: 700, y: 400, withinSource });
+  f.register(); f.hover(2); f.end(withinSource);
   await vi.advanceTimersByTimeAsync(1_000);
   expect(f.prepared.window.showInactive).not.toHaveBeenCalled();
   expect(await f.claim()).toMatchObject({ transferId: 'move', tab: { id: 'document' } });
@@ -157,12 +173,12 @@ for (const hidden of ['minimized', 'hidden', 'destroyed'] as const) test(`a ${hi
 test('a rejected drop over an existing window expires without creating a window or removing the source', async () => {
   const f = fixture();
   f.existing.setBounds({ x: 600, y: 300, width: 900, height: 700 });
-  f.register(); f.detach();
+  f.register(); f.hover(2, false); f.end();
   await vi.advanceTimersByTimeAsync(61_000);
   expect(f.prepared.window.showInactive).not.toHaveBeenCalled();
   expect(f.prepared.window.destroy).toHaveBeenCalledOnce();
   expect(f.source.webContents.send).not.toHaveBeenCalledWith('tabs:transfer-completed', expect.anything());
-  expect(f.source.messages).toEqual([
+  expect(f.source.messages.filter(message => message.channel === 'tabs:drag-state')).toEqual([
     { channel: 'tabs:drag-state', payload: { transferId: 'move', active: true } },
     { channel: 'tabs:drag-state', payload: { transferId: 'move', active: false } },
   ]);
@@ -182,7 +198,7 @@ test('drag lifetime covers all visible shells and ends on a claim, without showi
 });
 
 test('a consumed outside drop clears receivers while keeping the late destination claim available', async () => {
-  const f = fixture(); f.existing.setBounds({ x: 600, y: 300, width: 900, height: 700 }); f.register(); f.detach();
+  const f = fixture(); f.existing.setBounds({ x: 600, y: 300, width: 900, height: 700 }); f.register(); f.hover(2); f.end();
   expect(f.existing.messages.at(-1)).toEqual({ channel: 'tabs:drag-state', payload: { transferId: 'move', active: false } });
   await vi.advanceTimersByTimeAsync(1_000);
   expect(await f.claim()).toMatchObject({ transferId: 'move' });
@@ -206,7 +222,7 @@ for (const effect of ['move', 'copy', 'none', undefined]) test(`remote guide fal
   electron.listeners.get('tabs:drag-target')!({ sender: { id: 2 } }, { transferId: 'move', accepted: true });
   electron.listeners.get('tabs:detach-to-window')!({ sender: { id: 1 } }, { transferId: 'move', x: 1200, y: 400, dropEffect: effect });
   expect(f.existing.messages.at(-1)).toEqual({ channel: 'tabs:drag-state', payload: {
-    transferId: 'move', active: false, ...(['move', 'copy'].includes(effect ?? '') ? { commitGuide: true } : {}),
+    transferId: 'move', active: false, ...(['move', 'copy'].includes(effect ?? '') ? { commitGuide: true, copy: effect === 'copy' } : {}),
   } });
   expect(f.source.messages.at(-1)).toEqual({ channel: 'tabs:drag-state', payload: { transferId: 'move', active: false } });
   await vi.advanceTimersByTimeAsync(1_000);
@@ -218,7 +234,8 @@ for (const reason of ['leave', 'outside', 'escape', 'hidden', 'minimized', 'dest
 test(`remote guide fallback rejects ${reason}`, async () => {
   const f = fixture(); f.register();
   electron.listeners.get('tabs:drag-target')!({ sender: { id: reason === 'unregistered-target' ? 3 : 2 } }, { transferId: 'move', accepted: true });
-  if (reason === 'leave') electron.listeners.get('tabs:drag-target')!({ sender: { id: 2 } }, { transferId: 'move', accepted: false });
+  if (reason === 'leave' || reason === 'outside') f.hover(2, false, false);
+  if (reason === 'source-tear-off') f.hover(1, false);
   if (reason === 'escape') f.source.webContents.on.mock.calls.find(([name]) => name === 'before-input-event')![1]({}, { key: 'Escape' });
   if (reason === 'hidden') f.existing.setVisible(false);
   if (reason === 'minimized') f.existing.setMinimized(true);
@@ -238,4 +255,64 @@ test('a completed DOM claim and duplicate dragend cannot install a fallback twic
   electron.listeners.get('tabs:detach-to-window')!({ sender: { id: 1 } }, { transferId: 'move', x: 1200, y: 400, dropEffect: 'move' });
   expect(f.existing.messages.some(message => (message.payload as { commitGuide?: boolean }).commitGuide)).toBe(false);
   expect(await f.claim()).toBeNull();
+});
+
+for (const coordinates of ['overlapping', 'wayland-zero']) test(`OS receiver selects the destination with ${coordinates} bounds`, async () => {
+  const f = fixture();
+  const bounds = { x: coordinates === 'wayland-zero' ? 0 : 200, y: 0, width: 900, height: 700 };
+  f.source.setBounds(bounds); f.existing.setBounds(bounds);
+  f.register(); f.hover(2); f.end(false, 'move');
+  expect(f.existing.messages.at(-1)).toEqual({ channel: 'tabs:drag-state', payload: {
+    transferId: 'move', active: false, commitGuide: true, copy: false,
+  } });
+  expect(f.source.messages.some(message => message.channel === 'tabs:native-drag'
+    && (message.payload as { type: string }).type === 'dragleave')).toBe(true);
+  expect(await f.claim()).toMatchObject({ transferId: 'move' });
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(f.prepared.window.showInactive).not.toHaveBeenCalled();
+});
+
+test('returning to a local guide clears a remote guide and commits only once', async () => {
+  const f = fixture(); f.register(); f.hover(2); f.hover(1); f.end(false, 'copy'); f.end(false, 'copy');
+  expect(f.source.messages.filter(message => (message.payload as { commitGuide?: boolean }).commitGuide)).toEqual([
+    { channel: 'tabs:drag-state', payload: { transferId: 'move', active: false, commitGuide: true, copy: true } },
+  ]);
+  expect(f.existing.messages.some(message => (message.payload as { commitGuide?: boolean }).commitGuide)).toBe(false);
+});
+
+for (const effect of ['move', 'none']) test(`coordinate-less terminal leave retains a guide only for an accepted OS drop: ${effect}`, async () => {
+  const f = fixture(); f.register(); f.hover(2);
+  electron.listeners.get('tabs:drag-target')!({ sender: { id: 2 } }, {
+    transferId: 'move', accepted: false, inside: false, retainGuide: true,
+  });
+  f.end(false, effect);
+  expect(f.existing.messages.some(message => (message.payload as { commitGuide?: boolean }).commitGuide)).toBe(effect === 'move');
+  if (effect === 'move') {
+    expect(await f.claim()).toMatchObject({ transferId: 'move' });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(f.prepared.window.showInactive).not.toHaveBeenCalled();
+  }
+});
+
+test('outside source-local release defeats a retained local guide even with stale move effect', async () => {
+  const f = fixture(); f.source.setBounds({ x: 0, y: 0, width: 900, height: 700 }); f.register(); f.hover(1);
+  electron.listeners.get('tabs:drag-target')!({ sender: { id: 1 } }, { transferId: 'move', accepted: false, inside: false, retainGuide: true });
+  electron.listeners.get('tabs:detach-to-window')!({ sender: { id: 1 } }, {
+    transferId: 'move', x: 0, y: 0, dropEffect: 'move', release: { x: -100, y: 100 },
+  });
+  expect(f.source.messages.some(message => (message.payload as { commitGuide?: boolean }).commitGuide)).toBe(false);
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(f.prepared.window.showInactive).toHaveBeenCalledOnce();
+});
+
+for (const wayland of [false, true]) test(`a screen point supersedes stale source coordinates only when global positions exist: Wayland=${wayland}`, async () => {
+  vi.stubEnv('WAYLAND_DISPLAY', wayland ? 'private-test-wayland' : '');
+  const f = fixture(); f.register(); f.hover(1);
+  electron.listeners.get('tabs:detach-to-window')!({ sender: { id: 1 } }, {
+    transferId: 'move', x: 700, y: 400, dropEffect: 'move', release: { x: 200, y: 200 },
+  });
+  const commitsLocal = wayland && process.platform === 'linux';
+  expect(f.source.messages.some(message => (message.payload as { commitGuide?: boolean }).commitGuide)).toBe(commitsLocal);
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(f.prepared.window.showInactive).toHaveBeenCalledTimes(commitsLocal ? 0 : 1);
 });

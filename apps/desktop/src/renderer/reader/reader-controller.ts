@@ -53,6 +53,10 @@ export class ReaderController {
       if (event.detail) void this.freeze();
       else this.unfreeze();
     }) as EventListener);
+    window.addEventListener('setdown:tab-drag-visibility', ((event: CustomEvent<boolean>) => {
+      if (event.detail) void this.freeze();
+      else this.unfreeze();
+    }) as EventListener);
   }
 
   send(tabId: string, message: Record<string, unknown>) {

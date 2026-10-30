@@ -229,7 +229,8 @@ test('MV3 popup targets its web tab; worker grants, proxy, WebRTC, cookies and d
     await worker({ op: 'disableAction', tabId: otherTarget.tab.id });
     const disabledPanel = await picker(second);
     await expect(disabledPanel.getByRole('button', { name: 'Runtime Fixture', exact: true })).toBeDisabled();
-    await disabledPanel.keyboard.press('Escape');
+    await nativeInput({ keys: ['Escape'] });
+    await expect.poll(() => app.windows().includes(disabledPanel)).toBe(false);
     const firstPanel = await picker(page);
     await expect(firstPanel.getByRole('button', { name: 'Runtime Fixture', exact: true })).toBeEnabled();
     await expect(firstPanel.getByRole('button', { name: 'Runtime Fixture', exact: true }).locator('.badge')).toHaveText('2');
@@ -238,7 +239,8 @@ test('MV3 popup targets its web tab; worker grants, proxy, WebRTC, cookies and d
     await firstPanel.screenshot({ path: '/tmp/setdown-extension-picker.png' });
     const nativeShot = await app.evaluate(async ({ BrowserWindow, WebContentsView }) => { const owner = BrowserWindow.getAllWindows().find(win => win.contentView.children.some(view => view instanceof WebContentsView && view.webContents.getURL().endsWith('/extension-panel.html')))!; return (await owner.capturePage()).toPNG().toString('base64'); });
     await writeFile('/tmp/setdown-extension-toolbar.png', Buffer.from(nativeShot, 'base64'));
-    await firstPanel.keyboard.press('Escape');
+    await nativeInput({ keys: ['Escape'] });
+    await expect.poll(() => app.windows().includes(firstPanel)).toBe(false);
     await page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-zoom-in'));
     await expect.poll(() => page.evaluate(() => window.marktex.getZoom())).toMatchObject({ app: 110 });
     await openAction();

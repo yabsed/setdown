@@ -4,6 +4,7 @@ import { promisify } from 'node:util';
 const execFile = promisify(execFileCallback);
 
 import { fixture, evaluatePage } from '../../support/browser/browser-fixture';
+import { nativeInput } from '../../support/electron/native-input';
 
 for (const right of ['markdown', 'reader', 'web'] as const) test(`address suggestions preserve live video beside ${right}`, async () => {
   const f = await fixture();
@@ -169,8 +170,64 @@ test('application menus preserve live video frames, playback and web view visibi
     await expect(menu.getByRole('menuitem', { name: 'Toggle Folder Tools', exact: true })).toBeVisible();
     await menu.getByRole('menuitem', { name: 'Toggle Folder Tools', exact: true }).click();
     await expect(f.page.getByRole('button', { name: 'Toggle Folder Tools', exact: true })).toHaveAttribute('aria-expanded', 'true');
+    await f.page.getByRole('button', { name: 'Explorer', exact: true }).click();
+    await f.page.getByRole('button', { name: 'Workspace folder', exact: true }).click();
+    const folders = f.page.getByRole('menu', { name: 'Choose workspace folder' });
+    await expect(folders).toBeVisible();
+    const folderFrames = await evaluatePage<number>(f.app, f.origin, 'window.presentedFrames');
+    await expect.poll(() => evaluatePage<number>(f.app, f.origin, 'window.presentedFrames')).toBeGreaterThan(folderFrames + 5);
+    await expect(f.page.locator('[data-browser-frozen]')).toHaveCount(0);
+    await folders.press('Escape');
+    await expect(folders).toBeHidden();
+
+    // Real native toolbar input is essential: the icon strip loses native focus
+    // before this click reaches the shell. CDP click alone misses that race.
+    const owner = await f.app.browserWindow(f.page);
+    const extensionButton = f.page.getByRole('button', { name: 'Extensions menu', exact: true });
+    await f.app.evaluate(({ app }) => {
+      (globalThis as any).__createdIconStrips = 0;
+      app.on('web-contents-created', (_event, contents) => contents.once('did-finish-load', () => {
+        if (contents.getURL().endsWith('/extension-panel.html')) (globalThis as any).__createdIconStrips++;
+      }));
+    });
+    for (let cycle = 1; cycle <= 3; cycle++) {
+      const button = (await extensionButton.boundingBox())!;
+      const point = await owner.evaluate((window, button) => { const bounds = window.getContentBounds(), z = window.webContents.getZoomFactor();
+        return { x: bounds.x + (button.x + button.width / 2) * z, y: bounds.y + (button.y + button.height / 2) * z }; }, button);
+      await nativeInput({ click: point });
+      const stripExists = () => f.app.evaluate(({ webContents }) => webContents.getAllWebContents().some(wc => wc.getURL().endsWith('/extension-panel.html')));
+      await expect.poll(stripExists).toBe(true);
+      const start = await evaluatePage<number>(f.app, f.origin, 'window.presentedFrames');
+      await expect.poll(() => evaluatePage<number>(f.app, f.origin, 'window.presentedFrames')).toBeGreaterThan(start + 5);
+      await nativeInput({ click: point });
+      await expect.poll(stripExists).toBe(false);
+      expect(await f.app.evaluate(() => (globalThis as any).__createdIconStrips)).toBe(cycle);
+    }
+    for (const cancel of [true, false]) {
+      const tab = (await f.page.getByRole('tab', { name: /Research page/ }).boundingBox())!;
+      const body = (await f.page.locator('.group-body').boundingBox())!;
+      const points = await owner.evaluate((window, { tab, body }) => {
+        const bounds = window.getContentBounds(), z = window.webContents.getZoomFactor();
+        return [{ x: bounds.x + (tab.x + 35) * z, y: bounds.y + (tab.y + 15) * z },
+          { x: bounds.x + (body.x + body.width * .98) * z, y: bounds.y + (body.y + body.height / 2) * z }];
+      }, { tab, body });
+      await nativeInput({ pointer: [points[0]], button: 'down' });
+      await nativeInput({ pointer: [{ x: points[0].x + 20, y: points[0].y + 15 }, points[1]] });
+      await expect(f.page.locator('.group-drop-overlay')).toBeVisible();
+      const draggingFrames = await evaluatePage<number>(f.app, f.origin, 'window.presentedFrames');
+      await expect.poll(() => evaluatePage<number>(f.app, f.origin, 'window.presentedFrames')).toBeGreaterThan(draggingFrames + 8);
+      await expect(f.page.locator('[data-browser-frozen]')).toHaveCount(0);
+      expect(await owner.evaluate((window, origin) => window.contentView.children.some((view: Electron.View) => view.getVisible()
+        && 'webContents' in view && (view as Electron.WebContentsView).webContents.getURL() === `${origin}/first`), f.origin)).toBe(true);
+      if (cancel) await nativeInput({ keys: ['Escape'] });
+      await nativeInput({ button: 'up' });
+      await expect(f.page.locator('.editor-group')).toHaveCount(cancel ? 1 : 2);
+      await expect(f.page.locator('.group-drop-overlay')).toBeHidden();
+    }
+    await owner.dispose();
+    expect(await evaluatePage(f.app, f.origin, 'document.querySelector("video").paused')).toBe(false);
     expect(f.errors).toEqual([]);
-  } finally { await f.dispose(); }
+  } finally { await nativeInput({ keys: ['Escape'], button: 'up' }); await f.dispose(); }
 });
 
 test('language sidebar leaves the native web page live and Escape belongs to its search', async () => {

@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { dialog } from 'electron';
+import { app, dialog } from 'electron';
 import type { GitRemoteAction, ProjectEntryKind, ProjectFolder, ProjectSearchRequest } from '../../protocol/desktop-api';
 import { isOpenableDocument } from '../../core/document/document-profile';
 import { canonicalPath, isInside } from '../documents/file-system';
@@ -49,7 +49,7 @@ export class ProjectService {
       }
     }
   });
-  private readonly git = new GitService(this.paths);
+  private readonly git = new GitService(this.paths, undefined, () => app?.getPath ? path.join(app.getPath('userData'), 'git-settings.json') : null);
   private readonly searcher: SearchService;
   private readonly folderRequests = new WeakMap<WindowState, number>();
   constructor(searchVisible: (documentPath: string, text: string, query: string, limit: number, root: string) => Promise<VisibleSearchMatch[]>,
@@ -99,6 +99,7 @@ export class ProjectService {
   moveEntries = (state: WindowState, entryPaths: string[], targetDirectory: string) => this.explorer.moveMany(state, entryPaths, targetDirectory);
   trashEntry = (state: WindowState, entryPath: string) => this.explorer.trashEntry(state, entryPath);
   search = (state: WindowState, request: ProjectSearchRequest) => this.searcher.search(state, request);
+  configureGit = (state: WindowState, update: Parameters<GitService['configure']>[1]) => this.git.configure(state, update);
   selectGit = (state: WindowState, root: string) => this.git.select(state, root);
   gitStatus = (state: WindowState) => this.git.status(state);
   gitDiff = (state: WindowState, filePath: string, staged: boolean) => this.git.diff(state, filePath, staged);

@@ -4,13 +4,14 @@
   import { browser } from './browser-state.svelte';
   import BrowserDownloads from './BrowserDownloads.svelte';
   import BrowserExtensions from './BrowserExtensions.svelte';
+  import BrowserAppearance from './BrowserAppearance.svelte';
   let { actions }: { actions: AppActions } = $props();
-  let query = $state(''), section = $state<'bookmarks' | 'history' | 'downloads' | 'extensions'>('bookmarks');
+  let query = $state(''), section = $state<'bookmarks' | 'history' | 'downloads' | 'extensions' | 'appearance'>('bookmarks');
   let rows = $state<BrowserPlace[]>([]), error = $state(''), loading = $state(false), confirming = $state(false), deleting = $state(false);
   const activeDownloads = $derived(browser.downloads.filter(item => item.state === 'progressing').length);
   $effect(() => {
     const text = query, scope = section; void browser.revision;
-    if (scope === 'downloads' || scope === 'extensions') return;
+    if (scope === 'downloads' || scope === 'extensions' || scope === 'appearance') return;
     let current = true; loading = true;
     const timer = setTimeout(() => void actions.browserPlaces(text, scope).then(result => {
       if (current) { rows = result; error = ''; }
@@ -33,9 +34,10 @@
     <button class:selected={section === 'history'} aria-pressed={section === 'history'} onclick={() => select('history')}>History</button>
     <button class:selected={section === 'downloads'} aria-pressed={section === 'downloads'} onclick={() => select('downloads')}>Downloads{#if activeDownloads}<span class="count">{activeDownloads}</span>{/if}</button>
     <button class:selected={section === 'extensions'} aria-pressed={section === 'extensions'} onclick={() => select('extensions')}>Extensions</button>
+    <button class:selected={section === 'appearance'} aria-pressed={section === 'appearance'} onclick={() => select('appearance')}>Appearance</button>
   </nav>
-  {#if section !== 'extensions'}<input aria-label={section === 'downloads' ? 'Search downloads' : 'Search bookmarks and history'} placeholder={`Search ${section}`} bind:value={query} />{/if}
-  {#if section === 'extensions'}
+  {#if section !== 'extensions' && section !== 'appearance'}<input aria-label={section === 'downloads' ? 'Search downloads' : 'Search bookmarks and history'} placeholder={`Search ${section}`} bind:value={query} />{/if}
+  {#if section === 'appearance'}<BrowserAppearance {actions}/>{:else if section === 'extensions'}
     <BrowserExtensions {actions} />
   {:else if section === 'downloads'}
     <BrowserDownloads {actions} {query} />

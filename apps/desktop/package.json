@@ -14,6 +14,7 @@
   "type": "module",
   "main": "dist-electron/main.cjs",
   "scripts": {
+    "test:wayland": "npm run build && SETDOWN_TEST_DISPLAY=wayland bash scripts/with-isolated-display.sh playwright test --config playwright.wayland.config.ts",
     "test:language-servers": "npm run build && bash scripts/with-isolated-display.sh playwright test --config playwright.language-servers.config.ts",
     "test:preview-contract:unit": "vitest run --config vitest.preview-contract.config.ts && npm run test:tooling",
     "test:preview-contract:e2e": "bash scripts/with-isolated-display.sh playwright test --config playwright.preview-contract.config.ts",
@@ -35,7 +36,8 @@
     "update:language-profiles": "python3 scripts/update-language-profiles.py",
     "check:language-profiles": "python3 scripts/update-language-profiles.py --check",
     "test:notebook-tools": "npm run build && bash scripts/with-isolated-display.sh playwright test --config playwright.notebook-tools.config.ts",
-    "test:tooling": "node --test scripts/*.test.mjs scripts/browser/*.test.mjs"
+    "test:tooling": "node --test scripts/*.test.mjs scripts/browser/*.test.mjs",
+    "test:xwayland": "npm run build && SETDOWN_TEST_DISPLAY=xwayland bash scripts/with-isolated-display.sh playwright test --config playwright.wayland.config.ts"
   },
   "dependencies": {
     "@parcel/watcher": "^2.6.0",

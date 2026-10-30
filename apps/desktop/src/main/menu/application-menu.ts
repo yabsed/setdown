@@ -12,6 +12,8 @@ type MenuContext = {
   sendCommand: (command: AppCommand) => void;
   setTheme: (theme: PreviewThemeId) => void;
   theme: () => PreviewThemeId;
+  webTheme: () => boolean;
+  toggleWebTheme: () => void;
   autoSave: () => boolean;
   toggleAutoSave: () => boolean;
   zoom: (steps: number, scope?: 'app' | 'text' | 'terminal') => void;
@@ -113,13 +115,16 @@ export function installApplicationMenu(context: MenuContext) {
         { type: 'separator' },
         { id: 'preview-find', label: 'Find in Preview', accelerator: 'CmdOrCtrl+F', click: () => command('open-find') },
         {
-          id: 'menu-theme', label: 'Theme', submenu: PREVIEW_THEMES.map((theme) => ({
+          id: 'menu-theme', label: 'Theme', submenu: [...PREVIEW_THEMES.map((theme) => ({
             id: `preview-theme-${theme.id}`,
             label: theme.label,
             type: 'radio' as const,
             checked: theme.id === context.theme(),
             click: () => context.setTheme(theme.id),
-          })),
+          })), { type: 'separator' }, {
+            id: 'menu-theme-web', label: 'Apply Theme to Web Pages', type: 'checkbox',
+            checked: context.webTheme(), click: () => context.toggleWebTheme(),
+          }],
         },
         { type: 'separator' },
         { id: 'menu-reload', label: 'Reload', accelerator: 'CmdOrCtrl+R', click: () => {

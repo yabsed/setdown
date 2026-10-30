@@ -81,13 +81,13 @@ export class SourceControlController {
 
   constructor(private readonly options: SourceControlOptions) {
     this.presentation = new ReviewPresentation(options.desktop);
-    window.addEventListener('setdown:native-overlay-visibility', this.overlayListener);
+    window.addEventListener('setdown:native-overlay-visibility', this.overlayListener); window.addEventListener('setdown:tab-drag-visibility', this.overlayListener);
     this.stopViewport = this.viewport.onChange?.(() => this.schedulePrime());
   }
 
   dispose = (): void => {
     this.clear(); this.stopViewport?.();
-    window.removeEventListener('setdown:native-overlay-visibility', this.overlayListener);
+    window.removeEventListener('setdown:native-overlay-visibility', this.overlayListener); window.removeEventListener('setdown:tab-drag-visibility', this.overlayListener);
   };
 
   restore = async (): Promise<void> => {
@@ -337,6 +337,7 @@ export class SourceControlController {
     this.schedulePrime();
   };
 
+  configure = (update: Parameters<import('../../../protocol/desktop-api').MarkTexApi['configureGit']>[0]): Promise<void> => this.mutate(() => this.options.desktop.configureGit(update));
   selectRepository = (root: string): Promise<void> => this.mutate(() => this.options.desktop.selectGitRepository(root));
   initialize = (): Promise<void> => this.mutate(() => this.options.desktop.initializeGit());
   stage = (paths: string[]): Promise<void> => this.mutate(() => this.options.desktop.stageGit(paths));
@@ -491,6 +492,7 @@ export class SourceControlController {
     this.loadGenerations.set(tab.id, generation);
     tab.loading = true;
     if (this.activeTab()?.id === tab.id) this.state.gitDiffLoading = true;
+    this.options.stateChanged?.();
     try {
       const stored = tab.history ? await this.options.desktop.getGitHistoryDiff({ ...tab.history })
         : await this.options.desktop.getGitDiff(tab.filePath, tab.staged);
@@ -513,6 +515,7 @@ export class SourceControlController {
       if (this.isCurrentLoad(tab, generation)) {
         tab.loading = false;
         if (this.activeTab()?.id === tab.id) this.state.gitDiffLoading = false;
+        this.options.stateChanged?.();
       }
     }
   }

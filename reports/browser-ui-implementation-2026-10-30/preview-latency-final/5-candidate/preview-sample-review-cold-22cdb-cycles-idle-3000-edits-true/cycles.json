@@ -1,0 +1,3100 @@
+{
+  "idle": 3000,
+  "returnMethod": "double-click",
+  "edits": true,
+  "samples": [
+    {
+      "cycle": 1,
+      "escapeAt": 1793312684670,
+      "showMs": 168,
+      "captureMs": 228,
+      "captureRequiresLatestContent": true,
+      "viewId": 5,
+      "trace": [
+        {
+          "t": 1793312684662,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:prime-position",
+          "sourceLine": 410,
+          "sinceEscape": -8
+        },
+        {
+          "t": 1793312684672,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 2
+        },
+        {
+          "t": 1793312684672,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 2
+        },
+        {
+          "t": 1793312684672,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 2
+        },
+        {
+          "t": 1793312684672,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:prime-position",
+          "sourceLine": 410,
+          "sinceEscape": 2
+        },
+        {
+          "t": 1793312684674,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 4
+        },
+        {
+          "t": 1793312684802,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:patch-review-rows",
+          "revision": 2,
+          "sinceEscape": 132
+        },
+        {
+          "t": 1793312684805,
+          "kind": "ack",
+          "id": 5,
+          "type": "marktex:html-updated",
+          "revision": 2,
+          "sinceEscape": 135
+        },
+        {
+          "t": 1793312684805,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:prepare-review",
+          "revision": 2,
+          "requestId": 2,
+          "sourceLine": 410,
+          "sinceEscape": 135
+        },
+        {
+          "t": 1793312684836,
+          "kind": "ack",
+          "id": 5,
+          "type": "marktex:review-prepared",
+          "revision": 2,
+          "requestId": 2,
+          "sinceEscape": 166
+        },
+        {
+          "t": 1793312684836,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 166
+        },
+        {
+          "t": 1793312684837,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:prime-position",
+          "sourceLine": 410,
+          "sinceEscape": 167
+        },
+        {
+          "t": 1793312684837,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:prepare-review",
+          "revision": 2,
+          "requestId": "present:1",
+          "sourceLine": 410,
+          "sinceEscape": 167
+        },
+        {
+          "t": 1793312684837,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 167
+        },
+        {
+          "t": 1793312684837,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 167
+        },
+        {
+          "t": 1793312684837,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 167
+        },
+        {
+          "t": 1793312684837,
+          "kind": "ack",
+          "id": 5,
+          "type": "marktex:review-prepared",
+          "revision": 2,
+          "requestId": "present:1",
+          "sinceEscape": 167
+        },
+        {
+          "t": 1793312684838,
+          "kind": "visible",
+          "id": 5,
+          "value": true,
+          "bounds": {
+            "x": 300,
+            "y": 110,
+            "width": 780,
+            "height": 710
+          },
+          "sinceEscape": 168
+        },
+        {
+          "t": 1793312684838,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:resume-hydration",
+          "sinceEscape": 168
+        },
+        {
+          "t": 1793312684838,
+          "kind": "show",
+          "tabId": "git-diff:4f8b21b9-ea67-4c2d-b7d2-1eda9121adbf:b",
+          "sinceEscape": 168
+        },
+        {
+          "t": 1793312684838,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:observe-viewport",
+          "sinceEscape": 168
+        },
+        {
+          "t": 1793312684838,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:resume-hydration",
+          "sinceEscape": 168
+        },
+        {
+          "t": 1793312684838,
+          "kind": "show",
+          "tabId": "git-diff:4f8b21b9-ea67-4c2d-b7d2-1eda9121adbf:b",
+          "sinceEscape": 168
+        },
+        {
+          "t": 1793312684838,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:verify-review-position",
+          "revision": 2,
+          "requestId": "present:1",
+          "sinceEscape": 168
+        }
+      ],
+      "geometry": {
+        "width": 780,
+        "height": 710,
+        "dpr": 1
+      },
+      "doubleClickToEditorMs": 22
+    },
+    {
+      "cycle": 2,
+      "escapeAt": 1793312685016,
+      "showMs": 127,
+      "captureMs": 190,
+      "captureRequiresLatestContent": true,
+      "viewId": 4,
+      "trace": [
+        {
+          "t": 1793312685007,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:prime-position",
+          "sourceLine": 399,
+          "sinceEscape": -9
+        },
+        {
+          "t": 1793312685018,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 2
+        },
+        {
+          "t": 1793312685018,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 2
+        },
+        {
+          "t": 1793312685018,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 2
+        },
+        {
+          "t": 1793312685018,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:prime-position",
+          "sourceLine": 400,
+          "sinceEscape": 2
+        },
+        {
+          "t": 1793312685019,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 3
+        },
+        {
+          "t": 1793312685126,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:patch-review-rows",
+          "revision": 3,
+          "sinceEscape": 110
+        },
+        {
+          "t": 1793312685129,
+          "kind": "ack",
+          "id": 4,
+          "type": "marktex:html-updated",
+          "revision": 3,
+          "sinceEscape": 113
+        },
+        {
+          "t": 1793312685130,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:prepare-review",
+          "revision": 3,
+          "requestId": 3,
+          "sourceLine": 400,
+          "sinceEscape": 114
+        },
+        {
+          "t": 1793312685141,
+          "kind": "ack",
+          "id": 4,
+          "type": "marktex:review-prepared",
+          "revision": 3,
+          "requestId": 3,
+          "sinceEscape": 125
+        },
+        {
+          "t": 1793312685142,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 126
+        },
+        {
+          "t": 1793312685142,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:prime-position",
+          "sourceLine": 400,
+          "sinceEscape": 126
+        },
+        {
+          "t": 1793312685142,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:prepare-review",
+          "revision": 3,
+          "requestId": "present:2",
+          "sourceLine": 400,
+          "sinceEscape": 126
+        },
+        {
+          "t": 1793312685142,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 126
+        },
+        {
+          "t": 1793312685142,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 126
+        },
+        {
+          "t": 1793312685142,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 126
+        },
+        {
+          "t": 1793312685142,
+          "kind": "ack",
+          "id": 4,
+          "type": "marktex:review-prepared",
+          "revision": 3,
+          "requestId": "present:2",
+          "sinceEscape": 126
+        },
+        {
+          "t": 1793312685143,
+          "kind": "visible",
+          "id": 4,
+          "value": true,
+          "bounds": {
+            "x": 300,
+            "y": 110,
+            "width": 780,
+            "height": 710
+          },
+          "sinceEscape": 127
+        },
+        {
+          "t": 1793312685143,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:resume-hydration",
+          "sinceEscape": 127
+        },
+        {
+          "t": 1793312685143,
+          "kind": "show",
+          "tabId": "git-diff:4f8b21b9-ea67-4c2d-b7d2-1eda9121adbf:a",
+          "sinceEscape": 127
+        },
+        {
+          "t": 1793312685143,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:observe-viewport",
+          "sinceEscape": 127
+        },
+        {
+          "t": 1793312685143,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:resume-hydration",
+          "sinceEscape": 127
+        },
+        {
+          "t": 1793312685143,
+          "kind": "show",
+          "tabId": "git-diff:4f8b21b9-ea67-4c2d-b7d2-1eda9121adbf:a",
+          "sinceEscape": 127
+        },
+        {
+          "t": 1793312685143,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:verify-review-position",
+          "revision": 3,
+          "requestId": "present:2",
+          "sinceEscape": 127
+        }
+      ],
+      "geometry": {
+        "width": 780,
+        "height": 710,
+        "dpr": 1
+      },
+      "doubleClickToEditorMs": 19
+    },
+    {
+      "cycle": 3,
+      "escapeAt": 1793312685342,
+      "showMs": 135,
+      "captureMs": 171,
+      "captureRequiresLatestContent": true,
+      "viewId": 5,
+      "trace": [
+        {
+          "t": 1793312685337,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:prime-position",
+          "sourceLine": 398,
+          "sinceEscape": -5
+        },
+        {
+          "t": 1793312685344,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 2
+        },
+        {
+          "t": 1793312685344,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 2
+        },
+        {
+          "t": 1793312685344,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 2
+        },
+        {
+          "t": 1793312685344,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:prime-position",
+          "sourceLine": 398,
+          "sinceEscape": 2
+        },
+        {
+          "t": 1793312685345,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 3
+        },
+        {
+          "t": 1793312685440,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:patch-review-rows",
+          "revision": 4,
+          "sinceEscape": 98
+        },
+        {
+          "t": 1793312685444,
+          "kind": "ack",
+          "id": 5,
+          "type": "marktex:html-updated",
+          "revision": 4,
+          "sinceEscape": 102
+        },
+        {
+          "t": 1793312685444,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:prepare-review",
+          "revision": 4,
+          "requestId": 4,
+          "sourceLine": 398,
+          "sinceEscape": 102
+        },
+        {
+          "t": 1793312685475,
+          "kind": "ack",
+          "id": 5,
+          "type": "marktex:review-prepared",
+          "revision": 4,
+          "requestId": 4,
+          "sinceEscape": 133
+        },
+        {
+          "t": 1793312685476,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 134
+        },
+        {
+          "t": 1793312685476,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:prime-position",
+          "sourceLine": 398,
+          "sinceEscape": 134
+        },
+        {
+          "t": 1793312685476,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:prepare-review",
+          "revision": 4,
+          "requestId": "present:3",
+          "sourceLine": 398,
+          "sinceEscape": 134
+        },
+        {
+          "t": 1793312685476,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 134
+        },
+        {
+          "t": 1793312685476,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 134
+        },
+        {
+          "t": 1793312685476,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 134
+        },
+        {
+          "t": 1793312685476,
+          "kind": "ack",
+          "id": 5,
+          "type": "marktex:review-prepared",
+          "revision": 4,
+          "requestId": "present:3",
+          "sinceEscape": 134
+        },
+        {
+          "t": 1793312685477,
+          "kind": "visible",
+          "id": 5,
+          "value": true,
+          "bounds": {
+            "x": 300,
+            "y": 110,
+            "width": 780,
+            "height": 710
+          },
+          "sinceEscape": 135
+        },
+        {
+          "t": 1793312685477,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:resume-hydration",
+          "sinceEscape": 135
+        },
+        {
+          "t": 1793312685477,
+          "kind": "show",
+          "tabId": "git-diff:4f8b21b9-ea67-4c2d-b7d2-1eda9121adbf:b",
+          "sinceEscape": 135
+        },
+        {
+          "t": 1793312685477,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:observe-viewport",
+          "sinceEscape": 135
+        },
+        {
+          "t": 1793312685477,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:resume-hydration",
+          "sinceEscape": 135
+        },
+        {
+          "t": 1793312685477,
+          "kind": "show",
+          "tabId": "git-diff:4f8b21b9-ea67-4c2d-b7d2-1eda9121adbf:b",
+          "sinceEscape": 135
+        },
+        {
+          "t": 1793312685477,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:verify-review-position",
+          "revision": 4,
+          "requestId": "present:3",
+          "sinceEscape": 135
+        }
+      ],
+      "geometry": {
+        "width": 780,
+        "height": 710,
+        "dpr": 1
+      },
+      "doubleClickToEditorMs": 11
+    },
+    {
+      "cycle": 4,
+      "escapeAt": 1793312685604,
+      "showMs": 128,
+      "captureMs": 176,
+      "captureRequiresLatestContent": true,
+      "viewId": 4,
+      "trace": [
+        {
+          "t": 1793312685599,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:prime-position",
+          "sourceLine": 399,
+          "sinceEscape": -5
+        },
+        {
+          "t": 1793312685605,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 1
+        },
+        {
+          "t": 1793312685605,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 1
+        },
+        {
+          "t": 1793312685605,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 1
+        },
+        {
+          "t": 1793312685605,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:prime-position",
+          "sourceLine": 399,
+          "sinceEscape": 1
+        },
+        {
+          "t": 1793312685607,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 3
+        },
+        {
+          "t": 1793312685696,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:patch-review-rows",
+          "revision": 5,
+          "sinceEscape": 92
+        },
+        {
+          "t": 1793312685700,
+          "kind": "ack",
+          "id": 4,
+          "type": "marktex:html-updated",
+          "revision": 5,
+          "sinceEscape": 96
+        },
+        {
+          "t": 1793312685700,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:prepare-review",
+          "revision": 5,
+          "requestId": 5,
+          "sourceLine": 399,
+          "sinceEscape": 96
+        },
+        {
+          "t": 1793312685730,
+          "kind": "ack",
+          "id": 4,
+          "type": "marktex:review-prepared",
+          "revision": 5,
+          "requestId": 5,
+          "sinceEscape": 126
+        },
+        {
+          "t": 1793312685731,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 127
+        },
+        {
+          "t": 1793312685731,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:prime-position",
+          "sourceLine": 399,
+          "sinceEscape": 127
+        },
+        {
+          "t": 1793312685731,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:prepare-review",
+          "revision": 5,
+          "requestId": "present:4",
+          "sourceLine": 399,
+          "sinceEscape": 127
+        },
+        {
+          "t": 1793312685731,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 127
+        },
+        {
+          "t": 1793312685731,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 127
+        },
+        {
+          "t": 1793312685731,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 127
+        },
+        {
+          "t": 1793312685731,
+          "kind": "ack",
+          "id": 4,
+          "type": "marktex:review-prepared",
+          "revision": 5,
+          "requestId": "present:4",
+          "sinceEscape": 127
+        },
+        {
+          "t": 1793312685732,
+          "kind": "visible",
+          "id": 4,
+          "value": true,
+          "bounds": {
+            "x": 300,
+            "y": 110,
+            "width": 780,
+            "height": 710
+          },
+          "sinceEscape": 128
+        },
+        {
+          "t": 1793312685732,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:resume-hydration",
+          "sinceEscape": 128
+        },
+        {
+          "t": 1793312685732,
+          "kind": "show",
+          "tabId": "git-diff:4f8b21b9-ea67-4c2d-b7d2-1eda9121adbf:a",
+          "sinceEscape": 128
+        },
+        {
+          "t": 1793312685732,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:observe-viewport",
+          "sinceEscape": 128
+        },
+        {
+          "t": 1793312685732,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:resume-hydration",
+          "sinceEscape": 128
+        },
+        {
+          "t": 1793312685732,
+          "kind": "show",
+          "tabId": "git-diff:4f8b21b9-ea67-4c2d-b7d2-1eda9121adbf:a",
+          "sinceEscape": 128
+        },
+        {
+          "t": 1793312685732,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:verify-review-position",
+          "revision": 5,
+          "requestId": "present:4",
+          "sinceEscape": 128
+        }
+      ],
+      "geometry": {
+        "width": 780,
+        "height": 710,
+        "dpr": 1
+      },
+      "doubleClickToEditorMs": 19
+    },
+    {
+      "cycle": 5,
+      "escapeAt": 1793312685881,
+      "showMs": 134,
+      "captureMs": 167,
+      "captureRequiresLatestContent": true,
+      "viewId": 5,
+      "trace": [
+        {
+          "t": 1793312685880,
+          "kind": "command",
+          "id": 4,
+          "command": "marktex:prime-position",
+          "sourceLine": 400,
+          "sinceEscape": -1
+        },
+        {
+          "t": 1793312685882,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 1
+        },
+        {
+          "t": 1793312685882,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 1
+        },
+        {
+          "t": 1793312685882,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 1
+        },
+        {
+          "t": 1793312685883,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:prime-position",
+          "sourceLine": 400,
+          "sinceEscape": 2
+        },
+        {
+          "t": 1793312685884,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 3
+        },
+        {
+          "t": 1793312685977,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:patch-review-rows",
+          "revision": 6,
+          "sinceEscape": 96
+        },
+        {
+          "t": 1793312685980,
+          "kind": "ack",
+          "id": 5,
+          "type": "marktex:html-updated",
+          "revision": 6,
+          "sinceEscape": 99
+        },
+        {
+          "t": 1793312685980,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:prepare-review",
+          "revision": 6,
+          "requestId": 6,
+          "sourceLine": 400,
+          "sinceEscape": 99
+        },
+        {
+          "t": 1793312686011,
+          "kind": "ack",
+          "id": 5,
+          "type": "marktex:review-prepared",
+          "revision": 6,
+          "requestId": 6,
+          "sinceEscape": 130
+        },
+        {
+          "t": 1793312686012,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 131
+        },
+        {
+          "t": 1793312686012,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:prime-position",
+          "sourceLine": 400,
+          "sinceEscape": 131
+        },
+        {
+          "t": 1793312686012,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:prepare-review",
+          "revision": 6,
+          "requestId": "present:5",
+          "sourceLine": 400,
+          "sinceEscape": 131
+        },
+        {
+          "t": 1793312686012,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 131
+        },
+        {
+          "t": 1793312686012,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 131
+        },
+        {
+          "t": 1793312686012,
+          "kind": "show",
+          "tabId": null,
+          "sinceEscape": 131
+        },
+        {
+          "t": 1793312686015,
+          "kind": "ack",
+          "id": 5,
+          "type": "marktex:review-prepared",
+          "revision": 6,
+          "requestId": "present:5",
+          "sinceEscape": 134
+        },
+        {
+          "t": 1793312686015,
+          "kind": "visible",
+          "id": 5,
+          "value": true,
+          "bounds": {
+            "x": 300,
+            "y": 110,
+            "width": 780,
+            "height": 710
+          },
+          "sinceEscape": 134
+        },
+        {
+          "t": 1793312686015,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:resume-hydration",
+          "sinceEscape": 134
+        },
+        {
+          "t": 1793312686015,
+          "kind": "show",
+          "tabId": "git-diff:4f8b21b9-ea67-4c2d-b7d2-1eda9121adbf:b",
+          "sinceEscape": 134
+        },
+        {
+          "t": 1793312686015,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:observe-viewport",
+          "sinceEscape": 134
+        },
+        {
+          "t": 1793312686015,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:resume-hydration",
+          "sinceEscape": 134
+        },
+        {
+          "t": 1793312686015,
+          "kind": "show",
+          "tabId": "git-diff:4f8b21b9-ea67-4c2d-b7d2-1eda9121adbf:b",
+          "sinceEscape": 134
+        },
+        {
+          "t": 1793312686016,
+          "kind": "command",
+          "id": 5,
+          "command": "marktex:verify-review-position",
+          "revision": 6,
+          "requestId": "present:5",
+          "sinceEscape": 135
+        }
+      ],
+      "geometry": {
+        "width": 780,
+        "height": 710,
+        "dpr": 1
+      },
+      "doubleClickToEditorMs": 16
+    }
+  ],
+  "trace": [
+    {
+      "t": 1793312681003,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681003,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681005,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681015,
+      "kind": "visible",
+      "id": 3,
+      "value": false,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "t": 1793312681015,
+      "kind": "visible",
+      "id": 3,
+      "value": false,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "t": 1793312681016,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681016,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681016,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681016,
+      "kind": "command",
+      "id": 3,
+      "command": "marktex:collect-headings"
+    },
+    {
+      "t": 1793312681017,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681017,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681017,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681017,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681017,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681027,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681059,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681093,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681093,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681093,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681126,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681126,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681126,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681217,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681217,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681217,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681217,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681217,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681225,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681225,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681225,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681225,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681225,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681226,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681226,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681226,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681227,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681233,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681234,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681234,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681250,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681253,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681253,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681254,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681254,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681270,
+      "kind": "visible",
+      "id": 4,
+      "value": false,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "t": 1793312681270,
+      "kind": "visible",
+      "id": 4,
+      "value": false,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "t": 1793312681437,
+      "kind": "loaded",
+      "id": 2
+    },
+    {
+      "t": 1793312681439,
+      "kind": "visible",
+      "id": 5,
+      "value": false,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "t": 1793312681513,
+      "kind": "loaded",
+      "id": 5
+    },
+    {
+      "t": 1793312681514,
+      "kind": "loaded",
+      "id": 3
+    },
+    {
+      "t": 1793312681581,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681581,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681581,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681581,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681615,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681618,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681619,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312681619,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312682212,
+      "kind": "loaded",
+      "id": 4
+    },
+    {
+      "t": 1793312682213,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:prepare-review",
+      "revision": 1,
+      "requestId": 1,
+      "sourceLine": 12
+    },
+    {
+      "t": 1793312682532,
+      "kind": "ack",
+      "id": 4,
+      "type": "marktex:review-prepared",
+      "revision": 1,
+      "requestId": 1
+    },
+    {
+      "t": 1793312682532,
+      "kind": "visible",
+      "id": 5,
+      "value": false,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "t": 1793312682535,
+      "kind": "visible",
+      "id": 6,
+      "value": false,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "t": 1793312682537,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312682537,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312682537,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312682537,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312682551,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:prime-position",
+      "sourceLine": 406
+    },
+    {
+      "t": 1793312682588,
+      "kind": "loaded",
+      "id": 6
+    },
+    {
+      "t": 1793312682992,
+      "kind": "loaded",
+      "id": 5
+    },
+    {
+      "t": 1793312684631,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:prime-position",
+      "sourceLine": 408
+    },
+    {
+      "t": 1793312684655,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684655,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684656,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684662,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:prime-position",
+      "sourceLine": 410
+    },
+    {
+      "t": 1793312684672,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684672,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684672,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684672,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:prime-position",
+      "sourceLine": 410
+    },
+    {
+      "t": 1793312684674,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684802,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:patch-review-rows",
+      "revision": 2
+    },
+    {
+      "t": 1793312684805,
+      "kind": "ack",
+      "id": 5,
+      "type": "marktex:html-updated",
+      "revision": 2
+    },
+    {
+      "t": 1793312684805,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:prepare-review",
+      "revision": 2,
+      "requestId": 2,
+      "sourceLine": 410
+    },
+    {
+      "t": 1793312684836,
+      "kind": "ack",
+      "id": 5,
+      "type": "marktex:review-prepared",
+      "revision": 2,
+      "requestId": 2
+    },
+    {
+      "t": 1793312684836,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684837,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:prime-position",
+      "sourceLine": 410
+    },
+    {
+      "t": 1793312684837,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:prepare-review",
+      "revision": 2,
+      "requestId": "present:1",
+      "sourceLine": 410
+    },
+    {
+      "t": 1793312684837,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684837,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684837,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684837,
+      "kind": "ack",
+      "id": 5,
+      "type": "marktex:review-prepared",
+      "revision": 2,
+      "requestId": "present:1"
+    },
+    {
+      "t": 1793312684838,
+      "kind": "visible",
+      "id": 5,
+      "value": true,
+      "bounds": {
+        "x": 300,
+        "y": 110,
+        "width": 780,
+        "height": 710
+      }
+    },
+    {
+      "t": 1793312684838,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:resume-hydration"
+    },
+    {
+      "t": 1793312684838,
+      "kind": "show",
+      "tabId": "git-diff:4f8b21b9-ea67-4c2d-b7d2-1eda9121adbf:b"
+    },
+    {
+      "t": 1793312684838,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:observe-viewport"
+    },
+    {
+      "t": 1793312684838,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:resume-hydration"
+    },
+    {
+      "t": 1793312684838,
+      "kind": "show",
+      "tabId": "git-diff:4f8b21b9-ea67-4c2d-b7d2-1eda9121adbf:b"
+    },
+    {
+      "t": 1793312684838,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:verify-review-position",
+      "revision": 2,
+      "requestId": "present:1"
+    },
+    {
+      "t": 1793312684963,
+      "kind": "ack",
+      "id": 5,
+      "type": "edit-at-anchor"
+    },
+    {
+      "t": 1793312684964,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:observe-viewport"
+    },
+    {
+      "t": 1793312684964,
+      "kind": "visible",
+      "id": 5,
+      "value": false,
+      "bounds": {
+        "x": 300,
+        "y": 110,
+        "width": 780,
+        "height": 710
+      }
+    },
+    {
+      "t": 1793312684964,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684964,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312684975,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:prime-position",
+      "sourceLine": 399
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685000,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685007,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:prime-position",
+      "sourceLine": 399
+    },
+    {
+      "t": 1793312685018,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685018,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685018,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685018,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:prime-position",
+      "sourceLine": 400
+    },
+    {
+      "t": 1793312685019,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685126,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:patch-review-rows",
+      "revision": 3
+    },
+    {
+      "t": 1793312685129,
+      "kind": "ack",
+      "id": 4,
+      "type": "marktex:html-updated",
+      "revision": 3
+    },
+    {
+      "t": 1793312685130,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:prepare-review",
+      "revision": 3,
+      "requestId": 3,
+      "sourceLine": 400
+    },
+    {
+      "t": 1793312685141,
+      "kind": "ack",
+      "id": 4,
+      "type": "marktex:review-prepared",
+      "revision": 3,
+      "requestId": 3
+    },
+    {
+      "t": 1793312685142,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685142,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:prime-position",
+      "sourceLine": 400
+    },
+    {
+      "t": 1793312685142,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:prepare-review",
+      "revision": 3,
+      "requestId": "present:2",
+      "sourceLine": 400
+    },
+    {
+      "t": 1793312685142,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685142,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685142,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685142,
+      "kind": "ack",
+      "id": 4,
+      "type": "marktex:review-prepared",
+      "revision": 3,
+      "requestId": "present:2"
+    },
+    {
+      "t": 1793312685143,
+      "kind": "visible",
+      "id": 4,
+      "value": true,
+      "bounds": {
+        "x": 300,
+        "y": 110,
+        "width": 780,
+        "height": 710
+      }
+    },
+    {
+      "t": 1793312685143,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:resume-hydration"
+    },
+    {
+      "t": 1793312685143,
+      "kind": "show",
+      "tabId": "git-diff:4f8b21b9-ea67-4c2d-b7d2-1eda9121adbf:a"
+    },
+    {
+      "t": 1793312685143,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:observe-viewport"
+    },
+    {
+      "t": 1793312685143,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:resume-hydration"
+    },
+    {
+      "t": 1793312685143,
+      "kind": "show",
+      "tabId": "git-diff:4f8b21b9-ea67-4c2d-b7d2-1eda9121adbf:a"
+    },
+    {
+      "t": 1793312685143,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:verify-review-position",
+      "revision": 3,
+      "requestId": "present:2"
+    },
+    {
+      "t": 1793312685301,
+      "kind": "ack",
+      "id": 4,
+      "type": "edit-at-anchor"
+    },
+    {
+      "t": 1793312685301,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:observe-viewport"
+    },
+    {
+      "t": 1793312685301,
+      "kind": "visible",
+      "id": 4,
+      "value": false,
+      "bounds": {
+        "x": 300,
+        "y": 110,
+        "width": 780,
+        "height": 710
+      }
+    },
+    {
+      "t": 1793312685301,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685301,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685311,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:prime-position",
+      "sourceLine": 397
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685332,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685333,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685333,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685337,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:prime-position",
+      "sourceLine": 398
+    },
+    {
+      "t": 1793312685344,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685344,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685344,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685344,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:prime-position",
+      "sourceLine": 398
+    },
+    {
+      "t": 1793312685345,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685440,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:patch-review-rows",
+      "revision": 4
+    },
+    {
+      "t": 1793312685444,
+      "kind": "ack",
+      "id": 5,
+      "type": "marktex:html-updated",
+      "revision": 4
+    },
+    {
+      "t": 1793312685444,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:prepare-review",
+      "revision": 4,
+      "requestId": 4,
+      "sourceLine": 398
+    },
+    {
+      "t": 1793312685475,
+      "kind": "ack",
+      "id": 5,
+      "type": "marktex:review-prepared",
+      "revision": 4,
+      "requestId": 4
+    },
+    {
+      "t": 1793312685476,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685476,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:prime-position",
+      "sourceLine": 398
+    },
+    {
+      "t": 1793312685476,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:prepare-review",
+      "revision": 4,
+      "requestId": "present:3",
+      "sourceLine": 398
+    },
+    {
+      "t": 1793312685476,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685476,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685476,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685476,
+      "kind": "ack",
+      "id": 5,
+      "type": "marktex:review-prepared",
+      "revision": 4,
+      "requestId": "present:3"
+    },
+    {
+      "t": 1793312685477,
+      "kind": "visible",
+      "id": 5,
+      "value": true,
+      "bounds": {
+        "x": 300,
+        "y": 110,
+        "width": 780,
+        "height": 710
+      }
+    },
+    {
+      "t": 1793312685477,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:resume-hydration"
+    },
+    {
+      "t": 1793312685477,
+      "kind": "show",
+      "tabId": "git-diff:4f8b21b9-ea67-4c2d-b7d2-1eda9121adbf:b"
+    },
+    {
+      "t": 1793312685477,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:observe-viewport"
+    },
+    {
+      "t": 1793312685477,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:resume-hydration"
+    },
+    {
+      "t": 1793312685477,
+      "kind": "show",
+      "tabId": "git-diff:4f8b21b9-ea67-4c2d-b7d2-1eda9121adbf:b"
+    },
+    {
+      "t": 1793312685477,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:verify-review-position",
+      "revision": 4,
+      "requestId": "present:3"
+    },
+    {
+      "t": 1793312685560,
+      "kind": "ack",
+      "id": 5,
+      "type": "edit-at-anchor"
+    },
+    {
+      "t": 1793312685561,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:observe-viewport"
+    },
+    {
+      "t": 1793312685561,
+      "kind": "visible",
+      "id": 5,
+      "value": false,
+      "bounds": {
+        "x": 300,
+        "y": 110,
+        "width": 780,
+        "height": 710
+      }
+    },
+    {
+      "t": 1793312685561,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685561,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685580,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:prime-position",
+      "sourceLine": 399
+    },
+    {
+      "t": 1793312685592,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685592,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685592,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685592,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685592,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685592,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685592,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685593,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685593,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685593,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685593,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685593,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685593,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685593,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685593,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685593,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685593,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685593,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685593,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685593,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685593,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685593,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685593,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685593,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685593,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685593,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685593,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685593,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685599,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:prime-position",
+      "sourceLine": 399
+    },
+    {
+      "t": 1793312685605,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685605,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685605,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685605,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:prime-position",
+      "sourceLine": 399
+    },
+    {
+      "t": 1793312685607,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685696,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:patch-review-rows",
+      "revision": 5
+    },
+    {
+      "t": 1793312685700,
+      "kind": "ack",
+      "id": 4,
+      "type": "marktex:html-updated",
+      "revision": 5
+    },
+    {
+      "t": 1793312685700,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:prepare-review",
+      "revision": 5,
+      "requestId": 5,
+      "sourceLine": 399
+    },
+    {
+      "t": 1793312685730,
+      "kind": "ack",
+      "id": 4,
+      "type": "marktex:review-prepared",
+      "revision": 5,
+      "requestId": 5
+    },
+    {
+      "t": 1793312685731,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685731,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:prime-position",
+      "sourceLine": 399
+    },
+    {
+      "t": 1793312685731,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:prepare-review",
+      "revision": 5,
+      "requestId": "present:4",
+      "sourceLine": 399
+    },
+    {
+      "t": 1793312685731,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685731,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685731,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685731,
+      "kind": "ack",
+      "id": 4,
+      "type": "marktex:review-prepared",
+      "revision": 5,
+      "requestId": "present:4"
+    },
+    {
+      "t": 1793312685732,
+      "kind": "visible",
+      "id": 4,
+      "value": true,
+      "bounds": {
+        "x": 300,
+        "y": 110,
+        "width": 780,
+        "height": 710
+      }
+    },
+    {
+      "t": 1793312685732,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:resume-hydration"
+    },
+    {
+      "t": 1793312685732,
+      "kind": "show",
+      "tabId": "git-diff:4f8b21b9-ea67-4c2d-b7d2-1eda9121adbf:a"
+    },
+    {
+      "t": 1793312685732,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:observe-viewport"
+    },
+    {
+      "t": 1793312685732,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:resume-hydration"
+    },
+    {
+      "t": 1793312685732,
+      "kind": "show",
+      "tabId": "git-diff:4f8b21b9-ea67-4c2d-b7d2-1eda9121adbf:a"
+    },
+    {
+      "t": 1793312685732,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:verify-review-position",
+      "revision": 5,
+      "requestId": "present:4"
+    },
+    {
+      "t": 1793312685838,
+      "kind": "ack",
+      "id": 4,
+      "type": "edit-at-anchor"
+    },
+    {
+      "t": 1793312685838,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:observe-viewport"
+    },
+    {
+      "t": 1793312685839,
+      "kind": "visible",
+      "id": 4,
+      "value": false,
+      "bounds": {
+        "x": 300,
+        "y": 110,
+        "width": 780,
+        "height": 710
+      }
+    },
+    {
+      "t": 1793312685839,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685839,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685848,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:prime-position",
+      "sourceLine": 399
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685870,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685880,
+      "kind": "command",
+      "id": 4,
+      "command": "marktex:prime-position",
+      "sourceLine": 400
+    },
+    {
+      "t": 1793312685882,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685882,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685882,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685883,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:prime-position",
+      "sourceLine": 400
+    },
+    {
+      "t": 1793312685884,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312685977,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:patch-review-rows",
+      "revision": 6
+    },
+    {
+      "t": 1793312685980,
+      "kind": "ack",
+      "id": 5,
+      "type": "marktex:html-updated",
+      "revision": 6
+    },
+    {
+      "t": 1793312685980,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:prepare-review",
+      "revision": 6,
+      "requestId": 6,
+      "sourceLine": 400
+    },
+    {
+      "t": 1793312686011,
+      "kind": "ack",
+      "id": 5,
+      "type": "marktex:review-prepared",
+      "revision": 6,
+      "requestId": 6
+    },
+    {
+      "t": 1793312686012,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312686012,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:prime-position",
+      "sourceLine": 400
+    },
+    {
+      "t": 1793312686012,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:prepare-review",
+      "revision": 6,
+      "requestId": "present:5",
+      "sourceLine": 400
+    },
+    {
+      "t": 1793312686012,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312686012,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312686012,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312686015,
+      "kind": "ack",
+      "id": 5,
+      "type": "marktex:review-prepared",
+      "revision": 6,
+      "requestId": "present:5"
+    },
+    {
+      "t": 1793312686015,
+      "kind": "visible",
+      "id": 5,
+      "value": true,
+      "bounds": {
+        "x": 300,
+        "y": 110,
+        "width": 780,
+        "height": 710
+      }
+    },
+    {
+      "t": 1793312686015,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:resume-hydration"
+    },
+    {
+      "t": 1793312686015,
+      "kind": "show",
+      "tabId": "git-diff:4f8b21b9-ea67-4c2d-b7d2-1eda9121adbf:b"
+    },
+    {
+      "t": 1793312686015,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:observe-viewport"
+    },
+    {
+      "t": 1793312686015,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:resume-hydration"
+    },
+    {
+      "t": 1793312686015,
+      "kind": "show",
+      "tabId": "git-diff:4f8b21b9-ea67-4c2d-b7d2-1eda9121adbf:b"
+    },
+    {
+      "t": 1793312686016,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:verify-review-position",
+      "revision": 6,
+      "requestId": "present:5"
+    },
+    {
+      "t": 1793312686123,
+      "kind": "ack",
+      "id": 5,
+      "type": "edit-at-anchor"
+    },
+    {
+      "t": 1793312686123,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:observe-viewport"
+    },
+    {
+      "t": 1793312686124,
+      "kind": "visible",
+      "id": 5,
+      "value": false,
+      "bounds": {
+        "x": 300,
+        "y": 110,
+        "width": 780,
+        "height": 710
+      }
+    },
+    {
+      "t": 1793312686124,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312686124,
+      "kind": "show",
+      "tabId": null
+    },
+    {
+      "t": 1793312686134,
+      "kind": "command",
+      "id": 5,
+      "command": "marktex:prime-position",
+      "sourceLine": 400
+    }
+  ]
+}

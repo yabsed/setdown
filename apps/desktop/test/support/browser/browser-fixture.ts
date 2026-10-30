@@ -16,6 +16,27 @@ export async function fixture(document = true) {
   const slowDownloads = new Set<ServerResponse>();
   const server = createServer((req, res) => {
     requests.push(req.url!);
+    if (req.url === '/theme.css' || req.url === '/route.css') {
+      res.setHeader('content-type', 'text/css');
+      res.end(`${req.url === '/route.css' ? '#route-external' : '#external'} { background-color: white; color: black }`); return;
+    }
+    if (req.url === '/theme' || req.url === '/theme-csp') {
+      res.setHeader('content-type', 'text/html');
+      if (req.url === '/theme-csp') res.setHeader('content-security-policy', "script-src 'none'; style-src 'self' https://theme-assets.example 'unsafe-inline'");
+      res.end(`<!doctype html><title>Theme fixture</title>
+        <link rel="stylesheet" href="https://theme-assets.example/theme.css">
+        <style>
+          :root { color-scheme: light dark; --article: light-dark(#fff,#171717); --text: light-dark(#000,#eee) }
+          body { margin:0; background:light-dark(#f5f5f5,#222); color:var(--text); min-height:2500px }
+          #article,#sidebar { background:var(--article); padding:24px; margin:16px }
+          input::placeholder { color:#a9a9a9 }
+          a { color:#0275d8 }
+          #colored { background:#f3dfad; color:#373a3c }
+        </style><main id="article"><h1>Document</h1><input id="draft" placeholder="Search">
+        <a href="/second">Readable link</a><table><tr><td id="colored">Authored color</td></tr></table></main>
+        <aside id="sidebar">Sidebar</aside><div id="external">External CSS without CORS</div><iframe src="/frame"></iframe>`);
+      return;
+    }
     if (req.url === '/private') {
       if (req.headers.authorization !== `Basic ${Buffer.from('reader:secret').toString('base64')}`) {
         res.writeHead(401, { 'www-authenticate': 'Basic realm="Fixture library"' }); res.end('Authentication required');
@@ -79,17 +100,25 @@ export async function fixture(document = true) {
   const origin = `http://127.0.0.1:${address.port}`;
   const file = path.join(root, 'notes.md'); await writeFile(file, '# Notes\n\nKeep the reader intact.\n');
   const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
-  const headless = process.env.SETDOWN_E2E_HEADLESS ? ['--ozone-platform=headless', '--disable-gpu'] : [];
-  const launchOptions = { args: [...headless, '.', ...(document ? [file] : [])], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } };
+  const headless = process.env.SETDOWN_E2E_HEADLESS ? ['--ozone-platform=headless', '--disable-gpu']
+    : process.env.SETDOWN_TEST_DISPLAY === 'wayland' ? ['--ozone-platform=wayland']
+    : process.env.SETDOWN_TEST_DISPLAY === 'xwayland' ? ['--ozone-platform=x11'] : [];
+  const launchOptions = { args: [...headless, '.', ...(document ? [file] : [])], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config'),
+    ...(process.env.SETDOWN_WAYLAND_TRACE ? { WAYLAND_DEBUG: 'client' } : {}) } };
   let app = await electron.launch(launchOptions);
   let page = await app.firstWindow();
   await focusApplication(app);
   if (document) await expect(page.getByRole('tab', { name: /notes.md/ })).toBeVisible();
   else await expect(page.getByRole('button', { name: 'Open Web Page', exact: true })).toBeVisible();
-  // Keep Google navigation assertions off the real network.
-  await app.context().route('https://www.google.com/**', route => route.fulfill({
-    contentType: 'text/html', body: '<!doctype html><title>Google</title><input aria-label="Search">',
-  }));
+  // Keep Google navigation assertions off the real network. Use the session
+  // protocol: global CDP routing can strand a paused script request when Back
+  // replaces a WebContents and the user navigates again during history restore.
+  await app.evaluate(({ session, net }) => {
+    session.fromPartition('persist:setdown-browser').protocol.handle('https', request =>
+      new URL(request.url).hostname === 'www.google.com'
+        ? new Response('<!doctype html><title>Google</title><input aria-label="Search">', { headers: { 'content-type': 'text/html' } })
+        : net.fetch(request, { bypassCustomProtocolHandlers: true }));
+  });
   // A fresh profile compiles uBlock's filter lists for several seconds and
   // first navigation waits for it; that cold start is part of fixture setup
   // (it must still complete), not of each test's 5s UI assertions.

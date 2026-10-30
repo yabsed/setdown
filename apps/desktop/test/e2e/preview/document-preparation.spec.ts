@@ -6,6 +6,40 @@ import { expect, test } from '@playwright/test';
 import { disposeApplication, focusApplication } from '../../support/electron/electron-app';
 import { doubleClickPreview } from '../../support/preview/preview-cycle-input';
 
+test('immediate edited Esc retains the destination of an animated editor scroll', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-esc-scroll-destination-'));
+  const file = path.join(root, 'sample.md');
+  const source = await readFile(path.resolve('test/fixtures/sample.md'), 'utf8');
+  await writeFile(file, source);
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await app.firstWindow();
+    await expect(page.locator('.viewer-surface')).toBeVisible();
+    await page.locator('.mode-toggle').click();
+    const editor = page.getByRole('textbox', { name: 'Editor content' });
+    await expect(editor).toBeEditable();
+    await editor.press('Control+End');
+    await page.keyboard.insertText('\n\nESC_SCROLL_DESTINATION');
+    // No animation wait: Esc must retain the requested destination even while
+    // Monaco is still painting intermediate positions on its way there.
+    await editor.press('Escape');
+    await expect(page.locator('.viewer-surface')).toBeVisible();
+    const anchor = Number(await page.locator('.shell').getAttribute('data-anchor-line'));
+    expect(anchor).toBe(source.split(/\r\n|\r|\n/).length + 2);
+    await expect.poll(() => app.evaluate(async ({ BrowserWindow }) => {
+      const view = BrowserWindow.getAllWindows()[0].contentView.children.find(candidate =>
+        'webContents' in candidate && candidate.getVisible()) as Electron.WebContentsView | undefined;
+      return view?.webContents.executeJavaScript(`(() => {
+        const marker = [...document.querySelectorAll('.markdown-preview p')]
+          .find(node => node.textContent.includes('ESC_SCROLL_DESTINATION'));
+        const rect = marker?.getBoundingClientRect();
+        return !!rect && rect.top >= 0 && rect.bottom <= innerHeight;
+      })()`);
+    })).toBe(true);
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
 test('hidden ordinary math document is prepared without focus changes and keeps its typography', async () => {
   test.setTimeout(120_000);
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-document-preparation-'));

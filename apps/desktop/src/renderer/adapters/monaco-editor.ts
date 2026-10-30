@@ -346,6 +346,15 @@ export class MonacoEditor {
     if (view) editor.restoreViewState(view);
   }
   find(): void { void this.editorValue?.getAction('actions.find')?.run(); }
+  finishScroll(): void {
+    const editor = this.editorValue;
+    if (!editor?.hasPendingScrollAnimation()) return;
+    // Monaco's saved view state uses the animation's destination. Restoring it
+    // completes that scroll immediately without guessing from the cursor (which
+    // may be offscreen after a wheel scroll) or waiting in the Esc input path.
+    const state = editor.saveViewState();
+    if (state) editor.restoreViewState(state);
+  }
   viewport(fallback: ViewportAnchor): { anchor: ViewportAnchor; band: BandLine[] } {
     return readEditorViewport(this.editorValue, this.apiValue, this.model, fallback);
   }

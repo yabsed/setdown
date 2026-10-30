@@ -47,7 +47,7 @@
             ? onsubmenu(entry, event.currentTarget)
             : undefined}
         >
-          <span class="product-menu-marker">{entry.type === 'radio' && entry.checked ? '•' : entry.type === 'checkbox' && entry.checked ? '✓' : ''}</span>
+          <span class="product-menu-marker" aria-hidden="true">{entry.type === 'radio' && entry.checked ? '•' : entry.type === 'checkbox' && entry.checked ? '✓' : ''}</span>
           <span class="product-menu-label">{entry.label}</span>
           <span class="product-menu-accelerator">{accelerator(entry.accelerator)}</span>
           <span class="product-menu-arrow">{entry.submenu?.length ? '›' : ''}</span>

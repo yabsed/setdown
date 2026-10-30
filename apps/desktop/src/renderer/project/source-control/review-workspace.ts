@@ -50,6 +50,7 @@ export class ReviewWorkspaceController {
     if (!saved.active && previous && this.options.workspace.find(previous)) await this.options.activate(previous);
   };
   refresh = async (): Promise<void> => { await this.status.refresh(); await this.reload(); };
+  configure = (update: Parameters<SourceControlController['configure']>[0]): Promise<void> => this.status.configure(update);
   selectRepository = (root: string): Promise<void> => this.status.selectRepository(root);
   initialize = (): Promise<void> => this.status.initialize();
   stage = async (paths: string[]): Promise<void> => { await this.status.stage(paths); await this.reload(); };

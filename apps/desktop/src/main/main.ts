@@ -32,7 +32,22 @@ import { TerminalManager } from './terminal/terminal-manager';
 import { installTerminalIpc } from './terminal/terminal-ipc';
 import { WindowRegistry } from './windows/window-registry';
 import { LanguageManager } from './language/language-manager';
+import { displayBackend, hasGlobalWindowPositions } from './windows/display-backend';
 
+// Electron populates its own default ozone switch before running main. Only an
+// actual launch argument is an explicit user choice.
+const ozoneArgument = process.argv.find(value => value.startsWith('--ozone-platform='))?.split('=')[1]
+  ?? (process.argv.includes('--ozone-platform') ? process.argv[process.argv.indexOf('--ozone-platform') + 1] : '');
+const backend = displayBackend(process.platform, process.env, ozoneArgument ?? '');
+if (backend === 'x11' && app.commandLine.getSwitchValue('ozone-platform') !== 'x11') {
+  // Ozone is initialized before the application entry point. Changing only the
+  // switch here leaves native windows on the old backend and breaks focus.
+  const args = process.argv.slice(1).filter(value => !value.startsWith('--ozone-platform='));
+  const separate = args.indexOf('--ozone-platform');
+  if (separate >= 0) args.splice(separate, 2);
+  app.relaunch({ args: ['--ozone-platform=x11', ...args] });
+  app.exit(0);
+}
 app.setName('Setdown');
 protocol.registerSchemesAsPrivileged([
   { scheme: 'setdown-hwp', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } },
@@ -45,7 +60,7 @@ const crossnoteRoot = path.resolve(path.dirname(crossnoteEntry), '..');
 let previews: PreviewManager;
 let renderer: PreviewRenderer;
 const themes = new ThemeManager({ crossnoteRoot, windows: () => registry.values,
-  updatePreviews: (theme) => previews.setTheme(theme) });
+  updatePreviews: (theme) => { previews.setTheme(theme); browsers.webThemes.refresh(); } });
 previews = new PreviewManager({ preload: path.join(__dirname, 'preview-preload.cjs'),
   stateFor: (id) => registry.stateForWebContents(id), theme: () => themes.id,
   themeAssets: (theme) => themes.assets(theme), forgetTab: (tabId) => renderer.forgetTab(tabId) });
@@ -67,6 +82,7 @@ const hwp = new HwpManager({ positions, root: path.join(__dirname, 'hwp'), prelo
   zoom: previews.zoom, stateFor: id => registry.stateForWebContents(id) });
 const terminals = new TerminalManager();
 const transfers = new TabTransferManager({ previews, browsers, terminals, hwp, stateFor: (id) => registry.stateForWebContents(id),
+  globalWindowPositions: hasGlobalWindowPositions(process.platform, process.env, backend),
   windows: () => registry.values, theme: () => themes.id, createWindow: windows.create });
 const channels = windowIpc((id) => registry.stateForWebContents(id));
 function sendCommand(command: AppCommand): void { registry.focused()?.window.webContents.send('app:command', command); }
@@ -184,6 +200,9 @@ else {
         else previews.zoom.change(steps);
       },
       sendCommand, setTheme: (theme) => themes.set(theme), theme: () => themes.id,
+      webTheme: () => browsers.webThemes.snapshot().mode === 'app',
+      toggleWebTheme: () => { void browsers.webThemes.update({ mode: browsers.webThemes.snapshot().mode === 'app' ? 'original' : 'app' })
+        .catch(error => console.error('Could not save web theme settings:', error)); },
       autoSave: () => autoSave.enabled,
       toggleAutoSave: () => {
         autoSave.set(!autoSave.enabled);

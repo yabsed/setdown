@@ -37,12 +37,15 @@ export type BrowserEvent =
   | { type: 'history'; id: string; direction: -1 | 1 }
   | { type: 'places' }
   | { type: 'extensions' }
+  | { type: 'theme-settings' }
   | { type: 'download'; download: BrowserDownload }
   | { type: 'download-removed'; id: string }
   | { type: 'permissions'; id: string; requests: BrowserPermissionRequest[] }
   | { type: 'auth'; id: string; request: BrowserAuthRequest | null }
   | { type: 'find'; id: string; query: string; active: number; matches: number };
 export type BrowserApi = {
+  themeSettings(): Promise<import('./browser-theme').BrowserThemeSettings>;
+  updateThemeSettings(update: import('./browser-theme').BrowserThemeUpdate): Promise<import('./browser-theme').BrowserThemeSettings>;
   ready(): void;
   create(id: string, input: string, history?: WebHistory): Promise<BrowserPage>;
   history(id: string): Promise<WebHistory>;

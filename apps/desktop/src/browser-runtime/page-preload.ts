@@ -1,4 +1,5 @@
 import { ipcRenderer, webFrame } from 'electron';
+import './page-theme';
 import { installWheelZoom } from '../preload/wheel-zoom';
 
 // Websites can share CSS with their Electron apps (e.g. ChatGPT's desktop
@@ -37,6 +38,7 @@ const frameReady = () => {
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', frameReady, { once: true });
 else frameReady();
 window.addEventListener('load', frameReady, { once: true });
+window.addEventListener('pageshow', frameReady);
 
 // Let composition, editable controls and page-owned UI consume Escape first.
 // A microtask after dispatch would run before all native listeners on some

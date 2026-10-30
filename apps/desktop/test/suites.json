@@ -101,6 +101,7 @@
     ]
   },
   "e2e": {
+    "browser/themes.spec.ts": { "previewContract": true },
     "browser/browser-extensions.spec.ts": {
       "previewContract": true
     },
@@ -304,6 +305,11 @@
     }
   },
   "external": {
+    "wayland": {
+      "command": "test:xwayland",
+      "environment": "private headless Mutter/XWayland, Python gi, native virtual input; test:wayland additionally diagnoses native transport; no desktop connection",
+      "files": ["test/wayland/tab-drag.spec.ts"]
+    },
     "language-servers": {
       "command": "test:language-servers",
       "environment": "isolated Electron; installed fortls and rust-analyzer toolchains",

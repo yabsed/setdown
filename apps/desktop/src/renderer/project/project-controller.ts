@@ -185,6 +185,7 @@ export class ProjectController {
   changeGitWorkingTree = (text: string, edits?: WorkingTreeEdit[]): void => this.sourceControl.changeWorkingTree(text, edits);
   previewMessage = (payload: PreviewMessage): boolean => this.sourceControl.previewMessage(payload);
   applyTheme = (themeId: PreviewThemeId): Promise<void> => this.sourceControl.applyTheme(themeId);
+  configureGit = (update: Parameters<import('../../protocol/desktop-api').MarkTexApi['configureGit']>[0]): Promise<void> => this.sourceControl.configure(update);
   selectGitRepository = (root: string): Promise<void> => this.sourceControl.selectRepository(root);
   initializeGit = (): Promise<void> => this.sourceControl.initialize();
   stageGit = (paths: string[]): Promise<void> => this.sourceControl.stage(paths);

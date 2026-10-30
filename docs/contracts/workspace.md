@@ -88,15 +88,24 @@ file Undo, or verification of the macOS Finder compositor on a Linux runner.
 
 The Source Control activity badge follows VS Code's defaults (`git.countBadge=all`,
 `git.untrackedChanges=mixed`, `scm.countBadge=all`): sum merge, index and working-tree
-resource counts across the discovered repositories. A partially staged file counts
+resource counts across visible, successfully read repositories. A partially staged file counts
 twice; a conflict counts once; untracked files count and ignored files do not.
-Zero hides the badge. Selecting a repository or collapsing a group does not change
-the total. Repository metadata watches include unselected repositories and linked
+Zero hides a complete badge. Under the default all-repositories setting, selecting
+a repository or collapsing a group does not change the total. Repository metadata watches include unselected repositories and linked
 worktrees. The repository picker must fit the sidebar, ellipsize long paths and
 expose the full path in its tooltip, without a horizontal scrollbar.
 The upstream implementations are
 [Repository.setCountBadge](https://github.com/microsoft/vscode/blob/1d7e3b013a0f4ed6c0e00fe11370e91797681e21/extensions/git/src/repository.ts)
 and [SCMActiveRepositoryController](https://github.com/microsoft/vscode/blob/1d7e3b013a0f4ed6c0e00fe11370e91797681e21/src/vs/workbench/contrib/scm/browser/activity.ts).
+Workspace `.vscode/settings.json` supplies Git/SCM count and discovery settings;
+Setdown's explicit per-folder preferences override them and persist repository
+visibility. Focused/tracked/off badge modes and hidden/separate untracked groups
+use the same resource classification as the displayed groups. Discovery defaults
+to one folder level, ten submodules, opt-in linked worktrees and a parent-repository
+prompt; it skips symlink traversal and retains bounded work. A failing repository
+or discovery step reports its own error without dropping other repositories' counts.
+Truncated/failed counts carry an incomplete marker rather than pretending to be
+zero. Parent-repository mutations require the same explicit repository selection.
 The count, metadata and narrow-sidebar checks live in `git-change-groups.test.ts`,
 `git-service.test.ts`, `completeness.test.ts` and `git-activity-badge.spec.ts`.
 
@@ -212,6 +221,26 @@ is alive; Setdown owns tab destruction (`outlivesOpener: true`).
 The browser lifecycle E2E disables Playwright's focus emulation on its original
 CDP session before asserting actual `document.visibilityState`; a second CDP
 session cannot release the first session's synthetic capturer.
+
+Web pages follow the app palette by default. View → Theme → Apply Theme to Web
+Pages and Browser Appearance share a persisted global switch; per-origin original
+color exceptions remain independent. Changes apply to open frames without page
+navigation, form replacement or scroll resets. The pinned Dark Reader API runs
+only in the isolated page preload. A bounded, owned-frame and document-token
+resource bridge accepts CSS/images with cancellation on navigation and ownership
+changes. A moved live tab receives a fresh policy, so later CSS loads still work;
+the upstream
+cross-origin guards remain enabled. No resource API enters the website world.
+Guarded build adapters normalize CSS light-dark() input and preserve readable
+opaque dark text in light palettes. The bundled CSSOM proxy runs in the page world
+without inline-script injection, including under strict script CSP; disabling the
+theme restores original CSS and proxy descriptors. The theme E2E checks all eight
+palettes, cross-origin styles after in-page navigation and window transfer,
+CSSOM updates, site exceptions, persistence and
+page identity. The folder picker stays within the sidebar and leaves native web
+content visible. Repeated native clicks on the extension toolbar toggle a strip
+once, without blur closing it before the click recreates it. Browser layout E2E
+checks both interactions while video frames continue advancing.
 
 Website permissions are page/owner/origin scoped and announced through a quiet
 address-bar control. Navigation, transfer, destruction and expiry settle pending
@@ -367,23 +396,64 @@ Chromium's canceled drag (`dropEffect: none`) must not
 commit a guide even when Escape never reaches the DOM. `tab-detach.spec.ts`
 covers guide placement and these invalidation paths in Electron, alongside
 actual outside detachment.
-The tab's primary pointer press starts native capture preparation before the OS
-drag loop. A click, pointer cancellation or blur without a drag releases that
-preparation; a real drag keeps the same capture lifetime. This avoids hiding a
-native child while the new drag is already crossing it. Close/audio controls
-do not start this preparation, and preparation must not activate another tab.
-Cross-window drags share their lifetime with every visible shell before entering
-native web/Markdown content. Each shell covers its native children for that
-lifetime; claim, cancellation, source closure and expiry release all participants.
-A receiver records its accepted guide with main. If Electron acknowledges a
-move/copy but omits its DOM drop, main may commit only the last accepting receiver,
-and only when the release is inside that still-visible window. A normal claim
-wins once, and Escape/`none`, a rejected area, a confirmed exit, or another
-receiver invalidates fallback ownership. A source-center tear-off retains priority
-over an overlapping window behind it. `browser/transfer.spec.ts` exercises
-repeated native web/terminal body transfers between overlapping windows, including
-remote cancellation and preserving the live page/PTY; manager tests cover
-arbitration and invalidation. No synthetic DOM drag events stand in for OS input.
+Tab movement uses the OS drag-and-drop transport and receiver-local coordinates.
+The OS chooses the destination window; main must not infer it from global window
+positions or focus order. Native Wayland windows do not expose their global positions.
+Only the private owned token authorizes a Setdown tab transfer. Tab drags do not
+export resource paths as plain text.
+Each receiver records its current accepted guide with main; entering another
+receiver clears the previous window's guide, including when Chromium omits its
+leave. Close/audio controls retain ordinary clicks. Cancellation, source closure,
+expiry and Escape release every participant.
+
+Cross-window drags share their lifetime with every visible shell. Native Markdown
+and HWP readers retain their existing capture lifetime; live websites stay
+attached, visible and playing. A lightweight, transparent WebContentsView is
+prepared when a workspace first displays a website, before any drag starts.
+Document-only windows use their existing shell receiver and do not allocate
+an extra renderer. Once created, the native receiver is retained across tab
+types until window closure. During a drag it receives native
+drop events above those pages and paints the same guide, clipped to their native
+regions. It has only a dedicated sandboxed preload, no desktop API, navigation or
+page content, and never requests focus. It is not repeatedly reattached while already
+on top. This avoids forwarding drag input through untrusted page content or
+freezing videos. Actual OS pointer input in the browser transfer and tab-detach
+tests covers repeated fast moves and cancellation; browser layout coverage also
+asserts advancing video frames while holding the drag.
+On Linux with an available XWayland display, default startup selects X11. Electron
+44's native Wayland transport can keep its accepted operation at NONE after a
+renderer accepts a drop, cancelling a fast cross-window release. Explicit
+`--ozone-platform=wayland` remains available; a Wayland-only session is not forced
+onto an unavailable X11 display. Backend selection is effective at process startup:
+if necessary, relaunch once before creating windows, preserving launch arguments.
+The XWayland suite separately verifies this actual relaunch. That upstream native transport limitation is
+recorded, not hidden by treating cancelled drops as successful moves. Global
+position validation uses the selected backend, not just WAYLAND_DISPLAY.
+`npm run test:xwayland --workspace @setdown/desktop` uses private headless Mutter
+and its own XWayland server, runtime/profile and D-Bus session, with real compositor
+input. It checks 40 web and 40 document operations, split/merge and insertion
+guides, Escape, and live form identity between physically tiled windows.
+`test:wayland` runs the same strict scenarios on native Wayland and retains the
+upstream fast-entry failure as an investigation case. Neither replaces the
+required default Xvfb gate.
+
+If Chromium acknowledges move/copy but substitutes a coordinate-less terminal
+leave for DOM drop, a receiver retains its last accepted placement separately
+from the cleared visual guide. Only an accepted OS effect can commit it. An
+ordinary leave, rejection, cancellation or entry into another receiver clears
+that retained ownership. A source-local release outside the source dimensions
+defeats its retained local guide, even when Chromium leaves a stale move effect.
+This validation needs no global window position. On X11, macOS and Windows a
+valid final screen point can also disprove stale in-window client coordinates;
+that additional outside-release check is disabled on Wayland and never selects
+a destination window. A null-relatedTarget leave whose client point is still
+inside retains the visible guide, including local-only Git review splits.
+A normal claim wins once;
+remote claims already in flight remain eligible until arbitration completes.
+`browser/transfer.spec.ts` exercises repeated native web/terminal body transfers
+between overlapping windows, including remote cancellation and preserving the
+live page/PTY. Manager tests cover identical/zero global bounds and local versus
+remote fallback ownership. Synthetic DOM events do not replace the OS tests.
 For a local tab drag, the source group's body center is a tear-off area:
 the blue guide disappears before release and dropping there creates a new
 window. This provides a reachable detach area even in a maximized window.
@@ -397,14 +467,13 @@ valid entry and cancel a quick release. The guide remains cleared in chrome;
 release there cancels without moving, copying or detaching. Transport acceptance
 never substitutes for an accepted placement, and Escape/`none` still cancel.
 Returning from tear-off to a strip or split replaces that intent with the new
-visible guide; Escape cancels without moving or detaching. Source native
-surfaces remain captured throughout the drag, including over the guide-free
-center. Native pointer tests in `tab-detach.spec.ts` check feedback before
+visible guide; Escape cancels without moving or detaching. Source Markdown/HWP surfaces retain their capture throughout the drag,
+including over the guide-free center; web surfaces remain live. Native pointer tests in `tab-detach.spec.ts` check feedback before
 release, detach, cancellation, return, split and the sole-tab case; its accepted
 native-drop cases also retain center merging into another group.
 An accepted center tear-off retains its last screen position when native drop
 completion reports zero coordinates. Its explicit in-source request is checked
-against the source window bounds, so an overlapping window behind it does not
+against the OS receiver ownership, so an overlapping window behind it does not
 intercept the tear-off; outside drops still allow the destination window to
 claim the transfer. Main observes native Escape keydown and keyup while a
 transfer is unclaimed, since an OS drag can consume keydown before it reaches

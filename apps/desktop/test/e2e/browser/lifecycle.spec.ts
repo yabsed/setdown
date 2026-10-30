@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { writeFile } from 'node:fs/promises';
 
 import { fixture, evaluatePage } from '../../support/browser/browser-fixture';
 
@@ -106,6 +107,8 @@ for (const command of ['close', 'quit'] as const) test(`canceling ${command} pre
     await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible();
     const id = await f.app.evaluate(async ({ webContents }, origin) => {
       const wc = webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/first`)!;
+      (globalThis as any).__audioConsole = [];
+      wc.on('console-message', (_event, ...details) => (globalThis as any).__audioConsole.push(details));
       await wc.executeJavaScript(`(() => {
         const audio = window.testAudio = new AudioContext();
         const tone = audio.createOscillator(); tone.connect(audio.destination); tone.start(); return audio.resume();
@@ -113,7 +116,17 @@ for (const command of ['close', 'quit'] as const) test(`canceling ${command} pre
       return wc.id;
     }, f.origin);
     const audible = () => f.app.evaluate(({ webContents }, id) => webContents.fromId(id)?.isCurrentlyAudible() ?? false, id);
-    await expect.poll(audible).toBe(true);
+    try { await expect.poll(audible).toBe(true); }
+    catch (error) {
+      await writeFile(test.info().outputPath('audio-diagnostics.json'), JSON.stringify({ stderr,
+        native: await f.app.evaluate(({ webContents }, id) => {
+          const wc = webContents.fromId(id);
+          return { alive: !!wc, audible: wc?.isCurrentlyAudible(), muted: wc?.isAudioMuted(), console: (globalThis as any).__audioConsole };
+        }, id),
+        context: await evaluatePage(f.app, f.origin, '({state:testAudio.state,time:testAudio.currentTime,baseLatency:testAudio.baseLatency,outputLatency:testAudio.outputLatency})'),
+      }, null, 2));
+      throw error;
+    }
     const close = () => f.app.evaluate(({ app, BrowserWindow }, command) => {
       if (command === 'quit') app.quit(); else BrowserWindow.getAllWindows()[0].close();
     }, command);

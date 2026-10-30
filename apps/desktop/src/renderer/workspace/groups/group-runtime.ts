@@ -128,12 +128,15 @@ export function createGroupRuntime(options: {
   window.addEventListener('setdown:native-overlay-visibility', ((event: CustomEvent<boolean>) => {
     if (event.detail) void freezeBackgroundPreviews(); else unfreezeBackgroundPreviews();
   }) as EventListener);
+  window.addEventListener('setdown:tab-drag-visibility', ((event: CustomEvent<boolean>) => {
+    if (event.detail) void freezeBackgroundPreviews(); else unfreezeBackgroundPreviews();
+  }) as EventListener);
   function manipulationChanged(previous: boolean) {
     const hidden = dragging;
     reader.layoutHidden = hidden;
     // Reuse the readers' balanced snapshot/freeze lifecycle, including Git review.
     // A canceled drag must restore whichever surface owned the native foreground.
-    if (hidden !== previous) window.dispatchEvent(new CustomEvent('setdown:native-overlay-visibility', { detail: hidden }));
+    if (hidden !== previous) window.dispatchEvent(new CustomEvent('setdown:tab-drag-visibility', { detail: hidden }));
     if (!hidden) sync();
   }
   return { sync, backgrounds, layoutGuide, drag(active: boolean) {

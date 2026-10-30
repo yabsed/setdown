@@ -10,7 +10,7 @@ import type { WindowState } from '../windows/window-state';
 import type { PreviewManager } from '../preview/preview-manager';
 
 type Transfer = {
-  dragParticipants: Set<number>; dragActive: boolean; dragTarget: number | null;
+  dragParticipants: Set<number>; dragActive: boolean; dragTarget: number | null; hoverOwner: number | null;
   sourceWebContentsId: number; tab: TransferableTab; claimedByWebContentsId: number | null;
   expiresAt: number; detachPosition: { x: number; y: number } | null; previewAdopted: boolean;
   detachTimer: ReturnType<typeof setTimeout> | null;
@@ -18,6 +18,7 @@ type Transfer = {
   previewBand: Promise<BandLine[]>; sourceContentSize: { width: number; height: number } | null;
 };
 type Options = {
+  globalWindowPositions?: boolean;
   hwp?: import('../hwp/hwp-manager').HwpManager;
   previews: PreviewManager; browsers?: BrowserManager; terminals?: TerminalManager; stateFor: (id: number) => WindowState | null; theme: () => PreviewThemeId;
   windows: () => Iterable<WindowState>;
@@ -30,13 +31,14 @@ export class TabTransferManager {
   private readonly transfers = new Map<string, Transfer>();
   private readonly watchedSources = new WeakSet<BrowserWindow>();
   constructor(private readonly options: Options) {}
-  private endDrag(transferId: string, transfer: Transfer, commitTarget: number | null = null): void {
+  private endDrag(transferId: string, transfer: Transfer, commitTarget: number | null = null, copy = false): void {
     if (!transfer.dragActive) return;
     transfer.dragActive = false;
     for (const id of transfer.dragParticipants) {
       const window = this.options.stateFor(id)?.window;
+      this.options.browsers?.tabDrag.state(id, null);
       if (window && !window.isDestroyed()) window.webContents.send('tabs:drag-state', {
-        transferId, active: false, ...(id === commitTarget ? { commitGuide: true } : {}),
+        transferId, active: false, ...(id === commitTarget ? { commitGuide: true, copy } : {}),
       });
     }
   }
@@ -83,7 +85,7 @@ export class TabTransferManager {
     const ownedPreview = markdown ? this.options.previews.views.get(tab.id) : undefined;
     const preview = ownedPreview?.ownerWebContentsId === sourceId ? ownedPreview.view.webContents : undefined;
     const transfer: Transfer = {
-      dragParticipants: new Set(), dragActive: true, dragTarget: null,
+      dragParticipants: new Set(), dragActive: true, dragTarget: null, hoverOwner: sourceId,
       sourceWebContentsId: sourceId, tab, claimedByWebContentsId: null, expiresAt: Date.now() + 60_000,
       detachPosition: null, detachTimer: null, previewAdopted: false,
       preparedWindow: this.options.createWindow(null, null, false, this.contentSize(sourceId)),
@@ -112,6 +114,7 @@ export class TabTransferManager {
     for (const { window } of this.options.windows()) {
       if (window.isDestroyed() || !window.isVisible() || window.isMinimized()) continue;
       transfer.dragParticipants.add(window.webContents.id);
+      this.options.browsers?.tabDrag.state(window.webContents.id, transferId);
       window.webContents.send('tabs:drag-state', { transferId, active: true });
     }
     setTimeout(() => {
@@ -208,51 +211,74 @@ export class TabTransferManager {
     if (transfer.preparedWindow && !transfer.preparedWindow.isDestroyed()) transfer.preparedWindow.destroy();
     this.transfers.delete(transferId);
   }
-  private dragTarget(destinationId: number, transferId: string, accepted: unknown) {
+  private dragTarget(destinationId: number, transferId: string, accepted: unknown, inside: unknown = true, retainGuide: unknown = false) {
     const transfer = this.transfers.get(transferId);
     if (!transfer?.dragActive || transfer.claimedByWebContentsId !== null
-      || !transfer.dragParticipants.has(destinationId) || transfer.sourceWebContentsId === destinationId) return;
-    if (accepted === true) transfer.dragTarget = destinationId;
-    else if (accepted === false && transfer.dragTarget === destinationId) transfer.dragTarget = null;
+      || !transfer.dragParticipants.has(destinationId)) return;
+    if (inside === false) {
+      if (transfer.hoverOwner === destinationId) {
+        transfer.hoverOwner = null;
+        // Chromium can send a coordinate-less terminal leave instead of drop.
+        // Only an accepted OS dropEffect may commit this retained target.
+        if (retainGuide !== true) transfer.dragTarget = null;
+      }
+      return;
+    }
+    if (transfer.hoverOwner !== destinationId) {
+      // Clear the old window's guide even when Chromium omitted its dragleave.
+      for (const id of transfer.dragParticipants) if (id !== destinationId) {
+        this.options.stateFor(id)?.window.webContents.send('tabs:native-drag', {
+          transferId, type: 'dragleave', clientX: -1, clientY: -1, screenX: 0, screenY: 0, ctrlKey: false, altKey: false,
+        });
+      }
+    }
+    transfer.hoverOwner = destinationId;
+    transfer.dragTarget = accepted === true ? destinationId : null;
   }
-  private detach(sourceId: number, transferId: string, x: unknown, y: unknown, withinSource: unknown = false, dropEffect?: unknown) {
+  private detach(sourceId: number, transferId: string, x: unknown, y: unknown, withinSource: unknown = false, dropEffect?: unknown, release?: { x: number; y: number }) {
     const transfer = this.transfers.get(transferId);
-    if (!transfer || transfer.sourceWebContentsId !== sourceId || transfer.claimedByWebContentsId !== null) return;
+    if (!transfer?.dragActive || transfer.sourceWebContentsId !== sourceId || transfer.claimedByWebContentsId !== null) return;
     const screenX = Number(x), screenY = Number(y);
     if (!Number.isFinite(screenX) || !Number.isFinite(screenY)) { this.endDrag(transferId, transfer); return; }
     transfer.detachPosition = { x: Math.round(screenX - 120), y: Math.round(screenY - 18) };
     if (transfer.detachTimer) clearTimeout(transfer.detachTimer);
     transfer.detachTimer = null;
-    const sourceBounds = this.options.stateFor(sourceId)?.window.getContentBounds();
-    const localTearOff = withinSource === true && sourceBounds
-      && screenX >= sourceBounds.x && screenX < sourceBounds.x + sourceBounds.width
-      && screenY >= sourceBounds.y && screenY < sourceBounds.y + sourceBounds.height;
-    const target = transfer.dragTarget === null ? null : this.options.stateFor(transfer.dragTarget)?.window;
-    const bounds = target && !target.isDestroyed() && target.isVisible() && !target.isMinimized() ? target.getContentBounds() : null;
-    // Electron can acknowledge the OS drop yet omit the receiver's DOM drop.
-    // Only the last accepting shell, an accepted native effect and a release
-    // inside that window authorize its retained guide. Escape/none never do.
-    const commitTarget = !localTearOff && ['move', 'copy'].includes(String(dropEffect)) && bounds
-      && screenX >= bounds.x && screenX < bounds.x + bounds.width
-      && screenY >= bounds.y && screenY < bounds.y + bounds.height ? transfer.dragTarget : null;
-    this.endDrag(transferId, transfer, commitTarget);
-    if (commitTarget !== null) return;
-    // Source dragend and destination drop run in different renderers. A busy
-    // destination can claim well after the grace period, even though it already
-    // accepted dragover. Dropping over another visible Setdown window is never
-    // an outside detach: leave the transfer available for its actual drop.
-    // If that window rejects the drop, expiry cleans up and the source stays put.
-    for (const { window } of this.options.windows()) {
-      if (localTearOff) break; // An overlapping window behind the source is not this drop's destination.
-      if (window.isDestroyed() || window.webContents.id === sourceId
-        || !window.isVisible() || window.isMinimized()) continue;
-      const bounds = window.getContentBounds();
-      if (screenX >= bounds.x && screenX < bounds.x + bounds.width
-        && screenY >= bounds.y && screenY < bounds.y + bounds.height) return;
+    const source = this.options.stateFor(sourceId)?.window;
+    if (source && release && [release.x, release.y].every(Number.isFinite)) {
+      const [width, height] = source.getContentSize(), zoom = source.webContents.getZoomFactor();
+      let outside = release.x < 0 || release.y < 0 || release.x * zoom >= width || release.y * zoom >= height;
+      // On X11/macOS/Windows a final screen point can prove an outside release
+      // even when Chromium retains its last in-window client coordinates. Never
+      // use this on Wayland, or use global bounds to select a destination.
+      const globalPositionAvailable = this.options.globalWindowPositions ?? (process.platform !== 'linux' || !process.env.WAYLAND_DISPLAY);
+      if (globalPositionAvailable && (screenX !== 0 || screenY !== 0)) {
+        const bounds = source.getContentBounds();
+        outside ||= screenX < bounds.x || screenY < bounds.y || screenX >= bounds.x + bounds.width || screenY >= bounds.y + bounds.height;
+      }
+      if (outside) {
+        if (transfer.dragTarget === sourceId) transfer.dragTarget = null;
+        if (transfer.hoverOwner === sourceId) transfer.hoverOwner = null;
+      }
     }
-    // A drop in another Setdown renderer and source dragend are delivered over
-    // different IPC queues. Give the destination claim one bounded turn before
-    // the hidden prepared window may claim the transfer.
+    const accepted = ['move', 'copy'].includes(String(dropEffect));
+    const target = transfer.dragTarget === null ? null : this.options.stateFor(transfer.dragTarget)?.window;
+    const commitTarget = accepted && target && !target.isDestroyed() && target.isVisible() && !target.isMinimized()
+      ? transfer.dragTarget : null;
+    if (commitTarget !== null) {
+      this.endDrag(transferId, transfer, commitTarget, dropEffect === 'copy');
+      return;
+    }
+    // Only OS-delivered local drag events establish ownership. getBounds().x/y
+    // do not expose native Wayland window positions and cannot arbitrate a drop.
+    const tearOff = withinSource === true && transfer.hoverOwner === sourceId;
+    if (!tearOff && transfer.hoverOwner !== null) {
+      if (transfer.hoverOwner === sourceId) this.cancel(sourceId, transferId);
+      else this.endDrag(transferId, transfer); // An already-dispatched remote DOM drop may still claim it.
+      return;
+    }
+    this.endDrag(transferId, transfer);
+    // A destination's drop/claim and source dragend use separate IPC queues.
+    // Leave a bounded turn for a claim before opening a detached window.
     transfer.detachTimer = setTimeout(() => this.commitDetach(sourceId, transferId), DETACH_CLAIM_GRACE_MS);
   }
 
@@ -289,7 +315,7 @@ export class TabTransferManager {
     });
     ipcMain.on('tabs:release-source', (event, id) => this.release(event.sender.id, id));
     ipcMain.on('tabs:cancel-transfer', (event, id) => this.cancel(event.sender.id, id));
-    ipcMain.on('tabs:drag-target', (event, { transferId, accepted }) => this.dragTarget(event.sender.id, transferId, accepted));
-    ipcMain.on('tabs:detach-to-window', (event, { transferId, x, y, withinSource, dropEffect }) => this.detach(event.sender.id, transferId, x, y, withinSource, dropEffect));
+    ipcMain.on('tabs:drag-target', (event, { transferId, accepted, inside, retainGuide }) => this.dragTarget(event.sender.id, transferId, accepted, inside, retainGuide));
+    ipcMain.on('tabs:detach-to-window', (event, { transferId, x, y, withinSource, dropEffect, release }) => this.detach(event.sender.id, transferId, x, y, withinSource, dropEffect, release));
   }
 }

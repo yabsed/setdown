@@ -4,6 +4,7 @@
   import { FitAddon } from '@xterm/addon-fit';
   import '@xterm/xterm/css/xterm.css';
   import { APP_FONT_FAMILY } from '../../core/theme/typography';
+  import { terminalTheme, TERMINAL_MINIMUM_CONTRAST } from '../../core/theme/terminal-theme';
   import { onTerminalZoom, terminalZoomFactor } from '../editor/text-zoom';
   import { registerTerminalOutput } from './terminal-output';
   import type { TerminalApi, TerminalEvent, TerminalSize } from '../../protocol/terminal';
@@ -18,10 +19,7 @@
   let directory = '';
   let resizeTimer: ReturnType<typeof setTimeout> | undefined;
   function theme() {
-    const style = getComputedStyle(document.documentElement);
-    return { background: style.getPropertyValue('--app-editor-background').trim(),
-      foreground: style.getPropertyValue('--app-text').trim(), cursor: style.getPropertyValue('--app-text').trim(),
-      selectionBackground: `${style.getPropertyValue('--app-accent').trim()}55` };
+    return terminalTheme(document.documentElement.dataset.theme);
   }
   const terminalFont = () => Math.max(8, Math.round(13 * terminalZoomFactor(tabId ?? id)));
   function resize(immediate = false) {
@@ -63,7 +61,7 @@
       return { directory, text: lines.join('\n') };
     });
     term = new Terminal({ cursorBlink: true, fontSize: terminalFont(), scrollback: 5000, fontFamily: APP_FONT_FAMILY,
-      theme: theme(), allowProposedApi: false, screenReaderMode: true });
+      theme: theme(), minimumContrastRatio: TERMINAL_MINIMUM_CONTRAST, allowProposedApi: false, screenReaderMode: true });
     fit = new FitAddon(); term.loadAddon(fit); term.open(container);
     term.onData(data => {
       if (!ready) return;

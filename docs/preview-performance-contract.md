@@ -127,6 +127,14 @@ before adoption. `theme-controller.test.ts`, `preview-presentation.test.ts`, and
 `preview-reading-tools.spec.ts` cover these cases without showing or focusing
 hidden readers.
 
+Terminal colors use a separate 16-color ANSI palette for each app theme and
+xterm's 4.5 minimum contrast correction. Theme changes update the existing
+terminal instance; they must preserve its PTY, unsubmitted input and buffer.
+Extended indexed/truecolor and explicit backgrounds still flow through xterm's
+renderer. Terminal E2E measures actual DOM color contrast for all eight themes
+and checks PTY and renderer identity. Browser theme and live-drag guarantees are
+specified in the workspace contract; they remain in this gate and latency comparison.
+
 Browser coarse Ctrl+wheel changes website zoom from 50% to 300% in 10-point steps;
 fine pixel input changes it continuously within those same limits.
 The isolated page preload registers the bounded wheel accumulator in each
@@ -299,6 +307,15 @@ the Markdown restart scenario in `reading-positions.spec.ts` cover this rule.
 Shared preparation command types live in `src/protocol/preview-preparation.ts`.
 Call sites use `satisfies`; IPC inputs still require runtime validation. Core
 document algorithms must not import Electron or the protocol layer.
+
+An Esc transition during Monaco's smooth scroll uses that scroll's requested
+destination, not an arbitrary intermediate frame. Complete the pending scroll
+through Monaco's saved view state before reading the viewport; do not add an
+animation delay or guess from an offscreen cursor. The immediate edited
+Ctrl+End/Esc case in `document-preparation.spec.ts` checks the source anchor and
+the latest paragraph's actual visible bounds. Hidden preview preparation stays
+outside the input path; existing on-demand hydration for requested source lines
+outside the installed prefix remains unchanged.
 
 Opening a Working Tree review binds its live document without presenting or
 awaiting the ordinary Markdown reader. New reviews start in Monaco source mode;

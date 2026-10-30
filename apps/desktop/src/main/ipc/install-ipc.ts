@@ -232,6 +232,7 @@ export function installIpc(options: Options): void {
   channels.handle('project:trash-entry', (state, entryPath: string) => projects.trashEntry(state, entryPath));
   channels.handle('project:open-file', (state, filePath: string) => documents.open(state, projects.assertDocument(state, filePath), false));
   channels.handle('project:search', (state, request: ProjectSearchRequest) => projects.search(state, request));
+  channels.handle('project:git-configure', (state, update: Parameters<typeof projects.configureGit>[1]) => projects.configureGit(state, update));
   channels.handle('project:git-select', (state, root: string) => projects.selectGit(state, root));
   channels.handle('project:git-status', (state) => projects.gitStatus(state));
   channels.handle('project:git-diff', (state, request: { filePath: string; staged: boolean }) => projects.gitDiff(state, request.filePath, Boolean(request.staged)));

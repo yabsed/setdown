@@ -1,5 +1,6 @@
 import { buildUblock } from './browser/build-ublock.mjs';
 import { extensionAPI } from './browser/extension-api.mjs';
+import { patchDarkReaderColors } from './browser/darkreader-colors.mjs';
 import { patchExtensionPreload, secureExtensionInvocations } from './browser/extension-preload.mjs';
 import { build } from 'esbuild';
 import { promises as fs } from 'node:fs';
@@ -20,8 +21,29 @@ await fs.writeFile(path.join(output, 'chrome-extension-api.preload.cjs'), compat
 await fs.writeFile(path.join(output, 'chrome-extension-worker.preload.cjs'), compat);
 const compatRoot = path.dirname(path.dirname(require.resolve('electron-chrome-extensions/preload')));
 await fs.copyFile(path.join(compatRoot, 'LICENSE-GPL'), path.join(output, 'EXTENSION-COMPAT-LICENSE.txt'));
+// Dark Reader's API shim has a private chrome object. It must never wrap the
+// real extension compatibility API or expose a fetch bridge to website JS.
+const darkreader = path.join(root, 'vendor/darkreader');
+if (!await exists(path.join(darkreader, 'src/api/index.ts'))) {
+  execFileSync('git', ['submodule', 'update', '--init', 'vendor/darkreader'], { cwd: root, stdio: 'inherit' });
+}
+const darkreaderFlags = Object.fromEntries(['DEBUG', 'CHROMIUM_MV2', 'CHROMIUM_MV3', 'FIREFOX_MV2', 'THUNDERBIRD', 'TEST', 'PLUS'].map(flag => [`__${flag}__`, 'false']));
+await build({ entryPoints: ['src/browser-runtime/page-preload.ts'], outfile: 'dist-electron/page-preload.cjs',
+  bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'],
+  alias: { '@setdown/darkreader': path.join(darkreader, 'src/api/index.ts'),
+    '@setdown/darkreader-proxy': path.join(darkreader, 'src/inject/dynamic-theme/stylesheet-proxy.ts'),
+    '@setdown/darkreader-fixes': path.resolve('scripts/browser/darkreader-fixes.ts') },
+  loader: { '.config': 'text' }, banner: { js: 'const __setdownDarkReaderChrome = {};' },
+  plugins: [{ name: 'darkreader-colors', setup(build) {
+    build.onLoad({ filter: /[/\\]darkreader[/\\]src[/\\]inject[/\\]dynamic-theme[/\\](css-rules|modify-css|modify-colors|index|stylesheet-proxy)\.ts$/ }, async ({ path: file }) => ({
+      contents: patchDarkReaderColors(await fs.readFile(file, 'utf8'), path.basename(file)), loader: 'ts',
+    }));
+  } }],
+  define: { ...darkreaderFlags, chrome: '__setdownDarkReaderChrome', 'window.chrome': '__setdownDarkReaderChrome' },
+});
+await fs.copyFile(path.join(darkreader, 'LICENSE'), path.join(output, 'DARKREADER-LICENSE.txt'));
 await Promise.all([
-  ...['places-preload', 'page-preload', 'extension-panel-preload'].map(name => build({ entryPoints: [`src/browser-runtime/${name}.ts`], outfile: `dist-electron/${name}.cjs`, bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] })),
+  ...['places-preload', 'extension-panel-preload'].map(name => build({ entryPoints: [`src/browser-runtime/${name}.ts`], outfile: `dist-electron/${name}.cjs`, bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] })),
   build({ entryPoints: ['src/browser-runtime/extension-panel.ts'], outfile: 'dist-electron/extension-panel.js', bundle: true, platform: 'browser', format: 'iife', target: 'chrome140' }),
   build({ entryPoints: ['src/browser-runtime/places.ts'], outfile: 'dist-electron/places.js', bundle: true, platform: 'browser', format: 'iife', target: 'chrome140' }),
 ]);

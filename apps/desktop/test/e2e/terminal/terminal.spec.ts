@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { previews } from '../../support/preview/preview-view';
 import { disposeApplication, focusApplication } from '../../support/electron/electron-app';
+import { THEME_IDS, themeProfile } from '../../../src/core/theme/theme-catalog';
 import { dragTerminal } from '../../support/terminal/terminal-drag';
 
 const run = async (input: Locator, command: string) => { await input.pressSequentially(command); await input.press('Enter'); };
@@ -277,7 +278,7 @@ test('detaching a terminal transfers the same shell and restores its screen', as
       element.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer, screenX: 640, screenY: 420 }));
     });
     await expect(tab).toHaveCount(0);
-    const destination = app.windows().find(candidate => candidate !== page && !candidate.isClosed())!;
+    const destination = app.windows().find(candidate => candidate !== page && !candidate.isClosed() && candidate.url() === page.url())!;
     await expect(destination.getByRole('tab', { name: /^Terminal \d/ })).toBeVisible();
     await expect(destination.locator('.xterm-screen')).toContainText('TRANSFER-OUTPUT');
     await run(input(destination), 'printf "%s:%s" "$$" "$TRANSFER_STATE" > after.txt');
@@ -361,7 +362,7 @@ test('a live Vim alternate screen retains visible text and insert mode across wi
       element.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer, screenX: 640, screenY: 420 }));
     });
     await expect(tab).toHaveCount(0);
-    const destination = app.windows().find(candidate => candidate !== page && !candidate.isClosed())!;
+    const destination = app.windows().find(candidate => candidate !== page && !candidate.isClosed() && candidate.url() === page.url())!;
     await expect.poll(() => destination.locator('.xterm-rows').innerText()).toBe(text);
     const restored = (await destination.locator('.terminal-instance').boundingBox())!;
     expect(restored.width).toBe(dimensions!.width); expect(restored.height).toBe(dimensions!.height);
@@ -372,5 +373,54 @@ test('a live Vim alternate screen retains visible text and insert mode across wi
     const pid = await readFile(path.join(root, 'shell.txt'), 'utf8');
     await run(input(destination), 'printf "%s" "$$" > after.txt');
     await expect.poll(() => readFile(path.join(root, 'after.txt'), 'utf8').catch(() => '')).toBe(pid);
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
+test('all terminal themes preserve the PTY and readable ANSI, indexed and truecolor text', async () => {
+  test.skip(process.platform === 'win32', 'The PTY fixture uses a POSIX shell.');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-terminal-themes-'));
+  const file = path.join(root, 'themes.md'); await writeFile(file, '# Terminal themes\n');
+  const samples = Array.from({ length: 16 }, (_, i) => `\x1b[${i < 8 ? 30 + i : 90 + i - 8}mANSI${String(i).padStart(2, '0')}\x1b[0m\r\n`).join('')
+    + '\x1b[38;5;231mINDEXED\x1b[0m\r\n\x1b[38;2;255;249;239mTRUECOLOR\x1b[0m\r\n'
+    + '\x1b[38;2;255;255;255;48;2;250;250;250mEXPLICIT\x1b[0m\r\n\x1b[7mINVERSE\x1b[0m\r\n';
+  await writeFile(path.join(root, 'colors.txt'), samples);
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', file], env: { ...env, SHELL: '/bin/bash', XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    await focusApplication(app); const page = await app.firstWindow();
+    await page.locator('.new-terminal-tab-button').click();
+    await run(input(page), 'printf "%s" "$$" > pid-before; cat colors.txt');
+    await expect(page.locator('.xterm-rows')).toContainText('INVERSE');
+    await input(page).pressSequentially('not-submitted');
+    await page.evaluate(() => { (window as any).__keptTerminal = document.querySelector('.xterm'); });
+    for (const id of THEME_IDS) {
+      await app.evaluate(({ Menu }, id) => Menu.getApplicationMenu()!.getMenuItemById(`preview-theme-${id}`)!.click(), id);
+      const palette = themeProfile(id).palette;
+      const rgb = (hex: string) => `rgb(${[1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
+      await expect.poll(() => page.locator('.terminal-surface').evaluate(el => getComputedStyle(el).backgroundColor)).toBe(rgb(palette.editorBackground));
+      const readings = () => page.locator('.xterm-rows').evaluate(rows => {
+        const rgb = (value: string) => value.match(/[\d.]+/g)!.slice(0, 3).map(Number);
+        const luminance = (value: number[]) => value.map(n => n / 255).map(n => n <= .04045 ? n / 12.92 : ((n + .055) / 1.055) ** 2.4)
+          .reduce((sum, n, i) => sum + n * [.2126, .7152, .0722][i], 0);
+        return Array.from(rows.querySelectorAll('span')).filter(span => /^(ANSI\d\d|INDEXED|TRUECOLOR|EXPLICIT|INVERSE)$/.test(span.textContent?.trim() ?? '')).map(span => {
+          const style = getComputedStyle(span); let node: Element | null = span, background = style.backgroundColor;
+          while (node && background === 'rgba(0, 0, 0, 0)') { node = node.parentElement; if (node) background = getComputedStyle(node).backgroundColor; }
+          const fg = luminance(rgb(style.color)), bg = luminance(rgb(background));
+          return { label: span.textContent!.trim(), foreground: style.color, background, contrast: (Math.max(fg, bg) + .05) / (Math.min(fg, bg) + .05) };
+        });
+      });
+      // Theme CSS changes before xterm's scheduled cell repaint. Wait for the
+      // actual rendered colors; all 20 samples must still meet the same 4.5 ratio.
+      await expect.poll(async () => {
+        const samples = await readings();
+        return { count: samples.length, lowContrast: samples.filter(sample => sample.contrast < 4.5) };
+      }, { message: `${id} rendered terminal contrast` }).toEqual({ count: 20, lowContrast: [] });
+      expect(await page.evaluate(() => (window as any).__keptTerminal === document.querySelector('.xterm'))).toBe(true);
+      await expect(page.locator('.xterm-rows')).toContainText('not-submitted');
+      await page.screenshot({ path: test.info().outputPath(`terminal-${id}.png`) });
+    }
+    await input(page).press('Control+C');
+    await run(input(page), 'printf "%s" "$$" > pid-after');
+    await expect.poll(() => readFile(path.join(root, 'pid-after'), 'utf8').catch(() => '')).toBe(await readFile(path.join(root, 'pid-before'), 'utf8'));
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });

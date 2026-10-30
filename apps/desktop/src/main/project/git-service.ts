@@ -1,3 +1,5 @@
+import { GitPreferences } from './git-preferences';
+import { gitSettings, type GitSettings } from '../../core/project/git-settings';
 import { discoverRepositories } from './engines/git-repositories';
 import { gitChangeGroups } from '../../core/project/git-change-groups';
 import { isInside } from '../documents/file-system';
@@ -82,6 +84,7 @@ export function parseGitStatus(output: string): ParsedStatus {
       parsed.ahead = Number(match?.[1] ?? 0);
       parsed.behind = Number(match?.[2] ?? 0);
     } else if (record.startsWith('? ')) {
+      if (record.endsWith('/')) continue;
       parsed.changes.push(change('??', record.slice(2)));
     } else {
       const ordinary = /^1 (\S{2}) \S+ \S+ \S+ \S+ \S+ \S+ ([\s\S]*)$/.exec(record);
@@ -109,7 +112,7 @@ function change(rawCode: string, changePath: string): GitChange {
       : workingTreeStatus !== ' ' ? workingTreeStatus : indexStatus.trim() || '?',
     indexStatus,
     workingTreeStatus,
-    staged: !untracked && indexStatus !== ' ' && indexStatus !== '?',
+    staged: !untracked && 'MADRC'.includes(indexStatus),
     unstaged: untracked || workingTreeStatus !== ' ',
     conflict,
   };
@@ -119,71 +122,98 @@ export class GitService {
   private readonly discoveries = new Map<string, { time: number; task: ReturnType<typeof discoverRepositories> }>();
   readonly watcher = new GitMetadataWatcher();
   private readonly mutations = new Map<string, Promise<unknown>>();
+  private readonly preferences: GitPreferences;
   private readonly repositories = new Map<string, Promise<GitCli | null>>();
 
   constructor(
     private readonly paths: ProjectPaths,
     private readonly trash: (filePath: string) => Promise<void> = (filePath) => shell.trashItem(filePath),
-  ) {}
+    preferencesFile?: () => string | null,
+  ) { this.preferences = new GitPreferences(preferencesFile); }
 
   async status(state: WindowState, observe = true): Promise<GitSnapshot> {
     const explorerRoot = this.paths.root(state);
-    const discovery = await this.discover(explorerRoot);
+    const preferences = await this.preferences.get(explorerRoot), settings = preferences.settings;
+    const discovery = await this.discover(explorerRoot, settings);
+    if (preferences.parent === discovery.parent && discovery.parent) discovery.roots = [discovery.parent, ...discovery.roots];
     if (state.projectRoot !== explorerRoot) return { ...EMPTY, changes: [] };
     state.gitRepositories = discovery.roots;
-    const selected = state.gitRoot && discovery.roots.includes(state.gitRoot) ? state.gitRoot : discovery.roots[0];
+    const visibleRoots = discovery.roots.filter(root => !preferences.hidden.includes(root));
+    const selected = state.gitRoot && visibleRoots.includes(state.gitRoot) ? state.gitRoot : visibleRoots[0];
     state.gitRoot = selected ?? null;
-    const repository = selected ? await this.repository(selected) : null;
-    const root = repository?.repositoryRoot ?? explorerRoot;
-    if (!repository) return { ...EMPTY, roots: discovery.roots, changes: [] };
-    const parsed = await this.readStatus(repository);
-    let pendingChanges = gitChangeGroups(parsed.changes).badge;
-    if (observe) {
-      const others: GitCli[] = [];
-      const remaining = discovery.roots.filter(candidate => candidate !== selected);
-      // VS Code's default SCM activity badge sums repository counts. Keep status
-      // subprocesses bounded even in workspaces with many nested repositories.
-      for (let offset = 0; offset < remaining.length; offset += 4) {
-        const counts = await Promise.all(remaining.slice(offset, offset + 4).map(async candidate => {
-          const other = await this.repository(candidate);
-          if (!other) return 0;
-          others.push(other);
-          return gitChangeGroups((await this.readStatus(other)).changes).badge;
-        }));
-        pendingChanges += counts.reduce((total, count) => total + count, 0);
-      }
-      if (state.projectRoot !== explorerRoot) return { ...EMPTY, changes: [] };
-      void this.watcher.watch(state, repository, others);
+    const errors = [...discovery.errors], repositories: GitCli[] = [];
+    const results = new Map<string, ParsedStatus>();
+    // A failed repository never discards successful snapshots or their counts.
+    // Read the list and badge from the same bounded batch, including after edits.
+    for (let offset = 0; offset < visibleRoots.length; offset += 4) {
+      await Promise.all(visibleRoots.slice(offset, offset + 4).map(async root => {
+        try {
+          const repository = await this.repository(root);
+          if (!repository) throw Error('Repository is no longer available.');
+          repositories.push(repository);
+          results.set(root, await this.readStatus(repository, settings));
+        } catch (error) { errors.push({ root, command: 'git status --porcelain=v2 -z --branch --ahead-behind', message: String(error) }); }
+      }));
     }
+    if (state.projectRoot !== explorerRoot) return { ...EMPTY, changes: [] };
+    if (observe) {
+      if (repositories.length) void this.watcher.watch(state, repositories[0], repositories.slice(1));
+      else this.watcher.unwatch(state.webContentsId);
+    }
+    const counted = settings.scmCountBadge === 'focused' ? (selected ? [selected] : []) : visibleRoots;
+    const pendingChanges = settings.scmCountBadge === 'off' ? 0 : counted.reduce((sum, root) => sum + gitChangeGroups(results.get(root)?.changes, settings).badge, 0);
+    const parsed = selected ? results.get(selected) : undefined;
     return {
-      repository: true, root, roots: discovery.roots, discoveryLimited: discovery.limited,
-      ...parsed,
+      ...EMPTY, ...parsed, repository: discovery.roots.length > 0, root: selected,
+      roots: discovery.roots, visibleRoots, settings, parentRepository: discovery.parent,
+      discoveryLimited: discovery.limited, errors, selectedError: !!selected && !parsed,
+      countIncomplete: settings.scmCountBadge !== 'off' && settings.countBadge !== 'off'
+        && ((settings.scmCountBadge === 'all' && discovery.errors.length > 0)
+          || errors.some(error => counted.includes(error.root)) || counted.some(root => results.get(root)?.statusLimited)),
       pendingChanges,
-      changes: parsed.changes.map((change) => {
-        const filePath = path.join(repository.repositoryRoot, change.path);
-        return { ...change, path: path.relative(root, filePath), filePath,
-          ...(change.previousPath === undefined ? {} : { previousPath: path.relative(root, path.join(repository.repositoryRoot, change.previousPath)) }) };
-      }),
+      changes: (parsed?.changes ?? []).map(change => ({ ...change, filePath: path.join(selected!, change.path) })),
     };
   }
 
-  private async readStatus(repository: GitCli): Promise<ParsedStatus> {
-    // Read without rewriting .git/index and retriggering the project watcher.
-    return parseGitStatus(await repository.run([
+  private async readStatus(repository: GitCli, settings: GitSettings): Promise<ParsedStatus> {
+    const parsed = parseGitStatus(await repository.run([
       '--no-optional-locks', 'status', '--porcelain=v2', '-z', '--branch', '--ahead-behind',
-      '--untracked-files=all', '--', '.',
+      `--untracked-files=${settings.untrackedChanges === 'hidden' ? 'no' : 'all'}`,
+      `--find-renames=${settings.similarityThreshold}%`,
+      ...(settings.ignoreSubmodules ? ['--ignore-submodules=all'] : []), '--', '.',
     ]));
+    const limit = settings.statusLimit;
+    if (parsed.changes.length > limit) { parsed.statusLimited = true; parsed.changes = parsed.changes.slice(0, limit); }
+    return parsed;
+  }
+
+  async configure(state: WindowState, update: { settings?: Partial<GitSettings>; visibleRoots?: string[] }): Promise<GitSnapshot> {
+    const root = this.paths.root(state), preferences = await this.preferences.get(root);
+    const settings = gitSettings({ ...preferences.settings, ...update.settings });
+    if (update.settings) {
+      const changed = Object.fromEntries(Object.keys(update.settings).filter(key => key in settings)
+        .map(key => [key, settings[key as keyof GitSettings]]));
+      await this.preferences.set(root, { settings: { ...preferences.overrides, ...changed } });
+    }
+    if (update.visibleRoots) {
+      const discovery = await this.discover(root, settings);
+      await this.preferences.set(root, { hidden: discovery.roots.filter(candidate => !update.visibleRoots!.includes(candidate)) });
+    }
+    this.discoveries.clear();
+    return this.status(state);
   }
 
   async initialize(state: WindowState): Promise<GitSnapshot> {
     const root = this.paths.root(state);
     await GitCli.run(root, ['init']);
-    this.repositories.delete(root); this.discoveries.delete(root);
+    this.repositories.delete(root); this.discoveries.clear();
     return this.status(state);
   }
 
   async diff(state: WindowState, candidate: string, staged: boolean): Promise<GitDiff> {
-    const roots = (await this.discover(this.paths.root(state))).roots;
+    const preferences = await this.preferences.get(this.paths.root(state));
+    const discovery = await this.discover(this.paths.root(state), preferences.settings);
+    const roots = [...discovery.roots, ...(preferences.parent === discovery.parent && discovery.parent ? [discovery.parent] : [])];
     if (!path.isAbsolute(candidate) || !roots.some(root => isInside(root, candidate))) throw Error('The path is outside the open repositories.');
     // Deleted files can have deleted parents too. Resolve against discovered
     // repositories instead of using a possibly nonexistent directory as cwd.
@@ -313,23 +343,26 @@ export class GitService {
   }
 
   async select(state: WindowState, root: string): Promise<GitSnapshot> {
-    const open = this.paths.root(state);
-    this.discoveries.delete(open);
-    const discovery = await this.discover(open);
-    if (state.projectRoot !== open || !discovery.roots.includes(root)) throw Error('Choose a repository in the open folder.');
+    const open = this.paths.root(state), preferences = await this.preferences.get(open);
+    this.discoveries.clear();
+    const discovery = await this.discover(open, preferences.settings);
+    if (state.projectRoot !== open || (!discovery.roots.includes(root) && discovery.parent !== root)) throw Error('Choose a repository in the open folder.');
+    await this.preferences.set(open, { hidden: preferences.hidden.filter(candidate => candidate !== root),
+      ...(root === discovery.parent ? { parent: root } : {}) });
     this.watcher.unwatch(state.webContentsId); state.gitRoot = root;
     return this.status(state);
   }
-  private discover(root: string): ReturnType<typeof discoverRepositories> {
-    let entry = this.discoveries.get(root);
+  private discover(root: string, settings: GitSettings): ReturnType<typeof discoverRepositories> {
+    const key = JSON.stringify([root, settings]);
+    let entry = this.discoveries.get(key);
     if (!entry || Date.now() - entry.time > 60_000) {
-      entry = { time: Date.now(), task: discoverRepositories(root) }; this.discoveries.set(root, entry);
+      entry = { time: Date.now(), task: discoverRepositories(root, settings) }; this.discoveries.set(key, entry);
       const task = entry.task;
       void task.then(discovery => {
-        if (!discovery.roots.length && this.discoveries.get(root)?.task === task) this.discoveries.delete(root);
-      }, () => { if (this.discoveries.get(root)?.task === task) this.discoveries.delete(root); });
+        if (!discovery.roots.length && this.discoveries.get(key)?.task === task) this.discoveries.delete(key);
+      }, () => { if (this.discoveries.get(key)?.task === task) this.discoveries.delete(key); });
     }
-    return entry.task;
+    return entry.task.then(discovery => ({ ...discovery, roots: [...discovery.roots] }));
   }
 
   private async mutate(state: WindowState, action: (state: WindowState) => Promise<GitSnapshot>): Promise<GitSnapshot> {
@@ -343,6 +376,9 @@ export class GitService {
   private async requireRepository(state: WindowState): Promise<GitCli> {
     const repository = await this.repository(state.gitRoot ?? this.paths.root(state));
     if (!repository) throw new Error('The open folder is not a Git repository.');
+    const open = this.paths.root(state), preferences = await this.preferences.get(open);
+    if (repository.repositoryRoot !== open && isInside(repository.repositoryRoot, open) && preferences.parent !== repository.repositoryRoot
+      && preferences.settings.openRepositoryInParentFolders !== 'always') throw Error('Open the parent repository before changing it.');
     return repository;
   }
 

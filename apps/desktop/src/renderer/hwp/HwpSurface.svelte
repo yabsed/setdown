@@ -32,11 +32,11 @@
     const layout = new MutationObserver(() => { cancelAnimationFrame(frame); frame = requestAnimationFrame(sync); });
     layout.observe(document.querySelector('.editor-area')!, { attributes: true, subtree: true, attributeFilter: ['style', 'class'] });
     const overlay = ((event: CustomEvent<boolean>) => { covered = Math.max(0, covered + (event.detail ? 1 : -1)); }) as EventListener;
-    window.addEventListener('setdown:native-overlay-visibility', overlay);
+    window.addEventListener('setdown:native-overlay-visibility', overlay); window.addEventListener('setdown:tab-drag-visibility', overlay);
     window.addEventListener('resize', sync);
     const zoom = desktop.onZoomChanged(sync);
     return () => { delete mediaZoom[tab.id]; mounted = false; unsubscribe(); resize.disconnect(); layout.disconnect(); cancelAnimationFrame(frame); zoom();
-      window.removeEventListener('resize', sync); window.removeEventListener('setdown:native-overlay-visibility', overlay); desktop.hwp.present(tab.id, null); };
+      window.removeEventListener('resize', sync); window.removeEventListener('setdown:native-overlay-visibility', overlay); window.removeEventListener('setdown:tab-drag-visibility', overlay); desktop.hwp.present(tab.id, null); };
   });
 </script>
 <div class="hwp-surface" bind:this={host} data-hwp-tab={tab.id}>

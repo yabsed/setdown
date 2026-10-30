@@ -46,7 +46,7 @@ test(`overlapping windows accept repeated ${moving} body drops and clear a remot
         const send = contents.send.bind(contents);
         contents.send = (channel, ...args) => { if (channel === 'tabs:drag-state') events.push({ at: Date.now(), id: contents.id, channel, value: args[0] }); return send(channel, ...args); };
       }
-      for (const channel of ['tabs:register-transfer', 'tabs:detach-to-window', 'tabs:cancel-transfer']) ipcMain.on(channel, (event, value) => events.push({ at: Date.now(), id: event.sender.id, channel, value }));
+      for (const channel of ['browser:tab-drag-input', 'tabs:drag-target', 'tabs:register-transfer', 'tabs:detach-to-window', 'tabs:cancel-transfer']) ipcMain.on(channel, (event, value) => events.push({ at: Date.now(), id: event.sender.id, channel, value }));
       const visible = WebContentsView.prototype.setVisible;
       WebContentsView.prototype.setVisible = function(value) { events.push({ at: Date.now(), id: this.webContents.id, visible: value }); return visible.call(this, value); };
     });

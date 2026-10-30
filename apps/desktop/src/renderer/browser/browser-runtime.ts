@@ -80,7 +80,7 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
       if (workspace.activeId !== event.id || project.gitDiffActive) activate(event.id);
     } else if (event.type === 'close') { delete browser.readers[event.id]; delete browser.readerPositions[event.id]; delete browser.readerFind[event.id]; tabs.browserClosed(event.id); }
     else if (event.type === 'places') browser.revision++;
-    else if (event.type === 'extensions') browser.revision++;
+    else if (event.type === 'extensions' || event.type === 'theme-settings') browser.revision++;
     else if (event.type === 'download') {
       if (!downloadsLoaded) changedDownloads.add(event.download.id);
       const index = browser.downloads.findIndex(item => item.id === event.download.id);

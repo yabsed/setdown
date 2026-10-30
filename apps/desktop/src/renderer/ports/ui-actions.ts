@@ -69,6 +69,7 @@ export type AppActions = BrowserActions & TerminalActions & {
   updateProjectGitDiffLine(line: number): void;
   changeProjectGitWorkingTree(text: string, edits?: WorkingTreeEdit[]): void;
   saveProjectGitWorkingTree(): void;
+  configureGit(update: Parameters<import('../../protocol/desktop-api').MarkTexApi['configureGit']>[0]): void;
   selectGitRepository(root: string): void;
   initializeProjectGit(): void;
   stageProjectGit(paths: string[]): void;

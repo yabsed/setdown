@@ -24,7 +24,17 @@ export class ExtensionSurface {
       parent.removeListener('move', close); parent.removeListener('closed', close); });
     target.on('destroyed', close); target.on('did-start-navigation', navigate);
     this.cleanup.push(() => { target.removeListener('destroyed', close); target.removeListener('did-start-navigation', navigate); });
-    this.contents.on('blur', close);
+    this.contents.on('blur', () => {
+      if (extensionId || parent.isDestroyed()) { close(); return; }
+      // Clicking the shell's extension button blurs this native child before
+      // the button's click reaches main. Keep it until that click can toggle
+      // the existing strip; otherwise menu() would create a second strip.
+      void parent.webContents.executeJavaScript(`!!document.activeElement?.closest('[data-extension-tab]')`)
+        .then(onButton => {
+          if (!this.destroyed && !this.contents.isFocused()
+            && !(onButton && parent.webContents.isFocused())) close();
+        }).catch(close);
+    });
     this.contents.on('before-input-event', (event, input) => {
       if (input.type === 'keyDown' && input.key === 'Escape' && !input.isComposing) {
         event.preventDefault(); this.destroy(true);

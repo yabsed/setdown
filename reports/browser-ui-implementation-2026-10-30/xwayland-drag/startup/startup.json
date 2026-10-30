@@ -1,0 +1,20 @@
+{
+  "initialPid": 2330726,
+  "finalPid": 2330756,
+  "args": [
+    "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/node_modules/electron/dist/electron",
+    "--ozone-platform=x11",
+    "--enable-automation",
+    "--remote-debugging-port=0",
+    "--user-data-dir=/tmp/setdown-display-startup-456x9R/profile",
+    "--allow-file-access-from-files",
+    "--bypasscsp-schemes=crx",
+    "--secure-schemes=setdown-hwp,marktex-resource,marktex-preview",
+    "--cors-schemes=setdown-hwp,marktex-resource",
+    "--fetch-schemes=setdown-hwp,marktex-resource,marktex-preview",
+    "--standard-schemes=setdown-hwp,marktex-resource,marktex-preview",
+    "--streaming-schemes=marktex-resource",
+    ".",
+    "/tmp/setdown-display-startup-456x9R/startup.md"
+  ]
+}

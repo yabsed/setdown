@@ -1,4 +1,4 @@
-import { app, dialog, Menu, session, shell, webFrameMain, WebContentsView, type Session, type WebContents, type Rectangle, type BrowserWindow } from 'electron';
+import { app, dialog, ipcMain, Menu, session, shell, webFrameMain, WebContentsView, type Session, type WebContents, type Rectangle, type BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { promises as fs, writeFileSync, renameSync } from 'node:fs';
 import path from 'node:path';
@@ -22,6 +22,9 @@ import { browserContextMenu } from './browser-context-menu';
 import { showReadingMenu } from '../menu/reading-menu';
 import type { ReaderSnapshot } from '../../protocol/browser';
 import { BrowserAuth } from './browser-auth';
+import { BrowserTabDrag } from './browser-tab-drag';
+import { BrowserThemes } from './browser-themes';
+import { DEFAULT_PREVIEW_THEME } from '../../core/preview/preview-preferences';
 
 type Entry = { owner: number; view: WebContentsView; contents: WebContents; page: BrowserPage; navigation: number; bounds?: Rectangle;
   document: number; reader?: { snapshot: ReaderSnapshot; document: number }; menuGeneration: number; find?: { request: number; query: string }; htmlFullscreen?: boolean;
@@ -58,6 +61,12 @@ export class BrowserManager {
     const entry = this.forContents(contents);
     return entry ? { id: entry.page.id, owner: entry.owner, contents: entry.contents, visible: entry.view.getVisible() } : undefined;
   }, (owner, id, requests) => this.send(owner, { type: 'permissions', id, requests }));
+  readonly webThemes = new BrowserThemes(() => this.views.values(), () => this.options.theme?.() ?? DEFAULT_PREVIEW_THEME, settings => {
+    const item = Menu.getApplicationMenu()?.getMenuItemById('menu-theme-web');
+    if (item) item.checked = settings.mode === 'app';
+    this.broadcast({ type: 'theme-settings' });
+  });
+  readonly tabDrag = new BrowserTabDrag(id => this.options.stateFor(id)?.window, () => this.options.theme?.() ?? DEFAULT_PREVIEW_THEME);
   constructor(private readonly options: Options) {}
   private pageZoom(entry: Entry): number { return this.options.zoom.tabFactor(`${entry.page.id}:website`); }
   private zoomPage(entry: Entry, steps: unknown, requireVisible = true): void {
@@ -277,12 +286,14 @@ export class BrowserManager {
       }
       if (channel === 'browser:frame-ready' && frame && !frame.isDestroyed()) {
         frame.send('browser:frame-policy');
+        this.webThemes.apply(entry, frame);
       }
     });
     wc.on('did-frame-finish-load', (_event, _main, processId, routingId) => {
       const frame = webFrameMain.fromId(processId, routingId);
       if (!frame || frame.isDestroyed()) return;
       frame.send('browser:frame-policy', true);
+      this.webThemes.apply(entry, frame);
       // Frame-local insertion is also available from a live ancestor in the
       // same renderer process, independent of the child's provisional Window.
       let policyParent: Electron.WebFrameMain | null = null;
@@ -294,9 +305,11 @@ export class BrowserManager {
       policyParent?.send('browser:child-frame-policy', frame.frameToken);
     });
     wc.on('zoom-changed', (_event, direction) => this.zoomPage(entry, direction === 'in' ? 1 : -1));
-    wc.on('did-start-navigation', (_event, _url, inPlace, main) => {
+    wc.on('did-start-navigation', (_event, _url, inPlace, main, processId, routingId) => {
+      if (!inPlace) this.webThemes.invalidateFrame(webFrameMain.fromId(processId, routingId));
       entry.menuGeneration++;
       if (!main || inPlace) return;
+      this.webThemes.cancel(entry);
       entry.document++; entry.reader = undefined; entry.find = undefined; entry.page.error = null; entry.page.failure = undefined;
       this.send(entry.owner, { type: 'document', id });
       this.auth.clear(id);
@@ -323,7 +336,11 @@ export class BrowserManager {
       this.saved.set(id, entry.page); this.persist(); this.publish(entry);
     };
     wc.on('did-navigate', navigation);
-    wc.on('did-navigate-in-page', (event, url, main) => { if (main) navigation(event, url); });
+    wc.on('did-navigate-in-page', (event, url, main, processId, routingId) => {
+      if (main) navigation(event, url);
+      const frame = webFrameMain.fromId(processId, routingId);
+      if (frame && !frame.isDestroyed()) this.webThemes.apply(entry, frame);
+    });
     wc.on('page-title-updated', (_event, title) => { if (!this.live(entry)) return; entry.page.title = title; this.publish(entry); this.saved.set(id, entry.page); this.persist(); });
     wc.on('did-start-loading', () => this.publish(entry));
     wc.on('did-stop-loading', () => this.publish(entry));
@@ -356,6 +373,7 @@ export class BrowserManager {
       if (choice === 1) event.preventDefault(); else { entry.closing?.(false); entry.closing = undefined; }
     });
     wc.on('destroyed', () => {
+      this.webThemes.cancel(entry);
       const resolve = entry.closing; entry.closing = undefined; resolve?.(true);
       if (this.views.get(id) !== entry) return;
       this.permissions.clear(entry.owner, id);
@@ -497,6 +515,7 @@ export class BrowserManager {
     if (!target) return false;
     this.permissions.clear(source, id);
     this.auth.clear(id);
+    this.webThemes.cancel(entry);
     entry.find = undefined; entry.document++;
     entry.view.setVisible(false);
     this.options.stateFor(source)?.window.contentView.removeChildView(entry.view);
@@ -508,6 +527,9 @@ export class BrowserManager {
       this.extensions?.host?.removeTab(entry.contents);
       this.extensions?.host?.addTab(entry.contents, target.window);
     } finally { this.transferring.delete(entry.contents.id); }
+    // Ownership changes invalidate outstanding resource requests, but the live
+    // document still needs a current policy for styles loaded after the move.
+    for (const frame of entry.contents.mainFrame.framesInSubtree) this.webThemes.apply(entry, frame);
     return true;
   }
   layout(owner: number, entries: Array<{ id: string; bounds: PreviewBounds; canGoBack?: boolean; canGoForward?: boolean }>) {
@@ -534,6 +556,8 @@ export class BrowserManager {
       // retaining their WebContents/form/history and Chromium's throttling.
       if (state.window.contentView.children.includes(entry.view)) state.window.contentView.removeChildView(entry.view);
     }
+    this.tabDrag.layout(owner, [...this.views.values()].filter(entry => entry.owner === owner && visible.has(entry.page.id) && entry.bounds)
+      .map(entry => entry.bounds!));
   }
   private async external(entry: Entry, url: string, explicit = false) {
     const state = this.options.stateFor(entry.owner);
@@ -569,6 +593,9 @@ export class BrowserManager {
     const valid = () => !wc.isDestroyed() && entry.owner === owner && entry.document === generation;
     Menu.buildFromTemplate([
       { label: origin, enabled: false },
+      { label: 'Keep Original Colors for This Site', type: 'checkbox', checked: this.webThemes.snapshot().originalSites.includes(origin),
+        click: item => { if (valid()) void this.webThemes.update({ site: { tabId: entry.page.id, original: item.checked } }, wc.getURL())
+          .catch(error => this.error(entry, error)); } },
       { label: entry.page.muted ? 'Unmute Tab' : 'Mute Tab', click: () => { if (valid()) { wc.setAudioMuted(!wc.isAudioMuted()); this.publish(entry); } } },
       { label: 'Reset Page Permissions', click: () => { if (valid()) { this.permissions.clear(owner, entry.page.id); wc.reload(); } } },
       { label: 'Clear This Site’s Data…', click: () => { void (async () => {
@@ -583,6 +610,20 @@ export class BrowserManager {
     ]).popup({ window: state.window });
   }
   registerIpc(channels: WindowIpc) {
+    ipcMain.handle('browser:theme-fetch', (event, request) => {
+      const entry = this.forContents(event.sender), frame = event.senderFrame;
+      if (!entry || !frame || frame.isDestroyed()) throw Error('Unknown web theme frame.');
+      return this.webThemes.fetch(entry, frame, request);
+    });
+    channels.handle('browser:theme-settings', () => this.webThemes.snapshot());
+    channels.handle('browser:theme-update', async (state, update: import('../../protocol/browser-theme').BrowserThemeUpdate) => {
+      if (!update || typeof update !== 'object') throw Error('Invalid web theme setting.');
+      const url = update.site ? this.owned(state.webContentsId, update.site.tabId).contents.getURL() : undefined;
+      return this.webThemes.update(update, url);
+    });
+    channels.on('browser:tab-drag-state', (state, id: string | null) => this.tabDrag.state(state.webContentsId, id));
+    channels.on('browser:tab-drag-guide', (state, guide: import('../../protocol/tab-drag').TabDragGuide) => this.tabDrag.guide(state.webContentsId, guide));
+
     channels.handle('browser:create', (state, id: string, url: string, history?: WebHistory) => this.create(state.webContentsId, id, url, history));
     channels.handle('browser:history', (state, id: string): WebHistory => {
       const entry = this.owned(state.webContentsId, id), history = entry.contents.navigationHistory;

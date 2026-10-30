@@ -57,6 +57,7 @@ export class SurfaceController {
     const tab = this.options.workspace.activeDocument;
     if (!this.options.editor.loaded || !tab || !hasMarkdownPreview(tab.document)) return;
     const startedAt = performance.now();
+    this.options.editor.finishScroll();
     const viewport = this.options.editor.viewport(this.options.session.anchor);
     this.options.session.anchor = viewport.anchor;
     this.publishAnchor();

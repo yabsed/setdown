@@ -257,8 +257,8 @@ for (const dropArea of ['body', 'tab strip'] as const) test(`detaching a tab res
           bubbles: true,
           cancelable: true,
           dataTransfer,
-          screenX: 640,
-          screenY: 420,
+          screenX: window.screenX + 120,
+          screenY: window.screenY - 100,
         }));
         return { types, dropEffect: dataTransfer.dropEffect };
       });
@@ -400,8 +400,8 @@ test('detaching the middle tab leaves documents one and three in the original wi
           bubbles: true,
           cancelable: true,
           dataTransfer,
-          screenX: 680,
-          screenY: 460,
+          screenX: window.screenX + 120,
+          screenY: window.screenY - 100,
         }));
       });
 
