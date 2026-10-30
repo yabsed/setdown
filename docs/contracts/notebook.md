@@ -7,6 +7,13 @@ checks, isolated-display rules and the comparative performance gate.
 
 ## Notebook surface contract — 2026-10-16
 
+Explorer's generic New File action supports `.ipynb` names. Empty or whitespace-only
+`.ipynb` files also open as clean, editable nbformat 4.5 Python notebooks without
+rewriting the disk on open. Code and Markdown insertion are enabled; saving
+serializes valid notebook JSON. Malformed nonempty notebooks remain protected.
+`notebook-document.test.ts` and `notebook.spec.ts` cover blank files, insertion,
+save/reopen, and the ordinary New File flow. There is no dedicated creation button.
+
 Notebooks have one document owner and persistent touched-cell Monaco models.
 Mounted views borrow these models; hiding/remounting a view must preserve source,
 selection and text Undo. Structural Undo is separate. No native browser view is

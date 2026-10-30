@@ -1,8 +1,12 @@
 # Jupyter notebooks
 
 Open a `.ipynb` file through Open File, Explorer, or the location bar. To create
-one, create a file ending in `.ipynb` in Explorer; Setdown writes a valid empty
-Python notebook. Editing does not require Jupyter or an installed Python kernel.
+one, use Explorer's **New File** and enter a name ending in `.ipynb`.
+An empty file, including one created outside Setdown, opens as a new Python
+notebook with **Code** and **Markdown** enabled. Opening it does not rewrite the
+file; saving writes valid notebook JSON. Malformed nonempty files still report
+an error and preserve their contents. Editing does not require Jupyter or an
+installed Python kernel.
 
 - Edit code and raw cells directly. Double-click Markdown to edit it; use Preview
   or `Esc` to return to reading. Equations and cell attachments are supported.

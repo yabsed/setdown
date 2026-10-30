@@ -97,7 +97,25 @@ describe('notebook ownership and persistence', () => {
     const result = JSON.parse(document.serialize()); expect(result.nbformat_minor).toBe(5);
     expect(result.cells[0].id).not.toBe(result.cells[1].id); expect(result.metadata.kernelspec.language).toBe('python');
   });
-  it.each(['', '{broken', '{"nbformat":4,"nbformat":4}', fixture().replace('"nbformat": 4', '"nbformat": 3'),
+  it.each(['', ' \t\r\n'])('opens blank files as editable notebooks with a clean save checkpoint', text => {
+    const document = new NotebookDocument(text);
+    document.markSaved(text);
+    expect(document.error).toBeUndefined(); expect(document.dirty).toBe(false);
+    const code = document.add('code'); document.setSource(code, 'answer = 42');
+    const markdown = document.add('markdown'); document.setSource(markdown, '# Notes');
+    const saved = document.serialize(), parsed = JSON.parse(saved);
+    expect(parsed).toMatchObject({ nbformat: 4, nbformat_minor: 5, metadata: { kernelspec: { language: 'python' } },
+      cells: [{ cell_type: 'code', source: 'answer = 42', execution_count: null, outputs: [] },
+        { cell_type: 'markdown', source: '# Notes' }] });
+    expect(document.dirty).toBe(true);
+    document.markSaved(saved); expect(document.dirty).toBe(false);
+    const reopened = new NotebookDocument(saved);
+    expect(reopened.error).toBeUndefined(); expect(reopened.cells.map(cell => cell.id)).toEqual([code, markdown]);
+    document.replace(text); expect(document.error).toBeUndefined(); expect(document.dirty).toBe(false);
+    document.add('code'); document.undo(); expect(document.dirty).toBe(false);
+    document.redo(); expect(document.dirty).toBe(true);
+  });
+  it.each(['{broken', '{"nbformat":4,"nbformat":4}', fixture().replace('"nbformat": 4', '"nbformat": 3'),
     fixture().replace('"id": "code"', '"id": "intro"'), fixture().replace('"source": [', '"source": null, "old": [')])(
     'invalid notebooks stay unchanged and cannot gain editable cells', text => {
       const document = new NotebookDocument(text); expect(document.error).toBeTruthy(); document.add('code');

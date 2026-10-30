@@ -14,6 +14,57 @@ const notebook = () => ({ nbformat: 4, nbformat_minor: 5, metadata: { language_i
   { id: 'use', cell_type: 'code', metadata: {}, source: 'numbers.append(4)', execution_count: null, outputs: [] },
 ] });
 
+for (const blank of ['', ' \t\n']) test(`${blank ? 'whitespace-only' : 'empty'} ipynb files enable Code and Markdown and save as valid notebooks`, async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-blank-notebook-'));
+  const file = path.join(root, 'blank.ipynb');
+  await writeFile(file, blank);
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    await focusApplication(app);
+    const page = await app.firstWindow();
+    const code = page.getByRole('button', { name: '+ Code', exact: true });
+    const markdown = page.getByRole('button', { name: '+ Markdown', exact: true });
+    await expect(page.locator('.shell')).toHaveAttribute('data-surface', 'notebook');
+    await expect(code).toBeEnabled(); await expect(markdown).toBeEnabled();
+    await expect(page.locator('.notebook-error')).toHaveCount(0);
+    await expect(page.locator('.shell')).toHaveAttribute('data-dirty-tabs', '0');
+    expect(await readFile(file, 'utf8')).toBe(blank);
+    await code.click();
+    const codeEditor = page.getByRole('textbox', { name: /Code cell editor/ });
+    await codeEditor.focus(); await page.keyboard.insertText('answer = 42');
+    await markdown.click();
+    const cell = page.locator('[data-cell-kind="markdown"]');
+    await cell.getByRole('button', { name: 'Edit', exact: true }).click();
+    const markdownEditor = cell.getByRole('textbox', { name: /Markdown cell editor/ });
+    await markdownEditor.focus(); await page.keyboard.insertText('# 새 노트북'); await markdownEditor.press('Escape');
+    await expect(cell.locator('.cell-markdown h1')).toHaveText('새 노트북');
+    await page.keyboard.press('Control+s');
+    await expect.poll(async () => JSON.parse(await readFile(file, 'utf8'))).toMatchObject({ nbformat: 4, nbformat_minor: 5,
+      metadata: { kernelspec: { name: 'python3', language: 'python' } },
+      cells: [{ cell_type: 'code', source: 'answer = 42', execution_count: null, outputs: [] }, { cell_type: 'markdown', source: '# 새 노트북' }] });
+    await expect(page.locator('.shell')).toHaveAttribute('data-dirty-tabs', '0');
+    await page.reload();
+    await expect(cell.locator('.cell-markdown h1')).toHaveText('새 노트북');
+    await expect(page.locator('[data-cell-kind="code"] .view-lines')).toContainText('answer');
+    await expect(page.locator('.kernel-state')).toHaveAttribute('aria-label', 'Kernel stopped');
+
+    await page.evaluate(folder => window.marktex.restoreProjectFolder(folder), root);
+    await page.reload();
+    await page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
+    await page.getByRole('button', { name: 'Explorer', exact: true }).click();
+    await expect(page.getByRole('button', { name: /New HWP File|New Jupyter Notebook/ })).toHaveCount(0);
+    expect(await page.evaluate(() => 'hwp' in window.marktex)).toBe(false);
+    await page.getByRole('button', { name: 'New File', exact: true }).click();
+    const input = page.getByRole('textbox', { name: 'New file name', exact: true });
+    await input.fill('새 파일.ipynb'); await input.press('Enter');
+    await expect.poll(() => page.evaluate(async () => (await window.marktex.getDocument())?.path)).toBe(path.join(root, '새 파일.ipynb'));
+    await expect(code).toBeEnabled(); await expect(markdown).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Add a code cell', exact: true })).toBeVisible();
+    await page.screenshot({ path: test.info().outputPath('blank-notebook.png') });
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
 test('notebook reading hierarchy keeps content, actions and focus distinct, including narrow split panes', async () => {
   test.setTimeout(90_000);
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-reading-'));

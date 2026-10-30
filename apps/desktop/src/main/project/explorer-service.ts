@@ -88,8 +88,7 @@ export class ExplorerService {
   });
   constructor(private readonly paths: ProjectPaths,
     private readonly trash: (filePath: string) => Promise<void> = (filePath) => shell.trashItem(filePath),
-    private readonly beforeMutation: (state: WindowState, paths: string[]) => void = () => {},
-    private readonly hwpTemplates = path.join(__dirname, 'hwp')) {}
+    private readonly beforeMutation: (state: WindowState, paths: string[]) => void = () => {}) {}
   private async did(state: WindowState, operation: LanguageFileOperation): Promise<void> {
     try { await this.languageOperation?.(state, operation, 'did'); }
     catch (error) { console.warn('Files changed, but language-server notification failed.', error); }
@@ -110,8 +109,7 @@ export class ExplorerService {
     await this.languageOperation?.(state, operation, 'will');
     if (kind === 'directory') await fs.mkdir(target);
     else if (kind === 'file') {
-      const content = /\.hwpx?$/i.test(target) ? await fs.readFile(path.join(this.hwpTemplates, /\.hwpx$/i.test(target) ? 'blank.hwpx' : 'blank.hwp'))
-        : /\.ipynb$/i.test(target) ? emptyNotebook() : '';
+      const content = /\.ipynb$/i.test(target) ? emptyNotebook() : '';
       await fs.writeFile(target, content, { flag: 'wx' });
     }
     else throw new Error('Unknown project entry kind.');

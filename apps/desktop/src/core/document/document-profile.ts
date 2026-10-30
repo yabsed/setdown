@@ -8,7 +8,6 @@ export function imageMimeType(filePath: string): string | undefined {
   return Object.hasOwn(IMAGE_TYPES, extension) ? IMAGE_TYPES[extension] : undefined;
 }
 export const isImageDocument = (filePath: string): boolean => !!imageMimeType(filePath);
-export const isHwpDocument = (filePath: string): boolean => /\.hwpx?$/i.test(filePath);
 export const VIDEO_EXTENSIONS = ['mp4', 'webm'];
 const VIDEO_TYPES: Record<string, string> = { mp4: 'video/mp4', webm: 'video/webm' };
 export function videoMimeType(filePath: string): string | undefined {
@@ -25,18 +24,17 @@ const BINARY = new Set(('pdf png jpg jpeg gif webp avif bmp ico icns tif tiff he
   + 'mp3 mp4 m4a wav ogg flac avi mov mkv webm psd ai sketch').split(' '));
 
 export const isNotebookDocument = (filePath: string): boolean => /\.ipynb$/i.test(filePath);
-export type DocumentSurface = 'hwp' | 'notebook' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video';
-export type DocumentProfile = { readonly kind: 'hwp' | 'markdown' | 'text' | 'pdf' | 'image' | 'video'; readonly preview: 'markdown' | 'pdf' | 'image' | 'video' | null };
+export type DocumentSurface = 'notebook' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video';
+export type DocumentProfile = { readonly kind: 'markdown' | 'text' | 'pdf' | 'image' | 'video'; readonly preview: 'markdown' | 'pdf' | 'image' | 'video' | null };
 const pdf: DocumentProfile = Object.freeze({ kind: 'pdf', preview: 'pdf' });
 const image: DocumentProfile = Object.freeze({ kind: 'image', preview: 'image' });
 const video: DocumentProfile = Object.freeze({ kind: 'video', preview: 'video' });
 export const isPdfDocument = (filePath: string): boolean => /\.pdf$/i.test(filePath);
-export const isOpenableDocument = (filePath: string): boolean => isHwpDocument(filePath) || isReadOnlyDocument(filePath) || isTextCandidate(filePath);
-const hwp: DocumentProfile = Object.freeze({ kind: 'hwp', preview: null });
+export const isOpenableDocument = (filePath: string): boolean => isReadOnlyDocument(filePath) || isTextCandidate(filePath);
 const markdown: DocumentProfile = Object.freeze({ kind: 'markdown', preview: 'markdown' });
 const text: DocumentProfile = Object.freeze({ kind: 'text', preview: null });
 export const isMarkdownDocument = (filePath: string): boolean => MARKDOWN.test(filePath);
-export const documentProfile = (filePath: string): DocumentProfile => isHwpDocument(filePath) ? hwp : isMarkdownDocument(filePath) ? markdown : isPdfDocument(filePath) ? pdf : isImageDocument(filePath) ? image : isVideoDocument(filePath) ? video : text;
+export const documentProfile = (filePath: string): DocumentProfile => isMarkdownDocument(filePath) ? markdown : isPdfDocument(filePath) ? pdf : isImageDocument(filePath) ? image : isVideoDocument(filePath) ? video : text;
 export const fileName = (filePath: string): string => filePath.split(/[\\/]/).at(-1) ?? filePath;
 /** A cheap navigation/search filter, NOT proof that bytes are editable text. */
 export function isTextCandidate(filePath: string): boolean {
@@ -44,7 +42,7 @@ export function isTextCandidate(filePath: string): boolean {
   return !BINARY.has(name.includes('.') ? name.split('.').at(-1)!.toLowerCase() : '');
 }
 export function documentSurface(filePath: string, preferred: DocumentSurface = 'viewer'): DocumentSurface {
-  return isHwpDocument(filePath) ? 'hwp' : isNotebookDocument(filePath) ? 'notebook' : isPdfDocument(filePath) ? 'pdf' : isImageDocument(filePath) ? 'image'
+  return isNotebookDocument(filePath) ? 'notebook' : isPdfDocument(filePath) ? 'pdf' : isImageDocument(filePath) ? 'image'
     : isVideoDocument(filePath) ? 'video'
     : isMarkdownDocument(filePath) ? (preferred === 'editor' ? 'editor' : 'viewer') : 'editor';
 }

@@ -45,6 +45,9 @@ export class NotebookDocument {
   private undoStack: { undo(): void; redo(): void }[] = [];
   private redoStack: { undo(): void; redo(): void }[] = [];
   constructor(public original: string) {
+    // An empty .ipynb is a new notebook, including files created outside Setdown.
+    // Initialize only in memory; malformed nonempty JSON remains an error.
+    if (!original.trim()) original = this.original = emptyNotebook();
     let language = 'python', minor = 5;
     try {
       const errors: ParseError[] = [];

@@ -18,7 +18,6 @@
     target?: string;
     depth: number;
     value: string;
-    format?: 'hwp';
   };
   type Menu = { x: number; y: number; entry: VisibleProjectEntry | null };
 
@@ -126,13 +125,13 @@
   const createDepth = (parent: string) => parent === project.folder?.path ? 0
     : (project.entries.find((entry) => entry.path === parent)?.depth ?? -1) + 1;
 
-  function beginCreate(kind: ProjectEntryKind, parent = createParent(), format?: 'hwp') {
+  function beginCreate(kind: ProjectEntryKind, parent = createParent()) {
     if (busy || !parent) return;
     if (!project.explorerRootExpanded) actions.toggleProjectExplorerRoot();
     singleSelection(parent);
     const directory = project.entries.find((entry) => entry.path === parent);
     if (directory && !directory.expanded) void actions.toggleProjectDirectory(parent);
-    editing = { mode: 'create', kind, parent, depth: createDepth(parent), value: format === 'hwp' ? 'Untitled.hwp' : '', format };
+    editing = { mode: 'create', kind, parent, depth: createDepth(parent), value: '' };
     menu = null;
   }
 
@@ -152,7 +151,7 @@
   async function submitEdit(value: string) {
     if (busy || !editing || !value.trim()) return;
     busy = true;
-    editing.value = editing.format === 'hwp' && !/\.hwp$/i.test(value.trim()) ? `${value.trim()}.hwp` : value;
+    editing.value = value;
     try {
       if (editing.mode === 'create') {
         await actions.createProjectEntry(editing.parent, editing.value, editing.kind);
@@ -378,10 +377,6 @@
   <span>EXPLORER</span>
   <button type="button" title="New File" aria-label="New File" disabled={!project.folder}
     onclick={() => beginCreate('file')}><svg viewBox="0 0 16 16"><path d="M3 1.5h6l4 4v9H3v-13Zm6 0v4h4M8 8v4m-2-2h4"/></svg></button>
-  <button type="button" title="New HWP File" aria-label="New HWP File" disabled={!project.folder || busy}
-    onclick={() => beginCreate('file', createParent(), 'hwp')}>
-    <svg viewBox="0 0 16 16"><path d="M2.5 1.5h6l3 3v3m-3-6v3h3M2.5 1.5v13h5M5 7v4m3-4v4m-3-2h3m4 1v5m-2.5-2.5h5"/></svg>
-  </button>
   <button type="button" title="New Folder" aria-label="New Folder" disabled={!project.folder}
     onclick={() => beginCreate('directory')}>
     <svg viewBox="0 0 16 16"><path d="M1.5 4.5h5l1.5 2h6.5v7h-13v-9ZM8 8.5v3m-1.5-1.5h3"/></svg>
@@ -428,7 +423,7 @@
     ondrop={event => { if (event.target === event.currentTarget) void drop(event, project.folder!.path); }}>
     {#if editing?.mode === 'create' && editing.parent === project.folder.path}
       <ExplorerEditRow kind={editing.kind} depth={editing.depth} initial={editing.value}
-        label={editing.format === 'hwp' ? 'New HWP file name' : `New ${editing.kind} name`} submit={(value) => void submitEdit(value)} cancel={() => editing = null} />
+        label={`New ${editing.kind} name`} submit={(value) => void submitEdit(value)} cancel={() => editing = null} />
     {/if}
     {#each visibleEntries as entry (entry.path)}
       {#if editing?.mode === 'rename' && editing.target === entry.path}
@@ -465,7 +460,7 @@
       {/if}
       {#if editing?.mode === 'create' && editing.parent === entry.path}
         <ExplorerEditRow kind={editing.kind} depth={editing.depth} initial={editing.value}
-          label={editing.format === 'hwp' ? 'New HWP file name' : `New ${editing.kind} name`} submit={(value) => void submitEdit(value)} cancel={() => editing = null} />
+          label={`New ${editing.kind} name`} submit={(value) => void submitEdit(value)} cancel={() => editing = null} />
       {/if}
     {/each}
   </div>
@@ -479,7 +474,6 @@
     style:left={`${menu.x}px`} style:top={`${menu.y}px`}>
     {#if !menu.entry || (menu.entry.kind === 'directory' && selectedEntries.length === 1)}
       <button type="button" role="menuitem" onclick={() => beginCreate('file', menu?.entry?.path ?? project.folder!.path)}>New File</button>
-      <button type="button" role="menuitem" onclick={() => beginCreate('file', menu?.entry?.path ?? project.folder!.path, 'hwp')}>New HWP File</button>
       <button type="button" role="menuitem" onclick={() => beginCreate('directory', menu?.entry?.path ?? project.folder!.path)}>New Folder</button>
       <span class="menu-separator"></span>
     {/if}

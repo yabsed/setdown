@@ -1,6 +1,73 @@
 import { expect, test } from '@playwright/test';
+import { writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { nativeInput } from '../../support/electron/native-input';
 
 import { fixture, evaluatePage, captureNativeMenus, chooseNativeMenu, pageContextMenu } from '../../support/browser/browser-fixture';
+
+for (const surface of ['text', 'notebook'] as const) test(`Monaco ${surface} context menus stay above adjacent native browser panes`, async () => {
+  const f = await fixture();
+  try {
+    await f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1400, 900));
+    const file = path.join(f.root, surface === 'text' ? 'code.py' : 'cells.ipynb');
+    const source = 'answer = 42\nprint(answer)';
+    await writeFile(file, surface === 'text' ? source : JSON.stringify({ nbformat: 4, nbformat_minor: 5, metadata: {}, cells: [
+      { id: 'code', cell_type: 'code', source, metadata: {}, execution_count: null, outputs: [] },
+    ] }));
+    await f.page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), file);
+    await expect(f.page.locator('.shell')).toHaveAttribute('data-surface', surface === 'text' ? 'editor' : 'notebook');
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    const tab = f.page.getByRole('tab', { name: /Research page/ });
+    await expect(tab).toBeVisible();
+    const data = await f.page.evaluateHandle(() => new DataTransfer());
+    await tab.dispatchEvent('dragstart', { dataTransfer: data });
+    const body = f.page.locator('.group-body').first(), bounds = (await body.boundingBox())!;
+    const point = { clientX: bounds.x + bounds.width * .98, clientY: bounds.y + bounds.height / 2, dataTransfer: data };
+    await body.dispatchEvent('dragover', point); await body.dispatchEvent('drop', point);
+    await tab.dispatchEvent('dragend', { dataTransfer: data }); await data.dispose();
+    await expect(f.page.locator('.editor-group')).toHaveCount(2);
+    const identity = await evaluatePage(f.app, f.origin, 'window.__menuIdentity = crypto.randomUUID(); document.querySelector("#draft").value="Unsaved draft"; window.__menuIdentity');
+    const nativeVisible = () => f.app.evaluate(({ BrowserWindow }, origin) => BrowserWindow.getAllWindows()[0].contentView.children
+      .some(view => 'webContents' in view && (view as Electron.WebContentsView).webContents.getURL().startsWith(origin) && view.getVisible()), f.origin);
+    await expect.poll(nativeVisible).toBe(true);
+    const editor = f.page.locator('.monaco-editor:visible').first(), box = (await editor.boundingBox())!;
+    await editor.click({ button: 'right', position: { x: box.width - 25, y: 40 } });
+    const menu = f.page.locator('.monaco-menu-container .monaco-menu');
+    await expect(menu).toBeVisible();
+    await expect.poll(nativeVisible).toBe(false);
+    const frozen = f.page.locator('.group-body[data-browser-frozen="true"]');
+    await expect(frozen).toHaveCount(1);
+    const webBounds = (await frozen.boundingBox())!, menuBounds = (await menu.boundingBox())!;
+    expect(menuBounds.x + menuBounds.width).toBeGreaterThan(webBounds.x + 30);
+    await f.page.screenshot({ path: test.info().outputPath(`monaco-context-menu-${surface}.png`) });
+    // OS input must hit the shell menu in the part previously covered by the
+    // native browser. CDP locator clicks alone would bypass that hit testing.
+    const action = menu.getByRole('menuitem', { name: /Command Palette/ });
+    const actionBounds = (await action.boundingBox())!;
+    const hit = { x: Math.max(webBounds.x + 15, actionBounds.x + actionBounds.width - 15), y: actionBounds.y + actionBounds.height / 2 };
+    expect(hit.x).toBeLessThan(actionBounds.x + actionBounds.width);
+    const nativePoint = await f.app.evaluate(({ BrowserWindow }, point) => {
+      const owner = BrowserWindow.getAllWindows()[0], bounds = owner.getContentBounds(), zoom = owner.webContents.getZoomFactor();
+      return { x: bounds.x + point.x * zoom, y: bounds.y + point.y * zoom };
+    }, hit);
+    await nativeInput({ click: nativePoint });
+    await expect(menu).toBeHidden();
+    await expect(f.page.locator('.quick-input-widget')).toBeVisible();
+    await f.page.keyboard.press('Escape');
+    await expect.poll(nativeVisible).toBe(true);
+    await expect(frozen).toHaveCount(0);
+    expect(await evaluatePage(f.app, f.origin, '({identity:window.__menuIdentity, draft:document.querySelector("#draft").value})')).toEqual({ identity, draft: 'Unsaved draft' });
+
+    const input = editor.getByRole('textbox');
+    await input.focus(); await input.press('Shift+F10');
+    await expect(menu).toBeVisible(); await expect.poll(nativeVisible).toBe(false);
+    await f.page.keyboard.press('Escape');
+    await expect(menu).toBeHidden(); await expect.poll(nativeVisible).toBe(true);
+    await expect(frozen).toHaveCount(0);
+    await expect(input).toBeFocused();
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
 
 test('browser details: native image copying and link menus preserve pixels, URLs and source ownership', async () => {
   const f = await fixture();

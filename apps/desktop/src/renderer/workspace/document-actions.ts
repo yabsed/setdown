@@ -30,7 +30,7 @@ export class DocumentActions {
   }
   async save(saveAs = false) {
     const tab = this.options.active();
-    if (!tab || (tab.document.kind !== undefined && tab.document.kind !== 'image' && tab.document.kind !== 'hwp')) return false;
+    if (!tab || (tab.document.kind !== undefined && tab.document.kind !== 'image')) return false;
     try {
       await this.options.beforeSave?.(tab);
       if (this.options.active() !== tab || !this.options.tabs.includes(tab)) return false;
@@ -111,7 +111,7 @@ export class DocumentActions {
     const tab = this.options.active();
     if (!tab) return;
     if (view.unavailablePath === tab.document.path) { delete view.documentNotices[tab.document.path]; view.notice = false; return; }
-    if (tab.document.kind === 'image' || tab.document.kind === 'hwp') { delete view.documentNotices[tab.document.path]; view.notice = false; return; }
+    if (tab.document.kind === 'image') { delete view.documentNotices[tab.document.path]; view.notice = false; return; }
     const { id, revision } = tab;
     const path = tab.document.path;
     const text = this.options.text(tab);

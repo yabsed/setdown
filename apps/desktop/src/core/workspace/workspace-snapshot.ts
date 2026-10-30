@@ -24,7 +24,7 @@ export function parseWorkspaceSnapshot(value: unknown): WorkspaceSnapshot {
     if (content.binary) {
       if (typeof content.binary.extension !== 'string' || typeof content.binary.data !== 'string'
         || content.text !== undefined || content.binary.data.length > 24 * 1024 * 1024 || content.binary.data.length % 4 !== 0
-        || !/^(png|jpe?g|webp|hwpx?)$/i.test(content.binary.extension) || !/^[A-Za-z0-9+/]*={0,2}$/.test(content.binary.data))
+        || !/^(png|jpe?g|webp)$/i.test(content.binary.extension) || !/^[A-Za-z0-9+/]*={0,2}$/.test(content.binary.data))
         throw Error('Invalid binary recovery content.');
       total += content.binary.data.length;
     }
@@ -33,7 +33,7 @@ export function parseWorkspaceSnapshot(value: unknown): WorkspaceSnapshot {
   if (total > 24 * 1024 * 1024) throw Error('Recovery content exceeds 24 MiB.');
   for (const view of result.views) {
     if (!view || !string(view.key, 100) || viewIds.has(view.key) || !string(view.path) || !['document', 'diff'].includes(view.kind)
-      || !['editor', 'viewer', 'notebook', 'pdf', 'image', 'video', 'hwp', 'diff'].includes(view.surface)
+      || !['editor', 'viewer', 'notebook', 'pdf', 'image', 'video', 'diff'].includes(view.surface)
       || view.content !== undefined && !contentIds.has(view.content)) throw Error('Damaged view record.');
     if (view.history && (typeof view.history !== 'object' || !string(view.history.path) || !string(view.history.root) || !/^[a-f\d]{7,64}$/i.test(view.history.head ?? '') || view.history.base !== undefined && !/^[a-f\d]{7,64}$/i.test(view.history.base))) throw Error('Invalid history reference.');
     if (view.anchor && (!Number.isFinite(view.anchor.sourceLine) || view.anchor.sourceLine < 1 || !Number.isFinite(view.anchor.yRatio) || view.anchor.yRatio < 0 || view.anchor.yRatio > 1)) throw Error('Invalid reader position.');

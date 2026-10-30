@@ -69,14 +69,12 @@ export function installApplicationMenu(context: MenuContext) {
   const command = context.sendCommand;
   const history = (action: 'undo' | 'redo') => {
     const kind = state()?.currentDocument?.kind;
-    if (kind === 'hwp' && state()?.explorerEditTarget) return;
-    if (kind === 'image' || kind === 'hwp') { command(`${kind}:${action}`); return; }
+    if (kind === 'image') { command(`${kind}:${action}`); return; }
     if (!state()?.explorerEditTarget) contents()?.[action]();
   };
   const edit = (name: 'cut' | 'copy' | 'paste' | 'select-all') => {
     const current = state();
     if (current?.explorerEditTarget && current.window.webContents.isFocused()) return command(`explorer:${name}`);
-    if (current?.currentDocument?.kind === 'hwp') { command(`hwp:${name}`); return; }
     const target = contents();
     if (name === 'select-all') target?.selectAll();
     else target?.[name]();

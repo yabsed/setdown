@@ -307,7 +307,7 @@ history. Saving, autosave, Stage-before-save, close/quit confirmation and extern
 file reconciliation enumerate unique contents, including documents with only a
 Working Tree view. Closing a nonfinal view does not prompt or dispose the content;
 the last reference follows the existing revision-checked save/discard contract.
-Index/history, notebooks, media and HWP retain their separate content owners.
+Index/history, notebooks and media retain their separate content owners.
 
 Opening a comparison creates no ordinary tab. Input deduplication is group-local:
 ordinary versus comparison are different inputs, as are Working Tree versus Index
@@ -340,9 +340,8 @@ failures are reported. Dirty buffers with changed/missing disk baselines or an
 existing dirty owner recover into separate untitled documents. Automatic recovery
 writes after a 250ms edit debounce, with a one-second fallback and blur/visibility
 flush. Only the latest completed snapshot is promised. Image recovery retains
-owned original bytes and the edit recipe; HWP recovery requires an export without
-reported content loss. Binary restoration creates a separate recovery file and
-never overwrites the original. Aggregate content is bounded before encoding;
+owned original bytes and the edit recipe. Binary restoration creates a separate
+recovery file and never overwrites the original. Aggregate content is bounded before encoding;
 failed writes are visible and back off for 30 seconds unless content changes.
 New windows/processes still start empty, with a recovery affordance when artifacts
 exist. Retention and size bounds are specified in [editor tools](../editor-tools.md).
@@ -407,7 +406,7 @@ leave. Close/audio controls retain ordinary clicks. Cancellation, source closure
 expiry and Escape release every participant.
 
 Cross-window drags share their lifetime with every visible shell. Native Markdown
-and HWP readers retain their existing capture lifetime; live websites stay
+readers retain their existing capture lifetime; live websites stay
 attached, visible and playing. A lightweight, transparent WebContentsView is
 prepared when a workspace first displays a website, before any drag starts.
 Document-only windows use their existing shell receiver and do not allocate
@@ -467,7 +466,7 @@ valid entry and cancel a quick release. The guide remains cleared in chrome;
 release there cancels without moving, copying or detaching. Transport acceptance
 never substitutes for an accepted placement, and Escape/`none` still cancel.
 Returning from tear-off to a strip or split replaces that intent with the new
-visible guide; Escape cancels without moving or detaching. Source Markdown/HWP surfaces retain their capture throughout the drag,
+visible guide; Escape cancels without moving or detaching. Source Markdown surfaces retain their capture throughout the drag,
 including over the guide-free center; web surfaces remain live. Native pointer tests in `tab-detach.spec.ts` check feedback before
 release, detach, cancellation, return, split and the sole-tab case; its accepted
 native-drop cases also retain center merging into another group.

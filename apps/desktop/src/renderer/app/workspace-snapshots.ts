@@ -58,10 +58,6 @@ export class WorkspaceSnapshots {
         const recipe = structuredClone(session.history.current);
         bytes = await this.desktop.imageEdit.backup(session.source.id);
         snapshot.binary = { data: '', extension: content.document.path.split('.').at(-1)!, recipe };
-      } else if (content.document.kind === 'hwp' && this.desktop.hwp.backup) {
-        const artifact = await this.desktop.hwp.backup(content.id);
-        if (artifact.contentLoss.count) throw Error('HWP recovery export would lose document content. Save a copy and inspect the export report.');
-        bytes = artifact.bytes; snapshot.binary = { data: '', extension: content.document.path.split('.').at(-1)! };
       } else continue;
       remaining -= Math.ceil(bytes.length / 3) * 4;
       if (remaining < 0) throw Error('Recovery content exceeds 24 MiB. Save large documents directly.');

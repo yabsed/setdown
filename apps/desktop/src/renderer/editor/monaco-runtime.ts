@@ -9,8 +9,10 @@ export function loadMonaco(): Promise<typeof Monaco> {
   return loading ??= Promise.all([
     import('monaco-editor/editor/editor.main'),
     import('monaco-editor/editor/editor.worker?worker'),
-  ]).then(([api, editor]) => {
+    import('./monaco-context-menu'),
+  ]).then(([api, editor, { installMonacoContextMenus }]) => {
     window.MonacoEnvironment = { getWorker: (_id, label) => createLanguageWorker(label) ?? new editor.default() };
+    installMonacoContextMenus();
     installBuiltinDiagnostics(api);
     installEditorTools(api);
     return api;

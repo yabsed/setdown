@@ -19,7 +19,7 @@ export type DocumentSnapshot = {
   /** One-shot save metadata, consumed when merging a draft save into a live buffer. */
   assetRelocation?: import('../markdown/asset-references').AssetRelocation;
   /** Binary document snapshots carry metadata only; no text model is created. */
-  kind?: 'pdf' | 'image' | 'video' | 'hwp';
+  kind?: 'pdf' | 'image' | 'video';
   readingPosition?: import('../reading/reading-position').ReadingPosition;
   path: string;
   name: string;

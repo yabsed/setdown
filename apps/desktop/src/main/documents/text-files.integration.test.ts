@@ -4,7 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'vitest';
 import { decodeTextBytes, encodedText, MAX_TEXT_FILE_BYTES } from '../../core/document/text-codec';
-import { documentLanguage, documentProfile, documentSurface } from '../../core/document/document-profile';
+import { documentLanguage, documentProfile, documentSurface, isOpenableDocument } from '../../core/document/document-profile';
+import { DocumentManager } from './document-manager';
 import { prepareDocumentSave } from '../../core/document/document-save';
 import { searchSource } from '../../core/search/source-search';
 import { readTextFile } from './text-file';
@@ -64,6 +65,21 @@ test('new text loader rejects binary formats, directories and oversized files be
     await fs.writeFile(large, '');
     await fs.truncate(large, MAX_TEXT_FILE_BYTES + 1);
     await assert.rejects(readTextFile(large), /limit/);
+  });
+});
+
+test('unsupported HWP/HWPX files cannot open or become text save destinations', async () => {
+  await temporary(async root => {
+    const manager = new DocumentManager(() => {});
+    for (const extension of ['hwp', 'HWP', 'hwpx', 'HWPX']) {
+      const file = path.join(root, `document.${extension}`), original = Buffer.from('Keep this binary document untouched');
+      await fs.writeFile(file, original);
+      assert.equal(isOpenableDocument(file), false);
+      assert.equal(documentPathFromArgs(['/bin/setdown', file], true, () => true), undefined);
+      await assert.rejects(manager.read(file), /binary/);
+      assert.throws(() => prepareDocumentSave({ path: '/note.md' } as DocumentSnapshot, 'replacement', file), /binary/);
+      assert.deepEqual(await fs.readFile(file), original);
+    }
   });
 });
 

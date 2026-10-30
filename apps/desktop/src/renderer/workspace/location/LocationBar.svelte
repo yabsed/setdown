@@ -31,7 +31,6 @@ import type { AppActions } from '../../ports/ui-actions';
     browser.findId = null; browser.active = 0; browser.matches = 0;
     if (tab) { actions.browserFind(tab.id, ''); if (reading) window.dispatchEvent(new CustomEvent('setdown:reader-focus', { detail: tab.id })); else actions.browserCommand(tab.id, 'focus'); }
   }
-  const hwp = $derived(view.hwpTabs.some(item => item.id === tab?.id));
   const media = $derived(view.mediaTabs.find(item => item.id === tab?.id));
   const fileZoom = $derived(tab ? mediaZoom[tab.id] : undefined);
   const zoomScope = $derived(tab?.kind === 'terminal' && !review ? 'terminal' : 'text');
@@ -179,7 +178,7 @@ import type { AppActions } from '../../ports/ui-actions';
     <button aria-label="Sign in to website" title={`Sign in to ${browser.auth[tab.id].origin}`}
       onclick={() => { browser.authId = tab.id; }}>Sign in</button>
   {/if}
-  {#if tab && !web && tab.kind !== 'terminal' && !markdown && !review && !media && !hwp && !isNotebookDocument(tab.path)}
+  {#if tab && !web && tab.kind !== 'terminal' && !markdown && !review && !media && !isNotebookDocument(tab.path)}
     <DocumentLanguageStatus tabId={tab.id} />
   {/if}
   {#if focusedGroup}
@@ -219,8 +218,8 @@ import type { AppActions } from '../../ports/ui-actions';
     {#if web && !reading}
       <ZoomControls label="Website" percent={web.zoomPercent}
         change={step => actions.browserCommand(tab!.id, step === 0 ? 'zoom-reset' : step < 0 ? 'zoom-out' : 'zoom-in')} />
-    {:else if !review && (hwp || media?.document.kind === 'pdf' || media?.document.kind === 'image')}
-      <ZoomControls label={hwp ? 'HWP' : media?.document.kind === 'pdf' ? 'PDF' : 'Image'} percent={fileZoom?.percent ?? 100}
+    {:else if !review && (media?.document.kind === 'pdf' || media?.document.kind === 'image')}
+      <ZoomControls label={media?.document.kind === 'pdf' ? 'PDF' : 'Image'} percent={fileZoom?.percent ?? 100}
         min={10} max={fileZoom?.max ?? 1000} disabled={!fileZoom} change={step => fileZoom?.change(step)} />
     {:else}
       <ZoomControls label={zoomScope === 'terminal' ? 'Terminal' : media?.document.kind === 'video' ? 'Video' : 'Text'}

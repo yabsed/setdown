@@ -1,5 +1,7 @@
 # HWP / HWPX 통합 검증
 
+> 이 문서는 당시 검증 기록입니다. HWP 지원은 2026-10-30에 제거되었습니다. [현재 계약](../preview-performance-contract.md#hwp-support-removal--2026-10-30)을 참고하세요.
+
 2026년 10월 17일, `214c26a165a58826dce2c70d79c511003723f182`가 고정한 HOP/RHWP를 재사용하여 Setdown에 HWP/HWPX 열기·편집·저장을 연결했다. 파서·조판·표 편집·Undo 엔진과 Studio 편집 UI는 vendor 소스를 사용하며, Setdown은 문서 수명과 파일 저장을 담당한다.
 
 ## 구현 범위
@@ -10,7 +12,7 @@
 - 한국어 IME, 저장·다른 이름 저장, 앱 메뉴, 주소 전환, 문서 배율, 읽기 위치, 외부 변경 알림과 닫기 확인을 연결한다.
 - HOP의 배포 WASM과 고정 Studio를 로컬 번들로 만든다. 재배포 글꼴 고지를 포함하고, 원격 네트워크와 일반 데스크톱 API 접근을 차단한다.
 
-[지원 범위와 제한](../hwp-support.md), [메인 문서 관리자](../../apps/desktop/src/main/hwp/hwp-manager.ts), [Studio 호스트](../../apps/desktop/hwp-runtime/main.ts), [구현 파일 43개의 SHA-256](../../reports/hwp-integration-2026-10-17/implementation-sha256.json)
+[지원 범위와 제한](https://github.com/yabsed/setdown/blob/8b883667ba5e0414b0fd3320c9947a25dbb47c24/docs/hwp-support.md), [메인 문서 관리자](https://github.com/yabsed/setdown/blob/8b883667ba5e0414b0fd3320c9947a25dbb47c24/apps/desktop/src/main/hwp/hwp-manager.ts), [Studio 호스트](https://github.com/yabsed/setdown/blob/8b883667ba5e0414b0fd3320c9947a25dbb47c24/apps/desktop/hwp-runtime/main.ts), [구현 파일 43개의 SHA-256](../../reports/hwp-integration-2026-10-17/implementation-sha256.json)
 
 ## 기능과 회귀 검사
 
@@ -70,4 +72,4 @@ npm run bench:preview -- \
 
 실제 한컴 한글에서의 독립 재열기, Windows GUI, OS IME 후보 창, 복잡한 실제 문서 전체의 시각적 동등성은 이번 검사로 입증하지 않았다. HWP 자체의 대형 문서 로딩·메모리 사용량을 재는 전용 성능 검사는 별도 과제이며 위 표는 기존 Markdown/Git 경로의 회귀 검사다.
 
-128 MiB 이하 파일을 대상으로 하며 암호·DRM, 자동 저장·크래시 복구, PDF 내보내기, 프로젝트 본문 검색·텍스트 Git diff는 현재 범위에 포함하지 않는다. HWP 3는 원본 덮어쓰기를 막고 다른 형식의 사본 저장만 허용한다. 지원 세부 사항과 폰트 대체, 파일 교체의 경쟁 구간은 [지원 문서](../hwp-support.md)에 기록했다.
+128 MiB 이하 파일을 대상으로 하며 암호·DRM, 자동 저장·크래시 복구, PDF 내보내기, 프로젝트 본문 검색·텍스트 Git diff는 현재 범위에 포함하지 않는다. HWP 3는 원본 덮어쓰기를 막고 다른 형식의 사본 저장만 허용한다. 지원 세부 사항과 폰트 대체, 파일 교체의 경쟁 구간은 [지원 문서](https://github.com/yabsed/setdown/blob/8b883667ba5e0414b0fd3320c9947a25dbb47c24/docs/hwp-support.md)에 기록했다.

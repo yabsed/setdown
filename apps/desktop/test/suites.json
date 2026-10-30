@@ -89,8 +89,6 @@
       "src/core/image/image-recipe.test.ts",
       "src/main/documents/image-save.test.ts",
       "src/renderer/image/image-edit-sessions.test.ts",
-      "src/main/documents/hwp-file.test.ts",
-      "src/renderer/hwp/hwp-sessions.test.ts",
       "src/renderer/language/builtin-diagnostics.test.ts",
       "src/renderer/language/diagnostic-store.test.ts",
       "src/core/editor/editor-tools.test.ts",
@@ -296,9 +294,6 @@
       "previewContract": true
     },
     "media/image-editor.spec.ts": {
-      "previewContract": true
-    },
-    "media/hwp-editor.spec.ts": {
       "previewContract": true
     },
     "language/language-policy.spec.ts": {

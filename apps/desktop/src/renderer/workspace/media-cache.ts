@@ -12,7 +12,7 @@ export class MediaCache {
   constructor(private readonly capacity = 3) {}
   sync(tabs: readonly WorkspaceTab[], activeId: string | null, visibleIds: string[] = []): MediaTab[] {
     const previous = this.entries;
-    const current = new Map(tabs.filter((tab) => tab.document.kind && tab.document.kind !== 'hwp').map((tab) => [tab.id, tab]));
+    const current = new Map(tabs.filter((tab) => tab.document.kind).map((tab) => [tab.id, tab]));
     this.entries = this.entries.filter((entry) => {
       const tab = current.get(entry.id);
       return tab && mediaKey(tab) === entry.key;

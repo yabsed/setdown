@@ -218,6 +218,13 @@ restore the same live views; transferring from a context menu to its confirmatio
 active. `test/e2e/browser/*.spec.ts` checks overlap, actionable menus, restoration, and
 unsaved web input across ordinary Markdown and split Markdown/web panels.
 
+Monaco context menus use that same balanced shell overlay lifecycle across
+ordinary, diff and notebook cell editors, including keyboard invocation and
+submenus. While the menu is open, captured native panels allow the entire menu
+to remain visible and receive pointer input across split boundaries. Dismissal
+restores the same page and unsaved form state. `browser/menus.spec.ts` checks
+real native mouse selection in the overlapping region and keyboard dismissal.
+
 Website navigation controls styled with Electron's `app-region: drag` must
 remain clickable inside web tabs. Only the desktop shell owns native window
 dragging. The isolated page preload excludes web document elements and their
@@ -356,16 +363,15 @@ Changed commits/refs still refresh, and pending checks cannot overwrite a newer
 filter or outlive the pane. `git-graph-refresh.test.ts` and the real Electron
 history regression cover these boundaries.
 
-## HWP editor isolation
+## HWP support removal — 2026-10-30
 
-HWP/HWPX use a separate local RHWP Studio `WebContentsView`, created only for
-HWP tabs. They never enter the Markdown render worker, Monaco text serialization,
-or the three-entry media cache. Hidden editors retain their engine/undo state;
-transfers adopt the same native view. Geometry converts CSS to native DIP with
-app zoom once. Shell overlays hide and restore that view, without discarding the
-document. HWP's page zoom remains separate from app zoom and Markdown tab zoom.
-The file/session tests and `media/hwp-editor.spec.ts` are in the focused gate.
-See [HWP support](hwp-support.md) for save, isolation and compatibility boundaries.
+HWP/HWPX support is removed intentionally. The dedicated native editor, IPC,
+content/session owner, save/recovery/reading-position paths, file associations,
+build assets and HOP/RHWP submodules are retired. The HWP-only tests are removed
+with those capabilities. HWP/HWPX remain in the unsupported binary extension
+list so opening or saving through the text editor cannot corrupt them.
+`text-files.integration.test.ts` covers that boundary. Existing Markdown,
+Git review, notebook, image, PDF, browser and focus/IME guarantees remain in force.
 
 ## Reading surface capabilities
 

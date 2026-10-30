@@ -114,7 +114,7 @@ of four directions, Copy/Move editor to group, next/previous group, equalize,
 maximize/restore or optional source-line scroll linking. Scroll linking changes
 no keyboard focus and is removed when either editor closes or changes its model.
 SCM and comparison toolbars offer explicit side opens. Other document owners
-(notebook, media, HWP), terminals and web tabs retain their existing lifetimes.
+(notebook, media), terminals and web tabs retain their existing lifetimes.
 
 **Save workspace snapshot** records a declarative version-1 manifest: project,
 group tree, file/comparison views, view state and dirty text. **Create a content

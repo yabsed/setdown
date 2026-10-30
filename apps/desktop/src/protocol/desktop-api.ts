@@ -177,7 +177,7 @@ export type TransferableDocumentTab = {
   document: DocumentSnapshot;
   text: string;
   revision: number;
-  surface: 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'hwp' | 'notebook';
+  surface: 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'notebook';
   readingPosition?: import('../core/reading/reading-position').ReadingPosition;
   anchor: {
     sourceLine: number;
@@ -243,7 +243,7 @@ export type ApplicationMenuEntry = {
 
 export type CloseDecision = 'cancel' | 'discard' | 'save';
 
-export type AppCommand = 'reload-document' | `hwp:${'undo' | 'redo' | 'cut' | 'copy' | 'paste' | 'select-all'}` | 'image:undo' | 'image:redo'
+export type AppCommand = 'reload-document' | 'image:undo' | 'image:redo'
   | `explorer:${import('./explorer').ExplorerEditCommand}`
   | 'new-web-tab'
   | 'reopen-web-tab'
@@ -276,7 +276,6 @@ export type MarkTexApi = {
   flushReadingPositions(): void;
   readPdfRange(path: string, begin: number, end: number, version: DiskVersion): Promise<Uint8Array>;
   showPdfSelectionMenu(path: string, selection: string): Promise<void>;
-  hwp: import('./hwp').HwpApi;
   imageEdit: import('./image-edit').ImageEditApi;
   readImageBytes(path: string, version: DiskVersion): Promise<Uint8Array>;
   mediaUrl(path: string): string;

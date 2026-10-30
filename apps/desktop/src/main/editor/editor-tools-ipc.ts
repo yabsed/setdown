@@ -56,7 +56,7 @@ export function installEditorToolsIpc(channels: WindowIpc): void {
     if (!state.window.webContents.session.addWordToSpellCheckerDictionary(word)) throw Error('The spelling dictionary is unavailable.');
   });
   channels.handle('editor:snapshots-binary', async (_state, name: string, bytes: Uint8Array) => {
-    if (typeof name !== 'string' || !/\.(png|jpe?g|webp|hwpx?)$/i.test(name) || !(bytes instanceof Uint8Array) || bytes.length > 24 * 1024 * 1024)
+    if (typeof name !== 'string' || !/\.(png|jpe?g|webp)$/i.test(name) || !(bytes instanceof Uint8Array) || bytes.length > 24 * 1024 * 1024)
       throw Error('Invalid binary recovery document.');
     const directory = path.join(app.getPath('userData'), 'recovered-documents', randomUUID());
     await fs.mkdir(directory, { recursive: true, mode: 0o700 });
