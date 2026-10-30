@@ -22,7 +22,9 @@ introduced.
 ## Boundaries
 
 - `GitHistoryPane.svelte`: panel size, lifecycle, theme variables, and file-open
-  events. The component uses Shadow DOM and receives its provider as a property.
+  events. Graph lifetime follows the repository path, so replacing a status
+  snapshot for the same path does not remount the component. The component uses
+  Shadow DOM and receives its provider as a property.
 - `git-graph-provider.ts`: implements upstream `GitGraphProvider` over the
   desktop port. Disposing the graph aborts outstanding IPC requests and rejects
   stale replies.
@@ -34,6 +36,14 @@ introduced.
 - Existing `GitService` owns mutations and working-tree/index review. Status
   refreshes following disk writes or Git operations refresh the visible graph,
   with watcher bursts coalesced. Unsaved typing does not query history.
+- `git-graph-refresh.ts`: coalesces refresh requests and checks current history
+  before asking the pinned component to redraw. Identical commits, refs and HEAD
+  retain rows, focus, scroll, comparisons and additional loaded pages. Snapshot
+  cursor allocation alone is not a history change. Checks wait for filtering or
+  paging, discard stale replies and abort when the pane closes. Changed history
+  still uses upstream's public refresh and its selection/scroll restoration.
+  Unchanged checks renew the public page's cursor at its loaded depth so the
+  retained view can continue paging after the backend's old snapshot expires.
 
 File selection opens an immutable Git review tab with the target's short commit
 ID. A commit defaults to its first parent; a root commit compares against empty
@@ -89,3 +99,7 @@ edits. `git-history.spec.ts` exercises the real Electron graph, divider, file
 selection, read-only Monaco, rendered Markdown and external-commit refresh.
 Changes also require the preview contract and baseline comparison described in
 `preview-performance-contract.md`.
+
+The [2026-10-30 flicker validation](../reports/git-graph-flicker-2026-10-30/validation.txt)
+records the pre-fix remount/scroll/focus failure, the unchanged-refresh regression,
+the full contract run, and all first/second/warm baseline comparisons.

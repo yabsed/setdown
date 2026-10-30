@@ -1,0 +1,65 @@
+Git graph flicker fix — validation (2026-10-30, Asia/Seoul)
+
+Cause: each replacement Git status snapshot invalidated the graph mount effect
+even when the repository path was unchanged. Upstream refresh also rebuilt
+unchanged rows and reset loaded pages. The pre-fix Electron regression lost
+the selected row, details, keyboard focus and 2364px of scroll position.
+
+Fix: derive the repository path separately; check history before public refresh.
+Unchanged history retains DOM, focus, scroll, selections and loaded pages.
+Renew cursors at the loaded depth. Coalesce bursts, retain a trailing check,
+wait for filtering/paging, reject stale replies and abort on pane disposal.
+Real commit/ref changes continue through upstream refresh.
+
+Validation:
+- Production build and TypeScript/Svelte checks: passed.
+- npm run test:preview-contract: 94 unit files / 682 tests, 14 tooling tests,
+  and 220 real Electron/Chromium scenarios passed; no retries or skipped tests.
+- Focused graph tests: 14 unit tests and 2 Electron scenarios passed.
+- GUI execution: isolated Xvfb, private runtime directory and D-Bus session;
+  inherited Wayland socket removed. No user-desktop testing.
+- Benchmark: five matched repetitions, eight scenarios per version,
+  five cycles per app: 80 app launches / 400 cycles / 48 comparisons.
+- Latest edited content checked before capture. All 48 comparisons passed.
+- Thresholds unchanged: fail only if BOTH >25% and >50ms slower.
+- First and second cycles are separate; warm is the median of cycles 3–5.
+  Values below are medians over five fresh applications per version.
+- Baseline and candidate use the same display, harness, fixture and lockfile,
+  alternating baseline/candidate order. Both builds use SETDOWN_BUILD_SOURCEMAP=0.
+- --skip-build used after separately completing both production builds.
+- Baseline: 69242c9248e972ee102d380119a54add0d8a7a52 (/tmp/setdown-graph-flicker-baseline)
+- Electron: baseline 44.7.2; candidate 44.7.2
+- Lock SHA256: 86fca4c633332936c3a10260af060c45a961feb531de06d2836d2a9e42e41a29
+
+Latency (ms), each cell = baseline -> fixed:
+Preparation means time in source before Esc (0ms or 3000ms).
+Capture includes polling/IPC/readback; it is not monitor presentation timing.
+
+Esc -> latest-content native capture
+Document   Prep(ms) Edits               First              Second                Warm
+document          0 False        44.0 -> 59.0        36.0 -> 20.0        25.0 -> 23.0
+document          0 True       292.0 -> 283.0        92.0 -> 91.0        85.0 -> 90.0
+document       3000 False        42.0 -> 40.0        16.0 -> 17.0        23.0 -> 20.0
+document       3000 True        109.0 -> 94.0        92.0 -> 87.0        86.0 -> 87.0
+review            0 False      901.0 -> 911.0        24.0 -> 20.0        28.0 -> 23.0
+review            0 True      980.0 -> 1012.0    1501.0 -> 1491.0      176.0 -> 178.0
+review         3000 False        27.0 -> 27.0        23.0 -> 22.0        17.0 -> 18.0
+review         3000 True       228.0 -> 233.0      182.0 -> 184.0      173.0 -> 172.0
+
+Double-click -> editable source
+Document   Prep(ms) Edits               First              Second                Warm
+document          0 False        19.0 -> 17.0        36.0 -> 32.0        12.0 -> 11.0
+document          0 True         16.0 -> 17.0        13.0 -> 16.0        13.0 -> 13.0
+document       3000 False        17.0 -> 17.0        11.0 -> 11.0        12.0 -> 11.0
+document       3000 True         15.0 -> 15.0        15.0 -> 13.0        13.0 -> 13.0
+review            0 False        23.0 -> 23.0        12.0 -> 12.0        12.0 -> 12.0
+review            0 True         21.0 -> 15.0        22.0 -> 23.0        19.0 -> 19.0
+review         3000 False        24.0 -> 25.0        11.0 -> 12.0        18.0 -> 19.0
+review         3000 True         22.0 -> 23.0        19.0 -> 19.0        18.0 -> 17.0
+
+Evidence: contract.log, baseline-build.log, benchmark.log,
+benchmark/comparison.json (raw samples, hashes, thresholds and 48 comparisons),
+latency-summary.csv, before/ (pre-fix regression), after/ (focused screenshots),
+contract-artifacts/ (full Electron suite screenshots and completion state).
+
+Scope: source and local production build updated; no install, commit or push.

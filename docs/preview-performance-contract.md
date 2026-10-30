@@ -349,6 +349,12 @@ text. Source/rendered transitions use the same review preparation guarantees.
 The lazily mounted history graph must not take ownership of document focus or
 trigger history reads on unsaved keystrokes. `git-history.spec.ts` and the
 history/provider/controller unit tests cover the integration.
+Replacing a status snapshot for the same repository must not remount that graph.
+Unchanged automatic or manual refreshes retain its rows, loaded pages, selection,
+scroll and keyboard focus; paging cursors are renewed without resetting the view.
+Changed commits/refs still refresh, and pending checks cannot overwrite a newer
+filter or outlive the pane. `git-graph-refresh.test.ts` and the real Electron
+history regression cover these boundaries.
 
 ## HWP editor isolation
 

@@ -9,6 +9,85 @@ import { disposeApplication, focusApplication } from '../../support/electron/ele
 import { previews } from '../../support/preview/preview-view';
 
 const exec = promisify(execFile);
+test('unchanged Git refreshes preserve graph rows, scroll and keyboard focus', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-history-stable-'));
+  const configRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-history-stable-config-'));
+  const git = (...args: string[]) => exec('git', args, { cwd: root });
+  let app: Awaited<ReturnType<typeof electron.launch>> | undefined;
+  try {
+    await git('init', '-b', 'main');
+    await git('config', 'user.name', 'History Test');
+    await git('config', 'user.email', 'history@example.test');
+    await writeFile(path.join(root, 'note.md'), '# History\n');
+    await git('add', '.'); await git('commit', '-m', 'Initial document');
+    for (let index = 1; index < 110; index++) await git('commit', '--allow-empty', '-m', `History ${index}`);
+    const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+    app = await electron.launch({ args: ['.'], env: { ...env, XDG_CONFIG_HOME: configRoot } });
+    const window = await app.firstWindow();
+    const errors: string[] = [];
+    window.on('pageerror', error => errors.push(error.message));
+    await window.evaluate(async folder => {
+      await globalThis.window.marktex.restoreProjectFolder(folder);
+      sessionStorage.setItem('setdown:git-graph-panel', JSON.stringify({ expanded: true, ratio: .8 }));
+    }, root);
+    await Promise.all([window.waitForEvent('load'), window.reload()]);
+    await focusApplication(app);
+    await window.getByRole('button', { name: 'Toggle Folder Tools' }).click();
+    await window.getByRole('button', { name: 'Source Control', exact: true }).click();
+    const graph = window.locator('web-git-graph');
+    await expect(graph.locator('.row').first()).toContainText('History 109');
+    await expect(graph).toHaveAttribute('aria-busy', 'false');
+    // Load the next page too: an unchanged refresh must not drop older rows.
+    await graph.locator('.scroller').evaluate(element => { element.scrollTop = element.scrollHeight; });
+    await expect.poll(() => graph.evaluate(element => (element as unknown as { data: { commits: unknown[] } }).data.commits.length)).toBe(110);
+    await graph.locator('.row').last().click();
+    await expect(graph.locator('.inline-details .tree-file')).toBeVisible();
+    await expect(graph).toHaveAttribute('aria-busy', 'false');
+    // Let the selected commit's reveal animation settle before observing it.
+    await window.waitForTimeout(700);
+    const observed = await graph.evaluateHandle(element => {
+      const shadow = element.shadowRoot!;
+      const row = shadow.querySelector<HTMLElement>('.row.selected')!;
+      row.focus();
+      const state = { removedRows: 0, element, row, scroll: shadow.querySelector('.scroller')!.scrollTop,
+        details: shadow.querySelector('.inline-details')!, shadow };
+      const observer = new MutationObserver(records => {
+        for (const record of records) for (const node of record.removedNodes)
+          if (node instanceof Element && node.matches('.row')) state.removedRows++;
+      });
+      observer.observe(shadow.querySelector('.window')!, { childList: true });
+      return { state, observer };
+    });
+    // These are the same events delivered by disk writes and the 15s fallback.
+    for (let index = 0; index < 3; index++) {
+      await app.evaluate(({ BrowserWindow }, folder) => {
+        BrowserWindow.getAllWindows()[0].webContents.send('project:files-changed', { root: folder, paths: [] });
+      }, root);
+      await window.waitForTimeout(600);
+    }
+    await writeFile(path.join(root, 'note.md'), '# Changed working tree\n');
+    await git('add', 'note.md');
+    await window.waitForTimeout(700);
+    await window.getByRole('button', { name: 'Refresh Git Graph' }).evaluate((button: HTMLButtonElement) => button.click());
+    await window.waitForTimeout(700);
+    expect(await observed.evaluate(({ state, observer }) => {
+      observer.disconnect();
+      return { removedRows: state.removedRows, graphConnected: state.element.isConnected, rowConnected: state.row.isConnected,
+        detailsConnected: state.details.isConnected, focused: state.shadow.activeElement === state.row,
+        scrollDelta: state.shadow.querySelector('.scroller')!.scrollTop - state.scroll };
+    })).toEqual({ removedRows: 0, graphConnected: true, rowConnected: true, detailsConnected: true, focused: true, scrollDelta: 0 });
+    await expect.poll(() => graph.evaluate(element => (element as unknown as { data: { commits: unknown[] } }).data.commits.length)).toBe(110);
+    await window.screenshot({ path: test.info().outputPath('graph-stable-refresh.png') });
+    await git('commit', '-m', 'Visible new commit');
+    await expect.poll(() => graph.evaluate(element => (element as unknown as { data: { commits: { message: string }[] } }).data.commits[0]?.message)).toBe('Visible new commit');
+    expect(errors).toEqual([]);
+  } finally {
+    if (app) await disposeApplication(app);
+    await rm(root, { recursive: true, force: true });
+    await rm(configRoot, { recursive: true, force: true });
+  }
+});
+
 test('Graph resizes, refreshes and opens immutable Markdown revisions in existing review', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-history-'));
   const configRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-history-config-'));

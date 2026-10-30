@@ -8,10 +8,14 @@
   import { normalizePreviewTheme } from '../../../core/preview/preview-preferences';
   import { project } from '../project-state.svelte';
   import { ElectronGitGraphProvider } from './git-graph-provider';
+  import { GitGraphRefresh } from './git-graph-refresh';
   import { autoGraphRefs, graphRowInsets, sameRefs } from './git-graph-presentation';
   import graphStyles from './git-graph-theme.css?inline';
 
   let { actions, root }: { actions: AppActions; root: string } = $props();
+  // The parent reads root from each new status object. Only a different path
+  // should tear down the graph, not a fresh snapshot of the same repository.
+  let repositoryRoot = $derived(root);
   const storageKey = 'setdown:git-graph-panel';
   function restore() {
     try {
@@ -29,7 +33,6 @@
   let updateBadgeFilter: (() => void) | undefined;
   let error = $state('');
   let mounted = $state(false);
-  let refreshTimer: ReturnType<typeof setTimeout> | undefined;
   function remember() {
     try { sessionStorage.setItem(storageKey, JSON.stringify({ expanded, ratio })); } catch { /* Optional UI persistence. */ }
   }
@@ -64,13 +67,14 @@
   onMount(() => { mounted = true; });
   $effect(() => {
     if (!mounted || !expanded || !host || !project.open || !project.visible) return;
-    const container = host, folder = root;
+    const container = host, folder = repositoryRoot;
     const provider = new ElectronGitGraphProvider(electronDesktop, folder);
     let disposed = false;
     let element: WebGitGraphElement | undefined;
     let resizeObserver: ResizeObserver | undefined;
     let themeObserver: MutationObserver | undefined;
     let rowObserver: MutationObserver | undefined;
+    let refresh: GitGraphRefresh | undefined;
     let frame = 0;
     error = '';
     const filterKey = `setdown:git-graph-filter:${folder}`;
@@ -101,9 +105,10 @@
       const setBadgeFilter = () => {
         const names = autoGraphRefs(untrack(() => project.git))
           .map((ref) => ref.replace(/^refs\/(heads|remotes)\//, ''));
-        badges.textContent = autoMode && names.length
+        const css = autoMode && names.length
           ? `.row .ref${names.map((name) => `:not([title=${CSS.escape(name)}])`).join('')} { display: none; }`
           : '';
+        if (badges.textContent !== css) badges.textContent = css;
       };
       updateBadgeFilter = setBadgeFilter;
       element.setAttribute('hosted', '');
@@ -131,6 +136,7 @@
       element.provider = provider;
       container.append(element);
       graph = element;
+      refresh = new GitGraphRefresh(element, provider, cause => { error = String(cause); });
       const autoButton = document.createElement('button');
       autoButton.type = 'button';
       autoButton.className = 'setdown-auto';
@@ -196,7 +202,7 @@
     }).catch((cause) => { if (!disposed) error = String(cause); });
     return () => {
       disposed = true;
-      clearTimeout(refreshTimer);
+      refresh?.dispose();
       cancelAnimationFrame(frame);
       resizeObserver?.disconnect(); themeObserver?.disconnect(); rowObserver?.disconnect();
       provider.dispose(); element?.remove(); graph = undefined; updateBadgeFilter = undefined;
@@ -212,8 +218,7 @@
         const next = autoGraphRefs(snapshot);
         if (!sameRefs(graph.refs, next)) { graph.refs = next; return; }
       }
-      clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(() => graph?.refresh(), 300);
+      graph.refresh();
     }
   });
 </script>
