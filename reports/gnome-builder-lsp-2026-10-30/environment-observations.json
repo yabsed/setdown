@@ -1,0 +1,504 @@
+{
+  "date": "2026-10-30",
+  "scope": "Controlled real-server fixtures; not Setdown or Builder GUI execution",
+  "nodeVersion": "v22.23.1",
+  "pyrightVersion": "1.1.414",
+  "pythonVersion": "Python 3.14.8",
+  "clangdVersion": "clangd version 22.1.0 (https://github.com/llvm/llvm-project.git 4434dabb69916856b824f68a64b029c67175e532)\nFeatures: linux+debug\nPlatform: x86_64-unknown-linux-gnu",
+  "summary": [
+    {
+      "name": "python-host-interpreter",
+      "diagnostics": 1,
+      "messages": [
+        {
+          "code": "reportMissingImports",
+          "severity": 2,
+          "message": "Import \"setdown_audit_dependency\" could not be resolved"
+        }
+      ],
+      "hover": {
+        "contents": {
+          "kind": "plaintext",
+          "value": "(variable) value: Any"
+        },
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 0
+          },
+          "end": {
+            "line": 1,
+            "character": 5
+          }
+        }
+      }
+    },
+    {
+      "name": "python-project-interpreter",
+      "diagnostics": 0,
+      "messages": [],
+      "hover": {
+        "contents": {
+          "kind": "plaintext",
+          "value": "(variable) value: int"
+        },
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 0
+          },
+          "end": {
+            "line": 1,
+            "character": 5
+          }
+        }
+      }
+    },
+    {
+      "name": "cpp-without-database-selection",
+      "diagnostics": 2,
+      "messages": [
+        {
+          "code": "pp_file_not_found",
+          "severity": 1,
+          "message": "'audit_helper.hpp' file not found"
+        },
+        {
+          "code": "undeclared_var_use",
+          "severity": 1,
+          "message": "Use of undeclared identifier 'audit_answer'"
+        }
+      ],
+      "hover": null
+    },
+    {
+      "name": "cpp-with-database-selection",
+      "diagnostics": 0,
+      "messages": [],
+      "hover": {
+        "contents": {
+          "kind": "plaintext",
+          "value": "function audit_answer\n\nprovided by \"audit_helper.hpp\"\n\n→ int\n\ninline int audit_answer()"
+        },
+        "range": {
+          "end": {
+            "character": 32,
+            "line": 1
+          },
+          "start": {
+            "character": 20,
+            "line": 1
+          }
+        }
+      }
+    }
+  ],
+  "observations": [
+    {
+      "name": "python-host-interpreter",
+      "executable": "/usr/bin/node-22",
+      "args": [
+        "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/pyright/langserver.index.js",
+        "--stdio"
+      ],
+      "settings": {
+        "python": {
+          "pythonPath": "/usr/bin/python3",
+          "analysis": {
+            "typeCheckingMode": "off",
+            "diagnosticMode": "openFilesOnly",
+            "autoSearchPaths": true,
+            "useLibraryCodeForTypes": true
+          }
+        }
+      },
+      "diagnosticNotifications": [
+        {
+          "uri": "file:///var/tmp/setdown-builder-environments-7WPemJ/python/main.py",
+          "version": 1,
+          "diagnostics": [
+            {
+              "range": {
+                "start": {
+                  "line": 0,
+                  "character": 7
+                },
+                "end": {
+                  "line": 0,
+                  "character": 31
+                }
+              },
+              "message": "Import \"setdown_audit_dependency\" could not be resolved",
+              "severity": 2,
+              "code": "reportMissingImports",
+              "source": "Pyright",
+              "codeDescription": {
+                "href": "https://github.com/microsoft/pyright/blob/main/docs/configuration.md#reportMissingImports"
+              }
+            }
+          ]
+        }
+      ],
+      "lastDiagnostics": [
+        {
+          "range": {
+            "start": {
+              "line": 0,
+              "character": 7
+            },
+            "end": {
+              "line": 0,
+              "character": 31
+            }
+          },
+          "message": "Import \"setdown_audit_dependency\" could not be resolved",
+          "severity": 2,
+          "code": "reportMissingImports",
+          "source": "Pyright",
+          "codeDescription": {
+            "href": "https://github.com/microsoft/pyright/blob/main/docs/configuration.md#reportMissingImports"
+          }
+        }
+      ],
+      "hover": {
+        "contents": {
+          "kind": "plaintext",
+          "value": "(variable) value: Any"
+        },
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 0
+          },
+          "end": {
+            "line": 1,
+            "character": 5
+          }
+        }
+      },
+      "logs": [
+        {
+          "type": 3,
+          "message": "Pyright language server 1.1.414 starting"
+        },
+        {
+          "type": 3,
+          "message": "Server root directory: file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/pyright/dist"
+        },
+        {
+          "type": 3,
+          "message": "Starting service instance \"python\""
+        },
+        {
+          "type": 3,
+          "message": "Setting pythonPath for service \"python\": \"/usr/bin/python3\""
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /var/tmp/setdown-builder-environments-7WPemJ/python"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.14.8.final.0"
+        },
+        {
+          "type": 3,
+          "message": "Setting pythonPath for service \"python\": \"/usr/bin/python3\""
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /var/tmp/setdown-builder-environments-7WPemJ/python"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.14.8.final.0"
+        },
+        {
+          "type": 3,
+          "message": "Found 1 source file"
+        }
+      ],
+      "stderr": ""
+    },
+    {
+      "name": "python-project-interpreter",
+      "executable": "/usr/bin/node-22",
+      "args": [
+        "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/pyright/langserver.index.js",
+        "--stdio"
+      ],
+      "settings": {
+        "python": {
+          "pythonPath": "/var/tmp/setdown-builder-environments-7WPemJ/python/.venv/bin/python",
+          "analysis": {
+            "typeCheckingMode": "off",
+            "diagnosticMode": "openFilesOnly",
+            "autoSearchPaths": true,
+            "useLibraryCodeForTypes": true
+          }
+        }
+      },
+      "diagnosticNotifications": [
+        {
+          "uri": "file:///var/tmp/setdown-builder-environments-7WPemJ/python/main.py",
+          "version": 1,
+          "diagnostics": []
+        }
+      ],
+      "lastDiagnostics": [],
+      "hover": {
+        "contents": {
+          "kind": "plaintext",
+          "value": "(variable) value: int"
+        },
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 0
+          },
+          "end": {
+            "line": 1,
+            "character": 5
+          }
+        }
+      },
+      "logs": [
+        {
+          "type": 3,
+          "message": "Pyright language server 1.1.414 starting"
+        },
+        {
+          "type": 3,
+          "message": "Server root directory: file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/pyright/dist"
+        },
+        {
+          "type": 3,
+          "message": "Starting service instance \"python\""
+        },
+        {
+          "type": 3,
+          "message": "Setting pythonPath for service \"python\": \"/var/tmp/setdown-builder-environments-7WPemJ/python/.venv/bin/python\""
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /var/tmp/setdown-builder-environments-7WPemJ/python"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.14.8.final.0"
+        },
+        {
+          "type": 3,
+          "message": "Setting pythonPath for service \"python\": \"/var/tmp/setdown-builder-environments-7WPemJ/python/.venv/bin/python\""
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /var/tmp/setdown-builder-environments-7WPemJ/python"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.14.8.final.0"
+        },
+        {
+          "type": 3,
+          "message": "Found 1 source file"
+        }
+      ],
+      "stderr": ""
+    },
+    {
+      "name": "cpp-without-database-selection",
+      "executable": "clangd",
+      "args": [
+        "--log=error",
+        "-j=2"
+      ],
+      "settings": {},
+      "serverInfo": {
+        "name": "clangd",
+        "version": "clangd version 22.1.0 (https://github.com/llvm/llvm-project.git 4434dabb69916856b824f68a64b029c67175e532) linux+debug x86_64-unknown-linux-gnu"
+      },
+      "diagnosticNotifications": [
+        {
+          "diagnostics": [
+            {
+              "code": "pp_file_not_found",
+              "message": "'audit_helper.hpp' file not found",
+              "range": {
+                "end": {
+                  "character": 27,
+                  "line": 0
+                },
+                "start": {
+                  "character": 9,
+                  "line": 0
+                }
+              },
+              "severity": 1,
+              "source": "clang"
+            },
+            {
+              "code": "undeclared_var_use",
+              "message": "Use of undeclared identifier 'audit_answer'",
+              "range": {
+                "end": {
+                  "character": 32,
+                  "line": 1
+                },
+                "start": {
+                  "character": 20,
+                  "line": 1
+                }
+              },
+              "severity": 1,
+              "source": "clang"
+            }
+          ],
+          "uri": "file:///var/tmp/setdown-builder-environments-7WPemJ/cpp/main.cpp",
+          "version": 1
+        }
+      ],
+      "lastDiagnostics": [
+        {
+          "code": "pp_file_not_found",
+          "message": "'audit_helper.hpp' file not found",
+          "range": {
+            "end": {
+              "character": 27,
+              "line": 0
+            },
+            "start": {
+              "character": 9,
+              "line": 0
+            }
+          },
+          "severity": 1,
+          "source": "clang"
+        },
+        {
+          "code": "undeclared_var_use",
+          "message": "Use of undeclared identifier 'audit_answer'",
+          "range": {
+            "end": {
+              "character": 32,
+              "line": 1
+            },
+            "start": {
+              "character": 20,
+              "line": 1
+            }
+          },
+          "severity": 1,
+          "source": "clang"
+        }
+      ],
+      "hover": null,
+      "logs": [],
+      "stderr": "E[16:28:39.454] IncludeCleaner: Failed to get an entry for resolved path '' from include \"audit_helper.hpp\" : No such file or directory\n"
+    },
+    {
+      "name": "cpp-with-database-selection",
+      "executable": "clangd",
+      "args": [
+        "--log=error",
+        "-j=2",
+        "--compile-commands-dir=/var/tmp/setdown-builder-environments-7WPemJ/external-build"
+      ],
+      "settings": {},
+      "serverInfo": {
+        "name": "clangd",
+        "version": "clangd version 22.1.0 (https://github.com/llvm/llvm-project.git 4434dabb69916856b824f68a64b029c67175e532) linux+debug x86_64-unknown-linux-gnu"
+      },
+      "diagnosticNotifications": [
+        {
+          "diagnostics": [],
+          "uri": "file:///var/tmp/setdown-builder-environments-7WPemJ/cpp/main.cpp",
+          "version": 1
+        }
+      ],
+      "lastDiagnostics": [],
+      "hover": {
+        "contents": {
+          "kind": "plaintext",
+          "value": "function audit_answer\n\nprovided by \"audit_helper.hpp\"\n\n→ int\n\ninline int audit_answer()"
+        },
+        "range": {
+          "end": {
+            "character": 32,
+            "line": 1
+          },
+          "start": {
+            "character": 20,
+            "line": 1
+          }
+        }
+      },
+      "logs": [],
+      "stderr": ""
+    }
+  ]
+}

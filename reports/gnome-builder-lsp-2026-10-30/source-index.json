@@ -1,0 +1,935 @@
+{
+  "date": "2026-10-30",
+  "timezone": "Asia/Seoul",
+  "setdownCommit": "613786e533af55ed0590fe3a45c07abc3dd1c02e",
+  "builder": {
+    "url": "https://github.com/GNOME/gnome-builder.git",
+    "commit": "0e4dbc7afb05983fbe7f4ec922d09a40f4ac1718",
+    "release50Commit": "9471e73cd6818ba089f298d2a000ab6f3ab59efc",
+    "declaredVersion": "50.1",
+    "trackedFiles": 3715,
+    "pluginDescriptors": 134,
+    "genericLspDescriptors": 21,
+    "modules": [
+      {
+        "module": "src/libide/lsp",
+        "trackedFiles": 57,
+        "cHeaderUiLines": 12326
+      },
+      {
+        "module": "src/libide/code",
+        "trackedFiles": 89,
+        "cHeaderUiLines": 24496
+      },
+      {
+        "module": "src/libide/editor",
+        "trackedFiles": 41,
+        "cHeaderUiLines": 7219
+      },
+      {
+        "module": "src/libide/sourceview",
+        "trackedFiles": 17,
+        "cHeaderUiLines": 3993
+      },
+      {
+        "module": "src/libide/foundry",
+        "trackedFiles": 125,
+        "cHeaderUiLines": 35911
+      },
+      {
+        "module": "src/libide/threading",
+        "trackedFiles": 30,
+        "cHeaderUiLines": 9362
+      },
+      {
+        "module": "src/libide/plugins",
+        "trackedFiles": 18,
+        "cHeaderUiLines": 2945
+      },
+      {
+        "module": "src/plugins/codeui",
+        "trackedFiles": 23,
+        "cHeaderUiLines": 2251
+      },
+      {
+        "module": "src/plugins/editorui",
+        "trackedFiles": 29,
+        "cHeaderUiLines": 4515
+      },
+      {
+        "module": "src/plugins/meson",
+        "trackedFiles": 30,
+        "cHeaderUiLines": 4793
+      },
+      {
+        "module": "src/plugins/cmake",
+        "trackedFiles": 26,
+        "cHeaderUiLines": 2846
+      },
+      {
+        "module": "src/plugins/clang",
+        "trackedFiles": 41,
+        "cHeaderUiLines": 11887
+      }
+    ],
+    "selectedSources": [
+      {
+        "path": "src/libide/lsp/ide-lsp-service.c",
+        "lines": 874,
+        "sha256": "7655ddd9c319093f9ad291c6f282d04bed03cb0cd92a6536dfe00a1168ecef8c"
+      },
+      {
+        "path": "src/libide/lsp/ide-lsp-plugin.c",
+        "lines": 450,
+        "sha256": "d820e6882d4b9cd880d43d8a7b33e5abf5c35f6765dc96b77f0e464e212f7606"
+      },
+      {
+        "path": "src/libide/lsp/ide-lsp-client.c",
+        "lines": 2527,
+        "sha256": "71b007ee147798d6249dda5480796639c712d842404356e22a224dabe6d9f968"
+      },
+      {
+        "path": "src/libide/lsp/ide-lsp-plugin-search-provider.c",
+        "lines": 100,
+        "sha256": "77cd7947cbea5dee522e6301a16bf18b15489c4f15f4a98304e93882de630312"
+      },
+      {
+        "path": "src/libide/lsp/ide-lsp-diagnostic-provider.c",
+        "lines": 252,
+        "sha256": "791166814212c5a2b1f45319be2a19da7ebe6c0f979f125d07ef9f57d6a9d0dc"
+      },
+      {
+        "path": "src/libide/lsp/ide-lsp-completion-provider.c",
+        "lines": 519,
+        "sha256": "2f8f0dd0d5facdb51fff6209b6a8deeaa060c83fdef69f3838a88ed5e5afca98"
+      },
+      {
+        "path": "src/libide/lsp/ide-lsp-code-action-provider.c",
+        "lines": 409,
+        "sha256": "355a57c83e6bb4b5274758e32fa4efed4940222733d636ebc30ecd5b50795581"
+      },
+      {
+        "path": "src/libide/lsp/ide-lsp-workspace-edit.c",
+        "lines": 163,
+        "sha256": "ebd134b50acec85df2f56cb59b6c5a817541519721c939e3da5e242efb9b00e3"
+      },
+      {
+        "path": "src/libide/code/ide-diagnostics-manager.c",
+        "lines": 1174,
+        "sha256": "d19125b950c4b0c0085532958469a6218aad2b191609f27e3d141e85ff8489c9"
+      },
+      {
+        "path": "src/libide/code/ide-buffer.c",
+        "lines": 4463,
+        "sha256": "57708ef604889fa3ed9b7ca5e3b423f3fc658bb88c00033aa6b833ea6abcaf53"
+      },
+      {
+        "path": "src/libide/plugins/ide-extension-adapter.c",
+        "lines": 618,
+        "sha256": "5ecc79d1ceda0410c71bedf7a5cfd60cf0433ceb41f6d7aa70ed15e7fda554ab"
+      },
+      {
+        "path": "src/libide/threading/ide-subprocess-supervisor.c",
+        "lines": 470,
+        "sha256": "a45eedc82d5e2fda0a4ce3c40dc9c36ef33df376df71e8208f4d9dc147985639"
+      },
+      {
+        "path": "src/libide/foundry/ide-run-context.c",
+        "lines": 1443,
+        "sha256": "4855f65568be27ea47a9337ad78f095b8e5ba53a8f8b1273271d345e530e9ee5"
+      },
+      {
+        "path": "src/libide/foundry/ide-pipeline.c",
+        "lines": 4601,
+        "sha256": "33356d7c1224db8ea9f3964dc65571a38ef3f698490cdda7f11203883ab7f7b0"
+      },
+      {
+        "path": "src/plugins/host/gbp-host-runtime.c",
+        "lines": 226,
+        "sha256": "3ff7bec78001fa77798a305a2f6ae3bb5974e9ff558af2723ba356cc7787b67f"
+      },
+      {
+        "path": "src/plugins/meson/gbp-meson-build-system.c",
+        "lines": 1203,
+        "sha256": "4bb3478d29d3c833b58aaa4052f97760aa30c2fe3296ca25796a448cdc8b2516"
+      },
+      {
+        "path": "src/plugins/cmake/gbp-cmake-build-system.c",
+        "lines": 672,
+        "sha256": "321a56e60447339f9c73679626a8d32c201b87609ab63c9457fc094570f4cdd4"
+      },
+      {
+        "path": "src/plugins/clang/ide-clang-diagnostic-provider.c",
+        "lines": 246,
+        "sha256": "73d7c1437ef4530b8864439fed47967d55504b5ed20e69acef4a5ccce052007d"
+      },
+      {
+        "path": "src/libide/editor/ide-editor-workspace.ui",
+        "lines": 151,
+        "sha256": "a420d722fddfa3eaa691387a3f61fff14272cd747d0f963bbef462bce44070c0"
+      },
+      {
+        "path": "src/libide/gui/ide-primary-workspace.ui",
+        "lines": 186,
+        "sha256": "d3714b889e62ec2c35c48069bb5a47cd8ff2afb6f031edb544bce4d23c577183"
+      },
+      {
+        "path": "src/plugins/codeui/gtk/menus.ui",
+        "lines": 38,
+        "sha256": "448a4d960ab2e17817c67679fa03cb80da6b900e1b2b041b30d425f6916b2a9c"
+      },
+      {
+        "path": "src/plugins/codeui/gbp-codeui-editor-page-addin.c",
+        "lines": 500,
+        "sha256": "a27a0fa9c304647a03ec6c77c7502521882f1c277db839c442a122fde6f02ddc"
+      },
+      {
+        "path": "src/plugins/codeui/gbp-codeui-hover-provider.c",
+        "lines": 136,
+        "sha256": "d2f7da183b1dc508ecbf11e4d064ed0e96789dfb50cd2ebade95deed8bfd98c7"
+      },
+      {
+        "path": "src/plugins/editorui/gbp-editorui-workspace-addin.c",
+        "lines": 914,
+        "sha256": "b6da67e0dafcd7ee2be450e14154eb32c57d30f7514e49e5d8ea11e16b3f8ad0"
+      },
+      {
+        "path": "src/plugins/omni-gutter/gbp-omni-gutter-renderer.c",
+        "lines": 2067,
+        "sha256": "e06c6ddac51bb50ea472b8f356e9a539b68edc0c37c84d55a8da101de916138e"
+      },
+      {
+        "path": "src/plugins/buildui/gbp-buildui-status-indicator.c",
+        "lines": 104,
+        "sha256": "398ca158eb34fe04cf570843d15f439238639539638f4966b9f6894d79a06b57"
+      },
+      {
+        "path": "src/plugins/clangd/clangd.plugin",
+        "lines": 21,
+        "sha256": "2e5b2dfbd9f568de48a95950ac3180df8a53892c8048820d5f4980d7bad625d5"
+      },
+      {
+        "path": "src/plugins/python-lsp-server/pylsp-language-server.plugin",
+        "lines": 19,
+        "sha256": "ce80bf24f6d69b58af3a4a1d9b857922151b6b982d30646da1841a69d80c3b77"
+      },
+      {
+        "path": "src/plugins/jedi-language-server/jedi-language-server.plugin",
+        "lines": 19,
+        "sha256": "7dbd3bfa982b0d5b6e514cd792f81c36eeaad69523bd6e904d7d7aacb35a8350"
+      },
+      {
+        "path": "src/plugins/rust-analyzer/rust-analyzer.plugin",
+        "lines": 21,
+        "sha256": "d49db8fceab6a31ee8a8ad0637ea223931597e26fff67a7b8782f15023312bbc"
+      },
+      {
+        "path": "src/plugins/rust-analyzer/settings.json",
+        "lines": 21,
+        "sha256": "a0cee278804efb3a68abf33645911f22c285fcebf42f10e675c851df0c4c8344"
+      },
+      {
+        "path": "src/plugins/ruff/ruff.plugin",
+        "lines": 19,
+        "sha256": "f970ed90d5cd9f9cfcc598e105067ba0c6ac7a3034ef346c690621328666d26f"
+      },
+      {
+        "path": "meson.build",
+        "lines": 401,
+        "sha256": "cfc1ef5c4196f0a7e6e9aa7a3c7fe516c245fb5ddb8ead688a0dbd646fdde082"
+      },
+      {
+        "path": "COPYING",
+        "lines": 674,
+        "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+      }
+    ],
+    "genericLspPlugins": [
+      {
+        "path": "src/plugins/astro-language-server/astro-language-server.plugin",
+        "fields": {
+          "Builtin": "true",
+          "Copyright": "Copyright © 2025 Nokse",
+          "Description": "Provides integration with astro-ls for Astro",
+          "Embedded": "ide_lsp_plugin_register_types",
+          "Module": "astro-language-server",
+          "Name": "Astro Language Server",
+          "X-Category": "lsps",
+          "X-LSP-Command": "astro-ls --stdio",
+          "X-LSP-Languages": "astro",
+          "X-LSP-Settings": "settings.json",
+          "X-Completion-Provider-Languages": "astro",
+          "X-Symbol-Resolver-Languages": "astro",
+          "X-Diagnostic-Provider-Languages": "astro",
+          "X-Highlighter-Languages": "astro",
+          "X-Hover-Provider-Languages": "astro",
+          "X-Rename-Provider-Languages": "astro",
+          "X-Formatter-Languages": "astro",
+          "X-Code-Action-Languages": "astro"
+        }
+      },
+      {
+        "path": "src/plugins/bash-language-server/bash-language-server.plugin",
+        "fields": {
+          "Builtin": "true",
+          "Copyright": "Copyright © 2022 Christian Hergert",
+          "Description": "Provides integration with bash-language-server for Bash",
+          "Embedded": "ide_lsp_plugin_register_types",
+          "Module": "bash-language-server",
+          "Name": "Bash Language Server",
+          "X-Category": "lsps",
+          "X-LSP-Command": "bash-language-server start",
+          "X-LSP-Languages": "sh",
+          "X-LSP-Settings": "settings.json",
+          "X-Completion-Provider-Languages": "sh",
+          "X-Symbol-Resolver-Languages": "sh",
+          "X-Diagnostic-Provider-Languages": "sh",
+          "X-Highlighter-Languages": "sh",
+          "X-Hover-Provider-Languages": "sh",
+          "X-Rename-Provider-Languages": "sh",
+          "X-Formatter-Languages": "sh",
+          "X-Code-Action-Languages": "sh"
+        }
+      },
+      {
+        "path": "src/plugins/blueprint/blueprint.plugin",
+        "fields": {
+          "Builtin": "true",
+          "Description": "Provides integration with the blueprint language server",
+          "Embedded": "ide_lsp_plugin_register_types",
+          "Module": "blueprint",
+          "Name": "Blueprint Language Server",
+          "X-Category": "lsps",
+          "X-Code-Action-Languages": "blueprint",
+          "X-Completion-Provider-Languages": "blueprint",
+          "X-Diagnostic-Provider-Languages-Priority": "100",
+          "X-Diagnostic-Provider-Languages": "blueprint",
+          "X-Formatter-Languages": "blueprint",
+          "X-Hover-Provider-Languages": "blueprint",
+          "X-LSP-Command": "blueprint-compiler lsp",
+          "X-LSP-Languages": "blueprint",
+          "X-LSP-Settings": "settings.json"
+        }
+      },
+      {
+        "path": "src/plugins/clangd/clangd.plugin",
+        "fields": {
+          "Builtin": "true",
+          "Copyright": "Copyright © 2022 Christian Hergert",
+          "Description": "Integration with clangd",
+          "Embedded": "ide_lsp_plugin_register_types",
+          "Module": "clangd",
+          "Name": "Clangd Language Server",
+          "X-Category": "lsps",
+          "X-Code-Action-Languages": "c;chdr;cpp;cpphdr;objc",
+          "X-Completion-Provider-Languages": "c;chdr;cpp;cpphdr;objc",
+          "X-Diagnostic-Provider-Languages-Priority": "200",
+          "X-Diagnostic-Provider-Languages": "c;chdr;cpp;cpphdr;objc",
+          "X-Formatter-Languages": "c;chdr;cpp;cpphdr;objc",
+          "X-Highlighter-Languages": "c;chdr;cpp;cpphdr;objc",
+          "X-Hover-Provider-Languages": "c;chdr;cpp;cpphdr;objc",
+          "X-LSP-Command": "clangd",
+          "X-LSP-Languages": "c;cpp;objective-c;objective-cpp",
+          "X-LSP-Settings": "settings.json",
+          "X-Rename-Provider-Languages": "c;chdr;cpp;cpphdr;objc",
+          "X-Symbol-Resolver-Languages-Priority": "200",
+          "X-Symbol-Resolver-Languages": "c;chdr;cpp;cpphdr;objc"
+        }
+      },
+      {
+        "path": "src/plugins/elixir-ls/elixir-ls.plugin",
+        "fields": {
+          "Builtin": "true",
+          "Copyright": "Copyright © 2024 Bill Huang",
+          "Description": "Provides integration with ElixirLS",
+          "Embedded": "ide_lsp_plugin_register_types",
+          "Module": "elixir_ls",
+          "Name": "ElixirLS",
+          "X-Category": "lsps",
+          "X-Code-Action-Languages": "elixir",
+          "X-Completion-Provider-Languages": "elixir",
+          "X-Diagnostic-Provider-Languages": "elixir",
+          "X-Formatter-Languages": "elixir",
+          "X-Highlighter-Languages": "elixir",
+          "X-Hover-Provider-Languages": "elixir",
+          "X-LSP-Command": "elixir-ls",
+          "X-LSP-Languages": "elixir",
+          "X-LSP-Settings": "settings.json",
+          "X-Rename-Provider-Languages": "elixir",
+          "X-Symbol-Resolver-Languages": "elixir"
+        }
+      },
+      {
+        "path": "src/plugins/glsl-language-server/glsl-language-server.plugin",
+        "fields": {
+          "Builtin": "true",
+          "Copyright": "Copyright © 2022 Christian Hergert",
+          "Description": "Provides integration with glsl-language-server",
+          "Embedded": "ide_lsp_plugin_register_types",
+          "Module": "glsl-language-server",
+          "Name": "GLSL Language Server",
+          "X-Category": "lsps",
+          "X-Code-Action-Languages": "glsl",
+          "X-Completion-Provider-Languages": "glsl",
+          "X-Diagnostic-Provider-Languages": "glsl",
+          "X-Formatter-Languages": "glsl",
+          "X-Highlighter-Languages": "glsl",
+          "X-Hover-Provider-Languages": "glsl",
+          "X-LSP-Command": "glslls --stdin",
+          "X-LSP-Languages": "glsl",
+          "X-LSP-Settings": "settings.json",
+          "X-Rename-Provider-Languages": "glsl",
+          "X-Symbol-Resolver-Languages": "glsl"
+        }
+      },
+      {
+        "path": "src/plugins/gopls/gopls.plugin",
+        "fields": {
+          "Builtin": "true",
+          "Copyright": "Copyright © 2018 Henry Finucane, Copyright © 2022 Christian Hergert",
+          "Description": "Language server integration for the Go programming language using gopls",
+          "Embedded": "ide_lsp_plugin_register_types",
+          "Module": "gopls",
+          "Name": "Go Language Server",
+          "X-Category": "lsps",
+          "X-Code-Action-Languages": "go",
+          "X-Completion-Provider-Languages": "go",
+          "X-Diagnostic-Provider-Languages": "go",
+          "X-Formatter-Languages": "go",
+          "X-Highlighter-Languages": "go",
+          "X-Hover-Provider-Languages": "go",
+          "X-LSP-Command": "gopls serve",
+          "X-LSP-Languages": "go",
+          "X-LSP-Settings": "settings.json",
+          "X-Rename-Provider-Languages": "go",
+          "X-Symbol-Resolver-Languages": "go"
+        }
+      },
+      {
+        "path": "src/plugins/intelephense/intelephense.plugin",
+        "fields": {
+          "Author": "Peter Maatman <blackwolf12333@gmail.com>",
+          "Builtin": "true",
+          "Description": "Provides integration with the intelephense language server for PHP",
+          "Embedded": "ide_lsp_plugin_register_types",
+          "Module": "intelephense",
+          "Name": "PHP Language Server",
+          "X-Category": "lsps",
+          "X-Code-Action-Languages": "php",
+          "X-Completion-Provider-Languages": "php",
+          "X-Diagnostic-Provider-Languages": "php",
+          "X-Formatter-Languages": "php",
+          "X-Highlighter-Languages": "php",
+          "X-Hover-Provider-Languages": "php",
+          "X-LSP-Command": "intelephense --stdio",
+          "X-LSP-Languages": "php",
+          "X-LSP-Settings": "settings.json",
+          "X-Rename-Provider-Languages": "php",
+          "X-Symbol-Resolver-Languages": "php"
+        }
+      },
+      {
+        "path": "src/plugins/jdtls/jdtls.plugin",
+        "fields": {
+          "Builtin": "true",
+          "Copyright": "Copyright © 2022 Christian Hergert",
+          "Description": "Language server integration for the Java programming language using jdtls",
+          "Embedded": "ide_lsp_plugin_register_types",
+          "Module": "jdtls",
+          "Name": "Java Language Server (jdtls)",
+          "X-Category": "lsps",
+          "X-Code-Action-Languages": "java",
+          "X-Completion-Provider-Languages": "java",
+          "X-Diagnostic-Provider-Languages": "java",
+          "X-Formatter-Languages": "java",
+          "X-Highlighter-Languages": "java",
+          "X-Hover-Provider-Languages": "java",
+          "X-LSP-Command": "jdtls",
+          "X-LSP-Languages": "java",
+          "X-LSP-Settings": "settings.json",
+          "X-Rename-Provider-Languages": "java",
+          "X-Symbol-Resolver-Languages": "java"
+        }
+      },
+      {
+        "path": "src/plugins/jedi-language-server/jedi-language-server.plugin",
+        "fields": {
+          "Builtin": "true",
+          "Copyright": "Copyright © 2022 Christian Hergert",
+          "Description": "Provides integration with the jedi language server for Python",
+          "Embedded": "ide_lsp_plugin_register_types",
+          "Module": "jedi-language-server",
+          "Name": "Python Language Server (Jedi)",
+          "X-Category": "lsps",
+          "X-Completion-Provider-Languages": "python,python3",
+          "X-Symbol-Resolver-Languages": "python,python3",
+          "X-Diagnostic-Provider-Languages": "python,python3",
+          "X-Highlighter-Languages": "python,python3",
+          "X-Hover-Provider-Languages": "python,python3",
+          "X-LSP-Command": "jedi-language-server",
+          "X-LSP-Languages": "python",
+          "X-LSP-Settings": "settings.json",
+          "X-Rename-Provider-Languages": "python,python3",
+          "X-Formatter-Languages": "python,python3",
+          "X-Code-Action-Languages": "python,python3"
+        }
+      },
+      {
+        "path": "src/plugins/lua-language-server/lua-language-server.plugin",
+        "fields": {
+          "Builtin": "true",
+          "Copyright": "Copyright © 2022 Christian Hergert",
+          "Description": "Provides integration with lua-language-server",
+          "Embedded": "ide_lsp_plugin_register_types",
+          "Module": "lua-language-server",
+          "Name": "Lua Language Server",
+          "X-Category": "lsps",
+          "X-Code-Action-Languages": "lua",
+          "X-Completion-Provider-Languages": "lua",
+          "X-Diagnostic-Provider-Languages": "lua",
+          "X-Formatter-Languages": "lua",
+          "X-Highlighter-Languages": "lua",
+          "X-Hover-Provider-Languages": "lua",
+          "X-LSP-Command": "lua-language-server",
+          "X-LSP-Languages": "lua",
+          "X-LSP-Settings": "settings.json",
+          "X-Rename-Provider-Languages": "lua",
+          "X-Symbol-Resolver-Languages": "lua"
+        }
+      },
+      {
+        "path": "src/plugins/mesonlsp/mesonlsp.plugin",
+        "fields": {
+          "Authors": "JCWasmx86",
+          "Copyright": "Copyright © 2024 JCWasmx86",
+          "Description": "Meson code intelligence provided by mesonlsp",
+          "Embedded": "ide_lsp_plugin_register_types",
+          "Module": "mesonlsp",
+          "Name": "mesonlsp",
+          "Website": "https://github.com/JCWasmx86/mesonlsp",
+          "X-Category": "lsps",
+          "X-Code-Action-Languages": "meson",
+          "X-Completion-Provider-Languages": "meson",
+          "X-Diagnostic-Provider-Languages-Priority": "100",
+          "X-Diagnostic-Provider-Languages": "meson",
+          "X-Formatter-Languages-Priority": "100",
+          "X-Formatter-Languages": "meson",
+          "X-Highlighter-Languages-Priority": "100",
+          "X-Highlighter-Languages": "meson",
+          "X-Hover-Provider-Languages": "meson",
+          "X-LSP-Command": "mesonlsp --lsp",
+          "X-LSP-Languages": "meson;",
+          "X-LSP-Settings": "settings.json",
+          "X-Rename-Provider-Languages": "meson",
+          "X-Symbol-Resolver-Languages-Priority": "100",
+          "X-Symbol-Resolver-Languages": "meson"
+        }
+      },
+      {
+        "path": "src/plugins/python-lsp-server/pylsp-language-server.plugin",
+        "fields": {
+          "Builtin": "true",
+          "Copyright": "Copyright © 2022 Christian Hergert",
+          "Description": "Provides integration with the pylsp language server for Python",
+          "Embedded": "ide_lsp_plugin_register_types",
+          "Module": "pylsp-language-server",
+          "Name": "Python Language Server (PyLSP)",
+          "X-Category": "lsps",
+          "X-Completion-Provider-Languages": "python,python3",
+          "X-Symbol-Resolver-Languages": "python,python3",
+          "X-Diagnostic-Provider-Languages": "python,python3",
+          "X-Highlighter-Languages": "python,python3",
+          "X-Hover-Provider-Languages": "python,python3",
+          "X-LSP-Command": "pylsp",
+          "X-LSP-Languages": "python",
+          "X-LSP-Settings": "settings.json",
+          "X-Rename-Provider-Languages": "python,python3",
+          "X-Formatter-Languages": "python,python3",
+          "X-Code-Action-Languages": "python,python3"
+        }
+      },
+      {
+        "path": "src/plugins/ruff/ruff.plugin",
+        "fields": {
+          "Builtin": "true",
+          "Copyright": "Copyright © 2025 Jamie Gravendeel",
+          "Description": "Provides integration with Ruff for Python",
+          "Embedded": "ide_lsp_plugin_register_types",
+          "Module": "ruff",
+          "Name": "Ruff",
+          "X-Category": "lsps",
+          "X-Completion-Provider-Languages": "python,python3",
+          "X-Symbol-Resolver-Languages": "python,python3",
+          "X-Diagnostic-Provider-Languages": "python,python3",
+          "X-Highlighter-Languages": "python,python3",
+          "X-Hover-Provider-Languages": "python,python3",
+          "X-LSP-Command": "ruff server",
+          "X-LSP-Languages": "python",
+          "X-LSP-Settings": "settings.json",
+          "X-Rename-Provider-Languages": "python,python3",
+          "X-Formatter-Languages": "python,python3",
+          "X-Code-Action-Languages": "python,python3"
+        }
+      },
+      {
+        "path": "src/plugins/rust-analyzer/rust-analyzer.plugin",
+        "fields": {
+          "Authors": "Günther Wagner <info@gunibert.de>, Christian Hergert <chergert@redhat.com>",
+          "Builtin": "true",
+          "Copyright": "Copyright © 2020 Günther Wagner, Copyright © 2022 Christian Hergert",
+          "Depends": "buildui;",
+          "Description": "Provides integration with the rust-analyzer language server",
+          "Embedded": "ide_lsp_plugin_register_types",
+          "Module": "rust-analyzer",
+          "Name": "Rust Analyzer",
+          "X-Category": "lsps",
+          "X-Code-Action-Languages": "rust",
+          "X-Completion-Provider-Languages": "rust",
+          "X-Diagnostic-Provider-Languages": "rust",
+          "X-Formatter-Languages": "rust",
+          "X-Highlighter-Languages": "rust",
+          "X-Hover-Provider-Languages": "rust",
+          "X-LSP-Command": "rust-analyzer",
+          "X-LSP-Languages": "rust",
+          "X-LSP-Settings": "settings.json",
+          "X-Rename-Provider-Languages": "rust",
+          "X-Symbol-Resolver-Languages": "rust"
+        }
+      },
+      {
+        "path": "src/plugins/serve-d/serve-d.plugin",
+        "fields": {
+          "Builtin": "true",
+          "Copyright": "Copyright © 2022 Christian Hergert",
+          "Description": "Provides integration with the serve-d language server for D",
+          "Embedded": "ide_lsp_plugin_register_types",
+          "Module": "serve-d",
+          "Name": "D Language Server (serve-d)",
+          "X-Category": "lsps",
+          "X-Code-Action-Languages": "d",
+          "X-Completion-Provider-Languages": "d",
+          "X-Diagnostic-Provider-Languages": "d",
+          "X-Formatter-Languages": "d",
+          "X-Highlighter-Languages": "d",
+          "X-Hover-Provider-Languages": "d",
+          "X-LSP-Command": "serve-d",
+          "X-LSP-Languages": "d",
+          "X-LSP-Settings": "settings.json",
+          "X-Rename-Provider-Languages": "d",
+          "X-Symbol-Resolver-Languages": "d"
+        }
+      },
+      {
+        "path": "src/plugins/sourcekit-lsp/sourcekit-lsp.plugin",
+        "fields": {
+          "Builtin": "true",
+          "Copyright": "Copyright © 2023 Christian Hergert",
+          "Description": "Provides integration with sourcekit-lsp",
+          "Embedded": "ide_lsp_plugin_register_types",
+          "Module": "sourcekit-lsp",
+          "Name": "SourceKit Language Server",
+          "X-Category": "lsps",
+          "X-LSP-Command": "sourcekit-lsp --generated-files-path .build/GeneratedInterfaces",
+          "X-LSP-Languages": "swift",
+          "X-LSP-Settings": "settings.json",
+          "X-Completion-Provider-Languages": "swift",
+          "X-Symbol-Resolver-Languages": "swift",
+          "X-Diagnostic-Provider-Languages": "swift",
+          "X-Highlighter-Languages": "swift",
+          "X-Hover-Provider-Languages": "swift",
+          "X-Rename-Provider-Languages": "swift",
+          "X-Code-Action-Languages": "swift"
+        }
+      },
+      {
+        "path": "src/plugins/ts-language-server/ts-language-server.plugin",
+        "fields": {
+          "Builtin": "true",
+          "Copyright": "Copyright © 2021 Georg Vienna, Copyright © 2022 Christian Hergert",
+          "Description": "Provides language server integration for Typescript and Javascript",
+          "Embedded": "ide_lsp_plugin_register_types",
+          "Module": "ts-language-server",
+          "Name": "Typescript Language Server",
+          "X-Category": "lsps",
+          "X-Code-Action-Languages": "js,jsx,typescript,typescript-jsx",
+          "X-Completion-Provider-Languages": "js,jsx,typescript,typescript-jsx",
+          "X-Diagnostic-Provider-Languages": "js,jsx,typescript,typescript-jsx",
+          "X-Formatter-Languages": "js,jsx,typescript,typescript-jsx",
+          "X-Highlighter-Languages": "js,jsx,typescript,typescript-jsx",
+          "X-Hover-Provider-Languages": "js,jsx,typescript,typescript-jsx",
+          "X-LSP-Command": "typescript-language-server --stdio",
+          "X-LSP-Languages": "js;jsx;typescript;typescript-jsx",
+          "X-LSP-Settings": "settings.json",
+          "X-Rename-Provider-Languages": "js,jsx,typescript,typescript-jsx",
+          "X-Symbol-Resolver-Languages": "js,jsx,typescript,typescript-jsx"
+        }
+      },
+      {
+        "path": "src/plugins/vala-language-server/vala-language-server.plugin",
+        "fields": {
+          "Authors": "Princeton Ferro, Ben Iofel, Christian Hergert",
+          "Copyright": "Copyright © 2020 Princeton Ferro, Ben Iofel, Copyright © 2022 Christian Hergert",
+          "Description": "Vala code intelligence provided by vala-language-server",
+          "Embedded": "ide_lsp_plugin_register_types",
+          "Module": "vala-language-server",
+          "Name": "Vala Language Server",
+          "Website": "https://github.com/vala-lang/vala-language-server",
+          "X-Category": "lsps",
+          "X-Code-Action-Languages": "vala",
+          "X-Completion-Provider-Languages": "vala",
+          "X-Diagnostic-Provider-Languages-Priority": "100",
+          "X-Diagnostic-Provider-Languages": "vala",
+          "X-Formatter-Languages-Priority": "100",
+          "X-Formatter-Languages": "vala",
+          "X-Highlighter-Languages-Priority": "100",
+          "X-Highlighter-Languages": "vala",
+          "X-Hover-Provider-Languages": "vala",
+          "X-LSP-Command": "vala-language-server",
+          "X-LSP-Languages": "vala;genie;",
+          "X-LSP-Settings": "settings.json",
+          "X-Rename-Provider-Languages": "vala",
+          "X-Symbol-Resolver-Languages-Priority": "100",
+          "X-Symbol-Resolver-Languages": "vala"
+        }
+      },
+      {
+        "path": "src/plugins/vhdl-language-server/vhdl-language-server.plugin",
+        "fields": {
+          "Copyright": "Copyright © 2024 Nokse",
+          "Description": "Vhdl code intelligence provided by vhdl-ls",
+          "Embedded": "ide_lsp_plugin_register_types",
+          "Module": "vhdl-language-server",
+          "Name": "Vhdl Language Server",
+          "Website": "https://github.com/VHDL-LS/rust_hdl",
+          "X-Category": "lsps",
+          "X-Completion-Provider-Languages": "vhdl",
+          "X-Symbol-Resolver-Languages": "vhdl",
+          "X-Diagnostic-Provider-Languages": "vhdl",
+          "X-Highlighter-Languages": "vhdl",
+          "X-Hover-Provider-Languages": "vhdl",
+          "X-Rename-Provider-Languages": "vhdl",
+          "X-LSP-Command": "vhdl_ls",
+          "X-LSP-Languages": "vhdl",
+          "X-LSP-Settings": "settings.json"
+        }
+      },
+      {
+        "path": "src/plugins/zls/zls.plugin",
+        "fields": {
+          "Authors": "Christian Hergert",
+          "Copyright": "Copyright 2022 Christian Hergert",
+          "Description": "Zig code intelligence provided by zls",
+          "Embedded": "ide_lsp_plugin_register_types",
+          "Module": "zls",
+          "Name": "Zig Language Server",
+          "X-Category": "lsps",
+          "X-Code-Action-Languages": "zig",
+          "X-Completion-Provider-Languages": "zig",
+          "X-Diagnostic-Provider-Languages": "zig",
+          "X-Formatter-Languages": "zig",
+          "X-Highlighter-Languages": "zig",
+          "X-Hover-Provider-Languages": "zig",
+          "X-LSP-Command": "zls",
+          "X-LSP-Languages": "zig",
+          "X-LSP-Settings": "settings.json",
+          "X-Rename-Provider-Languages": "zig",
+          "X-Symbol-Resolver-Languages": "zig"
+        }
+      }
+    ],
+    "release50ChangesInComparedModules": [
+      "src/libide/foundry/ide-device.h",
+      "src/libide/foundry/ide-pipeline.h",
+      "src/libide/foundry/ide-runtime.h",
+      "src/plugins/editorui/gbp-editorui-workspace-addin.c"
+    ]
+  },
+  "setdown": {
+    "profiles": 195,
+    "selectedSources": [
+      {
+        "path": "main/language/language-manager.ts",
+        "lines": 599,
+        "sha256": "2ed5899990aea4bb28964782d9f51059a314ca38a681079221c68b7bfdd915ab"
+      },
+      {
+        "path": "main/language/server-session.ts",
+        "lines": 231,
+        "sha256": "7ef3578f282f141a16ebe9706b92c7e0e503e503b0a0d876c40b274bea3e40dc"
+      },
+      {
+        "path": "main/language/server-registry.ts",
+        "lines": 209,
+        "sha256": "995d95d18fa16378e625be5953156d864a04587ce0be6baae0573e2efd7f0541"
+      },
+      {
+        "path": "main/language/server-discovery.ts",
+        "lines": 198,
+        "sha256": "b4a45efe458e47d9e4304d6a66477d6ac5d42d072420910bfc485c03259ab29b"
+      },
+      {
+        "path": "main/language/server-environment.ts",
+        "lines": 98,
+        "sha256": "b955fcef26fe2cc2968e44fb2dcb1d77700f3ef76d073b88974b0a4a87bb8299"
+      },
+      {
+        "path": "main/language/language-root.ts",
+        "lines": 80,
+        "sha256": "eb3f4bf2890c7b1e16599d2d400808d5dba601d151e91148005736463adc2d5f"
+      },
+      {
+        "path": "main/language/python-project-settings.ts",
+        "lines": 83,
+        "sha256": "65088e726574413a1f98d6d7537792000614b8278f44b441342894f2b7732882"
+      },
+      {
+        "path": "main/language/server-definitions.ts",
+        "lines": 38,
+        "sha256": "ff809f2843300dc00c369770b719a67045f488e485cb4bd0152e40da05cc12e6"
+      },
+      {
+        "path": "main/language/catalog/profiles.json",
+        "lines": 11164,
+        "sha256": "bc1e3aa8cdcc95261f25a9f308ef976d6e7e8dba835888a876788f744cda8840"
+      },
+      {
+        "path": "main/language/notebook-language-host.ts",
+        "lines": 194,
+        "sha256": "507fefbcb620a588ab92d11b0408a0b5ed03b11309628ca2d549e6734e935da1"
+      },
+      {
+        "path": "main/language/python-analysis.ts",
+        "lines": 16,
+        "sha256": "95eb91a7b19047ce21a05ad1fe08e12d85e09a97e21fc582b0b018d6071a75be"
+      },
+      {
+        "path": "main/notebook/python-environments.ts",
+        "lines": 86,
+        "sha256": "3d46ef844d38e7504f775db3cdd6e365e258568682f3dbed5b4bd5372e604cd0"
+      },
+      {
+        "path": "renderer/language/language-client.ts",
+        "lines": 573,
+        "sha256": "a6c776c28469b6af7027a1bfa495bec73c1658db373c916d58bbb4066760e0ff"
+      },
+      {
+        "path": "renderer/language/language-services.ts",
+        "lines": 115,
+        "sha256": "01310f6f03e02716bea05c9ada077b21c61a85c5b18ab6e4f49a538a4fe89ffc"
+      },
+      {
+        "path": "renderer/language/diagnostic-store.ts",
+        "lines": 48,
+        "sha256": "733221bc9b5f64559c281ab211abbd945a024b4cb9be94fdbade009fdcb81a7f"
+      },
+      {
+        "path": "renderer/language/builtin-diagnostics.ts",
+        "lines": 121,
+        "sha256": "e547ba9aad4f399890ed0587332a3de1e5fb361ac2e52fa7eecc34862777e1d5"
+      },
+      {
+        "path": "renderer/language/document-support.ts",
+        "lines": 41,
+        "sha256": "629e59ebf3bc6fd3fd6ee1bfbb4925a6b6a94e729c3ddcebccc9743fe71e3b58"
+      },
+      {
+        "path": "renderer/language/DocumentLanguageStatus.svelte",
+        "lines": 77,
+        "sha256": "5e648f486dbb6546e3f914741c0b6054359022a3f36013b7efb5f6bdfeb8922d"
+      },
+      {
+        "path": "renderer/language/LanguageSupport.svelte",
+        "lines": 317,
+        "sha256": "24c5bca2a1f9b2983e96cac3e4851cf026ecdfcac0123cf3d2a8435c76ce0f00"
+      },
+      {
+        "path": "renderer/editor/monaco-runtime.ts",
+        "lines": 18,
+        "sha256": "eedfb740a86cfd4a67f8544468951ccfb45a95a2a3f55a699d0f3c06bde1b9b0"
+      },
+      {
+        "path": "renderer/adapters/monaco-editor.ts",
+        "lines": 543,
+        "sha256": "2dfcac20dd88f463217321651a1f3a8797956e881f3fbb7a9537ee92dbad26e7"
+      },
+      {
+        "path": "core/document/language-policy.ts",
+        "lines": 38,
+        "sha256": "ba2af72720801a879e078c57010f3c7b58bed742c8b9e5de0783bcd91e60fd52"
+      },
+      {
+        "path": "protocol/language-features.ts",
+        "lines": 111,
+        "sha256": "206f7151031c1447480b830830215a7a71c253917c54a1e4595583769bf0670a"
+      },
+      {
+        "path": "protocol/language-request.ts",
+        "lines": 58,
+        "sha256": "a21423b3104f19cca345bb1d6aa6d0eb9055431523abfd8dafc81e2fea7eca96"
+      },
+      {
+        "path": "main/language/server-capabilities.ts",
+        "lines": 79,
+        "sha256": "d5fa8faa2b54ea1793f56d150b842a551590eaadbe3d32e98deb0a2c872dba95"
+      },
+      {
+        "path": "main/language/server-items.ts",
+        "lines": 97,
+        "sha256": "b248a57f613da185b63fd007508897bb83aa7972809a113392d4f5569b86b4de"
+      }
+    ]
+  },
+  "validation": {
+    "scope": "Existing language unit tests and real language-server integration tests; no Builder GUI execution or Setdown GUI feature/performance validation",
+    "initial": {
+      "passed": 111,
+      "failed": 10,
+      "unhandledErrors": 1,
+      "log": "setdown-language-tests.log",
+      "causeEvidence": "Node spawnSync EPERM in sandbox; existing /tmp/.git changes language root fallback"
+    },
+    "isolated": {
+      "filesPassed": 19,
+      "testsPassed": 121,
+      "testsFailed": 0,
+      "log": "setdown-language-tests-isolated.log",
+      "display": "repository with-isolated-display.sh",
+      "temp": "dedicated /var/tmp directory outside /tmp repository",
+      "assertionsChanged": false,
+      "testsSkipped": 0
+    },
+    "environmentProbe": {
+      "script": "probe-environments.mjs",
+      "observations": "environment-observations.json",
+      "log": "environment-probe.log",
+      "scope": "Controlled real-server fixtures; not Setdown or Builder GUI execution",
+      "pyrightVersion": "1.1.414",
+      "clangdVersion": "clangd version 22.1.0 (https://github.com/llvm/llvm-project.git 4434dabb69916856b824f68a64b029c67175e532)\nFeatures: linux+debug\nPlatform: x86_64-unknown-linux-gnu",
+      "summary": [
+        {
+          "name": "python-host-interpreter",
+          "diagnostics": 1
+        },
+        {
+          "name": "python-project-interpreter",
+          "diagnostics": 0
+        },
+        {
+          "name": "cpp-without-database-selection",
+          "diagnostics": 2
+        },
+        {
+          "name": "cpp-with-database-selection",
+          "diagnostics": 0
+        }
+      ]
+    },
+    "artifactHashes": {
+      "setdown-language-tests.log": "ce451e60c97d6d815f47c8f2986419b453949aa1890da7e9dec40c700135bc07",
+      "setdown-language-tests-isolated.log": "710deb67a3799cb5d746274b56ecb63df75f83b18ece0ee022315ac675f817f6",
+      "probe-environments.mjs": "bb23c959e1e235b49b68199be82d6139f4737554cca654987c1ddb373a0affc8",
+      "environment-observations.json": "ede824412c17b254986d1f552644ea94e82f04eba4d9e3439c3d8ba6bae253e8",
+      "environment-probe.log": "f41d2fdd91179df98978f1035332b28a2818d6de5dc7dbc0f8c7a82bdc905855"
+    }
+  }
+}
