@@ -38,6 +38,9 @@ jobs:
           sudo apt-get install --no-install-recommends -y clangd
       - name: Unit tests and architecture boundaries
         run: npm test
+      # Tooling tests read the pinned sources before the build initializes them.
+      - name: Initialize Dark Reader for tooling tests
+        run: git submodule update --init -- vendor/darkreader
       - name: CI policy, test inventory and build adapters
         run: npm run test:tooling
       - run: npm run build
