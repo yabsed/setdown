@@ -8,13 +8,13 @@ import type { AppActions } from '../ports/ui-actions';
 <section class="terminal-list" aria-label="Terminal sessions">
   <header class="side-view-title">
     <span>TERMINALS</span>
-    <button aria-label="New terminal session" title="New terminal" onclick={actions.newTerminal}>
+    <button aria-label="New terminal session" title="New terminal" onclick={() => actions.newTerminal()}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
     </button>
   </header>
   {#if !sessions.length}
     <p class="empty">No open terminals.</p>
-    <button class="create" onclick={actions.newTerminal}>
+    <button class="create" onclick={() => actions.newTerminal()}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
       <span>New terminal</span>
     </button>

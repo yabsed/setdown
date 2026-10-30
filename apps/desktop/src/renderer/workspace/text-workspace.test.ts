@@ -662,6 +662,39 @@ test('terminal activation, splitting and transfers stay outside document resourc
   assert.equal(f.workspace.activeId, documentId);
 });
 
+test('terminal creation targets the requested group while another editor activation is pending', async () => {
+  const f = fixture();
+  await f.controller.show(snapshot('/project/first.txt'));
+  const first = f.workspace.activeId!;
+  const source = f.workspace.groups.owner(first)!;
+  await f.controller.show(snapshot('/project/second.txt'));
+  const second = f.workspace.activeId!;
+  const target = f.workspace.groups.split(source.id, 'right');
+  f.workspace.groups.move(second, target.id, null);
+  await f.controller.activate(first);
+
+  let finish!: () => void;
+  f.options.editor.load = () => new Promise<void>(resolve => { finish = resolve; });
+  const activation = f.controller.activate(second);
+  assert.equal(f.workspace.groups.focusedId, source.id);
+  await f.controller.openTerminal('', target.id);
+  const terminal = f.workspace.active!;
+  finish(); await activation;
+
+  assert.equal(terminal.kind, 'terminal');
+  assert.equal(f.workspace.activeId, terminal.id);
+  assert.equal(f.workspace.groups.focusedId, target.id);
+  assert.deepEqual(source.tabs, [first]);
+  assert.equal(source.activeId, first);
+  assert.deepEqual(target.tabs, [second, terminal.id]);
+  assert.equal(target.activeId, terminal.id);
+
+  // Sidebar creation, which has no explicit group, still uses the focused group.
+  await f.controller.openTerminal();
+  assert.deepEqual(source.tabs, [first]);
+  assert.deepEqual(target.tabs, [second, terminal.id, f.workspace.activeId]);
+});
+
 test('external background refresh does not overwrite edits made while disk IO is pending', async () => {
   const f = fixture();
   await f.controller.show(snapshot('/project/keep.txt'));

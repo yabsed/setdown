@@ -80,7 +80,7 @@ export function startWorkspace(desktop: DesktopPort) {
         }
       },
     changeZoom: (steps, scope, tabId) => desktop.changeZoom(steps, scope, tabId),
-    newTerminal: () => { projects.deactivateGitDiff(); void tabs.openTerminal(); },
+    newTerminal: groupId => { projectOpenRequest++; projects.deactivateGitDiff(); void tabs.openTerminal('', groupId); },
     openTerminalSession: id => { projects.deactivateGitDiff(); void tabs.openTerminalSession(id).catch(error => { browser.error = String(error); }); },
     closeTerminalSession: id => { void tabs.closeTerminalSession(id); },
     terminalChanged: (id, info) => tabs.terminalChanged(id, info),

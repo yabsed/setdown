@@ -191,11 +191,11 @@ export class TabController {
     this.render();
     if (!background) await this.activate(page.id);
   };
-  openTerminal = async (cwd = ''): Promise<void> => {
+  openTerminal = async (cwd = '', groupId = this.options.workspace.groups.focusedId): Promise<void> => {
     const id = crypto.randomUUID();
     const session = { id, title: `Terminal ${++this.terminalNumber}`, cwd, exited: false };
     this.options.workspace.terminals.set(id, session);
-    this.options.workspace.add({ ...session, kind: 'terminal', sessionId: id, surface: 'terminal' });
+    this.options.workspace.add({ ...session, kind: 'terminal', sessionId: id, surface: 'terminal' }, true, groupId);
     this.render(); await this.activate(id);
   };
   openTerminalSession = async (sessionId: string): Promise<void> => {

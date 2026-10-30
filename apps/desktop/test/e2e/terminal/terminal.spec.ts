@@ -13,6 +13,43 @@ import { dragTerminal } from '../../support/terminal/terminal-drag';
 const run = async (input: Locator, command: string) => { await input.pressSequentially(command); await input.press('Enter'); };
 const input = (page: import('@playwright/test').Page) => page.locator('.terminal-content:not(.inactive) .xterm-helper-textarea');
 
+for (const direction of ['right', 'down'] as const)
+test(`new terminal opens in the clicked ${direction} split while the other editor is focused`, async () => {
+  test.skip(process.platform === 'win32', 'Commands use a POSIX shell.');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-terminal-target-group-'));
+  const first = path.join(root, 'first.txt'), second = path.join(root, 'second.txt');
+  await writeFile(first, 'First editor\n'); await writeFile(second, 'Second editor\n');
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', first], env: { ...env, SHELL: '/bin/bash', XDG_CONFIG_HOME: path.join(root, 'config') } });
+  const page = await app.firstWindow();
+  try {
+    await focusApplication(app);
+    await expect(page.getByRole('tab', { name: /first.txt/ })).toBeVisible();
+    await page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), second);
+    await expect(page.getByRole('tab', { name: /second.txt/ })).toHaveAttribute('aria-selected', 'true');
+    await dragTerminal(page, page.getByRole('tab', { name: /second.txt/ }), page.locator('.group-body'), direction);
+    await expect(page.locator('.editor-group')).toHaveCount(2);
+    const source = page.locator('.editor-group').filter({ has: page.getByRole('tab', { name: /first.txt/ }) });
+    const target = page.locator('.editor-group').filter({ has: page.getByRole('tab', { name: /second.txt/ }) });
+    await source.getByRole('tab', { name: /first.txt/ }).click();
+    await expect(source).toHaveClass(/focused/);
+    await expect(target).not.toHaveClass(/focused/);
+
+    await target.getByRole('button', { name: 'New terminal', exact: true }).click();
+    await expect(target.getByRole('tab', { name: /^Terminal 1/ })).toHaveAttribute('aria-selected', 'true');
+    await expect(target).toHaveClass(/focused/);
+    await expect(source.locator('.tab-name')).toHaveText(['first.txt']);
+    await expect(source.getByRole('tab', { name: /first.txt/ })).toHaveAttribute('aria-selected', 'true');
+    await expect(source.locator('.view-lines')).toContainText('First editor');
+    await expect(input(page)).toBeFocused();
+    await run(input(page), 'printf target-group > terminal-target.txt');
+    await expect.poll(() => readFile(path.join(root, 'terminal-target.txt'), 'utf8').catch(() => '')).toBe('target-group');
+  } finally {
+    await page.screenshot({ path: test.info().outputPath('terminal-target-group.png') }).catch(() => {});
+    await disposeApplication(app); await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('canceling quit and reloading a document retain the PTY and external file watcher', async () => {
   test.skip(process.platform === 'win32', 'Commands use a POSIX shell.');
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-quit-reload-'));

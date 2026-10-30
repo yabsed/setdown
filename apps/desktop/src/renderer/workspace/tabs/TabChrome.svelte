@@ -64,7 +64,7 @@ import type { AppActions } from '../../ports/ui-actions';
     <button class="new-resource-button new-web-tab-button" type="button" title="New web tab (Ctrl/Cmd+T)" aria-label="New web tab" onclick={() => { actions.focusGroup(groupId); actions.newWebTab(); }}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 10a8 8 0 1 0-9 9M3 11h15M11 3c-3 4-3 12 0 16M11 3c1.5 2 2.3 4.5 2.4 7M18 14v7M14.5 17.5h7"/></svg>
     </button>
-    <button class="new-resource-button new-terminal-tab-button" type="button" title="New terminal" aria-label="New terminal" onclick={() => { actions.focusGroup(groupId); actions.newTerminal(); }}>
+    <button class="new-resource-button new-terminal-tab-button" type="button" title="New terminal" aria-label="New terminal" onclick={() => actions.newTerminal(groupId)}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10V5a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7M6 8l4 4-4 4M18 14v7M14.5 17.5h7"/></svg>
     </button>
   </div>

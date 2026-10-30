@@ -5,6 +5,8 @@ terminal is a pinned workspace tab: reorder it, drop it on another tab strip,
 split a group horizontally or vertically, or drag it into a separate window.
 Switching tabs and moving between groups preserves the xterm instance and PTY.
 Multiple terminal groups can remain visible at once.
+The New terminal button creates its tab in that button's group, even while
+another editor group is focused or still activating asynchronously.
 
 The activity-bar Terminal button and Ctrl+backquote toggle the terminal-session
 sidebar. Its activity icon follows Browser; the session rows and empty-list
