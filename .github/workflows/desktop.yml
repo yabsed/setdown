@@ -32,10 +32,10 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Install the real clangd used by service tests
+      - name: Install native tools used by service tests
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y clangd
+          sudo apt-get install --no-install-recommends -y build-essential clangd cmake meson ninja-build
       - name: Unit tests and architecture boundaries
         run: npm test
       # Tooling tests read the pinned sources before the build initializes them.

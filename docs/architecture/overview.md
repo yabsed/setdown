@@ -105,8 +105,10 @@ renderer 기능이 `renderer/app`을 역참조하지 않는다. 기능 간 연�
 
 단위 테스트에도 실제 외부 프로세스가 있다. Pyright/basedpyright는 npm 설치본을
 사용하고, clangd 서비스 테스트는 `clangd` 또는 `SETDOWN_CLANGD_PATH`가 필요하다.
-일반 CI에서 clangd를 명시적으로 설치한다. Rust/Fortran GUI suite와 notebook
-외부 도구 suite의 설치 조건은 manifest에 따로 기록하며 미설치를 성공으로 세지 않는다.
+분석 준비 테스트는 실제 CMake와 Meson으로 C++ 프로젝트를 구성하므로 `cmake`,
+`meson`, `ninja`와 C/C++ 컴파일러·Make도 필요하다. 일반 CI에서 `build-essential`,
+`clangd`, `cmake`, `meson`, `ninja-build`를 명시적으로 설치한다. Rust/Fortran GUI suite와
+notebook 외부 도구 suite의 설치 조건은 manifest에 따로 기록하며 미설치를 성공으로 세지 않는다.
 
 현재 보장 사항은 [성능 계약 진입점](../preview-performance-contract.md)과
 [기능별 계약](../contracts/)에서, 날짜별 실행 근거는 [검증 기록](../validation/)에서
