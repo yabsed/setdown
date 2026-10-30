@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({ directory: '', handles: new Map<string, (...ar
 vi.mock('electron', () => ({ app: { getPath: () => mocks.directory, on: (key: string, fn: (...args: any[]) => void) => mocks.app.set(key, fn), quit: vi.fn() },
   ipcMain: { handle: (key: string, fn: (...args: any[]) => any) => mocks.handles.set(key, fn),
     on: (key: string, fn: (...args: any[]) => void) => mocks.events.set(key, fn) } }));
-vi.mock('../notebook/python-environments', () => ({ notebookPython: { resolve: async () => ({ python: '/usr/bin/python3', env: {} }) } }));
+vi.mock('../notebook/python-environments', () => ({ notebookPython: { list: async () => ({ candidates: [], selected: '/usr/bin/python3' }), resolve: async () => ({ python: '/usr/bin/python3', env: {} }) } }));
 vi.mock('./server-session', () => ({ ServerSession: class {
   readonly ready = Promise.resolve({ notebookDocumentSync: { notebookSelector: [{ notebook: 'jupyter-notebook' }] }, textDocumentSync: { openClose: true, change: 2, save: { includeText: true } } });
   readonly capabilities = { forDocument: () => ({ textDocumentSync: { openClose: true, change: 2, save: { includeText: true } } }) };
@@ -310,4 +310,35 @@ test('server cancellation code and data survive the main IPC handler', async () 
   expect(await f.invoke('request', f.first, document.id, 1, 'tokens', 'textDocument/semanticTokens/full', {}))
     .toEqual({ $setdownError: { code: -32802, message: 'reschedule', data: { retriggerRequest: true } } });
   f.send('close', f.first, document.id);
+});
+
+test('current-document restart retires only its provider session, not another language or window', async () => {
+  const f = fixture();
+  await f.invoke('open', f.first, f.document('python'));
+  await f.invoke('open', f.first, f.document('cpp', 'main.cpp'));
+  await f.invoke('open', f.second, f.document('other-window'));
+  const [python, cpp, other] = mocks.servers;
+  await f.invoke('restart', f.first, f.document('python').path, 'pyright');
+  expect(python.stop).toHaveBeenCalledOnce(); expect(cpp.stop).not.toHaveBeenCalled(); expect(other.stop).not.toHaveBeenCalled();
+  expect(f.first.sender.send).toHaveBeenCalledWith('language:event', { type: 'configuration', servers: ['pyright'], documents: [{ id: 'python', generation: 'generation-python' }] });
+  await f.invoke('open', f.first, { ...f.document('python'), text: 'latest unsaved text', version: 9, generation: 'reconnected' });
+  expect(mocks.servers.at(-1)!.notify).toHaveBeenCalledWith('textDocument/didOpen', expect.objectContaining({ textDocument: expect.objectContaining({ text: 'latest unsaved text', version: 9 }) }));
+});
+
+test('project environment actions reject foreign documents and forged candidates without launching services', async () => {
+  const f = fixture(), file = f.document('python').path;
+  await expect(f.invoke('environment', f.first, path.resolve('not-open.py'), 'python')).rejects.toThrow(/not open/);
+  await expect(f.invoke('select-environment', f.first, file, 'python', { kind: 'python', value: '/arbitrary/program' })).rejects.toThrow(/no longer available/);
+  await expect(f.invoke('select-environment', f.first, file, 'python', { kind: 'compilation', value: 'automatic' })).rejects.toThrow(/does not apply/);
+  expect(() => f.invoke('answer-message', f.first, file, 'pyright', 'forged', 0)).toThrow(/no longer connected/);
+  expect(mocks.servers).toHaveLength(0);
+});
+
+test('project Basic editing does not change the global catalog Enable/Disable controls', async () => {
+  const f = fixture(), file = f.document('python').path;
+  const result = await f.invoke('select-environment', f.first, file, 'python', { kind: 'server', value: 'off' });
+  expect(result.servers.every((server: { enabled: boolean }) => !server.enabled)).toBe(true);
+  const catalog = await f.invoke('catalog', f.first);
+  expect(catalog.entries.find((entry: { id: string }) => entry.id === 'pyright').enabled).toBe(true);
+  expect(await f.invoke('open', f.first, f.document('python'))).toEqual({ unavailable: 'missing' });
 });

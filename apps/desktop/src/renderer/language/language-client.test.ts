@@ -31,7 +31,7 @@ function fixture(file = '/project/main.py', capabilities: import('vscode-languag
   const tab = createWorkspaceTab('tab-1', { path: file, name: file.split('/').at(-1)!, text: 'text', savedText: 'text',
     revision: 0, savedRevision: 0, isUntitled: false, diskVersion: { mtimeMs: 0, size: 0 } }, 'editor',
   { sourceLine: 1, yRatio: .3, reason: 'empty-document', confidence: 'fallback' });
-  const port: LanguageApi = { changeNotebook: vi.fn(async () => ({})), editApplied: vi.fn(),
+  const port: LanguageApi = { answerMessage: vi.fn(), environment: vi.fn(), selectEnvironment: vi.fn(), prepareEnvironment: vi.fn(), cancelPreparation: vi.fn(), changeNotebook: vi.fn(async () => ({})), editApplied: vi.fn(),
     open: vi.fn(async document => { opened.push(document); return { uri: 'file:///project/main.py', capabilities }; }),
     change: vi.fn(async () => {}), close: vi.fn(), saved: vi.fn(), cancel: vi.fn(), restart: vi.fn(async () => {}), configuration: vi.fn(async () => []), catalog: vi.fn(async () => ({ release: '', entries: [] })),
     rescan: vi.fn(async () => {}), useAutomatic: vi.fn(async () => {}), selectCandidate: vi.fn(async () => {}),

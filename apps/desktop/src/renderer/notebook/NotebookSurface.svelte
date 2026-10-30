@@ -41,8 +41,8 @@
   const selected = $derived.by(() => { void controllerRevision; return new Set(controller.selected); });
   const selectedPython = $derived.by(() => { void executionRevision; return execution?.selectedPython; });
   const environmentLabel = $derived(environments.candidates.find(item => item.path === selectedPython)?.name ?? 'Python');
-  async function refreshEnvironments() {
-    try { environments = await desktop.notebook.environments(path); await execution?.loadEnvironment(); }
+  async function refreshEnvironments(refresh = false) {
+    try { environments = await desktop.notebook.environments(path); await execution?.loadEnvironment(refresh); }
     catch (error) { actionError = String(error); }
     finally { environmentReady = true; }
   }
@@ -317,6 +317,11 @@
     void refreshEnvironments();
     const selectionChanges = controller.subscribe(() => controllerRevision++);
     if (scroll) scroll.scrollTop = controller.scrollTop;
+    const environmentChanges = desktop.language.onEvent(event => {
+      if (event.type !== 'environment' || event.language !== 'python') return;
+      const file = path.replaceAll('\\', '/'), root = event.root.replaceAll('\\', '/').replace(/\/$/, '');
+      if (file.startsWith(root + '/')) void refreshEnvironments(true);
+    });
     const executionChanges = execution.subscribe(() => { executionRevision++; });
     const unsubscribe = entry.document.subscribe(() => { revision = entry.document.revision; });
     const updateZoom = (id?: string) => { if (!id || id === entry.id) factor = textZoomFactor(entry.id); };
@@ -329,7 +334,7 @@
         registerMonacoThemes(monaco);
         theme = snapshot.id; api = monaco; monaco.editor.setTheme(monacoThemeName(theme));
       }).catch(error => { if (!disposed) loadError = String(error); });
-    return () => { window.removeEventListener('setdown:notebook-location', navigateCell); window.removeEventListener('setdown:notebook-find', findNotebook); disposed = true; cancelAnimationFrame(scrollFrame); dragEnd(); selectionChanges(); unsubscribe(); executionChanges(); themes(); zoom(); };
+    return () => { window.removeEventListener('setdown:notebook-location', navigateCell); window.removeEventListener('setdown:notebook-find', findNotebook); disposed = true; cancelAnimationFrame(scrollFrame); dragEnd(); selectionChanges(); unsubscribe(); executionChanges(); environmentChanges(); themes(); zoom(); };
   });
   $effect(() => {
     if (!active || !api || !environmentReady || entry.document.error || entry.document.language !== 'python') return;

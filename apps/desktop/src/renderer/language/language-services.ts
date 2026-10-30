@@ -1,3 +1,4 @@
+import { languageFeaturePlan } from './language-feature-plan';
 import type * as M from 'monaco-editor';
 import type { DocumentContent as DocumentTab } from '../../core/workspace/document-store';
 import type { LanguageRoute } from '../../core/document/language-support';
@@ -47,16 +48,7 @@ export class LanguageServices {
         if (states.size) this.states.set(model, states); else this.states.delete(model);
         this.options.changed();
       },
-      filterCapabilities: (model, server, original) => {
-        const capabilities = { ...original };
-        const routes = this.matching(model), own = routes.find(route => route.server === server);
-        const formatter = routes.find(route => route.formatting === true)?.server;
-        if ((formatter ? server !== formatter : key !== primaryChannel) || own?.formatting === false) {
-          delete capabilities.documentFormattingProvider; delete capabilities.documentRangeFormattingProvider; delete capabilities.documentOnTypeFormattingProvider;
-        }
-        if (key !== primaryChannel) { delete capabilities.renameProvider; delete capabilities.semanticTokensProvider; }
-        return capabilities;
-      },
+      filterCapabilities: (model, server, original) => languageFeaturePlan(server, key === primaryChannel, this.matching(model), original),
     });
     this.clients.set(key, client); return client;
   }
@@ -93,7 +85,7 @@ export class LanguageServices {
     for (const client of [...this.clients.values()]) await client.beforeSave(model, reason);
   }
   saved(model: M.editor.ITextModel, text?: string) { for (const client of this.clients.values()) client.saved(model, text); }
-  invalidate(servers: string[], documents?: Array<{ id: string; generation: string }>) { for (const client of this.clients.values()) client.invalidate(servers, documents); }
+  invalidate(servers: string[], documents?: Array<{ id: string; generation: string }>, roots?: string[]) { for (const client of this.clients.values()) client.invalidate(servers, documents, roots); }
   retryUnavailable() { for (const client of this.clients.values()) client.retryUnavailable(); }
   async restart(): Promise<void> {
     if (this.restarting) return this.restarting;

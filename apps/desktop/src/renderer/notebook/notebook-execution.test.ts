@@ -114,3 +114,14 @@ it('canceling startup while the saved environment is loading cannot launch a lat
   resolve({ candidates: [], selected: '/saved/environment/python' }); await starting;
   expect(f.port.run).not.toHaveBeenCalled(); expect(f.execution.state).toBe('stopped'); f.execution.dispose();
 });
+
+it('project default refresh updates a stopped notebook but preserves the running kernel and selected analysis environment', async () => {
+  const f = fixture(); await f.execution.loadEnvironment();
+  vi.mocked(f.port.environments).mockResolvedValue({ candidates: [], selected: '/project/.venv/bin/python' });
+  await f.execution.loadEnvironment(true); expect(f.execution.selectedPython).toBe('/project/.venv/bin/python');
+  await f.execution.run([f.a]); f.send({ type: 'state', state: 'idle' });
+  vi.mocked(f.port.environments).mockResolvedValue({ candidates: [], selected: '/other/environment/python' });
+  await f.execution.loadEnvironment(true);
+  expect(f.execution.selectedPython).toBe('/project/.venv/bin/python'); expect(f.port.shutdown).not.toHaveBeenCalled();
+  expect(f.execution.message).toContain('running kernel'); f.execution.dispose();
+});

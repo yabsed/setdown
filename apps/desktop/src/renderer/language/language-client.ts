@@ -1,3 +1,4 @@
+import type { AnalysisObservation } from '../../core/document/analysis-context';
 import type * as M from 'monaco-editor';
 import type * as L from 'vscode-languageserver-protocol';
 import type { DocumentContent as DocumentTab } from '../../core/workspace/document-store';
@@ -18,7 +19,7 @@ import { diagnosticsFor, type DiagnosticStore } from './diagnostic-store';
 import type { ProviderSupport } from './document-support';
 import { featureNames } from '../../protocol/language-features';
 
-type Binding = { serverName?: string; hasDiagnostics?: boolean; id: string; context?: string[]; unavailable?: 'missing' | 'selection-needed'; lease: ReturnType<DiagnosticStore['lease']>; diagnosticChannels: Map<string, L.Diagnostic[]>; capabilities: LanguageCapabilities; diagnosticCache: DiagnosticCache; diagnostics: L.Diagnostic[]; refresh: Map<LanguageRefresh, Set<() => void>>; serverId: string; tab: DocumentTab; model: M.editor.ITextModel; path: string; generation: string; connected: Promise<LanguageConnection | LanguageUnavailable>;
+type Binding = { messages?: import('../../protocol/language').LanguageServerMessage[]; analysis?: AnalysisObservation; serverName?: string; hasDiagnostics?: boolean; id: string; context?: string[]; unavailable?: 'missing' | 'selection-needed'; lease: ReturnType<DiagnosticStore['lease']>; diagnosticChannels: Map<string, L.Diagnostic[]>; capabilities: LanguageCapabilities; diagnosticCache: DiagnosticCache; diagnostics: L.Diagnostic[]; refresh: Map<LanguageRefresh, Set<() => void>>; serverId: string; tab: DocumentTab; model: M.editor.ITextModel; path: string; generation: string; connected: Promise<LanguageConnection | LanguageUnavailable>;
   uri?: string; sync?: ReturnType<typeof textSynchronization>; queue: Promise<unknown>; listener: M.IDisposable; providers: M.IDisposable[]; failed: boolean; state: 'starting' | 'ready' | 'failed' | 'unavailable'; message?: string };
 export type LanguageOptions = {
   port: LanguageApi;
@@ -48,7 +49,7 @@ export class LanguageClient {
     this.disposables.push({ dispose: options.port.onEvent(event => {
       if (event.type === 'context') {
         const binding = [...this.bindings.values()].find(b => b.id === event.id && b.generation === event.generation);
-        if (binding) { binding.context = event.context; this.publishStatus(); }
+        if (binding) { binding.context = event.context; binding.messages = event.messages; if (event.analysis) binding.analysis = { ...event.analysis, analysis: event.analysis.progress.length ? 'working' : binding.analysis?.analysis === 'observed' ? 'observed' : 'waiting', freshness: binding.analysis?.freshness ?? 'none' }; this.publishStatus(); }
         return;
       }
       if (event.type === 'refresh') {
@@ -89,7 +90,10 @@ export class LanguageClient {
       if (event.type === 'status') {
         const affected = [...this.bindings.values()].filter(binding => event.documents.some(document => document.id === binding.id && document.generation === binding.generation));
         if (!affected.length) return;
-        for (const binding of affected) { binding.state = event.state; binding.message = event.message; }
+        for (const binding of affected) {
+          binding.state = event.state; binding.message = event.message;
+          if (event.server) { this.setServer(binding, event.server.id); binding.serverName = event.server.name; }
+        }
         this.publishStatus();
         if (event.state === 'failed') for (const binding of affected) {
           binding.failed = true; binding.diagnostics = []; binding.diagnosticChannels.clear(); binding.lease.clear();
@@ -138,7 +142,7 @@ export class LanguageClient {
       if ('unavailable' in connection) {
         binding.state = 'unavailable'; binding.unavailable = connection.unavailable; binding.listener.dispose(); this.publishStatus(); return;
       }
-      binding.uri = connection.uri; binding.state = 'ready'; binding.context = connection.context; binding.serverName = connection.name;
+      binding.uri = connection.uri; binding.state = 'ready'; binding.context = connection.context; binding.analysis = connection.analysis; binding.messages = connection.messages; binding.serverName = connection.name;
       this.setServer(binding, connection.server ?? binding.serverId);
       binding.sync = textSynchronization(connection.capabilities);
       if (this.bindings.get(model) === binding && !binding.failed) this.installProviders(binding, connection.capabilities);
@@ -146,6 +150,7 @@ export class LanguageClient {
     binding.listener = model.onDidChangeContent(event => {
       if (!this.applying) this.cancel(binding);
       binding.diagnostics = []; binding.diagnosticChannels.clear(); binding.lease.clear();
+      if (binding.analysis && binding.analysis.freshness !== 'stale') { binding.analysis = { ...binding.analysis, analysis: 'working', freshness: 'stale' }; this.publishStatus(); }
       const version = model.getVersionId();
       // Monaco reports simultaneous edits against the old model. Descending
       // offsets turn them into LSP's sequential edits, including CRLF and emoji.
@@ -214,8 +219,9 @@ export class LanguageClient {
       return null;
     } finally { cancel.dispose(); this.requests.delete(id); if (commandVersions) this.commandEdits.delete(binding); }
   }
-  invalidate(servers: string[], documents?: Array<{ id: string; generation: string }>): void {
-    for (const binding of [...this.bindings.values()]) if (servers.includes(binding.serverId) && (!documents || documents.some(document => document.id === binding.id && document.generation === binding.generation))) this.unbind(binding.model);
+  invalidate(servers: string[], documents?: Array<{ id: string; generation: string }>, roots?: string[]): void {
+    const inside = (file: string, root: string) => { file = file.replaceAll('\\', '/'); root = root.replaceAll('\\', '/').replace(/\/$/, ''); return file === root || file.startsWith(root + '/'); };
+    for (const binding of [...this.bindings.values()]) if ((!roots || roots.some(root => inside(binding.path, root))) && servers.includes(binding.serverId) && (!documents || documents.some(document => document.id === binding.id && document.generation === binding.generation))) this.unbind(binding.model);
   }
   retryUnavailable(): void {
     for (const binding of [...this.bindings.values()]) if (binding.state === 'unavailable' || binding.state === 'failed') {
@@ -246,7 +252,7 @@ export class LanguageClient {
     for (const binding of bindings) this.options.documentStatus?.(binding.model, {
       id: binding.serverId, name: binding.serverName ?? binding.serverId, kind: 'server', state: binding.state === 'unavailable' ? binding.unavailable ?? 'missing' : binding.state,
       features: binding.failed ? [] : featureNames(binding.capabilities), checks: !binding.failed && binding.state === 'ready' && (binding.capabilities.diagnosticProvider || binding.hasDiagnostics) ? 'Server diagnostics' : 'none',
-      message: binding.message, context: binding.context,
+      message: binding.message, context: binding.context, analysis: binding.analysis, messages: binding.messages, diagnosticCount: binding.diagnostics.length,
     });
     const current = bindings.find(binding => binding.state === 'failed') ?? bindings.find(binding => binding.state === 'starting');
     this.options.status(current?.state ?? (bindings.some(b => b.state === 'ready') ? 'ready' : 'unavailable'), current?.message);
@@ -350,7 +356,9 @@ export class LanguageClient {
     if (!binding.hasDiagnostics) { binding.hasDiagnostics = true; binding.providers.push(ownLanguageDiagnostics(this.api, binding.model, binding.serverId)); this.publishStatus(); }
     binding.diagnosticChannels.set(channel, diagnostics);
     binding.diagnostics = [...binding.diagnosticChannels.values()].flat();
-    binding.lease.publish(channel, diagnostics.map(d => marker(this.api, d)), version);
+    binding.lease.publish(channel, diagnostics.map(d => marker(this.api, d)), version, { diagnostics, context: binding.analysis?.context });
+    if (binding.analysis) binding.analysis = { ...binding.analysis, analysis: 'observed', freshness: version === undefined ? 'best-effort' : 'current' };
+    this.publishStatus();
   }
   private applyEdit(edit: M.languages.WorkspaceEdit): void {
     const grouped = new Map<M.editor.ITextModel, M.editor.IIdentifiedSingleEditOperation[]>();

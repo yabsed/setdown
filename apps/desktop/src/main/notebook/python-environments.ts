@@ -5,6 +5,7 @@ import { promises as fs } from 'node:fs';
 import { readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
 import { executableFile, ServerDiscovery } from '../language/server-discovery';
 import type { NotebookEnvironments } from '../../protocol/notebook';
+import { analysisPreferences } from '../language/analysis-preferences';
 
 /** Metadata-only discovery. A notebook's kernelspec never supplies a command. */
 export class PythonEnvironments {
@@ -22,7 +23,7 @@ export class PythonEnvironments {
     }
     return this.choices;
   }
-  async list(file: string): Promise<NotebookEnvironments> {
+  async list(file: string, boundary?: string): Promise<NotebookEnvironments> {
     const discovery = this.discovery ??= new ServerDiscovery();
     const found = await discovery.find(process.platform === 'win32' ? 'python' : 'python3', { resolveEnvironment: true });
     const choices = this.load(), candidates: NotebookEnvironments['candidates'] = [];
@@ -31,10 +32,12 @@ export class PythonEnvironments {
         candidates.push({ path: python, source, name: name ?? path.basename(path.dirname(path.dirname(python))) });
     };
     const executable = (root: string) => path.join(root, process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
-    await add(choices[file], 'Saved');
-    for (let root = path.dirname(file), depth = 0; depth < 4; depth++, root = path.dirname(root)) {
+    const project = analysisPreferences.pythonFor(file);
+    await add(choices[file], 'Notebook override');
+    await add(project, 'Project selection');
+    for (let root = path.dirname(file), depth = 0; depth < (boundary ? 64 : 4); depth++, root = path.dirname(root)) {
       for (const name of ['.venv', 'venv']) await add(executable(path.join(root, name)), 'Project', name);
-      if (path.dirname(root) === root) break;
+      if (path.dirname(root) === root || root === boundary) break;
     }
     for (const key of ['VIRTUAL_ENV', 'CONDA_PREFIX']) {
       const root = found.environment.env[key]; if (root) await add(key === 'CONDA_PREFIX' && process.platform === 'win32' ? path.join(root, 'python.exe') : executable(root), key === 'VIRTUAL_ENV' ? 'Virtual environment' : 'Conda');
@@ -65,7 +68,7 @@ export class PythonEnvironments {
     }
     // Project-local executables are offered for explicit selection, never launched by discovery.
     // Never silently replace an explicitly selected environment that disappeared.
-    return { selected: choices[file] ?? found.selected?.path, candidates };
+    return { selected: choices[file] ?? project ?? found.selected?.path, candidates };
   }
   async select(file: string, python: string): Promise<void> {
     if (!path.isAbsolute(file) || !/\.ipynb$/i.test(file) || !path.isAbsolute(python) || !await executableFile(python))

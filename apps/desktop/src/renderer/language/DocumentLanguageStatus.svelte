@@ -1,13 +1,14 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { documentSupport, supportLabel, featureLabels, type DocumentSupport } from './document-support';
+  import AnalysisEnvironment from './AnalysisEnvironment.svelte';
   import { isComposingInput } from '../editor/composition-guard';
   let { tabId }: { tabId: string } = $props();
-  let revision = $state(0), open = $state(false);
+  let revision = $state(0), open = $state(false), error = $state('');
   let button = $state<HTMLButtonElement>(), panel = $state<HTMLDivElement>();
   const support = $derived.by((): DocumentSupport | undefined => { revision; return documentSupport.get(tabId); });
   const label = $derived(supportLabel(support?.providers ?? []));
-  const issue = $derived(support?.providers.some(provider => provider.state === 'failed' || provider.state === 'selection-needed'));
+  const issue = $derived(support?.providers.some(provider => provider.state === 'failed' || provider.state === 'selection-needed' || provider.analysis?.context.environment === 'action-needed'));
   $effect(() => { tabId; open = false; });
   onMount(() => {
     const off = documentSupport.subscribe(() => revision++);
@@ -30,6 +31,7 @@
         {#each support.choices as choice}<option value={choice.id}>{choice.name}</option>{/each}
       </select></label>
       <p class="hint">Language mode applies to this open document. Syntax colors and basic editing remain available without an analysis server.</p>
+      <AnalysisEnvironment {support} />
       {#each support.providers as provider (provider.id)}
         <section class:failed={provider.state === 'failed'}>
           <div class="provider-title"><strong>{provider.name}</strong><span>{provider.state === 'ready' ? provider.kind === 'builtin' ? 'Built in' : 'Connected' : provider.state === 'missing' ? 'Not installed' : provider.state === 'selection-needed' ? 'Selection needed' : provider.state}</span></div>
@@ -37,17 +39,30 @@
             {#if features.length > 6}<details><summary>All supported features</summary><p>{features.join(' · ')}</p></details>{/if}
           {/if}
           <p>Checks: {provider.checks === 'none' ? provider.message === 'Diagnostics provided by the analysis server.' ? 'Provided by analysis server' : 'Not provided' : provider.checks}</p>
+          {#each provider.messages ?? [] as message (message.id)}
+            <div class="server-message"><p>{message.message}</p>
+              {#each message.actions as action, index}<button onclick={() => support?.answerMessage(provider.id, message.id, index).catch(failure => error = String(failure))}>{action}</button>{/each}
+              <button onclick={() => support?.answerMessage(provider.id, message.id).catch(failure => error = String(failure))}>Dismiss</button>
+            </div>
+          {/each}
           {#if provider.message}<p class="message">{provider.message}</p>{/if}
-          {#each provider.context ?? [] as context}<p class="context">{context}</p>{/each}
+          {#if provider.analysis}
+            <p class="hint">{provider.analysis.analysis === 'working' ? 'Analyzing…' : provider.analysis.analysis === 'observed' ? 'Results received for this open file' : 'Waiting for analysis results'} · {provider.diagnosticCount ?? 0} diagnostics</p>
+            {#if provider.analysis.freshness === 'best-effort'}<p class="hint">The server did not include a document version.</p>{/if}
+            {#each provider.analysis.progress as progress}<p class="hint" role="status">{progress}</p>{/each}
+          {/if}
+          {#if provider.context?.length}<details><summary>Service details</summary>{#each provider.context as context}<p class="context">{context}</p>{/each}</details>{/if}
+          {#if provider.kind === 'server' && provider.state === 'failed'}<button onclick={() => support?.restart(provider.id).catch(failure => error = String(failure))}>Restart {provider.name}</button>{/if}
         </section>
       {/each}
       {#if !support.providers.some(provider => provider.state === 'ready' && provider.checks !== 'none')}
         <p class="hint">Code checks are not active for this document.</p>
       {/if}
+      {#if error}<p class="message" role="alert">{error}</p>{/if}
       <footer>
         <button onclick={() => { open = false; window.dispatchEvent(new Event('setdown:language-support')); }}>Set up analysis…</button>
         <button onclick={() => { open = false; support?.problems(); }}>Problems</button>
-        {#if support.providers.some(provider => provider.kind === 'server')}<button onclick={() => support?.restart()}>Restart services</button>{/if}
+        {#if support.providers.some(provider => provider.kind === 'server')}<button onclick={() => support?.restart().catch(failure => error = String(failure))}>Restart project services</button>{/if}
       </footer>
     </div>
   {/if}
@@ -69,6 +84,8 @@
   section { padding: 12px 0; border-top: 1px solid var(--app-border); }
   .provider-title span, .hint { color: var(--app-muted-text); font-size: 11px; }
   p { margin: 6px 0; overflow-wrap: anywhere; }
+  .server-message { margin: 8px 0; padding: 8px; background: var(--app-canvas); border: 1px solid var(--app-border); border-radius: 4px; }
+  .server-message button { margin: 4px 6px 0 0; padding: 4px 6px; border: 1px solid var(--app-border); border-radius: 3px; }
   .context { color: var(--app-muted-text); font-size: 11px; }
   .failed .message { color: var(--app-warning-text); }
   footer { display: flex; flex-wrap: wrap; gap: 6px; border-top: 1px solid var(--app-border); padding-top: 10px; }

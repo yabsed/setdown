@@ -1,7 +1,7 @@
 /** Routing metadata is independent of analysis, installation and editor APIs. */
 export type LanguageRoute = {
   role?: 'primary' | 'supplementary'; enabled?: boolean; formatting?: boolean;
-  scopes?: { root: string; role?: 'primary' | 'supplementary'; formatting?: boolean }[];
+  scopes?: { root: string; enabled?: boolean; role?: 'primary' | 'supplementary'; formatting?: boolean }[];
   server: string; languageId: string; monacoId?: string;
   extensions: string[]; caseSensitiveExtensions?: string[];
   filenames?: string[]; filenamePatterns?: string[];
@@ -53,6 +53,7 @@ export function resourceLanguageRoutes(routes: LanguageRoute[], file: string): L
   return routes.map(route => (route.scopes ?? []).filter(scope => {
     const root = normalize(scope.root); return resource === root || resource.startsWith(root + '/');
   }).sort((a, b) => a.root.length - b.root.length).reduce((current, scope) => ({ ...current,
+    ...(scope.enabled === undefined ? {} : { enabled: scope.enabled }),
     ...(scope.role === undefined ? {} : { role: scope.role }), ...(scope.formatting === undefined ? {} : { formatting: scope.formatting }),
   }), route));
 }

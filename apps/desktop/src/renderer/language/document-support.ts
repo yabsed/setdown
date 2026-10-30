@@ -1,13 +1,18 @@
+import type { LanguageServerMessage } from '../../protocol/language';
+import type { AnalysisObservation, AnalysisSelection, DocumentAnalysis } from '../../core/document/analysis-context';
 /** Small renderer store shared by editor groups. It has no Monaco/runtime imports. */
 export type ProviderSupport = {
   id: string; name: string; kind: 'builtin' | 'server';
   state: 'starting' | 'ready' | 'failed' | 'missing' | 'selection-needed' | 'off';
-  features: string[]; checks: string; message?: string; context?: string[];
+  messages?: LanguageServerMessage[]; analysis?: AnalysisObservation; diagnosticCount?: number; features: string[]; checks: string; message?: string; context?: string[];
 };
 export type DocumentSupport = {
   id: string; language: string; name: string; path: string;
   providers: ProviderSupport[]; choices: { id: string; name: string }[];
-  setLanguage(id: string): void; restart(): void; problems(): void;
+  setLanguage(id: string): void; restart(server?: string): Promise<void>; problems(): void;
+  answerMessage(server: string, request: string, action?: number): Promise<void>;
+  environment(): Promise<DocumentAnalysis>; selectEnvironment(selection: AnalysisSelection): Promise<DocumentAnalysis>;
+  prepareEnvironment(): Promise<{ output: string }>; cancelPreparation(): Promise<void>;
 };
 const documents = new Map<string, DocumentSupport>();
 const listeners = new Set<() => void>();
@@ -20,7 +25,10 @@ export const documentSupport = {
 export function supportLabel(providers: ProviderSupport[]): string {
   if (providers.some(p => p.state === 'failed')) return 'Analysis issue';
   if (providers.some(p => p.state === 'selection-needed')) return 'Choose analysis';
+  if (providers.some(p => p.analysis?.context.environment === 'action-needed')) return 'Choose environment';
   if (providers.some(p => p.state === 'starting')) return 'Starting analysis';
+  if (providers.some(p => p.analysis?.analysis === 'working')) return 'Analyzing';
+  if (providers.some(p => p.analysis?.analysis === 'observed' && p.analysis.freshness !== 'stale')) return 'Open-file checks';
   if (providers.some(p => p.kind === 'server' && p.state === 'ready')) return 'Language services';
   if (providers.some(p => p.state === 'ready' && p.checks !== 'none')) return 'Local checks';
   if (providers.some(p => p.state === 'ready' && p.features.length)) return 'Editing support';

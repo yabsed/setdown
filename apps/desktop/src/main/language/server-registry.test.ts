@@ -184,3 +184,17 @@ test('partial project settings inherit global fields immediately and after resta
   registry.configure('ruff', {}, project);
   expect(registry.options('ruff', project)).toEqual(registry.options('ruff'));
 });
+
+test('project primary choices and disabled state survive reload without changing other projects', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-project-choice-')); roots.push(root);
+  const registry = new ServerRegistry(root), project = path.join(root, 'project'), other = path.join(root, 'other');
+  registry.setEnabled('pyright', true);
+  registry.setEnabled('basedpyright', true, project);
+  expect(registry.candidates(path.join(project, 'main.py'))[0].server).toBe('basedpyright');
+  expect(registry.candidates(path.join(other, 'main.py'))[0].server).toBe('pyright');
+  for (const definition of registry.definitions().filter(d => d.languages.some(l => l.languageId === 'python'))) registry.setEnabled(definition.id, false, project);
+  const reopened = new ServerRegistry(root);
+  expect(reopened.candidates(path.join(project, 'main.py'))).toEqual([]);
+  expect(reopened.candidates(path.join(other, 'main.py'))[0].server).toBe('pyright');
+  expect(reopened.associations().find(route => route.server === 'pyright')?.scopes).toContainEqual(expect.objectContaining({ root: project, enabled: false }));
+});

@@ -1,7 +1,9 @@
+import type { Diagnostic } from 'vscode-languageserver-protocol';
+import type { AnalysisContext } from '../../core/document/analysis-context';
 import type * as M from 'monaco-editor';
 
 export type DiagnosticBatch = {
-  provider: string; channel: string; epoch: string; version?: number;
+  raw?: Diagnostic[]; context?: AnalysisContext; provider: string; channel: string; epoch: string; version?: number;
   freshness: 'versioned' | 'best-effort'; items: M.editor.IMarkerData[];
 };
 /** One store feeds markers and Problems. Each lease owns only its contribution. */
@@ -27,9 +29,9 @@ export class DiagnosticStore {
       this.listeners.forEach(listener => listener());
     };
     return {
-      publish: (channel: string, items: M.editor.IMarkerData[], version?: number) => {
+      publish: (channel: string, items: M.editor.IMarkerData[], version?: number, metadata?: { diagnostics: Diagnostic[]; context?: AnalysisContext }) => {
         if (!live || model.isDisposed() || (version !== undefined && model.getVersionId() !== version)) return;
-        channels.set(channel, { provider, channel, epoch, version, freshness: version === undefined ? 'best-effort' : 'versioned',
+        channels.set(channel, { raw: metadata?.diagnostics, context: metadata?.context, provider, channel, epoch, version, freshness: version === undefined ? 'best-effort' : 'versioned',
           items: items.map(item => ({ ...item, source: item.source ?? provider })) });
         publish();
       },

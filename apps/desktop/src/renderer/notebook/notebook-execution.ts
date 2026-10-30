@@ -182,9 +182,11 @@ export class NotebookExecution {
     await this.port.selectPython(this.path, python);
     if (!this.disposed) { this.shutdown(); this.selectedPython = python; this.python = python; this.changed(); }
   }
-  async loadEnvironment(): Promise<void> {
+  async loadEnvironment(refresh = false): Promise<void> {
     const file = this.path; const result = await this.port.environments(file);
-    if (!this.disposed && file === this.path && !this.selectedPython) { this.selectedPython = result.selected; this.python = result.selected ?? ''; this.changed(); }
+    if (this.disposed || file !== this.path) return;
+    if (!this.selectedPython || refresh && (this.state === 'stopped' || this.state === 'failed')) { this.selectedPython = result.selected; this.python = result.selected ?? ''; this.changed(); }
+    else if (refresh && result.selected && result.selected !== this.selectedPython) { this.message = 'Project Python changed. The running kernel and its analysis environment are preserved; choose the new environment when ready to restart.'; this.changed(); }
   }
   dispose(): void { this.shutdown(); this.disposed = true; this.release(); this.listeners.clear(); }
 }

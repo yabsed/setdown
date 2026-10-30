@@ -314,8 +314,11 @@ HTTP response on port 5173 before launching the app. If that port is already in
 use, it exits instead of attaching Electron to another server. Generated files
 in `dist-electron` do not trigger renderer reloads.
 
-If your environment sets `ELECTRON_RUN_AS_NODE=1`, unset it for commands that
-launch Electron.
+The development/start launcher selects the existing Linux display policy before
+starting Electron, so its XWayland fallback does not terminate the process watched
+by the development server. Explicit `--ozone-platform` choices are preserved.
+It also removes `ELECTRON_RUN_AS_NODE` for the GUI child; unset this variable yourself
+when invoking the Electron binary directly.
 
 ## Install and package
 

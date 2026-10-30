@@ -26,3 +26,16 @@ test('offers project Python without launching or selecting it, and persists an e
   expect((await reopened.list(path.join(state.root, 'other.ipynb'))).selected).toBe(path.join(state.root, 'system-python'));
   await rm(python); await expect(reopened.resolve(file)).rejects.toThrow(/missing/); reopened.dispose();
 });
+
+test('ordinary Python and notebooks share the project choice while a notebook override remains authoritative', async () => {
+  const { analysisPreferences } = await import('../language/analysis-preferences');
+  const root = path.join(state.root, 'project'), file = path.join(root, 'notes.ipynb'), projectPython = path.join(state.root, 'project-python');
+  await writeFile(projectPython, ''); analysisPreferences.set(root, 'python', projectPython);
+  const service = new PythonEnvironments();
+  expect((await service.resolve(file)).python).toBe(projectPython);
+  expect((await service.list(path.join(root, 'main.py'), root)).selected).toBe(projectPython);
+  await service.select(file, path.join(state.root, 'system-python'));
+  expect((await service.resolve(file)).python).toBe(path.join(state.root, 'system-python'));
+  expect((await service.list(path.join(root, 'main.py'), root)).selected).toBe(projectPython);
+  service.dispose();
+});

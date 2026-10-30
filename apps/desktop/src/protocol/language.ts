@@ -1,3 +1,4 @@
+import type { AnalysisObservation, AnalysisSelection, DocumentAnalysis } from '../core/document/analysis-context';
 import type { LanguageRefresh } from './language-features';
 import type { Diagnostic, DiagnosticOptions, ServerCapabilities, TextDocumentContentChangeEvent } from 'vscode-languageserver-protocol';
 import type { LanguageRoute } from '../core/document/language-support';
@@ -53,18 +54,20 @@ export const languageMethods = [
 export type LanguageMethod = typeof languageMethods[number];
 export type LanguageCell = { id: string; version: number; text: string };
 export type LanguageDocument = { server?: string; languageId?: string; notebook?: 'python'; cells?: LanguageCell[]; python?: string; id: string; generation: string; path: string; text: string; version: number };
-export type LanguageConnection = { name?: string; context?: string[]; uri: string; cells?: Record<string, string>; capabilities: LanguageCapabilities; server?: string };
+export type LanguageServerMessage = { id: string; message: string; actions: string[] };
+export type LanguageConnection = { messages?: LanguageServerMessage[]; analysis?: AnalysisObservation; name?: string; context?: string[]; uri: string; cells?: Record<string, string>; capabilities: LanguageCapabilities; server?: string };
 export type LanguageUnavailable = { unavailable: 'missing' | 'selection-needed' };
 export type LanguageEvent =
-  | { type: 'configuration'; servers?: string[]; documents?: { id: string; generation: string }[] }
+  | { type: 'configuration'; roots?: string[]; servers?: string[]; documents?: { id: string; generation: string }[] }
   | { type: 'discovery' }
+  | { type: 'environment'; root: string; language: string }
   | { type: 'diagnostics'; server?: string; id: string; generation: string; version: number; cell?: string; cellVersion?: number; unversioned?: boolean; diagnostics: Diagnostic[] }
   | { type: 'refresh'; documents: { id: string; generation: string }[]; feature: LanguageRefresh }
   | { type: 'capabilities'; id: string; generation: string; capabilities: LanguageCapabilities }
-  | { type: 'context'; id: string; generation: string; context: string[] }
+  | { type: 'context'; messages?: LanguageServerMessage[]; analysis?: AnalysisObservation; id: string; generation: string; context: string[] }
   | { type: 'activity' }
   | { type: 'apply-edit'; id: string; generation: string; requestId: string; versions?: { id: string; generation: string; version: number }[]; edit: import('vscode-languageserver-protocol').WorkspaceEdit }
-  | { type: 'status'; documents: { id: string; generation: string }[]; state: 'starting' | 'ready' | 'failed'; message?: string };
+  | { type: 'status'; documents: { id: string; generation: string }[]; state: 'starting' | 'ready' | 'failed'; message?: string; server?: { id: string; name: string } };
 export type LanguageApi = {
   open(document: LanguageDocument): Promise<LanguageConnection | LanguageUnavailable>;
   change(id: string, version: number, changes: TextDocumentContentChangeEvent[]): Promise<void>;
@@ -75,7 +78,12 @@ export type LanguageApi = {
   releaseItems?(id: string, handles: string[]): void;
   cancel(requestId: string): void;
   editApplied(requestId: string, applied: boolean, failureReason?: string): void;
-  restart(): Promise<void>;
+  restart(file?: string, server?: string): Promise<void>;
+  answerMessage(file: string, server: string, request: string, action?: number): Promise<void>;
+  environment(file: string, language: string): Promise<DocumentAnalysis>;
+  selectEnvironment(file: string, language: string, selection: AnalysisSelection): Promise<DocumentAnalysis>;
+  prepareEnvironment(file: string, language: string): Promise<{ output: string }>;
+  cancelPreparation(file: string, language: string): Promise<void>;
   configuration(): Promise<LanguageRoute[]>;
   catalog(): Promise<LanguageCatalog>;
   rescan(): Promise<void>;

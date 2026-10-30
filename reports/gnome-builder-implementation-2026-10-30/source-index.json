@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "baseCommit": "a0396f6a5fd186286268af41649c9abcffb79c74",
+  "builderCommit": "0e4dbc7afb05983fbe7f4ec922d09a40f4ac1718",
+  "benchmark": {
+    "finishedAt": "2026-10-30T08:57:48.141Z",
+    "passed": true,
+    "runsPerApp": 5,
+    "launches": 80,
+    "comparisons": 48,
+    "harnessHash": "28008fcfe188a2f440acb21888bb9abab42eb171b16b682da04ca3bdbc839c8c",
+    "baselineArtifacts": {
+      "renderer": "0b5ed51075544c3edf957ed0df52810b67bd72f78fa6257e7010df3419edc6d3",
+      "main": "22c9db57d3bd58231b099123e9d6d159f9465e31e98e52870535bf9117858cc9"
+    },
+    "candidateArtifacts": {
+      "renderer": "cbcd127d7cf6a5a931a9c6068ecf3f5094f0407c2d035f901b602887729d8e75",
+      "main": "d2ec24ac8cba58db82b57923bf76e8f41dc1275584ca1fc4ce25288d080926fd"
+    }
+  },
+  "files": {
+    "apps/desktop/src/core/document/analysis-context.ts": "f08a0fad35a950628671b37ebc232d766dc40d30e0575823bdf88c63b0d93f25",
+    "apps/desktop/src/core/document/language-support.ts": "0d7cbe1d720b714d30856ca7031133dbd8612f3828e3af5fb22e43585ebe0e2c",
+    "apps/desktop/src/main/language/analysis-context.test.ts": "ffadd9d4c3ab85c6bf5d9f62714dbaaa22cee4eb8104cf0817f77871f8a03d27",
+    "apps/desktop/src/main/language/analysis-context.ts": "9a39c0afc92c59bfd0e9bcc5706ea46b7ce7c4735d40228d1ca98eef41d33a66",
+    "apps/desktop/src/main/language/analysis-preferences.ts": "04c4230e42dba254a9a48507dfa2273b715a7b0e89862fd8ee08aaf09d50dd81",
+    "apps/desktop/src/main/language/analysis-preparation.test.ts": "61698a2781346b3f6e366edcb332d3cece66a76033332555ad90f6d78ed4d8c5",
+    "apps/desktop/src/main/language/analysis-preparation.ts": "6f0347ddd378247dd05e0aa6e068c67a63c76b45b69246942700af6bc2b43bf2",
+    "apps/desktop/src/main/language/language-manager.test.ts": "f1342d6fd5ac2c7ee1a73d4c69c7250a383a6f2fb59b9268358ce7ce9dd0c033",
+    "apps/desktop/src/main/language/language-manager.ts": "9c530a75c5ce9819ec4cbe37f566d5cc0af76a2cab387656d568eccb00bb91c1",
+    "apps/desktop/src/main/language/language-supervisor.test.ts": "f4c9bab62654e84db0975f1f694c7e1b36d291e09f93449181d43fd18cc963e4",
+    "apps/desktop/src/main/language/language-supervisor.ts": "aa56133e78fb740072b8a0413f7f10bf4c0b2f39017f09db69d7007680665c76",
+    "apps/desktop/src/main/language/server-registry.test.ts": "57f5143f5341643934d5876319e4e28acc46ec63eeddac64359b403f322fae00",
+    "apps/desktop/src/main/language/server-registry.ts": "fbd152da2de825a21a7512ec9ae56933a3f9987e12d4a7a3bc20e5dc2ab009b4",
+    "apps/desktop/src/main/language/server-session.test.ts": "eae42437b43d42b3c8716db1a885dc2cb1b014ea059f6a9f152d471998d49128",
+    "apps/desktop/src/main/language/server-session.ts": "80673d167f24bbcaa8be83f1a36669bcc6f6b99154ac5083abc46e636e92af22",
+    "apps/desktop/src/main/notebook/python-environments.test.ts": "376c31ad10a9ca2aea819025b0f39a25ded482f0da3a31b81066a6c3fdd6be86",
+    "apps/desktop/src/main/notebook/python-environments.ts": "723c1db71b5605e49dd6ae9bad9bbc1fb773791de20223e3aded6a62fe6c6952",
+    "apps/desktop/src/preload/index.ts": "7f22af3670ad947300168d00e522a2431553e6dd22e068543e95c74380184be4",
+    "apps/desktop/src/protocol/language.ts": "7851d4988803b2dfdc80bbc26e99c3c14dd6bb826b94845196a21b7fa76f0227",
+    "apps/desktop/src/renderer/adapters/monaco-editor.ts": "de44f2b3b5479119533a83efaf22676499ca7d12139cc7000532c80d4675ffef",
+    "apps/desktop/src/renderer/language/AnalysisEnvironment.svelte": "761626e775fe851c6a46ea3d084adba3a745c5ae50e4dc0a8189cb0096eed8b6",
+    "apps/desktop/src/renderer/language/DocumentLanguageStatus.svelte": "117bcb4c6a0b70b72556a59d3ff5a71c5ab8ac8a302508d1f363a5171a5c08bb",
+    "apps/desktop/src/renderer/language/diagnostic-store.ts": "661ab40926c80a5832442c91f6eb746a6d6c34a2a4f9976797325a0e3f041df3",
+    "apps/desktop/src/renderer/language/document-support.ts": "56386820f701d3d80d64966e219b9f048ebaec4d62820821f0a0f7625c9d3fc7",
+    "apps/desktop/src/renderer/language/language-client.test.ts": "99a545d18381dd53da2010642777a2038fe3d573ae9b395116813e382127d90c",
+    "apps/desktop/src/renderer/language/language-client.ts": "1f52fa7255b5775da2f91c7b3151b2f9c925a5c59f3dc1ef858fa7cdd88297d7",
+    "apps/desktop/src/renderer/language/language-feature-plan.ts": "49c2d0d4fd32251d17f9182ad67a00d826f4534110594270551cb8aabd0c0e7b",
+    "apps/desktop/src/renderer/language/language-services.ts": "f382c0067d4c1de3b4b7f02ecc90f58c7f6efb2c3aed028c04ae37c2fcf36fd5",
+    "apps/desktop/src/renderer/notebook/NotebookSurface.svelte": "d508725bcf029dd53c3c6b3b569e20d626d714f8dc0c43b8eef460e132753db7",
+    "apps/desktop/src/renderer/notebook/notebook-execution.test.ts": "7083afdb23b1815a53f20a0dfb74cee3ef7c1c389d9c9b9e3d7d9fcefdfd075e",
+    "apps/desktop/src/renderer/notebook/notebook-execution.ts": "9ad7cd8e25021245936dd23464d9b7af81b0d18c2896000365583b73ffcd13a1",
+    "apps/desktop/test/e2e/language/project-environment.spec.ts": "ecc194f9c8b64cfea71bcba5bef60e2f358ee0f571f6c4ba33b94e5d3f4be866",
+    "apps/desktop/test/suites.json": "3ee028ce6a69b21bc002d9d0345106aa3334da2bfedc7be45f39f37681c6f2a0",
+    "docs/language-support.md": "0e144b806743b3608f74542a4e94f0c2b04d08055b5c71e56053616f6ef29d8d",
+    "docs/preview-performance-contract.md": "1c98eaa3a529c66114c99432ee37c031baa9228f0ce77bb3b39ec8afa3b2189d",
+    "docs/validation/2026-10-30-builder-analysis-environments.md": "eae58442cf25f9c0ec63a203bf5638d7bbc803e7031d6972850baee5cca4c2f7"
+  },
+  "validationArtifacts": {
+    "preview-contract-final.log": "6e844dc5eef53e497636e988ad74cbab37d4d02824f4fb8ac6fb8d2479bb849b",
+    "contract-unit-recovery.log": "93f1c4872ae673ceccbb902c6c931ca176406a43dce98c52d5ef631d2e8ad314",
+    "language-electron-recovery.log": "f79bf299b1260c9e7d7837cb496525f9e1157d76ed29e26ef7529c3dc65e657d",
+    "configure-cancellation.log": "d7ba3ffcf6d63362825c6cdf70f2c00b2c1fa4e4d98d807065eea005af87b872",
+    "build-recovery.log": "96e7b61c32ba0687b7ab0955c482e20f0fa381b75f12bbbcf802c0e2bfd23b83",
+    "benchmark.log": "6c6094ec2b4d4805d24a5a463701240fc5642c6a136742e14968481aa95e80f7",
+    "benchmark/comparison.json": "d2e9e8600e27648c2f540b3fe12e11a48445b36aefd4c5f40fb4537b36adce8a"
+  }
+}

@@ -98,7 +98,10 @@
       "src/core/workspace/document-store.test.ts",
       "src/renderer/project/source-control/review-workspace.test.ts",
       "src/renderer/reader/preview-layout-coordinator.test.ts",
-      "src/main/project/completeness.test.ts"
+      "src/main/project/completeness.test.ts",
+      "src/main/language/analysis-context.test.ts",
+      "src/main/language/analysis-preparation.test.ts",
+      "src/main/language/language-supervisor.test.ts"
     ]
   },
   "e2e": {
@@ -302,6 +305,9 @@
       "previewContract": true
     },
     "workspace/editor-tools.spec.ts": {
+      "previewContract": true
+    },
+    "language/project-environment.spec.ts": {
       "previewContract": true
     }
   },

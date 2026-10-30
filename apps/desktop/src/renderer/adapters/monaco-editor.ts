@@ -80,7 +80,7 @@ export class MonacoEditor {
       if (event.type === 'discovery') { this.languageClient?.retryUnavailable(); return; }
       if (event.type !== 'configuration') return;
       this.languageEpoch++;
-      if (event.servers) this.languageClient?.invalidate(event.servers, event.documents);
+      if (event.servers) this.languageClient?.invalidate(event.servers, event.documents, event.roots);
       else { this.languageClient?.dispose(); this.languageClient = undefined; }
       this.languageLoading = undefined; this.languageRoutes = undefined; this.languageConfiguration = undefined;
       if (!event.servers) {
@@ -487,7 +487,12 @@ export class MonacoEditor {
         if (id) this.languageOverrides.set(documentIdentity(tab), id); else this.languageOverrides.delete(documentIdentity(tab));
         this.languageClient?.unbind(model); this.connectLanguage(tab, model, api);
       },
-      restart: () => { retargetBuiltin(api, model, tab.document.path); void this.languageClient?.restart().catch(error => console.warn('Language restart failed', error)); },
+      restart: async server => { retargetBuiltin(api, model, tab.document.path); await this.options.language!.port.restart(tab.document.path, server); this.languageClient?.retryUnavailable(); },
+      answerMessage: (server, request, action) => this.options.language!.port.answerMessage(tab.document.path, server, request, action),
+      environment: () => this.options.language!.port.environment(tab.document.path, language),
+      selectEnvironment: selection => this.options.language!.port.selectEnvironment(tab.document.path, language, selection),
+      prepareEnvironment: () => this.options.language!.port.prepareEnvironment(tab.document.path, language),
+      cancelPreparation: () => this.options.language!.port.cancelPreparation(tab.document.path, language),
       problems: () => {
         const editor = [...this.groupEditors.values()].find(entry => entry.editor.getModel() === model)?.editor;
         if (editor) void this.languageClient?.showNavigation('problems', editor);

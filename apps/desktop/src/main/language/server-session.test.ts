@@ -180,3 +180,27 @@ test.each(['pyright', 'basedpyright'])('%s off preset keeps core diagnostics and
   expect(published.at(-1)?.diagnostics).toEqual([]);
   expect(failures).toEqual([]);
 }, 30_000);
+
+test('server action requests remain nonmodal, bounded to their session and cancelled by shutdown', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-language-actions-')); roots.push(root);
+  const fixture = path.join(root, 'server.cjs');
+  await writeFile(fixture, `
+    const {createMessageConnection, StreamMessageReader, StreamMessageWriter} = require(${JSON.stringify(require.resolve('vscode-jsonrpc/node'))});
+    const c = createMessageConnection(new StreamMessageReader(process.stdin), new StreamMessageWriter(process.stdout));
+    c.onRequest('initialize', () => ({capabilities:{}}));
+    c.onRequest('ask', () => c.sendRequest('window/showMessageRequest', {message:'Reload workspace?',actions:[{title:'Reload',detail:'opaque origin'},{title:'Later'}]}));
+    c.onRequest('shutdown', () => null); c.onNotification('exit', () => process.exit(0)); c.listen();
+  `);
+  const server = new ServerSession({ executable: process.execPath, args: [fixture] }, root, () => {}, () => {});
+  sessions.push(server); await server.ready;
+  const answer = server.request('ask', {}); await expect.poll(() => server.messages.length).toBe(1);
+  expect(server.messages[0]).toMatchObject({ message: 'Reload workspace?', actions: ['Reload', 'Later'] });
+  expect(() => server.answerMessage(server.messages[0].id, 8)).toThrow(/no longer/);
+  const id = server.messages[0].id; server.answerMessage(id, 0);
+  expect(await answer).toEqual({ title: 'Reload', detail: 'opaque origin' });
+  expect(() => server.answerMessage(id, 0)).toThrow(/no longer/);
+  const dismissed = server.request('ask', {}); await expect.poll(() => server.messages.length).toBe(1);
+  server.answerMessage(server.messages[0].id); expect(await dismissed).toBeNull();
+  const pending = server.request('ask', {}).catch(() => null); await expect.poll(() => server.messages.length).toBe(1);
+  await server.stop(); await pending; expect(server.messages).toEqual([]);
+});

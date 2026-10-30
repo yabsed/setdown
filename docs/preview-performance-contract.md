@@ -613,3 +613,21 @@ Implementation and dated execution evidence: [Language support system validation
 The final build passed all 149 isolated Electron contract scenarios. The separate
 baseline comparison completed 80 launches and all 48 timing buckets passed the
 unchanged tolerances; first, second and warm measurements are recorded separately.
+
+
+## Project analysis environments — 2026-10-30
+
+The code-document status popover adds project interpreter/SDK/build selection and
+scoped recovery without changing Markdown/review bounds, preparation or model
+identity. Environment discovery and configure jobs run in main, off the source
+presentation and save paths. Notebook project-default refresh preserves an active
+kernel and its analysis environment; it must not restart a running kernel or
+execute cells. A stopped notebook can adopt the new shared default.
+
+`language/project-environment.spec.ts` covers real Python import repair, C++ build
+flags, TypeScript SDK/disabled state, explicit CMake preparation, process recovery,
+unsaved buffers and Undo/Redo. The contract also includes analysis context and
+CMake/Meson preparation unit/integration checks. Existing focus/IME, ordinary and
+Git-review transition guarantees and benchmark tolerances are unchanged.
+
+Execution evidence: [Builder analysis environment implementation](validation/2026-10-30-builder-analysis-environments.md).

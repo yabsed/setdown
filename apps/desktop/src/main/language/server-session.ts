@@ -1,3 +1,4 @@
+import type { LanguageServerMessage } from '../../protocol/language';
 import { randomUUID } from 'node:crypto';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
@@ -47,6 +48,13 @@ export class ServerSession {
   private readonly partialResults = new Map<string, unknown[]>();
   private readonly fail: (reason: string) => void;
   readonly capabilities: ServerCapabilitiesState;
+  private readonly messageRequests = new Map<string, { value: LanguageServerMessage; finish(index?: number): void }>();
+  get messages(): LanguageServerMessage[] { return [...this.messageRequests.values()].map(entry => entry.value); }
+  answerMessage(id: string, index?: number): void {
+    const entry = this.messageRequests.get(id);
+    if (!entry || (index !== undefined && (!Number.isSafeInteger(index) || index < 0 || index >= entry.value.actions.length))) throw Error('This server action is no longer available.');
+    entry.finish(index);
+  }
   readonly logs: string[] = [];
   readonly context = new Map<string, string>();
   private phase = 'initialization';
@@ -65,6 +73,7 @@ export class ServerSession {
     const fail = this.fail = (reason: string) => {
       if (this.stopped) return;
       this.stopped = true;
+      for (const entry of this.messageRequests.values()) entry.finish();
       this.failureMessage = `${this.phase}: ${reason}${this.stderr ? `\n${this.stderr}` : ''}`;
       this.connection.dispose();
       for (const token of this.pending) token.cancel();
@@ -106,7 +115,17 @@ export class ServerSession {
     for (const method of ['window/logMessage', 'window/showMessage'])
       this.connection.onNotification(method, (params: { message: string }) => this.log(params.message));
     // Requests are recorded in the panel. No server-driven modal interrupts typing.
-    this.connection.onRequest('window/showMessageRequest', (params: { message: string }) => { this.log(params.message); return null; });
+    this.connection.onRequest('window/showMessageRequest', (params: { message: string; actions?: { title: string }[] }) => {
+      this.log(params.message);
+      if (!Array.isArray(params.actions) || !params.actions.length || params.actions.length > 8 || this.messageRequests.size >= 8 || params.actions.some(action => typeof action?.title !== 'string' || action.title.length > 200)) return null;
+      const actions = params.actions, id = randomUUID();
+      return new Promise(resolve => {
+        const timer = setTimeout(() => finish(), 120_000); timer.unref();
+        const finish = (index?: number) => { clearTimeout(timer); this.messageRequests.delete(id); resolve(index === undefined ? null : actions[index]); hooks.activity?.(); };
+        this.messageRequests.set(id, { value: { id, message: String(params.message).slice(0, 4096), actions: actions.map(action => action.title) }, finish });
+        hooks.activity?.();
+      });
+    });
     this.connection.onRequest('window/workDoneProgress/create', () => null);
     this.connection.onNotification('$/progress', (params: { token: string | number; value: { kind?: string; title?: string; message?: string; percentage?: number } }) => {
       const { value, token } = params;
@@ -210,6 +229,7 @@ export class ServerSession {
   }
   stop(): Promise<void> { return this.stopping ??= this.stopProcess(); }
   private async stopProcess(): Promise<void> {
+    for (const entry of this.messageRequests.values()) entry.finish();
     await this.watcher?.then(watcher => watcher.unsubscribe()).catch(() => {});
     if (this.stopped) return this.exited;
     for (const token of this.pending) token.cancel();

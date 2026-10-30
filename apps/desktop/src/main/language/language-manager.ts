@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { app, dialog, ipcMain, shell } from 'electron';
 import { readFile, stat } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { watchFile, unwatchFile } from 'node:fs';
 import { CancellationTokenSource } from 'vscode-jsonrpc/node';
 import type { WorkspaceEdit, ApplyWorkspaceEditResult, ServerCapabilities, TextDocumentContentChangeEvent } from 'vscode-languageserver-protocol';
 import { languageMethods, textSynchronization, type LanguageCapabilities, type LanguageCatalog, type LanguageCatalogEntry, type LanguageConnectionDraft, type LanguageServerOptions, type LanguageDocument, type LanguageEvent, type LanguageMethod } from '../../protocol/language';
@@ -11,7 +11,6 @@ import { canonicalPath, isInside } from '../documents/file-system';
 import type { WindowState } from '../windows/window-state';
 import { ServerRegistry, findExecutable } from './server-registry';
 import { validateLanguageDefinition } from '../../core/document/language-definition';
-import { serverProfile } from './server-definitions';
 import { languageRoot, type LanguageRoot } from './language-root';
 import { fileOperationMethod, filteredFileOperation, type LanguageFileOperation } from './file-operations';
 import { ServerItems } from './server-items';
@@ -21,7 +20,12 @@ import { ServerDiscovery, type Discovery } from './server-discovery';
 import { languageCatalog, packageDiscovery, profileSource } from './catalog/profiles';
 import type { LanguageServerDefinition } from '../../core/document/language-definition';
 import { NotebookLanguageHost } from './notebook-language-host';
-import { applyPythonProjectSettings, isPythonSettingsFile, pythonProjectSettings, pythonSettingsContext } from './python-project-settings';
+import { serverProfile } from './server-definitions';
+import { AnalysisContextService, type AnalysisPlan } from './analysis-context';
+import { analysisPreferences } from './analysis-preferences';
+import { AnalysisPreparation } from './analysis-preparation';
+import { LanguageServiceSupervisor } from './language-supervisor';
+import type { AnalysisObservation, AnalysisSelection, DocumentAnalysis } from '../../core/document/analysis-context';
 import { languageFailure } from '../../protocol/language-request';
 
 type Binding = { languageId: string; id: string; generation: string; uri: string; version: number; server: ServerSession; capabilities: LanguageCapabilities };
@@ -30,6 +34,10 @@ type Owner = { state: WindowState; documents: Map<string, Binding>; servers: Map
 
 /** A separate server for each (window, server kind, project root). Unsaved buffers never cross windows. */
 export class LanguageManager {
+  private readonly contexts = new AnalysisContextService();
+  private readonly supervisor = new LanguageServiceSupervisor();
+  private readonly preparation = new AnalysisPreparation();
+  private readonly analysisRevisions = new Map<string, number>();
   private readonly notebooks = new NotebookLanguageHost();
   private readonly owners = new Map<number, Owner>();
   private readonly watched = new Set<number>();
@@ -43,7 +51,7 @@ export class LanguageManager {
   constructor(private readonly stateFor: (id: number) => WindowState | null, private readonly discovery = new ServerDiscovery()) {}
   private registryValue: ServerRegistry | undefined;
   private readonly subscribers = new Map<number, WindowState>();
-  private readonly sessions = new Map<ServerSession, { id: string; root: string; rootReason?: string; configuration?: string; state: 'starting' | 'ready' | 'failed'; message?: string; features?: string[] }>();
+  private readonly sessions = new Map<ServerSession, { plan?: AnalysisPlan; recoveryKey?: string; unwatch?: () => void; id: string; root: string; rootReason?: string; configuration?: string; state: 'starting' | 'ready' | 'failed'; message?: string; features?: string[] }>();
   private updating: Promise<void> = Promise.resolve();
   private get registry(): ServerRegistry { return this.registryValue ??= new ServerRegistry(app.getPath('userData')); }
   private async changed(task: () => unknown | Promise<unknown>): Promise<void> {
@@ -238,13 +246,38 @@ export class LanguageManager {
       if (save && (!save.includeText || (typeof text === 'string' && text.length <= 16 * 1024 * 1024)))
         void binding.server.notify('textDocument/didSave', { textDocument: { uri: binding.uri }, ...(save.includeText ? { text } : {}) }).catch(() => {});
     });
-    ipcMain.handle('language:restart', async event => {
-      const owner = state(event); await this.dispose(owner.webContentsId);
+    ipcMain.handle('language:restart', async (event, file?: string, provider?: string) => {
+      const owner = state(event);
+      if (file !== undefined) {
+        const resource = this.ownedFile(owner, file);
+        const current = this.owners.get(owner.webContentsId);
+        const servers = new Set([...current?.documents.values() ?? []].filter(b => b.uri === pathToFileURL(resource).href && (!provider || this.sessions.get(b.server)?.id === provider)).map(b => b.server));
+        for (const server of servers) { const key = this.sessions.get(server)?.recoveryKey; if (key) this.supervisor.reset(key); await this.reconnect(current!, server); }
+        return;
+      } await this.dispose(owner.webContentsId);
       if (!owner.window.webContents.isDestroyed()) owner.window.webContents.send('language:event', { type: 'configuration', servers: ['notebook-python'] });
     });
     ipcMain.handle('language:configuration', async event => {
       const owner = state(event); this.subscribe(owner); await this.updating; return this.registry.associations();
     });
+    ipcMain.handle('language:answer-message', (event, file: string, provider: string, request: string, action?: number) => {
+      const owner = state(event), resource = this.ownedFile(owner, file);
+      const binding = [...this.owners.get(owner.webContentsId)?.documents.values() ?? []].find(b => b.uri === pathToFileURL(resource).href && this.sessions.get(b.server)?.id === provider);
+      if (!binding || typeof request !== 'string') throw Error('The language service is no longer connected.');
+      binding.server.answerMessage(request, action);
+    });
+    ipcMain.handle('language:environment', (event, file: string, language: string) => this.documentEnvironment(state(event), file, language, true));
+    ipcMain.handle('language:select-environment', (event, file: string, language: string, selection: AnalysisSelection) => this.selectEnvironment(state(event), file, language, selection));
+    ipcMain.handle('language:prepare-environment', async (event, file: string, language: string) => {
+      const owner = state(event), context = await this.documentEnvironment(owner, file, language, true);
+      if (!context.preparation) throw Error('No supported project configuration was found.');
+      const result = await this.preparation.run(owner.webContentsId, context.root, context.preparation, this.discovery);
+      this.ownedFile(owner, file);
+      if (!(await stat(result.database)).isFile()) throw Error('Configuration completed without a compilation database. Choose a build folder or inspect the build configuration.\n' + result.output);
+      await this.updateEnvironment(context.root, language, () => analysisPreferences.set(context.root, 'compilation', result.database));
+      return { output: result.output };
+    });
+    ipcMain.handle('language:cancel-preparation', async (event, file: string, language: string) => { const owner = state(event), context = await this.documentEnvironment(owner, file, language); this.preparation.cancel(owner.webContentsId, context.root); });
     ipcMain.handle('language:catalog', event => this.catalogFor(state(event)));
     ipcMain.handle('language:rescan', event => { this.subscribe(state(event)); return this.rescan(); });
     ipcMain.handle('language:automatic', (event, id: string) => { state(event); return this.changed(() => this.registry.useAutomatic(id)); });
@@ -305,7 +338,7 @@ export class LanguageManager {
     });
     let drained = false;
     app.on('will-quit', event => {
-      this.discovery.dispose();
+      this.discovery.dispose(); this.preparation.dispose(); this.supervisor.dispose();
       if (drained || (!this.owners.size && !this.draining.size && !this.notebooks.running)) return;
       event.preventDefault();
       void Promise.all([this.notebooks.dispose(), ...[...this.owners.keys()].map(id => this.dispose(id))])
@@ -325,7 +358,7 @@ export class LanguageManager {
     if (document?.notebook === 'python') return this.notebooks.open(state, document);
     this.subscribe(state);
     await this.updating;
-    const routes = this.registry.routes();
+    const routes = this.registry.routes(document?.path);
     const languagePath = document?.path;
     if (!document || typeof document.id !== 'string' || document.id.length > 128
       || typeof document.generation !== 'string' || document.generation.length > 128
@@ -357,7 +390,7 @@ export class LanguageManager {
     }
     const uri = pathToFileURL(file).href;
     this.close(state.webContentsId, document.id);
-    const configurations = new Map(candidates.map(c => [c.server, this.registry.fingerprint(c.server)]));
+    const configurations = new Map(candidates.map(c => [c.server, this.registry.fingerprint(c.server, file)]));
     const roots = new Map<string, LanguageRoot>();
     const rootFor = (definition: LanguageServerDefinition) => {
       if (!roots.has(definition.id)) roots.set(definition.id, languageRoot(file, definition,
@@ -375,10 +408,12 @@ export class LanguageManager {
     });
     let server = activeServer();
     let launch;
-    const current = () => pending.get(document.id) === opening && this.owners.get(state.webContentsId) === owner
+    let plan: AnalysisPlan | undefined;
+    const analysisRevision = this.analysisRevisions.get(root) ?? 0;
+    const current = () => analysisRevision === (this.analysisRevisions.get(root) ?? 0) && pending.get(document.id) === opening && this.owners.get(state.webContentsId) === owner
       && !state.window.isDestroyed() && !state.window.webContents.isDestroyed() && owns()
       && JSON.stringify(this.registry.candidates(languagePath, document.server, document.languageId)) === JSON.stringify(candidates)
-      && candidates.every(c => this.registry.fingerprint(c.server) === configurations.get(c.server));
+      && candidates.every(c => this.registry.fingerprint(c.server, file) === configurations.get(c.server));
     try {
       if (!server) for (;;) {
         const revision = this.discovery.generation;
@@ -412,6 +447,13 @@ export class LanguageManager {
         support = candidates.find(c => c.server === id)!;
         definition = this.registry.definition(support.server); root = rootFor(definition);
       }
+      if (!server) {
+        plan = await this.contexts.resolve(root, roots.get(support.server)?.reason ?? 'Project', definition, this.registry.options(support.server, file));
+        if (!current()) throw Error('Language document closed or configuration changed while resolving its environment.');
+        // Another document may have finished resolving the same context meanwhile.
+        server = activeServer();
+        if (!server && launch && definition.id === 'clangd') launch = this.contexts.launch(plan, launch, definition);
+      }
     } finally { if (pending.get(document.id) === opening) pending.delete(document.id); }
     const configuration = configurations.get(support.server)!;
     const owned = owner;
@@ -419,11 +461,9 @@ export class LanguageManager {
       if (!launch) throw Error('Language session closed during discovery.');
       const fingerprint = createHash('sha256').update(JSON.stringify([configuration, launch, this.registry.options(support.server, file)])).digest('hex').slice(0, 24);
       const key = `${support.server}:${root}:${fingerprint}`;
-      const pythonServer = /basedpyright/.test(definition.id) ? 'basedpyright' : 'pyright';
-      const python = definition.languages.some(language => language.languageId === 'python');
-      const projectSettings = python ? pythonProjectSettings(root) : undefined;
-      const profile = serverProfile(definition, this.registry.options(support.server, file));
-      if (projectSettings) profile.configuration = applyPythonProjectSettings(profile.configuration, projectSettings, pythonServer);
+      if (!plan) throw Error('No analysis launch plan.');
+      const profile = plan.profile;
+      const recoveryKey = `${state.webContentsId}:${support.server}:${root}`;
       server = new ServerSession(launch, root, params => {
         for (const binding of owned.documents.values()) {
           // Versionless push diagnostics are best-effort observations, never used as edit versions.
@@ -432,24 +472,26 @@ export class LanguageManager {
         }
       }, message => {
         const info = server && this.sessions.get(server);
-        if (info) { info.state = 'failed'; info.message = message; }
-        this.emit(owned, { type: 'status', state: 'failed', message,
+        if (!info || !server) return;
+        info.state = 'failed';
+        const recovering = this.supervisor.schedule(recoveryKey, () => {
+          if (server && this.sessions.has(server) && this.owners.get(state.webContentsId) === owned)
+            void this.reconnect(owned, server).catch(error => console.warn('Language recovery failed', error));
+        });
+        info.message = `${message}\n${recovering ? `Reconnecting (${recovering.attempt}/3)…` : 'Automatic recovery paused after repeated failures. Restart this service to try again.'}`;
+        this.emit(owned, { type: 'status', state: 'failed', message: info.message,
           documents: [...owned.documents.values()].filter(binding => binding.server === server).map(({ id, generation }) => ({ id, generation })) });
       }, profile, {
         filesChanged: paths => {
-          if (!python || !paths.some(file => isPythonSettingsFile(root, file)) || !server || !this.sessions.has(server)) return;
-          const affected = [...owned.documents.values()].filter(binding => binding.server === server);
-          for (const binding of affected) owned.documents.delete(binding.id);
-          for (const [key, instance] of owned.servers) if (instance === server) owned.servers.delete(key);
-          void this.stop(server);
-          this.emit(owned, { type: 'configuration', servers: [definition.id],
-            documents: affected.map(({ id, generation }) => ({ id, generation })) });
+          if (!server || !this.sessions.has(server) || !plan?.inputs.some(input => paths.includes(input))) return;
+          this.contexts.invalidate(root);
+          void this.reconnect(owned, server);
         },
         configuration: scopeUri => {
           let resource = file;
-          try { if (scopeUri?.startsWith('file:')) resource = fileURLToPath(scopeUri); } catch { /* Use the session context for invalid scopes. */ }
+          try { if (scopeUri?.startsWith('file:')) resource = fileURLToPath(scopeUri); } catch { /* Invalid scopes use the session document. */ }
           const settings = this.registry.options(definition.id, isInside(root, canonicalPath(resource)) ? resource : file).settings ?? definition.settings;
-          return projectSettings ? applyPythonProjectSettings(settings, projectSettings, pythonServer) : settings;
+          return plan!.configuration(settings);
         },
         refresh: feature => this.emit(owned, { type: 'refresh', feature,
           documents: [...owned.documents.values()].filter(b => b.server === server).map(({ id, generation }) => ({ id, generation })) }),
@@ -466,34 +508,28 @@ export class LanguageManager {
             for (const owner of this.owners.values()) for (const binding of owner.documents.values()) {
               const info = this.sessions.get(binding.server);
               if (info) this.emit(owner, { type: 'context', id: binding.id, generation: binding.generation,
-                context: [`Project: ${info.root}`, ...[...binding.server.context ?? []].map(([key, value]) => `${key}: ${value}`), ...binding.server.progress?.values() ?? []] });
+                messages: binding.server.messages, analysis: this.observation(binding.server), context: [`Project: ${info.root}`, ...[...binding.server.context ?? []].map(([key, value]) => `${key}: ${value}`), ...binding.server.progress?.values() ?? []] });
             }
           }, 500);
         },
         applyEdit: params => this.applyEdit(owned, server!, params.edit),
       });
-      if (projectSettings) for (const [key, value] of pythonSettingsContext(projectSettings, profile.configuration, pythonServer)) server.context?.set(key, value);
-      if (definition.id === 'clangd') {
-        const option = launch.args.findIndex(arg => arg === '--compile-commands-dir' || arg.startsWith('--compile-commands-dir='));
-        const directory = option < 0 ? undefined : launch.args[option].split('=').slice(1).join('=') || launch.args[option + 1];
-        const candidates = directory ? [path.resolve(root, directory, 'compile_commands.json')]
-          : [path.join(root, 'compile_commands.json'), path.join(root, 'build', 'compile_commands.json')];
-        const database = candidates.find(file => existsSync(file));
-        server.context?.set('Compilation database', database ? `${database} (detected)`
-          : directory ? `${candidates[0]} (configured, missing)` : 'Not found at the root or build directory; see server output for fallback flags');
-        if (existsSync(path.join(root, '.clangd'))) server.context?.set('clangd configuration', path.join(root, '.clangd'));
-      }
+      for (const evidence of plan.context.evidence) server.context?.set(evidence.split(': ')[0], evidence.split(': ').slice(1).join(': '));
       this.items.set(server, new ServerItems());
-      this.sessions.set(server, { id: support.server, root, rootReason: roots.get(support.server)?.reason, configuration: JSON.stringify(this.registry.options(support.server, file)), state: 'starting' });
+      this.sessions.set(server, { plan, recoveryKey, id: support.server, root, rootReason: roots.get(support.server)?.reason, configuration: JSON.stringify(this.registry.options(support.server, file)), state: 'starting' });
       owner.servers.set(key, server);
       server.watch(root);
+      const instance = server, watchedInputs = plan.inputs;
+      const onInput = (current: import('node:fs').Stats, previous: import('node:fs').Stats) => { if ((current.mtimeMs !== previous.mtimeMs || current.size !== previous.size || current.ino !== previous.ino) && this.sessions.has(instance)) { this.contexts.invalidate(root); void this.reconnect(owned, instance); } };
+      for (const input of watchedInputs) watchFile(input, { persistent: false, interval: 1500 }, onInput);
+      this.sessions.get(server)!.unwatch = () => { for (const input of watchedInputs) unwatchFile(input, onInput); };
     }
     if ([...owner.documents.values()].some(other => other.id !== document.id && other.uri === uri && other.server === server))
       throw new Error('This provider already owns the document.');
     const binding = { languageId: support.languageId, id: document.id, generation: document.generation, uri, version: document.version, server, capabilities: {} as ServerCapabilities };
     owner.documents.set(document.id, binding);
-    this.emit(owner, { type: 'status', state: 'starting', documents: [{ id: binding.id, generation: binding.generation }] });
-    await server.ready;
+    this.emit(owner, { type: 'status', state: 'starting', server: { id: support.server, name: definition.name }, documents: [{ id: binding.id, generation: binding.generation }] });
+    await server.ready.catch(error => { throw Error(this.sessions.get(server)?.message ?? String(error)); });
     const capabilities = server.capabilities.forDocument(uri, support.languageId);
     if (this.owners.get(state.webContentsId) !== owner || owner.documents.get(document.id) !== binding)
       throw new Error('Language document closed during initialization.');
@@ -506,7 +542,86 @@ export class LanguageManager {
     if (textSynchronization(capabilities).openClose) await server.notify('textDocument/didOpen', { textDocument: { uri: binding.uri, languageId: support.languageId,
       version: document.version, text: document.text } });
     this.emit(owner, { type: 'status', state: 'ready', documents: [{ id: binding.id, generation: binding.generation }] });
-    return { name: definition.name, uri: binding.uri, capabilities, server: support.server, context: [`Project: ${root}`, `Root: ${roots.get(support.server)?.reason ?? 'server session'}`, ...[...server.context ?? []].map(([key, value]) => `${key}: ${value}`)] };
+    return { messages: server.messages, analysis: this.observation(server), name: definition.name, uri: binding.uri, capabilities, server: support.server, context: [`Project: ${root}`, `Root: ${roots.get(support.server)?.reason ?? 'server session'}`, ...[...server.context ?? []].map(([key, value]) => `${key}: ${value}`)] };
+  }
+  private ownedFile(state: WindowState, file: string): string {
+    if (typeof file !== 'string' || file.length > 4096 || file.includes('\0') || !path.isAbsolute(file)
+      || state.window.isDestroyed() || state.window.webContents.isDestroyed()) throw Error('Invalid analysis document.');
+    const resource = canonicalPath(file);
+    if (!(state.currentDocument?.path === resource || state.rendererTabs.some(tab => !tab.isUntitled && tab.path === resource) || state.rendererGitReview?.path === resource))
+      throw Error('The analysis document is not open in this window.');
+    return resource;
+  }
+  private async documentEnvironment(state: WindowState, file: string, language: string, refresh = false): Promise<DocumentAnalysis> {
+    const resource = this.ownedFile(state, file); await this.updating;
+    if (typeof language !== 'string' || language.length > 80) throw Error('Invalid language.');
+    const definitions = this.registry.definitions().filter(d => d.languages.some(l => (l.monacoId ?? l.languageId) === language || l.languageId === language));
+    const candidates = this.registry.candidates(resource, undefined, language);
+    const definition = definitions.find(d => d.id === candidates[0]?.server) ?? definitions[0];
+    if (!definition) return { id: language, root: path.dirname(resource), rootReason: 'File directory', environment: 'usable', choices: [], issues: [], evidence: [], servers: [] };
+    const options = this.registry.options(definition.id, resource), root = languageRoot(resource, definition, state.projectRoot ?? undefined, options.root);
+    const plan = await this.contexts.resolve(root.path, root.reason, definition, options, refresh);
+    this.ownedFile(state, resource);
+    const running = [...this.owners.get(state.webContentsId)?.documents.values() ?? []].find(b => b.uri === pathToFileURL(resource).href && this.registry.role(this.sessions.get(b.server)?.id ?? definition.id, resource) === 'primary');
+    const selected = running ? this.sessions.get(running.server)?.id : this.registry.preferred(language, resource) ?? candidates.find(c => this.registry.definition(c.server).launch.kind === 'bundledNode')?.server ?? candidates[0]?.server;
+    return { ...plan.context, servers: definitions.map(d => ({ id: d.id, name: d.name, selected: d.id === selected, enabled: this.registry.enabled(d.id, resource), role: this.registry.role(d.id, resource) })) };
+  }
+  private async selectEnvironment(state: WindowState, file: string, language: string, selection: AnalysisSelection): Promise<DocumentAnalysis> {
+    if (!selection || !['python', 'typescript', 'compilation', 'server'].includes(selection.kind) || typeof selection.value !== 'string' || selection.value.length > 128) throw Error('Invalid environment selection.');
+    const context = await this.documentEnvironment(state, file, language, true);
+    if (selection.kind === 'server') {
+      if (selection.value === 'off') {
+        await this.updateEnvironment(context.root, language, () => { for (const server of context.servers) this.registry.setEnabled(server.id, false, context.root); });
+        return this.documentEnvironment(state, file, language, true);
+      }
+      const server = context.servers.find(s => s.id === selection.value && s.role === 'primary');
+      if (!server) throw Error('Unknown analysis provider.');
+      await this.updateEnvironment(context.root, language, () => this.registry.setEnabled(server.id, true, context.root));
+    } else {
+      if (selection.kind !== context.kind) throw Error('This environment does not apply to the document.');
+      let selected: string | undefined;
+      if (selection.value === 'browse') {
+        const result = await dialog.showOpenDialog(state.window, { title: context.label, properties: [selection.kind === 'compilation' ? 'openDirectory' : 'openFile'] });
+        if (result.canceled || !result.filePaths[0]) return context;
+        selected = selection.kind === 'compilation' ? path.join(result.filePaths[0], 'compile_commands.json') : result.filePaths[0];
+        if (selection.kind === 'python' ? !await findExecutable(selected) : !(await stat(selected)).isFile()) throw Error('Choose an existing analysis environment.');
+        if (selection.kind === 'typescript' && path.basename(selected) !== 'tsserver.js') throw Error('Select typescript/lib/tsserver.js.');
+      } else if (selection.value !== 'automatic') {
+        const candidate = context.choices.find(c => c.id === selection.value && c.available);
+        if (!candidate) throw Error('This environment is no longer available. Refresh the list.');
+        selected = selection.kind === 'typescript' && candidate.source === 'Bundled' ? 'bundled' : candidate.path;
+      }
+      this.ownedFile(state, file);
+      const kind = selection.kind;
+      await this.updateEnvironment(context.root, language, () => analysisPreferences.set(context.root, kind, selected));
+    }
+    return this.documentEnvironment(state, file, language, true);
+  }
+  private async updateEnvironment(root: string, language: string, task: () => void): Promise<void> {
+    const update = this.updating.then(async () => {
+      task(); this.analysisRevisions.set(root, (this.analysisRevisions.get(root) ?? 0) + 1); this.contexts.invalidate(root);
+      const ids = this.registry.definitions().filter(d => d.languages.some(l => (l.monacoId ?? l.languageId) === language || l.languageId === language)).map(d => d.id);
+      for (const owner of this.owners.values()) for (const server of [...owner.servers.values()]) {
+        const info = this.sessions.get(server);
+        if (info?.root === root && ids.includes(info.id)) { if (info.recoveryKey) this.supervisor.reset(info.recoveryKey); await this.reconnect(owner, server, false); }
+      }
+      this.broadcast({ type: 'environment', root, language });
+      this.broadcast({ type: 'configuration', servers: ids, roots: [root] });
+    });
+    this.updating = update.catch(() => {}); return update;
+  }
+  private observation(server: ServerSession): AnalysisObservation | undefined {
+    const plan = this.sessions.get(server)?.plan;
+    return plan && { context: plan.context, analysis: server.progress?.size ? 'working' : 'waiting', scope: 'open-files', freshness: 'none', progress: [...server.progress?.values() ?? []] };
+  }
+  private async reconnect(owner: Owner, server: ServerSession, notify = true): Promise<void> {
+    const info = this.sessions.get(server); if (!info) return;
+    this.contexts.invalidate(info.root);
+    const documents = [...owner.documents.values()].filter(b => b.server === server).map(({ id, generation }) => ({ id, generation }));
+    for (const document of documents) owner.documents.delete(document.id);
+    for (const [key, instance] of owner.servers) if (instance === server) owner.servers.delete(key);
+    await this.stop(server);
+    if (notify && documents.length && this.owners.get(owner.state.webContentsId) === owner) this.emit(owner, { type: 'configuration', servers: [info.id], documents });
   }
   async fileOperation(state: WindowState, operation: LanguageFileOperation, phase: 'will' | 'did'): Promise<void> {
     const owner = this.owners.get(state.webContentsId);
@@ -568,6 +683,7 @@ export class LanguageManager {
     }
   }
   private async dispose(id: number): Promise<void> {
+    this.preparation.cancel(id);
     const notebooks = this.notebooks.dispose(id);
     this.pendingOpens.delete(id);
     const owner = this.owners.get(id);
@@ -579,6 +695,7 @@ export class LanguageManager {
     owner.servers.clear();
   }
   private stop(server: ServerSession): Promise<void> {
+    const info = this.sessions.get(server); info?.unwatch?.(); if (info?.recoveryKey) this.supervisor.cancel(info.recoveryKey);
     this.sessions.delete(server);
     this.items.delete(server); this.commands.delete(server);
     for (const proposal of this.editRequests.values()) if (proposal.server === server) proposal.finish({ applied: false, failureReason: 'Language session closed.' });

@@ -1,5 +1,8 @@
 # Language support
 
+Use the language button in a code document’s location bar to choose its project
+environment, inspect checks and repair its analysis service.
+
 Open **Language Support** in the left activity bar, directly below Browser.
 **Edit → Language Support…** and the editor's F1 palette open the same sidebar.
 It stays beside the document; opening it does not cover or freeze a live web page.
@@ -80,6 +83,81 @@ previous live results; late versioned replies and disposed sessions cannot
 republish. Versionless push is explicitly best-effort, never assigned a fabricated
 analysis version. An empty Problems list means no diagnostics were reported, not
 that every possible check ran successfully.
+
+## Project environments and recovery
+
+The current file’s language button now includes **Project environment**. Select
+Python, the TypeScript SDK, or a C/C++ build configuration here; the global server
+catalog remains available under **Set up analysis…**. Its Enable/Disable controls
+manage global defaults; the current-file chooser manages project overrides. The choice is stored for the
+analysis root shown in the panel, independently of other projects. **Basic editing**
+disables that project’s matching providers while preserving syntax colors and local
+checks. Re-enable its primary provider from the same chooser.
+
+- **Python:** project `.venv`/`venv`, host, Conda metadata and registered Python
+  kernels are offered without executing the discovered candidates. A project
+  interpreter is selected explicitly and passed to Pyright as `python.pythonPath`.
+  The bundled language server and the project interpreter are separate choices.
+  Ordinary files and notebooks share the project default; a saved notebook-specific
+  choice wins. A stopped notebook refreshes its default when the project changes.
+  An already running kernel retains its environment and variables and explains
+  how to switch deliberately. Native Pyright configuration and
+  `executionEnvironments` continue to be interpreted by the server.
+- **TypeScript:** the bundled SDK remains the default. A project SDK is discovered
+  through bounded ancestor metadata lookup and offered for explicit selection.
+  The selected `tsserver.js` is passed in initialization options. The server’s
+  own version/source report is shown under service details.
+- **C/C++:** root, `build`, `builddir`, `out/build`, and literal local CMake preset
+  directories are checked for `compile_commands.json`. A unique database is used
+  automatically; several build configurations require a choice. **Choose build
+  folder…** supports an external build directory. The selected directory is passed
+  in the actual clangd `--compile-commands-dir` argument. Existing `.clangd` and
+  `compile_flags.txt` remain server-owned configuration.
+- **Configure project:** projects containing `CMakeLists.txt` or `meson.build`
+  offer an explicit configure action. It runs installed CMake/Meson with fixed
+  argument arrays in an app-owned build cache under the user-data directory,
+  then selects the resulting database. It never runs on file opening. Output,
+  cancellation, missing tools and failures appear in the panel. Configuration is
+  limited to two minutes, output to 64 KiB. Generating headers or installing
+  dependencies can still require the project’s normal build workflow.
+- **Rust/Go:** the same context service records the existing Cargo/Go/toolchain
+  configuration files and reconnects when these inputs change. The native server
+  continues to resolve the actual toolchain and dependency graph.
+
+A missing explicitly selected environment remains visible as missing; the app does
+not substitute a different choice. **Use automatic selection** removes the new
+project environment override, revealing any existing connection configuration.
+New selections are saved in `project-analysis.json`; legacy `language-servers.json`
+settings and per-notebook `notebook-python.json` choices remain intact. Project
+provider/disabled preferences extend the existing language settings format.
+
+The same analysis plan supplies the launch configuration and the displayed
+selection evidence. Known configuration files and selected external paths are
+watched; reconnecting keeps the live Monaco model, unsaved contents, Undo/Redo,
+provider ownership and document-version checks. **Restart project services**
+restarts sessions serving the current file in this window. Other languages and
+other windows continue running. Changing a saved project preference reconnects
+matching sessions for that root across subscribed windows.
+
+An unexpected server exit schedules reconnects after 1, 3 and 5 seconds, at most
+three attempts in a minute for each window/provider/root. A subsequent failure
+leaves a visible explanation and a manual restart action. Recovery resends current
+open buffers; it never replays editor commands or workspace edits. Requests from a
+server that offer choices appear in the status panel without a modal or focus
+change. Actions are bound to their original session and expire on shutdown or
+after two minutes.
+
+Connection, environment readiness, work progress and received analysis results
+are distinct. **Open-file checks** describes observed results for the open buffer,
+not completion of project indexing. Diagnostics retain their original payload,
+provider, channel, epoch, version and environment context; quick fixes still receive
+that provider’s original diagnostics. Missing-import and other code diagnostics
+are not hidden to make the editor look successful.
+
+The architecture follows the context, tooling, service and provider boundaries in
+[the pinned GNOME Builder source](../vendor/gnome-builder/src/libide/lsp/ide-lsp-service.c).
+The [source analysis](../reports/2026_10_30_gnome_builder_lsp_porting_report.md)
+explains the correspondence and retained Setdown guarantees.
 
 ## Choosing a server
 
