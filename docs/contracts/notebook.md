@@ -128,7 +128,7 @@ Keyboard editing, selection, popup/IME Escape ownership, structural Undo, output
 placeholders, sanitization and exact serialization retain the guarantees above.
 
 Comments retain at least 4.5:1 contrast against the actual notebook input background
-in all eight themes; the GitHub palettes keep their validated editor background
+in every registered theme; the GitHub palettes keep their validated editor background
 instead of adding a tint. The real Electron notebook scenarios cover typography, DataFrame wrapping and
 horizontal overflow, menus, insertion/keyboard focus, output formats, narrow panes,
 IME, long-cell geometry, output-height preservation, execution and Undo.

@@ -131,9 +131,23 @@ Terminal colors use a separate 16-color ANSI palette for each app theme and
 xterm's 4.5 minimum contrast correction. Theme changes update the existing
 terminal instance; they must preserve its PTY, unsubmitted input and buffer.
 Extended indexed/truecolor and explicit backgrounds still flow through xterm's
-renderer. Terminal E2E measures actual DOM color contrast for all eight themes
+renderer. Terminal E2E measures actual DOM color contrast for every registered theme
 and checks PTY and renderer identity. Browser theme and live-drag guarantees are
 specified in the workspace contract; they remain in this gate and latency comparison.
+
+VS Code Dark 2026 is an additional choice; existing theme palettes and the default
+remain unchanged. Its 324 workbench colors and ordered token rules are pinned to
+VS Code 1.143.0 (`2d0b7506a36c1d6db9a466440131a8e01eab2289`), including inherited
+Dark Modern/Dark+ rules. Source hashes and MIT notices live in
+`src/core/theme/upstream/`. Monaco's lexical/LSP roles map to those original
+scopes; this does not replace language tokenizers with VS Code extensions.
+Shell/menu, ordinary/diff/notebook editor, terminal and web surfaces share that
+choice. Markdown readers retain their existing layout with theme-specific colors
+over the GitHub Dark base. The override also applies while hidden, without
+showing/replacing the native view, and is removed when selecting another theme.
+`workspace/vscode-theme.spec.ts` checks actual colors, unchanged editor/reader
+identity, Undo, menu selection and restart persistence; existing all-theme
+notebook, terminal and browser scenarios include the new choice.
 
 Browser coarse Ctrl+wheel changes website zoom from 50% to 300% in 10-point steps;
 fine pixel input changes it continuously within those same limits.

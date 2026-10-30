@@ -15,7 +15,7 @@ async function externalStyles(f: Awaited<ReturnType<typeof fixture>>) {
         : net.fetch(request, { bypassCustomProtocolHandlers: true }));
   }, f.origin);
 }
-test('all eight web themes cover light-dark surfaces and external CSS without replacing the page', async () => {
+test('all web themes cover light-dark surfaces and external CSS without replacing the page', async () => {
   const f = await fixture();
   try {
     await externalStyles(f);

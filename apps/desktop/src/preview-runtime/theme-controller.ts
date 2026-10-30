@@ -1,6 +1,8 @@
 import { previewThemeBackground } from '../core/preview/preview-preferences';
 import { GOLDEN_TOP_RATIO } from '../core/preview/viewport-anchor';
 import type { SourceAtlas } from './source-atlas';
+import { themeProfile } from '../core/theme/theme-catalog';
+import { applyVscodePreviewTheme } from './vscode-preview-theme';
 
 type Options = {
   sourceAtlas: SourceAtlas;
@@ -8,8 +10,6 @@ type Options = {
   send: (message: Record<string, unknown>) => void;
   viewportChanged: () => void;
 };
-
-const DARK_THEMES = new Set(['github-dark', 'night', 'one-dark', 'solarized-dark']);
 
 export class ThemeController {
   private application = 0;
@@ -84,11 +84,12 @@ export class ThemeController {
     const background = previewThemeBackground(themeId);
     document.documentElement.style.setProperty('background-color', background, 'important');
     document.body.style.setProperty('background-color', background, 'important');
+    applyVscodePreviewTheme(themeId);
   }
 
   private publishTheme(themeId: string): void {
     document.body.dataset.setdownPreviewTheme = themeId;
-    document.body.dataset.previewTheme = DARK_THEMES.has(themeId) ? 'dark' : 'light';
+    document.body.dataset.previewTheme = themeProfile(themeId).appearance;
   }
 
   private isLocalAsset(value: unknown): value is string {

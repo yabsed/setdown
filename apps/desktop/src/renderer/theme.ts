@@ -1,5 +1,6 @@
 import type * as Monaco from 'monaco-editor';
 import type { PreviewThemeId } from '../core/preview/preview-preferences';
+import { vscodeMonacoTheme } from './editor/vscode-monaco-theme';
 import {
   THEME_PROFILES,
   themeProfile,
@@ -36,6 +37,10 @@ export function registerMonacoThemes(monaco: typeof Monaco) {
     /^#[0-9a-f]{6}$/i.test(color) ? `${color}${alpha}` : color
   );
   for (const { id, appearance, palette, syntax } of THEME_PROFILES) {
+    if (id === 'vscode-dark-2026') {
+      monaco.editor.defineTheme(monacoThemeName(id), vscodeMonacoTheme);
+      continue;
+    }
     const dark = appearance === 'dark';
     monaco.editor.defineTheme(monacoThemeName(id), {
       base: appearance === 'dark' ? 'vs-dark' : 'vs',
@@ -102,5 +107,11 @@ export function applyShellTheme(themeId: PreviewThemeId) {
   root.style.setProperty('--preview-background', profile.preview.background);
   for (const [name, value] of Object.entries(profile.palette)) {
     root.style.setProperty(SHELL_THEME_VARIABLES[name as keyof ThemePalette], value);
+  }
+  // Component-specific VS Code roles are scoped to its new theme. Clear them
+  // when returning to an existing theme, including native shell menu overlays.
+  for (const name of Array.from(root.style)) if (name.startsWith('--vscode-')) root.style.removeProperty(name);
+  for (const [name, value] of Object.entries(profile.workbenchColors ?? {})) {
+    root.style.setProperty(`--vscode-${name.replaceAll('.', '-')}`, value);
   }
 }

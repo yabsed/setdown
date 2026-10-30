@@ -234,7 +234,7 @@ cross-origin guards remain enabled. No resource API enters the website world.
 Guarded build adapters normalize CSS light-dark() input and preserve readable
 opaque dark text in light palettes. The bundled CSSOM proxy runs in the page world
 without inline-script injection, including under strict script CSP; disabling the
-theme restores original CSS and proxy descriptors. The theme E2E checks all eight
+theme restores original CSS and proxy descriptors. The theme E2E checks all registered
 palettes, cross-origin styles after in-page navigation and window transfer,
 CSSOM updates, site exceptions, persistence and
 page identity. The folder picker stays within the sidebar and leaves native web

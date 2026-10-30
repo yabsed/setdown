@@ -30,7 +30,8 @@ view with `Ctrl/Cmd+E`.
 - Reorder tabs, drag them into another Setdown window, or detach them into a new one.
 - Reopen saved files at their last reading or editing position, including after an
   application restart.
-- Choose Paper, GitHub, One Dark, Dracula, Nord, Sepia, or Solarized Dark. Themes
+- Choose Paper, GitHub Light/Dark, Medium, Night, One Dark, Solarized Light/Dark,
+  or **VS Code Dark 2026** from View → Theme. Themes
   apply to the reader, editor, and application chrome across windows.
 
 The Monaco-based Editor includes a table-size picker, TSV-to-table conversion,

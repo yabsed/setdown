@@ -6,7 +6,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { previews } from '../../support/preview/preview-view';
 import { disposeApplication, focusApplication } from '../../support/electron/electron-app';
-import { THEME_IDS, themeProfile } from '../../../src/core/theme/theme-catalog';
+import { THEME_IDS } from '../../../src/core/theme/theme-catalog';
+import { terminalTheme } from '../../../src/core/theme/terminal-theme';
 import { dragTerminal } from '../../support/terminal/terminal-drag';
 
 const run = async (input: Locator, command: string) => { await input.pressSequentially(command); await input.press('Enter'); };
@@ -395,9 +396,9 @@ test('all terminal themes preserve the PTY and readable ANSI, indexed and trueco
     await page.evaluate(() => { (window as any).__keptTerminal = document.querySelector('.xterm'); });
     for (const id of THEME_IDS) {
       await app.evaluate(({ Menu }, id) => Menu.getApplicationMenu()!.getMenuItemById(`preview-theme-${id}`)!.click(), id);
-      const palette = themeProfile(id).palette;
+      const palette = terminalTheme(id);
       const rgb = (hex: string) => `rgb(${[1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
-      await expect.poll(() => page.locator('.terminal-surface').evaluate(el => getComputedStyle(el).backgroundColor)).toBe(rgb(palette.editorBackground));
+      await expect.poll(() => page.locator('.terminal-surface').evaluate(el => getComputedStyle(el).backgroundColor)).toBe(rgb(palette.background!));
       const readings = () => page.locator('.xterm-rows').evaluate(rows => {
         const rgb = (value: string) => value.match(/[\d.]+/g)!.slice(0, 3).map(Number);
         const luminance = (value: number[]) => value.map(n => n / 255).map(n => n <= .04045 ? n / 12.92 : ((n + .055) / 1.055) ** 2.4)

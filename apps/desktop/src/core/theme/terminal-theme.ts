@@ -14,13 +14,15 @@ const palettes: Record<ThemeId, string> = {
   night: '252a2f e06c75 98c379 e5c07b 61afef c678dd 56b6c2 dedede 8b9299 ef939b b5d7a0 f0d8a6 8bc4f2 d7a2e6 87cbd3 ffffff',
   'one-dark': '282c34 e06c75 98c379 e5c07b 61afef c678dd 56b6c2 abb2bf 7f8799 e9969d b8d7a3 eed5a7 90c5f1 d7a5e5 89cdd5 e6e9ef',
   'solarized-dark': '073642 dc322f 859900 b58900 268bd2 d33682 2aa198 eee8d5 657b83 cb4b16 9caf31 c5a146 58a6d9 8a8ed1 59b9b0 fdf6e3',
+  'vscode-dark-2026': '000000 cd3131 0dbc79 e5e510 2472c8 bc3fbc 11a8cd e5e5e5 666666 f14c4c 23d18b f5f543 3b8eea d670d6 29b8db e5e5e5',
 };
 export const TERMINAL_MINIMUM_CONTRAST = 4.5;
 export function terminalTheme(id: unknown): ITheme {
   const profile = themeProfile(id), colors = palettes[profile.id].split(' ');
+  const workbench = profile.workbenchColors;
   return { ...Object.fromEntries(names.map((name, i) => [name, `#${colors[i]}`])),
-    background: profile.palette.editorBackground, foreground: profile.palette.text,
-    cursor: profile.palette.text, cursorAccent: profile.palette.editorBackground,
-    selectionBackground: `${profile.palette.accent}55`, selectionForeground: profile.palette.text,
-    selectionInactiveBackground: `${profile.palette.accent}33` };
+    background: workbench?.['terminal.background'] ?? profile.palette.editorBackground, foreground: workbench?.['terminal.foreground'] ?? profile.palette.text,
+    cursor: workbench?.['terminalCursor.foreground'] ?? profile.palette.text, cursorAccent: workbench?.['terminalCursor.background'] ?? profile.palette.editorBackground,
+    selectionBackground: workbench?.['terminal.selectionBackground'] ?? `${profile.palette.accent}55`, selectionForeground: workbench ? undefined : profile.palette.text,
+    selectionInactiveBackground: workbench?.['terminal.inactiveSelectionBackground'] ?? `${profile.palette.accent}33` };
 }

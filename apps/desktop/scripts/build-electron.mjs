@@ -37,3 +37,5 @@ await import('./build-browser.mjs');
 await copyFile('src/main/language/catalog/MASON-LICENSE', 'dist-electron/MASON-LICENSE');
 await copyFile('scripts/language-profiles/upstream/HELIX-LICENSE', 'dist-electron/HELIX-LICENSE');
 await copyFile('scripts/language-profiles/NOTICE', 'dist-electron/HELIX-PROFILES-NOTICE');
+await copyFile('src/core/theme/upstream/VSCODE-LICENSE', 'dist-electron/VSCODE-THEME-LICENSE');
+await copyFile('src/core/theme/upstream/NOTICE', 'dist-electron/VSCODE-THEME-NOTICE');

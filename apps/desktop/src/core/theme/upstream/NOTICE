@@ -1,0 +1,15 @@
+VS Code Dark 2026
+
+Copyright (c) 2015 - present Microsoft Corporation. Licensed under the MIT License; see VSCODE-LICENSE.
+
+The theme data is from Visual Studio Code 1.143.0, commit
+2d0b7506a36c1d6db9a466440131a8e01eab2289, installed locally in
+/usr/share/code/resources/app/extensions/theme-defaults/themes/.
+Upstream: https://github.com/microsoft/vscode/tree/2d0b7506a36c1d6db9a466440131a8e01eab2289/extensions/theme-defaults/themes
+
+Includes are flattened in order: dark_vs.json, dark_plus.json,
+dark_modern.json, 2026-dark.json. Original color values and ordered
+TextMate rules are retained; source SHA-256 hashes are in the JSON.
+Setdown maps those scopes to its existing Monaco/Prism token roles.
+It does not install or emulate VS Code language extensions.
+Terminal ANSI defaults follow VS Code terminalColorRegistry.ts.

@@ -71,6 +71,16 @@ test('negotiated semantic colors, formatting Undo, quick-fix command edits, work
     await expect.poll(async () => (await messages()).some(m => m.method === 'semantic')).toBe(true);
     const firstLine = page.locator('.monaco-editor .view-line').first();
     await expect.poll(() => firstLine.evaluate(line => [...line.querySelectorAll('span')].filter(span => span.textContent?.trim()).map(span => getComputedStyle(span).color).filter((color,index,all) => all.indexOf(color) === index).length)).toBeGreaterThan(1);
+    const functionColor = () => firstLine.evaluate(line => {
+      const token = [...line.querySelectorAll('span')].find(span => span.textContent === 'painted');
+      return token ? getComputedStyle(token).color : null;
+    });
+    const originalFunctionColor = await functionColor();
+    await application.evaluate(({ Menu }) => Menu.getApplicationMenu()!.getMenuItemById('preview-theme-vscode-dark-2026')!.click());
+    await expect.poll(functionColor).toBe('rgb(210, 168, 255)');
+    await page.screenshot({ path: testInfo.outputPath('semantic-vscode-dark-2026.png') });
+    await application.evaluate(({ Menu }) => Menu.getApplicationMenu()!.getMenuItemById('preview-theme-github-light')!.click());
+    await expect.poll(functionColor).toBe(originalFunctionColor);
     await page.screenshot({ path: testInfo.outputPath('semantic-colors.png') });
     const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
     await command(page, 'Format Document');

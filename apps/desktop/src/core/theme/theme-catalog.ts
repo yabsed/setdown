@@ -1,3 +1,5 @@
+import { vscodeDark2026Colors as vscode, vscodeDark2026Token } from './vscode-dark-2026';
+
 export const THEME_IDS = [
   'github-light',
   'paper',
@@ -7,6 +9,7 @@ export const THEME_IDS = [
   'night',
   'one-dark',
   'solarized-dark',
+  'vscode-dark-2026',
 ] as const;
 
 export type ThemeId = typeof THEME_IDS[number];
@@ -63,6 +66,7 @@ export type ThemeProfile = {
   preview: { stylesheet: PreviewStylesheet; prismStylesheet: string; background: string };
   palette: ThemePalette;
   syntax: SyntaxPalette;
+  workbenchColors?: Readonly<Record<string, string>>;
 };
 
 const lightBase = {
@@ -125,6 +129,21 @@ export const THEME_PROFILES: readonly ThemeProfile[] = [
     preview: { stylesheet: 'solarized-dark.css', prismStylesheet: 'solarized-dark.css', background: '#002b36' },
     palette: { ...darkBase, canvas: '#00212a', surface: '#002b36', raisedSurface: '#073642', chrome: '#002630', editorBackground: '#002b36', text: '#93a1a1', mutedText: '#839496', subtleText: '#657b83', border: '#174550', strongBorder: '#2b5963', hover: '#073642', selected: '#0b3b47', accent: '#268bd2', focusRing: '#268bd2' },
     syntax: { foreground: '#839496', comment: '#8b9b9d', keyword: '#859900', string: '#2aa198', number: '#d33682', link: '#268bd2', heading: '#b58900', code: '#6c71c4', punctuation: '#93a1a1' },
+  },
+  {
+    id: 'vscode-dark-2026', label: 'VS Code Dark 2026', appearance: 'dark',
+    preview: { stylesheet: 'github-dark.css', prismStylesheet: 'github-dark.css', background: vscode['editor.background'] },
+    palette: { canvas: vscode['editor.background'], surface: vscode['editor.background'], raisedSurface: vscode['editorWidget.background'],
+      chrome: vscode['titleBar.activeBackground'], editorBackground: vscode['editor.background'], text: vscode.foreground,
+      mutedText: vscode.descriptionForeground, subtleText: vscode['icon.foreground'], border: vscode['sideBar.border'],
+      strongBorder: vscode['input.border'], hover: vscode['list.hoverBackground'], selected: vscode['tab.activeBackground'],
+      accent: vscode['textLink.foreground'], focusRing: vscode.focusBorder,
+      warningSurface: vscode['inputValidation.warningBackground'], warningText: vscode['inputValidation.warningForeground'], warningBorder: vscode['inputValidation.warningBorder'],
+      dangerText: vscode.errorForeground, shadow: 'rgba(0, 0, 0, .36)', overlay: 'rgba(0, 0, 0, .58)' },
+    syntax: { foreground: vscode['editor.foreground'], comment: vscodeDark2026Token('comment').foreground!, keyword: vscodeDark2026Token('keyword').foreground!,
+      string: vscodeDark2026Token('string').foreground!, number: vscodeDark2026Token('constant.numeric').foreground!, link: vscode['textLink.foreground'],
+      heading: vscodeDark2026Token('markup.heading').foreground!, code: vscodeDark2026Token('markup.inline.raw').foreground!, punctuation: vscode['editor.foreground'] },
+    workbenchColors: vscode,
   },
 ];
 
