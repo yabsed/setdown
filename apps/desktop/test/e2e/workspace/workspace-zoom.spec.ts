@@ -14,7 +14,9 @@ async function activeTextZoom(page: import('@playwright/test').Page) {
       && document.querySelector('.git-diff-tab[aria-selected="true"]')
       ? document.querySelector<HTMLElement>('.git-diff-source-layer')!.closest<HTMLElement>('[data-zoom-tab]')!.dataset.zoomTab
       : document.querySelector<HTMLElement>('.document-tab[aria-selected="true"]')?.dataset.tabId;
-    return (await window.marktex.getZoom()).tabs?.[id ?? ''] ?? 100;
+    const snapshot = await window.marktex.getZoom();
+    const owner = [...document.querySelectorAll<HTMLElement>('[data-zoom-tab]')].find(node => node.dataset.zoomTab === id && node.querySelector('[data-code-zoom="true"]'));
+    return owner ? snapshot.code ?? 100 : snapshot.tabs?.[id ?? ''] ?? 100;
   });
 }
 type Application = Awaited<ReturnType<typeof electron.launch>>;
@@ -81,18 +83,90 @@ for (const extension of ['md', 'txt']) test(`text wheel zoom and app shortcuts h
     await expect.poll(() => window.evaluate(async () => (await globalThis.window.marktex.getZoom()).app)).toBe(100);
     expect(await activeTextZoom(window)).toBe(110);
     await window.keyboard.press('Control+=');
-    // Graceful close flushes preferences. A new process inherits app zoom; newly created tabs start at 100%.
+    // Graceful close flushes preferences. Code font size survives new tab IDs; Markdown stays per tab.
     await disposeApplication(application);
     application = await electron.launch(options);
     const restored = await application.firstWindow();
     await focusApplication(application);
     await expect.poll(() => restored.evaluate(() => globalThis.window.marktex.getZoom())).toMatchObject({ app: 110, text: 100 });
     await expect.poll(async () => (await state(application)).factor).toBeCloseTo(1.1, 4);
-    await expect.poll(() => activeTextZoom(restored)).toBe(100);
+    await expect.poll(() => activeTextZoom(restored)).toBe(extension === 'txt' ? 110 : 100);
   } finally {
     await disposeApplication(application);
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test('code font size follows new files, splits, other windows and restart without losing Undo', async () => {
+  test.setTimeout(90_000);
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-code-font-'));
+  const first = path.join(root, 'first.ts'), second = path.join(root, 'second.py');
+  const markdown = path.join(root, 'reader.md');
+  await writeFile(first, 'const first = 1;\n'); await writeFile(second, 'second = 2\n');
+  await writeFile(markdown, '# Independent reader\n');
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const options = { args: ['.', first], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } };
+  let app = await electron.launch(options);
+  const font = (page: import('@playwright/test').Page) => page.locator('.monaco-editor:visible .view-line').first()
+    .evaluate(node => parseFloat(getComputedStyle(node).fontSize));
+  try {
+    const page = await app.firstWindow(); await focusApplication(app);
+    const reset = page.getByRole('button', { name: 'Reset text zoom', exact: true });
+    const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
+    await expect(editor).toBeEditable();
+    await editor.press('Control+End'); await editor.pressSequentially('// Font undo sentinel');
+    await page.locator('.monaco-editor').hover();
+    await page.keyboard.down('Control'); await page.mouse.wheel(0, -80); await page.keyboard.up('Control');
+    await expect(reset).toHaveText('110%'); await expect.poll(() => font(page)).toBeCloseTo(15.4, 1);
+    await page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), second);
+    await expect(page.getByRole('tab', { name: /second.py/ })).toHaveAttribute('aria-selected', 'true');
+    await expect(reset).toHaveText('110%'); await expect.poll(() => font(page)).toBeCloseTo(15.4, 1);
+    await page.getByRole('button', { name: 'Zoom text in', exact: true }).click();
+    await expect(reset).toHaveText('120%');
+    await page.getByRole('tab', { name: /first.ts/ }).click();
+    await expect(reset).toHaveText('120%'); await expect.poll(() => font(page)).toBeCloseTo(16.8, 1);
+    await expect(page.locator('.editor-surface')).toContainText('Font undo sentinel');
+    await editor.press('Control+z'); await expect(page.locator('.editor-surface')).not.toContainText('Font undo sentinel');
+
+    // Both group editors must follow changes, including a wheel over the unfocused group.
+    const data = await page.evaluateHandle(() => new DataTransfer());
+    await page.getByRole('tab', { name: /second.py/ }).dispatchEvent('dragstart', { dataTransfer: data });
+    const body = page.locator('.group-body').first(), box = (await body.boundingBox())!;
+    const point = { clientX: box.x + box.width * .98, clientY: box.y + box.height * .5, dataTransfer: data };
+    await body.dispatchEvent('dragover', point); await body.dispatchEvent('drop', point); await data.dispose();
+    await expect(page.locator('.editor-group')).toHaveCount(2);
+    const editors = page.locator('.monaco-editor:visible');
+    await expect(editors).toHaveCount(2);
+    await editors.first().hover();
+    await page.keyboard.down('Control'); await page.mouse.wheel(0, -80); await page.keyboard.up('Control');
+    await expect(reset).toHaveText(['130%', '130%']);
+    for (const pane of await editors.all()) await expect.poll(() => pane.locator('.view-line').first()
+      .evaluate(node => parseFloat(getComputedStyle(node).fontSize))).toBeCloseTo(18.2, 1);
+
+    await page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-new-window'));
+    await expect.poll(() => app.windows().filter(window => window.url().startsWith('file:')).length).toBe(2);
+    const other = app.windows().find(window => window !== page && window.url().startsWith('file:'))!;
+    await other.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), second);
+    await expect.poll(() => font(other)).toBeCloseTo(18.2, 1);
+    await other.getByRole('button', { name: 'Zoom text in', exact: true }).click();
+    await expect(reset).toHaveText(['140%', '140%']);
+    await expect.poll(() => font(page)).toBeCloseTo(19.6, 1);
+    await other.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), markdown);
+    await expect(other.getByRole('button', { name: 'Reset text zoom', exact: true })).toHaveText('100%');
+    await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().flatMap(owner =>
+      owner.contentView.children.filter(view => view.getVisible() && 'webContents' in view)
+        .map(view => (view as Electron.WebContentsView).webContents.getZoomFactor())))).toEqual([1]);
+    await page.keyboard.press('Control+0'); await expect(reset).toHaveText(['140%', '140%']);
+
+    await disposeApplication(app);
+    app = await electron.launch({ ...options, args: ['.', second] });
+    const restored = await app.firstWindow(); await focusApplication(app);
+    await expect(restored.getByRole('button', { name: 'Reset text zoom', exact: true })).toHaveText('140%');
+    await expect.poll(() => font(restored)).toBeCloseTo(19.6, 1);
+    await restored.getByRole('button', { name: 'Reset text zoom', exact: true }).click();
+    await restored.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), first);
+    await expect.poll(() => font(restored)).toBe(14);
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
 
 test('PDF and image wheel zoom preserve the cursor point, file state and fit mode across app zoom', async () => {
@@ -187,9 +261,9 @@ test('PDF and image wheel zoom preserve the cursor point, file state and fit mod
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
 
-test('Git review, ordinary editors and a second window retain independent text zoom without replacing models', async () => {
+for (const extension of ['md', 'ts']) test(`Git review, ordinary editors and a second window preserve ${extension} zoom scopes without replacing models`, async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-review-zoom-'));
-  const file = path.join(root, 'review.md');
+  const file = path.join(root, `review.${extension}`);
   const git = (...args: string[]) => execFileSync('git', args, { cwd: root });
   git('init', '-b', 'main'); git('config', 'user.email', 'test@example.test'); git('config', 'user.name', 'Test');
   await writeFile(path.join(root, '.gitignore'), 'config/\n');
@@ -229,9 +303,9 @@ test('Git review, ordinary editors and a second window retain independent text z
     // Text sizing must retain the editable model and undo stack.
     await editor.press('Control+z');
     await expect(page.locator('.git-diff-editor')).not.toContainText('Zoom undo sentinel');
-    await page.getByRole('tab').filter({ hasText: 'review.md' }).first().click();
-    await page.getByRole('button', { name: 'Switch to Editor', exact: true }).click();
-    await expect.poll(() => page.locator('.editor-surface .view-line').first().evaluate(node => parseFloat(getComputedStyle(node).fontSize))).toBe(14);
+    await page.getByRole('tab').filter({ hasText: `review.${extension}` }).first().click();
+    if (extension === 'md') await page.getByRole('button', { name: 'Switch to Editor', exact: true }).click();
+    await expect.poll(() => page.locator('.editor-surface .view-line').first().evaluate(node => parseFloat(getComputedStyle(node).fontSize))).toBeCloseTo(extension === 'ts' ? 15.4 : 14, 1);
     await page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-new-window'));
     const shells = () => app.windows().filter(window => window.url().startsWith('file:'));
     await expect.poll(() => shells().length).toBe(2);
@@ -246,7 +320,7 @@ test('Git review, ordinary editors and a second window retain independent text z
     await expect(reset).toHaveText('110%');
     await reset.click();
     await expect(reset).toHaveText('100%');
-    await expect.poll(() => page.locator('.editor-surface .view-line').first().evaluate(node => parseFloat(getComputedStyle(node).fontSize))).toBe(14);
+    await expect.poll(() => page.locator('.editor-surface .view-line').first().evaluate(node => parseFloat(getComputedStyle(node).fontSize))).toBeCloseTo(extension === 'ts' ? 15.4 : 14, 1);
     expect(await page.evaluate(async () => (await window.marktex.getZoom()).app)).toBe(110);
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });

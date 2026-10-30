@@ -1,0 +1,78 @@
+
+> @setdown/desktop@2.0.0 test:preview-contract:e2e
+> bash scripts/with-isolated-display.sh playwright test --config playwright.preview-contract.config.ts --grep zoom|font size
+
+
+Running 21 tests using 1 worker
+
+(node:332508) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[1/21] test/e2e/browser/navigation.spec.ts:11:1 › terminal addresses navigate through web and files while sessions and tab zoom stay independent
+dbus-daemon[332496]: [session uid=1000 pid=332496] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=332519 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[332496]: [session uid=1000 pid=332496] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=332519 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[332496]: [session uid=1000 pid=332496] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[332496]: [session uid=1000 pid=332496] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.3' (uid=1000 pid=332578 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[332496]: [session uid=1000 pid=332496] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[332496]: [session uid=1000 pid=332496] Activating service name='org.freedesktop.portal.Documents' requested by ':1.3' (uid=1000 pid=332578 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[332496]: [session uid=1000 pid=332496] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[332496]: [session uid=1000 pid=332496] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.3' (uid=1000 pid=332578 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[332496]: [session uid=1000 pid=332496] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=332641 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[332496]: [session uid=1000 pid=332496] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[332496]: [session uid=1000 pid=332496] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[332496]: [session uid=1000 pid=332496] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.3' (uid=1000 pid=332578 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[332496]: [session uid=1000 pid=332496] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:332578): xdg-desktop-portal-WARNING **: 01:37:41.687: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[332496]: [session uid=1000 pid=332496] Activating service name='org.freedesktop.secrets' requested by ':1.3' (uid=1000 pid=332578 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+** Message: 01:37:41.700: couldn't access control socket: /tmp/setdown-display-runtime.xKyYzJ/keyring/control: No such file or directory
+discover_other_daemon: 0dbus-daemon[332496]: [session uid=1000 pid=332496] Successfully activated service 'org.freedesktop.secrets'
+dbus-daemon[332496]: [session uid=1000 pid=332496] Successfully activated service 'org.freedesktop.portal.Desktop'
+[2/21] test/e2e/browser/reader.spec.ts:257:1 › reader toolbar and wheel use tab text zoom independently of other Markdown tabs and live website zoom
+[3/21] test/e2e/browser/zoom.spec.ts:6:1 › browser Ctrl+wheel zooms websites and frames independently of the app and documents
+[4/21] test/e2e/git/review-document-styles.spec.ts:30:1 › review document styles preserve real math geometry across widths and zoom
+[5/21] test/e2e/media/image-editor.spec.ts:25:3 › fit editing stays still without input at 120% app zoom and 1281×1037
+[6/21] test/e2e/media/image-editor.spec.ts:25:3 › fit editing stays still without input at 130% app zoom and 921×775
+[7/21] test/e2e/media/image-editor.spec.ts:25:3 › fit editing stays still without input at 90% app zoom and 921×775
+[8/21] test/e2e/media/image-reader.spec.ts:68:1 › restores image zoom, rotation and pan after restart; reloads changed content and reports invalid images
+[9/21] test/e2e/media/reading-positions.spec.ts:21:1 › PDF reader restores page coordinates and zoom across restart, and supports search and outline
+[10/21] test/e2e/notebook/notebook.spec.ts:313:39 › long notebook cells meet the scroll viewport without a blank strip at 100% app zoom
+[11/21] test/e2e/notebook/notebook.spec.ts:313:39 › long notebook cells meet the scroll viewport without a blank strip at 130% app zoom
+[12/21] test/e2e/notebook/notebook.spec.ts:313:39 › long notebook cells meet the scroll viewport without a blank strip at 90% app zoom
+[13/21] test/e2e/terminal/terminal.spec.ts:79:1 › ctrl+wheel over the terminal changes terminal zoom only and refits the grid in both directions
+[14/21] test/e2e/workspace/workspace-zoom.spec.ts:49:40 › text wheel zoom and app shortcuts have independent scopes in md
+[15/21] test/e2e/workspace/workspace-zoom.spec.ts:49:40 › text wheel zoom and app shortcuts have independent scopes in txt
+[16/21] test/e2e/workspace/workspace-zoom.spec.ts:100:1 › code font size follows new files, splits, other windows and restart without losing Undo
+[17/21] test/e2e/workspace/workspace-zoom.spec.ts:172:1 › PDF and image wheel zoom preserve the cursor point, file state and fit mode across app zoom
+[18/21] test/e2e/workspace/workspace-zoom.spec.ts:264:39 › Git review, ordinary editors and a second window preserve md zoom scopes without replacing models
+test/e2e/workspace/workspace-zoom.spec.ts:264:39 › Git review, ordinary editors and a second window preserve md zoom scopes without replacing models
+
+
+
+
+
+
+
+
+
+
+[19/21] test/e2e/workspace/workspace-zoom.spec.ts:264:39 › Git review, ordinary editors and a second window preserve ts zoom scopes without replacing models
+test/e2e/workspace/workspace-zoom.spec.ts:264:39 › Git review, ordinary editors and a second window preserve ts zoom scopes without replacing models
+
+
+
+
+
+
+
+
+
+
+[20/21] test/e2e/workspace/workspace-zoom.spec.ts:328:1 › two Markdown tabs retain independent zoom in native readers and Monaco
+[21/21] test/e2e/workspace/workspace-zoom.spec.ts:374:1 › touchpad pinch zooms text, notebook outputs and terminal tabs independently
+  21 passed (1.3m)

@@ -282,7 +282,7 @@ export type MarkTexApi = {
   terminal: import('./terminal').TerminalApi;
   language: import('./language').LanguageApi;
   getZoom(): Promise<import('../core/zoom').ZoomSnapshot>;
-  changeZoom(steps: number, scope: 'app' | 'text' | 'terminal', tabId?: string): void;
+  changeZoom(steps: number, scope: 'app' | 'text' | 'terminal' | 'code', tabId?: string): void;
   setZoomTabs(ids: string[], active: string | null): void;
   onZoomChanged(listener: (zoom: import('../core/zoom').ZoomSnapshot) => void): () => void;
   initialTheme: ThemeSnapshot;

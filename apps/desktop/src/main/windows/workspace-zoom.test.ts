@@ -156,6 +156,7 @@ test('workspace wheel zoom reaches editors and terminals but never media surface
   assert.equal(isTextZoomTarget(null), false);
   // Terminals own a separate factor from editors and Markdown previews.
   assert.equal(wheelZoomScope(element('.monaco-editor')), 'text');
+  assert.equal(wheelZoomScope(element('[data-code-zoom="true"]')), 'code');
   assert.equal(wheelZoomScope(element('.web-reader')), 'text');
   assert.equal(wheelZoomScope(element('.notebook-surface')), 'text');
   assert.equal(wheelZoomScope(element('.video-surface')), 'text');
@@ -179,7 +180,46 @@ test('terminal zoom is independent of app/text zoom and never touches native tar
   zoom.change(0, 'terminal');
   assert.equal(zoom.terminalFactor, 1);
   assert.equal(zoom.textFactor, 1.1);
-  assert.deepEqual(zoom.snapshot, { app: 100, text: 110, terminal: 100, revision: 3, tabs: {} });
+  assert.deepEqual(zoom.snapshot, { app: 100, text: 110, terminal: 100, code: 100, revision: 3, tabs: {} });
+});
+
+test('code font preference persists fractional pinch zoom independently of tabs and native views', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'setdown-code-zoom-'));
+  try {
+    const file = path.join(root, 'zoom.json'), zoom = new WorkspaceZoom();
+    const flush = installZoomSettings(file, zoom, () => {});
+    const shell = target(1), reader = target(2);
+    zoom.track(shell); zoom.track(reader, undefined, () => zoom.tabFactor('markdown'));
+    zoom.changeTab('markdown', 2);
+    const nativeUpdates = shell.factors.length + reader.factors.length;
+    assert.equal(zoom.changeCode(1), true);
+    assert.equal(zoom.changeCode({ scale: 1.025 }), true);
+    assert.equal(zoom.snapshot.code, 110 * 1.025);
+    assert.equal(zoom.snapshot.app, 100);
+    assert.equal(zoom.tabFactor('markdown'), 1.2);
+    assert.equal(zoom.tabFactor('terminal'), 1);
+    assert.equal(shell.factors.length + reader.factors.length, nativeUpdates);
+    flush();
+    const restored = new WorkspaceZoom(); installZoomSettings(file, restored, () => {});
+    assert.equal(restored.snapshot.code, zoom.snapshot.code);
+    assert.equal(restored.changeCode(0), true);
+    assert.equal(restored.snapshot.code, 100);
+    assert.equal(restored.tabFactor('markdown'), 1.2);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('code zoom rejects invalid IPC/settings and bounds both wheel and pinch changes', () => {
+  const zoom = new WorkspaceZoom();
+  for (const input of [NaN, Infinity, 1.5, 5, '1', null, {}, undefined,
+    { scale: NaN }, { scale: Infinity }, { scale: .49 }, { scale: 2.01 }, { scale: '1.1' }]) {
+    assert.equal(zoom.changeCode(input), false);
+  }
+  zoom.restore({ text: 130, tabs: { oldCodeTab: 160 }, code: 500 });
+  assert.equal(zoom.snapshot.code, 100);
+  for (let i = 0; i < 20; i++) zoom.changeCode({ scale: 2 });
+  assert.equal(zoom.snapshot.code, 300);
+  for (let i = 0; i < 100; i++) zoom.changeCode(-4);
+  assert.equal(zoom.snapshot.code, 50);
 });
 
 test('text zoom composes with app zoom only in text previews, including spares and reloads', () => {

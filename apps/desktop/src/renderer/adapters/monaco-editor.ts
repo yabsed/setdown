@@ -1,6 +1,6 @@
 import { documentIdentity, type DocumentContent } from '../../core/workspace/document-store';
 import { isNotebookDocument } from '../../core/document/document-profile';
-import { onTextZoom, textZoomOptions } from '../editor/text-zoom';
+import { onCodeZoom, onTextZoom, textZoomOptions, usesCodeZoom } from '../editor/text-zoom';
 import { APP_FONT_FAMILY } from '../../core/theme/typography';
 import type * as Monaco from 'monaco-editor';
 import type { DocumentSnapshot } from '../../core/document/document';
@@ -69,7 +69,13 @@ export class MonacoEditor {
   private readonly unregisterZoom = onTextZoom(id => {
     for (const entry of this.groupEditors.values()) {
       const tab = this.options.tabs().find(tab => tab.id === entry.tabId);
-      if (tab && (!id || tab.id === id)) entry.editor.updateOptions(textZoomOptions(tab.id));
+      if (tab && (!id || tab.id === id)) entry.editor.updateOptions(textZoomOptions(tab.id, tab.document.path));
+    }
+  });
+  private readonly unregisterCodeZoom = onCodeZoom(() => {
+    for (const entry of this.groupEditors.values()) {
+      const tab = this.options.tabs().find(tab => tab.id === entry.tabId);
+      if (tab && usesCodeZoom(tab.document.path)) entry.editor.updateOptions(textZoomOptions(tab.id, tab.document.path));
     }
   });
   private readonly unregisterModels: () => void;
@@ -107,6 +113,7 @@ export class MonacoEditor {
     this.languageClient?.dispose();
     this.unregisterModels();
     this.unregisterZoom();
+    this.unregisterCodeZoom();
     for (const id of [...this.models.keys()]) this.disposeDocument(id);
     this.options.releaseDocuments?.();
     for (const entry of this.groupEditors.values()) { entry.editor.dispose(); entry.host.remove(); }
@@ -227,13 +234,14 @@ export class MonacoEditor {
       if (id === focusedId) continue;
       if (entry.tabId && entry.tabId !== tab?.id) this.views.set(entry.tabId, entry.editor.saveViewState());
       entry.tabId = tab?.id ?? null;
+      entry.host.dataset.codeZoom = String(usesCodeZoom(tab?.document.path));
       const host = document.querySelector<HTMLElement>(`.group-editor-host[data-group-id="${id}"]`);
       if (host && entry.host.parentElement !== host) this.moveHost(entry.host, host);
       entry.host.style.visibility = tab?.surface === 'editor' ? 'visible' : 'hidden';
       const model = tab?.surface === 'editor' ? this.ensureModel(tab) : null;
       if (entry.editor.getModel() !== model) {
         entry.editor.setModel(model);
-        if (tab) entry.editor.updateOptions({ ...displayOptions(tab.id), ...textZoomOptions(tab.id) });
+        if (tab) entry.editor.updateOptions({ ...displayOptions(tab.id), ...textZoomOptions(tab.id, tab.document.path) });
         const state = tab ? this.views.get(tab.id) : null;
         if (state) entry.editor.restoreViewState(state);
       }
@@ -251,8 +259,9 @@ export class MonacoEditor {
     const sameView = entry.tabId === tab.id;
     if (entry.tabId && !sameView) this.views.set(entry.tabId, this.editorValue.saveViewState());
     entry.tabId = tab.id;
+    entry.host.dataset.codeZoom = String(usesCodeZoom(tab.document.path));
     const sameModel = this.editorValue.getModel() === model;
-    this.editorValue.updateOptions({ ...displayOptions(tab.id), ...textZoomOptions(tab.id) });
+    this.editorValue.updateOptions({ ...displayOptions(tab.id), ...textZoomOptions(tab.id, tab.document.path) });
     if (!sameModel) this.editorValue.setModel(model);
     this.owners.get(documentIdentity(tab))?.beginEditing(`document:${tab.id}`);
     this.publishLanguageSupport(tab, model);

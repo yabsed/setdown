@@ -68,7 +68,7 @@ test('browser Ctrl+wheel zooms websites and frames independently of the app and 
     await wheel(120, true, true);
     await expect.poll(async () => (await state()).factor).toBeCloseTo(1.1, 4);
     expect(await state()).toEqual({ ...original, factor: expect.closeTo(1.1, 4) });
-    expect(await f.page.evaluate(async () => { const { tabs, revision, ...scopes } = await window.marktex.getZoom(); return scopes; })).toEqual({ app: preferences.app, text: preferences.text, terminal: preferences.terminal });
+    expect(await f.page.evaluate(async () => { const { tabs, revision, ...scopes } = await window.marktex.getZoom(); return scopes; })).toEqual({ app: preferences.app, text: preferences.text, terminal: preferences.terminal, code: preferences.code });
     expect(await evaluatePage(f.app, f.origin, '({draft:document.querySelector("#draft").value,value:window.keptObject.value})'))
       .toEqual({ draft: 'keep this', value: 42 });
     await f.page.getByRole('tab', { name: /notes.md/ }).click();

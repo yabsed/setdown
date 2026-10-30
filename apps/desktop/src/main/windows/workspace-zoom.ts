@@ -10,6 +10,16 @@ export type ZoomTarget = {
 };
 export type ZoomBounds = { x: number; y: number; width: number; height: number };
 
+function contentPercent(previous: number, steps: unknown): number | undefined {
+  const scale = steps && typeof steps === 'object' && 'scale' in steps ? steps.scale : undefined;
+  if (scale !== undefined) {
+    if (typeof scale !== 'number' || !Number.isFinite(scale) || scale < .5 || scale > 2) return;
+    return Math.max(50, Math.min(300, previous * scale));
+  }
+  if (typeof steps !== 'number' || !Number.isInteger(steps) || Math.abs(steps) > 4) return;
+  return steps === 0 ? 100 : Math.max(50, Math.min(300, previous + steps * 10));
+}
+
 /** getBoundingClientRect is CSS pixels; Electron View bounds are DIP, not CSS pixels.
  * devicePixelRatio must NOT be used: OS display scaling is already handled by Electron.
  */
@@ -34,6 +44,7 @@ export class WorkspaceZoom {
   private percent = 100;
   private textPercent = 100;
   private terminalPercent = 100;
+  private codePercent = 100;
   private revision = 0;
   private readonly tabs = new Map<string, number>();
   private readonly contexts = new Map<number, { ids: Set<string>; active: string | null }>();
@@ -43,7 +54,7 @@ export class WorkspaceZoom {
   get textFactor(): number { return this.textPercent / 100; }
   get terminalFactor(): number { return this.terminalPercent / 100; }
   get snapshot() { return { app: this.percent, text: this.textPercent, terminal: this.terminalPercent, revision: this.revision,
-    tabs: Object.fromEntries(this.tabs) }; }
+    code: this.codePercent, tabs: Object.fromEntries(this.tabs) }; }
   tabFactor(id: string): number { return (this.tabs.get(tabZoomKey(id)) ?? 100) / 100; }
   context(owner: number, ids: unknown, active: unknown): void {
     if (!Array.isArray(ids) || ids.length > 1000 || !ids.every(id => typeof id === 'string' && id.length < 256)) return;
@@ -53,25 +64,30 @@ export class WorkspaceZoom {
   activeTab(owner: number): string | null { return this.contexts.get(owner)?.active ?? null; }
   ownsTab(owner: number, id: string): boolean { return this.contexts.get(owner)?.ids.has(tabZoomKey(id)) ?? false; }
   changeTab(id: string, steps: unknown): boolean {
-    const scale = steps && typeof steps === 'object' && 'scale' in steps ? steps.scale : undefined;
-    if (scale !== undefined) {
-      if (typeof scale !== 'number' || !Number.isFinite(scale) || scale < .5 || scale > 2) return false;
-    } else if (typeof steps !== 'number' || !Number.isInteger(steps) || Math.abs(steps) > 4) return false;
     const key = tabZoomKey(id), previous = this.tabs.get(key) ?? 100;
-    const next = scale !== undefined ? Math.max(50, Math.min(300, previous * scale))
-      : steps === 0 ? 100 : Math.max(50, Math.min(300, previous + (steps as number) * 10));
-    if (previous === next) return false;
+    const next = contentPercent(previous, steps);
+    if (next === undefined || previous === next) return false;
     this.tabs.set(key, next); this.revision++;
     for (const entry of this.targets.values()) this.apply(entry);
     this.onChange?.(); return true;
   }
 
+  /** Code typography is a persistent preference shared by files and windows. */
+  changeCode(steps: unknown): boolean {
+    const next = contentPercent(this.codePercent, steps);
+    if (next === undefined || next === this.codePercent) return false;
+    this.codePercent = next; this.revision++;
+    // Only shell editors consume this factor; native readers keep their zoom.
+    this.onChange?.(); return true;
+  }
+
   restore(value: unknown): void {
     if (!value || typeof value !== 'object') return;
-    const saved = value as { app?: unknown; text?: unknown; terminal?: unknown; tabs?: unknown };
+    const saved = value as { app?: unknown; text?: unknown; terminal?: unknown; code?: unknown; tabs?: unknown };
     const valid = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 50 && v <= 300;
     if (valid(saved.app)) this.percent = saved.app;
     if (valid(saved.text)) this.textPercent = saved.text;
+    if (typeof saved.code === 'number' && Number.isFinite(saved.code) && saved.code >= 50 && saved.code <= 300) this.codePercent = saved.code;
     // Settings written before the split have no terminal factor; terminals
     // followed the text factor then, so inherit it once instead of resetting.
     this.terminalPercent = valid(saved.terminal) ? saved.terminal : this.textPercent;

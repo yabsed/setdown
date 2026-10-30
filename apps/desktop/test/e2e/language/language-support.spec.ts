@@ -39,6 +39,9 @@ test('Python diagnostics, completion, rename and Undo use the ordinary document'
     await rename.fill('welcome');
     await rename.press('Enter');
     await expect(rename).not.toBeVisible();
+    // Closing the input starts the asynchronous server request. Save only once
+    // Monaco has applied its edits; the dialog closing is not that boundary.
+    await expect(page.locator('.editor-surface .view-lines')).toContainText('def welcome(');
     await editor.press('Control+S');
     await expect.poll(() => readFile(file, 'utf8')).toContain('def welcome(');
     expect(await readFile(file, 'utf8')).toContain('print(welcome("Setdown"))');

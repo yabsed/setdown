@@ -2,7 +2,7 @@ import { ContentZoomInput, type ContentZoomChange } from '../core/wheel-zoom';
 import { appZoomStep } from '../core/zoom';
 export { WheelZoomAccumulator } from '../core/wheel-zoom';
 
-export type WheelZoomScope = 'text' | 'terminal';
+export type WheelZoomScope = 'text' | 'terminal' | 'code';
 
 /** Which persisted factor a shell wheel target owns. Media surfaces handle
  * their own cursor-anchored zoom, including shadow DOM; terminals keep a
@@ -11,6 +11,7 @@ export function wheelZoomScope(target: EventTarget | null): WheelZoomScope | nul
   const element = target as Element | null;
   if (element?.closest?.('.pdf-host, .image-viewport')) return null;
   if (element?.closest?.('.terminal-surface')) return 'terminal';
+  if (element?.closest?.('[data-code-zoom="true"]')) return 'code';
   return element?.closest?.('.monaco-editor, .web-reader, .notebook-surface, .video-surface') ? 'text' : null;
 }
 

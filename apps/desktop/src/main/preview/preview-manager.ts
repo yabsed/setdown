@@ -538,8 +538,8 @@ export class PreviewManager {
       if (!this.options.stateFor(event.sender.id) || event.senderFrame !== event.sender.mainFrame) return;
       return this.zoom.snapshot;
     });
-    for (const scope of ['app', 'text', 'terminal'] as const) {
-      ipcMain.on(scope === 'app' ? 'workspace:zoom' : scope === 'text' ? 'workspace:text-zoom' : 'workspace:terminal-zoom', (event, steps: unknown, tabId?: unknown) => {
+    for (const scope of ['app', 'text', 'terminal', 'code'] as const) {
+      ipcMain.on(scope === 'app' ? 'workspace:zoom' : scope === 'text' ? 'workspace:text-zoom' : scope === 'code' ? 'workspace:code-zoom' : 'workspace:terminal-zoom', (event, steps: unknown, tabId?: unknown) => {
         if (event.sender.isDestroyed() || event.senderFrame !== event.sender.mainFrame) return;
         const direct = this.options.stateFor(event.sender.id);
         const visible = direct ? null : Array.from(this.views.values()).find((preview) =>
@@ -550,7 +550,10 @@ export class PreviewManager {
         else {
           const nativeId = visible ? [...this.views].find(([, entry]) => entry === visible)?.[0] : null;
           const id = nativeId ?? (typeof tabId === 'string' ? tabId : this.zoom.activeTab(state.webContentsId));
-          if (id && (nativeId || this.zoom.ownsTab(state.webContentsId, id))) this.zoom.changeTab(id, steps);
+          if (id && (nativeId || this.zoom.ownsTab(state.webContentsId, id))) {
+            if (scope === 'code') { if (direct) this.zoom.changeCode(steps); }
+            else this.zoom.changeTab(id, steps);
+          }
         }
       });
     }

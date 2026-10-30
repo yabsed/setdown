@@ -18,7 +18,7 @@ import { normalizePreviewTheme } from '../core/preview/preview-preferences';
 import { resourceUrl } from '../core/preview/media-url';
 
 installAppZoom((steps) => ipcRenderer.send('workspace:zoom', steps));
-installWheelZoom((steps, scope, tabId) => ipcRenderer.send(scope === 'terminal' ? 'workspace:terminal-zoom' : 'workspace:text-zoom', steps, tabId));
+installWheelZoom((steps, scope, tabId) => ipcRenderer.send(scope === 'code' ? 'workspace:code-zoom' : scope === 'terminal' ? 'workspace:terminal-zoom' : 'workspace:text-zoom', steps, tabId));
 
 function subscribe<T>(channel: string, listener: (value: T) => void) {
   const handler = (_event: Electron.IpcRendererEvent, value: T) => listener(value);
@@ -140,7 +140,7 @@ const api: MarkTexApi = {
     onEvent: (listener) => subscribe('browser:event', listener),
   },
   getZoom: () => ipcRenderer.invoke('workspace:zoom-state'),
-  changeZoom: (steps, scope, tabId) => ipcRenderer.send(scope === 'terminal' ? 'workspace:terminal-zoom' : scope === 'text' ? 'workspace:text-zoom' : 'workspace:zoom', steps, tabId),
+  changeZoom: (steps, scope, tabId) => ipcRenderer.send(scope === 'code' ? 'workspace:code-zoom' : scope === 'terminal' ? 'workspace:terminal-zoom' : scope === 'text' ? 'workspace:text-zoom' : 'workspace:zoom', steps, tabId),
   setZoomTabs: (ids, active) => ipcRenderer.send('workspace:zoom-tabs', ids, active),
   onZoomChanged: (listener) => subscribe('workspace:zoom-changed', listener),
   saveReadingPosition: (record) => ipcRenderer.send('reading:save', record),

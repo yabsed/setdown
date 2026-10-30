@@ -62,7 +62,7 @@ function fixture(reviewOnly = false) {
   if (!reviewOnly) {
     (adapter as unknown as { editorValue: unknown }).editorValue = editor;
     const group = adapter as unknown as { groupId: string; groupEditors: Map<string, unknown> };
-    group.groupId = 'test-group'; group.groupEditors.set('test-group', { tabId: null, editor, host: { remove() {} } });
+    group.groupId = 'test-group'; group.groupEditors.set('test-group', { tabId: null, editor, host: { dataset: {}, remove() {} } });
     adapter.activate(tab);
   }
   return { adapter, tab, tabs, lease, live, borrow, editor, changes: () => changes,

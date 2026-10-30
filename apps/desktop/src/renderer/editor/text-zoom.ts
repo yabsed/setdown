@@ -1,14 +1,20 @@
 import { tabZoomKey, type ZoomSnapshot } from '../../core/zoom';
 import type { DesktopPort } from '../ports/desktop-port';
+import { documentSurface } from '../../core/document/document-profile';
+
+/** Markdown, notebooks and media retain their own content zoom scopes. */
+export function usesCodeZoom(path?: string): boolean { return path !== undefined && documentSurface(path) === 'editor'; }
 
 /** Editors/previews and terminals follow separate persisted factors. Each
  * scope notifies only its own listeners, so a terminal zoom never resizes
  * Monaco and an editor zoom never refits a PTY grid. */
 let factor = 1;
+let codeFactor = 1;
 let terminalFactorValue = 1;
 let revision = -1;
 let tabs: Record<string, number> = {};
 const listeners = new Set<(id?: string) => void>();
+const codeListeners = new Set<() => void>();
 const terminalListeners = new Set<(id?: string) => void>();
 function update(value: ZoomSnapshot) {
   if (!value || value.revision < revision) return;
@@ -16,6 +22,10 @@ function update(value: ZoomSnapshot) {
   const next = value.tabs ?? {};
   const changed = new Set([...Object.keys(tabs), ...Object.keys(next)].filter(id => tabs[id] !== next[id]));
   tabs = next;
+  if (codeFactor !== (value.code ?? 100) / 100) {
+    codeFactor = (value.code ?? 100) / 100;
+    for (const listener of codeListeners) listener();
+  }
   for (const id of changed) {
     for (const listener of listeners) listener(id);
     for (const listener of terminalListeners) listener(id);
@@ -43,10 +53,17 @@ export function installTextZoom(desktop: DesktopPort, changed?: (value: ZoomSnap
 }
 export function textZoomFactor(id?: string) { return id ? (tabs[tabZoomKey(id)] ?? 100) / 100 : factor; }
 export function terminalZoomFactor(id?: string) { return id ? textZoomFactor(id) : terminalFactorValue; }
-export function textZoomOptions(id?: string) { const size = textZoomFactor(id); return { fontSize: 14 * size, lineHeight: 22 * size }; }
+export function textZoomOptions(id?: string, path?: string) {
+  const size = usesCodeZoom(path) ? codeFactor : textZoomFactor(id);
+  return { fontSize: 14 * size, lineHeight: 22 * size };
+}
 export function onTextZoom(listener: (id?: string) => void) {
   listeners.add(listener);
   return () => { listeners.delete(listener); };
+}
+export function onCodeZoom(listener: () => void) {
+  codeListeners.add(listener);
+  return () => { codeListeners.delete(listener); };
 }
 export function onTerminalZoom(listener: (id?: string) => void) {
   terminalListeners.add(listener);

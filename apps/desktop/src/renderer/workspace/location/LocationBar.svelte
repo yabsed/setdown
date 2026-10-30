@@ -4,6 +4,7 @@
   import DocumentLanguageStatus from '../../language/DocumentLanguageStatus.svelte';
   import { isNotebookDocument } from '../../../core/document/document-profile';
   import ZoomControls from '../../ZoomControls.svelte';
+  import { usesCodeZoom } from '../../editor/text-zoom';
   import { zoomState, mediaZoom } from '../../zoom-state.svelte';
   import { view } from '../workspace-view.svelte';
 import type { AppActions } from '../../ports/ui-actions';
@@ -33,7 +34,8 @@ import type { AppActions } from '../../ports/ui-actions';
   }
   const media = $derived(view.mediaTabs.find(item => item.id === tab?.id));
   const fileZoom = $derived(tab ? mediaZoom[tab.id] : undefined);
-  const zoomScope = $derived(tab?.kind === 'terminal' && !review ? 'terminal' : 'text');
+  const zoomScope = $derived(tab?.kind === 'terminal' && !review ? 'terminal'
+    : tab?.kind !== 'web' && usesCodeZoom(review?.filePath ?? tab?.path) ? 'code' : 'text');
   const zoomId = $derived(tab?.id);
   const reading = $derived(!!tab && !!browser.readers[tab.id]);
   // Markdown surface actions live in the address bar. They act on the focused
@@ -223,7 +225,7 @@ import type { AppActions } from '../../ports/ui-actions';
         min={10} max={fileZoom?.max ?? 1000} disabled={!fileZoom} change={step => fileZoom?.change(step)} />
     {:else}
       <ZoomControls label={zoomScope === 'terminal' ? 'Terminal' : media?.document.kind === 'video' ? 'Video' : 'Text'}
-        percent={zoomState.tabs?.[zoomId ?? ''] ?? 100} change={step => actions.changeZoom(step, zoomScope, zoomId)} />
+        percent={zoomScope === 'code' ? zoomState.code ?? 100 : zoomState.tabs?.[zoomId ?? ''] ?? 100} change={step => actions.changeZoom(step, zoomScope, zoomId)} />
     {/if}
   {/if}
   {#if error || (browser.error && groupId === view.focusedGroupId)}

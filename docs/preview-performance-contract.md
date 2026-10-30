@@ -71,14 +71,23 @@ Set `SETDOWN_TEST_PDF_FILE` to an absolute PDF path when running that test to
 repeat the same visual and clipboard checks against a real document; it copies
 the file into its temporary workspace before opening it.
 
-Content zoom belongs to each tab. Ctrl+plus/minus and Ctrl+0 still change/reset
+Code and plain-text editor font zoom is a persisted preference shared across files, splits,
+code Git reviews and windows. Wheel/pinch and location controls use the same
+preference; opening/reopening files or restarting must preserve it. Markdown
+(source and reader), notebooks, terminals, media and web pages retain independent
+content zoom. `workspace-zoom.spec.ts` and `text-zoom.test.ts` cover new files,
+switching, splits, restart, Undo and isolation; `workspace-zoom.test.ts` covers
+persistence and input validation. Code zoom never reapplies native view factors.
+
+Other content zoom belongs to each tab. Ctrl+plus/minus and Ctrl+0 still change/reset
 persisted app zoom in every window. Ctrl+wheel and location-bar controls change
-only the addressed tab's content factor, including ordinary/Git editors, native
+only the addressed tab's content factor, including Markdown/Git Markdown editors, native
 Markdown previews, terminals, and web reader mode. Native previews compose
-app × tab zoom; editor and terminal typography uses the tab factor. New tabs
-start at 100%, even when another tab of the same type is enlarged. The two
-panes of one Git review share that review tab's factor. Transferred tab IDs keep
-their factors. A newly created document tab after restart is a new zoom scope.
+app × tab zoom; Markdown editor and terminal typography uses the tab factor.
+These new tabs start at 100%, even when another tab of the same type is enlarged.
+The two panes of one Markdown Git review share that review tab's factor.
+Transferred tab IDs keep their factors. A newly created Markdown tab after
+restart is a new zoom scope.
 Legacy text/terminal preference fields are retained for settings compatibility;
 they no longer couple production tabs.
 

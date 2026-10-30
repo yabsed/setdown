@@ -6,5 +6,5 @@ export function appZoomStep(input: { type: string; isComposing?: boolean; contro
   if (input.key === '-' || input.key === '_') return -1;
   if (input.key === '0' && !input.shift) return 0;
 }
-export type ZoomSnapshot = { app: number; text: number; terminal: number; revision: number; tabs?: Record<string, number> };
+export type ZoomSnapshot = { app: number; text: number; terminal: number; code?: number; revision: number; tabs?: Record<string, number> };
 export const tabZoomKey = (id: string) => id.startsWith('git-diff:') ? id.slice('git-diff:'.length).replace(/:[ab]$/, '') : id;
