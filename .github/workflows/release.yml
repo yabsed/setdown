@@ -54,6 +54,10 @@ jobs:
       run:
         shell: bash
     steps:
+      # Windows Git otherwise rewrites vendored JS to CRLF when the build
+      # initializes submodules, invalidating the pinned RHWP artifact hashes.
+      - name: Preserve vendored artifact bytes
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
