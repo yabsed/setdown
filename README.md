@@ -1,587 +1,65 @@
 <p align="center">
-  <img src="apps/desktop/build/icon.png" width="104" alt="Setdown app icon">
+  <img src="apps/desktop/build/icon.png" width="96" alt="Setdown app icon">
 </p>
 
 <h1 align="center">Setdown</h1>
 
-<p align="center">Write plain. Read beautifully.</p>
+<p align="center"><strong>Your tabs. Your layout. Your workspace.</strong></p>
 
-Setdown is a desktop Markdown reader and editor for local files. Read a typeset
-document, double-click the passage you want to change, and edit its Markdown
-source. Press `Esc` to return to reading with your place preserved.
-
-[Download stable](https://github.com/yabsed/setdown/releases/latest) ·
-[All releases](https://github.com/yabsed/setdown/releases) ·
-[CI](https://github.com/yabsed/setdown/actions/workflows/ci.yml)
+A desktop workspace for Markdown, code, notebooks, and the web. Keep notes,
+references, and tools side by side, and arrange your tabs around the task at hand.
 
 <p align="center">
-  <img src="live_demo.gif" width="900" alt="Editing Markdown from the Setdown Viewer and returning to the reading position">
+  <a href="https://github.com/yabsed/setdown/releases/latest">Download for Windows &amp; Linux</a> ·
+  <a href="https://github.com/yabsed/setdown/releases">All releases</a>
 </p>
 
-## Read and edit in place
+<p align="center">
+  <img src="docs/assets-2/setdown-demo.gif" width="900" alt="Setdown demo: arranging split tabs, editing and reading Markdown, reviewing Git changes, browsing articles, and working with code and notebooks">
+</p>
 
-The Viewer renders Markdown with equations, tables, code blocks, and images.
-Double-click a paragraph, equation, image, or nearby whitespace to open the Editor
-at the corresponding source position. Switch back with `Esc` or toggle either
-view with `Ctrl/Cmd+E`.
+<p align="center"><sub>Full demo · 3× speed</sub></p>
 
-- Navigate headings through the document outline and search with `Ctrl/Cmd+F`.
-- Export Markdown through **File → Export as PDF…**.
-- Reorder tabs, drag them into another Setdown window, or detach them into a new one.
-- Reopen saved files at their last reading or editing position, including after an
-  application restart.
-- Choose Paper, GitHub Light/Dark, Medium, Night, One Dark, Solarized Light/Dark,
-  or **VS Code Dark 2026** from View → Theme. Themes
-  apply to the reader, editor, and application chrome across windows.
+## Make room for your work
 
-The Monaco-based Editor includes a table-size picker, TSV-to-table conversion,
-link insertion, and URL pasting over selected text. Pasted images use ordinary
-Markdown links: web images retain their URLs, copied image files retain their
-format, and screenshots become PNG assets. Local assets go in
-`<document name>.assets/`; untitled documents keep them in a draft bundle until
-Save As succeeds.
+- **Arrange your workspace.** Drag tabs into split groups, resize panes, and move
+  tabs between windows. Keep the views you need together.
+- **Write, then read.** Markdown with equations, tables, and images. Double-click
+  a passage to edit its source; press `Esc` to return to reading in the same place.
+- **Keep references close.** Open web pages beside your files. Switch supported
+  articles to Reader mode and export them as Markdown or PDF.
+- **See what changed.** Review Markdown changes as rendered documents or source
+  diffs. Stage, commit, and browse Git history without leaving your workspace.
+- **Explore code and notebooks.** Edit source files, run Jupyter cells, inspect
+  outputs, and use the integrated terminal alongside your notes.
+- **Make it yours.** Choose light or dark themes across the workspace. Open PDFs
+  and images in tabs with the rest of your work.
 
-## Feature demos
+## Get started
 
-Keep related text files, PDFs, images, and Jupyter notebooks in the same window. Open a folder when
-you need file navigation, search, Git review, or a terminal.
+Download the [latest release](https://github.com/yabsed/setdown/releases/latest)
+for **Windows x64** (`.exe`) or **Linux x64** (`.deb`, `.rpm`, `.AppImage`).
 
-<table width="100%">
-  <tr>
-    <th width="33%">Editing</th>
-    <th width="33%">Table Insertion</th>
-    <th width="33%">PDF and Images</th>
-  </tr>
-  <tr>
-    <td><img src="docs/assets/video4.gif" width="100%" alt="Editing Markdown"></td>
-    <td><img src="docs/assets/video6.gif" width="100%" alt="Inserting a Markdown table"></td>
-    <td><img src="docs/assets/video5.gif" width="100%" alt="Viewing PDF and image files"></td>
-  </tr>
-  <tr>
-    <th width="33%">Search</th>
-    <th width="33%">Git Diff Editing</th>
-    <th width="33%">Terminal</th>
-  </tr>
-  <tr>
-    <td><img src="docs/assets/video3.gif" width="100%" alt="Searching documents"></td>
-    <td><img src="docs/assets/video2.gif" width="100%" alt="Editing a Git diff"></td>
-    <td><img src="docs/assets/video1.gif" width="100%" alt="Using the integrated terminal"></td>
-  </tr>
-</table>
+1. Open a file, or choose **File → Open Folder…** for Explorer, search, and Git.
+2. Drag a tab to an edge to split the workspace.
+3. Double-click Markdown to edit; press `Esc` to read.
 
-## Work with more than Markdown
-
-| File type | Experience |
-| --- | --- |
-| Markdown | Typeset Viewer and source Editor, including rendered Git comparisons |
-| Jupyter (`.ipynb`) | Markdown/code cells, multi-cell clipboard and drag reordering, notebook-aware Python LSP, shared Python environment, queued execution, output tools, outline, search/replace and variables; JupyterLab widgets/debugging and nbconvert/nbdime exports/comparison through explicit tool integration; see [notebooks](docs/notebooks.md) |
-| Text, source, and configuration files | Source editing with Monaco syntax highlighting and text Git diffs |
-| PDF | Read-only viewer with continuous scrolling, page navigation, outline, text search and selection, zoom, rotation, and password entry |
-| PNG, JPEG, WebP | Image viewer plus editing for static images: crop, rotate, flip, resize, brightness, contrast, saturation, Undo/Redo and Save As |
-| GIF, AVIF, SVG, animated images | Image viewer with fit, zoom, rotation, and drag-to-pan controls |
-| HTTP and HTTPS pages | Browser tabs with back/forward navigation, bookmarks, history, search, and uBlock Origin |
-
-Open a web tab with `Ctrl/Cmd+T`, or enter a URL with `Ctrl/Cmd+L`. Every editor
-group has an address/file-path bar. Web links in documents open inside Setdown;
-web pages can sit beside documents in split groups. The star saves a bookmark in
-the left **Browser** panel. The **uBO** button opens the current site's controls.
-Browser cookies, bookmarks and history use a separate local profile. New app
-sessions start without reopening web tabs; Reload preserves live pages
-in the current window.
-
-Press `Esc` on a readable web article to open Reader mode; double-click a passage
-to return to that place on the live page. `Ctrl/Cmd+F` searches the visible reading
-text. Right-click rendered Markdown or a web Reader for Copy, Search Google,
-link actions, Select All and Find. Web Reader's right-click menu also offers
-**Export to Markdown** and **Export to PDF**, saving the article with its source
-URL; **File → Export as PDF…** also works there. Markdown exports preserve linked images rather than
-downloading an offline image archive.
-
-In **Browser → Extensions → Install from Chrome Web Store…**, paste an extension's
-store link or ID and confirm its name and permissions. Installed extensions can
-be disabled, removed, or updated with **Update from Web Store**. Updates require
-confirmation. Folder and `.zip`/`.crx` installation also remain available.
-Extension compatibility depends on the APIs it uses; installing from the store
-does not guarantee full Chrome compatibility. See [Web Store installation](docs/chrome-web-store-installation.md).
-
-The browser adapts [Min](https://github.com/minbrowser/min)'s native-view lifecycle
-and reuses its Places search/ranking code (Apache-2.0). It bundles the complete
-[uBlock Origin](https://github.com/gorhill/uBlock) extension and
-`electron-chrome-extensions` compatibility layer (GPL-3.0), with their license
-notices. This includes network filtering, cosmetic filtering and scriptlets.
-Store downloads reuse `electron-chrome-web-store` (MIT).
-
-Non-Markdown text editing supports UTF-8, with or without a BOM, up to 16 MiB.
-It preserves uniform LF or CRLF line endings and the final-newline state.
-Unsupported encodings, binary content, and mixed line endings are rejected.
-Unknown text languages fall back to plain text. Saved Python (`.py`, `.pyi`) files
-use bundled Pyright; saved C/C++ sources and headers use an installed **clangd**.
-Both provide completion (`Ctrl+Space`), hover, signature help, diagnostics,
-definition (`F12`), references (`Shift+F12`), symbols and rename (`F2`). Other
-languages have syntax highlighting; additional LSP servers can be connected through
-**Edit → Language Support…**. Python, clangd and compilers are not bundled.
-
-For C/C++, install [clangd](https://clangd.llvm.org/installation), then open a source
-file. Installed servers use **195 connection profiles** imported from pinned Helix
-definitions plus Setdown defaults, including **rust-analyzer**, **gopls**, **fortls**,
-TypeScript/JavaScript, Bash, Lua, YAML and JSON. The full catalog is scanned for
-installed commands; npm global packages and Python script directories are detected. For example, after `pip install fortls`, open a saved `.f90`
-file; no language ID, extension mapping or JSON setup is needed. Previously saved
-manual paths and disabled connections are preserved.
-
-If a newly installed server is not connected, open **Edit → Language Support…**
-and click **Rescan installed servers**. Setdown checks the user's environment,
-PATH and known installation directories; **Choose executable…** remains available
-for custom installations. Rescan reconnects unavailable documents with their
-current unsaved text while healthy language sessions keep running. Ordinary
-editing stays usable when a server is missing or fails.
-
-Language Support includes an offline Mason catalog, status, enable/disable,
-candidate selection, connection settings and custom JSON imports. The F1 palette
-opens the same screen. Catalog-only servers still need a connection definition;
-installation is manual. **Restart Language Servers** reconnects the current
-window's unsaved buffers. See [language support](docs/language-support.md) for
-discovery scope, custom connections, protocol limits and integration checks.
-
-Open the project folder for a shared analysis root. With no folder open, C/C++
-finds the nearest ancestor containing `.clangd`, `compile_commands.json`,
-`compile_flags.txt`, `CMakeLists.txt` or `.git`; otherwise it uses the file's folder.
-Python uses the file's folder and reads `pyrightconfig.json` or `[tool.pyright]`.
-Python files and notebooks default to lightweight diagnostics (`typeCheckingMode: off`):
-syntax errors and core name/import warnings remain, while broad type diagnostics
-are disabled. Completion, hover and navigation remain available.
-clangd itself reads [compilation commands](https://clangd.llvm.org/design/compile-commands)
-and [.clangd configuration](https://clangd.llvm.org/config), including include paths,
-defines, language standards and header inference. For CMake projects, generate
-`compile_commands.json` with `cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON`
-(using a Makefile/Ninja generator). For another build-directory name, point clangd
-to it with a project `.clangd` file:
-
-```yaml
-CompileFlags:
-  CompilationDatabase: path/to/build
-```
-
-Without build settings clangd uses fallback flags, which may produce missing
-include or macro errors. Setdown does not run the build or guess project flags.
-clangd uses two async workers, background indexing and disk-backed preambles;
-these limit concurrency but are not a hard memory cap for large C++ projects.
-
-Language support starts only when a saved, supported file gets an editor model.
-A server is shared by its window, language-server kind and project root. Python
-and C/C++ do not share a process; separate windows keep unsaved buffers isolated.
-Closing the last related document stops its server. A slow request is cancelled
-without killing a healthy server; startup and shutdown have bounded deadlines.
-
-Language changes use the same document and Undo history as ordinary editing and
-Working Tree review. Multi-file rename opens affected files as unsaved tabs;
-normal save/auto-save rules still apply, and Undo is per file. Save As reconnects
-analysis at the new path without replacing the model. Formatting, code actions,
-arbitrary server commands and filesystem operations from language servers are
-not enabled yet.
-
-PDF search uses the document's embedded text; scanned pages need an existing OCR
-text layer. Image files can be up to 64 MiB. Open a static PNG, JPEG or WebP and
-choose **Edit image** to edit it, then **Save** (`Ctrl+S`) or **Save As…**.
-Editing supports up to 24 megapixels and 8192 pixels per side. Changes survive
-tab switches; closing an unsaved image prompts to save. JPEG uses a white
-background and saved images omit metadata. Save edited images before dragging
-their tabs to another group or window. PDF and image positions, zoom, and
-rotation persist across restarts. The three most recently visited PDF/image
-surfaces stay in memory per window; older surfaces reload at their saved position.
-
-### Three zoom controls
-
-| Scope | Control | Effect |
-| --- | --- | --- |
-| Application | `Ctrl/Cmd++`, `Ctrl/Cmd+-`, `Ctrl/Cmd+0` | Resize the application across windows; `0` resets app zoom |
-| Text | `Ctrl+wheel` over Markdown or text, or the address-bar zoom controls | Change that tab's reader/editor text size, including Git review |
-| PDF or image | `Ctrl+wheel` over the file, or its toolbar | Zoom that file independently |
-
-App zoom persists across restarts; new text tabs start at 100%. Click the
-percentage in a tab's address bar to reset its content zoom to 100%. Media
-toolbars provide their own fit and 100% controls; new PDFs start at fit width.
-
-## Optional folder tools
-
-Opening a file does not automatically open its parent folder as a project.
-Choose **File → Open Folder…** for a sidebar with:
-
-- **Explorer:** browse, create, rename, copy, cut, paste, duplicate, move, and trash
-  files and folders. Use the context menu or `Ctrl/Cmd+C/X/V` while the tree is
-  focused; `Ctrl/Cmd+D` duplicates and `F2` renames the basename.
-- **Search:** search Markdown by default, or opt into all text files.
-- **Source control:** inspect changes, stage, unstage, discard, commit, fetch,
-  pull, push, and sync using Git.
-
-Explorer keeps selection and scroll position when switching sidebar views. Its
-**…** menu provides Reveal Active File, a filter for loaded entries, name/type
-sorting, and hidden-file visibility. Type a filename prefix to jump; drag onto a
-folder to move, or hold Ctrl/Alt to copy. Hovering over a closed folder expands it.
-The context menu also opens a terminal at the selected folder or reveals an item
-in the system file manager.
-
-File copy/paste currently works within the open project in Setdown. Copy uses
-saved disk contents; Duplicate keeps the clipboard unchanged. Conflicting pastes
-offer Keep Both or Skip Existing; existing files are never replaced. File-operation
-Undo/Redo, OS file-manager clipboard interoperability, cross-volume moves, and
-folder merging are not yet supported. Close a file's tabs in other Setdown windows
-before moving, renaming, or trashing it. The current window preserves live editor
-buffers on rename/move and only closes approved tabs after trash succeeds.
-
-Markdown changes can be reviewed as rendered documents or source diffs. Staged
-review compares **HEAD → Index**; unstaged review compares **Index → the current
-document**, including unsaved edits. The ordinary document tab and editable Git
-review share the same text and undo history. Staging saves the selected open
-documents before running `git add`. Staged and unstaged reviews can remain open
-in separate tabs.
-
-The **Graph** below Changes shows branches and commit history. Drag its divider
-to resize it, or collapse its header. Select a commit and then a changed file to
-open a read-only source or rendered Markdown comparison. Historical reviews stay
-independent of current edits. The graph uses Web Git Graph's renderer and local
-Git backend; see [the integration notes](docs/git-history.md).
-
-Clean documents reload external file changes. Documents with unsaved edits keep
-those edits and ask before replacing them.
-
-Click the Setdown wordmark to toggle folder tools. The sidebar and document
-outline are resizable, and their layout is restored on window reload. Closing
-folder tools leaves document tabs open.
-
-New windows start with **None** as their folder and no open tabs. The empty
-screen and the folder selector offer the five most recently opened folders,
-shared across windows and restarts. Choosing **None** releases the folder while
-keeping open files and unsaved edits. Reload preserves the current window's
-folder and live web pages; restarting the app starts empty. Opening Setdown
-with a file argument opens that file without selecting its directory.
-
-### Integrated terminal
-
-Press **Ctrl+`**, choose **View → Toggle Terminal**, or use the terminal button at
-the bottom of the activity bar. The resizable panel supports multiple shell
-sessions, scrollback, ANSI colors, and interactive programs.
-
-New sessions start in the open project folder, the active document's folder, or
-your home directory, in that order. Hiding the panel preserves sessions; closing
-or reloading the window terminates them. Sessions do not survive an app restart.
-Use `Ctrl+Shift+C/V` to copy and paste on Linux and Windows, or `Cmd+C/V` on macOS.
+Git features require Git. Notebook execution requires a Python environment;
+see the [notebook guide](docs/notebooks.md).
 
 ## Run from source
 
-Use Node.js 22.12 or later in the Node 22 series and npm. CI uses Node 22. Git must
-be available on `PATH` for source-control operations. Native dependencies may
-require platform build tools when a suitable prebuilt binary is unavailable.
-
-From the repository root:
+Use Node.js 22.12+ in the Node 22 series and npm. The first build needs network access.
 
 ```bash
 npm ci
 npm start
 ```
 
-`npm start` builds the application before launching Electron. To open a file at
-launch:
-
-```bash
-npm start -- /absolute/path/to/document.md
-```
-
-The browser build initializes `vendor/ublock-origin` and its nested submodules if
-needed, then fetches the uAssets revisions pinned in
-`apps/desktop/scripts/build-browser.mjs`. The first build needs network access;
-subsequent builds reuse `node_modules/.cache/setdown-browser`. Packaged apps
-include the extension and initial filter lists. Restart Electron after changing
-main-process code or browser preloads; Vite's renderer refresh cannot apply them.
-
-For development with the Vite server:
-
-```bash
-npm run dev
-```
-
-The development command builds Electron before starting Vite, then waits for an
-HTTP response on port 5173 before launching the app. If that port is already in
-use, it exits instead of attaching Electron to another server. Generated files
-in `dist-electron` do not trigger renderer reloads.
-
-The development/start launcher selects the existing Linux display policy before
-starting Electron, so its XWayland fallback does not terminate the process watched
-by the development server. Explicit `--ozone-platform` choices are preserved.
-It also removes `ELECTRON_RUN_AS_NODE` for the GUI child; unset this variable yourself
-when invoking the Electron binary directly.
-
-## Install and package
-
-### Linux
-
-After installing dependencies, build and install for the current user:
-
-```bash
-npm run install:linux
-```
-
-The installer places the application under
-`${XDG_DATA_HOME:-~/.local/share}/setdown`, registers a desktop entry and icon, and
-sets Setdown as the default Markdown application. It uses
-`update-desktop-database` and `xdg-mime` and does not require administrator access.
-
-Packaging rebuilds native dependencies for the bundled Electron version. The
-optional Node `canvas` packages pulled in by jsdom and Fabric are excluded from
-rebuilding and the application package: image editing uses Chromium's canvas,
-and TikZ uses jsdom only to process SVG. Cairo/Pixman development packages are
-therefore not required for those unused modules. Required native dependencies,
-including `node-pty` and `@parcel/watcher`, still participate in rebuilding;
-their build failures stop packaging.
-
-To produce AppImage, deb, and rpm packages instead (requires `rpmbuild`, provided
-by `rpm` on Ubuntu/Debian or `rpm-build` on Fedora; the bundled FPM tool also
-requires `libcrypt.so.1`, supplied by `libcrypt1` on Ubuntu):
-
-```bash
-npm run package:linux
-```
-
-### Windows
-
-Build the x64 NSIS installer on Windows after installing dependencies:
-
-```powershell
-npm run package:win
-```
-
-The installer supports per-user installation, a selectable install directory,
-shortcuts, and Markdown, PDF, and image file associations.
-
-Both packaging commands write their output to `apps/desktop/release/`.
-The repository currently defines packaging targets for Linux and Windows.
-
-### GitHub Releases
-
-The **CI** workflow typechecks and builds pull requests and application changes on
-`main`. A `v*` tag push packages Windows x64 on Windows 2022 and Linux x64 on
-Ubuntu 22.04, then publishes the versioned release. Choose the
-[latest stable release](https://github.com/yabsed/setdown/releases/latest) or browse
-[all releases](https://github.com/yabsed/setdown/releases).
-
-| Environment | Download |
-| --- | --- |
-| Windows x64 | `Setdown-<version>-win-x64.exe` |
-| Ubuntu / Debian x64 | `Setdown-<version>-linux-amd64.deb` |
-| Fedora / RPM-based Linux x64 | `Setdown-<version>-linux-x86_64.rpm` |
-| Other compatible Linux x64 desktops | `Setdown-<version>-linux-x86_64.AppImage` |
-
-AppImage files need executable permission (`chmod +x <file>.AppImage`). Linux
-runtime requirements still depend on the distribution; producing a package does
-not establish compatibility with every distribution or release. ARM64 and macOS
-are not part of this release workflow. Windows installers are currently unsigned
-and may trigger Windows security warnings. Git features require Git on `PATH`.
-
-GitHub Releases are published only when a version tag such as `v1.0.1` is
-pushed. Ordinary `main` pushes and pull requests run typechecking and a production
-build; documentation-only changes may skip that build. Run the local tests before
-pushing changes: CI does not run the unit, Electron, benchmark-comparator or
-packaged-app smoke suites.
-
-For a tag release, both OS packages must build and every expected installer must
-be verified before publication. Re-running a workflow preserves an already
-published release. Each release includes `build-info.json` (source commit and
-workflow run) and `SHA256SUMS` alongside all four installers. Uploads are staged
-in a draft and published only after every file has been verified.
-
-The release tag must already exist and resolve to the packaged commit, including
-annotated tags. The publisher checks the tag again before publishing.
-Authorization, validation, rate-limit and network errors stop publication and
-leave any staged draft available for a later retry. Draft discovery includes
-every page of the authenticated release list; the returned release ID is retained
-for upload verification and publication.
-
-For a build without publishing, select **Actions → CI → Run workflow**. This
-packages `*-test.<run-id>` installers as workflow artifacts, retained for 14 days,
-even when selecting a tag.
-
-To publish a stable version, update the desktop version and lockfile, commit and
-push, then push the matching tag. For example, the next patch after `1.0.0` is:
-
-```bash
-npm version 1.0.1 --workspace @setdown/desktop --no-git-tag-version
-git add apps/desktop/package.json package-lock.json
-git commit -m "Release Setdown 1.0.1"
-git push origin main
-git tag -a v1.0.1 -m "Setdown 1.0.1"
-git push origin v1.0.1
-```
-
-Tag builds still package the app when the last commit only changes documents.
-The tag must match `apps/desktop/package.json` and its lockfile entry; the workspace
-root version is independent. Versions such as `1.1.0-beta.1` remain pre-releases.
-Published tags and assets are preserved; use a new version for a subsequent
-release. An interrupted draft for the same commit can be completed by rerunning
-the failed jobs.
-
-Only the publish job receives `contents: write`; planning and packaging use read
-permissions. The automatically supplied `GITHUB_TOKEN` is sufficient. Code
-signing and in-app automatic updates require separate setup; publishing a new
-download does not update an installed app.
-
-## Keyboard reference
-
-`Ctrl/Cmd` means `Ctrl` on Linux/Windows and `Cmd` on macOS.
-
-| Action | Shortcut |
-| --- | --- |
-| Edit at a location in the Markdown Viewer | Double-click |
-| Return from Markdown Editor to Viewer | `Esc` |
-| Toggle Markdown Viewer / Editor | `Ctrl/Cmd+E` |
-| Find | `Ctrl/Cmd+F` |
-| New document | `Ctrl/Cmd+N` |
-| New window | `Ctrl/Cmd+Shift+N` |
-| Open file | `Ctrl/Cmd+O` |
-| Save / Save As | `Ctrl/Cmd+S` / `Ctrl/Cmd+Shift+S` |
-| Insert a Markdown link | `Ctrl/Cmd+K` |
-| Close tab | `Ctrl/Cmd+W` |
-| Next / previous tab | `Ctrl+Tab` / `Ctrl+Shift+Tab` |
-| Toggle terminal | **Ctrl+`** |
-
-The in-window **File · View · Edit · Window** menus also expose folder tools,
-themes, PDF export, zoom, and window commands.
-
-## Architecture
-
-Setdown uses Electron, Svelte, TypeScript, Monaco, and Crossnote. Markdown
-rendering and math typesetting run in Electron utility processes. Isolated native
-`WebContentsView` instances host Markdown previews; PDF.js handles PDFs, and
-xterm.js with node-pty provides the terminal.
-
-```text
-apps/
-├── desktop/
-│   ├── src/
-│   │   ├── core/             Domain rules and document algorithms
-│   │   ├── protocol/         Serializable IPC contracts
-│   │   ├── main/             Files, windows, rendering, Git, and PTYs
-│   │   ├── preload/          Typed renderer IPC bridge
-│   │   ├── preview-runtime/  Markdown reader interactions and rendering updates
-│   │   └── renderer/         Svelte UI, Monaco, folder tools, and media viewers
-│   ├── scripts/              Build, installation, and benchmark tools
-│   └── test/                 Electron end-to-end tests and fixtures
-└── code-growth/              Repository code-growth chart generator
-```
-
-Core code is independent of Electron and UI frameworks. Process entry points wire
-services to adapters, and architecture tests enforce dependency boundaries.
-Preview results carry revision identity so obsolete work cannot replace newer
-content or appear in another tab.
-
-See the [architecture and dependency guide](docs/architecture/overview.md) for
-feature ownership, public entry points, and test placement. The
-[external-code guide](docs/architecture/external-code.md) distinguishes runtime
-dependencies, build inputs, and reference-only vendor checkouts.
-
-Open Markdown tabs keep their rendered views and editor state alive. While you
-edit, Setdown prepares updated content in the background and keeps the last
-completed preview available until the replacement is ready. Source anchors help
-preserve your place when switching views or changing the window width.
-
-Markdown previews use a separate `marktex-preview:` origin with local resources
-restricted to the document directory and required rendering assets. Executable
-code chunks, document-local Crossnote scripts/configuration, and HTML5 embeds
-are disabled. PDF scripts are disabled, and SVG files are loaded as images.
-
-Upstream sources live in `vendor/` as submodules. Most runtime libraries come
-from npm. The browser build also uses the pinned uBlock Origin and Readability
-sources and initializes those checkouts when missing. Other reference checkouts
-are optional; fetch only the source needed for your work:
-
-```bash
-git submodule update --init vendor/<name>
-```
-
-## Development checks
-
-Run commands from the repository root:
-
-```bash
-npm run typecheck           # TypeScript and Svelte checks
-npm test                    # Unit and integration tests
-npm run test:tooling         # Build adapters, test inventory, and CI policy
-npm run build               # Typecheck and production build
-npm run test:e2e             # Build and run Electron end-to-end tests
-npm run test:preview-contract
-```
-
-Before running browser checks, install Chromium with
-`npx playwright install chromium`. Linux GUI npm scripts create an isolated Xvfb
-display, runtime directory and D-Bus session automatically.
-
-Read the [preview performance contract](docs/preview-performance-contract.md)
-before changing preview preparation or presentation, native bounds, zoom,
-source/reader transitions, hydration, source-position lookup, themes/CSS, or
-Electron/Crossnote dependencies. Those changes require the contract suite and a
-comparison against a separate baseline checkout with installed dependencies:
-
-```bash
-npm run bench:preview -- --baseline /absolute/path/to/installed-baseline
-```
-
-The contract explains baseline setup and reporting. Report first, second, and
-warm cycles separately for ordinary Markdown and Git review, with and without
-edits and preparation time. Incomplete runs, stale-content captures, and failed
-checks are not successful benchmarks.
-
-GitHub Actions policy:
-
-| Event | Checks | Delivery |
-| --- | --- | --- |
-| Pull request | Unit/tooling tests, typecheck and production build | No publication |
-| Application change on `main` | Unit/tooling tests, typecheck and production build | No publication |
-| `v*` tag push | Packaging, installer verification and version/tag validation | Versioned release; prerelease suffixes remain pre-releases |
-| Manual **CI** run | Packaging and installer verification regardless of changed paths | Downloadable artifacts only |
-| Documentation-only PR or main push | Explicit successful result | No installers |
-
-Only known documentation paths are exempt: root README/AGENTS/CONTRIBUTING/
-CHANGELOG/LICENSE files, `live_demo.gif`, `docs/`, and `reports/`. Markdown test
-fixtures, CSS, dependencies, workflows, submodules and unknown paths still run
-the desktop build or packaging. Missing comparison history also triggers it.
-The stable required-check name is **CI result**, including documentation-only
-changes. Configure that check in the repository's branch rules to enforce it;
-workflow files alone do not change repository rules.
-
-New application pushes cancel obsolete runs for the same PR or main branch.
-Documentation pushes do not cancel an app build in progress. Tags, manual builds
-and benchmarks are independent. Packaging failure reports are retained for 14 days.
-
-For the full comparative benchmark, select **Actions → Preview latency benchmark
-→ Run workflow**. Supply a baseline commit/tag, or leave it empty to compare with
-the selected ref's parent. All eight scenarios and five repetitions per version
-run on the same isolated display; results and logs are retained for 30 days.
-Performance-path changes still require this comparison locally or manually;
-timing noise is not an automatic PR gate. CI policy and the publishing lifecycle
-can be checked with `node --test scripts/ci/*.test.mjs`.
+[Development guide](docs/architecture/overview.md) ·
+[Language support](docs/language-support.md) ·
+[Preview performance contract](docs/preview-performance-contract.md)
 
 ## License
 
-Setdown's original code is licensed under the [GNU General Public License,
-version 3 only](LICENSE) (`GPL-3.0-only`). It is provided without warranty.
-Third-party code, dependencies, submodules, fonts and other assets retain their
-own copyrights and license terms. Their notices must be preserved when
-redistributing Setdown; the root license does not replace those terms.
-
-Further documentation:
-
-- [Preview guarantees, ownership, and benchmark procedure](docs/preview-performance-contract.md)
-- [Min source audit: small improvements to Setdown's web visits](docs/min-browser-details-audit-2026-10-14.md)
-- [Min-inspired browser details: implementation and validation](reports/2026_10_14_min_browser_details_implementation.md)
-- [Reading-position persistence, PDF and image viewers](docs/reading-positions-and-pdf.md)
-- [Integrated terminal behavior and implementation](docs/integrated-terminal.md)
-- [Text workspace support and acceptance scenarios](apps/desktop/test/TEXT-WORKSPACE.md)
-- [Design and implementation records](reports/)
-
-Regenerate the repository growth charts with `npm run plot:code-growth`:
-
-The component chart shows how code in each part of Setdown grew over the
-repository's history:
-
-<p align="center">
-  <img src="apps/code-growth/output/repository-component-growth-line.png" width="960" alt="Setdown component lines of code growth over time for tests, renderer, main, core, preview runtime, tooling, protocol, and preload">
-</p>
+[GPL-3.0-only](LICENSE). Third-party components retain their own licenses and notices.
