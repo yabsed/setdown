@@ -70,6 +70,34 @@ export async function fixture(document = true) {
       res.end(req.url.includes('blocked') ? 'window.blockedScript=true' : 'window.allowedScript=true'); return;
     }
     res.setHeader('content-type', 'text/html');
+    if (req.url?.startsWith('/fullscreen-embed')) {
+      const port = (server.address() as { port: number }).port;
+      res.end(`<!doctype html><title>Embedded player</title><style>body{margin:0}iframe{border:0;width:100%;height:400px}</style>
+        <iframe src="http://localhost:${port}/fullscreen" ${req.url.endsWith('denied') ? '' : 'allowfullscreen'}></iframe>`);
+      return;
+    }
+    if (req.url === '/fullscreen') {
+      res.end(`<!doctype html><title>Fullscreen player</title><style>
+        body{margin:0} #player{position:relative;width:100%;height:300px;background:#168648}
+        #player:fullscreen{width:100%;height:100%} video{width:100%;height:100%;object-fit:fill}
+        button{position:absolute;top:20px;left:20px;width:140px;height:40px}
+      </style><input id="draft"><div id="player"><video muted></video><button id="toggle">Fullscreen</button></div>
+      <script>
+        window.fullscreenError = ''; window.fullscreenClicks = 0; window.presentedFrames = 0;
+        const canvas = document.createElement('canvas'); canvas.width = 640; canvas.height = 480;
+        const ctx = canvas.getContext('2d');
+        setInterval(() => { ctx.fillStyle = '#168648'; ctx.fillRect(0, 0, 640, 480); }, 50);
+        const video = document.querySelector('video'); video.srcObject = canvas.captureStream(20);
+        const count = () => { window.presentedFrames++; video.requestVideoFrameCallback(count); };
+        video.requestVideoFrameCallback(count); video.play();
+        document.querySelector('#toggle').onclick = () => {
+          window.fullscreenClicks++;
+          (document.fullscreenElement ? document.exitFullscreen() : document.querySelector('#player').requestFullscreen())
+            .catch(error => { window.fullscreenError = error.name; });
+        };
+      </script>`);
+      return;
+    }
     if (req.url === '/draggable' || req.url === '/draggable-frame') {
       res.end(`<!doctype html><title>Website draggable regions</title>
         <style>

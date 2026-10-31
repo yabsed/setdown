@@ -40,6 +40,7 @@ const DEFERRED_HTML = new RegExp(`(<script type="application/json" id="${DEFERRE
 export class PreviewManager {
   private readonly backgrounds = new Map<number, Array<{ tabId: string; bounds: PreviewBounds }>>();
   private readonly foregrounds = new Map<number, { tabId: unknown; bounds: PreviewBounds | null }>();
+  private readonly suspendedOwners = new Set<number>();
   private readonly responsiveLayouts = new Map<number, ResponsiveOwnerLayout>();
   readonly views = new Map<string, PreviewViewState>();
   readonly zoom = new WorkspaceZoom();
@@ -287,8 +288,23 @@ export class PreviewManager {
     });
   }
 
+  /** A fullscreen web page temporarily owns presentation, not preview state. */
+  suspendPresentation(ownerId: number, suspended: boolean) {
+    if (this.suspendedOwners.has(ownerId) === suspended) return;
+    if (suspended) {
+      this.suspendedOwners.add(ownerId);
+      for (const preview of this.views.values()) if (preview.ownerWebContentsId === ownerId
+        && !preview.view.webContents.isDestroyed() && preview.view.getVisible()) preview.view.setVisible(false);
+    } else {
+      this.suspendedOwners.delete(ownerId);
+      const foreground = this.foregrounds.get(ownerId);
+      this.show(ownerId, foreground?.tabId ?? null, foreground?.bounds ?? null);
+    }
+  }
+
   show(ownerId: number, tabId: unknown, bounds: PreviewBounds | null) {
     this.foregrounds.set(ownerId, { tabId, bounds });
+    if (this.suspendedOwners.has(ownerId)) return;
     const owner = this.options.stateFor(ownerId)?.window;
     if (!owner || owner.isDestroyed()) return;
     const target = typeof tabId === 'string' ? this.views.get(tabId) : undefined;
@@ -517,6 +533,7 @@ export class PreviewManager {
   }
 
   closeOwner(ownerId: number) {
+    this.suspendedOwners.delete(ownerId);
     this.zoom.closeOwner(ownerId);
     this.backgrounds.delete(ownerId);
     this.foregrounds.delete(ownerId);

@@ -211,6 +211,20 @@ groups keep page identity, forms and history. Browser layout uses app zoom once;
 remote pages receive neither Node nor the desktop bridge. Hidden initial loads
 stay detached. Library indexing/ranking runs in a separate, detached Places view.
 No periodic page captures or Markdown hydration are added to browser tabs.
+HTML fullscreen temporarily belongs to the requesting page's window. Its native
+view fills the entire content rectangle in DIP, independently of app/tab zoom;
+other web splits and native Markdown readers remain retained but hidden. Reader
+layout/preparation updates cannot expose a native view over the fullscreen page.
+The window enters OS fullscreen and restores its prior mode on exit, including
+preserving an already fullscreen app. Escape exits the video without also entering
+Reader. The page's exit control, OS fullscreen exit, navigation, tab close/transfer,
+crash and shell navigation commands release the presentation and restore splits.
+Cross-origin HTTP(S) players may use fullscreen when Chromium's user-activation
+and iframe Permissions Policy checks permit it; this grants no other cross-origin
+permissions. Hidden/unowned pages remain ineligible. `browser/fullscreen.spec.ts`
+uses real pointer/Escape input and advancing video with web/Markdown neighbors,
+zoom and embedded-frame policy checks; permission and preview-presentation unit
+tests cover ownership and suspended presentation. These run in the focused gate.
 Hidden web tabs are detached from the native window without closing their
 WebContents. Chromium background throttling stays enabled; visible split groups
 remain attached. No timer discards live forms, audio, downloads or opener state.

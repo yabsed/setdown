@@ -28,14 +28,16 @@ import { BrowserThemes } from './browser-themes';
 import { DEFAULT_PREVIEW_THEME } from '../../core/preview/preview-preferences';
 
 type Entry = { owner: number; view: WebContentsView; contents: WebContents; page: BrowserPage; navigation: number; bounds?: Rectangle;
-  document: number; pdf?: BrowserPdf; reader?: { snapshot: ReaderSnapshot; document: number }; menuGeneration: number; find?: { request: number; query: string }; htmlFullscreen?: boolean;
+  document: number; pdf?: BrowserPdf; reader?: { snapshot: ReaderSnapshot; document: number }; menuGeneration: number; find?: { request: number; query: string };
   popups: number[]; externalRequests: number[]; externalPending?: boolean;
   historyUrls: string[]; historyIndex: number; canGoBack?: boolean; canGoForward?: boolean; closing?: (value: boolean) => void };
 type Options = { stateFor(id: number): WindowState | null; states(): Iterable<WindowState>; zoom: WorkspaceZoom;
   globalTabDragPointer?: boolean;
   theme?(): import('../../core/preview/preview-preferences').PreviewThemeId;
   createWindow?(): BrowserWindow;
+  fullscreenChanged?(owner: number, active: boolean): void;
   openFile(state: WindowState, file: string): Promise<unknown> };
+type BrowserLayout = Array<{ id: string; bounds: PreviewBounds; canGoBack?: boolean; canGoForward?: boolean }>;
 const blankPage = (id: string, url: string): BrowserPage => ({ id, url, title: url === 'about:blank' ? 'New web tab' : url,
   startPage: url === 'about:blank', loading: false, canGoBack: false, canGoForward: false, audible: false, muted: false, zoomPercent: 100, error: null, protection: 'starting' });
 
@@ -49,6 +51,8 @@ export class BrowserManager {
   private extensions?: BrowserExtensions;
   private ready?: Promise<void>;
   private owners = new Set<number>();
+  private readonly layouts = new Map<number, BrowserLayout>();
+  private readonly fullscreens = new Map<number, { entry: Entry; restoreWindow: boolean }>();
   private restored = false;
   private saved = new Map<string, BrowserPage>();
   private dormant = new Map<string, number>();
@@ -263,9 +267,47 @@ export class BrowserManager {
     if (this.owners.has(owner)) return;
     this.owners.add(owner);
     const state = this.options.stateFor(owner)!;
+    const resize = () => { if (this.fullscreens.has(owner)) this.applyLayout(owner); };
+    state.window.on('resize', resize);
+    state.window.on('enter-full-screen', resize);
+    state.window.on('leave-full-screen', () => {
+      const fullscreen = this.fullscreens.get(owner);
+      if (fullscreen) this.leaveFullscreen(fullscreen.entry);
+    });
     state.window.once('closed', () => this.closeOwner(owner));
   }
+  private exitHtmlFullscreen(entry: Entry) {
+    if (!entry.contents.isDestroyed()) void entry.contents.executeJavaScriptInIsolatedWorld(991, [{
+      code: 'if (document.fullscreenElement) document.exitFullscreen().catch(() => {});',
+    }]).catch(() => {});
+  }
+  private enterFullscreen(entry: Entry) {
+    const window = this.options.stateFor(entry.owner)?.window;
+    if (!window || !this.live(entry) || !entry.view.getVisible()) { this.exitHtmlFullscreen(entry); return; }
+    const previous = this.fullscreens.get(entry.owner);
+    if (previous?.entry === entry) return;
+    if (previous) this.leaveFullscreen(previous.entry);
+    // HTML fullscreen belongs to this window, not to a split group's bounds.
+    // Own the OS transition too, so exiting video preserves pre-existing F11.
+    this.fullscreens.set(entry.owner, { entry, restoreWindow: !window.isFullScreen() });
+    this.options.fullscreenChanged?.(entry.owner, true);
+    this.applyLayout(entry.owner);
+    window.setFullScreen(true);
+    entry.contents.focus();
+  }
+  private leaveFullscreen(entry: Entry, exitDocument = true) {
+    const fullscreen = this.fullscreens.get(entry.owner);
+    if (fullscreen?.entry !== entry) return;
+    this.fullscreens.delete(entry.owner);
+    if (exitDocument) this.exitHtmlFullscreen(entry);
+    const window = this.options.stateFor(entry.owner)?.window;
+    if (window && !window.isDestroyed() && fullscreen.restoreWindow) window.setFullScreen(false);
+    this.options.fullscreenChanged?.(entry.owner, false);
+    this.applyLayout(entry.owner);
+  }
   private closeOwner(owner: number) {
+    this.fullscreens.delete(owner); this.layouts.delete(owner);
+    this.options.fullscreenChanged?.(owner, false);
     const entries = [...this.views.values()].filter(entry => entry.owner === owner);
     // Retire every page before closing any native contents. Closing can emit
     // synchronous loading/audio events, after the View's getter is cleared.
@@ -289,6 +331,7 @@ export class BrowserManager {
     const view = new WebContentsView({ webPreferences: { session: this.session,
       sandbox: true, contextIsolation: true,
       nodeIntegration: false, nodeIntegrationInSubFrames: true, safeDialogs: true, backgroundThrottling: true,
+      disableHtmlFullscreenWindowResize: true,
       autoplayPolicy: 'document-user-activation-required' },
       ...(existing ? { webContents: existing } : {}) });
     view.setVisible(false);
@@ -301,7 +344,7 @@ export class BrowserManager {
     wc.on('ipc-message', (event, channel, steps) => {
       if (channel === 'browser:wheel-zoom') this.zoomPage(entry, steps);
       const frame = event.senderFrame;
-      if (channel === 'browser:escape' && frame && frame === wc.focusedFrame && view.getVisible() && !entry.htmlFullscreen) {
+      if (channel === 'browser:escape' && frame && frame === wc.focusedFrame && view.getVisible() && !this.fullscreens.has(entry.owner)) {
         if (wc.isLoading()) wc.stop();
         else if (isWebURL(wc.getURL())) {
           this.options.stateFor(entry.owner)?.window.webContents.focus();
@@ -333,6 +376,7 @@ export class BrowserManager {
       if (!inPlace) this.webThemes.invalidateFrame(webFrameMain.fromId(processId, routingId));
       entry.menuGeneration++;
       if (!main || inPlace) return;
+      this.leaveFullscreen(entry, false);
       this.webThemes.cancel(entry);
       this.clearPdf(entry);
       entry.document++; entry.reader = undefined; entry.find = undefined; entry.page.error = null; entry.page.failure = undefined;
@@ -341,8 +385,8 @@ export class BrowserManager {
       this.permissions.clear(entry.owner, id);
       this.send(entry.owner, { type: 'find', id, query: '', active: 0, matches: 0 });
     });
-    wc.on('enter-html-full-screen', () => { entry.htmlFullscreen = true; });
-    wc.on('leave-html-full-screen', () => { entry.htmlFullscreen = false; });
+    wc.on('enter-html-full-screen', () => this.enterFullscreen(entry));
+    wc.on('leave-html-full-screen', () => this.leaveFullscreen(entry, false));
     wc.on('login', (event, details, authInfo, callback) => {
       if (this.extensions?.network?.auth.request(event, wc, details, authInfo, callback)) return;
       event.preventDefault(); this.auth.request(entry.owner, id, details.url, authInfo, callback);
@@ -391,6 +435,7 @@ export class BrowserManager {
       this.error(entry, browserFailureMessage(entry.page.failure));
     });
     wc.on('render-process-gone', () => {
+      this.leaveFullscreen(entry, false);
       this.permissions.clear(entry.owner, id); this.auth.clear(id); entry.find = undefined; entry.document++; this.clearPdf(entry);
       entry.page.failure = { kind: 'crash', url: entry.page.url, code: 0 };
       this.error(entry, browserFailureMessage(entry.page.failure));
@@ -408,6 +453,7 @@ export class BrowserManager {
       if (choice === 1) event.preventDefault(); else { entry.closing?.(false); entry.closing = undefined; }
     });
     wc.on('destroyed', () => {
+      this.leaveFullscreen(entry, false);
       this.clearPdf(entry);
       this.webThemes.cancel(entry);
       const resolve = entry.closing; entry.closing = undefined; resolve?.(true);
@@ -449,13 +495,18 @@ export class BrowserManager {
       if (input.type !== 'keyDown' || input.isComposing) return;
       const owner = this.options.stateFor(entry.owner);
       if (!owner) return;
+      if (input.key === 'Escape' && this.fullscreens.get(entry.owner)?.entry === entry) {
+        // Consume this key before the page preload can turn the same Escape
+        // into Reader mode after Chromium has left HTML fullscreen.
+        event.preventDefault(); this.leaveFullscreen(entry); return;
+      }
       const step = appZoomStep(input);
       if (step !== undefined) { event.preventDefault(); this.options.zoom.change(step); return; }
       const key = input.key.toLowerCase(), modifier = input.control || input.meta;
       const command = modifier && key === 'l' ? 'focus-location' : modifier && key === 't' ? input.shift ? 'reopen-web-tab' : 'new-web-tab'
         : modifier && key === 'w' ? 'close-tab' : modifier && key === 'f' ? 'open-find'
         : input.control && key === 'tab' ? input.shift ? 'previous-tab' : 'next-tab' : null;
-      if (command) { event.preventDefault(); owner.window.webContents.focus(); owner.window.webContents.send('app:command', command); }
+      if (command) { event.preventDefault(); this.leaveFullscreen(entry); owner.window.webContents.focus(); owner.window.webContents.send('app:command', command); }
       else if ((modifier && key === 'r') || key === 'f5') { event.preventDefault(); if (input.shift || (key === 'f5' && modifier)) wc.reloadIgnoringCache(); else wc.reload(); }
       else if (input.alt && (key === 'arrowleft' || key === 'arrowright')) {
         event.preventDefault(); this.send(entry.owner, { type: 'history', id, direction: key === 'arrowleft' ? -1 : 1 });
@@ -540,6 +591,7 @@ export class BrowserManager {
     }
     const entry = this.owned(owner, id);
     if (entry.closing) return false;
+    this.leaveFullscreen(entry);
     const closed = await new Promise<boolean>(resolve => {
       entry.closing = resolve;
       entry.contents.close({ waitForBeforeUnload: true });
@@ -550,6 +602,7 @@ export class BrowserManager {
   adopt(source: number, destination: number, id: string): boolean {
     const entry = this.owned(source, id), target = this.options.stateFor(destination);
     if (!target) return false;
+    this.leaveFullscreen(entry);
     this.permissions.clear(source, id);
     this.auth.clear(id);
     this.webThemes.cancel(entry);
@@ -569,16 +622,29 @@ export class BrowserManager {
     for (const frame of entry.contents.mainFrame.framesInSubtree) this.webThemes.apply(entry, frame);
     return true;
   }
-  layout(owner: number, entries: Array<{ id: string; bounds: PreviewBounds; canGoBack?: boolean; canGoForward?: boolean }>) {
+  layout(owner: number, entries: BrowserLayout) {
+    if (!this.options.stateFor(owner) || !Array.isArray(entries)) return;
+    this.layouts.set(owner, entries.slice(0, 32));
+    const fullscreen = this.fullscreens.get(owner);
+    if (fullscreen && !entries.some(item => item.id === fullscreen.entry.page.id)) {
+      this.leaveFullscreen(fullscreen.entry); return;
+    }
+    this.applyLayout(owner);
+  }
+  private applyLayout(owner: number) {
     const state = this.options.stateFor(owner);
-    if (!state || !Array.isArray(entries)) return;
+    if (!state || state.window.isDestroyed()) return;
+    const entries = this.layouts.get(owner) ?? [];
+    const fullscreen = this.fullscreens.get(owner);
     const visible = new Set<string>();
-    for (const item of entries.slice(0, 32)) {
+    for (const item of entries) {
       const entry = this.views.get(item.id), css = readPreviewBounds(item.bounds);
       if (!entry || entry.owner !== owner || !css || entry.page.pdf || entry.contents.isDestroyed()) continue;
+      if (fullscreen && entry !== fullscreen.entry) continue;
       entry.canGoBack = item.canGoBack === true; entry.canGoForward = item.canGoForward === true;
-      const bounds = nativeZoomBounds(css, state.window.webContents.getZoomFactor());
       const [width, height] = state.window.getContentSize();
+      const bounds = fullscreen ? { x: 0, y: 0, width, height }
+        : nativeZoomBounds(css, state.window.webContents.getZoomFactor());
       bounds.width = Math.max(1, Math.min(bounds.width, width - bounds.x));
       bounds.height = Math.max(1, Math.min(bounds.height, height - bounds.y));
       if (!entry.bounds || Object.keys(bounds).some(k => bounds[k as keyof Rectangle] !== entry.bounds![k as keyof Rectangle])) {
@@ -745,6 +811,8 @@ export class BrowserManager {
         }
       }
       else if (command === 'activate' || command === 'focus') {
+        const fullscreen = this.fullscreens.get(entry.owner);
+        if (fullscreen && fullscreen.entry !== entry) this.leaveFullscreen(fullscreen.entry);
         state.currentDocument = null;
         this.extensions?.host?.selectTab(wc);
         if (command === 'focus' && entry.view.getVisible()) wc.focus();

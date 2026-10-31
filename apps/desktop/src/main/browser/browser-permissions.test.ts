@@ -59,6 +59,26 @@ test('automatic fullscreen, pointer lock and sanitized write remain limited to v
   f.page.visible = false;
   expect(f.ask('fullscreen')).toHaveBeenCalledWith(false); expect(f.check('clipboard-sanitized-write')).toBe(false);
 });
+test('fullscreen permits embedded web players without granting other cross-origin permissions', () => {
+  const f = fixture(), origin = 'https://player.example.net';
+  expect(f.ask('fullscreen', { requestingUrl: origin, isMainFrame: false })).toHaveBeenCalledExactlyOnceWith(true);
+  expect(f.check('fullscreen', origin, { isMainFrame: false })).toBe(true);
+  for (const permission of ['notifications', 'media', 'pointerLock', 'clipboard-sanitized-write']) {
+    expect(f.ask(permission, { requestingUrl: origin, isMainFrame: false })).toHaveBeenCalledExactlyOnceWith(false);
+    expect(f.check(permission, origin, { isMainFrame: false })).toBe(false);
+  }
+  for (const requestingUrl of ['data:text/html,player', 'file:///player.html', 'null']) {
+    expect(f.ask('fullscreen', { requestingUrl })).toHaveBeenCalledExactlyOnceWith(false);
+    expect(f.check('fullscreen', requestingUrl)).toBe(false);
+  }
+  expect(f.check('fullscreen', origin, {}, null)).toBe(false);
+  f.page.visible = false;
+  expect(f.ask('fullscreen', { requestingUrl: origin })).toHaveBeenCalledExactlyOnceWith(false);
+  expect(f.check('fullscreen', origin)).toBe(false);
+  f.page.visible = true; f.contents.isDestroyed = () => true;
+  expect(f.ask('fullscreen')).toHaveBeenCalledExactlyOnceWith(false);
+  expect(f.check('fullscreen')).toBe(false);
+});
 test('overlapping media answers keep request and check decisions consistent', () => {
   const f = fixture(), audio = f.ask('media', { mediaTypes: ['audio'] });
   const combined = f.ask('media', { mediaTypes: ['audio', 'video'] });

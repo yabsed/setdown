@@ -182,6 +182,25 @@ test('warm repeated show preserves native identity, bounds and hierarchy', () =>
   assert.equal(f.children[0], f.front.view);
 });
 
+test('web fullscreen suspends native presentation while retaining the latest requested reader', () => {
+  const f = fixture(), children = [...f.children];
+  f.manager.suspendPresentation(2, true); // Another window cannot hide this one.
+  assert.equal(f.front.view.getVisible(), true);
+  f.manager.suspendPresentation(1, true);
+  assert.equal(f.front.view.getVisible(), false);
+  const nextBounds = { ...bounds, width: 450 };
+  f.manager.show(1, 'git-diff:doc:b', nextBounds);
+  assert.equal(f.back.view.getVisible(), false);
+  assert.equal(f.focusCount(), 0);
+  assert.deepEqual(f.children, children);
+  f.manager.suspendPresentation(1, false);
+  assert.equal(f.front.view.getVisible(), false);
+  assert.equal(f.back.view.getVisible(), true);
+  assert.deepEqual(f.back.view.getBounds(), nextBounds);
+  assert.deepEqual(f.children, [...children, f.back.view]);
+  assert.equal(f.focusCount(), 0);
+});
+
 test('navigating A/B replacement keeps its own front without reattaching the back', async () => {
   const f = fixture();
   let complete!: () => void;

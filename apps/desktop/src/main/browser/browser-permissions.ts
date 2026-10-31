@@ -18,6 +18,7 @@ export class BrowserPermissions {
   install(profile: Session) {
     profile.setPermissionCheckHandler((contents, permission, origin, details) => {
       const page = this.lookup(contents);
+      if (permission === 'fullscreen') return this.fullscreen(page, origin);
       if (!page || !this.sameOrigin(page, origin) || details.isMainFrame === false) return false;
       if (this.automatic(permission)) return page.visible;
       const keys = this.keys(permission, details.mediaType ? [details.mediaType] : undefined);
@@ -27,6 +28,7 @@ export class BrowserPermissions {
       const page = this.lookup(contents);
       if (!page) return callback(false);
       const origin = originOf(details.requestingUrl || contents.getURL());
+      if (permission === 'fullscreen') return callback(this.fullscreen(page, origin));
       if (!origin || !this.sameOrigin(page, origin) || !details.isMainFrame) return callback(false);
       if (this.automatic(permission)) return callback(page.visible);
       const keys = this.keys(permission, 'mediaTypes' in details ? details.mediaTypes : undefined);
@@ -45,7 +47,13 @@ export class BrowserPermissions {
       pending.timer.unref(); state.pending.set(key, pending); this.publish(page.owner, page.id);
     });
   }
-  private automatic(permission: string) { return ['fullscreen', 'pointerLock', 'clipboard-sanitized-write'].includes(permission); }
+  // Chromium enforces user activation and the iframe's fullscreen Permissions
+  // Policy. Do not reject a permitted embedded player just for its origin.
+  private fullscreen(page: Page | undefined, origin: string | null) {
+    return !!page && page.visible && !page.contents.isDestroyed()
+      && !!originOf(page.contents.getURL()) && !!origin && !!originOf(origin);
+  }
+  private automatic(permission: string) { return ['pointerLock', 'clipboard-sanitized-write'].includes(permission); }
   private sameOrigin(page: Page, origin: string) { return !page.contents.isDestroyed() && !!originOf(origin) && originOf(origin) === originOf(page.contents.getURL()); }
   private keys(permission: string, mediaTypes?: string[]) {
     if (permission === 'media') return mediaTypes?.length && mediaTypes.every(type => type === 'audio' || type === 'video')
