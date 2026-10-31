@@ -18,7 +18,7 @@ references, and tools side by side, and arrange your tabs around the task at han
   <img src="docs/assets-2/setdown-demo.gif" width="900" alt="Setdown demo: arranging split tabs, editing and reading Markdown, reviewing Git changes, browsing articles, and working with code and notebooks">
 </p>
 
-<p align="center"><sub>Full demo · 3× speed</sub></p>
+<p align="center"><sub>Full demo · 1× speed</sub></p>
 
 ## Make room for your work
 
