@@ -32,6 +32,7 @@ All paths below are under `apps/code-growth/output/`.
 | `repository-code-growth-files.csv` | Every included file at the measured tip, with commit, blob, LOC and classifications |
 | `repository-code-growth-summary.json` | Measured ref and commit, scope, subtotals, classifications and unclassified paths |
 | `repository-code-density.png` / `.csv` / `.json` | Line charts of mean nonblank line length per commit, data and methodology |
+| `repository-code-density-by-characters.png` | The same density panels against total characters in each repository snapshot |
 
 Every chart names the measured ref, commit and commit timestamp. Date axes use
 Asia/Seoul calendar time, not working hours. Commit samples use steps; code growth
@@ -146,6 +147,18 @@ zero. Source decoding is strict UTF-8 so invalid bytes cannot silently change
 the measurement. No smoothing or resampling is applied; connecting line segments
 join measurements at commits. The density view intentionally uses line charts
 instead of the growth views' stacked areas.
+
+Both density PNGs are generated together from the same measurements.
+`repository-code-density-by-characters.png` uses the CSV's **all-code `characters`**
+as a linear X axis for every series, including production and tests/support.
+This is the sum of Unicode code points in nonblank lines present at that commit,
+including indentation, trailing spaces, comments and strings; it excludes CR/LF
+and whitespace-only lines. It is neither cumulative additions nor bytes.
+Lines retain first-parent commit order, so deletions can move left and different
+snapshots can share an X coordinate. Filled dots mark the latest snapshot.
+This view shows density against repository size; calendar gaps disappear.
+The all-code mean is `characters / nonblank_lines`, so its numerator is also X:
+an upward trend alone cannot establish that code growth causes longer lines.
 
 The density CSV has four rows per commit (all, production, tests, tooling).
 It contains raw/stripped character counts, physical/nonblank line counts, raw and

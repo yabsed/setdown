@@ -167,12 +167,18 @@ def write_data(records: list[dict], ref: str, output: Path) -> None:
     (output / f"{STEM}.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
 
 
-def plot(records: list[dict], ref: str, output: Path) -> None:
+def plot(records: list[dict], ref: str, output: Path, *, by_characters: bool = False) -> None:
     from growth_charts import SEOUL  # Sets the headless backend before pyplot.
     import matplotlib.dates as mdates
     import matplotlib.pyplot as plt
+    from matplotlib.ticker import MaxNLocator, StrMethodFormatter
 
-    times = [record["time"] for record in records]
+    # Every series uses the same repository total. Keep first-parent order:
+    # deletions can move left and equal-size snapshots can have different means.
+    positions = [
+        record["groups"]["all"]["characters"] if by_characters else record["time"]
+        for record in records
+    ]
     with plt.style.context("default"):
         figure, axes = plt.subplots(2, 2, figsize=(18, 12), sharex=True)
         figure.subplots_adjust(left=0.06, right=0.98, top=0.83, bottom=0.18, hspace=0.32, wspace=0.18)
@@ -184,7 +190,9 @@ def plot(records: list[dict], ref: str, output: Path) -> None:
                 return
             last = values[-1]
             caption = f"{label}: {last:.1f}" if last is not None else label
-            axis.plot(times, values, color=color, linewidth=2, label=caption, **kwargs)
+            axis.plot(positions, values, color=color, linewidth=2, label=caption, **kwargs)
+            if by_characters and last is not None:
+                axis.plot(positions[-1], last, marker="o", color=color, markersize=5)
 
         line(overall, "mean_characters", "All code", "#172d38")
         line(overall, "mean_characters", "Production", "#147c95", "production")
@@ -211,15 +219,25 @@ def plot(records: list[dict], ref: str, output: Path) -> None:
                 axis.legend(loc="upper left", frameon=False, fontsize=9)
             else:
                 axis.text(0.5, 0.5, "No measured nonblank code", transform=axis.transAxes, ha="center")
-            axis.xaxis.set_major_locator(mdates.AutoDateLocator(minticks=4, maxticks=5, tz=SEOUL))
-            axis.xaxis.set_major_formatter(mdates.DateFormatter("%m.%d\n%Y", tz=SEOUL))
+            if by_characters:
+                axis.set_xlim(left=0, right=max(1, max(positions) * 1.05))
+                axis.xaxis.set_major_locator(MaxNLocator(nbins=5, integer=True))
+                axis.xaxis.set_major_formatter(StrMethodFormatter("{x:,.0f}"))
+            else:
+                axis.xaxis.set_major_locator(mdates.AutoDateLocator(minticks=4, maxticks=5, tz=SEOUL))
+                axis.xaxis.set_major_formatter(mdates.DateFormatter("%m.%d\n%Y", tz=SEOUL))
         for axis in axes[1]:
-            axis.set_xlabel("Commit date (Asia/Seoul)")
+            axis.set_xlabel("Total characters in all measured code" if by_characters else "Commit date (Asia/Seoul)")
         figure.text(0.06, 0.95, "Characters per nonblank line", fontsize=26, weight="bold")
-        figure.text(0.06, 0.905, "Repository-wide measurements at every commit: mean, distribution and sensitivity", fontsize=14)
+        subtitle = (
+            "By repository size at each commit; filled dots mark the latest snapshot"
+            if by_characters else
+            "Repository-wide measurements at every commit: mean, distribution and sensitivity"
+        )
+        figure.text(0.06, 0.905, subtitle, fontsize=14)
         figure.text(0.06, 0.105, provenance(records, ref), fontsize=9)
-        figure.text(0.06, 0.08, "Unicode code points; comments and strings included. Raw lengths include indentation; line endings are excluded.", fontsize=9)
-        figure.text(0.06, 0.055, "Panels 2–4 pool all measured files. Each snapshot is measured independently; file composition can change over time.", fontsize=9)
+        figure.text(0.06, 0.08, "Unicode code points; comments, strings and indentation included. Line endings and whitespace-only lines excluded." if by_characters else "Unicode code points; comments and strings included. Raw lengths include indentation; line endings are excluded.", fontsize=9)
+        figure.text(0.06, 0.055, "X = snapshot total, not cumulative additions. Lines follow first-parent order, may move left; all series share the same X." if by_characters else "Panels 2–4 pool all measured files. Each snapshot is measured independently; file composition can change over time.", fontsize=9)
         figure.text(0.06, 0.03, "No smoothing. 160 is a descriptive threshold, not a quality cutoff. Line length alone does not measure readability.", fontsize=9)
         output.parent.mkdir(parents=True, exist_ok=True)
         figure.savefig(output, dpi=160, bbox_inches="tight")
@@ -230,6 +248,7 @@ def generate(ref: str, output: Path, *, commits: list[dict] | None = None) -> li
     records = density_history(ref, commits=commits)
     write_data(records, ref, output)
     plot(records, ref, output / f"{STEM}.png")
+    plot(records, ref, output / f"{STEM}-by-characters.png", by_characters=True)
     return records
 
 
@@ -240,6 +259,7 @@ def main() -> None:
     args = parser.parse_args()
     records = generate(args.ref, args.output_dir)
     print(f"Wrote {args.output_dir / STEM}.png/.csv/.json")
+    print(f"Wrote {args.output_dir / STEM}-by-characters.png")
     print(f"Measured {len(records)} commits through {records[-1]['commit']}")
     print(json.dumps(records[-1]["groups"]["all"], indent=2))
 
