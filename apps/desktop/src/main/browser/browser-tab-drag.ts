@@ -1,4 +1,4 @@
-import { ipcMain, WebContentsView, type BrowserWindow, type Rectangle, type WebContents } from 'electron';
+import { ipcMain, screen, WebContentsView, type BrowserWindow, type Rectangle, type WebContents } from 'electron';
 import path from 'node:path';
 import type { NativeTabDrag, TabDragGuide } from '../../protocol/tab-drag';
 import { themeProfile } from '../../core/theme/theme-catalog';
@@ -16,19 +16,45 @@ export class BrowserTabDrag {
   private readonly regions = new Map<number, Rectangle[]>();
   private readonly guides = new Map<number, TabDragGuide>();
   private readonly resizeLocks = new WeakSet<BrowserWindow>();
+  private pointerTimer: ReturnType<typeof setInterval> | null = null;
+  private pointerKey = '';
+  private modifiers = { ctrlKey: false, altKey: false };
   constructor(private readonly window: (id: number) => BrowserWindow | undefined,
-    private readonly theme: () => PreviewThemeId) {
+    private readonly theme: () => PreviewThemeId, private readonly globalPointer = false) {
     ipcMain.on('tab-drag-surface:event', (event, input: NativeTabDrag) => {
       const owner = [...this.layers].find(([, layer]) => layer.contents === event.sender)?.[0];
       if (owner === undefined || event.sender.isDestroyed() || event.senderFrame !== event.sender.mainFrame
         || !input || input.transferId !== this.active.get(owner)
         || !['dragenter', 'dragover', 'dragleave', 'drop'].includes(input.type)
         || ![input.clientX, input.clientY, input.screenX, input.screenY].every(Number.isFinite)) return;
+      this.pointerKey = input.type === 'dragleave' ? '' : `${owner}:${input.clientX}:${input.clientY}`;
+      this.modifiers = { ctrlKey: input.ctrlKey, altKey: input.altKey };
       this.window(owner)?.webContents.send('tabs:native-drag', input);
     });
   }
+  private followPointer(): void {
+    // X11's drag hit-test cache can keep the pre-maximize window region.
+    // Its source still owns the pointer grab, so sample that pointer while a
+    // single focused maximized window owns the internal drag. Native events
+    // continue to arbitrate all cross-window and Wayland drags.
+    if (this.active.size !== 1) return;
+    const [owner, transferId] = this.active.entries().next().value!;
+    const window = this.window(owner);
+    if (!window || window.isDestroyed() || !window.isFocused()
+      || (!window.isMaximized() && !window.isFullScreen())) return;
+    const point = screen.getCursorScreenPoint(), bounds = window.getContentBounds();
+    if (point.x < bounds.x || point.y < bounds.y || point.x >= bounds.x + bounds.width || point.y >= bounds.y + bounds.height) return;
+    const zoom = window.webContents.getZoomFactor();
+    const clientX = (point.x - bounds.x) / zoom, clientY = (point.y - bounds.y) / zoom;
+    const key = `${owner}:${clientX}:${clientY}`;
+    if (key === this.pointerKey) return;
+    this.pointerKey = key;
+    window.webContents.send('tabs:native-drag', { transferId, type: 'dragover', clientX, clientY,
+      screenX: point.x, screenY: point.y, ...this.modifiers } satisfies NativeTabDrag);
+  }
   state(owner: number, id: string | null): void {
     if (id !== null && (typeof id !== 'string' || id.length > 100)) return;
+    if (id !== null && !this.active.size) this.modifiers = { ctrlKey: false, altKey: false };
     const window = this.window(owner);
     // Linux's non-client resize border consumes the last few pixels of an OS
     // drag. At the right edge Chromium then reports leave/none instead of the
@@ -45,6 +71,9 @@ export class BrowserTabDrag {
     }
     if (id === null) { this.active.delete(owner); this.guides.delete(owner); }
     else this.active.set(owner, id);
+    this.pointerKey = '';
+    if (this.globalPointer && this.active.size && !this.pointerTimer) this.pointerTimer = setInterval(() => this.followPointer(), 16);
+    if (!this.active.size && this.pointerTimer) { clearInterval(this.pointerTimer); this.pointerTimer = null; }
     this.layout(owner);
   }
   layout(owner: number, regions?: Rectangle[]): void {
@@ -69,6 +98,7 @@ export class BrowserTabDrag {
       contents.on('will-navigate', event => event.preventDefault());
       window.once('closed', () => {
         this.layers.delete(owner); this.regions.delete(owner); this.active.delete(owner); this.guides.delete(owner);
+        if (!this.active.size && this.pointerTimer) { clearInterval(this.pointerTimer); this.pointerTimer = null; }
         if (!contents.isDestroyed()) contents.close();
       });
       // Prepare with the first live website, never on a drag input path. Keep one

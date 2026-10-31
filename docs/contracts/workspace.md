@@ -475,8 +475,8 @@ remote fallback ownership. Synthetic DOM events do not replace the OS tests.
 Every editor-group body uses the same four-column, two-row split grid:
 
 ```text
-1 2 5 6       left  up    up    right
-3 4 7 8       left  down  down  right
+1 2 3 4       left  up    up    right
+5 6 7 8       left  down  down  right
 ```
 
 The left quarter selects left, the right quarter selects right, and the middle
@@ -485,6 +485,15 @@ belongs to the middle and the 75% boundary to the right. Every valid body point
 has a direction, including the center; there is no center merge/tear-off area or
 history-dependent exit margin. The hovered group's body supplies the bounds,
 including nested groups, normal/maximized/fullscreen windows and app zoom.
+For a single focused maximized/fullscreen X11 window, native pointer sampling
+keeps the guide current if Chromium stops dispatching target events outside the
+old normal-window hit-test region. An accepted single-window release recomputes
+the placement from its final screen point, converted through current window
+bounds and app zoom. Rejected releases, cross-window ownership, and native
+Wayland continue to use OS drag arbitration. Window shape and bounds are not
+changed for this recovery. The XWayland regression includes normal-window
+dragging before maximization, restoration, app zoom, cells 4/8, and an already
+split terminal/website layout.
 The painted half and committed split must agree. Tab strips own merging into an
 existing group and reordering; file drops use the same body/strip placement.
 `editor-groups.test.ts` covers all eight cells, fractional geometry and exact

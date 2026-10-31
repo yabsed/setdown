@@ -79,7 +79,7 @@ const tab: TransferableTab = {
   previewRevision: null, previewTheme: null, tocOpen: false,
 };
 
-function fixture() {
+function fixture(globalWindowPositions?: boolean) {
   electron.listeners.clear(); electron.handlers.clear();
   const source = fakeWindow(1), existing = fakeWindow(2), prepared = fakeWindow(3);
   prepared.setVisible(false);
@@ -90,6 +90,7 @@ function fixture() {
   ]);
   const createWindow = vi.fn(() => prepared.window);
   const manager = new TabTransferManager({
+    globalWindowPositions,
     previews: { views: new Map(), restoreScroll: vi.fn() } as unknown as PreviewManager,
     stateFor: id => states.get(id) ?? null,
     windows: () => states.values(),
@@ -108,6 +109,31 @@ function fixture() {
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
+
+test('a single-window X11 release replaces a stale center guide with its final point at app zoom', () => {
+  const f = fixture(true); f.existing.setVisible(false); f.source.setMode('maximized');
+  vi.spyOn(f.source.webContents, 'getZoomFactor').mockReturnValue(1.25);
+  f.register(); f.hover(1);
+  electron.listeners.get('tabs:detach-to-window')!({ sender: { id: 1 } }, {
+    transferId: 'move', x: 1850, y: 400, release: { x: 680, y: 240 }, dropEffect: 'move',
+  });
+  expect(f.source.messages.at(-1)).toEqual({ channel: 'tabs:drag-state', payload: {
+    transferId: 'move', active: false, commitGuide: true, copy: false, commitPoint: { x: 680, y: 240 },
+  } });
+  expect(f.createWindow).not.toHaveBeenCalled();
+});
+
+for (const scenario of ['wayland', 'multiple-windows', 'outside', 'rejected'] as const)
+test(`final-point fallback does not override ${scenario} arbitration`, () => {
+  const f = fixture(scenario !== 'wayland');
+  if (scenario !== 'multiple-windows') f.existing.setVisible(false);
+  f.source.setMode('maximized'); f.register(); f.hover(1);
+  electron.listeners.get('tabs:detach-to-window')!({ sender: { id: 1 } }, {
+    transferId: 'move', x: scenario === 'outside' ? 2000 : 1850, y: 400,
+    release: { x: 850, y: 300 }, dropEffect: scenario === 'rejected' ? 'none' : 'move',
+  });
+  expect(f.source.messages.every(message => !(message.payload as any).commitPoint)).toBe(true);
+});
 
 test('an existing-window claim wins when source dragend requests detach first', async () => {
   const f = fixture();

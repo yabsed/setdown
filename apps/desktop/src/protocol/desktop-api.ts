@@ -219,7 +219,8 @@ export type ClaimedTabTransfer = {
   tab: TransferableTab;
 };
 
-export type TabDragState = { transferId: string; active: boolean; commitGuide?: boolean; copy?: boolean };
+export type TabDragState = { transferId: string; active: boolean; commitGuide?: boolean; copy?: boolean;
+  commitPoint?: { x: number; y: number } };
 
 export type { PreviewBounds } from './preview-preparation';
 export type PreviewMessage = { tabId: string; message: Record<string, unknown> };

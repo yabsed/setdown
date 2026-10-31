@@ -9,6 +9,148 @@ import { waylandInput } from '../support/electron/wayland-input';
 import { focusApplication } from '../support/electron/electron-app';
 
 const compatibility = process.env.SETDOWN_TEST_DISPLAY === 'xwayland';
+if (compatibility) test('maximized split terminal drags into the right quarter of an existing website', async () => {
+  const input = await waylandInput();
+  const f = await fixture(false).catch(async error => { await input.close(); throw error; });
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    await f.page.locator('.new-terminal-tab-button').click();
+    const tab = f.page.getByRole('tab', { name: /Terminal 1/ });
+    await expect(tab).toBeVisible();
+    const owner = await f.app.browserWindow(f.page);
+    const toScreen = (point: { x: number; y: number }) => owner.evaluate((window, point) => {
+      const bounds = window.getContentBounds(), zoom = window.webContents.getZoomFactor();
+      return { x: bounds.x + point.x * zoom, y: bounds.y + point.y * zoom };
+    }, point);
+    const body = (await f.page.locator('.group-body').boundingBox())!, box = (await tab.boundingBox())!;
+    const from = await toScreen({ x: box.x + 35, y: box.y + box.height / 2 });
+    await input.send({ pointer: [from], button: 'down' });
+    await input.send({ pointer: [{ x: from.x + 20, y: from.y + 15 }, await toScreen({ x: 20, y: body.y + body.height / 2 })] });
+    await input.send({ button: 'up' });
+    await expect(f.page.locator('.editor-group')).toHaveCount(2);
+    await owner.evaluate(window => window.maximize());
+    await expect.poll(() => owner.evaluate(window => window.isMaximized())).toBe(true);
+    await expect.poll(() => f.page.evaluate(() => innerWidth)).toBe(1920);
+    await input.send({ resetPointer: true });
+    const target = f.page.locator('.editor-group').filter({ has: f.page.getByRole('tab', { name: /Research page/ }) });
+    const targetBody = (await target.locator('.group-body').boundingBox())!, source = (await tab.boundingBox())!;
+    const start = await toScreen({ x: source.x + 55, y: source.y + source.height / 2 });
+    await input.send({ pointer: [start], button: 'down' });
+    await input.send({ pointer: [{ x: start.x + 20, y: start.y + 15 }] });
+    for (const position of [{ x: .125, y: .25 }, { x: .5, y: .25 }, { x: .875, y: .25 }, { x: .99, y: .75 }]) {
+      await input.send({ pointer: [await toScreen({ x: targetBody.x + targetBody.width * position.x,
+        y: targetBody.y + targetBody.height * position.y })] });
+      const guide = f.page.locator('.group-drop-overlay');
+      await expect(guide).toBeVisible();
+      if (position.x >= .75) {
+        await expect.poll(async () => (await guide.boundingBox())?.x).toBeCloseTo(targetBody.x + targetBody.width / 2, 0);
+        expect((await guide.boundingBox())!.height).toBeCloseTo(targetBody.height, 0);
+      }
+    }
+    await input.send({ button: 'up' });
+    await expect(f.page.locator('.editor-group')).toHaveCount(2);
+    await expect.poll(async () => (await tab.boundingBox())!.x).toBeGreaterThan(900);
+    expect(f.errors).toEqual([]);
+  } finally {
+    await f.page.screenshot({ path: test.info().outputPath('split-maximized-final.png') }).catch(() => {});
+    await input.send({ keys: ['Escape'], button: 'up' });
+    await f.dispose(); await input.close();
+  }
+});
+
+if (compatibility) test('existing terminal and website split right after maximizing the window', async () => {
+  const input = await waylandInput();
+  const f = await fixture(false).catch(async error => { await input.close(); throw error; });
+  const trace: unknown[] = [];
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    await f.page.locator('.new-terminal-tab-button').click();
+    const tab = f.page.getByRole('tab', { name: /Terminal 1/ });
+    await expect(tab).toBeVisible();
+    await f.page.getByRole('tab', { name: /Research page/ }).click();
+    await expect(f.page.getByRole('tab', { name: /Research page/ })).toHaveAttribute('aria-selected', 'true');
+    const owner = await f.app.browserWindow(f.page);
+    const toScreen = (point: { x: number; y: number }) => owner.evaluate((window, point) => {
+      const bounds = window.getContentBounds(), zoom = window.webContents.getZoomFactor();
+      return { x: bounds.x + point.x * zoom, y: bounds.y + point.y * zoom };
+    }, point);
+    await f.app.evaluate(({ ipcMain }) => {
+      (globalThis as any).maximizedTrace = [];
+      for (const channel of ['tabs:drag-target', 'tabs:detach-to-window', 'tabs:cancel-transfer', 'tab-drag-surface:event', 'browser:tab-drag-guide'])
+        ipcMain.on(channel, (_event, ...args) => (globalThis as any).maximizedTrace.push({ at: Date.now(), channel, args }));
+    });
+    await f.page.evaluate(() => {
+      (window as any).maximizedEvents = [];
+      for (const type of ['pointerdown', 'pointerup', 'drag', 'dragstart', 'dragenter', 'dragover', 'drop', 'dragend', 'dragleave']) window.addEventListener(type, event => {
+        const e = event as DragEvent;
+        (window as any).maximizedEvents.push({ at: Date.now(), type, x: e.clientX, y: e.clientY,
+          screenX: e.screenX, screenY: e.screenY, effect: e.dataTransfer?.dropEffect, trusted: e.isTrusted });
+      }, true);
+    });
+    for (let round = -1; round < 12; round++) {
+      if (round === 6) {
+        await owner.evaluate(window => window.unmaximize());
+        await expect.poll(() => owner.evaluate(window => window.isMaximized())).toBe(false);
+        await expect.poll(() => f.page.evaluate(() => innerWidth)).toBe(1080);
+        await input.send({ resetPointer: true });
+      }
+      if (round === 0 || round === 7) {
+        await owner.evaluate(window => window.maximize());
+        await expect.poll(() => owner.evaluate(window => window.isMaximized())).toBe(true);
+        await expect.poll(() => f.page.evaluate(() => innerWidth)).toBe(1920);
+        await input.send({ resetPointer: true });
+      }
+      if (round === 8) await f.page.evaluate(() => window.marktex.changeZoom(1, 'app'));
+      const body = (await f.page.locator('.group-body').boundingBox())!, box = (await tab.boundingBox())!;
+      const from = await toScreen({ x: box.x + 35 + round % 2 * 20, y: box.y + box.height / 2 });
+      const y = body.y + body.height * (round % 2 ? .75 : .25);
+      const center = await toScreen({ x: body.x + body.width * .5, y });
+      const right = await toScreen({ x: body.x + body.width * (round % 3 ? .875 : .99), y });
+      trace.push({ round, body, from, center, right });
+      await input.send({ pointer: [from], button: 'down' });
+      trace.push(await f.app.evaluate(({ screen }) => ({ cursor: screen.getCursorScreenPoint() })));
+      await input.send({ pointer: [{ x: from.x + 20, y: from.y + 15 }, center] });
+      if (round === 0 || round === 1 || round === 7) {
+        await input.send({ pointer: [right] });
+        const receiver = f.app.windows().find(page => page.url().startsWith('data:text/html;charset=utf-8,'))!;
+        trace.push({ receiver: await receiver.evaluate(() => ({ width: innerWidth, height: innerHeight, dpr: devicePixelRatio })),
+          native: await owner.evaluate(window => window.contentView.children.map((view: Electron.View) => ({ bounds: view.getBounds(), visible: view.getVisible() }))) });
+        const guide = f.page.locator('.group-drop-overlay');
+        await expect(guide).toBeVisible();
+        await expect.poll(async () => (await guide.boundingBox())?.width).toBeCloseTo(body.width / 2, 0);
+        const painted = (await guide.boundingBox())!;
+        expect(painted.x).toBeCloseTo(body.x + body.width / 2, 0);
+        expect(painted.height).toBeCloseTo(body.height, 0);
+      }
+      await input.send({ pointer: [right], pointerIntervalMs: 0, button: 'up' });
+      await expect(f.page.locator('.editor-group')).toHaveCount(2);
+      await expect.poll(async () => (await tab.boundingBox())!.x).toBeGreaterThan(body.x + body.width * .45);
+      await expect(f.page.locator('.shell')).not.toHaveClass(/is-tab-dragging/);
+      expect(await owner.evaluate(window => window.isMaximized())).toBe(round >= 0 && round !== 6);
+      expect(await owner.evaluate(window => window.isFocused())).toBe(true);
+      expect(await f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
+      const data = await f.page.evaluateHandle(() => new DataTransfer());
+      const strip = f.page.locator('.editor-group').filter({ hasNot: tab }).locator('.tab-strip');
+      const rect = (await strip.boundingBox())!;
+      await tab.dispatchEvent('dragstart', { dataTransfer: data });
+      const point = { dataTransfer: data, clientX: rect.x + 10, clientY: rect.y + rect.height / 2 };
+      await strip.dispatchEvent('dragover', point); await strip.dispatchEvent('drop', point); await data.dispose();
+      await expect(f.page.locator('.editor-group')).toHaveCount(1);
+      await f.page.getByRole('tab', { name: /Research page/ }).click();
+    }
+    expect(f.errors).toEqual([]);
+    await owner.dispose();
+  } finally {
+    await writeFile(test.info().outputPath('maximized-trace.json'), JSON.stringify({ steps: trace,
+      ipc: await f.app.evaluate(() => (globalThis as any).maximizedTrace ?? []),
+      dom: await f.page.evaluate(() => (window as any).maximizedEvents ?? []),
+    }, null, 2));
+    await f.page.screenshot({ path: test.info().outputPath('maximized-final.png') }).catch(() => {});
+    await input.send({ keys: ['Escape'], button: 'up' });
+    await f.dispose(); await input.close();
+  }
+});
+
 for (const mode of ['maximized', 'fullscreen'] as const)
 for (const moving of ['web', 'document'] as const)
 test(`${mode} ${moving} drags follow all eight split cells and never open a window`, async () => {
@@ -45,7 +187,7 @@ test(`${mode} ${moving} drags follow all eight split cells and never open a wind
     });
     await f.page.evaluate(() => {
       (window as any).fullscreenDragEvents = [];
-      for (const type of ['pointerdown', 'pointerup', 'dragstart', 'dragend']) window.addEventListener(type, event => {
+      for (const type of ['pointerdown', 'pointerup', 'drag', 'dragstart', 'dragend']) window.addEventListener(type, event => {
         const e = event as MouseEvent;
         (window as any).fullscreenDragEvents.push({ type, x: e.clientX, y: e.clientY, target: (e.target as HTMLElement)?.className });
       }, true);
@@ -57,8 +199,8 @@ test(`${mode} ${moving} drags follow all eight split cells and never open a wind
     const overlay = f.page.locator('.group-drop-overlay');
     const placements = [
       { name: '1', x: .125, y: .25, direction: 'left' }, { name: '2', x: .375, y: .25, direction: 'up' },
-      { name: '5', x: .625, y: .25, direction: 'up' }, { name: '6', x: .875, y: .25, direction: 'right' },
-      { name: '3', x: .125, y: .75, direction: 'left' }, { name: '4', x: .375, y: .75, direction: 'down' },
+      { name: '3', x: .625, y: .25, direction: 'up' }, { name: '4', x: .875, y: .25, direction: 'right' },
+      { name: '5', x: .125, y: .75, direction: 'left' }, { name: '6', x: .375, y: .75, direction: 'down' },
       { name: '7', x: .625, y: .75, direction: 'down' }, { name: '8', x: .875, y: .75, direction: 'right' },
       { name: 'left-top', x: 0, y: .1, direction: 'left' }, { name: 'right-top', x: 1, y: .1, direction: 'right' },
       { name: 'left-bottom', x: 0, y: .9, direction: 'left' }, { name: 'right-bottom', x: 1, y: .9, direction: 'right' },

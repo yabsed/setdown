@@ -31,14 +31,15 @@ export class TabTransferManager {
   private readonly transfers = new Map<string, Transfer>();
   private readonly watchedSources = new WeakSet<BrowserWindow>();
   constructor(private readonly options: Options) {}
-  private endDrag(transferId: string, transfer: Transfer, commitTarget: number | null = null, copy = false): void {
+  private endDrag(transferId: string, transfer: Transfer, commitTarget: number | null = null, copy = false,
+    commitPoint?: { x: number; y: number }): void {
     if (!transfer.dragActive) return;
     transfer.dragActive = false;
     for (const id of transfer.dragParticipants) {
       const window = this.options.stateFor(id)?.window;
       this.options.browsers?.tabDrag.state(id, null);
       if (window && !window.isDestroyed()) window.webContents.send('tabs:drag-state', {
-        transferId, active: false, ...(id === commitTarget ? { commitGuide: true, copy } : {}),
+        transferId, active: false, ...(id === commitTarget ? { commitGuide: true, copy, ...(commitPoint ? { commitPoint } : {}) } : {}),
       });
     }
   }
@@ -266,6 +267,19 @@ export class TabTransferManager {
       this.cancel(sourceId, transferId); return;
     }
     const accepted = ['move', 'copy'].includes(String(dropEffect));
+    // X11 can stop sending target events beyond a pre-maximize hit-test region.
+    // In a single-window drag the real OS release point unambiguously belongs
+    // to this source. Recompute placement there instead of committing its last
+    // center guide. Do not arbitrate overlapping windows or Wayland this way.
+    if (accepted && releasedInsideSource && source && transfer.dragParticipants.size === 1
+      && (source.isMaximized() || source.isFullScreen())
+      && this.options.globalWindowPositions && (screenX !== 0 || screenY !== 0)) {
+      const bounds = source.getContentBounds(), zoom = source.webContents.getZoomFactor();
+      this.endDrag(transferId, transfer, sourceId, dropEffect === 'copy', {
+        x: (screenX - bounds.x) / zoom, y: (screenY - bounds.y) / zoom,
+      });
+      return;
+    }
     const target = transfer.dragTarget === null ? null : this.options.stateFor(transfer.dragTarget)?.window;
     const commitTarget = accepted && target && !target.isDestroyed() && target.isVisible() && !target.isMinimized()
       ? transfer.dragTarget : null;

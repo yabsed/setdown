@@ -108,7 +108,7 @@ export function createTabDrag(options: Options) {
       if (transfer) await options.install(transfer, destination);
     }).catch(error => console.error('Could not move dropped tab', error));
   };
-  const stopSharedDrag = options.desktop.onTabDragState(({ transferId: id, active, commitGuide, copy }) => {
+  const stopSharedDrag = options.desktop.onTabDragState(({ transferId: id, active, commitGuide, copy, commitPoint }) => {
     if (active) {
       if (sharedDragId !== id && transferId !== id) clearTarget();
       sharedDragId = id;
@@ -118,7 +118,10 @@ export function createTabDrag(options: Options) {
       // A new local gesture may start before the previous drag cancellation
       // completes in main. Its late end must not clear the new token/receiver.
       if (transferId && transferId !== id) return;
-      const destination = commitGuide ? guidedTarget ?? retainedTarget : null;
+      const destination = commitGuide ? commitPoint ? target(new DragEvent('drop', {
+        clientX: commitPoint.x, clientY: commitPoint.y,
+        ctrlKey: copy === true, altKey: copy === true,
+      })) : guidedTarget ?? retainedTarget : null;
       const local = sourceDrag ? tabId : null;
       reset();
       if (destination && local) { options.desktop.cancelTabTransfer(id); move(local, destination, copy === true); }

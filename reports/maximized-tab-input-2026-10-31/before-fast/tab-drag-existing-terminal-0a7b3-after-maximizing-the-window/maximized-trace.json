@@ -1,0 +1,643 @@
+{
+  "steps": [
+    {
+      "round": -1,
+      "body": {
+        "x": 0,
+        "y": 110,
+        "width": 1080,
+        "height": 710
+      },
+      "from": {
+        "x": 655,
+        "y": 187
+      },
+      "center": {
+        "x": 960,
+        "y": 772.5
+      },
+      "right": {
+        "x": 1365,
+        "y": 772.5
+      }
+    },
+    {
+      "round": 0,
+      "body": {
+        "x": 0,
+        "y": 110,
+        "width": 1920,
+        "height": 970
+      },
+      "from": {
+        "x": 43,
+        "y": 57
+      },
+      "center": {
+        "x": 960,
+        "y": 352.5
+      },
+      "right": {
+        "x": 1900.8,
+        "y": 352.5
+      }
+    }
+  ],
+  "ipc": [
+    {
+      "at": 1793429493577,
+      "channel": "tab-drag-surface:event",
+      "args": [
+        {
+          "transferId": "fe6131f5-587a-4736-9eb5-44a980f757c3",
+          "type": "dragenter",
+          "clientX": 255,
+          "clientY": 72,
+          "screenX": 675,
+          "screenY": 202,
+          "ctrlKey": false,
+          "altKey": false
+        }
+      ]
+    },
+    {
+      "at": 1793429493577,
+      "channel": "tab-drag-surface:event",
+      "args": [
+        {
+          "transferId": "fe6131f5-587a-4736-9eb5-44a980f757c3",
+          "type": "dragover",
+          "clientX": 255,
+          "clientY": 72,
+          "screenX": 675,
+          "screenY": 202,
+          "ctrlKey": false,
+          "altKey": false
+        }
+      ]
+    },
+    {
+      "at": 1793429493578,
+      "channel": "browser:tab-drag-guide",
+      "args": [
+        null
+      ]
+    },
+    {
+      "at": 1793429493578,
+      "channel": "tabs:drag-target",
+      "args": [
+        {
+          "transferId": "fe6131f5-587a-4736-9eb5-44a980f757c3",
+          "accepted": true,
+          "inside": true
+        }
+      ]
+    },
+    {
+      "at": 1793429493579,
+      "channel": "browser:tab-drag-guide",
+      "args": [
+        null
+      ]
+    },
+    {
+      "at": 1793429493579,
+      "channel": "tabs:drag-target",
+      "args": [
+        {
+          "transferId": "fe6131f5-587a-4736-9eb5-44a980f757c3",
+          "accepted": true,
+          "inside": true
+        }
+      ]
+    },
+    {
+      "at": 1793429493601,
+      "channel": "tab-drag-surface:event",
+      "args": [
+        {
+          "transferId": "fe6131f5-587a-4736-9eb5-44a980f757c3",
+          "type": "dragover",
+          "clientX": 540,
+          "clientY": 642,
+          "screenX": 960,
+          "screenY": 772,
+          "ctrlKey": false,
+          "altKey": false
+        }
+      ]
+    },
+    {
+      "at": 1793429493602,
+      "channel": "browser:tab-drag-guide",
+      "args": [
+        {
+          "bounds": {
+            "x": 0,
+            "y": 465,
+            "width": 1080,
+            "height": 355
+          },
+          "color": ""
+        }
+      ]
+    },
+    {
+      "at": 1793429493602,
+      "channel": "tabs:drag-target",
+      "args": [
+        {
+          "transferId": "fe6131f5-587a-4736-9eb5-44a980f757c3",
+          "accepted": true,
+          "inside": true
+        }
+      ]
+    },
+    {
+      "at": 1793429493634,
+      "channel": "tab-drag-surface:event",
+      "args": [
+        {
+          "transferId": "fe6131f5-587a-4736-9eb5-44a980f757c3",
+          "type": "dragover",
+          "clientX": 945,
+          "clientY": 642,
+          "screenX": 1365,
+          "screenY": 772,
+          "ctrlKey": false,
+          "altKey": false
+        }
+      ]
+    },
+    {
+      "at": 1793429493634,
+      "channel": "tab-drag-surface:event",
+      "args": [
+        {
+          "transferId": "fe6131f5-587a-4736-9eb5-44a980f757c3",
+          "type": "drop",
+          "clientX": 945,
+          "clientY": 642,
+          "screenX": 1365,
+          "screenY": 772,
+          "ctrlKey": false,
+          "altKey": false
+        }
+      ]
+    },
+    {
+      "at": 1793429493638,
+      "channel": "tabs:detach-to-window",
+      "args": [
+        {
+          "transferId": "fe6131f5-587a-4736-9eb5-44a980f757c3",
+          "x": 1365,
+          "y": 772,
+          "withinSource": false,
+          "dropEffect": "move",
+          "release": {
+            "x": 945,
+            "y": 642
+          }
+        }
+      ]
+    },
+    {
+      "at": 1793429493638,
+      "channel": "browser:tab-drag-guide",
+      "args": [
+        {
+          "bounds": {
+            "x": 540,
+            "y": 110,
+            "width": 540,
+            "height": 710
+          },
+          "color": ""
+        }
+      ]
+    },
+    {
+      "at": 1793429493638,
+      "channel": "tabs:drag-target",
+      "args": [
+        {
+          "transferId": "fe6131f5-587a-4736-9eb5-44a980f757c3",
+          "accepted": true,
+          "inside": true
+        }
+      ]
+    },
+    {
+      "at": 1793429493638,
+      "channel": "browser:tab-drag-guide",
+      "args": [
+        {
+          "bounds": {
+            "x": 540,
+            "y": 110,
+            "width": 540,
+            "height": 710
+          },
+          "color": ""
+        }
+      ]
+    },
+    {
+      "at": 1793429493638,
+      "channel": "browser:tab-drag-guide",
+      "args": [
+        null
+      ]
+    },
+    {
+      "at": 1793429493639,
+      "channel": "tabs:cancel-transfer",
+      "args": [
+        "fe6131f5-587a-4736-9eb5-44a980f757c3"
+      ]
+    },
+    {
+      "at": 1793429493644,
+      "channel": "browser:tab-drag-guide",
+      "args": [
+        null
+      ]
+    },
+    {
+      "at": 1793429493689,
+      "channel": "browser:tab-drag-guide",
+      "args": [
+        null
+      ]
+    },
+    {
+      "at": 1793429493689,
+      "channel": "tabs:drag-target",
+      "args": [
+        {
+          "transferId": "3c8fa65d-3971-446a-ae2d-fe069e5dcb1b",
+          "accepted": true,
+          "inside": true
+        }
+      ]
+    },
+    {
+      "at": 1793429493694,
+      "channel": "browser:tab-drag-guide",
+      "args": [
+        null
+      ]
+    },
+    {
+      "at": 1793429493694,
+      "channel": "browser:tab-drag-guide",
+      "args": [
+        null
+      ]
+    },
+    {
+      "at": 1793429493695,
+      "channel": "tabs:cancel-transfer",
+      "args": [
+        "3c8fa65d-3971-446a-ae2d-fe069e5dcb1b"
+      ]
+    },
+    {
+      "at": 1793429493699,
+      "channel": "browser:tab-drag-guide",
+      "args": [
+        null
+      ]
+    },
+    {
+      "at": 1793429493962,
+      "channel": "tab-drag-surface:event",
+      "args": [
+        {
+          "transferId": "3c20ab02-9a8c-4462-985b-85924252ddff",
+          "type": "dragenter",
+          "clientX": 63,
+          "clientY": 72,
+          "screenX": 63,
+          "screenY": 72,
+          "ctrlKey": false,
+          "altKey": false
+        }
+      ]
+    },
+    {
+      "at": 1793429493962,
+      "channel": "tab-drag-surface:event",
+      "args": [
+        {
+          "transferId": "3c20ab02-9a8c-4462-985b-85924252ddff",
+          "type": "dragover",
+          "clientX": 63,
+          "clientY": 72,
+          "screenX": 63,
+          "screenY": 72,
+          "ctrlKey": false,
+          "altKey": false
+        }
+      ]
+    },
+    {
+      "at": 1793429493962,
+      "channel": "browser:tab-drag-guide",
+      "args": [
+        null
+      ]
+    },
+    {
+      "at": 1793429493962,
+      "channel": "tabs:drag-target",
+      "args": [
+        {
+          "transferId": "3c20ab02-9a8c-4462-985b-85924252ddff",
+          "accepted": true,
+          "inside": true
+        }
+      ]
+    },
+    {
+      "at": 1793429493963,
+      "channel": "browser:tab-drag-guide",
+      "args": [
+        null
+      ]
+    },
+    {
+      "at": 1793429493963,
+      "channel": "tabs:drag-target",
+      "args": [
+        {
+          "transferId": "3c20ab02-9a8c-4462-985b-85924252ddff",
+          "accepted": true,
+          "inside": true
+        }
+      ]
+    },
+    {
+      "at": 1793429494005,
+      "channel": "tab-drag-surface:event",
+      "args": [
+        {
+          "transferId": "3c20ab02-9a8c-4462-985b-85924252ddff",
+          "type": "dragover",
+          "clientX": 960,
+          "clientY": 352,
+          "screenX": 960,
+          "screenY": 352,
+          "ctrlKey": false,
+          "altKey": false
+        }
+      ]
+    },
+    {
+      "at": 1793429494005,
+      "channel": "browser:tab-drag-guide",
+      "args": [
+        {
+          "bounds": {
+            "x": 0,
+            "y": 110,
+            "width": 1920,
+            "height": 485
+          },
+          "color": ""
+        }
+      ]
+    },
+    {
+      "at": 1793429494005,
+      "channel": "tabs:drag-target",
+      "args": [
+        {
+          "transferId": "3c20ab02-9a8c-4462-985b-85924252ddff",
+          "accepted": true,
+          "inside": true
+        }
+      ]
+    },
+    {
+      "at": 1793429494039,
+      "channel": "tab-drag-surface:event",
+      "args": [
+        {
+          "transferId": "3c20ab02-9a8c-4462-985b-85924252ddff",
+          "type": "dragleave",
+          "clientX": 0,
+          "clientY": 0,
+          "screenX": 0,
+          "screenY": 0,
+          "ctrlKey": false,
+          "altKey": false
+        }
+      ]
+    },
+    {
+      "at": 1793429494040,
+      "channel": "tabs:detach-to-window",
+      "args": [
+        {
+          "transferId": "3c20ab02-9a8c-4462-985b-85924252ddff",
+          "x": 1900,
+          "y": 352,
+          "withinSource": false,
+          "dropEffect": "move",
+          "release": {
+            "x": 1900,
+            "y": 352
+          }
+        }
+      ]
+    },
+    {
+      "at": 1793429494040,
+      "channel": "browser:tab-drag-guide",
+      "args": [
+        null
+      ]
+    },
+    {
+      "at": 1793429494040,
+      "channel": "tabs:drag-target",
+      "args": [
+        {
+          "transferId": "3c20ab02-9a8c-4462-985b-85924252ddff",
+          "accepted": false,
+          "inside": false,
+          "retainGuide": true
+        }
+      ]
+    },
+    {
+      "at": 1793429494040,
+      "channel": "browser:tab-drag-guide",
+      "args": [
+        null
+      ]
+    },
+    {
+      "at": 1793429494041,
+      "channel": "tabs:cancel-transfer",
+      "args": [
+        "3c20ab02-9a8c-4462-985b-85924252ddff"
+      ]
+    }
+  ],
+  "dom": [
+    {
+      "at": 1793429493557,
+      "type": "dragstart",
+      "x": 235,
+      "y": 57,
+      "screenX": 655,
+      "screenY": 187,
+      "effect": "none",
+      "trusted": true
+    },
+    {
+      "at": 1793429493578,
+      "type": "dragenter",
+      "x": 255,
+      "y": 72,
+      "screenX": 675,
+      "screenY": 202,
+      "effect": "none",
+      "trusted": false
+    },
+    {
+      "at": 1793429493579,
+      "type": "dragover",
+      "x": 255,
+      "y": 72,
+      "screenX": 675,
+      "screenY": 202,
+      "effect": "none",
+      "trusted": false
+    },
+    {
+      "at": 1793429493602,
+      "type": "dragover",
+      "x": 540,
+      "y": 642,
+      "screenX": 960,
+      "screenY": 772,
+      "effect": "none",
+      "trusted": false
+    },
+    {
+      "at": 1793429493634,
+      "type": "dragend",
+      "x": 945,
+      "y": 642,
+      "screenX": 1365,
+      "screenY": 772,
+      "effect": "move",
+      "trusted": true
+    },
+    {
+      "at": 1793429493635,
+      "type": "dragover",
+      "x": 945,
+      "y": 642,
+      "screenX": 1365,
+      "screenY": 772,
+      "effect": "none",
+      "trusted": false
+    },
+    {
+      "at": 1793429493637,
+      "type": "drop",
+      "x": 945,
+      "y": 642,
+      "screenX": 1365,
+      "screenY": 772,
+      "effect": "none",
+      "trusted": false
+    },
+    {
+      "at": 1793429493676,
+      "type": "dragstart",
+      "x": 0,
+      "y": 0,
+      "screenX": 0,
+      "screenY": 0,
+      "effect": "none",
+      "trusted": false
+    },
+    {
+      "at": 1793429493689,
+      "type": "dragover",
+      "x": 10,
+      "y": 56,
+      "screenX": 0,
+      "screenY": 0,
+      "effect": "none",
+      "trusted": false
+    },
+    {
+      "at": 1793429493695,
+      "type": "drop",
+      "x": 10,
+      "y": 56,
+      "screenX": 0,
+      "screenY": 0,
+      "effect": "none",
+      "trusted": false
+    },
+    {
+      "at": 1793429493956,
+      "type": "dragstart",
+      "x": 43,
+      "y": 57,
+      "screenX": 43,
+      "screenY": 57,
+      "effect": "none",
+      "trusted": true
+    },
+    {
+      "at": 1793429493962,
+      "type": "dragenter",
+      "x": 63,
+      "y": 72,
+      "screenX": 63,
+      "screenY": 72,
+      "effect": "none",
+      "trusted": false
+    },
+    {
+      "at": 1793429493963,
+      "type": "dragover",
+      "x": 63,
+      "y": 72,
+      "screenX": 63,
+      "screenY": 72,
+      "effect": "none",
+      "trusted": false
+    },
+    {
+      "at": 1793429494005,
+      "type": "dragover",
+      "x": 960,
+      "y": 352,
+      "screenX": 960,
+      "screenY": 352,
+      "effect": "none",
+      "trusted": false
+    },
+    {
+      "at": 1793429494039,
+      "type": "dragend",
+      "x": 1900,
+      "y": 352,
+      "screenX": 1900,
+      "screenY": 352,
+      "effect": "move",
+      "trusted": true
+    }
+  ]
+}

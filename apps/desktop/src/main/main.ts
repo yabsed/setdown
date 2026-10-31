@@ -87,6 +87,8 @@ const projects = new ProjectService((documentPath, text, query, limit, root) =>
   new RecentFolders(path.join(app.getPath('userData'), 'recent-folders.json')));
 const windows = new WindowManager({ registry, previews, themes });
 const browsers = new BrowserManager({ createWindow: () => windows.create(null, null, false), stateFor: id => registry.stateForWebContents(id), states: () => registry.values, zoom: previews.zoom,
+  globalTabDragPointer: process.platform === 'linux' && ['', 'auto', 'x11'].includes(backend)
+    && hasGlobalWindowPositions(process.platform, process.env, backend),
   openFile: (state, file) => documents.open(state, file), theme: () => themes.id });
 const terminals = new TerminalManager();
 const transfers = new TabTransferManager({ previews, browsers, terminals, stateFor: (id) => registry.stateForWebContents(id),

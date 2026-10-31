@@ -31,6 +31,7 @@ type Entry = { owner: number; view: WebContentsView; contents: WebContents; page
   popups: number[]; externalRequests: number[]; externalPending?: boolean;
   historyUrls: string[]; historyIndex: number; canGoBack?: boolean; canGoForward?: boolean; closing?: (value: boolean) => void };
 type Options = { stateFor(id: number): WindowState | null; states(): Iterable<WindowState>; zoom: WorkspaceZoom;
+  globalTabDragPointer?: boolean;
   theme?(): import('../../core/preview/preview-preferences').PreviewThemeId;
   createWindow?(): BrowserWindow;
   openFile(state: WindowState, file: string): Promise<unknown> };
@@ -66,8 +67,11 @@ export class BrowserManager {
     if (item) item.checked = settings.mode === 'app';
     this.broadcast({ type: 'theme-settings' });
   });
-  readonly tabDrag = new BrowserTabDrag(id => this.options.stateFor(id)?.window, () => this.options.theme?.() ?? DEFAULT_PREVIEW_THEME);
-  constructor(private readonly options: Options) {}
+  readonly tabDrag: BrowserTabDrag;
+  constructor(private readonly options: Options) {
+    this.tabDrag = new BrowserTabDrag(id => options.stateFor(id)?.window, () => options.theme?.() ?? DEFAULT_PREVIEW_THEME,
+      options.globalTabDragPointer);
+  }
   private pageZoom(entry: Entry): number { return this.options.zoom.tabFactor(entry.page.id); }
   private zoomPage(entry: Entry, steps: unknown, requireVisible = true): void {
     if (!this.live(entry) || (requireVisible && !entry.view.getVisible())) return;

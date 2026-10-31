@@ -1,0 +1,19 @@
+{
+  "status": "Built and typechecked; 4 native GUI tests and 68 unit tests passed.",
+  "cause": "X11 target drag events stop beyond the old normal-window region after maximize; last center guide can survive until dragend.",
+  "change": "Sample the real pointer only for one focused maximized/fullscreen X11 drag participant. For an accepted single-window release, recompute placement from final OS screen coordinates and current app zoom.",
+  "window_shape_experiment": "Removed completely after restoration exposed an empty native bounding shape.",
+  "coverage": [
+    "normal drag then maximize",
+    "existing terminal/web split then maximize",
+    "held and immediate right-quarter drops",
+    "restore and maximize again",
+    "app zoom",
+    "all eight cells and Escape in maximized/fullscreen web drags"
+  ],
+  "limitations": [
+    "Native test display uses scale 1; fractional compositor scale trial had an input-coordinate setup failure and is not a passing result.",
+    "Full preview contract was interrupted when the window-shape experiment was discarded; no final full-suite or benchmark result is claimed."
+  ],
+  "scope": "Final changes do not modify preview preparation/presentation, native view bounds, window shape, zoom implementation, renderer CSS or dependencies."
+}
