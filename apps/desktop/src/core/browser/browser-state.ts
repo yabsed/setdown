@@ -11,6 +11,7 @@ export type BrowserPage = {
   muted: boolean;
   zoomPercent: number;
   error: string | null;
+  pdf?: { token: string; size?: number; error?: string };
   failure?: import('./browser-failure').BrowserFailure;
   protection: 'starting' | 'ready' | 'error';
 };

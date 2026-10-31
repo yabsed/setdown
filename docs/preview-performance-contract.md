@@ -66,6 +66,11 @@ which hides its own highlight while suppressing the native one. Selection must
 remain visibly highlighted during dragging and after release, and clearing it
 must remove that highlight. The Electron test compares actual screenshot pixels.
 Image-only PDFs need OCR before their contents can be selected as text.
+Inline external PDFs share this reader and cache; their current navigation token
+also participates in surface identity. The native browser view retains history
+but stays hidden while the shell PDF reader is active. Authentication cookies,
+bounded reads, cancellation, original-byte saving and the external-PDF Electron
+scenarios are described in [PDF documents](reading-positions-and-pdf.md).
 `pdf-selection.spec.ts` covers the pointer and both copy paths in Electron.
 Set `SETDOWN_TEST_PDF_FILE` to an absolute PDF path when running that test to
 repeat the same visual and clipboard checks against a real document; it copies

@@ -106,6 +106,7 @@ import type { AppActions } from '../../ports/ui-actions';
     const reposition = () => { placement++; };
     window.addEventListener('resize', reposition);
     const find = async () => { if (groupId === view.focusedGroupId && web && tab) {
+      if (web.pdf) { window.dispatchEvent(new Event('setdown:pdf-find')); return; }
       browser.findId = tab.id; browser.active = 0; browser.matches = 0;
       actions.browserFind(tab.id, browser.query); await tick(); finder?.focus(); finder?.select();
     } };
@@ -149,7 +150,11 @@ import type { AppActions } from '../../ports/ui-actions';
         else if (event.key === 'ArrowUp' && suggestions.length) { event.preventDefault(); selected = (selected + suggestions.length - 1) % suggestions.length; }
       }} />
     {#if web}
-      <ExtensionActions {actions} tabId={tab!.id} />
+      {#if web.pdf}
+        <button aria-label="Save PDF" title="Save PDF" onclick={() => actions.browserCommand(tab!.id, 'save')}>↓</button>
+      {:else}
+        <ExtensionActions {actions} tabId={tab!.id} />
+      {/if}
       <button class="location-icon" aria-label="Site controls" title="Site controls" disabled={!web.url.startsWith('http')}
         onclick={() => actions.browserCommand(tab!.id, 'site-info')}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 10h2v7h-2zm0-4h2v2h-2zm1-4a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 1.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17z"/></svg>
@@ -161,7 +166,7 @@ import type { AppActions } from '../../ports/ui-actions';
       </button>
       <button class="location-icon reader-toggle" class:active={reading} aria-pressed={reading}
         aria-label={reading ? 'Exit reader mode' : 'Enter reader mode'}
-        title={reading ? 'Exit reader mode' : 'Reader mode (Esc)'} disabled={!web.url.startsWith('http')}
+        title={reading ? 'Exit reader mode' : 'Reader mode (Esc)'} disabled={!!web.pdf || !web.url.startsWith('http')}
         onclick={() => reading ? actions.browserReaderExit(tab!.id, browser.readerPositions[tab!.id]) : actions.browserReaderEnter(tab!.id)}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c4.75 0 8.27 3.13 9.66 6.35a1.62 1.62 0 0 1 0 1.3C20.27 15.87 16.75 19 12 19s-8.27-3.13-9.66-6.35a1.62 1.62 0 0 1 0-1.3C3.73 8.13 7.25 5 12 5Zm0 1.5c-4 0-7 2.63-8.28 5.45a.12.12 0 0 0 0 .1C5 14.87 8 17.5 12 17.5s7-2.63 8.28-5.45a.12.12 0 0 0 0-.1C19 9.13 16 6.5 12 6.5Zm0 2.25A3.25 3.25 0 1 1 12 15.25 3.25 3.25 0 0 1 12 8.75Zm0 1.5A1.75 1.75 0 1 0 12 13.75 1.75 1.75 0 0 0 12 10.25Z"/></svg>
       </button>

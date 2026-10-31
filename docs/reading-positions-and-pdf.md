@@ -64,6 +64,25 @@ contents are written to reading history.
 
 ## Verification
 
+HTTP(S) tabs also use this reader for inline `application/pdf` documents,
+including extensionless URLs and redirects. Detection reads the committed main-frame MIME
+type in an isolated world, without installing session request listeners (which
+interfere with Chromium extension request rules). It does not use the filename; attachments keep the browser download flow. The web tab
+retains its URL, navigation history and tab zoom. Its PDF surface shares the same
+three-surface LRU with local media, preserving canvas, search and page state on
+warm returns. Remote positions last for that navigation, not across app restarts.
+
+`main/browser/browser-pdf.ts` downloads through the browser session (including
+cookies) into a private temporary snapshot, capped at 256 MiB and two minutes.
+Only the owning window and current navigation token can read bounded ranges.
+Navigation, closing and window destruction cancel downloads and delete snapshots;
+late completion cannot install an obsolete PDF. Save PDF copies the original
+bytes. Errors offer retry and the original browser PDF viewer. Embedded frames retain their browser behavior. The snapshot is fetched with GET;
+PDFs available only from a one-time/POST response can use the original viewer. No PDF bytes enter the
+Markdown preparation path. `browser/external-pdf.spec.ts` covers redirects,
+cookies, MIME detection, search, outline, zoom, canvas retention, original-byte
+saving, stale token rejection, Back navigation and error recovery.
+
 Focused storage and file-reader unit tests exercise durable writes, older-write
 rejection, corrupt input, file moves, bounds and changed-file detection.
 `test/e2e/reading-positions.spec.ts` exercises real Electron PDF rendering, page

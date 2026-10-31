@@ -1,0 +1,77 @@
+External PDF reader validation — 2026-10-31
+
+Implementation
+- Inline HTTP(S) PDF documents open in the existing Setdown PDF.js reader.
+- Reads the committed top-level document MIME in an isolated JavaScript world.
+  Filename extensions are irrelevant; attachments keep the download flow.
+- Keeps URL, browser navigation history and the tab's canonical zoom.
+- Local and external PDFs share the three-surface media LRU. Warm tab returns
+  retain canvas/worker/search/scroll identity. The navigation token invalidates
+  old surfaces and authorizes bounded IPC reads in the owning window.
+- Browser-session GET downloads preserve cookies and redirects and use a private
+  temporary immutable file. The cap is 256 MiB and the timeout is 120 seconds.
+- Navigation/close cancels the load and deletes the snapshot. Save PDF copies
+  the original bytes. Errors provide retry and the native browser viewer.
+- Remote positions are navigation-scoped; they do not persist across restarts.
+  One-time or POST-only URLs can require the original browser viewer.
+
+Verification
+- Actual https://arxiv.org/pdf/2607.17067 opened in isolated Electron, 16 pages,
+  selectable title and body text, fit width 170% at a 1440 x 1000 window.
+  Final result: arxiv-result.json, arxiv-final.log, arxiv-setdown.png.
+- Focused Electron cases: four passed (21.9 seconds), including external PDF
+  search/outline/zoom/canvas retention, keyboard and native-menu copy, byte-exact
+  saving, stale range token rejection, Back, cookies, redirects, MIME/error
+  handling, original downloads and real extension network effects.
+  Log: focused-mime-fix.log.
+- An initial onResponseStarted listener suppressed Chromium extension request
+  rules. The extension test passed in cef3829 and failed in the first candidate.
+  Replaced the session listener with committed-document MIME detection; all four
+  focused scenarios then passed. Earlier diagnostic logs remain for provenance.
+- Full preview contract passed: 98 unit files / 743 tests, 14 tooling tests,
+  production build/typecheck (0 Svelte errors/warnings), and 265 real Electron
+  tests (13.5 minutes), with retries disabled.
+  Log: contract-complete.log. Captures/exports: contract-artifacts/.
+- Comparative latency gate passed: 48/48 buckets, zero regressions,
+  3 matched repetitions, 48 fresh Electron launches. All latest-content
+  assertions and captures completed. Log: benchmark.log; raw runs and
+  identity/settings/samples: benchmark/comparison.json.
+
+Baseline
+- Source: cef3829, independent temporary checkout under baselines/cef3829 (removed after validation).
+- Dependencies and Electron copied into separate directories/inodes from the
+  installed lock-identical candidate; source is unchanged. No candidate module
+  symlinks or installed Electron are used by the baseline.
+- SETDOWN_BUILD_SOURCEMAP=0 on both builds. Same candidate harness/fixture,
+  same isolated display, alternating version order, three matched repetitions,
+  all eight ordinary/Git x edited/unedited x 0/3000ms preparation scenarios.
+- Existing 25% AND 50ms regression tolerances are unchanged.
+- All GUI execution uses with-isolated-display.sh: Xvfb, private runtime and
+  D-Bus, and removed Wayland sockets. No tests appear on the desktop.
+
+Comparative latency medians (ms; baseline -> candidate)
+First / second / warm (median of cycles 3-5) remain separate.
+Esc includes latest-content native capture readback. Double-click measures
+return to editable source. Values exclude the stated source preparation wait.
+
+Esc -> latest-content capture
+Surface   Edits  Preparation    First       Second      Warm
+document  false  0ms          39->31      24->30      23->26
+document  false  3000ms       27->27      22->20      23->23
+document  true   0ms          290->313    84->96      95->91
+document  true   3000ms       105->111    102->83     94->92
+review    false  0ms          1024->1004  23->21      30->26
+review    false  3000ms       33->25      24->27      17->28
+review    true   0ms          1065->1106  1652->1659  177->180
+review    true   3000ms       229->229    183->197    180->174
+
+Double-click -> editable source
+Surface   Edits  Preparation    First       Second      Warm
+document  false  0ms          39->33      40->34      13->13
+document  false  3000ms       17->17      12->12      12->11
+document  true   0ms          19->21      15->16      15->12
+document  true   3000ms       18->20      15->16      13->13
+review    false  0ms          26->25      13->11      12->12
+review    false  3000ms       24->26      12->11      19->19
+review    true   0ms          22->23      23->23      20->13
+review    true   3000ms       24->23      18->19      18->19

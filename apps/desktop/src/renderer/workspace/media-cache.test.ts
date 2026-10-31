@@ -2,6 +2,15 @@ import { expect, it } from 'vitest';
 import { MediaCache } from './media-cache';
 import { createWorkspaceTab } from '../../core/workspace/workspace-state';
 
+it('does not reuse a remote PDF surface across navigation tokens, even with the same URL and size', () => {
+  const cache = new MediaCache();
+  const remote = { ...tab('remote'), remote: 'navigation-1' };
+  const first = cache.sync([remote], remote.id)[0];
+  expect(cache.sync([remote], remote.id)[0]).toBe(first);
+  remote.remote = 'navigation-2';
+  expect(cache.sync([remote], remote.id)[0]).not.toBe(first);
+});
+
 const tab = (id: string) => createWorkspaceTab(id, { kind: 'pdf', path: `/${id}.pdf`, name: id,
   text: '', savedText: '', revision: 0, savedRevision: 0, isUntitled: false,
   diskVersion: { size: 100, mtimeMs: 1 } }, 'pdf', { sourceLine: 1, yRatio: 0, reason: 'empty-document', confidence: 'fallback' });

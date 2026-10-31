@@ -39,7 +39,16 @@ import type { AppActions } from '../../ports/ui-actions';
     <TabChrome {actions} groupId={box.id} />
     <LocationBar {actions} groupId={box.id} />
     <div class="group-body" data-group-id={box.id} data-zoom-tab={tab?.id}>
-      {#if tab?.kind === 'web' && browser.readers[tab.id]}
+      {#if tab?.kind === 'web' && tab.page?.pdf && !tab.page.pdf.size}
+        <div class="browser-empty" aria-live="polite">
+          <h2>{tab.page.pdf.error ? 'Could not open this PDF' : 'Opening PDF…'}</h2>
+          <p>{tab.page.pdf.error || 'Preparing this document for the Setdown reader.'}</p>
+          {#if tab.page.pdf.error}
+            <button onclick={() => actions.browserCommand(tab.id, 'reload')}>Try again</button>
+            <button onclick={() => actions.browserCommand(tab.id, 'pdf-original')}>Use browser PDF viewer</button>
+          {/if}
+        </div>
+      {:else if tab?.kind === 'web' && browser.readers[tab.id]}
         {#key tab.id}<WebReaderSurface {actions} groupId={box.id} tabId={tab.id} snapshot={browser.readers[tab.id]} />{/key}
       {:else if tab?.kind === 'web' && (tab.page?.error || tab.page?.startPage)}
         <div class="browser-empty" data-browser-tab={tab.id}>

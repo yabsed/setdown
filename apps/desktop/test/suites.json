@@ -21,6 +21,7 @@
       "src/core/workspace/editor-groups.test.ts",
       "src/core/workspace/tab-navigation.test.ts",
       "src/main/browser/browser-auth.test.ts",
+      "src/main/browser/browser-pdf.test.ts",
       "src/main/browser/browser-context-menu.test.ts",
       "src/main/browser/browser-downloads.test.ts",
       "src/main/browser/browser-extensions.test.ts",
@@ -210,6 +211,9 @@
       "previewContract": true
     },
     "media/media-tabs.spec.ts": {
+      "previewContract": true
+    },
+    "browser/external-pdf.spec.ts": {
       "previewContract": true
     },
     "media/pdf-selection.spec.ts": {

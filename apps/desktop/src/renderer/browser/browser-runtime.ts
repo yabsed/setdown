@@ -1,3 +1,4 @@
+import { webPdfPositions } from './web-pdf-positions';
 import type { WorkspaceState } from '../../core/workspace/workspace-state';
 import type { DesktopPort } from '../ports/desktop-port';
 import type { TabController } from '../workspace/tab-controller';
@@ -14,7 +15,7 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
     const tab = group.activeId && workspace.find(group.activeId);
     // A tab in reader mode omits its native view from the layout, hiding it
     // without destroying the live page behind the shell reader surface.
-    if (!tab || tab.kind !== 'web' || tab.page.error || tab.page.startPage || browser.readers[tab.id]
+    if (!tab || tab.kind !== 'web' || tab.page.error || tab.page.pdf || tab.page.startPage || browser.readers[tab.id]
       || (group.id === workspace.groups.focusedId && project.gitDiffActive)) return [];
     const host = area.querySelector<HTMLElement>(`.group-body[data-group-id="${group.id}"]`);
     if (!host) return [];
@@ -63,7 +64,9 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
         delete browser.readers[event.page.id]; delete browser.readerPositions[event.page.id]; delete browser.readerFind[event.page.id];
       }
       const tab = workspace.find(event.page.id);
-      if (tab?.kind === 'web') { tab.page = event.page; tabs.updateChrome(); sync(true); }
+      if (tab?.kind === 'web') {
+        if (tab.page.pdf && tab.page.pdf.token !== event.page.pdf?.token) delete webPdfPositions[tab.page.pdf.token];
+        tab.page = event.page; tabs.updateChrome(); sync(true); }
     } else if (event.type === 'navigation') tabs.webNavigated(event.id);
     else if (event.type === 'document') {
       delete browser.readers[event.id]; delete browser.readerPositions[event.id]; delete browser.readerFind[event.id];
@@ -78,7 +81,9 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
       // must not switch the newly opened tab back to the previous page.
       if (workspace.find(event.id)?.kind !== 'web' || workspace.groups.owner(event.id)?.activeId !== event.id) return;
       if (workspace.activeId !== event.id || project.gitDiffActive) activate(event.id);
-    } else if (event.type === 'close') { delete browser.readers[event.id]; delete browser.readerPositions[event.id]; delete browser.readerFind[event.id]; tabs.browserClosed(event.id); }
+    } else if (event.type === 'close') {
+      const tab = workspace.find(event.id);
+      if (tab?.kind === 'web' && tab.page.pdf) delete webPdfPositions[tab.page.pdf.token]; delete browser.readers[event.id]; delete browser.readerPositions[event.id]; delete browser.readerFind[event.id]; tabs.browserClosed(event.id); }
     else if (event.type === 'places') browser.revision++;
     else if (event.type === 'extensions' || event.type === 'theme-settings') browser.revision++;
     else if (event.type === 'download') {

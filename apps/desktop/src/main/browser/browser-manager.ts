@@ -15,6 +15,7 @@ import type { WindowIpc } from '../ipc/window-ipc';
 import { BrowserExtensions } from './browser-extensions';
 import { BrowserPlaces } from './browser-places';
 import { BrowserDownloads } from './browser-downloads';
+import { BrowserPdf } from './browser-pdf';
 import { extractReaderArticle, restoreReaderAnchor } from './browser-reader';
 import { readReaderAnchor, type ReaderAnchor } from '../../core/browser/reader-article';
 import { BrowserPermissions } from './browser-permissions';
@@ -27,7 +28,7 @@ import { BrowserThemes } from './browser-themes';
 import { DEFAULT_PREVIEW_THEME } from '../../core/preview/preview-preferences';
 
 type Entry = { owner: number; view: WebContentsView; contents: WebContents; page: BrowserPage; navigation: number; bounds?: Rectangle;
-  document: number; reader?: { snapshot: ReaderSnapshot; document: number }; menuGeneration: number; find?: { request: number; query: string }; htmlFullscreen?: boolean;
+  document: number; pdf?: BrowserPdf; reader?: { snapshot: ReaderSnapshot; document: number }; menuGeneration: number; find?: { request: number; query: string }; htmlFullscreen?: boolean;
   popups: number[]; externalRequests: number[]; externalPending?: boolean;
   historyUrls: string[]; historyIndex: number; canGoBack?: boolean; canGoForward?: boolean; closing?: (value: boolean) => void };
 type Options = { stateFor(id: number): WindowState | null; states(): Iterable<WindowState>; zoom: WorkspaceZoom;
@@ -206,10 +207,28 @@ export class BrowserManager {
   private publish(entry: Entry) {
     if (!this.live(entry)) return;
     const wc = entry.contents;
-    entry.page = { ...entry.page, loading: wc.isLoading() || entry.page.protection === 'starting', canGoBack: wc.navigationHistory.canGoBack(),
+    entry.page = { ...entry.page, loading: wc.isLoading() || entry.page.protection === 'starting' || !!(entry.page.pdf && !entry.page.pdf.size && !entry.page.pdf.error), canGoBack: wc.navigationHistory.canGoBack(),
       canGoForward: wc.navigationHistory.canGoForward(), audible: wc.isCurrentlyAudible(), muted: wc.isAudioMuted(),
       zoomPercent: Math.round(this.pageZoom(entry) * 100) };
     this.send(entry.owner, { type: 'page', page: entry.page });
+  }
+  private clearPdf(entry: Entry) {
+    const pdf = entry.pdf;
+    entry.pdf = undefined; delete entry.page.pdf;
+    void pdf?.dispose().catch(console.error);
+  }
+  private openPdf(entry: Entry) {
+    this.clearPdf(entry);
+    const pdf = entry.pdf = new BrowserPdf(), token = randomUUID();
+    entry.page.pdf = { token };
+    this.publish(entry);
+    void pdf.open(entry.page.url, (url, init) => this.session.fetch(url, init)).then(size => {
+      if (!this.live(entry) || entry.pdf !== pdf) return;
+      entry.page.pdf = { token, size }; this.publish(entry);
+    }).catch(error => {
+      if (!this.live(entry) || entry.pdf !== pdf) return;
+      entry.page.pdf = { token, error: error instanceof Error ? error.message : String(error) }; this.publish(entry);
+    });
   }
   private error(entry: Entry, error: unknown) {
     entry.page.error = error instanceof Error ? error.message : String(error);
@@ -252,6 +271,7 @@ export class BrowserManager {
     // synchronous loading/audio events, after the View's getter is cleared.
     for (const entry of entries) this.views.delete(entry.page.id);
     for (const entry of entries) {
+      this.clearPdf(entry);
       this.permissions.clear(owner, entry.page.id);
       this.auth.clear(entry.page.id);
       const resolve = entry.closing; entry.closing = undefined; resolve?.(true);
@@ -314,6 +334,7 @@ export class BrowserManager {
       entry.menuGeneration++;
       if (!main || inPlace) return;
       this.webThemes.cancel(entry);
+      this.clearPdf(entry);
       entry.document++; entry.reader = undefined; entry.find = undefined; entry.page.error = null; entry.page.failure = undefined;
       this.send(entry.owner, { type: 'document', id });
       this.auth.clear(id);
@@ -346,6 +367,16 @@ export class BrowserManager {
       if (frame && !frame.isDestroyed()) this.webThemes.apply(entry, frame);
     });
     wc.on('page-title-updated', (_event, title) => { if (!this.live(entry)) return; entry.page.title = title; this.publish(entry); this.saved.set(id, entry.page); this.persist(); });
+    // A session webRequest listener disables Chromium extension request rules.
+    // Read the committed document's MIME type in an isolated world instead;
+    // attachments never commit a document, and subframe PDFs stay embedded.
+    wc.on('dom-ready', () => {
+      const document = entry.document, url = wc.getURL();
+      if (!this.live(entry) || !isWebURL(url)) return;
+      void wc.executeJavaScriptInIsolatedWorld(991, [{ code: 'document.contentType' }]).then(type => {
+        if (type === 'application/pdf' && this.live(entry) && entry.document === document && entry.page.url === url && !entry.pdf) this.openPdf(entry);
+      }).catch(() => {});
+    });
     wc.on('did-start-loading', () => this.publish(entry));
     wc.on('did-stop-loading', () => this.publish(entry));
     wc.on('did-finish-load', () => {
@@ -360,7 +391,7 @@ export class BrowserManager {
       this.error(entry, browserFailureMessage(entry.page.failure));
     });
     wc.on('render-process-gone', () => {
-      this.permissions.clear(entry.owner, id); this.auth.clear(id); entry.find = undefined; entry.document++;
+      this.permissions.clear(entry.owner, id); this.auth.clear(id); entry.find = undefined; entry.document++; this.clearPdf(entry);
       entry.page.failure = { kind: 'crash', url: entry.page.url, code: 0 };
       this.error(entry, browserFailureMessage(entry.page.failure));
     });
@@ -377,6 +408,7 @@ export class BrowserManager {
       if (choice === 1) event.preventDefault(); else { entry.closing?.(false); entry.closing = undefined; }
     });
     wc.on('destroyed', () => {
+      this.clearPdf(entry);
       this.webThemes.cancel(entry);
       const resolve = entry.closing; entry.closing = undefined; resolve?.(true);
       if (this.views.get(id) !== entry) return;
@@ -474,6 +506,7 @@ export class BrowserManager {
   }
   private async load(entry: Entry, url: string, history?: WebHistory) {
     const navigation = ++entry.navigation;
+    this.clearPdf(entry);
     entry.page.url = url; entry.page.error = null; entry.page.startPage = url === 'about:blank';
     this.publish(entry);
     try {
@@ -542,7 +575,7 @@ export class BrowserManager {
     const visible = new Set<string>();
     for (const item of entries.slice(0, 32)) {
       const entry = this.views.get(item.id), css = readPreviewBounds(item.bounds);
-      if (!entry || entry.owner !== owner || !css || entry.contents.isDestroyed()) continue;
+      if (!entry || entry.owner !== owner || !css || entry.page.pdf || entry.contents.isDestroyed()) continue;
       entry.canGoBack = item.canGoBack === true; entry.canGoForward = item.canGoForward === true;
       const bounds = nativeZoomBounds(css, state.window.webContents.getZoomFactor());
       const [width, height] = state.window.getContentSize();
@@ -653,9 +686,23 @@ export class BrowserManager {
       const entry = this.owned(state.webContentsId, id);
       return entry.view.getVisible() ? (await entry.contents.capturePage()).toDataURL() : null;
     });
+    channels.handle('browser:pdf-range', async (state, id: string, token: string, begin: number, end: number) => {
+      const entry = this.owned(state.webContentsId, id), pdf = entry.pdf;
+      if (!pdf || entry.page.pdf?.token !== token) throw Error('This PDF navigation is no longer current.');
+      const bytes = await pdf.read(begin, end);
+      if (!this.live(entry) || entry.owner !== state.webContentsId || entry.pdf !== pdf) throw Error('This PDF navigation is no longer current.');
+      return bytes;
+    });
+    channels.handle('browser:pdf-menu', async (state, id: string, token: string, selection: string) => {
+      const entry = this.owned(state.webContentsId, id);
+      if (!entry.pdf || entry.page.pdf?.token !== token || typeof selection !== 'string') return;
+      await showReadingMenu(state.window, { selection, link: '' },
+        () => this.live(entry) && entry.owner === state.webContentsId && entry.page.pdf?.token === token,
+        url => { void this.openLink(entry.owner, url); });
+    });
     channels.handle('browser:reader-extract', async (state, id: string) => {
       const entry = this.owned(state.webContentsId, id);
-      if (!isWebURL(entry.contents.getURL())) return null;
+      if (entry.page.pdf || !isWebURL(entry.contents.getURL())) return null;
       const document = entry.document;
       const snapshot = await extractReaderArticle(entry.contents);
       if (!this.live(entry) || entry.owner !== state.webContentsId || document !== entry.document || snapshot?.article.url !== entry.page.url) return null;
@@ -679,6 +726,7 @@ export class BrowserManager {
         if (!wc.navigationHistory.canGoToOffset(offset)) return false;
         wc.navigationHistory.goToOffset(offset); return true;
       }
+      else if (command === 'pdf-original') { this.clearPdf(entry); this.publish(entry); }
       else if (command === 'reload') {
         if (entry.page.protection === 'ready' && wc.getURL() === entry.page.url && !wc.isCrashed()) { entry.page.error = null; wc.reload(); }
         else await this.load(entry, entry.page.url);
@@ -689,7 +737,13 @@ export class BrowserManager {
       }
       else if (command === 'permissions') this.permissionMenu(entry);
       else if (command === 'site-info') this.siteMenu(entry);
-      else if (command === 'stop') { entry.navigation++; wc.stop(); }
+      else if (command === 'stop') {
+        entry.navigation++; wc.stop();
+        if (entry.pdf && entry.page.pdf && !entry.page.pdf.size) {
+          void entry.pdf.dispose().catch(console.error);
+          entry.page.pdf.error = 'PDF loading was stopped.'; this.publish(entry);
+        }
+      }
       else if (command === 'activate' || command === 'focus') {
         state.currentDocument = null;
         this.extensions?.host?.selectTab(wc);
@@ -700,6 +754,14 @@ export class BrowserManager {
       }
       else if (command === 'external') await this.external(entry, wc.getURL(), true);
       else if (command === 'save') {
+        if (entry.page.pdf) {
+          const pdf = entry.pdf;
+          if (!pdf || !entry.page.pdf.size) return;
+          const title = entry.page.title.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').slice(0, 150) || 'document';
+          const result = await dialog.showSaveDialog(state.window, { title: 'Save PDF', defaultPath: title.endsWith('.pdf') ? title : `${title}.pdf`, filters: [{ name: 'PDF document', extensions: ['pdf'] }] });
+          if (!result.canceled && result.filePath && this.live(entry) && entry.owner === state.webContentsId && entry.pdf === pdf) await pdf.save(result.filePath);
+          return;
+        }
         const result = await dialog.showSaveDialog(state.window, { title: 'Save web page', defaultPath: 'page.html', filters: [{ name: 'Web page', extensions: ['html'] }] });
         if (!result.canceled && result.filePath) await wc.savePage(result.filePath, 'HTMLComplete');
       } else if (command === 'protection' && this.extensions?.builtinPopupURL()) {

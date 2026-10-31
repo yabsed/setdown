@@ -83,7 +83,8 @@ export function createBrowserActions(options: Options): BrowserActions {
    * snapshot first, then hide the live view behind it (page state kept). */
   const readerRequests = new Set<string>();
   async function enterWebReader(id: string) {
-    if (browser.readers[id] || readerRequests.has(id) || options.tab(id)?.kind !== 'web') return;
+    const target = options.tab(id);
+    if (browser.readers[id] || readerRequests.has(id) || target?.kind !== 'web' || target.page.pdf) return;
     readerRequests.add(id);
     const snapshot = await api.readerExtract(id).catch(() => null).finally(() => readerRequests.delete(id));
     const tab = options.tab(id);

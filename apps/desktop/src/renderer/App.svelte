@@ -13,6 +13,8 @@
   import TitleBar from './shell/TitleBar.svelte';
   import ClosePrompt from './shell/ClosePrompt.svelte';
   import BrowserAuthDialog from './browser/BrowserAuthDialog.svelte';
+  import { webPdfPositions } from './browser/web-pdf-positions';
+  import { webPdfPort } from './browser/web-pdf-port';
   import { view } from './workspace/workspace-view.svelte';
 import type { AppActions } from './ports/ui-actions';
 
@@ -86,7 +88,8 @@ import type { AppActions } from './ports/ui-actions';
     {#if tab.document.kind === 'pdf'}
       {#await import('./pdf/PdfSurface.svelte') then module}
         <module.default tabId={tab.id} document={tab.document} initialPosition={tab.position} {active}
-          focused={group?.id === view.focusedGroupId} {desktop} onposition={(position) => mediaPosition(tab.id, position)} />
+          focused={group?.id === view.focusedGroupId} desktop={tab.remote ? webPdfPort(desktop, tab.id, tab.remote) : desktop}
+          onposition={(position) => { if (tab.remote) webPdfPositions[tab.remote] = position; else mediaPosition(tab.id, position); }} />
       {:catch error}{#if active}<div role="alert">Could not load the PDF reader: {String(error)}</div>{/if}{/await}
     {:else if tab.document.kind === 'video'}
       {#await import('./video/VideoSurface.svelte') then module}

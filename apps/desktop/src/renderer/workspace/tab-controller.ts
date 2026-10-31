@@ -1,3 +1,4 @@
+import { webPdfPositions } from '../browser/web-pdf-positions';
 import { documentIdentity, sharedTextDocument, type DocumentContent } from '../../core/workspace/document-store';
 import { sameDiskVersion } from '../../core/document/document';
 import { editorInputKey } from '../../core/workspace/workspace-state';
@@ -23,7 +24,7 @@ import { view } from './workspace-view.svelte';
 import type { WorkingTreeEdit } from '../../core/document/text-edit';
 import { restoredOutlineOpen } from '../shell/layout-session';
 import { tick } from 'svelte';
-import { MediaCache } from './media-cache';
+import { MediaCache, webPdfMedia } from './media-cache';
 import { groupLayout, type EditorGroupPlacement, type EditorOpenOptions } from '../../core/workspace/editor-groups';
 
 type Options = {
@@ -289,7 +290,7 @@ export class TabController {
     desktop.setZoomTabs?.([...workspace.tabs.map(tab => tab.id), ...(review ? [review] : [])], review ?? workspace.activeId,
       Object.fromEntries(workspace.documents.filter(tab => !tab.document.isUntitled).map(tab => [tab.id, tab.document.path])));
     void tick().then(() => this.options.groupsChanged?.());
-    view.mediaTabs = this.media.sync(workspace.documents, workspace.activeId, workspace.groups.groups.flatMap(g => g.activeId ? [g.activeId] : []));
+    view.mediaTabs = this.media.sync([...workspace.documents, ...workspace.tabs.flatMap(tab => webPdfMedia(tab, webPdfPositions))], workspace.activeId, workspace.groups.groups.flatMap(g => g.activeId ? [g.activeId] : []));
     view.activeMediaId = workspace.activeDocument?.document.kind ? workspace.activeId : null;
     shell.dataset.tabs = summaries.length > 0 ? 'true' : 'false';
     shell.dataset.dirtyTabs = String(summaries.filter((tab) => tab.dirty).length);

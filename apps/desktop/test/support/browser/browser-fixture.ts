@@ -44,6 +44,13 @@ export async function fixture(document = true) {
       return;
     }
     if (req.url === '/network-failure') { req.socket.destroy(); return; }
+    if (req.url === '/pdf-redirect') {
+      res.writeHead(302, { location: '/paper', 'set-cookie': 'paper-access=yes; Path=/' }); res.end(); return;
+    }
+    if (req.url === '/paper' || req.url === '/broken-pdf') {
+      res.setHeader('content-type', 'application/pdf');
+      res.end(req.url === '/broken-pdf' || !req.headers.cookie?.includes('paper-access=yes') ? '<html>Sign in</html>' : pdfFixture()); return;
+    }
     if (req.url === '/download-pdf') {
       res.setHeader('content-type', 'application/pdf'); res.setHeader('content-disposition', 'attachment; filename="download.pdf"');
       res.end(pdfFixture(1)); return;

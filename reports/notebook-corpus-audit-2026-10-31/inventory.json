@@ -1,0 +1,1697 @@
+[
+  {
+    "file": "00-데이터-준비.ipynb",
+    "bytes": 50128,
+    "sha256": "bd95db0c591836d1d9410f5d503a0b3b918ed0cef85ee0bb294e84a726a79b4a",
+    "nbformat": [
+      4,
+      5
+    ],
+    "metadata": {
+      "kernelspec": {
+        "display_name": "Python 3 (ipykernel)",
+        "language": "python",
+        "name": "python3"
+      },
+      "language_info": {
+        "codemirror_mode": {
+          "name": "ipython",
+          "version": 3
+        },
+        "file_extension": ".py",
+        "mimetype": "text/x-python",
+        "name": "python",
+        "nbconvert_exporter": "python",
+        "pygments_lexer": "ipython3",
+        "version": "3.10.13"
+      }
+    },
+    "cells": {
+      "markdown": 18,
+      "code": 26
+    },
+    "outputs": {
+      "display_data": 4,
+      "stream": 6
+    },
+    "mime": {
+      "text/html": 3,
+      "text/plain": 4,
+      "text/markdown": 1
+    },
+    "longest_cells": [
+      [
+        90,
+        12,
+        3131
+      ],
+      [
+        66,
+        28,
+        2347
+      ],
+      [
+        49,
+        14,
+        1763
+      ],
+      [
+        46,
+        19,
+        1540
+      ]
+    ],
+    "html": [
+      {
+        "cell": 8,
+        "chars": 605,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 34,
+        "chars": 686,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 36,
+        "chars": 536,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      }
+    ],
+    "imports": [
+      "IPython.display",
+      "json",
+      "numpy",
+      "pandas",
+      "pathlib",
+      "re"
+    ],
+    "paths": [
+      "(.+)_p(\\d+)(?:\\.png)?",
+      "(?:^|_){twin_token}(?:_|\\.|$)",
+      "FileNotFoundError: /private/DEMO.json",
+      "] -> DATASET / ",
+      "data/prepared",
+      "{excluded_segments:,}개입니다.\\n\\n{status}"
+    ],
+    "headings": [
+      "# 00 · 분석할 데이터를 정한다",
+      "### 출력에 남기는 오류 정보",
+      "## 1. 같은 기록끼리 연결한다",
+      "## 2. 라벨과 신호의 구조를 확인한다",
+      "### 2.1. Bbox 좌표와 라벨의 대응",
+      "### 2.2. 신호 구조와 결측률 기준",
+      "### 2.3. 구간별 결측 기준 적용",
+      "## 3. 기록별 요약과 임상값을 계산한다",
+      "### 3.1. 원래 구간을 기준으로 판독 요약",
+      "### 3.2. 임상값과 출생 결과 변환",
+      "## 4. 전체 기록을 처리한다",
+      "## 5. 구간·기록·산모 표를 만든다",
+      "### 5.1. 구간·기록 표와 신호 배열",
+      "### 5.2. 산모별 집계",
+      "### 5.3. 구간 표와 신호 배열의 연결 확인",
+      "## 6. 전처리 결과는 한곳에 저장한다",
+      "## 7. 남긴 데이터와 제외한 데이터를 함께 센다"
+    ],
+    "errors": []
+  },
+  {
+    "file": "01-데이터-계약.ipynb",
+    "bytes": 29502,
+    "sha256": "5484506a0b5f4acf17b27d1991e209721b4219e0fbaf569cada32839de3861c7",
+    "nbformat": [
+      4,
+      5
+    ],
+    "metadata": {
+      "kernelspec": {
+        "display_name": "Python 3 (ipykernel)",
+        "language": "python",
+        "name": "python3"
+      },
+      "language_info": {
+        "codemirror_mode": {
+          "name": "ipython",
+          "version": 3
+        },
+        "file_extension": ".py",
+        "mimetype": "text/x-python",
+        "name": "python",
+        "nbconvert_exporter": "python",
+        "pygments_lexer": "ipython3",
+        "version": "3.10.13"
+      }
+    },
+    "cells": {
+      "markdown": 11,
+      "code": 16
+    },
+    "outputs": {
+      "stream": 6,
+      "display_data": 3
+    },
+    "mime": {
+      "text/html": 3,
+      "text/plain": 3
+    },
+    "longest_cells": [
+      [
+        32,
+        15,
+        1493
+      ],
+      [
+        22,
+        4,
+        1208
+      ],
+      [
+        21,
+        7,
+        829
+      ],
+      [
+        15,
+        18,
+        658
+      ]
+    ],
+    "html": [
+      {
+        "cell": 18,
+        "chars": 2467,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 0,
+        "head": "<style type=\"text/css\">\n</style>\n<table id=\"T_e5be8\">\n  <thead>\n    <tr>\n      <th class=\"blank level0\" >&nbsp;</th>\n      <th id=\"T_e5be8_level0_col0\" class=\"col_heading level0 co"
+      },
+      {
+        "cell": 20,
+        "chars": 1510,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 27,
+        "chars": 471,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      }
+    ],
+    "imports": [
+      "IPython.display",
+      "json",
+      "numpy",
+      "pandas",
+      "pathlib",
+      "sklearn.model_selection"
+    ],
+    "paths": [
+      "FileNotFoundError: /private/DEMO.json",
+      "] / summary[",
+      "data/prepared",
+      "data/results"
+    ],
+    "headings": [
+      "# 01 · 산모를 기준으로 평가 대상을 나눈다",
+      "### 출력에 남기는 오류 정보",
+      "## 1. 표의 행과 신호의 행을 맞춘다",
+      "## 2. 산모 목록을 분할의 기준으로 삼는다",
+      "## 3. 비율은 맞추되 산모는 쪼개지 않는다",
+      "### 3.1. 집합별 규모를 확인한다",
+      "### 3.2. 사이트별 규모를 확인한다",
+      "## 4. 분할 결과도 data 안에 저장한다",
+      "## 분할이 보장하는 범위를 밝힌다",
+      "### 반출용 제외·오류 집계"
+    ],
+    "errors": []
+  },
+  {
+    "file": "02-파형과-측정.ipynb",
+    "bytes": 450701,
+    "sha256": "7866e971366fcf4bdad112c0d5af8d56dbfa70824c2ea0c1ae86dd1ff7f4647e",
+    "nbformat": [
+      4,
+      5
+    ],
+    "metadata": {
+      "kernelspec": {
+        "display_name": "Python 3 (ipykernel)",
+        "language": "python",
+        "name": "python3"
+      },
+      "language_info": {
+        "codemirror_mode": {
+          "name": "ipython",
+          "version": 3
+        },
+        "file_extension": ".py",
+        "mimetype": "text/x-python",
+        "name": "python",
+        "nbconvert_exporter": "python",
+        "pygments_lexer": "ipython3",
+        "version": "3.10.13"
+      }
+    },
+    "cells": {
+      "markdown": 20,
+      "code": 39
+    },
+    "outputs": {
+      "stream": 11,
+      "display_data": 7
+    },
+    "mime": {
+      "text/html": 5,
+      "text/plain": 7,
+      "image/png": 2
+    },
+    "longest_cells": [
+      [
+        46,
+        31,
+        1916
+      ],
+      [
+        41,
+        45,
+        1762
+      ],
+      [
+        32,
+        24,
+        1308
+      ],
+      [
+        30,
+        27,
+        914
+      ]
+    ],
+    "html": [
+      {
+        "cell": 40,
+        "chars": 5576,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 46,
+        "chars": 2165,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 50,
+        "chars": 20218,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 53,
+        "chars": 2048,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 59,
+        "chars": 471,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      }
+    ],
+    "imports": [
+      "IPython.display",
+      "json",
+      "matplotlib.pyplot",
+      "numpy",
+      "pandas",
+      "pathlib",
+      "scipy.signal",
+      "scipy.stats",
+      "sklearn.metrics",
+      "time"
+    ],
+    "paths": [
+      "/",
+      "FileNotFoundError: /private/DEMO.json",
+      "data/prepared",
+      "data/results"
+    ],
+    "headings": [
+      "# 02 · 파형을 28개의 측정값으로 바꾼다",
+      "### 출력에 남기는 오류 정보",
+      "## 1. 분할 표와 신호 배열을 읽는다",
+      "## 2. 결측을 채우고 평활 유무를 비교한다",
+      "## 3. 기저선과 기저선 주변의 변동을 구한다",
+      "## 4. 사건과 두 신호의 관계를 측정한다",
+      "### 4.1. 수축과 감속 유형",
+      "### 4.2. FHR·TOCO 지연 상관",
+      "### 4.3. 한 구간을 Cat28 순서로 요약한다",
+      "## 5. 같은 구간에서 두 특징 표를 만든다",
+      "## 6. 측정 품질과 실제 파형을 확인한다",
+      "### 6.1. 어떤 특징이 상수인가",
+      "## 7. 기록 단위의 주석과 비교한다",
+      "## 8. 학습 집합의 특징·라벨 관계와 사이트 구성을 확인한다",
+      "### 8.1. 학습 집합에서만 관계를 그린다",
+      "### 8.2. 사이트별 표본 구성을 센다",
+      "## 9. 다음 실험이 읽을 결과를 저장한다",
+      "## 측정과 판정을 구별한다",
+      "### 반출용 제외·오류 집계"
+    ],
+    "errors": []
+  },
+  {
+    "file": "03-단일-지표.ipynb",
+    "bytes": 134125,
+    "sha256": "00bb48ad48fa98a9726f9bcdf0d0c1a3cf8f5c80d19ee4ee1223794512377759",
+    "nbformat": [
+      4,
+      5
+    ],
+    "metadata": {
+      "kernelspec": {
+        "display_name": "Python 3 (ipykernel)",
+        "language": "python",
+        "name": "python3"
+      },
+      "language_info": {
+        "codemirror_mode": {
+          "name": "ipython",
+          "version": 3
+        },
+        "file_extension": ".py",
+        "mimetype": "text/x-python",
+        "name": "python",
+        "nbconvert_exporter": "python",
+        "pygments_lexer": "ipython3",
+        "version": "3.10.13"
+      }
+    },
+    "cells": {
+      "markdown": 14,
+      "code": 31
+    },
+    "outputs": {
+      "stream": 10,
+      "display_data": 6
+    },
+    "mime": {
+      "text/html": 4,
+      "text/plain": 6,
+      "image/png": 2
+    },
+    "longest_cells": [
+      [
+        32,
+        9,
+        1589
+      ],
+      [
+        30,
+        30,
+        1629
+      ],
+      [
+        23,
+        34,
+        1039
+      ],
+      [
+        23,
+        12,
+        1116
+      ]
+    ],
+    "html": [
+      {
+        "cell": 10,
+        "chars": 869,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 19,
+        "chars": 2075,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 36,
+        "chars": 2047,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 45,
+        "chars": 471,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      }
+    ],
+    "imports": [
+      "IPython.display",
+      "json",
+      "matplotlib.pyplot",
+      "numpy",
+      "pandas",
+      "pathlib",
+      "sklearn.base",
+      "sklearn.impute",
+      "sklearn.linear_model",
+      "sklearn.metrics",
+      "sklearn.pipeline",
+      "sklearn.preprocessing"
+    ],
+    "paths": [
+      "/",
+      "FileNotFoundError: /private/DEMO.json",
+      "data/results",
+      "train/val/test 각각 정상·비정상 라벨이 필요합니다"
+    ],
+    "headings": [
+      "# 03 · 특징 하나로 어디까지 예측할 수 있는가",
+      "### 출력에 남기는 오류 정보",
+      "## 1. 같은 특징과 산모 분할을 이어받는다",
+      "## 2. 특징 하나를 직선 또는 곡선으로 읽는다",
+      "## 3. 56개 후보를 학습하고 검증 점수를 모은다",
+      "## 4. 검증 AUROC로 계열별 하나를 고정한다",
+      "## 5. 선택된 모델의 검증·시험 예측을 만든다",
+      "## 6. 시험 성능을 산모 단위 신뢰구간과 함께 계산한다",
+      "### 6.1. 점수와 산모 묶음을 준비한다",
+      "### 6.2. 산모를 복원추출해 95% 구간을 구한다",
+      "## 7. 선택한 특징의 반응 곡선을 확인한다",
+      "## 8. 후보·선택·예측·평가를 따로 저장한다",
+      "## 선택 결과의 범위를 읽는다",
+      "### 반출용 제외·오류 집계"
+    ],
+    "errors": []
+  },
+  {
+    "file": "04-조합-모델.ipynb",
+    "bytes": 313479,
+    "sha256": "f95af391797fdc2197e1edaf102fc99f0fef10e47147006c7df058238424b22b",
+    "nbformat": [
+      4,
+      5
+    ],
+    "metadata": {
+      "kernelspec": {
+        "display_name": "Python 3 (ipykernel)",
+        "language": "python",
+        "name": "python3"
+      },
+      "language_info": {
+        "codemirror_mode": {
+          "name": "ipython",
+          "version": 3
+        },
+        "file_extension": ".py",
+        "mimetype": "text/x-python",
+        "name": "python",
+        "nbconvert_exporter": "python",
+        "pygments_lexer": "ipython3",
+        "version": "3.10.13"
+      }
+    },
+    "cells": {
+      "markdown": 10,
+      "code": 46
+    },
+    "outputs": {
+      "stream": 17,
+      "display_data": 16
+    },
+    "mime": {
+      "text/html": 12,
+      "text/plain": 16,
+      "image/png": 4
+    },
+    "longest_cells": [
+      [
+        42,
+        30,
+        2136
+      ],
+      [
+        41,
+        19,
+        2059
+      ],
+      [
+        34,
+        9,
+        1699
+      ],
+      [
+        32,
+        44,
+        1947
+      ]
+    ],
+    "html": [
+      {
+        "cell": 10,
+        "chars": 869,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 22,
+        "chars": 1554,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 22,
+        "chars": 2589,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 31,
+        "chars": 812,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 34,
+        "chars": 5050,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 34,
+        "chars": 4589,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 38,
+        "chars": 4610,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 45,
+        "chars": 834,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 48,
+        "chars": 6558,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 48,
+        "chars": 4997,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 48,
+        "chars": 2214,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 56,
+        "chars": 471,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      }
+    ],
+    "imports": [
+      "IPython.display",
+      "catboost",
+      "json",
+      "matplotlib.pyplot",
+      "numpy",
+      "pandas",
+      "pathlib",
+      "sklearn.base",
+      "sklearn.impute",
+      "sklearn.linear_model",
+      "sklearn.metrics",
+      "sklearn.model_selection",
+      "sklearn.pipeline",
+      "sklearn.preprocessing",
+      "time",
+      "xgboost"
+    ],
+    "paths": [
+      " / f",
+      "/",
+      "/ 11",
+      "Development OOF AP by fold / training seed",
+      "FileNotFoundError: /private/DEMO.json",
+      "data/results",
+      "pool / held-out mother overlap =",
+      "train/val/test 각각 정상·비정상 라벨이 필요합니다",
+      "train/val/test 외의 분할이 있거나 분할이 비었습니다"
+    ],
+    "headings": [
+      "# 04 · 여러 특징을 함께 쓰면 얼마나 나아지는가",
+      "## 1. 입력과 산모 분할을 확인한다",
+      "### 출력에 남기는 오류 정보",
+      "## 2. 세 모델 구조를 정의한다",
+      "## 3. 후보 11개를 학습하고 검증 AP로 고른다",
+      "## 4. 시험 산모를 함께 재표집해 성능과 차이를 구한다",
+      "## 5. 봉인된 test 없이 개발 집합에서 반복한다",
+      "## 6. 후보·선택·평가를 저장한다",
+      "## 결과를 읽을 때",
+      "### 반출용 제외·오류 집계"
+    ],
+    "errors": []
+  },
+  {
+    "file": "05-지표-기여와-평활.ipynb",
+    "bytes": 220802,
+    "sha256": "c2b431b4e87e10269944ee7c65af220be032a1bdfb6d7ac81be21388a033da01",
+    "nbformat": [
+      4,
+      5
+    ],
+    "metadata": {
+      "kernelspec": {
+        "display_name": "Python 3 (ipykernel)",
+        "language": "python",
+        "name": "python3"
+      },
+      "language_info": {
+        "codemirror_mode": {
+          "name": "ipython",
+          "version": 3
+        },
+        "file_extension": ".py",
+        "mimetype": "text/x-python",
+        "name": "python",
+        "nbconvert_exporter": "python",
+        "pygments_lexer": "ipython3",
+        "version": "3.10.13"
+      }
+    },
+    "cells": {
+      "markdown": 11,
+      "code": 36
+    },
+    "outputs": {
+      "display_data": 12,
+      "stream": 11
+    },
+    "mime": {
+      "text/html": 10,
+      "text/plain": 12,
+      "image/png": 2
+    },
+    "longest_cells": [
+      [
+        29,
+        44,
+        1353
+      ],
+      [
+        29,
+        31,
+        1608
+      ],
+      [
+        27,
+        14,
+        1350
+      ],
+      [
+        25,
+        33,
+        1289
+      ]
+    ],
+    "html": [
+      {
+        "cell": 9,
+        "chars": 1787,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 17,
+        "chars": 869,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 23,
+        "chars": 3049,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 27,
+        "chars": 1158,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 34,
+        "chars": 1047,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 34,
+        "chars": 1046,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 36,
+        "chars": 6501,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 40,
+        "chars": 1578,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 41,
+        "chars": 13269,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 47,
+        "chars": 471,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      }
+    ],
+    "imports": [
+      "IPython.display",
+      "catboost",
+      "json",
+      "matplotlib.pyplot",
+      "numpy",
+      "pandas",
+      "pathlib",
+      "sklearn.metrics"
+    ],
+    "paths": [
+      " / f",
+      "/",
+      "FileNotFoundError: /private/DEMO.json",
+      "data/results",
+      "train/val/test 각각 정상·비정상 라벨이 필요합니다",
+      "train/val/test 분할이 올바르지 않습니다"
+    ],
+    "headings": [
+      "# 05 · 어떤 특징군과 평활 조건에 성능이 민감한가",
+      "### 출력에 남기는 오류 정보",
+      "## 1. 제거할 특징과 남길 특징을 먼저 정한다",
+      "## 2. 같은 구간과 같은 산모 분할을 연결한다",
+      "## 3. 조건 하나·seed 하나를 학습한다",
+      "## 4. 검증 AP로 조건별 seed 하나를 고정한다",
+      "## 5. 같은 시험 산모를 함께 뽑아 성능 차이를 계산한다",
+      "## 6. 같은 seed끼리도 방향을 확인한다",
+      "## 7. 이번 실행의 후보·예측·차이를 저장한다",
+      "## 제거 효과를 해석하는 범위",
+      "### 반출용 제외·오류 집계"
+    ],
+    "errors": []
+  },
+  {
+    "file": "06-경보-기준과-불확실성.ipynb",
+    "bytes": 220372,
+    "sha256": "0d58211b601ba3bafc98be7196ac756a7bce48c6f39d150c642dfcb059d3b3c1",
+    "nbformat": [
+      4,
+      5
+    ],
+    "metadata": {
+      "kernelspec": {
+        "display_name": "Python 3 (ipykernel)",
+        "language": "python",
+        "name": "python3"
+      },
+      "language_info": {
+        "codemirror_mode": {
+          "name": "ipython",
+          "version": 3
+        },
+        "file_extension": ".py",
+        "mimetype": "text/x-python",
+        "name": "python",
+        "nbconvert_exporter": "python",
+        "pygments_lexer": "ipython3",
+        "version": "3.10.13"
+      }
+    },
+    "cells": {
+      "markdown": 13,
+      "code": 38
+    },
+    "outputs": {
+      "stream": 13,
+      "display_data": 10,
+      "execute_result": 1
+    },
+    "mime": {
+      "text/html": 7,
+      "text/plain": 11,
+      "image/png": 3
+    },
+    "longest_cells": [
+      [
+        29,
+        18,
+        1604
+      ],
+      [
+        28,
+        31,
+        1780
+      ],
+      [
+        28,
+        19,
+        1425
+      ],
+      [
+        27,
+        25,
+        1341
+      ]
+    ],
+    "html": [
+      {
+        "cell": 9,
+        "chars": 763,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 14,
+        "chars": 659,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 26,
+        "chars": 1598,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 27,
+        "chars": 2101,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 32,
+        "chars": 2088,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 45,
+        "chars": 2890,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 51,
+        "chars": 471,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      }
+    ],
+    "imports": [
+      "IPython.display",
+      "catboost",
+      "json",
+      "matplotlib.pyplot",
+      "numpy",
+      "pandas",
+      "pathlib",
+      "sklearn.linear_model"
+    ],
+    "paths": [
+      " / f",
+      "FileNotFoundError: /private/DEMO.json",
+      "data/results"
+    ],
+    "headings": [
+      "# 06 · 고정한 경보 기준은 어떤 오류와 불확실성을 만드는가",
+      "### 출력에 남기는 오류 정보",
+      "## 1. 선택된 Cat28의 검증·시험 예측을 읽는다",
+      "## 2. 검증 특이도 90% 이상인 임계값을 고정한다",
+      "## 3. 구간·기록·시간의 분모를 구별한다",
+      "## 4. 같은 산모를 함께 재표집해 95% 구간을 구한다",
+      "## 5. 검증 집합에서 확률을 보정한다",
+      "## 6. 고정한 경보 규칙으로 TP/TN/FP/FN 사례를 고른다",
+      "## 7. 선택된 같은 모델의 사례별 출력 기여를 읽는다",
+      "## 8. 훈련 구간의 평균 절대 SHAP를 계산한다",
+      "## 9. 운영 지표·보정·사례를 저장한다",
+      "## 결과를 해석하는 범위",
+      "### 반출용 제외·오류 집계"
+    ],
+    "errors": []
+  },
+  {
+    "file": "07-사이트-이동.ipynb",
+    "bytes": 218251,
+    "sha256": "6949d5e77b2f791be982056272187f144d2b5cf8ea75814e7f99b311f18a9780",
+    "nbformat": [
+      4,
+      5
+    ],
+    "metadata": {
+      "kernelspec": {
+        "display_name": "Python 3 (ipykernel)",
+        "language": "python",
+        "name": "python3"
+      },
+      "language_info": {
+        "codemirror_mode": {
+          "name": "ipython",
+          "version": 3
+        },
+        "file_extension": ".py",
+        "mimetype": "text/x-python",
+        "name": "python",
+        "nbconvert_exporter": "python",
+        "pygments_lexer": "ipython3",
+        "version": "3.10.13"
+      }
+    },
+    "cells": {
+      "markdown": 14,
+      "code": 33
+    },
+    "outputs": {
+      "stream": 10,
+      "display_data": 6
+    },
+    "mime": {
+      "text/html": 4,
+      "text/plain": 6,
+      "image/png": 2
+    },
+    "longest_cells": [
+      [
+        29,
+        28,
+        1604
+      ],
+      [
+        28,
+        29,
+        1425
+      ],
+      [
+        24,
+        37,
+        1275
+      ],
+      [
+        24,
+        36,
+        1269
+      ]
+    ],
+    "html": [
+      {
+        "cell": 40,
+        "chars": 2274,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 40,
+        "chars": 2171,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 40,
+        "chars": 48996,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 47,
+        "chars": 540,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      }
+    ],
+    "imports": [
+      "IPython.display",
+      "catboost",
+      "json",
+      "matplotlib.pyplot",
+      "numpy",
+      "pandas",
+      "pathlib",
+      "sklearn.linear_model",
+      "sklearn.metrics",
+      "sklearn.model_selection"
+    ],
+    "paths": [
+      "/",
+      "FileNotFoundError: /private/DEMO.json",
+      "data/results",
+      "held windows / mothers =",
+      "held/source mother overlap =",
+      "source windows / mothers ="
+    ],
+    "headings": [
+      "# 07 · 사이트 이동",
+      "## 1. 입력과 설정",
+      "### 출력에 남기는 오류 정보",
+      "## 2. 평가 사이트와 학습 가능한 산모를 나눈다",
+      "## 3. source 검증 AP로 모델을 고른다",
+      "## 4. source에서 경보 기준과 확률 보정을 정한다",
+      "## 5. 사이트 안에서 성능과 경보를 센다",
+      "## 6. 산모 bootstrap으로 신뢰구간을 만든다",
+      "## 7. 사이트마다 학습·선택·평가한다",
+      "## 8. 사이트별 표와 그림을 읽는다",
+      "## 9. 이번 실행의 결과를 저장한다",
+      "## 해석의 범위",
+      "### 반출용 제외·오류 집계"
+    ],
+    "errors": []
+  },
+  {
+    "file": "08-판독과-분만-결과.ipynb",
+    "bytes": 184109,
+    "sha256": "f3ef8be5f232d2d39d45e0aa074fc73bc8c9b4b7f5774b3432bd16a41fdd7e3e",
+    "nbformat": [
+      4,
+      5
+    ],
+    "metadata": {
+      "kernelspec": {
+        "display_name": "Python 3 (ipykernel)",
+        "language": "python",
+        "name": "python3"
+      },
+      "language_info": {
+        "codemirror_mode": {
+          "name": "ipython",
+          "version": 3
+        },
+        "file_extension": ".py",
+        "mimetype": "text/x-python",
+        "name": "python",
+        "nbconvert_exporter": "python",
+        "pygments_lexer": "ipython3",
+        "version": "3.10.13"
+      }
+    },
+    "cells": {
+      "markdown": 13,
+      "code": 43
+    },
+    "outputs": {
+      "stream": 14,
+      "display_data": 16
+    },
+    "mime": {
+      "text/html": 13,
+      "text/plain": 16,
+      "image/png": 3
+    },
+    "longest_cells": [
+      [
+        29,
+        14,
+        1598
+      ],
+      [
+        24,
+        16,
+        1294
+      ],
+      [
+        23,
+        46,
+        1329
+      ],
+      [
+        23,
+        44,
+        1420
+      ]
+    ],
+    "html": [
+      {
+        "cell": 17,
+        "chars": 1044,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 29,
+        "chars": 667,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 31,
+        "chars": 1326,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 35,
+        "chars": 639,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 38,
+        "chars": 1416,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 38,
+        "chars": 1054,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 39,
+        "chars": 660,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 39,
+        "chars": 663,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 39,
+        "chars": 661,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 47,
+        "chars": 681,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 47,
+        "chars": 4879,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 47,
+        "chars": 2661,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 56,
+        "chars": 471,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      }
+    ],
+    "imports": [
+      "IPython.display",
+      "catboost",
+      "json",
+      "matplotlib.pyplot",
+      "numpy",
+      "pandas",
+      "pathlib",
+      "sklearn.metrics",
+      "sklearn.model_selection"
+    ],
+    "paths": [
+      " / f",
+      "/",
+      "FileNotFoundError: /private/DEMO.json",
+      "data/prepared",
+      "data/results",
+      "example outcome / fold =",
+      "held/source mother overlap =",
+      "records / mothers =",
+      "split/reference",
+      "train / validation / test windows =",
+      "train/val/test 각각 정상·비정상 라벨이 필요합니다"
+    ],
+    "headings": [
+      "# 08 · 판독과 분만 결과",
+      "## 1. 입력과 설정",
+      "### 출력에 남기는 오류 정보",
+      "## 2. 행을 맞추고 같은 기준으로 평가한다",
+      "## 3. 학습과 예측의 공통 정의",
+      "## 4. 같은 구간에 임상정보를 연결한다",
+      "## 5. 세 seed를 학습하고 검증 AP로 고른다",
+      "## 6. 분만 결과의 관측 범위와 표적을 만든다",
+      "## 7. 산모 5-fold OOF로 분만 결과를 예측한다",
+      "## 8. 결과별 평가와 증분을 모은다",
+      "## 9. 이번 실행의 결과를 저장한다",
+      "## 해석의 범위",
+      "### 반출용 제외·오류 집계"
+    ],
+    "errors": []
+  },
+  {
+    "file": "09-작은-CNN-대조.ipynb",
+    "bytes": 515806,
+    "sha256": "da66773e9c91c3e704042b880105f815df7d88144274687f130fb2931d43b2f1",
+    "nbformat": [
+      4,
+      5
+    ],
+    "metadata": {
+      "kernelspec": {
+        "display_name": "Python 3 (ipykernel)",
+        "language": "python",
+        "name": "python3"
+      },
+      "language_info": {
+        "codemirror_mode": {
+          "name": "ipython",
+          "version": 3
+        },
+        "file_extension": ".py",
+        "mimetype": "text/x-python",
+        "name": "python",
+        "nbconvert_exporter": "python",
+        "pygments_lexer": "ipython3",
+        "version": "3.10.13"
+      }
+    },
+    "cells": {
+      "markdown": 15,
+      "code": 51
+    },
+    "outputs": {
+      "stream": 19,
+      "display_data": 18
+    },
+    "mime": {
+      "text/html": 10,
+      "text/plain": 18,
+      "image/png": 7
+    },
+    "longest_cells": [
+      [
+        30,
+        32,
+        1840
+      ],
+      [
+        29,
+        46,
+        1598
+      ],
+      [
+        29,
+        16,
+        1485
+      ],
+      [
+        26,
+        10,
+        1514
+      ]
+    ],
+    "html": [
+      {
+        "cell": 33,
+        "chars": 5492,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 36,
+        "chars": 720,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 37,
+        "chars": 1051,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 52,
+        "chars": 3262,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 52,
+        "chars": 3384,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 52,
+        "chars": 9179,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 52,
+        "chars": 5279,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 60,
+        "chars": 2271,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 60,
+        "chars": 2589,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 66,
+        "chars": 471,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      }
+    ],
+    "imports": [
+      "IPython.display",
+      "hashlib",
+      "json",
+      "matplotlib.pyplot",
+      "numpy",
+      "pandas",
+      "pathlib",
+      "sklearn.metrics",
+      "time",
+      "torch"
+    ],
+    "paths": [
+      " / f",
+      " if seed is None else RESULTS / ",
+      ").exists() or not (folder / ",
+      "*/complete.json",
+      "*/last.pt",
+      "/",
+      "CNN 입력·설정이 달라졌습니다. 기존 data/results/cnn 폴더를 별도 보관한 뒤 다시 실행하세요",
+      "FileNotFoundError: /private/DEMO.json",
+      "], columns=HISTORY_COLUMNS).to_csv(folder / ",
+      "completed / expected trials =",
+      "data/results",
+      "example selected width / seed =",
+      "train / validation / test windows =",
+      "train/val/test 각각 정상·비정상 라벨이 필요합니다"
+    ],
+    "headings": [
+      "# 09 · 작은 CNN 대조",
+      "## 1. 실행 예산과 입력",
+      "### 출력에 남기는 오류 정보",
+      "## 2. 정규화 두 가지를 구분한다",
+      "## 3. CNN의 입력과 층을 따라간다",
+      "## 4. 체크포인트의 입력과 설정을 확인한다",
+      "## 5. 학습 한 epoch와 검증을 정의한다",
+      "## 6. 중단 시점에서 재개하고 최적 epoch를 남긴다",
+      "## 7. 검증 AP로 폭과 대표 seed를 선택한다",
+      "## 8. 선택한 모델의 시험 예측과 비용을 구한다",
+      "## 9. 같은 시험 산모로 지표와 차이를 계산한다",
+      "## 10. 용량·학습 곡선·비용을 읽는다",
+      "## 11. 저장 파일과 완료 상태",
+      "## 해석의 범위",
+      "### 반출용 제외·오류 집계"
+    ],
+    "errors": []
+  },
+  {
+    "file": "10-입력-폴더-정리.ipynb",
+    "bytes": 34305,
+    "sha256": "a0c1f24ef2781b7a135b76562b283d90023dcf29bbd72f6e2599b4914aebc4da",
+    "nbformat": [
+      4,
+      5
+    ],
+    "metadata": {
+      "kernelspec": {
+        "display_name": "Python 3 (ipykernel)",
+        "language": "python",
+        "name": "python3"
+      },
+      "language_info": {
+        "codemirror_mode": {
+          "name": "ipython",
+          "version": 3
+        },
+        "file_extension": ".py",
+        "mimetype": "text/x-python",
+        "name": "python",
+        "nbconvert_exporter": "python",
+        "pygments_lexer": "ipython3",
+        "version": "3.10.13"
+      }
+    },
+    "cells": {
+      "markdown": 9,
+      "code": 23
+    },
+    "outputs": {
+      "stream": 10,
+      "display_data": 2
+    },
+    "mime": {
+      "text/html": 2,
+      "text/plain": 2
+    },
+    "longest_cells": [
+      [
+        30,
+        8,
+        1290
+      ],
+      [
+        25,
+        14,
+        1265
+      ],
+      [
+        24,
+        28,
+        1091
+      ],
+      [
+        20,
+        22,
+        972
+      ]
+    ],
+    "html": [
+      {
+        "cell": 18,
+        "chars": 870,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      },
+      {
+        "cell": 32,
+        "chars": 471,
+        "styles": 1,
+        "tables": 1,
+        "inline_styles": 1,
+        "head": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .datafram"
+      }
+    ],
+    "imports": [
+      "IPython.display",
+      "datetime",
+      "errno",
+      "hashlib",
+      "json",
+      "os",
+      "pandas",
+      "pathlib",
+      "shutil",
+      "uuid"
+    ],
+    "paths": [
+      " / ",
+      ", TARGET, RUN / ",
+      "/workspace/KYUH_data/132/075.태아 심박동 모니터링 데이터/01-1.정식개방데이터",
+      "입력 저장 위치: 현재 작업 폴더의 input_data/"
+    ],
+    "headings": [
+      "# 10 · 입력 폴더 정리",
+      "## 1. 상위 폴더를 지정한다",
+      "## 2. 하위 폴더에서 후보 파일을 찾는다",
+      "## 3. 중복을 판정한다",
+      "## 4. 세 JSON이 모두 있는 기록을 고른다",
+      "## 5. 임시 폴더에 복사하고 해시를 확인한다",
+      "## 6. 내부 기록을 저장한 뒤 input_data를 교체한다",
+      "## 7. 다음 실행",
+      "### 반출용 오류 집계"
+    ],
+    "errors": []
+  }
+]

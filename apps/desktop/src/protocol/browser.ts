@@ -25,7 +25,7 @@ export type ExtensionPage = 'popup' | 'options';
 export type BrowserPermissionRequest = { token: string; origin: string; permissions: string[]; label: string };
 export type BrowserAuthRequest = { token: string; origin: string; realm: string };
 export type BrowserCommand = 'back' | 'forward' | 'reload' | 'stop' | 'activate' | 'focus' | 'mute' | 'external' | 'save' | 'protection'
-  | 'zoom-in' | 'zoom-out' | 'zoom-reset' | 'reload-no-cache' | 'permissions' | 'site-info';
+  | 'pdf-original' | 'zoom-in' | 'zoom-out' | 'zoom-reset' | 'reload-no-cache' | 'permissions' | 'site-info';
 export type BrowserEvent =
   | { type: 'page'; page: BrowserPage }
   | { type: 'open'; page: BrowserPage; background: boolean }
@@ -56,6 +56,8 @@ export type BrowserApi = {
   authenticate(id: string, token: string, credentials: { username: string; password: string } | null): Promise<void>;
   layout(entries: Array<{ id: string; bounds: PreviewBounds; canGoBack?: boolean; canGoForward?: boolean }>): void;
   capture(id: string): Promise<string | null>;
+  pdfRange(id: string, token: string, begin: number, end: number): Promise<Uint8Array>;
+  pdfMenu(id: string, token: string, selection: string): Promise<void>;
   readerExtract(id: string): Promise<ReaderSnapshot | null>;
   readerMenu(id: string, context: { selection: string; link: string }): Promise<import('../core/reading/reading-menu').ReadingMenuCommand | null>;
   readerExport(id: string, format: 'markdown' | 'pdf'): Promise<{ canceled: boolean; path?: string }>;
