@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Setdown 언어 지원 UI 제안</title>
+  <style>
+    :root { color-scheme: dark; --canvas:#041824; --surface:#0a2231; --raised:#102c3e; --line:#294352; --text:#d8e3eb; --muted:#96acbd; --accent:#93baff; --warning:#f4c37a; }
+    * { box-sizing:border-box }
+    body { margin:0; background:#07131d; color:var(--text); font:15px/1.65 system-ui,sans-serif }
+    main { max-width:1280px; margin:auto; padding:40px 32px }
+    h1 { margin:4px 0 12px; font-size:30px; letter-spacing:-.04em; line-height:1.3 }
+    h2,h3,p { margin:0 }
+    .eyebrow { color:var(--accent); font-size:12px; letter-spacing:.04em }
+    .lead { max-width:820px; color:#bccbd6 }
+    a { color:var(--accent); text-underline-offset:4px }
+    .intro-links { margin:12px 0 22px; font-size:13px }
+    .scenarios { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px }
+    button { font:inherit; color:inherit; cursor:pointer }
+    .scenarios button { border:1px solid var(--line); border-radius:6px; padding:7px 14px; background:transparent; font-size:13px }
+    .scenarios button[aria-pressed="true"] { background:#183b51; border-color:#83a7c8; color:#eef5ff }
+    button:focus-visible,a:focus-visible,summary:focus-visible { outline:2px solid var(--accent); outline-offset:3px }
+    button:hover { background:#1d3d51 }
+    .window { overflow:hidden; border:1px solid var(--line); border-radius:9px; background:var(--canvas); box-shadow:0 12px 32px #0003 }
+    .top { display:flex; align-items:center; gap:26px; height:41px; padding:0 18px; color:#9eb2c0; font-size:12px; border-bottom:1px solid #18303f }
+    .top strong { color:var(--text); margin-right:10px }
+    .frame { display:flex; min-height:590px }
+    .activity { flex:0 0 43px; border-right:1px solid #18303f; padding:20px 0; color:#7f9aac; text-align:center; line-height:3; font-size:18px }
+    .editor { min-width:0; flex:1; position:relative }
+    .tabline { display:flex; height:42px; align-items:stretch; border-bottom:1px solid #193340 }
+    .tab { padding:10px 20px; min-width:170px; font:12px/22px ui-monospace,monospace; color:#9bb4c4 }
+    .tab.active { background:#112d40; color:#e4edf5; border-top:2px solid #769ccd; padding-top:8px }
+    .tab span { float:right; margin-left:30px; color:#839baa }
+    .location { display:flex; gap:14px; align-items:center; height:40px; padding:0 16px; font-size:12px; border-bottom:1px solid #18303f }
+    .path { color:#9bb0c1; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; min-width:0; flex:1; font-family:ui-monospace,monospace }
+    .status { border:0; background:transparent; padding:4px 8px; font-size:12px; border-radius:4px; white-space:nowrap }
+    .status.warning { color:var(--warning) }
+    .zoom { color:#a7b9c6; white-space:nowrap; font:12px ui-monospace,monospace }
+    .code { margin:0; padding:26px 18px; color:#aebdcc; font:14px/2.05 ui-monospace,monospace; overflow:hidden; white-space:pre; user-select:none }
+    .code .n { color:#506f82; display:inline-block; width:38px; text-align:right; margin-right:24px }
+    .code .kw { color:#c99ee4 }.code .str { color:#e2b18d }.code .fn { color:#b8d3b1 }.code .comment { color:#6e91a0 }
+    .popup { position:absolute; top:90px; right:16px; width:356px; padding:17px; background:#09202e; border:1px solid #2b4657; border-radius:7px; box-shadow:0 10px 32px #0005; font-size:13px }
+    .popup[hidden],.inspector[hidden] { display:none }
+    .popup header { display:flex; justify-content:space-between; align-items:center; margin-bottom:17px; font-size:14px }
+    .quiet { border:0; background:transparent; padding:2px 5px; border-radius:4px; color:var(--muted) }
+    .section-label { margin:14px 0 7px; color:var(--muted); font-size:11px }
+    .row { display:flex; width:100%; justify-content:space-between; align-items:center; gap:12px; padding:10px 0; background:transparent; border:0; text-align:left; font-size:13px }
+    button.row:hover { background:#153448; border-radius:4px }
+    .row .value { color:#e2edf4; text-align:right }
+    .row .chevron { color:#8fa7b7; margin-left:12px }
+    .project { display:flex; gap:12px; justify-content:space-between; padding-top:13px; margin-top:9px; border-top:1px solid #24404e; color:var(--muted); font-size:12px }
+    .project span:last-child { color:#c3d4df }
+    .fact { color:#9eb4c4; padding:12px 0 5px; font-size:11px; line-height:1.7 }
+    .actions { display:flex; justify-content:space-between; gap:12px; border-top:1px solid #24404e; margin-top:14px; padding-top:11px }
+    .link-button { padding:3px 0; border:0; background:transparent; color:#bcd3e5; font-size:12px; text-align:left }
+    .alert-title { font-size:15px; font-weight:600; color:#f2cf9b; margin-bottom:9px; line-height:1.5 }
+    .note { color:#a3b9c8; font-size:12px; line-height:1.8; overflow-wrap:anywhere }
+    .primary { border:1px solid #769aba; background:#23435c; border-radius:4px; padding:7px 13px; font-size:12px; margin:18px 0 13px }
+    .choice { display:block; width:100%; border:1px solid #254252; border-radius:4px; text-align:left; padding:11px; margin-top:10px; background:transparent; font-size:13px }
+    .choice:disabled { opacity:.6; cursor:default }
+    .choice.selected { background:#17384e; border-color:#668cac }
+    .choice .note { display:block; margin:3px 0 0 19px; font:11px/1.8 ui-monospace,monospace }
+    .choice small { float:right; color:#9ab8cd; font-size:10px }
+    .selection-footer { display:grid; gap:7px; padding-top:16px }
+    .inspector { width:320px; flex-shrink:0; padding:18px; border-right:1px solid var(--line); background:#09202d; font-size:13px }
+    .inspector h2 { font-size:20px; margin:20px 0 3px }
+    .inspector .row { font-size:12px }
+    .inspector .section-label { margin-top:24px }
+    .inspector details { border-top:1px solid #24404e; padding:12px 0; font-size:12px; color:#acc2d3 }
+    summary { cursor:pointer }
+    .inspector details p { font-size:11px; padding:10px 0; overflow-wrap:anywhere }
+    .explanation { display:grid; grid-template-columns:1fr 1fr; gap:32px; margin-top:22px; padding:22px 0; border-bottom:1px solid #203543 }
+    .explanation h2 { font-size:16px; margin-bottom:7px }
+    .explanation p { font-size:13px; color:#a9bdcc }
+    .caption { color:#849aaa; font-size:12px; margin-top:14px }
+    .notice { min-height:26px; margin-top:10px; color:#b3c9da; font-size:12px }
+    @media(max-width:800px) { main { padding:25px 16px }.top { gap:18px }.activity { display:none }.explanation { grid-template-columns:1fr; gap:18px }.inspector { width:280px }.zoom { display:none } }
+    @media(max-width:580px) { .frame { min-height:610px }.popup { left:10px; right:10px; width:auto }.location { gap:3px; padding:0 10px }.inspector { position:absolute; width:calc(100% - 34px); z-index:2; min-height:570px }.window { position:relative }.top .optional { display:none } h1 { font-size:26px } }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">SETDOWN · 2026.11.01 · 설계 모형</p>
+  <h1>현재 파일에서 필요한 선택만</h1>
+  <p class="lead">정상일 때는 언어와 환경을 짧게 확인하고, 문제가 생기면 원인에 맞는 행동을 먼저 보여줍니다. 아래 상태를 전환해 정보의 양과 순서를 비교할 수 있습니다.</p>
+  <p class="intro-links"><a href="../2026_11_01_gnome_builder_lsp_ui_review.md">전체 분석 보고서</a></p>
+  <nav class="scenarios" aria-label="화면안의 예시 상태">
+    <button data-state="healthy" aria-pressed="true">정상</button>
+    <button data-state="missing" aria-pressed="false">환경 누락</button>
+    <button data-state="partial" aria-pressed="false">일부 검사 중단</button>
+    <button data-state="choose" aria-pressed="false">환경 선택</button>
+    <button data-state="detail" aria-pressed="false">서버 상세</button>
+  </nav>
+  <div class="window" aria-label="Setdown 편집 화면 제안">
+    <div class="top"><strong>Setdown</strong><span>File</span><span>View</span><span>Edit</span><span class="optional">Window</span></div>
+    <div class="frame">
+      <div class="activity" aria-hidden="true">▣<br>⌕<br>⑂<br>◎<br>▦</div>
+      <aside class="inspector" hidden aria-label="분석 도구 상세 모형"></aside>
+      <div class="editor">
+        <div class="tabline"><div class="tab active">game.py <span>×</span></div><div class="tab">notes.md <span>×</span></div></div>
+        <div class="location"><span aria-hidden="true">← &nbsp; →</span><span class="path">chess / apps / backend / game.py</span><button class="status" aria-expanded="true" aria-controls="support-popup">Python ▾</button><span class="zoom">− &nbsp;100%&nbsp; ＋</span></div>
+        <pre class="code" aria-label="예시 Python 문서"><span class="n">1</span><span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass
+<span class="n">2</span><span class="kw">from</span> typing <span class="kw">import</span> Literal
+<span class="n">3</span>
+<span class="n">4</span>Color = Literal[<span class="str">"white"</span>, <span class="str">"black"</span>]
+<span class="n">5</span>
+<span class="n">6</span><span class="comment"># Keep the current document in view.</span>
+<span class="n">7</span>@dataclass
+<span class="n">8</span><span class="kw">class</span> <span class="fn">Game</span>:
+<span class="n">9</span>    turn: Color = <span class="str">"white"</span>
+<span class="n">10</span>    revision: int = 0
+<span class="n">11</span>
+<span class="n">12</span>    <span class="kw">def</span> <span class="fn">next_turn</span>(self) -> None:
+<span class="n">13</span>        self.turn = (
+<span class="n">14</span>            <span class="str">"black"</span> <span class="kw">if</span> self.turn == <span class="str">"white"</span>
+<span class="n">15</span>            <span class="kw">else</span> <span class="str">"white"</span>
+<span class="n">16</span>        )</pre>
+        <section id="support-popup" class="popup" aria-label="코드 지원 화면안"></section>
+      </div>
+    </div>
+  </div>
+  <div class="explanation" aria-live="polite"><section><h2 id="reason-title"></h2><p id="reason"></p></section><section><h2>상세에 남기는 정보</h2><p id="details-note"></p></section></div>
+  <p class="caption">제품 스크린샷이 아닌 제안입니다. 모든 프로젝트·경로·상태는 예시이며 실제 파일, 서버, 설정은 변경하지 않습니다. 창을 줄여 좁은 화면의 배치도 비교할 수 있습니다.</p>
+  <p class="notice" role="status"></p>
+</main>
+<script>
+  const popup = document.querySelector('.popup');
+  const inspector = document.querySelector('.inspector');
+  const statusButton = document.querySelector('.status');
+  const notices = document.querySelector('.notice');
+  let current = 'healthy';
+  let previous = 'healthy';
+  let chosen = '.venv';
+  const header = '<header><strong>코드 지원</strong><button class="quiet" data-close aria-label="팝오버 닫기">×</button></header>';
+  const language = '<p class="section-label">이 문서</p><button class="row" data-note="실제 구현에서는 이 문서의 언어 모드 선택이 열립니다."><span>언어</span><span class="value">Python <span class="chevron">›</span></span></button>';
+  const footer = '<div class="actions"><button class="link-button" data-note="실제 구현에서는 현재 문서를 기준으로 Problems를 엽니다.">문제 보기</button><button class="link-button" data-state="detail">자세히…</button></div>';
+  const scenes = {
+    healthy: { label:'Python ▾', title:'정상 상태는 조용하게', reason:'버튼은 언어명만 표시합니다. 열면 문서 언어, 프로젝트와 환경, 실제로 관측한 상태를 짧게 확인할 수 있습니다. 아래 예시는 열린 파일의 검사 결과를 받은 경우입니다.', detail:'분석 범위와 결과의 신선도, provider별 기능, 전체 경로와 선택 근거는 상세에서 확인합니다. 언어명만으로 분석 완료를 보증하지 않습니다.', html:() => header + language + '<div class="project"><span>프로젝트</span><span>chess / backend</span></div><button class="row" data-state="choose"><span>Python 환경</span><span class="value">'+chosen+' <span class="chevron">›</span></span></button><p class="fact">Pyright 연결됨 · 열린 파일의 검사 결과 수신</p>' + footer },
+    missing: { label:'⚠ Python · 환경 선택 필요', title:'문제를 찾기 위해 스크롤하지 않게', reason:'선택한 interpreter가 사라진 경우입니다. 원인과 환경 선택을 먼저 보여줍니다. 같은 환경으로 서버를 재시작하는 행동을 첫 해결책으로 내세우지 않습니다.', detail:'누락된 전체 경로, 이전 선택의 출처, 영향받는 프로젝트 범위를 확인할 수 있습니다. 다른 Python으로 조용히 대체하지 않습니다.', html:() => header + '<p class="alert-title">선택한 Python 환경을<br>찾을 수 없습니다</p><p class="note">chess / backend · .venv/bin/python</p><button class="primary" data-state="choose">환경 선택…</button><p class="note">편집과 문법 강조는 계속 사용할 수 있습니다.</p>' + language + '<div class="actions"><span></span><button class="link-button" data-state="detail">자세히…</button></div>' },
+    partial: { label:'⚠ Python · 일부 검사 중단', title:'부분 실패를 전체 고장으로 표현하지 않기', reason:'Ruff의 복구가 중단됐지만 Pyright는 동작하는 예시입니다. 남아 있는 기능과 중단된 검사를 구별하고, 해당 도구에만 복구 행동을 연결합니다.', detail:'도구별 상태, 세션과 로그, 재연결 결과를 표시합니다. 코드의 오류 개수와 서비스 실패를 같은 상태로 취급하지 않습니다.', html:() => header + '<p class="alert-title">Ruff 검사가 중단되었습니다</p><p class="note">Pyright의 자동완성과 코드 탐색은<br>계속 사용할 수 있습니다.</p><button class="primary" data-note="실제 구현에서는 이 프로젝트의 Ruff 세션만 재시작합니다.">Ruff 다시 시작</button><div class="project"><span>프로젝트</span><span>chess / backend</span></div>' + footer },
+    choose: { label:'Python ▾', title:'환경 변경에는 환경 후보만', reason:'요약에서 한 단계 들어와 후보를 선택합니다. 프로젝트 적용 범위를 제목 가까이 표시하고, 후보의 경로는 구별에 필요한 만큼 보여줍니다. 뒤로 가면 원래 상태로 돌아갑니다.', detail:'선택의 출처와 전체 경로를 확인할 수 있어야 합니다. 프로젝트 선택을 해제할 때도 실제로 다시 적용될 기본 설정을 보여줍니다.', html:() => '<header><button class="quiet" data-back aria-label="이전 상태로 돌아가기">‹ 코드 지원</button><strong>Python 환경</strong></header><p class="note">적용 대상: chess / backend</p>' + environmentChoices() + '<div class="selection-footer"><button class="link-button" data-note="실제 구현에서는 native 파일 선택기를 엽니다.">다른 Python 선택…</button><button class="link-button" data-note="실제 구현에서는 override 제거 후 적용될 값과 출처를 확인할 수 있습니다.">프로젝트 선택 해제 → 기본 설정 사용</button></div>' },
+    detail: { label:'Python ▾', title:'관리는 기존 사이드바에서', reason:'서버 관리의 첫 화면도 이름, 출처, 적용 대상과 행동으로 요약합니다. 전역 기본값과 현재 프로젝트의 조작 범위를 나눕니다. 실제 제품에서는 문서 상세에서 이 관리 화면으로 이어집니다.', detail:'아래 접힌 항목에 실행 정보, 로그, 연결 설정을 보존합니다. 내장 서버의 Electron 경로를 정상 상태의 핵심 정보로 내세우지 않습니다.', html:() => '' }
+  };
+  function environmentChoices() {
+    return [['.venv', 'apps/backend/.venv/bin/python'], ['시스템 Python', '/usr/bin/python3']].map(([name, path]) => {
+      const missing = name === '.venv' && previous === 'missing';
+      const selected = name === chosen;
+      return '<button class="choice ' + (selected ? 'selected' : '') + '" data-choose="' + name + '" ' + (missing ? 'disabled' : '') + '>' +
+        '<small>' + (missing ? '선택됨 · 찾을 수 없음' : selected ? '현재 선택' : '') + '</small>' + (selected ? '● ' : '○ ') + name +
+        '<span class="note">' + path + '</span></button>';
+    }).join('');
+  }
+  function show(next) {
+    if (!(next in scenes)) return;
+    if (next === 'choose' && current !== 'choose') previous = current === 'detail' ? 'healthy' : current;
+    if (next === 'missing') chosen = '.venv';
+    current = next;
+    const scene = scenes[next];
+    document.querySelectorAll('.scenarios button').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.state === next)));
+    popup.innerHTML = scene.html();
+    popup.hidden = next === 'detail';
+    statusButton.textContent = scene.label;
+    statusButton.classList.toggle('warning', next === 'missing' || next === 'partial');
+    statusButton.setAttribute('aria-expanded', String(!popup.hidden));
+    inspector.hidden = next !== 'detail';
+    if (next === 'detail') inspector.innerHTML = '<button class="link-button" data-state="healthy">‹ 코드 지원</button><h2>Pyright</h2><p class="note">Python 코드 분석 · 앱에 포함됨</p><p class="section-label">이 창에서 사용 중</p><div class="row"><span>chess / backend</span><span>연결됨</span></div><p class="section-label">기본 설정</p><div class="row"><span>전역 기본값</span><span>활성화</span></div><button class="link-button" data-note="실제 구현에서는 프로젝트별 사용 설정으로 이동합니다.">프로젝트별 사용 설정…</button><br><button class="primary" data-note="실제 구현에서는 이 창의 해당 프로젝트 분석 세션을 재시작합니다.">이 프로젝트의 분석 다시 시작</button><details><summary>실행 정보와 로그</summary><p>Pyright · 내장 서버<br>실행 런타임: Electron의 Node 모드<br>전체 실행 경로와 최근 로그는 이 위치에 표시합니다.</p></details><details><summary>연결 설정</summary><p>설정의 적용 범위, provider 역할, formatter, 서버 옵션을 이 위치에서 관리합니다.</p></details>';
+    document.getElementById('reason-title').textContent = scene.title;
+    document.getElementById('reason').textContent = scene.reason;
+    document.getElementById('details-note').textContent = scene.detail;
+    notices.textContent = '';
+  }
+  document.addEventListener('click', event => {
+    const button = event.target.closest('button');
+    if (!button) return;
+    if (button.dataset.state) show(button.dataset.state);
+    else if (button.hasAttribute('data-close')) { popup.hidden = true; statusButton.setAttribute('aria-expanded','false'); statusButton.focus(); }
+    else if (button.hasAttribute('data-back')) show(previous);
+    else if (button.dataset.choose) { chosen = button.dataset.choose; show('healthy'); notices.textContent = '모형의 환경 표시만 변경했습니다. 실제 설정에는 영향을 주지 않습니다.'; }
+    else if (button.dataset.note) notices.textContent = button.dataset.note;
+  });
+  statusButton.addEventListener('click', () => {
+    if (current === 'detail') show('healthy');
+    else { popup.hidden = !popup.hidden; statusButton.setAttribute('aria-expanded',String(!popup.hidden)); }
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || event.isComposing) return;
+    if (current === 'choose') show(previous);
+    else if (current === 'detail') show('healthy');
+    else popup.hidden = true;
+    statusButton.setAttribute('aria-expanded',String(!popup.hidden));
+    statusButton.focus();
+  });
+  show('healthy');
+</script>
+</body>
+</html>
