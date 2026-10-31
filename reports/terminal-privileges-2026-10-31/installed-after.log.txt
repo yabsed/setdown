@@ -1,0 +1,52 @@
+libmutter-Message: 12:28:11.804: Running Mutter (using mutter 50.6) as a Wayland display server
+libmutter-Message: 12:28:11.940: Added device '/dev/dri/renderD129' (nvidia-drm) using no mode setting.
+libmutter-Message: 12:28:11.960: Added device '/dev/dri/renderD128' (amdgpu) using no mode setting.
+libmutter-Message: 12:28:11.961: Created gbm renderer for '/dev/dri/renderD129'
+libmutter-Message: 12:28:11.962: Created gbm renderer for '/dev/dri/renderD128'
+libmutter-Message: 12:28:11.962: Boot VGA GPU /dev/dri/renderD128 selected as primary
+** Message: 12:28:11.964: Obtained a high priority EGL context
+libmutter-Message: 12:28:11.981: Added virtual monitor Meta-0
+libmutter-Message: 12:28:11.984: Using public X11 display :2, (using unix:/tmp/.X11-unix/X3 for managed services)
+libmutter-Message: 12:28:11.984: Using Wayland display name 'setdown-wayland-48358'
+
+Running 2 tests using 1 worker
+
+(node:48433) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[1/2] test/wayland/tab-drag.spec.ts:13:1 › default startup preserves document, terminal privileges and renderer sandbox on XWayland (inherited restriction: false)
+The XKEYBOARD keymap compiler (xkbcomp) reports:
+> Warning:          Multiple symbols for level 1/group 1 on key <FK23>
+>                   Using F23, ignoring XF86TouchpadOff
+> Warning:          Symbol map for key <FK23> redefined
+>                   Using last definition for conflicting fields
+> Warning:          Symbol map for key <FK24> redefined
+>                   Using last definition for conflicting fields
+Errors from xkbcomp are not fatal to the X server
+dbus-daemon[48389]: [session uid=1000 pid=48389] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.3' (uid=1000 pid=48473 comm="/home/yabsed/.local/share/setdown/setdown --ozone-" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[48389]: [session uid=1000 pid=48389] Activating service name='org.a11y.Bus' requested by ':1.4' (uid=1000 pid=48473 comm="/home/yabsed/.local/share/setdown/setdown --ozone-" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[48389]: [session uid=1000 pid=48389] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[48389]: [session uid=1000 pid=48389] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.6' (uid=1000 pid=48543 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[48389]: [session uid=1000 pid=48389] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[48389]: [session uid=1000 pid=48389] Activating service name='org.freedesktop.portal.Documents' requested by ':1.6' (uid=1000 pid=48543 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[48389]: [session uid=1000 pid=48389] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[48389]: [session uid=1000 pid=48389] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.6' (uid=1000 pid=48543 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[48389]: [session uid=1000 pid=48389] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.11' (uid=1000 pid=48592 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[48389]: [session uid=1000 pid=48389] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[48389]: [session uid=1000 pid=48389] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[48389]: [session uid=1000 pid=48389] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.6' (uid=1000 pid=48543 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[48389]: [session uid=1000 pid=48389] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:48543): xdg-desktop-portal-WARNING **: 12:28:15.258: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[48389]: [session uid=1000 pid=48389] Activating service name='org.freedesktop.secrets' requested by ':1.6' (uid=1000 pid=48543 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+** Message: 12:28:15.267: couldn't access control socket: /tmp/setdown-display-runtime.Uq2lrS/keyring/control: No such file or directory
+discover_other_daemon: 0dbus-daemon[48389]: [session uid=1000 pid=48389] Successfully activated service 'org.freedesktop.secrets'
+dbus-daemon[48389]: [session uid=1000 pid=48389] Successfully activated service 'org.freedesktop.portal.Desktop'
+[2/2] test/wayland/tab-drag.spec.ts:13:1 › default startup preserves document, terminal privileges and renderer sandbox on XWayland (inherited restriction: true)
+  2 passed (4.9s)
+(EE) failed to read Wayland events: Broken pipe
+Gdk-Message: 12:28:17.387: Lost connection to Wayland compositor.
+Gdk-Message: 12:28:17.387: Lost connection to Wayland compositor.
+Gdk-Message: 12:28:17.388: Error reading events from display: Broken pipe
+libmutter-Message: 12:28:17.407: Removed virtual monitor Meta-0

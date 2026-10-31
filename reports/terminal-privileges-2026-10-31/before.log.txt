@@ -1,0 +1,43 @@
+
+> @setdown/desktop@2.1.1 test:preview-contract:e2e
+> bash scripts/with-isolated-display.sh playwright test --config playwright.preview-contract.config.ts terminal-launch.spec.ts --grep inherited restriction: false --output /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/reports/terminal-privileges-2026-10-31/before
+
+
+Running 1 test using 1 worker
+
+(node:27117) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[1/1] test/e2e/terminal/terminal-launch.spec.ts:19:1 › XWayland startup preserves terminal privileges and renderer sandboxing (inherited restriction: false)
+  1) test/e2e/terminal/terminal-launch.spec.ts:19:1 › XWayland startup preserves terminal privileges and renderer sandboxing (inherited restriction: false) 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 0
+
+    Call Log:
+    - Timeout 20000ms exceeded while waiting on the predicate
+
+      44 |   try {
+      45 |     await expect.poll(async () => (await launches(report)).filter(row => row.phase === 'window').length,
+    > 46 |       { timeout: 20_000 }).toBe(1);
+         |                            ^
+      47 |     const records = await launches(report), entries = records.filter(row => row.phase === 'entry');
+      48 |     expect(entries).toHaveLength(2);
+      49 |     const [before, after] = entries;
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/terminal/terminal-launch.spec.ts:46:28
+
+    Error Context: ../../reports/terminal-privileges-2026-10-31/before/terminal-terminal-launch-X-413cf-nherited-restriction-false-/error-context.md
+
+
+  1 failed
+    test/e2e/terminal/terminal-launch.spec.ts:19:1 › XWayland startup preserves terminal privileges and renderer sandboxing (inherited restriction: false) 
+npm error Lifecycle script `test:preview-contract:e2e` failed with error:
+npm error code 1
+npm error path /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error workspace @setdown/desktop@2.1.1
+npm error location /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error command failed
+npm error command sh -c bash scripts/with-isolated-display.sh playwright test --config playwright.preview-contract.config.ts terminal-launch.spec.ts --grep 'inherited restriction: false' --output /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/reports/terminal-privileges-2026-10-31/before

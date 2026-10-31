@@ -71,6 +71,18 @@ those resources through the same address/history route as other tabs. File chang
 from a focused terminal refresh a clean neighboring document without stealing
 terminal focus.
 
+On Linux, the XWayland startup handoff must preserve the launching process's
+privilege flags. Electron's `app.relaunch()` adds an irreversible `no_new_privs`
+restriction that reaches PTY shells and prevents `sudo` from elevating. The
+early display-backend handoff uses Node's process spawn before acquiring the
+single-instance lock or opening documents. It retains any existing restrictions
+and keeps Chromium renderer sandboxing enabled. The startup cases in
+`test/wayland/tab-drag.spec.ts` run the real entry point through this handoff on
+private Mutter/XWayland and check both unrestricted and already-restricted
+parents, the startup document, PTY flags and renderer seccomp.
+Set `SETDOWN_TEST_PACKAGED_EXECUTABLE` to a packaged Linux executable when running
+these startup cases to check the installed application's argument handling too.
+
 Tests: `terminal-manager.test.ts`, `terminal-screen.test.ts`, `terminal-resize.test.ts`, `text-workspace.test.ts`, and real Electron
 `terminal.spec.ts` cover ownership, backpressure, lifecycle, retained shell PID
 and variables, actual pointer splits, native reader boundaries, resizing, and

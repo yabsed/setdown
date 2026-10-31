@@ -8,14 +8,23 @@ import { fixture } from '../support/browser/browser-fixture';
 import { waylandInput } from '../support/electron/wayland-input';
 
 const compatibility = process.env.SETDOWN_TEST_DISPLAY === 'xwayland';
-if (compatibility) test('default startup relaunches once on XWayland and preserves the requested document', async () => {
+const processFlag = (status: string, name: string) => Number(status.match(new RegExp(`^${name}:\\s+(\\d+)$`, 'm'))?.[1]);
+if (compatibility) for (const inheritedRestriction of [false, true])
+test(`default startup preserves document, terminal privileges and renderer sandbox on XWayland (inherited restriction: ${inheritedRestriction})`, async () => {
+  expect(processFlag(await readFile('/proc/self/status', 'utf8'), 'NoNewPrivs'),
+    'Run from an unrestricted parent to detect accidentally added restrictions.').toBe(0);
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-display-startup-'));
-  const profile = path.join(root, 'profile'), file = path.join(root, 'startup.md');
+  const profile = path.join(root, 'profile'), file = path.join(root, 'startup 문서 with spaces.md');
   await writeFile(file, '# Startup survives backend selection\n');
   const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
-  const child = spawn(createRequire(import.meta.url)('electron'),
-    ['--enable-automation', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '.', file],
-    { env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') }, stdio: ['ignore', 'ignore', 'pipe'] });
+  const packaged = process.env.SETDOWN_TEST_PACKAGED_EXECUTABLE;
+  const executable = packaged ?? createRequire(import.meta.url)('electron') as string;
+  const launchArgs = ['--enable-automation', '--remote-debugging-port=0', `--user-data-dir=${profile}`,
+    ...(packaged ? [] : ['.']), file];
+  // A pre-existing restriction must survive; the handoff must never bypass it.
+  const child = spawn(inheritedRestriction ? 'setpriv' : executable,
+    inheritedRestriction ? ['--no-new-privs', executable, ...launchArgs] : launchArgs,
+    { env: { ...env, SHELL: '/bin/bash', XDG_CONFIG_HOME: path.join(root, 'config') }, stdio: ['ignore', 'ignore', 'pipe'] });
   let stderr = '';
   child.stderr.on('data', chunk => { stderr += String(chunk); });
   let browser: Awaited<ReturnType<typeof chromium.connectOverCDP>> | undefined;
@@ -35,7 +44,7 @@ if (compatibility) test('default startup relaunches once on XWayland and preserv
     browserPid = processes.processInfo.find(process => process.type === 'browser')!.id;
     await expect.poll(() => browser!.contexts()[0].pages().map(page => page.url())).toContainEqual(expect.stringContaining('/dist/index.html'));
     const page = browser.contexts()[0].pages().find(page => page.url().includes('/dist/index.html'))!;
-    await expect(page.getByRole('tab', { name: /startup.md/ })).toBeVisible();
+    await expect(page.getByRole('tab', { name: /startup 문서 with spaces.md/ })).toBeVisible();
     expect(browser.contexts()[0].pages().filter(page => page.url().startsWith('data:text/html;charset=utf-8,'))).toHaveLength(0);
     expect(browserPid).not.toBe(child.pid);
     // Linux process titles can overwrite /proc/pid/cmdline. Query Chromium's
@@ -43,7 +52,34 @@ if (compatibility) test('default startup relaunches once on XWayland and preserv
     const args = (await session.send('Browser.getBrowserCommandLine')).arguments;
     expect(args.filter(arg => arg === '--ozone-platform=x11')).toHaveLength(1);
     expect(args).toContain(file);
-    await writeFile(test.info().outputPath('startup.json'), JSON.stringify({ initialPid: child.pid, finalPid: browserPid, args }, null, 2));
+    const mainStatus = await readFile(`/proc/${browserPid}/status`, 'utf8');
+    const expectedFlag = Number(inheritedRestriction);
+    expect(processFlag(mainStatus, 'NoNewPrivs')).toBe(expectedFlag);
+    await page.locator('.new-terminal-tab-button').click();
+    const terminal = page.locator('.terminal-content:not(.inactive) .xterm-helper-textarea');
+    await expect(terminal).toBeFocused();
+    // $$ reads the actual interactive shell, not a test process or grep child.
+    await terminal.pressSequentially('cat /proc/$$/status > shell-status.txt');
+    await terminal.press('Enter');
+    const statusFile = path.join(root, 'shell-status.txt');
+    await expect.poll(() => readFile(statusFile, 'utf8').catch(() => '')).toContain('NoNewPrivs:');
+    const shellStatus = await readFile(statusFile, 'utf8');
+    expect(processFlag(shellStatus, 'NoNewPrivs')).toBe(expectedFlag);
+    expect(processFlag(shellStatus, 'PPid')).toBe(browserPid);
+    const rendererProcesses = (await session.send('SystemInfo.getProcessInfo')).processInfo
+      .filter(process => process.type === 'renderer');
+    expect(rendererProcesses.length).toBeGreaterThan(0);
+    const rendererStatuses = [];
+    for (const renderer of rendererProcesses) {
+      const status = await readFile(`/proc/${renderer.id}/status`, 'utf8');
+      rendererStatuses.push(status);
+      expect(processFlag(status, 'NoNewPrivs')).toBe(1);
+      expect(processFlag(status, 'Seccomp')).toBe(2);
+    }
+    await writeFile(test.info().outputPath('startup.json'), JSON.stringify({
+      initialPid: child.pid, finalPid: browserPid, args, mainStatus, shellStatus, rendererStatuses,
+    }, null, 2));
+    await page.screenshot({ path: test.info().outputPath('terminal-after-startup.png') });
   } catch (error) {
     console.error('Startup verification failed:', String(error));
     throw error;

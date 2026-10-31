@@ -4,6 +4,7 @@ import { installZoomSettings } from './windows/zoom-settings';
 import { ReadingPositionStore } from './reading/reading-position-store';
 import { installReadingIpc } from './reading/reading-ipc';
 import { app, BrowserWindow, dialog, net, protocol, powerMonitor } from 'electron';
+import { spawn } from 'node:child_process';
 import { createReadStream } from 'node:fs';
 import { promises as fs } from 'node:fs';
 import { Readable } from 'node:stream';
@@ -44,7 +45,18 @@ if (backend === 'x11' && app.commandLine.getSwitchValue('ozone-platform') !== 'x
   const args = process.argv.slice(1).filter(value => !value.startsWith('--ozone-platform='));
   const separate = args.indexOf('--ozone-platform');
   if (separate >= 0) args.splice(separate, 2);
-  app.relaunch({ args: ['--ozone-platform=x11', ...args] });
+  // Electron's Chromium relauncher sets Linux no_new_privs on its child. That
+  // irreversible flag reaches every PTY and prevents sudo from working. Node
+  // spawn preserves the caller's privileges without changing renderer sandboxing.
+  // This handoff runs before acquiring the single-instance lock or opening files.
+  const replacement = spawn(process.execPath, ['--ozone-platform=x11', ...args], {
+    detached: true, stdio: 'inherit',
+  });
+  if (!replacement.pid) {
+    console.error('Could not restart Setdown with the X11 display backend.');
+    app.exit(1);
+  }
+  replacement.unref();
   app.exit(0);
 }
 app.setName('Setdown');

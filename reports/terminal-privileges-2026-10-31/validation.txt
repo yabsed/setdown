@@ -1,0 +1,49 @@
+Setdown 터미널 sudo 권한 제한 수정 — 2026-10-31 (Asia/Seoul)
+
+원인과 변경
+- Wayland에서 X11로 전환하는 초기 app.relaunch()가 Chromium의 relauncher를 거치며
+  Linux no_new_privs를 설정했다. PTY 셸이 이 해제 불가능한 플래그를 상속해 sudo가 차단됐다.
+- 단일 인스턴스 잠금과 문서 열기 전에 Node spawn으로 동일 실행 파일과 인수를 넘긴다.
+  기존 제한은 보존하고, 렌더러 샌드박스를 비활성화하는 옵션은 추가하지 않는다.
+- 실행 실패는 성공으로 종료하지 않도록 자식 PID 확인 후 오류 종료한다.
+- 기존 XWayland 시작 테스트에 일반/제한된 부모, 실제 PTY 셸, 렌더러 seccomp,
+  공백·한글 문서 인수 보존 검사를 추가했다. 패키지 실행 파일도 같은 검사를 지원한다.
+
+검증
+- 타입 검사: tsc 소스/테스트, svelte-check 오류 0 / 경고 0.
+- 최종 패키지 검사 옵션 추가 후 테스트 타입 검사도 통과.
+- 실행 옵션/터미널 관리/아키텍처 단위 검사: 3개 파일, 20개 통과.
+- Electron 빌드 및 별도 Linux 패키징 통과.
+- 독립 headless Mutter/XWayland: 시작 회귀 2개와 기존 창 간 드래그 2개, 총 4개 통과.
+- Xvfb: 기존 실제 터미널 회귀 12개 통과.
+- 새 Linux 패키지: 시작 회귀 2개 통과.
+- 실제 설치 경로를 업데이트한 뒤: 시작 회귀 2개 통과.
+- 일반 부모: 앱 NoNewPrivs=0, 실제 셸 NoNewPrivs=0.
+- 제한된 부모: 앱 NoNewPrivs=1, 실제 셸 NoNewPrivs=1을 유지.
+- 모든 검사 대상 렌더러: NoNewPrivs=1, Seccomp=2를 유지.
+- 수정 전 설치본을 별도 프로필로 검사하면 기대값 0 / 관측값 1에서 실패한다.
+  installed-before.log.txt에 원래 결함을 검출한 결과를 보존했다.
+- 사용자 데스크톱에 테스트 창을 표시하지 않았다. sudo로 관리자 작업을 수행하거나
+  dnf 업데이트를 실행하지 않았으며, 실제 프로세스의 커널 플래그를 검증했다.
+- git diff --check 통과.
+
+적용
+- /home/yabsed/.local/share/setdown/resources/app.asar 업데이트 완료.
+- 기존/후보 아카이브의 45,934개 항목 비교: main.cjs와 main.cjs.map만 변경됐다.
+  Electron 실행 파일 SHA-256도 동일하다. package-diff.json 참조.
+- 기존 아카이브를 백업하고 임시 파일의 해시를 확인한 뒤 rename으로 원자적 교체했다.
+- 백업: apps/desktop/release/terminal-privileges-2026-10-31/installed-app.asar.before
+- 설치 전후 해시와 적용 시각은 install.json에 기록했다.
+- 실행 중인 사용자 앱과 설정은 유지했다. 이미 NoNewPrivs=1인 프로세스는
+  실행 중 해제할 수 없으므로 작업을 저장하고 앱을 완전히 종료한 뒤 다시 열어야 한다.
+
+범위 및 기록
+- 변경은 초기 프로세스 실행에 한정된다. 미리보기 준비/표시, 네이티브 bounds/zoom,
+  source-reader 전환, CSS 및 Electron/Crossnote 의존성은 변경하지 않았다.
+  전체 preview 계약/성능 벤치마크 대신 위 시작·터미널·창 이동 검사를 실행했다.
+- *.log.txt와 각 실행 디렉터리에 원시 로그, 프로세스 상태, 스크린샷을 보존했다.
+- before.log.txt는 초기 진단용 harness가 지원되지 않는 --ozone-platform=auto로
+  시작에 실패한 기록이다. 최종 테스트는 기존의 실제 Wayland/XWayland 시작 경로를 쓴다.
+- initial-candidate는 최초 수정본 검사이다. 수정 전 증거는 installed-before이다.
+- build-electron-sandbox.log.txt의 git EPERM은 실행 샌드박스 제한이었다.
+  동일 빌드를 승인된 일반 프로세스 환경에서 완료한 기록은 build-electron.log.txt다.
