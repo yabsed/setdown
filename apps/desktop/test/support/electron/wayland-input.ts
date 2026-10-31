@@ -22,7 +22,8 @@ export async function waylandInput() {
   } catch (error) { processInput.kill(); throw error; }
   return {
     async send(input: { click?: { x: number; y: number }; pointer?: { x: number; y: number }[];
-      button?: 'down' | 'up'; keys?: string[]; keyDown?: string[]; keyUp?: string[]; pointerIntervalMs?: number }) {
+      button?: 'down' | 'up'; keys?: string[]; keyDown?: string[]; keyUp?: string[]; pointerIntervalMs?: number;
+      resetPointer?: boolean }) {
       processInput.stdin.write(JSON.stringify(input) + '\n'); await response();
     },
     async close() {

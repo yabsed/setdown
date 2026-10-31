@@ -6,8 +6,125 @@ import path from 'node:path';
 import os from 'node:os';
 import { fixture } from '../support/browser/browser-fixture';
 import { waylandInput } from '../support/electron/wayland-input';
+import { focusApplication } from '../support/electron/electron-app';
 
 const compatibility = process.env.SETDOWN_TEST_DISPLAY === 'xwayland';
+for (const mode of ['maximized', 'fullscreen'] as const)
+for (const moving of ['web', 'document'] as const)
+test(`${mode} ${moving} drags prioritize both side edges and never open a window`, async () => {
+  const input = await waylandInput();
+  const f = await fixture(false).catch(async error => { await input.close(); throw error; });
+  try {
+    const owner = await f.app.browserWindow(f.page);
+    await owner.evaluate((window, mode) => new Promise<void>(resolve => {
+      window.once(mode === 'fullscreen' ? 'enter-full-screen' : 'maximize', () => resolve());
+      if (mode === 'fullscreen') window.setFullScreen(true); else window.maximize();
+    }), mode);
+    await expect.poll(() => owner.evaluate((window, mode) => mode === 'fullscreen' ? window.isFullScreen() : window.isMaximized(), mode)).toBe(true);
+    await expect.poll(() => f.page.evaluate(() => innerWidth)).toBe(1920);
+    await focusApplication(f.app);
+    // Fullscreen entry can warp the cursor after the device was initialized.
+    await input.send({ resetPointer: true });
+    if (moving === 'web') {
+      await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+      await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/second`);
+    } else {
+      await f.page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), path.join(f.root, 'notes.md'));
+      await expect(f.page.getByRole('tab', { name: /notes.md/ })).toBeVisible();
+      await f.page.locator('.new-tab-button').click();
+    }
+    const tab = f.page.getByRole('tab', { name: moving === 'web' ? /Second page/ : /notes.md/ });
+    await tab.click();
+    await expect(tab).toHaveAttribute('aria-selected', 'true');
+    await f.app.evaluate(({ app, ipcMain }) => {
+      (globalThis as any).fullscreenDragTrace = [];
+      (globalThis as any).dragCreatedWindows = 0;
+      app.on('browser-window-created', () => (globalThis as any).dragCreatedWindows++);
+      for (const channel of ['tabs:drag-target', 'tabs:detach-to-window', 'tabs:cancel-transfer', 'tab-drag-surface:event'])
+        ipcMain.on(channel, (_event, value) => (globalThis as any).fullscreenDragTrace.push({ channel, value }));
+    });
+    await f.page.evaluate(() => {
+      (window as any).fullscreenDragEvents = [];
+      for (const type of ['pointerdown', 'pointerup', 'dragstart', 'dragend']) window.addEventListener(type, event => {
+        const e = event as MouseEvent;
+        (window as any).fullscreenDragEvents.push({ type, x: e.clientX, y: e.clientY, target: (e.target as HTMLElement)?.className });
+      }, true);
+    });
+    const toScreen = (point: { x: number; y: number }) => owner.evaluate((window, point) => {
+      const bounds = window.getContentBounds(), zoom = window.webContents.getZoomFactor();
+      return { x: bounds.x + point.x * zoom, y: bounds.y + point.y * zoom };
+    }, point);
+    const overlay = f.page.locator('.group-drop-overlay');
+    for (const [round, placement] of ['left-top', 'right-top', 'left-bottom', 'right-bottom', 'fast-right', 'center', 'escape'].entries()) {
+      if (round === 2) await f.page.evaluate(() => window.marktex.changeZoom(1, 'app'));
+      const bounds = await owner.evaluate(window => window.getBounds());
+      const box = (await tab.boundingBox())!, body = (await f.page.locator('.group-body').boundingBox())!;
+      const from = await toScreen({ x: box.x + 40 + round % 2 * 20, y: box.y + box.height / 2 });
+      await owner.evaluate((window, details) => (globalThis as any).fullscreenDragTrace.push({
+        ...details, contentBounds: window.getContentBounds(),
+        children: window.contentView.children.map((view: Electron.View) => ({ bounds: view.getBounds(), visible: view.getVisible(),
+          url: 'webContents' in view ? (view as Electron.WebContentsView).webContents.getURL() : '' })),
+      }), { placement, bounds, from, box, body });
+      await input.send({ pointer: [from], button: 'down' });
+      if (compatibility) await f.app.evaluate(({ screen, BrowserWindow }) => (globalThis as any).fullscreenDragTrace.push({
+        cursor: screen.getCursorScreenPoint(), focused: BrowserWindow.getFocusedWindow()?.id,
+      }));
+      await input.send({ pointer: [{ x: from.x + 20, y: from.y + 15 }] });
+      const vertical = placement.endsWith('top') || placement.endsWith('bottom');
+      const y = body.y + body.height * (placement.endsWith('top') ? .1 : placement.endsWith('bottom') ? .9 : .5);
+      await input.send({ pointer: [await toScreen({ x: body.x + body.width / 2, y })] });
+      if (vertical) {
+        await expect(overlay).toBeVisible();
+        expect((await overlay.boundingBox())!.height).toBeCloseTo(body.height / 2, 0);
+      } else await expect(overlay).toBeHidden();
+      const left = placement.startsWith('left');
+      const edge = await toScreen({ x: body.x + (left ? 1 : body.width - 1), y });
+      if (placement === 'fast-right') {
+        // No guide wait may hide the native center-to-edge release race.
+        await input.send({ pointer: [edge], pointerIntervalMs: 0, button: 'up' });
+      } else {
+        if (placement !== 'center') {
+          await input.send({ pointer: [edge] });
+          await expect(overlay).toBeVisible();
+          const guide = (await overlay.boundingBox())!;
+          expect(guide.x).toBeCloseTo(body.x + (left ? 0 : body.width / 2), 0);
+          expect(guide.width).toBeCloseTo(body.width / 2, 0);
+          expect(guide.height).toBeCloseTo(body.height, 0);
+        }
+        if (placement === 'escape') await input.send({ keys: ['Escape'] });
+        await input.send({ button: 'up' });
+      }
+      const split = placement !== 'center' && placement !== 'escape';
+      await expect(f.page.locator('.editor-group')).toHaveCount(split ? 2 : 1);
+      await expect(f.page.locator('.shell')).not.toHaveClass(/is-tab-dragging/);
+      expect(await f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
+      expect(await f.app.evaluate(() => (globalThis as any).dragCreatedWindows)).toBe(0);
+      expect(await owner.evaluate(window => window.getBounds())).toEqual(bounds);
+      expect(await owner.evaluate((window, mode) => mode === 'fullscreen' ? window.isFullScreen() : window.isMaximized(), mode)).toBe(true);
+      if (split) {
+        const moved = (await f.page.locator('.editor-group').filter({ has: tab }).boundingBox())!;
+        expect(moved.x).toBeCloseTo(body.x + (left ? 0 : body.width / 2), 0);
+        // Restore one group between independent native gestures.
+        const other = f.page.locator('.editor-group').filter({ hasNot: tab }).locator('.tab-strip');
+        const strip = (await other.boundingBox())!;
+        const data = await f.page.evaluateHandle(() => new DataTransfer());
+        await tab.dispatchEvent('dragstart', { dataTransfer: data });
+        const point = { dataTransfer: data, clientX: strip.x + 10, clientY: strip.y + strip.height / 2 };
+        await other.dispatchEvent('dragover', point); await other.dispatchEvent('drop', point); await data.dispose();
+        await expect(f.page.locator('.editor-group')).toHaveCount(1);
+      }
+    }
+    expect(f.errors).toEqual([]);
+    await owner.dispose();
+  } finally {
+    await writeFile(test.info().outputPath('fullscreen-drag-trace.json'), JSON.stringify(await f.app.evaluate(() => (globalThis as any).fullscreenDragTrace ?? []), null, 2));
+    await writeFile(test.info().outputPath('fullscreen-drag-events.json'), JSON.stringify(await f.page.evaluate(() => (window as any).fullscreenDragEvents ?? []), null, 2));
+    await input.send({ keys: ['Escape'], button: 'up' });
+    await f.page.screenshot({ path: test.info().outputPath('final.png') }).catch(() => {});
+    await f.dispose(); await input.close();
+  }
+});
+
 const processFlag = (status: string, name: string) => Number(status.match(new RegExp(`^${name}:\\s+(\\d+)$`, 'm'))?.[1]);
 if (compatibility) for (const inheritedRestriction of [false, true])
 test(`default startup preserves document, terminal privileges and renderer sandbox on XWayland (inherited restriction: ${inheritedRestriction})`, async () => {

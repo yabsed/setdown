@@ -45,13 +45,17 @@ export function createTabDrag(options: Options) {
   let scrollFrame = 0;
   let scrollList: HTMLElement | null = null;
   let scrollPointer = 0;
+  const clearStrip = () => {
+    indicator.hidden = true;
+    activeStrip?.classList.remove('is-drop-target'); activeStrip = null;
+    cancelAnimationFrame(scrollFrame); scrollFrame = 0; scrollList = null;
+  };
   const clearTarget = () => {
     options.desktop.setNativeTabDragGuide(null);
     guidedTarget = retainedTarget = null;
     detachTarget = null;
-    overlay.hidden = indicator.hidden = true;
-    activeStrip?.classList.remove('is-drop-target'); activeStrip = null;
-    cancelAnimationFrame(scrollFrame); scrollFrame = 0; scrollList = null;
+    overlay.hidden = true;
+    clearStrip();
   };
   function leaveTarget(terminal: boolean) {
     const retained = terminal ? guidedTarget ?? retainedTarget : null;
@@ -69,7 +73,7 @@ export function createTabDrag(options: Options) {
     leaveTarget(terminal);
   }
   function stripTarget(strip: HTMLElement, x: number): Target {
-    detachTarget = null;
+    detachTarget = null; retainedTarget = null;
     if (activeStrip !== strip) activeStrip?.classList.remove('is-drop-target');
     activeStrip = strip; strip.classList.add('is-drop-target');
     const list = strip.querySelector<HTMLElement>('.tab-list')!;
@@ -111,6 +115,9 @@ export function createTabDrag(options: Options) {
       setDragging(true); options.shell.classList.add('is-tab-dragging');
     } else if (sharedDragId === id) {
       sharedDragId = null;
+      // A new local gesture may start before the previous center cancellation
+      // completes in main. Its late end must not clear the new token/receiver.
+      if (transferId && transferId !== id) return;
       const destination = commitGuide ? guidedTarget ?? retainedTarget : null;
       const local = sourceDrag ? tabId : null;
       reset();
@@ -143,19 +150,23 @@ export function createTabDrag(options: Options) {
       const groupId = element.dataset.groupId!;
       const strip = element.querySelector<HTMLElement>('.tab-strip')!;
       if (point.y < strip.getBoundingClientRect().bottom) return stripTarget(strip, point.x);
-      clearTarget();
       const body = element.querySelector('.group-body')!.getBoundingClientRect();
-      if (point.y < body.top || point.y >= body.bottom) return null;
-      const direction = splitDirection(point.x - body.left, point.y - body.top, body.width, body.height);
+      if (point.y < body.top || point.y >= body.bottom) { clearTarget(); return null; }
+      const previous = guidedTarget?.groupId === groupId ? guidedTarget.direction : null;
+      const direction = splitDirection(point.x - body.left, point.y - body.top, body.width, body.height, previous);
       const source = tabId ? options.groups.owner(tabId) : null;
       const split = source?.id === groupId && source.tabs.length === 1 && !copying(event) ? null : direction;
       // Returning to the source group's body is not a useful merge. Reserve
-      // its center for tear-off, including when a maximized window fills the
-      // screen. Other groups still accept center drops with a blue merge guide.
+      // its center for tear-off in normal windows; main cancels it when the
+      // source is maximized/fullscreen. Other groups still accept center merges.
       if (source?.id === groupId && !split) {
+        clearTarget();
         detachTarget = { x: event.screenX, y: event.screenY };
         return null;
       }
+      // Replace an accepted guide directly. Sending null first makes the native
+      // receiver paint an empty frame between the two asynchronous IPC updates.
+      clearStrip(); detachTarget = null; retainedTarget = null;
       const left = body.left + (split === 'right' ? body.width / 2 : 0);
       const top = body.top + (split === 'down' ? body.height / 2 : 0);
       Object.assign(overlay.style, { left: `${left}px`, top: `${top}px`,
@@ -208,7 +219,11 @@ export function createTabDrag(options: Options) {
   window.addEventListener('dragover', acceptTarget, true);
   window.addEventListener('drop', event => {
     if (!supported(event)) return;
-    const destination = guidedTarget ?? (detachTarget ? null : target(event));
+    // A fast native release can arrive before its final dragover. Real drop
+    // coordinates supersede a previous center hover; coordinate-less Chromium
+    // completions still use the placement that was actually painted.
+    const destination = event.clientX !== 0 || event.clientY !== 0
+      ? target(event) : guidedTarget ?? (detachTarget ? null : target(event));
     if (!destination) {
       const detach = !localOnly && !canceled && detachTarget ? transferId : null;
       const point = detachTarget;

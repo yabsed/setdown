@@ -40,13 +40,43 @@ describe('editor groups', () => {
     groups.move('c', 'group-0', 'down'); groups.remove('c');
     expect(groups.focused.activeId).toBe('a'); expect(groups.groups).toHaveLength(1);
   });
-  it('uses VS Code edge bands and preferred horizontal direction at corners', () => {
+  it('offers symmetric quarter-width split bands and retains horizontal corner preference', () => {
     expect(splitDirection(50, 50, 100, 100)).toBeNull();
     expect(splitDirection(9, 50, 100, 100)).toBe('left');
     expect(splitDirection(91, 50, 100, 100)).toBe('right');
     expect(splitDirection(50, 9, 100, 100)).toBe('up');
     expect(splitDirection(50, 91, 100, 100)).toBe('down');
     expect(splitDirection(25, 1, 100, 100)).toBe('left');
+    expect(splitDirection(20, 50, 100, 100)).toBe('left');
+    expect(splitDirection(80, 50, 100, 100)).toBe('right');
+    expect(splitDirection(50, 20, 100, 100)).toBe('up');
+    expect(splitDirection(50, 80, 100, 100)).toBe('down');
+  });
+  it('keeps a painted split through boundary jitter but releases it in the center or outside', () => {
+    expect(splitDirection(245, 300, 1000, 600)).toBe('left');
+    expect(splitDirection(255, 300, 1000, 600, 'left')).toBe('left');
+    expect(splitDirection(745, 300, 1000, 600, 'right')).toBe('right');
+    expect(splitDirection(500, 155, 1000, 600, 'up')).toBe('up');
+    expect(splitDirection(500, 445, 1000, 600, 'down')).toBe('down');
+    expect(splitDirection(270, 300, 1000, 600, 'left')).toBeNull();
+    expect(splitDirection(730, 300, 1000, 600, 'right')).toBeNull();
+    for (const previous of ['left', 'right', 'up', 'down'] as const) {
+      expect(splitDirection(500, 300, 1000, 600, previous)).toBeNull();
+      expect(splitDirection(50, 50, 100, 100, previous)).toBeNull();
+      expect(splitDirection(-1, 300, 1000, 600, previous)).toBeNull();
+    }
+  });
+  it('switches a top or bottom guide to either side without a center detour', () => {
+    for (const [width, height] of [[1920, 1000], [1600, 800], [500, 900]]) {
+      for (const previous of ['up', 'down'] as const) {
+        const y = height * (previous === 'up' ? .1 : .9);
+        expect(splitDirection(width / 2, y, width, height)).toBe(previous);
+        for (const fraction of [.01, .2, .25, .3]) {
+          expect(splitDirection(width * fraction, y, width, height, previous)).toBe('left');
+          expect(splitDirection(width * (1 - fraction), y, width, height, previous)).toBe('right');
+        }
+      }
+    }
   });
   it('replaces only the group preview even when a pinned tab has focus', () => {
     const groups = new EditorGroups();

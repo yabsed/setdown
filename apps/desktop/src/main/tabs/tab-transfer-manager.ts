@@ -14,6 +14,7 @@ type Transfer = {
   sourceWebContentsId: number; tab: TransferableTab; claimedByWebContentsId: number | null;
   expiresAt: number; detachPosition: { x: number; y: number } | null; previewAdopted: boolean;
   detachTimer: ReturnType<typeof setTimeout> | null;
+  allowDetach: boolean;
   preparedWindow: BrowserWindow | null; previewScrollPosition: Promise<{ x: number; y: number }>;
   previewBand: Promise<BandLine[]>; sourceContentSize: { width: number; height: number } | null;
 };
@@ -61,6 +62,7 @@ export class TabTransferManager {
     for (const [id, pending] of this.transfers) if (pending.dragActive && pending.claimedByWebContentsId === null)
       this.cancel(pending.sourceWebContentsId, id);
     const source = this.options.stateFor(sourceId)!.window;
+    const allowDetach = !source.isMaximized() && !source.isFullScreen();
     if (!this.watchedSources.has(source)) {
       this.watchedSources.add(source);
       // The OS drag loop can consume Escape keydown. Its native keyup still
@@ -87,7 +89,8 @@ export class TabTransferManager {
       dragParticipants: new Set(), dragActive: true, dragTarget: null, hoverOwner: sourceId,
       sourceWebContentsId: sourceId, tab, claimedByWebContentsId: null, expiresAt: Date.now() + 60_000,
       detachPosition: null, detachTimer: null, previewAdopted: false,
-      preparedWindow: this.options.createWindow(null, null, false, this.contentSize(sourceId)),
+      allowDetach,
+      preparedWindow: allowDetach ? this.options.createWindow(null, null, false, this.contentSize(sourceId)) : null,
       sourceContentSize: this.contentSize(sourceId),
       previewScrollPosition: preview?.executeJavaScript('({ x: window.scrollX, y: window.scrollY })')
         .catch(() => ({ x: 0, y: 0 })) ?? Promise.resolve({ x: 0, y: 0 }),
@@ -239,6 +242,7 @@ export class TabTransferManager {
     if (transfer.detachTimer) clearTimeout(transfer.detachTimer);
     transfer.detachTimer = null;
     const source = this.options.stateFor(sourceId)?.window;
+    let releasedInsideSource = false;
     if (source && release && [release.x, release.y].every(Number.isFinite)) {
       const [width, height] = source.getContentSize(), zoom = source.webContents.getZoomFactor();
       let outside = release.x < 0 || release.y < 0 || release.x * zoom >= width || release.y * zoom >= height;
@@ -250,10 +254,16 @@ export class TabTransferManager {
         const bounds = source.getContentBounds();
         outside ||= screenX < bounds.x || screenY < bounds.y || screenX >= bounds.x + bounds.width || screenY >= bounds.y + bounds.height;
       }
+      releasedInsideSource = !outside;
       if (outside) {
         if (transfer.dragTarget === sourceId) transfer.dragTarget = null;
         if (transfer.hoverOwner === sourceId) transfer.hoverOwner = null;
       }
+    }
+    // A rejected/canceled release inside the window is not a center tear-off.
+    // Native borders can swallow the final over/drop after a center hover.
+    if (withinSource === true && releasedInsideSource && dropEffect === 'none') {
+      this.cancel(sourceId, transferId); return;
     }
     const accepted = ['move', 'copy'].includes(String(dropEffect));
     const target = transfer.dragTarget === null ? null : this.options.stateFor(transfer.dragTarget)?.window;
@@ -271,9 +281,9 @@ export class TabTransferManager {
       else this.endDrag(transferId, transfer); // An already-dispatched remote DOM drop may still claim it.
       return;
     }
-    this.endDrag(transferId, transfer);
     // A destination's drop/claim and source dragend use separate IPC queues.
-    // Leave a bounded turn for a claim before opening a detached window.
+    // Keep the receiver/token alive through arbitration: a local native drop
+    // can still be in flight too, and must replace stale center tear-off intent.
     transfer.detachTimer = setTimeout(() => this.commitDetach(sourceId, transferId), DETACH_CLAIM_GRACE_MS);
   }
 
@@ -282,6 +292,14 @@ export class TabTransferManager {
     if (!transfer || transfer.sourceWebContentsId !== sourceId || transfer.claimedByWebContentsId !== null
       || !transfer.detachPosition) return;
     transfer.detachTimer = null;
+    const source = this.options.stateFor(sourceId)?.window;
+    // Keep local/remote drops eligible through arbitration, but never turn a
+    // fullscreen/maximized drag into a new window, even after a native leave.
+    // Check again here in case the window changed state during the drag.
+    if (!transfer.allowDetach || !source || source.isDestroyed() || source.isMaximized() || source.isFullScreen()) {
+      this.cancel(sourceId, transferId); return;
+    }
+    this.endDrag(transferId, transfer);
     const destination = transfer.preparedWindow && !transfer.preparedWindow.isDestroyed()
       ? transfer.preparedWindow : this.options.createWindow(transfer.detachPosition, null, false, this.contentSize(sourceId));
     transfer.preparedWindow = destination;

@@ -1,10 +1,182 @@
 import { expect, test } from '@playwright/test';
 import { execFile as execFileCallback } from 'node:child_process';
 import { promisify } from 'node:util';
+import { writeFile } from 'node:fs/promises';
 const execFile = promisify(execFileCallback);
 
 import { fixture, evaluatePage } from '../../support/browser/browser-fixture';
 import { nativeInput } from '../../support/electron/native-input';
+import { waylandInput } from '../../support/electron/wayland-input';
+
+test('fast right-edge drops split two live websites instead of tearing off a window', async () => {
+  test.setTimeout(90_000);
+  const compositor = process.env.SETDOWN_TEST_DISPLAY === 'xwayland' ? await waylandInput() : null;
+  const input = compositor ? compositor.send : nativeInput;
+  const f = await fixture(false).catch(async error => { await compositor?.close(); throw error; });
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/second`);
+    const tab = f.page.getByRole('tab', { name: /Second page/ });
+    await expect(tab).toHaveAttribute('aria-selected', 'true');
+    const owner = await f.app.browserWindow(f.page);
+    await owner.evaluate(window => window.setBounds({ x: 0, y: 0, width: 1920, height: 1030 }));
+    if (process.env.SETDOWN_TEST_DISPLAY === 'xwayland') {
+      await owner.evaluate(window => window.maximize());
+      await expect.poll(() => owner.evaluate(window => window.isMaximized())).toBe(true);
+    }
+    await f.app.evaluate(({ ipcMain, webContents, app }) => {
+      (globalThis as any).rightDropTrace = [];
+      const watch = (contents: Electron.WebContents) => contents.on('before-input-event', (_event, value) => {
+        if (value.key === 'Escape') (globalThis as any).rightDropTrace.push({ at: Date.now(), contents: contents.id, key: value });
+      });
+      for (const contents of webContents.getAllWebContents()) watch(contents);
+      app.on('web-contents-created', (_event, contents) => watch(contents));
+      for (const channel of ['tab-drag-surface:event', 'tabs:drag-target', 'tabs:detach-to-window', 'browser:tab-drag-guide']) {
+        ipcMain.on(channel, (_event, ...args) => (globalThis as any).rightDropTrace.push({ at: Date.now(), channel, args }));
+      }
+    });
+    const toScreen = (point: { x: number; y: number }) => owner.evaluate((window, point) => {
+      const bounds = window.getContentBounds(), zoom = window.webContents.getZoomFactor();
+      return { x: bounds.x + point.x * zoom, y: bounds.y + point.y * zoom };
+    }, point);
+    for (let round = 0; round < 12; round++) {
+      if (round === 6) await f.page.evaluate(() => window.marktex.changeZoom(1, 'app'));
+      const box = (await tab.boundingBox())!, body = (await f.page.locator('.group-body').boundingBox())!;
+      const from = await toScreen({ x: box.x + 35 + round % 2 * 30, y: box.y + box.height / 2 });
+      const center = await toScreen({ x: body.x + body.width / 2, y: body.y + body.height / 2 });
+      const right = await toScreen({ x: body.x + body.width - (round % 2 ? 1 : 20), y: body.y + body.height / 2 });
+      const windowBounds = await owner.evaluate(window => window.getBounds());
+      await input({ pointer: [from], button: 'down' });
+      await input({ pointer: [{ x: from.x + 20, y: from.y + 15 }, center] });
+      expect(await owner.evaluate(window => window.getBounds())).toEqual(windowBounds);
+      expect(await owner.evaluate(window => window.isResizable())).toBe(process.env.SETDOWN_TEST_DISPLAY === 'xwayland');
+      if (process.env.SETDOWN_TEST_DISPLAY === 'xwayland') expect(await owner.evaluate(window => window.isMaximized())).toBe(true);
+      // Release at the right edge immediately: waiting for the guide first
+      // masks stale center/tear-off ownership in native event delivery.
+      await input({ pointer: [right], pointerIntervalMs: 0, button: 'up' });
+      await expect(f.page.locator('.editor-group'), `right-edge split, round ${round}`).toHaveCount(2);
+      await expect.poll(() => f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
+      expect(await owner.evaluate(window => window.isResizable())).toBe(true);
+      expect((await tab.boundingBox())!.x).toBeGreaterThan(body.x + body.width * .45);
+      // Return the tab for the next independent OS gesture.
+      const data = await f.page.evaluateHandle(() => new DataTransfer());
+      await tab.dispatchEvent('dragstart', { dataTransfer: data });
+      const target = f.page.locator('.tab-strip').first(), strip = (await target.boundingBox())!;
+      const point = { dataTransfer: data, clientX: strip.x + 10, clientY: strip.y + strip.height / 2 };
+      await target.dispatchEvent('dragover', point); await target.dispatchEvent('drop', point);
+      await data.dispose();
+      await expect(f.page.locator('.editor-group')).toHaveCount(1);
+    }
+    for (const resizable of [true, false]) {
+      await owner.evaluate((window, value) => window.setResizable(value), resizable);
+      await f.app.evaluate(({ webContents }, resizable) => (globalThis as any).rightDropTrace.push({
+        cancellation: resizable, focused: webContents.getFocusedWebContents()?.id,
+      }), resizable);
+      const box = (await tab.boundingBox())!, body = (await f.page.locator('.group-body').boundingBox())!;
+      const from = await toScreen({ x: box.x + (resizable ? 40 : 95), y: box.y + box.height / 2 });
+      await input({ pointer: [from], button: 'down' });
+      await input({ pointer: [{ x: from.x + 20, y: from.y + 15 },
+        await toScreen({ x: body.x + body.width - 1, y: body.y + body.height / 2 })] });
+      await expect(f.page.locator('.group-drop-overlay')).toBeVisible();
+      await input({ keys: ['Escape'] });
+      await expect(f.page.locator('.shell')).not.toHaveClass(/is-tab-dragging/);
+      await input({ button: 'up' });
+      await expect(f.page.locator('.shell')).not.toHaveClass(/is-tab-dragging/);
+      expect(await owner.evaluate(window => window.isResizable())).toBe(resizable);
+      await expect(f.page.locator('.editor-group')).toHaveCount(1);
+    }
+    await owner.dispose();
+  } finally {
+    await writeFile(test.info().outputPath('right-drop-trace.json'), JSON.stringify(await f.app.evaluate(() => (globalThis as any).rightDropTrace), null, 2));
+    await input({ keys: ['Escape'] }); await input({ button: 'up' });
+    await f.dispose(); await compositor?.close();
+  }
+});
+
+for (const zoomSteps of [0, 2]) test(`native split guide stays painted and accepts all four edges at app zoom step ${zoomSteps}`, async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    const tab = f.page.getByRole('tab', { name: /Research page/ });
+    await expect(tab).toHaveAttribute('aria-selected', 'true');
+    for (let step = 0; step < zoomSteps; step++) await f.page.evaluate(() => window.marktex.changeZoom(1, 'app'));
+    const owner = await f.app.browserWindow(f.page);
+    const toScreen = (point: { x: number; y: number }) => owner.evaluate((window, point) => {
+      const bounds = window.getContentBounds(), zoom = window.webContents.getZoomFactor();
+      return { x: bounds.x + point.x * zoom, y: bounds.y + point.y * zoom };
+    }, point);
+    const box = (await tab.boundingBox())!, body = (await f.page.locator('.group-body').boundingBox())!;
+    const from = await toScreen({ x: box.x + 35, y: box.y + box.height / 2 });
+    const edge = await toScreen({ x: body.x + body.width * .98, y: body.y + body.height / 2 });
+    await nativeInput({ pointer: [from], button: 'down' });
+    await nativeInput({ pointer: [{ x: from.x + 20, y: from.y + 15 }, edge] });
+    await expect(f.page.locator('.group-drop-overlay')).toBeVisible();
+    const receiver = f.app.windows().find(page => page.url().startsWith('data:text/html;charset=utf-8,'))!;
+    await expect(receiver.locator('.guide')).toHaveCount(1);
+    await receiver.evaluate(() => {
+      const root = document.querySelector('#guides')!;
+      (window as any).guideGaps = 0;
+      const observer = new MutationObserver(() => {
+        if (!root.childElementCount) (window as any).guideGaps++;
+      });
+      observer.observe(root, { childList: true });
+      (window as any).guideObserver = observer;
+      (window as any).guideFrames = [];
+      const sample = () => {
+        (window as any).guideFrames.push(root.childElementCount);
+        (window as any).guideFrame = requestAnimationFrame(sample);
+      };
+      sample();
+    });
+    await nativeInput({ pointer: Array.from({ length: 60 }, (_, i) => ({ x: edge.x - i % 3, y: edge.y + i % 9 })), pointerIntervalMs: 16 });
+    const paint = await receiver.evaluate(() => {
+      cancelAnimationFrame((window as any).guideFrame);
+      (window as any).guideObserver.disconnect();
+      return { gaps: (window as any).guideGaps as number, frames: (window as any).guideFrames as number[] };
+    });
+    await writeFile(test.info().outputPath('guide-paint.json'), JSON.stringify(paint));
+    expect(paint.frames.length).toBeGreaterThan(10);
+    expect(paint.gaps, 'Repeated dragover must not remove the native guide between updates').toBe(0);
+    expect(paint.frames.every(count => count === 1), 'Every sampled Chromium frame must retain the guide').toBe(true);
+    const overlay = f.page.locator('.group-drop-overlay');
+    for (const direction of ['left', 'up', 'down', 'right'] as const) {
+      const center = { x: body.x + body.width / 2, y: body.y + body.height / 2 };
+      await nativeInput({ pointer: [await toScreen(center)] });
+      await expect(overlay).toBeHidden();
+      await expect(receiver.locator('.guide')).toHaveCount(0);
+      const horizontal = direction === 'left' || direction === 'right';
+      const start = direction === 'left' || direction === 'up';
+      const point = { ...center, ...(horizontal ? { x: body.x + body.width * (start ? .2 : .8) }
+        : { y: body.y + body.height * (start ? .2 : .8) }) };
+      await nativeInput({ pointer: [await toScreen(point)] });
+      await expect(overlay).toBeVisible();
+      await expect(receiver.locator('.guide')).toHaveCount(1);
+      const guide = (await overlay.boundingBox())!;
+      expect(guide.x).toBeCloseTo(body.x + (direction === 'right' ? body.width / 2 : 0), 0);
+      expect(guide.y).toBeCloseTo(body.y + (direction === 'down' ? body.height / 2 : 0), 0);
+      expect(guide.width).toBeCloseTo(body.width / (horizontal ? 2 : 1), 0);
+      expect(guide.height).toBeCloseTo(body.height / (horizontal ? 1 : 2), 0);
+      // Small movements around the activation boundary must retain the same
+      // placement; the center above must still clear it before the next edge.
+      for (const offset of [-2, 2, -1, 1]) {
+        const jitter = { ...center, ...(horizontal ? { x: body.x + body.width * (start ? .25 : .75) + offset }
+          : { y: body.y + body.height * (start ? .25 : .75) + offset }) };
+        await nativeInput({ pointer: [await toScreen(jitter)] });
+        await expect(overlay).toBeVisible();
+        expect(await overlay.boundingBox()).toEqual(guide);
+        await expect(receiver.locator('.guide')).toHaveCount(1);
+      }
+    }
+    await receiver.screenshot({ path: test.info().outputPath('continuous-right-guide.png'), omitBackground: true });
+    await nativeInput({ button: 'up' });
+    await expect(f.page.locator('.editor-group')).toHaveCount(2);
+    const moved = (await tab.boundingBox())!;
+    expect(moved.x).toBeGreaterThan(body.x + body.width * .45);
+    await expect(f.page.locator('.group-drop-overlay')).toBeHidden();
+    expect(f.errors).toEqual([]);
+    await owner.dispose();
+  } finally { await nativeInput({ keys: ['Escape'], button: 'up' }); await f.dispose(); }
+});
 
 for (const right of ['markdown', 'reader', 'web'] as const) test(`address suggestions preserve live video beside ${right}`, async () => {
   const f = await fixture();

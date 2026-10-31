@@ -386,6 +386,25 @@ accepted move drop or reports a null-relatedTarget leave inside the window.
 Such a leave must not erase the guide or turn a local move into window detachment.
 A new dragenter or dragover replaces the guide; a fast boundary crossing must
 not retain the previous strip's placement while waiting for another dragover.
+Accepted body-guide updates replace the previous guide directly, without an
+intermediate clear message to the native receiver. Repeated motion within a
+split must retain the guide on every Chromium frame. Browser layout tests sample
+the native receiver during real OS pointer motion at normal and increased app
+zoom, then verify all four split directions and the final right-hand drop.
+On Linux, participating windows temporarily suppress their native resize border
+during a tab drag: that non-client border otherwise swallows rightmost drops
+before Chromium can accept them. Completion and cancellation restore only windows
+that were originally resizable. Maximized/fullscreen windows retain their size
+hints throughout the drag, since changing them makes Mutter restore the window.
+This changes neither the window bounds nor native
+page ownership. The real browser layout regression releases immediately at the
+last pixel of a wide window, repeats at increased app zoom, and checks Escape
+and originally fixed-size windows; it also runs maximized under isolated XWayland.
+Valid final drop coordinates replace an earlier center hover even if its final
+dragover is delayed. Source dragend retains receiver/token ownership through the
+existing detach arbitration interval so an in-flight local native drop can still
+win. A canceled inside release cannot reuse stale center tear-off intent; actual
+outside detachment and coordinate-less accepted completions retain their rules.
 A rejected area, confirmed window exit,
 or explicit cancellation clears it. A confirmed outside release takes precedence
 over a retained guide: Chromium can report a real boundary leave at `(0, 0)`
@@ -453,11 +472,24 @@ remote claims already in flight remain eligible until arbitration completes.
 between overlapping windows, including remote cancellation and preserving the
 live page/PTY. Manager tests cover identical/zero global bounds and local versus
 remote fallback ownership. Synthetic DOM events do not replace the OS tests.
-For a local tab drag, the source group's body center is a tear-off area:
+For a local tab drag in a normal window, the source group's body center is a tear-off area:
 the blue guide disappears before release and dropping there creates a new
-window. This provides a reachable detach area even in a maximized window.
-The existing outer 10% split bands retain their guides; a source group's sole
-tab cannot split itself, so its whole body is available for tear-off. Tab strips
+window. Maximized and fullscreen sources never create a detached window,
+including a hidden prepared window. A center drop or unclaimed outside release
+cancels and keeps the tab in place. Local splits/reordering and transfers into
+existing windows remain available, including a delayed native drop/claim during
+arbitration. A window entering maximized/fullscreen state before detach commits
+also cancels its pending tear-off; restoring during a drag cannot enable one
+that started maximized/fullscreen.
+A late end notification for the preceding drag cannot reset a new local token
+or its native receiver when the next gesture begins during that arbitration.
+The outer quarter of each body accepts a split, with the existing horizontal
+preference at corners. Entering either side band supersedes an already painted
+top/bottom split without requiring a detour through the center. A painted direction has an exit margin of up to 12 CSS
+pixels (capped at 5% of that axis) to absorb small boundary movements. Returning
+to the center, leaving the group, or entering rejected chrome clears that intent;
+the center remains available for tear-off in normal windows. A source group's sole
+tab cannot split itself, so its whole body follows that same tear-off/cancel policy. Tab strips
 still reorder, and another group's center still shows a blue merge guide.
 The location bar and unrelated shell areas are not drop destinations.
 An internal tab transport still accepts native enter/over while traversing that
@@ -482,6 +514,15 @@ The detach test forces source `dragend` to reach main before an existing window'
 drop claim and verifies that the existing window still receives the live native
 preview. Keep ordinary single-group preview and Git-review cycles in the same
 48-bucket performance comparison.
+`test/wayland/tab-drag.spec.ts` uses the private Mutter compositor (also with
+XWayland) to check real maximized/fullscreen web and document drags: top/bottom
+to left/right corners, immediate center-to-right release, increased app zoom,
+center cancellation and Escape. It asserts zero new windows, including hidden
+ones, and unchanged window mode/bounds. Unit tests cover window-state changes
+during arbitration and late claims into existing windows.
+The 2026-10-31 [execution record](../../reports/fullscreen-tab-drag-2026-10-31/validation.json)
+records 63 focused unit checks and 42 isolated Electron cases across Xvfb,
+XWayland and native Wayland, with the initial diagnostics retained alongside them.
 
 Dated reproduction, native input evidence, and validation:
 [Tab tear-off area — 2026-10-20](../validation/2026-10-20-tab-tear-off.md).

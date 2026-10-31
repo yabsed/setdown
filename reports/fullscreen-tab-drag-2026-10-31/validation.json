@@ -1,0 +1,46 @@
+{
+  "changes": [
+    "Prefer horizontal side splits over a previously painted vertical split.",
+    "Never prepare or detach a new window for a drag started maximized/fullscreen; recheck mode at detach commit.",
+    "Keep local/remote claims eligible and prevent stale drag completion from resetting the next local gesture."
+  ],
+  "validation": {
+    "build": "passed (production renderer, Electron, TypeScript and Svelte checks)",
+    "unit": {
+      "passed": 63,
+      "files": [
+        "src/core/workspace/editor-groups.test.ts",
+        "src/main/tabs/tab-transfer-manager.test.ts"
+      ]
+    },
+    "electron": {
+      "xvfb": 34,
+      "xwayland": 4,
+      "wayland": 4,
+      "retries": 0
+    }
+  },
+  "scenarios": [
+    "Document and live web tabs",
+    "Maximized and fullscreen workspaces",
+    "Top/bottom guides to both side edges",
+    "Immediate center-to-right release",
+    "Increased app zoom",
+    "Center cancellation followed by another gesture",
+    "Escape",
+    "Zero new BrowserWindows, including hidden ones",
+    "Preserved window bounds and mode",
+    "Existing normal-window detach, split, reorder, native-boundary, preview-position and Undo regressions"
+  ],
+  "scope": "Native fullscreen/maximized state is established before opening the fixture content. These regressions test tab dragging in that state; they do not validate the presentation transition into fullscreen with an already-mounted preview.",
+  "artifacts": {
+    "xvfb": "xvfb-final",
+    "xwayland": "fullscreen-workspace",
+    "wayland": "wayland-fullscreen-workspace"
+  },
+  "notes": [
+    "Initial failed test-development runs and diagnostic captures remain in adjacent directories.",
+    "All GUI runs used isolated displays, runtime directories and D-Bus sessions; no user desktop input was used.",
+    "No preview preparation, hydration, native bounds, zoom, stylesheet or dependency implementation was changed by this task. Preview latency benchmarks and the full preview-contract suite were not run."
+  ]
+}

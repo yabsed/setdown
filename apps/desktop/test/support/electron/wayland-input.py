@@ -58,6 +58,12 @@ try:
     for line in sys.stdin:
         try:
             data = json.loads(line)
+            if data.get('resetPointer'):
+                # A fullscreen transition can warp the compositor cursor.
+                # Rebase our relative coordinates before the next gesture.
+                invoke('NotifyPointerMotionRelative', '(dd)', (-10000., -10000.))
+                point[:] = [0., 0.]
+                time.sleep(.04)
             for name in data.get('keyDown', []):
                 key(name, True)
             for position in data.get('pointer', []):

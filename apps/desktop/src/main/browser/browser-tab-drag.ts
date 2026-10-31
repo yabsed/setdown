@@ -15,6 +15,7 @@ export class BrowserTabDrag {
   private readonly layers = new Map<number, Layer>();
   private readonly regions = new Map<number, Rectangle[]>();
   private readonly guides = new Map<number, TabDragGuide>();
+  private readonly resizeLocks = new WeakSet<BrowserWindow>();
   constructor(private readonly window: (id: number) => BrowserWindow | undefined,
     private readonly theme: () => PreviewThemeId) {
     ipcMain.on('tab-drag-surface:event', (event, input: NativeTabDrag) => {
@@ -28,6 +29,20 @@ export class BrowserTabDrag {
   }
   state(owner: number, id: string | null): void {
     if (id !== null && (typeof id !== 'string' || id.length > 100)) return;
+    const window = this.window(owner);
+    // Linux's non-client resize border consumes the last few pixels of an OS
+    // drag. At the right edge Chromium then reports leave/none instead of the
+    // split drop. Disable that hit target only for the drag's lifetime, keeping
+    // already-fixed windows fixed and restoring resizability on every end path.
+    // Maximized/fullscreen windows have no resize border; changing their size
+    // hints makes Mutter restore them mid-drag, invalidating the drop geometry.
+    if (process.platform === 'linux' && window && !window.isDestroyed()) {
+      if (id !== null && !this.resizeLocks.has(window) && window.isResizable()
+        && !window.isMaximized() && !window.isFullScreen()) {
+        this.resizeLocks.add(window);
+        window.setResizable(false);
+      } else if (id === null && this.resizeLocks.delete(window)) window.setResizable(true);
+    }
     if (id === null) { this.active.delete(owner); this.guides.delete(owner); }
     else this.active.set(owner, id);
     this.layout(owner);

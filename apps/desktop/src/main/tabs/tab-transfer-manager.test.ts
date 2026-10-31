@@ -33,6 +33,7 @@ function fakeWindow(id: number) {
   let destroyed = false;
   let visible = true;
   let minimized = false;
+  let mode: 'normal' | 'maximized' | 'fullscreen' = 'normal';
   let bounds = { x: 1000, y: 100, width: 900, height: 700 };
   const messages: Array<{ channel: string; payload: unknown }> = [];
   const webContents = {
@@ -51,6 +52,8 @@ function fakeWindow(id: number) {
     getContentSize: () => [900, 700] as [number, number],
     getContentBounds: () => bounds,
     isMinimized: () => minimized,
+    isMaximized: () => mode === 'maximized',
+    isFullScreen: () => mode === 'fullscreen',
     setPosition: vi.fn(),
     isVisible: () => visible,
     showInactive: vi.fn(() => { visible = true; }),
@@ -60,6 +63,7 @@ function fakeWindow(id: number) {
   } as unknown as BrowserWindow;
   return { window, webContents, messages, setVisible(value: boolean) { visible = value; },
     setMinimized(value: boolean) { minimized = value; },
+    setMode(value: typeof mode) { mode = value; },
     setBounds(value: typeof bounds) { bounds = value; } };
 }
 
@@ -84,12 +88,13 @@ function fixture() {
     [2, { window: existing.window } as WindowState],
     [3, { window: prepared.window } as WindowState],
   ]);
+  const createWindow = vi.fn(() => prepared.window);
   const manager = new TabTransferManager({
     previews: { views: new Map(), restoreScroll: vi.fn() } as unknown as PreviewManager,
     stateFor: id => states.get(id) ?? null,
     windows: () => states.values(),
     theme: () => 'paper',
-    createWindow: () => prepared.window,
+    createWindow,
   });
   manager.registerIpc();
   const event = (id: number) => ({ sender: { id } });
@@ -98,7 +103,7 @@ function fixture() {
   const end = (withinSource = false, dropEffect?: string) => electron.listeners.get('tabs:detach-to-window')!(event(1), { transferId: 'move', x: 700, y: 400, withinSource, dropEffect });
   const detach = () => { hover(1, false, false); end(); };
   const claim = () => electron.handlers.get('tabs:claim-transfer')!(event(2), 'move') as Promise<unknown>;
-  return { source, existing, prepared, register, hover, end, detach, claim };
+  return { source, existing, prepared, createWindow, register, hover, end, detach, claim };
 }
 
 beforeEach(() => vi.useFakeTimers());
@@ -127,6 +132,72 @@ test('an unclaimed outside drop still detaches after claim arbitration', async (
   expect(f.prepared.window.showInactive).toHaveBeenCalledOnce();
   expect(f.prepared.webContents.send).toHaveBeenCalledWith('tabs:transfer-incoming',
     expect.objectContaining({ transferId: 'move' }));
+});
+
+for (const mode of ['maximized', 'fullscreen'] as const) {
+  for (const area of ['center', 'outside', 'terminal-leave'] as const) test(`${mode} ${area} drops never create a window`, async () => {
+    const f = fixture(); f.source.setMode(mode); f.register();
+    expect(f.createWindow).not.toHaveBeenCalled();
+    f.hover(1, false, area === 'center');
+    f.end(area !== 'outside', area === 'outside' ? 'none' : 'move');
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(f.createWindow).not.toHaveBeenCalled();
+    expect(f.prepared.window.showInactive).not.toHaveBeenCalled();
+    expect(f.source.messages.at(-1)).toEqual({ channel: 'tabs:drag-state', payload: { transferId: 'move', active: false } });
+    expect(f.source.webContents.send).not.toHaveBeenCalledWith('tabs:transfer-completed', expect.anything());
+    expect(await f.claim()).toBeNull();
+  });
+  test(`${mode} still commits an accepted local split`, () => {
+    const f = fixture(); f.source.setMode(mode); f.register(); f.hover(1); f.end(false, 'move');
+    expect(f.source.messages.at(-1)).toEqual({ channel: 'tabs:drag-state', payload: {
+      transferId: 'move', active: false, commitGuide: true, copy: false,
+    } });
+    expect(f.createWindow).not.toHaveBeenCalled();
+  });
+  test(`${mode} keeps late existing-window claims eligible`, async () => {
+    const f = fixture(); f.source.setMode(mode); f.register(); f.detach();
+    await vi.advanceTimersByTimeAsync(50);
+    expect(await f.claim()).toMatchObject({ transferId: 'move', tab: { id: 'document' } });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(f.createWindow).not.toHaveBeenCalled();
+    expect(f.prepared.window.showInactive).not.toHaveBeenCalled();
+  });
+  test(`entering ${mode} during detach arbitration cancels the prepared window`, async () => {
+    const f = fixture(); f.register(); f.detach(); f.source.setMode(mode);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(f.prepared.window.destroy).toHaveBeenCalledOnce();
+    expect(f.prepared.window.showInactive).not.toHaveBeenCalled();
+    expect(await f.claim()).toBeNull();
+  });
+  test(`restoring a window during a ${mode} drag cannot enable tear-off`, async () => {
+    const f = fixture(); f.source.setMode(mode); f.register(); f.source.setMode('normal'); f.detach();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(f.createWindow).not.toHaveBeenCalled();
+    expect(await f.claim()).toBeNull();
+  });
+}
+
+test('a delayed local drop can replace stale center tear-off ownership before detachment', async () => {
+  const f = fixture(); f.register(); f.hover(1, false); f.end(true, 'move');
+  expect(f.source.messages.at(-1)).toEqual({ channel: 'tabs:drag-state', payload: { transferId: 'move', active: true } });
+  await vi.advanceTimersByTimeAsync(50);
+  f.hover(1, true);
+  // The receiver's actual local drop cancels the transfer before moving its tab.
+  electron.listeners.get('tabs:cancel-transfer')!({ sender: { id: 1 } }, 'move');
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(f.prepared.window.showInactive).not.toHaveBeenCalled();
+  expect(f.prepared.window.destroy).toHaveBeenCalledOnce();
+});
+
+for (const terminalLeave of [false, true]) test(`a canceled inside release cannot reuse a stale center tear-off: leave=${terminalLeave}`, async () => {
+  const f = fixture(); f.register(); f.hover(1, false);
+  if (terminalLeave) f.hover(1, false, false);
+  electron.listeners.get('tabs:detach-to-window')!({ sender: { id: 1 } }, {
+    transferId: 'move', x: 1200, y: 400, withinSource: true, dropEffect: 'none', release: { x: 899, y: 350 },
+  });
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(f.prepared.window.showInactive).not.toHaveBeenCalled();
+  expect(f.prepared.window.destroy).toHaveBeenCalledOnce();
 });
 
 for (const type of ['keyDown', 'keyUp']) test(`native Escape ${type} cancels an outside transfer without DOM keydown`, async () => {
