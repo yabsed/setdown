@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "ref": "main",
+  "resolved_commit": "c5026669226870f05eb7172701643f2df9e17f6a",
+  "committed_at": "2026-11-01T03:07:59+09:00",
+  "history": "first-parent",
+  "commit_count": 347,
+  "metric": "Physical lines including blanks/comments; committed files only.",
+  "limitations": "Code volume does not measure coverage, passing tests, quality or productivity.",
+  "excluded": [
+    "docs",
+    "reports",
+    "vendor gitlinks",
+    "assets",
+    "JSON/data",
+    "lockfiles",
+    "code-growth itself",
+    "uncommitted changes"
+  ],
+  "feature_scope": "Production source only; path-based responsibility, not dependency analysis",
+  "test_scope": "Test source, support and code fixtures; no test execution results",
+  "totals": {
+    "lines": 74798,
+    "production": 41792,
+    "testing": 31242,
+    "tooling": 1764
+  },
+  "components": {
+    "tests": 31242,
+    "renderer": 20027,
+    "main": 13643,
+    "core": 4293,
+    "preview_runtime": 1890,
+    "browser_runtime": 502,
+    "image_runtime": 35,
+    "image_export_runtime": 23,
+    "hwp_runtime": 0,
+    "protocol": 979,
+    "preload": 358,
+    "launcher": 27,
+    "types": 15,
+    "tooling": 1764,
+    "other": 0
+  },
+  "features": {
+    "workspace": 6742,
+    "reading": 5438,
+    "editor": 3472,
+    "browser": 4858,
+    "language": 5411,
+    "notebook": 2837,
+    "git": 4780,
+    "project": 2956,
+    "media": 1349,
+    "hwp": 0,
+    "terminal": 649,
+    "theme": 1909,
+    "shared": 1391,
+    "other": 0
+  },
+  "tests": {
+    "unit": 14748,
+    "integration": 15596,
+    "support": 798,
+    "fixtures": 100
+  },
+  "unclassified_files": []
+}

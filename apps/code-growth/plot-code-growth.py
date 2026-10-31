@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
-"""Plot physical code lines at every Git commit."""
+"""Plot committed physical LOC on one first-parent history."""
 
 from __future__ import annotations
 
+import argparse
 import os
-import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
 from time import monotonic
 from zoneinfo import ZoneInfo
 
-from git_history import BlobLineCounter, code_blobs, git_text
+from metrics import (
+    DEFAULT_REF, LIMIT_NOTE, OUTPUT_DIR, SCOPE_NOTE, STEMS, VIEWS,
+    history, provenance, write_audit, write_csv,
+)
 
 os.environ.setdefault(
     "MPLCONFIGDIR", str(Path(tempfile.gettempdir()) / "setdown-matplotlib")
@@ -28,7 +31,6 @@ from matplotlib.ticker import FuncFormatter
 
 
 APP_DIR = Path(__file__).resolve().parent
-ROOT = APP_DIR.parents[1]
 CLEAN_OUTPUT = APP_DIR / "output" / "repository-code-growth.png"
 DETAILED_OUTPUT = APP_DIR / "output" / "repository-code-growth-detailed.png"
 SEOUL = ZoneInfo("Asia/Seoul")
@@ -43,44 +45,6 @@ POSITIVE = "#258f83"
 NEGATIVE = "#cf6f65"
 ACCENT = "#e2a33a"
 MARKER_EDGE = "#ffffff"
-
-ROOT_CODE_FILES = {
-    "index.html",
-    "apps/desktop/index.html",
-}
-CODE_SUFFIXES = {
-    ".ts",
-    ".tsx",
-    ".js",
-    ".mjs",
-    ".cjs",
-    ".svelte",
-    ".css",
-    ".html",
-    ".sh",
-    ".py",
-}
-CODE_DIRECTORIES = (
-    "src/", "test/", "scripts/",
-    "apps/desktop/src/", "apps/desktop/test/", "apps/desktop/scripts/",
-    "apps/code-growth/",
-)
-CONFIG_DIRECTORIES = {Path("."), Path("apps/desktop")}
-
-
-def is_code_file(path: str) -> bool:
-    candidate = Path(path)
-    if path in ROOT_CODE_FILES:
-        return True
-    if candidate.suffix not in CODE_SUFFIXES:
-        return False
-    return path.startswith(CODE_DIRECTORIES) or (
-        candidate.parent in CONFIG_DIRECTORIES and ".config." in candidate.name
-    )
-
-
-def code_lines(commit: str, counter: BlobLineCounter) -> int:
-    return sum(counter.lines(sha) for sha, path in code_blobs(commit) if is_code_file(path))
 
 
 def apply_type() -> None:
@@ -133,7 +97,7 @@ def draw_growth(axis: plt.Axes, times: list[datetime], lines: list[int]) -> None
         zorder=4,
     )
     axis.yaxis.set_major_formatter(FuncFormatter(lambda value, _position: f"{int(value):,}"))
-    axis.set_ylim(bottom=0, top=max(lines) * 1.07)
+    axis.set_ylim(bottom=0, top=max(1, max(lines) * 1.07))
     axis.margins(x=0.015)
     style_time_axis(axis)
 
@@ -152,8 +116,16 @@ def draw_deltas(axis: plt.Axes, times: list[datetime], deltas: list[int]) -> Non
     axis.grid(axis="y", color=GRID, linewidth=0.8, alpha=0.58)
 
 
-def save_clean(times: list[datetime], lines: list[int]) -> None:
-    deltas = [lines[0], *(current - previous for previous, current in zip(lines, lines[1:]))]
+def add_footer(figure: plt.Figure, records: list[dict], ref: str) -> None:
+    figure.text(0.075, 0.065, provenance(records, ref), fontsize=8.5, color=MUTED)
+    figure.text(0.075, 0.04, SCOPE_NOTE, fontsize=8.5, color=MUTED)
+    figure.text(0.075, 0.015, LIMIT_NOTE, fontsize=8.5, color=MUTED)
+
+
+def save_clean(records: list[dict], ref: str, output: Path) -> None:
+    times = [record["time"] for record in records]
+    lines = [record["lines"] for record in records]
+    deltas = [record["delta"] for record in records]
     figure = plt.figure(figsize=(16, 9), dpi=160, facecolor=BACKGROUND)
     grid = figure.add_gridspec(
         2,
@@ -162,22 +134,26 @@ def save_clean(times: list[datetime], lines: list[int]) -> None:
         left=0.055,
         right=0.99,
         top=0.985,
-        bottom=0.08,
+        bottom=0.17,
         hspace=0.08,
     )
     growth_axis = figure.add_subplot(grid[0])
     delta_axis = figure.add_subplot(grid[1], sharex=growth_axis)
     draw_growth(growth_axis, times, lines)
+    growth_axis.set_ylabel("Physical LOC")
     growth_axis.tick_params(axis="x", labelbottom=False)
     draw_deltas(delta_axis, times, deltas)
-    figure.savefig(CLEAN_OUTPUT, transparent=True, bbox_inches="tight")
+    delta_axis.set_ylabel("Net change")
+    delta_axis.set_xlabel("Commit date (Asia/Seoul)")
+    add_footer(figure, records, ref)
+    figure.savefig(output, transparent=True, bbox_inches="tight")
     plt.close(figure)
 
 
-def save_detailed(records: list[dict[str, object]]) -> None:
+def save_detailed(records: list[dict], ref: str, output: Path) -> None:
     times = [record["time"] for record in records]
     lines = [record["lines"] for record in records]
-    deltas = [lines[0], *(current - previous for previous, current in zip(lines, lines[1:]))]
+    deltas = [record["delta"] for record in records]
     elapsed_seconds = round((times[-1] - times[0]).total_seconds())
     hours, remainder = divmod(elapsed_seconds, 3600)
     minutes = remainder // 60
@@ -190,29 +166,30 @@ def save_detailed(records: list[dict[str, object]]) -> None:
         left=0.075,
         right=0.985,
         top=0.80,
-        bottom=0.09,
+        bottom=0.17,
         hspace=0.08,
     )
     growth_axis = figure.add_subplot(grid[0])
     delta_axis = figure.add_subplot(grid[1], sharex=growth_axis)
     draw_growth(growth_axis, times, lines)
-    growth_axis.set_ylabel("Total lines of code", fontsize=10, labelpad=14)
+    growth_axis.set_ylabel("Physical LOC (including blanks/comments)", fontsize=10, labelpad=14)
     growth_axis.tick_params(axis="x", labelbottom=False)
 
     draw_deltas(delta_axis, times, deltas)
     delta_axis.set_ylabel("Change per commit", fontsize=10, labelpad=14)
+    delta_axis.set_xlabel("Commit date (Asia/Seoul)")
 
-    figure.text(0.075, 0.935, f"Setdown's first {hours} hours", fontsize=25, weight="bold")
+    figure.text(0.075, 0.935, "Setdown code growth", fontsize=25, weight="bold")
     figure.text(
         0.075,
         0.893,
-        "Repository growth and net change by actual commit time",
+        "Committed code and net change along first-parent history",
         fontsize=11.5,
         color=MUTED,
     )
 
     metrics = (
-        ("Elapsed time", f"{hours}h {minutes}m"),
+        ("Calendar span", f"{hours // 24}d {hours % 24}h {minutes}m"),
         ("Commits", f"{len(records)}"),
         ("Final size", f"{lines[-1]:,} lines"),
     )
@@ -220,52 +197,42 @@ def save_detailed(records: list[dict[str, object]]) -> None:
         figure.text(x_position, 0.934, label, fontsize=9.5, color=MUTED)
         figure.text(x_position, 0.895, value, fontsize=16, weight="bold", color=INK)
 
-    figure.text(
-        0.985,
-        0.025,
-        "Included: app source · tests · build config   |   Excluded: README · reports · lockfiles · assets · vendor",
-        ha="right",
-        fontsize=8.5,
-        color=MUTED,
-    )
-    figure.savefig(DETAILED_OUTPUT, transparent=True, bbox_inches="tight")
+    last = records[-1]
+    figure.text(0.075, 0.85,
+                f"Production: {last['production']:,}  |  Tests/support: {last['testing']:,}  |  Tooling: {last['tooling']:,}",
+                fontsize=11, color=MUTED)
+    add_footer(figure, records, ref)
+    figure.savefig(output, transparent=True, bbox_inches="tight")
     plt.close(figure)
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--ref", default=DEFAULT_REF, help="First-parent Git ref (default: main)")
+    parser.add_argument("--output-dir", type=Path, default=OUTPUT_DIR)
+    parser.add_argument("--all", action="store_true", help="Also render architecture, feature and test charts from this snapshot")
+    args = parser.parse_args()
     started = monotonic()
-    records = []
-    history = git_text(
-        "log", "--reverse", "--format=%H%x09%cI%x09%s"
-    ).splitlines()
-    if not history:
-        raise RuntimeError("No commits found in this repository.")
-    print(f"Counting code lines across {len(history)} commits…", file=sys.stderr, flush=True)
-    with BlobLineCounter() as counter:
-        for index, row in enumerate(history, 1):
-            commit, committed_at, subject = row.split("\t", 2)
-            records.append(
-                {
-                    "commit": commit,
-                    "time": datetime.fromisoformat(committed_at),
-                    "subject": subject,
-                    "lines": code_lines(commit, counter),
-                }
-            )
-            if index == 1 or index % 25 == 0 or index == len(history):
-                print(f"Counted {index}/{len(history)} commits", file=sys.stderr, flush=True)
-
-    CLEAN_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    times = [record["time"] for record in records]
-    lines = [record["lines"] for record in records]
-
+    print(f"Counting {args.ref} first-parent history…", flush=True)
+    records = history(args.ref)
+    args.output_dir.mkdir(parents=True, exist_ok=True)
     apply_type()
-    save_clean(times, lines)
-    save_detailed(records)
+    save_clean(records, args.ref, args.output_dir / CLEAN_OUTPUT.name)
+    save_detailed(records, args.ref, args.output_dir / DETAILED_OUTPUT.name)
+    write_csv(records, args.output_dir / "repository-code-growth.csv")
+    write_audit(records, args.ref, args.output_dir)
+    if args.all:
+        from growth_charts import plot_breakdown
 
-    print(f"Wrote {CLEAN_OUTPUT.relative_to(ROOT)}")
-    print(f"Wrote {DETAILED_OUTPUT.relative_to(ROOT)}")
-    print(f"Final code lines: {lines[-1]:,}")
+        for view in VIEWS:
+            plot_breakdown(records, args.output_dir / f"{STEMS[view]}.png", view, args.ref)
+            write_csv(records, args.output_dir / f"{STEMS[view]}.csv", view)
+        from code_density import generate
+
+        generate(args.ref, args.output_dir, commits=records)
+    print(f"Wrote outputs to {args.output_dir}")
+    print(f"Measured {records[-1]['commit']} ({len(records)} first-parent commits)")
+    print(f"Final physical LOC: {records[-1]['lines']:,}")
     print(f"Completed in {monotonic() - started:.1f}s")
 
 

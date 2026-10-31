@@ -3,9 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "python3 plot-code-growth.py && python3 plot-component-growth.py",
-    "build:total": "python3 plot-code-growth.py",
-    "build:components": "python3 plot-component-growth.py"
+    "build": "python3 -B plot-code-growth.py --all",
+    "build:total": "python3 -B plot-code-growth.py",
+    "build:components": "python3 -B plot-component-growth.py",
+    "build:features": "python3 -B plot-component-growth.py --view features",
+    "build:tests": "python3 -B plot-component-growth.py --view tests",
+    "build:density": "python3 -B code_density.py",
+    "test": "python3 -B -m unittest discover -s tests -v"
   },
   "license": "GPL-3.0-only"
 }

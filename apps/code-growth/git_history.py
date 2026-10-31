@@ -53,6 +53,12 @@ class BlobLineCounter(AbstractContextManager["BlobLineCounter"]):
         cached = self.cache.get(sha)
         if cached is not None:
             return cached
+        count = len(self.blob(sha).splitlines())
+        self.cache[sha] = count
+        return count
+
+    def blob(self, sha: str) -> bytes:
+        """Read a blob through the existing batch process without caching bytes."""
         if self.process.stdin is None or self.process.stdout is None:
             raise RuntimeError("git cat-file batch process is unavailable")
         self.process.stdin.write(f"{sha}\n".encode("ascii"))
@@ -65,6 +71,4 @@ class BlobLineCounter(AbstractContextManager["BlobLineCounter"]):
         content = self.process.stdout.read(size)
         if len(content) != size or self.process.stdout.read(1) != b"\n":
             raise RuntimeError(f"incomplete git blob {sha}")
-        count = len(content.splitlines())
-        self.cache[sha] = count
-        return count
+        return content
