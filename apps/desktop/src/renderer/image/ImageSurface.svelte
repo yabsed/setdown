@@ -6,7 +6,8 @@
   import { imageMimeType } from '../../core/document/document-profile';
   import type { ReadingPosition, ImageReadingPosition } from '../../core/reading/reading-position';
   import type { ImagePort } from '../ports/desktop-port';
-  import { mediaZoom } from '../zoom-state.svelte';
+  import { TabZoom } from '../editor/tab-zoom';
+  import { textZoomFactor } from '../editor/text-zoom';
 
   let { tabId, document: file, initialPosition, desktop, onposition, active, focused, onfocus }: {
     tabId: string; document: DocumentSnapshot; initialPosition?: ReadingPosition; desktop: ImagePort; active: boolean; focused: boolean; onfocus(): void;
@@ -21,7 +22,10 @@
     try { editSession = await imageSessions.open(tabId); if (!dead) editing = true; }
     catch (cause) { editError = String(cause); } finally { openingEditor = false; }
   }
-  let zoom = $state<ImageReadingPosition['zoom']>(initial?.zoom ?? 'fit');
+  let zoom = $state<ImageReadingPosition['zoom']>(untrack(() => textZoomFactor(tabId)));
+  let scale = $state(untrack(() => textZoomFactor(tabId)));
+  type Anchor = { x: number; y: number; pointX: number; pointY: number } | 'fit';
+  let tabZoom: TabZoom<Anchor>;
   let rotation = $state(initial?.rotation ?? 0);
   let centerX = initial?.centerX ?? .5;
   let centerY = initial?.centerY ?? .5;
@@ -40,8 +44,6 @@
   let drag: { x: number; y: number; left: number; top: number } | undefined;
   const rotatedWidth = $derived(rotation % 180 ? height : width);
   const rotatedHeight = $derived(rotation % 180 ? width : height);
-  const scale = $derived(zoom === 'fit-width' ? Math.max(1, viewportWidth - 32) / (rotatedWidth || 1) : zoom === 'fit' ? Math.min(1, Math.max(1, viewportWidth - 32) / (rotatedWidth || 1),
-    Math.max(1, viewportHeight - 32) / (rotatedHeight || 1)) : zoom);
   const stageWidth = $derived(Math.max(viewportWidth, rotatedWidth * scale + 32));
   const stageHeight = $derived(Math.max(viewportHeight, rotatedHeight * scale + 32));
 
@@ -60,6 +62,11 @@
     // or fit zoom undershoots and then grows again on the next resize callback.
     const bounds = host.getBoundingClientRect();
     viewportWidth = bounds.width; viewportHeight = bounds.height;
+    if (active && src && (zoom === 'fit' || zoom === 'fit-width')) {
+      const fitWidth = Math.max(1, viewportWidth - 32) / (rotatedWidth || 1);
+      const fit = zoom === 'fit-width' ? fitWidth : Math.min(1, fitWidth, Math.max(1, viewportHeight - 32) / (rotatedHeight || 1));
+      tabZoom.change({ percent: fit * 100 }, 'fit');
+    }
     await tick();
     if (dead || request !== layoutRequest) return;
     host.scrollLeft = centerX * stageWidth - host.clientWidth / 2;
@@ -69,13 +76,10 @@
     remember();
   }
   function changeZoom(value: string) {
-    remember(); zoom = value === 'fit' || value === 'fit-width' ? value : Number(value); void layout();
+    remember();
+    if (value === 'fit' || value === 'fit-width') { zoom = value; void layout(); }
+    else { zoom = Number(value); tabZoom.change({ percent: zoom * 100 }); void layout(); }
   }
-  $effect(() => {
-    if (src && !editing) mediaZoom[tabId] = { percent: scale * 100, max: 800, change: steps => {
-      if (active && !dead) changeZoom(String(steps === 0 ? 1 : Math.max(.1, Math.min(8, scale * 1.1 ** steps))));
-    } };
-  });
   const wheelZoom = new ContentZoomInput();
   function wheel(event: WheelEvent) {
     if (!event.isTrusted || !event.ctrlKey || event.altKey || event.metaKey) return;
@@ -87,18 +91,24 @@
     const x = event.clientX - rect.left, y = event.clientY - rect.top;
     const pointX = (host.scrollLeft + x - stageWidth / 2) / scale;
     const pointY = (host.scrollTop + y - stageHeight / 2) / scale;
-    const next = Math.max(.1, Math.min(8, scale * (typeof steps === 'number' ? 1.1 ** steps : steps.scale)));
-    // Commit geometry before the next wheel sample; rapid trackpad events must
-    // never combine a new scale with the previous frame's scroll offsets.
-    flushSync(() => { zoom = next; });
-    host.scrollLeft = pointX * scale + stageWidth / 2 - x;
-    host.scrollTop = pointY * scale + stageHeight / 2 - y;
-    remember();
+    tabZoom.change(steps, { x, y, pointX, pointY });
   }
   function rotate() { remember(); rotation = (rotation + 90) % 360; centerX = centerY = .5; void layout(); }
   $effect(() => { if (active && needsResize) { needsResize = false; void layout(); } });
 
   onMount(() => {
+    tabZoom = new TabZoom(tabId, desktop, (factor, anchor) => {
+      if (anchor && anchor !== 'fit') {
+        // Commit geometry before the next wheel sample, including rapid pinch input.
+        flushSync(() => { zoom = scale = factor; });
+        host.scrollLeft = anchor.pointX * scale + stageWidth / 2 - anchor.x;
+        host.scrollTop = anchor.pointY * scale + stageHeight / 2 - anchor.y;
+        remember();
+      } else {
+        scale = factor;
+        if (anchor !== 'fit') { zoom = factor; void layout(); }
+      }
+    });
     let url = '';
     host.addEventListener('wheel', wheel, { passive: false });
     const observer = new ResizeObserver(() => {
@@ -117,7 +127,7 @@
         await layout();
       } catch (cause) { if (!dead) error = cause instanceof Error ? cause.message : String(cause); }
     })();
-    return () => { dead = true; delete mediaZoom[tabId]; host.removeEventListener('wheel', wheel); observer.disconnect(); if (url) URL.revokeObjectURL(url); };
+    return () => { dead = true; tabZoom.dispose(); host.removeEventListener('wheel', wheel); observer.disconnect(); if (url) URL.revokeObjectURL(url); };
   });
 </script>
 
@@ -128,10 +138,10 @@
     <span class="image-dimensions">{#if width}{width} × {height}{/if}</span>
     <select aria-label="Image zoom" disabled={!src} value={String(zoom)} onchange={(event) => changeZoom(event.currentTarget.value)}>
       <option value="fit">Fit image</option><option value="fit-width">Fit width</option>
-      {#if typeof zoom === 'number' && ![.1, .25, .5, .75, 1, 1.5, 2, 3, 4, 8].includes(zoom)}
+      {#if typeof zoom === 'number' && ![.1, .25, .5, .75, 1, 1.5, 2, 3, 4, 8, 10].includes(zoom)}
         <option value={String(zoom)}>{Math.round(zoom * 100)}%</option>
       {/if}
-      {#each [.1, .25, .5, .75, 1, 1.5, 2, 3, 4, 8] as value}<option value={String(value)}>{value * 100}%</option>{/each}
+      {#each [.1, .25, .5, .75, 1, 1.5, 2, 3, 4, 8, 10] as value}<option value={String(value)}>{value * 100}%</option>{/each}
     </select>
     <button type="button" disabled={!src} onclick={() => changeZoom('1')}>100%</button>
     <button type="button" disabled={!src} onclick={() => changeZoom('fit-width')}>Fit width</button>
@@ -140,7 +150,7 @@
   {#if editError}<p role="alert">{editError}</p>{/if}
   {#if editing && editSession}
     {#await import('./ImageEditorSurface.svelte') then module}
-      <module.default {tabId} session={editSession} {active} {focused} {onfocus} ondone={() => { editing = false; void layout(); }} />
+      <module.default {tabId} {desktop} session={editSession} {active} {focused} {onfocus} ondone={() => { editing = false; void layout(); }} />
     {:catch cause}<p role="alert">Could not open image editor: {String(cause)}</p>{/await}
   {/if}
   <!-- The scrollable image region accepts keyboard scrolling as well as pointer panning. -->

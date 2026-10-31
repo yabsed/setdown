@@ -42,6 +42,64 @@ test('tab zoom isolates native targets, survives reload and composes with app zo
   assert.equal(zoom.tabFactor('git-diff:review:b'), 1.1);
 });
 
+test('document history seeds only new tabs and records zoom, departure and last close in main event order', () => {
+  const zoom = new WorkspaceZoom();
+  zoom.initializeTab('a', '/one.ts');
+  zoom.context(1, ['a'], 'a', { a: '/one.ts' });
+  zoom.changeTab('a', { percent: 110 });
+  assert.equal(zoom.settings.documents['/one.ts'], 110);
+  zoom.changeTab('a', { percent: 70 });
+  // A still-open document supplies the latest zoom to a new independent tab.
+  zoom.initializeTab('b', '/one.ts');
+  zoom.context(2, ['b'], 'b', { b: '/one.ts' });
+  assert.equal(zoom.tabFactor('b'), .7);
+  zoom.changeTab('b', { percent: 120 });
+  assert.equal(zoom.tabFactor('a'), .7);
+  zoom.context(1, ['a'], 'a', { a: '/one.ts' }); // Ordinary render/focus is not a save event.
+  assert.equal(zoom.settings.documents['/one.ts'], 120);
+  zoom.context(1, [], null); // Closing an unchanged older tab is nevertheless the latest event.
+  assert.equal(zoom.settings.documents['/one.ts'], 70);
+  zoom.initializeTab('c', '/one.ts');
+  assert.equal(zoom.tabFactor('c'), .7);
+  zoom.context(2, ['b'], 'b', { b: '/two.pdf' }); // Save the outgoing document, retain tab zoom.
+  assert.equal(zoom.settings.documents['/one.ts'], 120);
+  assert.equal(zoom.settings.documents['/two.pdf'], 120);
+  assert.equal(zoom.tabFactor('b'), 1.2);
+  zoom.changeTab('b', { percent: 85.25 });
+  zoom.context(2, ['b'], 'b', { b: '/one.ts' });
+  zoom.initializeTab('d', '/one.ts'); // The incoming document is remembered immediately too.
+  assert.equal(zoom.tabFactor('d'), .8525);
+  zoom.initializeTab('b', '/one.ts'); // Even a repeated initialization cannot reseed this ID.
+  assert.equal(zoom.tabFactor('b'), .8525);
+  assert.equal(zoom.settings.documents['/two.pdf'], 85.25);
+  zoom.closeOwner(2);
+  assert.equal(zoom.settings.documents['/one.ts'], 85.25);
+  assert.equal(zoom.ownsTab(2, 'b'), false);
+  assert.equal(zoom.tabFactor('c'), .7);
+});
+
+test('document zoom survives a disk round trip without coupling open tabs or trusting malformed history', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'setdown-document-zoom-'));
+  try {
+    const file = path.join(root, 'zoom.json'), zoom = new WorkspaceZoom();
+    const flush = installZoomSettings(file, zoom, () => {});
+    zoom.initializeTab('a', '/picture.png'); zoom.context(1, ['a'], 'a', { a: '/picture.png' });
+    zoom.changeTab('a', { percent: 70 });
+    // An old document must not lose its zoom just because many other files were read.
+    for (let i = 0; i < 1001; i++) zoom.context(1, ['a'], 'a', { a: `/later-${i}.ts` });
+    zoom.closeOwner(1); flush();
+    const restored = new WorkspaceZoom(); installZoomSettings(file, restored, () => {});
+    restored.initializeTab('new', '/picture.png');
+    assert.equal(restored.tabFactor('new'), .7);
+    restored.context(2, ['terminal'], 'terminal');
+    restored.context(2, ['terminal'], 'terminal', { terminal: '/picture.png' });
+    assert.equal(restored.tabFactor('terminal'), 1); // Existing terminal → file retains 100% too.
+    const malformed = new WorkspaceZoom();
+    malformed.restore({ documents: { '/bad': '70', '/infinite': Infinity, '/small': 0, '/large': 1001, '/valid': 70 } });
+    assert.deepEqual(malformed.settings.documents, { '/valid': 70 });
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('shell/front/back/another window use one scale', () => {
   const zoom = new WorkspaceZoom(); const views = [1, 2, 3, 4].map(target);
   views.forEach(view => zoom.track(view)); zoom.change(1);
@@ -123,15 +181,15 @@ test('every short pinch responds immediately without relying on wheel tick metad
   // A mouse notch immediately following a pinch still uses stepped zoom.
   assert.equal(input.consume({ deltaY: -80, deltaMode: 0 }, 2020), 1);
 });
-test('continuous tab zoom validates factors and keeps its existing bounds', () => {
+test('continuous tab zoom validates factors and keeps the common tab bounds', () => {
   const zoom = new WorkspaceZoom();
   for (const scale of [NaN, Infinity, 0, -.1, .49, 2.01, '1.1', null, undefined]) {
     assert.equal(zoom.changeTab('a', { scale }), false);
   }
   for (let i = 0; i < 20; i++) zoom.changeTab('a', { scale: 2 });
-  assert.equal(zoom.tabFactor('a'), 3);
+  assert.equal(zoom.tabFactor('a'), 10);
   for (let i = 0; i < 20; i++) zoom.changeTab('a', { scale: .5 });
-  assert.equal(zoom.tabFactor('a'), .5);
+  assert.equal(zoom.tabFactor('a'), .1);
   assert.equal(zoom.changeTab('a', 0), true); assert.equal(zoom.tabFactor('a'), 1);
 });
 test('native float rounding at a wheel notch boundary does not lose a zoom step', () => {
@@ -156,7 +214,6 @@ test('workspace wheel zoom reaches editors and terminals but never media surface
   assert.equal(isTextZoomTarget(null), false);
   // Terminals own a separate factor from editors and Markdown previews.
   assert.equal(wheelZoomScope(element('.monaco-editor')), 'text');
-  assert.equal(wheelZoomScope(element('[data-code-zoom="true"]')), 'code');
   assert.equal(wheelZoomScope(element('.web-reader')), 'text');
   assert.equal(wheelZoomScope(element('.notebook-surface')), 'text');
   assert.equal(wheelZoomScope(element('.video-surface')), 'text');
@@ -180,46 +237,52 @@ test('terminal zoom is independent of app/text zoom and never touches native tar
   zoom.change(0, 'terminal');
   assert.equal(zoom.terminalFactor, 1);
   assert.equal(zoom.textFactor, 1.1);
-  assert.deepEqual(zoom.snapshot, { app: 100, text: 110, terminal: 100, code: 100, revision: 3, tabs: {} });
+  assert.deepEqual(zoom.snapshot, { app: 100, text: 110, terminal: 100, revision: 3, tabs: {} });
 });
 
-test('code font preference persists fractional pinch zoom independently of tabs and native views', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'setdown-code-zoom-'));
+test('tab zoom persists fractional values without coupling files, native views or legacy preferences', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'setdown-tab-zoom-'));
   try {
     const file = path.join(root, 'zoom.json'), zoom = new WorkspaceZoom();
     const flush = installZoomSettings(file, zoom, () => {});
-    const shell = target(1), reader = target(2);
-    zoom.track(shell); zoom.track(reader, undefined, () => zoom.tabFactor('markdown'));
-    zoom.changeTab('markdown', 2);
-    const nativeUpdates = shell.factors.length + reader.factors.length;
-    assert.equal(zoom.changeCode(1), true);
-    assert.equal(zoom.changeCode({ scale: 1.025 }), true);
-    assert.equal(zoom.snapshot.code, 110 * 1.025);
-    assert.equal(zoom.snapshot.app, 100);
-    assert.equal(zoom.tabFactor('markdown'), 1.2);
-    assert.equal(zoom.tabFactor('terminal'), 1);
-    assert.equal(shell.factors.length + reader.factors.length, nativeUpdates);
-    flush();
+    const shell = target(1), page = target(2), reader = target(3), other = target(4);
+    zoom.track(shell); zoom.track(page, undefined, () => zoom.tabFactor('one'));
+    zoom.track(reader, undefined, () => zoom.tabFactor('one'));
+    zoom.track(other, undefined, () => zoom.tabFactor('two'));
+    const untouched = shell.factors.length + other.factors.length;
+    zoom.changeTab('one', 2);
+    assert.equal(page.factors.at(-1), 1.2); assert.equal(reader.factors.at(-1), 1.2);
+    assert.equal(zoom.tabFactor('two'), 1);
+    assert.equal(shell.factors.length + other.factors.length, untouched);
+    zoom.changeTab('one', { scale: 1.025 }); flush();
     const restored = new WorkspaceZoom(); installZoomSettings(file, restored, () => {});
-    assert.equal(restored.snapshot.code, zoom.snapshot.code);
-    assert.equal(restored.changeCode(0), true);
-    assert.equal(restored.snapshot.code, 100);
-    assert.equal(restored.tabFactor('markdown'), 1.2);
+    assert.equal(restored.tabFactor('one'), zoom.tabFactor('one'));
+    assert.equal(restored.tabFactor('new'), 1);
+    restored.changeTab('one', 0); assert.equal(restored.tabFactor('one'), 1);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('code zoom rejects invalid IPC/settings and bounds both wheel and pinch changes', () => {
+test('tab zoom validates all input and uses the same bounds for media and other surfaces', () => {
   const zoom = new WorkspaceZoom();
   for (const input of [NaN, Infinity, 1.5, 5, '1', null, {}, undefined,
-    { scale: NaN }, { scale: Infinity }, { scale: .49 }, { scale: 2.01 }, { scale: '1.1' }]) {
-    assert.equal(zoom.changeCode(input), false);
+    { scale: NaN }, { scale: Infinity }, { scale: .49 }, { scale: 2.01 }, { scale: '1.1' },
+    { percent: NaN }, { percent: Infinity }, { percent: '120' }]) {
+    assert.equal(zoom.changeTab('tab', input), false);
   }
-  zoom.restore({ text: 130, tabs: { oldCodeTab: 160 }, code: 500 });
-  assert.equal(zoom.snapshot.code, 100);
-  for (let i = 0; i < 20; i++) zoom.changeCode({ scale: 2 });
-  assert.equal(zoom.snapshot.code, 300);
-  for (let i = 0; i < 100; i++) zoom.changeCode(-4);
-  assert.equal(zoom.snapshot.code, 50);
+  zoom.changeTab('tab', { percent: 37.25 }); assert.equal(zoom.tabFactor('tab'), .3725);
+  for (let i = 0; i < 20; i++) zoom.changeTab('tab', { scale: 2 });
+  assert.equal(zoom.tabFactor('tab'), 10);
+  for (let i = 0; i < 100; i++) zoom.changeTab('tab', -4);
+  assert.equal(zoom.tabFactor('tab'), .1);
+});
+
+test('legacy website factors migrate once to the tab; global code preferences never seed other tabs', () => {
+  const zoom = new WorkspaceZoom();
+  zoom.restore({ code: 160, tabs: { 'one:website': 120, 'two:website': 140, two: 130, 'git-diff:review:a': 115 } });
+  assert.deepEqual(zoom.snapshot.tabs, { one: 120, two: 130, review: 115 });
+  assert.equal(zoom.tabFactor('new'), 1);
+  assert.equal(zoom.tabFactor('git-diff:review:b'), 1.15);
+  assert.equal('code' in zoom.snapshot, false);
 });
 
 test('text zoom composes with app zoom only in text previews, including spares and reloads', () => {

@@ -39,7 +39,7 @@ function fixture() {
   };
   const options = {
     workspace, session, preview, shell: { dataset: {} },
-    desktop: { terminal: { close: (id: string) => calls.push(`terminal-close:${id}`) }, updateText() {}, updateTabState() {}, activateDocument: async (doc: DocumentSnapshot) => doc,
+    desktop: { initializeTabZoom: async () => undefined, terminal: { close: (id: string) => calls.push(`terminal-close:${id}`) }, updateText() {}, updateTabState() {}, activateDocument: async (doc: DocumentSnapshot) => doc,
       readDocumentLocation: async (path: string) => snapshot(path.startsWith('file:') ? fileURLToPath(path) : path),
       saveTabDocument: async (doc: DocumentSnapshot, text: string, revision: number) => ({ canceled: false,
         document: { ...doc, text, savedText: text, revision, savedRevision: revision } }),
@@ -183,6 +183,7 @@ test('Explorer browsing replaces its preview and releases the outgoing model and
   assert.deepEqual(dispose.mock.calls[0], [previous.id]);
   assert.equal(calls.filter(call => call === 'destroy').length, 1);
   assert.equal(f.workspace.groups.focused.previewId, f.workspace.activeId);
+  assert.equal(f.workspace.activeId, previous.id);
   assert.ok(f.workspace.find(keep.id));
 });
 
@@ -528,13 +529,30 @@ test('an invalid newer address also cancels a slow older file read', async () =>
   assert.equal(f.workspace.active, tab);
 });
 
+test('Explorer replacement cancels an older address read even though the tab ID is reused', async () => {
+  const f = fixture();
+  await previewOpen(f.controller, snapshot('/project/first.txt'));
+  const id = f.workspace.activeId!;
+  let complete!: (doc: DocumentSnapshot) => void;
+  vi.spyOn(f.options.desktop, 'readDocumentLocation').mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
+  const pending = f.controller.navigateLocation(id, '/project/slow.txt');
+  await previewOpen(f.controller, snapshot('/project/second.txt'));
+  complete(snapshot('/project/slow.txt'));
+  assert.equal(await pending, false);
+  assert.equal(f.workspace.activeId, id);
+  assert.equal(f.workspace.activeDocument!.document.path, '/project/second.txt');
+  assert.equal(f.workspace.tabs.length, 1);
+});
+
 test('Explorer preview replacement retains its file history and Back keeps the preview slot', async () => {
   const f = fixture();
   await f.controller.show(snapshot('/project/keep.txt'));
   await previewOpen(f.controller, snapshot('/project/first.txt'));
-  await previewOpen(f.controller, snapshot('/project/second.txt'));
-  await previewOpen(f.controller, snapshot('/project/third.txt'));
   const id = f.workspace.activeId!;
+  await previewOpen(f.controller, snapshot('/project/second.txt'));
+  assert.equal(f.workspace.activeId, id);
+  await previewOpen(f.controller, snapshot('/project/third.txt'));
+  assert.equal(f.workspace.activeId, id);
   assert.equal(f.controller.canGoBack(id), true);
   const first = f.controller.navigateHistory(id, -1);
   const second = f.controller.navigateHistory(id, -1);

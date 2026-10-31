@@ -499,7 +499,8 @@ demotes it. Editing ordinary or shared Working Tree text pins the document; Save
 and Undo do not make it replaceable again. Dragging/moving a preview also pins it.
 
 `core/workspace/editor-groups.ts` owns each group's preview identity. Replacing a
-preview preserves its group and split geometry, releases its Monaco/native/media
+preview preserves its tab ID and tab zoom as well as its group and split geometry,
+releases its Monaco/native/media
 resources, and never closes dirty text or activates a neighboring document on the
 way to the requested one. Failed reads preserve the current tab; superseded
 project-file reads cannot override a newer open request. These rules do not change

@@ -517,6 +517,7 @@ export class PreviewManager {
   }
 
   closeOwner(ownerId: number) {
+    this.zoom.closeOwner(ownerId);
     this.backgrounds.delete(ownerId);
     this.foregrounds.delete(ownerId);
     this.responsiveLayouts.delete(ownerId);
@@ -531,15 +532,30 @@ export class PreviewManager {
   }
 
   registerIpc() {
-    ipcMain.on('workspace:zoom-tabs', (event, ids: unknown, active: unknown) => {
-      if (this.options.stateFor(event.sender.id) && event.senderFrame === event.sender.mainFrame) this.zoom.context(event.sender.id, ids, active);
+    ipcMain.on('workspace:zoom-tabs', (event, ids: unknown, active: unknown, files: unknown) => {
+      if (this.options.stateFor(event.sender.id) && event.senderFrame === event.sender.mainFrame) this.zoom.context(event.sender.id, ids, active, files);
+    });
+    ipcMain.handle('workspace:initialize-tab-zoom', (event, id: unknown, file: unknown) => {
+      if (!this.options.stateFor(event.sender.id) || event.senderFrame !== event.sender.mainFrame
+        || typeof id !== 'string' || !id || id.length >= 256
+        || typeof file !== 'string' || !file || file.length >= 32768) return;
+      this.zoom.initializeTab(id, file);
+      return this.zoom.snapshot;
     });
     ipcMain.handle('workspace:zoom-state', (event) => {
       if (!this.options.stateFor(event.sender.id) || event.senderFrame !== event.sender.mainFrame) return;
       return this.zoom.snapshot;
     });
-    for (const scope of ['app', 'text', 'terminal', 'code'] as const) {
-      ipcMain.on(scope === 'app' ? 'workspace:zoom' : scope === 'text' ? 'workspace:text-zoom' : scope === 'code' ? 'workspace:code-zoom' : 'workspace:terminal-zoom', (event, steps: unknown, tabId?: unknown) => {
+    ipcMain.handle('workspace:set-tab-zoom', (event, percent: unknown, tabId: unknown) => {
+      if (event.sender.isDestroyed() || event.senderFrame !== event.sender.mainFrame) return;
+      const state = this.options.stateFor(event.sender.id);
+      if (!state || state.window.isDestroyed() || !state.window.isVisible()
+        || typeof tabId !== 'string' || !this.zoom.ownsTab(event.sender.id, tabId)) return;
+      this.zoom.changeTab(tabId, { percent });
+      return this.zoom.tabFactor(tabId) * 100;
+    });
+    for (const scope of ['app', 'text', 'terminal'] as const) {
+      ipcMain.on(scope === 'app' ? 'workspace:zoom' : scope === 'text' ? 'workspace:text-zoom' : 'workspace:terminal-zoom', (event, steps: unknown, tabId?: unknown) => {
         if (event.sender.isDestroyed() || event.senderFrame !== event.sender.mainFrame) return;
         const direct = this.options.stateFor(event.sender.id);
         const visible = direct ? null : Array.from(this.views.values()).find((preview) =>
@@ -551,8 +567,7 @@ export class PreviewManager {
           const nativeId = visible ? [...this.views].find(([, entry]) => entry === visible)?.[0] : null;
           const id = nativeId ?? (typeof tabId === 'string' ? tabId : this.zoom.activeTab(state.webContentsId));
           if (id && (nativeId || this.zoom.ownsTab(state.webContentsId, id))) {
-            if (scope === 'code') { if (direct) this.zoom.changeCode(steps); }
-            else this.zoom.changeTab(id, steps);
+            this.zoom.changeTab(id, steps);
           }
         }
       });

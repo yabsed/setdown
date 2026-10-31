@@ -32,6 +32,7 @@ test(`overlapping windows accept repeated ${moving} body drops and clear a remot
     } else await other.locator('.new-terminal-tab-button').click();
     const selected = other.locator('.document-tab[aria-selected="true"]');
     const id = (await selected.getAttribute('data-tab-id'))!;
+    await other.getByRole('button', { name: moving === 'web' ? 'Zoom website in' : 'Zoom terminal in', exact: true }).click({ clickCount: 2 });
     const nativePage = moving === 'web' ? await f.app.evaluate(async ({ webContents }, origin) => {
       const page = webContents.getAllWebContents().find(page => page.getURL() === `${origin}/first`)!;
       await page.executeJavaScript('window.keptDragDraft = "SAME_LIVE_PAGE"'); return page.id;
@@ -82,6 +83,7 @@ test(`overlapping windows accept repeated ${moving} body drops and clear a remot
       if (!canceled) {
         await expect(pages[destination].locator(`[data-tab-id="${id}"]`)).toBeVisible();
         await expect(tab).toHaveCount(0); owner = destination;
+        await expect(pages[owner].getByRole('button', { name: moving === 'web' ? 'Reset website zoom' : 'Reset terminal zoom', exact: true })).toHaveText('120%');
       } else await expect(tab).toBeVisible();
       for (const page of pages) {
         await expect(page.locator('.group-drop-overlay')).toBeHidden();

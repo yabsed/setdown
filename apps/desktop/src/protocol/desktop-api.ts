@@ -281,9 +281,11 @@ export type MarkTexApi = {
   mediaUrl(path: string): string;
   terminal: import('./terminal').TerminalApi;
   language: import('./language').LanguageApi;
+  setTabZoom(percent: number, tabId: string): Promise<number | undefined>;
   getZoom(): Promise<import('../core/zoom').ZoomSnapshot>;
-  changeZoom(steps: number, scope: 'app' | 'text' | 'terminal' | 'code', tabId?: string): void;
-  setZoomTabs(ids: string[], active: string | null): void;
+  changeZoom(steps: number, scope: 'app' | 'text' | 'terminal', tabId?: string): void;
+  initializeTabZoom(id: string, file: string): Promise<import('../core/zoom').ZoomSnapshot | undefined>;
+  setZoomTabs(ids: string[], active: string | null, documents?: Record<string, string>): void;
   onZoomChanged(listener: (zoom: import('../core/zoom').ZoomSnapshot) => void): () => void;
   initialTheme: ThemeSnapshot;
   getDocument(): Promise<DocumentSnapshot | null>;

@@ -1,3 +1,4 @@
+import { TabZoom } from '../editor/tab-zoom';
 import { ContentZoomInput } from '../../core/wheel-zoom';
 import { getDocument, GlobalWorkerOptions, PDFDataRangeTransport, AnnotationMode,
   type PDFDocumentLoadingTask, type PDFDocumentProxy } from 'pdfjs-dist/legacy/build/pdf.mjs';
@@ -11,9 +12,8 @@ import { readPdfBytes } from './pdf-range';
 
 export type OutlineItem = { title: string; depth: number; dest: string | unknown[] | null };
 type Options = {
-  host: HTMLElement; document: DocumentSnapshot; initial?: PdfReadingPosition; desktop: PdfPort;
+  tabId: string; host: HTMLElement; document: DocumentSnapshot; initial?: PdfReadingPosition; desktop: PdfPort;
   active(): boolean;
-  scaleChanged?(scale: number): void;
   changed(position: PdfReadingPosition): void;
   status(page: number, pages: number): void;
   outline(items: OutlineItem[]): void;
@@ -35,7 +35,19 @@ export class PdfRuntime {
   private restoring = true;
   private position?: PdfReadingPosition;
   private needsResize = false;
-  constructor(private readonly options: Options) {}
+  private suspended = false;
+  private readonly tabZoom: TabZoom<number[]>;
+  private fit?: 'page-width' | 'page-fit' | 'auto';
+  private fitting = false;
+  constructor(private readonly options: Options) {
+    this.tabZoom = new TabZoom(options.tabId, options.desktop, (factor, origin) => {
+      if (this.fitting) return;
+      this.fit = undefined;
+      if (!this.viewer || this.restoring) return;
+      if (origin) this.viewer.updateScale({ scaleFactor: factor / this.viewer.currentScale, origin, drawingDelay: 150 });
+      else this.viewer.currentScaleValue = String(factor);
+    });
+  }
 
   async open(): Promise<void> {
     try {
@@ -68,7 +80,14 @@ export class PdfRuntime {
       const viewer = this.viewer = new PDFViewer(viewerOptions);
       links.setViewer(viewer);
       bus.on('scalechanging', ({ scale }: { scale: number }) => {
-        if (!this.dead) this.options.scaleChanged?.(scale);
+        if (!this.dead && !this.restoring && !this.fitting && this.options.active()) {
+          if (this.fit && viewer.currentScaleValue !== this.fit) this.fit = undefined;
+          this.fitting = true;
+          this.tabZoom.change({ percent: scale * 100 });
+          // A preset can calculate a scale beyond the common tab range.
+          if (Math.abs(scale - this.tabZoom.factor) > 1e-10) viewer.currentScaleValue = String(this.tabZoom.factor);
+          this.fitting = false;
+        }
       });
       const wheelZoom = new ContentZoomInput();
       container.addEventListener('wheel', (event) => {
@@ -77,11 +96,9 @@ export class PdfRuntime {
         if (this.restoring || this.dead || !this.options.active()) return;
         const steps = wheelZoom.consume(event, performance.now());
         if (!steps) return;
-        const next = Math.max(.1, Math.min(10, viewer.currentScale * (typeof steps === 'number' ? 1.1 ** steps : steps.scale)));
         const rect = container.getBoundingClientRect();
-        viewer.updateScale({ scaleFactor: next / viewer.currentScale,
-          origin: [event.clientX - rect.left + container.offsetLeft,
-            event.clientY - rect.top + container.offsetTop], drawingDelay: 150 });
+        this.tabZoom.change(steps, [event.clientX - rect.left + container.offsetLeft,
+          event.clientY - rect.top + container.offsetTop]);
       }, { passive: false, signal: this.abort.signal });
       shadow.addEventListener('click', (event) => {
         const link = (event.target as Element)?.closest?.('a');
@@ -90,7 +107,7 @@ export class PdfRuntime {
         }
       }, { capture: true, signal: this.abort.signal });
       bus.on('pagechanging', ({ pageNumber }: { pageNumber: number }) => {
-        if (!this.restoring && !this.dead) this.options.status(pageNumber, this.pdf?.numPages ?? 0);
+        if (!this.restoring && !this.dead && !this.suspended && this.options.active()) this.options.status(pageNumber, this.pdf?.numPages ?? 0);
       });
       bus.on('updatefindmatchescount', ({ matchesCount }: { matchesCount: { current: number; total: number } }) =>
         this.options.matches(matchesCount.current, matchesCount.total));
@@ -98,9 +115,9 @@ export class PdfRuntime {
         if (matchesCount) this.options.matches(matchesCount.current, matchesCount.total);
       });
       bus.on('updateviewarea', ({ location }: { location: { pageNumber: number; left: number; top: number } }) => {
-        if (this.restoring || this.dead || !this.options.active()) return;
+        if (this.restoring || this.dead || this.suspended || !this.options.active()) return;
         const raw = viewer.currentScaleValue;
-        const zoom = ['page-width', 'page-fit', 'auto'].includes(raw) ? raw as PdfReadingPosition['zoom'] : viewer.currentScale;
+        const zoom = this.fit ?? (['page-width', 'page-fit', 'auto'].includes(raw) ? raw as PdfReadingPosition['zoom'] : viewer.currentScale);
         this.position = { kind: 'pdf', page: location.pageNumber, left: location.left || 0, top: location.top || 0,
           zoom, rotation: viewer.pagesRotation };
         this.options.changed(this.position);
@@ -130,8 +147,9 @@ export class PdfRuntime {
       await viewer.pagesPromise;
       if (this.dead) return;
       const saved = this.options.initial;
+      this.position = saved;
       viewer.pagesRotation = saved?.rotation ?? 0;
-      viewer.currentScaleValue = String(saved?.zoom ?? 'page-width');
+      viewer.currentScaleValue = String(this.tabZoom.factor);
       if (saved) {
         const page = Math.max(1, Math.min(pdf.numPages, saved.page));
         viewer.scrollPageIntoView({ pageNumber: page,
@@ -140,7 +158,12 @@ export class PdfRuntime {
       // Ignore all setup scroll events until the restored layout is installed.
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       if (this.dead) return;
+      // The location bar remains usable while PDF.js installs the first layout.
+      // Reconcile a tab zoom received during that restoration fence.
+      if (Math.abs(viewer.currentScale - this.tabZoom.factor) > 1e-10)
+        viewer.currentScaleValue = String(this.tabZoom.factor);
       this.restoring = false;
+      this.suspended = !this.options.active();
       viewer.update();
       this.options.status(viewer.currentPageNumber, pdf.numPages);
       void pdf.getOutline().then((outline) => {
@@ -163,23 +186,35 @@ export class PdfRuntime {
       this.observer.observe(container);
     } catch (error) { if (!this.dead) this.options.error(error instanceof Error ? error.message : String(error)); }
   }
+  suspend(): void { this.suspended = true; }
   resume(): void {
     const viewer = this.viewer;
-    if (!viewer || this.dead || this.restoring || !this.needsResize) return;
+    if (!viewer || this.dead || this.restoring || (!this.needsResize && !this.suspended)) return;
+    const saved = this.position;
     this.needsResize = false;
-    const scale = viewer.currentScaleValue;
-    if (['page-width', 'page-fit', 'auto'].includes(scale)) viewer.currentScaleValue = scale;
+    // A cached surface can lose its scroll offset during hidden layout/DOM moves.
+    // Keep its last visible PDF point authoritative until reactivation finishes.
+    this.suspended = true;
+    if (this.fit) viewer.currentScaleValue = this.fit;
+    if (saved) viewer.scrollPageIntoView({ pageNumber: Math.min(saved.page, this.pdf?.numPages ?? saved.page),
+      destArray: [null, { name: 'XYZ' }, saved.left, saved.top, null], ignoreDestinationZoom: true });
+    this.suspended = false;
     viewer.update();
+    this.options.status(viewer.currentPageNumber, this.pdf?.numPages ?? 0);
   }
   page(number: number): void {
     if (this.viewer && this.pdf && Number.isFinite(number)) this.viewer.currentPageNumber = Math.max(1, Math.min(this.pdf.numPages, Math.round(number)));
   }
   zoom(value: PdfReadingPosition['zoom']): void {
-    if (this.viewer) this.viewer.currentScaleValue = String(value);
-  }
-  zoomStep(steps: number): void {
     if (!this.viewer || this.dead || this.restoring || !this.options.active()) return;
-    this.zoom(steps === 0 ? 1 : Math.max(.1, Math.min(10, this.viewer.currentScale * 1.1 ** steps)));
+    if (typeof value === 'number') {
+      this.fit = undefined;
+      this.tabZoom.change({ percent: value * 100 });
+      this.viewer.currentScaleValue = String(this.tabZoom.factor);
+    } else {
+      this.fit = value;
+      this.viewer.currentScaleValue = value;
+    }
   }
   rotate(): void { if (this.viewer) this.viewer.pagesRotation = (this.viewer.pagesRotation + 90) % 360; }
   find(query: string, previous = false, again = false): void {
@@ -189,7 +224,7 @@ export class PdfRuntime {
   destination(dest: OutlineItem['dest']): void { if (dest) void this.links?.goToDestination(dest); }
   dispose(): void {
     if (this.dead) return;
-    this.dead = true; this.abort.abort(); this.observer?.disconnect();
+    this.dead = true; this.tabZoom.dispose(); this.abort.abort(); this.observer?.disconnect();
     // setDocument(null) cancels rendering, destroys page views and observers.
     this.viewer?.setDocument(null as unknown as PDFDocumentProxy);
     this.links?.setDocument(null);

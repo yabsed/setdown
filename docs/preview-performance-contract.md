@@ -71,25 +71,44 @@ Set `SETDOWN_TEST_PDF_FILE` to an absolute PDF path when running that test to
 repeat the same visual and clipboard checks against a real document; it copies
 the file into its temporary workspace before opening it.
 
-Code and plain-text editor font zoom is a persisted preference shared across files, splits,
-code Git reviews and windows. Wheel/pinch and location controls use the same
-preference; opening/reopening files or restarting must preserve it. Markdown
-(source and reader), notebooks, terminals, media and web pages retain independent
-content zoom. `workspace-zoom.spec.ts` and `text-zoom.test.ts` cover new files,
-switching, splits, restart, Undo and isolation; `workspace-zoom.test.ts` covers
-persistence and input validation. Code zoom never reapplies native view factors.
+Content zoom belongs exclusively to the workspace tab ID. Website, web Reader,
+Markdown/source, code/plain text, notebooks, PDF/image (including image editing),
+video and terminal surfaces all consume that same value. Address navigation and
+Back/Forward and Explorer preview replacement retain it when the tab's resource or surface changes. Files of the
+same type and different views of the same file do not share zoom. The two panes
+of a Git review share its review tab's factor. Transferred tabs retain their ID
+and factor. A newly allocated file tab starts at that document's last recorded
+percentage, or 100% without history. Each zoom change and tab/window close records
+the current percentage. Navigation records both the outgoing and incoming file
+at the retained tab percentage. Main
+process event order decides the latest value across independent tabs/windows;
+ordinary rendering, focusing and scrolling do not overwrite it. Existing tab
+navigation (including Explorer preview replacement) never reapplies file history.
+File history persists across restarts without time-based or recent-file eviction,
+separately from reading positions; neither this history nor another tab's changes own a live tab's zoom.
+Initial zoom is resolved before mounting a new file's editor/reader/media surface.
 
-Other content zoom belongs to each tab. Ctrl+plus/minus and Ctrl+0 still change/reset
-persisted app zoom in every window. Ctrl+wheel and location-bar controls change
-only the addressed tab's content factor, including Markdown/Git Markdown editors, native
-Markdown previews, terminals, and web reader mode. Native previews compose
-app × tab zoom; Markdown editor and terminal typography uses the tab factor.
-These new tabs start at 100%, even when another tab of the same type is enlarged.
-The two panes of one Markdown Git review share that review tab's factor.
-Transferred tab IDs keep their factors. A newly created Markdown tab after
-restart is a new zoom scope.
-Legacy text/terminal preference fields are retained for settings compatibility;
-they no longer couple production tabs.
+Ctrl+plus/minus and Ctrl+0 still change/reset persisted app zoom in every window.
+Ctrl+wheel/pinch and location controls address only the pointed-to tab. Native
+previews compose app × tab zoom (within Chromium's native 25–500% effective zoom
+limits); native bounds use app zoom alone. All tab surfaces store 10–1000% (including fractional fit values), so changing
+resource type does not change the stored percentage. Native Chromium rendering
+clamps effective zoom to 25–500%; that platform limit does not rewrite tab state. App zoom retains its existing 50–300% range.
+
+PDF/image 100% means original size. Fit controls explicitly calculate and publish
+the corresponding tab percentage, within the common bounds. Fit mode continues
+recalculating on viewport changes while that surface is active; leaving it carries
+the resulting number to the next resource. Numeric controls and wheel/pinch leave
+fit mode. Cursor anchors, worker/canvas/model identity, rotation, reading positions,
+Undo and focus must survive zoom. Synchronous media geometry updates reconcile
+only the latest acknowledged request, so rapid gestures cannot rewind to an older
+IPC snapshot. Cached inactive surfaces never publish fit changes.
+
+Legacy text/terminal preference fields remain readable but cannot seed new tabs.
+The former global code preference is ignored; former website-only settings migrate
+to their tab (an existing canonical tab value wins). `workspace-zoom.test.ts`,
+`text-zoom.test.ts`, `workspace-zoom.spec.ts`, browser navigation/reader/transfer
+and media reading-position tests cover ownership, migration, ordering and isolation.
 
 Native targets use [Electron's isolated zoom mode](https://www.electronjs.org/docs/latest/api/web-contents#contentssetzoommodemode) so two pages on the same origin
 can have different factors. Native bounds still convert with **app zoom only**.
@@ -109,7 +128,7 @@ changes the tab factor continuously using its logarithmic scale, without a
 dead zone or reliance on deprecated wheel tick metadata. Coarse Ctrl+wheel
 retains its existing notch scale. Fractional tab factors survive persistence.
 Residual input must not carry between tab owners. Notebook outputs and video surfaces participate too;
-PDF/image pinches use their existing cursor-anchored file scale. Shell/app zoom,
+PDF/image pinches change that same tab factor with cursor-anchored geometry. Shell/app zoom,
 other tabs, live page identity, and editor models remain unchanged. The zoom,
 browser, and video Electron tests use `Input.synthesizePinchGesture` with the
 mouse source, exercising Chromium's touchpad-to-wheel conversion without a
@@ -171,7 +190,7 @@ identity, focus, unsaved content and Undo. The workspace theme and Git document
 style E2E tests cover these transitions, colors and restart persistence; the
 existing all-theme notebook, browser and terminal checks include all three.
 
-Browser coarse Ctrl+wheel changes website zoom from 50% to 300% in 10-point steps;
+Browser coarse Ctrl+wheel changes tab zoom from 10% to 1000% in 10-point steps;
 fine pixel input changes it continuously within those same limits.
 The isolated page preload registers the bounded wheel accumulator in each
 committed frame after a native owner/frame readiness acknowledgment;
@@ -186,10 +205,9 @@ bounded integer steps or finite relative scale factors from 0.5 to 2;
 no desktop API is exposed to remote pages.
 
 Every tab's location bar displays decrease, reset percentage, and increase
-controls, including 100%. Live web pages use their tab's website factor; web
-reader mode uses that tab's separate Markdown/text factor. Reader Ctrl+wheel
-follows that same tab text scope. Entering or
-leaving reader mode preserves the live page's website factor and form state.
+controls, including 100%. Live web pages and web Reader use the same tab factor.
+Reader Ctrl+wheel changes that factor, including for the retained live page.
+Entering or leaving Reader preserves the tab percentage and live form state.
 Bookmark and reader buttons precede zoom, with the Markdown toolbar icon style;
 uBlock stays active and its controls remain available from Browser Extensions.
 One transparent Extensions button before the page actions keeps the same width in live web and Reader
@@ -208,8 +226,8 @@ and explicit compatibility limits are in `browser-extension-runtime.md`.
 without focusing or showing the hidden web page in Reader mode.
 The Electron test helper enables Chromium sandbox, matching production and
 allowing MV3 service-worker preloads to run.
-Terminal and video bars use their tab factors; PDF/image bars use their actual
-per-tab scale (including fit modes). Each split's controls
+Terminal, video and PDF/image bars use the same tab factor; PDF/image rendering
+applies it to the original size (Fit writes the calculated percentage to the tab). Each split's controls
 address its own tab. Updates from wheels and menus keep the addressed tab's percentage current; indicators add no native captures, navigation,
 or layout polling. `test/e2e/browser/*.spec.ts`, `workspace-zoom.spec.ts`, and
 `terminal.spec.ts` cover the toolbar routing alongside the existing zoom checks.

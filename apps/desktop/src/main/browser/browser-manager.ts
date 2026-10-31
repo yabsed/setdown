@@ -68,10 +68,10 @@ export class BrowserManager {
   });
   readonly tabDrag = new BrowserTabDrag(id => this.options.stateFor(id)?.window, () => this.options.theme?.() ?? DEFAULT_PREVIEW_THEME);
   constructor(private readonly options: Options) {}
-  private pageZoom(entry: Entry): number { return this.options.zoom.tabFactor(`${entry.page.id}:website`); }
+  private pageZoom(entry: Entry): number { return this.options.zoom.tabFactor(entry.page.id); }
   private zoomPage(entry: Entry, steps: unknown, requireVisible = true): void {
     if (!this.live(entry) || (requireVisible && !entry.view.getVisible())) return;
-    this.options.zoom.changeTab(`${entry.page.id}:website`, steps);
+    this.options.zoom.changeTab(entry.page.id, steps);
   }
   private get session() {
     if (!this.profile) {

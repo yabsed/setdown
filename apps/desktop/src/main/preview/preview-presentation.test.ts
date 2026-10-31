@@ -30,7 +30,7 @@ vi.mock('../../core/preview/preview-install', () => ({
 }));
 vi.mock('../windows/workspace-zoom', async (importOriginal) => ({
   ...await importOriginal<typeof import('../windows/workspace-zoom')>(),
-  WorkspaceZoom: class { track() {} factor = 1; tabFactor() { return 1; } },
+  WorkspaceZoom: class { track() {} closeOwner() {} factor = 1; tabFactor() { return 1; } },
 }));
 
 const bounds = { x: 20, y: 40, width: 600, height: 450 };

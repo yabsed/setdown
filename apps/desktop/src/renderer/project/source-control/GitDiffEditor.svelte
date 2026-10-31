@@ -1,6 +1,6 @@
 <script lang="ts">
   import { APP_FONT_FAMILY } from '../../../core/theme/typography';
-  import { onCodeZoom, onTextZoom, textZoomOptions, usesCodeZoom } from "../../editor/text-zoom";
+  import { onTextZoom, textZoomOptions } from "../../editor/text-zoom";
   import { onDestroy, untrack } from 'svelte';
   import type * as Monaco from 'monaco-editor';
   import { normalizePreviewTheme } from '../../../core/preview/preview-preferences';
@@ -45,14 +45,13 @@
     const original = editor.getOriginalEditor(), modified = editor.getModifiedEditor();
     const originalLabel = original.getOption(api.editor.EditorOption.ariaLabel);
     const modifiedLabel = modified.getOption(api.editor.EditorOption.ariaLabel);
-    editor.updateOptions(textZoomOptions(project.activeGitDiffId ?? undefined, project.gitDiff?.filePath));
+    editor.updateOptions(textZoomOptions(project.activeGitDiffId ?? undefined));
     // Diff option updates regenerate child accessibility labels. Preserve the
     // active snapshot names established by applySnapshots.
     original.updateOptions({ ariaLabel: originalLabel });
     modified.updateOptions({ ariaLabel: modifiedLabel });
   }
   const unregisterZoom = onTextZoom(updateZoom);
-  const unregisterCodeZoom = onCodeZoom(() => { if (usesCodeZoom(project.gitDiff?.filePath)) updateZoom(); });
   let api: typeof Monaco | null = null;
   let apiPromise: Promise<typeof Monaco> | null = null;
   let request = 0;
@@ -135,7 +134,7 @@
       scrollBeyondLastLine: false,
       renderOverviewRuler: false,
       fontFamily: APP_FONT_FAMILY,
-      ...textZoomOptions(project.activeGitDiffId ?? undefined, project.gitDiff?.filePath),
+      ...textZoomOptions(project.activeGitDiffId ?? undefined),
       padding: { top: 16, bottom: 48 },
     });
     const modifiedEditor = editor.getModifiedEditor();
@@ -279,7 +278,7 @@
       saveShownView();
       editor.setModel({ original: cached.original, modified: cached.modified });
       shownId = activeId;
-      editor.updateOptions(textZoomOptions(activeId ?? undefined, active.diff.filePath));
+      editor.updateOptions(textZoomOptions(activeId ?? undefined));
       editor.updateOptions({ readOnly: Boolean(active.diff.readOnly || active.diff.staged || active.diff.history || /\.ipynb$/i.test(active.diff.filePath)), originalEditable: false,
         renderMarginRevertIcon: !active.diff.readOnly && !active.diff.staged && !active.diff.history && !/\.ipynb$/i.test(active.diff.filePath) });
       if (cached.viewState) editor.restoreViewState(cached.viewState);
@@ -374,7 +373,6 @@
     request += 1;
     unregisterViewport();
     unregisterZoom();
-    unregisterCodeZoom();
     unregisterMarkdown();
     input.dispose();
     for (const listener of inputListeners) listener.dispose();
@@ -385,6 +383,6 @@
   });
 </script>
 
-<div class="git-diff-editor" data-code-zoom={usesCodeZoom(project.gitDiff?.filePath)} bind:this={host}></div>
+<div class="git-diff-editor" bind:this={host}></div>
 {#if loading}<div class="git-review-state">Opening source diff…</div>{/if}
 {#if error}<div class="git-review-state is-error">{error}</div>{/if}

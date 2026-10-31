@@ -52,6 +52,7 @@ for (const [width, height, appZoom] of [[1281, 1037, 120], [921, 775, 130], [921
           expect(frame.scrollHeight - frame.clientHeight, `${name}: vertical overflow`).toBeLessThanOrEqual(1);
         }
       };
+      await f.edit.getByRole('button', { name: 'Fit', exact: true }).click();
       await assertStill('initial-fit');
       await f.edit.getByRole('button', { name: '100%', exact: true }).click();
       await f.edit.locator('.preview').evaluate(node => { node.scrollLeft = 137; node.scrollTop = 83; });
@@ -222,6 +223,12 @@ test('1, 6 and 24 MP previews resolve full detail at 100%; 48 MP editing is reje
   const f = await fixture();
   const timings: Array<{ pixels: number; openMs: number; detailMs: number }> = [];
   try {
+    await f.app.evaluate(({ app }) => {
+      const state = globalThis as typeof globalThis & { imageExportWindows: number };
+      state.imageExportWindows = 0;
+      app.on('browser-window-created', () => state.imageExportWindows++);
+    });
+    let expectedExports = 0;
     for (const [width, height] of [[1000, 1000], [3000, 2000], [6000, 4000]]) {
       const file = path.join(f.root, `${width}.png`);
       await writeFile(file, await sharp({ create: { width, height, channels: 3, background: '#8060c0' } }).png().toBuffer());
@@ -235,6 +242,10 @@ test('1, 6 and 24 MP previews resolve full detail at 100%; 48 MP editing is reje
       await expect(f.edit).toHaveAttribute('data-rendering', 'false');
       timings.push({ pixels: width * height, openMs: detail - opened, detailMs: Date.now() - detail });
       expect(await f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
+      if (width > 2048) expectedExports++;
+      // Opening another image must not re-render retained editors at 100%.
+      expect(await f.app.evaluate(() => (globalThis as typeof globalThis & { imageExportWindows: number }).imageExportWindows))
+        .toBe(expectedExports);
     }
     const tooLarge = path.join(f.root, '48mp.png');
     await writeFile(tooLarge, await sharp({ create: { width: 8000, height: 6000, channels: 3, background: '#8060c0' } }).png().toBuffer());

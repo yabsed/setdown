@@ -11,7 +11,7 @@ export function installZoomSettings(file: string, zoom: WorkspaceZoom, notify: (
     clearTimeout(timer); timer = undefined;
     try {
       mkdirSync(dirname(file), { recursive: true });
-      writeFileSync(file + '.tmp', JSON.stringify(zoom.snapshot));
+      writeFileSync(file + '.tmp', JSON.stringify(zoom.settings));
       renameSync(file + '.tmp', file);
     } catch (error) { console.error('Could not save zoom settings', error); }
   };

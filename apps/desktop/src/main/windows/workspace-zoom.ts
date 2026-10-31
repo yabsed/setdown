@@ -1,4 +1,4 @@
-import { tabZoomKey } from '../../core/zoom';
+import { MAX_TAB_ZOOM, MIN_TAB_ZOOM, tabZoomKey, tabZoomPercent } from '../../core/zoom';
 /** Native targets only: no document/model changes, navigation or focus transfer. */
 export type ZoomTarget = {
   id: number;
@@ -9,16 +9,6 @@ export type ZoomTarget = {
   once(event: 'destroyed', listener: () => void): unknown;
 };
 export type ZoomBounds = { x: number; y: number; width: number; height: number };
-
-function contentPercent(previous: number, steps: unknown): number | undefined {
-  const scale = steps && typeof steps === 'object' && 'scale' in steps ? steps.scale : undefined;
-  if (scale !== undefined) {
-    if (typeof scale !== 'number' || !Number.isFinite(scale) || scale < .5 || scale > 2) return;
-    return Math.max(50, Math.min(300, previous * scale));
-  }
-  if (typeof steps !== 'number' || !Number.isInteger(steps) || Math.abs(steps) > 4) return;
-  return steps === 0 ? 100 : Math.max(50, Math.min(300, previous + steps * 10));
-}
 
 /** getBoundingClientRect is CSS pixels; Electron View bounds are DIP, not CSS pixels.
  * devicePixelRatio must NOT be used: OS display scaling is already handled by Electron.
@@ -36,63 +26,107 @@ export function nativeZoomBounds(bounds: ZoomBounds, zoomFactor: number): ZoomBo
 
 /** App zoom is shared by every window; content targets supply their tab factor.
  * Shell geometry always uses app zoom alone. New, spare and transferred views
- * apply their current factors without navigation or focus changes. Website and
- * reader factors are separate within a web tab. Shell-rendered terminals use
+ * apply their current factors without navigation or focus changes. Website, reader and file surfaces
+ * share the same factor when they occupy the same tab. Shell-rendered terminals use
  * their displaying tab's factor; legacy text/terminal settings remain readable.
  */
 export class WorkspaceZoom {
   private percent = 100;
   private textPercent = 100;
   private terminalPercent = 100;
-  private codePercent = 100;
   private revision = 0;
   private readonly tabs = new Map<string, number>();
-  private readonly contexts = new Map<number, { ids: Set<string>; active: string | null }>();
+  private readonly documents = new Map<string, number>();
+  private readonly contexts = new Map<number, { ids: Set<string>; active: string | null; documents: Map<string, string> }>();
   onChange?: () => void;
   private readonly targets = new Map<number, { target: ZoomTarget; afterApply?: () => void; contentFactor: () => number; applied?: number }>();
   get factor(): number { return this.percent / 100; }
   get textFactor(): number { return this.textPercent / 100; }
   get terminalFactor(): number { return this.terminalPercent / 100; }
   get snapshot() { return { app: this.percent, text: this.textPercent, terminal: this.terminalPercent, revision: this.revision,
-    code: this.codePercent, tabs: Object.fromEntries(this.tabs) }; }
+    tabs: Object.fromEntries(this.tabs) }; }
+  get settings() { return { ...this.snapshot, documents: Object.fromEntries(this.documents) }; }
   tabFactor(id: string): number { return (this.tabs.get(tabZoomKey(id)) ?? 100) / 100; }
-  context(owner: number, ids: unknown, active: unknown): void {
+  /** Called before mounting a newly allocated file tab. Existing IDs, including
+   * transferred tabs and tabs navigating to another resource, never reinitialize. */
+  initializeTab(id: string, file: string): void {
+    const key = tabZoomKey(id);
+    if (this.tabs.has(key)) return;
+    this.tabs.set(key, this.documents.get(file) ?? 100);
+    this.revision++;
+    this.onChange?.();
+  }
+  context(owner: number, ids: unknown, active: unknown, files: unknown = {}): void {
     if (!Array.isArray(ids) || ids.length > 1000 || !ids.every(id => typeof id === 'string' && id.length < 256)) return;
     const owned = new Set<string>(ids.map(tabZoomKey));
-    this.contexts.set(owner, { ids: owned, active: typeof active === 'string' && owned.has(tabZoomKey(active)) ? tabZoomKey(active) : null });
+    const documents = new Map<string, string>();
+    if (files && typeof files === 'object' && !Array.isArray(files)) for (const [id, file] of Object.entries(files)) {
+      if (owned.has(tabZoomKey(id)) && typeof file === 'string' && file.length > 0 && file.length < 32768)
+        documents.set(tabZoomKey(id), file);
+    }
+    // Main's event order is authoritative, including unchanged values on close
+    // or departure. Reading-position timestamps/scroll events cannot overwrite it.
+    let changed = false;
+    const previous = this.contexts.get(owner);
+    for (const [id, file] of previous?.documents ?? []) {
+      if (documents.get(id) !== file) { this.remember(id, file); changed = true; }
+    }
+    // Entering a document in an existing tab also observes that document at the
+    // retained tab percentage. A new tab opened immediately afterwards inherits it.
+    for (const [id, file] of documents) {
+      if (previous?.ids.has(id) && previous.documents.get(id) !== file) { this.remember(id, file); changed = true; }
+    }
+    for (const id of owned) if (!this.tabs.has(id)) { this.tabs.set(id, 100); changed = true; }
+    this.contexts.set(owner, { ids: owned, documents,
+      active: typeof active === 'string' && owned.has(tabZoomKey(active)) ? tabZoomKey(active) : null });
+    if (changed) { this.revision++; this.onChange?.(); }
+  }
+  closeOwner(owner: number): void {
+    if (!this.contexts.has(owner)) return;
+    this.context(owner, [], null);
+    this.contexts.delete(owner);
+  }
+  private remember(id: string, file: string): void {
+    this.documents.set(file, this.tabs.get(tabZoomKey(id)) ?? 100);
   }
   activeTab(owner: number): string | null { return this.contexts.get(owner)?.active ?? null; }
   ownsTab(owner: number, id: string): boolean { return this.contexts.get(owner)?.ids.has(tabZoomKey(id)) ?? false; }
   changeTab(id: string, steps: unknown): boolean {
     const key = tabZoomKey(id), previous = this.tabs.get(key) ?? 100;
-    const next = contentPercent(previous, steps);
+    const next = tabZoomPercent(previous, steps);
     if (next === undefined || previous === next) return false;
     this.tabs.set(key, next); this.revision++;
+    for (const context of this.contexts.values()) {
+      const file = context.documents.get(key);
+      if (file) this.remember(key, file);
+    }
     for (const entry of this.targets.values()) this.apply(entry);
-    this.onChange?.(); return true;
-  }
-
-  /** Code typography is a persistent preference shared by files and windows. */
-  changeCode(steps: unknown): boolean {
-    const next = contentPercent(this.codePercent, steps);
-    if (next === undefined || next === this.codePercent) return false;
-    this.codePercent = next; this.revision++;
-    // Only shell editors consume this factor; native readers keep their zoom.
     this.onChange?.(); return true;
   }
 
   restore(value: unknown): void {
     if (!value || typeof value !== 'object') return;
-    const saved = value as { app?: unknown; text?: unknown; terminal?: unknown; code?: unknown; tabs?: unknown };
+    const saved = value as { app?: unknown; text?: unknown; terminal?: unknown; tabs?: unknown; documents?: unknown };
     const valid = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 50 && v <= 300;
     if (valid(saved.app)) this.percent = saved.app;
     if (valid(saved.text)) this.textPercent = saved.text;
-    if (typeof saved.code === 'number' && Number.isFinite(saved.code) && saved.code >= 50 && saved.code <= 300) this.codePercent = saved.code;
     // Settings written before the split have no terminal factor; terminals
     // followed the text factor then, so inherit it once instead of resetting.
     this.terminalPercent = valid(saved.terminal) ? saved.terminal : this.textPercent;
     if (saved.tabs && typeof saved.tabs === 'object') for (const [id, percent] of Object.entries(saved.tabs).slice(-1000)) {
-      if (id.length < 256 && typeof percent === 'number' && Number.isFinite(percent) && percent >= 50 && percent <= 300) this.tabs.set(id, percent);
+      if (id.length < 256 && typeof percent === 'number' && Number.isFinite(percent) && percent >= MIN_TAB_ZOOM && percent <= MAX_TAB_ZOOM) this.tabs.set(tabZoomKey(id), percent);
+    }
+    for (const [id, percent] of this.tabs) {
+      if (!id.endsWith(':website')) continue;
+      const tabId = id.slice(0, -':website'.length);
+      if (!this.tabs.has(tabId)) this.tabs.set(tabId, percent);
+      this.tabs.delete(id);
+    }
+    if (saved.documents && typeof saved.documents === 'object' && !Array.isArray(saved.documents)) {
+      for (const [file, percent] of Object.entries(saved.documents)) {
+        if (file.length > 0 && file.length < 32768 && typeof percent === 'number' && Number.isFinite(percent)
+          && percent >= MIN_TAB_ZOOM && percent <= MAX_TAB_ZOOM) this.documents.set(file, percent);
+      }
     }
   }
 

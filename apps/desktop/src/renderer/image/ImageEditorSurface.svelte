@@ -1,12 +1,15 @@
 <script lang="ts">
-  import { onMount, untrack } from 'svelte';
+  import { onMount, untrack, flushSync } from 'svelte';
   import { imageSessions, type ImageSession } from './image-edit-sessions';
   import { flipRecipe, rotateRecipe, validRecipe, type ImageRecipe } from '../../core/image/image-recipe';
   import { renderImage } from '../../image-runtime/fabric-adapter';
   import { ContentZoomInput } from '../../core/wheel-zoom';
-  import { mediaZoom } from '../zoom-state.svelte';
-  let { tabId, session, active, focused, ondone, onfocus }: { tabId: string; session: ImageSession; active: boolean; focused: boolean; onfocus(): void; ondone(): void } = $props();
-  let recipe = $state<ImageRecipe>(structuredClone(untrack(() => session.history.current)));
+  import { TabZoom } from '../editor/tab-zoom';
+  import { textZoomFactor } from '../editor/text-zoom';
+  import type { ImagePort } from '../ports/desktop-port';
+  let { tabId, desktop, session, active, focused, ondone, onfocus }: { tabId: string; desktop: ImagePort; session: ImageSession; active: boolean; focused: boolean; onfocus(): void; ondone(): void } = $props();
+  let currentRecipe = untrack(() => session.history.current);
+  let recipe = $state<ImageRecipe>(structuredClone(currentRecipe));
   let revision = $state(0), error = $state(''), url = $state(''), rendering = $state(false);
   let crop = $state(untrack(() => ({ ...recipe.crop }))), outputWidth = $state(untrack(() => recipe.width)), outputHeight = $state(untrack(() => recipe.height));
   let lockAspect = $state(true), cropping = $state(false);
@@ -14,10 +17,10 @@
   let start: { x: number; y: number } | undefined;
   let picture = $state<HTMLImageElement>();
   let viewport: HTMLDivElement;
-  let viewportWidth = $state(1), viewportHeight = $state(1), zoom = $state<number | 'fit'>('fit');
+  let viewportWidth = $state(1), viewportHeight = $state(1), zoom = $state<number | 'fit'>(untrack(() => textZoomFactor(tabId)));
+  let scale = $state(untrack(() => textZoomFactor(tabId)));
+  let tabZoom: TabZoom<WheelEvent | 'fit'>;
   let pan: { x: number; y: number; left: number; top: number } | undefined;
-  const scale = $derived(zoom === 'fit' ? Math.min(1, Math.max(1, viewportWidth - 40) / recipe.width,
-    Math.max(1, viewportHeight - 40) / recipe.height) : zoom);
   const detail = $derived(Math.max(recipe.width, recipe.height) > 2048 && scale > 2048 / Math.max(recipe.width, recipe.height));
   let source: ImageBitmap | undefined, dead = false, running = false, requested = 0;
   const dirty = $derived.by(() => { revision; return session.history.dirty; });
@@ -25,7 +28,13 @@
   const canRedo = $derived.by(() => { revision; return session.history.canRedo; });
   const busy = $derived.by(() => { revision; return session.busy; });
   function sync() {
-    revision++; error = session.error ?? ''; recipe = structuredClone(session.history.current); crop = { ...recipe.crop };
+    revision++; error = session.error ?? '';
+    // Session notifications also cover other tabs and save/busy checkpoints.
+    // Immutable recipe identity prevents those from restarting a full-size render
+    // (or clearing an unfinished crop selection) in this retained editor.
+    if (currentRecipe === session.history.current) return;
+    currentRecipe = session.history.current;
+    recipe = structuredClone(currentRecipe); crop = { ...recipe.crop };
     outputWidth = recipe.width; outputHeight = recipe.height; selection = null;
   }
   function commit(next: ImageRecipe) {
@@ -72,9 +81,26 @@
     finally { running = false; rendering = false; if (dead) source?.close(); }
   }
   $effect(() => { JSON.stringify(recipe); detail; requested++; void preview(); });
-  $effect(() => { mediaZoom[tabId] = { percent: scale * 100, max: 800,
-    change: steps => { if (active) zoom = steps === 0 ? 1 : Math.max(.1, Math.min(8, scale * 1.1 ** steps)); } }; });
+  function fit() {
+    zoom = 'fit';
+    tabZoom.change({ percent: Math.min(1, Math.max(1, viewportWidth - 40) / recipe.width,
+      Math.max(1, viewportHeight - 40) / recipe.height) * 100 }, 'fit');
+  }
+  $effect(() => { if (active && zoom === 'fit' && tabZoom) { viewportWidth; viewportHeight; recipe.width; recipe.height; untrack(fit); } });
   onMount(() => {
+    tabZoom = new TabZoom(tabId, desktop, (factor, anchor) => {
+      if (anchor && anchor !== 'fit' && picture) {
+        const rect = picture.getBoundingClientRect();
+        const x = (anchor.clientX - rect.left) / scale, y = (anchor.clientY - rect.top) / scale;
+        flushSync(() => { zoom = scale = factor; });
+        const next = picture.getBoundingClientRect();
+        viewport.scrollLeft += next.left + x * factor - anchor.clientX;
+        viewport.scrollTop += next.top + y * factor - anchor.clientY;
+      } else {
+        scale = factor;
+        if (anchor !== 'fit') zoom = factor;
+      }
+    });
     const unsubscribe = imageSessions.subscribe(sync);
     const observer = new ResizeObserver(() => {
       // clientWidth/clientHeight round fractional CSS pixels and subtract the
@@ -89,13 +115,13 @@
       if (!event.isTrusted || !event.ctrlKey || event.altKey || event.metaKey || !active) return;
       event.preventDefault(); event.stopPropagation();
       const steps = input.consume(event, performance.now());
-      if (steps) zoom = Math.max(.1, Math.min(8, scale * (typeof steps === 'number' ? 1.1 ** steps : steps.scale)));
+      if (steps) tabZoom.change(steps, event);
     };
     viewport.addEventListener('wheel', wheel, { passive: false });
     void createImageBitmap(new Blob([new Uint8Array(session.source.preview)])).then(bitmap => {
       if (dead) { bitmap.close(); return; } source = bitmap; void preview();
     }).catch(cause => error = String(cause));
-    return () => { dead = true; unsubscribe(); observer.disconnect(); viewport.removeEventListener('wheel', wheel); delete mediaZoom[tabId]; if (!running) source?.close(); if (url) URL.revokeObjectURL(url); };
+    return () => { dead = true; unsubscribe(); observer.disconnect(); viewport.removeEventListener('wheel', wheel); tabZoom.dispose(); if (!running) source?.close(); if (url) URL.revokeObjectURL(url); };
   });
   function key(event: KeyboardEvent) {
     if (!active || !focused || event.isComposing || event.defaultPrevented || event.altKey
@@ -116,7 +142,7 @@
     <button onclick={() => commit(rotateRecipe(recipe, session.source.width, session.source.height))}>Rotate 90°</button>
     <button onclick={() => commit(flipRecipe(recipe, 'X', session.source.width, session.source.height))}>Flip horizontal</button>
     <button onclick={() => commit(flipRecipe(recipe, 'Y', session.source.width, session.source.height))}>Flip vertical</button>
-    <button onclick={() => zoom = 'fit'}>Fit</button><button onclick={() => zoom = 1}>100%</button>
+    <button onclick={fit}>Fit</button><button onclick={() => { zoom = 1; tabZoom.change(0); }}>100%</button>
     <span class="spacer"></span>
     <button onclick={() => imageSessions.saveFromToolbar(tabId, false)} disabled={!dirty || busy}>{busy ? 'Saving…' : 'Save'}</button>
     <button onclick={() => imageSessions.saveFromToolbar(tabId, true)} disabled={busy}>Save As…</button>

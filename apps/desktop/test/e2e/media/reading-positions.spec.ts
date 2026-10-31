@@ -18,7 +18,7 @@ async function snapshotOnFailure(page: Page) {
   await test.info().attach('dom', { body: await page.locator('body').innerText().catch(() => ''), contentType: 'text/plain' });
 }
 
-test('PDF reader restores page coordinates and zoom across restart, and supports search and outline', async () => {
+test('PDF reader restores document zoom and page coordinates across restart, and supports search and outline', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-pdf-'));
   const file = path.join(root, 'reading.pdf');
   const config = path.join(root, 'config');

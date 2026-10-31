@@ -4,8 +4,7 @@
   import DocumentLanguageStatus from '../../language/DocumentLanguageStatus.svelte';
   import { isNotebookDocument } from '../../../core/document/document-profile';
   import ZoomControls from '../../ZoomControls.svelte';
-  import { usesCodeZoom } from '../../editor/text-zoom';
-  import { zoomState, mediaZoom } from '../../zoom-state.svelte';
+  import { zoomState } from '../../zoom-state.svelte';
   import { view } from '../workspace-view.svelte';
 import type { AppActions } from '../../ports/ui-actions';
   import { project } from '../../project/project-state.svelte';
@@ -33,9 +32,7 @@ import type { AppActions } from '../../ports/ui-actions';
     if (tab) { actions.browserFind(tab.id, ''); if (reading) window.dispatchEvent(new CustomEvent('setdown:reader-focus', { detail: tab.id })); else actions.browserCommand(tab.id, 'focus'); }
   }
   const media = $derived(view.mediaTabs.find(item => item.id === tab?.id));
-  const fileZoom = $derived(tab ? mediaZoom[tab.id] : undefined);
-  const zoomScope = $derived(tab?.kind === 'terminal' && !review ? 'terminal'
-    : tab?.kind !== 'web' && usesCodeZoom(review?.filePath ?? tab?.path) ? 'code' : 'text');
+  const zoomScope = $derived(tab?.kind === 'terminal' && !review ? 'terminal' : 'text');
   const zoomId = $derived(tab?.id);
   const reading = $derived(!!tab && !!browser.readers[tab.id]);
   // Markdown surface actions live in the address bar. They act on the focused
@@ -220,12 +217,9 @@ import type { AppActions } from '../../ports/ui-actions';
     {#if web && !reading}
       <ZoomControls label="Website" percent={web.zoomPercent}
         change={step => actions.browserCommand(tab!.id, step === 0 ? 'zoom-reset' : step < 0 ? 'zoom-out' : 'zoom-in')} />
-    {:else if !review && (media?.document.kind === 'pdf' || media?.document.kind === 'image')}
-      <ZoomControls label={media?.document.kind === 'pdf' ? 'PDF' : 'Image'} percent={fileZoom?.percent ?? 100}
-        min={10} max={fileZoom?.max ?? 1000} disabled={!fileZoom} change={step => fileZoom?.change(step)} />
     {:else}
-      <ZoomControls label={zoomScope === 'terminal' ? 'Terminal' : media?.document.kind === 'video' ? 'Video' : 'Text'}
-        percent={zoomScope === 'code' ? zoomState.code ?? 100 : zoomState.tabs?.[zoomId ?? ''] ?? 100} change={step => actions.changeZoom(step, zoomScope, zoomId)} />
+      <ZoomControls label={zoomScope === 'terminal' ? 'Terminal' : media?.document.kind === 'video' ? 'Video' : media?.document.kind === 'pdf' ? 'PDF' : media?.document.kind === 'image' ? 'Image' : 'Text'}
+        percent={zoomState.tabs?.[zoomId ?? ''] ?? 100} change={step => actions.changeZoom(step, zoomScope, zoomId)} />
     {/if}
   {/if}
   {#if error || (browser.error && groupId === view.focusedGroupId)}

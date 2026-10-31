@@ -4,7 +4,6 @@
   import type { ReadingPosition, PdfReadingPosition } from '../../core/reading/reading-position';
   import type { PdfPort } from '../ports/desktop-port';
   import { PdfRuntime, type OutlineItem } from './pdf-runtime';
-  import { mediaZoom } from '../zoom-state.svelte';
 
   let { tabId, document, initialPosition, desktop, onposition, active, focused = active }: { tabId: string; focused?: boolean; document: DocumentSnapshot; active: boolean;
     initialPosition?: ReadingPosition; desktop: PdfPort; onposition(position: PdfReadingPosition): void } = $props();
@@ -12,7 +11,7 @@
   let runtime: PdfRuntime;
   let page = $state(1);
   let count = $state(0);
-  let zoom = $state('page-width');
+  let zoom = $state('1');
   let error = $state('');
   let outline = $state<OutlineItem[]>([]);
   let outlineOpen = $state(false);
@@ -24,8 +23,7 @@
   let unlock: ((value: string) => void) | undefined;
 
   onMount(() => {
-    runtime = new PdfRuntime({ host, document, desktop,
-      scaleChanged: scale => { mediaZoom[tabId] = { percent: scale * 100, max: 1000, change: steps => runtime.zoomStep(steps) }; },
+    runtime = new PdfRuntime({ tabId, host, document, desktop,
       initial: initialPosition?.kind === 'pdf' ? initialPosition : undefined, active: () => active,
       changed: (position) => { zoom = String(position.zoom); onposition(position); },
       status: (current, total) => { page = current; count = total; passwordPrompt = ''; },
@@ -35,9 +33,9 @@
     void runtime.open();
     const focusFind = () => { if (active && focused) { searchInput?.focus(); searchInput?.select(); } };
     window.addEventListener('setdown:pdf-find', focusFind);
-    return () => { delete mediaZoom[tabId]; window.removeEventListener('setdown:pdf-find', focusFind); runtime.dispose(); };
+    return () => { window.removeEventListener('setdown:pdf-find', focusFind); runtime.dispose(); };
   });
-  $effect(() => { if (active) runtime?.resume(); });
+  $effect(() => { if (active) runtime?.resume(); else runtime?.suspend(); });
 
   function findKey(event: KeyboardEvent) {
     if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); runtime.find(query, event.shiftKey, true); }

@@ -30,7 +30,7 @@ export function validReadingRecord(value: unknown): value is ReadingRecord {
   const p = r.position;
   if (p.kind === 'video') return Number.isFinite(p.time) && p.time >= 0 && p.time <= 86400;
   if (p.kind === 'image') return [0, 90, 180, 270].includes(p.rotation)
-    && (p.zoom === 'fit' || p.zoom === 'fit-width' || (typeof p.zoom === 'number' && Number.isFinite(p.zoom) && p.zoom >= .1 && p.zoom <= 8))
+    && (p.zoom === 'fit' || p.zoom === 'fit-width' || (typeof p.zoom === 'number' && Number.isFinite(p.zoom) && p.zoom >= .1 && p.zoom <= 10))
     && Number.isFinite(p.centerX) && p.centerX >= 0 && p.centerX <= 1
     && Number.isFinite(p.centerY) && p.centerY >= 0 && p.centerY <= 1;
   if (p.kind === 'pdf') return Number.isInteger(p.page) && p.page >= 1 && p.page <= 1_000_000

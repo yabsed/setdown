@@ -65,7 +65,7 @@ test('opens every supported image format, preserves the bitmap across tab switch
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
 
-test('restores image zoom, rotation and pan after restart; reloads changed content and reports invalid images', async () => {
+test('restores the last document zoom, rotation and pan after restart; reloads changed content and reports invalid images', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-image-history-'));
   const file = path.join(root, 'drawing.svg'), config = path.join(root, 'config');
   // Scripts embedded in an SVG must not execute in the shell.

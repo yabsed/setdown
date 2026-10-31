@@ -254,7 +254,7 @@ test('Esc opens reader mode at the same block and double-click returns to the li
   } finally { await f.dispose(); }
 });
 
-test('reader toolbar and wheel use tab text zoom independently of other Markdown tabs and live website zoom', async () => {
+test('reader toolbar and wheel share the live website tab zoom while other Markdown tabs stay independent', async () => {
   const f = await fixture();
   try {
     const textReset = f.page.getByRole('button', { name: 'Reset text zoom', exact: true });
@@ -284,17 +284,17 @@ test('reader toolbar and wheel use tab text zoom independently of other Markdown
     const reader = f.page.getByRole('region', { name: 'Reader mode', exact: true });
     await expect(reader).toBeVisible();
     await expect(websiteReset).toHaveCount(0);
-    await expect(textReset).toHaveText('100%');
+    await expect(textReset).toHaveText('120%');
     await f.page.getByRole('button', { name: 'Zoom text in', exact: true }).click();
-    await expect(textReset).toHaveText('110%');
-    await expect.poll(() => reader.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeCloseTo(15.4, 2);
+    await expect(textReset).toHaveText('130%');
+    await expect.poll(() => reader.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeCloseTo(18.2, 2);
     await reader.hover();
     await f.page.keyboard.down('Control'); await f.page.mouse.wheel(0, -80); await f.page.keyboard.up('Control');
-    await expect(textReset).toHaveText('120%');
+    await expect(textReset).toHaveText('140%');
     await expect.poll(() => f.page.evaluate(() => window.marktex.getZoom())).toMatchObject({ app: 100, text: 100, terminal: 100 });
     await f.page.screenshot({ path: test.info().outputPath('reader-toolbar.png') });
     await f.page.getByRole('button', { name: 'Exit reader mode', exact: true }).click();
-    await expect(websiteReset).toHaveText('120%');
+    await expect(websiteReset).toHaveText('140%');
     expect(await evaluatePage(f.app, f.origin, "document.querySelector('#draft').value")).toBe('keep zoom state');
     await f.page.getByRole('tab', { name: /notes.md/ }).click();
     await expect(textReset).toHaveText('110%');

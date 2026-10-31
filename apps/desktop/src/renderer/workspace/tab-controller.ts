@@ -1,7 +1,8 @@
-import { documentIdentity, type DocumentContent } from '../../core/workspace/document-store';
+import { documentIdentity, sharedTextDocument, type DocumentContent } from '../../core/workspace/document-store';
 import { sameDiskVersion } from '../../core/document/document';
 import { editorInputKey } from '../../core/workspace/workspace-state';
 import { copyDisplayOptions } from '../editor/tools/view-display';
+import { applyTextZoom } from '../editor/text-zoom';
 import { TabNavigationController } from './tab-navigation-controller';
 import type { DocumentSessions } from './document-sessions';
 import { isNotebookDocument } from '../../core/document/document-profile';
@@ -45,6 +46,15 @@ type Options = {
 const TRANSFER_ANNOUNCE_GRACE_MS = 150;
 
 export class TabController {
+  private readonly initialZoom = new Map<string, Promise<void>>();
+  private initializeZoom(tab: DocumentTab): Promise<void> {
+    if (tab.document.isUntitled) return Promise.resolve();
+    const pending = this.options.desktop.initializeTabZoom(tab.id, tab.document.path).then(snapshot => {
+      if (snapshot) applyTextZoom(snapshot);
+    }).finally(() => this.initialZoom.delete(tab.id));
+    this.initialZoom.set(tab.id, pending);
+    return pending;
+  }
   private readonly changes = new Set<() => void>();
   onChange(listener: () => void): () => void { this.changes.add(listener); return () => { this.changes.delete(listener); }; }
   private activation = 0;
@@ -276,7 +286,8 @@ export class TabController {
     this.options.publishDocuments?.();
     view.terminalSessions = [...workspace.terminals.values()].map(session => ({ ...session }));
     const review = this.options.reviewZoomId?.() ?? null;
-    desktop.setZoomTabs?.([...workspace.tabs.map(tab => tab.id), ...(review ? [review] : [])], review ?? workspace.activeId);
+    desktop.setZoomTabs?.([...workspace.tabs.map(tab => tab.id), ...(review ? [review] : [])], review ?? workspace.activeId,
+      Object.fromEntries(workspace.documents.filter(tab => !tab.document.isUntitled).map(tab => [tab.id, tab.document.path])));
     void tick().then(() => this.options.groupsChanged?.());
     view.mediaTabs = this.media.sync(workspace.documents, workspace.activeId, workspace.groups.groups.flatMap(g => g.activeId ? [g.activeId] : []));
     view.activeMediaId = workspace.activeDocument?.document.kind ? workspace.activeId : null;
@@ -301,6 +312,7 @@ export class TabController {
   };
 
   activate = async (tabId: string, presentation: 'document' | 'review' = 'document', fresh = false): Promise<void> => {
+    if (this.initialZoom.has(tabId)) await this.initialZoom.get(tabId);
     const { desktop, editor, preview, reader, session, surfaces, workspace } = this.options;
     const next = workspace.find(tabId);
     if (!next) return;
@@ -638,6 +650,8 @@ export class TabController {
     const tab = this.documentTab(crypto.randomUUID(), document, 'editor');
     const activeId = workspace.activeId;
     workspace.add(tab, true, groupId ?? workspace.groups.focusedId);
+    await this.initializeZoom(tab);
+    if (workspace.find(tab.id) !== tab) throw Error('The requesting tab was closed.');
     if (activeId) workspace.groups.activate(activeId);
     this.restoreDocumentTab(tab);
     this.render(); this.updateChrome();
@@ -663,26 +677,35 @@ export class TabController {
         return void await this.activate(existing.id, presentation);
       }
     }
-    const id = crypto.randomUUID();
-    const created = this.documentTab(id, documentSnapshot, initialSurface);
-    this.restoreDocumentTab(created);
+    const created = this.documentTab(crypto.randomUUID(), documentSnapshot, initialSurface);
     const pinned = openOptions.pinned !== false || !!placement || presentation === 'review'
       || documentSnapshot.isUntitled || this.dirty(created);
-    const previous = pinned ? null : workspace.find(target.previewId ?? '');
-    if (previous && this.dirty(previous)) workspace.groups.pin(previous.id);
-    if (previous?.id === workspace.activeId) this.saveActiveState();
-    const replaced = workspace.add(created, pinned, target.id);
-    if (replaced) {
-      created.navigation = this.navigation.history(replaced);
-      const outgoing = this.navigation.visit(replaced);
+    let previous = pinned ? null : workspace.find(target.previewId ?? '');
+    if (previous && this.dirty(previous)) { workspace.groups.pin(previous.id); previous = null; }
+    const fresh = previous?.id === workspace.activeId;
+    if (previous) {
+      if (fresh) { this.saveActiveState(); ++this.activation; this.options.preview.newSession(); }
+      this.navigation.cancel(previous.id);
+      // Explorer replaces the contents of its preview slot, not the tab itself.
+      // Release the old resource before attaching a new model under that ID.
+      created.id = previous.id;
+      created.navigation = this.navigation.history(previous);
+      const outgoing = this.navigation.visit(previous);
       if (outgoing) created.navigation.entries[created.navigation.index] = outgoing;
       const incoming = this.navigation.visit(created);
       if (incoming) recordVisit(created.navigation, incoming);
-      this.release(replaced);
+      this.release(previous);
+      if (sharedTextDocument(created.document)) workspace.documentStore.attach(created);
+      workspace.tabs[workspace.tabs.indexOf(previous)] = created;
+    } else {
+      workspace.add(created, pinned, target.id);
+      await this.initializeZoom(created);
+      if (workspace.find(created.id) !== created) return;
     }
-    if (placement?.index !== undefined) workspace.groups.move(id, target.id, null, placement.index);
+    this.restoreDocumentTab(created);
+    if (placement?.index !== undefined) workspace.groups.move(created.id, target.id, null, placement.index);
     this.render();
-    await this.activate(id, presentation);
+    await this.activate(created.id, presentation, fresh);
     if (presentation === 'document' && created.surface === 'viewer' && hasMarkdownPreview(documentSnapshot)) window.setTimeout(() => {
       void editor.load().catch((error) => console.error('Failed to load editor', error));
     }, 0);
@@ -702,6 +725,8 @@ export class TabController {
     copyDisplayOptions(source.id, copy.id);
     copy.anchor = { ...source.anchor }; copy.surface = source.surface;
     workspace.add(copy, true, target.id);
+    await this.initializeZoom(copy);
+    if (workspace.find(copy.id) !== copy) return;
     this.restoreDocumentTab(copy);
     editor.importView(copy.id, initialView);
     this.render(); await this.activate(copy.id);

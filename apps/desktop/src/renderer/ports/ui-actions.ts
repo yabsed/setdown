@@ -19,7 +19,7 @@ export type AppActions = BrowserActions & TerminalActions & {
   openLanguageLocation(path: string, selection?: import('monaco-editor').IRange | import('monaco-editor').IPosition): Promise<void>;
   locationSuggestions: import('../../protocol/desktop-api').MarkTexApi['locationSuggestions'];
   menuOverlay: import('../../protocol/desktop-api').MarkTexApi['menuOverlay'];
-  changeZoom(steps: number, scope: 'app' | 'text' | 'terminal' | 'code', tabId?: string): void;
+  changeZoom(steps: number, scope: 'app' | 'text' | 'terminal', tabId?: string): void;
   newWebTab(input?: string, background?: boolean): void;
   navigateLocation(groupId: string, input: string): Promise<void>;
   navigateHistory(id: string, direction: -1 | 1): void;

@@ -36,9 +36,12 @@ and detailed previews run one at a time in a separate, never-shown sandboxed
 BrowserWindow, with only its dedicated job/result bridge. They cannot show or
 focus Markdown previews or the desktop shell and do not depend on hidden rAF.
 
+Image editing inherits its tab’s current original-size percentage. Selecting Fit
+updates that same tab value; opening the editor does not reset it.
 Image editing fit mode uses the viewport's fractional outer CSS bounds, without
 feeding scrollbar-reduced integer client sizes back into the scale. Fit mode
-has no scrolling overflow; fixed numeric zoom retains scrolling/panning. With
+has no scrolling overflow when the fitted scale is within the shared 10–1000%
+range; fixed numeric zoom retains scrolling/panning. With
 no input or viewport change, the image's size and position must stay still at
 fractional application zoom too. The image editor Electron tests sample consecutive
 frames at 90%, 120% and 130%, including returning from 100% to Fit.

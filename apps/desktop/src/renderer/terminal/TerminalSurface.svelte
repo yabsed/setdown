@@ -21,7 +21,7 @@
   function theme() {
     return terminalTheme(document.documentElement.dataset.theme);
   }
-  const terminalFont = () => Math.max(8, Math.round(13 * terminalZoomFactor(tabId ?? id)));
+  const terminalFont = () => 13 * terminalZoomFactor(tabId ?? id);
   function resize(immediate = false) {
     if (!term || starting || !active || !container.clientWidth || !container.clientHeight) return;
     const size = fit.proposeDimensions();

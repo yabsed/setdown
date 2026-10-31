@@ -1,5 +1,6 @@
 <script lang="ts">
-  let { label, percent, min = 50, max = 300, disabled = false, change }: {
+  import { MIN_TAB_ZOOM, MAX_TAB_ZOOM } from '../core/zoom';
+  let { label, percent, min = MIN_TAB_ZOOM, max = MAX_TAB_ZOOM, disabled = false, change }: {
     label: string; percent: number; min?: number; max?: number; disabled?: boolean;
     change(steps: number): void;
   } = $props();

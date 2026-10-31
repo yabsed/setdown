@@ -1,0 +1,147 @@
+Tab-owned zoom and persistent document initialization — 2026-10-31
+
+Root causes
+-----------
+1. Code editors used a global code font factor, so unrelated tabs/windows changed together.
+2. Website, Reader, PDF/image and ordinary text had different zoom owners.
+3. Explorer preview replacement allocated a new tab ID, resetting tab-owned zoom.
+
+Behavior
+--------
+One percentage belongs to each live tab. Resource changes and Back/Forward retain
+that percentage. Explorer preview replacement retains the same tab ID. Separate
+tabs remain independent, including separate windows showing the same file.
+PDF and image percentages use original size. Fit controls calculate that same
+percentage rather than adding a separate multiplier.
+
+Document history only seeds a newly allocated file tab. Without history it starts
+at 100%. History records zoom changes, both outgoing and incoming files on a
+resource change, and tab/window close, including an unchanged older tab closed
+after another tab changed zoom. The main process orders these events; renderer
+scroll/focus notifications cannot overwrite history. Opening a new tab never
+resets existing tabs. Values persist atomically in zoom-settings.json across
+restart, without time-based or recent-file eviction. A new file surface waits for
+initial zoom before mounting. Transfers retain their tab ID and percentage.
+
+Native Chromium effective zoom still clamps app × tab to 25–500%; stored content
+zoom supports 10–1000% so original-size media fits can be retained across surfaces.
+This platform limit does not change the tab's recorded percentage.
+
+Verification
+------------
+Final full contract: PASS (exit 0).
+Command: SETDOWN_BUILD_SOURCEMAP=0 npm run test:preview-contract
+97 unit-test files / 711 tests passed; 14 build/benchmark tooling tests passed;
+Svelte typecheck: 0 errors and 0 warnings; production build passed;
+all 242 real Electron/Chromium checks passed (11.6m). See contract.log.
+Comparative benchmark: PASS (exit 0), all 48 comparisons passed.
+Three matched repetitions, 48 fresh Electron launches, 240 measured cycles.
+No missing scenarios, stale edited captures, retries or relaxed thresholds.
+Focused post-fix Electron checks: 7 passed (23.4s), including PDF hidden resize,
+PDF restart coordinates, 70% restoration for code/PDF/image, cross-window last
+event ordering, and independent code tabs/Undo. The full gate exposed a numeric
+PDF zoom path that did not restore its last visible point after hidden layout
+changes. Runtime suspension now protects that point through reactivation.
+An earlier persistence check also caught 110 becoming 110.00000000000001;
+history now saves the original percentage without a factor conversion round trip.
+The next complete run passed 241/242 GUI checks and exposed unrelated image-session
+notifications restarting retained 100% editors' full-resolution render jobs.
+Editor synchronization now preserves immutable recipe identity when only another
+session or save/busy status changed. The large-image regression also counts export
+window creation to detect redundant jobs, in addition to checking full-resolution
+pixels and cleanup. No retry or assertion tolerance was added.
+Post-fix image-editor suite: all 10 checks passed (22.1s), including the added
+export-count assertion, original-size detail, fit stability, saves, Undo and IME.
+All GUI runs use scripts/with-isolated-display.sh (Xvfb, private runtime/D-Bus,
+no inherited Wayland socket). No user desktop test windows.
+Renderer source maps disabled on both baseline and candidate:
+SETDOWN_BUILD_SOURCEMAP=0.
+
+Baseline: 41c79d58ed3ff20f31ea56d285748c52fd516e3c, separate installed checkout at
+/tmp/setdown-tab-zoom-baseline-41c79d5. Its dependencies were installed independently;
+its root node_modules is symlinked to an isolated cache directory to avoid filling
+/tmp. It does not use the candidate's installed dependency tree.
+
+Release note
+------------
+Published v2.1.2 is the earlier release at 329c675a2fdfebc7784974c2731924955172ab93.
+These zoom changes are subsequent working-tree changes, not part of that tag.
+Restart npm run dev to load the changed main process and preload API.
+
+Comparative latency results
+---------------------------
+Command: SETDOWN_BUILD_SOURCEMAP=0 npm run bench:preview -- \
+  --baseline /tmp/setdown-tab-zoom-baseline-41c79d5 --runs 3 --skip-build \
+  --output /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/reports/tab-zoom-2026-10-31/benchmark
+Both builds were current before measurement. Source maps were disabled for both.
+The runner verified unchanged build/harness hashes during measurement.
+One isolated Xvfb display; baseline/candidate order alternated AB / BA / AB.
+All eight scenarios ran in each repetition with five cycles per fresh app.
+First/second are medians across repetitions. Warm is the median of cycles 3-5
+within each app, then across repetitions. Values below are milliseconds.
+
+captureMs: Escape input to latest-content nonempty native capture, including
+polling, IPC and capture readback; not a monitor presentation timestamp.
+doubleClickToEditorMs: real double-click input to editable source.
+idle=0 / idle=3000: no source preparation time / 3000 ms preparation time.
+edits=false / edits=true: unchanged document / latest appended edit.
+Threshold unchanged: regression only if slower by BOTH more than 25% and 50 ms.
+
+Started: 2026-10-31T05:01:28.156Z
+Finished: 2026-10-31T05:04:57.244Z
+Electron: baseline 44.7.2; candidate 44.7.2
+Machine: linux x64, AMD Ryzen 7 8845HS w/ Radeon 780M Graphics, Node v22.23.1
+
+Scenario / cycle / metric                                      Baseline  Candidate  Delta   Result
+document/idle=0/edits=false/first/captureMs                         34.0       38.0    +4.0  PASS
+document/idle=0/edits=false/second/captureMs                        28.0       21.0    -7.0  PASS
+document/idle=0/edits=false/warm/captureMs                          29.0       27.0    -2.0  PASS
+document/idle=0/edits=false/first/doubleClickToEditorMs             19.0       20.0    +1.0  PASS
+document/idle=0/edits=false/second/doubleClickToEditorMs            33.0       26.0    -7.0  PASS
+document/idle=0/edits=false/warm/doubleClickToEditorMs              11.0       12.0    +1.0  PASS
+document/idle=0/edits=true/first/captureMs                         272.0      272.0    +0.0  PASS
+document/idle=0/edits=true/second/captureMs                         92.0       91.0    -1.0  PASS
+document/idle=0/edits=true/warm/captureMs                           91.0       85.0    -6.0  PASS
+document/idle=0/edits=true/first/doubleClickToEditorMs              16.0       17.0    +1.0  PASS
+document/idle=0/edits=true/second/doubleClickToEditorMs             16.0       13.0    -3.0  PASS
+document/idle=0/edits=true/warm/doubleClickToEditorMs               13.0       13.0    +0.0  PASS
+document/idle=3000/edits=false/first/captureMs                      27.0       26.0    -1.0  PASS
+document/idle=3000/edits=false/second/captureMs                     25.0       20.0    -5.0  PASS
+document/idle=3000/edits=false/warm/captureMs                       20.0       25.0    +5.0  PASS
+document/idle=3000/edits=false/first/doubleClickToEditorMs          18.0       16.0    -2.0  PASS
+document/idle=3000/edits=false/second/doubleClickToEditorMs         11.0       10.0    -1.0  PASS
+document/idle=3000/edits=false/warm/doubleClickToEditorMs           11.0       11.0    +0.0  PASS
+document/idle=3000/edits=true/first/captureMs                       91.0      108.0   +17.0  PASS
+document/idle=3000/edits=true/second/captureMs                      93.0       92.0    -1.0  PASS
+document/idle=3000/edits=true/warm/captureMs                        86.0       84.0    -2.0  PASS
+document/idle=3000/edits=true/first/doubleClickToEditorMs           16.0       16.0    +0.0  PASS
+document/idle=3000/edits=true/second/doubleClickToEditorMs          13.0       16.0    +3.0  PASS
+document/idle=3000/edits=true/warm/doubleClickToEditorMs            14.0       13.0    -1.0  PASS
+review/idle=0/edits=false/first/captureMs                          952.0      914.0   -38.0  PASS
+review/idle=0/edits=false/second/captureMs                          17.0       18.0    +1.0  PASS
+review/idle=0/edits=false/warm/captureMs                            28.0       28.0    +0.0  PASS
+review/idle=0/edits=false/first/doubleClickToEditorMs               25.0       24.0    -1.0  PASS
+review/idle=0/edits=false/second/doubleClickToEditorMs              12.0       12.0    +0.0  PASS
+review/idle=0/edits=false/warm/doubleClickToEditorMs                12.0       13.0    +1.0  PASS
+review/idle=0/edits=true/first/captureMs                           985.0     1005.0   +20.0  PASS
+review/idle=0/edits=true/second/captureMs                         1494.0     1446.0   -48.0  PASS
+review/idle=0/edits=true/warm/captureMs                            174.0      180.0    +6.0  PASS
+review/idle=0/edits=true/first/doubleClickToEditorMs                22.0       15.0    -7.0  PASS
+review/idle=0/edits=true/second/doubleClickToEditorMs               20.0       13.0    -7.0  PASS
+review/idle=0/edits=true/warm/doubleClickToEditorMs                 19.0       20.0    +1.0  PASS
+review/idle=3000/edits=false/first/captureMs                        27.0       32.0    +5.0  PASS
+review/idle=3000/edits=false/second/captureMs                       23.0       22.0    -1.0  PASS
+review/idle=3000/edits=false/warm/captureMs                         18.0       18.0    +0.0  PASS
+review/idle=3000/edits=false/first/doubleClickToEditorMs            24.0       24.0    +0.0  PASS
+review/idle=3000/edits=false/second/doubleClickToEditorMs           12.0       11.0    -1.0  PASS
+review/idle=3000/edits=false/warm/doubleClickToEditorMs             16.0       17.0    +1.0  PASS
+review/idle=3000/edits=true/first/captureMs                        230.0      233.0    +3.0  PASS
+review/idle=3000/edits=true/second/captureMs                       184.0      180.0    -4.0  PASS
+review/idle=3000/edits=true/warm/captureMs                         176.0      185.0    +9.0  PASS
+review/idle=3000/edits=true/first/doubleClickToEditorMs             22.0       22.0    +0.0  PASS
+review/idle=3000/edits=true/second/doubleClickToEditorMs            19.0       18.0    -1.0  PASS
+review/idle=3000/edits=true/warm/doubleClickToEditorMs              17.0       18.0    +1.0  PASS
+
+Full machine/build identity, individual samples and all comparisons:
+benchmark/comparison.json
+Raw logs and per-scenario JSON: benchmark/1-baseline through benchmark/3-candidate.

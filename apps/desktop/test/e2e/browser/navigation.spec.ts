@@ -10,6 +10,8 @@ import { nativeInput } from '../../support/electron/native-input';
 
 test('terminal addresses navigate through web and files while sessions and tab zoom stay independent', async () => {
   const f = await fixture();
+  const first = path.join(f.root, 'first.ts'), second = path.join(f.root, 'second.ts');
+  await writeFile(first, 'const first = 1;'); await writeFile(second, 'const second = 2;');
   try {
     await f.page.locator('.new-terminal-tab-button').click();
     await expect(f.page.getByRole('tab', { name: /Terminal 1/ })).toHaveAttribute('aria-selected', 'true');
@@ -17,19 +19,37 @@ test('terminal addresses navigate through web and files while sessions and tab z
     const location = await address.inputValue(); expect(location).toMatch(/^terminal:\/\/[\da-f-]+$/);
     const input = () => f.page.locator('.terminal-content:not(.inactive) .xterm-helper-textarea');
     await input().pressSequentially('export SETDOWN_SESSION=retained'); await input().press('Enter');
-    await f.page.getByRole('button', { name: 'Zoom terminal in', exact: true }).click();
-    await expect(f.page.getByRole('button', { name: 'Reset terminal zoom', exact: true })).toHaveText('110%');
+    await f.page.getByRole('button', { name: 'Zoom terminal in', exact: true }).click({ clickCount: 2 });
+    await expect(f.page.getByRole('button', { name: 'Reset terminal zoom', exact: true })).toHaveText('120%');
+    const id = await f.page.locator('.document-tab[aria-selected="true"]').getAttribute('data-tab-id');
     const go = async (url: string) => { await address.fill(url); await address.press('Enter'); };
     await go(`${f.origin}/first`);
     await expect(f.page.locator('.document-tab[aria-selected="true"]')).toContainText('Research page');
+    await expect(f.page.getByRole('button', { name: 'Reset website zoom', exact: true })).toHaveText('120%');
+    await expect.poll(() => f.app.evaluate(({ webContents }, origin) => webContents.getAllWebContents()
+      .find(wc => wc.getURL() === `${origin}/first`)?.getZoomFactor(), f.origin)).toBeCloseTo(1.2, 4);
+    for (const file of [first, second]) {
+      await go(pathToFileURL(file).href);
+      await expect(f.page.getByRole('button', { name: 'Reset text zoom', exact: true })).toHaveText('120%');
+      await expect.poll(() => f.page.locator('.monaco-editor:visible .view-line').first()
+        .evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeCloseTo(16.8, 1);
+      await expect(f.page.locator('.document-tab[aria-selected="true"]')).toHaveAttribute('data-tab-id', id!);
+    }
     await go(pathToFileURL(path.join(f.root, 'notes.md')).href);
     await expect(f.page.locator('.document-tab[aria-selected="true"]')).toContainText('notes.md');
     await expect(address).toHaveValue(/^file:\/\//);
+    await expect(f.page.getByRole('button', { name: 'Reset text zoom', exact: true })).toHaveText('120%');
+    for (const file of [second, first]) {
+      await f.page.getByRole('button', { name: 'Back', exact: true }).click();
+      await expect(address).toHaveValue(pathToFileURL(file).href);
+      await expect(f.page.getByRole('button', { name: 'Reset text zoom', exact: true })).toHaveText('120%');
+    }
     await f.page.getByRole('button', { name: 'Back', exact: true }).click();
     await expect(address).toHaveValue(`${f.origin}/first`);
     await f.page.getByRole('button', { name: 'Back', exact: true }).click();
     await expect(address).toHaveValue(location);
-    await expect(f.page.getByRole('button', { name: 'Reset terminal zoom', exact: true })).toHaveText('110%');
+    await expect.poll(() => f.page.locator('.terminal-instance .xterm-rows').first().evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeCloseTo(15.6, 1);
+    await expect(f.page.getByRole('button', { name: 'Reset terminal zoom', exact: true })).toHaveText('120%');
     await input().pressSequentially(`printf "$SETDOWN_SESSION" > '${f.root}/retained.txt'`); await input().press('Enter');
     await expect.poll(() => readFile(path.join(f.root, 'retained.txt'), 'utf8').catch(() => '')).toBe('retained');
     await f.page.getByRole('button', { name: 'Forward', exact: true }).click();
@@ -42,7 +62,7 @@ test('terminal addresses navigate through web and files while sessions and tab z
     await expect(f.page.getByRole('tab', { name: /Terminal 2/ })).toHaveAttribute('aria-selected', 'true');
     await expect(f.page.getByRole('button', { name: 'Reset terminal zoom', exact: true })).toHaveText('100%');
     await f.page.getByRole('tab', { name: /Terminal 1/ }).click();
-    await expect(f.page.getByRole('button', { name: 'Reset terminal zoom', exact: true })).toHaveText('110%');
+    await expect(f.page.getByRole('button', { name: 'Reset terminal zoom', exact: true })).toHaveText('120%');
     expect(f.errors).toEqual([]);
   } finally { await f.dispose(); }
 });
@@ -213,6 +233,8 @@ test('file URLs and web addresses replace the current tab, including PDFs outsid
   const downloads = await mkdtemp(path.join(os.tmpdir(), 'setdown-downloads-'));
   const pdf = path.join(downloads, "'26년 하반기 서울대 JD_게시용 # %20.pdf");
   await writeFile(pdf, pdfFixture(2));
+  const image = path.join(downloads, 'original.svg');
+  await writeFile(image, '<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1800"><rect width="2400" height="1800" fill="skyblue"/></svg>');
   try {
     const selected = f.page.locator('.document-tab[aria-selected="true"]');
     await expect(selected).toContainText('notes.md');
@@ -221,7 +243,9 @@ test('file URLs and web addresses replace the current tab, including PDFs outsid
     const original = path.join(f.root, 'notes.md');
     await expect(address).toHaveValue(pathToFileURL(original).href);
     const go = async (value: string) => { await address.fill(value); await address.press('Enter'); };
+    await f.page.getByRole('button', { name: 'Zoom text in', exact: true }).click({ clickCount: 2 });
     await go(`${f.origin}/first`);
+    await expect(f.page.getByRole('button', { name: 'Reset website zoom', exact: true })).toHaveText('120%');
     await expect(selected).toContainText('Research page');
     const contentsId = await f.app.evaluate(({ webContents }, origin) => webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/first`)!.id, f.origin);
     await go(pathToFileURL(pdf).href);
@@ -229,13 +253,23 @@ test('file URLs and web addresses replace the current tab, including PDFs outsid
     await expect(address).toHaveValue(pathToFileURL(pdf).href);
     const reader = f.page.getByRole('region', { name: 'PDF reader', exact: true });
     await expect(reader).toHaveAttribute('data-pdf-pages', '2');
+    await expect(reader.getByRole('combobox', { name: 'PDF zoom' })).toHaveValue('1.2');
+    await expect(f.page.getByRole('button', { name: 'Reset pdf zoom', exact: true })).toHaveText('120%');
     await expect(reader.locator('[data-page-number="1"] .textLayer')).toContainText('PDF page 1');
     await expect.poll(() => f.app.evaluate(({ webContents }, id) => !!webContents.fromId(id), contentsId)).toBe(false);
+    await go(pathToFileURL(image).href);
+    const imageReader = f.page.getByRole('region', { name: 'Image reader', exact: true });
+    await expect(imageReader).toHaveAttribute('data-image-ready', 'true');
+    await expect(imageReader.getByRole('combobox', { name: 'Image zoom' })).toHaveValue('1.2');
+    await expect(f.page.getByRole('button', { name: 'Reset image zoom', exact: true })).toHaveText('120%');
+    await expect.poll(() => imageReader.locator('img').evaluate(node => node.getBoundingClientRect().width)).toBeCloseTo(2880, 0);
     await go(`${f.origin}/second`);
+    await expect(f.page.getByRole('button', { name: 'Reset website zoom', exact: true })).toHaveText('120%');
     await expect(selected).toContainText('Second page');
     await expect(f.page.locator('.pdf-surface')).toHaveCount(0);
     await go(original); // Absolute paths remain accepted too.
     await expect(selected).toContainText('notes.md');
+    await expect(f.page.getByRole('button', { name: 'Reset text zoom', exact: true })).toHaveText('120%');
     await expect(f.page.locator('.shell')).toHaveAttribute('data-surface', 'viewer');
     await expect(address).toHaveValue(pathToFileURL(original).href);
     await expect.poll(() => f.app.evaluate(async ({ BrowserWindow }) => {
