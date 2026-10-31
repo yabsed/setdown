@@ -5,11 +5,11 @@ export function installed(entry: LanguageCatalogEntry): boolean {
 }
 
 export function serverStatus(entry: LanguageCatalogEntry): { label: string; tone: 'neutral' | 'success' | 'warning' | 'error' } {
-  if (entry.sessions.some(session => session.state === 'failed')) return { label: 'Failed', tone: 'error' };
+  if (entry.sessions.some(session => session.state === 'failed')) return { label: 'Stopped', tone: 'error' };
   if (!installed(entry)) return { label: 'Not detected', tone: entry.managed || entry.custom ? 'warning' : 'neutral' };
   if (!entry.configured) return { label: 'Setup needed', tone: 'warning' };
+  if (entry.sessions.some(session => session.state === 'ready')) return { label: 'Connected', tone: 'success' };
   if (!entry.enabled) return { label: 'Disabled', tone: 'neutral' };
-  if (entry.sessions.some(session => session.state === 'ready')) return { label: 'Running', tone: 'success' };
   if (entry.sessions.some(session => session.state === 'starting')) return { label: 'Starting', tone: 'neutral' };
   if (entry.selectionNeeded) return { label: 'Choose installation', tone: 'warning' };
   if (!entry.selected.length) return { label: entry.role === 'supplementary' ? 'Additional tools' : 'Choose primary', tone: entry.role === 'supplementary' ? 'neutral' : 'warning' };

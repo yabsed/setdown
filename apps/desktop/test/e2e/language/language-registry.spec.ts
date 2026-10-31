@@ -135,7 +135,7 @@ test('installing a server while editing and rescanning connects the current mode
     await expect(management.getByRole('img', { name: 'Fortran logo' })).toBeVisible();
     await management.getByRole('button', { name: 'Rescan installed servers' }).click();
     await management.locator('.server-list button').click();
-    await expect(management.locator('.state')).toHaveText('Running');
+    await expect(management.locator('.state')).toHaveText('Connected');
     await expect(management.locator('.details code').first()).toHaveText(executable);
     await expect.poll(async () => (await messages()).filter(m => m.method === 'open').length).toBe(1);
     expect((await messages()).find(m => m.method === 'open').params.textDocument.text).toContain('! edited before connection');
@@ -144,7 +144,7 @@ test('installing a server while editing and rescanning connects the current mode
     await expect(management.getByRole('button', { name: 'Rescan installed servers' })).toBeEnabled();
     await management.getByRole('button', { name: 'Back to language servers' }).click();
     await management.getByRole('searchbox').fill('pyright'); await management.locator('[data-server-id="pyright"]').click();
-    await management.getByRole('button', { name: 'Disable', exact: true }).click();
+    await management.getByRole('button', { name: 'Disable by default', exact: true }).click();
     await expect(management.locator('.state')).toHaveText('Disabled');
     await management.getByRole('button', { name: 'Close language support' }).click();
     await editor.press('Control+End'); await editor.pressSequentially('! still connected');
@@ -211,7 +211,7 @@ test('Edit menu imports a new server, negotiates Full sync, and reconnects the s
     await management.getByRole('searchbox').fill('fixture-custom');
     await management.locator('.server-list button').click();
     await expect(management.locator('.state')).toHaveText('Disabled');
-    await management.getByRole('button', { name: 'Enable', exact: true }).click();
+    await management.getByRole('button', { name: 'Enable by default', exact: true }).click();
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready');
     await expect.poll(async () => (await messages()).filter(m => m.method === 'open').length).toBe(1);
     const initial = await messages();
@@ -284,7 +284,7 @@ test('an imported npm profile starts automatically and supplies completion witho
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });
     await management.getByRole('searchbox').fill('json-lsp'); await management.locator('.server-list button').click();
-    await expect(management.locator('.state')).toHaveText('Running');
+    await expect(management.locator('.state')).toHaveText('Connected');
     await expect(management.locator('.details code').first()).toHaveText(path.join(folder, 'cli.cjs'));
     await management.getByRole('button', { name: 'Rescan installed servers' }).click();
     await expect(management.getByRole('button', { name: 'Rescan installed servers' })).toBeEnabled();

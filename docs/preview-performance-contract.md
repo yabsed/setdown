@@ -757,3 +757,24 @@ split workspace. The ordinary/review focus, IME, latest-content and timing
 guarantees and tolerances remain unchanged.
 
 Execution evidence: [Svelte syntax highlighting validation](validation/2026-10-30-svelte-syntax-highlighting.md).
+
+## Document-owned analysis inspection — 2026-11-01
+
+The global Language Support catalog manages tool availability and global defaults.
+Document language, project choices, recovery, results and individual tool inspection
+belong to the code tab's editor group. Opening details must not select a sidebar
+folder, take another group's document as its target, cover adjacent native views,
+replace a Monaco model, or change Markdown/review presentation or preparation.
+Project settings still apply to their actual analysis root; the UI must state that
+shared scope rather than inventing per-tab language-server instances.
+
+`language/document-analysis-ui.spec.ts` exercises compact and missing-environment
+screens, IME/Escape, separate project groups, bounded inspection, project-scoped
+writes, Undo and the catalog's independence from document lifetime. Existing real
+server/environment/recovery/import tests follow the new navigation without dropping
+scenarios. Presentation and controller tests distinguish connection, observations,
+freshness and partial failures and reject obsolete document responses. All are in
+the contract manifest. Comparative ordinary/review timing gates remain unchanged.
+The design and scope contract are recorded in [Language support](language-support.md#current-file-support).
+Execution evidence, including the menu-path test correction and all 48 unchanged
+latency comparisons, is in [Document language support UI](validation/2026-11-01-document-language-support-ui.md).

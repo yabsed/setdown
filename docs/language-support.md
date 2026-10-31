@@ -4,7 +4,9 @@ Use the language button in a code document’s location bar to choose its projec
 environment, inspect checks and repair its analysis service.
 
 Open **Language Support** in the left activity bar, directly below Browser.
-**Edit → Language Support…** and the editor's F1 palette open the same sidebar.
+**Edit → Language Support…** opens the same catalog. The editor’s Language Support
+command inspects the owning code tab; surfaces without a code-language control
+fall back to the catalog.
 It stays beside the document; opening it does not cover or freeze a live web page.
 The Setdown button continues to toggle Folder Tools.
 
@@ -16,7 +18,7 @@ results. Discovery support is independent of installation and of connection
 profile availability. Only entries without automatic discovery metadata are
 omitted from this list; they remain available in the manual-add flow.
 
-Each row separates runtime state (Ready, Running, Disabled, Failed, Not detected)
+Each row separates runtime state (Connected, Starting, Disabled, Stopped, Not detected)
 from origin (Detected, Included, Manual). Missing saved connections and failed
 sessions remain visible so they can be repaired. A detected executable without a
 connection profile appears with **Setup needed**. Language logos use named SVG
@@ -24,8 +26,10 @@ exports from the already installed Simple Icons package, pinned to 9.21.0 as a
 direct dependency. Logos adapt contrast to light/dark themes; languages without
 a matching logo use a short language label. No remote image requests are needed.
 
-Select a row to view its executable, controls, and errors. Advanced arguments,
-settings, and profile information are under **Connection settings**. Back returns
+Select a row to manage its installation and global defaults. Advanced arguments,
+settings, and profile information are under **Connection settings**; runtime paths
+and window-wide restart are under **Additional actions**. Project settings and
+individual session output belong to their document’s inspection. Back returns
 to the filtered list. Escape clears a search, returns from details, or closes the
 sidebar; it does not switch the active document into reader mode.
 
@@ -45,13 +49,56 @@ implemented catalog-wide discovery and imported connection profiles.
 
 ## Current file support
 
-The language button in a code document's location bar describes that document,
-independently of other tabs. It shows the language mode, built-in features,
-connected providers, reported environment, and setup/restart/Problems actions.
-The mode chooser applies to the current open document; Auto-detect restores file
-association detection. It preserves the model, unsaved content and Undo. Disabling
-or uninstalling a server does not remove its language associations or grammar.
-Unknown languages open as plain text and can be assigned a mode explicitly.
+The language button belongs to the document view in its editor group. Healthy
+project analysis shows only a neutral language name. Actual recovery, a limited
+environment or a required choice adds an indicator and an accessible status;
+narrow groups retain the indicator even when the explanatory text is hidden.
+The label never certifies that the document or project has been fully checked.
+
+The first step shows document language, the actual analysis root and environment,
+and a brief observation of results. Known environment repair or an exhausted
+server recovery comes first. A required environment choice takes precedence over
+restarting a process. Local-check failures and supplementary-provider failures
+remain visible independently of the primary provider.
+
+**Details…** stays in the same editor group. It lists tools attached to that
+file; selecting one reveals its results, capabilities, recovery and messages.
+Project connection settings and output are separate steps. Longer inspection
+stays open while another editor group receives focus, and is bounded by its
+own group. Quick selection steps close on an outside click. Tab replacement,
+closing, path retargeting or language changes retire the old inspection; a
+closed-document placeholder never occupies the global catalog. Escape returns
+one step, then closes and restores the language button; composition is guarded.
+
+The language chooser applies to the shared open document, not global file
+associations; Auto-detect restores association detection. It preserves the model,
+unsaved content and Undo. Environment/provider choices and advanced project
+settings apply to the displayed analysis root, including other tabs/windows
+using it. The UI states that scope. Each operation captures the document
+incarnation and root; late responses cannot update a replacement document or
+retarget an in-progress choice. Connection-setting edits retain their original
+options instead of following live catalog refreshes.
+
+The left **Language Support** sidebar owns available tools, installation paths,
+manual connections, import, discovery and global defaults. It has no current-file
+mode. **Manage installation…** passes only the language/tool filter to it, not a
+project editing target. **Disable by default** is distinct from a document’s
+project analysis selection. Closing all code tabs leaves the catalog usable.
+
+Disabling or uninstalling a server does not remove language associations or
+grammars. Unknown languages open as plain text and can be assigned a mode.
+Notebook execution continues to use its own environment/kernel controls. The
+ordinary code location control is not unconditionally added to Markdown readers,
+Git snapshots, notebooks or browser tabs.
+
+This separation follows the pinned GNOME Builder revision
+`0e4dbc7afb05983fbe7f4ec922d09a40f4ac1718`: `gbp-editorui-workspace-addin.c` binds
+the syntax menu to the buffer; `ide-application-tweaks.c` owns global plugin
+toggles; the build omnibar and `ide-lsp-service.c` connect project tooling and
+process launch. It is an adaptation of those responsibility boundaries, not a
+claim to have ported GTK or Builder’s project model. The corrected
+[design review](../reports/2026_11_01_gnome_builder_lsp_ui_review.md#후속-검토-화면의-위치보다-소유권을-먼저-정한다)
+records the product reasoning and concrete failure cases.
 
 No applicable server is a supported editing state. Built-in JSON validates syntax
 and available schemas; CSS/SCSS/Less validate syntax and configured lint knowledge;
@@ -154,8 +201,9 @@ checks. Re-enable its primary provider from the same chooser.
   continues to resolve the actual toolchain and dependency graph.
 
 A missing explicitly selected environment remains visible as missing; the app does
-not substitute a different choice. **Use automatic selection** removes the new
-project environment override, revealing any existing connection configuration.
+not substitute a different choice. **Remove project override** removes only the project environment override. The
+chooser previews the inherited choice and its source, including any existing
+connection configuration or missing fallback.
 New selections are saved in `project-analysis.json`; legacy `language-servers.json`
 settings and per-notebook `notebook-python.json` choices remain intact. Project
 provider/disabled preferences extend the existing language settings format.
@@ -163,9 +211,9 @@ provider/disabled preferences extend the existing language settings format.
 The same analysis plan supplies the launch configuration and the displayed
 selection evidence. Known configuration files and selected external paths are
 watched; reconnecting keeps the live Monaco model, unsaved contents, Undo/Redo,
-provider ownership and document-version checks. **Restart project services**
-restarts sessions serving the current file in this window. Other languages and
-other windows continue running. Changing a saved project preference reconnects
+provider ownership and document-version checks. **Restart [tool]**
+restarts that tool’s session serving the current file in this window, including
+other files sharing that session. Other languages and other windows continue running. Changing a saved project preference reconnects
 matching sessions for that root across subscribed windows.
 
 An unexpected server exit schedules reconnects after 1, 3 and 5 seconds, at most
@@ -177,8 +225,9 @@ change. Actions are bound to their original session and expire on shutdown or
 after two minutes.
 
 Connection, environment readiness, work progress and received analysis results
-are distinct. **Open-file checks** describes observed results for the open buffer,
-not completion of project indexing. Diagnostics retain their original payload,
+are distinct. **Results received for this open file** describes actual observations,
+not completion of project indexing. Edits alone do not imply reported work progress.
+Stale results, versionless results, pending checks and no active checks remain distinct. Diagnostics retain their original payload,
 provider, channel, epoch, version and environment context; quick fixes still receive
 that provider’s original diagnostics. Missing-import and other code diagnostics
 are not hidden to make the editor look successful.
@@ -239,12 +288,13 @@ interpreter. npm package `bin` metadata can also resolve an installed Node runti
 and script directly, including on Windows without running `.cmd`/`.bat` wrappers.
 Custom connections can still select Node and put the server script in `args`.
 
-The details distinguish **Not detected**, **Choose installation**, **Disabled**,
-**Ready**, **Choose primary**, **Starting**, **Running** and **Failed**. Detected
-entries lacking a profile show **Setup needed**. The detail view shows
-executable path, workspace root, negotiated editor features and startup/crash
-errors (including available stderr). Finding an executable does not prove that
-its runtime or workspace is healthy; **Running** means LSP initialization completed.
+The catalog distinguishes **Not detected**, **Choose installation**, **Disabled**,
+**Detected**, **Choose primary**, **Starting**, **Connected** and **Stopped**. Detected
+entries lacking a profile show **Setup needed**. Installation details expose the
+executable; document tool details expose the analysis root, negotiated features
+and startup/crash errors (including available stderr). Finding an executable does
+not prove that its runtime or project is healthy; **Connected** means LSP
+initialization completed, not that analysis completed.
 A runtime proxy such as rustup can exist even when its server component is missing.
 
 ## Finding an installation
@@ -311,16 +361,19 @@ Advanced JSON edits `args`, `settings` and `initializationOptions`; the typed fi
 remain authoritative when applying the form. These replace the corresponding defaults. `settings` supports both nested
 objects and exact dotted section keys for `workspace/configuration`.
 `initializationOptions` is passed directly to the server's initialize request.
-Choose **All projects** or **This project**. Project overrides are keyed by absolute
-project directory and apply only beneath that boundary, with more specific scopes
+The catalog edits global defaults; **Project connection settings…** in the
+document's tool details edits its displayed analysis root. The scope is fixed
+for that inspection rather than following the active document or Explorer folder.
+Project overrides are keyed by absolute project directory and apply only beneath that boundary, with more specific scopes
 winning. `workspace/configuration` resolves the requested resource within the
 server workspace. Effective launch/settings contexts have separate sessions; a
 configuration change creates a new session epoch instead of accepting old push
 results as new-environment analysis.
 
-Enable/disable, executable selection and preferred primary selection remain
-application-wide. The scope selector applies to the connection fields in that
-form; it does not silently change these global controls.
+The catalog's enable/disable, executable selection and preferred primary
+selection apply application-wide. The document's **Choose analysis tool…** uses
+the existing project override. Neither entry point silently changes its scope
+when another group receives focus.
 
 Settings persist atomically in `language-servers.json` in Electron's user-data
 directory (normally `~/.config/Setdown` on Linux). Invalid persisted settings are
@@ -587,3 +640,21 @@ confirmation, notebook synchronization, debugger inline values, monikers, virtua
 server documents, nonstandard clangd
 extensions remain unadvertised. Those require their own document/transaction or
 product contract. The implementation does not add a VS Code extension runtime.
+
+## UI regression coverage
+
+`document-analysis-ui.spec.ts` checks the quiet summary, IME/Escape steps, two
+projects in separate groups, group-bounded inspection, explicit shared scope,
+project-only writes from an inspection while another group has focus, Undo, the
+independent catalog after tab closure, and an actionable missing-environment
+summary without scrolling. Closing the final document view also retires its
+coverage from the Problems summary. `project-environment.spec.ts` retains real Python,
+clangd, TypeScript, CMake, recovery and persistence checks through the new paths.
+`language-policy.spec.ts` retains local checks, supplementary tools and genuine
+project diagnostic coverage. Presentation/controller unit tests cover priority,
+partial failure, pending/stale observations, closure and obsolete async responses.
+These are included in the preview contract; its GUI and performance gates still
+apply to changes in these surfaces.
+
+Execution evidence and the 48-bucket baseline comparison:
+[Document language support UI](validation/2026-11-01-document-language-support-ui.md).

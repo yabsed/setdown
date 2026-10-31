@@ -16,10 +16,11 @@ import { requestLanguageResult, LanguageRequestError, languageItemHandles } from
 import { completionContext as toCompletionContext } from '../../protocol/language-completion';
 import { ownLanguageDiagnostics } from './builtin-diagnostics';
 import { diagnosticsFor, type DiagnosticStore } from './diagnostic-store';
-import type { ProviderSupport } from './document-support';
+import { documentSupport, type ProviderSupport } from './document-support';
+import { problemsEmpty } from './document-presentation';
 import { featureNames } from '../../protocol/language-features';
 
-type Binding = { messages?: import('../../protocol/language').LanguageServerMessage[]; analysis?: AnalysisObservation; serverName?: string; hasDiagnostics?: boolean; id: string; context?: string[]; unavailable?: 'missing' | 'selection-needed'; lease: ReturnType<DiagnosticStore['lease']>; diagnosticChannels: Map<string, L.Diagnostic[]>; capabilities: LanguageCapabilities; diagnosticCache: DiagnosticCache; diagnostics: L.Diagnostic[]; refresh: Map<LanguageRefresh, Set<() => void>>; serverId: string; tab: DocumentTab; model: M.editor.ITextModel; path: string; generation: string; connected: Promise<LanguageConnection | LanguageUnavailable>;
+type Binding = { recovery?: import('../../protocol/language').LanguageRecovery; messages?: import('../../protocol/language').LanguageServerMessage[]; analysis?: AnalysisObservation; serverName?: string; hasDiagnostics?: boolean; id: string; context?: string[]; unavailable?: 'missing' | 'selection-needed'; lease: ReturnType<DiagnosticStore['lease']>; diagnosticChannels: Map<string, L.Diagnostic[]>; capabilities: LanguageCapabilities; diagnosticCache: DiagnosticCache; diagnostics: L.Diagnostic[]; refresh: Map<LanguageRefresh, Set<() => void>>; serverId: string; tab: DocumentTab; model: M.editor.ITextModel; path: string; generation: string; connected: Promise<LanguageConnection | LanguageUnavailable>;
   uri?: string; sync?: ReturnType<typeof textSynchronization>; queue: Promise<unknown>; listener: M.IDisposable; providers: M.IDisposable[]; failed: boolean; state: 'starting' | 'ready' | 'failed' | 'unavailable'; message?: string };
 export type LanguageOptions = {
   port: LanguageApi;
@@ -91,7 +92,7 @@ export class LanguageClient {
         const affected = [...this.bindings.values()].filter(binding => event.documents.some(document => document.id === binding.id && document.generation === binding.generation));
         if (!affected.length) return;
         for (const binding of affected) {
-          binding.state = event.state; binding.message = event.message;
+          binding.state = event.state; binding.message = event.message; binding.recovery = event.recovery;
           if (event.server) { this.setServer(binding, event.server.id); binding.serverName = event.server.name; }
         }
         this.publishStatus();
@@ -252,7 +253,7 @@ export class LanguageClient {
     for (const binding of bindings) this.options.documentStatus?.(binding.model, {
       id: binding.serverId, name: binding.serverName ?? binding.serverId, kind: 'server', state: binding.state === 'unavailable' ? binding.unavailable ?? 'missing' : binding.state,
       features: binding.failed ? [] : featureNames(binding.capabilities), checks: !binding.failed && binding.state === 'ready' && (binding.capabilities.diagnosticProvider || binding.hasDiagnostics) ? 'Server diagnostics' : 'none',
-      message: binding.message, context: binding.context, analysis: binding.analysis, messages: binding.messages, diagnosticCount: binding.diagnostics.length,
+      recovery: binding.recovery, message: binding.message, context: binding.context, analysis: binding.analysis, messages: binding.messages, diagnosticCount: binding.diagnostics.length,
     });
     const current = bindings.find(binding => binding.state === 'failed') ?? bindings.find(binding => binding.state === 'starting');
     this.options.status(current?.state ?? (bindings.some(b => b.state === 'ready') ? 'ready' : 'unavailable'), current?.message);
@@ -335,8 +336,8 @@ export class LanguageClient {
     if (!host) return;
     const { showLanguageResults } = await import('./language-results');
     this.resultsView?.dispose();
-    this.resultsView = await showLanguageResults(host, { title: 'Problems · Open Files', searchable: false, empty: 'No diagnostics reported. Language Support shows which checks are active.',
-      subscribe: listener => diagnosticsFor(this.api).subscribe(listener),
+    this.resultsView = await showLanguageResults(host, { title: 'Problems · Open Files', searchable: false, empty: () => problemsEmpty(documentSupport.all().flatMap(item => item.providers)),
+      subscribe: listener => { const diagnostics = diagnosticsFor(this.api).subscribe(listener), support = documentSupport.subscribe(listener); return () => { diagnostics(); support(); }; },
       load: async () => diagnosticsFor(this.api).entries().map(({ model, batch, item }) => ({
         label: item.message, detail: `${item.source ?? batch.provider} · ${diagnosticsFor(this.api).resource(model)}:${item.startLineNumber}`,
         location: { path: diagnosticsFor(this.api).resource(model), line: item.startLineNumber, column: item.startColumn,

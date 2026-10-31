@@ -18,7 +18,7 @@ import { applyMonacoTheme, monacoThemeName, registerMonacoThemes } from '../them
 import { languageSupport, type LanguageRoute } from '../../core/document/language-support';
 import type { LanguageOptions } from '../language/language-client';
 import type { LanguageServices } from '../language/language-services';
-import { documentSupport, builtinSupport, onBuiltinSupport, retargetBuiltin } from '../language/language-runtime';
+import { documentSupport, openLanguageSupport, builtinSupport, onBuiltinSupport, retargetBuiltin } from '../language/language-runtime';
 import { recognizedLanguage } from '../../core/document/language-policy';
 import { loadMonaco } from '../editor/monaco-runtime';
 import { displayOptions, releaseDisplayOptions } from '../editor/tools/view-display';
@@ -333,6 +333,7 @@ export class MonacoEditor {
     if (model) this.languageClient?.unbind(model);
     for (const entry of this.groupEditors.values()) if (model && entry.editor.getModel() === model) entry.editor.setModel(null);
     this.models.delete(id); this.owners.delete(id); this.modelPaths.delete(id); this.languageOverrides.delete(id);
+    documentSupport.remove(id);
     owner?.releaseOwner();
     if (path) liveDocumentModels.publish({ type: 'closed', path });
   }
@@ -484,24 +485,36 @@ export class MonacoEditor {
   private publishLanguageSupport(tab: DocumentContent, model: Monaco.editor.ITextModel): void {
     const api = this.apiValue;
     if (!api || model.isDisposed()) return;
-    const language = model.getLanguageId();
+    const language = model.getLanguageId(), path = tab.document.path;
+    const resource = model.id + '\0' + path + '\0' + language;
+    const valid = () => !model.isDisposed() && tab.document.path === path && model.getLanguageId() === language;
+    const requireCurrent = () => { if (!valid()) throw Error('This document has changed. Reopen language support.'); };
     const choices = api.languages.getLanguages().map(item => ({ id: item.id, name: item.aliases?.[0] ?? item.id })).sort((a, b) => a.name.localeCompare(b.name));
     const ids = new Set([tab.id, ...(this.options.viewIds?.(tab) ?? this.options.tabs().filter(view => documentIdentity(view) === documentIdentity(tab)).map(view => view.id))]);
-    for (const id of ids) documentSupport.set({ id, language, name: choices.find(item => item.id === language)?.name ?? language, path: tab.document.path,
+    for (const id of ids) documentSupport.set({ id, resource, language, name: choices.find(item => item.id === language)?.name ?? language, path: tab.document.path,
       choices, providers: this.languageClient?.supportFor(model) ?? (builtinSupport(model).features.length ? [builtinSupport(model)] : []),
       setLanguage: id => {
-        if (model.isDisposed() || (id && !choices.some(item => item.id === id))) return;
+        if (!valid() || (id && !choices.some(item => item.id === id))) return;
         if (id) this.languageOverrides.set(documentIdentity(tab), id); else this.languageOverrides.delete(documentIdentity(tab));
         this.languageClient?.unbind(model); this.connectLanguage(tab, model, api);
       },
-      restart: async server => { retargetBuiltin(api, model, tab.document.path); await this.options.language!.port.restart(tab.document.path, server); this.languageClient?.retryUnavailable(); },
-      answerMessage: (server, request, action) => this.options.language!.port.answerMessage(tab.document.path, server, request, action),
-      environment: () => this.options.language!.port.environment(tab.document.path, language),
-      selectEnvironment: selection => this.options.language!.port.selectEnvironment(tab.document.path, language, selection),
-      prepareEnvironment: () => this.options.language!.port.prepareEnvironment(tab.document.path, language),
-      cancelPreparation: () => this.options.language!.port.cancelPreparation(tab.document.path, language),
+      restart: async server => { requireCurrent(); retargetBuiltin(api, model, path); await this.options.language!.port.restart(path, server); this.languageClient?.retryUnavailable(); },
+      answerMessage: async (server, request, action) => { requireCurrent(); await this.options.language!.port.answerMessage(path, server, request, action); },
+      environment: async () => { requireCurrent(); return this.options.language!.port.environment(path, language); },
+      selectEnvironment: async (selection) => { requireCurrent(); return this.options.language!.port.selectEnvironment(path, language, selection); },
+      prepareEnvironment: async () => { requireCurrent(); return this.options.language!.port.prepareEnvironment(path, language); },
+      cancelPreparation: async () => { requireCurrent(); return this.options.language!.port.cancelPreparation(path, language); },
+      inspectProvider: async server => { requireCurrent(); return (await this.options.language!.port.catalog(path)).entries.find(entry => entry.id === server); },
+      configureProvider: async (server, options) => {
+        requireCurrent();
+        const entry = (await this.options.language!.port.catalog(path)).entries.find(item => item.id === server);
+        requireCurrent();
+        if (!entry?.projectRoot || options.scope !== entry.projectRoot) throw Error('The analysis project changed. Reopen its connection settings.');
+        await this.options.language!.port.configure(server, options);
+      },
       problems: () => {
-        const editor = [...this.groupEditors.values()].find(entry => entry.editor.getModel() === model)?.editor;
+        const editors = [...this.groupEditors.values()];
+        const editor = (editors.find(entry => entry.tabId === id && entry.editor.getModel() === model) ?? editors.find(entry => entry.editor.getModel() === model))?.editor;
         if (editor) void this.languageClient?.showNavigation('problems', editor);
       },
     });
@@ -538,7 +551,8 @@ export class MonacoEditor {
     editor.addAction({ id: 'setdown.restart-language', label: 'Restart Language Servers',
       run: async () => { await this.languageClient?.restart(); } });
     editor.addAction({ id: 'setdown.language-support', label: 'Language Support…',
-      run: () => { window.dispatchEvent(new Event('setdown:language-support')); } });
+      run: () => { const model = editor.getModel(); const views = this.options.tabs().filter(view => this.models.get(documentIdentity(view)) === model);
+        const view = views.find(view => view.id === this.options.active()?.id) ?? views[0]; openLanguageSupport(view && documentSupport.get(view.id)); } });
     editor.onDidFocusEditorText(() => {
       const tab = this.options.active();
       if (tab && editor.getModel() === this.models.get(documentIdentity(tab))) this.owners.get(documentIdentity(tab))?.beginEditing(`document:${tab.id}`);

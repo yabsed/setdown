@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "baseCommit": "83d447bd61df81e1f9fbb2df2b9b3c0c05610442",
+  "builderCommit": "0e4dbc7afb05983fbe7f4ec922d09a40f4ac1718",
+  "files": {
+    "apps/desktop/src/core/document/analysis-context.ts": "857003ea08c161ac2b22697d523bf84bb2d7e37eb85ab08383136fcdc962eb43",
+    "apps/desktop/src/main/language/analysis-context.test.ts": "26b9af736717a8717e347b7764f6314a2db142a8a98241d973141eec7d392c40",
+    "apps/desktop/src/main/language/analysis-context.ts": "3774ddb132c144a788fe179a55c974091a978defaba27ba21ea57cbaa1cb67f4",
+    "apps/desktop/src/main/language/language-manager.test.ts": "3c5d93d9a5ec75ea05bba7125d91edbdd7d2fbc150f93ab798f5cb813a7ae852",
+    "apps/desktop/src/main/language/language-manager.ts": "15714fbd6eeabe2cde036608a2a97b2e1b87e0ad17b283e79dc43783762958fb",
+    "apps/desktop/src/preload/index.ts": "c6f2715d62c5425a6e2b1289ea20fea0df45acb638bcae2d1ef0aa1b657d549c",
+    "apps/desktop/src/protocol/language.ts": "4f51ec6ee625f1385c6e7ab7cb09553876d299f1768b275674790b3e89bd3d2a",
+    "apps/desktop/src/renderer/App.svelte": "3f5d848f2af63106649783e43f73adcc8b767547ca4de448562c82ecc043794b",
+    "apps/desktop/src/renderer/adapters/monaco-editor.ts": "d9db7c5f276ee42cf4578e94a1596fe1930413ecb33f6ee86c3386291b430025",
+    "apps/desktop/src/renderer/app/editor-tools-controller.ts": "32266aba4a573c5863dfc9cfad298df783486183c2cec860020ad98b3ec31e13",
+    "apps/desktop/src/renderer/language/AnalysisEnvironment.svelte": "ede28c489487fc724039316cf1cf12c7e52ce5039552c5e4ffea635cff50fad2",
+    "apps/desktop/src/renderer/language/DocumentAnalysisPanel.svelte": "4a14d60e4d12b0f658bce7a61b8b6d9efc08a8cd280f83c1009bd823c97bfcb2",
+    "apps/desktop/src/renderer/language/DocumentLanguageStatus.svelte": "42f0765b633a3be9b24560ebe51408321f2b699e62777ab3c3560ce18d28c61a",
+    "apps/desktop/src/renderer/language/DocumentProviderDetails.svelte": "7998b29416e53e0ebc9a23f02d20692b347186813caaccec50c168c9ab338b84",
+    "apps/desktop/src/renderer/language/LanguageConnectionSettings.svelte": "b5c150ae49f4e0a5614b3283cf45d84946be47f01f8abd4b0e82fe5e61bcced6",
+    "apps/desktop/src/renderer/language/LanguageResults.svelte": "67d3ef4bccc795bc5a373a8914972273fa9ad909ec6a5a05b42267ac97a7bb1a",
+    "apps/desktop/src/renderer/language/LanguageSupport.svelte": "4b08a2d4fe3aef917cc39685d159584a8d694068e6a7c041bf9e28c5c735cdd2",
+    "apps/desktop/src/renderer/language/document-analysis-controller.test.ts": "3c772edc2b2065d4e45752b90932acc207a83698b22d3da2146b8df178ea1e30",
+    "apps/desktop/src/renderer/language/document-analysis-controller.ts": "96c2ae1a0e3c5850f152569a8ff3b655d7afb0a4736832e2c63000b1c1d10480",
+    "apps/desktop/src/renderer/language/document-presentation.test.ts": "094a8c770b9cc726a1849a5e2b7533641db146f6fa488c1f7c3e2762230759f4",
+    "apps/desktop/src/renderer/language/document-presentation.ts": "77a84aa2a057be0a4ea4e86e066479115f1923846f7eec82c05a47ed11e58d35",
+    "apps/desktop/src/renderer/language/document-support.ts": "715c49965612e0c5831fcaa25b34f1f4b0d7d40864a209b43664f67af2031321",
+    "apps/desktop/src/renderer/language/language-client.ts": "2eb318c1c3ab13154db9168312afd89e338528aec5167354e47906979ed9fdba",
+    "apps/desktop/src/renderer/language/language-presentation.test.ts": "34981465b617e66089cd353c65cfb543f5f104ad3cc8fe2594b2a1f949d2fbe8",
+    "apps/desktop/src/renderer/language/language-presentation.ts": "aa6928abb8335d11b05ad28cf4446e706cebc8c535f60747ecfae4783c7e3a30",
+    "apps/desktop/src/renderer/language/language-results.ts": "567266d7a70d2e48434ae807ca8c57fdb7adb22f55f75227609de3fee819fceb",
+    "apps/desktop/src/renderer/language/language-runtime.ts": "578227bda4384053081691a1c88ed8bfd3de58b2b765c0cc29ba92b4675bf44d",
+    "apps/desktop/src/renderer/language/language-services.ts": "d8c52d561c48d3e492425a74ef9cebc84a901b21d4dec759d202946ad468bf1a",
+    "apps/desktop/test/e2e/language/clangd-support.spec.ts": "58cf8e8ae1a5ba4e85f2fd9c4b57525a5f00944ef971eeae0b09e918fcd3823a",
+    "apps/desktop/test/e2e/language/document-analysis-ui.spec.ts": "66e08d21e47074c90e9f928fff8a2110a8e8b2109e235278cced51043dfd01a7",
+    "apps/desktop/test/e2e/language/language-policy.spec.ts": "292680f98ed06131dbe55fcc39bdd67308966ba1814c9fdd2abecc8bf4578fe0",
+    "apps/desktop/test/e2e/language/language-registry.spec.ts": "13d931816a615a90be90f7464d1ba0a3234d6ccc0711f94ba4624de7b559d57e",
+    "apps/desktop/test/e2e/language/language-support.spec.ts": "3ddb532d2abbbae3e8db24739e793f7018b70be1985d8c2061e12ef409a9d939",
+    "apps/desktop/test/e2e/language/project-environment.spec.ts": "beba1142054f05938ac74c3a304e7a23db68a7022ea0c4aabe5b8d274aa96fd1",
+    "apps/desktop/test/suites.json": "e5eaeff2016a21cf71c747d21b33710bac5d6665e77cb8c35a7039eb0c3df68b"
+  },
+  "benchmark": {
+    "finishedAt": "2026-10-31T16:50:02.445Z",
+    "passed": true,
+    "runsPerApp": 3,
+    "launches": 48,
+    "cycles": 240,
+    "comparisons": 48,
+    "harnessHash": "d77de65963a8a6101d8f3ccd4f6b616869fbd6819c7ae285318085b355a25f7c",
+    "thresholds": {
+      "relative": 0.25,
+      "absoluteMs": 50
+    },
+    "baselineArtifacts": {
+      "renderer": "fd95b2b7c39c8a617edb3e096ea029487134771eaf7ccbb145bb962ff95cf000",
+      "main": "7bc279787fd97ede26a88a672eb391416a98db1ed569d0cb10f5e8d1634866b9"
+    },
+    "candidateArtifacts": {
+      "renderer": "fdf5b7046a3182a04669febbf55bf55b9aaec978b59bb12729b4465ac5f2a46b",
+      "main": "7ae1062aaad1742c7aacce97c5552f298c37b7424401d0d804e6e50a7cc38f44"
+    }
+  }
+}

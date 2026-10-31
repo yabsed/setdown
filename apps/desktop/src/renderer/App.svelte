@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { languageCatalogRequest } from './language/language-runtime';
   import NativeOverlay from './shell/NativeOverlay.svelte';
   import { confirmationFocus } from './shell/confirmation-focus';
   import EmptyState from './shell/EmptyState.svelte';
@@ -27,7 +28,8 @@ import type { AppActions } from './ports/ui-actions';
   let { actions, terminalApi, desktop, mediaPosition }: { actions: AppActions; terminalApi: TerminalApi; desktop: DesktopPort;
     mediaPosition(id: string, position: ReadingPosition): void } = $props();
   onMount(() => {
-    const show = () => {
+    const show = (event: Event) => {
+      if (!(event instanceof CustomEvent)) languageCatalogRequest.set({});
       if (!project.visible || !project.open || project.activeView !== 'language') actions.selectProjectView('language');
     };
     window.addEventListener('setdown:language-support', show);

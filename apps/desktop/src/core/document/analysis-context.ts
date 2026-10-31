@@ -6,13 +6,16 @@ export type AnalysisContext = {
   environment: 'usable' | 'partial' | 'action-needed';
   kind?: AnalysisEnvironmentKind; label?: string; selected?: string;
   choices: AnalysisChoice[]; evidence: string[];
+  selectionSource?: 'project' | 'connection' | 'automatic';
+  /** Effective choice after removing only the project override. */
+  inherited?: AnalysisChoice;
   issues: { code: string; message: string }[];
   preparation?: 'cmake' | 'meson';
 };
 export type DocumentAnalysis = AnalysisContext & {
   servers: { id: string; name: string; selected: boolean; enabled: boolean; role: 'primary' | 'supplementary' }[];
 };
-export type AnalysisSelection = { kind: AnalysisEnvironmentKind | 'server'; value: string };
+export type AnalysisSelection = { kind: AnalysisEnvironmentKind | 'server'; value: string; root?: string };
 export type AnalysisObservation = {
   context: AnalysisContext;
   analysis: 'waiting' | 'working' | 'observed';

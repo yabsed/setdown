@@ -71,6 +71,8 @@
       "src/renderer/language/language-client.test.ts",
       "src/renderer/language/language-features.test.ts",
       "src/renderer/language/language-presentation.test.ts",
+      "src/renderer/language/document-presentation.test.ts",
+      "src/renderer/language/document-analysis-controller.test.ts",
       "src/renderer/language/textmate-runtime.test.ts",
       "src/renderer/notebook/notebook-controller.test.ts",
       "src/renderer/notebook/notebook-execution.test.ts",
@@ -311,6 +313,9 @@
       "previewContract": true
     },
     "workspace/vscode-theme.spec.ts": {
+      "previewContract": true
+    },
+    "language/document-analysis-ui.spec.ts": {
       "previewContract": true
     },
     "language/project-environment.spec.ts": {

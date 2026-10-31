@@ -64,7 +64,10 @@ export class AnalysisContextService {
       const environments = await notebookPython.list(path.join(root, '__setdown_analysis__.py'), root);
       for (const candidate of environments.candidates) choice(candidate.path, candidate.source, candidate.name, true);
       const configured = section(profile.configuration, 'python.pythonPath');
-      const selected = preferences.python ?? (typeof configured === 'string' && configured ? path.resolve(root, configured) : undefined) ?? environments.selected;
+      const inherited = (typeof configured === 'string' && configured ? path.resolve(root, configured) : undefined) ?? environments.selected;
+      context.selectionSource = preferences.python ? 'project' : configured ? 'connection' : 'automatic';
+      if (inherited) context.inherited = choice(inherited, configured ? 'Connection settings' : 'Automatic selection');
+      const selected = preferences.python ?? inherited;
       if (selected) {
         const item = choice(selected, preferences.python ? 'Project selection' : configured ? 'Connection settings' : 'Host environment');
         context.selected = item.id;
@@ -93,6 +96,8 @@ export class AnalysisContextService {
         directory = path.dirname(directory);
       }
       const configured = section(profile.initializationOptions ?? {}, 'tsserver.path');
+      context.selectionSource = preferences.typescript ? 'project' : configured ? 'connection' : 'automatic';
+      context.inherited = typeof configured === 'string' ? choice(configured, 'Connection settings', 'Configured TypeScript SDK') : bundledChoice;
       const selected = preferences.typescript === 'bundled' ? bundled : preferences.typescript ?? (typeof configured === 'string' ? configured : bundled);
       const item = selected === bundled ? bundledChoice : choice(selected, preferences.typescript ? 'Project selection' : 'Connection settings', 'Selected TypeScript SDK');
       context.selected = item.id; context.evidence.push(`TypeScript SDK: ${selected}`);
@@ -126,9 +131,12 @@ export class AnalysisContextService {
         const database = path.join(directory, 'compile_commands.json'); inputs.add(database);
         if (fileExists(database)) choice(database, 'Detected build', path.relative(root, directory) || 'Project root');
       }
+      context.selectionSource = preferences.compilation ? 'project' : configured ? 'connection' : 'automatic';
+      const detected = context.choices.find(c => c.path === path.join(root, 'compile_commands.json')) ?? (context.choices.length === 1 ? context.choices[0] : undefined);
+      context.inherited = configured ? choice(path.resolve(root, configured, 'compile_commands.json'), 'Connection arguments') : detected;
       const explicit = preferences.compilation ?? (configured ? path.resolve(root, configured, 'compile_commands.json') : undefined);
       const selected = explicit ? choice(explicit, preferences.compilation ? 'Project selection' : 'Connection arguments', path.basename(path.dirname(explicit)))
-        : context.choices.find(c => c.path === path.join(root, 'compile_commands.json')) ?? (context.choices.length === 1 ? context.choices[0] : undefined);
+        : detected;
       if (selected) {
         context.selected = selected.id;
         if (!selected.available) issue('compilation-missing', `The selected compilation database is missing: ${selected.path}. Choose or configure a build.`, true);

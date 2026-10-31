@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { EventEmitter } from 'node:events';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import type { WindowState } from '../windows/window-state';
@@ -28,8 +28,7 @@ beforeEach(async () => { mocks.directory = await mkdtemp(path.join(os.tmpdir(), 
 
 afterEach(async () => { await rm(mocks.directory, { recursive: true, force: true }); });
 
-function fixture(discovery?: ServerDiscovery) {
-  const root = path.resolve('language-fixture');
+function fixture(discovery?: ServerDiscovery, root = path.resolve('language-fixture')) {
   const states = new Map<number, WindowState>();
   const event = (id: number) => {
     const contents = Object.assign(new EventEmitter(), { id, mainFrame: {}, isDestroyed: () => false, send: vi.fn() });
@@ -328,6 +327,8 @@ test('current-document restart retires only its provider session, not another la
 test('project environment actions reject foreign documents and forged candidates without launching services', async () => {
   const f = fixture(), file = f.document('python').path;
   await expect(f.invoke('environment', f.first, path.resolve('not-open.py'), 'python')).rejects.toThrow(/not open/);
+  await expect(f.invoke('catalog', f.first, path.resolve('not-open.py'))).rejects.toThrow(/not open/);
+  await expect(f.invoke('select-environment', f.first, file, 'python', { kind: 'server', value: 'off', root: '/a-different-project' })).rejects.toThrow(/project changed/);
   await expect(f.invoke('select-environment', f.first, file, 'python', { kind: 'python', value: '/arbitrary/program' })).rejects.toThrow(/no longer available/);
   await expect(f.invoke('select-environment', f.first, file, 'python', { kind: 'compilation', value: 'automatic' })).rejects.toThrow(/does not apply/);
   expect(() => f.invoke('answer-message', f.first, file, 'pyright', 'forged', 0)).toThrow(/no longer connected/);
@@ -341,4 +342,19 @@ test('project Basic editing does not change the global catalog Enable/Disable co
   const catalog = await f.invoke('catalog', f.first);
   expect(catalog.entries.find((entry: { id: string }) => entry.id === 'pyright').enabled).toBe(true);
   expect(await f.invoke('open', f.first, f.document('python'))).toEqual({ unavailable: 'missing' });
+});
+
+test('the tool catalog has global defaults even with a folder open; document inspection requests its own project options', async () => {
+  const root = path.join(mocks.directory, 'project');
+  await mkdir(path.join(root, '.git'), { recursive: true });
+  await writeFile(path.join(root, 'pyproject.toml'), '[project]\nname = "fixture"\nversion = "0.0.0"\n');
+  const f = fixture(undefined, root), file = f.document('python').path;
+  await writeFile(file, 'value = 1\n');
+  await f.invoke('configure', f.first, 'pyright', { scope: root, args: [], settings: { python: { pythonPath: '/project-only/python' } }, initializationOptions: {} });
+  const global = (await f.invoke('catalog', f.first)).entries.find((entry: { id: string }) => entry.id === 'pyright');
+  expect(global.projectRoot).toBeUndefined(); expect(global.options.scope).toBeUndefined();
+  expect(global.options.settings.python?.pythonPath).not.toBe('/project-only/python');
+  const inspected = (await f.invoke('catalog', f.first, file)).entries.find((entry: { id: string }) => entry.id === 'pyright');
+  expect(inspected.projectRoot).toBe(root); expect(inspected.options.scope).toBe(root);
+  expect(inspected.options.settings.python.pythonPath).toBe('/project-only/python');
 });

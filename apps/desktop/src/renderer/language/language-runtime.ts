@@ -1,6 +1,6 @@
 /** Public, lightweight entry for editor surfaces. Project clients remain lazy. */
 export { builtinSupport, onBuiltinSupport, retargetBuiltin, installBuiltinDiagnostics } from './builtin-diagnostics';
-export { documentSupport } from './document-support';
+export { documentSupport, languageCatalogRequest, openLanguageSupport } from './document-support';
 
 export function createLanguageWorker(label: string): Promise<Worker> | undefined {
   switch (label) {

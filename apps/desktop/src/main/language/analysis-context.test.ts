@@ -25,6 +25,7 @@ test('Python preserves explicit connection settings and native project configura
   expect(configurationSection(initial.profile.configuration, 'python.pythonPath')).toBe(process.execPath);
   expect(configurationSection(initial.profile.configuration, 'python.analysis')).toEqual(settings.python.analysis);
   expect(initial.context.evidence.join('\n')).toContain('executionEnvironments');
+  expect(initial.context.selectionSource).toBe('connection');
   const scoped = initial.configuration({ python: { pythonPath: '/nested/python', analysis: { extraPaths: ['/nested'] } } });
   expect(configurationSection(scoped, 'python.pythonPath')).toBe('/nested/python');
   expect(configurationSection(scoped, 'python.analysis.extraPaths')).toEqual(['/nested']);
@@ -32,9 +33,16 @@ test('Python preserves explicit connection settings and native project configura
   const selected = await service.resolve(root, 'fixture', definition('pyright'), { settings });
   expect(selected.context.environment).toBe('action-needed');
   expect(selected.context.issues[0].code).toBe('python-missing');
+  expect(selected.context.selectionSource).toBe('project');
+  expect(selected.context.inherited?.path).toBe(process.execPath);
+  expect(selected.context.inherited?.source).toBe('Connection settings');
   expect(configurationSection(selected.profile.configuration, 'python.pythonPath')).toBe(missing);
   expect(configurationSection(selected.configuration({ python: { pythonPath: '/nested/python' } }), 'python.pythonPath')).toBe(missing);
   expect(selected.context.id).not.toBe(initial.context.id);
+  analysisPreferences.set(root, 'python', undefined);
+  const fallback = await service.resolve(root, 'fixture', definition('pyright'), { settings });
+  expect(configurationSection(fallback.profile.configuration, 'python.pythonPath')).toBe(selected.context.inherited?.path);
+  analysisPreferences.set(root, 'python', missing);
   expect(analysisPreferences.pythonFor(path.join(root, 'nested/notes.ipynb'))).toBe(missing);
 });
 

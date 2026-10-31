@@ -2,6 +2,8 @@
   import { onMount, tick } from 'svelte';
   import { isComposingInput } from '../editor/composition-guard';
   import LanguageLogo from './LanguageLogo.svelte';
+  import LanguageConnectionSettings from './LanguageConnectionSettings.svelte';
+  import { languageCatalogRequest } from './document-support';
   import type { LanguageApi, LanguageCatalog, LanguageCatalogEntry, LanguageServerOptions } from '../../protocol/language';
   let { api, onclose }: { api: LanguageApi; onclose(): void } = $props();
   import { connectionSource, serverGroups, serverStatus } from './language-presentation';
@@ -12,6 +14,15 @@
   let catalog = $state<LanguageCatalog>({ release: '', entries: [] });
   let query = $state('');
   let selectedId = $state('');
+  let settingsTarget = $state<LanguageCatalogEntry>();
+  async function inspect() {
+    const request = languageCatalogRequest.get();
+    query = request.language ?? ''; mode = 'list';
+    const result = await api.catalog();
+    if (!live || languageCatalogRequest.get() !== request) return;
+    catalog = result; loaded = true;
+    const entry = result.entries.find(e => e.id === request.server); if (entry) choose(entry);
+  }
   let busy = $state(false);
   let error = $state('');
   const adding = $derived(mode === 'add');
@@ -21,46 +32,15 @@
   let extensions = $state('');
   let markers = $state('');
   let optionsText = $state('');
-  let scope = $state(''), role = $state<'primary' | 'supplementary'>('primary'), formatting = $state('auto');
-  let interpreter = $state(''), compilationDirectory = $state(''), rootOverride = $state('');
-  function editOptions(options: LanguageServerOptions) {
-    scope = options.scope ?? ''; role = options.role ?? 'primary'; formatting = options.formatting === undefined ? 'auto' : options.formatting ? 'on' : 'off';
-    rootOverride = options.root ?? '';
-    const python = options.settings.python;
-    interpreter = python && typeof python === 'object' ? String((python as Record<string, unknown>).pythonPath ?? '') : '';
-    const arg = options.args.findIndex(arg => arg === '--compile-commands-dir' || arg.startsWith('--compile-commands-dir='));
-    compilationDirectory = arg < 0 ? '' : options.args[arg].split('=').slice(1).join('=') || options.args[arg + 1] || '';
-    optionsText = JSON.stringify(options, null, 2);
-  }
-  function connectionOptions(): LanguageServerOptions {
-    const options = JSON.parse(optionsText) as LanguageServerOptions;
-    if (!Array.isArray(options.args) || !options.settings || typeof options.settings !== 'object') throw Error('Arguments and settings must be valid JSON.');
-    if (selected?.languages.includes('python')) {
-      const python = { ...(options.settings.python as object ?? {}) } as Record<string, unknown>;
-      if (interpreter.trim()) python.pythonPath = interpreter.trim(); else delete python.pythonPath;
-      options.settings = { ...options.settings, python };
-    }
-    if (selected?.id === 'clangd') {
-      const args: string[] = [];
-      for (let index = 0; index < options.args.length; index++) {
-        const arg = options.args[index];
-        if (arg === '--compile-commands-dir') { index++; continue; }
-        if (!arg.startsWith('--compile-commands-dir=')) args.push(arg);
-      }
-      if (compilationDirectory.trim()) args.push(`--compile-commands-dir=${compilationDirectory.trim()}`);
-      options.args = args;
-    }
-    return { ...options, scope: scope || undefined, root: rootOverride.trim() || undefined, role, formatting: formatting === 'auto' ? undefined : formatting === 'on' };
-  }
   let live = true, refreshVersion = 0;
   const selected = $derived(catalog.entries.find(entry => entry.id === selectedId));
   const groups = $derived(serverGroups(catalog.entries, query));
   const templates = $derived([...catalog.entries].sort((a, b) => a.name.localeCompare(b.name)));
   const defaults: LanguageServerOptions = { args: [], settings: {}, initializationOptions: {} };
   function choose(entry: LanguageCatalogEntry) {
-    selectedId = entry.id; mode = 'details'; error = '';
+    selectedId = entry.id; settingsTarget = structuredClone($state.snapshot(entry)); mode = 'details'; error = '';
     void tick().then(() => backButton?.focus());
-    editOptions(entry.options ?? defaults);
+
   }
   async function refresh() {
     const version = ++refreshVersion;
@@ -89,11 +69,14 @@
     if (await api.addConnection({ ...options, id: connectionId.trim(), name: connectionName.trim(),
       languages: [{ languageId: languageId.trim(), extensions: words(extensions) }], rootMarkers: words(markers),
       candidateId: selected?.id === connectionId.trim() && selected.candidates?.length === 1 ? selected.candidates[0].id : undefined })) {
-      selectedId = connectionId.trim(); mode = 'details';
+      await refresh(); const entry = catalog.entries.find(item => item.id === connectionId.trim());
+      if (entry) choose(entry);
     }
   }
   onMount(() => {
-    searchInput?.focus();
+    void inspect().catch(reason => error = String(reason));
+    const stopInspection = languageCatalogRequest.subscribe(() => { void inspect().catch(reason => error = String(reason)); });
+    if (mode === 'list') searchInput?.focus();
     const keydown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || isComposingInput(event) || !(event.target instanceof Element)
         || !event.target.closest('.language-support')) return;
@@ -103,12 +86,11 @@
       else { onclose(); void tick().then(() => document.querySelector<HTMLButtonElement>('.activity-bar [aria-label="Language Support"]')?.focus()); }
     };
     window.addEventListener('keydown', keydown);
-    void refresh().catch(reason => { error = String(reason); });
     const unsubscribe = api.onEvent(event => {
       if (['configuration', 'discovery', 'status', 'activity', 'capabilities'].includes(event.type)) void refresh().catch(reason => { error = String(reason); });
     });
     return () => {
-      live = false; unsubscribe(); window.removeEventListener('keydown', keydown);
+      live = false; unsubscribe(); stopInspection(); window.removeEventListener('keydown', keydown);
     };
   });
 </script>
@@ -191,7 +173,7 @@
             {#if session.logs?.length}<details><summary>Server output</summary><pre class="server-output">{session.logs.join('\n')}</pre></details>{/if}
           {/each}
         {:else if selected.configured}
-          <p class="executable"><span class="field-label">Executable</span><code>{selected.executable}</code></p>
+
           {#if selected.automatic && selected.enabled}<p>Starts when you open a matching file.</p>{/if}
           {#if selected.discoveryMessage}<p>{selected.discoveryMessage}</p>{/if}
           {#if selected.candidates && selected.candidates.length > 1}
@@ -205,40 +187,28 @@
           {/if}
           {#if selected.selected.length}<p>Selected for {selected.selected.join(', ')}.</p>{/if}
           <div class="buttons">
-            <button class:primary={!selected.enabled} disabled={busy} onclick={() => perform(() => api.setEnabled(selected!.id, !selected!.enabled))}>{selected.enabled ? 'Disable' : 'Enable'}</button>
+            <button class:primary={!selected.enabled} disabled={busy} onclick={() => perform(() => api.setEnabled(selected!.id, !selected!.enabled))}>{selected.enabled ? 'Disable by default' : 'Enable by default'}</button>
             {#if selected.enabled && !selected.selected.length}<button disabled={busy} onclick={() => perform(() => api.setEnabled(selected!.id, true))}>Use for these languages</button>{/if}
             {#if !selected.available && !selected.bundled}<button disabled={busy} onclick={() => perform(() => api.chooseExecutable(selected!.id))}>Choose executable…</button>{/if}
-            {#if selected.sessions.length}<button disabled={busy} onclick={() => window.dispatchEvent(new Event('setdown:restart-language'))}>Restart servers in this window</button>{/if}
+
           </div>
-          {#each selected.sessions as session}
-            <p class="session" data-session-state={session.state}><code>{session.root}</code><br />{session.state}{session.message ? ` · ${session.message}` : ''}
-              {#if session.rootReason}<br />{session.rootReason}{/if}
-              {#if session.features?.length}<br />{session.features.join(', ')}{/if}</p>
-            {#if session.progress?.length}<p class="session" role="status">{session.progress.join(' · ')}</p>{/if}
-            {#if session.context?.length}<p class="session">{session.context.join(" · ")}</p>{/if}
-            {#if session.logs?.length}<details><summary>Server output</summary><pre class="server-output">{session.logs.join('\n')}</pre></details>{/if}
-          {/each}
+          {#if selected.sessions.length}<p>Connected in {selected.sessions.filter(session => session.state === 'ready').length} project(s). Inspect each document from its language button.</p>{/if}
+          <details><summary>Additional actions</summary>
+            <p>Applies to every project in this window.</p>
+            <button disabled={busy} onclick={() => window.dispatchEvent(new Event('setdown:restart-language'))}>Restart servers in this window</button>
+            <p class="executable"><span class="field-label">Executable</span><code>{selected.executable}</code></p>
+          </details>
           <details>
             <summary>Connection settings</summary>
-            <label>Apply to<select aria-label="Language settings scope" value={scope} onchange={event => {
-              const target = event.currentTarget.value;
-              editOptions(target ? selected!.options ?? defaults : selected!.globalOptions ?? defaults); scope = target;
-            }}><option value="">All projects</option>{#if selected.projectRoot}<option value={selected.projectRoot}>This project — {selected.projectRoot}</option>{/if}</select></label>
-            <label>Provider role<select aria-label="Provider role" bind:value={role}><option value="primary">Project analysis</option><option value="supplementary">Additional diagnostics and tools</option></select></label>
-            <label>Formatting<select aria-label="Formatting provider" bind:value={formatting}><option value="auto">Default for this role</option><option value="on">Use this provider</option><option value="off">Do not use this provider</option></select></label>
-            <label>Analysis root<input aria-label="Analysis root" bind:value={rootOverride} placeholder="Detect from project files" /></label>
-            {#if selected.languages.includes('python')}<label>Python interpreter<input aria-label="Analysis Python interpreter" bind:value={interpreter} placeholder="Server's project environment" /></label>{/if}
-            {#if selected.id === 'clangd'}<label>Compilation database directory<input aria-label="Compilation database directory" bind:value={compilationDirectory} placeholder="Detect compile_commands.json" /></label>{/if}
             <div class="buttons">
               {#if !selected.bundled}<button disabled={busy} onclick={() => perform(() => api.chooseExecutable(selected!.id))}>Choose executable…</button>{/if}
               {#if selected.canDetect}<button disabled={busy} onclick={() => perform(() => api.useAutomatic(selected!.id))}>Use automatic detection</button>{/if}
             </div>
             {#if selected.profileSource}<p>Profile: {selected.profileSource}</p>{/if}
             {#if selected.searched?.length}<p>Searched: {selected.searched.join(', ')}</p>{/if}
-            <details><summary>Advanced server options (JSON)</summary><label>Arguments, settings and initialization options<textarea rows="12" spellcheck="false" bind:value={optionsText}></textarea></label></details>
-            <p>Optional <code>root</code>: an absolute analysis directory for files beneath it. Omit it to detect each project automatically.</p>
-            {#if selected.languages.includes('python')}<p>The interpreter above controls import analysis. Leave it empty to use the server’s project configuration and defaults.</p>{/if}
-            <button disabled={busy} onclick={() => perform(() => api.configure(selected!.id, connectionOptions()))}>Apply settings</button>
+            {#if settingsTarget}{#key settingsTarget}
+              <LanguageConnectionSettings initial={settingsTarget.globalOptions ?? defaults} languages={settingsTarget.languages} server={settingsTarget.id} apply={async options => { await api.configure(settingsTarget!.id, options); await refresh(); }} />
+            {/key}{/if}
           </details>
           {#if selected.custom}<button disabled={busy} onclick={() => perform(async () => { await api.remove(selected!.id); selectedId = ''; back(); })}>Remove connection</button>{/if}
         {:else}

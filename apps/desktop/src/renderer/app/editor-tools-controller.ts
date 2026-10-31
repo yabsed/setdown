@@ -12,7 +12,7 @@ import { choose, ask, explain } from '../editor/tools/editor-panel';
 import { terminalOutput } from '../terminal/terminal-output';
 import { taskLocations } from '../../core/editor/task-locations';
 import type { EditorCommand } from '../editor/tools/command-registry';
-import { documentSupport } from '../language/language-runtime';
+import { documentSupport, openLanguageSupport } from '../language/language-runtime';
 import { WorkspaceSnapshots } from './workspace-snapshots';
 export function installWorkspaceTools(options: { desktop: DesktopPort; workspace: WorkspaceState; tabs: TabController; surfaces: SurfaceController; editor: MonacoEditor; projects: ProjectController; save(saveAs?: boolean): Promise<unknown> }): void {
   const { desktop, workspace, tabs, surfaces, editor } = options;
@@ -134,7 +134,7 @@ export function installWorkspaceTools(options: { desktop: DesktopPort; workspace
             editor.editor?.setPosition({ lineNumber: Number(suffix?.[1] ?? 1), column: Number(suffix?.[2] ?? 1) }); editor.editor?.revealLineInCenter(Number(suffix?.[1] ?? 1)); }
           else return false;
         }),
-        command('language', 'Inspect language support and analysis environment', () => { window.dispatchEvent(new Event('setdown:language-support')); }),
+        command('language', 'Inspect language support and analysis environment', context => { openLanguageSupport(context.viewId ? documentSupport.get(context.viewId) : undefined); }),
       ];
     },
   });

@@ -44,7 +44,7 @@ export class LanguageServices {
       },
       documentStatus: (model, status) => {
         const states = this.states.get(model) ?? new Map();
-        if (status) states.set(key, status); else states.delete(key);
+        if (status) states.set(key, { ...status, role: key === primaryChannel ? 'primary' : 'supplementary' }); else states.delete(key);
         if (states.size) this.states.set(model, states); else this.states.delete(model);
         this.options.changed();
       },

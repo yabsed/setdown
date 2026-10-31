@@ -56,7 +56,7 @@
         <button class="location" onclick={() => open(row)} title={row.detail}><span>{row.label}</span><small>{row.detail}</small></button>
         {#if row.children}<button class="expand" aria-label={`Explore ${row.label}`} onclick={() => children(row)}>›</button>{/if}
       </div>
-    {:else}<p>{busy ? 'Loading…' : source.empty ?? 'No results.'}</p>{/each}
+    {:else}<p>{busy ? 'Loading…' : (typeof source.empty === 'function' ? source.empty() : source.empty) ?? 'No results.'}</p>{/each}
   </div>
 </div>
 

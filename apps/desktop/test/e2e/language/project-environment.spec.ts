@@ -41,12 +41,16 @@ test('current-file Python environment repairs real imports, preserves unsaved te
     await expect(page.locator('.view-lines')).toContainText('unsaved_value = 73');
     await page.getByRole('button', { name: /Language status:/ }).click();
     const panel = page.getByRole('dialog', { name: 'Current file language support' });
+    await panel.getByRole('button', { name: /^Python environment/ }).click();
     const environment = panel.getByRole('combobox', { name: 'Python environment' });
     const choice = await environment.locator('option').filter({ hasText: '.venv · Project' }).getAttribute('value');
     expect(choice).toBeTruthy(); await environment.selectOption(choice!);
     await expect(page.locator('.squiggly-warning')).toHaveCount(0, { timeout: 20_000 });
     await expect(panel).toContainText('Results received for this open file');
+    await expect(panel).not.toContainText(python);
+    await panel.getByRole('button', { name: /^Python environment/ }).click();
     await expect(panel).toContainText(python);
+    await panel.getByRole('button', { name: 'Back to code support' }).click();
     await page.screenshot({ path: testInfo.outputPath('python-project-environment.png') });
     await panel.getByRole('button', { name: 'Close language status' }).click();
     await expect(page.locator('.view-lines')).toContainText('unsaved_value = 73');
@@ -58,7 +62,9 @@ test('current-file Python environment repairs real imports, preserves unsaved te
     await disposeApplication(application); application = await launch(file, config); page = await application.firstWindow();
     await page.getByRole('button', { name: /Language status:/ }).click();
     const reopened = page.getByRole('dialog', { name: 'Current file language support' });
-    await expect(reopened).toContainText(python); await expect(reopened).toContainText('Results received for this open file', { timeout: 20_000 });
+    await expect(reopened).toContainText('Results received for this open file', { timeout: 20_000 });
+    await reopened.getByRole('button', { name: /^Python environment/ }).click();
+    await expect(reopened).toContainText(python);
     await expect(page.locator('.squiggly-warning')).toHaveCount(0);
     const otherFile = path.join(root, 'other.py'); await writeFile(otherFile, 'value = 1\n');
     // IPC cannot change environments for a document not owned by this window.
@@ -83,6 +89,7 @@ test('C++ build selection changes the real clangd flags and repairs unsaved sour
     await page.getByRole('button', { name: /Language status:/ }).click();
     const panel = page.getByRole('dialog', { name: 'Current file language support' });
     await expect(panel).toContainText('Several build configurations');
+    await panel.getByRole('button', { name: /^C \/ C\+\+ build configuration/ }).click();
     const environment = panel.getByRole('combobox', { name: 'C / C++ build configuration' });
     const wrong = await environment.locator('option').filter({ hasText: /^build ·/ }).getAttribute('value');
     await environment.selectOption(wrong!);
@@ -91,6 +98,7 @@ test('C++ build selection changes the real clangd flags and repairs unsaved sour
     const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
     await editor.press('Control+End'); await page.keyboard.insertText('// unsaved configuration test');
     await page.getByRole('button', { name: /Language status:/ }).click();
+    await panel.getByRole('button', { name: /^C \/ C\+\+ build configuration/ }).click();
     const right = await environment.locator('option').filter({ hasText: /^builddir ·/ }).getAttribute('value');
     await environment.selectOption(right!);
     await expect(page.locator('.squiggly-error')).toHaveCount(0, { timeout: 20_000 });
@@ -116,16 +124,25 @@ test('TypeScript SDK selection and basic editing apply to this project; service 
     await expect(page.locator('.squiggly-error')).toHaveCount(1, { timeout: 20_000 });
     await page.getByRole('button', { name: /Language status:/ }).click();
     const panel = page.getByRole('dialog', { name: 'Current file language support' }), sdk = panel.getByRole('combobox', { name: 'TypeScript SDK' });
+    await panel.getByRole('button', { name: /^TypeScript SDK/ }).click();
     const projectSdk = await sdk.locator('option').filter({ hasText: 'Project TypeScript' }).getAttribute('value');
     await sdk.selectOption(projectSdk!);
+    await panel.getByRole('button', { name: /^TypeScript SDK/ }).click();
     await expect(panel).toContainText(path.join(project, 'node_modules/typescript/lib/tsserver.js'));
+    await panel.getByRole('button', { name: 'Back to code support' }).click();
     await expect(page.locator('.squiggly-error')).toHaveCount(1, { timeout: 20_000 });
-    await panel.getByRole('button', { name: 'Restart project services' }).click();
-    await expect(panel).toContainText('Results received for this open file', { timeout: 20_000 });
-    await panel.getByRole('combobox', { name: 'Analysis provider' }).selectOption('off');
+    await panel.getByRole('button', { name: 'Details…', exact: true }).click();
+    const details = panel;
+    await details.getByRole('button', { name: /^TypeScript and JavaScript/ }).click();
+    await details.getByRole('button', { name: /^Restart TypeScript/ }).click();
+    await expect(details).toContainText('Results received for this open file', { timeout: 20_000 });
+    await details.getByRole('button', { name: 'Back to code support' }).click();
+    await details.getByRole('button', { name: 'Choose analysis tool…', exact: true }).click();
+    await details.getByRole('combobox', { name: 'Analysis provider' }).selectOption('off');
     await expect(page.locator('.squiggly-error')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /Language status:/ })).toHaveAccessibleName(/Local checks/);
-    await panel.getByRole('combobox', { name: 'Analysis provider' }).selectOption('typescript-language-server');
+    await expect(details).toContainText('Project analysis is off. Local checks remain available.');
+    await details.getByRole('button', { name: 'Choose analysis tool…', exact: true }).click();
+    await details.getByRole('combobox', { name: 'Analysis provider' }).selectOption('typescript-language-server');
     await expect(page.locator('.squiggly-error')).toHaveCount(1, { timeout: 20_000 });
     await page.screenshot({ path: testInfo.outputPath('typescript-sdk.png') });
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
@@ -144,10 +161,12 @@ test('Configure project generates and selects a real CMake database only on the 
     const panel = page.getByRole('dialog', { name: 'Current file language support' });
     await expect(panel).toContainText('Choose a build folder or configure this project');
     const before = await readFile(path.join(config, 'Setdown/project-analysis.json'), 'utf8').catch(() => ''); expect(before).toBe('');
+    await panel.getByRole('button', { name: /^C \/ C\+\+ build configuration/ }).click();
     await panel.getByText('Configure CMake analysis', { exact: true }).click();
     await panel.getByRole('button', { name: 'Configure project', exact: true }).click();
     await expect(panel).toContainText('Configuration output', { timeout: 30_000 });
     await expect(page.locator('.squiggly-error')).toHaveCount(0, { timeout: 20_000 });
+    await panel.getByRole('button', { name: 'Back to code support' }).click();
     await expect(panel).toContainText('Results received for this open file');
     const preferences = JSON.parse(await readFile(path.join(config, 'Setdown/project-analysis.json'), 'utf8'));
     const database = JSON.parse(await readFile(preferences.projects[project].compilation, 'utf8'));

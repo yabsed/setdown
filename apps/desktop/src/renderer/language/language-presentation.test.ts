@@ -27,7 +27,7 @@ test('missing manual connections and failed servers stay visible for repair', ()
     { id: 'crashed' }, { id: 'custom' }, { id: 'saved' },
   ] });
   expect(serverStatus(catalog[0]).label).toBe('Not detected');
-  expect(serverStatus(catalog[2]).label).toBe('Failed');
+  expect(serverStatus(catalog[2]).label).toBe('Stopped');
 });
 
 test('detected unprofiled and ambiguous installations are actionable, not hidden', () => {

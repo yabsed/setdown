@@ -55,6 +55,7 @@ export type LanguageMethod = typeof languageMethods[number];
 export type LanguageCell = { id: string; version: number; text: string };
 export type LanguageDocument = { server?: string; languageId?: string; notebook?: 'python'; cells?: LanguageCell[]; python?: string; id: string; generation: string; path: string; text: string; version: number };
 export type LanguageServerMessage = { id: string; message: string; actions: string[] };
+export type LanguageRecovery = { retrying: boolean; attempt?: number };
 export type LanguageConnection = { messages?: LanguageServerMessage[]; analysis?: AnalysisObservation; name?: string; context?: string[]; uri: string; cells?: Record<string, string>; capabilities: LanguageCapabilities; server?: string };
 export type LanguageUnavailable = { unavailable: 'missing' | 'selection-needed' };
 export type LanguageEvent =
@@ -67,7 +68,7 @@ export type LanguageEvent =
   | { type: 'context'; messages?: LanguageServerMessage[]; analysis?: AnalysisObservation; id: string; generation: string; context: string[] }
   | { type: 'activity' }
   | { type: 'apply-edit'; id: string; generation: string; requestId: string; versions?: { id: string; generation: string; version: number }[]; edit: import('vscode-languageserver-protocol').WorkspaceEdit }
-  | { type: 'status'; documents: { id: string; generation: string }[]; state: 'starting' | 'ready' | 'failed'; message?: string; server?: { id: string; name: string } };
+  | { type: 'status'; documents: { id: string; generation: string }[]; state: 'starting' | 'ready' | 'failed'; message?: string; recovery?: LanguageRecovery; server?: { id: string; name: string } };
 export type LanguageApi = {
   open(document: LanguageDocument): Promise<LanguageConnection | LanguageUnavailable>;
   change(id: string, version: number, changes: TextDocumentContentChangeEvent[]): Promise<void>;
@@ -85,7 +86,7 @@ export type LanguageApi = {
   prepareEnvironment(file: string, language: string): Promise<{ output: string }>;
   cancelPreparation(file: string, language: string): Promise<void>;
   configuration(): Promise<LanguageRoute[]>;
-  catalog(): Promise<LanguageCatalog>;
+  catalog(file?: string): Promise<LanguageCatalog>;
   rescan(): Promise<void>;
   useAutomatic(id: string): Promise<void>;
   selectCandidate(id: string, candidateId: string): Promise<void>;

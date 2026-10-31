@@ -115,9 +115,10 @@ export class LanguageManager {
     return { candidates, selected: candidates.length === 1 ? candidates[0] : results.length === 1 ? results[0].selected : undefined,
       searched: [...new Set(results.flatMap(r => r.searched))], environment: snapshot };
   }
-  private async catalogFor(state: WindowState): Promise<LanguageCatalog> {
+  private async catalogFor(state: WindowState, file?: string): Promise<LanguageCatalog> {
     this.subscribe(state);
     await this.updating;
+    const resource = file === undefined ? undefined : this.ownedFile(state, file);
     const catalog = (await import('./catalog/mason.json')).default;
     const registry = this.registry;
     const definitions = registry.definitions(), routes = registry.routes();
@@ -125,14 +126,15 @@ export class LanguageManager {
     for (const definition of definitions) if (!packages.some(item => item.id === definition.id))
       packages.push({ id: definition.id, languages: definition.languages.map(l => l.languageId), description: 'Custom language server connection.', homepage: '', licenses: [], source: { id: '' }, executables: [] } as typeof packages[number]);
     const entries: LanguageCatalogEntry[] = await mapLimited(packages, async item => {
-      const definition = definitions.find(d => d.id === item.id), options = definition && registry.options(item.id, state.projectRoot ?? undefined);
+      const definition = definitions.find(d => d.id === item.id), options = definition && registry.options(item.id, resource);
+      const projectRoot = definition && resource ? languageRoot(resource, definition, state.projectRoot ?? undefined, options?.root).path : undefined;
       const bundled = definition?.launch.kind === 'bundledNode';
       const executable = definition ? registry.executable(item.id, this.discovery.environment.peek().env) : undefined;
       const found = await this.discover(item.id);
       const resolved = bundled ? executable : found?.selected?.path;
       const owner = this.owners.get(state.webContentsId);
       return { id: item.id, name: definition?.name ?? item.id, languages: item.languages, description: item.description, homepage: item.homepage,
-        role: definition ? registry.role(item.id, state.projectRoot ?? undefined) : undefined, projectRoot: state.projectRoot ?? undefined,
+        role: definition ? registry.role(item.id, resource ?? projectRoot) : undefined, projectRoot,
         globalOptions: definition ? { args: registry.options(item.id).args ?? definition.launch.args, settings: registry.options(item.id).settings ?? definition.settings, initializationOptions: registry.options(item.id).initializationOptions ?? definition.initializationOptions ?? {}, root: registry.options(item.id).root, role: registry.role(item.id), formatting: registry.options(item.id).formatting } : undefined,
         configured: !!definition, bundled, custom: !!definition && registry.isCustom(item.id),
         managed: !!definition && (registry.isCustom(item.id) || Object.keys(options ?? {}).length > 0 || !!executable && path.isAbsolute(executable)),
@@ -143,7 +145,7 @@ export class LanguageManager {
         discoveryMessage: found?.environment.message, searched: found?.searched,
         profileSource: definition?.provenance ? `${definition.provenance.source} · ${definition.provenance.profile}` : undefined,
         setupNote: definition?.setupNote,
-        options: definition ? { role: registry.role(item.id, state.projectRoot ?? undefined), formatting: options?.formatting, scope: state.projectRoot ?? undefined, args: options?.args ?? definition.launch.args, settings: options?.settings ?? definition.settings,
+        options: definition ? { role: registry.role(item.id, resource ?? projectRoot), formatting: options?.formatting, scope: projectRoot, args: options?.args ?? definition.launch.args, settings: options?.settings ?? definition.settings,
           initializationOptions: serverProfile(definition, options).initializationOptions ?? {}, root: options?.root } : undefined,
         sessions: [...(owner?.servers.values() ?? [])].flatMap(server => {
           const info = this.sessions.get(server); return info?.id === item.id ? [{ root: info.root, rootReason: info.rootReason, state: info.state, message: info.message, features: info.features, context: [...server.context ?? []].map(([key, value]) => `${key}: ${value}`), logs: server.logs, progress: [...(server.progress?.values() ?? [])] }] : [];
@@ -278,7 +280,7 @@ export class LanguageManager {
       return { output: result.output };
     });
     ipcMain.handle('language:cancel-preparation', async (event, file: string, language: string) => { const owner = state(event), context = await this.documentEnvironment(owner, file, language); this.preparation.cancel(owner.webContentsId, context.root); });
-    ipcMain.handle('language:catalog', event => this.catalogFor(state(event)));
+    ipcMain.handle('language:catalog', (event, file?: string) => this.catalogFor(state(event), file));
     ipcMain.handle('language:rescan', event => { this.subscribe(state(event)); return this.rescan(); });
     ipcMain.handle('language:automatic', (event, id: string) => { state(event); return this.changed(() => this.registry.useAutomatic(id)); });
     ipcMain.handle('language:select-candidate', async (event, id: string, candidateId: string) => {
@@ -479,7 +481,7 @@ export class LanguageManager {
             void this.reconnect(owned, server).catch(error => console.warn('Language recovery failed', error));
         });
         info.message = `${message}\n${recovering ? `Reconnecting (${recovering.attempt}/3)…` : 'Automatic recovery paused after repeated failures. Restart this service to try again.'}`;
-        this.emit(owned, { type: 'status', state: 'failed', message: info.message,
+        this.emit(owned, { type: 'status', state: 'failed', message: info.message, recovery: { retrying: !!recovering, attempt: recovering?.attempt },
           documents: [...owned.documents.values()].filter(binding => binding.server === server).map(({ id, generation }) => ({ id, generation })) });
       }, profile, {
         filesChanged: paths => {
@@ -557,18 +559,19 @@ export class LanguageManager {
     if (typeof language !== 'string' || language.length > 80) throw Error('Invalid language.');
     const definitions = this.registry.definitions().filter(d => d.languages.some(l => (l.monacoId ?? l.languageId) === language || l.languageId === language));
     const candidates = this.registry.candidates(resource, undefined, language);
-    const definition = definitions.find(d => d.id === candidates[0]?.server) ?? definitions[0];
+    const running = [...this.owners.get(state.webContentsId)?.documents.values() ?? []].find(b => b.uri === pathToFileURL(resource).href && this.registry.role(this.sessions.get(b.server)?.id ?? '', resource) === 'primary');
+    const selected = running ? this.sessions.get(running.server)?.id : this.registry.preferred(language, resource) ?? candidates.find(c => this.registry.definition(c.server).launch.kind === 'bundledNode')?.server ?? candidates[0]?.server;
+    const definition = definitions.find(d => d.id === selected) ?? definitions.find(d => d.id === candidates[0]?.server) ?? definitions[0];
     if (!definition) return { id: language, root: path.dirname(resource), rootReason: 'File directory', environment: 'usable', choices: [], issues: [], evidence: [], servers: [] };
     const options = this.registry.options(definition.id, resource), root = languageRoot(resource, definition, state.projectRoot ?? undefined, options.root);
     const plan = await this.contexts.resolve(root.path, root.reason, definition, options, refresh);
     this.ownedFile(state, resource);
-    const running = [...this.owners.get(state.webContentsId)?.documents.values() ?? []].find(b => b.uri === pathToFileURL(resource).href && this.registry.role(this.sessions.get(b.server)?.id ?? definition.id, resource) === 'primary');
-    const selected = running ? this.sessions.get(running.server)?.id : this.registry.preferred(language, resource) ?? candidates.find(c => this.registry.definition(c.server).launch.kind === 'bundledNode')?.server ?? candidates[0]?.server;
     return { ...plan.context, servers: definitions.map(d => ({ id: d.id, name: d.name, selected: d.id === selected, enabled: this.registry.enabled(d.id, resource), role: this.registry.role(d.id, resource) })) };
   }
   private async selectEnvironment(state: WindowState, file: string, language: string, selection: AnalysisSelection): Promise<DocumentAnalysis> {
     if (!selection || !['python', 'typescript', 'compilation', 'server'].includes(selection.kind) || typeof selection.value !== 'string' || selection.value.length > 128) throw Error('Invalid environment selection.');
     const context = await this.documentEnvironment(state, file, language, true);
+    if (selection.root !== undefined && selection.root !== context.root) throw Error('The analysis project changed. Refresh the environment before applying this choice.');
     if (selection.kind === 'server') {
       if (selection.value === 'off') {
         await this.updateEnvironment(context.root, language, () => { for (const server of context.servers) this.registry.setEnabled(server.id, false, context.root); });
@@ -585,6 +588,7 @@ export class LanguageManager {
         if (result.canceled || !result.filePaths[0]) return context;
         selected = selection.kind === 'compilation' ? path.join(result.filePaths[0], 'compile_commands.json') : result.filePaths[0];
         if (selection.kind === 'python' ? !await findExecutable(selected) : !(await stat(selected)).isFile()) throw Error('Choose an existing analysis environment.');
+        if ((await this.documentEnvironment(state, file, language, true)).root !== context.root) throw Error('The analysis project changed while choosing an environment.');
         if (selection.kind === 'typescript' && path.basename(selected) !== 'tsserver.js') throw Error('Select typescript/lib/tsserver.js.');
       } else if (selection.value !== 'automatic') {
         const candidate = context.choices.find(c => c.id === selection.value && c.available);
