@@ -1,4 +1,4 @@
-import { COMMUNITY_THEMES } from './community-themes';
+import { COMMUNITY_THEMES, IMPORTED_LIGHT_THEMES } from './community-themes';
 import type { VscodeTheme } from './vscode-token';
 import { vscodeDark2026Colors as vscode, vscodeDark2026Token } from './vscode-dark-2026';
 
@@ -7,6 +7,10 @@ export const THEME_IDS = [
   'paper',
   'medium',
   'solarized-light',
+  'github-light-high-contrast',
+  'vscode-light-2026',
+  'light-owl',
+  'atom-one-light',
   'github-dark',
   'night',
   'one-dark',
@@ -112,6 +116,7 @@ export const THEME_PROFILES: readonly ThemeProfile[] = [
     palette: { ...lightBase, canvas: '#eee8d5', surface: '#fdf6e3', raisedSurface: '#fffaf0', chrome: '#e7dfca', editorBackground: '#fdf6e3', text: '#586e75', mutedText: '#657b83', subtleText: '#93a1a1', border: '#d8cfb8', strongBorder: '#b9ae91', hover: '#e9e1cb', selected: '#f7efd9', accent: '#268bd2', focusRing: '#268bd2' },
     syntax: { foreground: '#586e75', comment: '#586e75', keyword: '#859900', string: '#2aa198', number: '#d33682', link: '#268bd2', heading: '#b58900', code: '#6c71c4', punctuation: '#586e75' },
   },
+  ...IMPORTED_LIGHT_THEMES,
   {
     id: 'github-dark', label: 'GitHub Dark', appearance: 'dark',
     preview: { stylesheet: 'github-dark.css', prismStylesheet: 'github-dark.css', background: '#24292e' },

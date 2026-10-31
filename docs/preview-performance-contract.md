@@ -190,6 +190,21 @@ identity, focus, unsaved content and Undo. The workspace theme and Git document
 style E2E tests cover these transitions, colors and restart persistence; the
 existing all-theme notebook, browser and terminal checks include all three.
 
+GitHub Light High Contrast, VS Code Light 2026, Light Owl and Atom One Light
+are additional light choices. They use light Monaco/TextMate defaults and the
+GitHub Light reader base with the same retained theme stylesheet. Source
+snapshots, pins and licenses live in `src/core/theme/upstream/`; Light 2026
+retains its inherited Light/Light+/Light Modern rules and semantic colors.
+Light Owl and Atom One Light comment colors are darkened in the adapter to
+preserve the existing 4.5:1 contrast guarantee; upstream snapshots stay intact.
+Their notebook input surfaces retain the editor background without a tint.
+Themes without ANSI overrides use VS Code's light terminal defaults. The
+workspace theme tests cover all four on the real editor and visible/hidden
+native reader, including Undo, focus, appearance and restart persistence.
+Git document style and all-theme notebook, browser and terminal checks include
+these choices. Existing defaults, palettes, layout and preparation guarantees
+remain unchanged.
+
 Browser coarse Ctrl+wheel changes tab zoom from 10% to 1000% in 10-point steps;
 fine pixel input changes it continuously within those same limits.
 The isolated page preload registers the bounded wheel accumulator in each

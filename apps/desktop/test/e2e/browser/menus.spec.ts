@@ -70,6 +70,75 @@ for (const surface of ['text', 'notebook'] as const) test(`Monaco ${surface} con
   } finally { await f.dispose(); }
 });
 
+for (const surface of ['text', 'notebook'] as const) test(`Monaco ${surface} hovers use the context-menu cover above adjacent native panes`, async ({}, info) => {
+  const f = await fixture(false);
+  try {
+    const file = path.join(f.root, surface === 'text' ? 'heading.html' : 'heading.ipynb');
+    const source = `${'\n'.repeat(8)}${' '.repeat(45)}<h1>Heading</h1>\n`;
+    await writeFile(file, surface === 'text' ? source : JSON.stringify({ nbformat: 4, nbformat_minor: 5,
+      metadata: { language_info: { name: 'html' } }, cells: [
+        { id: 'heading', cell_type: 'code', source, metadata: {}, execution_count: null, outputs: [] },
+      ] }));
+    await f.page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), file);
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    const tab = f.page.getByRole('tab', { name: /Research page/ });
+    const data = await f.page.evaluateHandle(() => new DataTransfer());
+    await tab.dispatchEvent('dragstart', { dataTransfer: data });
+    const body = f.page.locator('.group-body'), bounds = (await body.boundingBox())!;
+    const point = { dataTransfer: data, clientX: bounds.x + bounds.width - 5, clientY: bounds.y + bounds.height / 2 };
+    await body.dispatchEvent('dragover', point); await body.dispatchEvent('drop', point);
+    await tab.dispatchEvent('dragend', { dataTransfer: data }); await data.dispose();
+    await expect(f.page.locator('.editor-group')).toHaveCount(2);
+    const identity = await evaluatePage(f.app, f.origin,
+      'window.keptDraft = document.querySelector("#draft"); keptDraft.value = "keep native input"; window.keptPage = crypto.randomUUID(); keptPage');
+    const nativeVisible = () => f.app.evaluate(({ BrowserWindow }, origin) => BrowserWindow.getAllWindows()[0].contentView.children
+      .some(view => 'webContents' in view && (view as Electron.WebContentsView).webContents.getURL().startsWith(origin) && view.getVisible()), f.origin);
+    const frozen = f.page.locator('.group-body[data-browser-frozen="true"]');
+    await expect.poll(nativeVisible).toBe(true);
+    await f.page.getByRole('tab', { name: /heading\./ }).click();
+    const heading = f.page.locator('.view-line span span').filter({ hasText: /^h1$/ }).first();
+    const hover = f.page.locator('.monaco-resizable-hover:visible');
+    const toScreen = (point: { x: number; y: number }) => f.app.evaluate(({ BrowserWindow }, point) => {
+      const owner = BrowserWindow.getAllWindows()[0], bounds = owner.getContentBounds(), zoom = owner.webContents.getZoomFactor();
+      return { x: bounds.x + point.x * zoom, y: bounds.y + point.y * zoom };
+    }, point);
+    const headingBox = (await heading.boundingBox())!;
+    await nativeInput({ pointer: [await toScreen({ x: headingBox.x + headingBox.width / 2, y: headingBox.y + headingBox.height / 2 })] });
+    await expect(hover).toContainText('The h1 element');
+    await expect.poll(nativeVisible).toBe(false);
+    await expect(frozen).toHaveCount(1);
+    const popup = (await hover.boundingBox())!, web = (await frozen.boundingBox())!;
+    expect(popup.x + popup.width).toBeGreaterThan(web.x + 30);
+    expect(popup.y).toBeGreaterThan(web.y);
+    await f.page.screenshot({ path: info.outputPath(`html-hover-above-web-${surface}.png`) });
+    // OS input in the overlap proves the native view cannot obscure/intercept
+    // the popup. CDP locator clicks alone bypass native hit testing.
+    await hover.evaluate(node => node.addEventListener('pointerdown', () => { (window as any).__hoverHit = true; }));
+    await nativeInput({ click: await toScreen({ x: popup.x + popup.width - 10, y: popup.y + popup.height / 2 }) });
+    await expect.poll(() => f.page.evaluate(() => (window as any).__hoverHit)).toBe(true);
+    const link = hover.locator('a').filter({ hasText: 'MDN' });
+    await link.evaluate(node => node.addEventListener('click', event => {
+      event.preventDefault(); event.stopPropagation(); (window as any).__hoverLinkClicked = true;
+    }, { capture: true }));
+    const linkBox = (await link.boundingBox())!;
+    await nativeInput({ click: await toScreen({ x: linkBox.x + linkBox.width / 2, y: linkBox.y + linkBox.height / 2 }) });
+    await expect.poll(() => f.page.evaluate(() => (window as any).__hoverLinkClicked)).toBe(true);
+    await nativeInput({ pointer: [await toScreen({ x: 1, y: 1 })] });
+    await expect(hover).toBeHidden(); await expect.poll(nativeVisible).toBe(true); await expect(frozen).toHaveCount(0);
+    // Reopen and hand off to a context menu. Nested covers must restore once,
+    // without leaving the web pane hidden when the last popup closes.
+    await nativeInput({ pointer: [await toScreen({ x: headingBox.x + headingBox.width / 2, y: headingBox.y + headingBox.height / 2 })] }); await expect(hover).toBeVisible(); await expect.poll(nativeVisible).toBe(false);
+    await heading.click({ button: 'right' });
+    const menu = f.page.locator('.monaco-menu-container .monaco-menu');
+    await expect(menu).toBeVisible(); await expect.poll(nativeVisible).toBe(false);
+    await f.page.keyboard.press('Escape');
+    await expect(menu).toBeHidden(); await expect.poll(nativeVisible).toBe(true); await expect(frozen).toHaveCount(0);
+    expect(await evaluatePage(f.app, f.origin, '({ id: keptPage, same: keptDraft === document.querySelector("#draft"), value: keptDraft.value })'))
+      .toEqual({ id: identity, same: true, value: 'keep native input' });
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
 test('browser details: native image copying and link menus preserve pixels, URLs and source ownership', async () => {
   const f = await fixture();
   try {

@@ -188,6 +188,16 @@ checks real include hovers in ordinary, lower split and Working Tree editors,
 including hit testing at all four corners and retained screenshots. DOM
 visibility alone does not establish that the complete popup is displayed.
 
+Monaco documentation hovers in ordinary, Git and notebook editors share the
+context menu's balanced native-overlay cover. They retain Monaco's original
+position and dimensions, including when extending across a split into a native
+browser or reader pane. The existing capture covers that pane while the hover is
+open; dismissal restores the same native view and unsaved content. The adapter
+observes only Monaco's overflow-widget container and releases its cover on model
+replacement or editor disposal. `browser/menus.spec.ts` checks actual OS pointer
+input over the adjacent browser, MDN link clicks, hover-to-menu handoff, and
+restoration of page/input identity for ordinary and notebook editors.
+
 Language support now uses declarative server definitions and a persisted registry.
 The Language Support activity below Browser, `Edit → Language Support…`, and F1
 open the same lazy sidebar; the Setdown Folder Tools button retains its meaning.

@@ -1,8 +1,10 @@
 export type VscodeTokenStyle = { foreground?: string; background?: string; fontStyle?: string };
 export type VscodeTokenRule = { scope?: string | string[]; settings: VscodeTokenStyle };
 export type VscodeTheme = {
+  type?: 'light' | 'dark';
   colors: Record<string, string>;
   tokenColors: VscodeTokenRule[];
+  semanticTokenColors?: Record<string, string>;
 };
 
 /** Resolve a single lexical/LSP role; full TextMate scope stacks stay in Shiki. */

@@ -41,6 +41,6 @@ await copyFile('scripts/language-profiles/NOTICE', 'dist-electron/HELIX-PROFILES
 await copyFile('src/core/theme/upstream/VSCODE-LICENSE', 'dist-electron/VSCODE-THEME-LICENSE');
 await copyFile('src/core/theme/upstream/NOTICE', 'dist-electron/VSCODE-THEME-NOTICE');
 
-for (const license of ['GITHUB-THEME-LICENSE', 'NIGHT-OWL-LICENSE', 'DRACULA-LICENSE', 'SHIKI-THEMES-LICENSE', 'COMMUNITY-THEMES-NOTICE']) {
+for (const license of ['GITHUB-THEME-LICENSE', 'NIGHT-OWL-LICENSE', 'DRACULA-LICENSE', 'ATOM-ONE-LIGHT-LICENSE', 'SHIKI-THEMES-LICENSE', 'COMMUNITY-THEMES-NOTICE']) {
   await copyFile(`src/core/theme/upstream/${license}`, `dist-electron/${license}`);
 }

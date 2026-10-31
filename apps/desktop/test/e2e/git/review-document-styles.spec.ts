@@ -130,6 +130,8 @@ test('review document styles preserve real math geometry across widths and zoom'
     const identity = (await reviews(app)).map(({ id, context }) => ({ id, context }));
     for (const [theme, background] of [
       ['github-dark-high-contrast', 'rgb(10, 12, 16)'], ['night-owl', 'rgb(1, 22, 39)'], ['dracula', 'rgb(40, 42, 54)'],
+      ['github-light-high-contrast', 'rgb(255, 255, 255)'], ['vscode-light-2026', 'rgb(255, 255, 255)'],
+      ['light-owl', 'rgb(251, 251, 251)'], ['atom-one-light', 'rgb(250, 250, 250)'],
     ]) {
       await app.evaluate(({ Menu }, theme) => Menu.getApplicationMenu()!.getMenuItemById(`preview-theme-${theme}`)!.click(), theme);
       await expect.poll(async () => (await reviews(app!)).map(row => ({ theme: row.theme, background: row.background })))

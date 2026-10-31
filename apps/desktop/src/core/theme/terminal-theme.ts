@@ -5,7 +5,12 @@ const names = ['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'wh
   'brightBlack', 'brightRed', 'brightGreen', 'brightYellow', 'brightBlue', 'brightMagenta', 'brightCyan', 'brightWhite'] as const;
 // ANSI colors are terminal roles, independent of syntax-token colors. Extended
 // indexed/truecolor SGR remains intact; xterm adjusts its displayed contrast.
+// Upstream Light 2026 and Atom One Light omit ANSI overrides and inherit these
+// VS Code light defaults from terminalColorRegistry.ts.
+const vscodeLightAnsi = '000000 cd3131 107C10 949800 0451a5 bc05bc 0598bc 555555 666666 f14c4c 14CE14 b5ba00 3b8eea d670d6 29b8db a5a5a5';
 const palettes: Partial<Record<ThemeId, string>> = {
+  'vscode-light-2026': vscodeLightAnsi,
+  'atom-one-light': vscodeLightAnsi,
   'github-light': '24292f cf222e 116329 7d4e00 0550ae 8250df 1b7c83 6e7781 57606a a40e26 1a7f37 633c01 0969da 6639ba 055d64 424a53',
   paper: '2d2520 a1322b 426329 86540b 275d82 80517e 346b68 746b60 645b50 a83930 4c6c2d 80551a 326c96 835287 397b77 514a43',
   medium: '202123 b52a35 28723a 806000 1b5aa3 7950a5 176d76 666666 555555 c22e3a 247338 785900 225eb0 834baa 176977 444444',

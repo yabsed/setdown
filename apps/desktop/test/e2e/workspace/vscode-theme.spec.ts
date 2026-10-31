@@ -46,7 +46,7 @@ test('VS Code Dark 2026 matches workbench and syntax colors, retains edits and p
     await expect(page.locator('.view-lines').first()).toContainText('themeEdit');
     await page.getByRole('button', { name: 'View', exact: true }).click();
     await page.locator('[data-menu-item-id="menu-theme"]').hover();
-    await expect(page.locator('[data-menu-item-id^="preview-theme-"]')).toHaveCount(12);
+    await expect(page.locator('[data-menu-item-id^="preview-theme-"]')).toHaveCount(16);
     await expect(page.locator('[data-menu-item-id="preview-theme-vscode-dark-2026"]')).toHaveAttribute('aria-checked', 'true');
     await expect(page.locator('.application-menu-popup')).toHaveCSS('background-color', 'rgb(32, 33, 34)');
     await page.keyboard.press('Escape');
@@ -112,6 +112,14 @@ test('VS Code Dark 2026 colors native Markdown and hidden previews without repla
 });
 
 const communityThemes = [
+  { id: 'github-light-high-contrast', background: 'rgb(255, 255, 255)', foreground: 'rgb(14, 17, 22)',
+    comment: 'rgb(102, 112, 123)', string: 'rgb(3, 37, 99)', link: 'rgb(3, 73, 180)' },
+  { id: 'vscode-light-2026', background: 'rgb(255, 255, 255)', foreground: 'rgb(32, 32, 32)',
+    comment: 'rgb(110, 119, 129)', string: 'rgb(10, 48, 105)', link: 'rgb(0, 105, 204)' },
+  { id: 'light-owl', background: 'rgb(251, 251, 251)', foreground: 'rgb(64, 63, 83)',
+    comment: 'rgb(106, 113, 129)', string: 'rgb(72, 118, 214)', link: 'rgb(40, 142, 215)' },
+  { id: 'atom-one-light', background: 'rgb(250, 250, 250)', foreground: 'rgb(56, 58, 66)',
+    comment: 'rgb(105, 108, 119)', string: 'rgb(80, 161, 79)', link: 'rgb(64, 120, 242)' },
   { id: 'github-dark-high-contrast', background: 'rgb(10, 12, 16)', foreground: 'rgb(240, 243, 246)',
     comment: 'rgb(189, 196, 204)', string: 'rgb(173, 220, 255)', link: 'rgb(113, 183, 255)' },
   { id: 'night-owl', background: 'rgb(1, 22, 39)', foreground: 'rgb(214, 222, 235)',
@@ -133,6 +141,8 @@ for (const theme of communityThemes) test(`${theme.id} colors editor and retaine
     await input.focus(); await input.press('Control+End'); await page.keyboard.insertText('//keepThemeUndo');
     const identity = await page.locator('.editor-surface .monaco-editor').elementHandle();
     await chooseTheme(page, theme.id);
+    const appearance = ['github-light-high-contrast', 'vscode-light-2026', 'light-owl', 'atom-one-light'].includes(theme.id) ? 'light' : 'dark';
+    await expect(page.locator('html')).toHaveAttribute('data-appearance', appearance);
     await expect(page.locator('.monaco-editor').first()).toHaveCSS('background-color', theme.background);
     await expect(page.locator('.view-line span span').filter({ hasText: 'A theme comment' }).first()).toHaveCSS('color', theme.comment);
     await expect(page.locator('.view-line span span').filter({ hasText: '"palette"' }).first()).toHaveCSS('color', theme.string);
@@ -153,6 +163,7 @@ for (const theme of communityThemes) test(`${theme.id} colors editor and retaine
     })()`);
     const expected = { background: theme.background, foreground: theme.foreground, link: theme.link, comment: theme.comment, math: 1 };
     await expect.poll(colors).toEqual(expected);
+    expect(await reading.evaluate('document.body.dataset.previewTheme')).toBe(appearance);
     // Switching directly between imports must replace the colors of the same
     // style node; returning to a legacy theme must remove that override.
     const other = communityThemes.find(candidate => candidate.id !== theme.id)!;

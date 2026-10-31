@@ -35,3 +35,35 @@ its existing 4.5 minimum contrast correction. No upstream default/settings
 code is imported. These adaptations preserve the document layout and fonts.
 Fenced reader code uses each theme's editor background so its syntax colors
 retain the same contrast as source editing.
+
+Additional light themes
+
+GitHub Light High Contrast
+Original: https://github.com/primer/github-vscode-theme
+Copyright (c) 2020 Primer. MIT; see GITHUB-THEME-LICENSE.
+Compiled source: shikijs/textmate-grammars-themes, packages/tm-themes/themes/github-light-high-contrast.json
+Git blob: 75e8018556bc9636af3d934d317f16cd2512e68e
+The compiled snapshot is distributed under MIT; see SHIKI-THEMES-LICENSE.
+
+Light Owl
+Original: https://github.com/sdras/night-owl-vscode-theme
+Commit: cc291eba7976b20d7c66bde6883c27b902196b07
+Source: themes/Night Owl-Light-color-theme.json
+Git blob: e2f9bf33d327af2a92da936115f5c832f147f2f8
+MIT; see NIGHT-OWL-LICENSE. JSON comments are removed; values are retained.
+
+Atom One Light
+Original: https://github.com/akamud/vscode-theme-onelight
+Source: themes/OneLight.json
+Git blob: c4cca7664dd807352d99270e5a9610880760274b
+Copyright (c) 2015 Mahmoud Ali. MIT; see ATOM-ONE-LIGHT-LICENSE.
+The JSON is formatted without changing source values.
+
+The light imports use light Monaco/Shiki defaults and the GitHub Light
+reader base, preserving document layout and fonts. Light Owl's #989fb1 becomes
+#6a7181 and Atom One Light's #A0A1A7 becomes #696c77 in token rules only to
+retain the existing >=4.5:1 comment contrast guarantee. The original JSON
+snapshots retain those source colors. Atom's legacy token value "white" maps
+to #ffffff and "inherit" is omitted in the runtime adapter. Atom supplies no
+terminal ANSI overrides, so it uses VS Code's light ANSI defaults with the
+existing xterm minimum contrast correction. No extension code is executed.

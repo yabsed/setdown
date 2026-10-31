@@ -11,9 +11,11 @@ export function loadMonaco(): Promise<typeof Monaco> {
     import('monaco-editor/editor/editor.main'),
     import('monaco-editor/editor/editor.worker?worker'),
     import('./monaco-context-menu'),
-  ]).then(([api, editor, { installMonacoContextMenus }]) => {
+    import('./monaco-hover-overlay'),
+  ]).then(([api, editor, { installMonacoContextMenus }, { installMonacoHovers }]) => {
     window.MonacoEnvironment = { getWorker: (_id, label) => createLanguageWorker(label) ?? new editor.default() };
     installMonacoContextMenus();
+    installMonacoHovers(api);
     installBuiltinDiagnostics(api);
     installEditorTools(api);
     installSyntaxHighlighting(api);

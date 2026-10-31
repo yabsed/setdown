@@ -13,3 +13,17 @@ TextMate rules are retained; source SHA-256 hashes are in the JSON.
 Setdown maps those scopes to its existing Monaco/Prism token roles.
 It does not install or emulate VS Code language extensions.
 Terminal ANSI defaults follow VS Code terminalColorRegistry.ts.
+
+VS Code Light 2026
+
+Copyright (c) 2015 - present Microsoft Corporation. MIT; see VSCODE-LICENSE.
+The light snapshot is from locally installed Visual Studio Code 1.144.0,
+commit 2c33b50b16c472efe58357d1d2a8a5414bc23fbf.
+Upstream: https://github.com/microsoft/vscode/tree/2c33b50b16c472efe58357d1d2a8a5414bc23fbf/extensions/theme-defaults/themes
+
+Includes are flattened in order: light_vs.json, light_plus.json,
+light_modern.json, 2026-light.json. Original colors, ordered token rules and
+semantic colors are retained; source SHA-256 hashes are in the JSON.
+The shared imported-theme adapter supplies missing app roles, and terminal
+ANSI colors use the VS Code light defaults in terminalColorRegistry.ts.
+The existing Dark 2026 snapshot is unchanged.
