@@ -29,6 +29,7 @@ import matplotlib.pyplot as plt
 from matplotlib import font_manager
 from matplotlib.ticker import FuncFormatter
 
+from growth_charts import COMMIT_AXIS_LABEL
 
 APP_DIR = Path(__file__).resolve().parent
 CLEAN_OUTPUT = APP_DIR / "output" / "repository-code-growth.png"
@@ -56,7 +57,7 @@ def apply_type() -> None:
     plt.rcParams.update(
         {
             "axes.edgecolor": GRID,
-            "axes.labelcolor": MUTED,
+            "axes.labelcolor": INK,
             "axes.titlecolor": INK,
             "text.color": INK,
             "xtick.color": MUTED,
@@ -67,7 +68,7 @@ def apply_type() -> None:
 
 def style_time_axis(axis: plt.Axes) -> None:
     axis.xaxis.set_major_locator(mdates.AutoDateLocator(minticks=4, maxticks=8, tz=SEOUL))
-    axis.xaxis.set_major_formatter(mdates.DateFormatter("%m.%d\n%H:%M", tz=SEOUL))
+    axis.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d\n%H:%M", tz=SEOUL))
     axis.tick_params(axis="both", which="both", length=0, labelsize=10)
     axis.grid(axis="x", color=GRID, linewidth=0.8, alpha=0.48)
     axis.grid(axis="y", color=GRID, linewidth=0.9, alpha=0.72)
@@ -122,6 +123,21 @@ def add_footer(figure: plt.Figure, records: list[dict], ref: str) -> None:
     figure.text(0.075, 0.015, LIMIT_NOTE, fontsize=8.5, color=MUTED)
 
 
+def label_growth_axes(growth_axis: plt.Axes, delta_axis: plt.Axes) -> None:
+    growth_axis.set_ylabel(
+        "Total code size (lines)\nIncludes blank lines and comments",
+        fontsize=12, weight="semibold", labelpad=14,
+    )
+    growth_axis.tick_params(axis="x", labelbottom=False)
+    delta_axis.set_ylabel("Net change\n(lines / commit)", fontsize=11, weight="semibold", labelpad=14)
+    delta_axis.set_xlabel(COMMIT_AXIS_LABEL, fontsize=11, weight="semibold", labelpad=10)
+    delta_axis.text(
+        0, 1.08,
+        "Change = current total - previous first-parent total; first commit is compared with 0.",
+        transform=delta_axis.transAxes, fontsize=10, color=INK,
+    )
+
+
 def save_clean(records: list[dict], ref: str, output: Path) -> None:
     times = [record["time"] for record in records]
     lines = [record["lines"] for record in records]
@@ -131,20 +147,17 @@ def save_clean(records: list[dict], ref: str, output: Path) -> None:
         2,
         1,
         height_ratios=(5.0, 1.25),
-        left=0.055,
+        left=0.095,
         right=0.99,
         top=0.985,
-        bottom=0.17,
-        hspace=0.08,
+        bottom=0.24,
+        hspace=0.22,
     )
     growth_axis = figure.add_subplot(grid[0])
     delta_axis = figure.add_subplot(grid[1], sharex=growth_axis)
     draw_growth(growth_axis, times, lines)
-    growth_axis.set_ylabel("Physical LOC")
-    growth_axis.tick_params(axis="x", labelbottom=False)
     draw_deltas(delta_axis, times, deltas)
-    delta_axis.set_ylabel("Net change")
-    delta_axis.set_xlabel("Commit date (Asia/Seoul)")
+    label_growth_axes(growth_axis, delta_axis)
     add_footer(figure, records, ref)
     figure.savefig(output, transparent=True, bbox_inches="tight")
     plt.close(figure)
@@ -163,21 +176,17 @@ def save_detailed(records: list[dict], ref: str, output: Path) -> None:
         2,
         1,
         height_ratios=(5.0, 1.25),
-        left=0.075,
+        left=0.095,
         right=0.985,
         top=0.80,
-        bottom=0.17,
-        hspace=0.08,
+        bottom=0.24,
+        hspace=0.24,
     )
     growth_axis = figure.add_subplot(grid[0])
     delta_axis = figure.add_subplot(grid[1], sharex=growth_axis)
     draw_growth(growth_axis, times, lines)
-    growth_axis.set_ylabel("Physical LOC (including blanks/comments)", fontsize=10, labelpad=14)
-    growth_axis.tick_params(axis="x", labelbottom=False)
-
     draw_deltas(delta_axis, times, deltas)
-    delta_axis.set_ylabel("Change per commit", fontsize=10, labelpad=14)
-    delta_axis.set_xlabel("Commit date (Asia/Seoul)")
+    label_growth_axes(growth_axis, delta_axis)
 
     figure.text(0.075, 0.935, "Setdown code growth", fontsize=25, weight="bold")
     figure.text(

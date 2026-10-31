@@ -42,6 +42,22 @@ The component output keeps its existing `-line` filename for compatibility.
 The first delta is the initial snapshot's
 size; later deltas compare consecutive first-parent snapshots, including merges.
 
+### Reading the axes
+
+Axis labels include units, and each density panel repeats its X axis. Date ticks
+use `YYYY-MM-DD`; timestamps are shown in Asia/Seoul (UTC+09:00).
+
+| Chart | X axis | Y axis |
+| --- | --- | --- |
+| Total growth, both versions | Commit timestamp, spaced by calendar time | Upper: lines present at that commit, including blanks/comments. Lower: current total minus previous first-parent total, in lines per commit; the first commit is compared with zero. |
+| Architecture / features / tests | Commit timestamp, spaced by calendar time | Physical lines in the stated scope. Each band's thickness is its category's count; the top of the stack is the total. |
+| Density by date | Commit timestamp, spaced by calendar time | Panels 1–3: characters per nonblank line (mean, distribution or adjusted mean). Panel 4: line shares in percent, with each denominator in the legend. |
+| Density by characters | Characters present in all measured code at that commit, shared by every series | The same density metrics as the date version. X counts the snapshot's characters, not cumulative additions. |
+
+Density panel 1 explicitly shows the mean formula; panel 4 shows percentage ticks
+and the ratio used by each series. Density legends and breakdown legends report
+the latest snapshot's values with units.
+
 Growth CSV rows share `commit`, `committed_at`, `elapsed_hours` and `total`. `total` is the
 sum of the categories **within that view**:
 

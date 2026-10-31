@@ -168,10 +168,10 @@ def write_data(records: list[dict], ref: str, output: Path) -> None:
 
 
 def plot(records: list[dict], ref: str, output: Path, *, by_characters: bool = False) -> None:
-    from growth_charts import SEOUL  # Sets the headless backend before pyplot.
+    from growth_charts import COMMIT_AXIS_LABEL, SEOUL  # Sets the headless backend before pyplot.
     import matplotlib.dates as mdates
     import matplotlib.pyplot as plt
-    from matplotlib.ticker import MaxNLocator, StrMethodFormatter
+    from matplotlib.ticker import MaxNLocator, PercentFormatter, StrMethodFormatter
 
     # Every series uses the same repository total. Keep first-parent order:
     # deletions can move left and equal-size snapshots can have different means.
@@ -180,8 +180,8 @@ def plot(records: list[dict], ref: str, output: Path, *, by_characters: bool = F
         for record in records
     ]
     with plt.style.context("default"):
-        figure, axes = plt.subplots(2, 2, figsize=(18, 12), sharex=True)
-        figure.subplots_adjust(left=0.06, right=0.98, top=0.83, bottom=0.18, hspace=0.32, wspace=0.18)
+        figure, axes = plt.subplots(2, 2, figsize=(18, 14), sharex=True)
+        figure.subplots_adjust(left=0.075, right=0.98, top=0.79, bottom=0.21, hspace=0.70, wspace=0.24)
         overall, distribution, controls, proportions = axes.flat
 
         def line(axis, key, label, color, group="all", **kwargs):
@@ -189,7 +189,8 @@ def plot(records: list[dict], ref: str, output: Path, *, by_characters: bool = F
             if not any(value is not None for value in values):
                 return
             last = values[-1]
-            caption = f"{label}: {last:.1f}" if last is not None else label
+            unit = "%" if axis is proportions else " chars"
+            caption = f"{label}: {last:.1f}{unit}" if last is not None else label
             axis.plot(positions, values, color=color, linewidth=2, label=caption, **kwargs)
             if by_characters and last is not None:
                 axis.plot(positions[-1], last, marker="o", color=color, markersize=5)
@@ -197,26 +198,43 @@ def plot(records: list[dict], ref: str, output: Path, *, by_characters: bool = F
         line(overall, "mean_characters", "All code", "#172d38")
         line(overall, "mean_characters", "Production", "#147c95", "production")
         line(overall, "mean_characters", "Tests / support", "#ae7130", "tests")
-        overall.set_title("1. Mean length across every included file", loc="left", fontsize=13, pad=12)
+        overall.set_title(
+            "1. Average line length by code group\nTotal characters / nonblank lines in that group",
+            loc="left", fontsize=12, pad=12, linespacing=1.6,
+        )
+        overall.set_ylabel("Mean line length\n(characters per nonblank line)", fontsize=11, weight="semibold", labelpad=12)
         line(distribution, "p90_characters", "90th percentile", "#8864ac")
         line(distribution, "mean_characters", "Mean", "#172d38")
         line(distribution, "median_characters", "Median", "#147c95")
-        distribution.set_title("2. Typical lines and the longer tail — all code", loc="left", fontsize=13, pad=12)
+        distribution.set_title(
+            "2. Line-length distribution — all code\nMean, median and 90th percentile of nonblank line lengths",
+            loc="left", fontsize=12, pad=12, linespacing=1.6,
+        )
+        distribution.set_ylabel("Line length\n(characters per nonblank line)", fontsize=11, weight="semibold", labelpad=12)
         line(controls, "mean_characters", "Raw mean", "#172d38")
         line(controls, "mean_stripped_characters", "After edge whitespace removal", "#147c95")
         line(controls, "mean_without_longest_1_percent", "Without longest 1%", "#c4573b", linestyle="--")
-        controls.set_title("3. Sensitivity to whitespace and extremes — all code", loc="left", fontsize=13, pad=12)
-        line(proportions, "over_160_percent", ">160 chars / nonblank lines", "#c4573b")
-        line(proportions, "blank_percent", "Blank / physical lines", "#147c95")
-        proportions.set_title("4. Long-line and blank-line shares — all code", loc="left", fontsize=13, pad=12)
+        controls.set_title(
+            "3. Adjusted average line length — all code\nMean recalculated after each adjustment in the legend",
+            loc="left", fontsize=12, pad=12, linespacing=1.6,
+        )
+        controls.set_ylabel("Mean line length\n(characters per nonblank line)", fontsize=11, weight="semibold", labelpad=12)
+        line(proportions, "over_160_percent", "Lines >160 chars / nonblank lines", "#c4573b")
+        line(proportions, "blank_percent", "Blank lines / all physical lines", "#147c95")
+        proportions.set_title(
+            "4. Long-line and blank-line shares — all code\nEach ratio in the legend is multiplied by 100",
+            loc="left", fontsize=12, pad=12, linespacing=1.6,
+        )
+        proportions.set_ylabel("Share of lines (%)\nDenominator shown in legend", fontsize=11, weight="semibold", labelpad=12)
+        proportions.yaxis.set_major_formatter(PercentFormatter(xmax=100, decimals=0))
 
         for axis in axes.flat:
-            axis.set_ylabel("Characters / nonblank line" if axis is not proportions else "Percent")
             axis.set_ylim(bottom=0)
+            axis.tick_params(axis="both", labelsize=10, labelbottom=True)
             axis.grid(alpha=0.18)
             axis.spines[["top", "right"]].set_visible(False)
             if axis.lines:
-                axis.legend(loc="upper left", frameon=False, fontsize=9)
+                axis.legend(loc="best", frameon=False, fontsize=10, title="Latest snapshot", title_fontsize=10)
             else:
                 axis.text(0.5, 0.5, "No measured nonblank code", transform=axis.transAxes, ha="center")
             if by_characters:
@@ -225,20 +243,31 @@ def plot(records: list[dict], ref: str, output: Path, *, by_characters: bool = F
                 axis.xaxis.set_major_formatter(StrMethodFormatter("{x:,.0f}"))
             else:
                 axis.xaxis.set_major_locator(mdates.AutoDateLocator(minticks=4, maxticks=5, tz=SEOUL))
-                axis.xaxis.set_major_formatter(mdates.DateFormatter("%m.%d\n%Y", tz=SEOUL))
-        for axis in axes[1]:
-            axis.set_xlabel("Total characters in all measured code" if by_characters else "Commit date (Asia/Seoul)")
-        figure.text(0.06, 0.95, "Characters per nonblank line", fontsize=26, weight="bold")
+                axis.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d", tz=SEOUL))
+            axis.set_xlabel(
+                "Repository size at each commit (characters)\nTotal across production + tests/support + tooling"
+                if by_characters else COMMIT_AXIS_LABEL,
+                fontsize=11, weight="semibold", labelpad=10,
+            )
+        figure.text(0.075, 0.95, "Characters per nonblank line", fontsize=26, weight="bold")
         subtitle = (
             "By repository size at each commit; filled dots mark the latest snapshot"
             if by_characters else
             "Repository-wide measurements at every commit: mean, distribution and sensitivity"
         )
-        figure.text(0.06, 0.905, subtitle, fontsize=14)
-        figure.text(0.06, 0.105, provenance(records, ref), fontsize=9)
-        figure.text(0.06, 0.08, "Unicode code points; comments, strings and indentation included. Line endings and whitespace-only lines excluded." if by_characters else "Unicode code points; comments and strings included. Raw lengths include indentation; line endings are excluded.", fontsize=9)
-        figure.text(0.06, 0.055, "X = snapshot total, not cumulative additions. Lines follow first-parent order, may move left; all series share the same X." if by_characters else "Panels 2–4 pool all measured files. Each snapshot is measured independently; file composition can change over time.", fontsize=9)
-        figure.text(0.06, 0.03, "No smoothing. 160 is a descriptive threshold, not a quality cutoff. Line length alone does not measure readability.", fontsize=9)
+        figure.text(0.075, 0.915, subtitle, fontsize=14)
+        figure.text(
+            0.075, 0.875,
+            "X sums characters in nonblank lines at each commit; every series uses the same repository total."
+            if by_characters else
+            "X follows commit timestamps in Korea Standard Time (UTC+09:00); spacing represents calendar time.",
+            fontsize=12,
+        )
+        figure.text(0.075, 0.12, provenance(records, ref), fontsize=10)
+        figure.text(0.075, 0.095, "Character = Unicode code point; raw counts include indentation, spaces and comments, excluding line endings.", fontsize=10)
+        figure.text(0.075, 0.07, "Nonblank line = a line with at least one non-whitespace character. Blank lines are excluded from line-length statistics.", fontsize=10)
+        figure.text(0.075, 0.045, "X = snapshot total, not cumulative additions. Lines follow first-parent order and may move left when code is deleted." if by_characters else "Panels 2–4 pool all measured files. Each snapshot is measured independently; file composition can change over time.", fontsize=10)
+        figure.text(0.075, 0.02, "No smoothing. 160 is a descriptive threshold, not a quality cutoff. Line length alone does not measure readability.", fontsize=10)
         output.parent.mkdir(parents=True, exist_ok=True)
         figure.savefig(output, dpi=160, bbox_inches="tight")
         plt.close(figure)
