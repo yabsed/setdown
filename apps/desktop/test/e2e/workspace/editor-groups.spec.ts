@@ -12,16 +12,16 @@ async function open(page: Page, file: string) {
   await page.evaluate(file => (window as unknown as { marktex: MarkTexApi }).marktex.openLink(`marktex-resource://file${file}`), file);
   await expect(page.getByRole('tab', { name: new RegExp(path.basename(file).replaceAll('.', '\\.')) })).toHaveAttribute('aria-selected', 'true');
 }
-async function drop(page: Page, name: string, groupIndex: number, side: 'right' | 'down' | 'center') {
+async function drop(page: Page, name: string, groupIndex: number, side: 'right' | 'down' | 'strip') {
   const tab = page.locator('.document-tab').filter({ hasText: name });
   const data = await page.evaluateHandle(() => new DataTransfer());
   await tab.dispatchEvent('dragstart', { dataTransfer: data });
-  const body = page.locator('.group-body').nth(groupIndex);
+  const body = page.locator(side === 'strip' ? '.tab-strip' : '.group-body').nth(groupIndex);
   const box = (await body.boundingBox())!;
   const point = { clientX: box.x + box.width * (side === 'right' ? .98 : .5),
     clientY: box.y + box.height * (side === 'down' ? .98 : .5), dataTransfer: data };
   await body.dispatchEvent('dragover', point);
-  await expect(page.locator('.group-drop-overlay')).toBeVisible();
+  await expect(page.locator(side === 'strip' ? '.tab-drop-indicator' : '.group-drop-overlay')).toBeVisible();
   await body.dispatchEvent('drop', point);
   await data.dispose();
 }
@@ -128,14 +128,24 @@ test('wheel scrolls without selection; nested groups retain live native readers 
     const fileTransfer = await page.evaluateHandle(file => {
       const transfer = new DataTransfer(); transfer.setData('application/x-setdown-project-file', file); return transfer;
     }, third);
-    const filePoint = { clientX: targetBox.x + targetBox.width / 2, clientY: targetBox.y + targetBox.height / 2,
+    const filePoint = { clientX: targetBox.x + targetBox.width / 2, clientY: targetBox.y + targetBox.height * .55,
       dataTransfer: fileTransfer };
     await targetBody.dispatchEvent('dragover', filePoint);
     await targetBody.dispatchEvent('drop', filePoint);
     await expect(page.getByRole('tab', { name: /third\.md/ })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('.editor-group')).toHaveCount(3);
+    const openedGroup = page.locator('.editor-group').filter({ has: page.getByRole('tab', { name: /third\.md/ }) });
+    const openedGroupId = await openedGroup.getAttribute('data-group-id');
+    expect(openedGroupId).not.toBe(targetGroupId);
     await expect.poll(() => page.evaluate(() =>
-      (window as typeof window & { __thirdTabGroups?: string[] }).__thirdTabGroups ?? [])).toEqual([targetGroupId]);
+      (window as typeof window & { __thirdTabGroups?: string[] }).__thirdTabGroups ?? [])).toEqual([openedGroupId]);
+    const openedBounds = (await openedGroup.boundingBox())!;
+    const retainedBounds = (await page.locator(`.editor-group[data-group-id="${targetGroupId}"]`).boundingBox())!;
+    expect(openedBounds.x).toBeCloseTo(retainedBounds.x, 0);
+    expect(openedBounds.width).toBeCloseTo(retainedBounds.width, 0);
+    expect(openedBounds.y).toBeGreaterThan(retainedBounds.y);
     await page.getByRole('tab', { name: /third\.md/ }).getByTitle('Close tab', { exact: true }).click();
+    await expect(page.locator('.editor-group')).toHaveCount(2);
     await fileTransfer.dispose();
 
     // DOM menus cover native readers only after every visible group has a
@@ -212,7 +222,7 @@ test('wheel scrolls without selection; nested groups retain live native readers 
     await expect(page.locator('.focused-content .view-lines')).not.toContainText('Second edit');
     await page.locator('.document-tab').filter({ hasText: 'picture.png' }).getByTitle('Close tab', { exact: true }).click();
     await expect(page.locator('.editor-group')).toHaveCount(2);
-    await drop(page, 'second.md', 0, 'center');
+    await drop(page, 'second.md', 0, 'strip');
     await expect(page.locator('.editor-group')).toHaveCount(1);
     // Fill a strip beyond its viewport; vertical wheel changes scrollLeft only.
     for (let i = 0; i < 14; i++) {
@@ -370,8 +380,11 @@ test('real tab drags use strip padding and insertion positions while preserving 
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
 
-for (const boundaryLeave of [false, true]) for (const side of ['right', 'down'] as const)
-test(`real Markdown tab drag splits ${side} with native boundary leave=${boundaryLeave}`, async () => {
+for (const boundaryLeave of [false, true]) for (const [cell, x, y, side] of [
+  [1, .125, .25, 'left'], [2, .375, .25, 'up'], [5, .625, .25, 'up'], [6, .875, .25, 'right'],
+  [3, .125, .75, 'left'], [4, .375, .75, 'down'], [7, .625, .75, 'down'], [8, .875, .75, 'right'],
+] as const)
+test(`real Markdown tab drag cell ${cell} splits ${side} with native boundary leave=${boundaryLeave}`, async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-native-split-'));
   const first = path.join(root, 'first.md'), second = path.join(root, 'second.md');
   await writeFile(first, '# First native reader\n\nKeep this document.\n');
@@ -409,15 +422,24 @@ test(`real Markdown tab drag splits ${side} with native boundary leave=${boundar
       await expect(page.locator('.shell')).toHaveClass(/is-tab-dragging/);
       expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children.filter(view => view.getVisible()).length)).toBe(0);
     }
-    await page.mouse.move(bounds.x + bounds.width * (side === 'right' ? .96 : .5), bounds.y + bounds.height * (side === 'down' ? .96 : .5), { steps: 12 });
-    await expect(page.locator('.group-drop-overlay')).toBeVisible();
+    await page.mouse.move(bounds.x + bounds.width * x, bounds.y + bounds.height * y, { steps: 12 });
+    const overlay = page.locator('.group-drop-overlay');
+    await expect(overlay).toBeVisible();
+    const guide = (await overlay.boundingBox())!;
+    const horizontal = side === 'left' || side === 'right';
+    expect(guide.x).toBeCloseTo(bounds.x + (side === 'right' ? bounds.width / 2 : 0), 0);
+    expect(guide.y).toBeCloseTo(bounds.y + (side === 'down' ? bounds.height / 2 : 0), 0);
+    expect(guide.width).toBeCloseTo(bounds.width / (horizontal ? 2 : 1), 0);
+    expect(guide.height).toBeCloseTo(bounds.height / (horizontal ? 1 : 2), 0);
     await page.mouse.up();
     await expect(page.locator('.editor-group')).toHaveCount(2);
     await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children.filter(view => view.getVisible()).length)).toBe(2);
-    const groups = await page.locator('.editor-group').evaluateAll(nodes => nodes.map(node => {
-      const box = node.getBoundingClientRect(); return { x: box.x, y: box.y, width: box.width, height: box.height };
-    }));
-    expect(groups[1][side === 'right' ? 'x' : 'y']).toBeGreaterThan(groups[0][side === 'right' ? 'x' : 'y']);
+    const moved = (await page.locator('.editor-group').filter({ has: tab }).boundingBox())!;
+    const remaining = (await page.locator('.editor-group').filter({ hasNot: tab }).boundingBox())!;
+    const axis = horizontal ? 'x' : 'y';
+    if (side === 'left' || side === 'up') expect(moved[axis]).toBeLessThan(remaining[axis]);
+    else expect(moved[axis]).toBeGreaterThan(remaining[axis]);
+    expect(moved[horizontal ? 'width' : 'height']).toBeCloseTo(remaining[horizontal ? 'width' : 'height'], 0);
     await expect.poll(() => app.evaluate(async ({ BrowserWindow }) => Promise.all(
       BrowserWindow.getAllWindows()[0].contentView.children.filter(view => view.getVisible())
         .map(view => (view as WebContentsView).webContents.executeJavaScript('document.body.innerText')),

@@ -52,7 +52,7 @@ test('fast right-edge drops split two live websites instead of tearing off a win
       expect(await owner.evaluate(window => window.isResizable())).toBe(process.env.SETDOWN_TEST_DISPLAY === 'xwayland');
       if (process.env.SETDOWN_TEST_DISPLAY === 'xwayland') expect(await owner.evaluate(window => window.isMaximized())).toBe(true);
       // Release at the right edge immediately: waiting for the guide first
-      // masks stale center/tear-off ownership in native event delivery.
+      // masks stale center-guide ownership in native event delivery.
       await input({ pointer: [right], pointerIntervalMs: 0, button: 'up' });
       await expect(f.page.locator('.editor-group'), `right-edge split, round ${round}`).toHaveCount(2);
       await expect.poll(() => f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
@@ -93,7 +93,7 @@ test('fast right-edge drops split two live websites instead of tearing off a win
   }
 });
 
-for (const zoomSteps of [0, 2]) test(`native split guide stays painted and accepts all four edges at app zoom step ${zoomSteps}`, async () => {
+for (const zoomSteps of [0, 2]) test(`native split guide stays painted and follows all eight cells at app zoom step ${zoomSteps}`, async () => {
   const f = await fixture();
   try {
     await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
@@ -139,34 +139,31 @@ for (const zoomSteps of [0, 2]) test(`native split guide stays painted and accep
     expect(paint.gaps, 'Repeated dragover must not remove the native guide between updates').toBe(0);
     expect(paint.frames.every(count => count === 1), 'Every sampled Chromium frame must retain the guide').toBe(true);
     const overlay = f.page.locator('.group-drop-overlay');
-    for (const direction of ['left', 'up', 'down', 'right'] as const) {
-      const center = { x: body.x + body.width / 2, y: body.y + body.height / 2 };
-      await nativeInput({ pointer: [await toScreen(center)] });
-      await expect(overlay).toBeHidden();
-      await expect(receiver.locator('.guide')).toHaveCount(0);
-      const horizontal = direction === 'left' || direction === 'right';
-      const start = direction === 'left' || direction === 'up';
-      const point = { ...center, ...(horizontal ? { x: body.x + body.width * (start ? .2 : .8) }
-        : { y: body.y + body.height * (start ? .2 : .8) }) };
-      await nativeInput({ pointer: [await toScreen(point)] });
+    const checkGuide = async (x: number, y: number, direction: 'left' | 'right' | 'up' | 'down') => {
+      await nativeInput({ pointer: [await toScreen({ x: body.x + x * body.width, y: body.y + y * body.height })] });
       await expect(overlay).toBeVisible();
       await expect(receiver.locator('.guide')).toHaveCount(1);
       const guide = (await overlay.boundingBox())!;
+      const horizontal = direction === 'left' || direction === 'right';
       expect(guide.x).toBeCloseTo(body.x + (direction === 'right' ? body.width / 2 : 0), 0);
       expect(guide.y).toBeCloseTo(body.y + (direction === 'down' ? body.height / 2 : 0), 0);
       expect(guide.width).toBeCloseTo(body.width / (horizontal ? 2 : 1), 0);
       expect(guide.height).toBeCloseTo(body.height / (horizontal ? 1 : 2), 0);
-      // Small movements around the activation boundary must retain the same
-      // placement; the center above must still clear it before the next edge.
-      for (const offset of [-2, 2, -1, 1]) {
-        const jitter = { ...center, ...(horizontal ? { x: body.x + body.width * (start ? .25 : .75) + offset }
-          : { y: body.y + body.height * (start ? .25 : .75) + offset }) };
-        await nativeInput({ pointer: [await toScreen(jitter)] });
-        await expect(overlay).toBeVisible();
-        expect(await overlay.boundingBox()).toEqual(guide);
-        await expect(receiver.locator('.guide')).toHaveCount(1);
-      }
-    }
+    };
+    const cells = [
+      [.125, .25, 'left'], [.375, .25, 'up'], [.625, .25, 'up'], [.875, .25, 'right'],
+      [.125, .75, 'left'], [.375, .75, 'down'], [.625, .75, 'down'], [.875, .75, 'right'],
+    ] as const;
+    for (const [x, y, direction] of cells) await checkGuide(x, y, direction);
+    // Crossing the same boundary from either direction must immediately use
+    // the current cell, with no history-dependent exit margin or dead center.
+    const boundaries = [
+      [.24, .3, 'left'], [.26, .3, 'up'], [.24, .3, 'left'],
+      [.74, .7, 'down'], [.76, .7, 'right'], [.74, .7, 'down'],
+      [.5, .49, 'up'], [.5, .51, 'down'], [.5, .49, 'up'],
+    ] as const;
+    for (const [x, y, direction] of boundaries) await checkGuide(x, y, direction);
+    await checkGuide(.875, .75, 'right');
     await receiver.screenshot({ path: test.info().outputPath('continuous-right-guide.png'), omitBackground: true });
     await nativeInput({ button: 'up' });
     await expect(f.page.locator('.editor-group')).toHaveCount(2);

@@ -40,43 +40,48 @@ describe('editor groups', () => {
     groups.move('c', 'group-0', 'down'); groups.remove('c');
     expect(groups.focused.activeId).toBe('a'); expect(groups.groups).toHaveLength(1);
   });
-  it('offers symmetric quarter-width split bands and retains horizontal corner preference', () => {
-    expect(splitDirection(50, 50, 100, 100)).toBeNull();
-    expect(splitDirection(9, 50, 100, 100)).toBe('left');
-    expect(splitDirection(91, 50, 100, 100)).toBe('right');
-    expect(splitDirection(50, 9, 100, 100)).toBe('up');
-    expect(splitDirection(50, 91, 100, 100)).toBe('down');
-    expect(splitDirection(25, 1, 100, 100)).toBe('left');
-    expect(splitDirection(20, 50, 100, 100)).toBe('left');
-    expect(splitDirection(80, 50, 100, 100)).toBe('right');
-    expect(splitDirection(50, 20, 100, 100)).toBe('up');
-    expect(splitDirection(50, 80, 100, 100)).toBe('down');
-  });
-  it('keeps a painted split through boundary jitter but releases it in the center or outside', () => {
-    expect(splitDirection(245, 300, 1000, 600)).toBe('left');
-    expect(splitDirection(255, 300, 1000, 600, 'left')).toBe('left');
-    expect(splitDirection(745, 300, 1000, 600, 'right')).toBe('right');
-    expect(splitDirection(500, 155, 1000, 600, 'up')).toBe('up');
-    expect(splitDirection(500, 445, 1000, 600, 'down')).toBe('down');
-    expect(splitDirection(270, 300, 1000, 600, 'left')).toBeNull();
-    expect(splitDirection(730, 300, 1000, 600, 'right')).toBeNull();
-    for (const previous of ['left', 'right', 'up', 'down'] as const) {
-      expect(splitDirection(500, 300, 1000, 600, previous)).toBeNull();
-      expect(splitDirection(50, 50, 100, 100, previous)).toBeNull();
-      expect(splitDirection(-1, 300, 1000, 600, previous)).toBeNull();
-    }
-  });
-  it('switches a top or bottom guide to either side without a center detour', () => {
-    for (const [width, height] of [[1920, 1000], [1600, 800], [500, 900]]) {
-      for (const previous of ['up', 'down'] as const) {
-        const y = height * (previous === 'up' ? .1 : .9);
-        expect(splitDirection(width / 2, y, width, height)).toBe(previous);
-        for (const fraction of [.01, .2, .25, .3]) {
-          expect(splitDirection(width * fraction, y, width, height, previous)).toBe('left');
-          expect(splitDirection(width * (1 - fraction), y, width, height, previous)).toBe('right');
+  it('maps all eight body cells consistently at different sizes and aspect ratios', () => {
+    // User's grid: 1 2 5 6 / 3 4 7 8. The middle half has no dead zone.
+    const cells = [
+      [1, .125, .25, 'left'], [2, .375, .25, 'up'],
+      [5, .625, .25, 'up'], [6, .875, .25, 'right'],
+      [3, .125, .75, 'left'], [4, .375, .75, 'down'],
+      [7, .625, .75, 'down'], [8, .875, .75, 'right'],
+    ] as const;
+    for (const [width, height] of [[1920, 1000], [1600, 800], [500, 900], [317.5, 211.25]]) {
+      for (const [cell, x, y, direction] of cells) {
+        expect(splitDirection(width * x, height * y, width, height), `cell ${cell}`).toBe(direction);
+      }
+      // Cover the interiors as well as cell centers, including the old 1/3
+      // corner threshold and the former guide-free central rectangle.
+      for (const y of [.01, .25, .49, .5, .51, .75, .99]) {
+        for (const x of [.01, .249, .751, .99]) {
+          expect(splitDirection(width * x, height * y, width, height)).toBe(x < .5 ? 'left' : 'right');
+        }
+        for (const x of [.251, .3, .5, .7, .749]) {
+          expect(splitDirection(width * x, height * y, width, height)).toBe(y < .5 ? 'up' : 'down');
         }
       }
     }
+  });
+  it('switches at exact quarter/half boundaries regardless of the approach direction', () => {
+    const points = [
+      [249, 200, 'left'], [250, 200, 'up'], [251, 200, 'up'],
+      [749, 200, 'up'], [750, 200, 'right'], [751, 200, 'right'],
+      [500, 299, 'up'], [500, 300, 'down'], [500, 301, 'down'],
+      [249, 400, 'left'], [250, 400, 'down'], [749, 400, 'down'], [750, 400, 'right'],
+      [0, 0, 'left'], [1000, 0, 'right'], [0, 600, 'left'], [1000, 600, 'right'],
+    ] as const;
+    for (const path of [points, [...points].reverse()]) {
+      for (const [x, y, direction] of path) expect(splitDirection(x, y, 1000, 600)).toBe(direction);
+    }
+  });
+  it('rejects outside points, empty bodies and non-finite geometry', () => {
+    for (const [x, y, width, height] of [
+      [-1, 300, 1000, 600], [1001, 300, 1000, 600], [500, -1, 1000, 600], [500, 601, 1000, 600],
+      [0, 0, 0, 600], [0, 0, 1000, 0], [0, 0, -1, 600], [0, 0, 1000, -1],
+      [NaN, 0, 1000, 600], [0, Infinity, 1000, 600], [0, 0, Infinity, 600], [0, 0, 1000, NaN],
+    ]) expect(splitDirection(x, y, width, height)).toBeNull();
   });
   it('replaces only the group preview even when a pinned tab has focus', () => {
     const groups = new EditorGroups();

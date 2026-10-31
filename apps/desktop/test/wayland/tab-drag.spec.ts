@@ -11,7 +11,7 @@ import { focusApplication } from '../support/electron/electron-app';
 const compatibility = process.env.SETDOWN_TEST_DISPLAY === 'xwayland';
 for (const mode of ['maximized', 'fullscreen'] as const)
 for (const moving of ['web', 'document'] as const)
-test(`${mode} ${moving} drags prioritize both side edges and never open a window`, async () => {
+test(`${mode} ${moving} drags follow all eight split cells and never open a window`, async () => {
   const input = await waylandInput();
   const f = await fixture(false).catch(async error => { await input.close(); throw error; });
   try {
@@ -55,7 +55,17 @@ test(`${mode} ${moving} drags prioritize both side edges and never open a window
       return { x: bounds.x + point.x * zoom, y: bounds.y + point.y * zoom };
     }, point);
     const overlay = f.page.locator('.group-drop-overlay');
-    for (const [round, placement] of ['left-top', 'right-top', 'left-bottom', 'right-bottom', 'fast-right', 'center', 'escape'].entries()) {
+    const placements = [
+      { name: '1', x: .125, y: .25, direction: 'left' }, { name: '2', x: .375, y: .25, direction: 'up' },
+      { name: '5', x: .625, y: .25, direction: 'up' }, { name: '6', x: .875, y: .25, direction: 'right' },
+      { name: '3', x: .125, y: .75, direction: 'left' }, { name: '4', x: .375, y: .75, direction: 'down' },
+      { name: '7', x: .625, y: .75, direction: 'down' }, { name: '8', x: .875, y: .75, direction: 'right' },
+      { name: 'left-top', x: 0, y: .1, direction: 'left' }, { name: 'right-top', x: 1, y: .1, direction: 'right' },
+      { name: 'left-bottom', x: 0, y: .9, direction: 'left' }, { name: 'right-bottom', x: 1, y: .9, direction: 'right' },
+      { name: 'fast-right', x: 1, y: .5, direction: 'right' }, { name: 'center', x: .5, y: .55, direction: 'down' },
+      { name: 'escape', x: 1, y: .5, direction: 'right' },
+    ] as const;
+    for (const [round, placement] of placements.entries()) {
       if (round === 2) await f.page.evaluate(() => window.marktex.changeZoom(1, 'app'));
       const bounds = await owner.evaluate(window => window.getBounds());
       const box = (await tab.boundingBox())!, body = (await f.page.locator('.group-body').boundingBox())!;
@@ -70,31 +80,29 @@ test(`${mode} ${moving} drags prioritize both side edges and never open a window
         cursor: screen.getCursorScreenPoint(), focused: BrowserWindow.getFocusedWindow()?.id,
       }));
       await input.send({ pointer: [{ x: from.x + 20, y: from.y + 15 }] });
-      const vertical = placement.endsWith('top') || placement.endsWith('bottom');
-      const y = body.y + body.height * (placement.endsWith('top') ? .1 : placement.endsWith('bottom') ? .9 : .5);
+      // Approach from the middle first so side cells must replace a vertical
+      // guide immediately. At the center the grid selects the lower half.
+      const y = body.y + body.height * placement.y;
       await input.send({ pointer: [await toScreen({ x: body.x + body.width / 2, y })] });
-      if (vertical) {
-        await expect(overlay).toBeVisible();
-        expect((await overlay.boundingBox())!.height).toBeCloseTo(body.height / 2, 0);
-      } else await expect(overlay).toBeHidden();
-      const left = placement.startsWith('left');
-      const edge = await toScreen({ x: body.x + (left ? 1 : body.width - 1), y });
-      if (placement === 'fast-right') {
+      await expect(overlay).toBeVisible();
+      expect((await overlay.boundingBox())!.height).toBeCloseTo(body.height / 2, 0);
+      const horizontal = placement.direction === 'left' || placement.direction === 'right';
+      const destination = await toScreen({ x: body.x + Math.max(1, Math.min(body.width - 1, body.width * placement.x)), y });
+      if (placement.name === 'fast-right') {
         // No guide wait may hide the native center-to-edge release race.
-        await input.send({ pointer: [edge], pointerIntervalMs: 0, button: 'up' });
+        await input.send({ pointer: [destination], pointerIntervalMs: 0, button: 'up' });
       } else {
-        if (placement !== 'center') {
-          await input.send({ pointer: [edge] });
-          await expect(overlay).toBeVisible();
-          const guide = (await overlay.boundingBox())!;
-          expect(guide.x).toBeCloseTo(body.x + (left ? 0 : body.width / 2), 0);
-          expect(guide.width).toBeCloseTo(body.width / 2, 0);
-          expect(guide.height).toBeCloseTo(body.height, 0);
-        }
-        if (placement === 'escape') await input.send({ keys: ['Escape'] });
+        await input.send({ pointer: [destination] });
+        await expect(overlay).toBeVisible();
+        const guide = (await overlay.boundingBox())!;
+        expect(guide.x).toBeCloseTo(body.x + (placement.direction === 'right' ? body.width / 2 : 0), 0);
+        expect(guide.y).toBeCloseTo(body.y + (placement.direction === 'down' ? body.height / 2 : 0), 0);
+        expect(guide.width).toBeCloseTo(body.width / (horizontal ? 2 : 1), 0);
+        expect(guide.height).toBeCloseTo(body.height / (horizontal ? 1 : 2), 0);
+        if (placement.name === 'escape') await input.send({ keys: ['Escape'] });
         await input.send({ button: 'up' });
       }
-      const split = placement !== 'center' && placement !== 'escape';
+      const split = placement.name !== 'escape';
       await expect(f.page.locator('.editor-group')).toHaveCount(split ? 2 : 1);
       await expect(f.page.locator('.shell')).not.toHaveClass(/is-tab-dragging/);
       expect(await f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
@@ -103,7 +111,11 @@ test(`${mode} ${moving} drags prioritize both side edges and never open a window
       expect(await owner.evaluate((window, mode) => mode === 'fullscreen' ? window.isFullScreen() : window.isMaximized(), mode)).toBe(true);
       if (split) {
         const moved = (await f.page.locator('.editor-group').filter({ has: tab }).boundingBox())!;
-        expect(moved.x).toBeCloseTo(body.x + (left ? 0 : body.width / 2), 0);
+        const remaining = (await f.page.locator('.editor-group').filter({ hasNot: tab }).boundingBox())!;
+        const axis = horizontal ? 'x' : 'y';
+        if (placement.direction === 'left' || placement.direction === 'up') expect(moved[axis]).toBeLessThan(remaining[axis]);
+        else expect(moved[axis]).toBeGreaterThan(remaining[axis]);
+        expect(moved[horizontal ? 'width' : 'height']).toBeCloseTo(remaining[horizontal ? 'width' : 'height'], 0);
         // Restore one group between independent native gestures.
         const other = f.page.locator('.editor-group').filter({ hasNot: tab }).locator('.tab-strip');
         const strip = (await other.boundingBox())!;

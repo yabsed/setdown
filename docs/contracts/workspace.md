@@ -403,7 +403,7 @@ and originally fixed-size windows; it also runs maximized under isolated XWaylan
 Valid final drop coordinates replace an earlier center hover even if its final
 dragover is delayed. Source dragend retains receiver/token ownership through the
 existing detach arbitration interval so an in-flight local native drop can still
-win. A canceled inside release cannot reuse stale center tear-off intent; actual
+win. A canceled inside release cannot reuse stale sole-tab tear-off intent; actual
 outside detachment and coordinate-less accepted completions retain their rules.
 A rejected area, confirmed window exit,
 or explicit cancellation clears it. A confirmed outside release takes precedence
@@ -472,25 +472,36 @@ remote claims already in flight remain eligible until arbitration completes.
 between overlapping windows, including remote cancellation and preserving the
 live page/PTY. Manager tests cover identical/zero global bounds and local versus
 remote fallback ownership. Synthetic DOM events do not replace the OS tests.
-For a local tab drag in a normal window, the source group's body center is a tear-off area:
-the blue guide disappears before release and dropping there creates a new
-window. Maximized and fullscreen sources never create a detached window,
-including a hidden prepared window. A center drop or unclaimed outside release
-cancels and keeps the tab in place. Local splits/reordering and transfers into
-existing windows remain available, including a delayed native drop/claim during
-arbitration. A window entering maximized/fullscreen state before detach commits
-also cancels its pending tear-off; restoring during a drag cannot enable one
-that started maximized/fullscreen.
+Every editor-group body uses the same four-column, two-row split grid:
+
+```text
+1 2 5 6       left  up    up    right
+3 4 7 8       left  down  down  right
+```
+
+The left quarter selects left, the right quarter selects right, and the middle
+half selects up above the vertical midpoint and down at/below it. The 25% boundary
+belongs to the middle and the 75% boundary to the right. Every valid body point
+has a direction, including the center; there is no center merge/tear-off area or
+history-dependent exit margin. The hovered group's body supplies the bounds,
+including nested groups, normal/maximized/fullscreen windows and app zoom.
+The painted half and committed split must agree. Tab strips own merging into an
+existing group and reordering; file drops use the same body/strip placement.
+`editor-groups.test.ts` covers all eight cells, fractional geometry and exact
+boundaries. Real Markdown pointer tests commit each cell with/without a native
+child boundary leave; browser layout tests cover all cells and reverse boundary
+crossings above live web content at normal and increased app zoom.
+
+A source group's sole tab cannot split itself. Its body keeps the existing
+tear-off behavior in normal windows. Maximized and fullscreen sources never
+create a detached window, including a hidden prepared window: a sole-tab body
+drop or unclaimed outside release cancels and keeps the tab in place. Local
+splits/reordering and transfers into existing windows remain available, including
+a delayed native drop/claim during arbitration. A window entering maximized/fullscreen
+state before detach commits also cancels its pending tear-off; restoring during
+a drag cannot enable one that started maximized/fullscreen.
 A late end notification for the preceding drag cannot reset a new local token
 or its native receiver when the next gesture begins during that arbitration.
-The outer quarter of each body accepts a split, with the existing horizontal
-preference at corners. Entering either side band supersedes an already painted
-top/bottom split without requiring a detour through the center. A painted direction has an exit margin of up to 12 CSS
-pixels (capped at 5% of that axis) to absorb small boundary movements. Returning
-to the center, leaving the group, or entering rejected chrome clears that intent;
-the center remains available for tear-off in normal windows. A source group's sole
-tab cannot split itself, so its whole body follows that same tear-off/cancel policy. Tab strips
-still reorder, and another group's center still shows a blue merge guide.
 The location bar and unrelated shell areas are not drop destinations.
 An internal tab transport still accepts native enter/over while traversing that
 chrome: X11 can otherwise retain the rejected operation across a subsequent
@@ -499,10 +510,10 @@ release there cancels without moving, copying or detaching. Transport acceptance
 never substitutes for an accepted placement, and Escape/`none` still cancel.
 Returning from tear-off to a strip or split replaces that intent with the new
 visible guide; Escape cancels without moving or detaching. Source Markdown surfaces retain their capture throughout the drag,
-including over the guide-free center; web surfaces remain live. Native pointer tests in `tab-detach.spec.ts` check feedback before
+including over a sole-tab tear-off area; web surfaces remain live. Native pointer tests in `tab-detach.spec.ts` check feedback before
 release, detach, cancellation, return, split and the sole-tab case; its accepted
-native-drop cases also retain center merging into another group.
-An accepted center tear-off retains its last screen position when native drop
+native-drop cases also verify body splitting and tab-strip merging into another group.
+An accepted sole-tab tear-off retains its last screen position when native drop
 completion reports zero coordinates. Its explicit in-source request is checked
 against the OS receiver ownership, so an overlapping window behind it does not
 intercept the tear-off; outside drops still allow the destination window to
@@ -515,14 +526,17 @@ drop claim and verifies that the existing window still receives the live native
 preview. Keep ordinary single-group preview and Git-review cycles in the same
 48-bucket performance comparison.
 `test/wayland/tab-drag.spec.ts` uses the private Mutter compositor (also with
-XWayland) to check real maximized/fullscreen web and document drags: top/bottom
+XWayland) to check real maximized/fullscreen web and document drags: all eight cells, top/bottom
 to left/right corners, immediate center-to-right release, increased app zoom,
-center cancellation and Escape. It asserts zero new windows, including hidden
+center splitting and Escape. It asserts zero new windows, including hidden
 ones, and unchanged window mode/bounds. Unit tests cover window-state changes
 during arbitration and late claims into existing windows.
-The 2026-10-31 [execution record](../../reports/fullscreen-tab-drag-2026-10-31/validation.json)
+The earlier 2026-10-31 [fullscreen transport execution record](../../reports/fullscreen-tab-drag-2026-10-31/validation.json)
 records 63 focused unit checks and 42 isolated Electron cases across Xvfb,
 XWayland and native Wayland, with the initial diagnostics retained alongside them.
+The [eight-cell split validation](../../reports/tab-split-grid-2026-10-31/validation.json)
+records 63 unit checks and 76 GUI scenarios for the grid above, including the
+corrected test selectors and original diagnostic logs.
 
 Dated reproduction, native input evidence, and validation:
 [Tab tear-off area — 2026-10-20](../validation/2026-10-20-tab-tear-off.md).

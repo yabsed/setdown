@@ -115,7 +115,7 @@ export function createTabDrag(options: Options) {
       setDragging(true); options.shell.classList.add('is-tab-dragging');
     } else if (sharedDragId === id) {
       sharedDragId = null;
-      // A new local gesture may start before the previous center cancellation
+      // A new local gesture may start before the previous drag cancellation
       // completes in main. Its late end must not clear the new token/receiver.
       if (transferId && transferId !== id) return;
       const destination = commitGuide ? guidedTarget ?? retainedTarget : null;
@@ -152,13 +152,12 @@ export function createTabDrag(options: Options) {
       if (point.y < strip.getBoundingClientRect().bottom) return stripTarget(strip, point.x);
       const body = element.querySelector('.group-body')!.getBoundingClientRect();
       if (point.y < body.top || point.y >= body.bottom) { clearTarget(); return null; }
-      const previous = guidedTarget?.groupId === groupId ? guidedTarget.direction : null;
-      const direction = splitDirection(point.x - body.left, point.y - body.top, body.width, body.height, previous);
+      const direction = splitDirection(point.x - body.left, point.y - body.top, body.width, body.height);
       const source = tabId ? options.groups.owner(tabId) : null;
       const split = source?.id === groupId && source.tabs.length === 1 && !copying(event) ? null : direction;
-      // Returning to the source group's body is not a useful merge. Reserve
-      // its center for tear-off in normal windows; main cancels it when the
-      // source is maximized/fullscreen. Other groups still accept center merges.
+      // A sole tab cannot split its own group. Keep its existing tear-off in
+      // normal windows; main cancels it when maximized/fullscreen. Every other
+      // body point splits by the grid; merging/reordering belongs to the strip.
       if (source?.id === groupId && !split) {
         clearTarget();
         detachTarget = { x: event.screenX, y: event.screenY };

@@ -1,0 +1,91 @@
+{
+  "date": "2026-10-31",
+  "behavior": {
+    "reference": "Hovered editor-group body",
+    "cells": {
+      "1": "left",
+      "3": "left",
+      "6": "right",
+      "8": "right",
+      "2": "up",
+      "5": "up",
+      "4": "down",
+      "7": "down"
+    },
+    "boundaries": "x < 25%: left; x >= 75%: right; middle y < 50%: up, otherwise down",
+    "merge": "Drop on the target tab strip",
+    "historyDependentDirection": false,
+    "soleTab": "Existing own-group tear-off/cancel policy retained"
+  },
+  "build": {
+    "typecheck": "passed (TypeScript and svelte-check, zero errors/warnings)",
+    "renderer": "passed",
+    "electron": "passed",
+    "sandboxFailure": "Initial build-electron failed on spawnSync git EPERM; the same build-electron command completed with escalation.",
+    "updatedTestTypecheck": "passed"
+  },
+  "unit": {
+    "command": "npm test --workspace @setdown/desktop -- src/core/workspace/editor-groups.test.ts src/main/tabs/tab-transfer-manager.test.ts",
+    "passed": 63
+  },
+  "gui": {
+    "isolation": "All GUI commands used with-isolated-display.sh, private runtime and D-Bus. No desktop display used. No retries configured.",
+    "xvfb": {
+      "verifiedScenarios": 66,
+      "files": [
+        "workspace/editor-groups.spec.ts",
+        "workspace/tab-detach.spec.ts",
+        "browser/layout.spec.ts",
+        "browser/transfer.spec.ts"
+      ],
+      "runs": [
+        {
+          "log": "xvfb.log",
+          "passed": 64,
+          "failed": 2,
+          "reason": "New placement assertions used a relative last-tab selector matching both groups."
+        },
+        {
+          "log": "xvfb-final.log",
+          "passed": 2,
+          "failed": 1,
+          "change": "Moved-tab assertions now use the stable tab ID; restored and strengthened file body-drop coverage.",
+          "reason": "New retained-group assertion matched non-panel elements sharing data-group-id."
+        },
+        {
+          "log": "file-drop-final.log",
+          "passed": 1,
+          "failed": 0,
+          "change": "Restricted retained-group selector to .editor-group; checked direct installation into the lower split and collapse on close."
+        }
+      ]
+    },
+    "wayland": {
+      "passed": 4,
+      "failed": 0,
+      "log": "wayland.log",
+      "scope": "Maximized/fullscreen x web/document, all eight cells, corner transitions, fast release, app zoom, center split, Escape, zero new windows."
+    },
+    "xwayland": {
+      "passed": 6,
+      "failed": 0,
+      "log": "xwayland.log",
+      "scope": "Same four mode/surface cases plus 40 web and 40 document cross-window drag operations."
+    },
+    "totalVerifiedScenarios": 76
+  },
+  "previewPerformance": {
+    "fullContractRun": false,
+    "benchmarkRun": false,
+    "reason": "Only drop-direction hit testing changed. Preview preparation/presentation, native bounds/zoom, themes/CSS and dependencies were not changed."
+  },
+  "sha256": {
+    "apps/desktop/src/core/workspace/editor-groups.ts": "023219925a2dc54c45e6e48cb80f4a3d518737ebf6c23445b95ea6fd2a0addd7",
+    "apps/desktop/src/renderer/workspace/tabs/tab-drag.ts": "072c85f18f6cf99bb01749ffaed9b970d8d5ad564b9b423051f59a9463d8e1f6",
+    "apps/desktop/src/core/workspace/editor-groups.test.ts": "76a7cad5e3b8909870384d8fc32021736ca4991658e28c99d07694f8ef6c12fa",
+    "apps/desktop/test/e2e/workspace/editor-groups.spec.ts": "02e79dae3f6854f8f957146c349cbb14757915b1be5fb9e2ee21bb46a0e95ab7",
+    "apps/desktop/test/e2e/workspace/tab-detach.spec.ts": "3923b66514d1e7ac3d37601c081db3db071a652820f334b4a717dc6668b2b630",
+    "apps/desktop/test/e2e/browser/layout.spec.ts": "75abcdb1d76b51720c9040b3a3c8b8d62a6b41f5987681360250156094ca9865",
+    "apps/desktop/test/wayland/tab-drag.spec.ts": "f05b78a8e0d4f33ad7d541d26aae8b2c46918e93912402a5f8ae2793abc8e2a6"
+  }
+}

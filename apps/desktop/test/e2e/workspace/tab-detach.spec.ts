@@ -96,8 +96,8 @@ test(`native drag ${outcome} the window after showing an insertion guide`, async
   }
 });
 
-for (const outcome of ['detach', 'cancel', 'return', 'split', 'sole'] as const)
-test(`source group center clears the guide during native drag: ${outcome}`, async () => {
+for (const outcome of ['down', 'cancel', 'return', 'split', 'sole'] as const)
+test(`source group body follows the split grid during native drag: ${outcome}`, async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-center-detach-'));
   const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
   const app = await electron.launch({ args: ['.'], env: { ...env, XDG_CONFIG_HOME: root } });
@@ -109,6 +109,7 @@ test(`source group center clears the guide during native drag: ${outcome}`, asyn
     await app.evaluate(({ Menu }) => Menu.getApplicationMenu()!.getMenuItemById('menu-new-document')!.click());
     if (outcome !== 'sole') await page.locator('.new-tab-button').click();
     const tab = page.locator('.document-tab').last(), tabName = await tab.locator('.tab-name').innerText();
+    const tabId = await tab.getAttribute('data-tab-id');
     const toScreen = (point: { x: number; y: number }) => window.evaluate((window, point) => {
       const bounds = window.getContentBounds(), zoom = window.webContents.getZoomFactor();
       return { x: bounds.x + point.x * zoom, y: bounds.y + point.y * zoom };
@@ -124,11 +125,19 @@ test(`source group center clears the guide during native drag: ${outcome}`, asyn
       await nativeInput({ pointer: [edge] });
       await expect(page.locator('.group-drop-overlay')).toBeVisible();
     }
-    await nativeInput({ pointer: [await toScreen({ x: body.x + body.width / 2, y: body.y + body.height / 2 })] });
-    // Feedback must disappear before release, while the OS drag is still held.
+    await nativeInput({ pointer: [await toScreen({ x: body.x + body.width / 2, y: body.y + body.height * .55 })] });
     await expect(page.locator('.tab-drop-indicator')).toBeHidden();
-    await expect(page.locator('.group-drop-overlay')).toBeHidden();
-    await page.screenshot({ path: test.info().outputPath('center-no-guide.png') });
+    const overlay = page.locator('.group-drop-overlay');
+    if (outcome === 'sole') await expect(overlay).toBeHidden();
+    else {
+      await expect(overlay).toBeVisible();
+      const guide = (await overlay.boundingBox())!;
+      expect(guide.x).toBeCloseTo(body.x, 0);
+      expect(guide.y).toBeCloseTo(body.y + body.height / 2, 0);
+      expect(guide.width).toBeCloseTo(body.width, 0);
+      expect(guide.height).toBeCloseTo(body.height / 2, 0);
+    }
+    await page.screenshot({ path: test.info().outputPath('body-guide.png') });
     if (outcome === 'cancel') await nativeInput({ keys: ['Escape'] });
     if (outcome === 'return') {
       const first = (await page.locator('.document-tab').first().boundingBox())!;
@@ -140,20 +149,21 @@ test(`source group center clears the guide during native drag: ${outcome}`, asyn
       await expect(page.locator('.group-drop-overlay')).toBeVisible();
     }
     await nativeInput({ button: 'up' });
-    if (outcome === 'detach' || outcome === 'sole') {
+    if (outcome === 'sole') {
       await expect.poll(async () => (await shellWindows(app)).some(candidate => candidate !== page)).toBe(true);
       const detached = (await shellWindows(app)).find(candidate => candidate !== page)!;
       await expect(detached.locator('.tab-name')).toHaveText([tabName]);
-      if (outcome === 'sole') {
-        await expect.poll(() => page.isClosed()).toBe(true);
-        await expect.poll(async () => (await shellWindows(app)).length).toBe(1);
-      } else {
-        await expect(page.locator('.tab-name')).toHaveText(['Untitled.md']);
-        await expect.poll(async () => (await shellWindows(app)).length).toBe(2);
-      }
+      await expect.poll(() => page.isClosed()).toBe(true);
+      await expect.poll(async () => (await shellWindows(app)).length).toBe(1);
     } else {
       await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
-      await expect(page.locator('.editor-group')).toHaveCount(outcome === 'split' ? 2 : 1);
+      await expect(page.locator('.editor-group')).toHaveCount(outcome === 'split' || outcome === 'down' ? 2 : 1);
+      if (outcome === 'split' || outcome === 'down') {
+        const movedTab = page.locator(`[data-tab-id="${tabId}"]`);
+        const moved = (await page.locator('.editor-group').filter({ has: movedTab }).boundingBox())!;
+        const remaining = (await page.locator('.editor-group').filter({ hasNot: movedTab }).boundingBox())!;
+        expect(moved[outcome === 'split' ? 'x' : 'y']).toBeGreaterThan(remaining[outcome === 'split' ? 'x' : 'y']);
+      }
       await expect(page.locator('.tab-name')).toHaveText(outcome === 'return'
         ? ['Untitled 2.md', 'Untitled.md'] : ['Untitled.md', 'Untitled 2.md']);
     }
@@ -323,7 +333,7 @@ for (const dropArea of ['body', 'tab strip'] as const) test(`detaching a tab res
     const target = sourceWindow.locator(dropArea === 'body' ? '.group-body' : '.tab-strip').first();
     const targetBox = (await target.boundingBox())!;
     const point = { clientX: targetBox.x + targetBox.width / 2,
-      clientY: targetBox.y + (dropArea === 'body' ? targetBox.height / 2 : 2), dataTransfer: destinationTransfer };
+      clientY: targetBox.y + (dropArea === 'body' ? targetBox.height * .55 : 2), dataTransfer: destinationTransfer };
     await target.dispatchEvent('dragover', point);
     await expect(sourceWindow.locator(dropArea === 'body' ? '.group-drop-overlay' : '.tab-drop-indicator')).toBeVisible();
     if (dropArea === 'tab strip') expect(await target.evaluate(node => getComputedStyle(node).getPropertyValue('-webkit-app-region'))).toBe('no-drag');
@@ -470,14 +480,13 @@ for (const coordinates of ['client', 'screen'] as const) for (const effect of ['
   });
 }
 
-for (const completion of ['drop', 'dragend'] as const) test(`accepted center tear-off retains its position across native ${completion}`, async () => {
+for (const completion of ['drop', 'dragend'] as const) test(`accepted sole-tab tear-off retains its position across native ${completion}`, async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-center-native-'));
   const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
   const app = await electron.launch({ args: ['.'], env: { ...env, XDG_CONFIG_HOME: root } });
   try {
     const page = await app.firstWindow(); await focusApplication(app);
     await app.evaluate(({ Menu }) => Menu.getApplicationMenu()!.getMenuItemById('menu-new-document')!.click());
-    await page.locator('.new-tab-button').click();
     const source = page.locator('.document-tab').last();
     const data = await page.evaluateHandle(() => new DataTransfer());
     await source.dispatchEvent('dragstart', { dataTransfer: data });
@@ -490,9 +499,9 @@ for (const completion of ['drop', 'dragend'] as const) test(`accepted center tea
     await data.evaluate(transfer => Object.defineProperty(transfer, 'dropEffect', { value: 'move' }));
     await source.dispatchEvent(completion, { dataTransfer: data, clientX: 0, clientY: 0, screenX: 0, screenY: 0 });
     await data.dispose();
-    await expect(page.locator('.tab-name')).toHaveText(['Untitled.md']);
+    await expect.poll(() => page.isClosed()).toBe(true);
     const detached = (await shellWindows(app)).find(candidate => candidate !== page)!;
-    await expect(detached.locator('.tab-name')).toHaveText(['Untitled 2.md']);
+    await expect(detached.locator('.tab-name')).toHaveText(['Untitled.md']);
     const nativeWindow = await app.browserWindow(detached);
     expect(await nativeWindow.evaluate(window => window.getPosition())).toEqual([Math.round(point.screenX - 120), Math.round(point.screenY - 18)]);
     await nativeWindow.dispose();
@@ -530,7 +539,8 @@ for (const completion of ['drop', 'dragend'] as const) {
           ? page.locator('.editor-group').nth(1).locator(guide === 'other group body' ? '.group-body' : '.document-tab').first()
           : page.locator(guide === 'tab strip' ? '.document-tab' : '.group-body').first();
         const box = (await target.boundingBox())!;
-        const point = { clientX: box.x + (guide === 'other group body' ? box.width / 2 : 2), clientY: box.y + box.height / 2, dataTransfer: data };
+        const point = { clientX: box.x + (guide === 'other group body' ? box.width / 2 : 2),
+          clientY: box.y + box.height * (guide === 'other group body' ? .55 : .5), dataTransfer: data };
         await target.dispatchEvent('dragover', point);
         const painted = page.locator(guide === 'split' || guide === 'other group body' ? '.group-drop-overlay' : '.tab-drop-indicator');
         await expect(painted).toBeVisible();
@@ -549,13 +559,18 @@ for (const completion of ['drop', 'dragend'] as const) {
         await source.dispatchEvent(completion, { dataTransfer: data, clientX: 0, clientY: 0 });
         if (completion === 'drop') await source.dispatchEvent('dragend', { dataTransfer: data });
         await data.dispose();
-        await expect(page.locator('.editor-group')).toHaveCount(guide === 'tab strip' ? 1 : 2);
+        await expect(page.locator('.editor-group')).toHaveCount(guide === 'tab strip' ? 1 : guide === 'other group body' ? 3 : 2);
         if (guide === 'tab strip') {
           await expect(page.locator('.tab-name')).toHaveText(['Untitled 3.md', 'Untitled.md', 'Untitled 2.md']);
         } else if (guide === 'other group' || guide === 'other group body') {
           await expect(page.locator('.editor-group').nth(0).locator('.tab-name')).toHaveText(['Untitled 2.md']);
-          await expect(page.locator('.editor-group').nth(1).locator('.tab-name')).toHaveText(guide === 'other group body'
-            ? ['Untitled.md', 'Untitled 3.md'] : ['Untitled 3.md', 'Untitled.md']);
+          if (guide === 'other group body') {
+            await expect(page.locator('.editor-group').nth(1).locator('.tab-name')).toHaveText(['Untitled.md']);
+            await expect(page.locator('.editor-group').nth(2).locator('.tab-name')).toHaveText(['Untitled 3.md']);
+            const moved = (await page.locator('.editor-group').nth(2).boundingBox())!;
+            const remaining = (await page.locator('.editor-group').nth(1).boundingBox())!;
+            expect(moved.y).toBeGreaterThan(remaining.y);
+          } else await expect(page.locator('.editor-group').nth(1).locator('.tab-name')).toHaveText(['Untitled 3.md', 'Untitled.md']);
         } else {
           const movedGroup = page.locator('.editor-group').filter({ has: page.locator(`[data-tab-id="${sourceId}"]`) });
           await expect(movedGroup.locator('.tab-name')).toHaveText(['Untitled 3.md']);

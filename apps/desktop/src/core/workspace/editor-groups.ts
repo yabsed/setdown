@@ -26,22 +26,12 @@ export function groupLayout(tree: GroupTree, box = { x: 0, y: 0, width: 100, hei
   return { groups, sashes };
 }
 
-/** Quarter-width edge bands, with a small exit margin for an already painted split. */
-export function splitDirection(x: number, y: number, width: number, height: number, previous: SplitDirection | null = null): SplitDirection | null {
-  if (width <= 0 || height <= 0 || x < 0 || y < 0 || x > width || y > height) return null;
+/** Body grid: left/up/up/right above left/down/down/right. Position alone owns the guide. */
+export function splitDirection(x: number, y: number, width: number, height: number): SplitDirection | null {
+  if (![x, y, width, height].every(Number.isFinite)
+    || width <= 0 || height <= 0 || x < 0 || y < 0 || x > width || y > height) return null;
   const px = x / width, py = y / height;
-  const direction = px > .25 && px < .75 && py > .25 && py < .75 ? null
-    : px < 1 / 3 ? 'left' : px > 2 / 3 ? 'right' : py < .5 ? 'up' : 'down';
-  // Entering a side band wins over a previously painted top/bottom split.
-  // A tab traveling across the top must reach either side without first
-  // leaving the vertical band's hysteresis margin.
-  if (direction === 'left' || direction === 'right') return direction;
-  const marginX = Math.min(12, width * .05), marginY = Math.min(12, height * .05);
-  if (previous === 'left' && x <= width * .25 + marginX
-    || previous === 'right' && x >= width * .75 - marginX
-    || previous === 'up' && y <= height * .25 + marginY
-    || previous === 'down' && y >= height * .75 - marginY) return previous;
-  return direction;
+  return px < .25 ? 'left' : px >= .75 ? 'right' : py < .5 ? 'up' : 'down';
 }
 
 export class EditorGroups {
