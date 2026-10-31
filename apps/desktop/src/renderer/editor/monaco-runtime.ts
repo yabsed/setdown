@@ -12,10 +12,12 @@ export function loadMonaco(): Promise<typeof Monaco> {
     import('monaco-editor/editor/editor.worker?worker'),
     import('./monaco-context-menu'),
     import('./monaco-hover-overlay'),
-  ]).then(([api, editor, { installMonacoContextMenus }, { installMonacoHovers }]) => {
+    import('./toggle-word-wrap'),
+  ]).then(([api, editor, { installMonacoContextMenus }, { installMonacoHovers }, { installToggleWordWrap }]) => {
     window.MonacoEnvironment = { getWorker: (_id, label) => createLanguageWorker(label) ?? new editor.default() };
     installMonacoContextMenus();
     installMonacoHovers(api);
+    installToggleWordWrap(api);
     installBuiltinDiagnostics(api);
     installEditorTools(api);
     installSyntaxHighlighting(api);

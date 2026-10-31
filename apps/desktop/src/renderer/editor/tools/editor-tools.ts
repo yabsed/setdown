@@ -600,7 +600,7 @@ export class EditorTools {
       this.valid(context, false); const editor = context.editor!, E = this.api.editor.EditorOption;
       if (option === 'Line numbers') { const value = await choose('Line numbers', (['on', 'relative', 'off'] as const).map(value => ({ label: value, value }))); if (value) editor.updateOptions({ lineNumbers: value }); }
       if (option === 'Whitespace') editor.updateOptions({ renderWhitespace: editor.getOption(E.renderWhitespace) === 'all' ? 'selection' : 'all' });
-      if (option === 'Wrap') editor.updateOptions({ wordWrap: editor.getRawOptions().wordWrap === 'off' ? 'on' : 'off' });
+      if (option === 'Wrap') await editor.getAction('editor.action.toggleWordWrap')?.run();
       if (option === '80-column guide') editor.updateOptions({ rulers: editor.getOption(E.rulers).length ? [] : [80] });
       if (option === 'Indentation guides') editor.updateOptions({ guides: { indentation: !editor.getOption(E.guides).indentation } });
       const raw = editor.getRawOptions();

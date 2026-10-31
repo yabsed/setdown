@@ -1,0 +1,25 @@
+toggle-word-wrap.ts is adapted from Microsoft Visual Studio Code (MIT):
+  vendor/vscode commit d3d31f62268b169a2dfab62ffb2d7d38158a5b7c
+  src/vs/workbench/contrib/codeEditor/browser/toggleWordWrap.ts
+  https://github.com/microsoft/vscode/blob/d3d31f62268b169a2dfab62ffb2d7d38158a5b7c/src/vs/workbench/contrib/codeEditor/browser/toggleWordWrap.ts
+
+Preserved: command ID, Alt+Z binding, actual wrappingColumn decision, transient
+model property and lifetime, override/reset-to-inherit semantics, configuration
+and model listeners, reentrancy guard, diff-side synchronization and inline guard.
+transient-model-properties.ts copies the transient-property methods and model
+disposal watcher from the same revision's
+  src/vs/editor/browser/services/abstractCodeEditorService.ts
+These methods are stripped from standalone Monaco; the port preserves their
+URI-keyed storage, change events, equality checks and model-disposal lifetime.
+
+Adaptations: the original EditorAction registration is retained. Standalone
+creation hooks replace workbench controller registration and dependency injection.
+Controllers apply the initial model at
+creation and dispose subscriptions with their editor. Workbench menus/context-key
+tracking are omitted; Setdown's existing Wrap display command calls this action.
+The inline-diff guard reads _options.renderSideBySide.get(), the exact expression
+in the upstream getter that is also stripped from standalone Monaco.
+No persistent preference is written by Alt+Z. Different files are independent;
+views sharing a model share the toggle, just as in VS Code.
+
+The accompanying VSCODE-LICENSE is copied from vendor/vscode/LICENSE.txt.

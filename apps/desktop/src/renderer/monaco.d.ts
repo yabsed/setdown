@@ -13,3 +13,16 @@ declare module 'monaco-editor/editor/standalone/browser/standaloneServices' {
 declare module 'monaco-editor/platform/contextview/browser/contextView' {
   export const IContextMenuService: unknown;
 }
+
+// Register the ported VS Code action with the real contribution registry so it
+// participates in keybindings, getAction() and Monaco's command palette.
+declare module 'monaco-editor/editor/browser/editorExtensions' {
+  export abstract class EditorAction {
+    constructor(options: {
+      id: string; label: string; precondition?: undefined;
+      kbOpts: { kbExpr: null; primary: number; weight: number };
+    });
+    abstract run(accessor: unknown, editor: import('monaco-editor').editor.ICodeEditor): void;
+  }
+  export function registerEditorAction(action: new () => EditorAction): EditorAction;
+}

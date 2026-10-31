@@ -169,6 +169,44 @@ test('focusing a live text group never reveals its older anchor when no saved ed
   assert.equal(reveal.mock.calls.length, 0);
 });
 
+test('saved text viewport is restored before document activation IPC can expose an intermediate frame', async () => {
+  const f = fixture();
+  const tab = createWorkspaceTab('first', snapshot('/project/first.cpp'), 'editor', anchor);
+  tab.readingPosition = { kind: 'text', surface: 'editor', anchor, editorView: { cursor: 7 } };
+  f.workspace.add(tab);
+  const restore = vi.spyOn(f.options.editor, 'restoreView');
+  let complete!: (document: DocumentSnapshot) => void;
+  const activate = vi.spyOn(f.options.desktop, 'activateDocument').mockImplementation(() =>
+    new Promise<DocumentSnapshot>(resolve => { complete = resolve; }));
+  const pending = f.controller.activate(tab.id);
+  await vi.waitFor(() => assert.equal(activate.mock.calls.length, 1));
+  assert.equal(restore.mock.calls.length, 1);
+  assert.equal(tab.restoringPosition, true);
+  complete(tab.document);
+  await pending;
+  assert.equal(tab.restoringPosition, false);
+});
+
+test('a retained source review switches before its document activation IPC completes', async () => {
+  const f = fixture();
+  const document = createWorkspaceTab('file', snapshot('/project/review.md'), 'editor', anchor);
+  f.workspace.add(document);
+  f.workspace.add({ kind: 'diff', surface: 'diff', id: 'index', filePath: document.document.path, staged: true });
+  f.workspace.add({ kind: 'diff', surface: 'diff', id: 'working', filePath: document.document.path, staged: false, documentId: document.documentId });
+  f.workspace.activeId = 'index';
+  const activateReview = vi.fn(async () => {});
+  Object.assign(f.options, { activateReview });
+  let complete!: (document: DocumentSnapshot) => void;
+  const activate = vi.spyOn(f.options.desktop, 'activateDocument').mockImplementation(() =>
+    new Promise<DocumentSnapshot>(resolve => { complete = resolve; }));
+  const pending = f.controller.activate('working');
+  await vi.waitFor(() => assert.equal(activate.mock.calls.length, 1));
+  assert.equal(activateReview.mock.calls.length, 1);
+  assert.equal(view.tabs.find(tab => tab.id === 'working')?.active, true);
+  complete(document.document);
+  await pending;
+});
+
 test('Explorer browsing replaces its preview and releases the outgoing model and reader', async () => {
   const f = fixture();
   const dispose = vi.spyOn(f.options.editor, 'dispose');

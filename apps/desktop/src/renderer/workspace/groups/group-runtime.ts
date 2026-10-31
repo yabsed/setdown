@@ -85,7 +85,11 @@ export function createGroupRuntime(options: {
     // The focused group's address bar also owns Git review mode/zoom actions.
     // Clicking those must retain the review session they are about to change.
     const reviewChrome = groupId === workspace.groups.focusedId && element.closest('.location-bar');
-    if (!element.closest('.tab-strip') && tabId && (tabId !== workspace.activeId || (project.gitDiffActive && !reviewChrome))) options.activate(tabId);
+    // Moving focus between the two panes of the active review is not a tab
+    // activation. Reactivating clears its command projection until IPC returns,
+    // so the next key (including Escape after Alt+Z) can target no review at all.
+    const documentBehindReview = project.gitDiffActive && !reviewChrome && tabId && workspace.find(tabId)?.kind !== 'diff';
+    if (!element.closest('.tab-strip') && tabId && (tabId !== workspace.activeId || documentBehindReview)) options.activate(tabId);
   }
   area.addEventListener('pointerdown', focusSurface, true);
   area.addEventListener('focusin', focusSurface);

@@ -95,6 +95,77 @@ test('text cursor and scroll survive closing the tab and restarting Setdown', as
   finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
 
+test('the first text tab paints its saved viewport without flashing the document end', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-text-first-frame-'));
+  const file = path.join(root, 'reading.txt');
+  await writeFile(file, Array.from({ length: 400 }, (_, index) => `Line ${index + 1}: reading position`).join('\n'));
+  const app = await launch(file, path.join(root, 'config'));
+  let page = await app.firstWindow();
+  type FrameTrace = { frames: number[]; frame: number };
+  try {
+    let input = page.getByRole('textbox', { name: 'Editor content' });
+    await input.press('Control+End');
+    await expect.poll(() => page.evaluate(async () => (await window.marktex.reloadDocument())?.readingPosition))
+      .toMatchObject({ kind: 'text', anchor: { sourceLine: 400 } });
+    for (let index = 0; index < 5; index++) await input.press('PageUp');
+    await expect.poll(() => page.evaluate(async () => {
+      const saved = (await window.marktex.reloadDocument())?.readingPosition;
+      return saved?.kind === 'text' ? saved.anchor.sourceLine : 400;
+    })).toBeLessThan(300);
+    const firstLine = await page.locator('.monaco-editor').evaluate(editor => {
+      const box = editor.getBoundingClientRect();
+      return Math.min(...[...editor.querySelectorAll('.line-numbers')].filter(node => {
+        const line = node.getBoundingClientRect();
+        return line.bottom > box.top && line.top < box.bottom;
+      }).map(node => Number(node.textContent)).filter(line => Number.isFinite(line) && line > 0));
+    });
+    expect(firstLine).toBeGreaterThan(100);
+    expect(firstLine).toBeLessThan(300);
+
+    for (const cold of [false, true]) {
+      await page.getByTitle('Close tab', { exact: true }).click();
+      await expect(page.locator('.shell')).toHaveAttribute('data-surface', 'empty');
+      if (cold) {
+        const newWindow = app.waitForEvent('window');
+        await page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-new-window'));
+        page = await newWindow;
+        input = page.getByRole('textbox', { name: 'Editor content' });
+        await expect(page.locator('.shell')).toHaveAttribute('data-surface', 'empty');
+      }
+      await page.evaluate(() => {
+        const trace: FrameTrace = { frames: [], frame: 0 };
+        (window as typeof window & { positionTrace: FrameTrace }).positionTrace = trace;
+        const sample = () => {
+          const editor = document.querySelector<HTMLElement>('.shell[data-surface="editor"] .monaco-editor');
+          if (editor?.checkVisibility({ visibilityProperty: true })) {
+            const box = editor.getBoundingClientRect();
+            const lines = [...editor.querySelectorAll('.line-numbers')].filter(node => {
+              const line = node.getBoundingClientRect();
+              return line.bottom > box.top && line.top < box.bottom;
+            }).map(node => Number(node.textContent)).filter(line => Number.isFinite(line) && line > 0);
+            if (lines.length) trace.frames.push(Math.min(...lines));
+          }
+          trace.frame = requestAnimationFrame(sample);
+        };
+        sample();
+      });
+      await page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), file);
+      await expect(input).toBeVisible();
+      await page.waitForFunction(() => (window as typeof window & { positionTrace: FrameTrace }).positionTrace.frames.length >= 30);
+      const frames = await page.evaluate(() => {
+        const trace = (window as typeof window & { positionTrace: FrameTrace }).positionTrace;
+        cancelAnimationFrame(trace.frame);
+        return trace.frames;
+      });
+      const framePath = test.info().outputPath(cold ? 'cold-first-tab-frames.json' : 'warm-first-tab-frames.json');
+      await writeFile(framePath, JSON.stringify(frames));
+      await test.info().attach('first-tab-frames', { path: framePath, contentType: 'application/json' });
+      expect([...new Set(frames)]).toEqual([firstLine]);
+    }
+  } catch (error) { await snapshotOnFailure(page); throw error; }
+  finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
 test('a PDF beyond the initial byte range keeps its position across Markdown tab switches', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-pdf-tabs-'));
   const file = path.join(root, 'large.pdf');

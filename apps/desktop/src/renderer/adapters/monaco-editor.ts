@@ -344,7 +344,13 @@ export class MonacoEditor {
     if (!editor || editor.getModel() !== this.models.get(documentIdentity(tab))) return;
     editor.layout();
     const view = this.views.get(tab.id);
-    if (view) editor.restoreViewState(view);
+    if (view) {
+      editor.restoreViewState(view);
+      // This is the initial text-tab restoration after shell layout. Commit
+      // its visible lines now, so a previously queued render cannot paint the
+      // hidden viewport's clamped position before the restored one.
+      editor.render();
+    }
   }
   find(): void { void this.editorValue?.getAction('actions.find')?.run(); }
   finishScroll(): void {

@@ -398,6 +398,33 @@ the latest paragraph's actual visible bounds. Hidden preview preparation stays
 outside the input path; existing on-demand hydration for requested source lines
 outside the installed prefix remains unchanged.
 
+Alt+Z uses VS Code's transient model word-wrap override. Different files retain
+independent state across tab/source-reader switches; split views sharing a model
+share the override, and side-by-side diff editors synchronize both models.
+The next toggle clears the override and inherits the underlying configuration;
+ordinary/diff defaults remain wrapped and notebook code defaults remain unwrapped.
+The state ends when the model is disposed and never changes document text or Undo.
+`renderer/editor/toggle-word-wrap.ts` and `transient-model-properties.ts` port the
+upstream action/controller and model-property lifetime; provenance and MIT license
+are in their `upstream/` directory. `workspace/word-wrap.spec.ts` verifies real
+keyboard input, rendered lines, tab/model lifetime, split/diff synchronization,
+notebook-cell isolation, selection, focus, Undo and reader transitions.
+Moving focus between the panes of the active Git review must retain its command
+state. `workspace/groups/group-runtime.ts` must not reactivate that same tab and
+temporarily clear the review projection; the Alt+Z test presses Esc immediately
+after refocusing the other pane to verify this.
+Retained review tab switches also publish the selected surface before document
+activation IPC. The existing Index/Working Tree first-frame check in
+`git/git-review-tabs.spec.ts` must see the newly selected source, even when main
+has not yet acknowledged the active document.
+
+The first code/text tab opened in an empty shell restores its saved Monaco view
+against the final tab/address-bar geometry before yielding to document-activation
+IPC. It must not paint a scroll position clamped to the document end and then
+jump to the saved middle. Position recording remains fenced through activation.
+`text-workspace.test.ts` covers ordering; `media/reading-positions.spec.ts` samples
+the first 30 painted viewports with both a retained and freshly loaded editor.
+
 Opening a Working Tree review binds its live document without presenting or
 awaiting the ordinary Markdown reader. New reviews start in Monaco source mode;
 ordinary rendering and reading-position settlement must not gate first opening.

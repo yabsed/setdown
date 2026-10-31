@@ -318,15 +318,18 @@ export class TabController {
     const next = workspace.find(tabId);
     if (!next) return;
     if (next.kind === 'diff') {
-      ++this.activation;
+      const activation = ++this.activation;
       if (workspace.activeId !== next.id) { this.saveActiveState(); preview.newSession(); }
       workspace.activeId = next.id;
       reader.setSuspended(true);
       surfaces.set('diff');
       const content = workspace.activeContent;
-      if (content) await desktop.activateDocument(content.document, content.text, content.revision);
+      // Switch retained review surfaces before IPC can expose another frame of
+      // the previous tab (for example Index instead of Working Tree).
       await this.options.activateReview?.(next.id);
+      if (activation !== this.activation || workspace.activeId !== next.id) return;
       view.notice = false; this.updateChrome();
+      if (content) await desktop.activateDocument(content.document, content.text, content.revision);
       return;
     }
     if (next.kind === 'terminal') {
@@ -413,20 +416,19 @@ export class TabController {
     this.updateChrome();
     if (!reviewing) surfaces.set(next.surface);
     if (!reviewing && hasMarkdownPreview(next.document)) reader.send(next.id, { command: 'marktex:collect-headings' });
+    if (!reviewing && !hasMarkdownPreview(next.document) && !preserveEditorView && next.surface === 'editor') {
+      // Finish the shell's empty -> editor layout and restore in the same
+      // microtask turn, before IPC can yield a frame with the hidden editor's
+      // clamped scroll position. Keep the recording fence until activation ends.
+      await tick();
+      if (activation !== this.activation || workspace.activeId !== next.id) return;
+      if (next.readingPosition?.kind === 'text' && next.readingPosition.editorView) editor.restoreView(next);
+      else if (restoreAnchor) editor.reveal(restoreAnchor);
+    }
     await desktop.activateDocument(next.document, this.text(next), session.revision);
     if (activation !== this.activation || workspace.activeId !== next.id) return;
     if (reviewing) { next.restoringPosition = false; return; }
     if (!hasMarkdownPreview(next.document)) {
-      if (!preserveEditorView && next.surface === 'editor' && next.readingPosition?.kind === 'text' && next.readingPosition.editorView) {
-        // The empty shell hides Monaco and removes its chrome inset. Restore
-        // only against the mounted group's final height, including its address
-        // bar, so a clamped hidden viewport cannot shift the saved first line.
-        await tick();
-        if (activation !== this.activation || workspace.activeId !== next.id) return;
-        editor.restoreView(next);
-      }
-      if (!preserveEditorView && restoreAnchor && next.surface === 'editor'
-        && !(next.readingPosition?.kind === 'text' && next.readingPosition.editorView)) editor.reveal(restoreAnchor);
       next.restoringPosition = false;
       // Newly mounted editors suppress position recording during restoration.
       // Capture the final view once that fence opens.
