@@ -9,6 +9,9 @@
 A desktop workspace for Markdown, code, notebooks, and the web. Keep notes,
 references, and tools side by side, and arrange your tabs around the task at hand.
 
+> **Security notice:** This software was not written by a professional developer
+> and may not be sufficiently secure.
+
 <p align="center">
   <a href="https://github.com/yabsed/setdown/releases/latest">Download for Windows &amp; Linux</a> ·
   <a href="https://github.com/yabsed/setdown/releases">All releases</a>
