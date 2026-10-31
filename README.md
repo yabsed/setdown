@@ -4,10 +4,11 @@
 
 <h1 align="center">Setdown</h1>
 
-<p align="center"><strong>Your tabs. Your layout. Your workspace.</strong></p>
+<p align="center"><strong>Write plain. Read beautifully.</strong></p>
 
-A desktop workspace for Markdown, code, notebooks, and the web. Keep notes,
-references, and tools side by side, and arrange your tabs around the task at hand.
+Setdown is a desktop Markdown reader and editor. Write in plain text, then read
+your words as a beautifully typeset document. Keep your references and tools
+close, with your writing at the center.
 
 > **Security notice:** This software was not written by a professional developer
 > and may not be sufficiently secure.
@@ -18,34 +19,56 @@ references, and tools side by side, and arrange your tabs around the task at han
 </p>
 
 <p align="center">
-  <img src="docs/assets-2/setdown-demo.gif" width="900" alt="Setdown demo: arranging split tabs, editing and reading Markdown, reviewing Git changes, browsing articles, and working with code and notebooks">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets-2/image2.png">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets-2/image.png">
+    <img src="docs/assets-2/image.png" width="1200" alt="Setdown with rendered Markdown and equations beside a web article, a PDF, a terminal, and a Jupyter notebook">
+  </picture>
 </p>
 
-<p align="center"><sub>Full demo · 1× speed</sub></p>
+<p align="center">
+  <sub>Your notes and the things that inform them, side by side.</sub><br>
+  <a href="docs/assets-2/image.png">Light</a> ·
+  <a href="docs/assets-2/image2.png">Dark</a> ·
+  <a href="docs/assets-2/setdown-demo.gif">Watch the demo</a>
+</p>
 
-## Make room for your work
+## Write plain
 
-- **Arrange your workspace.** Drag tabs into split groups, resize panes, and move
-  tabs between windows. Keep the views you need together.
-- **Write, then read.** Markdown with equations, tables, and images. Double-click
-  a passage to edit its source; press `Esc` to return to reading in the same place.
-- **Keep references close.** Open web pages beside your files. Switch supported
-  articles to Reader mode and export them as Markdown or PDF.
-- **See what changed.** Review Markdown changes as rendered documents or source
-  diffs. Stage, commit, and browse Git history without leaving your workspace.
-- **Explore code and notebooks.** Edit source files, run Jupyter cells, inspect
-  outputs, and use the integrated terminal alongside your notes.
-- **Make it yours.** Choose light or dark themes across the workspace. Open PDFs
-  and images in tabs with the rest of your work.
+Your documents are Markdown files on your computer. Write notes, work through
+an equation, or draft a longer piece in plain text.
+
+Double-click a passage to edit its source. Press `Esc` to return to reading
+in the same place.
+
+## Read beautifully
+
+Give your words room to breathe. Read formatted text, equations, tables, and
+images in a document made for reading. Choose a light or dark theme that feels
+comfortable to you.
+
+When you revise, review Markdown changes as rendered documents or source diffs.
+See how the document reads as well as what changed.
+
+## Keep the rest close
+
+A paper beside your notes. An article beside your draft. Arrange tabs into split
+panes, resize them, or move them between windows.
+
+- **References.** Open web pages, PDFs, and images alongside your writing. Switch
+  supported articles to Reader mode and export them as Markdown or PDF.
+- **Code and notebooks.** Edit source files, run Jupyter cells, and inspect outputs.
+  Open a terminal when you need one.
+- **Git.** Stage changes, commit, and browse history in the same workspace.
 
 ## Get started
 
 Download the [latest release](https://github.com/yabsed/setdown/releases/latest)
 for **Windows x64** (`.exe`) or **Linux x64** (`.deb`, `.rpm`, `.AppImage`).
 
-1. Open a file, or choose **File → Open Folder…** for Explorer, search, and Git.
-2. Drag a tab to an edge to split the workspace.
-3. Double-click Markdown to edit; press `Esc` to read.
+1. Open a Markdown file, or choose **File → Open Folder…** for Explorer, search, and Git.
+2. Double-click a passage to write. Press `Esc` to read.
+3. Open a reference and drag its tab to an edge to keep it beside your document.
 
 Git features require Git. Notebook execution requires a Python environment;
 see the [notebook guide](docs/notebooks.md).
