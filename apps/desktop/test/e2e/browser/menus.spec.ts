@@ -30,8 +30,15 @@ for (const surface of ['text', 'notebook'] as const) test(`Monaco ${surface} con
     const nativeVisible = () => f.app.evaluate(({ BrowserWindow }, origin) => BrowserWindow.getAllWindows()[0].contentView.children
       .some(view => 'webContents' in view && (view as Electron.WebContentsView).webContents.getURL().startsWith(origin) && view.getVisible()), f.origin);
     await expect.poll(nativeVisible).toBe(true);
-    const editor = f.page.locator('.monaco-editor:visible').first(), box = (await editor.boundingBox())!;
-    await editor.click({ button: 'right', position: { x: box.width - 25, y: 40 } });
+    const editor = f.page.locator('.monaco-editor:visible').first();
+    // The minimap overlays part of the scrollable element. Target the visible
+    // text edge so this still exercises the menu's overlap with the web pane.
+    const menuPoint = await editor.evaluate(node => {
+      const bounds = node.getBoundingClientRect();
+      const minimap = node.querySelector('.minimap')?.getBoundingClientRect();
+      return { x: (minimap?.width ? minimap.left : bounds.right) - bounds.left - 25, y: 40 };
+    });
+    await editor.click({ button: 'right', position: menuPoint });
     const menu = f.page.locator('.monaco-menu-container .monaco-menu');
     await expect(menu).toBeVisible();
     await expect.poll(nativeVisible).toBe(false);

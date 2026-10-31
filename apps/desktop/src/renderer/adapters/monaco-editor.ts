@@ -173,7 +173,7 @@ export class MonacoEditor {
         // hovers and suggestions visible when Monaco places them beyond a pane.
         fixedOverflowWidgets: true,
         automaticLayout: true, 'semanticHighlighting.enabled': true, codeLens: false, inlayHints: { enabled: 'offUnlessPressed' }, linkedEditing: true, language: 'markdown', theme: monacoThemeName(this.options.theme()),
-        wordWrap: 'on', wrappingIndent: 'same', lineNumbers: 'on', minimap: { enabled: false },
+        wordWrap: 'on', wrappingIndent: 'same', lineNumbers: 'on', minimap: { enabled: true },
         scrollBeyondLastLine: false, smoothScrolling: true, cursorSmoothCaretAnimation: 'on',
         fontFamily: APP_FONT_FAMILY,
         ...textZoomOptions(), padding: { top: 26, bottom: 60 },
