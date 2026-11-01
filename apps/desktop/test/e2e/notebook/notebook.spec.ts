@@ -770,7 +770,7 @@ test('opening and switching notebooks and Markdown Escape never paint raw previe
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
 });
 
-test('notebook cells indent with eight spaces per Tab', async () => {
+test('notebook cells indent with four spaces per Tab', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-tab-width-'));
   const file = path.join(root, 'probe.ipynb');
   const nb = { nbformat: 4, nbformat_minor: 5, metadata: { language_info: { name: 'python' } }, cells: [
@@ -796,6 +796,6 @@ test('notebook cells indent with eight spaces per Tab', async () => {
     await mdEditor.focus(); await page.keyboard.press('Tab'); await page.keyboard.insertText('hello');
     await page.keyboard.press('Control+s');
     const sources = async () => JSON.parse(await readFile(file, 'utf8')).cells.map((cell: any) => Array.isArray(cell.source) ? cell.source.join('') : cell.source);
-    await expect.poll(sources).toEqual(['        x = 1', 'if True:\n    value = 1\n\n        y = 2', '        hello']);
+    await expect.poll(sources).toEqual(['    x = 1', 'if True:\n    value = 1\n\n    y = 2', '    hello']);
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
