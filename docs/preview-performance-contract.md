@@ -276,6 +276,13 @@ empty → matching queries; explicit Escape and actual focus/tab changes retain
 their existing cancellation behavior. The real native-click/slow-typing case in
 `test/e2e/browser/*.spec.ts` covers this boundary.
 
+Focus entering the native suggestion view continues the same address edit.
+Its focus transition can precede the popup's pointer event, so shell DOM blur
+must consult main's native focus before dismissing the list. A late blur reply
+cannot cancel a newer edit or a completed selection. `browser/focus.spec.ts`
+covers focus before and after pointer press, unedited address clicks in both
+live web splits at 130% app zoom, and repeated native selections.
+
 Closing a workspace retires all its browser entries before closing their stable
 WebContents handles. Native View accessors are not a lifetime guarantee: audio
 and loading events can run during destruction, after `view.webContents` has

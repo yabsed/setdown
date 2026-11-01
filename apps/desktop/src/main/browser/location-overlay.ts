@@ -79,6 +79,15 @@ export class LocationOverlay {
     entry.visible = true; entry.view.setVisible(true);
     // Deliberately no focus(): the address input owns keyboard and IME.
   }
+  blur(owner: number, token: string): boolean {
+    const entry = this.owners.get(owner);
+    if (!entry || entry.context.token !== token) return true;
+    // Native focus moves before the popup renderer receives pointerdown.
+    // The shell's DOM blur must not remove that renderer's pending click.
+    if (entry.visible && !entry.contents.isDestroyed() && entry.contents.isFocused()) return false;
+    this.hide(owner, token, false);
+    return true;
+  }
   hide(owner: number, token?: string, cancelEdit = true): void {
     const entry = this.owners.get(owner);
     if (!entry || !entry.active || (token !== undefined && token !== entry.context.token)) return;

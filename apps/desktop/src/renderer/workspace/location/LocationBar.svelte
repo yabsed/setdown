@@ -95,6 +95,17 @@ import type { AppActions } from '../../ports/ui-actions';
     catch (reason) { error = String(reason); }
   }
   function blur() { editing = false; suggestions = []; generation++; clearTimeout(timer); }
+  function inputBlur() {
+    if (!editing) return;
+    if (!popupRequested) { blur(); return; }
+    const request = ++generation;
+    clearTimeout(timer);
+    // The popup lives in a separate native view. Ask its owner whether focus
+    // moved there before canceling the edit and invalidating its selection.
+    void actions.locationSuggestions.blur(popupToken).then(cancel => {
+      if (cancel && request === generation) blur();
+    }).catch(() => { if (request === generation) blur(); });
+  }
   async function focus() { if (groupId !== view.focusedGroupId) return; await tick(); input?.focus(); input?.select(); }
   onMount(() => {
     const resize = new ResizeObserver(() => { placement++; });
@@ -138,7 +149,7 @@ import type { AppActions } from '../../ports/ui-actions';
     <button aria-label="Close web search" onclick={closeFind}>×</button>
   {:else}
     <input bind:this={input} aria-label="Address or file path" placeholder="Search or enter an address" spellcheck="false" autocomplete="off"
-      bind:value={draft} title={location} onfocus={() => { editing = true; input?.select(); search(); }} onblur={blur}
+      bind:value={draft} title={location} onfocus={() => { editing = true; input?.select(); search(); }} onblur={inputBlur}
       onpointerdown={() => { selectOnClick = document.activeElement !== input || !document.hasFocus(); if (!editing) { editing = true; search(); } }}
       onmouseup={event => { if (selectOnClick) { event.preventDefault(); input?.select(); selectOnClick = false; } }}
       oninput={search} oncompositionstart={() => { composing = true; clearTimeout(timer); generation++; }} oncompositionend={() => { composing = false; search(); }}

@@ -84,6 +84,7 @@ export function installIpc(options: Options): void {
   const locationOverlay = new LocationOverlay();
   channels.handle('location-overlay:show', (state, request) => locationOverlay.show(state, request, themes.id));
   channels.on('location-overlay:hide', (state, token) => { if (typeof token === 'string') locationOverlay.hide(state.webContentsId, token, false); });
+  channels.handle('location-overlay:blur', (state, token) => typeof token === 'string' ? locationOverlay.blur(state.webContentsId, token) : true);
   const menuOverlay = new MenuOverlay(menuEntries);
   channels.handle('menu-overlay:open', (state, menuId: string, position: { x: number; y: number }) => {
     if (![...options.browsers.views.values()].some(entry => entry.owner === state.webContentsId && entry.view.getVisible())) return false;

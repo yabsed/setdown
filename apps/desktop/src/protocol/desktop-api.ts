@@ -343,6 +343,8 @@ export type MarkTexApi = {
   locationSuggestions: {
     show(request: LocationSuggestionsRequest): Promise<void>;
     hide(token: string): void;
+    /** Cancel a blurred address edit unless its native suggestion view owns focus. */
+    blur(token: string): Promise<boolean>;
     context(): Promise<LocationSuggestionsContext>;
     choose(token: string, index: number): void;
     onShow(listener: (context: LocationSuggestionsContext) => void): () => void;

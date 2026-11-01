@@ -205,6 +205,7 @@ const api: MarkTexApi = {
   locationSuggestions: {
     show: request => ipcRenderer.invoke('location-overlay:show', request),
     hide: token => ipcRenderer.send('location-overlay:hide', token),
+    blur: token => ipcRenderer.invoke('location-overlay:blur', token),
     context: () => ipcRenderer.invoke('location-overlay:context'),
     choose: (token, index) => ipcRenderer.send('location-overlay:choose', token, index),
     onShow: listener => subscribe('location-overlay:show', listener),

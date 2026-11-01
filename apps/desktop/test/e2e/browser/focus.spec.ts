@@ -7,6 +7,71 @@ const execFile = promisify(execFileCallback);
 
 import { fixture } from '../../support/browser/browser-fixture';
 
+test('native address suggestions survive popup focus before pointer selection in both web splits', async () => {
+  const input = process.env.WAYLAND_DISPLAY ? await waylandInput() : { send: nativeInput, close: async () => {} };
+  const f = await fixture().catch(async error => { await input.close(); throw error; });
+  try {
+    if (process.env.SETDOWN_TEST_DISPLAY === 'wayland') {
+      await f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].maximize());
+      await expect.poll(() => f.page.evaluate(() => innerWidth)).toBe(1920);
+    }
+    await f.page.evaluate(() => { window.marktex.changeZoom(1, 'app'); window.marktex.changeZoom(1, 'app'); window.marktex.changeZoom(1, 'app'); });
+    await expect.poll(() => f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.getZoomFactor())).toBe(1.3);
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first?pane=left`);
+    const tab = f.page.getByRole('tab', { name: /Research page/ });
+    await expect(tab).toBeVisible();
+    const data = await f.page.evaluateHandle(() => new DataTransfer());
+    await tab.dispatchEvent('dragstart', { dataTransfer: data });
+    const body = (await f.page.locator('.group-body').first().boundingBox())!;
+    const drop = { clientX: body.x + body.width * .02, clientY: body.y + body.height / 2, dataTransfer: data };
+    await f.page.locator('.group-body').first().dispatchEvent('dragover', drop);
+    await f.page.locator('.group-body').first().dispatchEvent('drop', drop);
+    await tab.dispatchEvent('dragend', { dataTransfer: data }); await data.dispose();
+    await expect(f.page.locator('.location-bar')).toHaveCount(2);
+    const addresses = f.page.getByRole('textbox', { name: 'Address or file path', exact: true });
+    await addresses.last().fill(`${f.origin}/first?pane=right`); await addresses.last().press('Enter');
+    await expect(addresses.last()).toHaveValue(`${f.origin}/first?pane=right`);
+    await expect(f.page.getByRole('button', { name: 'Reload page', exact: true })).toHaveCount(2);
+    await f.page.evaluate(async origin => {
+      for (let index = 0; index < 6; index++) await window.marktex.browser.bookmark(`${origin}/first?item=${index}`, `Destination ${index}`, true);
+    }, f.origin);
+    const screenPoint = (rect: { x: number; y: number; width: number; height: number }, overlay = false) => f.app.evaluate(({ BrowserWindow }, { rect, overlay }) => {
+      const owner = BrowserWindow.getAllWindows()[0], root = owner.getContentBounds();
+      const layer = overlay ? owner.contentView.children.find(view => 'webContents' in view && (view as Electron.WebContentsView).webContents.getURL().includes('location-overlay=1')) as Electron.WebContentsView : undefined;
+      const bounds = layer?.getBounds() ?? { x: 0, y: 0 }, zoom = (layer?.webContents ?? owner.webContents).getZoomFactor();
+      return { x: root.x + bounds.x + (rect.x + rect.width / 2) * zoom, y: root.y + bounds.y + (rect.y + rect.height / 2) * zoom };
+    }, { rect, overlay });
+    for (let index = 0; index < 6; index++) {
+      const side = index % 2, address = addresses.nth(side);
+      await input.send({ click: await screenPoint((await f.page.locator('.group-body').nth(1 - side).boundingBox())!) });
+      await expect(f.page.locator('.editor-group').nth(1 - side)).toHaveClass(/\bfocused\b/);
+      await input.send({ click: await screenPoint((await address.boundingBox())!) });
+      await expect(address).toBeFocused();
+      await expect.poll(() => f.app.windows().some(page => page.url().includes('location-overlay=1'))).toBe(true);
+      const popup = f.app.windows().find(page => page.url().includes('location-overlay=1'))!;
+      const expectedX = await address.evaluate(element => element.closest('.location-bar')!.getBoundingClientRect().left + 9);
+      await expect.poll(() => f.app.evaluate(({ BrowserWindow }, expectedX) => {
+        const owner = BrowserWindow.getAllWindows()[0], zoom = owner.webContents.getZoomFactor();
+        const view = owner.contentView.children.find(view => 'webContents' in view && (view as Electron.WebContentsView).webContents.getURL().includes('location-overlay=1'));
+        return !!view?.getVisible() && view.getBounds().x === Math.round(expectedX * zoom);
+      }, expectedX)).toBe(true);
+      const row = popup.getByRole('option').filter({ hasText: `${f.origin}/first?item=${index}` });
+      await expect(row).toBeVisible();
+      if (index < 2) {
+        // Native focus can reach the popup before its pointer event. Preserve
+        // that ordering explicitly, without dispatching a synthetic click.
+        await f.app.evaluate(({ webContents }) => webContents.getAllWebContents().find(contents => contents.getURL().includes('location-overlay=1'))!.focus());
+        await address.evaluate(element => element.blur());
+      }
+      await input.send({ click: await screenPoint((await row.boundingBox())!, true) });
+      await expect(address).toHaveValue(`${f.origin}/first?item=${index}`);
+    }
+    expect(f.errors).toEqual([]);
+  } finally {
+    await input.send({ button: 'up' }); await f.dispose(); await input.close();
+  }
+});
+
 test('address suggestions navigate when the address loses focus before mouse release', async () => {
   const input = process.env.WAYLAND_DISPLAY ? await waylandInput() : { send: nativeInput, close: async () => {} };
   const f = await fixture().catch(async error => { await input.close(); throw error; });
