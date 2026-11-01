@@ -41,6 +41,7 @@ export class NotebookEntry {
     let model = this.models.get(cell.id);
     if (!model) {
       model = api.editor.createModel(cell.source, language, api.Uri.parse(`setdown-cell://${this.id}/${cell.id}`));
+      model.updateOptions({ tabSize: 8, indentSize: 8, insertSpaces: true });
       this.models.set(cell.id, model);
       const owned = model;
       const listener = model.onDidChangeContent(() => this.document.setSource(cell.id, owned.getValue()));

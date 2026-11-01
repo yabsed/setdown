@@ -769,3 +769,33 @@ test('opening and switching notebooks and Markdown Escape never paint raw previe
     await writeFile(test.info().outputPath('presentation-frames.json'), JSON.stringify(await page.evaluate(() => (window as any).notebookPaints), null, 2));
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
 });
+
+test('notebook cells indent with eight spaces per Tab', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-tab-width-'));
+  const file = path.join(root, 'probe.ipynb');
+  const nb = { nbformat: 4, nbformat_minor: 5, metadata: { language_info: { name: 'python' } }, cells: [
+    { id: 'empty', cell_type: 'code', metadata: {}, source: '', execution_count: null, outputs: [] },
+    { id: 'nested', cell_type: 'code', metadata: {}, source: 'if True:\n    value = 1\n', execution_count: null, outputs: [] },
+    { id: 'md', cell_type: 'markdown', metadata: {}, source: '' },
+  ] };
+  await writeFile(file, JSON.stringify(nb));
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    await focusApplication(app);
+    const page = await app.firstWindow();
+    await expect(page.locator('.shell')).toHaveAttribute('data-surface', 'notebook');
+    const emptyEditor = page.locator('[data-cell-id="empty"]').getByRole('textbox', { name: /Code cell editor/ });
+    await emptyEditor.focus(); await page.keyboard.press('Tab'); await page.keyboard.insertText('x = 1');
+    const nestedEditor = page.locator('[data-cell-id="nested"]').getByRole('textbox', { name: /Code cell editor/ });
+    await nestedEditor.focus(); await page.keyboard.press('Control+End'); await page.keyboard.press('Enter');
+    await page.keyboard.press('Tab'); await page.keyboard.insertText('y = 2');
+    const mdCell = page.locator('[data-cell-id="md"]');
+    await mdCell.getByRole('button', { name: 'Edit', exact: true }).click();
+    const mdEditor = mdCell.getByRole('textbox', { name: /Markdown cell editor/ });
+    await mdEditor.focus(); await page.keyboard.press('Tab'); await page.keyboard.insertText('hello');
+    await page.keyboard.press('Control+s');
+    const sources = async () => JSON.parse(await readFile(file, 'utf8')).cells.map((cell: any) => Array.isArray(cell.source) ? cell.source.join('') : cell.source);
+    await expect.poll(sources).toEqual(['        x = 1', 'if True:\n    value = 1\n\n        y = 2', '        hello']);
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
