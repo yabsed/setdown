@@ -16,7 +16,13 @@
 <div class="location-suggestions" role="listbox" aria-label="Bookmarks and history">
   {#each context?.rows ?? [] as item, index (item.url)}
     <button role="option" aria-selected={context?.selected === index} class:selected={context?.selected === index}
-      onpointerdown={event => event.preventDefault()} onclick={() => desktop.locationSuggestions.choose(context!.token, index)}>
+      onpointerdown={event => {
+        if (event.button !== 0 || !event.isPrimary) return;
+        // Commit before a native focus change can dismiss the address edit
+        // and remove this row ahead of the mouse release/click event.
+        event.preventDefault(); desktop.locationSuggestions.choose(context!.token, index);
+      }}
+      onclick={event => { if (event.detail === 0) desktop.locationSuggestions.choose(context!.token, index); }}>
       <span>{item.bookmarked ? '★' : '↗'}</span><span class="suggestion-text"><strong>{item.title}</strong><small>{item.url}</small></span>
     </button>
   {/each}

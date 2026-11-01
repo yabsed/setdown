@@ -2,9 +2,76 @@ import { expect, test } from '@playwright/test';
 import { execFile as execFileCallback } from 'node:child_process';
 import { promisify } from 'node:util';
 import { nativeInput } from '../../support/electron/native-input';
+import { waylandInput } from '../../support/electron/wayland-input';
 const execFile = promisify(execFileCallback);
 
 import { fixture } from '../../support/browser/browser-fixture';
+
+test('address suggestions navigate when the address loses focus before mouse release', async () => {
+  const input = process.env.WAYLAND_DISPLAY ? await waylandInput() : { send: nativeInput, close: async () => {} };
+  const f = await fixture().catch(async error => { await input.close(); throw error; });
+  try {
+    if (process.env.SETDOWN_TEST_DISPLAY === 'wayland') {
+      await f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].maximize());
+      await expect.poll(() => f.page.evaluate(() => innerWidth)).toBe(1920);
+    }
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible();
+    await expect(f.page.getByRole('button', { name: 'Reload page', exact: true })).toBeVisible();
+    await f.page.evaluate(url => window.marktex.browser.bookmark(url, 'Mouse destination', true), `${f.origin}/second`);
+    await f.page.evaluate(() => { window.marktex.changeZoom(1, 'app'); window.marktex.changeZoom(1, 'app'); window.marktex.changeZoom(1, 'app'); });
+    await expect.poll(() => f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.getZoomFactor())).toBe(1.3);
+    const address = f.page.getByRole('textbox', { name: 'Address or file path', exact: true });
+    const inputBounds = (await address.boundingBox())!;
+    const inputPoint = await f.app.evaluate(({ BrowserWindow }, rect) => {
+      const owner = BrowserWindow.getAllWindows()[0], bounds = owner.getContentBounds(), zoom = owner.webContents.getZoomFactor();
+      return { x: bounds.x + (rect.x + rect.width / 2) * zoom, y: bounds.y + (rect.y + rect.height / 2) * zoom };
+    }, inputBounds);
+    await input.send({ click: inputPoint });
+    await expect(address).toBeFocused();
+    await address.fill('');
+    await expect.poll(() => f.app.windows().some(page => page.url().includes('location-overlay=1'))).toBe(true);
+    const popup = f.app.windows().find(page => page.url().includes('location-overlay=1'))!;
+    const row = popup.getByRole('option').filter({ hasText: `${f.origin}/second` });
+    await expect(row).toBeVisible();
+    const rowBounds = (await row.boundingBox())!;
+    const rowPoint = await f.app.evaluate(({ BrowserWindow }, rect) => {
+      const owner = BrowserWindow.getAllWindows()[0];
+      const overlay = owner.contentView.children.find(view => 'webContents' in view
+        && (view as Electron.WebContentsView).webContents.getURL().includes('location-overlay=1')) as Electron.WebContentsView;
+      const root = owner.getContentBounds(), bounds = overlay.getBounds(), zoom = overlay.webContents.getZoomFactor();
+      return { x: root.x + bounds.x + (rect.x + rect.width / 2) * zoom,
+        y: root.y + bounds.y + (rect.y + rect.height / 2) * zoom };
+    }, rowBounds);
+    // Model a shell blur during native focus transfer. A click handler that
+    // waits for release loses its row when the address edit is canceled.
+    const pressed = await row.evaluateHandle(element => {
+      const state = { received: false };
+      element.addEventListener('pointerdown', () => { state.received = true; }, { once: true });
+      return state;
+    });
+    await input.send({ pointer: [rowPoint], button: 'down' });
+    await expect.poll(() => pressed.evaluate(state => state.received)).toBe(true);
+    await pressed.dispose();
+    await address.evaluate(input => input.blur());
+    await input.send({ button: 'up' });
+    await expect(address).toHaveValue(`${f.origin}/second`);
+    await expect(f.page.getByRole('tab', { name: /Second page/ })).toBeVisible();
+    await expect(f.page.getByRole('button', { name: 'Reload page', exact: true })).toBeVisible();
+    await input.send({ click: inputPoint });
+    await expect(address).toBeFocused();
+    await address.fill(`${f.origin}/first`);
+    const keyboardRow = popup.getByRole('option').filter({ hasText: `${f.origin}/first` });
+    await expect(keyboardRow).toBeVisible();
+    await expect(popup.getByRole('option')).toHaveCount(1);
+    await address.press('ArrowDown');
+    await expect(keyboardRow).toHaveAttribute('aria-selected', 'true');
+    await address.press('Enter');
+    await expect(address).toHaveValue(`${f.origin}/first`);
+    await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible();
+    expect(f.errors).toEqual([]);
+  } finally { await input.send({ button: 'up' }); await f.dispose(); await input.close(); }
+});
 
 for (const split of [false, true]) test(`native address click owns keyboard focus with inactive split=${split}`, async () => {
   const f = await fixture();
