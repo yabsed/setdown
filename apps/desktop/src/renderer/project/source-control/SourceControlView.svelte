@@ -84,9 +84,14 @@
       {#each project.git.roots ?? [] as root}<option value={root}>{root}</option>{/each}
     </select></label>
   {/if}
-  {#if project.git.discoveryLimited}<p class="side-view-message">Repository discovery reached a configured limit. Open a more specific folder or adjust Git discovery settings to include more repositories.</p>{/if}
   {#if project.git.statusLimited}<p class="side-view-message">Showing the first {project.git.settings?.statusLimit} changes. The count is incomplete.</p>{/if}
-  {#if project.git.settings}<details class="scm-settings"><summary>Repositories and Count</summary>
+  {#if project.git.settings || project.git.discoveryLimited}<details class="scm-settings"><summary><span class="scm-settings-title">Repositories and Count</span>
+    {#if project.git.discoveryLimited}<span class="scm-scan-limit" title="Repository scan limited. Expand for details.">
+      <svg viewBox="0 0 16 16" role="img" aria-label="Repository scan limited"><circle cx="8" cy="8" r="5.5"/><path d="M8 7v4M8 4.5v1"/></svg>
+    </span>{/if}
+  </summary>
+    {#if project.git.discoveryLimited}<p class="scm-discovery-detail">Repository discovery reached a configured limit. Open a more specific folder or adjust Git discovery settings to include more repositories.</p>{/if}
+    {#if project.git.settings}
     {#each project.git.roots ?? [] as root}<label title={root}><input type="checkbox" checked={project.git.visibleRoots?.includes(root) ?? true}
       onchange={event => actions.configureGit({ visibleRoots: event.currentTarget.checked ? [...(project.git?.visibleRoots ?? []), root] : project.git?.visibleRoots?.filter(value => value !== root) })}/><span>{root}</span></label>{/each}
     <label>Activity badge <select aria-label="Source Control badge scope" value={project.git.settings.scmCountBadge}
@@ -98,6 +103,7 @@
     <label>Untracked files <select aria-label="Untracked changes" value={project.git.settings.untrackedChanges}
       onchange={event => actions.configureGit({ settings: { untrackedChanges: event.currentTarget.value as 'mixed' | 'separate' | 'hidden' } })}>
       <option value="mixed">Mixed</option><option value="separate">Separate group</option><option value="hidden">Hidden</option></select></label>
+    {/if}
   </details>{/if}
   <div class="scm-commit">
     <textarea rows="2" placeholder="Message (Ctrl+Enter to commit)" aria-label="Commit message"
@@ -111,7 +117,7 @@
       expanded={groupExpanded('MERGE CHANGES')} toggle={() => actions.toggleProjectGitGroup('MERGE CHANGES')}
       primary={actions.stageProjectGit} review={(path, options) => actions.reviewProjectGitChange(path, false, options)}
       open={actions.openProjectFile} />
-    <ChangeGroup title="STAGED CHANGES" changes={staged} primaryLabel="Unstage"
+    <ChangeGroup title="STAGED CHANGES" staged={true} changes={staged} primaryLabel="Unstage"
       expanded={groupExpanded('STAGED CHANGES')} toggle={() => actions.toggleProjectGitGroup('STAGED CHANGES')}
       primary={actions.unstageProjectGit} review={(path, options) => actions.reviewProjectGitChange(path, true, options)}
       open={actions.openProjectFile} />
@@ -144,6 +150,13 @@
 <style>
   .scm-settings, .scm-errors { padding: 6px 12px; font-size: 12px; overflow-wrap: anywhere; }
   .scm-settings summary, .scm-errors summary { cursor: pointer; }
+  .scm-settings summary { display: flex; align-items: center; gap: 6px; min-height: 18px; }
+  .scm-settings summary::before { content: '▸'; flex: 0 0 8px; }
+  .scm-settings[open] summary::before { content: '▾'; }
+  .scm-settings-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .scm-scan-limit { display: flex; flex: 0 0 14px; align-items: center; margin-left: auto; color: var(--app-muted-text); }
+  .scm-scan-limit svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; }
+  .scm-discovery-detail { margin: 6px 0; color: var(--app-muted-text); font-size: 11px; line-height: 1.5; }
   .scm-settings label { display: flex; align-items: center; gap: 6px; margin: 6px 0; min-width: 0; }
   .scm-settings label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .scm-settings select { min-width: 0; flex: 1; background: var(--app-surface); color: var(--app-text); border: 1px solid var(--app-border); }

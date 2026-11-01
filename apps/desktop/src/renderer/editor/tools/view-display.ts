@@ -1,7 +1,7 @@
 import type * as Monaco from 'monaco-editor';
 const values = new Map<string, Monaco.editor.IEditorOptions>();
 export function displayOptions(id: string): Monaco.editor.IEditorOptions {
-  return { lineNumbers: 'on', renderWhitespace: 'selection', wordWrap: 'on', rulers: [], guides: { indentation: true },
+  return { lineNumbers: 'on', renderWhitespace: 'selection', wordWrap: 'off', rulers: [], guides: { indentation: true },
     quickSuggestions: { other: 'on', comments: 'off', strings: 'off' }, quickSuggestionsDelay: 10, ...values.get(id) };
 }
 export function setDisplayOptions(id: string, value: Monaco.editor.IEditorOptions): void { values.set(id, { ...values.get(id), ...value }); }

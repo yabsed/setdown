@@ -24,6 +24,7 @@ export type ExplorerClipboard = { external?: boolean; paths: string[]; cut: bool
 export type ExplorerEditCommand = 'cut' | 'copy' | 'paste' | 'select-all' | 'undo';
 
 export interface ExplorerApi {
+  ignoredPaths(paths: string[]): Promise<string[]>;
   cancel(): void;
   onProgress(listener: (progress: { completed: number; total: number; path: string }) => void): () => void;
   transfer(request: ExplorerTransfer): Promise<ExplorerOperationResult>;

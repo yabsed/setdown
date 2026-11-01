@@ -73,7 +73,9 @@ export class ProjectService {
     state.projectRoot = null; state.gitRoot = null; state.gitRepositories = [];
     state.explorerEditTarget = false;
     this.git.watcher.unwatch(state.webContentsId);
-    await this.watcher.unwatch(state.webContentsId);
+    // unwatch invalidates callbacks immediately; native cleanup may be queued
+    // behind a large directory crawl and must not hold the folder selector.
+    void this.watcher.unwatch(state.webContentsId).catch(error => console.error('Could not stop watching the old folder:', error));
   }
   private beginFolderRequest(state: WindowState): number {
     const request = (this.folderRequests.get(state) ?? 0) + 1;
@@ -102,6 +104,7 @@ export class ProjectService {
   configureGit = (state: WindowState, update: Parameters<GitService['configure']>[1]) => this.git.configure(state, update);
   selectGit = (state: WindowState, root: string) => this.git.select(state, root);
   gitStatus = (state: WindowState) => this.git.status(state);
+  ignoredPaths = (state: WindowState, paths: string[]) => this.git.ignoredPaths(state, paths);
   gitDiff = (state: WindowState, filePath: string, staged: boolean) => this.git.diff(state, filePath, staged);
   initializeGit = (state: WindowState) => this.git.initialize(state);
   stageGit = (state: WindowState, paths: string[]) => this.git.stage(state, paths);

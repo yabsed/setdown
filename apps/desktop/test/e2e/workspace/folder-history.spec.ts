@@ -1,7 +1,101 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fixture, evaluatePage } from '../../support/browser/browser-fixture';
+import { nativeInput } from '../../support/electron/native-input';
+
+test('a recent-folder refresh cannot move the pressed menu item before mouse release', async () => {
+  const f = await fixture(false);
+  try {
+    const folders = ['linear-algebra', 'final'].map(name => path.join(f.root, name));
+    for (const folder of folders) {
+      await mkdir(folder);
+      await f.page.evaluate(folder => window.marktex.restoreProjectFolder(folder), folder);
+    }
+    await f.page.evaluate(folder => window.marktex.restoreProjectFolder(folder), f.root);
+    await f.page.reload();
+    await f.page.getByRole('button', { name: 'Toggle Folder Tools', exact: true }).click();
+    await f.page.getByRole('button', { name: 'Source Control', exact: true }).click();
+    // Another window can change shared history while this renderer still has
+    // the old order. Deliver that refresh between the press and release.
+    const recent = await f.page.evaluate(() => window.marktex.getRecentProjectFolders());
+    await f.app.evaluate(({ ipcMain }, recent) => {
+      ipcMain.removeHandler('project:recent-folders');
+      ipcMain.handle('project:recent-folders', () => new Promise(resolve => {
+        (globalThis as any).__releaseFolderHistory = () => resolve([...recent].reverse());
+      }));
+    }, recent);
+    const picker = f.page.getByRole('button', { name: 'Workspace folder', exact: true });
+    await picker.click();
+    const item = f.page.getByRole('menuitemradio', { name: /linear-algebra/ });
+    const box = (await item.boundingBox())!;
+    await f.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await f.page.mouse.down();
+    await f.app.evaluate(() => (globalThis as any).__releaseFolderHistory());
+    // Fence the IPC response and Svelte layout without sleeping or releasing
+    // the mouse early, which would hide the race.
+    await expect(f.page.getByRole('region', { name: 'Recent folders' }).locator('button span')).toHaveText(recent.map(folder => folder.name).reverse());
+    await f.page.mouse.up();
+    await expect(picker).toHaveAttribute('title', folders[0]);
+    await expect(f.page.getByRole('menu', { name: 'Choose workspace folder' })).toHaveCount(0);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('recent folder native clicks keep the active website and Browser library', async () => {
+  const f = await fixture(false);
+  try {
+    const folders = ['linear-algebra', 'final'].map(name => path.join(f.root, name));
+    for (const folder of folders) {
+      await mkdir(folder);
+      await f.page.evaluate(folder => window.marktex.restoreProjectFolder(folder), folder);
+    }
+    await f.page.evaluate(folder => window.marktex.restoreProjectFolder(folder), f.root);
+    await f.page.reload();
+    await f.page.getByRole('button', { name: 'Toggle Folder Tools', exact: true }).click();
+    await f.page.getByRole('button', { name: 'Browser', exact: true }).click();
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    const tab = f.page.getByRole('tab', { name: /Research page/ });
+    await expect(tab).toHaveAttribute('aria-selected', 'true');
+    const tabId = await tab.getAttribute('data-tab-id');
+    const contentsId = await f.app.evaluate(({ webContents }, origin) =>
+      webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/first`)!.id, f.origin);
+    await evaluatePage(f.app, f.origin, 'document.querySelector("#draft").value="KEEP_FORM";window.folderSentinel=42;true');
+    const requests = f.requests.filter(url => url === '/first').length;
+    const owner = await f.app.browserWindow(f.page);
+    const click = async (locator: Locator) => {
+      const box = (await locator.boundingBox())!;
+      const point = await owner.evaluate((window, box) => {
+        const bounds = window.getContentBounds(), zoom = window.webContents.getZoomFactor();
+        return { x: bounds.x + (box.x + box.width / 2) * zoom, y: bounds.y + (box.y + box.height / 2) * zoom };
+      }, box);
+      await nativeInput({ click: point });
+    };
+    const picker = f.page.getByRole('button', { name: 'Workspace folder', exact: true });
+    const menu = f.page.getByRole('menu', { name: 'Choose workspace folder' });
+    for (const folder of folders) {
+      await click(picker);
+      await expect(menu).toBeVisible();
+      await click(menu.getByRole('menuitemradio', { name: new RegExp(path.basename(folder)) }).locator('span'));
+      await expect(menu).toHaveCount(0);
+      await expect(picker).toHaveAttribute('title', folder);
+      await expect(f.page.getByRole('button', { name: 'Browser', exact: true })).toHaveAttribute('aria-expanded', 'true');
+      await expect(tab).toHaveAttribute('aria-selected', 'true');
+      await expect(tab).toHaveAttribute('data-tab-id', tabId!);
+      expect(await f.app.evaluate(({ BrowserWindow }, id) => BrowserWindow.getAllWindows()[0].contentView.children
+        .some(view => view.getVisible() && 'webContents' in view && (view as Electron.WebContentsView).webContents.id === id), contentsId)).toBe(true);
+      expect(await evaluatePage(f.app, f.origin, '[document.querySelector("#draft").value,window.folderSentinel]')).toEqual(['KEEP_FORM', 42]);
+      expect(f.requests.filter(url => url === '/first').length).toBe(requests);
+    }
+    await click(picker);
+    await menu.getByRole('menuitemradio', { name: /^None/ }).press('Enter');
+    await expect(picker).toHaveText('None');
+    await expect(tab).toHaveAttribute('aria-selected', 'true');
+    await expect(f.page.getByRole('button', { name: 'Browser', exact: true })).toHaveAttribute('aria-expanded', 'true');
+    await f.page.screenshot({ path: test.info().outputPath('folder-switch-preserves-browser.png') });
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
 
 test('starts empty, keeps five recent folders, and None preserves unsaved file tabs', async () => {
   const f = await fixture(false);

@@ -1,4 +1,5 @@
-import watcher, { type AsyncSubscription } from '@parcel/watcher';
+import type { AsyncSubscription } from '@parcel/watcher';
+import { subscribeToFiles } from '../../documents/native-watcher';
 import type { WindowState } from '../../windows/window-state';
 import type { GitCli } from './git-cli';
 import path from 'node:path';
@@ -38,14 +39,16 @@ export class GitMetadataWatcher {
     try {
       const directories = new Set<string>();
       for (const candidate of repositories) {
+        if (stopped) return;
         for (const directory of (await candidate.run(['rev-parse', '--path-format=absolute', '--git-dir', '--git-common-dir']))
           .trim().split('\n')) directories.add(path.resolve(candidate.repositoryRoot, directory));
         if (!isInside(root, candidate.repositoryRoot)) directories.add(candidate.repositoryRoot);
       }
       for (const directory of directories) {
-        const subscription = await watcher.subscribe(directory, (error, events) => {
+        if (stopped) return;
+        const subscription = await subscribeToFiles(directory, (error, events) => {
           if (error || events.some(event => !event.path.endsWith('.lock'))) publish();
-        }, { ignore: ['**/objects/**', '**/logs/**', '**/hooks/**', '**/node_modules/**'] });
+        }, { ignore: ['**/objects/**', '**/logs/**', '**/hooks/**', '**/node_modules/**'] }, () => !stopped);
         if (stopped) await subscription.unsubscribe(); else subscriptions.push(subscription);
       }
     } catch { publish(); }

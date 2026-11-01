@@ -241,6 +241,7 @@ const api: MarkTexApi = {
   pickLinkTarget: (documentPath) => ipcRenderer.invoke('document:pick-link-target', documentPath),
   pathForFile: (file) => webUtils.getPathForFile(file),
   explorer: {
+    ignoredPaths: paths => ipcRenderer.invoke('explorer:ignored-paths', paths),
     cancel: () => ipcRenderer.send('explorer:cancel'),
     onProgress: listener => { const handler = (_event: Electron.IpcRendererEvent, progress: { completed: number; total: number; path: string }) => listener(progress);
       ipcRenderer.on('explorer:progress', handler); return () => { ipcRenderer.removeListener('explorer:progress', handler); }; },

@@ -1,0 +1,40 @@
+{
+  "scenario": "Real better-markdown-viewer / linear-algebra recent-folder switches, package-lock.json open",
+  "isolatedDisplay": true,
+  "before": {
+    "failedToSwitchWithinMs": 30000
+  },
+  "after": [
+    {
+      "cycle": 1,
+      "destination": "better-markdown-viewer",
+      "menuToFolderMs": 382
+    },
+    {
+      "cycle": 1,
+      "destination": "linear-algebra",
+      "menuToFolderMs": 245
+    },
+    {
+      "cycle": 2,
+      "destination": "better-markdown-viewer",
+      "menuToFolderMs": 298
+    },
+    {
+      "cycle": 2,
+      "destination": "linear-algebra",
+      "menuToFolderMs": 237
+    },
+    {
+      "cycle": 3,
+      "destination": "better-markdown-viewer",
+      "menuToFolderMs": 251
+    },
+    {
+      "cycle": 3,
+      "destination": "linear-algebra",
+      "menuToFolderMs": 321
+    }
+  ],
+  "metricIncludesMenuOpenAndAutomation": true
+}

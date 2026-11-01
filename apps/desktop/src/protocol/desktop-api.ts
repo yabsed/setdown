@@ -104,6 +104,8 @@ export type GitChange = {
 };
 
 export type GitSnapshot = {
+  /** File decorations for every visible repository, independent of SCM selection. */
+  decorations?: Array<import('../core/project/git-file-decorations').GitFileDecoration & { path: string }>;
   settings?: import('../core/project/git-settings').GitSettings;
   visibleRoots?: string[];
   parentRepository?: string;

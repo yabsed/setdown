@@ -1,0 +1,111 @@
+{
+  "baseCommit": "21286b770f66fdf79ca17658392304b33f278a12",
+  "changes": [
+    "VS Code Git status/color/ignore rules shared by Explorer and Source Control",
+    "Discovery-limit explanation collapsed behind a muted information icon",
+    "Word wrap defaults off; Alt+Z retains transient model state",
+    "Stable recent-folder menu and preserved active website/Browser sidebar",
+    "Serialized native watcher lifecycle prevents libuv I/O pool starvation",
+    "Nonempty Monaco native input when initially unwrapped"
+  ],
+  "validation": {
+    "productionBuild": {
+      "passed": true,
+      "svelteErrors": 0,
+      "svelteWarnings": 0,
+      "sourceMaps": false
+    },
+    "unit": {
+      "passed": 788,
+      "files": 103,
+      "toolingPassed": 14,
+      "log": "preview-contract.log"
+    },
+    "electron": {
+      "passed": 283,
+      "failed": 0,
+      "isolatedDisplay": true,
+      "workers": 1,
+      "retries": 0,
+      "log": "final-contract-e2e.log"
+    },
+    "ui": {
+      "layouts": [
+        {
+          "width": 220,
+          "height": 30,
+          "overflow": 0,
+          "badgeHeight": 14
+        },
+        {
+          "width": 380,
+          "height": 30,
+          "overflow": 0,
+          "badgeHeight": 14
+        }
+      ],
+      "keyboardDisclosure": true,
+      "isolated": "1",
+      "display": ":102"
+    },
+    "folderSwitch": {
+      "scenario": "Real better-markdown-viewer / linear-algebra recent-folder switches, package-lock.json open",
+      "isolatedDisplay": true,
+      "before": {
+        "failedToSwitchWithinMs": 30000
+      },
+      "after": [
+        {
+          "cycle": 1,
+          "destination": "better-markdown-viewer",
+          "menuToFolderMs": 382
+        },
+        {
+          "cycle": 1,
+          "destination": "linear-algebra",
+          "menuToFolderMs": 245
+        },
+        {
+          "cycle": 2,
+          "destination": "better-markdown-viewer",
+          "menuToFolderMs": 298
+        },
+        {
+          "cycle": 2,
+          "destination": "linear-algebra",
+          "menuToFolderMs": 237
+        },
+        {
+          "cycle": 3,
+          "destination": "better-markdown-viewer",
+          "menuToFolderMs": 251
+        },
+        {
+          "cycle": 3,
+          "destination": "linear-algebra",
+          "menuToFolderMs": 321
+        }
+      ],
+      "metricIncludesMenuOpenAndAutomation": true
+    },
+    "benchmark": {
+      "passed": true,
+      "runsPerVersion": 5,
+      "comparisons": 48,
+      "regressions": [],
+      "thresholds": {
+        "relative": 0.25,
+        "absoluteMs": 50
+      },
+      "raw": "benchmark/comparison.json",
+      "table": "preview-latency.csv"
+    }
+  },
+  "investigation": {
+    "earlierFailuresRetained": true,
+    "baselineFocusAndDragChecks": "10/10 passed; baseline-investigation.log",
+    "nativeInput": "Initial unwrapped input measured 0px wide; scoped minimum width fixed it without disabling EditContext or changing assertions. See editcontext-diagnostic.log and editcontext-fixed.log.",
+    "wrapPersistenceTest": "Explicitly enables wrapping after asserting the new unwrapped default; persistence assertions retained."
+  },
+  "applicationRestartRequired": true
+}

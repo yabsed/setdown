@@ -409,13 +409,24 @@ Alt+Z uses VS Code's transient model word-wrap override. Different files retain
 independent state across tab/source-reader switches; split views sharing a model
 share the override, and side-by-side diff editors synchronize both models.
 The next toggle clears the override and inherits the underlying configuration;
-ordinary/diff defaults remain wrapped and notebook code defaults remain unwrapped.
+ordinary/diff source defaults are unwrapped, matching notebook code. Explicit
+display overrides and Alt+Z still select wrapping; the change is only the default.
+An initially unwrapped editor must expose a nonempty native input target. Monaco
+0.56 computes a negative width from its unwrapped `wrappingColumn`; the scoped
+CSS minimum width prevents a zero-width EditContext without replacing it or
+changing source layout. Initial visibility, real input and IME checks stay enabled.
 The state ends when the model is disposed and never changes document text or Undo.
 `renderer/editor/toggle-word-wrap.ts` and `transient-model-properties.ts` port the
 upstream action/controller and model-property lifetime; provenance and MIT license
 are in their `upstream/` directory. `workspace/word-wrap.spec.ts` verifies real
 keyboard input, rendered lines, tab/model lifetime, split/diff synchronization,
 notebook-cell isolation, selection, focus, Undo and reader transitions.
+Validation on 2026-11-01 passed 788 unit tests, 14 tooling tests, the production
+build/typecheck and all 283 isolated Electron scenarios. The independent baseline
+comparison completed 80 launches with no regressions across the unchanged 48
+timing gates. [First, second and warm results for every scenario](../reports/explorer-git-decorations-2026-11-01/preview-latency.txt)
+and [execution evidence](../reports/explorer-git-decorations-2026-11-01/validation.json)
+retain the earlier failures and the initial-unwrapped-input diagnosis.
 Moving focus between the panes of the active Git review must retain its command
 state. `workspace/groups/group-runtime.ts` must not reactivate that same tab and
 temporarily clear the review projection; the Alt+Z test presses Esc immediately

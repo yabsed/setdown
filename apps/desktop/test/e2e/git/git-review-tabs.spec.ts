@@ -182,6 +182,9 @@ test('keeps word wrap in the original diff pane after tab roundtrips', async () 
     await expect(window.locator('.git-diff-editor:visible .original-in-monaco-diff-editor .view-lines'))
       .toContainText('Long line:');
 
+    // Wrapping is opt-in; explicitly enable it before checking persistence.
+    await expect.poll(originalViewLineCount).toBeLessThanOrEqual(5);
+    await window.getByRole('textbox', { name: 'Current document', exact: true }).press('Alt+z');
     await expect.poll(originalViewLineCount, { timeout: 10_000 })
       .toBeGreaterThan(5);
 

@@ -465,6 +465,10 @@ svg.tree-chevron { fill: none; stroke: currentColor; stroke-width: 1.6; transiti
 svg.tree-chevron.is-open { transform: rotate(90deg); }
 .tree-icon { flex: 0 0 15px; width: 15px; height: 15px; margin-right: 4px; fill: none; stroke: currentColor; stroke-width: 1.15; }
 .tree-progress { margin-left: auto; color: var(--app-subtle-text); }
+.explorer-entry-name { min-width: 0; color: var(--explorer-git-color, inherit); }
+.explorer-git-badge { flex: 0 0 16px; margin-left: auto; text-align: center; color: var(--explorer-git-color); font-size: 10px; }
+.explorer-git-badge.contains-changes { opacity: .4; }
+.explorer-decoration-notice { margin: 4px 8px; font-size: 11px; color: var(--app-subtle-text); }
 .explorer-edit input, .explorer-row input {
   min-width: 0;
   flex: 1;
@@ -662,8 +666,7 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 .git-change-open small { margin-left: 6px; overflow: hidden; color: var(--app-subtle-text); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .git-change-actions { display: none; align-items: center; margin-left: auto; }
 .git-change:hover .git-change-actions, .git-change:focus-within .git-change-actions { display: flex; }
-.git-change b { min-width: 17px; margin-left: 4px; color: var(--app-warning-text); font-weight: 650; text-align: right; }
-.git-change b.is-conflict { color: var(--app-danger-text); }
+.git-change b { min-width: 17px; margin-left: 4px; color: var(--git-change-color, var(--app-text)); font-weight: 650; text-align: right; }
 .scm-empty { padding: 12px 14px; color: var(--app-muted-text); font-size: 11px; line-height: 1.5; }
 .scm-empty p { margin: 0 0 10px; }
 .git-review {
@@ -776,6 +779,10 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 /* Monaco clips code in its own overflow guard. Let toolbar tooltips extend
    above the editor; the enclosing group still bounds them to their pane. */
 .editor-surface { overflow: visible; }
+/* Monaco 0.56 derives its native input width from wrappingColumn, which is -1
+   when wrapping starts disabled. Keep the focus/IME target nonempty even before
+   the first wrap toggle supplies a valid width; rendered source is unchanged. */
+.monaco-editor .native-edit-context { min-width: 1px; }
 .viewer-surface, .reader-body, .preview-frames { background: var(--preview-background); }
 .viewer-surface { display: block; }
 .reader-body { display: flex; width: 100%; height: 100%; min-width: 0; min-height: 0; }

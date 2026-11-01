@@ -279,3 +279,46 @@ test('truncated status explicitly marks counts incomplete and clears that state 
   expect(limited.changes).toHaveLength(2);
   expect(await service.configure(owner, { settings: { statusLimit: 10 } })).toMatchObject({ countIncomplete: false, pendingChanges: 3 });
 });
+
+test('Explorer decorations cover unselected repositories and disappear when clean or hidden', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-decoration-repos-')); temporaryDirectories.push(root);
+  const roots = ['one', 'two'].map(name => path.join(root, name));
+  for (const repository of roots) {
+    await mkdir(repository); await GitCli.run(repository, ['init']);
+    await writeFile(path.join(repository, 'file.md'), 'new');
+  }
+  const service = new GitService(new ProjectPaths()), state = { projectRoot: root, gitRoot: roots[0] } as WindowState;
+  expect((await service.status(state)).decorations?.map(value => value.path).sort()).toEqual(roots.map(root => path.join(root, 'file.md')));
+  await rm(path.join(roots[1], 'file.md'));
+  expect((await service.status(state)).decorations).toHaveLength(1);
+  expect((await service.configure(state, { visibleRoots: [roots[1]] })).decorations).toEqual([]);
+});
+
+test('ignore batches use Git rules, negations, global excludes, tracked entries and NUL paths', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-decoration-ignore-')); temporaryDirectories.push(root);
+  const repo = path.join(root, 'repo'); await mkdir(repo);
+  await GitCli.run(repo, ['init']);
+  const service = new GitService(new ProjectPaths()), state = { projectRoot: repo } as WindowState;
+  await writeFile(path.join(repo, 'tracked.log'), 'tracked'); await GitCli.run(repo, ['add', 'tracked.log']);
+  await mkdir(path.join(repo, 'cache')); await mkdir(path.join(repo, 'build'));
+  await writeFile(path.join(repo, '.gitignore'), '*.log\nbuild/\n!keep.log\n');
+  await writeFile(path.join(repo, 'cache/.gitignore'), '!nested.log\n');
+  await writeFile(path.join(repo, '.git/info/exclude'), 'local.txt\n');
+  await writeFile(path.join(root, 'global-ignore'), 'global.txt\n');
+  await GitCli.run(repo, ['config', 'core.excludesFile', path.join(root, 'global-ignore')]);
+  const names = ['tracked.log', 'keep.log', 'cache/nested.log', 'build', 'local.txt', 'global.txt', '한 글\nnew.log', '-dash.log'];
+  for (const name of names.filter(name => name !== 'build')) await writeFile(path.join(repo, name), 'content');
+  const paths = names.map(name => path.join(repo, name));
+  expect((await service.ignoredPaths(state, paths)).sort()).toEqual(paths.slice(3).sort());
+  await writeFile(path.join(repo, '.gitignore'), '');
+  expect(await service.ignoredPaths(state, [path.join(repo, '-dash.log')])).toEqual([]);
+  await expect(service.ignoredPaths(state, [path.join(root, 'global-ignore')])).rejects.toThrow('outside');
+  await expect(service.ignoredPaths(state, ['relative.log'])).rejects.toThrow('Invalid');
+  let resolve!: (paths: string[]) => void;
+  const pending = new Promise<string[]>(done => { resolve = done; });
+  vi.spyOn(GitCli.prototype, 'checkIgnore').mockReturnValue(pending);
+  const request = service.ignoredPaths(state, [paths[0]]);
+  await vi.waitFor(() => expect(GitCli.prototype.checkIgnore).toHaveBeenCalled());
+  state.projectRoot = null; resolve([paths[0]]);
+  expect(await request).toEqual([]);
+});

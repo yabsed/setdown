@@ -2,6 +2,7 @@
   import { onMount, tick } from 'svelte';
   import { tree, rememberTree, under } from './explorer-tree-state.svelte';
   import { presentEntries, typeaheadMatch } from './explorer-presentation';
+  import { explorerGitDecorations } from './explorer-git-decorations';
   import type { ExplorerClipboard, ExplorerEditCommand, ExplorerTransfer } from '../../../protocol/explorer';
   import { selectEntry, topLevelPaths, draggedPaths, PROJECT_ENTRIES, PROJECT_FILES } from './explorer-selection';
   import NativeOverlay from '../../shell/NativeOverlay.svelte';
@@ -27,6 +28,29 @@
   let dragged: string[] = [];
   let dragImage: HTMLElement | null = null;
   const visibleEntries = $derived(presentEntries(project.entries, tree.filter, tree.showHidden, tree.sort));
+  let ignored = $state({ root: '', paths: new Set<string>() });
+  let ignoreError = $state('');
+  const decorations = $derived(explorerGitDecorations(visibleEntries, project.folder?.path ?? '', project.git,
+    ignored.root === project.folder?.path ? ignored.paths : new Set<string>()));
+  $effect(() => {
+    const root = project.folder?.path;
+    const snapshot = project.git;
+    const paths = visibleEntries.map(entry => entry.path);
+    let current = true;
+    // Batch visible requests like VS Code's ignore provider. Status refreshes
+    // also invalidate ignore results after .gitignore/index/exclude changes.
+    const timer = setTimeout(() => {
+      if (!root || !snapshot?.repository || !paths.length) {
+        ignored = { root: root ?? '', paths: new Set() }; ignoreError = ''; return;
+      }
+      void actions.explorer.ignoredPaths(paths).then(values => {
+        if (current) { ignored = { root, paths: new Set(values) }; ignoreError = ''; }
+      }, error => {
+        if (current) { ignored = { root, paths: new Set() }; ignoreError = String(error); }
+      });
+    }, 100);
+    return () => { current = false; clearTimeout(timer); };
+  });
   const selectedEntries = $derived(visibleEntries.filter(entry => tree.selection.paths.includes(entry.path)));
   const selectedPaths = () => selectedEntries.map(entry => entry.path);
   const singleSelection = (path: string) => { tree.selection = { paths: [path], anchor: path }; tree.focused = path; };
@@ -397,6 +421,8 @@
     placeholder="Filter loaded files…" onkeydown={event => { event.stopPropagation(); if (event.key === 'Escape' && !event.isComposing) { tree.filter = ''; filterOpen = false; } }} />
 {/if}
 
+{#if ignoreError}<p class="explorer-decoration-notice" title={ignoreError}>Git ignore status unavailable.</p>{/if}
+
 {#if !project.folder}
   <div class="side-view-welcome">
     <p>Open a folder to browse and manage files.</p>
@@ -426,18 +452,22 @@
         label={`New ${editing.kind} name`} submit={(value) => void submitEdit(value)} cancel={() => editing = null} />
     {/if}
     {#each visibleEntries as entry (entry.path)}
+      {@const decoration = decorations.get(entry.path)}
       {#if editing?.mode === 'rename' && editing.target === entry.path}
         <ExplorerEditRow kind={editing.kind} depth={editing.depth} initial={editing.value}
           label="Rename entry" submit={(value) => void submitEdit(value)} cancel={() => editing = null} />
       {:else}
         <div role="treeitem" tabindex={tree.focused === entry.path || (!visibleEntries.some(item => item.path === tree.focused) && entry === visibleEntries[0]) ? 0 : -1} draggable={!busy} class="explorer-row" data-path={entry.path}
           onfocus={() => tree.focused = entry.path}
-          class:is-selected={tree.selection.paths.includes(entry.path)} class:is-muted={entry.kind === 'file'}
+          class:is-selected={tree.selection.paths.includes(entry.path)} class:is-muted={entry.kind === 'file' && !decoration}
+          data-git-status={decoration?.child ? 'contains-changes' : decoration?.tooltip}
+          style:--explorer-git-color={decoration ? `var(--vscode-${decoration.color.replaceAll('.', '-')})` : undefined}
           class:is-cut={clipboard?.cut && clipboard.paths.some(path => under(entry.path, path))}
           class:is-drop-target={dropTarget === entry.path}
           aria-selected={tree.selection.paths.includes(entry.path)}
           aria-expanded={entry.kind === 'directory' ? entry.expanded : undefined}
-          style:padding-left={`${8 + entry.depth * 13}px`} title={entry.path}
+          style:padding-left={`${8 + entry.depth * 13}px`} title={decoration ? `${entry.path} • ${decoration.tooltip}` : entry.path}
+          aria-label={decoration ? `${entry.name} • ${decoration.tooltip}` : entry.name}
           onclick={(event) => clickEntry(event, entry)}
           ondblclick={(event) => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && entry.kind === 'document') activate(entry, true); }}
           onauxclick={(event) => { if (event.button === 1 && entry.kind === 'document') { event.preventDefault(); activate(entry, true); } }}
@@ -454,8 +484,9 @@
             <span class="tree-chevron"></span>
             <svg class="tree-icon" viewBox="0 0 16 16"><path d="M3 1.5h6l4 4v9H3v-13Zm6 0v4h4"/></svg>
           {/if}
-          <span>{entry.name}</span>
+          <span class="explorer-entry-name">{entry.name}</span>
           {#if entry.loading}<span class="tree-progress">…</span>{/if}
+          {#if decoration?.badge}<span class="explorer-git-badge" class:contains-changes={decoration.child} aria-hidden="true">{decoration.badge}</span>{/if}
         </div>
       {/if}
       {#if editing?.mode === 'create' && editing.parent === entry.path}

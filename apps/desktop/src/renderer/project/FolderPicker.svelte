@@ -1,10 +1,12 @@
 <script lang="ts">
   import { tick } from 'svelte';
+  import type { ProjectFolder } from '../../protocol/desktop-api';
   import type { AppActions } from '../ports/ui-actions';
   import { project } from './project-state.svelte';
 
   let { actions }: { actions: AppActions } = $props();
   let open = $state(false);
+  let folders = $state<ProjectFolder[]>([]);
   let container: HTMLDivElement;
   let trigger: HTMLButtonElement;
   let menu = $state<HTMLDivElement>();
@@ -12,6 +14,9 @@
   async function toggle() {
     open = !open;
     if (!open) return;
+    // Shared history can change while an item is pressed. Keep this menu's
+    // targets stable; refreshed history is picked up on its next opening.
+    folders = [...project.recentFolders];
     void actions.refreshRecentProjectFolders();
     await tick();
     if (open) (menu?.querySelector<HTMLButtonElement>('[aria-checked="true"]') ?? menu?.querySelector<HTMLButtonElement>('button'))?.focus();
@@ -51,7 +56,7 @@
         <span>None</span><small>Keep open files, without a folder</small>
       </button>
       <div class="menu-label" role="presentation">Recent folders</div>
-      {#each project.recentFolders as folder (folder.path)}
+      {#each folders as folder (folder.path)}
         <button type="button" role="menuitemradio" aria-checked={project.folder?.path === folder.path}
           title={folder.path} onclick={() => choose(folder.path)}>
           <span>{folder.name}</span><small>{folder.path}</small>

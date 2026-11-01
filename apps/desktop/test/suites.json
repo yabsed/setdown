@@ -35,6 +35,7 @@
       "src/main/project/recent-folders.test.ts",
       "src/main/project/project-service.test.ts",
       "src/main/project/engines/project-watcher.test.ts",
+      "src/main/documents/native-watcher.test.ts",
       "src/renderer/project/project-controller.test.ts",
       "src/main/language/catalog/profiles.test.ts",
       "src/main/language/clangd-session.test.ts",
@@ -104,7 +105,9 @@
       "src/main/project/completeness.test.ts",
       "src/main/language/analysis-context.test.ts",
       "src/main/language/analysis-preparation.test.ts",
-      "src/main/language/language-supervisor.test.ts"
+      "src/main/language/language-supervisor.test.ts",
+      "src/core/project/git-file-decorations.test.ts",
+      "src/renderer/project/explorer/explorer-git-decorations.test.ts"
     ]
   },
   "e2e": {
@@ -320,6 +323,9 @@
       "previewContract": true
     },
     "language/project-environment.spec.ts": {
+      "previewContract": true
+    },
+    "project/explorer-git-decorations.spec.ts": {
       "previewContract": true
     }
   },

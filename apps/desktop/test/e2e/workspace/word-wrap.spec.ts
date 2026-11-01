@@ -33,9 +33,10 @@ test('Alt+Z keeps independent file state across tab switches and preserves selec
     const page = await app.firstWindow();
     const editor = page.locator('.editor-surface .monaco-editor:visible');
     const input = editor.getByRole('textbox', { name: 'Editor content' });
-    await wrapping(editor, true);
+    await wrapping(editor, false);
+    await expect(input).toBeVisible();
     await input.press('Control+Home'); await input.press('Shift+ArrowRight');
-    await input.press('Alt+z'); await wrapping(editor, false);
+    await input.press('Alt+z'); await wrapping(editor, true);
     await expect(input).toBeFocused();
     await input.press('Control+c');
     expect(await app.evaluate(({ clipboard }) => clipboard.readText())).toBe('#');
@@ -43,21 +44,21 @@ test('Alt+Z keeps independent file state across tab switches and preserves selec
 
     await page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), second);
     await expect(page.getByRole('tab', { name: /second.txt/ })).toHaveAttribute('aria-selected', 'true');
-    await wrapping(editor, true);
-    await page.getByRole('tab', { name: /first.py/ }).click(); await wrapping(editor, false);
-    await input.press('Alt+z'); await wrapping(editor, true);
-    await input.press('Control+End'); await input.pressSequentially(' undo-sentinel');
+    await wrapping(editor, false);
+    await page.getByRole('tab', { name: /first.py/ }).click(); await wrapping(editor, true);
     await input.press('Alt+z'); await wrapping(editor, false);
+    await input.press('Control+End'); await input.pressSequentially(' undo-sentinel');
+    await input.press('Alt+z'); await wrapping(editor, true);
     await input.press('Control+z');
     await expect.poll(() => page.evaluate(async () => (await window.marktex.getDocument())?.text)).toBe(source);
     expect(await readFile(first, 'utf8')).toBe(source);
 
     // Transient state ends with the last model owner, not a persisted file setting.
     await page.getByRole('tab', { name: /first.py/ }).getByTitle('Close tab', { exact: true }).click();
-    await wrapping(editor, true);
+    await wrapping(editor, false);
     await page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), first);
     await expect(page.getByRole('tab', { name: /first.py/ })).toHaveAttribute('aria-selected', 'true');
-    await wrapping(editor, true);
+    await wrapping(editor, false);
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
 
@@ -68,17 +69,17 @@ test('split views of one model share VS Code transient state and the existing Wr
   try {
     const page = await app.firstWindow();
     const editors = page.locator('.monaco-editor:visible');
-    await wrapping(editors.first(), true);
+    await wrapping(editors.first(), false);
     await editors.first().getByRole('textbox', { name: 'Editor content' }).press('Alt+z');
     await command(page, 'Split editor right'); await expect(editors).toHaveCount(2);
-    await wrapping(editors.first(), false); await wrapping(editors.last(), false);
-    await editors.last().getByRole('textbox', { name: 'Editor content' }).press('Alt+z');
     await wrapping(editors.first(), true); await wrapping(editors.last(), true);
+    await editors.last().getByRole('textbox', { name: 'Editor content' }).press('Alt+z');
+    await wrapping(editors.first(), false); await wrapping(editors.last(), false);
     await command(page, 'Change this editor’s display');
     await page.getByRole('dialog', { name: 'Editor display' }).getByRole('option', { name: 'Wrap', exact: true }).click();
-    await wrapping(editors.first(), false); await wrapping(editors.last(), false);
-    await editors.first().getByRole('textbox', { name: 'Editor content' }).press('Alt+z');
     await wrapping(editors.first(), true); await wrapping(editors.last(), true);
+    await editors.first().getByRole('textbox', { name: 'Editor content' }).press('Alt+z');
+    await wrapping(editors.first(), false); await wrapping(editors.last(), false);
     await expect(page.locator('.shell')).toHaveAttribute('data-dirty-tabs', '0');
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
@@ -99,12 +100,12 @@ test('Markdown and Git review retain wrapping across reader transitions and sync
     await page.reload();
     await page.getByRole('button', { name: 'Switch to Editor', exact: true }).click();
     const ordinary = page.locator('.editor-surface .monaco-editor:visible');
-    await wrapping(ordinary, true);
-    await ordinary.getByRole('textbox', { name: 'Editor content' }).press('Alt+z');
     await wrapping(ordinary, false);
+    await ordinary.getByRole('textbox', { name: 'Editor content' }).press('Alt+z');
+    await wrapping(ordinary, true);
     await ordinary.getByRole('textbox', { name: 'Editor content' }).press('Escape');
     await page.getByRole('button', { name: 'Switch to Editor', exact: true }).click();
-    await wrapping(ordinary, false);
+    await wrapping(ordinary, true);
 
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1600, 1000));
     await page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
@@ -115,19 +116,19 @@ test('Markdown and Git review retain wrapping across reader transitions and sync
     // source editors explicitly, including after the asynchronous diff arrives.
     const editors = page.locator('.git-diff-editor .monaco-editor:is(.original-in-monaco-diff-editor, .modified-in-monaco-diff-editor):visible');
     await expect(editors).toHaveCount(2);
-    await wrapping(editors.first(), false); await wrapping(editors.last(), false);
+    await wrapping(editors.first(), true); await wrapping(editors.last(), true);
     const modified = page.getByRole('textbox', { name: 'Current document', exact: true });
     await modified.press('Alt+z');
-    await wrapping(editors.first(), true); await wrapping(editors.last(), true);
+    await wrapping(editors.first(), false); await wrapping(editors.last(), false);
     // Read-only original editors can toggle wrapping too.
     await editors.first().getByRole('textbox').press('Alt+z');
-    await wrapping(editors.first(), false); await wrapping(editors.last(), false);
+    await wrapping(editors.first(), true); await wrapping(editors.last(), true);
     // Refocusing the other pane must retain the active review's command state:
     // Escape works immediately, without waiting for another tab activation IPC.
     await modified.press('Escape');
     await page.getByRole('button', { name: 'View Source Diff', exact: true }).click();
-    await wrapping(editors.first(), false); await wrapping(editors.last(), false);
-    await page.screenshot({ path: test.info().outputPath('diff-word-wrap-off.png') });
+    await wrapping(editors.first(), true); await wrapping(editors.last(), true);
+    await page.screenshot({ path: test.info().outputPath('diff-word-wrap-on.png') });
   } catch (error) {
     await page.screenshot({ path: test.info().outputPath('word-wrap-failure.png') });
     const layoutPath = test.info().outputPath('editor-layout.json');

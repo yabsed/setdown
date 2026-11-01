@@ -23,10 +23,20 @@ None option clears project scope while retaining open documents and edits.
 Closing a folder invalidates pending folder selections, directory reads,
 search/status results and native watcher subscriptions. It clears project-only
 Explorer/search/Git state and language workspace scope. A late asynchronous
-result cannot reopen the closed folder. The folder selector uses the existing
-native overlay mechanism and keyboard menu semantics.
+result cannot reopen the closed folder. The folder selector stays inside the
+sidebar with keyboard menu semantics and leaves native web views visible.
 Escape closes the folder menu without leaving the Markdown source editor;
 selecting the current folder preserves the Explorer's expansion state.
+An open menu snapshots its entries so a shared-history refresh cannot move a
+pressed target before mouse release. Refreshed entries appear on the next opening.
+Changing folders keeps the selected sidebar view when the panel is already open,
+as well as the active website, its native WebContents, form state and navigation.
+Opening a folder when Folder Tools is hidden or collapsed reveals Explorer.
+Project, Git metadata and language-server watcher lifecycle operations share a
+serial native queue. Parcel's backend lock otherwise lets concurrent tree crawls
+fill the libuv worker pool and starve the next folder's `stat`/directory read.
+Queued obsolete roots are skipped; teardown never delays closing project scope
+or stopping a language server. Generation guards continue rejecting old events.
 
 `workspace/folder-history.spec.ts`, the project service/controller tests, recent
 folder store tests and watcher tests cover these behaviors. The uBlock restart
@@ -617,3 +627,65 @@ checks the same boundary signal during a real web-tab split;
 `tab-detach.spec.ts` checks cross-window strip drops even when source dragend
 precedes the destination claim, preserving the live native reader and position.
 
+
+## Git file decorations
+
+Explorer and Source Control share VS Code's status letters, descriptions and
+`gitDecoration.*` color roles, pinned to
+`d3d31f62268b169a2dfab62ffb2d7d38158a5b7c`. Extracted upstream methods, color defaults,
+source hashes and MIT notices live in `src/core/project/upstream/`; the build
+ships their license and notice. Imported themes override those named roles;
+other themes use the upstream light/dark defaults. Source Control colors the
+filename and status badge while retaining muted parent paths and neutral actions.
+Its index and working-tree rows describe their own resources: a partially staged
+addition is A in Staged Changes and M in Changes, while Explorer shows M.
+
+`core/project/git-file-decorations.ts` adapts the original group order (index,
+untracked, working tree, merge), seven conflict states, rename aliases and
+propagation rule. Deleted files do not emphasize ancestor directories. Explorer
+builds descendant decorations from the whole bounded status snapshot, including
+collapsed/unloaded folders and every visible repository, independently of SCM
+selection or count-badge settings. Equal-weight children use path order, as in
+the upstream URI tree; the SCM resource priority is not a FileDecoration weight.
+Folders with changed descendants use a dot and an accessible description.
+Rows retain identity, selection and focus when only status changes.
+
+Ignored files/folders use Git's batched `check-ignore -v -z --stdin`, with the
+upstream negation-aware parser. Only loaded visible entries are queried; no
+recursive scan of ignored build/node_modules directories is added. Git retains
+ownership of nested/global ignore rules and tracked-file exceptions. Existing
+file/index/ref notifications and the bounded watcher fallback refresh decoration
+state even when Source Control is closed. Ignore queries are scoped to the
+nearest open repository, batched with bounded concurrency and discarded on
+folder/request/component replacement; hidden repositories do not inherit their
+parent's ignore state. Failures are visible and cannot fabricate a clean Git
+snapshot. Status and discovery retain their existing configured limits.
+
+This import covers local working-tree presentation, not VS Code's extension host,
+SCM command stack, remote incoming-change badges, dedicated submodule S badges,
+or editor-tab decorations. Existing file operations, review preparation and
+native-view ownership remain unchanged. `git-file-decorations.test.ts`,
+`explorer-git-decorations.test.ts`, Git service integration tests and
+`project/explorer-git-decorations.spec.ts` cover the rules, real ignore semantics,
+external stage/reset/commit, light/dark colors in both lists, folder propagation,
+multiple repositories and focus. They are in the preview contract inventory;
+the full unchanged preview contract and comparative latency gate remain required.
+
+Repository discovery limits remain visible as a small muted information icon
+in `Repositories and Count`, with a tooltip and accessible name. The full explanation belongs inside that disclosure,
+so a closed notice consumes no separate block above the change list. It remains
+available by pointer or keyboard, including in narrow sidebars.
+
+## Default source word wrap
+
+Ordinary code/plain-text/Markdown source and Git diff editors default to word
+wrap off. Alt+Z and the existing Wrap command still toggle VS Code's transient
+model state, shared by split views and synchronized across diff sides. Toggling
+must preserve selection, focus, text, Undo and reader transitions; it does not
+persist a new per-file preference after the last model owner closes. Explicit
+restored editor display options continue to override the default. Notebook code
+cells already default to no wrapping and retain their current behavior.
+`workspace/word-wrap.spec.ts` checks the new initial state and both toggle
+directions without dropping the existing independent-file, split, diff,
+read-only-side, notebook, ownership and Undo scenarios. Markdown reader layout,
+preparation and source-position guarantees remain in force.

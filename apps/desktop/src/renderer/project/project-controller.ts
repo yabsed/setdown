@@ -204,7 +204,8 @@ export class ProjectController {
   };
   private async replaceFolder(folder: ProjectFolder): Promise<void> {
     this.clearFolderRefresh();
-    project.folder = folder; project.error = ''; project.visible = true; project.open = true; project.activeView = 'explorer';
+    if (!project.visible || !project.open) project.activeView = 'explorer';
+    project.folder = folder; project.error = ''; project.visible = true; project.open = true;
     project.explorerRootExpanded = true;
     void this.recentFolders();
     this.options.folderChanged?.(folder.path);

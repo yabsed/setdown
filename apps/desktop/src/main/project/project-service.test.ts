@@ -22,7 +22,9 @@ describe('project service', () => {
   test('None stops watching without closing documents, and supersedes an in-flight folder open', async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-folder-close-'));
     temporaryDirectories.push(root);
-    const watcher = { ...noWatcher, unwatch: vi.fn(async () => undefined) };
+    // Native teardown may wait behind the old root's crawl. Scope and the UI
+    // must still close immediately while late callbacks are invalidated.
+    const watcher = { ...noWatcher, unwatch: vi.fn(() => new Promise<void>(() => {})) };
     const service = new ProjectService(async () => [], watcher);
     const state = { webContentsId: 3, projectRoot: null, currentDocument: { path: 'keep.txt', text: 'unsaved' } } as unknown as WindowState;
     await service.restore(state, root);

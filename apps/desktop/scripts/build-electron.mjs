@@ -10,6 +10,8 @@ const shared = {
 };
 await mkdir('dist-electron', { recursive: true });
 await copyFile('../../LICENSE', 'dist-electron/SETDOWN-LICENSE.txt');
+await copyFile('src/core/project/upstream/VSCODE-LICENSE', 'dist-electron/VSCODE-GIT-LICENSE');
+await copyFile('src/core/project/upstream/NOTICE', 'dist-electron/VSCODE-GIT-NOTICE');
 // Retire outputs from builds that included the removed document editor.
 await Promise.all(['hwp', 'hwp-preload.cjs', 'hwp-preload.cjs.map'].map(file =>
   rm(`dist-electron/${file}`, { recursive: true, force: true })));

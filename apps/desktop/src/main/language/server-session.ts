@@ -2,7 +2,8 @@ import type { LanguageServerMessage } from '../../protocol/language';
 import { randomUUID } from 'node:crypto';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { subscribe, type AsyncSubscription } from '@parcel/watcher';
+import type { AsyncSubscription } from '@parcel/watcher';
+import { subscribeToFiles } from '../documents/native-watcher';
 import { CancellationTokenSource, createMessageConnection, StreamMessageReader, StreamMessageWriter,
   type MessageConnection } from 'vscode-jsonrpc/node';
 import type { ServerProfile } from './server-definitions';
@@ -218,19 +219,20 @@ export class ServerSession {
     await this.connection.sendNotification(method, params);
   }
   watch(root: string): void {
-    this.watcher = subscribe(root, (error, events) => {
+    this.watcher = subscribeToFiles(root, (error, events) => {
       if (error || this.stopped || this.stopping) return;
       this.hooks.filesChanged?.(events.map(event => event.path));
       const changes = events.filter(event => this.profile.watches(event.path) || this.capabilities.watches(event.path, event.type === 'create' ? 1 : event.type === 'delete' ? 3 : 2))
         .map(event => ({ uri: pathToFileURL(event.path).href, type: event.type === 'create' ? 1 : event.type === 'delete' ? 3 : 2 }));
       if (changes.length) void this.ready.then(() => this.notify('workspace/didChangeWatchedFiles', { changes })).catch(() => {});
-    }, { ignore: ['**/.git/**', '**/node_modules/**', '**/__pycache__/**'] });
+    }, { ignore: ['**/.git/**', '**/node_modules/**', '**/__pycache__/**'] }, () => !this.stopped && !this.stopping);
     void this.watcher.catch(error => console.warn(`${this.profile.name} file watcher unavailable:`, error));
   }
   stop(): Promise<void> { return this.stopping ??= this.stopProcess(); }
   private async stopProcess(): Promise<void> {
     for (const entry of this.messageRequests.values()) entry.finish();
-    await this.watcher?.then(watcher => watcher.unsubscribe()).catch(() => {});
+    // Stopping a server must not wait for a previous root's native tree crawl.
+    void this.watcher?.then(watcher => watcher.unsubscribe()).catch(() => {});
     if (this.stopped) return this.exited;
     for (const token of this.pending) token.cancel();
     const kill = setTimeout(() => this.child.kill('SIGKILL'), 1500);

@@ -1,0 +1,23 @@
+VS Code Git Explorer decorations
+Copyright (c) Microsoft Corporation. All rights reserved.
+MIT license: VSCODE-LICENSE accompanies this distribution.
+Source: https://github.com/microsoft/vscode/tree/d3d31f62268b169a2dfab62ffb2d7d38158a5b7c
+
+git-resource.ts extracts Status, Resource.getStatusLetter/getStatusText/getStatusColor
+and Repository.parseIgnoreCheck. VS Code API types, ThemeColor wrappers and l10n
+wrappers are removed; the switch bodies and ignore parser are otherwise retained.
+git-colors.json extracts contributes.colors defaults for gitDecoration.*.
+../git-file-decorations.ts adapts repository XY status grouping, provider overwrite
+order, rename aliases and resourceDecoration.propagate to Setdown's NUL porcelain-v2
+snapshot. The SCM list uses
+its own index/working-tree resource instead of the Explorer winner. Explorer presentation adapts workbench descendant propagation and badges
+without the VS Code extension host, URI tree, dynamic CSS service or SCM commands.
+Equal-weight descendant decorations use path order, not Resource.priority (which
+VS Code does not pass to its FileDecoration API).
+
+Pinned source SHA-256:
+a26e8380874935be0726de1cfae5d9cb53ce122cd4a74698ffab015b0385c416  extensions/git/src/api/git.constants.ts
+d69a4a4874ac46a8a99b9f18d5ec97f50b5f4253a1d21c4d3fe55850344126e2  extensions/git/src/repository.ts
+715d0fd63f38e4b9e7fb9fbbb19d914a7c4697feb69542364a17701d3753f241  extensions/git/src/decorationProvider.ts
+06fdd1a65ef62abc9380860e10ed69fbf807e167bd4d408f29e5671a4757cf6a  extensions/git/package.json
+a7deabd6946a47e3537a31651f049f86c034bc73e4d44fafcf97e655e6172323  src/vs/workbench/services/decorations/browser/decorationsService.ts

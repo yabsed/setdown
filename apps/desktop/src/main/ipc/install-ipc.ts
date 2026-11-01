@@ -206,6 +206,7 @@ export function installIpc(options: Options): void {
     return result;
   };
   channels.on('explorer:cancel', state => projects.cancelTransfer(state));
+  channels.handle('explorer:ignored-paths', (state, paths: string[]) => projects.ignoredPaths(state, paths));
   channels.handle('explorer:transfer', async (state, request: ExplorerTransfer) => transferred(await projects.transfer(state, request)));
   channels.handle('explorer:clipboard', () => projects.clipboard.read());
   channels.handle('explorer:copy', (state, paths: string[], cut: boolean) => projects.copySelection(state, paths, cut));

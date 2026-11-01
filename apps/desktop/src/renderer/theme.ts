@@ -1,4 +1,5 @@
 import type * as Monaco from 'monaco-editor';
+import { gitDecorationColors } from '../core/theme/git-decoration-colors';
 import type { PreviewThemeId } from '../core/preview/preview-preferences';
 import { communityMonacoTheme, vscodeMonacoTheme } from './editor/vscode-monaco-theme';
 import { syntaxThemeRules } from './language/syntax-themes';
@@ -125,7 +126,7 @@ export function applyShellTheme(themeId: PreviewThemeId) {
   // Component-specific VS Code roles belong to imported themes. Clear them
   // when returning to an existing theme, including native shell menu overlays.
   for (const name of Array.from(root.style)) if (name.startsWith('--vscode-')) root.style.removeProperty(name);
-  for (const [name, value] of Object.entries(profile.workbenchColors ?? {})) {
+  for (const [name, value] of Object.entries({ ...profile.workbenchColors, ...gitDecorationColors(profile) })) {
     root.style.setProperty(`--vscode-${name.replaceAll('.', '-')}`, value);
   }
 }

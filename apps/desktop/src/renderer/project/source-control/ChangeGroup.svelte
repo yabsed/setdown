@@ -1,11 +1,13 @@
 <script lang="ts">
   import type { GitChange } from '../../../protocol/desktop-api';
+  import { gitChangeDecoration } from '../../../core/project/git-file-decorations';
   import SideViewMenu from '../SideViewMenu.svelte';
   import type { EditorOpenOptions } from '../../../core/workspace/editor-groups';
   import { project } from '../project-state.svelte';
 
   let {
     title,
+    staged = false,
     changes,
     primaryLabel,
     primary,
@@ -16,6 +18,7 @@
     toggle,
   }: {
     title: string;
+    staged?: boolean;
     changes: GitChange[];
     primaryLabel: string;
     primary(paths: string[]): void;
@@ -61,9 +64,11 @@
     {#if expanded}
     <div id={contentId} class="git-changes">
       {#each changes as change (`${title}:${change.path}`)}
-        <div class="git-change" title={change.path}>
+        {@const decoration = gitChangeDecoration(change, staged)}
+        <div class="git-change" title={change.path} data-git-status={decoration?.tooltip}
+          style:--git-change-color={decoration ? `var(--vscode-${decoration.color.replaceAll('.', '-')})` : undefined}>
           <button class="git-change-open" type="button" onclick={() => review(change.filePath)}>
-            <span>{base(change.path)}</span>
+            <span style:color="var(--git-change-color, inherit)">{base(change.path)}</span>
             {#if directory(change.path) !== change.path}<small>{directory(change.path)}</small>{/if}
           </button>
           <div class="git-change-actions">
@@ -82,7 +87,7 @@
             { label: 'Open File', disabled: change.workingTreeStatus === 'D', run: () => open(change.filePath, { pinned: true }) },
             { label: 'Open File to the Side', disabled: change.workingTreeStatus === 'D', run: () => open(change.filePath, { side: true, pinned: true }) },
           ]} />
-          <b class:is-conflict={change.conflict}>{change.status}</b>
+          <b title={decoration?.tooltip}>{decoration?.badge ?? change.status}</b>
         </div>
       {/each}
     </div>

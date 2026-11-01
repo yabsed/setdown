@@ -2,6 +2,7 @@ import { GitPreferences } from './git-preferences';
 import { gitSettings, type GitSettings } from '../../core/project/git-settings';
 import { discoverRepositories } from './engines/git-repositories';
 import { gitChangeGroups } from '../../core/project/git-change-groups';
+import { gitFileDecorations } from '../../core/project/git-file-decorations';
 import { isInside } from '../documents/file-system';
 import { GitMetadataWatcher } from './engines/git-metadata-watcher';
 import path from 'node:path';
@@ -171,8 +172,38 @@ export class GitService {
         && ((settings.scmCountBadge === 'all' && discovery.errors.length > 0)
           || errors.some(error => counted.includes(error.root)) || counted.some(root => results.get(root)?.statusLimited)),
       pendingChanges,
+      decorations: visibleRoots.flatMap(root => [...gitFileDecorations(results.get(root)?.changes ?? [])]
+        .map(([relative, decoration]) => ({ ...decoration, path: path.join(root, relative) }))),
       changes: (parsed?.changes ?? []).map(change => ({ ...change, filePath: path.join(selected!, change.path) })),
     };
+  }
+
+  /** Like GitIgnoreDecorationProvider: batch only requested tree entries per
+   * repository, and let Git handle nested/global ignores, negation and the index. */
+  async ignoredPaths(state: WindowState, candidates: string[]): Promise<string[]> {
+    const explorerRoot = this.paths.root(state);
+    if (!Array.isArray(candidates) || candidates.length > 10_000) throw Error('Too many Explorer paths.');
+    const paths = [...new Set(candidates.map(candidate => this.paths.entry(state, candidate)))];
+    const preferences = await this.preferences.get(explorerRoot);
+    const discovery = await this.discover(explorerRoot, preferences.settings);
+    const roots = [...discovery.roots, ...(discovery.parent && preferences.parent === discovery.parent ? [discovery.parent] : [])]
+      .sort((a, b) => b.length - a.length);
+    const batches = new Map<string, string[]>();
+    for (const candidate of paths) {
+      const root = roots.find(root => isInside(root, candidate));
+      // Do not let a hidden child repository inherit a parent's ignore rules.
+      if (!root || preferences.hidden.includes(root)) continue;
+      const batch = batches.get(root) ?? []; batch.push(candidate); batches.set(root, batch);
+    }
+    const ignored: string[] = [];
+    const entries = [...batches];
+    for (let offset = 0; offset < entries.length; offset += 4) {
+      await Promise.all(entries.slice(offset, offset + 4).map(async ([root, paths]) => {
+        const repository = await this.repository(root);
+        if (repository) ignored.push(...await repository.checkIgnore(paths));
+      }));
+    }
+    return state.projectRoot === explorerRoot ? ignored : [];
   }
 
   private async readStatus(repository: GitCli, settings: GitSettings): Promise<ParsedStatus> {

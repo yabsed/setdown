@@ -1,4 +1,5 @@
-import watcher, { type AsyncSubscription } from '@parcel/watcher';
+import type { AsyncSubscription } from '@parcel/watcher';
+import { subscribeToFiles } from '../../documents/native-watcher';
 import type { WindowState } from '../../windows/window-state';
 
 const IGNORE = [
@@ -24,7 +25,7 @@ export class ProjectWatcher implements ProjectWatcherPort {
     this.generations.set(id, generation);
     await this.unsubscribe(id);
     if (this.generations.get(id) !== generation || state.window.isDestroyed()) return;
-    const subscription = await watcher.subscribe(root, (error, events) => {
+    const subscription = await subscribeToFiles(root, (error, events) => {
       if (error) {
         console.error('Project watcher failed:', error);
         return;
@@ -32,7 +33,7 @@ export class ProjectWatcher implements ProjectWatcherPort {
       if (this.generations.get(id) !== generation || state.window.isDestroyed()
         || state.window.webContents.isDestroyed()) return;
       state.window.webContents.send('project:files-changed', { root, paths: [...new Set(events.map(event => event.path))] });
-    }, { ignore: IGNORE });
+    }, { ignore: IGNORE }, () => this.generations.get(id) === generation && !state.window.isDestroyed());
     if (this.generations.get(id) !== generation || state.window.isDestroyed()) {
       await subscription.unsubscribe();
       return;
