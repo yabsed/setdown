@@ -1,0 +1,31 @@
+Preview latency comparison (milliseconds; baseline -> candidate)
+Baseline: 5541324d1c1967e8a41c30fb6cd91223ba465b83; separate installation, Electron 44.7.2.
+Same isolated Xvfb display :99, identical settings; SETDOWN_BUILD_SOURCEMAP=0 for both builds.
+Five repetitions per version; eight scenarios; five cycles per app; 80 app launches.
+First and second cycles are separate. Warm is median(cycles 3-5), then median across repetitions.
+Preparation is source idle time (0 or 3000ms); ordinary reader idle is always 0ms.
+captureMs: Escape to latest-content nonempty native capture, including IPC/polling/readback; not monitor presentation latency.
+doubleClickToEditorMs: actual double-click to editable source.
+Unchanged regression threshold: increase exceeds BOTH 25% and 50ms.
+
+surface  | prep_ms | edited | metric               | first           | second          | warm
+-------------------------------------------------------------------------------------------------------------------
+document |       0 | false  | captureMs            |   54.0 ->   67.0 |   38.0 ->   23.0 |   25.0 ->   21.0
+document |       0 | false  | doubleClickToEditorMs |   20.0 ->   18.0 |   34.0 ->   22.0 |   14.0 ->   15.0
+document |       0 | true   | captureMs            |  337.0 ->  342.0 |   97.0 ->   96.0 |   87.0 ->   83.0
+document |       0 | true   | doubleClickToEditorMs |   17.0 ->   17.0 |   15.0 ->   16.0 |   14.0 ->   14.0
+document |    3000 | false  | captureMs            |   24.0 ->   26.0 |   19.0 ->   20.0 |   15.0 ->   21.0
+document |    3000 | false  | doubleClickToEditorMs |   18.0 ->   18.0 |   15.0 ->   16.0 |   15.0 ->   14.0
+document |    3000 | true   | captureMs            |  113.0 ->   96.0 |   93.0 ->   84.0 |   85.0 ->   85.0
+document |    3000 | true   | doubleClickToEditorMs |   18.0 ->   16.0 |   14.0 ->   16.0 |   14.0 ->   14.0
+review   |       0 | false  | captureMs            | 1076.0 -> 1069.0 |   24.0 ->   22.0 |   24.0 ->   18.0
+review   |       0 | false  | doubleClickToEditorMs |   21.0 ->   21.0 |   10.0 ->   11.0 |   10.0 ->   11.0
+review   |       0 | true   | captureMs            | 1087.0 -> 1147.0 | 1601.0 -> 1647.0 |  167.0 ->  169.0
+review   |       0 | true   | doubleClickToEditorMs |   20.0 ->   20.0 |   15.0 ->   15.0 |   15.0 ->   14.0
+review   |    3000 | false  | captureMs            |   24.0 ->   29.0 |   25.0 ->   24.0 |   21.0 ->   20.0
+review   |    3000 | false  | doubleClickToEditorMs |   20.0 ->   20.0 |   11.0 ->   10.0 |   15.0 ->   15.0
+review   |    3000 | true   | captureMs            |  230.0 ->  228.0 |  196.0 ->  189.0 |  167.0 ->  170.0
+review   |    3000 | true   | doubleClickToEditorMs |   18.0 ->   18.0 |   15.0 ->   14.0 |   14.0 ->   13.0
+
+PASS: all 48 comparisons; 0 regressions. No missing/stale scenarios or measurement failures.
+Raw data and per-run logs: benchmark/comparison.json and benchmark/.

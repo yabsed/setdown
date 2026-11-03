@@ -396,7 +396,9 @@ function previewStyles(themeId: PreviewThemeId, screenTypography: boolean): stri
       }
       .markdown-preview img,
       .markdown-preview video,
-      .markdown-preview svg { max-width: 100%; height: auto; }
+      /* KaTeX SVGs inherit a calculated height. Their wide viewBoxes collapse
+         braces, radicals and accents if responsive media sizing overrides it. */
+      .markdown-preview svg:not(.katex svg) { max-width: 100%; height: auto; }
       .markdown-preview p,
       .markdown-preview li,
       .markdown-preview blockquote { overflow-wrap: break-word; }

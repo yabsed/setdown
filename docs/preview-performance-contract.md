@@ -20,6 +20,11 @@ The linked contracts below are part of this contract. Read the matching feature
 contract before changing its behavior. Dated execution evidence is kept separately
 from current guarantees; moving it does not remove any required scenario.
 
+Responsive media sizing must preserve KaTeX's calculated SVG heights. Braces,
+accents, radicals and extensible arrows use SVG viewBoxes that are not image
+aspect ratios. `preview/stretchy-math.spec.ts` checks their geometry and actual
+brace pixels in light/dark Electron readers, along with responsive authored SVGs.
+
 ## Guarantees and ownership
 
 Local Reload and external-change reconciliation must preserve these guarantees:

@@ -1,0 +1,40 @@
+Setdown math SVG regression — 2026-11-03
+
+Cause
+The responsive media rule `.markdown-preview svg { max-width: 100%; height: auto; }`
+overrode KaTeX's `height: inherit`. Underbrace SVGs have a 400000-by-548 viewBox;
+treating that as an image aspect ratio collapses the curve while its text label remains.
+An isolated Chromium reproduction measured 10.59375px inherited brace heights versus
+0.015625–0.046875px with the Setdown media rule (default-size standalone fixture).
+
+Change
+Exclude SVGs inside .katex from responsive image sizing. KaTeX retains its calculated
+height; authored SVG images retain their responsive sizing.
+The fixture preserves the reported aligned equation and additionally covers overbrace,
+radical, extensible arrow, and a wide authored SVG image.
+The Electron regression checks real geometry and captured brace pixels in light/dark themes.
+The original build failed this regression; the corrected build passed.
+
+Validation
+SETDOWN_BUILD_SOURCEMAP=0 npm run test:preview-contract: PASS
+  103 unit test files / 788 tests
+  14 build and benchmark tooling tests
+  production build, TypeScript and Svelte checks (0 errors/warnings)
+  285 real Electron/Chromium scenarios, retries disabled, 14.5 minutes
+Focused regression: 1 passed; before-fix.log retains the expected original failure.
+All GUI runs use with-isolated-display.sh (private Xvfb, runtime directory and D-Bus;
+no inherited Wayland socket). User desktop was not used.
+Screenshots: after-light.png and after-dark.png.
+
+Benchmark setup
+Baseline commit: 5541324, separate local clone with independently installed dependencies
+and Electron. Candidate and baseline use SETDOWN_BUILD_SOURCEMAP=0.
+Default five repetitions per version, eight scenarios, five cycles per app (80 launches).
+No tolerance, fixture, scenario or retry changes.
+Baseline installation initially encountered an unused optional canvas build failure;
+required install scripts completed successfully. The baseline was moved out of node_modules
+because esbuild ignores nested package tsconfig paths there; its source stayed unchanged.
+Sandbox subprocess/display restrictions required authorized execution. No approval was denied.
+Benchmark PASS: all 80 launches completed, all 48 comparisons passed, 0 regressions.
+First/second/warm results for both metrics and all eight scenarios: preview-latency.txt.
+Raw evidence: preview-benchmark.log and benchmark/comparison.json.
