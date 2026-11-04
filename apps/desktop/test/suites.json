@@ -49,6 +49,8 @@
       "src/main/notebook/python-environments.test.ts",
       "src/main/preview/preview-presentation.test.ts",
       "src/main/preview/preview-renderer.test.ts",
+      "src/main/preview/math-compat.test.ts",
+      "src/main/preview/source-anchors.test.ts",
       "src/main/preview/review-preparation.test.ts",
       "src/main/project/explorer-clipboard.test.ts",
       "src/main/project/explorer-service.test.ts",
@@ -120,6 +122,7 @@
     "browser/downloads.spec.ts": {
       "previewContract": true
     },
+    "browser/reader-selection.spec.ts": { "previewContract": true },
     "browser/find.spec.ts": {
       "previewContract": true
     },
@@ -239,6 +242,11 @@
       "previewContract": true
     },
     "preview/stretchy-math.spec.ts": {
+      "previewContract": true
+    },
+    "preview/find-overlay.spec.ts": { "previewContract": true },
+    "terminal/search.spec.ts": { "previewContract": true },
+    "preview/math-compat.spec.ts": {
       "previewContract": true
     },
     "preview/preview-local-links.spec.ts": {

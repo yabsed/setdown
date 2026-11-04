@@ -84,7 +84,9 @@ export function installIpc(options: Options): void {
   channels.handle('menu:get', menuEntries);
   const browserFind = new BrowserFindOverlay((owner, id) => {
     const entry = options.browsers.views.get(id);
-    return entry?.owner === owner && !entry.contents.isDestroyed() ? entry.view : undefined;
+    if (entry?.owner === owner && !entry.contents.isDestroyed()) return entry.view;
+    const preview = previews.views.get(id);
+    return preview?.ownerWebContentsId === owner && !preview.view.webContents.isDestroyed() ? preview.view : undefined;
   }, step => previews.zoom.change(step));
   channels.handle('browser-find:show', (state, request) => browserFind.show(state, request, themes.id));
   channels.on('browser-find:hide', (state, token) => { if (typeof token === 'string') browserFind.hide(state.webContentsId, token); });

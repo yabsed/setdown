@@ -1,49 +1,20 @@
 <script lang="ts">
+  import ReaderFind from './ReaderFind.svelte';
   import { view } from '../workspace/workspace-view.svelte';
-import type { AppActions } from '../ports/ui-actions';
+  import type { AppActions } from '../ports/ui-actions';
   import { resizePanelWithKeyboard, startPanelResize } from '../shell/panel-resize';
 
   let { actions }: { actions: AppActions } = $props();
-  let findInput: HTMLInputElement;
+  let frames = $state<HTMLDivElement>();
   const resize = { property: '--toc-panel-width' as const, direction: -1 as const,
     min: 180, max: () => innerWidth * .46 };
 
-  $effect(() => {
-    if (!view.findOpen || view.surface !== 'viewer') return;
-    queueMicrotask(() => {
-      findInput?.focus({ preventScroll: true });
-      findInput?.select();
-    });
-  });
-
-  function findKey(event: KeyboardEvent) {
-    if (event.key === 'Enter' && !event.isComposing) {
-      event.preventDefault();
-      actions.find(view.findQuery, event.shiftKey ? 'backward' : 'forward', true);
-    } else if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      actions.closeFind();
-    }
-  }
 </script>
 
 <section class="viewer-surface" aria-label="Rendered Markdown">
   <div class="reader-body">
-    <div class="preview-frames">
-      <div class="preview-search" role="search" hidden={!view.findOpen || view.surface !== 'viewer'}>
-        <input bind:this={findInput} bind:value={view.findQuery} type="search" autocomplete="off"
-          spellcheck="false" aria-label="Find in rendered document" placeholder="Find…"
-          oninput={() => actions.find(view.findQuery)} onkeydown={findKey} />
-        <span class="find-count" aria-live="polite">
-          {view.findMatches ? `${view.findActive} / ${view.findMatches}` : '0 / 0'}
-        </span>
-        <button class="find-previous" type="button" aria-label="Previous match"
-          onclick={() => actions.find(view.findQuery, 'backward', true)}>↑</button>
-        <button class="find-next" type="button" aria-label="Next match"
-          onclick={() => actions.find(view.findQuery, 'forward', true)}>↓</button>
-        <button class="find-close" type="button" aria-label="Close search" onclick={actions.closeFind}>×</button>
-      </div>
+    <div class="preview-frames" bind:this={frames}>
+      <ReaderFind {actions} {frames} />
     </div>
     <aside class="toc-panel" aria-label="Document outline" hidden={!view.tocOpen}>
       <button class="panel-resize-handle panel-resize-left" type="button"

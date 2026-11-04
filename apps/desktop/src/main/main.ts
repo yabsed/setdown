@@ -209,6 +209,11 @@ else {
         if (scope && scope !== 'app') { if (id) previews.zoom.changeTab(id, steps); }
         else previews.zoom.change(steps);
       },
+      selectReaderContents: state => {
+        const id = previews.zoom.activeTab(state.webContentsId);
+        if (!id || !browsers.readerReady(state.webContentsId, id) || browsers.views.get(id)?.view.getVisible()) return false;
+        state.window.webContents.send('app:command', 'reader-select-all'); return true;
+      },
       sendCommand, setTheme: (theme) => themes.set(theme), theme: () => themes.id,
       webTheme: () => browsers.webThemes.snapshot().mode === 'app',
       toggleWebTheme: () => { void browsers.webThemes.update({ mode: browsers.webThemes.snapshot().mode === 'app' ? 'original' : 'app' })

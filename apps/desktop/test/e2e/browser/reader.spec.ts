@@ -193,7 +193,7 @@ test('Esc opens reader mode at the same block and double-click returns to the li
       return { font: style.fontFamily, size: style.fontSize };
     });
     expect(look.font).toContain('D2Coding');
-    expect(look.size).toBe('18px');
+    expect(look.size).toBe('22px');
     await expect.poll(() => reader.evaluate(el => {
       const rect = el.getBoundingClientRect();
       const golden = rect.top + el.clientHeight * 0.372;
@@ -288,7 +288,7 @@ test('reader toolbar and wheel share the live website tab zoom while other Markd
     await expect(textReset).toHaveText('120%');
     await f.page.getByRole('button', { name: 'Zoom text in', exact: true }).click();
     await expect(textReset).toHaveText('130%');
-    await expect.poll(() => reader.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeCloseTo(23.4, 2);
+    await expect.poll(() => reader.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeCloseTo(28.6, 2);
     await reader.hover();
     await f.page.keyboard.down('Control'); await f.page.mouse.wheel(0, -80); await f.page.keyboard.up('Control');
     await expect(textReset).toHaveText('140%');

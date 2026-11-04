@@ -26,6 +26,7 @@ import {
 } from '../../core/preview/preview-preferences';
 import { lineCount } from '../../core/document/document-state';
 import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
+import { installMathCompatibility, previewMathDelimiters } from './math-compat';
 import { previewRelativeReference, resolvePreviewFileReference } from './preview-resources';
 import { resourceUrl } from './resource-url';
 import { canonicalPath, isInside } from '../documents/file-system';
@@ -208,6 +209,7 @@ async function getNotebook(
       previewTheme: previewThemeFile(themeId),
       codeBlockTheme: 'auto.css',
       mathRenderingOption: 'KaTeX',
+      ...previewMathDelimiters,
       enablePreviewZenMode: true,
       enablePreviewContextMenu: false,
       enableScriptExecution: false,
@@ -219,6 +221,7 @@ async function getNotebook(
     },
   });
   notebook.previewScriptsEnabled = false;
+  installMathCompatibility(notebook.md as unknown as Parameters<typeof installMathCompatibility>[0]);
   // 순서가 중요하다. 지연 삽입이 안쪽(원래 KaTeX renderer)을 감싸고,
   // source anchor가 그 바깥을 감싸야 자리표시자에 행·열이 붙는다.
   installDeferredMath(notebook.md as unknown as MarkdownItLike);

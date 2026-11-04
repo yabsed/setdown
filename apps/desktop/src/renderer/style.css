@@ -884,49 +884,6 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 .toc-item:hover { color: var(--app-text); background: var(--app-hover); }
 .toc-item.is-active { color: var(--app-text); background: var(--app-selected); font-weight: 650; }
 .toc-empty { margin: 12px 10px; color: var(--app-subtle-text); font-size: 11px; line-height: 1.5; }
-.preview-search {
-  position: absolute;
-  top: 10px;
-  right: 22px;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  width: min(360px, calc(100% - 44px));
-  height: 40px;
-  padding: 5px 6px 5px 10px;
-  color: var(--app-text);
-  border: 1px solid var(--app-border);
-  border-radius: 3px;
-  background: var(--app-raised-surface);
-  box-shadow: 0 4px 12px var(--app-shadow);
-}
-.preview-search[hidden] { display: none; }
-.preview-search input {
-  flex: 1;
-  min-width: 70px;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  font: inherit;
-  color: var(--app-text);
-  font-size: 13px;
-}
-.preview-search input::-webkit-search-cancel-button { display: none; }
-.preview-search input::placeholder { color: var(--app-subtle-text); }
-.find-count { flex: 0 0 auto; padding: 0 6px; color: var(--app-muted-text); font-size: 11px; font-variant-numeric: tabular-nums; }
-.preview-search button {
-  width: 25px;
-  height: 25px;
-  padding: 0;
-  color: var(--app-muted-text);
-  border: 0;
-  border-radius: 2px;
-  background: transparent;
-  cursor: pointer;
-}
-.preview-search button:hover { color: var(--app-text); background: var(--app-hover); }
-.find-close { font-size: 17px; }
 
 .editor-host { width: 100%; height: 100%; }
 .monaco-editor .editor-project-search-match { background: rgba(214, 164, 30, .45); }

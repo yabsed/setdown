@@ -1,4 +1,4 @@
-import { app, Menu } from 'electron';
+import { app, Menu, webContents } from 'electron';
 import type { BrowserWindow, MenuItem } from 'electron';
 import type { ApplicationMenuEntry, AppCommand } from '../../protocol/desktop-api';
 import { PREVIEW_THEMES, type PreviewThemeId } from '../../core/preview/preview-preferences';
@@ -10,6 +10,7 @@ type MenuContext = {
   openDocument: (state: WindowState) => unknown;
   reloadWindow: (state: WindowState, ignoreCache?: boolean) => void;
   sendCommand: (command: AppCommand) => void;
+  selectReaderContents: (state: WindowState) => boolean;
   setTheme: (theme: PreviewThemeId) => void;
   theme: () => PreviewThemeId;
   webTheme: () => boolean;
@@ -76,7 +77,15 @@ export function installApplicationMenu(context: MenuContext) {
     const current = state();
     if (current?.explorerEditTarget && current.window.webContents.isFocused()) return command(`explorer:${name}`);
     const target = contents();
-    if (name === 'select-all') target?.selectAll();
+    if (name === 'select-all') {
+      // Native pages/find inputs own their selection. A shell-rendered Reader
+      // needs a scoped range instead of selecting every split in the window.
+      const focused = webContents.getFocusedWebContents();
+      const ownsNative = focused && focused !== target && current?.window.contentView.children.some(view =>
+        'webContents' in view && view.webContents === focused);
+      if (ownsNative) focused.selectAll();
+      else if (!current || !context.selectReaderContents(current)) target?.selectAll();
+    }
     else target?.[name]();
   };
   const menu = Menu.buildFromTemplate([

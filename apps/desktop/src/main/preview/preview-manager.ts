@@ -422,6 +422,10 @@ export class PreviewManager {
       && message?.command === 'marktex:prime-review') this.create(ownerId, tabId);
     const preview = this.views.get(String(tabId));
     if (!preview || preview.ownerWebContentsId !== ownerId) return;
+    if (message?.command === 'marktex:focus-preview') {
+      if (preview.view.getVisible()) preview.view.webContents.focus();
+      return;
+    }
     if (message?.command === 'marktex:prime-document') {
       const bounds = readPreviewBounds(message.bounds);
       if (!bounds || !this.preparation.primeDocument(preview.view)) return;

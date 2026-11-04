@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { findOverlay, findOverlayVisible } from '../../support/browser/browser-fixture';
 import { previews } from '../../support/preview/preview-view';
 import { disposeApplication } from '../../support/electron/electron-app';
 
@@ -17,13 +18,14 @@ test('preview find keeps Unicode offsets and excludes authored hidden text', asy
     await expect.poll(() => reading.evaluate("document.querySelector('.markdown-preview')?.textContent || ''")).toContain('İxvisible');
     await page.locator('.application-menu button', { hasText: 'View' }).click();
     await page.locator('.application-menu-popup button', { hasText: 'Find in Preview' }).click();
-    const input = page.locator('.preview-search input');
+    const panel = await findOverlay(app);
+    const input = panel.getByRole('textbox', { name: 'Find in rendered document' });
     await input.fill('xvisible');
-    await expect(page.locator('.find-count')).toHaveText('1 / 1');
+    await expect(panel.locator('.find-count')).toHaveText('1 / 1');
     await expect(input).toBeFocused();
     expect(await reading.evaluate("getComputedStyle([...document.querySelectorAll('.markdown-preview p')].find(p => p.textContent === 'invisible-secret')).display")).toBe('none');
     await input.fill('invisible-secret');
-    await expect(page.locator('.find-count')).toHaveText('0 / 0');
+    await expect(panel.locator('.find-count')).toHaveText('0 / 0');
     await expect(input).toBeFocused();
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
@@ -81,9 +83,10 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     });
     await window.locator('.application-menu-popup button', { hasText: 'Find in Preview' }).click();
     await expect(window.locator('.application-menu-popup')).toBeHidden();
-    await expect(window.locator('.preview-search')).toBeVisible();
-    await window.locator('.find-close').click();
-    await expect(window.locator('.preview-search')).toBeHidden();
+    const panel = await findOverlay(application);
+    await expect.poll(() => findOverlayVisible(application)).toBe(true);
+    await panel.getByRole('button', { name: 'Close search', exact: true }).click();
+    await expect.poll(() => findOverlayVisible(application)).toBe(false);
 
     const reading = previews(application);
     await expect.poll(() => reading.evaluate(
@@ -142,23 +145,21 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       "document.querySelector('.md-sidebar-toc')?.className ?? 'none'",
     )).toMatch(/hidden|none/);
     await window.keyboard.press('Control+F');
-    await expect(window.locator('.preview-search')).toBeVisible();
-    await expect(window.locator('.preview-search input')).toBeFocused();
+    await expect.poll(() => findOverlayVisible(application)).toBe(true);
+    await expect(panel.getByRole('textbox', { name: 'Find in rendered document' })).toBeFocused();
     const previewBoundsWithFind = await window.locator('.preview-frames').boundingBox();
     expect(previewBoundsWithFind).toEqual(previewBoundsBeforeFind);
-    const searchBounds = await window.locator('.preview-search').boundingBox();
+    const overlayBounds = await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children
+      .find(v => 'webContents' in v && (v as Electron.WebContentsView).webContents.getURL().includes('browser-find-overlay=1'))!.getBounds());
     const tocBoundsWhileFinding = await window.locator('.toc-panel').boundingBox();
-    expect(searchBounds).toBeTruthy();
     expect(tocBoundsWhileFinding).toBeTruthy();
-    expect(Math.abs((searchBounds?.x ?? 0) + (searchBounds?.width ?? 0)
-      - (previewBoundsWithFind?.x ?? 0) - (previewBoundsWithFind?.width ?? 0) + 22))
-      .toBeLessThanOrEqual(1);
-    expect((searchBounds?.x ?? 0) + (searchBounds?.width ?? 0))
-      .toBeLessThanOrEqual(tocBoundsWhileFinding?.x ?? 0);
-    expect(await window.locator('.preview-search').evaluate((element) =>
-      getComputedStyle(element).borderRadius)).toBe('3px');
-    await window.locator('.preview-search input').fill('검색대상');
-    const findCount = window.locator('.find-count');
+    expect(overlayBounds.x).toBeGreaterThanOrEqual(previewBoundsWithFind!.x);
+    expect(overlayBounds.x + overlayBounds.width).toBeLessThanOrEqual(tocBoundsWhileFinding!.x);
+    expect(await panel.locator('.web-find-panel').evaluate(element => getComputedStyle(element).borderRadius)).toBe('3px');
+    // Search is a floating native panel, leaving the entire document viewport intact.
+    expect(await reading.visibleBounds()).toEqual(previewBoundsBeforeFind);
+    await panel.getByRole('textbox', { name: 'Find in rendered document' }).fill('검색대상');
+    const findCount = panel.locator('.find-count');
     await expect(findCount).toHaveText('1 / 2');
     await findCount.evaluate((element) => {
       const changes = [element.textContent?.trim() ?? ''];
@@ -167,9 +168,9 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       new MutationObserver(() => changes.push(element.textContent?.trim() ?? ''))
         .observe(element, { childList: true, characterData: true, subtree: true });
     });
-    await window.locator('.preview-search input').press('Enter');
+    await panel.getByRole('textbox', { name: 'Find in rendered document' }).press('Enter');
     await expect(findCount).toHaveText('2 / 2');
-    const findCountChanges = await window.evaluate(() =>
+    const findCountChanges = await panel.evaluate(() =>
       (window as typeof window & { __setdownFindCountChanges?: string[] })
         .__setdownFindCountChanges ?? []);
     expect(findCountChanges).toContain('2 / 2');
@@ -193,6 +194,10 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     await window.locator('.document-tab', { hasText: 'reader-tools.md' }).click();
     await expect(window.locator('.toc-panel')).toBeVisible();
 
+    // Test semantic restoration away from the start/end scroll clamps. The
+    // start boundary is checked separately above after the Medium switch.
+    await reading.evaluate('scrollTo(0, 1200); true');
+    await expect.poll(() => reading.evaluate('Math.round(scrollY)')).toBe(1200);
     const beforeUrls = await reading.urls();
     await application.evaluate(({ Menu }) => {
       Menu.getApplicationMenu()?.getMenuItemById('preview-theme-night')?.click();
@@ -275,19 +280,14 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       const [width, height] = owner.getSize();
       owner.setSize(width + 120, height + 80);
     });
-    // 검색 바를 위해 비운 위쪽 띠를 제외하고 native view의 bounds가 DOM
-    // placeholder와 맞는지 본다.
+    // Resizing with search open retains the full native viewport, with no top strip.
     await expect.poll(async () => {
       const host = await window.locator('.preview-frames').boundingBox();
-      const search = await window.locator('.preview-search').boundingBox();
-      const view = await reading.visibleBounds();
-      return !!host && !!search && !!view
-        && Math.abs(host.x - view.x) <= 1
-        && Math.abs(search.y + search.height + 10 - view.y) <= 1
-        && Math.abs(host.width - view.width) <= 1
-        && Math.abs(host.y + host.height - view.y - view.height) <= 1;
+      const bounds = await reading.visibleBounds();
+      return !!host && !!bounds && Math.abs(host.x - bounds.x) <= 1 && Math.abs(host.y - bounds.y) <= 1
+        && Math.abs(host.width - bounds.width) <= 1 && Math.abs(host.height - bounds.height) <= 1;
     }).toBe(true);
-    await expect(window.locator('.preview-search input')).toHaveValue('검색대상');
+    await expect(panel.getByRole('textbox', { name: 'Find in rendered document' })).toHaveValue('검색대상');
     await window.locator('.document-tab', { hasText: 'Untitled.md' }).click();
     await expect(window.locator('.editor-surface')).toBeVisible();
     await window.locator('.monaco-editor').click({ position: { x: 120, y: 80 } });
@@ -312,10 +312,10 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     await expect.poll(() => application.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows().length)).toBe(2);
     let secondWindow = application.windows().find((candidate) =>
-      candidate !== window && candidate.url().startsWith('file:'));
+      candidate !== window && candidate.url().startsWith('file:') && !candidate.url().includes('overlay=1'));
     await expect.poll(() => {
       secondWindow = application.windows().find((candidate) =>
-        candidate !== window && candidate.url().startsWith('file:'));
+        candidate !== window && candidate.url().startsWith('file:') && !candidate.url().includes('overlay=1'));
       return !!secondWindow;
     }).toBe(true);
     if (!secondWindow) throw new Error('The second application window did not open.');

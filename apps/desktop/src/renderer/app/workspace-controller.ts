@@ -192,7 +192,7 @@ export function startWorkspace(desktop: DesktopPort) {
     submitLink: () => insertions.submitLink(), closeLink: () => insertions.closeLink(),
     pickLinkFile: () => void insertions.pickLinkFile(), toggleToc,
     find: (query, direction, next) => reader.find(query, direction, next),
-    closeFind: () => reader.closeFind(false), scrollToHeading,
+    closeFind: () => reader.closeFind(false, true), scrollToHeading,
     keepExternalChange: () => documents.keepExternalChange(),
     reloadExternalChange: () => { if (workspace.activeId) void actions.reloadLocalDocument(workspace.activeId); },
     pathsForDroppedFiles: files => files.map(file => desktop.pathForFile(file)).filter(Boolean),
@@ -484,6 +484,14 @@ export function startWorkspace(desktop: DesktopPort) {
       if (command === 'language-support') { window.dispatchEvent(new Event('setdown:language-support')); return; }
       if (command === 'new-web-tab') { actions.newWebTab(); return; }
       if (command === 'reopen-web-tab') { void desktop.browser.reopen().catch(error => { browser.error = String(error); }); return; }
+      if (command === 'reader-select-all') {
+        // Address/search fields retain their own Select All even while a Reader
+        // is the active tab. Menu clicks otherwise select that tab's article.
+        if (document.activeElement?.matches('input, textarea, [contenteditable="true"]')) document.execCommand('selectAll');
+        else if (workspace.active?.kind === 'web' && browser.readers[workspace.active.id] && !project.gitDiffActive)
+          window.dispatchEvent(new CustomEvent('setdown:reader-select-all', { detail: workspace.active.id }));
+        return;
+      }
       if (command === 'focus-location') { window.dispatchEvent(new Event('setdown:focus-location')); return; }
       if ((command === 'navigate-back' || command === 'navigate-forward') && workspace.activeId && !project.gitDiffActive) {
         actions.navigateHistory(workspace.activeId, command === 'navigate-back' ? -1 : 1); return;
@@ -504,6 +512,9 @@ export function startWorkspace(desktop: DesktopPort) {
         if (document.activeElement?.matches('input, textarea, [contenteditable="true"]')) document.execCommand(command.slice(6));
         else if (active()) { if (command === 'image:undo') imageSessions.undo(active()!.id); else imageSessions.redo(active()!.id); }
         return;
+      }
+      if (command === 'open-find' && workspace.active?.kind === 'terminal' && !project.gitDiffActive) {
+        window.dispatchEvent(new Event('setdown:terminal-find')); return;
       }
       if (command === 'toggle-terminal') { projects.select('terminal'); return; }
       if (command === 'escape' && terminalOwnsInput()) return;

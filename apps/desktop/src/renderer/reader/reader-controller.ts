@@ -105,13 +105,14 @@ export class ReaderController {
     const tab = this.options.active();
     if (!tab || tab.surface !== 'viewer') return;
     tab.find.open = true;
+    view.findFocus++;
     this.searchSource = 'find';
     this.syncUi();
     this.syncView();
     this.restoreSearch(tab);
   }
 
-  closeFind(clearQuery = false) {
+  closeFind(clearQuery = false, restoreFocus = false) {
     const tab = this.options.active();
     if (!tab) return;
     Object.assign(tab.find, { open: false, activeMatch: 0, matches: 0 });
@@ -120,6 +121,7 @@ export class ReaderController {
     this.syncUi();
     this.syncView();
     this.restoreSearch(tab);
+    if (restoreFocus) this.send(tab.id, { command: 'marktex:focus-preview' });
   }
 
   projectSearch(query: string, target?: SearchTarget) {
@@ -295,13 +297,7 @@ export class ReaderController {
       return;
     }
     const rect = this.options.frames.getBoundingClientRect();
-    const reserved = tab.find.open ? 60 : 0;
-    const bounds = {
-      x: rect.left,
-      y: rect.top + reserved,
-      width: rect.width,
-      height: Math.max(0, rect.height - reserved),
-    };
+    const bounds = { x: rect.left, y: rect.top, width: rect.width, height: rect.height };
     this.options.desktop.showPreview(tab.id, bounds, backgrounds,
       this.options.layoutGuide?.([...backgrounds, { tabId: tab.id, bounds }]));
   };

@@ -127,6 +127,7 @@ test('ctrl+wheel over the terminal changes terminal zoom only and refits the gri
     const box = await page.locator('.terminal-instance').boundingBox();
     const fontOf = () => page.locator('.terminal-instance .xterm-rows').evaluate(el => getComputedStyle(el).fontSize);
     const font0 = await fontOf();
+    expect(font0).toBe('16px');
     const initial = (await readFile(path.join(root, 'size-0.txt'), 'utf8')).trim();
     await page.keyboard.down('Control');
     await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);

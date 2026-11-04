@@ -34,10 +34,15 @@
     const id = tabId, source = snapshot;
     const command = await actions.browserReaderMenu(id, { selection: text, link });
     if (!container?.isConnected || tabId !== id || snapshot !== source || !browser.readers[id]) return;
-    if (command === 'select-all') { const range = document.createRange(); range.selectNodeContents(content); selection?.removeAllRanges(); selection?.addRange(range); }
+    if (command === 'select-all') selectAll();
     else if (command === 'find') window.dispatchEvent(new Event('setdown:browser-find'));
     else if (command === 'export-markdown') await exportArticle('markdown');
     else if (command === 'export-pdf') await exportArticle('pdf');
+  }
+  function selectAll() {
+    container.focus({ preventScroll: true });
+    const range = document.createRange(); range.selectNodeContents(content);
+    const selection = window.getSelection(); selection?.removeAllRanges(); selection?.addRange(range);
   }
   let appliedTop = -1, userScrolled = false, linkTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -75,6 +80,8 @@
     const current = () => !disposed && container === element && element.isConnected;
     const focus = ((event: CustomEvent<string>) => { if (current() && event.detail === tabId) element.focus({ preventScroll: true }); }) as EventListener;
     window.addEventListener('setdown:reader-focus', focus);
+    const select = ((event: CustomEvent<string>) => { if (current() && event.detail === tabId) selectAll(); }) as EventListener;
+    window.addEventListener('setdown:reader-select-all', select);
     finder = createRenderedFind(container, content, tabId, (active, matches) => {
       if (browser.findId === tabId) { browser.active = active; browser.matches = matches; }
     });
@@ -84,7 +91,7 @@
     const settle = () => { if (current() && !userScrolled) positionAt(browser.readerPositions[tabId] ?? snapshot.anchor); };
     element.addEventListener('load', settle, true);
     const timer = setTimeout(settle, 350);
-    return () => { disposed = true; window.removeEventListener('setdown:reader-focus', focus); finder?.dispose(); element.removeEventListener('load', settle, true); clearTimeout(timer); clearTimeout(linkTimer); cancelAnimationFrame(publishFrame); };
+    return () => { disposed = true; window.removeEventListener('setdown:reader-focus', focus); window.removeEventListener('setdown:reader-select-all', select); finder?.dispose(); element.removeEventListener('load', settle, true); clearTimeout(timer); clearTimeout(linkTimer); cancelAnimationFrame(publishFrame); };
   });
 
   function anchorFor(el: HTMLElement | undefined): ReaderAnchor {
@@ -142,7 +149,11 @@
   /** Keyboard counterpart of the double-click: Enter on the focused reader
    * returns to the page at the first visible block. */
   function keydown(event: KeyboardEvent) {
-    if (event.isComposing || event.key !== 'Enter' || event.target !== container) return;
+    if (event.isComposing) return;
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'a') {
+      event.preventDefault(); event.stopPropagation(); selectAll(); return;
+    }
+    if (event.key !== 'Enter' || event.target !== container) return;
     event.preventDefault();
     const blocks = stamped();
     const top = container.getBoundingClientRect().top;
@@ -177,7 +188,7 @@
      viewer's native surface; Enter is its keyboard return path. -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <section class="web-reader" aria-label="Reader mode" data-reader-tab={tabId} tabindex="-1"
-  data-zoom-tab={tabId} style:font-size={`${18 * (zoomState.tabs?.[tabId] ?? 100) / 100}px`} bind:this={container}
+  data-zoom-tab={tabId} style:font-size={`${22 * (zoomState.tabs?.[tabId] ?? 100) / 100}px`} bind:this={container}
   onscroll={onScroll}
   oncontextmenu={contextMenu}
   onclick={clicked} ondblclick={dblclick} onkeydown={keydown}>
@@ -193,7 +204,7 @@
 </section>
 
 <style>
-  /* Use the Markdown reader's preview background and app font, with an 18px
+  /* Use the Markdown reader's preview background and app font, with a 22px
      web reading base scaled by the tab factor (the shell already carries
      app zoom), a bounded reading column with 2em page padding and the
      Crossnote github-family element metrics. Colors come from the same theme

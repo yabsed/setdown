@@ -2,6 +2,7 @@ import type { PreviewThemeId } from '../core/preview/preview-preferences';
 import type { PreviewBounds } from './preview-preparation';
 
 export type BrowserFindRequest = {
+  scope?: 'markdown';
   token: string; id: string; focus: string; bounds: PreviewBounds;
   query: string; active: number; matches: number;
 };

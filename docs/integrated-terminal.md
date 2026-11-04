@@ -18,7 +18,7 @@ sidebar close button explicitly ends the process. Exited sessions retain their o
 and display an exited label until closed. Window close/reload terminates sessions
 owned by that window. App restart does not restore terminal processes.
 
-The cell font (13px base) follows the displaying tab's content factor. Each
+The cell font (16px base) follows the displaying tab's content factor. Each
 terminal tab starts at 100% and changes independently, even from other terminal
 tabs. Ctrl+wheel and address-bar controls update that tab and refit its PTY
 through the ordered resize path. Click the percentage in the address bar to
@@ -99,3 +99,14 @@ grid/PTY dimensions. Timer/ownership checks cover superseded resize, output
 deadlines and closing while input is waiting.
 Run GUI tests on Xvfb as required by AGENTS.md. These checks are included in the
 preview contract suite; the comparative latency gate still applies.
+
+## Terminal search
+
+Ctrl+F or Ctrl+Shift+F opens a floating search
+panel for that terminal's active buffer, including retained scrollback and wrapped
+lines. Enter/Shift+Enter and arrows move forward/backward with wrapping; Escape
+closes search and returns focus to the same PTY. IME composition owns its keys.
+Search never writes its query to the shell or resizes the terminal grid. Matches
+refresh as output arrives. The xterm search addon caps highlighted matches at
+1,000; the panel shows `1000+` when capped rather than claiming an exact total.
+`terminal/search.spec.ts` checks these behaviors in real isolated Electron.

@@ -9,7 +9,7 @@ import { appZoomStep } from '../../core/zoom';
 type Entry = { state: WindowState; view: WebContentsView; contents: WebContents;
   context: BrowserFindContext; ready: Promise<void>; generation: number; visible: boolean; focus: string };
 
-/** A small trusted surface above the live page; searching never resizes or captures it. */
+/** A trusted find panel above web pages and Markdown; never resize or capture the target. */
 export class BrowserFindOverlay {
   private readonly owners = new Map<number, Entry>();
   constructor(private readonly target: (owner: number, id: string) => WebContentsView | undefined,

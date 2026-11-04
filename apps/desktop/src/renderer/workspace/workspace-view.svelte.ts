@@ -49,6 +49,7 @@ export const view = $state({
   headings: [] as HeadingView[],
   activeHeadingId: null as string | null,
   findOpen: false,
+  findFocus: 0,
   findQuery: '',
   findActive: 0,
   findMatches: 0,

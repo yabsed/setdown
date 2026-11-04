@@ -68,7 +68,7 @@ They join the existing `media/image-reader.spec.ts` and full preview contract ga
 
 ### Document and web readers
 
-Web Reader uses an 18px body at 100% tab zoom, with proportional headings and
+Web Reader uses a 22px body at 100% tab zoom, with proportional headings and
 inline text. It retains the app font, theme colors and 900px maximum reading
 column. The existing tab zoom factor scales this base and survives entering or
 leaving Reader. `browser/reader.spec.ts` checks the base and scaled font sizes
@@ -329,3 +329,23 @@ introduced. Generated writing/auxiliary profiles remain opt-in, preserving the
 Markdown-only no-LSP guarantee. Profile/routing/discovery/manager/client tests and
 the npm TypeScript fixture in `language-registry.spec.ts` cover these boundaries.
 
+
+### Markdown find placement — 2026-11-05
+
+Markdown find uses the same trusted native floating panel as web find. Opening,
+closing or typing in the panel must leave the preview's full bounds, scroll
+position (until selecting a match), content and native view identity intact.
+There is no full-width reserved strip above the document. The panel stays inside
+the focused reader group, excluding the outline; split/zoom changes reposition
+it. Escape is IME-safe and restores focus to that reader. Source/tab changes hide
+the panel and stale panel actions cannot search a different tab.
+`preview-reading-tools.spec.ts` and `preview/find-overlay.spec.ts` verify native
+bounds, reading position, focus, counts, split/zoom placement and lifetime.
+
+Reader Ctrl+A/Cmd+A, the application menu and the reading context menu all
+select only the active article's content. Selection must exclude sibling
+terminals, other reader groups, location bars and application controls. Native
+web pages and find inputs retain their own selection target; address fields and
+terminal readline Ctrl+A keep their normal behavior.
+`browser/reader-selection.spec.ts` exercises DOM and native keyboard input,
+menu selection, clipboard-visible ranges, sibling terminals and live pages.

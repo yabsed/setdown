@@ -2,6 +2,7 @@
   import { onMount, tick } from 'svelte';
   import { Terminal } from '@xterm/xterm';
   import { FitAddon } from '@xterm/addon-fit';
+  import TerminalFind from './TerminalFind.svelte';
   import '@xterm/xterm/css/xterm.css';
   import { APP_FONT_FAMILY } from '../../core/theme/typography';
   import { terminalTheme, TERMINAL_MINIMUM_CONTRAST } from '../../core/theme/terminal-theme';
@@ -12,7 +13,9 @@
     changed(info: { title?: string; cwd?: string; exited?: boolean }): void } = $props();
   let container: HTMLDivElement;
   let error = $state('');
-  let term: Terminal | undefined, fit: FitAddon;
+  let term = $state.raw<Terminal>();
+  let fit: FitAddon;
+  let finder = $state<TerminalFind>();
   let ready = false, alive = true, starting = true;
   let pending: TerminalEvent[] = [];
   let requested: TerminalSize | undefined;
@@ -21,7 +24,7 @@
   function theme() {
     return terminalTheme(document.documentElement.dataset.theme);
   }
-  const terminalFont = () => 13 * terminalZoomFactor(tabId ?? id);
+  const terminalFont = () => 16 * terminalZoomFactor(tabId ?? id);
   function resize(immediate = false) {
     if (!term || starting || !active || !container.clientWidth || !container.clientHeight) return;
     const size = fit.proposeDimensions();
@@ -60,8 +63,9 @@
       if (buffer) for (let line = Math.max(0, buffer.length - 5000); line < buffer.length; line++) lines.push(buffer.getLine(line)?.translateToString(true) ?? '');
       return { directory, text: lines.join('\n') };
     });
+    // The pinned search addon uses xterm's proposed decoration API for match highlights.
     term = new Terminal({ cursorBlink: true, fontSize: terminalFont(), scrollback: 5000, fontFamily: APP_FONT_FAMILY,
-      theme: theme(), minimumContrastRatio: TERMINAL_MINIMUM_CONTRAST, allowProposedApi: false, screenReaderMode: true });
+      theme: theme(), minimumContrastRatio: TERMINAL_MINIMUM_CONTRAST, allowProposedApi: true, screenReaderMode: true });
     fit = new FitAddon(); term.loadAddon(fit); term.open(container);
     term.onData(data => {
       if (!ready) return;
@@ -69,6 +73,11 @@
       for (let offset = 0; offset < data.length; offset += 16384) api.write(id, data.slice(offset, offset + 16384));
     });
     term.attachCustomKeyEventHandler((event) => {
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && event.code === 'KeyF') {
+        event.preventDefault();
+        if (event.type === 'keydown' && !event.isComposing) void finder?.open();
+        return false;
+      }
       if (event.ctrlKey && event.code === 'Backquote') return false;
       if ((event.ctrlKey && event.shiftKey) || event.metaKey) {
         if (event.code === 'KeyC' && term?.hasSelection()) {
@@ -99,6 +108,8 @@
     themes.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     const focus = (event: Event) => { if ((event as CustomEvent<string>).detail === (tabId ?? id) && active) term?.focus(); };
     window.addEventListener('setdown:focus-terminal', focus);
+    const find = () => { if (active && focused) void finder?.open(); };
+    window.addEventListener('setdown:terminal-find', find);
     fit.fit();
     void api.create(id, { cols: term.cols, rows: term.rows }).then(async info => {
       if (!alive || !term) return;
@@ -123,6 +134,7 @@
       alive = false; unsubscribe(); unsubscribeZoom(); observer.disconnect(); themes.disconnect();
       clearTimeout(resizeTimer); resizeTimer = undefined;
       window.removeEventListener('setdown:focus-terminal', focus);
+      window.removeEventListener('setdown:terminal-find', find);
       // The workspace owns the process lifetime; moving/unmounting a surface
       // must never kill a PTY that has been adopted by another window.
       if (container.contains(document.activeElement)) api.focus(false);
@@ -131,6 +143,7 @@
   });
 </script>
 <section class="terminal-surface" aria-label="Terminal" data-terminal-id={id}>
+  {#if term}<TerminalFind terminal={term} bind:this={finder} />{/if}
   {#if error}<div class="terminal-error" role="alert">{error}</div>{/if}
   <div class="terminal-instance" bind:this={container} role="group" aria-label="Terminal input and output"
     onfocusin={() => api.focus(true)} onfocusout={event => {
@@ -138,7 +151,7 @@
     }}></div>
 </section>
 <style>
-  .terminal-surface { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--app-editor-background); padding: 8px 10px; }
+  .terminal-surface { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--app-editor-background); padding: 8px 10px; }
   .terminal-instance { flex: 1; min-height: 0; overflow: hidden; }
   .terminal-error { color: var(--app-danger-text); font-size: 12px; padding: 8px; }
 </style>

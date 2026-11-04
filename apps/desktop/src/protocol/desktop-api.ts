@@ -248,6 +248,7 @@ export type CloseDecision = 'cancel' | 'discard' | 'save';
 
 export type AppCommand = 'reload-document' | 'image:undo' | 'image:redo'
   | `explorer:${import('./explorer').ExplorerEditCommand}`
+  | 'reader-select-all'
   | 'new-web-tab'
   | 'reopen-web-tab'
   | 'focus-location'

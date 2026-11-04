@@ -48,7 +48,7 @@ test('terminal addresses navigate through web and files while sessions and tab z
     await expect(address).toHaveValue(`${f.origin}/first`);
     await f.page.getByRole('button', { name: 'Back', exact: true }).click();
     await expect(address).toHaveValue(location);
-    await expect.poll(() => f.page.locator('.terminal-instance .xterm-rows').first().evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeCloseTo(15.6, 1);
+    await expect.poll(() => f.page.locator('.terminal-instance .xterm-rows').first().evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeCloseTo(16 * 1.2, 1);
     await expect(f.page.getByRole('button', { name: 'Reset terminal zoom', exact: true })).toHaveText('120%');
     await input().pressSequentially(`printf "$SETDOWN_SESSION" > '${f.root}/retained.txt'`); await input().press('Enter');
     await expect.poll(() => readFile(path.join(f.root, 'retained.txt'), 'utf8').catch(() => '')).toBe('retained');

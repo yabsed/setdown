@@ -1,0 +1,63 @@
+{
+  "date": "2026-11-05",
+  "scope": [
+    "Recover bracket-delimited pasted math without changing authored source, code, standard TeX, source positions or Undo.",
+    "Terminal base font 16px; web Reader base font 22px, both scaled by the existing per-tab zoom.",
+    "Terminal Ctrl+F/Ctrl+Shift+F search with scrollback, wrapped text, counts, IME, next/previous and Escape; no opener button.",
+    "Floating native Markdown find panel without reserved full-width strip or preview resizing; source transitions do not steal focus.",
+    "Web Reader Ctrl+A and menu Select All select only the active article; native pages, find/address fields and terminal readline retain their input ownership."
+  ],
+  "environment": {
+    "gui": "Xvfb through with-isolated-display.sh; private XDG_RUNTIME_DIR and D-Bus; inherited Wayland socket removed",
+    "SETDOWN_BUILD_SOURCEMAP": "0 for both versions",
+    "TMPDIR": "/var/tmp/setdown-math-checks-20261105",
+    "baselineCommit": "c8791b6e60916cfb87418b3339bd75ee4bd998b3",
+    "baselineDependencies": "Separate installed dependency tree and Electron executable",
+    "electron": "44.7.2"
+  },
+  "contract": {
+    "command": "npm run test:preview-contract",
+    "log": "contract-combined.log",
+    "exitCode": 1,
+    "unitTestsPassed": 822,
+    "toolingTestsPassed": 14,
+    "typecheckErrors": 0,
+    "svelteErrors": 0,
+    "svelteWarnings": 0,
+    "build": "passed",
+    "guiPassed": 290,
+    "guiFailed": 1,
+    "guiTotal": 291,
+    "guiDurationMinutes": 15.8,
+    "failure": "browser/navigation.spec.ts retained the old terminal 13px × 1.2 = 15.6px expectation; actual 16px × 1.2 = 19.2px matches the intended new font. Updated only this expected value; precision/tolerance/scenario unchanged."
+  },
+  "focusedCorrection": {
+    "command": "npm run test:preview-contract:e2e --workspace @setdown/desktop -- test/e2e/browser/navigation.spec.ts --grep 'terminal addresses navigate' --output test-results/navigation-font-final",
+    "log": "navigation-font-final.log",
+    "exitCode": 0,
+    "passed": 1,
+    "durationSeconds": 6.8,
+    "productionBuildUnchanged": true
+  },
+  "coverageResult": "All 291 GUI scenarios have passing final-build coverage: 290 in the complete run and the corrected font expectation in a subsequent focused run. This is not claimed as a single all-green contract command.",
+  "benchmark": {
+    "summary": "benchmark-summary.json",
+    "comparisons": 48,
+    "raw": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/test-results/math-compat-20261105/benchmark",
+    "log": "benchmark.log",
+    "runsPerVersion": 5,
+    "launches": 80,
+    "measurementResult": "passed, zero regressions",
+    "outerProcessExitCode": 143,
+    "completionVerified": "All ten execution logs report 8 passed; all raw cycles pass compareRuns validation; recomputation equals all 48 stored comparisons; both renderer/main artifact hashes unchanged. Outer exit after saved PASS is retained explicitly; no benchmark was rerun or omitted."
+  },
+  "screenshots": [
+    "reader-selection-isolated.png",
+    "markdown-floating-find.png",
+    "terminal-find-split.png",
+    "../math-compat-2026-11-05/auroc-reader.png",
+    "../math-compat-2026-11-05/auroc-review.png"
+  ],
+  "earlierRuns": "Earlier focused failures were corrected (clipboard/Undo test input, review DOM selector, native overlay capture and window targeting, file-write completion, source editor selector, intentional typography expectations); superseded combined runs were interrupted when focus fixes or later user requests changed the work. Their logs are retained. No retry, skipped required scenario or relaxed tolerance was introduced.",
+  "installation": "Source changes and production builds only; the running user application was not restarted or reinstalled."
+}

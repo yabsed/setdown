@@ -25,6 +25,18 @@ accents, radicals and extensible arrows use SVG viewBoxes that are not image
 aspect ratios. `preview/stretchy-math.spec.ts` checks their geometry and actual
 brace pixels in light/dark Electron readers, along with responsive authored SVGs.
 
+Bracket math (`\(...\)` and `\[...\]`) is supported alongside dollar math.
+Doubled bracket delimiters identify pasted math with an extra Markdown escape
+layer; recovery is limited to those math tokens. Ordinary TeX escapes, code,
+links and prose are unchanged. Adjacent display formulas and text after their
+closing delimiter must survive parsing. Source text, line/column anchors and Undo
+remain original; normalization runs in the render worker before existing cached
+KaTeX/deferred rendering. `src/main/preview/math-compat.ts` owns this adapter to pinned
+Crossnote. `math-compat.test.ts`, `source-anchors.test.ts` and the real ordinary/Git
+`preview/math-compat.spec.ts` cover the AUROC example, TeX rows/subscripts, code
+exclusion, native math double-click, edits and Undo. Existing preparation, focus,
+IME and latency guarantees and tolerances remain unchanged.
+
 ## Guarantees and ownership
 
 Local Reload and external-change reconciliation must preserve these guarantees:

@@ -6,6 +6,7 @@
   let { api }: { api: BrowserFindOverlayApi } = $props();
   let context = $state<BrowserFindContext>(), query = $state('');
   let input: HTMLInputElement, composing = false;
+  const label = $derived(context?.scope === 'markdown' ? 'Find in rendered document' : 'Find in web page');
   const current = $derived(context?.query === query);
   async function show(value: BrowserFindContext) {
     const focus = context?.focus !== value.focus;
@@ -27,8 +28,8 @@
   });
 </script>
 
-<div class="web-find-panel" role="search" aria-label="Find in web page">
-  <input bind:this={input} bind:value={query} aria-label="Find in web page" placeholder="Find…" maxlength="1000"
+<div class="web-find-panel" role="search" aria-label={label}>
+  <input bind:this={input} bind:value={query} aria-label={label} placeholder="Find…" maxlength={context?.scope === 'markdown' ? 512 : 1000}
     autocomplete="off" spellcheck="false"
     oninput={() => { if (!composing) action('search'); }}
     oncompositionstart={() => { composing = true; }}
@@ -41,7 +42,7 @@
   <span class="find-count" aria-live="polite">{current ? context?.active ?? 0 : 0} / {current ? context?.matches ?? 0 : 0}</span>
   <button type="button" aria-label="Previous match" title="Previous match (Shift+Enter)" onclick={() => action('previous')}>↑</button>
   <button type="button" aria-label="Next match" title="Next match (Enter)" onclick={() => action('next')}>↓</button>
-  <button class="find-close" type="button" aria-label="Close web search" title="Close search (Esc)" onclick={() => action('close')}>×</button>
+  <button class="find-close" type="button" aria-label={context?.scope === 'markdown' ? 'Close search' : 'Close web search'} title="Close search (Esc)" onclick={() => action('close')}>×</button>
 </div>
 <svelte:window onkeydown={event => {
   if (event.key === 'Escape' && !event.isComposing && !composing) {
