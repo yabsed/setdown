@@ -342,6 +342,7 @@ export type MarkTexApi = {
   destroyPreview(tabId: string): void;
   getTheme(): Promise<ThemeSnapshot>;
   getApplicationMenu(menuId: string): Promise<ApplicationMenuEntry[]>;
+  browserFindOverlay: import('./browser-find').BrowserFindOverlayApi;
   locationSuggestions: {
     show(request: LocationSuggestionsRequest): Promise<void>;
     hide(token: string): void;

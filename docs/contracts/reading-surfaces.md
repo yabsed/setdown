@@ -108,6 +108,19 @@ native find events cannot overwrite Reader counts. Search and Select All exclude
 the export controls. Closing search focuses that same Reader, without revealing
 or focusing its hidden native page. Keyed Reader mounts dispose highlights and
 restore their tab's saved reading anchor.
+
+Web page and web Reader find share a compact panel at the upper right of the
+owning editor group, below the unchanged location bar. Ctrl/Cmd+F opens/selects
+its query; counts use `current / total`, arrow buttons and Enter/Shift+Enter wrap
+through matches, and Escape/close return focus to the same visible surface.
+Composition does not submit partial text or dismiss the panel. The trusted native
+panel stays above live website content without capturing, hiding, resizing or
+replacing the page. App zoom and split geometry position only the panel; tab
+switches hide it and navigation/close retire it. `browser/find.spec.ts` covers
+native keyboard/pointer input, counts, composition, stable page/address geometry,
+split ownership, app zoom and lifetime. `browser/reader.spec.ts` retains visible
+article scope, hidden-page isolation, Reader focus and transition coverage.
+
 Queued scroll/image callbacks and post-mount position/focus work must stop when
 the Reader is unmounted; cleanup retains its stable element reference. Switching
 from an image-bearing wiki Reader to a fallback article exercises this boundary.

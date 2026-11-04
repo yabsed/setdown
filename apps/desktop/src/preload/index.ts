@@ -202,6 +202,14 @@ const api: MarkTexApi = {
   destroyPreview: (tabId) => ipcRenderer.send('preview:destroy', tabId),
   getTheme: () => ipcRenderer.invoke('theme:get'),
   getApplicationMenu: (menuId) => ipcRenderer.invoke('menu:get', menuId),
+  browserFindOverlay: {
+    show: request => ipcRenderer.invoke('browser-find:show', request),
+    hide: token => ipcRenderer.send('browser-find:hide', token),
+    context: () => ipcRenderer.invoke('browser-find:context'),
+    action: action => ipcRenderer.send('browser-find:action', action),
+    onShow: listener => subscribe('browser-find:show', listener),
+    onAction: listener => subscribe('browser-find:action', listener),
+  },
   locationSuggestions: {
     show: request => ipcRenderer.invoke('location-overlay:show', request),
     hide: token => ipcRenderer.send('location-overlay:hide', token),

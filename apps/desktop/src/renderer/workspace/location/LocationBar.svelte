@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
+  import BrowserFind from '../../browser/BrowserFind.svelte';
   import ExtensionActions from '../../browser/ExtensionActions.svelte';
   import DocumentLanguageStatus from '../../language/DocumentLanguageStatus.svelte';
   import { isNotebookDocument } from '../../../core/document/document-profile';
@@ -18,19 +19,13 @@ import type { AppActions } from '../../ports/ui-actions';
   const review = $derived(groupId === view.focusedGroupId && project.gitDiffActive ? project.gitDiff : null);
   const web = $derived(!review && tab?.kind === 'web' ? tab.page : undefined);
   const location = $derived(review ? fileLocation(review.filePath) : tab?.kind === 'web' || tab?.kind === 'terminal' ? tab.path : tab ? fileLocation(tab.path) : '');
-  let input = $state<HTMLInputElement>(), finder = $state<HTMLInputElement>();
+  let input = $state<HTMLInputElement>();
   let editing = $state(false), draft = $state(''), suggestions = $state<BrowserPlace[]>([]), selected = $state(-1), bookmarked = $state(false);
   let generation = 0, composing = false, timer: ReturnType<typeof setTimeout>;
   let error = $state('');
   let selectOnClick = false;
   let activeTabId: string | undefined;
-  const finding = $derived(!!web && browser.findId === tab?.id);
   const requests = $derived(tab ? browser.permissions[tab.id] ?? [] : []);
-  let findComposing = false;
-  function closeFind() {
-    browser.findId = null; browser.active = 0; browser.matches = 0;
-    if (tab) { actions.browserFind(tab.id, ''); if (reading) window.dispatchEvent(new CustomEvent('setdown:reader-focus', { detail: tab.id })); else actions.browserCommand(tab.id, 'focus'); }
-  }
   const media = $derived(view.mediaTabs.find(item => item.id === tab?.id));
   const zoomScope = $derived(tab?.kind === 'terminal' && !review ? 'terminal' : 'text');
   const zoomId = $derived(tab?.id);
@@ -116,14 +111,8 @@ import type { AppActions } from '../../ports/ui-actions';
     const offHidden = actions.locationSuggestions.onHidden(token => { if (token === popupToken) { popupRequested = false; blur(); } });
     const reposition = () => { placement++; };
     window.addEventListener('resize', reposition);
-    const find = async () => { if (groupId === view.focusedGroupId && web && tab) {
-      if (web.pdf) { window.dispatchEvent(new Event('setdown:pdf-find')); return; }
-      browser.findId = tab.id; browser.active = 0; browser.matches = 0;
-      actions.browserFind(tab.id, browser.query); await tick(); finder?.focus(); finder?.select();
-    } };
     window.addEventListener('setdown:focus-location', focus);
-    window.addEventListener('setdown:browser-find', find);
-    return () => { resize.disconnect(); offChoice(); offHidden(); actions.locationSuggestions.hide(popupToken); window.removeEventListener('resize', reposition); clearTimeout(timer); window.removeEventListener('setdown:focus-location', focus); window.removeEventListener('setdown:browser-find', find); };
+    return () => { resize.disconnect(); offChoice(); offHidden(); actions.locationSuggestions.hide(popupToken); window.removeEventListener('resize', reposition); clearTimeout(timer); window.removeEventListener('setdown:focus-location', focus); };
   });
 </script>
 
@@ -136,18 +125,6 @@ import type { AppActions } from '../../ports/ui-actions';
   {:else if tab && tab.kind !== 'terminal'}
     <button aria-label="Reload file" title={tab.isUntitled ? 'Save this document before reloading' : 'Reload file (Ctrl/Cmd+R)'} disabled={tab.isUntitled} onclick={() => void actions.reloadLocalDocument(tab.id)}>↻</button>
   {/if}
-  {#if finding}
-    <input bind:this={finder} aria-label="Find in web page" placeholder="Find in page" maxlength="1000" bind:value={browser.query}
-      oninput={event => { browser.query = event.currentTarget.value; if (!findComposing) actions.browserFind(tab!.id, browser.query); }}
-      oncompositionstart={() => { findComposing = true; }} oncompositionend={() => { findComposing = false; actions.browserFind(tab!.id, browser.query); }}
-      onkeydown={event => {
-        if (event.isComposing || findComposing) return;
-        if (event.key === 'Enter') { event.preventDefault(); actions.browserFind(tab!.id, browser.query, !event.shiftKey, true); }
-        else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeFind(); }
-      }} />
-    <span class="find-count">{browser.active}/{browser.matches}</span>
-    <button aria-label="Close web search" onclick={closeFind}>×</button>
-  {:else}
     <input bind:this={input} aria-label="Address or file path" placeholder="Search or enter an address" spellcheck="false" autocomplete="off"
       bind:value={draft} title={location} onfocus={() => { editing = true; input?.select(); search(); }} onblur={inputBlur}
       onpointerdown={() => { selectOnClick = document.activeElement !== input || !document.hasFocus(); if (!editing) { editing = true; search(); } }}
@@ -182,7 +159,6 @@ import type { AppActions } from '../../ports/ui-actions';
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c4.75 0 8.27 3.13 9.66 6.35a1.62 1.62 0 0 1 0 1.3C20.27 15.87 16.75 19 12 19s-8.27-3.13-9.66-6.35a1.62 1.62 0 0 1 0-1.3C3.73 8.13 7.25 5 12 5Zm0 1.5c-4 0-7 2.63-8.28 5.45a.12.12 0 0 0 0 .1C5 14.87 8 17.5 12 17.5s7-2.63 8.28-5.45a.12.12 0 0 0 0-.1C19 9.13 16 6.5 12 6.5Zm0 2.25A3.25 3.25 0 1 1 12 15.25 3.25 3.25 0 0 1 12 8.75Zm0 1.5A1.75 1.75 0 1 0 12 13.75 1.75 1.75 0 0 0 12 10.25Z"/></svg>
       </button>
     {/if}
-  {/if}
   {#if web && requests.length}
     <button class="location-icon permission-request" aria-label={`Review permissions: ${requests.map(r => r.label).join(', ')}`}
       title={requests.map(r => `${r.origin}: ${r.label}`).join('\n')} onclick={() => actions.browserCommand(tab!.id, 'permissions')}>
@@ -243,6 +219,8 @@ import type { AppActions } from '../../ports/ui-actions';
   {/if}
 </div>
 
+<BrowserFind {actions} {groupId} tab={web ? tab : undefined} {bar} />
+
 <style>
   .location-bar { position: relative; z-index: 15; display: flex; align-items: center; gap: 3px; height: 34px; padding: 3px 9px; box-sizing: border-box; background: var(--app-chrome); border-bottom: 1px solid var(--app-border); color: var(--app-text); }
   button { border: 0; border-radius: 5px; background: transparent; color: inherit; min-width: 26px; height: 26px; cursor: pointer; font-size: 16px; }
@@ -250,7 +228,7 @@ import type { AppActions } from '../../ports/ui-actions';
   input { width: 0; flex: 1; height: 25px; padding: 0 9px; border: 1px solid transparent; border-radius: 5px; background: var(--app-canvas); color: inherit; font: 12px/1.4 var(--app-font-family); outline: none; text-overflow: ellipsis; }
   input:focus { border-color: var(--app-muted-text); }
   .location-error { color: #b94f4f; }
-  .bookmarked { color: var(--app-text); } .find-count { font: 11px var(--app-font-family); }
+  .bookmarked { color: var(--app-text); }
   .loading { box-shadow: inset 0 -2px var(--app-muted-text); }
   .location-error { position: absolute; top: 34px; left: 10px; right: 10px; background: var(--app-chrome); padding: 8px; font-size: 12px; }
   .location-icon { display: grid; place-items: center; flex: 0 0 28px; height: 28px; padding: 5px; border-radius: 7px; color: var(--app-muted-text); }

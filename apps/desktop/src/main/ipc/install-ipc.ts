@@ -16,6 +16,7 @@ import type { ApplicationMenuEntry, CloseDecision, DocumentSnapshot, GitRemoteAc
 import { canonicalPath } from '../documents/file-system';
 import type { DocumentManager } from '../documents/document-manager';
 import { applicationMenuEntries, executeApplicationMenu } from '../menu/application-menu';
+import { BrowserFindOverlay } from '../browser/find-overlay';
 import { LocationOverlay } from '../browser/location-overlay';
 import { showReadingMenu } from '../menu/reading-menu';
 import { MenuOverlay } from '../menu/menu-overlay';
@@ -81,6 +82,12 @@ export function installIpc(options: Options): void {
         : (state.explorerEditTarget && ['menu-undo', 'menu-redo'].includes(item.id)) || (isReadOnlyDocument(filePath) && !/\.(png|jpe?g|webp)$/i.test(filePath) && ['save', 'menu-save-as'].includes(item.id)) ? { ...item, enabled: false } : item);
   };
   channels.handle('menu:get', menuEntries);
+  const browserFind = new BrowserFindOverlay((owner, id) => {
+    const entry = options.browsers.views.get(id);
+    return entry?.owner === owner && !entry.contents.isDestroyed() ? entry.view : undefined;
+  }, step => previews.zoom.change(step));
+  channels.handle('browser-find:show', (state, request) => browserFind.show(state, request, themes.id));
+  channels.on('browser-find:hide', (state, token) => { if (typeof token === 'string') browserFind.hide(state.webContentsId, token); });
   const locationOverlay = new LocationOverlay();
   channels.handle('location-overlay:show', (state, request) => locationOverlay.show(state, request, themes.id));
   channels.on('location-overlay:hide', (state, token) => { if (typeof token === 'string') locationOverlay.hide(state.webContentsId, token, false); });

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { fixture, evaluatePage, captureNativeMenus, chooseNativeMenu } from '../../support/browser/browser-fixture';
+import { fixture, evaluatePage, captureNativeMenus, chooseNativeMenu, findOverlay } from '../../support/browser/browser-fixture';
 import { nativeInput } from '../../support/electron/native-input';
 
 test('reading surfaces offer native copy/search menus and local Markdown PDF export', async () => {
@@ -54,15 +54,16 @@ test('web reader searches the visible article and exports its snapshot as Markdo
       wc.findInPage = (...args) => { (globalThis as any).__readerNativeFind++; return find(...args); };
     }, f.origin);
     await f.page.keyboard.press('Control+f');
-    const find = f.page.getByRole('textbox', { name: 'Find in web page' });
+    const panel = await findOverlay(f.app);
+    const find = panel.getByRole('textbox', { name: 'Find in web page' });
     await expect(find).toBeFocused(); await find.fill('Paragraph ');
-    await expect(f.page.locator('.location-bar .find-count')).toHaveText('1/40');
-    await find.press('Enter'); await expect(f.page.locator('.location-bar .find-count')).toHaveText('2/40');
-    await find.press('Shift+Enter'); await expect(f.page.locator('.location-bar .find-count')).toHaveText('1/40');
-    await find.press('Shift+Enter'); await expect(f.page.locator('.location-bar .find-count')).toHaveText('40/40');
-    await find.fill('Export to Markdown'); await expect(f.page.locator('.location-bar .find-count')).toHaveText('0/0');
+    await expect(panel.locator('.find-count')).toHaveText('1 / 40');
+    await find.press('Enter'); await expect(panel.locator('.find-count')).toHaveText('2 / 40');
+    await find.press('Shift+Enter'); await expect(panel.locator('.find-count')).toHaveText('1 / 40');
+    await find.press('Shift+Enter'); await expect(panel.locator('.find-count')).toHaveText('40 / 40');
+    await find.fill('Export to Markdown'); await expect(panel.locator('.find-count')).toHaveText('0 / 0');
     await find.fill('Paragraph 39');
-    await expect(f.page.locator('.location-bar .find-count')).toHaveText('1/1');
+    await expect(panel.locator('.find-count')).toHaveText('1 / 1');
     expect(await f.app.evaluate(() => (globalThis as any).__readerNativeFind)).toBe(0);
     expect(await reader.evaluate((element, id) => {
       const highlight = CSS.highlights.get(`reader-${id}-active`)!;
@@ -96,7 +97,7 @@ test('web reader searches the visible article and exports its snapshot as Markdo
     await f.page.getByRole('menuitem', { name: 'Export as PDF…', exact: true }).click();
     await expect.poll(() => readFile(pdf).then(data => data.subarray(0, 5).toString()).catch(() => '')).toBe('%PDF-');
     await f.page.keyboard.press('Control+f'); await find.fill('Paragraph 39');
-    await expect(f.page.locator('.location-bar .find-count')).toHaveText('1/1');
+    await expect(panel.locator('.find-count')).toHaveText('1 / 1');
     await paragraph.dblclick(); await expect(reader).toHaveCount(0);
     await expect.poll(() => f.app.evaluate(() => (globalThis as any).__readerNativeFind)).toBeGreaterThan(0);
     expect(f.errors).toEqual([]);

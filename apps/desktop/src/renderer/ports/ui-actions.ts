@@ -17,6 +17,7 @@ import type { TerminalActions } from '../terminal/terminal-actions';
 export type AppActions = BrowserActions & TerminalActions & {
   restoreWorkspace(): void;
   openLanguageLocation(path: string, selection?: import('monaco-editor').IRange | import('monaco-editor').IPosition): Promise<void>;
+  browserFindOverlay: import('../../protocol/browser-find').BrowserFindOverlayApi;
   locationSuggestions: import('../../protocol/desktop-api').MarkTexApi['locationSuggestions'];
   menuOverlay: import('../../protocol/desktop-api').MarkTexApi['menuOverlay'];
   changeZoom(steps: number, scope: 'app' | 'text' | 'terminal', tabId?: string): void;
