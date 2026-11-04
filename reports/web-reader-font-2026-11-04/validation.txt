@@ -1,0 +1,74 @@
+Web Reader font size validation — 2026-11-04
+
+Change: Esc web Reader base font 14px -> 18px (28.6% larger).
+At 130% tab zoom the computed font is 23.4px. Existing proportional styles remain in use.
+
+Validation:
+- Production build and TypeScript/Svelte checks passed (0 Svelte errors/warnings).
+- Contract unit tests: 788 passed; tooling tests: 14 passed.
+- Real Electron contract suite: 284 passed, 1 failed, plus 1 worker teardown error.
+- Failure: workspace/editor-groups.spec.ts:387, real Markdown tab drag cell 4 splits down
+  with native boundary leave=true. Test and worker teardown exceeded 45000ms.
+  This scenario uses Markdown tabs; the changed WebReaderSurface is not mounted there.
+  The timeout is unresolved. The full contract gate is NOT reported as passed.
+- Web Reader scenarios passed, including real Esc entry, 18px computed font,
+  reading-anchor restoration, 130% scaling, wheel zoom, retained forms and search/export.
+- Comparative benchmark passed all 48 buckets, with 0 regressions.
+
+Execution:
+TMPDIR=/var/tmp SETDOWN_BUILD_SOURCEMAP=0 npm run test:preview-contract
+TMPDIR=/var/tmp SETDOWN_BUILD_SOURCEMAP=0 npm run bench:preview --
+  --baseline /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/test-results/web-reader-base-87c6158
+  --runs 3 --skip-build --output test-results/web-reader-font-benchmark-2026-11-04
+Both builds were current and used SETDOWN_BUILD_SOURCEMAP=0.
+Baseline commit: 87c61581e5ffe1f611b952e92a50b875066022a1; independent offline npm ci installation.
+Candidate commit: 87c61581e5ffe1f611b952e92a50b875066022a1 plus the recorded working-tree changes.
+Electron baseline/candidate: 44.7.2 / 44.7.2.
+GUI tests used Xvfb with isolated runtime and D-Bus, and no inherited Wayland socket.
+The benchmark alternated baseline/candidate order on the same isolated display.
+Three matched repetitions; eight scenarios per app; five Esc/double-click cycles each.
+48 fresh app launches; all latest-content assertions and nonempty captures passed.
+Unchanged failure threshold: increase exceeding BOTH 25% and 50ms.
+No retries, skipped scenarios, relaxed assertions or changed timing tolerances.
+
+Environment setup failures are preserved in the earlier logs:
+- The execution sandbox restricted child-process execution and cache writes.
+- /tmp/.git changed standalone project discovery; /var/tmp avoids that marker.
+- Baseline build under node_modules made esbuild ignore vendor TypeScript paths;
+  relocating the independent checkout to test-results resolved the build.
+Final validation used the unchanged test harness outside that execution sandbox.
+
+Latency results (milliseconds; each entry is baseline -> candidate):
+First and second cycles are separate medians across fresh app runs.
+Warm is the median of cycles 3–5 in each app, then the median across runs.
+Preparation is the source preparation time before Esc, 0 or 3000ms.
+
+Esc -> latest-content native capture
+Surface   Edit  Preparation   First          Second         Warm
+document  False    0ms       134 -> 42      27 -> 24       22 -> 22     
+document  True     0ms       319 -> 305     94 -> 98       83 -> 89     
+document  False 3000ms       25 -> 26       23 -> 21       19 -> 22     
+document  True  3000ms       92 -> 107      90 -> 103      84 -> 83     
+review    False    0ms       935 -> 931     22 -> 25       18 -> 18     
+review    True     0ms       990 -> 968     1477 -> 1501   172 -> 179   
+review    False 3000ms       31 -> 26       26 -> 20       20 -> 20     
+review    True  3000ms       229 -> 231     199 -> 204     166 -> 168   
+
+Double-click -> editable source
+Surface   Edit  Preparation   First          Second         Warm
+document  False    0ms       19 -> 18       15 -> 15       14 -> 14     
+document  True     0ms       18 -> 18       14 -> 16       15 -> 15     
+document  False 3000ms       18 -> 18       15 -> 14       13 -> 14     
+document  True  3000ms       16 -> 21       14 -> 16       15 -> 15     
+review    False    0ms       22 -> 21       11 -> 11       11 -> 11     
+review    True     0ms       20 -> 20       15 -> 17       14 -> 15     
+review    False 3000ms       19 -> 22       10 -> 11       14 -> 15     
+review    True  3000ms       19 -> 19       16 -> 16       14 -> 15     
+
+Artifacts:
+- preview-contract-isolated.log: final full gate output, including the unresolved timeout.
+- drag-timeout/: failed scenario screenshot, events and error context.
+- reader-140-percent.png: real Electron Reader screenshot at 140% tab zoom.
+- preview-latency.csv: all 48 individual comparisons.
+- preview-comparison.json.gz: full benchmark identity, samples, hashes and comparisons.
+- test-results/web-reader-font-benchmark-2026-11-04/: original per-run logs and artifacts.

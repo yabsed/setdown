@@ -177,7 +177,7 @@
      viewer's native surface; Enter is its keyboard return path. -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <section class="web-reader" aria-label="Reader mode" data-reader-tab={tabId} tabindex="-1"
-  data-zoom-tab={tabId} style:font-size={`${14 * (zoomState.tabs?.[tabId] ?? 100) / 100}px`} bind:this={container}
+  data-zoom-tab={tabId} style:font-size={`${18 * (zoomState.tabs?.[tabId] ?? 100) / 100}px`} bind:this={container}
   onscroll={onScroll}
   oncontextmenu={contextMenu}
   onclick={clicked} ondblclick={dblclick} onkeydown={keydown}>
@@ -193,9 +193,9 @@
 </section>
 
 <style>
-  /* Typeset exactly like the Markdown reader: preview theme background, the
-     app font override, 14px base scaled by the text factor (the shell already
-     carries app zoom), full-width body with 2em page padding and the
+  /* Use the Markdown reader's preview background and app font, with an 18px
+     web reading base scaled by the tab factor (the shell already carries
+     app zoom), a bounded reading column with 2em page padding and the
      Crossnote github-family element metrics. Colors come from the same theme
      profile that drives the preview, exposed as shell variables. */
   .web-reader {

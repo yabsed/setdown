@@ -68,6 +68,12 @@ They join the existing `media/image-reader.spec.ts` and full preview contract ga
 
 ### Document and web readers
 
+Web Reader uses an 18px body at 100% tab zoom, with proportional headings and
+inline text. It retains the app font, theme colors and 900px maximum reading
+column. The existing tab zoom factor scales this base and survives entering or
+leaving Reader. `browser/reader.spec.ts` checks the base and scaled font sizes
+alongside Esc entry, reading-anchor restoration and live-page state preservation.
+
 Rendered Markdown/Git and web Reader snapshots share the small capability-based
 menu in `core/reading/reading-menu.ts`. Main owns native menu presentation,
 clipboard writes and Google-search/new-tab navigation. A menu belongs to its
