@@ -40,7 +40,9 @@ from renderer surfaces. Tab transfer validates ownership, pauses the same PTY,
 changes its owner, and resumes when the destination subscribes. The old window
 cannot write, resize or terminate the transferred session. A lazily loaded
 headless xterm engine in main retains the live normal/alternate screen buffers
-and the same 5000-row scrollback limit as the renderer. A parser barrier captures
+and the same 50,000-row scrollback limit as the renderer. Their shared buffer
+options retain normal-screen text erased by ED2 in scrollback; an explicit ED3
+history erase still clears it. A parser barrier captures
 the current cells, colors, cursor, saved cursor, scroll margins and input modes;
 output arriving after that barrier follows the snapshot exactly once. The new
 renderer restores at the old dimensions before fitting its group. This preserves
@@ -110,3 +112,31 @@ Search never writes its query to the shell or resizes the terminal grid. Matches
 refresh as output arrives. The xterm search addon caps highlighted matches at
 1,000; the panel shows `1000+` when capped rather than claiming an exact total.
 `terminal/search.spec.ts` checks these behaviors in real isolated Electron.
+
+Normal scrollback uses a 3× wheel multiplier and a persistent, draggable vertical
+scrollbar. In full-screen applications, xterm 6 otherwise drops wheel magnitude
+and sends only one mouse report or cursor key. `renderer/terminal/terminal-wheel.ts`
+normalizes that path into three reports per 120px notch, accumulates fine touchpad
+input, preserves direction and mouse coordinates, and leaves Ctrl+wheel zoom and
+Shift gestures to their existing owners. Reports still use xterm's active mouse
+or cursor protocol; scrolling never restarts or resizes the PTY.
+
+An alternate screen has no terminal-owned scrollback: applications such as Codex,
+Claude, Vim and less keep their history themselves. Ctrl+F stays with that app;
+Ctrl+Shift+F and the application Find menu still open terminal search, which
+explicitly labels this scope as **Current screen only**. The panel explains how
+to expose full conversation history without pretending to search unseen output:
+
+- Codex: choose scrollback with `/tui` and restart, or launch with
+  `codex --no-alt-screen` ([official commands](https://learn.chatgpt.com/docs/developer-commands?surface=cli)).
+- Claude: close terminal search, use Ctrl+O and `/` for conversation search, or
+  Ctrl+O and `[` to expose the full conversation to terminal scrollback. `/tui default`
+  switches back to the classic renderer ([official fullscreen documentation](https://code.claude.com/docs/en/fullscreen)).
+
+Full-screen apps also own their internal scrollbar; the terminal cannot infer its
+range from their viewport. The persistent terminal scrollbar applies to actual
+retained scrollback. Explicit clearing and the bounded retention limit still apply.
+The Electron regressions cover mouse-report and cursor-key modes, fine deltas,
+normal scrolling, a real scrollbar drag, search beyond 5,000 lines, ED2 history,
+full-screen search scope, and app-owned Ctrl+F. Headless snapshot tests cover
+retention and explicit clearing across transfer, including an active alternate screen.

@@ -7,6 +7,7 @@
   let visible = $state(false), query = $state(''), active = $state(0), matches = $state(0);
   let input = $state<HTMLInputElement>();
   let composing = false;
+  let alternate = $state(false);
   const limit = 1000;
   const search = new SearchAddon({ highlightLimit: limit });
   const decorations = { matchBorder: '#c28a00', matchOverviewRuler: '#c28a00',
@@ -16,7 +17,18 @@
     const subscription = search.onDidChangeResults(result => {
       active = result.resultIndex + 1; matches = result.resultCount;
     });
-    return () => { subscription.dispose(); search.dispose(); };
+    alternate = terminal.buffer.active.type === 'alternate';
+    let changedBuffer = false;
+    const buffer = terminal.buffer.onBufferChange(value => {
+      alternate = value.type === 'alternate'; changedBuffer = true;
+      search.clearDecorations(); terminal.clearSelection();
+    });
+    const parsed = terminal.onWriteParsed(() => {
+      if (!changedBuffer) return;
+      changedBuffer = false;
+      if (visible) find();
+    });
+    return () => { parsed.dispose(); buffer.dispose(); subscription.dispose(); search.dispose(); };
   });
   function find(previous = false, next = false) {
     if (composing) return;
@@ -44,18 +56,28 @@
     else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') { event.preventDefault(); input?.select(); }
   }}>
     <input bind:this={input} bind:value={query} aria-label="Find in terminal" placeholder="Find…" maxlength="1000"
+      title={alternate ? 'Search the current screen' : 'Search retained terminal output (up to 50,000 lines)'}
       autocomplete="off" spellcheck="false" oninput={() => find()}
       oncompositionstart={() => { composing = true; }} oncompositionend={() => { composing = false; find(); }} />
     <span class="terminal-find-count" aria-live="polite">{active || (matches >= limit ? '–' : 0)} / {matches}{matches >= limit ? '+' : ''}</span>
     <button type="button" aria-label="Previous match" title="Previous match (Shift+Enter)" onclick={() => find(true, true)}>↑</button>
     <button type="button" aria-label="Next match" title="Next match (Enter)" onclick={() => find(false, true)}>↓</button>
     <button type="button" aria-label="Close terminal search" title="Close search (Esc)" onclick={close}>×</button>
+    {#if alternate}
+      <div class="terminal-find-scope" role="note">
+        Current screen only. This app manages its own history and scrolling.
+        <details><summary>Search the full conversation</summary>
+          <p>Codex: use <code>/tui</code> to choose scrollback, then restart, or launch with <code>codex --no-alt-screen</code>.</p>
+          <p>Claude: close this search, press <kbd>Ctrl+O</kbd>, then <kbd>/</kbd> to search or <kbd>[</kbd> to show history in the terminal.</p>
+        </details>
+      </div>
+    {/if}
   </div>
 {/if}
 
 <style>
   .terminal-find { position: absolute; top: 8px; right: 8px; z-index: 3; box-sizing: border-box;
-    display: flex; align-items: center; gap: 3px; width: min(376px, calc(100% - 16px)); height: 40px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 3px; width: min(376px, calc(100% - 16px)); min-height: 40px;
     padding: 5px 6px 5px 10px; color: var(--app-text); border: 1px solid var(--app-border); border-radius: 3px;
     background: var(--app-raised-surface); box-shadow: 0 4px 12px var(--app-shadow); font: 13px var(--app-font-family); }
   input { flex: 1; width: 0; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; color: inherit; }
@@ -64,4 +86,8 @@
   button { flex: 0 0 25px; width: 25px; height: 25px; padding: 0; color: var(--app-muted-text); border: 0; border-radius: 2px; background: transparent; cursor: pointer; }
   button:hover { color: var(--app-text); background: var(--app-hover); }
   button:focus-visible { outline: 1px solid var(--app-focus-ring); }
+  .terminal-find-scope { flex: 0 0 100%; border-top: 1px solid var(--app-border); padding-top: 6px; font-size: 11px; line-height: 1.5; color: var(--app-muted-text); }
+  summary { cursor: pointer; color: var(--app-text); }
+  p { margin: 6px 0; }
+  code, kbd { font: inherit; color: var(--app-text); }
 </style>

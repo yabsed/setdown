@@ -1,6 +1,7 @@
 import type { Terminal as HeadlessTerminal, IBufferCell } from '@xterm/headless';
 import type { SerializeAddon } from '@xterm/addon-serialize';
 import type { TerminalSize } from '../../protocol/terminal';
+import { TERMINAL_BUFFER_OPTIONS } from '../../core/terminal/terminal-options';
 
 type Attributes = Pick<IBufferCell, 'getFgColor' | 'getBgColor' | 'isFgRGB' | 'isBgRGB' | 'isFgPalette' | 'isBgPalette'
   | 'isBold' | 'isDim' | 'isItalic' | 'isUnderline' | 'isBlink' | 'isInverse' | 'isInvisible' | 'isStrikethrough' | 'isOverline'>;
@@ -33,7 +34,7 @@ export class TerminalScreen {
     // Keep terminal dependencies off document/browser startup paths.
     const { Terminal } = require('@xterm/headless') as typeof import('@xterm/headless');
     const { SerializeAddon } = require('@xterm/addon-serialize') as typeof import('@xterm/addon-serialize');
-    this.terminal = new Terminal({ ...size, scrollback: 5000, cursorBlink: true, allowProposedApi: true });
+    this.terminal = new Terminal({ ...size, ...TERMINAL_BUFFER_OPTIONS, cursorBlink: true, allowProposedApi: true });
     this.serializer = new SerializeAddon();
     this.terminal.loadAddon(this.serializer as unknown as Parameters<HeadlessTerminal['loadAddon']>[0]);
     // Headless xterm does not render or retain DECSCUSR's cursor presentation.

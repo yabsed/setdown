@@ -2,6 +2,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { createRequire } from 'node:module';
 import type { Terminal as TerminalType } from '@xterm/headless';
 import { TerminalScreen } from './terminal-screen';
+import { TERMINAL_BUFFER_OPTIONS } from '../../core/terminal/terminal-options';
 const { Terminal } = createRequire(import.meta.url)('@xterm/headless') as typeof import('@xterm/headless');
 const disposables: { dispose(): void }[] = [];
 afterEach(() => { for (const item of disposables.splice(0)) item.dispose(); });
@@ -22,8 +23,8 @@ const state = (term: TerminalType) => ({ hidden: vt(term).coreService.isCursorHi
     }) };
   })) });
 async function fixture(data: string, cols = 12, rows = 5) {
-  const screen = new TerminalScreen({ cols, rows }), source = new Terminal({ cols, rows, allowProposedApi: true }),
-    restored = new Terminal({ cols, rows, allowProposedApi: true });
+  const screen = new TerminalScreen({ cols, rows }), source = new Terminal({ cols, rows, ...TERMINAL_BUFFER_OPTIONS, allowProposedApi: true }),
+    restored = new Terminal({ cols, rows, ...TERMINAL_BUFFER_OPTIONS, allowProposedApi: true });
   disposables.push(screen, source, restored);
   screen.write(data); await write(source, data);
   await write(restored, (await screen.snapshot()).data);
@@ -43,6 +44,26 @@ test('scroll margins and saved cursor survive continued full-screen output', asy
   const input = '\x1b8restored\r\nscroll\r\nscroll';
   await write(f.source, input); await write(f.restored, input);
   expect(state(f.restored)).toEqual(state(f.source));
+});
+test('screen clears retain searchable history across handoff and explicit history erase still works', async () => {
+  const f = await fixture('earlier\r\noutput\x1b[H\x1b[2Jcurrent');
+  expect(state(f.restored)).toEqual(state(f.source));
+  const contents = (term: TerminalType) => Array.from({ length: term.buffer.normal.length }, (_, y) =>
+    term.buffer.normal.getLine(y)!.translateToString(true)).join('\n');
+  expect(contents(f.restored)).toContain('earlier');
+  expect(contents(f.restored)).toContain('current');
+  await write(f.restored, '\x1b[3J');
+  expect(contents(f.restored)).not.toContain('earlier');
+  expect(contents(f.restored)).toContain('current');
+});
+test('handoff retains more than 5000 lines of normal history alongside the alternate screen', async () => {
+  const f = await fixture('old-history\r\n' + 'line\r\n'.repeat(6000) + '\x1b[?1049hfull-screen');
+  expect(f.restored.buffer.normal.getLine(0)!.translateToString(true)).toBe('old-history');
+  expect(f.restored.buffer.normal.length).toBe(f.source.buffer.normal.length);
+  expect(f.restored.buffer.active.type).toBe('alternate');
+  await write(f.restored, '\x1b[?1049l');
+  expect(f.restored.buffer.active.type).toBe('normal');
+  expect(f.restored.buffer.normal.getLine(0)!.translateToString(true)).toBe('old-history');
 });
 test.each(['abcdefghijkl', 'abcdefghij한'])('pending right-margin wrap retains the next character (%s)', async text => {
   const f = await fixture(text);

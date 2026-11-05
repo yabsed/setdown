@@ -185,6 +185,17 @@ renderer. Terminal E2E measures actual DOM color contrast for every registered t
 and checks PTY and renderer identity. Browser theme and live-drag guarantees are
 specified in the workspace contract; they remain in this gate and latency comparison.
 
+Terminal history and application-mode input are specified in
+[Terminal search](integrated-terminal.md#terminal-search). Normal and headless
+buffers share a 50,000-line retention limit and preserve ED2-erased normal output;
+explicit ED3 still clears history. The terminal-only scrollbar stays visible and
+application wheel delivery preserves distance. Alternate-screen Ctrl+F belongs
+to the running app; terminal find labels its current-screen scope. The terminal
+screen unit tests and `terminal/search.spec.ts` cover these intentional changes,
+including snapshot restoration, wheel protocols, search and IME/focus boundaries.
+These terminal-only controls do not change ordinary/Git preview presentation,
+bounds, preparation, zoom or performance thresholds.
+
 VS Code Dark 2026 is an additional choice; existing theme palettes and the default
 remain unchanged. Its 324 workbench colors and ordered token rules are pinned to
 VS Code 1.143.0 (`2d0b7506a36c1d6db9a466440131a8e01eab2289`), including inherited

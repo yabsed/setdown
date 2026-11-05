@@ -6,13 +6,16 @@
   import '@xterm/xterm/css/xterm.css';
   import { APP_FONT_FAMILY } from '../../core/theme/typography';
   import { terminalTheme, TERMINAL_MINIMUM_CONTRAST } from '../../core/theme/terminal-theme';
+  import { TERMINAL_BUFFER_OPTIONS } from '../../core/terminal/terminal-options';
   import { onTerminalZoom, terminalZoomFactor } from '../editor/text-zoom';
   import { registerTerminalOutput } from './terminal-output';
+  import { installTerminalWheel } from './terminal-wheel';
   import type { TerminalApi, TerminalEvent, TerminalSize } from '../../protocol/terminal';
   let { api, id, tabId, active, focused, changed }: { api: TerminalApi; id: string; tabId?: string; active: boolean; focused: boolean;
     changed(info: { title?: string; cwd?: string; exited?: boolean }): void } = $props();
   let container: HTMLDivElement;
   let error = $state('');
+  let hasScrollback = $state(false);
   let term = $state.raw<Terminal>();
   let fit: FitAddon;
   let finder = $state<TerminalFind>();
@@ -64,9 +67,13 @@
       return { directory, text: lines.join('\n') };
     });
     // The pinned search addon uses xterm's proposed decoration API for match highlights.
-    term = new Terminal({ cursorBlink: true, fontSize: terminalFont(), scrollback: 5000, fontFamily: APP_FONT_FAMILY,
+    term = new Terminal({ ...TERMINAL_BUFFER_OPTIONS, cursorBlink: true, fontSize: terminalFont(), scrollSensitivity: 3, fontFamily: APP_FONT_FAMILY,
       theme: theme(), minimumContrastRatio: TERMINAL_MINIMUM_CONTRAST, allowProposedApi: true, screenReaderMode: true });
     fit = new FitAddon(); term.loadAddon(fit); term.open(container);
+    const removeWheel = installTerminalWheel(term, container);
+    const updateScrollback = () => { hasScrollback = (term?.buffer.active.baseY ?? 0) > 0; };
+    const scrollbackSubscriptions = [term.onWriteParsed(updateScrollback), term.onResize(updateScrollback),
+      term.buffer.onBufferChange(updateScrollback)];
     term.onData(data => {
       if (!ready) return;
       if (resizeTimer !== undefined) resize(true);
@@ -74,6 +81,9 @@
     });
     term.attachCustomKeyEventHandler((event) => {
       if ((event.ctrlKey || event.metaKey) && !event.altKey && event.code === 'KeyF') {
+        // Full-screen applications own their history and Ctrl+F bindings.
+        // Ctrl+Shift+F still opens Setdown's explicitly scoped terminal search.
+        if (term?.buffer.active.type === 'alternate' && !event.shiftKey && !event.metaKey) return true;
         event.preventDefault();
         if (event.type === 'keydown' && !event.isComposing) void finder?.open();
         return false;
@@ -131,7 +141,8 @@
     }).catch(cause => { if (alive) { error = String(cause); starting = false; changed({ title: 'Terminal failed', exited: true }); } });
     return () => {
       unregisterOutput();
-      alive = false; unsubscribe(); unsubscribeZoom(); observer.disconnect(); themes.disconnect();
+      alive = false; unsubscribe(); unsubscribeZoom(); removeWheel(); observer.disconnect(); themes.disconnect();
+      for (const subscription of scrollbackSubscriptions) subscription.dispose();
       clearTimeout(resizeTimer); resizeTimer = undefined;
       window.removeEventListener('setdown:focus-terminal', focus);
       window.removeEventListener('setdown:terminal-find', find);
@@ -145,7 +156,7 @@
 <section class="terminal-surface" aria-label="Terminal" data-terminal-id={id}>
   {#if term}<TerminalFind terminal={term} bind:this={finder} />{/if}
   {#if error}<div class="terminal-error" role="alert">{error}</div>{/if}
-  <div class="terminal-instance" bind:this={container} role="group" aria-label="Terminal input and output"
+  <div class="terminal-instance" class:has-scrollback={hasScrollback} bind:this={container} role="group" aria-label="Terminal input and output"
     onfocusin={() => api.focus(true)} onfocusout={event => {
       if (!container.contains(event.relatedTarget as Node | null)) api.focus(false);
     }}></div>
@@ -153,5 +164,8 @@
 <style>
   .terminal-surface { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--app-editor-background); padding: 8px 10px; }
   .terminal-instance { flex: 1; min-height: 0; overflow: hidden; }
+  /* xterm 6 fades its scrollbar even when history is available. Keep the
+     existing thumb draggable and visible; xterm still owns its size/position. */
+  .terminal-instance.has-scrollback :global(.xterm-scrollable-element > .scrollbar.vertical) { opacity: 1; pointer-events: auto; z-index: 1; }
   .terminal-error { color: var(--app-danger-text); font-size: 12px; padding: 8px; }
 </style>
