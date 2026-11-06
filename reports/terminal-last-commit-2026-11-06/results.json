@@ -1,0 +1,93 @@
+{
+  "commit": "0ac57ebdd7c0c91d1cc2d9a3fa5e26c0dea0dbef",
+  "parent": "7d194919a6ca5f98697e93b1a04547695b5a6d6c",
+  "date": "2026-11-06",
+  "platform": "Linux",
+  "node": "v22.23.1",
+  "display": "Xvfb 1920x1080x24; inherited Wayland sockets removed; private XDG_RUNTIME_DIR and D-Bus session via repository wrapper",
+  "retries": 0,
+  "production_changes": false,
+  "added_test": "terminal-screen.test.ts: exact 50,000-line scrollback capacity, eviction, snapshot round-trip, continued output and ED3 clearing",
+  "checks": {
+    "all_unit_at_commit": {
+      "passed": 1206,
+      "files": 158,
+      "log": "unit-final.log"
+    },
+    "preview_contract_unit_at_commit": {
+      "passed": 824,
+      "files": 105,
+      "log": "contract-unit-verified.log"
+    },
+    "terminal_unit_with_new_boundary": {
+      "passed": 34,
+      "files": 3,
+      "log": "terminal-unit-boundary.log"
+    },
+    "production_build": {
+      "status": "passed",
+      "log": "build-verified.log"
+    },
+    "typecheck_after_new_test": {
+      "status": "passed",
+      "errors": 0,
+      "warnings": 0,
+      "log": "typecheck-final.log"
+    },
+    "tooling": {
+      "status": "passed",
+      "log": "tooling-final.log",
+      "passed": 79,
+      "root_ci_tests": 65,
+      "desktop_tooling_tests": 14
+    },
+    "focused_terminal_e2e": {
+      "passed": 7,
+      "log": "terminal-e2e.log",
+      "artifacts": "terminal-artifacts"
+    },
+    "full_contract_e2e": {
+      "status": "passed",
+      "total": 297,
+      "log": "e2e.log",
+      "artifacts": "e2e-artifacts",
+      "passed": 297,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "duration_minutes": 16.3
+    },
+    "diff_check": {
+      "status": "passed"
+    }
+  },
+  "initial_failures": [
+    {
+      "logs": [
+        "unit.log",
+        "preview-contract.log",
+        "build.log"
+      ],
+      "reason": "Sandbox blocked subprocess execution with EPERM and compiler cache writes with read-only filesystem errors. Re-executed with required process permissions and CCACHE_DIR=/tmp/setdown-terminal-validation-ccache."
+    },
+    {
+      "log": "unit-verified.log",
+      "reason": "1,205 passed; one unrelated language-root test observed /tmp as a project boundary. Subsequent contract run and complete unit run passed after concurrent sandbox path inspections stopped; assertions and application code unchanged."
+    }
+  ],
+  "preview_latency_benchmark": {
+    "status": "not_run",
+    "reason": "Commit changes terminal-only scrollback/search/wheel controls, with no ordinary/Git preview preparation, presentation, bounds, zoom, hydration, source lookup, shared theme/CSS or dependency changes. See terminal-specific scope in docs/preview-performance-contract.md."
+  },
+  "status": "passed",
+  "unique_unit_tests_passed": 1207,
+  "artifacts": {
+    "focused_terminal_screenshots": [
+      "terminal-artifacts/terminal-search-full-scree-abf18-istance-and-app-search-keys/terminal-arrows-search.png",
+      "terminal-artifacts/terminal-search-full-scree-e2240-istance-and-app-search-keys/terminal-mouse-search.png",
+      "terminal-artifacts/terminal-search-terminal-f-d945c-writing-or-resizing-the-PTY/terminal-find-split.png",
+      "terminal-artifacts/terminal-search-terminal-s-48dbd-ps-earlier-output-reachable/terminal-history-scrollbar.png"
+    ],
+    "full_contract_png_count": 203
+  }
+}

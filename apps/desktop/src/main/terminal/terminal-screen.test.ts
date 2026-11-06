@@ -65,6 +65,28 @@ test('handoff retains more than 5000 lines of normal history alongside the alter
   expect(f.restored.buffer.active.type).toBe('normal');
   expect(f.restored.buffer.normal.getLine(0)!.translateToString(true)).toBe('old-history');
 });
+test('handoff keeps exactly 50000 scrollback lines and evicts only the oldest output at capacity', async () => {
+  const history = Array.from({ length: 50_010 }, (_, i) => `history-${i.toString().padStart(5, '0')}\r\n`).join('');
+  const f = await fixture(history + 'CURRENT', 20, 5);
+  const contents = (term: TerminalType) => Array.from({ length: term.buffer.normal.length }, (_, y) =>
+    term.buffer.normal.getLine(y)!.translateToString(true));
+  for (const term of [f.source, f.restored]) {
+    expect(term.buffer.normal.baseY).toBe(50_000);
+    expect(term.buffer.normal.length).toBe(50_005);
+    expect(term.buffer.normal.getLine(0)!.translateToString(true)).toBe('history-00006');
+    expect(term.buffer.normal.getLine(50_004)!.translateToString(true)).toBe('CURRENT');
+  }
+  expect(contents(f.restored)).toEqual(contents(f.source));
+  // Continued output must evict the same line after restoring a full buffer.
+  await write(f.source, '\r\nNEXT'); await write(f.restored, '\r\nNEXT');
+  expect(f.restored.buffer.normal.getLine(0)!.translateToString(true)).toBe('history-00007');
+  expect(contents(f.restored)).toEqual(contents(f.source));
+  await write(f.source, '\x1b[3J'); await write(f.restored, '\x1b[3J');
+  expect(f.restored.buffer.normal.baseY).toBe(0);
+  expect(f.restored.buffer.normal.length).toBe(5);
+  expect(contents(f.restored)).toEqual(contents(f.source));
+  expect(contents(f.restored)).toContain('NEXT');
+});
 test.each(['abcdefghijkl', 'abcdefghij한'])('pending right-margin wrap retains the next character (%s)', async text => {
   const f = await fixture(text);
   expect(state(f.restored)).toEqual(state(f.source));
