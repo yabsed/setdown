@@ -17,7 +17,7 @@ describe('theme catalog', () => {
   it('adds the pinned VS Code theme without changing the default or existing choices', () => {
     expect(DEFAULT_THEME).toBe('github-light');
     expect(THEME_IDS).toEqual(['github-light', 'paper', 'medium', 'solarized-light',
-      'github-light-high-contrast', 'vscode-light-2026', 'light-owl', 'atom-one-light',
+      'github-light-high-contrast',
       'github-dark', 'night', 'one-dark', 'solarized-dark', 'vscode-dark-2026', 'github-dark-high-contrast', 'night-owl', 'dracula']);
     expect(themeProfile('vscode-dark-2026')).toMatchObject({ label: 'VS Code Dark 2026', appearance: 'dark',
       palette: { editorBackground: '#121314', chrome: '#191A1B' },
@@ -42,9 +42,6 @@ describe('theme catalog', () => {
   });
   it.each([
     ['github-light-high-contrast', '#ffffff', '#0e1116', '#66707b', '#622cbc', '#a0111f'],
-    ['vscode-light-2026', '#FFFFFF', '#202020', '#6e7781', '#8250df', '#cd3131'],
-    ['light-owl', '#FBFBFB', '#403f53', '#6a7181', '#4876d6', '#de3d3b'],
-    ['atom-one-light', '#FAFAFA', '#383A42', '#696c77', '#4078F2', '#cd3131'],
   ])('uses light defaults and upstream colors for %s on every adapter', (id, background, foreground, comment, fn, red) => {
     const profile = themeProfile(id), theme = profile.vscodeTheme!;
     expect(profile).toMatchObject({ appearance: 'light', preview: { stylesheet: 'github-light.css', prismStylesheet: 'github.css', background },
@@ -58,11 +55,11 @@ describe('theme catalog', () => {
     for (const color of Object.values(terminalTheme(id))) if (color !== undefined) expect(color).toMatch(/^#[\da-f]{6}([\da-f]{2})?$/i);
     for (const color of Object.values(profile.palette)) expect(typeof color).toBe('string');
   });
-  it('retains inherited Light 2026 semantic roles and explicit terminal surfaces', () => {
-    const theme = communityMonacoTheme(themeProfile('vscode-light-2026').vscodeTheme!);
-    expect(theme.rules.find(rule => rule.token === 'numberLiteral')?.foreground).toBe('098658');
-    expect(terminalTheme('vscode-light-2026')).toMatchObject({ background: '#FAFAFD', foreground: '#3B3B3B', blue: '#0451a5' });
-    expect(terminalTheme('light-owl')).toMatchObject({ background: '#F6F6F6', foreground: '#403f53' });
+  it.each(['vscode-light-2026', 'light-owl', 'atom-one-light'])('restores removed %s preferences to the default light theme', id => {
+    expect(normalizeTheme(id)).toBe(DEFAULT_THEME);
+    expect(themeProfile(id)).toEqual(themeProfile(DEFAULT_THEME));
+    expect(terminalTheme(id)).toEqual(terminalTheme(DEFAULT_THEME));
+    expect(syntaxThemes.some(theme => theme.name === `setdown-${id}`)).toBe(false);
   });
   it('preserves VS Code inherited specific token colors and the new theme overrides', () => {
     expect(vscodeDark2026Token('entity.name.type.class').foreground).toBe('#4EC9B0');

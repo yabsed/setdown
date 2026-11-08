@@ -2,9 +2,6 @@ import github from './upstream/github-dark-high-contrast.json' with { type: 'jso
 import nightOwl from './upstream/night-owl.json' with { type: 'json' };
 import dracula from './upstream/dracula.json' with { type: 'json' };
 import githubLight from './upstream/github-light-high-contrast.json' with { type: 'json' };
-import vscodeLight from './upstream/vscode-light-2026.json' with { type: 'json' };
-import lightOwl from './upstream/light-owl.json' with { type: 'json' };
-import atomOneLight from './upstream/atom-one-light.json' with { type: 'json' };
 import type { ThemeProfile } from './theme-catalog';
 import { vscodeToken, type VscodeTheme, type VscodeTokenRule } from './vscode-token';
 
@@ -82,7 +79,4 @@ export const COMMUNITY_THEMES: readonly ThemeProfile[] = [
 
 export const IMPORTED_LIGHT_THEMES: readonly ThemeProfile[] = [
   profile('github-light-high-contrast', 'GitHub Light High Contrast', githubLight, '#0349b4', { appearance: 'light' }),
-  profile('vscode-light-2026', 'VS Code Light 2026', vscodeLight, '#0069cc', { appearance: 'light' }),
-  profile('light-owl', 'Light Owl', lightOwl, '#288ed7', { appearance: 'light', commentCorrection: ['#989fb1', '#6a7181'] }),
-  profile('atom-one-light', 'Atom One Light', atomOneLight, '#4078f2', { appearance: 'light', commentCorrection: ['#a0a1a7', '#696c77'] }),
 ];

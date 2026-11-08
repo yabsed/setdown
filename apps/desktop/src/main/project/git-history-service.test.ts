@@ -68,6 +68,20 @@ test('unborn repositories are empty and binary files are not passed to the Markd
   expect((await service.diff(state, { root, head, path: 'binary.md' })).modifiedText).toBeNull();
 });
 
+test('historical image comparisons retain commit bytes after the working file changes or disappears', async () => {
+  const file = path.join(root, 'picture.png'); await writeFile(file, 'first image');
+  const first = await commit('first image');
+  await writeFile(file, 'second image'); const second = await commit('second image');
+  await rm(file);
+  const diff = await service.diff(state, { root, head: second, path: 'picture.png' });
+  const bytes = (value: import('../../protocol/desktop-api').GitImageVersion | undefined) =>
+    value && 'bytes' in value ? Buffer.from(value.bytes).toString() : value;
+  expect(bytes(diff.images?.original)).toBe('first image'); expect(bytes(diff.images?.modified)).toBe('second image');
+  expect((await service.diff(state, { root, head: first, path: 'picture.png' })).images?.original).toBeNull();
+  const deleted = await commit('delete image');
+  expect((await service.diff(state, { root, head: deleted, path: 'picture.png' })).images?.modified).toBeNull();
+});
+
 test('canceled Git processes resolve quietly while real Git failures still reject', async () => {
   await history(); // Resolve the real backend before controlling its next Git request.
   let entered!: () => void;

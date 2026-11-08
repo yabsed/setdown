@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, symlink, truncate, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test, vi } from 'vitest';
@@ -16,6 +16,113 @@ afterEach(async () => {
 });
 
 describe('Git status parser', () => {
+  test('deleting Git metadata clears cached discovery and keeps surviving nested repositories', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-git-removed-')), nested = path.join(root, 'nested');
+    temporaryDirectories.push(root); await mkdir(nested);
+    await GitCli.run(root, ['init', '-b', 'main']); await GitCli.run(nested, ['init', '-b', 'child']);
+    const service = new GitService(new ProjectPaths()), state = { projectRoot: root } as WindowState;
+    expect((await service.status(state)).roots).toEqual(expect.arrayContaining([root, nested]));
+    await rm(path.join(root, '.git'), { recursive: true });
+    expect(await service.status(state)).toMatchObject({ repository: true, roots: [nested], branch: 'child', errors: [] });
+    await rm(path.join(nested, '.git'), { recursive: true });
+    expect(await service.status(state)).toMatchObject({ repository: false, roots: [], changes: [], errors: [], pendingChanges: 0 });
+    expect(state.gitRepositories).toEqual([]);
+    await GitCli.run(root, ['init', '-b', 'restored']);
+    expect(await service.status(state)).toMatchObject({ repository: true, branch: 'restored', unborn: true, errors: [] });
+  });
+
+  test('image comparisons read HEAD, Index and Worktree independently, including rename and deletion', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-git-images-')), file = path.join(root, 'picture.png');
+    temporaryDirectories.push(root);
+    const service = new GitService(new ProjectPaths()), state = { projectRoot: root } as WindowState;
+    await service.initialize(state);
+    const bytes = (value: import('../../protocol/desktop-api').GitImageVersion | undefined) =>
+      value && 'bytes' in value ? Buffer.from(value.bytes).toString() : value;
+    await writeFile(file, 'original image');
+    const added = await service.diff(state, file, false);
+    expect(added.images?.original).toBeNull(); expect(bytes(added.images?.modified)).toBe('original image');
+    await service.stage(state, [file]);
+    await GitCli.run(root, ['-c', 'user.name=Test', '-c', 'user.email=test@example.test', 'commit', '-m', 'base']);
+    await writeFile(file, 'staged image'); await service.stage(state, [file]);
+    await writeFile(file, 'working image');
+    const staged = await service.diff(state, file, true), working = await service.diff(state, file, false);
+    expect(bytes(staged.images?.original)).toBe('original image'); expect(bytes(staged.images?.modified)).toBe('staged image');
+    expect(bytes(working.images?.original)).toBe('staged image'); expect(bytes(working.images?.modified)).toBe('working image');
+    expect(working.readOnly).toBe(true);
+    await GitCli.run(root, ['reset', '--hard', 'HEAD']);
+    const renamed = path.join(root, 'renamed.png'); await GitCli.run(root, ['mv', 'picture.png', 'renamed.png']);
+    const rename = await service.diff(state, renamed, true);
+    expect(bytes(rename.images?.original)).toBe('original image'); expect(bytes(rename.images?.modified)).toBe('original image');
+    await rm(renamed); const deleted = await service.diff(state, renamed, false);
+    expect(bytes(deleted.images?.original)).toBe('original image'); expect(deleted.images?.modified).toBeNull();
+  });
+
+  test('image blobs use image bounds and report oversize files as errors, not absent versions', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-image-bounds-')), file = path.join(root, 'large.png');
+    temporaryDirectories.push(root);
+    const service = new GitService(new ProjectPaths()), state = { projectRoot: root } as WindowState;
+    await service.initialize(state); await writeFile(file, 'image'); await truncate(file, 17 * 1024 * 1024);
+    await service.stage(state, [file]);
+    const valid = (await service.diff(state, file, true)).images?.modified;
+    expect(valid && 'bytes' in valid && valid.bytes.byteLength).toBe(17 * 1024 * 1024);
+    await truncate(file, 64 * 1024 * 1024 + 1);
+    expect((await service.diff(state, file, false)).images?.modified).toEqual({ error: 'Images must be 64 MiB or smaller.' });
+    await service.stage(state, [file]);
+    expect((await service.diff(state, file, true)).images?.modified).toEqual({ error: 'Images must be 64 MiB or smaller.' });
+  });
+
+  test('Stage accepts a large literal path list without command-line limits', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-git-stage-'));
+    temporaryDirectories.push(root);
+    const service = new GitService(new ProjectPaths()), state = { projectRoot: root } as WindowState;
+    await service.initialize(state);
+    const names = Array.from({ length: 1200 }, (_, index) => `${index}-${'image'.repeat(30)}.txt`);
+    names.push('한글 space.txt', '-option.txt', '[literal]*.txt', 'line\nbreak.txt');
+    for (let offset = 0; offset < names.length; offset += 32)
+      await Promise.all(names.slice(offset, offset + 32).map(name => writeFile(path.join(root, name), 'content')));
+    await writeFile(path.join(root, 'untouched.txt'), 'keep unstaged');
+    await service.stage(state, names.map(name => path.join(root, name)));
+    const staged = (await GitCli.run(root, ['diff', '--cached', '--name-only', '-z'])).split('\0').filter(Boolean).sort();
+    expect(staged).toEqual([...names].sort());
+  }, 20_000);
+
+  test('Stage waits for clean filters beyond the status-read timeout', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-git-slow-stage-'));
+    temporaryDirectories.push(root);
+    const service = new GitService(new ProjectPaths()), state = { projectRoot: root } as WindowState;
+    await service.initialize(state);
+    // Real Git holds the index while a deterministic filter takes >10 seconds.
+    // This reproduces large-file staging without writing gigabytes of fixtures.
+    await writeFile(path.join(root, '.git', 'slow-clean.cjs'),
+      "process.stdin.resume(); process.stdin.on('end', () => setTimeout(() => process.stdout.write('filtered'), 11000));");
+    const node = `'${process.execPath.replaceAll("'", "'\\''")}'`;
+    await GitCli.run(root, ['config', 'filter.slow.clean', `${node} .git/slow-clean.cjs`]);
+    await GitCli.run(root, ['config', 'filter.slow.required', 'true']);
+    await writeFile(path.join(root, '.gitattributes'), '*.slow filter=slow\n');
+    const file = path.join(root, 'image.slow'); await writeFile(file, 'original');
+    await service.stage(state, [file]);
+    expect(await GitCli.run(root, ['show', ':image.slow'])).toBe('filtered');
+  }, 30_000);
+
+  test('Git timeouts omit command arguments and real stderr remains actionable', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-git-errors-'));
+    temporaryDirectories.push(root);
+    await GitCli.run(root, ['init']);
+    await expect(GitCli.run(root, ['hash-object', '--stdin', '--path=a-private-filename'], 100))
+      .rejects.toThrow('Git hash-object did not finish within 0.1 seconds.');
+    const repository = (await GitCli.connect(root))!;
+    await expect(repository.stage(['missing.txt'])).rejects.toThrow(/pathspec.*missing.txt.*did not match/);
+  });
+
+  test('distinguishes an unborn branch from local history without an upstream', () => {
+    expect(parseGitStatus('# branch.oid (initial)\0# branch.head master\0')).toMatchObject({
+      branch: 'master', unborn: true, upstream: '', changes: [],
+    });
+    const local = parseGitStatus(`# branch.oid ${'a'.repeat(40)}\0# branch.head master\0`);
+    expect(local.unborn).not.toBe(true);
+    expect(local.upstream).toBe('');
+  });
+
   test('extracts exact changed ranges without including unified-diff context', () => {
     expect(parseGitDiffHunks([
       '@@ -2,5 +2,6 @@',
@@ -111,6 +218,8 @@ describe('Git status parser', () => {
     expect(await service.status(owner)).toMatchObject({ repository: false, parentRepository: root });
     const snapshot = await service.select(owner, root);
     expect(snapshot.changes).toMatchObject([{ path: 'notes/chapter.md', filePath, status: 'U' }]);
+    await rm(path.join(root, '.git'), { recursive: true });
+    expect(await service.status(owner)).toMatchObject({ repository: false, roots: [], changes: [], errors: [] });
   });
 
   test('sums pending resources across repositories without changing the selected changes', async () => {

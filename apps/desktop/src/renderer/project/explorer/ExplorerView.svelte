@@ -11,6 +11,7 @@
   import { project, type VisibleProjectEntry } from '../project-state.svelte';
   import SideViewMenu from '../SideViewMenu.svelte';
   import ExplorerEditRow from './ExplorerEditRow.svelte';
+  import FileIcon from '../FileIcon.svelte';
 
   type Edit = {
     mode: 'create' | 'rename';
@@ -479,10 +480,12 @@
           ondrop={(event) => drop(event, entry.kind === 'directory' ? entry.path : parentOf(entry.path))}>
           {#if entry.kind === 'directory'}
             <svg class="tree-chevron" class:is-open={entry.expanded} viewBox="0 0 16 16"><path d="m5 4 4 4-4 4"/></svg>
-            <svg class="tree-icon" viewBox="0 0 16 16"><path d="M1.5 4.5h5l1.5 2h6.5v7h-13v-9Z"/></svg>
+            <svg class="tree-icon" viewBox="0 0 16 16" aria-hidden="true"><path d={entry.expanded
+              ? 'M1.5 12.5v-9h5l1.5 2h6v2M1.5 12.5l2-5h12l-2 5Z'
+              : 'M1.5 4.5h5l1.5 2h6.5v7h-13v-9Z'}/></svg>
           {:else}
             <span class="tree-chevron"></span>
-            <svg class="tree-icon" viewBox="0 0 16 16"><path d="M3 1.5h6l4 4v9H3v-13Zm6 0v4h4"/></svg>
+            <FileIcon path={entry.path} />
           {/if}
           <span class="explorer-entry-name">{entry.name}</span>
           {#if entry.loading}<span class="tree-progress">…</span>{/if}

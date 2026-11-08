@@ -1,0 +1,32 @@
+{
+  "run": "https://github.com/yabsed/setdown/actions/runs/42498388775",
+  "job": 128785674773,
+  "step": "Unit tests and architecture boundaries",
+  "failed": 23,
+  "passed": 1247,
+  "causes": [
+    {
+      "file": "src/main/preview/preview-fragment-rendering.test.ts",
+      "failed": 7,
+      "error": "this.options.previews.hold is not a function"
+    },
+    {
+      "file": "src/main/preview/preview-reuse.test.ts",
+      "failed": 11,
+      "error": "this.options.previews.hold is not a function"
+    },
+    {
+      "file": "src/main/preview/preview-navigation.test.ts",
+      "failed": 5,
+      "error": "p.view.webContents.getURL is not a function"
+    }
+  ],
+  "localValidation": {
+    "unitFiles": 169,
+    "unitPassed": 1292,
+    "toolingPassed": 79,
+    "typecheckPassed": true,
+    "report": "validation.json"
+  },
+  "remoteRerun": false
+}

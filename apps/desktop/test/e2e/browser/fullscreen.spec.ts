@@ -194,9 +194,13 @@ test('fullscreen releases presentation on navigation, tab commands, closing and 
     const enter = async () => { await clickPlayer(f); await expectFullscreen(f); };
     await enter(); await key('l', ['control']);
     const focusedAddress = await addressInput(f, 'first', false);
-    await expect(focusedAddress).toBeFocused();
+    await expect(focusedAddress).not.toBeFocused();
+    await expectFullscreen(f);
+    await key('Escape');
     await expect.poll(() => evaluatePage(f.app, `${f.origin}/fullscreen`, '!!document.fullscreenElement')).toBe(false);
     await expect.poll(async () => (await nativeState(f)).fullscreen).toBe(false);
+    await f.page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-location'));
+    await expect(focusedAddress).toBeFocused();
     await focusedAddress.press('Escape');
     await enter();
     await evaluatePage(f.app, `${f.origin}/fullscreen`, 'location.href="/first"; true');

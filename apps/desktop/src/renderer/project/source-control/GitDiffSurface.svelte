@@ -3,6 +3,7 @@
   import type { AppActions } from '../../ports/ui-actions';
   import type { ReviewView } from './review-workspace';
   import GitDiffEditor from './GitDiffEditor.svelte';
+  import GitImageDiff from './GitImageDiff.svelte';
 
 
   let { actions, entry, focused }: { actions: AppActions; entry: ReviewView; focused: boolean } = $props();
@@ -83,6 +84,8 @@
       </div>
       {#if project.gitDiffActive && project.gitDiffLoading && !project.gitDiff}
         <div class="git-review-state">Reading versions…</div>
+      {:else if project.gitDiffActive && project.gitDiff?.images}
+        <GitImageDiff diff={project.gitDiff} tabId={entry.id} onfocus={() => { if (!focused) actions.activateTab(entry.id); }} />
       {:else if project.gitDiffActive
         && (project.gitDiff?.originalText === null || project.gitDiff?.modifiedText === null)}
         <div class="git-review-state">Binary differences cannot be displayed.</div>

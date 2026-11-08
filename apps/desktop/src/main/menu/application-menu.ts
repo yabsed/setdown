@@ -101,7 +101,7 @@ export function installApplicationMenu(context: MenuContext) {
         { id: 'menu-new-window', label: 'New Window', accelerator: 'CmdOrCtrl+Shift+N', click: () => context.createWindow() },
         { id: 'menu-new-web', label: 'New Web Tab', accelerator: 'CmdOrCtrl+T', click: () => command('new-web-tab') },
         { id: 'menu-reopen-web', label: 'Reopen Closed Web Tab', accelerator: 'CmdOrCtrl+Shift+T', click: () => command('reopen-web-tab') },
-        { id: 'menu-location', label: 'Open Location…', accelerator: 'CmdOrCtrl+L', click: () => command('focus-location') },
+        { id: 'menu-location', label: 'Open Location…', click: () => command('focus-location') },
         { id: 'menu-new-document', label: 'New', accelerator: 'CmdOrCtrl+N', click: () => command('new-document') },
         { id: 'menu-open-document', label: 'Open…', accelerator: 'CmdOrCtrl+O', click: () => {
           const current = state();

@@ -4,6 +4,7 @@
   import SideViewMenu from '../SideViewMenu.svelte';
   import type { EditorOpenOptions } from '../../../core/workspace/editor-groups';
   import { project } from '../project-state.svelte';
+  import FileIcon from '../FileIcon.svelte';
 
   let {
     title,
@@ -68,7 +69,8 @@
         <div class="git-change" title={change.path} data-git-status={decoration?.tooltip}
           style:--git-change-color={decoration ? `var(--vscode-${decoration.color.replaceAll('.', '-')})` : undefined}>
           <button class="git-change-open" type="button" onclick={() => review(change.filePath)}>
-            <span style:color="var(--git-change-color, inherit)">{base(change.path)}</span>
+            <FileIcon path={change.path} />
+            <span class="git-change-name" style:color="var(--git-change-color, inherit)">{base(change.path)}</span>
             {#if directory(change.path) !== change.path}<small>{directory(change.path)}</small>{/if}
           </button>
           <div class="git-change-actions">

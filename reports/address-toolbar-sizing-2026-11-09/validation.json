@@ -1,0 +1,103 @@
+{
+  "date": "2026-11-09",
+  "completed": true,
+  "changes": [
+    "VS Code Seti icons in Explorer, staged/unstaged changes and Git graph; light/dark palettes and open folders",
+    "Side-by-side image Git versions from HEAD/Index/Worktree or immutable history; added/deleted/rename handling, bounds and errors, shared tab zoom",
+    "Removed .git metadata returns the folder to the non-repository state, preserving nested repositories",
+    "Unborn local repositories show an empty graph without requiring GitHub or a remote",
+    "Stage accepts large literal path selections over NUL stdin without a status-read timeout",
+    "Narrower 280px address popup, 25px input height, 1px focus border, smaller reload icon, right-aligned collapsed search",
+    "Removed popup close button and address keyboard shortcut; tabs use a 36px strip and 28px tab height",
+    "Removed VS Code Light 2026, Light Owl and Atom One Light; existing preferences fall back safely",
+    "Fixed the missing preview hold/getURL test doubles behind GitHub Actions run 42498388775"
+  ],
+  "unit": {
+    "files": 169,
+    "passed": 1292,
+    "log": "final-ci-unit.log"
+  },
+  "tooling": {
+    "passed": 79,
+    "log": "final-ci-tooling.log"
+  },
+  "typecheck": {
+    "errors": 0,
+    "warnings": 0,
+    "log": "final-typecheck.log"
+  },
+  "build": {
+    "passed": true,
+    "sourceMaps": false,
+    "logs": [
+      "contract-images-icons.log",
+      "final-electron-build.log"
+    ]
+  },
+  "electron": {
+    "isolatedDisplay": true,
+    "retries": 0,
+    "uniqueScenariosVerified": 334,
+    "fullInvocation": {
+      "passed": 324,
+      "failed": 10,
+      "exitCode": 1,
+      "log": "contract-images-icons.log"
+    },
+    "resolvedFailures": [
+      "browser/reader.spec.ts: removed address shortcut expectation",
+      "browser/transfer.spec.ts: start actual native drag inside the smaller tab before leaving its WebContents",
+      "project/explorer-selection.spec.ts: inspect filenames independently of decorative icons",
+      "workspace/vscode-theme.spec.ts: 13 remaining themes"
+    ],
+    "correctedRuns": [
+      {
+        "passed": 3,
+        "log": "corrected-browser-regressions.log"
+      },
+      {
+        "passed": 8,
+        "log": "explorer-selection-regressions.log"
+      },
+      {
+        "passed": 1,
+        "log": "theme-menu-regression.log"
+      }
+    ],
+    "allFailuresResolved": true
+  },
+  "benchmark": {
+    "passed": true,
+    "repetitions": 3,
+    "scenarios": 8,
+    "freshApplications": 48,
+    "comparisons": 48,
+    "regressions": 0,
+    "thresholds": {
+      "relative": 0.25,
+      "absoluteMs": 50
+    },
+    "report": "benchmark/comparison.json",
+    "table": "validation.txt"
+  },
+  "upstreamReferences": [
+    "vendor/vscode/extensions/theme-seti",
+    "vendor/vscode/extensions/media-preview",
+    "vendor/vscode/extensions/git/src/git.ts",
+    "vendor/vscode/extensions/git/src/historyProvider.ts"
+  ],
+  "screenshots": [
+    "explorer-icons-github-light.png",
+    "explorer-icons-night.png",
+    "git-icons-github-light.png",
+    "git-icons-night.png",
+    "image-working-diff.png",
+    "image-history-diff.png",
+    "local-git-empty.png",
+    "compact-address-matched-height.png",
+    "compact-search-button.png",
+    "expanded-address.png",
+    "medium-address.png"
+  ],
+  "remoteCiRerun": false
+}

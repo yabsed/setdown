@@ -279,7 +279,7 @@ test('new web tabs take selection without selecting the address, including after
     expect(await selected.getAttribute('data-tab-id')).not.toBe(blankId);
     await expect(address).not.toBeFocused();
     expect(await address.evaluate(input => (input as HTMLInputElement).selectionStart === (input as HTMLInputElement).selectionEnd)).toBe(true);
-    await f.page.keyboard.press('Control+l');
+    await f.page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-location'));
     await expect(address).toBeFocused();
     expect(await address.evaluate(input => (input as HTMLInputElement).selectionStart === 0
       && (input as HTMLInputElement).selectionEnd === (input as HTMLInputElement).value.length)).toBe(true);
@@ -291,7 +291,7 @@ test('new web tabs take selection without selecting the address, including after
   } finally { await f.dispose(); }
 });
 
-test('address focus selects the whole URL for mouse, keyboard, and native page shortcuts', async () => {
+test('address click and menu select the whole URL while Ctrl+L stays with native content', async () => {
   const f = await fixture();
   try {
     const address = f.page.getByRole('textbox', { name: 'Address or file path' });
@@ -306,11 +306,22 @@ test('address focus selects the whole URL for mouse, keyboard, and native page s
     await expect(address).toHaveValue('replacement');
     await address.fill(`${f.origin}/first`); await address.press('Enter');
     await expect(f.page.locator('.document-tab[aria-selected="true"]')).toContainText('Research page');
-    await f.app.evaluate(({ webContents }, origin) => {
-      const page = webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/first`)!;
-      page.focus(); page.sendInputEvent({ type: 'keyDown', keyCode: 'L', modifiers: ['control'] });
-      page.sendInputEvent({ type: 'keyUp', keyCode: 'L', modifiers: ['control'] });
-    }, f.origin);
+    expect(await f.app.evaluate(({ Menu }) => Menu.getApplicationMenu()!.getMenuItemById('menu-location')!.accelerator)).toBeNull();
+    for (const modifiers of [['control'], ['control', 'shift']] as Array<Array<'control' | 'shift'>>) {
+      await f.app.evaluate(async ({ webContents }, { origin, modifiers }) => {
+        const page = webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/first`)!;
+        await page.executeJavaScript(`window.__locationKeySeen = false; document.addEventListener('keyup', event => {
+          if (event.key.toLowerCase() === 'l') window.__locationKeySeen = true;
+        }, { once: true });`);
+        page.focus(); page.sendInputEvent({ type: 'keyDown', keyCode: 'L', modifiers });
+        page.sendInputEvent({ type: 'keyUp', keyCode: 'L', modifiers });
+      }, { origin: f.origin, modifiers });
+      await expect.poll(() => f.app.evaluate(({ webContents }, origin) =>
+        webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/first`)!.executeJavaScript('window.__locationKeySeen'), f.origin)).toBe(true);
+      await expect(address).not.toBeFocused();
+      expect(await f.app.evaluate(({ webContents }) => webContents.getFocusedWebContents()?.getURL())).toBe(`${f.origin}/first`);
+    }
+    await f.page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-location'));
     await expect(address).toBeFocused();
     expect(await selected()).toBe(true);
     await f.page.keyboard.type('fresh input');

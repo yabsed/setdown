@@ -70,7 +70,7 @@ test('Explorer clipboard shortcuts, Edit menu, duplicate and cut use real files 
   const { root, app, page } = await launch();
   try {
     await entry(page, 'a.txt').click({ modifiers: ['Control'] });
-    await expect(selected(page)).toHaveText(['a.txt']);
+    await expect(selected(page).locator('.explorer-entry-name')).toHaveText(['a.txt']);
     await entry(page, 'a.txt').press('Control+c');
     await expect.poll(() => page.evaluate(() => window.marktex.explorer.clipboard())).toEqual({ paths: [path.join(root, 'a.txt')], cut: false });
     await entry(page, 'destination').click();
@@ -125,7 +125,7 @@ test('Explorer paste conflicts keep both explicitly and preserve existing destin
     await expect.poll(() => readdir(path.join(root, 'destination'))).toEqual(['a copy.txt', 'a.txt']);
     expect(await readFile(path.join(root, 'destination', 'a.txt'), 'utf8')).toBe('KEEP');
     expect(await readFile(path.join(root, 'destination', 'a copy.txt'), 'utf8')).toContain('original');
-    await expect(selected(page)).toHaveText(['a copy.txt']);
+    await expect(selected(page).locator('.explorer-entry-name')).toHaveText(['a copy.txt']);
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
 
@@ -146,15 +146,15 @@ test('Explorer rename selects basename, respects composition, and retains select
     await input.evaluate(node => node.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: '가' })));
     await input.pressSequentially('zeta'); await input.press('Enter');
     await expect(entry(page, 'zeta.txt')).toBeVisible();
-    await expect(selected(page)).toHaveText(['zeta.txt']);
+    await expect(selected(page).locator('.explorer-entry-name')).toHaveText(['zeta.txt']);
     await page.getByRole('button', { name: 'Search', exact: true }).click();
     await page.getByRole('button', { name: 'Explorer', exact: true }).click();
-    await expect(selected(page)).toHaveText(['zeta.txt']);
+    await expect(selected(page).locator('.explorer-entry-name')).toHaveText(['zeta.txt']);
     await writeFile(path.join(root, 'external.txt'), 'external');
     await expect(entry(page, 'external.txt')).toBeVisible();
-    await expect(selected(page)).toHaveText(['zeta.txt']);
+    await expect(selected(page).locator('.explorer-entry-name')).toHaveText(['zeta.txt']);
     await entry(page, 'zeta.txt').press('b');
-    await expect(selected(page)).toHaveText(['b.txt']);
+    await expect(selected(page).locator('.explorer-entry-name')).toHaveText(['b.txt']);
 
     // A real input owns Copy; it must not replace the pending file clipboard.
     await entry(page, 'b.txt').press('F2');
@@ -179,7 +179,7 @@ test('a failed OS trash operation keeps the unsaved tab, text and selection', as
     await expect(page.locator('.project-error')).toContainText('Simulated OS trash failure');
     await expect(page.getByRole('tab', { name: /a\.txt/ })).toBeVisible();
     await expect(page.locator('.view-lines')).toContainText('KEEP_UNSAVED');
-    await expect(selected(page)).toHaveText(['a.txt']);
+    await expect(selected(page).locator('.explorer-entry-name')).toHaveText(['a.txt']);
     expect(await readFile(path.join(root, 'a.txt'), 'utf8')).toBe('a.txt original\n');
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
@@ -190,29 +190,29 @@ test('Explorer modifier and keyboard selection, context actions, and a real mult
     await expect(page.getByRole('tree')).toHaveAttribute('aria-multiselectable', 'true');
     await entry(page, 'a.txt').click();
     await entry(page, 'c.txt').click({ modifiers: ['Control'] });
-    await expect(selected(page)).toHaveText(['a.txt', 'c.txt']);
+    await expect(selected(page).locator('.explorer-entry-name')).toHaveText(['a.txt', 'c.txt']);
     // A modifier click only selects; it must not open or replace a preview.
     await expect(page.locator('.tab-name')).toHaveText(['a.txt']);
     await entry(page, 'b.txt').click({ modifiers: ['Shift'] });
-    await expect(selected(page)).toHaveText(['b.txt', 'c.txt']);
+    await expect(selected(page).locator('.explorer-entry-name')).toHaveText(['b.txt', 'c.txt']);
     await entry(page, 'd.txt').click({ modifiers: ['Shift'] });
-    await expect(selected(page)).toHaveText(['c.txt', 'd.txt']);
+    await expect(selected(page).locator('.explorer-entry-name')).toHaveText(['c.txt', 'd.txt']);
     await entry(page, 'c.txt').click({ modifiers: ['Control'] });
-    await expect(selected(page)).toHaveText(['d.txt']);
+    await expect(selected(page).locator('.explorer-entry-name')).toHaveText(['d.txt']);
     await entry(page, 'b.txt').press('Home');
     await page.keyboard.press('Control+a');
     await expect(selected(page)).toHaveCount(await page.locator('.explorer-row').count());
     await page.keyboard.press('Escape'); await expect(selected(page)).toHaveCount(0);
     await entry(page, 'a.txt').press('Space');
     await entry(page, 'a.txt').press('Shift+ArrowDown');
-    await expect(selected(page)).toHaveText(['a.txt', 'b.txt']);
+    await expect(selected(page).locator('.explorer-entry-name')).toHaveText(['a.txt', 'b.txt']);
     await entry(page, 'b.txt').click({ button: 'right' });
-    await expect(selected(page)).toHaveText(['a.txt', 'b.txt']);
+    await expect(selected(page).locator('.explorer-entry-name')).toHaveText(['a.txt', 'b.txt']);
     await expect(page.getByRole('menuitem', { name: /^Rename/ })).toHaveCount(0);
     await page.getByRole('menuitem', { name: /^Move to Trash/ }).click();
     await expect(page.getByRole('alertdialog')).toContainText('2 items');
     await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await expect(selected(page)).toHaveText(['a.txt', 'b.txt']);
+    await expect(selected(page).locator('.explorer-entry-name')).toHaveText(['a.txt', 'b.txt']);
     await entry(page, 'a.txt').press('Enter');
     await expect(page.locator('.tab-name')).toHaveText(['a.txt', 'b.txt']);
     await page.getByRole('tab', { name: /a\.txt/ }).click();
@@ -220,7 +220,7 @@ test('Explorer modifier and keyboard selection, context actions, and a real mult
     await editor.press('Control+End'); await editor.pressSequentially('UNSAVED_SELECTION');
     await entry(page, 'b.txt').dragTo(entry(page, 'destination'));
     await expect.poll(() => readdir(path.join(root, 'destination'))).toEqual(['a.txt', 'b.txt']);
-    await expect(selected(page)).toHaveText(['a.txt', 'b.txt']);
+    await expect(selected(page).locator('.explorer-entry-name')).toHaveText(['a.txt', 'b.txt']);
     await expect(page.getByRole('tab', { name: /a\.txt/ })).toHaveAttribute('title', path.join(root, 'destination', 'a.txt'));
     await expect(page.locator('.view-lines')).toContainText('UNSAVED_SELECTION');
     await app.evaluate(({ dialog }) => {
@@ -248,7 +248,7 @@ test('Explorer batch conflicts leave all sources and destination contents intact
     expect(await readFile(path.join(root, 'b.txt'), 'utf8')).toBe('b.txt original\n');
     expect(await readFile(path.join(root, 'destination', 'b.txt'), 'utf8')).toBe('DO NOT OVERWRITE');
     expect(await readdir(path.join(root, 'destination'))).toEqual(['b.txt']);
-    await expect(selected(page)).toHaveText(['a.txt', 'b.txt']);
+    await expect(selected(page).locator('.explorer-entry-name')).toHaveText(['a.txt', 'b.txt']);
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
 
@@ -257,7 +257,7 @@ test('dropping selected files on tab-strip padding opens every file in order as 
   try {
     await entry(page, 'b.txt').click({ modifiers: ['Control'] });
     await entry(page, 'd.txt').click({ modifiers: ['Shift'] });
-    await expect(selected(page)).toHaveText(['b.txt', 'c.txt', 'd.txt']);
+    await expect(selected(page).locator('.explorer-entry-name')).toHaveText(['b.txt', 'c.txt', 'd.txt']);
     const strip = page.locator('.tab-strip');
     const box = (await strip.boundingBox())!;
     expect(await strip.evaluate(node => getComputedStyle(node).getPropertyValue('-webkit-app-region'))).toBe('no-drag');

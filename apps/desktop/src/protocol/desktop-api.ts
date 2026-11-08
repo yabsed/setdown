@@ -120,6 +120,8 @@ export type GitSnapshot = {
   root?: string;
   repository: boolean;
   branch: string;
+  /** HEAD names a branch that has not received its first commit. */
+  unborn?: boolean;
   upstream: string;
   ahead: number;
   behind: number;
@@ -135,7 +137,11 @@ export type GitDiffHunk = {
   newLines: number;
 };
 
+export type GitImageVersion = { bytes: Uint8Array; mimeType: string } | { error: string } | null;
+
 export type GitDiff = {
+  images?: { original: GitImageVersion; modified: GitImageVersion;
+    conflict?: { base: GitImageVersion; ours: GitImageVersion; theirs: GitImageVersion } };
   conflict?: { base: string | null; ours: string | null; theirs: string | null };
   /** Deleted files and unsupported mutable formats are comparison snapshots. */
   readOnly?: boolean;

@@ -9,7 +9,7 @@ test('compact address panels own input above live pages and work for Markdown, f
   try {
     await f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(520, 800));
     // A narrow pane can exist even when a platform enforces a larger window minimum.
-    await f.page.evaluate(() => { const style = document.createElement('style'); style.textContent = '.editor-group{max-width:var(--test-group-width,330px)}'; document.head.append(style); });
+    await f.page.evaluate(() => { const style = document.createElement('style'); style.textContent = '.editor-group{max-width:var(--test-group-width,300px)}'; document.head.append(style); });
     const open = async () => {
       const search = f.page.getByRole('button', { name: 'Open address and search' });
       await expect(search).toBeVisible();
@@ -29,6 +29,7 @@ test('compact address panels own input above live pages and work for Markdown, f
       await nativeInput({ click });
       await expect.poll(() => f.app.windows().some(p => p.url().includes('location-overlay=1'))).toBe(true);
       const panel = f.app.windows().find(p => p.url().includes('location-overlay=1'))!;
+      expect(await panel.evaluate(() => innerWidth)).toBeLessThanOrEqual(280);
       await expect(panel.getByRole('textbox', { name: 'Search or enter an address' })).toBeFocused(); return panel;
     };
     let panel = await open();
@@ -68,9 +69,12 @@ test('compact address panels own input above live pages and work for Markdown, f
     await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible();
     await f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1200, 800));
     const width = async (pixels: number) => f.page.evaluate(pixels => document.documentElement.style.setProperty('--test-group-width', `${pixels}px`), pixels);
-    await width(500);
+    await width(420);
     const bar = f.page.locator('.location-bar');
     await expect(bar.getByRole('button', { name: 'Open address and search' })).toBeVisible();
+    const searchBounds = (await bar.getByRole('button', { name: 'Open address and search' }).boundingBox())!;
+    const extensionsBounds = (await bar.getByRole('button', { name: 'Extensions menu' }).boundingBox())!;
+    expect(extensionsBounds.x - (searchBounds.x + searchBounds.width)).toBeLessThanOrEqual(4);
     await expect(bar.getByRole('button', { name: 'More page actions' })).toHaveCount(0);
     for (const name of ['Extensions menu', 'Site controls', 'Bookmark page', 'Enter reader mode', 'Zoom website out', 'Reset website zoom', 'Zoom website in']) {
       const button = bar.getByRole('button', { name, exact: true });
@@ -126,7 +130,32 @@ test('compact address panels own input above live pages and work for Markdown, f
     await width(1000);
     await expect.poll(async () => (await address.boundingBox())!.width).toBeGreaterThan(originalWidth + 50);
     await bar.screenshot({ path: test.info().outputPath('expanded-address.png') });
+    // A medium pane still has room for an editable address, including at the
+    // app zoom used by the compact desktop toolbar.
+    await f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.setZoomFactor(1.3));
     await width(500);
+    await expect(address).toBeVisible();
+    await expect(bar.getByRole('button', { name: 'Open address and search' })).toBeHidden();
+    await address.focus();
+    const inputStyle = await address.evaluate(element => {
+      const style = getComputedStyle(element);
+      return { height: style.height, border: style.borderTopWidth, color: style.borderTopColor, outline: style.outlineStyle };
+    });
+    await address.press('Escape');
+    await f.page.screenshot({ path: test.info().outputPath('medium-address.png') });
+    await width(420);
+    panel = await open();
+    expect(await panel.getByRole('textbox').evaluate(element => {
+      const style = getComputedStyle(element);
+      return { height: style.height, border: style.borderTopWidth, color: style.borderTopColor, outline: style.outlineStyle };
+    })).toEqual(inputStyle);
+    await panel.screenshot({ path: test.info().outputPath('compact-address-matched-height.png') });
+    await panel.getByRole('textbox').press('Escape');
+    await expect.poll(() => f.app.evaluate(({ webContents }) => webContents.getFocusedWebContents()?.getURL())).toBe(`${f.origin}/first`);
+    await width(500);
+    await expect(address).toBeVisible();
+    await expect(bar.getByRole('button', { name: 'Open address and search' })).toBeHidden();
+    await width(420);
     panel = await open(); await panel.getByRole('textbox').fill(`${f.origin}/second`); await panel.getByRole('textbox').press('Enter');
     await expect(f.page.getByRole('tab', { name: /Second page/ })).toBeVisible();
     expect(f.errors).toEqual([]);

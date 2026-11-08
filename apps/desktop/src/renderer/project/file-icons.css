@@ -1,0 +1,15 @@
+@font-face {
+  font-family: 'Setdown Seti';
+  src: url('../../core/files/seti.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+.file-type-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: 0 0 16px; width: 16px; height: 20px; margin-right: 4px;
+  font: normal 24px/1 'Setdown Seti';
+  color: var(--file-icon-dark); text-transform: none; text-decoration: none;
+  -webkit-font-smoothing: antialiased; user-select: none;
+}
+[data-appearance='light'] .file-type-icon { color: var(--file-icon-light); }

@@ -859,6 +859,7 @@ export class SourceControlController {
     if (diff.conflict) {
       const side = this.conflictSides.get(diff.filePath) ?? 'ours';
       diff = { ...diff, originalText: diff.conflict[side], originalLabel: `${side.toUpperCase()} (unresolved conflict)` };
+      if (diff.images?.conflict) diff = { ...diff, images: { ...diff.images, original: diff.images.conflict[side] } };
     }
     if (!diff.staged && !diff.history && this.options.workingTreeEditable?.(diff.filePath) === false)
       return { ...diff, readOnly: true };

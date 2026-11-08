@@ -26,6 +26,7 @@ function fixture() {
   for (const id of ['git-diff:r:a', 'git-diff:r:b']) addView(id);
   let loadGate = async (_id: string) => {};
   const previews = {
+    hold: () => () => {},
     create(_owner: number, id: string) { if (!views.has(id)) addView(id); },
     views, storeDocument: () => `marktex-preview://document/${calls.length}`,
     async loadURL(view: unknown, url: string) {

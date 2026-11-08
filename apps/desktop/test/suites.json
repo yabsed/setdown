@@ -6,6 +6,7 @@
     ],
     "previewContract": [
       "src/architecture-boundaries.test.ts",
+      "src/core/files/file-icon.test.ts",
       "src/core/browser/browser-failure.test.ts",
       "src/core/browser/browser-url.test.ts",
       "src/core/browser/reader-article.test.ts",
@@ -50,7 +51,10 @@
       "src/main/notebook/kernel-manager.test.ts",
       "src/main/notebook/python-environments.test.ts",
       "src/main/preview/preview-presentation.test.ts",
+      "src/main/preview/preview-fragment-rendering.test.ts",
+      "src/main/preview/preview-navigation.test.ts",
       "src/main/preview/preview-renderer.test.ts",
+      "src/main/preview/preview-reuse.test.ts",
       "src/main/preview/math-compat.test.ts",
       "src/main/preview/korean-emphasis.test.ts",
       "src/main/windows/x11-pinch.test.ts",
@@ -189,6 +193,12 @@
       "previewContract": true
     },
     "git/git-history.spec.ts": {
+      "previewContract": true
+    },
+    "git/image-diff.spec.ts": {
+      "previewContract": true
+    },
+    "project/file-icons.spec.ts": {
       "previewContract": true
     },
     "git/git-review-cold-escape.spec.ts": {

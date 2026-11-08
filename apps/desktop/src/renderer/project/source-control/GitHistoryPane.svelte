@@ -11,11 +11,15 @@
   import { GitGraphRefresh } from './git-graph-refresh';
   import { autoGraphRefs, graphRowInsets, sameRefs } from './git-graph-presentation';
   import graphStyles from './git-graph-theme.css?inline';
+  import { fileIcon } from '../../../core/files/file-icon';
+  import '../file-icons.css';
+  import fileIconStyles from '../file-icons.css?inline';
 
   let { actions, root }: { actions: AppActions; root: string } = $props();
   // The parent reads root from each new status object. Only a different path
   // should tear down the graph, not a fresh snapshot of the same repository.
   let repositoryRoot = $derived(root);
+  let unborn = $derived(project.git?.unborn === true);
   const storageKey = 'setdown:git-graph-panel';
   function restore() {
     try {
@@ -66,7 +70,7 @@
   }
   onMount(() => { mounted = true; });
   $effect(() => {
-    if (!mounted || !expanded || !host || !project.open || !project.visible) return;
+    if (!mounted || !expanded || unborn || !host || !project.open || !project.visible) return;
     const container = host, folder = repositoryRoot;
     const provider = new ElectronGitGraphProvider(electronDesktop, folder);
     let disposed = false;
@@ -98,7 +102,7 @@
       // Upstream exposes theme tokens but no CSS parts for its toolbar/rows.
       // Keep this pinned-version presentation adapter separate from its engine.
       const style = document.createElement('style');
-      style.textContent = graphStyles;
+      style.textContent = `${graphStyles}\n${fileIconStyles}\n:host([theme="light"]) .file-type-icon { color: var(--file-icon-light); }`;
       element.shadowRoot!.append(style);
       const badges = document.createElement('style');
       element.shadowRoot!.append(badges);
@@ -182,11 +186,21 @@
           const index = Number(row.dataset.index);
           row.style.setProperty('--setdown-graph-inset', `${insets[index] ?? 30}px`);
         }
+        for (const file of element.shadowRoot!.querySelectorAll<HTMLButtonElement>('.tree-file')) {
+          if (file.querySelector('.file-type-icon')) continue;
+          const icon = fileIcon(file.title.split(' → ').at(-1) ?? file.title);
+          const span = document.createElement('span');
+          span.className = 'file-type-icon'; span.dataset.fileIcon = icon.id;
+          span.setAttribute('aria-hidden', 'true'); span.textContent = icon.character;
+          span.style.setProperty('--file-icon-dark', icon.dark);
+          span.style.setProperty('--file-icon-light', icon.light);
+          file.prepend(span);
+        }
       };
       const windowElement = element.shadowRoot!.querySelector('.window');
       if (windowElement) {
         rowObserver = new MutationObserver(placeRows);
-        rowObserver.observe(windowElement, { childList: true });
+        rowObserver.observe(windowElement, { childList: true, subtree: true });
       }
       placeRows();
       resizeObserver = new ResizeObserver(() => {
@@ -253,8 +267,12 @@
     {/if}
   </header>
   {#if expanded}
-    <div class="history-graph" bind:this={host}></div>
-    {#if error}<p class="history-error" role="status">{error}</p>{/if}
+    {#if unborn}
+      <p class="side-view-message" role="status">This branch has no commits yet.</p>
+    {:else}
+      <div class="history-graph" bind:this={host}></div>
+      {#if error}<p class="history-error" role="status">{error}</p>{/if}
+    {/if}
   {/if}
 </section>
 

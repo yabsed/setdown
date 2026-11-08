@@ -72,11 +72,17 @@ test(`overlapping windows accept repeated ${moving} body drops and clear a remot
       // After Escape the next drag starts in the same tab. Use a distinct grab
       // point so X11 does not interpret the rapid press as a double-click.
       const from = await windows[owner].evaluate((window, { box, round }) => { const b = window.getContentBounds(), z = window.webContents.getZoomFactor();
-        return { x: b.x + (box.x + 35 + (round % 2) * 30) * z, y: b.y + (box.y + 15) * z }; }, { box, round });
+        return { x: b.x + (box.x + 35 + (round % 2) * 30) * z, y: b.y + (box.y + box.height / 2) * z }; }, { box, round });
       const to = await windows[destination].evaluate((window, { body, destination }) => { const b = window.getContentBounds(), z = window.webContents.getZoomFactor();
         return { x: b.x + (body.x + body.width * (destination ? .85 : .2)) * z, y: b.y + (body.y + body.height * .45) * z }; }, { body, destination });
       await nativeInput({ pointer: [from], button: 'down' });
-      await nativeInput({ pointer: [{ x: from.x + 20, y: from.y + 15 }, { x: from.x + 20, y: to.y }, to] });
+      // Start the OS drag inside the tab. The old fixed +15px diagonal lands
+      // on the native receiver boundary after reducing the tab strip height.
+      // Crossing WebContents while dragstart is still being admitted races
+      // X11 target negotiation; wait for the real source event, never a timer.
+      await nativeInput({ pointer: [{ x: from.x + 20, y: from.y }] });
+      await expect(pages[owner].locator('.shell')).toHaveClass(/is-tab-dragging/);
+      await nativeInput({ pointer: [{ x: from.x + 20, y: to.y }, to] });
       await expect(pages[destination].locator('.group-drop-overlay')).toBeVisible();
       if (canceled) await nativeInput({ keys: ['Escape'] });
       await nativeInput({ button: 'up' });

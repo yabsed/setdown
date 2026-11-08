@@ -7,6 +7,32 @@ import { electron, focusApplication, disposeApplication } from '../../support/el
 import { nativeInput } from '../../support/electron/native-input';
 import { previews } from '../../support/preview/preview-view';
 
+test('Markdown Ctrl+Shift+L edits all matches and Ctrl+L selects a line without focusing the address', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-editor-location-')), file = path.join(root, 'matches.md');
+  const source = 'Dark first\n\nDark second\n';
+  await writeFile(file, source);
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await app.firstWindow(); await focusApplication(app);
+    await page.getByRole('button', { name: 'Switch to Editor', exact: true }).click();
+    const editor = page.locator('.editor-surface .monaco-editor:visible').getByRole('textbox', { name: 'Editor content' });
+    const address = page.getByRole('textbox', { name: 'Address or file path' });
+    await editor.press('Control+Home'); await editor.press('Control+Shift+ArrowRight');
+    await page.keyboard.press('Control+Shift+l');
+    await expect(editor).toBeFocused(); await expect(address).not.toBeFocused();
+    await page.keyboard.type('Light');
+    await expect.poll(() => page.evaluate(async () => (await window.marktex.getDocument())?.text)).toBe(source.replaceAll('Dark', 'Light'));
+    await page.keyboard.press('Control+z');
+    await expect.poll(() => page.evaluate(async () => (await window.marktex.getDocument())?.text)).toBe(source);
+    await editor.press('Control+Home'); await page.keyboard.press('Control+l');
+    await expect(editor).toBeFocused(); await expect(address).not.toBeFocused();
+    await page.keyboard.press('Control+c');
+    expect(await app.evaluate(({ clipboard }) => clipboard.readText())).toBe('Dark first\n');
+    expect(await readFile(file, 'utf8')).toBe(source);
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
 test('background Git refresh preserves the caret while typing in a newly opened review', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-review-caret-')), file = path.join(root, 'review.ts');
   const git = (...args: string[]) => execFileSync('git', args, { cwd: root });

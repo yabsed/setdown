@@ -28,6 +28,7 @@ function fixture() {
       send(_channel: string, message: Record<string, unknown>) { messages.push(message); } },
   };
   const previews = {
+    hold: () => () => {},
     views: new Map([['git-diff:r:a', { ownerWebContentsId: 7, view }]]),
     storeDocument: () => `marktex-preview://document/${++loads}`,
     async loadURL(_view: unknown, next: string) { url = next; },

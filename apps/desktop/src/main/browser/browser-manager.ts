@@ -561,7 +561,7 @@ export class BrowserManager {
       const step = appZoomStep(input);
       if (step !== undefined) { event.preventDefault(); this.options.zoom.change(step); return; }
       const key = input.key.toLowerCase(), modifier = input.control || input.meta;
-      const command = modifier && key === 'l' ? 'focus-location' : modifier && key === 't' ? input.shift ? 'reopen-web-tab' : 'new-web-tab'
+      const command = modifier && key === 't' ? input.shift ? 'reopen-web-tab' : 'new-web-tab'
         : modifier && key === 'w' ? 'close-tab' : modifier && key === 'f' ? 'open-find'
         : input.control && key === 'tab' ? input.shift ? 'previous-tab' : 'next-tab' : null;
       if (command) { event.preventDefault(); this.leaveFullscreen(entry); owner.window.webContents.focus(); owner.window.webContents.send('app:command', command); }

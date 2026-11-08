@@ -173,9 +173,47 @@ changes; immutable history comparisons retain their commit identity. Mutation
 queues serialize per repository and late results cannot change a different
 folder's UI. Staged rename Unstage includes both names; unborn HEAD is detected
 explicitly instead of treating every reset error as an unborn repository.
+Graph treats an unborn branch as an empty state without querying its nonexistent
+ref, and starts displaying history after the first commit. Local history needs
+no remote or GitHub connection. This includes returning to an unborn orphan
+branch when other branches already have commits. `git/git-history.spec.ts`
+covers these transitions. The empty-state presentation follows VS Code's
+[SCM history welcome state](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/contrib/scm/browser/scm.contribution.ts).
 Unmerged comparisons expose base/ours/theirs against the working copy. Discard
 requires confirmation and preserves unsaved editor buffers. Remote partial
 success reports what completed, then refreshes status and comparisons.
+Stage does not inherit the 10-second status-read timeout: large binaries and
+clean filters may take longer. Selected literal paths use NUL-delimited stdin
+so large batches and unusual filenames do not hit command-line limits. The
+operation remains busy until Git exits, and failures report stderr or a concise
+reason instead of dumping the complete command and path list.
+
+Removing a discovered repository's `.git` marker invalidates its discovery and
+repository caches on the next refresh. The folder returns to the Initialize
+Repository state, removes stale counts/Graph/errors, and keeps any independently
+discovered nested repositories. Reinitializing it restores the empty Graph.
+Failed graph sessions are evicted so a new repository can be opened at that path.
+
+Image Git comparisons show original and modified pixels side by side, with
+transparency backgrounds, dimensions and byte sizes. Unstaged changes compare
+Index → Working Tree; staged changes compare HEAD → Index; history reads the
+selected immutable blobs, including rename paths. Added/deleted sides show an
+empty state. Conflict selection uses base/ours/theirs image bytes. Each side has
+the existing 64 MiB image limit and reports read/decode errors without treating
+them as a missing image. Both panes use the review tab's zoom, including numeric
+controls, Fit and Ctrl+wheel. Image URLs are released on replacement/unmount.
+Comparisons are read-only and do not create an ordinary image editor or a text
+model. `git/image-diff.spec.ts` verifies actual decoded pixels, working/staged/
+historical versions, added/deleted files, decode failures and shared magnification.
+
+Explorer, staged/unstaged changes and Graph's changed files share VS Code's Seti
+file icons, using exact filename and longest compound-extension associations.
+Light/dark palettes follow the app theme; Git status colors/badges remain on the
+file labels. Folder icons distinguish open and closed states. The pinned font,
+associations and MIT notice live in `src/core/files`; regenerate with
+`node scripts/update-file-icons.mjs` from the pinned VS Code reference checkout.
+No Monaco, language-server launch or file read is needed to render an icon.
+`project/file-icons.spec.ts` checks all three locations and both appearances.
 
 Project search returns result-limit and skipped-file information. Both search
 scopes include eligible open buffers, including ignored or deleted files. An
@@ -193,7 +231,8 @@ pointer selection, keyboard invocation, focus, Undo and retained browser state.
 Execution evidence: [insertion popover validation](../../reports/insertion-popovers-2026-11-08/validation.json)
 and [first, second and warm latency comparisons](../../reports/insertion-popovers-2026-11-08/preview-latency.txt).
 
-Web pages share the editor-group tab strip and its address/file-path bar. The bar
+Web pages share the editor-group tab strip and its address/file-path bar. The
+tab strip occupies 36 CSS pixels with 28 pixel tabs and creation controls. The bar
 occupies 34 CSS pixels below the tab strip; both document preparation and visible
 readers use the resulting group body. Existing viewport, IME, revision and timing
 guarantees still apply.
@@ -729,16 +768,24 @@ insertion keeps outside-click and Escape dismissal. Popup positioning follows
 the original command button in the originating group.
 
 Every resource uses the shared location bar. When fixed controls leave less than
-180 CSS pixels for the address, the inline input becomes an icon-only Search
-button in the same position. It returns to the growing inline input at 220 pixels
+120 CSS pixels for the address, the inline input becomes an icon-only Search
+button at the right edge of the address space, beside the trailing toolbar
+controls. It returns to the growing inline input at 144 pixels
 of available address width. Search has the same fixed square size and transparent
 resting background as other toolbar icons; it must not stretch into an
 address-shaped field or show placeholder text. Other commands stay on the
 toolbar, including extensions, site controls, bookmarks, reader and
 zoom. There is no overflow menu replacing them. Extremely narrow toolbars scroll
 horizontally within their own group instead of covering adjacent native content.
+Address focus has no keyboard shortcut. Ctrl/Cmd+L and Ctrl/Cmd+Shift+L remain
+available to the focused editor or page; Markdown source can select all matching
+occurrences without losing focus. Clicking the address or choosing Open Location
+from the menu still selects the entire current address.
 
-The native location overlay contains only an address input and suggestions.
+The native location overlay is at most 280 CSS pixels wide and contains only an
+address input and suggestions.
+Its input matches the inline address's 25 CSS pixel height and single 1 pixel
+focus border, without an additional browser focus outline.
 It selects the current address on opening; there is no duplicate current-address
 header, readout or copy button. Native clipboard commands copy the input's
 selection. It appears above native web/readers without moving or replacing them.

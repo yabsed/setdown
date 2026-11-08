@@ -308,7 +308,7 @@ test('reader toolbar and wheel share the live website tab zoom while other Markd
   } finally { await f.dispose(); }
 });
 
-test('native Markdown reader shortcuts select the address and go back to the previous file', async () => {
+test('native Markdown reader leaves Ctrl+L alone, selects the address through its menu, and retains Back', async () => {
   const f = await fixture();
   const previous = path.join(f.root, 'previous.txt');
   await writeFile(previous, 'Previous file content\n');
@@ -330,6 +330,8 @@ test('native Markdown reader shortcuts select the address and go back to the pre
       }, { keyCode, modifier });
     };
     await send('L', 'control');
+    await expect(address).not.toBeFocused();
+    await f.page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-location'));
     await expect(address).toBeFocused();
     expect(await address.evaluate(input => {
       const value = input as HTMLInputElement;

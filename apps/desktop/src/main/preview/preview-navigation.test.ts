@@ -10,11 +10,13 @@ vi.mock('electron', async () => {
   class View {
     visible = false;
     dead = false;
+    url = '';
     bounds = { x: 0, y: 0, width: 0, height: 0 };
     webContents = Object.assign(new EventEmitter(), {
       setZoomFactor() {}, setZoomMode() {}, id: ++id, isDestroyed: () => this.dead, isFocused: () => false,
       close: () => { this.dead = true; }, send() {},
-      loadURL: async (_url: string) => {},
+      getURL: () => this.url,
+      loadURL: async (url: string) => { this.url = url; },
     });
     setVisible(value: boolean) { this.visible = value; }
     getVisible() { return this.visible; }
@@ -58,10 +60,12 @@ function fixture() {
   manager.create(1, 'review');
   const state = manager.views.get('review')!;
   const completion = deferred();
-  state.view.webContents.loadURL = async () => {
+  const loadURL = state.view.webContents.loadURL.bind(state.view.webContents);
+  state.view.webContents.loadURL = async url => {
     // Model Electron 38's ReadyToCommitNavigation auto-focus at completion.
     // This verifies our ordering, not native focus behavior on a real desktop.
     await completion.promise;
+    await loadURL(url);
     if (children.includes(state.view)) focusLosses += 1;
   };
   return { manager, state, children, completion, losses: () => focusLosses,
@@ -91,6 +95,7 @@ test('loaded preview can be explicitly shown and keeps its identity and bounds',
   const f = fixture();
   f.completion.resolve();
   await f.manager.loadURL(f.state.view, 'about:blank', 1);
+  assert.equal(f.state.view.webContents.getURL(), 'about:blank');
   const bounds = { x: 40, y: 80, width: 600, height: 450 };
   f.manager.show(1, 'review', bounds);
   assert.equal(f.state.view.getVisible(), true);

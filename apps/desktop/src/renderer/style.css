@@ -134,10 +134,11 @@ input, select, textarea { font-family: inherit; }
 .titlebar-drag-space { flex: 1; align-self: stretch; min-width: 24px; }
 
 .shell {
+  --tab-strip-height: 36px;
   position: relative;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  grid-template-rows: 40px auto minmax(0, 1fr);
+  grid-template-rows: var(--tab-strip-height) auto minmax(0, 1fr);
   width: 100%;
   height: 100%;
   min-height: 0;
@@ -146,7 +147,7 @@ input, select, textarea { font-family: inherit; }
 }
 .shell[data-tabs="false"] { grid-template-rows: 0 auto minmax(0, 1fr); }
 .shell[data-tabs="false"] .tab-strip { display: none; }
-.shell[data-git-diff="true"] { grid-template-rows: 40px auto minmax(0, 1fr); }
+.shell[data-git-diff="true"] { grid-template-rows: var(--tab-strip-height) auto minmax(0, 1fr); }
 .shell[data-git-diff="true"] .tab-strip { display: flex; }
 .shell.is-folder-drop-target::after {
   content: 'Open files or folder';
@@ -170,7 +171,7 @@ input, select, textarea { font-family: inherit; }
   grid-column: 2;
   display: flex;
   min-width: 0;
-  padding: 6px 8px 0;
+  padding: 4px 8px 0;
   border-bottom: 1px solid var(--app-border);
   background: var(--app-chrome);
   -webkit-app-region: no-drag;
@@ -185,7 +186,7 @@ input, select, textarea { font-family: inherit; }
   width: 210px;
   min-width: 96px;
   max-width: 230px;
-  height: 30px;
+  height: 28px;
   padding: 0 5px 0 11px;
   color: var(--app-muted-text);
   border: 0;
@@ -662,9 +663,9 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
   font-size: 11px;
 }
 .git-change:hover { background: var(--app-hover); }
-.git-change-open { display: flex; align-items: baseline; flex: 1; min-width: 0; height: 25px; padding: 0; color: inherit; border: 0; outline: 0; background: transparent; text-align: left; }
+.git-change-open { display: flex; align-items: center; flex: 1; min-width: 0; height: 25px; padding: 0; color: inherit; border: 0; outline: 0; background: transparent; text-align: left; }
 .git-change-open:disabled { color: var(--app-muted-text); }
-.git-change-open > span { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.git-change-open > span:not(.file-type-icon) { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .git-change-open small { margin-left: 6px; overflow: hidden; color: var(--app-subtle-text); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .git-change-actions { display: none; align-items: center; margin-left: auto; }
 .git-change:hover .git-change-actions, .git-change:focus-within .git-change-actions { display: flex; }
@@ -1109,9 +1110,9 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 /* Stable group frames keep document resources alive across split-tree changes. */
 .editor-area { grid-column: 2; grid-row: 1 / 4; position: relative; min-width: 0; min-height: 0; overflow: hidden; }
 .editor-group { position: absolute; min-width: 0; min-height: 0; overflow: hidden; background: var(--app-canvas); }
-.editor-group > .tab-strip { height: 40px; }
+.editor-group > .tab-strip { height: var(--tab-strip-height); }
 .editor-group:not(.focused) .document-tab[aria-selected="true"] { background: var(--app-hover); }
-.group-body { position: absolute; inset: 74px 0 0; }
+.group-body { position: absolute; inset: calc(var(--tab-strip-height) + 34px) 0 0; }
 .group-body[data-native-preview-frozen="true"] {
   background-repeat: no-repeat;
   background-position: top left;
@@ -1122,7 +1123,7 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
    must not shrink/wrap them afterward: the extra line can cover the hovered
    button and repeatedly dismiss/recreate its own tooltip. */
 .group-monaco-instance .workbench-hover-container { width: max-content; }
-.group-content { position: absolute; padding-top: 74px; pointer-events: none; min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); overflow: hidden; }
+.group-content { position: absolute; padding-top: calc(var(--tab-strip-height) + 34px); pointer-events: none; min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); overflow: hidden; }
 .group-content > * { grid-column: 1; grid-row: 2; min-width: 0; min-height: 0; pointer-events: auto; }
 .group-content > .notice { grid-column: 1; grid-row: 1; }
 .editor-area .group-content > .git-review, .editor-area .group-content > .pdf-surface, .editor-area .group-content > .image-surface, .editor-area .group-content > .video-surface { grid-column: 1; grid-row: 2; }

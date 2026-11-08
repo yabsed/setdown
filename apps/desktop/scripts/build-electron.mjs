@@ -47,3 +47,4 @@ await copyFile('src/core/theme/upstream/NOTICE', 'dist-electron/VSCODE-THEME-NOT
 for (const license of ['GITHUB-THEME-LICENSE', 'NIGHT-OWL-LICENSE', 'DRACULA-LICENSE', 'ATOM-ONE-LIGHT-LICENSE', 'SHIKI-THEMES-LICENSE', 'COMMUNITY-THEMES-NOTICE']) {
   await copyFile(`src/core/theme/upstream/${license}`, `dist-electron/${license}`);
 }
+await copyFile('src/core/files/SETI-NOTICE.txt', 'dist-electron/SETI-NOTICE.txt');

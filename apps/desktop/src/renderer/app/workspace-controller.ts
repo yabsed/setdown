@@ -587,11 +587,9 @@ export function startWorkspace(desktop: DesktopPort) {
         && ['ArrowLeft', 'ArrowRight'].includes(event.key) && !project.gitDiffActive && workspace.activeId) {
         event.preventDefault(); actions.navigateHistory(workspace.activeId, event.key === 'ArrowLeft' ? -1 : 1); return;
       }
-      if (!event.isComposing && (event.ctrlKey || event.metaKey) && !event.altKey && ['l', 't'].includes(event.key.toLowerCase())) {
+      if (!event.isComposing && (event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 't') {
         event.preventDefault();
-        if (event.key.toLowerCase() === 't') {
-          if (event.shiftKey) void desktop.browser.reopen().catch(error => { browser.error = String(error); }); else actions.newWebTab();
-        } else window.dispatchEvent(new Event('setdown:focus-location'));
+        if (event.shiftKey) void desktop.browser.reopen().catch(error => { browser.error = String(error); }); else actions.newWebTab();
         return;
       }
       if (workspace.active?.kind === 'web' && !project.gitDiffActive && (event.ctrlKey || event.metaKey) && ['f', 's'].includes(event.key.toLowerCase())) {

@@ -4,6 +4,7 @@ import { GitDiffViewportPort } from './git-diff-viewport';
 import type { DiffTab, WorkspaceState } from '../../../core/workspace/workspace-state';
 import type { DocumentContent } from '../../../core/workspace/document-store';
 import { sharedTextDocument } from '../../../core/workspace/document-store';
+import { isImageDocument } from '../../../core/document/document-profile';
 import { groupLayout, type EditorOpenOptions } from '../../../core/workspace/editor-groups';
 import type { GitHistorySelection } from '../../../protocol/git-history';
 import type { DocumentSnapshot, PreviewBounds, PreviewMessage, GitReviewState } from '../../../protocol/desktop-api';
@@ -100,7 +101,7 @@ export class ReviewWorkspaceController {
     const current = () => generation === this.generation && this.openRequests.get(groupId) === request && workspace.groups.groups.includes(group);
     let content: DocumentContent | undefined;
     try {
-      if (!staged && !history) {
+      if (!staged && !history && !isImageDocument(path)) {
         const existing = workspace.documentStore.find(path);
         if (existing) { workspace.documentStore.retain(existing.id, id); content = existing; }
         else try {

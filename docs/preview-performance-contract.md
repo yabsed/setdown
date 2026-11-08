@@ -136,7 +136,15 @@ Markdown/source, code/plain text, notebooks, PDF/image (including image editing)
 video and terminal surfaces all consume that same value. Address navigation and
 Back/Forward and Explorer preview replacement retain it when the tab's resource or surface changes. Files of the
 same type and different views of the same file do not share zoom. The two panes
-of a Git review share its review tab's factor. Transferred tabs retain their ID
+of a Git review share its review tab's factor, including the two image versions.
+Image comparisons are shell-rendered, read-only views of bounded version bytes;
+they do not change Markdown preparation, model ownership or native bounds.
+Their Fit control publishes a common tab percentage and their numeric/wheel
+controls leave Fit, as ordinary image tabs do. Seti file icons in Explorer/SCM
+use a local font and static associations without loading an editor or reading
+file contents. `git/image-diff.spec.ts` and `project/file-icons.spec.ts` cover
+these surfaces; all existing transition and timing guarantees remain required.
+Transferred tabs retain their ID
 and factor. A newly allocated file tab starts at that document's last recorded
 percentage, or 100% without history. Each zoom change and tab/window close records
 the current percentage. Navigation records both the outgoing and incoming file
@@ -280,17 +288,16 @@ identity, focus, unsaved content and Undo. The workspace theme and Git document
 style E2E tests cover these transitions, colors and restart persistence; the
 existing all-theme notebook, browser and terminal checks include all three.
 
-GitHub Light High Contrast, VS Code Light 2026, Light Owl and Atom One Light
-are additional light choices. They use light Monaco/TextMate defaults and the
-GitHub Light reader base with the same retained theme stylesheet. Source
-snapshots, pins and licenses live in `src/core/theme/upstream/`; Light 2026
-retains its inherited Light/Light+/Light Modern rules and semantic colors.
-Light Owl and Atom One Light comment colors are darkened in the adapter to
-preserve the existing 4.5:1 contrast guarantee; upstream snapshots stay intact.
-Their notebook input surfaces retain the editor background without a tint.
-Themes without ANSI overrides use VS Code's light terminal defaults. The
-workspace theme tests cover all four on the real editor and visible/hidden
-native reader, including Undo, focus, appearance and restart persistence.
+GitHub Light High Contrast is an additional light choice. It uses light
+Monaco/TextMate defaults and the GitHub Light reader base with the same retained
+theme stylesheet. Source snapshots, pins and licenses live in
+`src/core/theme/upstream/`. Its notebook input surface retains the editor
+background without a tint. VS Code Light 2026, Light Owl and Atom One Light are
+removed from the catalog; saved preferences for these IDs normalize to GitHub
+Light. Their dedicated color scenarios are retired with the choices, while
+fallback checks cover all three IDs. The workspace theme tests cover the
+remaining imports on the real editor and visible/hidden native reader, including
+Undo, focus, appearance and restart persistence.
 Git document style and all-theme notebook, browser and terminal checks include
 these choices. Existing defaults, palettes, layout and preparation guarantees
 remain unchanged.

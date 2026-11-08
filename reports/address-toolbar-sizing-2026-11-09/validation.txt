@@ -1,0 +1,49 @@
+Setdown UI and Git validation — 2026-11-09
+
+Local unit tests: 169 files, 1292 passed.
+Tooling: 65 CI-policy tests + 14 desktop-tooling tests passed.
+Final TypeScript/Svelte checks: 0 errors, 0 warnings. Production build completed.
+
+Electron: all 334 required scenarios verified on isolated virtual displays.
+The full contract invocation initially reported 324 passed / 10 failed.
+The failures were stale assertions or a drag trajectory affected by the requested UI changes:
+  - 1 expected Ctrl+L to focus the address; now checks no focus, menu focus and Back.
+  - 1 used fixed tab drag offsets; now starts the real OS drag at the actual tab center
+    and checks its dragstart state before crossing native WebContents.
+  - 7 read decorative icon glyphs as filenames; assertions now target the selected file labels.
+  - 1 expected 16 themes; the requested removal leaves 13, with removed IDs also checked absent.
+Focused validation after these corrections: 3 browser + 8 Explorer + 1 theme scenarios passed.
+No application code changed between the full GUI execution and these test corrections.
+No retries, skipped scenarios, relaxed assertions or changed timing tolerances.
+
+Preview benchmark: PASS, 48/48 comparisons, zero regressions.
+3 matched repetitions per version; 8 scenarios; 48 fresh Electron apps; 240 transitions.
+Both builds used SETDOWN_BUILD_SOURCEMAP=0. Same Xvfb, identical candidate-owned harness.
+Baseline: separate installed checkout 141a224, including the initial user-owned navigation SVG change.
+Order: 1-baseline, 1-candidate, 2-candidate, 2-baseline, 3-baseline, 3-candidate
+Regression requires BOTH >25% and >50 ms increase. Values below are milliseconds.
+First / second / warm are separate medians; warm is the per-app median of cycles 3–5.
+Capture includes input, polling, IPC and readback; it is not a monitor presentation timestamp.
+
+Scenario                                  Metric         First B -> C    Second B -> C     Warm B -> C
+---------------------------------------------------------------------------------------------------------
+document/idle=0/edits=false               Esc/capture    88.0 ->   45.0    33.0 ->   29.0    25.0 ->   24.0
+document/idle=0/edits=false               double-click   23.0 ->   27.0    30.0 ->   16.0    14.0 ->   13.0
+document/idle=0/edits=true                Esc/capture   405.0 ->  374.0    82.0 ->   97.0    96.0 ->   94.0
+document/idle=0/edits=true                double-click   17.0 ->   18.0    17.0 ->   17.0    15.0 ->   14.0
+document/idle=3000/edits=false            Esc/capture    33.0 ->   32.0    26.0 ->   24.0    23.0 ->   21.0
+document/idle=3000/edits=false            double-click   22.0 ->   19.0    16.0 ->   15.0    14.0 ->   13.0
+document/idle=3000/edits=true             Esc/capture   128.0 ->  117.0   107.0 ->   86.0    97.0 ->   94.0
+document/idle=3000/edits=true             double-click   17.0 ->   21.0    16.0 ->   17.0    15.0 ->   16.0
+review/idle=0/edits=false                 Esc/capture  1047.0 ->  980.0    26.0 ->   21.0    29.0 ->   26.0
+review/idle=0/edits=false                 double-click   27.0 ->   23.0    13.0 ->   12.0    13.0 ->   12.0
+review/idle=0/edits=true                  Esc/capture  1084.0 -> 1039.0  1659.0 -> 1556.0   228.0 ->  183.0
+review/idle=0/edits=true                  double-click   22.0 ->   22.0    17.0 ->   17.0    15.0 ->   16.0
+review/idle=3000/edits=false              Esc/capture    34.0 ->   31.0    24.0 ->   23.0    19.0 ->   19.0
+review/idle=3000/edits=false              double-click   21.0 ->   20.0    12.0 ->   12.0    17.0 ->   16.0
+review/idle=3000/edits=true               Esc/capture   238.0 ->  235.0   198.0 ->  176.0   184.0 ->  169.0
+review/idle=3000/edits=true               double-click   21.0 ->   20.0    16.0 ->   16.0    15.0 ->   15.0
+
+Raw measurements, hashes and comparisons: benchmark/comparison.json
+Remote GitHub CI was not rerun; no commit, push, installation or application restart was performed.
+Existing user staging and the unrelated vendor/zed addition were preserved.

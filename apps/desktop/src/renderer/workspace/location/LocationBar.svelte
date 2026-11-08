@@ -71,8 +71,8 @@ import type { AppActions } from '../../ports/ui-actions';
     void placement;
     popupRequested = true;
     const rect = bar.getBoundingClientRect();
-    const width = panelMode ? Math.min(520, window.innerWidth - 24) : rect.width - 18;
-    const height = (panelMode ? 52 + (suggestions.length ? 6 : 0) : 12) + 46 * suggestions.length;
+    const width = panelMode ? Math.min(280, window.innerWidth - 24) : rect.width - 18;
+    const height = (panelMode ? 43 + (suggestions.length ? 6 : 0) : 12) + 46 * suggestions.length;
     const x = panelMode ? Math.max(12, Math.min(rect.left + 9, innerWidth - width - 12)) : rect.left + 9;
     const y = panelMode && innerHeight - rect.bottom < Math.min(height, 180) ? Math.max(8, rect.top - height) : rect.bottom - 1;
     void actions.locationSuggestions.show({ token: popupToken, selected,
@@ -120,8 +120,8 @@ import type { AppActions } from '../../ports/ui-actions';
     const controlWidth = Array.from(controls.children).filter(element => element !== input && element instanceof HTMLElement && !element.hidden && !element.classList.contains('location-search') && getComputedStyle(element).position !== 'absolute')
       .reduce((sum, element) => sum + element.getBoundingClientRect().width + 3, 0);
     const addressWidth = controls.clientWidth - controlWidth;
-    if (!compact && addressWidth < 180) compact = true;
-    else if (compact && addressWidth >= 220) compact = false;
+    if (!compact && addressWidth < 120) compact = true;
+    else if (compact && addressWidth >= 144) compact = false;
   }
   onMount(() => {
     const resize = new ResizeObserver(measure);
@@ -149,13 +149,21 @@ import type { AppActions } from '../../ports/ui-actions';
 
 <div bind:this={bar} class="location-bar" data-group-id={groupId} data-location-panel={panelMode ?? undefined} class:compact class:loading={web?.loading}>
   <div bind:this={controls} class="location-controls">
-  <button class="location-back" aria-label="Back" title="Back (Alt+Left)" disabled={!tab?.canGoBack || !!review} onclick={() => actions.navigateHistory(tab!.id, -1)}>←</button>
-  <button aria-label="Forward" title="Forward (Alt+Right)" disabled={!tab?.canGoForward || !!review} onclick={() => actions.navigateHistory(tab!.id, 1)}>→</button>
+  <button class="location-icon location-back" aria-label="Back" title="Back (Alt+Left)" disabled={!tab?.canGoBack || !!review} onclick={() => actions.navigateHistory(tab!.id, -1)}>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7M5 12h14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <button class="location-icon" aria-label="Forward" title="Forward (Alt+Right)" disabled={!tab?.canGoForward || !!review} onclick={() => actions.navigateHistory(tab!.id, 1)}>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 5 7 7-7 7M5 12h14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
   {#if web}
-    <button class="location-reload" aria-label={web.loading ? 'Stop loading' : 'Reload page'} title={web.loading ? 'Stop loading' : 'Reload page'}
-      onclick={event => actions.browserCommand(tab!.id, web.loading ? 'stop' : event.shiftKey ? 'reload-no-cache' : 'reload')}>{web.loading ? '×' : '↻'}</button>
+    <button class="location-icon location-reload" aria-label={web.loading ? 'Stop loading' : 'Reload page'} title={web.loading ? 'Stop loading' : 'Reload page'}
+      onclick={event => actions.browserCommand(tab!.id, web.loading ? 'stop' : event.shiftKey ? 'reload-no-cache' : 'reload')}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d={web.loading ? 'M6 6l12 12M18 6 6 18' : 'M21 3v5h-5M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8'} fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
   {:else if tab && tab.kind !== 'terminal'}
-    <button class="location-reload" aria-label="Reload file" title={tab.isUntitled ? 'Save this document before reloading' : 'Reload file (Ctrl/Cmd+R)'} disabled={tab.isUntitled} onclick={() => void actions.reloadLocalDocument(tab.id)}>↻</button>
+    <button class="location-icon location-reload" aria-label="Reload file" title={tab.isUntitled ? 'Save this document before reloading' : 'Reload file (Ctrl/Cmd+R)'} disabled={tab.isUntitled} onclick={() => void actions.reloadLocalDocument(tab.id)}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3v5h-5M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
   {/if}
   <button class="location-icon location-search" hidden={!compact} aria-label="Open address and search" title="Search or enter an address" onclick={openPanel}>
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="m15.5 15.5 5 5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
@@ -260,7 +268,7 @@ import type { AppActions } from '../../ports/ui-actions';
 <style>
   .location-bar { position: relative; z-index: 15; display: flex; align-items: center; gap: 3px; height: 34px; padding: 3px 9px; box-sizing: border-box; background: var(--app-chrome); border-bottom: 1px solid var(--app-border); color: var(--app-text); }
   .location-controls { display:flex; align-items:center; gap:3px; flex:1; min-width:0; overflow-x:auto; scrollbar-width:none; }
-  .location-search { margin-right:auto; }
+  .location-search { margin-left:auto; }
   .location-search[hidden], .compact input { display:none; }
   button { flex-shrink: 0; border: 0; border-radius: 5px; background: transparent; color: inherit; min-width: 26px; height: 26px; cursor: pointer; font-size: 16px; }
   button:hover { background: var(--app-hover); } button:disabled { opacity: .35; cursor: default; }
@@ -272,6 +280,7 @@ import type { AppActions } from '../../ports/ui-actions';
   .location-error { position: absolute; top: 34px; left: 10px; right: 10px; background: var(--app-chrome); padding: 8px; font-size: 12px; }
   .location-icon { display: grid; place-items: center; flex: 0 0 28px; height: 28px; padding: 5px; border-radius: 7px; color: var(--app-muted-text); }
   .location-icon svg { width: 18px; height: 18px; fill: currentColor; }
+  .location-reload svg { width: 16px; height: 16px; }
   .bookmark-toggle svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
   .bookmark-toggle.bookmarked svg { fill: currentColor; }
   .location-icon:hover, .location-icon.active, .location-icon.bookmarked { color: var(--app-text); }

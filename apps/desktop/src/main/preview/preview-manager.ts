@@ -255,9 +255,9 @@ export class PreviewManager {
         return;
       }
       const key = input.key.toLowerCase();
-      if ((input.control || input.meta) && !input.alt && (key === 'l' || key === 't')) {
+      if ((input.control || input.meta) && !input.alt && key === 't') {
         event.preventDefault(); state.window.webContents.focus();
-        state.window.webContents.send('app:command', key === 'l' ? 'focus-location' : 'new-web-tab');
+        state.window.webContents.send('app:command', 'new-web-tab');
       } else if (input.alt && !input.control && !input.meta && (key === 'arrowleft' || key === 'arrowright')) {
         event.preventDefault(); state.window.webContents.focus();
         state.window.webContents.send('app:command', key === 'arrowleft' ? 'navigate-back' : 'navigate-forward');

@@ -9,6 +9,61 @@ import { disposeApplication, focusApplication } from '../../support/electron/ele
 import { previews } from '../../support/preview/preview-view';
 
 const exec = promisify(execFile);
+test('local repositories show an empty Graph before the first commit and recover without a remote', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-history-unborn-'));
+  const configRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-history-unborn-config-'));
+  const git = (...args: string[]) => exec('git', args, { cwd: root });
+  let app: Awaited<ReturnType<typeof electron.launch>> | undefined;
+  try {
+    await git('init', '-b', 'master');
+    await git('config', 'user.name', 'History Test');
+    await git('config', 'user.email', 'history@example.test');
+    await writeFile(path.join(root, 'note.md'), '# Local document\n');
+    const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+    app = await electron.launch({ args: ['.'], env: { ...env, XDG_CONFIG_HOME: configRoot } });
+    const page = await app.firstWindow();
+    const errors: string[] = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.evaluate(folder => window.marktex.restoreProjectFolder(folder), root);
+    await page.reload(); await focusApplication(app);
+    await page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
+    await page.getByRole('button', { name: 'Source Control', exact: true }).click();
+    const pane = page.getByRole('region', { name: 'Git history', exact: true });
+    const empty = pane.getByText('This branch has no commits yet.', { exact: true });
+    await expect(empty).toBeVisible();
+    await expect(page.locator('.git-change-open')).toContainText('note.md');
+    await page.getByRole('button', { name: 'Refresh Git Graph' }).click();
+    await expect(empty).toBeVisible();
+    await expect(pane.locator('.history-error')).toHaveCount(0);
+    await page.screenshot({ path: test.info().outputPath('local-git-empty.png') });
+    await git('add', 'note.md'); await git('commit', '-m', 'First local commit');
+    await page.getByRole('button', { name: 'Refresh Git Graph' }).click();
+    await expect(pane.locator('web-git-graph .row').first()).toContainText('First local commit');
+    await expect(empty).toHaveCount(0);
+    expect((await git('remote')).stdout.trim()).toBe('');
+    await git('switch', '--orphan', 'fresh');
+    await page.getByRole('button', { name: 'Refresh Git Graph' }).click();
+    await expect(empty).toBeVisible();
+    await expect(pane.locator('web-git-graph')).toHaveCount(0);
+    await git('switch', 'master');
+    await page.getByRole('button', { name: 'Refresh Git Graph' }).click();
+    await expect(pane.locator('web-git-graph .row').first()).toContainText('First local commit');
+    await expect(pane.locator('.history-error, .error')).toHaveCount(0);
+    await rm(path.join(root, '.git'), { recursive: true });
+    await page.getByRole('button', { name: 'Refresh Source Control' }).click();
+    await expect(page.getByRole('button', { name: 'Initialize Repository', exact: true })).toBeVisible();
+    await expect(pane).toHaveCount(0);
+    await expect(page.locator('.scm-errors')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Initialize Repository', exact: true }).click();
+    await expect(empty).toBeVisible();
+    expect(errors).toEqual([]);
+  } finally {
+    if (app) await disposeApplication(app);
+    await rm(root, { recursive: true, force: true });
+    await rm(configRoot, { recursive: true, force: true });
+  }
+});
+
 test('unchanged Git refreshes preserve graph rows, scroll and keyboard focus', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-history-stable-'));
   const configRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-history-stable-config-'));

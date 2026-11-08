@@ -18,6 +18,9 @@ import type { WindowState } from '../windows/window-state';
 import { GitCli } from './engines/git-cli';
 import { ProjectPaths } from './project-paths';
 import { readGitDocument, readWorkingDocument } from './git-text';
+import { isImageDocument } from '../../core/document/document-profile';
+import { readGitImage, readWorkingImage } from './git-image';
+import { promises as fs } from 'node:fs';
 
 const CONFLICTS = new Set(['DD', 'AU', 'UD', 'UA', 'DU', 'AA', 'UU']);
 const EMPTY: GitSnapshot = {
@@ -79,6 +82,7 @@ export function parseGitStatus(output: string): ParsedStatus {
   for (let index = 0; index < records.length; index += 1) {
     const record = records[index];
     if (record.startsWith('# branch.head ')) parsed.branch = record.slice(14) || 'HEAD';
+    else if (record === '# branch.oid (initial)') parsed.unborn = true;
     else if (record.startsWith('# branch.upstream ')) parsed.upstream = record.slice(18);
     else if (record.startsWith('# branch.ab ')) {
       const match = /^# branch\.ab \+(\d+) -(\d+)$/.exec(record);
@@ -258,6 +262,21 @@ export class GitService {
     if (change?.conflict) staged = false;
     const originalPath = change?.previousPath === undefined ? repositoryRelative
       : path.relative(repository.repositoryRoot, path.resolve(root, change.previousPath)).split(path.sep).join('/');
+    if (isImageDocument(filePath)) {
+      const original = await readGitImage(repository, staged ? `HEAD:${originalPath}`
+        : change?.indexStatus === '?' ? undefined : `${change?.conflict ? ':2:' : ':'}${repositoryRelative}`, filePath);
+      const modified = staged ? await readGitImage(repository, `:${repositoryRelative}`, filePath) : await readWorkingImage(filePath);
+      const conflict = change?.conflict ? {
+        base: await readGitImage(repository, `:1:${repositoryRelative}`, filePath), ours: original,
+        theirs: await readGitImage(repository, `:3:${repositoryRelative}`, filePath),
+      } : undefined;
+      return { path: relative, filePath, staged, readOnly: true, patch: '', hunks: [],
+        originalText: null, modifiedText: null,
+        originalLabel: conflict ? 'OURS (unresolved conflict)' : staged ? 'HEAD' : change?.indexStatus === '?' ? 'EMPTY' : 'INDEX',
+        modifiedLabel: staged ? 'INDEX' : 'WORKTREE',
+        ...(conflict ? { conflict: { base: null, ours: null, theirs: null } } : {}),
+        images: { original, modified, ...(conflict ? { conflict } : {}) } };
+    }
     let patch: string;
     if (!staged && change?.indexStatus === '?' && change.workingTreeStatus === '?') {
       const text = await readWorkingDocument(filePath);
@@ -300,9 +319,9 @@ export class GitService {
   }
 
   private async stageOperation(state: WindowState, candidates: string[]): Promise<GitSnapshot> {
-    const root = (await this.requireRepository(state)).repositoryRoot;
+    const repository = await this.requireRepository(state), root = repository.repositoryRoot;
     const selected = this.relativePaths({ ...state, projectRoot: root }, candidates);
-    await this.run(root, selected.length ? ['add', '--', ...selected] : ['add', '-A', '--', '.']);
+    await repository.stage(selected);
     return this.status(state, false);
   }
 
@@ -393,7 +412,21 @@ export class GitService {
         if (!discovery.roots.length && this.discoveries.get(key)?.task === task) this.discoveries.delete(key);
       }, () => { if (this.discoveries.get(key)?.task === task) this.discoveries.delete(key); });
     }
-    return entry.task.then(discovery => ({ ...discovery, roots: [...discovery.roots] }));
+    return entry.task.then(async discovery => {
+      const candidates = [...new Set([...discovery.roots, ...(discovery.parent ? [discovery.parent] : [])])];
+      const missing = (await Promise.all(candidates.map(async candidate => {
+        try { await fs.stat(path.join(candidate, '.git')); return null; }
+        catch (error) { return (error as NodeJS.ErrnoException).code === 'ENOENT' ? candidate : null; }
+      }))).filter((candidate): candidate is string => candidate !== null);
+      if (missing.length) {
+        // A removed repository is an ordinary folder, not a failed cached repo.
+        // Re-scan so surviving nested repositories and parent policy still apply.
+        for (const candidate of missing) this.repositories.delete(candidate);
+        this.discoveries.delete(key);
+        return discoverRepositories(root, settings);
+      }
+      return { ...discovery, roots: [...discovery.roots] };
+    });
   }
 
   private async mutate(state: WindowState, action: (state: WindowState) => Promise<GitSnapshot>): Promise<GitSnapshot> {

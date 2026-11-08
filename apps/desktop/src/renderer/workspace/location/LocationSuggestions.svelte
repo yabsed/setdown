@@ -73,7 +73,8 @@
   small { opacity: .55; font-size: 11px; }
   .panel { border-radius: 8px; padding: 8px; font: 12px var(--app-font-family); }
   .panel [role="listbox"]:not(:empty) { margin-top:6px; }
-  input { width:100%; height:34px; box-sizing:border-box; margin:0; padding:0 10px; border:1px solid var(--app-accent); border-radius:5px; background:var(--app-canvas); color:var(--app-text); font:inherit; }
+  input { width:100%; height:25px; box-sizing:border-box; margin:0; padding:0 9px; border:1px solid transparent; border-radius:5px; background:var(--app-canvas); color:var(--app-text); font:12px/1.4 var(--app-font-family); outline:none; }
+  input:focus { border-color:var(--app-muted-text); }
   button[role="menuitem"] { height:32px; font:inherit; }
   button:disabled { opacity:.4; }
 </style>

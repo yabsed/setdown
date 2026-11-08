@@ -45,7 +45,7 @@ test('switching imported palettes updates the retained hidden style and clears i
   f.controller.initialize('github-dark-high-contrast');
   const style = f.styles[0];
   for (const [id, background] of [['night-owl', '#011627'], ['dracula', '#282A36'],
-    ['github-light-high-contrast', '#ffffff'], ['vscode-light-2026', '#FFFFFF'], ['light-owl', '#FBFBFB'], ['atom-one-light', '#FAFAFA'],
+    ['github-light-high-contrast', '#ffffff'],
     ['github-dark-high-contrast', '#0a0c10']]) {
     await f.controller.apply(id, f.urls[0], f.urls[1], true);
     expect(f.styles).toEqual([style]); expect(style.textContent).toContain(background);

@@ -49,8 +49,7 @@ export class BrowserFindOverlay {
         const step = appZoomStep(input);
         if (step !== undefined) { event.preventDefault(); this.zoom(step); return; }
         const key = input.key.toLowerCase(), modifier = input.control || input.meta;
-        const command = modifier && key === 'l' ? 'focus-location'
-          : modifier && key === 't' ? input.shift ? 'reopen-web-tab' : 'new-web-tab'
+        const command = modifier && key === 't' ? input.shift ? 'reopen-web-tab' : 'new-web-tab'
           : modifier && key === 'w' ? 'close-tab'
           : input.control && key === 'tab' ? input.shift ? 'previous-tab' : 'next-tab'
           : input.alt && key === 'arrowleft' ? 'navigate-back'
