@@ -1,0 +1,1760 @@
+{
+  "product": "chrome",
+  "complete": false,
+  "startedAt": "2026-11-08T12:19:25.994Z",
+  "fixture": {
+    "windows": 5,
+    "tabs": 10,
+    "sites": 5,
+    "paragraphsPerTab": 500,
+    "touchedArrayMiBPerTab": 8,
+    "idleSeconds": 75
+  },
+  "harnessHash": "fafd8618e1b6c873739e38f08457ffa9a65d730af3d9e3ea352935c9a6b06e4e",
+  "commit": "1d829ec69bda006a065463af11883f192eee3f62",
+  "automation": "Puppeteer 24.43.1",
+  "cgroupBefore": {
+    "memory.max": "3221225472",
+    "memory.current": "189239296",
+    "memory.peak": "189779968",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "samples": [
+    {
+      "label": "one-empty-window",
+      "windows": 1,
+      "tabs": 1,
+      "visibility": [
+        "visible"
+      ],
+      "time": "2026-11-08T12:19:27Z",
+      "rootPids": [
+        420543
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 4372520,
+        "SwapTotal": 8388604,
+        "SwapFree": 1372996
+      },
+      "pressure": "some avg10=0.30 avg60=0.11 avg300=0.34 total=107025301\nfull avg10=0.30 avg60=0.11 avg300=0.32 total=99394478",
+      "totalPssKiB": 404702,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 420543,
+          "ppid": 420510,
+          "comm": "chrome",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 137724,
+          "rssKiB": 267268,
+          "privateKiB": 103264,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420547,
+          "ppid": 420543,
+          "comm": "cat",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 154,
+          "rssKiB": 2156,
+          "privateKiB": 120,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420548,
+          "ppid": 420543,
+          "comm": "cat",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 150,
+          "rssKiB": 2180,
+          "privateKiB": 116,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420558,
+          "ppid": 420543,
+          "comm": "chrome",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 19499,
+          "rssKiB": 77028,
+          "privateKiB": 808,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420559,
+          "ppid": 420543,
+          "comm": "chrome",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 14181,
+          "rssKiB": 78004,
+          "privateKiB": 364,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420563,
+          "ppid": 420559,
+          "comm": "chrome",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 3394,
+          "rssKiB": 20400,
+          "privateKiB": 192,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420618,
+          "ppid": 420558,
+          "comm": "chrome",
+          "type": "gpu-process",
+          "subtype": null,
+          "pssKiB": 69010,
+          "rssKiB": 172440,
+          "privateKiB": 32700,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420624,
+          "ppid": 420543,
+          "comm": "chrome",
+          "type": "utility",
+          "subtype": "network.mojom.NetworkService",
+          "pssKiB": 40129,
+          "rssKiB": 117808,
+          "privateKiB": 22496,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420689,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "utility",
+          "subtype": "storage.mojom.StorageService",
+          "pssKiB": 9140,
+          "rssKiB": 54040,
+          "privateKiB": 1776,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420725,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 55615,
+          "rssKiB": 140208,
+          "privateKiB": 31100,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420792,
+          "ppid": 420543,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 153,
+          "rssKiB": 2560,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420793,
+          "ppid": 420792,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 149,
+          "rssKiB": 1460,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420794,
+          "ppid": 420793,
+          "comm": "glycin-svg",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6065,
+          "rssKiB": 16612,
+          "privateKiB": 4876,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420957,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 17785,
+          "rssKiB": 80808,
+          "privateKiB": 5524,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420960,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 31554,
+          "rssKiB": 112236,
+          "privateKiB": 9312,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": []
+    },
+    {
+      "label": "loaded-1-windows",
+      "windows": 1,
+      "tabs": 2,
+      "visibility": [
+        "hidden",
+        "visible"
+      ],
+      "time": "2026-11-08T12:19:30Z",
+      "rootPids": [
+        420543
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 3977144,
+        "SwapTotal": 8388604,
+        "SwapFree": 1167688
+      },
+      "pressure": "some avg10=1.22 avg60=0.29 avg300=0.37 total=107130936\nfull avg10=1.22 avg60=0.29 avg300=0.36 total=99499610",
+      "totalPssKiB": 455196,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 420543,
+          "ppid": 420510,
+          "comm": "chrome",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 141243,
+          "rssKiB": 276716,
+          "privateKiB": 108312,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420547,
+          "ppid": 420543,
+          "comm": "cat",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 154,
+          "rssKiB": 2156,
+          "privateKiB": 120,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420548,
+          "ppid": 420543,
+          "comm": "cat",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 150,
+          "rssKiB": 2180,
+          "privateKiB": 116,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420558,
+          "ppid": 420543,
+          "comm": "chrome",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 18615,
+          "rssKiB": 74660,
+          "privateKiB": 808,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420559,
+          "ppid": 420543,
+          "comm": "chrome",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 12908,
+          "rssKiB": 75636,
+          "privateKiB": 364,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420563,
+          "ppid": 420559,
+          "comm": "chrome",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 3073,
+          "rssKiB": 20656,
+          "privateKiB": 264,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420618,
+          "ppid": 420558,
+          "comm": "chrome",
+          "type": "gpu-process",
+          "subtype": null,
+          "pssKiB": 69176,
+          "rssKiB": 176536,
+          "privateKiB": 32844,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420624,
+          "ppid": 420543,
+          "comm": "chrome",
+          "type": "utility",
+          "subtype": "network.mojom.NetworkService",
+          "pssKiB": 39530,
+          "rssKiB": 120000,
+          "privateKiB": 22536,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420689,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "utility",
+          "subtype": "storage.mojom.StorageService",
+          "pssKiB": 8420,
+          "rssKiB": 55048,
+          "privateKiB": 1692,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420725,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 48888,
+          "rssKiB": 140900,
+          "privateKiB": 28468,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420792,
+          "ppid": 420543,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 153,
+          "rssKiB": 2560,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420793,
+          "ppid": 420792,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 149,
+          "rssKiB": 1460,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420794,
+          "ppid": 420793,
+          "comm": "glycin-svg",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6059,
+          "rssKiB": 16612,
+          "privateKiB": 4876,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420957,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 49057,
+          "rssKiB": 147740,
+          "privateKiB": 25368,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420960,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 41811,
+          "rssKiB": 137792,
+          "privateKiB": 20044,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421059,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 15810,
+          "rssKiB": 80560,
+          "privateKiB": 5612,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": []
+    },
+    {
+      "label": "loaded-2-windows",
+      "windows": 2,
+      "tabs": 4,
+      "visibility": [
+        "hidden",
+        "visible",
+        "hidden",
+        "visible"
+      ],
+      "time": "2026-11-08T12:19:33Z",
+      "rootPids": [
+        420543
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 3584704,
+        "SwapTotal": 8388604,
+        "SwapFree": 1155616
+      },
+      "pressure": "some avg10=1.18 avg60=0.32 avg300=0.38 total=107170844\nfull avg10=1.18 avg60=0.32 avg300=0.36 total=99539415",
+      "totalPssKiB": 520589,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 420543,
+          "ppid": 420510,
+          "comm": "chrome",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 147857,
+          "rssKiB": 284228,
+          "privateKiB": 118136,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420547,
+          "ppid": 420543,
+          "comm": "cat",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 154,
+          "rssKiB": 2156,
+          "privateKiB": 120,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420548,
+          "ppid": 420543,
+          "comm": "cat",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 150,
+          "rssKiB": 2180,
+          "privateKiB": 116,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420558,
+          "ppid": 420543,
+          "comm": "chrome",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 17092,
+          "rssKiB": 69796,
+          "privateKiB": 808,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420559,
+          "ppid": 420543,
+          "comm": "chrome",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 10867,
+          "rssKiB": 70772,
+          "privateKiB": 364,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420563,
+          "ppid": 420559,
+          "comm": "chrome",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 2471,
+          "rssKiB": 20656,
+          "privateKiB": 192,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420618,
+          "ppid": 420558,
+          "comm": "chrome",
+          "type": "gpu-process",
+          "subtype": null,
+          "pssKiB": 74782,
+          "rssKiB": 190440,
+          "privateKiB": 33832,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420624,
+          "ppid": 420543,
+          "comm": "chrome",
+          "type": "utility",
+          "subtype": "network.mojom.NetworkService",
+          "pssKiB": 36848,
+          "rssKiB": 115452,
+          "privateKiB": 22652,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420689,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "utility",
+          "subtype": "storage.mojom.StorageService",
+          "pssKiB": 7291,
+          "rssKiB": 55228,
+          "privateKiB": 1736,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420725,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 50699,
+          "rssKiB": 148580,
+          "privateKiB": 35572,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420792,
+          "ppid": 420543,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 152,
+          "rssKiB": 2560,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420793,
+          "ppid": 420792,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 149,
+          "rssKiB": 1460,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420794,
+          "ppid": 420793,
+          "comm": "glycin-svg",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6058,
+          "rssKiB": 16612,
+          "privateKiB": 4876,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420957,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 39348,
+          "rssKiB": 147744,
+          "privateKiB": 21592,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420960,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 35206,
+          "rssKiB": 137796,
+          "privateKiB": 20048,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421059,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 38773,
+          "rssKiB": 147112,
+          "privateKiB": 21016,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421192,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 39367,
+          "rssKiB": 147728,
+          "privateKiB": 21588,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421203,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 13325,
+          "rssKiB": 80588,
+          "privateKiB": 5424,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": []
+    },
+    {
+      "label": "loaded-3-windows",
+      "windows": 3,
+      "tabs": 6,
+      "visibility": [
+        "hidden",
+        "visible",
+        "hidden",
+        "visible",
+        "hidden",
+        "visible"
+      ],
+      "time": "2026-11-08T12:19:37Z",
+      "rootPids": [
+        420543
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 3317968,
+        "SwapTotal": 8388604,
+        "SwapFree": 1155884
+      },
+      "pressure": "some avg10=0.94 avg60=0.33 avg300=0.38 total=107204285\nfull avg10=0.94 avg60=0.33 avg300=0.36 total=99572802",
+      "totalPssKiB": 586422,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 420543,
+          "ppid": 420510,
+          "comm": "chrome",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 154094,
+          "rssKiB": 292836,
+          "privateKiB": 125320,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420547,
+          "ppid": 420543,
+          "comm": "cat",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 154,
+          "rssKiB": 2156,
+          "privateKiB": 120,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420548,
+          "ppid": 420543,
+          "comm": "cat",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 150,
+          "rssKiB": 2180,
+          "privateKiB": 116,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420558,
+          "ppid": 420543,
+          "comm": "chrome",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 16727,
+          "rssKiB": 69220,
+          "privateKiB": 796,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420559,
+          "ppid": 420543,
+          "comm": "chrome",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 10174,
+          "rssKiB": 70196,
+          "privateKiB": 356,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420563,
+          "ppid": 420559,
+          "comm": "chrome",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 2111,
+          "rssKiB": 20656,
+          "privateKiB": 192,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420618,
+          "ppid": 420558,
+          "comm": "chrome",
+          "type": "gpu-process",
+          "subtype": null,
+          "pssKiB": 79804,
+          "rssKiB": 202472,
+          "privateKiB": 33896,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420624,
+          "ppid": 420543,
+          "comm": "chrome",
+          "type": "utility",
+          "subtype": "network.mojom.NetworkService",
+          "pssKiB": 35976,
+          "rssKiB": 115432,
+          "privateKiB": 22820,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420689,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "utility",
+          "subtype": "storage.mojom.StorageService",
+          "pssKiB": 6623,
+          "rssKiB": 55488,
+          "privateKiB": 1796,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420725,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 54945,
+          "rssKiB": 155764,
+          "privateKiB": 42688,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420792,
+          "ppid": 420543,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 152,
+          "rssKiB": 2560,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420793,
+          "ppid": 420792,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 148,
+          "rssKiB": 1460,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420794,
+          "ppid": 420793,
+          "comm": "glycin-svg",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6057,
+          "rssKiB": 16612,
+          "privateKiB": 4876,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420957,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 35358,
+          "rssKiB": 147816,
+          "privateKiB": 21596,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420960,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 31912,
+          "rssKiB": 137800,
+          "privateKiB": 20048,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421059,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 34760,
+          "rssKiB": 147124,
+          "privateKiB": 21028,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421192,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 35338,
+          "rssKiB": 147736,
+          "privateKiB": 21588,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421203,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 34699,
+          "rssKiB": 147084,
+          "privateKiB": 20920,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421451,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 35351,
+          "rssKiB": 147712,
+          "privateKiB": 21596,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421463,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 11889,
+          "rssKiB": 80672,
+          "privateKiB": 5444,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": []
+    },
+    {
+      "label": "loaded-4-windows",
+      "windows": 4,
+      "tabs": 8,
+      "visibility": [
+        "hidden",
+        "visible",
+        "hidden",
+        "visible",
+        "hidden",
+        "visible",
+        "hidden",
+        "visible"
+      ],
+      "time": "2026-11-08T12:19:40Z",
+      "rootPids": [
+        420543
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 3328388,
+        "SwapTotal": 8388604,
+        "SwapFree": 1159584
+      },
+      "pressure": "some avg10=0.63 avg60=0.31 avg300=0.37 total=107236478\nfull avg10=0.63 avg60=0.31 avg300=0.36 total=99604829",
+      "totalPssKiB": 650354,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 420543,
+          "ppid": 420510,
+          "comm": "chrome",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 160747,
+          "rssKiB": 299596,
+          "privateKiB": 132916,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420547,
+          "ppid": 420543,
+          "comm": "cat",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 154,
+          "rssKiB": 2156,
+          "privateKiB": 120,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420548,
+          "ppid": 420543,
+          "comm": "cat",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 150,
+          "rssKiB": 2180,
+          "privateKiB": 116,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420558,
+          "ppid": 420543,
+          "comm": "chrome",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 15912,
+          "rssKiB": 66596,
+          "privateKiB": 796,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420559,
+          "ppid": 420543,
+          "comm": "chrome",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 9131,
+          "rssKiB": 67572,
+          "privateKiB": 356,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420563,
+          "ppid": 420559,
+          "comm": "chrome",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 1860,
+          "rssKiB": 20656,
+          "privateKiB": 192,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420618,
+          "ppid": 420558,
+          "comm": "chrome",
+          "type": "gpu-process",
+          "subtype": null,
+          "pssKiB": 85982,
+          "rssKiB": 215428,
+          "privateKiB": 34792,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420624,
+          "ppid": 420543,
+          "comm": "chrome",
+          "type": "utility",
+          "subtype": "network.mojom.NetworkService",
+          "pssKiB": 34995,
+          "rssKiB": 113308,
+          "privateKiB": 23128,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420689,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "utility",
+          "subtype": "storage.mojom.StorageService",
+          "pssKiB": 6179,
+          "rssKiB": 55680,
+          "privateKiB": 1852,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420725,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 61026,
+          "rssKiB": 163952,
+          "privateKiB": 50552,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420792,
+          "ppid": 420543,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 132,
+          "rssKiB": 2560,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420793,
+          "ppid": 420792,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 129,
+          "rssKiB": 1460,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420794,
+          "ppid": 420793,
+          "comm": "glycin-svg",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 4285,
+          "rssKiB": 16612,
+          "privateKiB": 1972,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420957,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 32977,
+          "rssKiB": 147816,
+          "privateKiB": 21596,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420960,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 29868,
+          "rssKiB": 137804,
+          "privateKiB": 20052,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421059,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 32388,
+          "rssKiB": 147192,
+          "privateKiB": 21028,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421192,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 32962,
+          "rssKiB": 147804,
+          "privateKiB": 21588,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421203,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 32315,
+          "rssKiB": 147088,
+          "privateKiB": 20924,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421451,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 32964,
+          "rssKiB": 147716,
+          "privateKiB": 21600,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421463,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 32374,
+          "rssKiB": 147144,
+          "privateKiB": 20992,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421533,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 32934,
+          "rssKiB": 147700,
+          "privateKiB": 21556,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421547,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 10890,
+          "rssKiB": 80608,
+          "privateKiB": 5436,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": []
+    },
+    {
+      "label": "loaded-5-windows",
+      "windows": 5,
+      "tabs": 10,
+      "visibility": [
+        "hidden",
+        "visible",
+        "hidden",
+        "visible",
+        "hidden",
+        "visible",
+        "hidden",
+        "visible",
+        "hidden",
+        "visible"
+      ],
+      "time": "2026-11-08T12:19:44Z",
+      "rootPids": [
+        420543
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 3342244,
+        "SwapTotal": 8388604,
+        "SwapFree": 970868
+      },
+      "pressure": "some avg10=0.51 avg60=0.30 avg300=0.37 total=107316493\nfull avg10=0.51 avg60=0.30 avg300=0.35 total=99684347",
+      "totalPssKiB": 713401,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 420543,
+          "ppid": 420510,
+          "comm": "chrome",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 168190,
+          "rssKiB": 308372,
+          "privateKiB": 140372,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420547,
+          "ppid": 420543,
+          "comm": "cat",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 154,
+          "rssKiB": 2156,
+          "privateKiB": 120,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420548,
+          "ppid": 420543,
+          "comm": "cat",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 150,
+          "rssKiB": 2180,
+          "privateKiB": 116,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420558,
+          "ppid": 420543,
+          "comm": "chrome",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 15645,
+          "rssKiB": 66020,
+          "privateKiB": 796,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420559,
+          "ppid": 420543,
+          "comm": "chrome",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 8694,
+          "rssKiB": 66984,
+          "privateKiB": 356,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420563,
+          "ppid": 420559,
+          "comm": "chrome",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 1676,
+          "rssKiB": 20656,
+          "privateKiB": 192,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420618,
+          "ppid": 420558,
+          "comm": "chrome",
+          "type": "gpu-process",
+          "subtype": null,
+          "pssKiB": 91102,
+          "rssKiB": 226180,
+          "privateKiB": 35256,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420624,
+          "ppid": 420543,
+          "comm": "chrome",
+          "type": "utility",
+          "subtype": "network.mojom.NetworkService",
+          "pssKiB": 34555,
+          "rssKiB": 113000,
+          "privateKiB": 23268,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420689,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "utility",
+          "subtype": "storage.mojom.StorageService",
+          "pssKiB": 5879,
+          "rssKiB": 55868,
+          "privateKiB": 1904,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420725,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 66753,
+          "rssKiB": 170924,
+          "privateKiB": 57524,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420792,
+          "ppid": 420543,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 132,
+          "rssKiB": 2560,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420793,
+          "ppid": 420792,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 129,
+          "rssKiB": 1460,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420794,
+          "ppid": 420793,
+          "comm": "glycin-svg",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 4283,
+          "rssKiB": 16612,
+          "privateKiB": 1972,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420957,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 31468,
+          "rssKiB": 147816,
+          "privateKiB": 21596,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420960,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 28477,
+          "rssKiB": 137804,
+          "privateKiB": 20052,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421059,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 30876,
+          "rssKiB": 147192,
+          "privateKiB": 21028,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421192,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 31448,
+          "rssKiB": 147804,
+          "privateKiB": 21588,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421203,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 30815,
+          "rssKiB": 147156,
+          "privateKiB": 20924,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421451,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 31467,
+          "rssKiB": 147788,
+          "privateKiB": 21604,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421463,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 30877,
+          "rssKiB": 147216,
+          "privateKiB": 20996,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421533,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 31429,
+          "rssKiB": 147704,
+          "privateKiB": 21560,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421547,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 27523,
+          "rssKiB": 135252,
+          "privateKiB": 19344,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421686,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 31491,
+          "rssKiB": 147772,
+          "privateKiB": 21664,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421697,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 10188,
+          "rssKiB": 80672,
+          "privateKiB": 5452,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": []
+    },
+    {
+      "label": "idle-35s",
+      "windows": 5,
+      "tabs": 10,
+      "visibility": [
+        "hidden",
+        "visible",
+        "hidden",
+        "visible",
+        "hidden",
+        "visible",
+        "hidden",
+        "visible",
+        "hidden",
+        "visible"
+      ],
+      "time": "2026-11-08T12:20:19Z",
+      "rootPids": [
+        420543
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 3239500,
+        "SwapTotal": 8388604,
+        "SwapFree": 703104
+      },
+      "pressure": "some avg10=0.05 avg60=0.27 avg300=0.36 total=107479935\nfull avg10=0.05 avg60=0.27 avg300=0.34 total=99846157",
+      "totalPssKiB": 674423,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 420543,
+          "ppid": 420510,
+          "comm": "chrome",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 163641,
+          "rssKiB": 301744,
+          "privateKiB": 137672,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420547,
+          "ppid": 420543,
+          "comm": "cat",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 154,
+          "rssKiB": 2156,
+          "privateKiB": 120,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420548,
+          "ppid": 420543,
+          "comm": "cat",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 150,
+          "rssKiB": 2180,
+          "privateKiB": 116,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420558,
+          "ppid": 420543,
+          "comm": "chrome",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 15385,
+          "rssKiB": 65016,
+          "privateKiB": 796,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420559,
+          "ppid": 420543,
+          "comm": "chrome",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 8403,
+          "rssKiB": 65948,
+          "privateKiB": 328,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420563,
+          "ppid": 420559,
+          "comm": "chrome",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 1675,
+          "rssKiB": 20656,
+          "privateKiB": 192,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420618,
+          "ppid": 420558,
+          "comm": "chrome",
+          "type": "gpu-process",
+          "subtype": null,
+          "pssKiB": 89454,
+          "rssKiB": 222948,
+          "privateKiB": 35228,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420624,
+          "ppid": 420543,
+          "comm": "chrome",
+          "type": "utility",
+          "subtype": "network.mojom.NetworkService",
+          "pssKiB": 34224,
+          "rssKiB": 112012,
+          "privateKiB": 23180,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420689,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "utility",
+          "subtype": "storage.mojom.StorageService",
+          "pssKiB": 5875,
+          "rssKiB": 55868,
+          "privateKiB": 1904,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420725,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 49959,
+          "rssKiB": 158608,
+          "privateKiB": 40352,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420957,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 30108,
+          "rssKiB": 146740,
+          "privateKiB": 20392,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 420960,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 28516,
+          "rssKiB": 143580,
+          "privateKiB": 19540,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421059,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 29560,
+          "rssKiB": 146164,
+          "privateKiB": 19868,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421192,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 30096,
+          "rssKiB": 146736,
+          "privateKiB": 20392,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421203,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 29527,
+          "rssKiB": 146152,
+          "privateKiB": 19792,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421451,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 30103,
+          "rssKiB": 146708,
+          "privateKiB": 20396,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421463,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 29613,
+          "rssKiB": 146236,
+          "privateKiB": 19888,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421533,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 30073,
+          "rssKiB": 146692,
+          "privateKiB": 20352,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421547,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 27550,
+          "rssKiB": 140776,
+          "privateKiB": 18852,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421686,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 30163,
+          "rssKiB": 146788,
+          "privateKiB": 20484,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 421697,
+          "ppid": 420563,
+          "comm": "chrome",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 10194,
+          "rssKiB": 80740,
+          "privateKiB": 5452,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": []
+    }
+  ],
+  "crashes": [],
+  "version": "Chrome/157.0.8103.38",
+  "launchArgs": [
+    "/usr/bin/google-chrome",
+    "--allow-pre-commit-input",
+    "--disable-background-networking",
+    "--disable-background-timer-throttling",
+    "--disable-backgrounding-occluded-windows",
+    "--disable-breakpad",
+    "--disable-client-side-phishing-detection",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-crash-reporter",
+    "--disable-default-apps",
+    "--disable-dev-shm-usage",
+    "--disable-hang-monitor",
+    "--disable-infobars",
+    "--disable-ipc-flooding-protection",
+    "--disable-popup-blocking",
+    "--disable-prompt-on-repost",
+    "--disable-renderer-backgrounding",
+    "--disable-search-engine-choice-screen",
+    "--disable-sync",
+    "--enable-automation",
+    "--export-tagged-pdf",
+    "--force-color-profile=srgb",
+    "--generate-pdf-document-outline",
+    "--metrics-recording-only",
+    "--no-first-run",
+    "--password-store=basic",
+    "--use-mock-keychain",
+    "--disable-features=Translate,AcceptCHFrame,MediaRouter,OptimizationHints,WebUIReloadButton,ProcessPerSiteUpToMainFrameThreshold,IsolateSandboxedIframes",
+    "--enable-features=PdfOopif",
+    "--user-data-dir=/var/tmp/setdown-browser-comparison-EP1K3l/browser",
+    "--disable-extensions",
+    "about:blank",
+    "--ozone-platform=x11",
+    "--remote-debugging-port=0"
+  ]
+}

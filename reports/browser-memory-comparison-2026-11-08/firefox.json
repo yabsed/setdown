@@ -1,0 +1,1731 @@
+{
+  "product": "firefox",
+  "complete": false,
+  "startedAt": "2026-11-08T12:22:19.639Z",
+  "fixture": {
+    "windows": 5,
+    "tabs": 10,
+    "sites": 5,
+    "paragraphsPerTab": 500,
+    "touchedArrayMiBPerTab": 8,
+    "idleSeconds": 75
+  },
+  "harnessHash": "040a96fc9f210453a1b13355f1e813893f5532626051ef2569aacce528aba531",
+  "commit": "1d829ec69bda006a065463af11883f192eee3f62",
+  "automation": "Puppeteer 24.43.1",
+  "cgroupBefore": {
+    "memory.max": "3221225472",
+    "memory.current": "599142400",
+    "memory.peak": "1076432896",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 6"
+  },
+  "samples": [
+    {
+      "label": "one-empty-window",
+      "windows": 1,
+      "tabs": 1,
+      "visibility": [
+        "visible"
+      ],
+      "time": "2026-11-08T12:22:22Z",
+      "rootPids": [
+        438513
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 2993440,
+        "SwapTotal": 8388604,
+        "SwapFree": 65360
+      },
+      "pressure": "some avg10=0.00 avg60=0.22 avg300=0.36 total=108334930\nfull avg10=0.00 avg60=0.21 avg300=0.34 total=100689563",
+      "totalPssKiB": 500935,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 438513,
+          "ppid": 438319,
+          "comm": "firefox",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 340125,
+          "rssKiB": 444988,
+          "privateKiB": 313620,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438754,
+          "ppid": 438513,
+          "comm": "forkserver",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 3169,
+          "rssKiB": 29204,
+          "privateKiB": 636,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438763,
+          "ppid": 438513,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 135,
+          "rssKiB": 2560,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438764,
+          "ppid": 438763,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 138,
+          "rssKiB": 1528,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438765,
+          "ppid": 438764,
+          "comm": "glycin-image-rs",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 3752,
+          "rssKiB": 7884,
+          "privateKiB": 2036,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438770,
+          "ppid": 438754,
+          "comm": "Socket Process",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 5952,
+          "rssKiB": 41360,
+          "privateKiB": 2952,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438786,
+          "ppid": 438754,
+          "comm": "WebExtensions",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 49759,
+          "rssKiB": 126812,
+          "privateKiB": 37772,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438795,
+          "ppid": 438754,
+          "comm": "RDD Process",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 16020,
+          "rssKiB": 46948,
+          "privateKiB": 13084,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438855,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 24596,
+          "rssKiB": 99952,
+          "privateKiB": 13076,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438920,
+          "ppid": 438513,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 134,
+          "rssKiB": 2488,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438922,
+          "ppid": 438920,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 130,
+          "rssKiB": 1272,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438923,
+          "ppid": 438922,
+          "comm": "glycin-svg",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6290,
+          "rssKiB": 16640,
+          "privateKiB": 5276,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439232,
+          "ppid": 438754,
+          "comm": "Utility Process",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 3669,
+          "rssKiB": 30392,
+          "privateKiB": 1556,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439253,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 15758,
+          "rssKiB": 81584,
+          "privateKiB": 9588,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439259,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 15656,
+          "rssKiB": 81192,
+          "privateKiB": 9540,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439262,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 15652,
+          "rssKiB": 80916,
+          "privateKiB": 9544,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": []
+    },
+    {
+      "label": "loaded-1-windows",
+      "windows": 1,
+      "tabs": 2,
+      "visibility": [
+        "hidden",
+        "visible"
+      ],
+      "time": "2026-11-08T12:22:25Z",
+      "rootPids": [
+        438513
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 3009392,
+        "SwapTotal": 8388604,
+        "SwapFree": 22692
+      },
+      "pressure": "some avg10=0.14 avg60=0.24 avg300=0.36 total=108349636\nfull avg10=0.14 avg60=0.23 avg300=0.34 total=100704234",
+      "totalPssKiB": 729247,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 438513,
+          "ppid": 438319,
+          "comm": "firefox",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 524895,
+          "rssKiB": 636716,
+          "privateKiB": 499068,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438754,
+          "ppid": 438513,
+          "comm": "forkserver",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 3037,
+          "rssKiB": 29204,
+          "privateKiB": 640,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438763,
+          "ppid": 438513,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 135,
+          "rssKiB": 2560,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438764,
+          "ppid": 438763,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 138,
+          "rssKiB": 1528,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438765,
+          "ppid": 438764,
+          "comm": "glycin-image-rs",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 3751,
+          "rssKiB": 7884,
+          "privateKiB": 2036,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438770,
+          "ppid": 438754,
+          "comm": "Socket Process",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 5617,
+          "rssKiB": 41552,
+          "privateKiB": 2920,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438786,
+          "ppid": 438754,
+          "comm": "WebExtensions",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 47537,
+          "rssKiB": 127076,
+          "privateKiB": 37308,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438795,
+          "ppid": 438754,
+          "comm": "RDD Process",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 15776,
+          "rssKiB": 46900,
+          "privateKiB": 13036,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438855,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 37269,
+          "rssKiB": 129080,
+          "privateKiB": 25124,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438920,
+          "ppid": 438513,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 134,
+          "rssKiB": 2488,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438922,
+          "ppid": 438920,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 130,
+          "rssKiB": 1272,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438923,
+          "ppid": 438922,
+          "comm": "glycin-svg",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6287,
+          "rssKiB": 16640,
+          "privateKiB": 5276,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439232,
+          "ppid": 438754,
+          "comm": "Utility Process",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 3495,
+          "rssKiB": 30392,
+          "privateKiB": 1560,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439253,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 35532,
+          "rssKiB": 127384,
+          "privateKiB": 23448,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439259,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 15061,
+          "rssKiB": 82252,
+          "privateKiB": 9564,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439262,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 15049,
+          "rssKiB": 81984,
+          "privateKiB": 9564,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439639,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 15404,
+          "rssKiB": 81612,
+          "privateKiB": 10048,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": []
+    },
+    {
+      "label": "loaded-2-windows",
+      "windows": 2,
+      "tabs": 4,
+      "visibility": [
+        "hidden",
+        "visible",
+        "hidden",
+        "visible"
+      ],
+      "time": "2026-11-08T12:22:28Z",
+      "rootPids": [
+        438513
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 3079376,
+        "SwapTotal": 8388604,
+        "SwapFree": 0
+      },
+      "pressure": "some avg10=0.09 avg60=0.22 avg300=0.35 total=108370419\nfull avg10=0.09 avg60=0.21 avg300=0.34 total=100724759",
+      "totalPssKiB": 755600,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 438513,
+          "ppid": 438319,
+          "comm": "firefox",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 498656,
+          "rssKiB": 617404,
+          "privateKiB": 471424,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438754,
+          "ppid": 438513,
+          "comm": "forkserver",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 2855,
+          "rssKiB": 29204,
+          "privateKiB": 660,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438763,
+          "ppid": 438513,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 134,
+          "rssKiB": 2560,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438764,
+          "ppid": 438763,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 138,
+          "rssKiB": 1528,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438765,
+          "ppid": 438764,
+          "comm": "glycin-image-rs",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 3751,
+          "rssKiB": 7884,
+          "privateKiB": 2036,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438770,
+          "ppid": 438754,
+          "comm": "Socket Process",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 5425,
+          "rssKiB": 43376,
+          "privateKiB": 2984,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438786,
+          "ppid": 438754,
+          "comm": "WebExtensions",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 45799,
+          "rssKiB": 127416,
+          "privateKiB": 37408,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438795,
+          "ppid": 438754,
+          "comm": "RDD Process",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 15011,
+          "rssKiB": 48436,
+          "privateKiB": 12424,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438855,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 34291,
+          "rssKiB": 129152,
+          "privateKiB": 25116,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438920,
+          "ppid": 438513,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 134,
+          "rssKiB": 2488,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438922,
+          "ppid": 438920,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 130,
+          "rssKiB": 1272,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438923,
+          "ppid": 438922,
+          "comm": "glycin-svg",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6282,
+          "rssKiB": 16640,
+          "privateKiB": 5276,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439232,
+          "ppid": 438754,
+          "comm": "Utility Process",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 3429,
+          "rssKiB": 32312,
+          "privateKiB": 1648,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439253,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 32454,
+          "rssKiB": 127528,
+          "privateKiB": 23276,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439259,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 32462,
+          "rssKiB": 127448,
+          "privateKiB": 23240,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439262,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 32147,
+          "rssKiB": 126576,
+          "privateKiB": 23212,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439639,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 14193,
+          "rssKiB": 82352,
+          "privateKiB": 9580,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 440239,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 14158,
+          "rssKiB": 80812,
+          "privateKiB": 9528,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 440245,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 14151,
+          "rssKiB": 80864,
+          "privateKiB": 9512,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": []
+    },
+    {
+      "label": "loaded-3-windows",
+      "windows": 3,
+      "tabs": 6,
+      "visibility": [
+        "hidden",
+        "visible",
+        "hidden",
+        "visible",
+        "hidden",
+        "visible"
+      ],
+      "time": "2026-11-08T12:22:32Z",
+      "rootPids": [
+        438513
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 3056928,
+        "SwapTotal": 8388604,
+        "SwapFree": 56
+      },
+      "pressure": "some avg10=0.08 avg60=0.21 avg300=0.35 total=108371400\nfull avg10=0.08 avg60=0.21 avg300=0.34 total=100725714",
+      "totalPssKiB": 708141,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 438513,
+          "ppid": 438319,
+          "comm": "firefox",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 399354,
+          "rssKiB": 523760,
+          "privateKiB": 369828,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438754,
+          "ppid": 438513,
+          "comm": "forkserver",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 2719,
+          "rssKiB": 29204,
+          "privateKiB": 664,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438763,
+          "ppid": 438513,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 134,
+          "rssKiB": 2560,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438764,
+          "ppid": 438763,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 138,
+          "rssKiB": 1528,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438765,
+          "ppid": 438764,
+          "comm": "glycin-image-rs",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 3751,
+          "rssKiB": 7884,
+          "privateKiB": 2036,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438770,
+          "ppid": 438754,
+          "comm": "Socket Process",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 5144,
+          "rssKiB": 43376,
+          "privateKiB": 2984,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438786,
+          "ppid": 438754,
+          "comm": "WebExtensions",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 43876,
+          "rssKiB": 127804,
+          "privateKiB": 36472,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438795,
+          "ppid": 438754,
+          "comm": "RDD Process",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 14793,
+          "rssKiB": 48436,
+          "privateKiB": 12424,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438855,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 33476,
+          "rssKiB": 130676,
+          "privateKiB": 25828,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438920,
+          "ppid": 438513,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 134,
+          "rssKiB": 2488,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438922,
+          "ppid": 438920,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 130,
+          "rssKiB": 1272,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438923,
+          "ppid": 438922,
+          "comm": "glycin-svg",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6279,
+          "rssKiB": 16640,
+          "privateKiB": 5276,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439232,
+          "ppid": 438754,
+          "comm": "Utility Process",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 3221,
+          "rssKiB": 32312,
+          "privateKiB": 1648,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439253,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 31563,
+          "rssKiB": 128988,
+          "privateKiB": 23988,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439259,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 30769,
+          "rssKiB": 127460,
+          "privateKiB": 23252,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439262,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 30499,
+          "rssKiB": 126656,
+          "privateKiB": 23228,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439639,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 30861,
+          "rssKiB": 127820,
+          "privateKiB": 23280,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 440239,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 30486,
+          "rssKiB": 126812,
+          "privateKiB": 23112,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 440245,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 13425,
+          "rssKiB": 81216,
+          "privateKiB": 9548,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 441134,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 13686,
+          "rssKiB": 82068,
+          "privateKiB": 9512,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 441140,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 13703,
+          "rssKiB": 82088,
+          "privateKiB": 9528,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": []
+    },
+    {
+      "label": "loaded-4-windows",
+      "windows": 4,
+      "tabs": 8,
+      "visibility": [
+        "hidden",
+        "visible",
+        "hidden",
+        "visible",
+        "hidden",
+        "visible",
+        "hidden",
+        "visible"
+      ],
+      "time": "2026-11-08T12:22:35Z",
+      "rootPids": [
+        438513
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 3010024,
+        "SwapTotal": 8388604,
+        "SwapFree": 64
+      },
+      "pressure": "some avg10=0.05 avg60=0.20 avg300=0.34 total=108387851\nfull avg10=0.05 avg60=0.19 avg300=0.33 total=100741842",
+      "totalPssKiB": 778199,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 438513,
+          "ppid": 438319,
+          "comm": "firefox",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 420396,
+          "rssKiB": 549684,
+          "privateKiB": 388228,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438754,
+          "ppid": 438513,
+          "comm": "forkserver",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 2616,
+          "rssKiB": 29208,
+          "privateKiB": 664,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438763,
+          "ppid": 438513,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 134,
+          "rssKiB": 2560,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438764,
+          "ppid": 438763,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 137,
+          "rssKiB": 1528,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438765,
+          "ppid": 438764,
+          "comm": "glycin-image-rs",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 3751,
+          "rssKiB": 7884,
+          "privateKiB": 2036,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438770,
+          "ppid": 438754,
+          "comm": "Socket Process",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 4929,
+          "rssKiB": 43376,
+          "privateKiB": 2984,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438786,
+          "ppid": 438754,
+          "comm": "WebExtensions",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 41634,
+          "rssKiB": 126504,
+          "privateKiB": 35044,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438795,
+          "ppid": 438754,
+          "comm": "RDD Process",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 14622,
+          "rssKiB": 48436,
+          "privateKiB": 12424,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438855,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 31745,
+          "rssKiB": 130156,
+          "privateKiB": 25240,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438920,
+          "ppid": 438513,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 134,
+          "rssKiB": 2488,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438922,
+          "ppid": 438920,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 130,
+          "rssKiB": 1272,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438923,
+          "ppid": 438922,
+          "comm": "glycin-svg",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6275,
+          "rssKiB": 16640,
+          "privateKiB": 5276,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439232,
+          "ppid": 438754,
+          "comm": "Utility Process",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 3059,
+          "rssKiB": 32312,
+          "privateKiB": 1648,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439253,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 30443,
+          "rssKiB": 128988,
+          "privateKiB": 23988,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439259,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 30630,
+          "rssKiB": 129516,
+          "privateKiB": 23988,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439262,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 30207,
+          "rssKiB": 128112,
+          "privateKiB": 23936,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439639,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 29766,
+          "rssKiB": 127824,
+          "privateKiB": 23284,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 440239,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 29381,
+          "rssKiB": 126884,
+          "privateKiB": 23124,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 440245,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 29377,
+          "rssKiB": 126880,
+          "privateKiB": 23116,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 441134,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 29305,
+          "rssKiB": 126988,
+          "privateKiB": 23032,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 441140,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 13081,
+          "rssKiB": 82380,
+          "privateKiB": 9548,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 441839,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 13228,
+          "rssKiB": 81416,
+          "privateKiB": 9532,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 441843,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 13219,
+          "rssKiB": 81288,
+          "privateKiB": 9532,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": []
+    },
+    {
+      "label": "loaded-5-windows",
+      "windows": 5,
+      "tabs": 10,
+      "visibility": [
+        "hidden",
+        "visible",
+        "hidden",
+        "visible",
+        "hidden",
+        "visible",
+        "hidden",
+        "visible",
+        "hidden",
+        "visible"
+      ],
+      "time": "2026-11-08T12:22:39Z",
+      "rootPids": [
+        438513
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 2902276,
+        "SwapTotal": 8388604,
+        "SwapFree": 40
+      },
+      "pressure": "some avg10=0.03 avg60=0.18 avg300=0.34 total=108404194\nfull avg10=0.03 avg60=0.18 avg300=0.33 total=100757780",
+      "totalPssKiB": 823752,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 438513,
+          "ppid": 438319,
+          "comm": "firefox",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 445571,
+          "rssKiB": 578792,
+          "privateKiB": 409744,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438754,
+          "ppid": 438513,
+          "comm": "forkserver",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 2620,
+          "rssKiB": 29208,
+          "privateKiB": 664,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438763,
+          "ppid": 438513,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 134,
+          "rssKiB": 2560,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438764,
+          "ppid": 438763,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 137,
+          "rssKiB": 1528,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438765,
+          "ppid": 438764,
+          "comm": "glycin-image-rs",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 3751,
+          "rssKiB": 7884,
+          "privateKiB": 2036,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438770,
+          "ppid": 438754,
+          "comm": "Socket Process",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 4929,
+          "rssKiB": 43376,
+          "privateKiB": 2984,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438786,
+          "ppid": 438754,
+          "comm": "WebExtensions",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 41713,
+          "rssKiB": 126740,
+          "privateKiB": 35152,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438795,
+          "ppid": 438754,
+          "comm": "RDD Process",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 14623,
+          "rssKiB": 48436,
+          "privateKiB": 12424,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438855,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 41139,
+          "rssKiB": 140080,
+          "privateKiB": 34580,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438920,
+          "ppid": 438513,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 134,
+          "rssKiB": 2488,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438922,
+          "ppid": 438920,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 130,
+          "rssKiB": 1272,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438923,
+          "ppid": 438922,
+          "comm": "glycin-svg",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6278,
+          "rssKiB": 16640,
+          "privateKiB": 5276,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439232,
+          "ppid": 438754,
+          "comm": "Utility Process",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 3060,
+          "rssKiB": 32312,
+          "privateKiB": 1648,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439253,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 40341,
+          "rssKiB": 139332,
+          "privateKiB": 33824,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439259,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 30584,
+          "rssKiB": 129516,
+          "privateKiB": 23988,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439262,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 30167,
+          "rssKiB": 128112,
+          "privateKiB": 23936,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439639,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 30378,
+          "rssKiB": 129080,
+          "privateKiB": 23856,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 440239,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 30232,
+          "rssKiB": 128696,
+          "privateKiB": 23868,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 440245,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 29357,
+          "rssKiB": 126884,
+          "privateKiB": 23120,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 441134,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 29302,
+          "rssKiB": 127064,
+          "privateKiB": 23044,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 441140,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 13086,
+          "rssKiB": 82576,
+          "privateKiB": 9552,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 441839,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 13047,
+          "rssKiB": 81764,
+          "privateKiB": 9544,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 441843,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 13039,
+          "rssKiB": 81636,
+          "privateKiB": 9544,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": []
+    },
+    {
+      "label": "idle-35s",
+      "windows": 5,
+      "tabs": 10,
+      "visibility": [
+        "hidden",
+        "visible",
+        "hidden",
+        "visible",
+        "hidden",
+        "visible",
+        "hidden",
+        "visible",
+        "hidden",
+        "visible"
+      ],
+      "time": "2026-11-08T12:23:14Z",
+      "rootPids": [
+        438513
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 2689000,
+        "SwapTotal": 8388604,
+        "SwapFree": 316
+      },
+      "pressure": "some avg10=0.00 avg60=0.10 avg300=0.30 total=108444474\nfull avg10=0.00 avg60=0.09 avg300=0.28 total=100797311",
+      "totalPssKiB": 861112,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 438513,
+          "ppid": 438319,
+          "comm": "firefox",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 497248,
+          "rssKiB": 630892,
+          "privateKiB": 461396,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438754,
+          "ppid": 438513,
+          "comm": "forkserver",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 2555,
+          "rssKiB": 29208,
+          "privateKiB": 624,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438770,
+          "ppid": 438754,
+          "comm": "Socket Process",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 4928,
+          "rssKiB": 43376,
+          "privateKiB": 2984,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438786,
+          "ppid": 438754,
+          "comm": "WebExtensions",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 38763,
+          "rssKiB": 123940,
+          "privateKiB": 32224,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438795,
+          "ppid": 438754,
+          "comm": "RDD Process",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 14866,
+          "rssKiB": 48440,
+          "privateKiB": 12900,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 438855,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 40935,
+          "rssKiB": 140148,
+          "privateKiB": 34392,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439232,
+          "ppid": 438754,
+          "comm": "Utility Process",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 3072,
+          "rssKiB": 32324,
+          "privateKiB": 1660,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439253,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 39818,
+          "rssKiB": 138860,
+          "privateKiB": 33352,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439259,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 30174,
+          "rssKiB": 129396,
+          "privateKiB": 23556,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439262,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 29827,
+          "rssKiB": 127908,
+          "privateKiB": 23604,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 439639,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 30235,
+          "rssKiB": 129124,
+          "privateKiB": 23712,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 440239,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 29863,
+          "rssKiB": 128484,
+          "privateKiB": 23528,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 440245,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 29829,
+          "rssKiB": 128536,
+          "privateKiB": 23452,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 441134,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 29786,
+          "rssKiB": 128744,
+          "privateKiB": 23340,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 441140,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 13091,
+          "rssKiB": 82756,
+          "privateKiB": 9552,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 441839,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 13067,
+          "rssKiB": 82112,
+          "privateKiB": 9548,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 441843,
+          "ppid": 438754,
+          "comm": "Web Content",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 13055,
+          "rssKiB": 81968,
+          "privateKiB": 9544,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": []
+    }
+  ],
+  "crashes": [],
+  "version": "firefox/159.0.1",
+  "launchArgs": [
+    "/usr/bin/firefox",
+    "--profile",
+    "/var/tmp/setdown-browser-comparison-jITckf/browser",
+    "about:blank",
+    "--remote-debugging-port=0"
+  ]
+}
