@@ -1,0 +1,582 @@
+{
+  "kind": "source-review-evidence-not-runtime-validation",
+  "review_date": "2026-11-09",
+  "timezone": "Asia/Seoul",
+  "setdown_commit": "d4c8de8d777d611513ef9f56b5a0e7d5da3bb040",
+  "zed_commit": "b5cd310b3b54dfc659fcc06453e6358843dfe216",
+  "zed_gitlink": "b5cd310b3b54dfc659fcc06453e6358843dfe216",
+  "input": {
+    "saved_path": "reports/zed-integration-2026-11-09/input-proposal.ko.md",
+    "byte_identical_to_attachment": true,
+    "sha256": "4c954592e0e46f1120b2a8d3640dea48559eae7b729ea46ddf4bb6f7d54f7729"
+  },
+  "methods": [
+    "Read local pinned source and existing contracts",
+    "Read pinned external Svelte extension source through GitHub connector",
+    "Read official Zed documentation via web",
+    "Cross-reviewed by three read-only research agents",
+    "Validated report local links and attachment byte equality"
+  ],
+  "not_executed": [
+    "Rust/Cargo host build",
+    "WASM extension execution",
+    "Setdown-Zed integration",
+    "GUI/Electron tests",
+    "Performance/memory benchmarks"
+  ],
+  "scope": "Documentation only; application code, dependency locks and submodule pins unchanged. Existing test logs were not counted as new validation.",
+  "local_sources": [
+    {
+      "path": ".gitmodules",
+      "sha256": "036f37802c062c335bd65c74c538a2b37fc204c46b848304c7f8699e7102b207",
+      "bytes": 4059
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "708b4e478b68a68eac5c11bb41c26f19c5d8790311d15874de3fed46f8160af6",
+      "bytes": 2638
+    },
+    {
+      "path": "apps/desktop/package.json",
+      "sha256": "02d2c780b02041d0848998575d59cbc0c79c89a1f36fdc94fb044961237aa856",
+      "bytes": 7602
+    },
+    {
+      "path": "apps/desktop/scripts/with-isolated-display.sh",
+      "sha256": "f3dadc9e2a5f9f741c0b1f5213e0fc81a01fa3b9c01dff769473184876967f3d",
+      "bytes": 4247
+    },
+    {
+      "path": "apps/desktop/src/core/workspace/document-store.ts",
+      "sha256": "b94f1012a8c6fc1faf4f135c31ece62bf0679b1574e9fb362f677e54de6ee8e1",
+      "bytes": 3535
+    },
+    {
+      "path": "apps/desktop/src/core/workspace/workspace-snapshot.ts",
+      "sha256": "3f8f60bcee35d8b6599941964bbec3a52fdabf1767253668cd6d4a1137127edc",
+      "bytes": 5899
+    },
+    {
+      "path": "apps/desktop/src/main/language/language-manager.ts",
+      "sha256": "f43a102a6e37b2218330a2b457df2e9819a97113cdbb076c24af112a8f223c48",
+      "bytes": 56583
+    },
+    {
+      "path": "apps/desktop/src/main/language/notebook-language-host.ts",
+      "sha256": "42d072ec5b83e12d5db82d99e3eff2e8853848dc2f168f678bf336b979e66f52",
+      "bytes": 18831
+    },
+    {
+      "path": "apps/desktop/src/protocol/language.ts",
+      "sha256": "4f51ec6ee625f1385c6e7ab7cb09553876d299f1768b275674790b3e89bd3d2a",
+      "bytes": 8345
+    },
+    {
+      "path": "apps/desktop/src/renderer/adapters/monaco-editor.ts",
+      "sha256": "47004569e6a69430cc26708bd907d5321de6a4612bd87b28248ef95da9e48b8b",
+      "bytes": 35615
+    },
+    {
+      "path": "apps/desktop/src/renderer/adapters/shared-document-history.test.ts",
+      "sha256": "840819e3d8c5549934605a7ba3defe319fde4019a66924e29d560cc4a9d67f13",
+      "bytes": 8270
+    },
+    {
+      "path": "apps/desktop/src/renderer/editor/live-document-model.ts",
+      "sha256": "cd330326082580264b448162bf09e0207294c7f82c97ff0c1c5ae85e168ff917",
+      "bytes": 2713
+    },
+    {
+      "path": "apps/desktop/src/renderer/language/language-client.ts",
+      "sha256": "2863c900b1c1e8bd86349290eadc677e4a500e7390d2b82c4203baa2a57ec404",
+      "bytes": 45081
+    },
+    {
+      "path": "apps/desktop/src/renderer/notebook/notebook-store.ts",
+      "sha256": "0b897735b9a7bc259b2ce4255390cde8d6c809f4fe87bd9c6fd50a9725aa3540",
+      "bytes": 3258
+    },
+    {
+      "path": "apps/desktop/src/renderer/workspace/document-sessions.ts",
+      "sha256": "96eb55741f13ec7d018af98ebeeb4334eebd16874faa70f85d0ec7d1de77274c",
+      "bytes": 2670
+    },
+    {
+      "path": "apps/desktop/test/e2e/notebook/notebook.spec.ts",
+      "sha256": "4726f89eb04dfba650456493f052dfd3fb73e1593e3190ba80091a967b73ebb3",
+      "bytes": 78876
+    },
+    {
+      "path": "apps/desktop/test/suites.json",
+      "sha256": "acfc954098690660a44ac5a59dfcbdaf294f7dde58b54fc01f9a6c410f6afb79",
+      "bytes": 14928
+    },
+    {
+      "path": "docs/architecture/external-code.md",
+      "sha256": "f425b370343b613a9c6639119bca68921c4b595fe5e8c85bae18150d2571b23b",
+      "bytes": 4287
+    },
+    {
+      "path": "docs/architecture/overview.md",
+      "sha256": "d863086d5ee2c8a10bf91f20a84980a874744ef6e0aad3d7a227ba922ad31604",
+      "bytes": 8474
+    },
+    {
+      "path": "docs/contracts/notebook.md",
+      "sha256": "26f88881722ab2fde8f93741f2da53cbd1d15fc84dcf67c4ef33fe92f6c3e3ed",
+      "bytes": 17738
+    },
+    {
+      "path": "docs/language-support.md",
+      "sha256": "9fdc023e01ccf18b751b8406c764418e1b48424a1c42d33dcba7d6c80d56487f",
+      "bytes": 43753
+    },
+    {
+      "path": "docs/preview-performance-contract.md",
+      "sha256": "cc40ad6d3806bea117aa6e3bf58633769ee05f251f9124a3c671714ed1db0be7",
+      "bytes": 64678
+    },
+    {
+      "path": "docs/validation/2026-11-08-notebook-lsp.md",
+      "sha256": "15e7b33079cbe6838c2a774962a575161fb408b11f657780acd00b1de9c80650",
+      "bytes": 12527
+    },
+    {
+      "path": "package.json",
+      "sha256": "a703b9227de303a40db792f070df6f0c30535de83305dda05e1007d1e2c9736c",
+      "bytes": 1167
+    },
+    {
+      "path": "reports/zed-integration-2026-11-09/input-proposal.ko.md",
+      "sha256": "4c954592e0e46f1120b2a8d3640dea48559eae7b729ea46ddf4bb6f7d54f7729",
+      "bytes": 28600
+    },
+    {
+      "path": "vendor/zed/Cargo.toml",
+      "sha256": "8b3d71dad6bc122b0111d5585e0a107f1ccea51725aa1c709b04d07c7cfc03f3",
+      "bytes": 45537
+    },
+    {
+      "path": "vendor/zed/assets/settings/default.json",
+      "sha256": "d913ef44512b00f3f52ad2c4d844800d3243fa38f201f08d6cbd9f33dbe468bb",
+      "bytes": 125580
+    },
+    {
+      "path": "vendor/zed/crates/editor/Cargo.toml",
+      "sha256": "b75dbdd3c428fc855e60b02fd0bcab03201b9aef7d46dffe48e688146da3212c",
+      "bytes": 4168
+    },
+    {
+      "path": "vendor/zed/crates/extension_host/src/capability_granter.rs",
+      "sha256": "b4b6dc54560d03f06d89d58f53c357afa1b3fb1922be478ea0f5e18a81d96aeb",
+      "bytes": 4731
+    },
+    {
+      "path": "vendor/zed/crates/extension_host/src/headless_host.rs",
+      "sha256": "0b83e576fbed7228ef23534e30a337197507864b4e163aecaf385ccb03325de0",
+      "bytes": 29211
+    },
+    {
+      "path": "vendor/zed/crates/extension_host/src/wasm_host/wit/since_v0_8_0.rs",
+      "sha256": "d498b1b668fc73fdb4c463349f8fc89da66ea836b12572dd1ee1263cb79e9aee",
+      "bytes": 40370
+    },
+    {
+      "path": "vendor/zed/crates/extension_host/src/wasm_host/wit.rs",
+      "sha256": "1a31c101ae3caffa606e6957b3d5e0648d8e36dba444a424db5531c7785451d6",
+      "bytes": 48998
+    },
+    {
+      "path": "vendor/zed/crates/extension_host/src/wasm_host.rs",
+      "sha256": "d9cec6d2414367a583ed2e84c5399265f7c2d529c8cd413e6607e9d7630255ac",
+      "bytes": 39443
+    },
+    {
+      "path": "vendor/zed/crates/gpui/src/app.rs",
+      "sha256": "c8373021181270662bf02713235d01edb5dae4220a30f702a7630f3c6a9cbed3",
+      "bytes": 143731
+    },
+    {
+      "path": "vendor/zed/crates/gpui_platform/src/gpui_platform.rs",
+      "sha256": "d9f9f29a11ed22efdd8cd260ff9582f53f9466064994340ff919be9ef706f075",
+      "bytes": 7959
+    },
+    {
+      "path": "vendor/zed/crates/gpui_web/examples/hello_web/main.rs",
+      "sha256": "f92b0ade326df06c343fe671ff014815ebee47c8e14d1113ccdebf7d1f25c67a",
+      "bytes": 14622
+    },
+    {
+      "path": "vendor/zed/crates/gpui_web/src/gpui_web.rs",
+      "sha256": "51360d028a5f0e495557732e7e257ccfd5de960a17a9a57487aeaa8562b10979",
+      "bytes": 1642
+    },
+    {
+      "path": "vendor/zed/crates/gpui_web/src/window.rs",
+      "sha256": "eda543e585912fcb012e2a3559d8fb2e9ad7570ba58746747af380d044085cb8",
+      "bytes": 39370
+    },
+    {
+      "path": "vendor/zed/crates/language/src/buffer.rs",
+      "sha256": "32e3ac1a56eb97e433dab155b8348b7dbf1dc9a7f22d01ca92357c5f45f874fe",
+      "bytes": 235950
+    },
+    {
+      "path": "vendor/zed/crates/language/src/language.rs",
+      "sha256": "4779230a828566eaee2a569ff3ecfc2ef7f14056caa879a574162465c146f980",
+      "bytes": 83983
+    },
+    {
+      "path": "vendor/zed/crates/language_extension/src/extension_lsp_adapter.rs",
+      "sha256": "dd29e7cd27d91c57eb2e3fe334913e22ab7333a4f4e6f685cf0db68c93996a86",
+      "bytes": 28501
+    },
+    {
+      "path": "vendor/zed/crates/languages/src/lib.rs",
+      "sha256": "b7fde46a1a4cb3cd6821384e58021a6b43b8de42d4ce142be87a9758aef893b8",
+      "bytes": 15267
+    },
+    {
+      "path": "vendor/zed/crates/node_runtime/Cargo.toml",
+      "sha256": "d6b6d0cb277262144b3f775d54905a6203a82f627c20c9d18d0fc2eff41b4585",
+      "bytes": 880
+    },
+    {
+      "path": "vendor/zed/crates/node_runtime/src/node_runtime.rs",
+      "sha256": "f0976a9aefd34c6711f0892ee7085990cde6bb893666c636d99f1935f20c34cc",
+      "bytes": 70240
+    },
+    {
+      "path": "vendor/zed/crates/paths/src/paths.rs",
+      "sha256": "fb9eb3e24c641b7f53b300ec0bc1396ff06d1522377f8734d23a324b75820efd",
+      "bytes": 23643
+    },
+    {
+      "path": "vendor/zed/crates/project/src/buffer_store.rs",
+      "sha256": "9779efebc48fd9740fafeef5fcf005a7264746e42c7062e14fb327eb87d0d28f",
+      "bytes": 72019
+    },
+    {
+      "path": "vendor/zed/crates/project/src/lsp_command.rs",
+      "sha256": "e8680437d8359473aaaf66230e39ebcef65fe4698043b8da39e3eccfb7fde17e",
+      "bytes": 222862
+    },
+    {
+      "path": "vendor/zed/crates/project/src/lsp_store.rs",
+      "sha256": "5882d23c645d0881737cbaf0cc2e6aa310434f0637716cfc61f198b55ae862ed",
+      "bytes": 758947
+    },
+    {
+      "path": "vendor/zed/crates/project/src/worktree_store.rs",
+      "sha256": "70589a0fa1a9462b09454be88feab2be0b7c717fa8e4f9655c23f7a446b16dcb",
+      "bytes": 58704
+    },
+    {
+      "path": "vendor/zed/crates/remote_server/src/headless_project.rs",
+      "sha256": "ccf11840985a00ecfc3b6cc80ff035f41b4d68ec8832d2fb20becdaf7ad2093e",
+      "bytes": 58799
+    },
+    {
+      "path": "vendor/zed/crates/remote_server/src/server.rs",
+      "sha256": "c071debe873d332562c27395314c4cf98e9ea15506f26875621e734ea362c28e",
+      "bytes": 63260
+    },
+    {
+      "path": "vendor/zed/crates/repl/src/notebook/cell.rs",
+      "sha256": "96fcc1128e0b7dccb5dfb85964ae87783600696c69a9cfb29844a4d611af91d9",
+      "bytes": 53828
+    },
+    {
+      "path": "vendor/zed/crates/text/src/text.rs",
+      "sha256": "569ffbf9f529e7628a0961dbd2f6ff4e73c4994558c3a76649160d1c6648f14d",
+      "bytes": 130054
+    },
+    {
+      "path": "vendor/zed/rust-toolchain.toml",
+      "sha256": "3d9002e97d5c3de93d49a1a36649153da4f40c29b061d0f2e09ea84ee143ba3e",
+      "bytes": 262
+    }
+  ],
+  "symbol_locations": [
+    {
+      "path": "vendor/zed/crates/remote_server/src/headless_project.rs",
+      "symbol_or_literal": "pub struct HeadlessProject",
+      "lines": [
+        57
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/remote_server/src/headless_project.rs",
+      "symbol_or_literal": "pub fn new(",
+      "lines": [
+        110
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/gpui_platform/src/gpui_platform.rs",
+      "symbol_or_literal": "pub fn headless()",
+      "lines": [
+        20
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/gpui_platform/src/gpui_platform.rs",
+      "symbol_or_literal": "pub fn application_with_web_backend",
+      "lines": [
+        38
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/gpui/src/app.rs",
+      "symbol_or_literal": "pub fn run_embedded",
+      "lines": [
+        340
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/gpui_web/src/window.rs",
+      "symbol_or_literal": "pub(crate) fn prepare_canvas",
+      "lines": [
+        107
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/gpui_web/src/window.rs",
+      "symbol_or_literal": "body.append_child(&canvas)",
+      "lines": [
+        139
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/project/src/lsp_store.rs",
+      "symbol_or_literal": "fn deserialize_workspace_edit",
+      "lines": [
+        3790
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/project/src/lsp_store.rs",
+      "symbol_or_literal": "fn on_lsp_workspace_edit",
+      "lines": [
+        4065
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/project/src/lsp_store.rs",
+      "symbol_or_literal": "fn deserialize_text_edits",
+      "lines": [
+        3664
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/project/src/lsp_store.rs",
+      "symbol_or_literal": "fn apply_additional_edits_for_completion",
+      "lines": [
+        8501
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/project/src/lsp_store.rs",
+      "symbol_or_literal": "fn request_lsp",
+      "lines": [
+        6250
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/project/src/lsp_store.rs",
+      "symbol_or_literal": "fn resolve_code_action",
+      "lines": [
+        6811
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/project/src/lsp_store.rs",
+      "symbol_or_literal": "fn resolve_completions",
+      "lines": [
+        8113
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/language/src/buffer.rs",
+      "symbol_or_literal": "pub fn from_proto",
+      "lines": [
+        1045
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/language/src/buffer.rs",
+      "symbol_or_literal": "pub fn to_proto",
+      "lines": [
+        1066
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/language/src/buffer.rs",
+      "symbol_or_literal": "pub fn serialize_ops",
+      "lines": [
+        1078
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/text/src/text.rs",
+      "symbol_or_literal": "struct History {",
+      "lines": [
+        153
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/text/src/text.rs",
+      "symbol_or_literal": "undo_stack:",
+      "lines": [
+        156,
+        222
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/text/src/text.rs",
+      "symbol_or_literal": "redo_stack:",
+      "lines": [
+        157,
+        223
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/repl/src/notebook/cell.rs",
+      "symbol_or_literal": "Buffer::local",
+      "lines": [
+        397
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/repl/src/notebook/cell.rs",
+      "symbol_or_literal": "attachments: None",
+      "lines": [
+        533
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/extension_host/src/headless_host.rs",
+      "symbol_or_literal": "pub fn new(",
+      "lines": [
+        63
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/extension_host/src/headless_host.rs",
+      "symbol_or_literal": "config.grammar = None",
+      "lines": [
+        276
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/extension_host/src/wasm_host.rs",
+      "symbol_or_literal": "inherit_stdio()",
+      "lines": [
+        755
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/node_runtime/src/node_runtime.rs",
+      "symbol_or_literal": "--no-package-lock",
+      "lines": [
+        330
+      ]
+    },
+    {
+      "path": "vendor/zed/crates/paths/src/paths.rs",
+      "symbol_or_literal": "pub fn set_custom_data_dir",
+      "lines": [
+        103
+      ]
+    },
+    {
+      "path": "apps/desktop/src/main/language/language-manager.ts",
+      "symbol_or_literal": "Unsaved buffers never cross windows",
+      "lines": [
+        35
+      ]
+    },
+    {
+      "path": "apps/desktop/src/protocol/language.ts",
+      "symbol_or_literal": "export type LanguageApi",
+      "lines": [
+        72
+      ]
+    },
+    {
+      "path": "apps/desktop/src/renderer/language/language-client.ts",
+      "symbol_or_literal": "No replacement models or second document store",
+      "lines": [
+        37
+      ]
+    },
+    {
+      "path": "apps/desktop/src/renderer/language/language-client.ts",
+      "symbol_or_literal": "private applyEdit",
+      "lines": [
+        359
+      ]
+    },
+    {
+      "path": "apps/desktop/src/main/language/notebook-language-host.ts",
+      "symbol_or_literal": "notebookDocument/didOpen",
+      "lines": [
+        142,
+        177
+      ]
+    },
+    {
+      "path": "apps/desktop/src/main/language/notebook-language-host.ts",
+      "symbol_or_literal": "notebookDocument/didChange",
+      "lines": [
+        184
+      ]
+    },
+    {
+      "path": "apps/desktop/src/main/language/notebook-language-host.ts",
+      "symbol_or_literal": "notebookDocument/didClose",
+      "lines": [
+        175,
+        216
+      ]
+    }
+  ],
+  "external_sources": [
+    {
+      "repository": "zed-extensions/svelte",
+      "commit": "ca6c2c6c891583a23820d9b23772e116426cc57d",
+      "path": "src/svelte.rs",
+      "url": "https://github.com/zed-extensions/svelte/blob/ca6c2c6c891583a23820d9b23772e116426cc57d/src/svelte.rs",
+      "accessed_on": "2026-11-09"
+    },
+    {
+      "repository": "zed-extensions/svelte",
+      "commit": "ca6c2c6c891583a23820d9b23772e116426cc57d",
+      "path": "extension.toml",
+      "url": "https://github.com/zed-extensions/svelte/blob/ca6c2c6c891583a23820d9b23772e116426cc57d/extension.toml",
+      "accessed_on": "2026-11-09"
+    },
+    {
+      "repository": "zed-extensions/svelte",
+      "commit": "ca6c2c6c891583a23820d9b23772e116426cc57d",
+      "path": "Cargo.toml",
+      "url": "https://github.com/zed-extensions/svelte/blob/ca6c2c6c891583a23820d9b23772e116426cc57d/Cargo.toml",
+      "accessed_on": "2026-11-09"
+    },
+    {
+      "url": "https://zed.dev/docs/extensions/capabilities",
+      "accessed_on": "2026-11-09",
+      "kind": "current-official-docs-not-version-pinned"
+    },
+    {
+      "url": "https://zed.dev/software-overview",
+      "accessed_on": "2026-11-09",
+      "kind": "current-official-docs-not-version-pinned"
+    },
+    {
+      "url": "https://zed.dev/docs/languages/svelte",
+      "accessed_on": "2026-11-09",
+      "kind": "current-official-docs-not-version-pinned"
+    }
+  ]
+}
