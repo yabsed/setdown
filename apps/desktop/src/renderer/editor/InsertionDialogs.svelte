@@ -2,6 +2,7 @@
   import { insertion, resizeTable } from './insertion-state.svelte';
   import type { AppActions } from '../ports/ui-actions';
   import { isComposingInput } from './composition-guard';
+  import { view } from '../workspace/workspace-view.svelte';
 
   const TABLE_COLUMNS = 10;
   const TABLE_ROWS = 10;
@@ -94,6 +95,34 @@
 
   $effect(() => {
     if (!insertion.tableOpen) tableActive = false;
+  });
+
+  $effect(() => {
+    const popup = insertion.tableOpen ? tablePopover : insertion.linkOpen ? linkPopover : null;
+    if (!popup) return;
+    // Splitting or moving a group can change its origin without resizing it.
+    void view.groupTree;
+    const group = document.querySelector<HTMLElement>(`.editor-group[data-group-id="${view.focusedGroupId}"]`);
+    const anchor = group?.querySelector<HTMLElement>(insertion.tableOpen ? '.insert-table-button' : '.insert-link-button');
+    const bar = anchor?.closest<HTMLElement>('.location-bar');
+    if (!group || !anchor || !bar) return;
+    const position = () => {
+      const bounds = group.getBoundingClientRect(), button = anchor.getBoundingClientRect();
+      const left = Math.max(0, bounds.left) + 8;
+      const right = Math.min(window.innerWidth, bounds.right) - 8;
+      const top = button.bottom + 4;
+      // Keep the controls inside their own pane, clear of adjacent native views.
+      popup.style.maxWidth = `${Math.max(0, right - left)}px`;
+      popup.style.maxHeight = `${Math.max(0, Math.min(window.innerHeight, bounds.bottom) - top - 8)}px`;
+      const width = popup.getBoundingClientRect().width;
+      popup.style.left = `${Math.max(left, Math.min(button.right - width, right - width))}px`;
+      popup.style.top = `${top}px`;
+    };
+    position();
+    const observer = new ResizeObserver(position);
+    for (const element of [group, bar, popup]) observer.observe(element);
+    window.addEventListener('resize', position);
+    return () => { observer.disconnect(); window.removeEventListener('resize', position); };
   });
 
   $effect(() => {

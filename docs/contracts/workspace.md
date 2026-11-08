@@ -184,6 +184,15 @@ an obsolete query's highlights after a newer search.
 
 ## Editor groups
 
+Markdown table and URL insertion popovers anchor below their focused group's
+location-bar button and stay inside that group's visible bounds. Window/app zoom
+and split resizing update the open popup; narrow or short panes scroll its
+contents instead of covering an adjacent native reader or website.
+`workspace/markdown-insertions.spec.ts` covers left/right/bottom placement, native
+pointer selection, keyboard invocation, focus, Undo and retained browser state.
+Execution evidence: [insertion popover validation](../../reports/insertion-popovers-2026-11-08/validation.json)
+and [first, second and warm latency comparisons](../../reports/insertion-popovers-2026-11-08/preview-latency.txt).
+
 Web pages share the editor-group tab strip and its address/file-path bar. The bar
 occupies 34 CSS pixels below the tab strip; both document preparation and visible
 readers use the resulting group body. Existing viewport, IME, revision and timing

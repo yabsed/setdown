@@ -1,0 +1,69 @@
+{
+  "date": "2026-11-08",
+  "problem": "Table and URL insertion popovers were positioned against the entire window, causing them to overlap adjacent native panes in split workspaces.",
+  "result": "Popovers follow the focused pane toolbar button, stay within that pane, and reposition on window, zoom and split changes.",
+  "baselineCommit": "25550962dbcbdcc3aed2c50bd16809292f527d7d",
+  "candidateBaseCommit": "25550962dbcbdcc3aed2c50bd16809292f527d7d",
+  "checks": {
+    "previewContract": {
+      "command": "TMPDIR=/var/tmp SETDOWN_BUILD_SOURCEMAP=0 npm run test:preview-contract",
+      "exitCode": 0,
+      "unitTests": 880,
+      "toolingTests": 14,
+      "electronTests": 311,
+      "typecheckAndBuild": "passed",
+      "log": "preview-contract.log.txt"
+    },
+    "focused": {
+      "testsPassed": 6,
+      "log": "focused.log.txt",
+      "coverage": [
+        "left/right/bottom splits beside a live website",
+        "window resize, app zoom and keyboard split resizing",
+        "native pointer table insertion",
+        "Undo and focus restoration",
+        "keyboard and toolbar URL insertion",
+        "Escape dismissal and retained browser draft/identity"
+      ]
+    },
+    "baselineReproduction": {
+      "expectedFailure": true,
+      "failedAt": "initial left-pane table popup geometry assertion",
+      "log": "baseline-reproduction.log.txt",
+      "trace": "baseline-reproduction.zip"
+    },
+    "benchmark": {
+      "command": "TMPDIR=/var/tmp SETDOWN_BUILD_SOURCEMAP=0 npm run bench:preview -- --baseline /tmp/setdown-insertion-baseline --runs 3 --skip-build --output <report>/benchmark",
+      "passed": true,
+      "matchedRepetitions": 3,
+      "launches": 48,
+      "cycles": 240,
+      "comparisons": 48,
+      "regressions": 0,
+      "thresholds": {
+        "relative": 0.25,
+        "absoluteMs": 50
+      },
+      "summary": "preview-latency.txt",
+      "raw": "benchmark/comparison.json"
+    }
+  },
+  "environment": {
+    "gui": "isolated Xvfb with a private runtime directory and D-Bus session; inherited Wayland socket removed",
+    "initialSandboxFailure": "Initial contract execution was blocked by Node child-process EPERM and an unrelated /tmp/.git ancestor. The unchanged tests passed with authorized process execution and TMPDIR=/var/tmp. Initial failure retained in sandbox-failure.log.txt.",
+    "retriesAdded": false,
+    "assertionsOrTolerancesWeakened": false
+  },
+  "screenshots": [
+    "table-left.png",
+    "table-right.png",
+    "table-below.png"
+  ],
+  "sourceSha256": {
+    "apps/desktop/src/renderer/editor/InsertionDialogs.svelte": "c762c0c7c230af36e63278a337541b171702fbb4929bf143c3ceee89f3468da1",
+    "apps/desktop/src/renderer/style.css": "642e67762dcdaa62669259a8395703d88dd87da886d6030a93d08c1fc6f886a2",
+    "apps/desktop/test/e2e/workspace/markdown-insertions.spec.ts": "e8fb713aa7e68b466c23b6ab8ff2218126332428c67a09be820219204a425a0a",
+    "apps/desktop/test/suites.json": "33e4a6d290e6ecf272619efeb7a52176fc097bb65fe7fe8643a6f5ad9fbe5309",
+    "docs/contracts/workspace.md": "a2f438c45cad68a096f1cccd54d391738d3aedaef8ff99d94b986ef6062aa53b"
+  }
+}

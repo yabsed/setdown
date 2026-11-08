@@ -1,0 +1,38 @@
+
+Running 6 tests using 1 worker
+
+(node:405156) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[1/6] test/e2e/git/git-review-editing-tools.spec.ts:55:1 › Working Tree shares table/link popovers, Ctrl+K, smart paste and native image storage
+dbus-daemon[405017]: [session uid=1000 pid=405017] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=405265 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[405017]: [session uid=1000 pid=405017] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=405265 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[405017]: [session uid=1000 pid=405017] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[405017]: [session uid=1000 pid=405017] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.3' (uid=1000 pid=405390 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[405017]: [session uid=1000 pid=405017] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[405017]: [session uid=1000 pid=405017] Activating service name='org.freedesktop.portal.Documents' requested by ':1.3' (uid=1000 pid=405390 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[405017]: [session uid=1000 pid=405017] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[405017]: [session uid=1000 pid=405017] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.3' (uid=1000 pid=405390 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[405017]: [session uid=1000 pid=405017] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=405449 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[405017]: [session uid=1000 pid=405017] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[405017]: [session uid=1000 pid=405017] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[405017]: [session uid=1000 pid=405017] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.3' (uid=1000 pid=405390 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[405017]: [session uid=1000 pid=405017] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:405390): xdg-desktop-portal-WARNING **: 17:31:25.143: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[405017]: [session uid=1000 pid=405017] Activating service name='org.freedesktop.impl.portal.desktop.oo7' requested by ':1.3' (uid=1000 pid=405390 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[405017]: [session uid=1000 pid=405017] Activated service 'org.freedesktop.impl.portal.desktop.oo7' failed: Process org.freedesktop.impl.portal.desktop.oo7 exited with status 1
+dbus-daemon[405017]: [session uid=1000 pid=405017] Successfully activated service 'org.freedesktop.portal.Desktop'
+
+(/usr/libexec/xdg-desktop-portal:405390): xdg-desktop-portal-WARNING **: 17:31:25.164: Failed to create secret proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.oo7: Process org.freedesktop.impl.portal.desktop.oo7 exited with status 1
+[2/6] test/e2e/git/git-review-editing-tools.spec.ts:130:1 › read-only Index/original, commit text, ordinary Markdown and tab roundtrips stay isolated
+[3/6] test/e2e/workspace/markdown-insertions.spec.ts:26:3 › insertion popovers follow the left Markdown pane beside a live website
+[4/6] test/e2e/workspace/markdown-insertions.spec.ts:26:3 › insertion popovers follow the right Markdown pane beside a live website
+[5/6] test/e2e/workspace/markdown-insertions.spec.ts:26:3 › insertion popovers follow the below Markdown pane beside a live website
+[6/6] test/e2e/workspace/markdown-insertions.spec.ts:98:1 › inserts a table and a URL from compact editor popovers
+  6 passed (19.1s)

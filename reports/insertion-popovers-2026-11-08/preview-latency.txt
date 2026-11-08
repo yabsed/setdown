@@ -1,0 +1,31 @@
+Insertion popover fix — preview latency comparison, 2026-11-08
+Baseline: 25550962dbcbdcc3aed2c50bd16809292f527d7d
+Candidate: same commit plus the insertion popover working-tree changes.
+Separate npm ci installations; both builds used SETDOWN_BUILD_SOURCEMAP=0.
+Already-current builds measured with --skip-build; three matched repetitions, 48 fresh launches, 240 cycles.
+One isolated Xvfb/D-Bus/runtime session; alternating AB/BA order; TMPDIR=/var/tmp.
+All eight scenarios completed. All 48 comparisons passed the unchanged 25% AND 50 ms regression thresholds.
+Values are median milliseconds, baseline -> candidate. Warm is the per-app median of cycles 3–5.
+Preparation is source idle time. Capture includes polling, IPC and readback; it is not a monitor presentation timestamp.
+
+Escape -> latest-content nonempty native capture
+Document | Preparation | Edits | First | Second | Warm
+document | 0 ms | false | 45 -> 93 | 26 -> 39 | 31 -> 25
+document | 0 ms | true | 326 -> 356 | 97 -> 106 | 93 -> 89
+document | 3000 ms | false | 23 -> 29 | 18 -> 19 | 19 -> 19
+document | 3000 ms | true | 106 -> 117 | 90 -> 111 | 89 -> 96
+review | 0 ms | false | 977 -> 1078 | 21 -> 34 | 19 -> 26
+review | 0 ms | true | 1059 -> 1098 | 1610 -> 1568 | 183 -> 190
+review | 3000 ms | false | 29 -> 27 | 27 -> 26 | 18 -> 20
+review | 3000 ms | true | 234 -> 248 | 193 -> 175 | 222 -> 176
+
+Real double-click -> editable source
+Document | Preparation | Edits | First | Second | Warm
+document | 0 ms | false | 19 -> 22 | 17 -> 42 | 13 -> 16
+document | 0 ms | true | 19 -> 21 | 14 -> 17 | 15 -> 14
+document | 3000 ms | false | 19 -> 18 | 15 -> 15 | 14 -> 14
+document | 3000 ms | true | 17 -> 19 | 15 -> 16 | 15 -> 16
+review | 0 ms | false | 22 -> 24 | 13 -> 14 | 12 -> 13
+review | 0 ms | true | 22 -> 24 | 17 -> 17 | 15 -> 15
+review | 3000 ms | false | 21 -> 21 | 12 -> 11 | 12 -> 16
+review | 3000 ms | true | 21 -> 20 | 15 -> 15 | 15 -> 15
