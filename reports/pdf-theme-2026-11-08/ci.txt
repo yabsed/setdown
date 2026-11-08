@@ -1,0 +1,17 @@
+Run: https://github.com/yabsed/setdown/actions/runs/42466582054
+Commit: 5218ed7cb9cee9ae943f0f763dbbe1d9848791c0
+Original job: 128688332984
+2026-11-08T09:23:11.3160651Z Downloading Electron binary...
+2026-11-08T09:23:22.4502767Z HTTPError: Response code 504 (Gateway Time-out) for https://github.com/electron/electron/releases/download/v44.7.2/electron-v44.7.2-linux-x64.zip
+2026-11-08T09:23:22.4571286Z Error: Electron failed to install correctly. Please delete `node_modules/electron` and run "npx install-electron --no" manually.
+
+One rerun of the failed jobs: build 128689537896, final CI result 128690473664.
+Both completed successfully. The rerun used the existing commit, before local changes.
+2026-11-08T09:29:54.2299621Z  Test Files  162 passed (162)
+2026-11-08T09:29:54.2314807Z       Tests  1253 passed (1253)
+2026-11-08T09:30:12.8097556Z # tests 65
+2026-11-08T09:30:12.8098590Z # pass 65
+2026-11-08T09:30:13.1230806Z # tests 14
+2026-11-08T09:30:13.1231782Z # pass 14
+2026-11-08T09:30:45.0015729Z svelte-check found 0 errors and 0 warnings
+2026-11-08T09:31:23.3824350Z ✓ built in 36.34s

@@ -151,6 +151,16 @@ window with no page scripts or desktop bridge, using the existing printable
 resource readiness check. Markdown image links remain remote references; this
 export does not promise an offline image archive.
 
+Markdown and Web Reader PDF exports paint the selected theme's background over
+the complete A4 page, including the outer print margins on every page. The
+shared `main/preview/pdf-exporter.ts` printer resolves the rendered snapshot's
+body color and supplies a page-box background in the detached print window.
+Content margins, pagination and selectable text remain intact; screen preview
+styles and preparation are unaffected. `preview/pdf-export.spec.ts` reopens the
+saved PDF bytes in the real PDF reader and checks all pages' corner/edge pixels,
+page proportions and first/last selectable text in tinted light, dark, imported
+and white themes. PDFs and rendered page images are retained as test artifacts.
+
 `core/browser/namu-reader.ts` is an extraction adapter limited to `namu.wiki` and
 `www.namu.wiki` `/w/` articles. Public HTML inspected on 2026-10-15 for
 [Markdown](https://namu.wiki/w/Markdown) and

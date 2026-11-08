@@ -5,7 +5,7 @@ import type { ReaderArticle } from '../../core/browser/reader-article';
 import { readerFileName, readerMarkdown, sanitizedReaderHtml } from '../../core/browser/reader-export';
 import { themeProfile } from '../../core/theme/theme-catalog';
 import type { PreviewThemeId } from '../../core/preview/preview-preferences';
-import { waitForPrintablePreview } from '../preview/pdf-exporter';
+import { printThemedPdf, waitForPrintablePreview } from '../preview/pdf-exporter';
 
 export async function exportReader(window: BrowserWindow, article: ReaderArticle, format: 'markdown' | 'pdf', theme: PreviewThemeId,
   current: () => boolean) {
@@ -28,7 +28,7 @@ export async function exportReader(window: BrowserWindow, article: ReaderArticle
       await print.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
       await waitForPrintablePreview(print);
       if (!current()) return { canceled: true };
-      const pdf = await print.webContents.printToPDF({ pageSize: 'A4', printBackground: true, preferCSSPageSize: true });
+      const pdf = await printThemedPdf(print);
       if (!current()) return { canceled: true };
       await fs.writeFile(result.filePath, pdf);
     } finally { print.destroy(); }

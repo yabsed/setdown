@@ -32,6 +32,17 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      # npm's cache does not include Electron's lazily downloaded binary.
+      - name: Cache Electron downloads
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/electron-cache
+          key: electron-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
+      - name: Install Electron before tests
+        working-directory: apps/desktop
+        env:
+          electron_config_cache: ${{ runner.temp }}/electron-cache
+        run: npx --no-install install-electron
       - name: Install native tools used by service tests
         run: |
           sudo apt-get update

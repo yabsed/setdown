@@ -33,6 +33,14 @@ export async function waitForPrintablePreview(window: BrowserWindow): Promise<vo
   })`);
 }
 
+export async function printThemedPdf(window: BrowserWindow): Promise<Buffer> {
+  // Chromium paints page margins separately from the document background.
+  // Read the rendered snapshot so imported themes use their resolved color too.
+  const background: string = await window.webContents.executeJavaScript('getComputedStyle(document.body).backgroundColor');
+  await window.webContents.insertCSS(`@page { background-color: ${background}; } :root { print-color-adjust: exact; }`);
+  return window.webContents.printToPDF({ pageSize: 'A4', printBackground: true, preferCSSPageSize: true });
+}
+
 export async function exportPdf(
   renderer: PreviewRenderer,
   state: WindowState,
@@ -62,11 +70,7 @@ export async function exportPdf(
   try {
     await printWindow.loadURL(url);
     await waitForPrintablePreview(printWindow);
-    const pdf = await printWindow.webContents.printToPDF({
-      pageSize: 'A4',
-      printBackground: true,
-      preferCSSPageSize: true,
-    });
+    const pdf = await printThemedPdf(printWindow);
     await fs.writeFile(result.filePath, pdf);
     return { canceled: false, path: result.filePath };
   } finally {

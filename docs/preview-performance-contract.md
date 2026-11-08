@@ -658,6 +658,12 @@ PR checks. Run
 `npm run test:preview-contract` locally for changes in this contract's scope;
 its GUI tests use the isolated-display wrapper and keep retries disabled.
 
+The desktop build restores Electron's archive cache separately from npm's cache
+and explicitly installs the pinned Electron binary before running tests. Electron
+44 otherwise downloads it on first `require('electron')`; a release-server error
+can fail `pretest` before any assertions run. Cache keys include OS, architecture
+and lockfile, and the official installer retains its checksum verification.
+
 The only automatic exemptions are known documentation paths: root README,
 AGENTS, CONTRIBUTING, CHANGELOG and LICENSE files, `live_demo.gif`, `docs/`, and
 `reports/`. CSS, dependencies, Markdown test fixtures, workflows, submodule
