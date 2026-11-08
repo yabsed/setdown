@@ -58,11 +58,8 @@ import type { AppActions } from '../../ports/ui-actions';
     bookmarked = false;
     if (url?.startsWith('http')) void actions.browserPlaces(url, 'bookmarks').then(rows => { if (web?.url === url) bookmarked = rows.some(p => p.url === url); }).catch(() => {});
   });
-  let bar = $state<HTMLElement>();
-  let compact = $state(false), panelMode = $state<'address' | 'actions' | null>(null);
-  let controlWidth = 0;
-  let panelActions = $state<Array<{ id: string; label: string; disabled: boolean }>>([]);
-  let actionButtons: HTMLButtonElement[] = [];
+  let bar = $state<HTMLElement>(), controls = $state<HTMLElement>();
+  let compact = $state(false), panelMode = $state<'address' | null>(null);
   let placement = $state(0);
   let popupToken = $state(crypto.randomUUID());
   let popupRequested = false;
@@ -75,13 +72,13 @@ import type { AppActions } from '../../ports/ui-actions';
     popupRequested = true;
     const rect = bar.getBoundingClientRect();
     const width = panelMode ? Math.min(520, window.innerWidth - 24) : rect.width - 18;
-    const height = panelMode === 'actions' ? Math.min(480, 58 + 32 * panelActions.length) : (panelMode ? 170 : 12) + 46 * suggestions.length;
+    const height = (panelMode ? 52 + (suggestions.length ? 6 : 0) : 12) + 46 * suggestions.length;
     const x = panelMode ? Math.max(12, Math.min(rect.left + 9, innerWidth - width - 12)) : rect.left + 9;
     const y = panelMode && innerHeight - rect.bottom < Math.min(height, 180) ? Math.max(8, rect.top - height) : rect.bottom - 1;
     void actions.locationSuggestions.show({ token: popupToken, selected,
       rows: suggestions.map(({ url, title, bookmarked }) => ({ url, title, bookmarked })),
       bounds: { x, y, width, height: Math.min(height, innerHeight - y - 8) },
-      ...(panelMode ? { panel: { mode: panelMode, location, draft, actions: panelActions.map(({ id, label, disabled }) => ({ id, label, disabled })) } } : {}),
+      ...(panelMode ? { panel: { mode: panelMode, location, draft, actions: [] } } : {}),
     }).catch(reason => { error = String(reason); });
   });
   function search() {
@@ -110,31 +107,26 @@ import type { AppActions } from '../../ports/ui-actions';
       if (cancel && request === generation) blur();
     }).catch(() => { if (request === generation) blur(); });
   }
-  async function focus() { if (groupId !== view.focusedGroupId) return; await tick(); if (compact) openPanel('address'); else { input?.focus(); input?.select(); } }
-  function openPanel(mode: 'address' | 'actions') {
+  async function focus() { if (groupId !== view.focusedGroupId) return; await tick(); if (compact) openPanel(); else { input?.focus(); input?.select(); } }
+  function openPanel() {
     if (popupRequested) actions.locationSuggestions.hide(popupToken);
-    popupToken = crypto.randomUUID(); panelMode = mode; editing = true; selected = -1;
+    popupToken = crypto.randomUUID(); panelMode = 'address'; editing = true; selected = -1;
     draft = location === 'about:blank' ? '' : location;
-    actionButtons = Array.from(bar?.querySelectorAll<HTMLButtonElement>('button') ?? [])
-      .filter(button => !button.closest('[hidden],.location-error,[role=dialog]') && !button.matches('.location-search,.location-more'));
-    panelActions = actionButtons.map((button, index) => {
-      const label = button.getAttribute('aria-label') || button.title || button.textContent || '';
-      return { id: String(index), label: (button.matches('.zoom-percent') ? `${label} (${button.textContent?.trim()})` : label).slice(0, 299), disabled: button.disabled };
-    });
-    if (mode === 'address') search(); else suggestions = [];
+    search();
   }
   function measure() {
     placement++;
-    if (!bar || !input || editing) return;
-    if (!compact) {
-      controlWidth = Array.from(bar.children).filter(element => element !== input && element instanceof HTMLElement && !element.hidden && !element.classList.contains('location-error') && getComputedStyle(element).position !== 'absolute')
-        .reduce((sum, element) => sum + element.getBoundingClientRect().width + 3, 18);
-      if (bar.clientWidth - controlWidth < 180) compact = true;
-    } else if (bar.clientWidth - controlWidth >= 220) compact = false;
+    if (!controls || !input || editing) return;
+    const controlWidth = Array.from(controls.children).filter(element => element !== input && element instanceof HTMLElement && !element.hidden && !element.classList.contains('location-search') && getComputedStyle(element).position !== 'absolute')
+      .reduce((sum, element) => sum + element.getBoundingClientRect().width + 3, 0);
+    const addressWidth = controls.clientWidth - controlWidth;
+    if (!compact && addressWidth < 180) compact = true;
+    else if (compact && addressWidth >= 220) compact = false;
   }
   onMount(() => {
     const resize = new ResizeObserver(measure);
     if (bar) resize.observe(bar);
+    if (controls) resize.observe(controls);
     if (input) resize.observe(input);
     const offChoice = actions.locationSuggestions.onChoice(choice => {
       if (choice.token === popupToken && editing && suggestions.some(row => row.url === choice.url)) void go(choice.url);
@@ -144,7 +136,6 @@ import type { AppActions } from '../../ports/ui-actions';
       if (action.token !== popupToken || !editing || !panelMode) return;
       if (action.type === 'edit') { draft = action.value; search(); }
       else if (action.type === 'submit') void go(action.value);
-      else if (action.type === 'action') { const button = actionButtons[Number(action.id)]; blur(); if (button?.isConnected && !button.disabled) button.click(); }
       else if (action.type === 'dismiss') { blur(); actions.focusLocationContent(groupId); }
     });
     const outside = (event: PointerEvent) => { if (panelMode && !bar?.contains(event.target as Node)) { actions.locationSuggestions.hide(popupToken); blur(); } };
@@ -157,6 +148,7 @@ import type { AppActions } from '../../ports/ui-actions';
 </script>
 
 <div bind:this={bar} class="location-bar" data-group-id={groupId} data-location-panel={panelMode ?? undefined} class:compact class:loading={web?.loading}>
+  <div bind:this={controls} class="location-controls">
   <button class="location-back" aria-label="Back" title="Back (Alt+Left)" disabled={!tab?.canGoBack || !!review} onclick={() => actions.navigateHistory(tab!.id, -1)}>←</button>
   <button aria-label="Forward" title="Forward (Alt+Right)" disabled={!tab?.canGoForward || !!review} onclick={() => actions.navigateHistory(tab!.id, 1)}>→</button>
   {#if web}
@@ -165,8 +157,9 @@ import type { AppActions } from '../../ports/ui-actions';
   {:else if tab && tab.kind !== 'terminal'}
     <button class="location-reload" aria-label="Reload file" title={tab.isUntitled ? 'Save this document before reloading' : 'Reload file (Ctrl/Cmd+R)'} disabled={tab.isUntitled} onclick={() => void actions.reloadLocalDocument(tab.id)}>↻</button>
   {/if}
-  <button class="location-search" hidden={!compact} aria-label="Open address and search" title={location} onclick={() => openPanel('address')}>⌕ <span>Search / address</span></button>
-  <button class="location-more" hidden={!compact} aria-label="More page actions" title="More page actions" onclick={() => openPanel('actions')}>…{#if requests.length}<span class="request-dot">•</span>{/if}</button>
+  <button class="location-icon location-search" hidden={!compact} aria-label="Open address and search" title="Search or enter an address" onclick={openPanel}>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="m15.5 15.5 5 5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+  </button>
     <input bind:this={input} aria-label="Address or file path" placeholder="Search or enter an address" spellcheck="false" autocomplete="off"
       bind:value={draft} title={location} onfocus={() => { editing = true; input?.select(); search(); }} onblur={inputBlur}
       onpointerdown={() => { selectOnClick = document.activeElement !== input || !document.hasFocus(); if (!editing) { editing = true; search(); } }}
@@ -189,7 +182,6 @@ import type { AppActions } from '../../ports/ui-actions';
         onclick={() => actions.browserCommand(tab!.id, 'site-info')}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 10h2v7h-2zm0-4h2v2h-2zm1-4a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 1.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17z"/></svg>
       </button>
-      <button aria-label="Passwords for this page" title="Save or fill a password" disabled={!web.url.startsWith('https:')} onclick={() => actions.browserPagePasswords(tab!.id)}>⚿</button>
       <button class="location-icon bookmark-toggle" class:bookmarked aria-pressed={bookmarked}
         aria-label={bookmarked ? 'Remove bookmark' : 'Bookmark page'} title={bookmarked ? 'Remove bookmark' : 'Bookmark page'}
         disabled={!web.url.startsWith('http')} onclick={() => void actions.browserBookmark(web.url, web.title, !bookmarked)}>
@@ -257,6 +249,7 @@ import type { AppActions } from '../../ports/ui-actions';
         percent={zoomState.tabs?.[zoomId ?? ''] ?? 100} change={step => actions.changeZoom(step, zoomScope, zoomId)} />
     {/if}
   {/if}
+  </div>
   {#if error || (browser.error && groupId === view.focusedGroupId)}
     <span class="location-error" role="alert">{error || browser.error}<button aria-label="Dismiss browser error" onclick={() => { error = ''; browser.error = ''; }}>×</button></span>
   {/if}
@@ -266,12 +259,10 @@ import type { AppActions } from '../../ports/ui-actions';
 
 <style>
   .location-bar { position: relative; z-index: 15; display: flex; align-items: center; gap: 3px; height: 34px; padding: 3px 9px; box-sizing: border-box; background: var(--app-chrome); border-bottom: 1px solid var(--app-border); color: var(--app-text); }
-  .location-search { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; text-align:left; font:12px var(--app-font-family); background:var(--app-canvas); }
-  .location-more { flex:0 0 28px; }
-  .location-search[hidden], .location-more[hidden] { display:none; }
-  .compact > :global(:not(.location-search):not(.location-more):not(.location-back):not(.location-reload):not(.location-error):not(.document-language-status)) { display:none; }
-  .request-dot { color:var(--app-accent); }
-  button { border: 0; border-radius: 5px; background: transparent; color: inherit; min-width: 26px; height: 26px; cursor: pointer; font-size: 16px; }
+  .location-controls { display:flex; align-items:center; gap:3px; flex:1; min-width:0; overflow-x:auto; scrollbar-width:none; }
+  .location-search { margin-right:auto; }
+  .location-search[hidden], .compact input { display:none; }
+  button { flex-shrink: 0; border: 0; border-radius: 5px; background: transparent; color: inherit; min-width: 26px; height: 26px; cursor: pointer; font-size: 16px; }
   button:hover { background: var(--app-hover); } button:disabled { opacity: .35; cursor: default; }
   input { width: 0; flex: 1; height: 25px; padding: 0 9px; border: 1px solid transparent; border-radius: 5px; background: var(--app-canvas); color: inherit; font: 12px/1.4 var(--app-font-family); outline: none; text-overflow: ellipsis; }
   input:focus { border-color: var(--app-muted-text); }

@@ -133,8 +133,7 @@
     if (!group || !bar) return;
     const position = () => {
       const anchor = bar.querySelector<HTMLElement>(insertion.tableOpen ? '.insert-table-button' : '.insert-link-button');
-      const more = bar.querySelector<HTMLElement>('.location-more');
-      const button = (anchor?.getBoundingClientRect().width ? anchor : more?.getBoundingClientRect().width ? more : bar).getBoundingClientRect();
+      const button = (anchor?.getBoundingClientRect().width ? anchor : bar).getBoundingClientRect();
       const bounds = group.getBoundingClientRect();
       const left = Math.max(0, bounds.left) + 8;
       const right = Math.min(window.innerWidth, bounds.right) - 8;

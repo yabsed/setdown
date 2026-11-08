@@ -71,13 +71,7 @@ test('Reader Select All stays inside the article with a terminal sibling, includ
     await expect.poll(() => readFile(path.join(f.root, 'finished.txt'), 'utf8').catch(() => '')).toBe('finished');
     expect(await readFile(path.join(f.root, 'ctrl-a.txt'), 'utf8').catch(() => 'absent')).toBe('absent');
     // A live page retains native selection; it is independent of the shell.
-    const exitReader = group.getByRole('button', { name: 'Exit reader mode', exact: true });
-    if (await exitReader.isVisible()) await exitReader.click();
-    else {
-      await group.getByRole('button', { name: 'More page actions' }).click();
-      const panel = f.app.windows().find(page => page.url().includes('location-overlay=1'))!;
-      await panel.getByRole('menuitem', { name: 'Exit reader mode', exact: true }).click();
-    }
+    await group.getByRole('button', { name: 'Exit reader mode', exact: true }).click();
     await f.app.evaluate(({ webContents }, origin) => {
       const wc = webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/article`)!; wc.focus();
       wc.sendInputEvent({ type: 'keyDown', keyCode: 'a', modifiers: ['control'] });

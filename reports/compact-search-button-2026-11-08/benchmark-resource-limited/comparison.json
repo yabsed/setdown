@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "startedAt": "2026-11-08T15:59:56.654Z",
+  "runs": 3,
+  "thresholds": {
+    "relative": 0.25,
+    "absoluteMs": 50
+  },
+  "harness": "candidate; same tests for both apps; five cycles per fresh process",
+  "measurement": "Escape keydown to latest-content nonempty native capture; includes polling/IPC/readback, not monitor presentation",
+  "fixtureHash": "a0ce32593f31ce0b79bc63e3867c0a227532954c45d50c92e2dfdc5518541314",
+  "harnessHash": "1c595d20aca1626e91f8835d0211958b849bb1ee2ad72a04e6608e2c73f06a06",
+  "machine": {
+    "hostname": "fedora",
+    "platform": "linux",
+    "release": "7.2.15-300.fc45.x86_64",
+    "arch": "x64",
+    "cpu": "AMD Ryzen 7 8845HS w/ Radeon 780M Graphics",
+    "cpus": 16,
+    "node": "v22.23.1",
+    "display": ":99"
+  },
+  "baseline": {
+    "root": "/var/tmp/setdown-compact-button-baseline-94180fc",
+    "commit": "94180fcb5111842511dbf191682cfd7cb4e02ac3",
+    "status": "",
+    "diffHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "lockHash": "00415e43b56ee924a0141f3f476a2a4cb654fa962eab801f5da031284c36277a",
+    "electron": "44.7.2",
+    "artifacts": {
+      "renderer": "de0c23f95a33ccc597e05763649d2338567e9576bcfdef803ef50bab27e7bc10",
+      "main": "4d63574eef5141272bf514bf163109c05df8e0b067f7f4fe761b6d8bf9e547e2"
+    }
+  },
+  "candidate": {
+    "root": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer",
+    "commit": "94180fcb5111842511dbf191682cfd7cb4e02ac3",
+    "status": "M apps/code-growth/output/repository-code-density-by-characters.png\n M apps/code-growth/output/repository-code-density.csv\n M apps/code-growth/output/repository-code-density.json\n M apps/code-growth/output/repository-code-density.png\n M apps/code-growth/output/repository-code-growth-detailed.png\n M apps/code-growth/output/repository-code-growth-files.csv\n M apps/code-growth/output/repository-code-growth-summary.json\n M apps/code-growth/output/repository-code-growth.csv\n M apps/code-growth/output/repository-code-growth.png\n M apps/code-growth/output/repository-component-growth-line.csv\n M apps/code-growth/output/repository-component-growth-line.png\n M apps/code-growth/output/repository-feature-growth.csv\n M apps/code-growth/output/repository-feature-growth.png\n M apps/code-growth/output/repository-test-growth.csv\n M apps/code-growth/output/repository-test-growth.png\n D apps/desktop/src/core/browser/credentials.ts\n M apps/desktop/src/main/browser/browser-manager.ts\n D apps/desktop/src/main/browser/browser-passwords.ts\n D apps/desktop/src/main/browser/credential-form.ts\n D apps/desktop/src/main/browser/credential-vault.test.ts\n D apps/desktop/src/main/browser/credential-vault.ts\n M apps/desktop/src/preload/index.ts\n M apps/desktop/src/protocol/browser.ts\n D apps/desktop/src/renderer/browser/BrowserAppearance.svelte\n D apps/desktop/src/renderer/browser/BrowserPasswords.svelte\n M apps/desktop/src/renderer/browser/BrowserSidebar.svelte\n M apps/desktop/src/renderer/browser/ExtensionActions.svelte\n M apps/desktop/src/renderer/browser/browser-actions.ts\n M apps/desktop/src/renderer/editor/InsertionDialogs.svelte\n M apps/desktop/src/renderer/shell/EmptyState.svelte\n M apps/desktop/src/renderer/workspace/location/LocationBar.svelte\n M apps/desktop/src/renderer/workspace/location/LocationSuggestions.svelte\n M apps/desktop/test/e2e/browser/compact-location.spec.ts\n M apps/desktop/test/e2e/browser/fullscreen.spec.ts\n D apps/desktop/test/e2e/browser/passwords.spec.ts\n M apps/desktop/test/e2e/browser/reader-selection.spec.ts\n M apps/desktop/test/e2e/terminal/terminal.spec.ts\n M apps/desktop/test/e2e/workspace/editor-groups.spec.ts\n M apps/desktop/test/e2e/workspace/markdown-insertions.spec.ts\n M apps/desktop/test/suites.json\n M apps/desktop/test/support/browser/location-controls.ts\n M docs/contracts/workspace.md\n?? reports/compact-search-button-2026-11-08/",
+    "diffHash": "af0d5c0db457dc85d92ff5ca9c26b831284d7227ca17766476bfee8ec2aaaefd",
+    "lockHash": "00415e43b56ee924a0141f3f476a2a4cb654fa962eab801f5da031284c36277a",
+    "electron": "44.7.2",
+    "artifacts": {
+      "renderer": "e4b53fd57904dfa570c439cb1bb1cecd387c013b69775a6055857375eb75c124",
+      "main": "1c8ccaeae1858350574349e61ce0b1e974e870ca2c470958968c5c32316308e3"
+    }
+  },
+  "order": [
+    "1-baseline"
+  ],
+  "measurements": {
+    "baseline": [],
+    "candidate": []
+  }
+}

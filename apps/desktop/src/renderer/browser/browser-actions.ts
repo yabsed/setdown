@@ -4,15 +4,8 @@ import type { WorkspaceTab } from '../../core/workspace/workspace-state';
 import { browser } from './browser-state.svelte';
 
 export type BrowserActions = {
-  browserThemeSettings: BrowserApi['themeSettings'];
-  browserUpdateThemeSettings: BrowserApi['updateThemeSettings'];
   browserCommand(id: string, command: import('../../protocol/browser').BrowserCommand): void;
   browserPlaces(query: string, scope?: import('../../protocol/browser').BrowserPlaceScope): Promise<import('../../protocol/browser').BrowserPlace[]>;
-  browserPasswordStatus: BrowserApi['passwordStatus'];
-  browserUnlockPasswords: BrowserApi['unlockPasswords'];
-  browserLockPasswords: BrowserApi['lockPasswords'];
-  browserDeletePassword: BrowserApi['deletePassword'];
-  browserPagePasswords(id: string): void;
   browserBookmarks: BrowserApi['bookmarks'];
   browserImportBookmarks: BrowserApi['importBookmarks'];
   browserUndoBookmarkImport: BrowserApi['undoBookmarkImport'];
@@ -46,8 +39,6 @@ type Options = {
 export function createBrowserActions(options: Options): BrowserActions {
   const { api } = options;
   const actions: BrowserActions = {
-    browserThemeSettings: () => api.themeSettings(),
-    browserUpdateThemeSettings: update => api.updateThemeSettings(update),
     browserCommand: (id, command) => {
       if (command === 'back' || command === 'forward') { options.navigateHistory(id, command === 'back' ? -1 : 1); return; }
       void api.command(id, command).catch(error => { browser.error = String(error); });
@@ -55,11 +46,6 @@ export function createBrowserActions(options: Options): BrowserActions {
     browserPlaces: (query, scope) => api.places(query, scope),
     browserDeleteHistory: (url) => api.deleteHistory(url),
     browserDownloadCommand: (id, command) => api.downloadCommand(id, command),
-    browserPasswordStatus: () => api.passwordStatus(),
-    browserUnlockPasswords: () => api.unlockPasswords(),
-    browserLockPasswords: () => api.lockPasswords(),
-    browserDeletePassword: id => api.deletePassword(id),
-    browserPagePasswords: id => { void api.pagePasswords(id).catch(error => { browser.error = String(error); }); },
     browserBookmarks: (...args) => api.bookmarks(...args),
     browserImportBookmarks: () => api.importBookmarks(),
     browserUndoBookmarkImport: batch => api.undoBookmarkImport(batch),

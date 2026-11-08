@@ -36,11 +36,7 @@
 <svelte:window onkeydown={key} />
 <div class="location-suggestions" class:panel={!!context?.panel}>
   {#if context?.panel}
-    <header><strong>{context.panel.mode === 'address' ? 'Current address' : 'Page actions'}</strong>
-      <button class="close" aria-label="Close address panel" onclick={() => desktop.locationSuggestions.panelAction({ token: context!.token, type: 'dismiss' })}>×</button></header>
     {#if context.panel.mode === 'address'}
-      <div class="current-location"><span title={context.panel.location}>{context.panel.location || 'No address'}</span>
-        <button aria-label="Copy current address" onclick={() => desktop.locationSuggestions.panelAction({ token: context!.token, type: 'copy' })}>Copy</button></div>
       <input bind:this={input} bind:value={draft} aria-label="Search or enter an address" placeholder="Search, URL, or file path" spellcheck="false" autocomplete="off"
         oninput={edit} oncompositionstart={() => { composing = true; }} oncompositionend={() => { composing = false; edit(); }} />
     {:else}
@@ -75,13 +71,9 @@
   .suggestion-text { display: flex; flex-direction: column; min-width: 0; gap: 4px; }
   strong, small { font: 12px D2Coding, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   small { opacity: .55; font-size: 11px; }
-  .panel { border-radius: 8px; padding: 12px; font: 12px var(--app-font-family); }
-  header, .current-location { display:flex; align-items:center; gap:12px; }
-  header { justify-content:space-between; }
-  .current-location { border-bottom:1px solid var(--app-border); padding:8px 0 12px; }
-  .current-location span { flex:1; min-width:0; overflow-wrap:anywhere; max-height:80px; overflow:auto; user-select:text; }
-  header button, .current-location button { width:auto; height:28px; font:inherit; }
-  input { width:100%; box-sizing:border-box; margin:12px 0; padding:10px; border:1px solid var(--app-accent); border-radius:5px; background:var(--app-canvas); color:var(--app-text); font:inherit; }
+  .panel { border-radius: 8px; padding: 8px; font: 12px var(--app-font-family); }
+  .panel [role="listbox"]:not(:empty) { margin-top:6px; }
+  input { width:100%; height:34px; box-sizing:border-box; margin:0; padding:0 10px; border:1px solid var(--app-accent); border-radius:5px; background:var(--app-canvas); color:var(--app-text); font:inherit; }
   button[role="menuitem"] { height:32px; font:inherit; }
   button:disabled { opacity:.4; }
 </style>

@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "ref": "main",
-  "resolved_commit": "cecd63ba46dc63a8ccbefad7b8bba8beefa0ea1d",
-  "committed_at": "2026-11-05T03:31:32+09:00",
+  "resolved_commit": "94180fcb5111842511dbf191682cfd7cb4e02ac3",
+  "committed_at": "2026-11-08T23:51:07+09:00",
   "history": "first-parent",
-  "commit_count": 363,
+  "commit_count": 376,
   "metric": "Physical lines including blanks/comments; committed files only.",
   "limitations": "Code volume does not measure coverage, passing tests, quality or productivity.",
   "excluded": [
@@ -20,49 +20,53 @@
   "feature_scope": "Production source only; path-based responsibility, not dependency analysis",
   "test_scope": "Test source, support and code fixtures; no test execution results",
   "totals": {
-    "lines": 77255,
-    "production": 42722,
-    "testing": 32767,
-    "tooling": 1766
+    "lines": 81270,
+    "production": 44977,
+    "testing": 34518,
+    "tooling": 1775
   },
   "components": {
-    "tests": 32767,
-    "renderer": 20324,
-    "main": 14029,
-    "core": 4505,
+    "tests": 34518,
+    "renderer": 21018,
+    "main": 15251,
+    "core": 4604,
     "preview_runtime": 1890,
-    "browser_runtime": 502,
+    "browser_runtime": 705,
     "image_runtime": 35,
     "image_export_runtime": 23,
     "hwp_runtime": 0,
-    "protocol": 1004,
-    "preload": 368,
+    "protocol": 1027,
+    "preload": 382,
     "launcher": 27,
     "types": 15,
-    "tooling": 1766,
+    "tooling": 1775,
     "other": 0
   },
   "features": {
-    "workspace": 6792,
-    "reading": 5547,
-    "editor": 3472,
-    "browser": 5188,
-    "language": 5413,
-    "notebook": 2838,
-    "git": 5061,
-    "project": 3040,
+    "workspace": 7296,
+    "reading": 5783,
+    "editor": 3530,
+    "browser": 5985,
+    "language": 5564,
+    "notebook": 3025,
+    "git": 5094,
+    "project": 3050,
     "media": 1349,
     "hwp": 0,
-    "terminal": 729,
-    "theme": 1874,
-    "shared": 1419,
-    "other": 0
+    "terminal": 811,
+    "theme": 1873,
+    "shared": 1450,
+    "other": 167
   },
   "tests": {
-    "unit": 15080,
-    "integration": 16752,
-    "support": 835,
-    "fixtures": 100
+    "unit": 15627,
+    "integration": 17949,
+    "support": 831,
+    "fixtures": 111
   },
-  "unclassified_files": []
+  "unclassified_files": [
+    "apps/desktop/src/core/memory/byte-cache.ts",
+    "apps/desktop/src/core/memory/memory-policy.ts",
+    "apps/desktop/src/main/memory/memory-monitor.ts"
+  ]
 }

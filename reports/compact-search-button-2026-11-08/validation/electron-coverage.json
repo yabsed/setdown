@@ -1,0 +1,1352 @@
+{
+  "expected": 333,
+  "covered": 333,
+  "omitted": [],
+  "note": "Completed across two cohorts, not one uninterrupted green contract invocation. The first cohort completed before the memory guard stopped the later workspace tests; the second cohort is the final 94-pass run after strengthening native drag fixture readiness.",
+  "cohorts": [
+    {
+      "log": "electron-partial.log",
+      "completed": 239,
+      "method": "No failed cases before workspace; the next case starts after the preceding case has completed."
+    },
+    {
+      "log": "electron-workspace-final.log",
+      "completed": 94,
+      "result": "94 passed"
+    }
+  ],
+  "scenarios": [
+    {
+      "file": "browser/bookmark-import.spec.ts",
+      "title": "bookmark HTML imports folders atomically, pages beyond 100, survives restart and undoes only its own batch"
+    },
+    {
+      "file": "browser/bookmark-import.spec.ts",
+      "title": "cancelled import leaves existing bookmarks unchanged"
+    },
+    {
+      "file": "browser/browser-extensions.spec.ts",
+      "title": "Web Store links install only after confirmation, update with stable identity and restore across restart"
+    },
+    {
+      "file": "browser/browser-extensions.spec.ts",
+      "title": "user-installed extensions load, run content scripts, and can be disabled"
+    },
+    {
+      "file": "browser/compact-location.spec.ts",
+      "title": "compact address panels own input above live pages and work for Markdown, files, terminals and web"
+    },
+    {
+      "file": "browser/downloads.spec.ts",
+      "title": "downloads expose native progress and controls, retain completed files across restart, and remove only records"
+    },
+    {
+      "file": "browser/extension-runtime.spec.ts",
+      "title": "MV3 popup targets its web tab; worker grants, proxy, WebRTC, cookies and downloads have real effects"
+    },
+    {
+      "file": "browser/external-pdf.spec.ts",
+      "title": "extensionless external PDFs use Setdown search, outline, zoom, retained canvases and original-byte saving"
+    },
+    {
+      "file": "browser/external-pdf.spec.ts",
+      "title": "non-PDF pages remain websites and a failed PDF offers recovery"
+    },
+    {
+      "file": "browser/find.spec.ts",
+      "title": "browser page find floats above the unchanged live page with counts, native controls and IME-safe Escape"
+    },
+    {
+      "file": "browser/find.spec.ts",
+      "title": "web find follows tab lifetime and app zoom without changing page bounds"
+    },
+    {
+      "file": "browser/focus.spec.ts",
+      "title": "address focus selects the whole URL for mouse, keyboard, and native page shortcuts"
+    },
+    {
+      "file": "browser/focus.spec.ts",
+      "title": "address suggestions navigate when the address loses focus before mouse release"
+    },
+    {
+      "file": "browser/focus.spec.ts",
+      "title": "mouse-focused address edits survive empty suggestions and keep typing, caret and composition"
+    },
+    {
+      "file": "browser/focus.spec.ts",
+      "title": "native address click owns keyboard focus with inactive split=false"
+    },
+    {
+      "file": "browser/focus.spec.ts",
+      "title": "native address click owns keyboard focus with inactive split=true"
+    },
+    {
+      "file": "browser/focus.spec.ts",
+      "title": "native address suggestions survive popup focus before pointer selection in both web splits"
+    },
+    {
+      "file": "browser/focus.spec.ts",
+      "title": "new web tabs take selection without selecting the address, including after a stale native focus event"
+    },
+    {
+      "file": "browser/fullscreen.spec.ts",
+      "title": "embedded cross-origin players respect Chromium fullscreen policy and Escape"
+    },
+    {
+      "file": "browser/fullscreen.spec.ts",
+      "title": "fullscreen releases presentation on navigation, tab commands, closing and renderer failure"
+    },
+    {
+      "file": "browser/fullscreen.spec.ts",
+      "title": "video fullscreen covers the window and restores the live markdown split"
+    },
+    {
+      "file": "browser/fullscreen.spec.ts",
+      "title": "video fullscreen covers the window and restores the live web split"
+    },
+    {
+      "file": "browser/layout.spec.ts",
+      "title": "address suggestions preserve live video beside markdown"
+    },
+    {
+      "file": "browser/layout.spec.ts",
+      "title": "address suggestions preserve live video beside reader"
+    },
+    {
+      "file": "browser/layout.spec.ts",
+      "title": "address suggestions preserve live video beside web"
+    },
+    {
+      "file": "browser/layout.spec.ts",
+      "title": "application menus preserve live video frames, playback and web view visibility"
+    },
+    {
+      "file": "browser/layout.spec.ts",
+      "title": "fast right-edge drops split two live websites instead of tearing off a window"
+    },
+    {
+      "file": "browser/layout.spec.ts",
+      "title": "language sidebar leaves the native web page live and Escape belongs to its search"
+    },
+    {
+      "file": "browser/layout.spec.ts",
+      "title": "native split guide stays painted and follows all eight cells at app zoom step 0"
+    },
+    {
+      "file": "browser/layout.spec.ts",
+      "title": "native split guide stays painted and follows all eight cells at app zoom step 2"
+    },
+    {
+      "file": "browser/layout.spec.ts",
+      "title": "tab widths stay stable when adding tabs and updating web page titles"
+    },
+    {
+      "file": "browser/layout.spec.ts",
+      "title": "website draggable CSS cannot consume home navigation input in web tab frames"
+    },
+    {
+      "file": "browser/lifecycle.spec.ts",
+      "title": "browser details: cancelling native beforeunload preserves the form and does not add a closed tab"
+    },
+    {
+      "file": "browser/lifecycle.spec.ts",
+      "title": "browser details: hidden pages retain forms, mute remains accessible and closed tabs reopen without stale forms"
+    },
+    {
+      "file": "browser/lifecycle.spec.ts",
+      "title": "canceling close preserves audible pages, confirmed exit releases them"
+    },
+    {
+      "file": "browser/lifecycle.spec.ts",
+      "title": "canceling quit preserves audible pages, confirmed exit releases them"
+    },
+    {
+      "file": "browser/lifecycle.spec.ts",
+      "title": "closing a window with audible web contents releases pages without main-process exceptions"
+    },
+    {
+      "file": "browser/memory.spec.ts",
+      "title": "a discarded Markdown reader regenerates the latest edited revision and retains Undo"
+    },
+    {
+      "file": "browser/memory.spec.ts",
+      "title": "both inactive Git reader buffers are discarded and restore the edited working tree"
+    },
+    {
+      "file": "browser/memory.spec.ts",
+      "title": "pressure discards inactive web contents, restores history/scroll, and protects edits and beforeunload"
+    },
+    {
+      "file": "browser/menus.spec.ts",
+      "title": "Explorer menus cover native markdown panels and restore their live state"
+    },
+    {
+      "file": "browser/menus.spec.ts",
+      "title": "Explorer menus cover native web panels and restore their live state"
+    },
+    {
+      "file": "browser/menus.spec.ts",
+      "title": "Monaco notebook context menus stay above adjacent native browser panes"
+    },
+    {
+      "file": "browser/menus.spec.ts",
+      "title": "Monaco notebook hovers use the context-menu cover above adjacent native panes"
+    },
+    {
+      "file": "browser/menus.spec.ts",
+      "title": "Monaco text context menus stay above adjacent native browser panes"
+    },
+    {
+      "file": "browser/menus.spec.ts",
+      "title": "Monaco text hovers use the context-menu cover above adjacent native panes"
+    },
+    {
+      "file": "browser/menus.spec.ts",
+      "title": "browser details: native image copying and link menus preserve pixels, URLs and source ownership"
+    },
+    {
+      "file": "browser/menus.spec.ts",
+      "title": "context menus follow light and dark app themes, stay compact and return native editing focus"
+    },
+    {
+      "file": "browser/menus.spec.ts",
+      "title": "themed context menus retain nested keyboard actions and disabled/checked items"
+    },
+    {
+      "file": "browser/navigation.spec.ts",
+      "title": "Back and Forward traverse file and web boundaries while restoring the native web stack"
+    },
+    {
+      "file": "browser/navigation.spec.ts",
+      "title": "address navigation asks to save edited files and cancellation preserves the current tab"
+    },
+    {
+      "file": "browser/navigation.spec.ts",
+      "title": "closing an opener preserves child and descendant tabs with their live state"
+    },
+    {
+      "file": "browser/navigation.spec.ts",
+      "title": "file URLs and web addresses replace the current tab, including PDFs outside the project"
+    },
+    {
+      "file": "browser/navigation.spec.ts",
+      "title": "terminal addresses navigate through web and files while sessions and tab zoom stay independent"
+    },
+    {
+      "file": "browser/navigation.spec.ts",
+      "title": "the first web page opens from a fresh empty workspace and popups preserve their opener"
+    },
+    {
+      "file": "browser/navigation.spec.ts",
+      "title": "web pages share document tabs, retain live state, navigate, bookmark, and split"
+    },
+    {
+      "file": "browser/privacy.spec.ts",
+      "title": "browser details: HTTP authentication is an owned opt-in prompt and error reload preserves its URL"
+    },
+    {
+      "file": "browser/privacy.spec.ts",
+      "title": "browser details: notification requests stay quiet, coalesce and expire with their document"
+    },
+    {
+      "file": "browser/privacy.spec.ts",
+      "title": "browser details: site reset preserves other sites and PDF completion leaves the active tab alone"
+    },
+    {
+      "file": "browser/privacy.spec.ts",
+      "title": "history deletion updates persistent places while preserving bookmarks and page state"
+    },
+    {
+      "file": "browser/reader-selection.spec.ts",
+      "title": "Reader Select All stays inside the article with a terminal sibling, including native Ctrl+A and menus"
+    },
+    {
+      "file": "browser/reader.spec.ts",
+      "title": "Esc opens reader mode at the same block and double-click returns to the live page at the clicked block"
+    },
+    {
+      "file": "browser/reader.spec.ts",
+      "title": "Namu reader extracts hashed div layouts, keeps tables and anchors and restores the live paragraph"
+    },
+    {
+      "file": "browser/reader.spec.ts",
+      "title": "native Markdown reader shortcuts select the address and go back to the previous file"
+    },
+    {
+      "file": "browser/reader.spec.ts",
+      "title": "reader toolbar and wheel share the live website tab zoom while other Markdown tabs stay independent"
+    },
+    {
+      "file": "browser/reader.spec.ts",
+      "title": "reading surfaces offer native copy/search menus and local Markdown PDF export"
+    },
+    {
+      "file": "browser/reader.spec.ts",
+      "title": "web Reader keeps location controls stationary and the compact extension strip available"
+    },
+    {
+      "file": "browser/reader.spec.ts",
+      "title": "web reader searches the visible article and exports its snapshot as Markdown and PDF"
+    },
+    {
+      "file": "browser/themes.spec.ts",
+      "title": "Theme menu toggles web colors live, preserves site exceptions and persists after restart"
+    },
+    {
+      "file": "browser/themes.spec.ts",
+      "title": "actual dark and light surfaces keep readable text across themes and dynamic changes"
+    },
+    {
+      "file": "browser/themes.spec.ts",
+      "title": "all web themes cover light-dark surfaces and external CSS without replacing the page"
+    },
+    {
+      "file": "browser/themes.spec.ts",
+      "title": "moving a live themed tab to another window retains its resource bridge and page identity"
+    },
+    {
+      "file": "browser/themes.spec.ts",
+      "title": "strict script CSP retains CSSOM theme updates and restores original CSS"
+    },
+    {
+      "file": "browser/transfer.spec.ts",
+      "title": "a popup moved to another window survives closing its original window"
+    },
+    {
+      "file": "browser/transfer.spec.ts",
+      "title": "moving a web tab to another window preserves its live page and enforces ownership"
+    },
+    {
+      "file": "browser/transfer.spec.ts",
+      "title": "native web tab drag into another window preserves the page and uses the indicated tab strip"
+    },
+    {
+      "file": "browser/transfer.spec.ts",
+      "title": "overlapping windows accept repeated terminal body drops and clear a remote cancellation"
+    },
+    {
+      "file": "browser/transfer.spec.ts",
+      "title": "overlapping windows accept repeated web body drops and clear a remote cancellation"
+    },
+    {
+      "file": "browser/ublock.spec.ts",
+      "title": "bundled uBlock blocks requests, scripts and frame cosmetics, and enforces response-header filters"
+    },
+    {
+      "file": "browser/ublock.spec.ts",
+      "title": "uBlock migrates the recursive managed cache and preserves filtering across restarts"
+    },
+    {
+      "file": "browser/zoom.spec.ts",
+      "title": "browser Ctrl+wheel zooms websites and frames independently of the app and documents"
+    },
+    {
+      "file": "git/git-activity-badge.spec.ts",
+      "title": "Git activity badge counts pending resources and refreshes without opening Source Control"
+    },
+    {
+      "file": "git/git-activity-badge.spec.ts",
+      "title": "long repository paths fit the sidebar and the badge includes other repositories"
+    },
+    {
+      "file": "git/git-history.spec.ts",
+      "title": "Graph resizes, refreshes and opens immutable Markdown revisions in existing review"
+    },
+    {
+      "file": "git/git-history.spec.ts",
+      "title": "unchanged Git refreshes preserve graph rows, scroll and keyboard focus"
+    },
+    {
+      "file": "git/git-review-first-open.spec.ts",
+      "title": "SCM offers file and comparison side opens, reuses the target group, and keeps shared edits"
+    },
+    {
+      "file": "git/git-review-first-open.spec.ts",
+      "title": "SCM row menus stay styled, unclipped and keyboard accessible in light and dark themes"
+    },
+    {
+      "file": "git/git-review-first-open.spec.ts",
+      "title": "first Working Tree opens directly in Monaco without an ordinary Viewer"
+    },
+    {
+      "file": "git/git-review-first-open.spec.ts",
+      "title": "two Working Tree groups and an ordinary view share edits, Undo and independent native readers"
+    },
+    {
+      "file": "git/git-review-ime.spec.ts",
+      "title": "Korean composition survives working-tree preview navigation without a single blur"
+    },
+    {
+      "file": "git/git-review-tabs.spec.ts",
+      "title": "keeps staged and live working-tree reviews in separate tabs"
+    },
+    {
+      "file": "git/git-review-tabs.spec.ts",
+      "title": "keeps word wrap in the original diff pane after tab roundtrips"
+    },
+    {
+      "file": "git/git-review-tabs.spec.ts",
+      "title": "new staged and working-tree reviews open source diff at the first change"
+    },
+    {
+      "file": "git/git-review-tabs.spec.ts",
+      "title": "returning from a review, discarding, and saving keep the document usable"
+    },
+    {
+      "file": "git/review-document-styles.spec.ts",
+      "title": "review document styles preserve real math geometry across widths and zoom"
+    },
+    {
+      "file": "git/review-preparation-layout.spec.ts",
+      "title": "hidden preparation acknowledges without waiting for animation frames"
+    },
+    {
+      "file": "git/review-preparation-layout.spec.ts",
+      "title": "warm review positions reuse geometry and preserve side/weighted-band semantics"
+    },
+    {
+      "file": "git/source-atlas-review.spec.ts",
+      "title": "review source coordinates, weighted band and block bookmarks survive layout changes"
+    },
+    {
+      "file": "git/verified-review-position.spec.ts",
+      "title": "a late font-ready operation cannot overwrite the latest Esc position"
+    },
+    {
+      "file": "git/verified-review-position.spec.ts",
+      "title": "atlas skips the hidden responsive tree and rebuilds when the breakpoint changes"
+    },
+    {
+      "file": "git/verified-review-position.spec.ts",
+      "title": "real layout: first/current target, warm no-op and invalidated prewarming"
+    },
+    {
+      "file": "language/clangd-support.spec.ts",
+      "title": "clangd honors compile commands and .clangd, with completion, rename, Undo and header navigation"
+    },
+    {
+      "file": "language/clangd-support.spec.ts",
+      "title": "first-line LSP hovers remain fully visible above ordinary and split editors"
+    },
+    {
+      "file": "language/clangd-support.spec.ts",
+      "title": "missing clangd keeps C editable and a native executable selection repairs language support"
+    },
+    {
+      "file": "language/document-analysis-ui.spec.ts",
+      "title": "a missing environment exposes the repair first and retains an issue indicator in a narrow group"
+    },
+    {
+      "file": "language/document-analysis-ui.spec.ts",
+      "title": "closing the last view of a checked document retires its coverage from Problems"
+    },
+    {
+      "file": "language/document-analysis-ui.spec.ts",
+      "title": "compact inspection has keyboard steps; project settings remain pinned while switching documents"
+    },
+    {
+      "file": "language/language-features.spec.ts",
+      "title": "negotiated semantic colors, formatting Undo, quick-fix command edits, workspace navigation and versionless diagnostics use real Monaco"
+    },
+    {
+      "file": "language/language-policy.spec.ts",
+      "title": "project analysis, a supplementary formatter and local validation share one document without overwriting diagnostics"
+    },
+    {
+      "file": "language/language-policy.spec.ts",
+      "title": "the bundled project service resolves installed and sibling imports while preserving real missing-import and type errors"
+    },
+    {
+      "file": "language/language-policy.spec.ts",
+      "title": "without servers, language modes and real local errors survive; project guesses and schema loading failures are not code errors"
+    },
+    {
+      "file": "language/language-reform.spec.ts",
+      "title": "built-in JSON, CSS and HTML workers work with external servers disabled"
+    },
+    {
+      "file": "language/language-reform.spec.ts",
+      "title": "real IPC preserves cancellation, independent diagnostic registrations and a 4,097-item completion list"
+    },
+    {
+      "file": "language/language-registry.spec.ts",
+      "title": "Edit menu imports a new server, negotiates Full sync, and reconnects the same unsaved model with Undo intact"
+    },
+    {
+      "file": "language/language-registry.spec.ts",
+      "title": "an imported npm profile starts automatically and supplies completion without a connection form"
+    },
+    {
+      "file": "language/language-registry.spec.ts",
+      "title": "installing a server while editing and rescanning connects the current model without replacing healthy sessions"
+    },
+    {
+      "file": "language/language-registry.spec.ts",
+      "title": "the language sidebar searches all discoverable servers, shows language logos and keeps manual connections repairable"
+    },
+    {
+      "file": "language/language-support.spec.ts",
+      "title": "Python diagnostics, completion, rename and Undo use the ordinary document"
+    },
+    {
+      "file": "language/language-support.spec.ts",
+      "title": "Save As reconnects Python at the new path and preserves Undo"
+    },
+    {
+      "file": "language/language-support.spec.ts",
+      "title": "definition opens the existing Setdown tab and Python diagnostics survive restart"
+    },
+    {
+      "file": "language/language-support.spec.ts",
+      "title": "first Python Working Tree shares diagnostics and Undo with the ordinary editor"
+    },
+    {
+      "file": "language/language-support.spec.ts",
+      "title": "rename includes unopened files without saving them or stealing focus"
+    },
+    {
+      "file": "language/language-support.spec.ts",
+      "title": "server crash preserves unsaved edits; restart recovers and window close reaps the server"
+    },
+    {
+      "file": "language/project-environment.spec.ts",
+      "title": "C++ build selection changes the real clangd flags and repairs unsaved source without replacing the editor"
+    },
+    {
+      "file": "language/project-environment.spec.ts",
+      "title": "Configure project generates and selects a real CMake database only on the explicit action"
+    },
+    {
+      "file": "language/project-environment.spec.ts",
+      "title": "TypeScript SDK selection and basic editing apply to this project; service restart retains current source"
+    },
+    {
+      "file": "language/project-environment.spec.ts",
+      "title": "a crashed analysis process reconnects the latest unsaved buffer without replaying an editor command"
+    },
+    {
+      "file": "language/project-environment.spec.ts",
+      "title": "current-file Python environment repairs real imports, preserves unsaved text and Undo, and remains project scoped after reopening"
+    },
+    {
+      "file": "language/project-environment.spec.ts",
+      "title": "repeated initialization crashes stop automatic recovery and leave an actionable explanation"
+    },
+    {
+      "file": "language/syntax-highlighting.spec.ts",
+      "title": "Svelte grammar reaches both Git comparison models and shared split editors"
+    },
+    {
+      "file": "language/syntax-highlighting.spec.ts",
+      "title": "Svelte has lazy local grammar colors without servers; Python, theme changes and Undo keep working"
+    },
+    {
+      "file": "language/syntax-highlighting.spec.ts",
+      "title": "Svelte lexical colors coexist with negotiated LSP semantic tokens across themes"
+    },
+    {
+      "file": "media/image-editor.spec.ts",
+      "title": "1, 6 and 24 MP previews resolve full detail at 100%; 48 MP editing is rejected before decode"
+    },
+    {
+      "file": "media/image-editor.spec.ts",
+      "title": "EXIF 1–8 export upright pixels once and rejects animated or unowned inputs"
+    },
+    {
+      "file": "media/image-editor.spec.ts",
+      "title": "PNG/WebP keep alpha, JPEG flattens white, pointer crop survives resize and close saves binary content"
+    },
+    {
+      "file": "media/image-editor.spec.ts",
+      "title": "disk conflict preserves edits, canceled Save As stays dirty, and a delayed save preserves newer edits"
+    },
+    {
+      "file": "media/image-editor.spec.ts",
+      "title": "edits geometry and color, survives media eviction, exports correct pixels and keeps saved undo checkpoints"
+    },
+    {
+      "file": "media/image-editor.spec.ts",
+      "title": "fit editing stays still without input at 120% app zoom and 1281×1037"
+    },
+    {
+      "file": "media/image-editor.spec.ts",
+      "title": "fit editing stays still without input at 130% app zoom and 921×775"
+    },
+    {
+      "file": "media/image-editor.spec.ts",
+      "title": "fit editing stays still without input at 90% app zoom and 921×775"
+    },
+    {
+      "file": "media/image-editor.spec.ts",
+      "title": "hidden full-resolution rendering preserves native focus and an unfinished Korean composition"
+    },
+    {
+      "file": "media/image-editor.spec.ts",
+      "title": "releasing an original cancels a stalled export and destroys its hidden window"
+    },
+    {
+      "file": "media/image-reader.spec.ts",
+      "title": "opens every supported image format, preserves the bitmap across tab switches and prevents text saves"
+    },
+    {
+      "file": "media/image-reader.spec.ts",
+      "title": "restores the last document zoom, rotation and pan after restart; reloads changed content and reports invalid images"
+    },
+    {
+      "file": "media/image-terminal-layout.spec.ts",
+      "title": "fit image stays still beside the explorer and terminal"
+    },
+    {
+      "file": "media/media-tabs.spec.ts",
+      "title": "PDF tabs retain canvases and isolate focus; eviction, hidden resize and changed-file reload remain correct"
+    },
+    {
+      "file": "media/pdf-selection.spec.ts",
+      "title": "PDF text selection is visible during and after dragging, and both copy paths preserve it"
+    },
+    {
+      "file": "media/reading-positions.spec.ts",
+      "title": "Markdown restores its source anchor after restarting"
+    },
+    {
+      "file": "media/reading-positions.spec.ts",
+      "title": "PDF reader restores document zoom and page coordinates across restart, and supports search and outline"
+    },
+    {
+      "file": "media/reading-positions.spec.ts",
+      "title": "a PDF beyond the initial byte range keeps its position across Markdown tab switches"
+    },
+    {
+      "file": "media/reading-positions.spec.ts",
+      "title": "text cursor and scroll survive closing the tab and restarting Setdown"
+    },
+    {
+      "file": "media/reading-positions.spec.ts",
+      "title": "the first text tab paints its saved viewport without flashing the document end"
+    },
+    {
+      "file": "media/video-reader.spec.ts",
+      "title": "opens video files, streams them with range requests and prevents text saves"
+    },
+    {
+      "file": "media/video-reader.spec.ts",
+      "title": "restores the playback position after restart"
+    },
+    {
+      "file": "notebook/notebook.spec.ts",
+      "title": "Python cells run in one kernel, persist results, and reset discards variables"
+    },
+    {
+      "file": "notebook/notebook.spec.ts",
+      "title": "VS Code notebook defaults preserve normal table wrapping, horizontal code scroll and command-mode execution focus"
+    },
+    {
+      "file": "notebook/notebook.spec.ts",
+      "title": "default notebook Literal errors share Problems, survive tab switches, and stay independent from execution"
+    },
+    {
+      "file": "notebook/notebook.spec.ts",
+      "title": "empty ipynb files enable Code and Markdown and save as valid notebooks"
+    },
+    {
+      "file": "notebook/notebook.spec.ts",
+      "title": "long cells grow with their contents and scroll only the notebook, including keyboard navigation"
+    },
+    {
+      "file": "notebook/notebook.spec.ts",
+      "title": "long notebook cells meet the scroll viewport without a blank strip at 100% app zoom"
+    },
+    {
+      "file": "notebook/notebook.spec.ts",
+      "title": "long notebook cells meet the scroll viewport without a blank strip at 130% app zoom"
+    },
+    {
+      "file": "notebook/notebook.spec.ts",
+      "title": "long notebook cells meet the scroll viewport without a blank strip at 90% app zoom"
+    },
+    {
+      "file": "notebook/notebook.spec.ts",
+      "title": "native notebook analysis checks types with IPython and isolated cell ranges"
+    },
+    {
+      "file": "notebook/notebook.spec.ts",
+      "title": "notebook cells indent with four spaces per Tab"
+    },
+    {
+      "file": "notebook/notebook.spec.ts",
+      "title": "notebook cells reuse Markdown and Python, preserve outputs on save, and retain Undo across deletion"
+    },
+    {
+      "file": "notebook/notebook.spec.ts",
+      "title": "notebook convenience commands preserve data through replace, split, clear and image export"
+    },
+    {
+      "file": "notebook/notebook.spec.ts",
+      "title": "notebook project extraPaths resolve imports and hover, reload live, and retain real missing-import diagnostics"
+    },
+    {
+      "file": "notebook/notebook.spec.ts",
+      "title": "notebook reading hierarchy keeps content, actions and focus distinct, including narrow split panes"
+    },
+    {
+      "file": "notebook/notebook.spec.ts",
+      "title": "notebook stdin, variables and restart-all use the live kernel with scoped state"
+    },
+    {
+      "file": "notebook/notebook.spec.ts",
+      "title": "opening and switching notebooks and Markdown Escape never paint raw preview source"
+    },
+    {
+      "file": "notebook/notebook.spec.ts",
+      "title": "scrolling preserves focused editors and measured output height; cell copy and reader search keep their scope"
+    },
+    {
+      "file": "notebook/notebook.spec.ts",
+      "title": "shared notebook analysis keeps 100-cell namespaces separate and survives twenty tab round trips"
+    },
+    {
+      "file": "notebook/notebook.spec.ts",
+      "title": "unsupported notebook versions remain read-only and byte-identical"
+    },
+    {
+      "file": "notebook/notebook.spec.ts",
+      "title": "whitespace-only ipynb files enable Code and Markdown and save as valid notebooks"
+    },
+    {
+      "file": "preview/document-preparation.spec.ts",
+      "title": "an owned background reader can prepare without changing the foreground document"
+    },
+    {
+      "file": "preview/document-preparation.spec.ts",
+      "title": "auto save after edited Esc keeps the native reader in place without an external-change notice"
+    },
+    {
+      "file": "preview/document-preparation.spec.ts",
+      "title": "hidden ordinary math document is prepared without focus changes and keeps its typography"
+    },
+    {
+      "file": "preview/document-preparation.spec.ts",
+      "title": "immediate edited Esc retains the destination of an animated editor scroll"
+    },
+    {
+      "file": "preview/document-preparation.spec.ts",
+      "title": "ordinary position caches refresh after a disclosure changes layout"
+    },
+    {
+      "file": "preview/find-overlay.spec.ts",
+      "title": "Markdown find floats over the full scrolled viewport in a narrow zoomed split and preserves IME and focus"
+    },
+    {
+      "file": "preview/korean-emphasis.spec.ts",
+      "title": "Korean strong punctuation renders in Git review without changing source"
+    },
+    {
+      "file": "preview/korean-emphasis.spec.ts",
+      "title": "Korean strong punctuation renders in Markdown and notebook without changing source"
+    },
+    {
+      "file": "preview/math-compat.spec.ts",
+      "title": "pasted AUROC math in Git review"
+    },
+    {
+      "file": "preview/math-compat.spec.ts",
+      "title": "pasted AUROC math in ordinary reader"
+    },
+    {
+      "file": "preview/pdf-export.spec.ts",
+      "title": "github-dark Markdown PDF paints every page through its outer margins"
+    },
+    {
+      "file": "preview/pdf-export.spec.ts",
+      "title": "github-dark Web Reader PDF paints every page through its outer margins"
+    },
+    {
+      "file": "preview/pdf-export.spec.ts",
+      "title": "github-light Markdown PDF paints every page through its outer margins"
+    },
+    {
+      "file": "preview/pdf-export.spec.ts",
+      "title": "github-light Web Reader PDF paints every page through its outer margins"
+    },
+    {
+      "file": "preview/pdf-export.spec.ts",
+      "title": "paper Markdown PDF paints every page through its outer margins"
+    },
+    {
+      "file": "preview/pdf-export.spec.ts",
+      "title": "paper Web Reader PDF paints every page through its outer margins"
+    },
+    {
+      "file": "preview/pdf-export.spec.ts",
+      "title": "solarized-light Markdown PDF paints every page through its outer margins"
+    },
+    {
+      "file": "preview/pdf-export.spec.ts",
+      "title": "solarized-light Web Reader PDF paints every page through its outer margins"
+    },
+    {
+      "file": "preview/pdf-export.spec.ts",
+      "title": "vscode-dark-2026 Markdown PDF paints every page through its outer margins"
+    },
+    {
+      "file": "preview/pdf-export.spec.ts",
+      "title": "vscode-dark-2026 Web Reader PDF paints every page through its outer margins"
+    },
+    {
+      "file": "preview/preview-local-links.spec.ts",
+      "title": "generated image and document links preserve reserved characters through the real preview"
+    },
+    {
+      "file": "preview/preview-local-links.spec.ts",
+      "title": "opens a parent-relative Markdown link in a document tab"
+    },
+    {
+      "file": "preview/preview-reading-tools.spec.ts",
+      "title": "preview find keeps Unicode offsets and excludes authored hidden text"
+    },
+    {
+      "file": "preview/preview-reading-tools.spec.ts",
+      "title": "uses the rendered document for TOC, search, and Crossnote themes"
+    },
+    {
+      "file": "preview/preview-tabs.spec.ts",
+      "title": "Explorer preview files share Back and Forward history and a new browse truncates the old branch"
+    },
+    {
+      "file": "preview/preview-tabs.spec.ts",
+      "title": "Explorer replaces only the temporary tab, releases its native reader, and editing stays pinned after save"
+    },
+    {
+      "file": "preview/preview-tabs.spec.ts",
+      "title": "a late file read cannot replace the last selected file or an explicit native open"
+    },
+    {
+      "file": "preview/preview-tabs.spec.ts",
+      "title": "double-click, middle-click, Enter and explicit open keep files without demoting existing tabs"
+    },
+    {
+      "file": "preview/preview-tabs.spec.ts",
+      "title": "each group owns one preview and dragging a preview keeps its tab"
+    },
+    {
+      "file": "preview/renderer-recovery.spec.ts",
+      "title": "Git reader failure replaces both native buffers and retains the editable working tree and Undo"
+    },
+    {
+      "file": "preview/renderer-recovery.spec.ts",
+      "title": "a crashed hidden Markdown reader recovers current text and Undo without reloading the file"
+    },
+    {
+      "file": "preview/renderer-recovery.spec.ts",
+      "title": "a crashed source Markdown reader recovers current text and Undo without reloading the file"
+    },
+    {
+      "file": "preview/renderer-recovery.spec.ts",
+      "title": "a crashed visible Markdown reader recovers current text and Undo without reloading the file"
+    },
+    {
+      "file": "preview/renderer-recovery.spec.ts",
+      "title": "a repeated reader crash offers retry and source instead of a blank pane or crash loop"
+    },
+    {
+      "file": "preview/stretchy-math.spec.ts",
+      "title": "math braces, accents, roots and arrows retain their SVG geometry and paint"
+    },
+    {
+      "file": "preview/zero-latency-architecture.spec.ts",
+      "title": "keeps one live preview WebContents through Esc and window transfer"
+    },
+    {
+      "file": "project/explorer-git-decorations.spec.ts",
+      "title": "Explorer decorates all visible repositories and clears status when the folder changes"
+    },
+    {
+      "file": "project/explorer-git-decorations.spec.ts",
+      "title": "Explorer renders upstream Git states, ignores and collapsed ancestors, and follows external staging and commits"
+    },
+    {
+      "file": "project/explorer-selection.spec.ts",
+      "title": "Explorer batch conflicts leave all sources and destination contents intact"
+    },
+    {
+      "file": "project/explorer-selection.spec.ts",
+      "title": "Explorer clipboard shortcuts, Edit menu, duplicate and cut use real files and invalidate on text copy"
+    },
+    {
+      "file": "project/explorer-selection.spec.ts",
+      "title": "Explorer modifier and keyboard selection, context actions, and a real multi-file folder drop preserve dirty text"
+    },
+    {
+      "file": "project/explorer-selection.spec.ts",
+      "title": "Explorer paste conflicts keep both explicitly and preserve existing destination contents"
+    },
+    {
+      "file": "project/explorer-selection.spec.ts",
+      "title": "Explorer rename selects basename, respects composition, and retains selection across sidebar switches and refresh"
+    },
+    {
+      "file": "project/explorer-selection.spec.ts",
+      "title": "a failed OS trash operation keeps the unsaved tab, text and selection"
+    },
+    {
+      "file": "project/explorer-selection.spec.ts",
+      "title": "dropping selected files on tab-strip padding opens every file in order as a pinned tab"
+    },
+    {
+      "file": "project/explorer-selection.spec.ts",
+      "title": "external files import into the target folder and editor drops open every file without a covering overlay"
+    },
+    {
+      "file": "terminal/search.spec.ts",
+      "title": "full-screen arrows scrolling preserves wheel distance and app search keys"
+    },
+    {
+      "file": "terminal/search.spec.ts",
+      "title": "full-screen mouse scrolling preserves wheel distance and app search keys"
+    },
+    {
+      "file": "terminal/search.spec.ts",
+      "title": "terminal clear-screen keeps earlier output reachable"
+    },
+    {
+      "file": "terminal/search.spec.ts",
+      "title": "terminal find searches scrollback, wrapped and Korean text without writing or resizing the PTY"
+    },
+    {
+      "file": "terminal/search.spec.ts",
+      "title": "terminal history keeps earlier output reachable"
+    },
+    {
+      "file": "terminal/search.spec.ts",
+      "title": "terminal scrollbar keeps earlier output reachable"
+    },
+    {
+      "file": "terminal/search.spec.ts",
+      "title": "terminal wheel keeps earlier output reachable"
+    },
+    {
+      "file": "terminal/terminal.spec.ts",
+      "title": "a live Vim alternate screen retains visible text and insert mode across window transfer"
+    },
+    {
+      "file": "terminal/terminal.spec.ts",
+      "title": "all terminal themes preserve the PTY and readable ANSI, indexed and truecolor text"
+    },
+    {
+      "file": "terminal/terminal.spec.ts",
+      "title": "canceling quit and reloading a document retain the PTY and external file watcher"
+    },
+    {
+      "file": "terminal/terminal.spec.ts",
+      "title": "ctrl+wheel over the terminal changes terminal zoom only and refits the grid in both directions"
+    },
+    {
+      "file": "terminal/terminal.spec.ts",
+      "title": "detaching a terminal transfers the same shell and restores its screen"
+    },
+    {
+      "file": "terminal/terminal.spec.ts",
+      "title": "horizontal resizing preserves a two-line right prompt, input and prior output"
+    },
+    {
+      "file": "terminal/terminal.spec.ts",
+      "title": "new terminal opens in the clicked down split while the other editor is focused"
+    },
+    {
+      "file": "terminal/terminal.spec.ts",
+      "title": "new terminal opens in the clicked right split while the other editor is focused"
+    },
+    {
+      "file": "terminal/terminal.spec.ts",
+      "title": "terminal list opens without creating a process; a terminal tab uses project cwd and cleans up on reload"
+    },
+    {
+      "file": "terminal/terminal.spec.ts",
+      "title": "terminal tabs split down, preserve PTYs, and manage sessions in the sidebar"
+    },
+    {
+      "file": "terminal/terminal.spec.ts",
+      "title": "terminal tabs split right, preserve PTYs, and manage sessions in the sidebar"
+    },
+    {
+      "file": "terminal/terminal.spec.ts",
+      "title": "two visible terminal groups receive input independently and survive tab-strip merging"
+    },
+    {
+      "file": "workspace/editor-groups.spec.ts",
+      "title": "Monaco find closes with its X button and keeps editor input usable"
+    },
+    {
+      "file": "workspace/editor-groups.spec.ts",
+      "title": "Monaco find tooltip stays stable while hovering Close"
+    },
+    {
+      "file": "workspace/editor-groups.spec.ts",
+      "title": "editing another visible source group preserves scroll and the newly clicked caret"
+    },
+    {
+      "file": "workspace/editor-groups.spec.ts",
+      "title": "real Markdown tab drag cell 1 splits left with native boundary leave=false"
+    },
+    {
+      "file": "workspace/editor-groups.spec.ts",
+      "title": "real Markdown tab drag cell 1 splits left with native boundary leave=true"
+    },
+    {
+      "file": "workspace/editor-groups.spec.ts",
+      "title": "real Markdown tab drag cell 2 splits up with native boundary leave=false"
+    },
+    {
+      "file": "workspace/editor-groups.spec.ts",
+      "title": "real Markdown tab drag cell 2 splits up with native boundary leave=true"
+    },
+    {
+      "file": "workspace/editor-groups.spec.ts",
+      "title": "real Markdown tab drag cell 3 splits left with native boundary leave=false"
+    },
+    {
+      "file": "workspace/editor-groups.spec.ts",
+      "title": "real Markdown tab drag cell 3 splits left with native boundary leave=true"
+    },
+    {
+      "file": "workspace/editor-groups.spec.ts",
+      "title": "real Markdown tab drag cell 4 splits down with native boundary leave=false"
+    },
+    {
+      "file": "workspace/editor-groups.spec.ts",
+      "title": "real Markdown tab drag cell 4 splits down with native boundary leave=true"
+    },
+    {
+      "file": "workspace/editor-groups.spec.ts",
+      "title": "real Markdown tab drag cell 5 splits up with native boundary leave=false"
+    },
+    {
+      "file": "workspace/editor-groups.spec.ts",
+      "title": "real Markdown tab drag cell 5 splits up with native boundary leave=true"
+    },
+    {
+      "file": "workspace/editor-groups.spec.ts",
+      "title": "real Markdown tab drag cell 6 splits right with native boundary leave=false"
+    },
+    {
+      "file": "workspace/editor-groups.spec.ts",
+      "title": "real Markdown tab drag cell 6 splits right with native boundary leave=true"
+    },
+    {
+      "file": "workspace/editor-groups.spec.ts",
+      "title": "real Markdown tab drag cell 7 splits down with native boundary leave=false"
+    },
+    {
+      "file": "workspace/editor-groups.spec.ts",
+      "title": "real Markdown tab drag cell 7 splits down with native boundary leave=true"
+    },
+    {
+      "file": "workspace/editor-groups.spec.ts",
+      "title": "real Markdown tab drag cell 8 splits right with native boundary leave=false"
+    },
+    {
+      "file": "workspace/editor-groups.spec.ts",
+      "title": "real Markdown tab drag cell 8 splits right with native boundary leave=true"
+    },
+    {
+      "file": "workspace/editor-groups.spec.ts",
+      "title": "real tab drags use strip padding and insertion positions while preserving source edits and Undo"
+    },
+    {
+      "file": "workspace/editor-groups.spec.ts",
+      "title": "wheel scrolls without selection; nested groups retain live native readers and collapse on close"
+    },
+    {
+      "file": "workspace/editor-tools.spec.ts",
+      "title": "editor commands preserve Unicode targets, repeat intent, copy shape, Undo and IME ownership"
+    },
+    {
+      "file": "workspace/editor-tools.spec.ts",
+      "title": "explicit session restore recovers changed-disk text separately and restores independent groups"
+    },
+    {
+      "file": "workspace/editor-tools.spec.ts",
+      "title": "smart-search cancel restores the caret; case policy and result snapshots remain independent"
+    },
+    {
+      "file": "workspace/external-change.spec.ts",
+      "title": "reloads a clean tab immediately and protects a dirty tab from external changes"
+    },
+    {
+      "file": "workspace/folder-history.spec.ts",
+      "title": "Reload retains the current folder and live pages; restarting keeps only folder history"
+    },
+    {
+      "file": "workspace/folder-history.spec.ts",
+      "title": "a recent-folder refresh cannot move the pressed menu item before mouse release"
+    },
+    {
+      "file": "workspace/folder-history.spec.ts",
+      "title": "an explicit startup file opens alone, and a missing recent folder keeps the current workspace"
+    },
+    {
+      "file": "workspace/folder-history.spec.ts",
+      "title": "recent folder native clicks keep the active website and Browser library"
+    },
+    {
+      "file": "workspace/folder-history.spec.ts",
+      "title": "starts empty, keeps five recent folders, and None preserves unsaved file tabs"
+    },
+    {
+      "file": "workspace/folder-history.spec.ts",
+      "title": "the folder menu owns Escape and reselecting the current folder keeps Explorer state"
+    },
+    {
+      "file": "workspace/input-regressions.spec.ts",
+      "title": "X11 pinch broker routes continuous zoom to shell and native content without changing app zoom"
+    },
+    {
+      "file": "workspace/input-regressions.spec.ts",
+      "title": "background Git refresh preserves the caret while typing in a newly opened review"
+    },
+    {
+      "file": "workspace/input-regressions.spec.ts",
+      "title": "cancelled Explorer file drags release the input shield and subsequent tab clicks and wheel scrolling"
+    },
+    {
+      "file": "workspace/input-regressions.spec.ts",
+      "title": "distant notebook code and saved images stay in view while preceding outputs acquire height"
+    },
+    {
+      "file": "workspace/markdown-insertions.spec.ts",
+      "title": "insertion popovers follow the below Markdown pane beside a live website"
+    },
+    {
+      "file": "workspace/markdown-insertions.spec.ts",
+      "title": "insertion popovers follow the left Markdown pane beside a live website"
+    },
+    {
+      "file": "workspace/markdown-insertions.spec.ts",
+      "title": "insertion popovers follow the right Markdown pane beside a live website"
+    },
+    {
+      "file": "workspace/markdown-insertions.spec.ts",
+      "title": "inserts a table and a URL from compact editor popovers"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "a guide is cleared by cancellation, a rejected area, or a real window exit"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "accepted sole-tab tear-off retains its position across native dragend"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "accepted sole-tab tear-off retains its position across native drop"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "detaching a tab restores its preview at the same position via body"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "detaching a tab restores its preview at the same position via tab strip"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "detaching the middle tab leaves documents one and three in the original window"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "native drag above the window after showing an insertion guide"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "native drag below the window after showing an insertion guide"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "native drag cancel the window after showing an insertion guide"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "native drag left the window after showing an insertion guide"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "native drag return the window after showing an insertion guide"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "native drag right the window after showing an insertion guide"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "outside client dragend overrides a stale guide with dropEffect=move"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "outside client dragend overrides a stale guide with dropEffect=none"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "outside screen dragend overrides a stale guide with dropEffect=move"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "outside screen dragend overrides a stale guide with dropEffect=none"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "pointer release follows the insertion guide and Escape cancels it"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "source group body follows the split grid during native drag: cancel"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "source group body follows the split grid during native drag: down"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "source group body follows the split grid during native drag: return"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "source group body follows the split grid during native drag: sole"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "source group body follows the split grid during native drag: split"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "the painted other group body guide owns placement on dragend after an internal native leave"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "the painted other group body guide owns placement on drop after an internal native leave"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "the painted other group guide owns placement on dragend after an internal native leave"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "the painted other group guide owns placement on drop after an internal native leave"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "the painted split guide owns placement on dragend after an internal native leave"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "the painted split guide owns placement on drop after an internal native leave"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "the painted tab strip guide owns placement on dragend after an internal native leave"
+    },
+    {
+      "file": "workspace/tab-detach.spec.ts",
+      "title": "the painted tab strip guide owns placement on drop after an internal native leave"
+    },
+    {
+      "file": "workspace/vscode-theme.spec.ts",
+      "title": "VS Code Dark 2026 colors native Markdown and hidden previews without replacing the document"
+    },
+    {
+      "file": "workspace/vscode-theme.spec.ts",
+      "title": "VS Code Dark 2026 matches workbench and syntax colors, retains edits and persists as an additional choice"
+    },
+    {
+      "file": "workspace/vscode-theme.spec.ts",
+      "title": "atom-one-light colors editor and retained native readers, preserves Undo, focus and restart"
+    },
+    {
+      "file": "workspace/vscode-theme.spec.ts",
+      "title": "dracula colors editor and retained native readers, preserves Undo, focus and restart"
+    },
+    {
+      "file": "workspace/vscode-theme.spec.ts",
+      "title": "github-dark-high-contrast colors editor and retained native readers, preserves Undo, focus and restart"
+    },
+    {
+      "file": "workspace/vscode-theme.spec.ts",
+      "title": "github-light-high-contrast colors editor and retained native readers, preserves Undo, focus and restart"
+    },
+    {
+      "file": "workspace/vscode-theme.spec.ts",
+      "title": "light-owl colors editor and retained native readers, preserves Undo, focus and restart"
+    },
+    {
+      "file": "workspace/vscode-theme.spec.ts",
+      "title": "night-owl colors editor and retained native readers, preserves Undo, focus and restart"
+    },
+    {
+      "file": "workspace/vscode-theme.spec.ts",
+      "title": "vscode-light-2026 colors editor and retained native readers, preserves Undo, focus and restart"
+    },
+    {
+      "file": "workspace/word-wrap.spec.ts",
+      "title": "Alt+Z keeps independent file state across tab switches and preserves selection, text and Undo"
+    },
+    {
+      "file": "workspace/word-wrap.spec.ts",
+      "title": "Markdown and Git review retain wrapping across reader transitions and synchronize diff sides"
+    },
+    {
+      "file": "workspace/word-wrap.spec.ts",
+      "title": "notebook cell Alt+Z toggles from its unwrapped default without affecting another cell"
+    },
+    {
+      "file": "workspace/word-wrap.spec.ts",
+      "title": "split views of one model share VS Code transient state and the existing Wrap command"
+    },
+    {
+      "file": "workspace/workspace-zoom.spec.ts",
+      "title": "Git review, ordinary editors and a second window preserve md zoom scopes without replacing models"
+    },
+    {
+      "file": "workspace/workspace-zoom.spec.ts",
+      "title": "Git review, ordinary editors and a second window preserve ts zoom scopes without replacing models"
+    },
+    {
+      "file": "workspace/workspace-zoom.spec.ts",
+      "title": "PDF and image wheel zoom preserve the cursor point, file state and fit mode across app zoom"
+    },
+    {
+      "file": "workspace/workspace-zoom.spec.ts",
+      "title": "code tabs keep independent zoom across files, splits, other windows and restart without losing Undo"
+    },
+    {
+      "file": "workspace/workspace-zoom.spec.ts",
+      "title": "new pdf tabs restore the last zoom while navigation keeps and records the existing tab factor"
+    },
+    {
+      "file": "workspace/workspace-zoom.spec.ts",
+      "title": "new svg tabs restore the last zoom while navigation keeps and records the existing tab factor"
+    },
+    {
+      "file": "workspace/workspace-zoom.spec.ts",
+      "title": "new ts tabs restore the last zoom while navigation keeps and records the existing tab factor"
+    },
+    {
+      "file": "workspace/workspace-zoom.spec.ts",
+      "title": "text wheel zoom and app shortcuts have independent scopes in md"
+    },
+    {
+      "file": "workspace/workspace-zoom.spec.ts",
+      "title": "text wheel zoom and app shortcuts have independent scopes in txt"
+    },
+    {
+      "file": "workspace/workspace-zoom.spec.ts",
+      "title": "the latest zoom or close across windows seeds new tabs without changing tabs that remain open"
+    },
+    {
+      "file": "workspace/workspace-zoom.spec.ts",
+      "title": "touchpad pinch zooms text, notebook outputs and terminal tabs independently"
+    },
+    {
+      "file": "workspace/workspace-zoom.spec.ts",
+      "title": "two Markdown tabs retain independent zoom in native readers and Monaco"
+    }
+  ]
+}

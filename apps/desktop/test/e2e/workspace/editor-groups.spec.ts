@@ -396,16 +396,25 @@ test(`real Markdown tab drag cell ${cell} splits ${side} with native boundary le
     await focusApplication(app); await open(page, second);
     await page.evaluate(() => {
       const events: unknown[] = [];
-      for (const type of ['dragstart', 'dragover', 'dragleave', 'drop', 'dragend']) {
+      for (const type of ['pointerdown', 'pointerup', 'pointermove', 'mousedown', 'mouseup', 'mousemove', 'focus', 'blur', 'dragstart', 'dragover', 'dragleave', 'drop', 'dragend']) {
         window.addEventListener(type, event => {
           const e = event as DragEvent;
           events.push({ type, x: e.clientX, y: e.clientY, related: (e.relatedTarget as Element | null)?.className ?? null,
-            target: (e.target as Element | null)?.className, dragging: document.querySelector('.shell')?.classList.contains('is-tab-dragging') });
+            target: (e.target as Element | null)?.className, dragging: document.querySelector('.shell')?.classList.contains('is-tab-dragging'),
+            buttons: e.buttons, focused: document.hasFocus(), active: document.activeElement?.className });
         }, true);
       }
       (window as typeof window & { splitDragEvents: unknown[] }).splitDragEvents = events;
     });
     const tab = page.getByRole('tab', { name: /second\.md/ });
+    // A selected tab is published before its native document finishes opening.
+    // Start this drag scenario from the actual reader, after its focus/geometry
+    // handoff, rather than racing startup with raw CDP mouse coordinates.
+    await expect.poll(() => app.evaluate(async ({ BrowserWindow }) => Promise.all(
+      BrowserWindow.getAllWindows()[0].contentView.children.filter(view => view.getVisible())
+        .map(view => (view as WebContentsView).webContents.executeJavaScript('document.body.innerText')),
+    ))).toEqual([expect.stringContaining('Second native reader')]);
+    await tab.hover();
     const body = page.locator('.group-body').first();
     const bounds = (await body.boundingBox())!;
     const tabBox = (await tab.boundingBox())!;

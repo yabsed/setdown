@@ -25,11 +25,7 @@ async function addressInput(f: Fixture, side: 'first' | 'last', open = true) {
   return panel.getByRole('textbox', { name: 'Search or enter an address' });
 }
 async function pageAction(f: Fixture, name: string) {
-  const bar = f.page.locator('.location-bar').first(), button = bar.getByRole('button', { name, exact: true });
-  if (await button.isVisible()) { await button.click(); return; }
-  await bar.getByRole('button', { name: 'More page actions' }).click();
-  await expect.poll(() => f.app.windows().some(page => page.url().includes('location-overlay=1'))).toBe(true);
-  await f.app.windows().find(page => page.url().includes('location-overlay=1'))!.getByRole('menuitem', { name, exact: true }).click();
+  await f.page.locator('.location-bar').first().getByRole('button', { name, exact: true }).click();
 }
 
 async function splitPlayer(f: Fixture, sibling: 'markdown' | 'web') {

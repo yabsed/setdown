@@ -291,6 +291,11 @@ test('terminal list opens without creating a process; a terminal tab uses projec
     await page.reload();
     await expect(page.locator('.terminal-surface')).toHaveCount(0);
     await expect.poll(() => { try { process.kill(pid, 0); return false; } catch { return true; } }).toBe(true);
+    await page.locator('.empty-state').screenshot({ path: test.info().outputPath('welcome-terminal.png') });
+    await page.getByRole('button', { name: 'Open Terminal', exact: true }).click();
+    await expect(input(page)).toBeFocused();
+    await run(input(page), 'pwd > welcome-cwd.txt');
+    await expect.poll(() => readFile(path.join(root, 'welcome-cwd.txt'), 'utf8').catch(() => '')).toBe(root + '\n');
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
 

@@ -13,7 +13,7 @@ async function expectAnchored(page: Page, kind: 'table' | 'link') {
   await expect.poll(() => popup.evaluate((node, kind) => {
     const group = document.querySelector('.editor-group.focused')!.getBoundingClientRect();
     const anchor = document.querySelector(`.editor-group.focused .insert-${kind}-button`)!;
-    const button = (anchor.getBoundingClientRect().width ? anchor : document.querySelector('.editor-group.focused .location-more')!).getBoundingClientRect();
+    const button = anchor.getBoundingClientRect();
     const bounds = node.getBoundingClientRect();
     const left = Math.max(0, group.left) + 8, right = Math.min(innerWidth, group.right) - 8;
     return Math.abs(bounds.top - button.bottom - 4) < 1

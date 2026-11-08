@@ -24,7 +24,6 @@ import { browserContextMenu } from './browser-context-menu';
 import { showReadingMenu } from '../menu/reading-menu';
 import { showContextMenu } from '../menu/menu-overlay';
 import type { ReaderSnapshot } from '../../protocol/browser';
-import { BrowserPasswords } from './browser-passwords';
 import { BrowserAuth } from './browser-auth';
 import { BrowserTabDrag } from './browser-tab-drag';
 import { BrowserThemes } from './browser-themes';
@@ -54,7 +53,6 @@ const blankPage = (id: string, url: string): BrowserPage => ({ id, url, title: u
 export class BrowserManager {
   readonly views = new Map<string, Entry>();
   private readonly places = new BrowserPlaces();
-  private readonly passwords = new BrowserPasswords((owner, id) => this.owned(owner, id));
   private readonly downloads = new BrowserDownloads(event => { this.extensions?.downloads?.publish(event); this.broadcast(event); });
   private profile?: Session;
   private extensions?: BrowserExtensions;
@@ -794,7 +792,6 @@ export class BrowserManager {
     ], { source: wc });
   }
   registerIpc(channels: WindowIpc) {
-    this.passwords.register(channels);
     ipcMain.handle('browser:theme-fetch', (event, request) => {
       const entry = this.forContents(event.sender), frame = event.senderFrame;
       if (!entry || !frame || frame.isDestroyed()) throw Error('Unknown web theme frame.');
@@ -1086,7 +1083,6 @@ export class BrowserManager {
     });
   }
   dispose() {
-    this.passwords.dispose();
     for (const owner of [...this.owners]) this.closeOwner(owner);
     this.places.dispose();
   }

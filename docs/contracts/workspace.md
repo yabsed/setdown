@@ -726,14 +726,23 @@ also closes it. The captured editor selection and document revision remain the
 insertion target. Returning from another split activates that target before
 inserting, and stale or closed documents cannot receive the insertion. Table
 insertion keeps outside-click and Escape dismissal. Popup positioning follows
-the originating group, with the overflow button as the compact-bar anchor.
+the original command button in the originating group.
 
 Every resource uses the shared location bar. When fixed controls leave less than
-180 CSS pixels for the address, the bar becomes Back/Reload, Search/address and
-More page actions; it returns to the inline input at 220 pixels of available
-address width. The native location overlay owns the compact input, current
-address/copy and suggestions. It appears above native web/readers without moving
-or replacing them. Wide-bar typing stays in the shell. Composition cannot submit
+180 CSS pixels for the address, the inline input becomes an icon-only Search
+button in the same position. It returns to the growing inline input at 220 pixels
+of available address width. Search has the same fixed square size and transparent
+resting background as other toolbar icons; it must not stretch into an
+address-shaped field or show placeholder text. Other commands stay on the
+toolbar, including extensions, site controls, bookmarks, reader and
+zoom. There is no overflow menu replacing them. Extremely narrow toolbars scroll
+horizontally within their own group instead of covering adjacent native content.
+
+The native location overlay contains only an address input and suggestions.
+It selects the current address on opening; there is no duplicate current-address
+header, readout or copy button. Native clipboard commands copy the input's
+selection. It appears above native web/readers without moving or replacing them.
+Wide-bar typing stays in the shell. Composition cannot submit
 or navigate; Escape dismisses and returns focus to the resource. Popup tokens
 isolate groups and late replies. Hidden overlays are retired after 60 seconds.
 An asynchronous web-tab activation cannot take focus from an open compact panel.
@@ -759,23 +768,20 @@ retains URLs referenced by other bookmarks. Folder and search lists paginate at
 100 nodes. Inputs are bounded at 10 MiB, 50,000 nodes and 32 nested folders. This
 version imports HTML; it does not read another browser's live profile database.
 
-The built-in password feature is deliberately explicit: Browser → Passwords
-allows use for ten minutes, and an HTTPS page's key/overflow action offers save,
-confirmed update or a selected account fill. It does not infer login success,
-automatically capture submissions, submit a form, or fill an iframe. This first
-version requires one visible same-origin main-frame login form with username and
-password; change-password/multistep forms, passkeys, OTP, cloud synchronization
-and extension compatibility are separate features.
+The Browser library contains Bookmarks, History, Downloads and Extensions.
+Appearance is removed from this sidebar; View → Theme owns app/web theme choices,
+and site controls retain their original-colors exception. Existing theme tests
+continue to cover these menu choices, page preservation and restart persistence.
 
-The main process alone owns the encrypted, versioned vault. OS protection must be
-available; Linux `basic_text`/unknown providers are refused. Electron 44's verified
-synchronous provider is used because its asynchronous provider has no equivalent
-fallback-security signal. Writes serialize and atomically replace a 0600 file;
-corrupt or undecryptable files are kept unchanged. Renderer lists contain only
-account metadata. Exact scheme/host/port, native frame, document generation,
-visibility and isolated-world form tokens are rechecked before filling. Screen
-lock/sleep, explicit lock and expiry disable use. This app lock is an interaction
-control, not OS reauthentication or protection against other code running as the
-same OS user. Tests inject an authenticated encryption provider to exercise the
-native workflow without touching the user's keyring; unavailable-store behavior
-is tested separately. Platform keyring prompts and upgrades require platform QA.
+The built-in password manager is removed by explicit product choice. Its sidebar,
+key button, preload API, IPC handlers, form inspection/filling, vault implementation
+and lock/sleep listeners are retired. Its two unit and two Electron scenarios are
+removed with that feature; `browser/compact-location.spec.ts` checks the sidebar,
+toolbar and preload no longer expose it. Ordinary website forms, HTTP auth and
+extension functionality are unaffected. Existing encrypted profile files are
+left untouched and are no longer read by the application.
+
+The empty workspace offers Open Terminal alongside New Document, Open File,
+Open Folder and Open Web Page. It uses the existing new-terminal action, current
+project cwd and normal terminal focus. The terminal lifecycle scenario verifies
+opening it from the empty workspace after reload and executing in that cwd.
