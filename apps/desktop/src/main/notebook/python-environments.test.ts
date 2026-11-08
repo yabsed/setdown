@@ -15,12 +15,13 @@ vi.mock('../language/server-discovery', async () => {
 import { PythonEnvironments } from './python-environments';
 beforeEach(async () => { state.root = await mkdtemp(path.join(os.tmpdir(), 'setdown-python-env-')); await writeFile(path.join(state.root, 'system-python'), ''); });
 afterEach(async () => { await rm(state.root, { recursive: true, force: true }); });
-test('offers project Python without launching or selecting it, and persists an explicit per-notebook choice', async () => {
+test('automatically selects a unique local Python without launching it and persists explicit choices', async () => {
   const file = path.join(state.root, 'project', 'test.ipynb'), python = path.join(path.dirname(file), '.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
   await mkdir(path.dirname(python), { recursive: true }); await writeFile(python, 'not an executable program');
   const service = new PythonEnvironments(), initial = await service.list(file);
   expect(initial.candidates).toContainEqual(expect.objectContaining({ path: python, source: 'Project' }));
-  expect(initial.selected).toBe(path.join(state.root, 'system-python'));
+  expect(initial.selected).toBe(python);
+  expect(initial.selectionSource).toBe('Project environment');
   await service.select(file, python); service.dispose();
   const reopened = new PythonEnvironments(); expect((await reopened.resolve(file)).python).toBe(python);
   expect((await reopened.list(path.join(state.root, 'other.ipynb'))).selected).toBe(path.join(state.root, 'system-python'));
@@ -34,8 +35,32 @@ test('ordinary Python and notebooks share the project choice while a notebook ov
   const service = new PythonEnvironments();
   expect((await service.resolve(file)).python).toBe(projectPython);
   expect((await service.list(path.join(root, 'main.py'), root)).selected).toBe(projectPython);
+  expect((await service.list(path.join(root, 'main.py'), root, true)).selected).toBe(path.join(state.root, 'system-python'));
   await service.select(file, path.join(state.root, 'system-python'));
   expect((await service.resolve(file)).python).toBe(path.join(state.root, 'system-python'));
   expect((await service.list(path.join(root, 'main.py'), root)).selected).toBe(projectPython);
+  service.dispose();
+});
+
+test('competing local environments require a choice and do not silently select the host', async () => {
+  const root = path.join(state.root, 'ambiguous'), file = path.join(root, 'notes.ipynb');
+  for (const name of ['.venv', 'venv']) {
+    const python = path.join(root, name, process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
+    await mkdir(path.dirname(python), { recursive: true }); await writeFile(python, '');
+  }
+  const service = new PythonEnvironments();
+  expect(await service.list(file)).toMatchObject({ selected: undefined, selectionNeeded: true });
+  await expect(service.resolve(file)).rejects.toThrow(/Multiple/);
+  await service.select(file, path.join(state.root, 'system-python'));
+  expect((await service.resolve(file)).python).toBe(path.join(state.root, 'system-python'));
+  service.dispose();
+});
+
+test('an inner Git repository never inherits an outer local environment', async () => {
+  const root = path.join(state.root, 'outer'), python = path.join(root, '.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
+  await mkdir(path.dirname(python), { recursive: true }); await writeFile(python, '');
+  const inner = path.join(root, 'inner'); await mkdir(inner); await writeFile(path.join(inner, '.git'), 'gitdir: submodule');
+  const service = new PythonEnvironments();
+  expect((await service.list(path.join(inner, 'notes.ipynb'))).selected).toBe(path.join(state.root, 'system-python'));
   service.dispose();
 });

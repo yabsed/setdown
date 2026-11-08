@@ -34,6 +34,17 @@
         {#if context.inherited}<p class="path">{context.inherited.path}</p>{/if}
       {/if}
     {/if}
+    {#if context.checking}
+      <label>Python type checking
+        <select aria-label="Python type checking" disabled={state.busy} value={context.checking.override ?? 'automatic'}
+          onchange={event => select({ kind: 'python-checking', value: event.currentTarget.value })}>
+          <option value="automatic">Project settings / default</option><option value="basic">Basic</option>
+          <option value="standard">Standard</option><option value="strict">Strict</option><option value="off">Off</option>
+        </select>
+      </label>
+      <p class="scope">Client policy: {context.checking.mode} · {context.checking.source}. Scope: open files and notebooks.</p>
+      {#if context.checking.projectConfiguration}<p class="path">Project configuration may override this policy: {context.checking.projectConfiguration}</p>{/if}
+    {/if}
     {#if context.preparation}
       <details><summary>Configure {context.preparation === 'cmake' ? 'CMake' : 'Meson'} analysis</summary>
         <p>Run the project’s configure step to generate a compilation database in Setdown’s build cache. This runs project configuration code; generated headers may still require a build.</p>

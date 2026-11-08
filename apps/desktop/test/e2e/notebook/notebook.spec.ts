@@ -431,7 +431,7 @@ test('Python cells run in one kernel, persist results, and reset discards variab
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
 });
 
-test('native notebook analysis uses lightweight diagnostics with IPython and isolated cell ranges', async () => {
+test('native notebook analysis checks types with IPython and isolated cell ranges', async () => {
   test.setTimeout(90_000);
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-analysis-')), file = path.join(root, 'analysis.ipynb');
   const sources = ['%who\nimport math\nimport asyncio\nimport only_a', 'await asyncio.sleep(0)\nprint(math.sqrt(9), only_a.VALUE)\ndisplay(1)\nget_ipython()', 'count: int = "wrong"'];
@@ -461,12 +461,12 @@ test('native notebook analysis uses lightweight diagnostics with IPython and iso
     const diagnostics = (version: number, id: string) => page.evaluate(({ version, id }) => (window as any).notebookAnalysis.diagnostics[`${version}:${id}`]?.diagnostics, { version, id });
     await expect.poll(() => diagnostics(1, 'cell0'), { timeout: 30_000 }).toEqual([]);
     await expect.poll(() => diagnostics(1, 'cell1'), { timeout: 30_000 }).toEqual([]);
-    await expect.poll(() => diagnostics(1, 'cell2'), { timeout: 30_000 }).toEqual([]);
+    await expect.poll(async () => (await diagnostics(1, 'cell2'))?.map((d: any) => d.code), { timeout: 30_000 }).toEqual(['reportAssignmentType']);
     await page.evaluate(async () => { await (window as any).marktex.language.changeNotebook('analysis-probe', 2, [
       { id: 'cell0', version: 2, text: 'values = [' }, { id: 'cell1', version: 2, text: 'print(missing_name)' }, { id: 'cell2', version: 2, text: 'count: int = 1' },
     ]); });
     await expect.poll(async () => (await diagnostics(2, 'cell0'))?.some((d: any) => d.severity === 1), { timeout: 30_000 }).toBe(true);
-    await expect.poll(async () => (await diagnostics(2, 'cell1'))?.some((d: any) => d.code === 'reportUndefinedVariable' && d.severity === 2), { timeout: 30_000 }).toBe(true);
+    await expect.poll(async () => (await diagnostics(2, 'cell1'))?.some((d: any) => d.code === 'reportUndefinedVariable' && d.severity === 1), { timeout: 30_000 }).toBe(true);
     await expect.poll(() => diagnostics(2, 'cell2'), { timeout: 30_000 }).toEqual([]);
     await page.evaluate(async () => { await (window as any).marktex.language.changeNotebook('analysis-probe', 3, [
       { id: 'cell2', version: 3, text: 'numbers = [1, 2]' }, { id: 'cell1', version: 3, text: 'print(sum(numbers))' },
@@ -626,9 +626,9 @@ test('notebook project extraPaths resolve imports and hover, reload live, and re
     const page = await application.firstWindow(); await focusApplication(application);
     const cell = page.locator('[data-cell-id="imports"]');
     await expect(page.locator('.notebook-surface')).toHaveAttribute('data-notebook-language', 'ready', { timeout: 30000 });
-    await expect(cell.locator('.squiggly-warning')).toHaveCount(2, { timeout: 30000 });
+    await expect(cell.locator('.squiggly-error')).toHaveCount(2, { timeout: 30000 });
     await writeFile(settings, '{\n// Workspace-relative path, including Unicode\n"python.analysis.extraPaths": ["${workspaceFolder}/src 한글"],\n}\n');
-    await expect(cell.locator('.squiggly-warning')).toHaveCount(1, { timeout: 30000 });
+    await expect(cell.locator('.squiggly-error')).toHaveCount(1, { timeout: 30000 });
     const info = await page.evaluate(async ({ file, source }) => {
       const api = (window as any).marktex.language;
       const connection = await api.open({ id: 'paths-probe', generation: 'paths', path: file, notebook: 'python', text: '', version: 1, cells: [{ id: 'imports', version: 1, text: source }] });
@@ -638,7 +638,7 @@ test('notebook project extraPaths resolve imports and hover, reload live, and re
     expect(JSON.stringify(info.connection.context)).toContain('.vscode'); expect(JSON.stringify(info.connection.context)).toContain('src 한글');
     expect(JSON.stringify(info.hover)).toContain('Local VLM module documentation');
     await writeFile(settings, '{"python.analysis.extraPaths": []}\n');
-    await expect(cell.locator('.squiggly-warning')).toHaveCount(2, { timeout: 30000 });
+    await expect(cell.locator('.squiggly-error')).toHaveCount(2, { timeout: 30000 });
     expect(await readFile(file, 'utf8')).toContain('definitely_missing_setdown_control');
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); await rm(config, { recursive: true, force: true }); }
 });
@@ -797,5 +797,132 @@ test('notebook cells indent with four spaces per Tab', async () => {
     await page.keyboard.press('Control+s');
     const sources = async () => JSON.parse(await readFile(file, 'utf8')).cells.map((cell: any) => Array.isArray(cell.source) ? cell.source.join('') : cell.source);
     await expect.poll(sources).toEqual(['    x = 1', 'if True:\n    value = 1\n\n    y = 2', '    hello']);
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
+test('default notebook Literal errors share Problems, survive tab switches, and stay independent from execution', async () => {
+  test.setTimeout(90_000);
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-types-')), file = path.join(root, 'literal.ipynb');
+  const python = path.join(root, '.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
+  execFileSync(process.env.SETDOWN_TEST_NOTEBOOK_PYTHON ?? 'python3', ['-m', 'venv', '--without-pip', '--system-site-packages', path.join(root, '.venv')]);
+  await writeFile(path.join(root, 'pyrightconfig.json'), '{}');
+  const cells = [
+    { id: 'define', source: 'from typing import Literal\ndef choose(mode: Literal["fast", "safe"]) -> str:\n    return mode' },
+    { id: 'invalid', source: 'print(choose("turbo"))' }, { id: 'valid', source: 'print(choose("fast"))' },
+  ];
+  await writeFile(file, JSON.stringify({ nbformat: 4, nbformat_minor: 5, metadata: { language_info: { name: 'python' } },
+    cells: cells.map(cell => ({ ...cell, cell_type: 'code', metadata: {}, execution_count: null, outputs: [] })) }));
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await app.firstWindow(); await focusApplication(app);
+    await expect(page.locator('.notebook-surface')).toHaveAttribute('data-notebook-language', 'ready', { timeout: 30_000 });
+    await expect(page.getByRole('combobox', { name: 'Python environment', exact: true })).toHaveValue(python);
+    const error = page.locator('[data-cell-id="invalid"] .squiggly-error');
+    await expect(error).toHaveCount(1, { timeout: 30_000 });
+    await expect(page.locator('[data-cell-id="valid"] .squiggly-error')).toHaveCount(0);
+    await expect(page.locator('.kernel-state')).toHaveAttribute('aria-label', 'Kernel stopped');
+    await page.getByRole('button', { name: 'Problems', exact: true }).click();
+    const problems = page.getByRole('dialog', { name: 'Problems · Open Files' });
+    await expect(problems.locator('.result')).toHaveCount(1);
+    await expect(problems.locator('.result')).toContainText('cell 2');
+    await page.getByRole('button', { name: 'Close language results' }).click();
+    await page.getByRole('button', { name: 'Run all cells', exact: true }).click();
+    await expect(page.locator('[data-cell-id="invalid"] .notebook-outputs')).toContainText('turbo', { timeout: 60_000 });
+    await expect(page.locator('[data-cell-id="valid"] .notebook-outputs')).toContainText('fast');
+    await expect(page.locator('.kernel-state')).toHaveAttribute('aria-label', 'Kernel idle');
+    await expect(error).toHaveCount(1);
+    await page.screenshot({ path: test.info().outputPath('literal-error-and-successful-execution.png') });
+    const clean = path.join(root, 'clean.py'); await writeFile(clean, 'pass\n');
+    await page.evaluate(file => (window as any).marktex.openLink(`marktex-resource://file${file}`), clean);
+    await page.getByRole('button', { name: /Language status:/ }).click();
+    await page.getByRole('dialog', { name: 'Current file language support' }).getByRole('button', { name: 'Problems', exact: true }).click();
+    await expect(problems.locator('.result')).toHaveCount(1);
+    await expect(problems.locator('.result')).toContainText('literal.ipynb');
+    await problems.locator('.result .location').click();
+    await expect(page.locator('.notebook-surface')).toBeVisible();
+    await expect(error).toHaveCount(1);
+    await page.getByRole('button', { name: /Python analysis ·/ }).click();
+    const checking = page.getByRole('combobox', { name: 'Python type checking', exact: true });
+    await checking.selectOption('off'); await expect(error).toHaveCount(0, { timeout: 30_000 });
+    await expect(page.locator('.kernel-state')).toHaveAttribute('aria-label', 'Kernel idle');
+    await checking.selectOption('basic'); await expect(error).toHaveCount(1, { timeout: 30_000 });
+    await page.screenshot({ path: test.info().outputPath('notebook-analysis-settings.png') });
+    await page.getByRole('region', { name: 'Notebook Python analysis' }).getByRole('button', { name: 'Close', exact: true }).click();
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(760, 700));
+    await page.getByRole('button', { name: 'Commands…', exact: true }).click();
+    await page.getByRole('button', { name: 'Python analysis settings', exact: true }).click();
+    await expect(checking).toBeVisible();
+    await page.getByRole('region', { name: 'Notebook Python analysis' }).getByRole('button', { name: 'Close', exact: true }).click();
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1080, 820));
+    const editor = page.locator('[data-cell-id="invalid"]').getByRole('textbox', { name: /Code cell editor/ });
+    await editor.press('Control+a'); await page.keyboard.insertText('print(choose("safe"))');
+    await expect(error).toHaveCount(0, { timeout: 30_000 });
+    await page.getByRole('button', { name: 'Problems', exact: true }).click();
+    await expect(problems.locator('.result')).toHaveCount(0);
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
+test('shared notebook analysis keeps 100-cell namespaces separate and survives twenty tab round trips', async () => {
+  test.setTimeout(120_000);
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-pool-'));
+  const first = path.join(root, 'first.ipynb'), large = path.join(root, 'large.ipynb');
+  await writeFile(path.join(root, 'pyrightconfig.json'), '{}');
+  const write = (file: string, sources: string[]) => writeFile(file, JSON.stringify({ nbformat: 4, nbformat_minor: 5,
+    metadata: { language_info: { name: 'python' } }, cells: sources.map((source, i) => ({ id: `cell${i}`, cell_type: 'code', source, metadata: {}, execution_count: null, outputs: [] })) }));
+  await write(first, ['from typing import Literal\ndef choose(mode: Literal["safe"]) -> str:\n    return mode', 'choose("turbo")']);
+  await write(large, ['choose("safe")', ...Array.from({ length: 99 }, (_, i) => `value${i} = ${i}`)]);
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', first], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  // Linux execution evidence includes the real child PID/RSS, excluding kernels.
+  const processes = async () => {
+    if (process.platform !== 'linux') return [];
+    const children = (await readFile(`/proc/${app.process().pid}/task/${app.process().pid}/children`, 'utf8')).trim().split(/\s+/).filter(Boolean);
+    const records = await Promise.all(children.map(async pid => {
+      try { const command = await readFile(`/proc/${pid}/cmdline`, 'utf8');
+        if (!command.includes('basedpyright/langserver.index.js')) return [];
+        const status = await readFile(`/proc/${pid}/status`, 'utf8');
+        return [{ pid: Number(pid), rssKiB: Number(status.match(/^VmRSS:\s+(\d+)/m)?.[1]) }];
+      } catch { return []; }
+    }));
+    return records.flat();
+  };
+  try {
+    const page = await app.firstWindow(); await focusApplication(app);
+    const visible = page.locator('.notebook-content:not(.inactive)');
+    await expect(visible.locator('.squiggly-error')).toHaveCount(1, { timeout: 30_000 });
+    const initial = await processes(); if (process.platform === 'linux') expect(initial).toHaveLength(1);
+    await page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), large);
+    await expect(visible.locator('[data-cell-id="cell0"] .squiggly-error')).toHaveCount(1, { timeout: 30_000 });
+    await visible.getByRole('button', { name: 'Problems', exact: true }).click();
+    const results = page.getByRole('dialog', { name: 'Problems · Open Files' });
+    await expect(results.locator('.result')).toHaveCount(2);
+    await expect(results).toContainText('"choose" is not defined');
+    await results.getByRole('button', { name: 'Close language results' }).click();
+    for (let i = 0; i < 20; i++) {
+      await page.getByRole('tab', { name: /first.ipynb/ }).click();
+      await expect(visible.locator('.squiggly-error')).toHaveCount(1);
+      await page.getByRole('tab', { name: /large.ipynb/ }).click();
+      await expect(visible.locator('[data-cell-id="cell0"] .squiggly-error')).toHaveCount(1);
+    }
+    const after = await processes();
+    expect(after.map(record => record.pid)).toEqual(initial.map(record => record.pid));
+    const timings: number[] = [];
+    await visible.getByRole('button', { name: /Python analysis ·/ }).click();
+    const details = visible.getByRole('region', { name: 'Notebook Python analysis' });
+    const editor = visible.locator('[data-cell-id="cell0"]').getByRole('textbox', { name: /Code cell editor/ });
+    for (let i = 0; i < 6; i++) {
+      await editor.press('Control+a');
+      const start = performance.now();
+      await page.keyboard.insertText(`from typing import Literal\nvalue: Literal["safe"] = "${i % 2 ? 'safe' : 'turbo'}"`);
+      await expect(details).toContainText('Current diagnostics received for 100 code cells.', { timeout: 30_000 });
+      await expect(visible.locator('[data-cell-id="cell0"] .squiggly-error')).toHaveCount(i % 2 ? 0 : 1);
+      timings.push(performance.now() - start);
+    }
+    const measurements = test.info().outputPath('notebook-analysis-measurements.json');
+    await writeFile(measurements, JSON.stringify({ codeCells: 100, tabRoundTrips: 20,
+      kernel: 'stopped', initial, after, editToCurrentDiagnosticsMs: timings, includes: 'CDP input, 150ms debounce, IPC, server analysis, renderer and assertion polling' }, null, 2));
+    await test.info().attach('notebook-analysis-measurements', { path: measurements, contentType: 'application/json' });
+    await expect(visible.locator('.kernel-state')).toHaveAttribute('aria-label', 'Kernel stopped');
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });

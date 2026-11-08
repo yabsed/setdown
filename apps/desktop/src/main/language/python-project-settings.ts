@@ -1,9 +1,12 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { parse, type ParseError } from 'jsonc-parser';
+import { notebookPythonAnalysis } from './python-analysis';
 
 export type PythonProjectSettings = {
   extraPaths?: string[];
+  checking?: 'off' | 'basic' | 'standard' | 'strict';
+  checkingSource?: string;
   source?: string;
   projectConfiguration?: string;
   errors: string[];
@@ -32,6 +35,13 @@ export function pythonProjectSettings(root: string): PythonProjectSettings {
     const errors: ParseError[] = [];
     const settings = parse(readFileSync(file, 'utf8'), errors, { allowTrailingComma: true, disallowComments: false });
     if (errors.length || !settings || typeof settings !== 'object' || Array.isArray(settings)) throw Error('Invalid JSONC settings.');
+    const checkingKey = section(settings, 'basedpyright.analysis.typeCheckingMode') !== undefined
+      ? 'basedpyright.analysis.typeCheckingMode' : 'python.analysis.typeCheckingMode';
+    const checking = section(settings, checkingKey);
+    if (checking !== undefined) {
+      if (!['off', 'basic', 'standard', 'strict'].includes(checking as string)) result.errors.push(`${file}: Invalid ${checkingKey}.`);
+      else { result.checking = checking as PythonProjectSettings['checking']; result.checkingSource = `${file} → ${checkingKey}`; }
+    }
     const key = section(settings, 'basedpyright.analysis.extraPaths') !== undefined
       ? 'basedpyright.analysis.extraPaths' : 'python.analysis.extraPaths';
     const entries = section(settings, key);
@@ -50,18 +60,25 @@ export function pythonProjectSettings(root: string): PythonProjectSettings {
  * is left to the language server; these are client defaults, not merged configs. */
 const appliedSources = new WeakMap<object, string>();
 export function applyPythonProjectSettings(configuration: Record<string, unknown>, project: PythonProjectSettings,
-  server: 'pyright' | 'basedpyright'): Record<string, unknown> {
+  server: 'pyright' | 'basedpyright', explicitChecking = true, checkingOverride?: PythonProjectSettings['checking']): Record<string, unknown> {
   const name = server === 'basedpyright' ? 'basedpyright' : 'python';
   const key = `${name}.analysis.extraPaths`;
-  if (project.extraPaths === undefined || section(configuration, key) !== undefined) return configuration;
-  // Flat sections are supported by workspace/configuration too; use the most
-  // specific key so nested defaults and the compatibility value cannot diverge.
   const value = structuredClone(configuration);
   const analysis = section(value, `${name}.analysis`);
-  value[`${name}.analysis`] = { ...(analysis && typeof analysis === 'object' ? analysis : {}), extraPaths: project.extraPaths };
+  const next = { ...(analysis && typeof analysis === 'object' ? analysis : {}) } as Record<string, unknown>;
+  if (project.extraPaths !== undefined && section(configuration, key) === undefined) {
+    next.extraPaths = project.extraPaths;
+    if (project.source) appliedSources.set(value, project.source);
+  }
+  const modeKey = `${name}.analysis.typeCheckingMode`;
+  const configured = section(configuration, modeKey);
+  next.typeCheckingMode = checkingOverride ?? (project.checking && (!explicitChecking || configured === undefined)
+    ? project.checking : configured ?? notebookPythonAnalysis.typeCheckingMode);
+  // Flat sections have precedence in workspace/configuration. Keep them aligned.
+  value[`${name}.analysis`] = next;
+  if (Object.hasOwn(value, modeKey)) value[modeKey] = next.typeCheckingMode;
   const outer = value[name];
-  value[name] = { ...(outer && typeof outer === 'object' ? outer : {}), analysis: value[`${name}.analysis`] };
-  if (project.source) appliedSources.set(value, project.source);
+  value[name] = { ...(outer && typeof outer === 'object' ? outer : {}), analysis: next };
   return value;
 }
 
@@ -69,6 +86,8 @@ export function pythonSettingsContext(project: PythonProjectSettings, configurat
   const key = `${server === 'basedpyright' ? 'basedpyright' : 'python'}.analysis.extraPaths`;
   const configured = section(configuration, key);
   return [
+    ['Type checking', `${section(configuration, `${server === 'basedpyright' ? 'basedpyright' : 'python'}.analysis.typeCheckingMode`) ?? 'basic'} (client policy; native project configuration may override)`],
+    ...(project.checkingSource ? [['Workspace type checking setting', project.checkingSource] as [string, string]] : []),
     ['Analysis paths', `${JSON.stringify(configured ?? [])} (client configuration; project configuration may override)`],
     ['Analysis path source', appliedSources.get(configuration) ?? (configured !== undefined ? 'Language connection settings' : 'Server defaults')],
     ['Project analysis configuration', project.projectConfiguration

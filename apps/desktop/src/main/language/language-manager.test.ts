@@ -10,11 +10,11 @@ import { ServerEnvironment } from './server-environment';
 
 const mocks = vi.hoisted(() => ({ directory: '', handles: new Map<string, (...args: any[]) => any>(),
   events: new Map<string, (...args: any[]) => void>(), app: new Map<string, (...args: any[]) => void>(),
-  servers: [] as { notify: ReturnType<typeof vi.fn>; request: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn>; root: string; diagnostics: (params: any) => void }[] }));
+  servers: [] as { notify: ReturnType<typeof vi.fn>; request: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn>; root: string; failed: (message: string) => void; diagnostics: (params: any) => void }[] }));
 vi.mock('electron', () => ({ app: { getPath: () => mocks.directory, on: (key: string, fn: (...args: any[]) => void) => mocks.app.set(key, fn), quit: vi.fn() },
   ipcMain: { handle: (key: string, fn: (...args: any[]) => any) => mocks.handles.set(key, fn),
     on: (key: string, fn: (...args: any[]) => void) => mocks.events.set(key, fn) } }));
-vi.mock('../notebook/python-environments', () => ({ notebookPython: { list: async () => ({ candidates: [], selected: '/usr/bin/python3' }), resolve: async () => ({ python: '/usr/bin/python3', env: {} }) } }));
+vi.mock('../notebook/python-environments', () => ({ notebookPython: { list: async () => ({ candidates: [], selected: '/usr/bin/python3' }), resolve: async (_file: string, python?: string) => ({ python: python ?? '/usr/bin/python3', env: {} }) } }));
 vi.mock('./server-session', () => ({ ServerSession: class {
   readonly ready = Promise.resolve({ notebookDocumentSync: { notebookSelector: [{ notebook: 'jupyter-notebook' }] }, textDocumentSync: { openClose: true, change: 2, save: { includeText: true } } });
   readonly capabilities = { forDocument: () => ({ textDocumentSync: { openClose: true, change: 2, save: { includeText: true } } }) };
@@ -22,7 +22,7 @@ vi.mock('./server-session', () => ({ ServerSession: class {
   readonly stop = vi.fn(async () => {});
   readonly request = vi.fn(async () => null);
   readonly watch = vi.fn();
-  constructor(readonly launch: unknown, readonly root: string, readonly diagnostics: (params: any) => void) { mocks.servers.push(this); }
+  constructor(readonly launch: unknown, readonly root: string, readonly diagnostics: (params: any) => void, readonly failed: (message: string) => void) { mocks.servers.push(this); }
 } }));
 beforeEach(async () => { mocks.directory = await mkdtemp(path.join(os.tmpdir(), 'setdown-manager-test-'));  mocks.handles.clear(); mocks.events.clear(); mocks.app.clear(); mocks.servers.length = 0; });
 
@@ -33,7 +33,7 @@ function fixture(discovery?: ServerDiscovery, root = path.resolve('language-fixt
   const event = (id: number) => {
     const contents = Object.assign(new EventEmitter(), { id, mainFrame: {}, isDestroyed: () => false, send: vi.fn() });
     states.set(id, { webContentsId: id, projectRoot: root, currentDocument: { path: path.join(root, 'main.py') },
-      rendererTabs: ['other.py', 'main.cpp', 'helper.h', 'other.c', 'hello.f90', 'other.f90', 'main.ts', 'other.ts', 'main.json', 'other.json', 'Dockerfile', 'notes.ipynb'].map(name => ({ path: path.join(root, name), isUntitled: false })),
+      rendererTabs: ['other.py', 'main.cpp', 'helper.h', 'other.c', 'hello.f90', 'other.f90', 'main.ts', 'other.ts', 'main.json', 'other.json', 'Dockerfile', 'notes.ipynb', 'other.ipynb'].map(name => ({ path: path.join(root, name), isUntitled: false })),
       window: { webContents: contents, isDestroyed: () => false } } as unknown as WindowState);
     return { sender: contents, senderFrame: contents.mainFrame };
   };
@@ -256,7 +256,7 @@ test('native notebook cells require ownership and cannot issue unmapped edits', 
   const document = { ...f.document('notebook', 'notes.ipynb'), notebook: 'python', text: '', cells: [{ id: 'one', version: 1, text: 'values = [1, 2, 3]' }] };
   const connection = await f.invoke('open', f.first, document);
   expect(connection.uri).toMatch(/notes.ipynb$/);
-  expect(connection.cells.one).toMatch(/^vscode-notebook-cell:.*notes.ipynb#one.0$/);
+  expect(connection.cells.one).toMatch(/^vscode-notebook-cell:.*notes.ipynb#one\.[a-f0-9-]{36}$/);
   expect(mocks.servers[0].notify).toHaveBeenCalledWith('notebookDocument/didOpen', expect.objectContaining({
     cellTextDocuments: expect.arrayContaining([expect.objectContaining({ uri: connection.cells.one, languageId: 'python', text: document.cells[0].text })]),
   }));
@@ -266,7 +266,8 @@ test('native notebook cells require ownership and cannot issue unmapped edits', 
   await expect(f.invoke('request', f.first, document.id, 1, 'command', 'workspace/executeCommand', {})).rejects.toThrow(/Invalid/);
   await expect(f.invoke('request', f.first, document.id, 1, 'hover', 'textDocument/hover', { cell: 'one', position: { line: 0, character: 1 } })).resolves.toBeNull();
   const next = await f.invoke('notebook-change', f.first, document.id, 2, [{ id: 'two', version: 1, text: 'values' }, ...document.cells]);
-  expect(next.one).toMatch(/#one.2$/);
+  expect(next.one).toMatch(/#one\.[a-f0-9-]{36}$/);
+  expect(next.one).not.toBe(connection.cells.one);
   vi.mocked(f.first.sender.send).mockClear();
   mocks.servers[0].diagnostics({ uri: connection.cells.one, version: 2, diagnostics: [] });
   mocks.servers[0].diagnostics({ uri: next.one, version: 1, diagnostics: [] });
@@ -357,4 +358,57 @@ test('the tool catalog has global defaults even with a folder open; document ins
   const inspected = (await f.invoke('catalog', f.first, file)).entries.find((entry: { id: string }) => entry.id === 'pyright');
   expect(inspected.projectRoot).toBe(root); expect(inspected.options.scope).toBe(root);
   expect(inspected.options.settings.python.pythonPath).toBe('/project-only/python');
+});
+
+test('notebooks share analysis by root and environment, while reopen retires old cell epochs', async () => {
+  const f = fixture();
+  const doc = (id: string, name: string, python = '/usr/bin/python3') => ({ ...f.document(id, name), python, notebook: 'python', text: '', cells: [{ id: 'cell', version: 1, text: 'value = 1' }] });
+  const a = doc('a', 'notes.ipynb'), b = doc('b', 'other.ipynb');
+  const first = await f.invoke('open', f.first, a), second = await f.invoke('open', f.first, b);
+  expect(mocks.servers).toHaveLength(1);
+  f.first.sender.send.mockClear();
+  mocks.servers[0].diagnostics({ uri: second.cells.cell, version: 1, diagnostics: [] });
+  expect(f.first.sender.send).toHaveBeenCalledWith('language:event', expect.objectContaining({ id: 'b', cell: 'cell' }));
+  f.send('close', f.first, 'a'); await Promise.resolve();
+  const reopened = await f.invoke('open', f.first, a);
+  expect(mocks.servers).toHaveLength(1); expect(reopened.cells.cell).not.toBe(first.cells.cell);
+  f.first.sender.send.mockClear();
+  mocks.servers[0].diagnostics({ uri: first.cells.cell, version: 1, diagnostics: [] });
+  expect(f.first.sender.send).not.toHaveBeenCalled();
+  await f.invoke('open', f.first, doc('different', 'notes.ipynb', '/different/python'));
+  expect(mocks.servers).toHaveLength(2);
+  f.first.sender.emit('destroyed'); await vi.waitFor(() => expect(mocks.servers.every(server => server.stop.mock.calls.length === 1)).toBe(true));
+});
+
+test('notebook crash recovery reconnects at most three times and never replays user commands', async () => {
+  vi.useFakeTimers();
+  try {
+    const f = fixture(), doc = { ...f.document('notebook', 'notes.ipynb'), notebook: 'python', text: '', cells: [{ id: 'cell', version: 1, text: 'value = 1' }] };
+    await f.invoke('open', f.first, doc);
+    for (const delay of [1000, 3000, 5000]) {
+      const server = mocks.servers.at(-1)!; f.first.sender.send.mockClear(); server.failed('crashed');
+      await vi.advanceTimersByTimeAsync(delay);
+      expect(f.first.sender.send).toHaveBeenCalledWith('language:event', expect.objectContaining({ type: 'configuration', servers: ['notebook-python'] }));
+      expect(server.request).not.toHaveBeenCalled();
+      await f.invoke('open', f.first, { ...doc, generation: crypto.randomUUID() });
+    }
+    f.first.sender.send.mockClear(); mocks.servers.at(-1)!.failed('crashed again'); await vi.advanceTimersByTimeAsync(5000);
+    expect(f.first.sender.send.mock.calls.some(([, event]) => event.type === 'configuration')).toBe(false);
+    expect(f.first.sender.send).toHaveBeenCalledWith('language:event', expect.objectContaining({ recovery: { retrying: false, attempt: undefined } }));
+    f.first.sender.emit('destroyed'); await Promise.resolve();
+  } finally { vi.useRealTimers(); }
+});
+
+test('closing during a structural notebook change cannot reopen a retired document in the shared server', async () => {
+  const f = fixture(), doc = { ...f.document('notebook', 'notes.ipynb'), notebook: 'python', text: '', cells: [{ id: 'cell', version: 1, text: 'value = 1' }] };
+  await f.invoke('open', f.first, doc);
+  const server = mocks.servers[0]; let finish!: () => void;
+  server.notify.mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }));
+  const change = f.invoke('notebook-change', f.first, doc.id, 2, [...doc.cells, { id: 'new', version: 1, text: 'value' }]);
+  const rejected = expect(change).rejects.toThrow(/closed during/);
+  await vi.waitFor(() => expect(finish).toBeDefined());
+  f.send('close', f.first, doc.id); finish(); await rejected;
+  expect(server.notify.mock.calls.filter(call => call[0] === 'notebookDocument/didOpen')).toHaveLength(1);
+  await f.invoke('open', f.first, { ...doc, generation: 'new-owner' });
+  expect(mocks.servers).toHaveLength(1);
 });

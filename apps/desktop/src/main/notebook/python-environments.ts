@@ -23,7 +23,7 @@ export class PythonEnvironments {
     }
     return this.choices;
   }
-  async list(file: string, boundary?: string): Promise<NotebookEnvironments> {
+  async list(file: string, boundary?: string, ignoreProjectSelection = false): Promise<NotebookEnvironments> {
     const discovery = this.discovery ??= new ServerDiscovery();
     const found = await discovery.find(process.platform === 'win32' ? 'python' : 'python3', { resolveEnvironment: true });
     const choices = this.load(), candidates: NotebookEnvironments['candidates'] = [];
@@ -32,12 +32,15 @@ export class PythonEnvironments {
         candidates.push({ path: python, source, name: name ?? path.basename(path.dirname(path.dirname(python))) });
     };
     const executable = (root: string) => path.join(root, process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
-    const project = analysisPreferences.pythonFor(file);
+    const project = ignoreProjectSelection ? undefined : analysisPreferences.pythonFor(file);
     await add(choices[file], 'Notebook override');
     await add(project, 'Project selection');
-    for (let root = path.dirname(file), depth = 0; depth < (boundary ? 64 : 4); depth++, root = path.dirname(root)) {
-      for (const name of ['.venv', 'venv']) await add(executable(path.join(root, name)), 'Project', name);
-      if (path.dirname(root) === root || root === boundary) break;
+    let local: string[] = [];
+    for (let root = path.dirname(file), depth = 0; depth < 64; depth++, root = path.dirname(root)) {
+      const paths = ['.venv', 'venv'].map(name => executable(path.join(root, name)));
+      for (const python of paths) await add(python, 'Project', path.basename(path.dirname(path.dirname(python))));
+      if (!local.length) local = paths.filter(python => candidates.some(item => item.path === python));
+      if (path.dirname(root) === root || root === boundary || await fs.stat(path.join(root, '.git')).then(() => true, () => false)) break;
     }
     for (const key of ['VIRTUAL_ENV', 'CONDA_PREFIX']) {
       const root = found.environment.env[key]; if (root) await add(key === 'CONDA_PREFIX' && process.platform === 'win32' ? path.join(root, 'python.exe') : executable(root), key === 'VIRTUAL_ENV' ? 'Virtual environment' : 'Conda');
@@ -66,9 +69,12 @@ export class PythonEnvironments {
         }
       } catch { /* No registered kernels at this prefix. */ }
     }
-    // Project-local executables are offered for explicit selection, never launched by discovery.
-    // Never silently replace an explicitly selected environment that disappeared.
-    return { selected: choices[file] ?? project ?? found.selected?.path, candidates };
+    // Discover without executing interpreters. Prefer the nearest unambiguous
+    // project environment, preserving even a missing explicit selection.
+    const explicit = choices[file] ?? project;
+    const selected = explicit ?? (local.length === 1 ? local[0] : local.length ? undefined : found.selected?.path);
+    return { selected, selectionSource: choices[file] ? 'Notebook override' : project ? 'Project selection' : local.length === 1 ? 'Project environment' : 'Host environment',
+      selectionNeeded: !explicit && local.length > 1, candidates };
   }
   async select(file: string, python: string): Promise<void> {
     if (!path.isAbsolute(file) || !/\.ipynb$/i.test(file) || !path.isAbsolute(python) || !await executableFile(python))
@@ -81,6 +87,7 @@ export class PythonEnvironments {
   }
   async resolve(file: string, explicit?: string): Promise<{ python?: string; env: NodeJS.ProcessEnv }> {
     const list = await this.list(file), python = explicit ?? list.selected;
+    if (!explicit && list.selectionNeeded) throw Error('Multiple project Python environments are available. Choose one for this notebook.');
     if (python && !await executableFile(python)) throw Error('The selected Python environment is missing. Choose another environment.');
     return { python, env: this.discovery!.environment.peek().env };
   }

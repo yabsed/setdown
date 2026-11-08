@@ -1,21 +1,25 @@
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { CancellationTokenSource } from 'vscode-jsonrpc/node';
 import type { LanguageCell, LanguageConnection, LanguageDocument, LanguageEvent, LanguageMethod } from '../../protocol/language';
 import type { WindowState } from '../windows/window-state';
 import { canonicalPath } from '../documents/file-system';
 import { ServerSession } from './server-session';
+import { LanguageSessionPool } from './language-session-pool';
 import { notebookPythonAnalysis } from './python-analysis';
 import { notebookPython } from '../notebook/python-environments';
 import { notebookClientCapabilities, notebookLanguageMethods } from '../../protocol/language-features';
 import { ServerItems } from './server-items';
 import { languageRoot } from './language-root';
 import { builtinLanguageServers } from './catalog/profiles';
-import { applyPythonProjectSettings, isPythonSettingsFile, pythonProjectSettings, pythonSettingsContext } from './python-project-settings';
+import { isPythonSettingsFile } from './python-project-settings';
+import { LanguageServiceSupervisor } from './language-supervisor';
+import { AnalysisContextService } from './analysis-context';
 
 type Cell = LanguageCell & { uri: string };
 type Session = { state: WindowState; document: LanguageDocument; cells: Cell[]; server: ServerSession; items: ServerItems; root: string; rootReason: string;
-  phase: 'starting' | 'ready' | 'failed'; message?: string; uri: string; epoch: number; requests: Map<string, CancellationTokenSource>; ready: boolean };
+  release(): void; phase: 'starting' | 'ready' | 'failed'; message?: string; uri: string; epoch: string; requests: Map<string, CancellationTokenSource>; ready: boolean; opened: boolean };
 export function validateLanguageCells(cells: unknown): asserts cells is LanguageCell[] {
   if (!Array.isArray(cells) || cells.length > 10000) throw Error('Invalid notebook cells.');
   let size = 0; const ids = new Set<string>();
@@ -30,10 +34,14 @@ export function validateLanguageCells(cells: unknown): asserts cells is Language
  * Wire URIs are main-owned; the UI's setdown-cell models never become filesystem paths. */
 export class NotebookLanguageHost {
   private sessions = new Map<string, Session>();
+  private contexts = new AnalysisContextService();
+  private pool = new LanguageSessionPool<ServerSession>();
+  private watching = new WeakSet<ServerSession>();
+  private supervisor = new LanguageServiceSupervisor();
   private openings = new Map<string, object>();
   private watched = new Set<number>();
   private draining = new Set<Promise<void>>();
-  get running(): boolean { return !!(this.sessions.size || this.openings.size || this.draining.size); }
+  get running(): boolean { return !!(this.sessions.size || this.openings.size || this.draining.size || this.pool.running); }
   private key(owner: number, id: string): string { return `${owner}:${id}`; }
   has(owner: number, id: string): boolean { return this.sessions.has(this.key(owner, id)); }
   private emit(session: Session, event: LanguageEvent): void {
@@ -44,7 +52,19 @@ export class NotebookLanguageHost {
     session.phase = state; session.message = message;
     this.emit(session, { type: 'status', documents: [{ id: session.document.id, generation: session.document.generation }], state, message });
   }
-  private cells(uri: string, cells: LanguageCell[], epoch = 0): Cell[] {
+  private failed(session: Session, message: string): void {
+    const key = this.key(session.state.webContentsId, session.document.id);
+    if (this.sessions.get(key) !== session || session.phase === 'failed') return;
+    session.ready = false;
+    const retry = this.supervisor.schedule(key, () => {
+      if (this.sessions.get(key) === session) this.emit(session, { type: 'configuration', servers: ['notebook-python'],
+        documents: [{ id: session.document.id, generation: session.document.generation }] });
+    });
+    this.status(session, 'failed', message);
+    this.emit(session, { type: 'status', documents: [{ id: session.document.id, generation: session.document.generation }],
+      state: 'failed', message, recovery: { retrying: !!retry, attempt: retry?.attempt } });
+  }
+  private cells(uri: string, cells: LanguageCell[], epoch: string): Cell[] {
     return [{ id: '', version: 1, text: 'from IPython import get_ipython as get_ipython' }, ...cells].map(cell => ({ ...cell, uri: uri.replace(/^file:/, 'vscode-notebook-cell:') + '#' + cell.id + '.' + epoch }));
   }
   async open(state: WindowState, document: LanguageDocument): Promise<LanguageConnection> {
@@ -72,50 +92,66 @@ export class NotebookLanguageHost {
       const { NODE_OPTIONS: _options, NODE_PATH: _nodePath, ...env } = environment.env;
       const uri = pathToFileURL(file).href;
       const root = languageRoot(file, builtinLanguageServers.find(profile => profile.id === 'pyright')!, state.projectRoot ?? undefined);
-      const session = { state, document: { ...document }, cells: this.cells(uri, document.cells), uri, phase: 'starting', epoch: 0,
-        items: new ServerItems(), root: root.path, rootReason: root.reason, requests: new Map(), ready: false } as Session;
+      const epoch = randomUUID();
+      const session = { state, document: { ...document }, cells: this.cells(uri, document.cells, epoch), uri, phase: 'starting', epoch,
+        items: new ServerItems(), root: root.path, rootReason: root.reason, requests: new Map(), ready: false, opened: false } as Session;
       // Notebook mode supplies display(); the hidden first cell binds IPython's
       // runtime get_ipython() with its installed types. Neither source is rewritten.
-      // Match VS Code's lightweight Python diagnostics; inference still powers
-      // completion/hover. Let the server's off preset own the diagnostic rules.
       const analysis = notebookPythonAnalysis;
-      const projectSettings = pythonProjectSettings(root.path);
-      const configuration = applyPythonProjectSettings({ python: { pythonPath: environment.python, analysis }, basedpyright: { analysis } }, projectSettings, 'basedpyright');
-      session.server = new ServerSession({ executable: process.execPath, args: [entry, '--stdio'], env: { ...env, ELECTRON_RUN_AS_NODE: '1' } },
-        root.path, params => {
-          if (this.sessions.get(key) !== session) return;
-          const cell = session.cells.find(cell => cell.uri === params.uri);
-          if (!cell?.id || params.version !== session.document.version) return; // This bundled server provides versions; no guessed positions.
-          this.emit(session, { type: 'diagnostics', id: document.id, generation: document.generation, version: session.document.version,
-            cell: cell.id, cellVersion: cell.version, diagnostics: params.diagnostics });
-        }, message => { if (this.sessions.get(key) === session) { session.ready = false; this.status(session, 'failed', message); } },
-        { name: 'Notebook Python', capabilities: notebookClientCapabilities(), watches: file => /\.(py|pyi|toml|json)$/.test(file), initializationOptions: { disablePullDiagnostics: true },
-          configuration }, { filesChanged: paths => {
-            if (this.sessions.get(key) !== session || !paths.some(file => isPythonSettingsFile(root.path, file))) return;
-            // Retire the wire epoch before requesting a reconnect. Old diagnostics
-            // can no longer be relabelled with the unchanged notebook revision.
-            this.close(owner, document.id);
-            this.emit(session, { type: 'configuration', servers: ['notebook-python'],
-              documents: [{ id: document.id, generation: document.generation }] });
-          } });
-      for (const [key, value] of pythonSettingsContext(projectSettings, configuration, 'basedpyright')) session.server.context?.set(key, value);
+      const base = builtinLanguageServers.find(profile => profile.id === 'pyright')!;
+      const plan = await this.contexts.resolve(root.path, root.reason, { ...base, id: 'basedpyright', name: 'Notebook Python',
+        settings: { python: { analysis }, basedpyright: { analysis } } }, {}, true, environment.python);
+      if (this.openings.get(key) !== token || !owns()) throw Error('Notebook closed during environment resolution.');
+      const configuration = plan.profile.configuration;
+      const poolKey = `${owner}:` + JSON.stringify([root.path, environment.python, configuration]);
+      const lease = this.pool.acquire(poolKey, uri, () => {
+        const server = new ServerSession({ executable: process.execPath, args: [entry, '--stdio'], env: { ...env, ELECTRON_RUN_AS_NODE: '1' } },
+          root.path, params => {
+            for (const current of this.sessions.values()) {
+              if (current.server !== server) continue;
+              const cell = current.cells.find(cell => cell.uri === params.uri);
+              if (!cell?.id || params.version !== current.document.version) continue;
+              this.emit(current, { type: 'diagnostics', id: current.document.id, generation: current.document.generation, version: current.document.version,
+                cell: cell.id, cellVersion: cell.version, diagnostics: params.diagnostics });
+            }
+          }, message => {
+            this.pool.invalidate(server);
+            for (const current of this.sessions.values()) if (current.server === server) this.failed(current, message);
+          }, { name: 'Notebook Python', capabilities: notebookClientCapabilities(), watches: file => /\.(py|pyi|toml|json)$/.test(file),
+            initializationOptions: { disablePullDiagnostics: true }, configuration }, { filesChanged: paths => {
+              if (!paths.some(file => isPythonSettingsFile(root.path, file))) return;
+              this.pool.invalidate(server);
+              for (const current of [...this.sessions.values()]) if (current.server === server) {
+                this.close(current.state.webContentsId, current.document.id);
+                this.emit(current, { type: 'configuration', servers: ['notebook-python'],
+                  documents: [{ id: current.document.id, generation: current.document.generation }] });
+              }
+            } });
+        return server;
+      });
+      session.server = lease.server; session.release = lease.release;
+      for (const evidence of plan.context.evidence) session.server.context?.set(evidence.split(':')[0], evidence.slice(evidence.indexOf(':') + 1).trim());
+      session.server.context?.set('Environment selection', plan.context.selectionSource ?? 'automatic');
+      for (const issue of plan.context.issues) session.server.context?.set(issue.code, issue.message);
       this.sessions.set(key, session); this.status(session, 'starting');
       const capabilities = await session.server.ready;
       if (this.sessions.get(key) !== session || !owns()) throw Error('Notebook closed during language initialization.');
       if (!capabilities.notebookDocumentSync) { this.close(owner, document.id); throw Error('The notebook server does not support cell synchronization.'); }
-      session.server.watch(root.path);
+      if (!this.watching.has(session.server)) { this.watching.add(session.server); session.server.watch(root.path); }
+      session.opened = true;
       await session.server.notify('notebookDocument/didOpen', {
         notebookDocument: { uri, notebookType: 'jupyter-notebook', version: document.version,
           cells: session.cells.map(cell => ({ kind: 2, document: cell.uri })) },
         cellTextDocuments: session.cells.map(cell => ({ uri: cell.uri, languageId: 'python', version: session.document.version, text: cell.text })),
       });
+      if (this.sessions.get(key) !== session || !owns()) throw Error('Notebook closed during cell synchronization.');
       session.ready = true; this.status(session, 'ready');
-      return { uri, cells: Object.fromEntries(session.cells.filter(cell => cell.id).map(cell => [cell.id, cell.uri])), capabilities, server: 'notebook-python',
+      return { uri, cells: Object.fromEntries(session.cells.filter(cell => cell.id).map(cell => [cell.id, cell.uri])), capabilities, server: 'notebook-python', analysis: { context: plan.context, analysis: 'waiting', scope: 'open-files', freshness: 'none', progress: [] },
         context: [`Project: ${root.path}`, `Root: ${root.reason}`, ...[...session.server.context ?? []].map(([key, value]) => `${key}: ${value}`)] };
     } catch (error) {
       if (this.openings.get(key) === token) {
         const session = this.sessions.get(key);
-        if (session && owns()) { session.ready = false; this.status(session, 'failed', String(error)); await session.server.stop(); }
+        if (session && owns()) { this.failed(session, String(error)); this.pool.invalidate(session.server); }
         else this.close(owner, document.id);
       }
       throw error;
@@ -131,12 +167,13 @@ export class NotebookLanguageHost {
     for (const request of session.requests.values()) request.cancel();
     // A new URI epoch on structural edits rejects late diagnostics for removed/reordered
     // cells even when the server's internal positional chain reused a document version.
-    if (structure) session.epoch = version;
+    if (structure) session.epoch = randomUUID();
     const next = this.cells(session.uri, cells, session.epoch);
     session.cells = next; session.document.version = version;
     session.items.forget(id);
     if (structure) {
       await session.server.notify('notebookDocument/didClose', { notebookDocument: { uri: session.uri }, cellTextDocuments: previous.map(cell => ({ uri: cell.uri })) });
+      if (this.sessions.get(this.key(owner, id)) !== session) throw Error('Notebook closed during cell synchronization.');
       await session.server.notify('notebookDocument/didOpen', {
         notebookDocument: { uri: session.uri, notebookType: 'jupyter-notebook', version, cells: next.map(cell => ({ kind: 2, document: cell.uri })) },
         cellTextDocuments: next.map(cell => ({ uri: cell.uri, languageId: 'python', version, text: cell.text })),
@@ -172,14 +209,23 @@ export class NotebookLanguageHost {
   cancel(owner: number, id: string): void { for (const s of this.sessions.values()) if (s.state.webContentsId === owner) s.requests.get(id)?.cancel(); }
   releaseItems(owner: number, id: string, handles: string[]): void { this.sessions.get(this.key(owner, id))?.items.release(handles, { document: id }); }
   close(owner: number, id: string): void {
-    const key = this.key(owner, id); this.openings.delete(key);
+    const key = this.key(owner, id); this.openings.delete(key); this.supervisor.cancel(key);
     const session = this.sessions.get(key); if (!session) return;
     this.sessions.delete(key); for (const token of session.requests.values()) token.cancel();
     const stopped = (async () => {
-      if (session.ready) await session.server.notify('notebookDocument/didClose', { notebookDocument: { uri: session.uri }, cellTextDocuments: session.cells.map(cell => ({ uri: cell.uri })) }).catch(() => {});
-      await session.server.stop();
+      if (session.opened) await session.server.notify('notebookDocument/didClose', { notebookDocument: { uri: session.uri }, cellTextDocuments: session.cells.map(cell => ({ uri: cell.uri })) }).catch(() => {});
+      session.release();
     })();
     this.draining.add(stopped); void stopped.finally(() => this.draining.delete(stopped));
+  }
+  resetRecovery(owner: number, file: string): void {
+    const servers = new Set([...this.sessions.values()].filter(session => session.state.webContentsId === owner && session.document.path === file).map(session => session.server));
+    for (const server of servers) this.pool.invalidate(server);
+    for (const session of this.sessions.values()) if (servers.has(session.server)) {
+      this.supervisor.reset(this.key(owner, session.document.id));
+      if (session.document.path !== file) this.emit(session, { type: 'configuration', servers: ['notebook-python'],
+        documents: [{ id: session.document.id, generation: session.document.generation }] });
+    }
   }
   snapshot(owner: number) {
     return [...this.sessions.values()].filter(session => session.state.webContentsId === owner).map(session => ({
@@ -188,7 +234,11 @@ export class NotebookLanguageHost {
   }
   async dispose(owner?: number): Promise<void> {
     for (const key of this.openings.keys()) if (owner === undefined || key.startsWith(`${owner}:`)) this.openings.delete(key);
-    for (const s of this.sessions.values()) if (owner === undefined || s.state.webContentsId === owner) this.close(s.state.webContentsId, s.document.id);
+    for (const s of this.sessions.values()) if (owner === undefined || s.state.webContentsId === owner) {
+      this.supervisor.reset(this.key(s.state.webContentsId, s.document.id)); this.close(s.state.webContentsId, s.document.id);
+    }
+    if (owner === undefined) this.supervisor.dispose();
     await Promise.all([...this.draining]);
+    await this.pool.dispose(owner === undefined ? undefined : `${owner}:`);
   }
 }

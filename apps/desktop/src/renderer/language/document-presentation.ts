@@ -59,7 +59,7 @@ export function projectLabel(root: string): string {
   return root.replaceAll('\\', '/').split('/').filter(Boolean).slice(-2).join(' / ') || root;
 }
 export function selectionSource(context: AnalysisContext): string {
-  return context.selectionSource === 'project' ? 'Project selection' : context.selectionSource === 'connection' ? 'Connection settings' : 'Automatic selection';
+  return context.selectionSource === 'notebook' ? 'Notebook environment' : context.selectionSource === 'project' ? 'Project selection' : context.selectionSource === 'connection' ? 'Connection settings' : 'Automatic selection';
 }
 
 /** Empty Problems never implies that every open file or the project was checked. */

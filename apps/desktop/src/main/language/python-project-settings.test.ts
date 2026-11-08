@@ -32,7 +32,7 @@ test('explicit connection paths and native execution environments are not flatte
   writeFileSync(path.join(root, 'pyrightconfig.json'), native);
   const project = pythonProjectSettings(root);
   const configuration = { 'python.analysis.extraPaths': ['/explicit'] };
-  expect(applyPythonProjectSettings(configuration, project, 'pyright')).toBe(configuration);
+  expect(configurationSection(applyPythonProjectSettings(configuration, project, 'pyright'), 'python.analysis.extraPaths')).toEqual(['/explicit']);
   expect(project.projectConfiguration).toBe(path.join(root, 'pyrightconfig.json'));
   expect(pythonSettingsContext(project, configuration, 'pyright')).toContainEqual(['Analysis path source', 'Language connection settings']);
 });
@@ -51,8 +51,8 @@ test('removing compatibility paths clears their previous value', () => {
   expect(pythonProjectSettings(root).extraPaths).toHaveLength(1);
   writeFileSync(path.join(root, '.vscode/settings.json'), '{}');
   expect(pythonProjectSettings(root).extraPaths).toBeUndefined();
-  expect(applyPythonProjectSettings({ python: { analysis: { typeCheckingMode: 'off' } } }, pythonProjectSettings(root), 'pyright'))
-    .toEqual({ python: { analysis: { typeCheckingMode: 'off' } } });
+  expect(configurationSection(applyPythonProjectSettings({ python: { analysis: { typeCheckingMode: 'off' } } }, pythonProjectSettings(root), 'pyright'), 'python.analysis'))
+    .toEqual({ typeCheckingMode: 'off' });
 });
 
 
@@ -63,4 +63,13 @@ test('identical explicit and project paths retain the explicit connection proven
   expect(pythonSettingsContext(project, applied, 'pyright')).toContainEqual(['Analysis path source', 'Language connection settings']);
   const inherited = applyPythonProjectSettings({}, project, 'pyright');
   expect(pythonSettingsContext(project, inherited, 'pyright')).toContainEqual(['Analysis path source', project.source!]);
+});
+
+test('workspace checking overrides product defaults, explicit choices win, and native config stays server-owned', () => {
+  const root = fixture('{"python.analysis.typeCheckingMode":"strict"}'), project = pythonProjectSettings(root);
+  const config = { python: { analysis: { typeCheckingMode: 'basic' } } };
+  expect(configurationSection(applyPythonProjectSettings(config, project, 'pyright', false), 'python.analysis.typeCheckingMode')).toBe('strict');
+  expect(configurationSection(applyPythonProjectSettings(config, project, 'pyright', true), 'python.analysis.typeCheckingMode')).toBe('basic');
+  expect(configurationSection(applyPythonProjectSettings(config, project, 'pyright', false, 'off'), 'python.analysis.typeCheckingMode')).toBe('off');
+  expect(configurationSection(applyPythonProjectSettings({}, { errors: [] }, 'basedpyright'), 'basedpyright.analysis.typeCheckingMode')).toBe('basic');
 });

@@ -72,12 +72,15 @@ test('cell-local UTF-16 diagnostics never survive a dependency revision or faile
   const event: LanguageEvent = { type: 'diagnostics', id, generation, version: 2, cell: f.b, cellVersion: cell.version,
     diagnostics: [{ range: { start: { line: 0, character: 9 }, end: { line: 0, character: 11 } }, severity: 1, message: 'test marker' }] };
   f.event(event);
-  expect(f.api.editor.setModelMarkers).toHaveBeenLastCalledWith(f.entry.models.get(f.b), 'notebook-language', [expect.objectContaining({ startColumn: 10, endColumn: 12 })]);
+  expect(f.api.editor.setModelMarkers).toHaveBeenLastCalledWith(f.entry.models.get(f.b), expect.stringMatching(/^setdown:notebook-python:/), [expect.objectContaining({ startColumn: 10, endColumn: 12 })]);
   f.entry.document.setSource(f.a, 'numbers = []'); f.event(event);
-  expect(f.api.editor.setModelMarkers).toHaveBeenLastCalledWith(f.entry.models.get(f.b), 'notebook-language', []);
+  expect(f.api.editor.setModelMarkers).toHaveBeenLastCalledWith(f.entry.models.get(f.b), expect.stringMatching(/^setdown:notebook-python:/), []);
   f.event({ ...event, version: 3 }); expect(vi.mocked(f.api.editor.setModelMarkers).mock.calls.at(-1)![2]).toHaveLength(1);
   f.event({ type: 'status', documents: [{ id, generation }], state: 'failed' });
-  expect(f.api.editor.setModelMarkers).toHaveBeenLastCalledWith(f.entry.models.get(f.b), 'notebook-language', []);
+  expect(f.api.editor.setModelMarkers).toHaveBeenLastCalledWith(f.entry.models.get(f.b), expect.stringMatching(/^setdown:notebook-python:/), []);
+  expect(f.client.observation).toContain('unavailable');
+  f.event({ ...event, version: 3 });
+  expect(f.api.editor.setModelMarkers).toHaveBeenLastCalledWith(f.entry.models.get(f.b), expect.stringMatching(/^setdown:notebook-python:/), []);
   f.client.dispose(); f.entry.dispose();
 });
 
@@ -91,6 +94,21 @@ test('rename applies cell-local edits atomically and a code action expires after
   vi.mocked(f.port.request).mockResolvedValue([{ title: 'Safe edit', edit: { changes } }, { title: 'Unsafe command', command: { command: 'execute', title: 'execute' } }]);
   const actions = await f.client.actions(f.b, 2); expect(actions).toHaveLength(1);
   f.entry.document.setSource(f.a, 'numbers = []'); expect(() => actions[0].apply()).toThrow(/changed/); expect(f.entry.document.cells[1].source).toBe('numbers.');
+  f.client.dispose(); f.entry.dispose();
+});
+
+test('versioned notebook edits use the synchronized snapshot, not a cell source revision', async () => {
+  const f = fixture(); await Promise.resolve(); await Promise.resolve();
+  f.entry.document.setSource(f.a, '# dependency changed\nnumbers = [1, 2, 3]');
+  f.entry.document.setSource(f.a, '# dependency changed twice\nnumbers = [1, 2, 3]');
+  const version = 3;
+  expect(f.entry.document.cells.find(cell => cell.id === f.b)!.version).not.toBe(version);
+  const edit = { documentChanges: [{ textDocument: { uri: 'vscode-notebook-cell:/project/notebook.ipynb#b', version },
+    edits: [{ range: { start: { line: 0, character: 0 }, end: { line: 0, character: 7 } }, newText: 'values' }] }] };
+  vi.mocked(f.port.request).mockResolvedValue(edit);
+  await f.client.rename(f.b, 2, 'values');
+  expect(f.entry.document.cells.find(cell => cell.id === f.b)!.source).toBe('values.');
+  await expect(f.client.rename(f.b, 2, 'values')).rejects.toThrow(/changed/);
   f.client.dispose(); f.entry.dispose();
 });
 

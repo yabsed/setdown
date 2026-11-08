@@ -1,0 +1,783 @@
+
+> setdown-workspace@0.1.0 test:preview-contract
+> npm run test:preview-contract --workspace @setdown/desktop
+
+
+> @setdown/desktop@2.5.2 test:preview-contract
+> npm run test:preview-contract:unit && npm run build && npm run test:preview-contract:e2e
+
+
+> @setdown/desktop@2.5.2 test:preview-contract:unit
+> vitest run --config vitest.preview-contract.config.ts && npm run test:tooling
+
+
+ RUN  v3.2.7 /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+
+ ✓ src/main/language/server-session.test.ts (11 tests) 7658ms
+   ✓ real Pyright sees independent unsaved buffers and versioned incremental Unicode changes  794ms
+   ✓ watching a closed imported file refreshes analysis without overwriting the open buffer  573ms
+   ✓ workspace rename includes unopened Python files immediately after initialization  423ms
+   ✓ pyright basic preset reports real type errors without requiring strict annotations  920ms
+   ✓ basedpyright basic preset reports real type errors without requiring strict annotations  922ms
+   ✓ pyright honors native off and strict policies over the bundled basic default  1202ms
+   ✓ basedpyright honors native off and strict policies over the bundled basic default  1281ms
+   ✓ one real basedpyright process keeps native notebook namespaces and dependency snapshots independent  926ms
+ ✓ src/main/language/server-registry.test.ts (15 tests) 1414ms
+   ✓ custom definitions, active selection, settings and fingerprints survive restart without language branches  562ms
+   ✓ project primary choices and disabled state survive reload without changing other projects  523ms
+ ✓ src/main/project/git-service.test.ts (18 tests) 1335ms
+   ✓ visible repositories, focused counts and settings use the same status snapshot  498ms
+ ✓ src/architecture-boundaries.test.ts (5 tests) 1252ms
+   ✓ architecture boundaries > resolved imports respect process, composition and feature boundaries  963ms
+ ✓ src/main/language/analysis-preparation.test.ts (3 tests) 1181ms
+   ✓ explicit meson configuration creates a compilation database in the app cache and can run again  779ms
+ ✓ src/main/language/language-manager.test.ts (22 tests) 15572ms
+   ✓ one server per window and root, with independent buffers and last-document shutdown  1264ms
+   ✓ foreign frames, unknown files, methods and stale versions cannot reach a server  662ms
+   ✓ C, C++ and headers share clangd while Python and other windows remain independent  1823ms
+   ✓ settings are owner-checked, stop previous sessions and notify every subscribed window  1441ms
+   ✓ save includeText uses the actual disk snapshot and a catalog read starts no process  1285ms
+   ✓ rescanning and configuring Fortran preserve unrelated Python sessions in every window  1367ms
+   ✓ new documents reuse the live workspace session after discovery chooses a new executable  1154ms
+   ✓ rescan during document discovery discards the stale plan and completes the pending connection  443ms
+   ✓ an imported Node profile connects without configuration and launches the bin through its runtime  713ms
+   ✓ competing installed profiles wait for one choice, persist it, and never fall through a missing chosen server  1077ms
+   ✓ the full catalog discovers a server without a connection profile without launching it  401ms
+   ✓ server cancellation code and data survive the main IPC handler  376ms
+   ✓ current-document restart retires only its provider session, not another language or window  1667ms
+   ✓ project Basic editing does not change the global catalog Enable/Disable controls  662ms
+   ✓ the tool catalog has global defaults even with a folder open; document inspection requests its own project options  701ms
+ ✓ src/main/language/analysis-context.test.ts (4 tests) 1070ms
+   ✓ the actual clangd process receives an external database with include paths, defines and language standard  1048ms
+ ✓ src/main/language/clangd-session.test.ts (1 test) 1053ms
+   ✓ real clangd uses build flags, isolates buffers, and supplies C++ navigation and edits  1053ms
+ ✓ src/main/project/completeness.test.ts (12 tests) 1044ms
+   ✓ all repository metadata watches remain active when the selected repository changes  332ms
+ ✓ src/main/project/git-history-service.test.ts (5 tests) 551ms
+ ✓ src/main/language/server-discovery.test.ts (12 tests) 535ms
+ ✓ src/main/terminal/terminal-manager.test.ts (12 tests) 502ms
+ ✓ src/main/terminal/terminal-screen.test.ts (14 tests) 483ms
+   ✓ handoff keeps exactly 50000 scrollback lines and evicts only the oldest output at capacity  334ms
+ ✓ src/renderer/language/language-client.test.ts (12 tests) 431ms
+ ✓ src/main/language/catalog/profiles.test.ts (4 tests) 399ms
+   ✓ upstream profiles route actual names, compound suffixes, variants and Windows paths without enabling writing servers  381ms
+ ✓ src/main/project/engines/project-watcher.test.ts (3 tests) 420ms
+   ✓ project watcher engine > does not emit a project change when Git status only reads the index  352ms
+ ✓ src/main/documents/bug-audit.integration.test.ts (28 tests) 374ms
+ ✓ src/renderer/language/textmate-runtime.test.ts (4 tests) 253ms
+ ✓ src/renderer/workspace/text-workspace.test.ts (56 tests) 156ms
+ ✓ src/renderer/notebook/notebook-language.test.ts (8 tests) 126ms
+ ✓ src/preview-runtime/theme-controller.test.ts (4 tests) 117ms
+ ✓ src/main/documents/native-watcher.test.ts (2 tests) 108ms
+ ✓ src/main/tabs/tab-transfer-manager.test.ts (59 tests) 61ms
+ ✓ src/main/preview/math-compat.test.ts (15 tests) 109ms
+ ✓ src/renderer/project/project-controller.test.ts (3 tests) 59ms
+ ✓ src/main/preview/source-anchors.test.ts (19 tests) 49ms
+ ✓ src/main/project/project-service.test.ts (8 tests) 54ms
+ ✓ src/main/browser/browser-extensions.test.ts (10 tests) 47ms
+ ✓ src/main/project/file-transfer.test.ts (11 tests) 38ms
+ ✓ src/main/editor/editor-tools.test.ts (4 tests) 38ms
+ ✓ src/main/notebook/python-environments.test.ts (4 tests) 31ms
+ ✓ src/main/preview/korean-emphasis.test.ts (27 tests) 33ms
+ ✓ src/core/theme/theme-catalog.test.ts (13 tests) 30ms
+ ✓ src/main/documents/document-save.test.ts (5 tests) 24ms
+ ✓ src/core/editor/editor-tools.test.ts (10 tests) 21ms
+ ✓ src/main/project/explorer-service.test.ts (5 tests) 20ms
+ ✓ src/main/windows/workspace-zoom.test.ts (31 tests) 20ms
+ ✓ src/renderer/project/source-control/source-control-controller.test.ts (23 tests) 19ms
+ ✓ src/renderer/notebook/notebook-execution.test.ts (9 tests) 20ms
+ ✓ src/renderer/project/source-control/review-workspace.test.ts (7 tests) 17ms
+ ✓ src/core/browser/reader-export.test.ts (5 tests) 19ms
+ ✓ src/core/markdown/asset-references.test.ts (4 tests) 18ms
+ ✓ src/core/notebook/notebook-document.test.ts (22 tests) 17ms
+ ✓ src/main/browser/browser-downloads.test.ts (4 tests) 15ms
+ ✓ src/renderer/language/language-features.test.ts (7 tests) 14ms
+ ✓ src/core/notebook/notebook-tools.test.ts (6 tests) 14ms
+ ✓ src/renderer/project/source-control/git-graph-refresh.test.ts (10 tests) 13ms
+ ✓ src/renderer/language/builtin-diagnostics.test.ts (5 tests) 13ms
+ ✓ src/main/documents/image-save.test.ts (2 tests) 12ms
+ ✓ src/main/language/server-definitions.test.ts (3 tests) 12ms
+ ✓ src/main/browser/browser-permissions.test.ts (7 tests) 13ms
+ ✓ src/renderer/editor/text-zoom.test.ts (2 tests) 12ms
+ ✓ src/main/browser/browser-pdf.test.ts (2 tests) 13ms
+ ✓ src/main/language/server-capabilities.test.ts (6 tests) 12ms
+ ✓ src/main/language/python-project-settings.test.ts (10 tests) 12ms
+ ✓ src/renderer/workspace/auto-save.test.ts (9 tests) 12ms
+ ✓ src/main/browser/extensions/extension-policy.test.ts (3 tests) 12ms
+ ✓ src/main/browser/extension-package.test.ts (7 tests) 9ms
+ ✓ src/core/workspace/editor-groups.test.ts (9 tests) 10ms
+ ✓ src/renderer/workspace/document-sessions.test.ts (3 tests) 9ms
+ ✓ src/core/project/git-file-decorations.test.ts (24 tests) 9ms
+ ✓ src/main/preview/preview-presentation.test.ts (22 tests) 12ms
+ ✓ src/main/documents/image-file.test.ts (2 tests) 9ms
+ ✓ src/main/notebook/kernel-manager.test.ts (4 tests) 10ms
+ ✓ src/renderer/language/language-presentation.test.ts (4 tests) 10ms
+ ✓ src/renderer/project/explorer/explorer-presentation.test.ts (2 tests) 9ms
+ ✓ src/core/preview/preview-install.test.ts (9 tests) 8ms
+ ✓ src/preview-runtime/content-controller.test.ts (3 tests) 8ms
+ ✓ src/main/reading/reading-position-store.test.ts (4 tests) 7ms
+ ✓ src/renderer/project/explorer/explorer-controller.test.ts (4 tests) 8ms
+ ✓ src/main/terminal/terminal-resize.test.ts (8 tests) 8ms
+ ✓ src/main/project/recent-folders.test.ts (2 tests) 8ms
+ ✓ src/main/project/explorer-clipboard.test.ts (5 tests) 6ms
+ ✓ src/main/language/language-session-pool.test.ts (3 tests) 7ms
+ ✓ src/renderer/notebook/notebook-controller.test.ts (2 tests) 7ms
+ ✓ src/renderer/language/diagnostic-store.test.ts (2 tests) 7ms
+ ✓ src/main/browser/browser-auth.test.ts (2 tests) 7ms
+ ✓ src/main/preview/preview-renderer.test.ts (4 tests) 7ms
+ ✓ src/core/workspace/document-store.test.ts (3 tests) 6ms
+ ✓ src/renderer/image/image-edit-sessions.test.ts (2 tests) 6ms
+ ✓ src/renderer/language/document-analysis-controller.test.ts (4 tests) 6ms
+ ✓ src/main/ipc/open-link.test.ts (1 test) 7ms
+ ✓ src/main/preview/review-preparation.test.ts (7 tests) 6ms
+ ✓ src/renderer/project/source-control/git-review-latency.test.ts (5 tests) 8ms
+ ✓ src/renderer/project/source-control/git-graph-provider.test.ts (2 tests) 7ms
+ ✓ src/renderer/adapters/shared-document-history.test.ts (9 tests) 8ms
+ ✓ src/main/browser/browser-context-menu.test.ts (3 tests) 6ms
+ ✓ src/preview-runtime/source-atlas.test.ts (4 tests) 7ms
+ ✓ src/core/browser/browser-url.test.ts (12 tests) 7ms
+ ✓ src/main/language/language-supervisor.test.ts (1 test) 5ms
+ ✓ src/renderer/reader/reader-preparation.test.ts (4 tests) 5ms
+ ✓ src/renderer/language/document-presentation.test.ts (5 tests) 4ms
+ ✓ src/renderer/reader/preview-layout-coordinator.test.ts (2 tests) 4ms
+ ✓ src/renderer/workspace/media-cache.test.ts (4 tests) 4ms
+ ✓ src/renderer/project/source-control/review-presentation.test.ts (9 tests) 4ms
+ ✓ src/core/browser/web-store.test.ts (2 tests) 5ms
+ ✓ src/core/image/image-recipe.test.ts (3 tests) 4ms
+ ✓ src/renderer/project/explorer/explorer-git-decorations.test.ts (3 tests) 5ms
+ ✓ src/core/browser/reader-article.test.ts (4 tests) 3ms
+ ✓ src/protocol/preview-preparation.test.ts (2 tests) 3ms
+ ✓ src/core/browser/browser-failure.test.ts (6 tests) 3ms
+ ✓ src/renderer/notebook/notebook-layout.test.ts (3 tests) 3ms
+ ✓ src/core/workspace/tab-navigation.test.ts (2 tests) 3ms
+ ✓ src/renderer/project/explorer/explorer-selection.test.ts (3 tests) 3ms
+ ✓ src/main/windows/x11-pinch.test.ts (2 tests) 3ms
+ ✓ src/core/document/file-location.test.ts (5 tests) 3ms
+ ✓ src/preview-runtime/scroll-settlement.test.ts (2 tests) 2ms
+ ✓ src/core/reading/reading-menu.test.ts (1 test) 2ms
+ ✓ src/renderer/project/source-control/git-change-groups.test.ts (11 tests) 2ms
+ ✓ src/preview-runtime/viewport-controller.test.ts (3 tests) 2ms
+
+ Test Files  110 passed (110)
+      Tests  879 passed (879)
+   Start at  15:39:09
+   Duration  34.28s (transform 1.74s, setup 0ms, collect 5.75s, tests 37.28s, environment 20ms, prepare 5.12s)
+
+
+> @setdown/desktop@2.5.2 test:tooling
+> node --test scripts/*.test.mjs scripts/browser/*.test.mjs
+
+TAP version 13
+# Subtest: light-dark colors retain nested variable fallbacks, gradients and quoted text
+ok 1 - light-dark colors retain nested variable fallbacks, gradients and quoted text
+  ---
+  duration_ms: 1.478968
+  type: 'test'
+  ...
+# Subtest: pinned Dark Reader integration fails closed when its read paths change
+ok 2 - pinned Dark Reader integration fails closed when its read paths change
+  ---
+  duration_ms: 1.315433
+  type: 'test'
+  ...
+# Subtest: light text correction preserves white header text and existing dark colors
+ok 3 - light text correction preserves white header text and existing dark colors
+  ---
+  duration_ms: 0.536263
+  type: 'test'
+  ...
+# Subtest: patched preload preserves native headers, disables managed storage and aliases browser before freezing
+ok 4 - patched preload preserves native headers, disables managed storage and aliases browser before freezing
+  ---
+  duration_ms: 1.954248
+  type: 'test'
+  ...
+# Subtest: missing and ambiguous upstream patch sites require review
+ok 5 - missing and ambiguous upstream patch sites require review
+  ---
+  duration_ms: 0.416269
+  type: 'test'
+  ...
+# Subtest: the installed compatibility library still matches every guarded patch
+ok 6 - the installed compatibility library still matches every guarded patch
+  ---
+  duration_ms: 2.743275
+  type: 'test'
+  ...
+# Subtest: extensions without webRequest still initialize and additions preserve literal dollar expressions
+ok 7 - extensions without webRequest still initialize and additions preserve literal dollar expressions
+  ---
+  duration_ms: 0.884265
+  type: 'test'
+  ...
+# Subtest: production additions compile and never enable upstream API payload logging
+ok 8 - production additions compile and never enable upstream API payload logging
+  ---
+  duration_ms: 2.680657
+  type: 'test'
+  ...
+# Subtest: first and second cycle regressions cannot be hidden by warm cycles or another scenario
+ok 9 - first and second cycle regressions cannot be hidden by warm cycles or another scenario
+  ---
+  duration_ms: 2.549492
+  type: 'test'
+  ...
+# Subtest: requires both relative and absolute tolerances and tolerates a single outlier
+ok 10 - requires both relative and absolute tolerances and tolerates a single outlier
+  ---
+  duration_ms: 3.816474
+  type: 'test'
+  ...
+# Subtest: incomplete, duplicate, stale and invalid measurements fail closed
+ok 11 - incomplete, duplicate, stale and invalid measurements fail closed
+  ---
+  duration_ms: 0.859058
+  type: 'test'
+  ...
+# Subtest: every Electron, external tool and Python test is classified and every suite path exists
+ok 12 - every Electron, external tool and Python test is classified and every suite path exists
+  ---
+  duration_ms: 4.55179
+  type: 'test'
+  ...
+# Subtest: new or moved specs cannot silently drop out of the manifest
+ok 13 - new or moved specs cannot silently drop out of the manifest
+  ---
+  duration_ms: 4.694646
+  type: 'test'
+  ...
+# Subtest: contract membership and benchmark inputs cannot become ambiguous
+ok 14 - contract membership and benchmark inputs cannot become ambiguous
+  ---
+  duration_ms: 3.973607
+  type: 'test'
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 14
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 129.627149
+
+> @setdown/desktop@2.5.2 build
+> npm run typecheck && node --max-old-space-size=4096 scripts/build-renderer.mjs && npm run build:electron
+
+
+> @setdown/desktop@2.5.2 typecheck
+> tsc --noEmit && tsc --noEmit -p test/tsconfig.json && svelte-check --config ./svelte.config.js --tsconfig ./tsconfig.json --fail-on-warnings
+
+Loading svelte-check in workspace: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+Getting Svelte diagnostics...
+
+svelte-check found 0 errors and 0 warnings
+[build] Prepared 6 workers sequentially.
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 1864 modules transformed.
+rendering chunks...
+[plugin vite:reporter] 
+(!) /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/svelte/src/index-client.js is dynamically imported by /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/language/language-results.ts, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/main.ts, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/main.ts but also statically imported by /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/App.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/app/workspace-controller.ts, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/browser/BrowserAuthDialog.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/browser/BrowserFind.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/browser/BrowserFindPanel.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/browser/WebReaderSurface.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/browser/browser-actions.ts, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/image/ImageEditorSurface.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/image/ImageSurface.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/language/DocumentAnalysisPanel.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/language/DocumentLanguageStatus.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/language/DocumentProviderDetails.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/language/LanguageConnectionSettings.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/language/LanguageResults.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/language/LanguageSupport.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/notebook/NotebookCell.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/notebook/NotebookMenu.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/notebook/NotebookSurface.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/pdf/PdfSurface.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/project/FolderPicker.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/project/SideViewMenu.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/project/explorer/ExplorerEditRow.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/project/explorer/ExplorerView.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/project/source-control/GitDiffEditor.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/project/source-control/GitDiffSurface.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/project/source-control/GitHistoryPane.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/reader/ReaderFind.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/shell/ApplicationMenu.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/shell/NativeOverlay.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/shell/menu-overlay-runtime.ts, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/terminal/TerminalFind.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/terminal/TerminalSurface.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/video/VideoSurface.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/workspace/location/LocationBar.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/workspace/location/LocationSuggestions.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/workspace/tab-controller.ts, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/workspace/tabs/TabChrome.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/svelte/src/attachments/index.js, dynamic import will not move module into another chunk.
+
+[plugin vite:reporter] 
+(!) /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/editor/monaco-runtime.ts is dynamically imported by /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/editor/tools/tools-runtime.ts, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/editor/tools/tools-runtime.ts but also statically imported by /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/adapters/monaco-editor.ts, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/notebook/NotebookSurface.svelte, /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/src/renderer/project/source-control/GitDiffEditor.svelte, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist/pdf-assets/cmaps/CNS2-V.bcmap                                0.09 kB
+dist/pdf-assets/cmaps/Roman.bcmap                                 0.10 kB
+dist/pdf-assets/cmaps/Katakana.bcmap                              0.10 kB
+dist/pdf-assets/cmaps/ETenms-B5-H.bcmap                           0.10 kB
+dist/pdf-assets/cmaps/UniJIS-UCS2-HW-H.bcmap                      0.12 kB
+dist/pdf-assets/cmaps/Hiragana.bcmap                              0.12 kB
+dist/pdf-assets/cmaps/Hankaku.bcmap                               0.13 kB
+dist/pdf-assets/cmaps/B5-V.bcmap                                  0.14 kB
+dist/pdf-assets/cmaps/CNS1-V.bcmap                                0.14 kB
+dist/pdf-assets/cmaps/B5pc-V.bcmap                                0.14 kB
+dist/pdf-assets/cmaps/HKdla-B5-V.bcmap                            0.15 kB
+dist/pdf-assets/cmaps/HKdlb-B5-V.bcmap                            0.15 kB
+dist/pdf-assets/cmaps/HKgccs-B5-V.bcmap                           0.15 kB
+dist/pdf-assets/cmaps/HKm314-B5-V.bcmap                           0.15 kB
+dist/pdf-assets/cmaps/HKm471-B5-V.bcmap                           0.15 kB
+dist/pdf-assets/cmaps/UniCNS-UCS2-V.bcmap                         0.16 kB
+dist/pdf-assets/cmaps/UniCNS-UTF16-V.bcmap                        0.16 kB
+dist/pdf-assets/cmaps/UniCNS-UTF8-V.bcmap                         0.16 kB
+dist/pdf-assets/cmaps/ETHK-B5-V.bcmap                             0.16 kB
+dist/pdf-assets/cmaps/ETen-B5-V.bcmap                             0.16 kB
+dist/pdf-assets/cmaps/HKscs-B5-V.bcmap                            0.16 kB
+dist/pdf-assets/cmaps/KSC-V.bcmap                                 0.16 kB
+dist/pdf-assets/cmaps/UniCNS-UTF32-V.bcmap                        0.16 kB
+dist/pdf-assets/cmaps/KSC-EUC-V.bcmap                             0.16 kB
+dist/pdf-assets/cmaps/UniKS-UTF16-V.bcmap                         0.16 kB
+dist/pdf-assets/cmaps/KSC-Johab-V.bcmap                           0.17 kB
+dist/pdf-assets/cmaps/KSCms-UHC-V.bcmap                           0.17 kB
+dist/pdf-assets/cmaps/KSCpc-EUC-V.bcmap                           0.17 kB
+dist/pdf-assets/cmaps/V.bcmap                                     0.17 kB
+dist/pdf-assets/cmaps/UniKS-UTF32-V.bcmap                         0.17 kB
+dist/pdf-assets/cmaps/78-V.bcmap                                  0.17 kB
+dist/pdf-assets/cmaps/KSCms-UHC-HW-V.bcmap                        0.17 kB
+dist/pdf-assets/cmaps/UniKS-UTF8-V.bcmap                          0.17 kB
+dist/pdf-assets/cmaps/EUC-V.bcmap                                 0.17 kB
+dist/pdf-assets/cmaps/RKSJ-V.bcmap                                0.17 kB
+dist/pdf-assets/cmaps/ETenms-B5-V.bcmap                           0.17 kB
+dist/pdf-assets/cmaps/78-EUC-V.bcmap                              0.17 kB
+dist/pdf-assets/cmaps/78-RKSJ-V.bcmap                             0.17 kB
+dist/pdf-assets/cmaps/GB-V.bcmap                                  0.18 kB
+dist/pdf-assets/cmaps/GBT-V.bcmap                                 0.18 kB
+dist/pdf-assets/cmaps/UniGB-UTF16-V.bcmap                         0.18 kB
+dist/pdf-assets/cmaps/UniKS-UCS2-V.bcmap                          0.18 kB
+dist/pdf-assets/cmaps/GB-EUC-V.bcmap                              0.18 kB
+dist/pdf-assets/cmaps/WP-Symbol.bcmap                             0.18 kB
+dist/pdf-assets/cmaps/GBK-EUC-V.bcmap                             0.18 kB
+dist/pdf-assets/cmaps/GBT-EUC-V.bcmap                             0.18 kB
+dist/pdf-assets/cmaps/GBKp-EUC-V.bcmap                            0.18 kB
+dist/pdf-assets/cmaps/GBpc-EUC-V.bcmap                            0.18 kB
+dist/pdf-assets/cmaps/UniGB-UTF8-V.bcmap                          0.18 kB
+dist/pdf-assets/cmaps/GBTpc-EUC-V.bcmap                           0.18 kB
+dist/pdf-assets/cmaps/UniGB-UTF32-V.bcmap                         0.18 kB
+dist/pdf-assets/cmaps/UniGB-UCS2-V.bcmap                          0.19 kB
+dist/pdf-assets/cmaps/Ext-V.bcmap                                 0.22 kB
+dist/pdf-assets/cmaps/Adobe-GB1-0.bcmap                           0.22 kB
+dist/pdf-assets/cmaps/Ext-RKSJ-V.bcmap                            0.22 kB
+dist/pdf-assets/cmaps/GBK2K-V.bcmap                               0.22 kB
+dist/pdf-assets/cmaps/Adobe-Japan1-0.bcmap                        0.23 kB
+dist/pdf-assets/cmaps/Adobe-Japan1-1.bcmap                        0.23 kB
+dist/pdf-assets/cmaps/Adobe-Japan1-2.bcmap                        0.23 kB
+dist/pdf-assets/cmaps/Adobe-Korea1-0.bcmap                        0.24 kB
+dist/pdf-assets/cmaps/Adobe-Japan1-3.bcmap                        0.24 kB
+dist/pdf-assets/cmaps/Adobe-GB1-1.bcmap                           0.25 kB
+dist/pdf-assets/cmaps/NWP-V.bcmap                                 0.25 kB
+dist/pdf-assets/cmaps/90pv-RKSJ-V.bcmap                           0.26 kB
+dist/pdf-assets/cmaps/Add-V.bcmap                                 0.28 kB
+dist/pdf-assets/cmaps/Add-RKSJ-V.bcmap                            0.29 kB
+dist/pdf-assets/cmaps/78ms-RKSJ-V.bcmap                           0.29 kB
+dist/pdf-assets/cmaps/90ms-RKSJ-V.bcmap                           0.29 kB
+dist/pdf-assets/cmaps/90msp-RKSJ-V.bcmap                          0.29 kB
+dist/pdf-assets/cmaps/Adobe-CNS1-0.bcmap                          0.32 kB
+dist/pdf-assets/cmaps/Adobe-Japan1-4.bcmap                        0.34 kB
+dist/pdf-assets/cmaps/Adobe-CNS1-1.bcmap                          0.37 kB
+dist/pdf-assets/cmaps/Adobe-CNS1-2.bcmap                          0.38 kB
+dist/pdf-assets/cmaps/Adobe-Korea1-1.bcmap                        0.39 kB
+dist/pdf-assets/cmaps/Adobe-Korea1-2.bcmap                        0.39 kB
+dist/pdf-assets/cmaps/Adobe-CNS1-3.bcmap                          0.40 kB
+dist/pdf-assets/cmaps/Adobe-CNS1-4.bcmap                          0.41 kB
+dist/pdf-assets/cmaps/Adobe-CNS1-5.bcmap                          0.41 kB
+dist/pdf-assets/cmaps/Adobe-CNS1-6.bcmap                          0.41 kB
+dist/pdf-assets/cmaps/Adobe-Japan1-5.bcmap                        0.43 kB
+dist/pdf-assets/cmaps/Adobe-GB1-2.bcmap                           0.47 kB
+dist/pdf-assets/cmaps/Adobe-GB1-3.bcmap                           0.47 kB
+dist/pdf-assets/cmaps/Adobe-Japan1-6.bcmap                        0.49 kB
+dist/pdf-assets/cmaps/CNS2-H.bcmap                                0.50 kB
+dist/pdf-assets/cmaps/GB-H.bcmap                                  0.53 kB
+dist/pdf-assets/cmaps/RKSJ-H.bcmap                                0.53 kB
+dist/pdf-assets/cmaps/GB-EUC-H.bcmap                              0.55 kB
+dist/pdf-assets/cmaps/H.bcmap                                     0.55 kB
+dist/pdf-assets/wasm/LICENSE_PDFJS_JBIG2                          0.56 kB
+dist/pdf-assets/cmaps/GBpc-EUC-H.bcmap                            0.56 kB
+dist/pdf-assets/cmaps/EUC-H.bcmap                                 0.58 kB
+dist/pdf-assets/cmaps/Adobe-GB1-4.bcmap                           0.60 kB
+dist/pdf-assets/cmaps/Adobe-GB1-5.bcmap                           0.63 kB
+dist/pdf-assets/cmaps/UniJIS-UTF16-V.bcmap                        0.64 kB
+dist/pdf-assets/cmaps/UniJIS2004-UTF16-V.bcmap                    0.65 kB
+dist/pdf-assets/cmaps/UniJIS-UCS2-V.bcmap                         0.66 kB
+dist/pdf-assets/cmaps/UniJIS-UTF32-V.bcmap                        0.68 kB
+dist/pdf-assets/cmaps/UniJIS-UTF8-V.bcmap                         0.68 kB
+dist/pdf-assets/cmaps/UniJIS-UCS2-HW-V.bcmap                      0.68 kB
+dist/pdf-assets/cmaps/UniJIS2004-UTF32-V.bcmap                    0.68 kB
+dist/pdf-assets/cmaps/UniJIS2004-UTF8-V.bcmap                     0.68 kB
+dist/pdf-assets/cmaps/UniJISX0213-UTF32-V.bcmap                   0.68 kB
+dist/pdf-assets/cmaps/UniJISX02132004-UTF32-V.bcmap               0.69 kB
+dist/pdf-assets/cmaps/UniJISPro-UCS2-V.bcmap                      0.69 kB
+dist/pdf-assets/cmaps/UniJISPro-UCS2-HW-V.bcmap                   0.71 kB
+dist/pdf-assets/cmaps/CNS1-H.bcmap                                0.71 kB
+dist/pdf-assets/cmaps/90msp-RKSJ-H.bcmap                          0.72 kB
+dist/pdf-assets/cmaps/90ms-RKSJ-H.bcmap                           0.72 kB
+dist/pdf-assets/cmaps/UniJISPro-UTF8-V.bcmap                      0.73 kB
+dist/pdf-assets/cmaps/83pv-RKSJ-H.bcmap                           0.91 kB
+dist/pdf-assets/cmaps/90pv-RKSJ-H.bcmap                           0.98 kB
+dist/index.html                                                   0.98 kB │ gzip:   0.50 kB
+dist/pdf-assets/wasm/LICENSE_PDFJS_QCMS                           1.04 kB
+dist/pdf-assets/cmaps/B5-H.bcmap                                  1.09 kB
+dist/pdf-assets/cmaps/B5pc-H.bcmap                                1.10 kB
+dist/pdf-assets/wasm/LICENSE_QCMS                                 1.12 kB
+dist/pdf-assets/cmaps/ETen-B5-H.bcmap                             1.13 kB
+dist/pdf-assets/wasm/LICENSE_PDFJS_OPENJPEG                       1.29 kB
+dist/pdf-assets/standard_fonts/LICENSE_FOXIT                      1.55 kB
+dist/pdf-assets/cmaps/HKm314-B5-H.bcmap                           1.77 kB
+dist/pdf-assets/cmaps/CNS-EUC-H.bcmap                             1.78 kB
+dist/pdf-assets/cmaps/KSC-H.bcmap                                 1.83 kB
+dist/pdf-assets/cmaps/KSC-EUC-H.bcmap                             1.85 kB
+dist/pdf-assets/cmaps/CNS-EUC-V.bcmap                             1.92 kB
+dist/pdf-assets/cmaps/KSCpc-EUC-H.bcmap                           2.02 kB
+dist/pdf-assets/cmaps/LICENSE                                     2.08 kB
+dist/pdf-assets/wasm/LICENSE_OPENJPEG                             2.11 kB
+dist/pdf-assets/cmaps/HKm471-B5-H.bcmap                           2.17 kB
+dist/pdf-assets/cmaps/HKgccs-B5-H.bcmap                           2.29 kB
+dist/pdf-assets/cmaps/78-H.bcmap                                  2.38 kB
+dist/pdf-assets/cmaps/78-RKSJ-H.bcmap                             2.40 kB
+dist/pdf-assets/cmaps/78-EUC-H.bcmap                              2.40 kB
+dist/pdf-assets/cmaps/Add-RKSJ-H.bcmap                            2.41 kB
+dist/pdf-assets/cmaps/HKdlb-B5-H.bcmap                            2.41 kB
+dist/pdf-assets/cmaps/Add-H.bcmap                                 2.42 kB
+dist/pdf-assets/cmaps/Ext-H.bcmap                                 2.54 kB
+dist/pdf-assets/cmaps/Ext-RKSJ-H.bcmap                            2.54 kB
+dist/pdf-assets/cmaps/78ms-RKSJ-H.bcmap                           2.65 kB
+dist/pdf-assets/cmaps/HKdla-B5-H.bcmap                            2.65 kB
+dist/pdf-assets/cmaps/NWP-H.bcmap                                 2.77 kB
+dist/pdf-assets/cmaps/KSCms-UHC-H.bcmap                           2.79 kB
+dist/pdf-assets/cmaps/KSCms-UHC-HW-H.bcmap                        2.79 kB
+dist/pdf-assets/cmaps/ETHK-B5-H.bcmap                             4.43 kB
+dist/pdf-assets/cmaps/HKscs-B5-H.bcmap                            4.44 kB
+dist/assets/cursor-editorTextHighlight-kG3uUOwL.svg               5.40 kB │ gzip:   2.15 kB
+dist/pdf-assets/wasm/quickjs-eval.js                              6.23 kB
+dist/pdf-assets/cmaps/GBT-H.bcmap                                 7.27 kB
+dist/pdf-assets/cmaps/GBT-EUC-H.bcmap                             7.29 kB
+dist/pdf-assets/cmaps/GBTpc-EUC-H.bcmap                           7.30 kB
+dist/pdf-assets/wasm/LICENSE_JBIG2                               12.86 kB
+dist/pdf-assets/cmaps/GBKp-EUC-H.bcmap                           14.69 kB
+dist/pdf-assets/cmaps/GBK-EUC-H.bcmap                            14.69 kB
+dist/pdf-assets/standard_fonts/FoxitSymbol.pfb                   16.73 kB
+dist/pdf-assets/cmaps/KSC-Johab-H.bcmap                          16.79 kB
+dist/pdf-assets/standard_fonts/FoxitFixed.pfb                    17.60 kB
+dist/pdf-assets/standard_fonts/FoxitFixedBold.pfb                18.06 kB
+dist/pdf-assets/standard_fonts/FoxitFixedItalic.pfb              18.75 kB
+dist/pdf-assets/standard_fonts/FoxitFixedBoldItalic.pfb          19.15 kB
+dist/pdf-assets/standard_fonts/FoxitSerifBold.pfb                19.40 kB
+dist/pdf-assets/standard_fonts/FoxitSerif.pfb                    19.47 kB
+dist/pdf-assets/cmaps/GBK2K-H.bcmap                              19.66 kB
+dist/pdf-assets/standard_fonts/FoxitSerifBoldItalic.pfb          20.73 kB
+dist/pdf-assets/standard_fonts/FoxitSerifItalic.pfb              21.23 kB
+dist/pdf-assets/standard_fonts/LICENSE_LIBERATION                22.15 kB
+dist/pdf-assets/cmaps/Adobe-Korea1-UCS2.bcmap                    23.29 kB
+dist/pdf-assets/cmaps/UniJIS-UCS2-H.bcmap                        25.44 kB
+dist/pdf-assets/cmaps/UniKS-UCS2-H.bcmap                         25.78 kB
+dist/pdf-assets/cmaps/UniKS-UTF16-H.bcmap                        26.33 kB
+dist/pdf-assets/cmaps/UniKS-UTF32-H.bcmap                        26.45 kB
+dist/pdf-assets/cmaps/UniKS-UTF8-H.bcmap                         27.79 kB
+dist/pdf-assets/standard_fonts/FoxitDingbats.pfb                 29.51 kB
+dist/pdf-assets/cmaps/Adobe-GB1-UCS2.bcmap                       33.97 kB
+dist/pdf-assets/cmaps/UniJIS-UTF16-H.bcmap                       39.44 kB
+dist/pdf-assets/cmaps/UniJIS2004-UTF16-H.bcmap                   39.53 kB
+dist/pdf-assets/cmaps/UniJISX0213-UTF32-H.bcmap                  40.52 kB
+dist/pdf-assets/cmaps/UniJIS-UTF32-H.bcmap                       40.54 kB
+dist/pdf-assets/cmaps/UniJISX02132004-UTF32-H.bcmap              40.61 kB
+dist/pdf-assets/cmaps/UniJIS2004-UTF32-H.bcmap                   40.63 kB
+dist/pdf-assets/cmaps/Adobe-Japan1-UCS2.bcmap                    40.95 kB
+dist/pdf-assets/cmaps/Adobe-CNS1-UCS2.bcmap                      41.19 kB
+dist/pdf-assets/cmaps/UniJIS-UTF8-H.bcmap                        41.70 kB
+dist/pdf-assets/cmaps/UniJIS2004-UTF8-H.bcmap                    41.78 kB
+dist/pdf-assets/cmaps/UniGB-UCS2-H.bcmap                         43.37 kB
+dist/pdf-assets/cmaps/UniGB-UTF16-H.bcmap                        44.09 kB
+dist/pdf-assets/cmaps/UniGB-UTF32-H.bcmap                        45.74 kB
+dist/pdf-assets/cmaps/UniGB-UTF8-H.bcmap                         46.84 kB
+dist/pdf-assets/cmaps/UniCNS-UCS2-H.bcmap                        48.28 kB
+dist/pdf-assets/cmaps/UniCNS-UTF16-H.bcmap                       50.42 kB
+dist/pdf-assets/cmaps/UniCNS-UTF32-H.bcmap                       52.68 kB
+dist/pdf-assets/cmaps/UniCNS-UTF8-H.bcmap                        53.63 kB
+dist/pdf-assets/wasm/qcms_bg.wasm                                96.59 kB │ gzip:  35.83 kB
+dist/pdf-assets/wasm/jbig2.wasm                                 104.85 kB │ gzip:  40.47 kB
+dist/pdf-assets/standard_fonts/LiberationSans-BoldItalic.ttf    135.12 kB
+dist/pdf-assets/standard_fonts/LiberationSans-Bold.ttf          137.05 kB
+dist/pdf-assets/standard_fonts/LiberationSans-Regular.ttf       139.51 kB
+dist/assets/codicon-Brq4_Ui5.ttf                                140.96 kB
+dist/pdf-assets/wasm/jbig2_nowasm_fallback.js                   145.70 kB
+dist/assets/notebook-search.worker-24c5bef63fa9.js              149.90 kB
+dist/pdf-assets/standard_fonts/LiberationSans-Italic.ttf        162.04 kB
+dist/pdf-assets/wasm/openjpeg.wasm                              252.03 kB │ gzip:  82.97 kB
+dist/assets/editor.worker-1dab27f25c5f.js                       304.52 kB
+dist/assets/json.worker-C5PEkLU0.js                             404.10 kB
+dist/assets/json.worker-9cf67b9d7c9d.js                         445.66 kB
+dist/pdf-assets/wasm/openjpeg_nowasm_fallback.js                451.59 kB
+dist/pdf-assets/wasm/quickjs-eval.wasm                          469.11 kB │ gzip: 218.79 kB
+dist/assets/html.worker-Ca87u24v.js                             714.16 kB
+dist/assets/html.worker-c0f83681991f.js                         752.61 kB
+dist/assets/css.worker-CXZsIV5y.js                            1,051.41 kB
+dist/assets/css.worker-b6587f6b2936.js                        1,081.77 kB
+dist/assets/pdf.worker.min-BmVo14Nb.mjs                       1,317.03 kB
+dist/assets/ts.worker-Y8i9TNcE.js                             7,031.88 kB
+dist/assets/typescript.worker-997db86ee83c.js                 7,036.46 kB
+dist/assets/codicon-BdmxSQth.css                                  0.36 kB │ gzip:   0.24 kB
+dist/assets/VideoSurface-BL0RXep_.css                             0.78 kB │ gzip:   0.40 kB
+dist/assets/LocationSuggestions-uLQiYBsC.css                      0.86 kB │ gzip:   0.44 kB
+dist/assets/BrowserFindPanel-DAnfxR4l.css                         1.08 kB │ gzip:   0.49 kB
+dist/assets/ImageSurface-5CFQJWK6.css                             1.24 kB │ gzip:   0.52 kB
+dist/assets/PdfSurface-CY2ABE9F.css                               1.54 kB │ gzip:   0.60 kB
+dist/assets/LanguageResults-D8pTX_Nk.css                          1.74 kB │ gzip:   0.65 kB
+dist/assets/ImageEditorSurface-DR0BzT36.css                       2.01 kB │ gzip:   0.77 kB
+dist/assets/TerminalSurface-BRdmF56c.css                          5.45 kB │ gzip:   1.53 kB
+dist/assets/LanguageSupport-8Jt-4VO2.css                          5.77 kB │ gzip:   1.52 kB
+dist/assets/NotebookSurface-o27HHCVM.css                         16.72 kB │ gzip:   3.66 kB
+dist/assets/standaloneServices-C6s1jjSY.css                      51.80 kB │ gzip:   8.01 kB
+dist/assets/index-DYMZb2Pr.css                                   72.03 kB │ gzip:  12.48 kB
+dist/assets/editor-5xaZKCJM.css                                 110.02 kB │ gzip:  17.50 kB
+dist/assets/css-DwYwMOdA.js                                       0.18 kB │ gzip:   0.18 kB │ map:     0.10 kB
+dist/assets/json-Bwmq77C8.js                                      0.18 kB │ gzip:   0.17 kB │ map:     0.10 kB
+dist/assets/html-B88i-Yoz.js                                      0.18 kB │ gzip:   0.17 kB │ map:     0.10 kB
+dist/assets/editor-DUcj-p7F.js                                    0.18 kB │ gzip:   0.18 kB │ map:     0.10 kB
+dist/assets/typescript-By5-MVqz.js                                0.19 kB │ gzip:   0.18 kB │ map:     0.10 kB
+dist/assets/menu-overlay-runtime-V_QHQP_X.js                      0.36 kB │ gzip:   0.26 kB │ map:     0.91 kB
+dist/assets/monaco-context-menu-haIBxuRi.js                       0.58 kB │ gzip:   0.40 kB │ map:     2.21 kB
+dist/assets/azcli-Y6nb8tq_.js                                     0.75 kB │ gzip:   0.32 kB │ map:     2.35 kB
+dist/assets/monaco-hover-overlay-B2WRLT3Z.js                      0.80 kB │ gzip:   0.53 kB │ map:     2.86 kB
+dist/assets/clone-Den6ZyeF.js                                     0.82 kB │ gzip:   0.47 kB │ map:     5.54 kB
+dist/assets/language-diagnostics-api-6w2yt3W7.js                  0.94 kB │ gzip:   0.51 kB │ map:     1.68 kB
+dist/assets/javascript-BDydbXSY.js                                0.99 kB │ gzip:   0.56 kB │ map:     2.20 kB
+dist/assets/ini-Kd9XrMLS.js                                       1.00 kB │ gzip:   0.53 kB │ map:     3.06 kB
+dist/assets/csp-D-4FJmMZ.js                                       1.32 kB │ gzip:   0.52 kB │ map:     2.91 kB
+dist/assets/workers-ClnOZoak.js                                   1.35 kB │ gzip:   0.65 kB │ map:     9.02 kB
+dist/assets/LocationSuggestions-ohbHViC4.js                       1.39 kB │ gzip:   0.78 kB │ map:     4.38 kB
+dist/assets/workerManager-Bt3jLgeZ.js                             1.41 kB │ gzip:   0.66 kB │ map:     3.29 kB
+dist/assets/language-request-D59VZom-.js                          1.56 kB │ gzip:   0.81 kB │ map:     6.57 kB
+dist/assets/pla-DSh2-awV.js                                       1.59 kB │ gzip:   0.64 kB │ map:     4.97 kB
+dist/assets/scheme-BPhDTwHR.js                                    1.67 kB │ gzip:   0.82 kB │ map:     4.39 kB
+dist/assets/flow9-BeJ5waoc.js                                     1.72 kB │ gzip:   0.85 kB │ map:     4.96 kB
+dist/assets/sb-BBc9UKZt.js                                        1.73 kB │ gzip:   0.83 kB │ map:     4.88 kB
+dist/assets/bat-BwHxbl9M.js                                       1.75 kB │ gzip:   0.87 kB │ map:     4.62 kB
+dist/assets/wheel-zoom-BTEWTThw.js                                1.76 kB │ gzip:   0.76 kB │ map:     6.89 kB
+dist/assets/dockerfile-BG73LgW2.js                                1.78 kB │ gzip:   0.67 kB │ map:     5.42 kB
+dist/assets/VideoSurface-Co5DRI26.js                              1.81 kB │ gzip:   1.04 kB │ map:     5.14 kB
+dist/assets/pascaligo-DtZ0uQbO.js                                 1.91 kB │ gzip:   0.91 kB │ map:     5.76 kB
+dist/assets/lua-Cyyb5UIc.js                                       2.03 kB │ gzip:   0.93 kB │ map:     5.95 kB
+dist/assets/cameligo-Bf6VGUru.js                                  2.09 kB │ gzip:   0.96 kB │ map:     6.26 kB
+dist/assets/xml-DlPrU6ui.js                                       2.11 kB │ gzip:   0.85 kB │ map:     4.98 kB
+dist/assets/graphql-BxJiqAUM.js                                   2.17 kB │ gzip:   1.03 kB │ map:     6.23 kB
+dist/assets/cssMode-BJ_KCok2.js                                   2.18 kB │ gzip:   0.87 kB │ map:     6.45 kB
+dist/assets/BrowserFindPanel-CnIvDZXv.js                          2.30 kB │ gzip:   1.20 kB │ map:     6.92 kB
+dist/assets/objective-c-BDtDVThU.js                               2.31 kB │ gzip:   1.06 kB │ map:     6.18 kB
+dist/assets/lexon-OrD6JF1K.js                                     2.34 kB │ gzip:   0.92 kB │ map:     6.52 kB
+dist/assets/bicep-CFznDFnq.js                                     2.44 kB │ gzip:   0.97 kB │ map:     6.44 kB
+dist/assets/sparql-CJmd_6j2.js                                    2.46 kB │ gzip:   1.16 kB │ map:     6.66 kB
+dist/assets/mips-CiqrrVzr.js                                      2.48 kB │ gzip:   1.07 kB │ map:     6.99 kB
+dist/assets/go-acbASCJo.js                                        2.56 kB │ gzip:   1.15 kB │ map:     7.63 kB
+dist/assets/sophia-CnS9iZB_.js                                    2.67 kB │ gzip:   1.21 kB │ map:     7.22 kB
+dist/assets/typespec-Btyra-wh.js                                  2.70 kB │ gzip:   1.09 kB │ map:     7.21 kB
+dist/assets/m3-B8OfTtLu.js                                        2.72 kB │ gzip:   1.31 kB │ map:     7.26 kB
+dist/assets/fsharp-PahG7c26.js                                    2.89 kB │ gzip:   1.32 kB │ map:     7.63 kB
+dist/assets/pascal-vHIfCaH5.js                                    2.90 kB │ gzip:   1.39 kB │ map:     8.02 kB
+dist/assets/shell-DiJ1NA_G.js                                     2.98 kB │ gzip:   1.20 kB │ map:     7.87 kB
+dist/assets/toggle-word-wrap-9jzLha5P.js                          3.00 kB │ gzip:   1.22 kB │ map:    14.82 kB
+dist/assets/r-j7ic8hl3.js                                         3.03 kB │ gzip:   1.27 kB │ map:     8.13 kB
+dist/assets/qsharp-Bw9ernYp.js                                    3.10 kB │ gzip:   1.41 kB │ map:     8.75 kB
+dist/assets/java-CXBNlu9o.js                                      3.13 kB │ gzip:   1.40 kB │ map:     8.49 kB
+dist/assets/powershell-COWaemsV.js                                3.18 kB │ gzip:   1.38 kB │ map:     8.85 kB
+dist/assets/cypher-cTPe9QuQ.js                                    3.29 kB │ gzip:   1.43 kB │ map:     8.83 kB
+dist/assets/kotlin-s7OhZKlX.js                                    3.31 kB │ gzip:   1.47 kB │ map:     8.74 kB
+dist/assets/redis-Bu5POkcn.js                                     3.46 kB │ gzip:   1.48 kB │ map:     8.82 kB
+dist/assets/tcl-Dm6ycUr_.js                                       3.47 kB │ gzip:   1.37 kB │ map:     8.81 kB
+dist/assets/hcl-DtV1sZF8.js                                       3.49 kB │ gzip:   1.49 kB │ map:     8.16 kB
+dist/assets/coffee-Bd8akH9Z.js                                    3.50 kB │ gzip:   1.30 kB │ map:     9.59 kB
+dist/assets/liquid-DD_ib0jl.js                                    3.66 kB │ gzip:   1.54 kB │ map:     8.73 kB
+dist/assets/markdown-BFxVWTOG.js                                  3.70 kB │ gzip:   1.39 kB │ map:    10.50 kB
+dist/assets/htmlMode-CJSexf0I.js                                  3.72 kB │ gzip:   1.38 kB │ map:    10.80 kB
+dist/assets/yaml-z_T6K0GB.js                                      3.73 kB │ gzip:   1.41 kB │ map:     9.40 kB
+dist/assets/less-9HpZscsL.js                                      3.80 kB │ gzip:   1.42 kB │ map:     8.83 kB
+dist/assets/restructuredtext-CqXO7rUv.js                          3.81 kB │ gzip:   1.38 kB │ map:     9.02 kB
+dist/assets/apex-DNDY2TF8.js                                      3.86 kB │ gzip:   1.77 kB │ map:    10.61 kB
+dist/assets/python-Byb5wWLz.js                                    3.91 kB │ gzip:   1.57 kB │ map:    10.64 kB
+dist/assets/rust-BzKRNQWT.js                                      4.06 kB │ gzip:   1.83 kB │ map:    10.59 kB
+dist/assets/dart-BOtBlQCF.js                                      4.15 kB │ gzip:   1.65 kB │ map:    10.82 kB
+dist/assets/LanguageResults-C-ODE7zI.js                           4.17 kB │ gzip:   1.95 kB │ map:    11.84 kB
+dist/assets/css-DdJfP1eB.js                                       4.41 kB │ gzip:   1.38 kB │ map:    10.82 kB
+dist/assets/csharp-Co3qMtFm.js                                    4.43 kB │ gzip:   1.73 kB │ map:    11.93 kB
+dist/assets/mdx-D_KxgGaf.js                                       4.51 kB │ gzip:   1.33 kB │ map:    10.50 kB
+dist/assets/html-D6WihN4o.js                                      4.72 kB │ gzip:   1.29 kB │ map:    12.41 kB
+dist/assets/pug-8SOpv6rk.js                                       4.73 kB │ gzip:   1.65 kB │ map:    13.81 kB
+dist/assets/msdax-DmeGPVcC.js                                     4.82 kB │ gzip:   1.94 kB │ map:    11.50 kB
+dist/assets/swift-CnmFD0ga.js                                     4.82 kB │ gzip:   2.03 kB │ map:    11.60 kB
+dist/assets/typescript-BZ4Vbu1l.js                                5.09 kB │ gzip:   2.07 kB │ map:    12.69 kB
+dist/assets/cpp-BbWJElDN.js                                       5.20 kB │ gzip:   2.09 kB │ map:    13.23 kB
+dist/assets/ecl-BEgZUVRK.js                                       5.25 kB │ gzip:   2.24 kB │ map:    13.18 kB
+dist/assets/vb-Db0cS2oM.js                                        5.69 kB │ gzip:   2.06 kB │ map:    13.75 kB
+dist/assets/twig-Csy3S7wG.js                                      5.88 kB │ gzip:   1.53 kB │ map:    16.17 kB
+dist/assets/scss-CBJaRo0y.js                                      6.31 kB │ gzip:   1.75 kB │ map:    15.78 kB
+dist/assets/handlebars-C2nyVcT2.js                                6.48 kB │ gzip:   1.49 kB │ map:    16.42 kB
+dist/assets/julia-cl7-CwDS.js                                     7.05 kB │ gzip:   2.65 kB │ map:    17.64 kB
+dist/assets/scala-D9hQfWCl.js                                     7.22 kB │ gzip:   2.10 kB │ map:    17.71 kB
+dist/assets/wgsl-BTesnYfV.js                                      7.25 kB │ gzip:   2.75 kB │ map:    15.21 kB
+dist/assets/st-CHwy0fLd.js                                        7.30 kB │ gzip:   2.24 kB │ map:    17.49 kB
+dist/assets/ImageSurface-CiAGtH8i.js                              7.40 kB │ gzip:   3.37 kB │ map:    19.40 kB
+dist/assets/systemverilog-Bs9z6M-B.js                             7.52 kB │ gzip:   2.76 kB │ map:    18.66 kB
+dist/assets/postiats-CocnycG-.js                                  7.76 kB │ gzip:   2.44 kB │ map:    27.23 kB
+dist/assets/php-BBUBE1dy.js                                       7.93 kB │ gzip:   2.07 kB │ map:    19.85 kB
+dist/assets/perl-Ub6l9XKa.js                                      8.16 kB │ gzip:   3.13 kB │ map:    20.63 kB
+dist/assets/ruby-zBfavPgS.js                                      8.41 kB │ gzip:   2.58 kB │ map:    23.32 kB
+dist/assets/razor--MADnJHg.js                                     8.48 kB │ gzip:   2.18 kB │ map:    21.20 kB
+dist/assets/protobuf-Brw8urJB.js                                  8.95 kB │ gzip:   2.08 kB │ map:    21.63 kB
+dist/assets/clojure-Dnu-v4kV.js                                   9.55 kB │ gzip:   3.61 kB │ map:    21.26 kB
+dist/assets/elixir-BkW5O-1t.js                                   10.16 kB │ gzip:   2.54 kB │ map:    27.33 kB
+dist/assets/sql-ClhHkBeG.js                                      10.20 kB │ gzip:   3.83 kB │ map:    24.07 kB
+dist/assets/mysql-C_tMU-Nz.js                                    11.18 kB │ gzip:   4.06 kB │ map:    24.83 kB
+dist/assets/redshift-Bs9aos_-.js                                 11.71 kB │ gzip:   4.34 kB │ map:    24.43 kB
+dist/assets/jsonMode-mxsg4MQu.js                                 12.64 kB │ gzip:   4.69 kB │ map:    73.65 kB
+dist/assets/pgsql-BlNEE0v7.js                                    13.37 kB │ gzip:   4.50 kB │ map:    26.75 kB
+dist/assets/abap-DLDM7-KI.js                                     14.07 kB │ gzip:   5.31 kB │ map:    34.63 kB
+dist/assets/freemarker2-DfIibiEU.js                              15.79 kB │ gzip:   4.03 kB │ map:    58.87 kB
+dist/assets/powerquery-tScXyioY.js                               16.85 kB │ gzip:   4.85 kB │ map:    30.65 kB
+dist/assets/solidity-Db0IVjzk.js                                 18.51 kB │ gzip:   4.45 kB │ map:    38.30 kB
+dist/assets/tsMode-6Hf9CWmS.js                                   22.25 kB │ gzip:   6.37 kB │ map:    68.17 kB
+dist/assets/lspLanguageFeatures-BzxYTVQa.js                      28.75 kB │ gzip:   7.77 kB │ map:   134.56 kB
+dist/assets/language-services-tY9HHtAP.js                        40.07 kB │ gzip:  11.96 kB │ map:   139.45 kB
+dist/assets/index-FNPkTzBj.js                                    50.04 kB │ gzip:  15.19 kB │ map:   121.19 kB
+dist/assets/editor-tools-CmB2HNgg.js                             53.75 kB │ gzip:  18.04 kB │ map:   148.40 kB
+dist/assets/index-DMjNqaU4.js                                    72.28 kB │ gzip:  24.40 kB │ map:   345.16 kB
+dist/assets/NotebookSurface-cUJx94Iv.js                          89.63 kB │ gzip:  30.18 kB │ map:   235.68 kB
+dist/assets/editor.main-CA9tqIR_.js                             103.10 kB │ gzip:  24.30 kB │ map:   301.48 kB
+dist/assets/LanguageSupport-1tIoe3zJ.js                         105.50 kB │ gzip:  44.76 kB │ map: 5,021.50 kB
+dist/assets/textmate-runtime-BDW1qtFR.js                        117.47 kB │ gzip:  38.40 kB │ map:   476.48 kB
+dist/assets/pdf_viewer-CFFP5a5y.js                              216.62 kB │ gzip:  68.56 kB │ map:   770.58 kB
+dist/assets/ImageEditorSurface-DuL4kfO7.js                      295.01 kB │ gzip:  93.46 kB │ map:   669.40 kB
+dist/assets/editorExtensions-CMrAz83O.js                        305.17 kB │ gzip:  94.14 kB │ map: 1,134.73 kB
+dist/assets/TerminalSurface-C37zSg-m.js                         372.94 kB │ gzip:  97.94 kB │ map:   802.33 kB
+dist/assets/svelte-CxGOHMiF.js                                  433.72 kB │ gzip:  47.96 kB │ map:   581.11 kB
+dist/assets/wasm-inlined-CG6Dc4jp.js                            622.39 kB │ gzip: 230.34 kB │ map:   622.89 kB
+dist/assets/PdfSurface-BqtQ33ZP.js                              731.01 kB │ gzip: 197.85 kB │ map: 1,843.02 kB
+dist/assets/index-CNYmDXMv.js                                   922.21 kB │ gzip: 271.72 kB │ map: 2,825.88 kB
+dist/assets/standaloneServices-RBQ0FbJ3.js                    1,381.29 kB │ gzip: 358.10 kB │ map: 5,191.20 kB
+dist/assets/editor.api-C2FYHTdX.js                            2,183.71 kB │ gzip: 553.29 kB │ map: 8,681.01 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 30.83s
+
+> @setdown/desktop@2.5.2 build:electron
+> node scripts/build-electron.mjs
+
+
+> @setdown/desktop@2.5.2 test:preview-contract:e2e
+> bash scripts/with-isolated-display.sh playwright test --config playwright.preview-contract.config.ts
+
+
+Running 307 tests using 1 worker
+
+(node:93479) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[1/307] test/e2e/browser/browser-extensions.spec.ts:10:1 › Web Store links install only after confirmation, update with stable identity and restore across restart
+dbus-daemon[93109]: [session uid=1000 pid=93109] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=93566 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[93109]: [session uid=1000 pid=93109] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[93109]: [session uid=1000 pid=93109] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=93566 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[93109]: [session uid=1000 pid=93109] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.4' (uid=1000 pid=93708 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[93109]: [session uid=1000 pid=93109] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[93109]: [session uid=1000 pid=93109] Activating service name='org.freedesktop.portal.Documents' requested by ':1.4' (uid=1000 pid=93708 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[93109]: [session uid=1000 pid=93109] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[93109]: [session uid=1000 pid=93109] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.4' (uid=1000 pid=93708 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[93109]: [session uid=1000 pid=93109] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=93746 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[93109]: [session uid=1000 pid=93109] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[93109]: [session uid=1000 pid=93109] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[93109]: [session uid=1000 pid=93109] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.4' (uid=1000 pid=93708 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[93109]: [session uid=1000 pid=93109] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:93708): xdg-desktop-portal-WARNING **: 15:40:42.709: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[93109]: [session uid=1000 pid=93109] Activating service name='org.freedesktop.impl.portal.desktop.oo7' requested by ':1.4' (uid=1000 pid=93708 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[93109]: [session uid=1000 pid=93109] Activated service 'org.freedesktop.impl.portal.desktop.oo7' failed: Process org.freedesktop.impl.portal.desktop.oo7 exited with status 1
+dbus-daemon[93109]: 
+(/usr/libexec/xdg-desktop-portal:93708): xdg-desktop-portal-WARNING **: 15:40:42.726: Failed to create secret proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.oo7: Process org.freedesktop.impl.portal.desktop.oo7 exited with status 1
+[session uid=1000 pid=93109] Successfully activated service 'org.freedesktop.portal.Desktop'
+[2/307] test/e2e/browser/browser-extensions.spec.ts:112:1 › user-installed extensions load, run content scripts, and can be disabled
+[3/307] test/e2e/browser/downloads.spec.ts:7:1 › downloads expose native progress and controls, retain completed files across restart, and remove only records
+[4/307] test/e2e/browser/extension-runtime.spec.ts:9:1 › MV3 popup targets its web tab; worker grants, proxy, WebRTC, cookies and downloads have real effects
+[5/307] test/e2e/browser/external-pdf.spec.ts:7:1 › extensionless external PDFs use Setdown search, outline, zoom, retained canvases and original-byte saving
+[6/307] test/e2e/browser/external-pdf.spec.ts:73:1 › non-PDF pages remain websites and a failed PDF offers recovery
+[7/307] test/e2e/browser/find.spec.ts:29:1 › browser page find floats above the unchanged live page with counts, native controls and IME-safe Escape
+[8/307] test/e2e/browser/find.spec.ts:95:1 › web find follows tab lifetime and app zoom without changing page bounds
+[9/307] test/e2e/browser/focus.spec.ts:10:1 › native address suggestions survive popup focus before pointer selection in both web splits
+[10/307] test/e2e/browser/focus.spec.ts:75:1 › address suggestions navigate when the address loses focus before mouse release
+[11/307] test/e2e/browser/focus.spec.ts:141:36 › native address click owns keyboard focus with inactive split=false
+[12/307] test/e2e/browser/focus.spec.ts:141:36 › native address click owns keyboard focus with inactive split=true
+[13/307] test/e2e/browser/focus.spec.ts:184:1 › mouse-focused address edits survive empty suggestions and keep typing, caret and composition
+[14/307] test/e2e/browser/focus.spec.ts:241:1 › new web tabs take selection without selecting the address, including after a stale native focus event
+[15/307] test/e2e/browser/focus.spec.ts:291:1 › address focus selects the whole URL for mouse, keyboard, and native page shortcuts
+[16/307] test/e2e/browser/fullscreen.spec.ts:87:53 › video fullscreen covers the window and restores the live markdown split
+[17/307] test/e2e/browser/fullscreen.spec.ts:87:53 › video fullscreen covers the window and restores the live web split
+[18/307] test/e2e/browser/fullscreen.spec.ts:171:1 › fullscreen releases presentation on navigation, tab commands, closing and renderer failure
+[19/307] test/e2e/browser/fullscreen.spec.ts:213:1 › embedded cross-origin players respect Chromium fullscreen policy and Escape
+[20/307] test/e2e/browser/layout.spec.ts:11:1 › fast right-edge drops split two live websites instead of tearing off a window
+[21/307] test/e2e/browser/layout.spec.ts:96:33 › native split guide stays painted and follows all eight cells at app zoom step 0
+[22/307] test/e2e/browser/layout.spec.ts:96:33 › native split guide stays painted and follows all eight cells at app zoom step 2
+[23/307] test/e2e/browser/layout.spec.ts:178:61 › address suggestions preserve live video beside markdown
+[24/307] test/e2e/browser/layout.spec.ts:178:61 › address suggestions preserve live video beside reader
+[25/307] test/e2e/browser/layout.spec.ts:178:61 › address suggestions preserve live video beside web
+[26/307] test/e2e/browser/layout.spec.ts:304:1 › application menus preserve live video frames, playback and web view visibility
+[27/307] test/e2e/browser/layout.spec.ts:402:1 › language sidebar leaves the native web page live and Escape belongs to its search
+[28/307] test/e2e/browser/layout.spec.ts:435:1 › website draggable CSS cannot consume home navigation input in web tab frames
+[29/307] test/e2e/browser/layout.spec.ts:496:1 › tab widths stay stable when adding tabs and updating web page titles
+[30/307] test/e2e/browser/lifecycle.spec.ts:6:1 › browser details: hidden pages retain forms, mute remains accessible and closed tabs reopen without stale forms
+[31/307] test/e2e/browser/lifecycle.spec.ts:42:1 › browser details: cancelling native beforeunload preserves the form and does not add a closed tab
+[32/307] test/e2e/browser/lifecycle.spec.ts:68:1 › closing a window with audible web contents releases pages without main-process exceptions
+[33/307] test/e2e/browser/lifecycle.spec.ts:97:51 › canceling close preserves audible pages, confirmed exit releases them
+[34/307] test/e2e/browser/lifecycle.spec.ts:97:51 › canceling quit preserves audible pages, confirmed exit releases them
+[35/307] test/e2e/browser/menus.spec.ts:8:54 › Monaco text context menus stay above adjacent native browser panes
+[36/307] test/e2e/browser/menus.spec.ts:8:54 › Monaco notebook context menus stay above adjacent native browser panes
+[37/307] test/e2e/browser/menus.spec.ts:80:54 › Monaco text hovers use the context-menu cover above adjacent native panes
+[38/307] test/e2e/browser/menus.spec.ts:80:54 › Monaco notebook hovers use the context-menu cover above adjacent native panes
+[39/307] test/e2e/browser/menus.spec.ts:149:1 › context menus follow light and dark app themes, stay compact and return native editing focus
+[40/307] test/e2e/browser/menus.spec.ts:179:1 › themed context menus retain nested keyboard actions and disabled/checked items
+[41/307] test/e2e/browser/menus.spec.ts:213:1 › browser details: native image copying and link menus preserve pixels, URLs and source ownership
+[42/307] test/e2e/browser/menus.spec.ts:258:53 › Explorer menus cover native markdown panels and restore their live state
+[43/307] test/e2e/browser/menus.spec.ts:258:53 › Explorer menus cover native web panels and restore their live state
+[44/307] test/e2e/browser/navigation.spec.ts:11:1 › terminal addresses navigate through web and files while sessions and tab zoom stay independent
+[45/307] test/e2e/browser/navigation.spec.ts:70:1 › web pages share document tabs, retain live state, navigate, bookmark, and split
+[46/307] test/e2e/browser/navigation.spec.ts:157:1 › the first web page opens from a fresh empty workspace and popups preserve their opener
+[47/307] test/e2e/browser/navigation.spec.ts:176:1 › closing an opener preserves child and descendant tabs with their live state
+[48/307] test/e2e/browser/navigation.spec.ts:231:1 › file URLs and web addresses replace the current tab, including PDFs outside the project
+[49/307] test/e2e/browser/navigation.spec.ts:289:1 › address navigation asks to save edited files and cancellation preserves the current tab
+[50/307] test/e2e/browser/navigation.spec.ts:322:1 › Back and Forward traverse file and web boundaries while restoring the native web stack
+[51/307] test/e2e/browser/privacy.spec.ts:7:1 › browser details: notification requests stay quiet, coalesce and expire with their document
+[52/307] test/e2e/browser/privacy.spec.ts:41:1 › browser details: HTTP authentication is an owned opt-in prompt and error reload preserves its URL
+[53/307] test/e2e/browser/privacy.spec.ts:64:1 › browser details: site reset preserves other sites and PDF completion leaves the active tab alone
+[54/307] test/e2e/browser/privacy.spec.ts:95:1 › history deletion updates persistent places while preserving bookmarks and page state
+[55/307] test/e2e/browser/reader-selection.spec.ts:7:1 › Reader Select All stays inside the article with a terminal sibling, including native Ctrl+A and menus
+[56/307] test/e2e/browser/reader.spec.ts:8:1 › reading surfaces offer native copy/search menus and local Markdown PDF export
+[57/307] test/e2e/browser/reader.spec.ts:39:1 › web reader searches the visible article and exports its snapshot as Markdown and PDF
+[58/307] test/e2e/browser/reader.spec.ts:107:1 › Namu reader extracts hashed div layouts, keeps tables and anchors and restores the live paragraph
+[59/307] test/e2e/browser/reader.spec.ts:161:1 › Esc opens reader mode at the same block and double-click returns to the live page at the clicked block
+[60/307] test/e2e/browser/reader.spec.ts:258:1 › reader toolbar and wheel share the live website tab zoom while other Markdown tabs stay independent
+[61/307] test/e2e/browser/reader.spec.ts:311:1 › native Markdown reader shortcuts select the address and go back to the previous file
+[62/307] test/e2e/browser/reader.spec.ts:346:1 › web Reader keeps location controls stationary and the compact extension strip available
+[63/307] test/e2e/browser/themes.spec.ts:18:1 › all web themes cover light-dark surfaces and external CSS without replacing the page
+[64/307] test/e2e/browser/themes.spec.ts:54:1 › Theme menu toggles web colors live, preserves site exceptions and persists after restart
+[65/307] test/e2e/browser/themes.spec.ts:87:1 › strict script CSP retains CSSOM theme updates and restores original CSS
+[66/307] test/e2e/browser/themes.spec.ts:111:1 › moving a live themed tab to another window retains its resource bridge and page identity
+[67/307] test/e2e/browser/transfer.spec.ts:11:1 › overlapping windows accept repeated web body drops and clear a remote cancellation
+[68/307] test/e2e/browser/transfer.spec.ts:11:1 › overlapping windows accept repeated terminal body drops and clear a remote cancellation
+[69/307] test/e2e/browser/transfer.spec.ts:111:1 › native web tab drag into another window preserves the page and uses the indicated tab strip
+[70/307] test/e2e/browser/transfer.spec.ts:177:1 › a popup moved to another window survives closing its original window
+[71/307] test/e2e/browser/transfer.spec.ts:221:1 › moving a web tab to another window preserves its live page and enforces ownership
+[72/307] test/e2e/browser/ublock.spec.ts:5:1 › bundled uBlock blocks requests, scripts and frame cosmetics, and enforces response-header filters
+[73/307] test/e2e/browser/ublock.spec.ts:59:1 › uBlock migrates the recursive managed cache and preserves filtering across restarts
+[74/307] test/e2e/browser/zoom.spec.ts:6:1 › browser Ctrl+wheel zooms websites and frames independently of the app and documents
+[75/307] test/e2e/git/git-activity-badge.spec.ts:12:1 › Git activity badge counts pending resources and refreshes without opening Source Control
+[76/307] test/e2e/git/git-activity-badge.spec.ts:65:1 › long repository paths fit the sidebar and the badge includes other repositories
+[77/307] test/e2e/git/git-history.spec.ts:12:1 › unchanged Git refreshes preserve graph rows, scroll and keyboard focus
+[78/307] test/e2e/git/git-history.spec.ts:91:1 › Graph resizes, refreshes and opens immutable Markdown revisions in existing review
+  1) test/e2e/git/git-history.spec.ts:91:1 › Graph resizes, refreshes and opens immutable Markdown revisions in existing review 
+
+    Test was interrupted.
+
+
+  1 interrupted
+    test/e2e/git/git-history.spec.ts:91:1 › Graph resizes, refreshes and opens immutable Markdown revisions in existing review 
+  229 did not run
+  77 passed (5.8m)
+npm error Lifecycle script `test:preview-contract:e2e` failed with error:
+npm error code 130
+npm error path /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error workspace @setdown/desktop@2.5.2
+npm error location /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error command failed
+npm error command sh -c bash scripts/with-isolated-display.sh playwright test --config playwright.preview-contract.config.ts
+npm error Lifecycle script `test:preview-contract` failed with error:
+npm error code 130
+npm error path /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error workspace @setdown/desktop@2.5.2
+npm error location /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error command failed
+npm error command sh -c npm run test:preview-contract:unit && npm run build && npm run test:preview-contract:e2e

@@ -8,6 +8,7 @@ import { CancellationTokenSource } from 'vscode-jsonrpc/node';
 import type { FullDocumentDiagnosticReport, Hover, PublishDiagnosticsParams } from 'vscode-languageserver-protocol';
 import { serverProfiles } from './server-definitions';
 import { notebookPythonAnalysis } from './python-analysis';
+import { notebookClientCapabilities } from '../../protocol/language-features';
 import { ServerSession } from './server-session';
 
 const require = createRequire(import.meta.url);
@@ -147,39 +148,73 @@ test('workspace rename includes unopened Python files immediately after initiali
   expect(JSON.stringify(result)).toContain(pathToFileURL(main).href);
 });
 
-test.each(['pyright', 'basedpyright'])('%s off preset keeps core diagnostics and inference without type noise', async module => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-light-diagnostics-')); roots.push(root);
+test.each(['pyright', 'basedpyright'])('%s basic preset reports real type errors without requiring strict annotations', async module => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-basic-diagnostics-')); roots.push(root);
   const uri = pathToFileURL(path.join(root, 'main.py')).href;
   const analysis = module === 'basedpyright' ? notebookPythonAnalysis
     : (serverProfiles.pyright.configuration.python as { analysis: Record<string, unknown> }).analysis;
-  const profile = { ...serverProfiles.pyright, renameAfterDiagnostics: false,
-    configuration: { python: { analysis }, basedpyright: { analysis } } };
-  const published: PublishDiagnosticsParams[] = [];
-  const failures: string[] = [];
+  const profile = { ...serverProfiles.pyright, renameAfterDiagnostics: false, configuration: { python: { analysis }, basedpyright: { analysis } } };
+  const published: PublishDiagnosticsParams[] = [], failures: string[] = [];
   const server = new ServerSession({ executable: process.execPath, args: [require.resolve(`${module}/langserver.index.js`), '--stdio'] },
     root, params => published.push(params), message => failures.push(message), profile);
   sessions.push(server); await server.ready;
-  const text = 'from typing import Literal\n'
-    + 'def read_csv(*, float_precision: Literal["high"]) -> object:\n    return object()\n'
-    + 'frame = read_csv(float_precision="round_trip")\nframe.groupby("method")\n'
-    + 'row = (3,)\nrow.R_nominal\ncount: int = "wrong"\n'
-    + 'import setdown_missing_module_9a72\nprint(setdown_missing_name)\n';
+  const text = 'from typing import Literal\ndef choose(mode: Literal["fast", "safe"]) -> str:\n    return mode\n'
+    + 'valid = choose("fast")\ninvalid = choose("turbo")\ncount: int = "wrong"\n'
+    + 'def identity(value):\n    return value\n';
   await server.notify('textDocument/didOpen', { textDocument: { uri, languageId: 'python', version: 1, text } });
   await expect.poll(() => published.at(-1)?.diagnostics.filter(d => d.severity === 1 || d.severity === 2).map(d => d.code).sort(), { timeout: 15_000 })
-    .toEqual(['reportMissingImports', 'reportUndefinedVariable']);
-  expect(published.at(-1)?.diagnostics.filter(d => d.code === 'reportMissingImports' || d.code === 'reportUndefinedVariable').every(d => d.severity === 2)).toBe(true);
-  const hover = await server.request<Hover>('textDocument/hover', { textDocument: { uri }, position: { line: 5, character: 1 } });
-  expect(JSON.stringify(hover)).toContain('tuple');
-  const completions = await server.request('textDocument/completion', { textDocument: { uri }, position: { line: 4, character: 6 } });
-  expect(JSON.stringify(completions)).toContain('__class__');
-  await server.notify('textDocument/didChange', { textDocument: { uri, version: 2 }, contentChanges: [{ text: 'values = [\n' }] });
+    .toEqual(['reportArgumentType', 'reportAssignmentType']);
+  expect(published.at(-1)?.diagnostics.find(d => d.code === 'reportArgumentType')?.range.start.line).toBe(4);
+  const fixed = text.replace('choose("turbo")', 'choose("safe")').replace('count: int = "wrong"', 'count: int = 1');
+  await server.notify('textDocument/didChange', { textDocument: { uri, version: 2 }, contentChanges: [{ text: fixed }] });
   await expect.poll(() => published.at(-1)?.version, { timeout: 15_000 }).toBe(2);
-  expect(published.at(-1)?.diagnostics.some(d => d.severity === 1)).toBe(true);
-  await server.notify('textDocument/didChange', { textDocument: { uri, version: 3 }, contentChanges: [{ text: 'values = []\n' }] });
-  await expect.poll(() => published.at(-1)?.version, { timeout: 15_000 }).toBe(3);
-  expect(published.at(-1)?.diagnostics).toEqual([]);
-  expect(failures).toEqual([]);
+  expect(published.at(-1)?.diagnostics).toEqual([]); expect(failures).toEqual([]);
 }, 30_000);
+
+test.each(['pyright', 'basedpyright'])('%s honors native off and strict policies over the bundled basic default', async module => {
+  for (const mode of ['off', 'strict']) {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-native-checking-')); roots.push(root);
+    await writeFile(path.join(root, 'pyrightconfig.json'), JSON.stringify({ typeCheckingMode: mode }));
+    const uri = pathToFileURL(path.join(root, 'main.py')).href, published: PublishDiagnosticsParams[] = [];
+    const server = new ServerSession({ executable: process.execPath, args: [require.resolve(`${module}/langserver.index.js`), '--stdio'] }, root,
+      params => published.push(params), () => {}, { ...serverProfiles.pyright, renameAfterDiagnostics: false,
+        configuration: { python: { analysis: notebookPythonAnalysis }, basedpyright: { analysis: notebookPythonAnalysis } } });
+    sessions.push(server); await server.ready;
+    await server.notify('textDocument/didOpen', { textDocument: { uri, languageId: 'python', version: 1,
+      text: 'def identity(value):\n    return value\ncount: int = "wrong"\n' } });
+    await expect.poll(() => published.at(-1)?.version, { timeout: 15_000 }).toBe(1);
+    const codes = published.at(-1)!.diagnostics.map(d => d.code);
+    if (mode === 'off') expect(codes).toEqual([]);
+    else expect(codes).toEqual(expect.arrayContaining(['reportAssignmentType', 'reportUnknownParameterType']));
+  }
+}, 45_000);
+
+test('one real basedpyright process keeps native notebook namespaces and dependency snapshots independent', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-isolation-')); roots.push(root);
+  const published: PublishDiagnosticsParams[] = [];
+  const server = new ServerSession({ executable: process.execPath, args: [require.resolve('basedpyright/langserver.index.js'), '--stdio'] }, root,
+    params => published.push(params), () => {}, { name: 'Notebook Python', watches: () => false, capabilities: notebookClientCapabilities(),
+      initializationOptions: { disablePullDiagnostics: true }, configuration: { basedpyright: { analysis: notebookPythonAnalysis } } });
+  sessions.push(server); await server.ready;
+  const open = async (name: string, sources: string[]) => {
+    const uri = pathToFileURL(path.join(root, name + '.ipynb')).href;
+    const cells = sources.map((text, i) => ({ uri: uri.replace(/^file:/, 'vscode-notebook-cell:') + '#' + i, languageId: 'python', version: 1, text }));
+    await server.notify('notebookDocument/didOpen', { notebookDocument: { uri, notebookType: 'jupyter-notebook', version: 1,
+      cells: cells.map(cell => ({ kind: 2, document: cell.uri })) }, cellTextDocuments: cells });
+    return { uri, cells };
+  };
+  const a = await open('a', ['from typing import Literal\ndef choose(mode: Literal["safe"]) -> str:\n    return mode', 'choose("turbo")']);
+  const b = await open('b', ['choose("safe")']);
+  const latest = (uri: string) => published.filter(batch => batch.uri === uri).at(-1);
+  await expect.poll(() => latest(a.cells[1].uri)?.diagnostics.map(d => d.code), { timeout: 15_000 }).toEqual(['reportArgumentType']);
+  await expect.poll(() => latest(b.cells[0].uri)?.diagnostics.map(d => d.code), { timeout: 15_000 }).toEqual(['reportUndefinedVariable']);
+  await server.notify('notebookDocument/didChange', { notebookDocument: { uri: a.uri, version: 2 }, change: { cells: { textContent: a.cells.map((cell, i) => ({
+    document: { uri: cell.uri, version: 2 }, changes: [{ text: i === 0 ? cell.text.replace('"safe"', '"turbo"') : cell.text }],
+  })) } } } satisfies import('vscode-languageserver-protocol').DidChangeNotebookDocumentParams);
+  await expect.poll(() => latest(a.cells[1].uri)?.version, { timeout: 15_000 }).toBe(2);
+  expect(latest(a.cells[1].uri)?.diagnostics).toEqual([]);
+  expect(latest(b.cells[0].uri)?.diagnostics.map(d => d.code)).toEqual(['reportUndefinedVariable']);
+}, 45_000);
 
 test('server action requests remain nonmodal, bounded to their session and cancelled by shutdown', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-language-actions-')); roots.push(root);

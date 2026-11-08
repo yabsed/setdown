@@ -12,7 +12,7 @@ import { GOLDEN_TOP_RATIO, type ViewportAnchor } from '../../core/preview/viewpo
 import { normalizePreviewTheme } from '../../core/preview/preview-preferences';
 import { hasMarkdownPreview } from '../../core/document/document-capabilities';
 import { isFileLocation } from '../../core/document/file-location';
-import { isMarkdownDocument } from '../../core/document/document-profile';
+import { isMarkdownDocument, isNotebookDocument } from '../../core/document/document-profile';
 import { createTabSession, isDocumentTab, WorkspaceState } from '../../core/workspace/workspace-state';
 import type { ThemeSnapshot } from '../../protocol/desktop-api';
 import { mount } from 'svelte';
@@ -66,6 +66,13 @@ export function startWorkspace(desktop: DesktopPort) {
   const actions: AppActions = {
     restoreWorkspace: () => { void runEditorCommand('setdown.session.restore').catch(error => window.alert(String(error))); },
     openLanguageLocation: async (path, selection) => {
+        // Notebook diagnostics own their cell selection. Activate their existing
+        // content owner without treating the .ipynb JSON as an editable LSP file.
+        if (isNotebookDocument(path)) {
+          const notebook = workspace.documents.find(tab => tab.document.path === path && !tab.document.isUntitled);
+          if (notebook) await tabs.activate(notebook.id);
+          return;
+        }
         const origin = workspace.activeId, revision = workspace.activeContent?.revision, group = workspace.groups.focusedId;
         const caret = JSON.stringify(editor.editor?.getSelections());
         editorToolsNow()?.rememberJump();

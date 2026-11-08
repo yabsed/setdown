@@ -252,6 +252,7 @@ export class LanguageManager {
       const owner = state(event);
       if (file !== undefined) {
         const resource = this.ownedFile(owner, file);
+        if (provider === 'notebook-python') { this.notebooks.resetRecovery(owner.webContentsId, resource); return; }
         const current = this.owners.get(owner.webContentsId);
         const servers = new Set([...current?.documents.values() ?? []].filter(b => b.uri === pathToFileURL(resource).href && (!provider || this.sessions.get(b.server)?.id === provider)).map(b => b.server));
         for (const server of servers) { const key = this.sessions.get(server)?.recoveryKey; if (key) this.supervisor.reset(key); await this.reconnect(current!, server); }
@@ -569,10 +570,13 @@ export class LanguageManager {
     return { ...plan.context, servers: definitions.map(d => ({ id: d.id, name: d.name, selected: d.id === selected, enabled: this.registry.enabled(d.id, resource), role: this.registry.role(d.id, resource) })) };
   }
   private async selectEnvironment(state: WindowState, file: string, language: string, selection: AnalysisSelection): Promise<DocumentAnalysis> {
-    if (!selection || !['python', 'typescript', 'compilation', 'server'].includes(selection.kind) || typeof selection.value !== 'string' || selection.value.length > 128) throw Error('Invalid environment selection.');
+    if (!selection || !['python', 'typescript', 'compilation', 'server', 'python-checking'].includes(selection.kind) || typeof selection.value !== 'string' || selection.value.length > 128) throw Error('Invalid environment selection.');
     const context = await this.documentEnvironment(state, file, language, true);
     if (selection.root !== undefined && selection.root !== context.root) throw Error('The analysis project changed. Refresh the environment before applying this choice.');
-    if (selection.kind === 'server') {
+    if (selection.kind === 'python-checking') {
+      if (language !== 'python' || !['automatic', 'off', 'basic', 'standard', 'strict'].includes(selection.value)) throw Error('Invalid Python checking level.');
+      await this.updateEnvironment(context.root, language, () => analysisPreferences.set(context.root, 'python-checking', selection.value === 'automatic' ? undefined : selection.value));
+    } else if (selection.kind === 'server') {
       if (selection.value === 'off') {
         await this.updateEnvironment(context.root, language, () => { for (const server of context.servers) this.registry.setEnabled(server.id, false, context.root); });
         return this.documentEnvironment(state, file, language, true);
@@ -610,7 +614,7 @@ export class LanguageManager {
         if (info?.root === root && ids.includes(info.id)) { if (info.recoveryKey) this.supervisor.reset(info.recoveryKey); await this.reconnect(owner, server, false); }
       }
       this.broadcast({ type: 'environment', root, language });
-      this.broadcast({ type: 'configuration', servers: ids, roots: [root] });
+      this.broadcast({ type: 'configuration', servers: language === 'python' ? [...ids, 'notebook-python'] : ids, roots: [root] });
     });
     this.updating = update.catch(() => {}); return update;
   }

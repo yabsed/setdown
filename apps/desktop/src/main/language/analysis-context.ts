@@ -2,7 +2,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { parse } from 'jsonc-parser';
-import type { AnalysisChoice, AnalysisContext } from '../../core/document/analysis-context';
+import type { AnalysisChoice, AnalysisContext, PythonChecking } from '../../core/document/analysis-context';
 import type { LanguageServerDefinition } from '../../core/document/language-definition';
 import { notebookPython } from '../notebook/python-environments';
 import { analysisPreferences } from './analysis-preferences';
@@ -27,24 +27,24 @@ const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(va
 export type AnalysisPlan = { context: AnalysisContext; profile: ServerProfile; args: string[]; inputs: string[]; configuration(settings: Record<string, unknown>): Record<string, unknown> };
 
 /** Builder's context → tooling → launch boundary, using Setdown's existing LSP transport.
- * Discovery reads metadata only. A project SDK/interpreter is used after explicit selection.
+ * Discovery reads metadata only. Python can select an unambiguous local environment; project SDK choices remain explicit.
  * The plan used to explain the environment is also the plan used to start its server. */
 export class AnalysisContextService {
   private readonly cache = new Map<string, { expires: number; result: Promise<AnalysisPlan> }>();
   invalidate(root?: string): void {
     for (const key of this.cache.keys()) if (!root || key.startsWith(root + '\0')) this.cache.delete(key);
   }
-  async resolve(root: string, reason: string, definition: LanguageServerDefinition, options: Options = {}, refresh = false): Promise<AnalysisPlan> {
+  async resolve(root: string, reason: string, definition: LanguageServerDefinition, options: Options = {}, refresh = false, notebookPythonOverride?: string): Promise<AnalysisPlan> {
     const preferences = analysisPreferences.get(root);
-    const key = root + '\0' + digest([definition, options, preferences]);
+    const key = root + '\0' + digest([definition, options, preferences, notebookPythonOverride]);
     const existing = this.cache.get(key);
     if (!refresh && existing && existing.expires > Date.now()) return existing.result;
-    const result = this.build(root, reason, definition, options);
+    const result = this.build(root, reason, definition, options, notebookPythonOverride);
     if (this.cache.size >= 128) this.cache.delete(this.cache.keys().next().value!);
     this.cache.set(key, { expires: Date.now() + 30_000, result });
     try { return await result; } catch (error) { this.cache.delete(key); throw error; }
   }
-  private async build(root: string, reason: string, definition: LanguageServerDefinition, options: Options): Promise<AnalysisPlan> {
+  private async build(root: string, reason: string, definition: LanguageServerDefinition, options: Options, notebookPythonOverride?: string): Promise<AnalysisPlan> {
     const preferences = analysisPreferences.get(root), profile = serverProfile(definition, options);
     const context: AnalysisContext = { id: '', root, rootReason: reason, environment: 'usable', choices: [], evidence: [], issues: [] };
     let configuration = (settings: Record<string, unknown>): Record<string, unknown> => settings;
@@ -58,29 +58,33 @@ export class AnalysisContextService {
     if (definition.languages.some(l => l.languageId === 'python')) {
       context.kind = 'python'; context.label = 'Python environment';
       const project = pythonProjectSettings(root), server = /basedpyright/.test(definition.id) ? 'basedpyright' : 'pyright';
-      profile.configuration = applyPythonProjectSettings(profile.configuration, project, server);
+      const explicitChecking = section(options.settings ?? {}, `${server === 'basedpyright' ? 'basedpyright' : 'python'}.analysis.typeCheckingMode`) !== undefined;
+      profile.configuration = applyPythonProjectSettings(profile.configuration, project, server, explicitChecking, preferences['python-checking']);
+      context.checking = { mode: section(profile.configuration, `${server === 'basedpyright' ? 'basedpyright' : 'python'}.analysis.typeCheckingMode`) as PythonChecking,
+        override: preferences['python-checking'], source: preferences['python-checking'] ? 'Project selection' : explicitChecking ? 'Connection settings' : project.checkingSource ?? 'Setdown default',
+        projectConfiguration: project.projectConfiguration };
       for (const [key, value] of pythonSettingsContext(project, profile.configuration, server)) context.evidence.push(`${key}: ${value}`);
       for (const name of ['pyrightconfig.json', 'pyproject.toml', '.vscode/settings.json', '.venv', 'venv']) inputs.add(path.join(root, name));
-      const environments = await notebookPython.list(path.join(root, '__setdown_analysis__.py'), root);
+      const environments = await notebookPython.list(path.join(root, '__setdown_analysis__.py'), root, !!preferences.python);
       for (const candidate of environments.candidates) choice(candidate.path, candidate.source, candidate.name, true);
       const configured = section(profile.configuration, 'python.pythonPath');
       const inherited = (typeof configured === 'string' && configured ? path.resolve(root, configured) : undefined) ?? environments.selected;
-      context.selectionSource = preferences.python ? 'project' : configured ? 'connection' : 'automatic';
-      if (inherited) context.inherited = choice(inherited, configured ? 'Connection settings' : 'Automatic selection');
-      const selected = preferences.python ?? inherited;
+      context.selectionSource = notebookPythonOverride ? 'notebook' : preferences.python ? 'project' : configured ? 'connection' : 'automatic';
+      if (inherited) context.inherited = choice(inherited, configured ? 'Connection settings' : environments.selectionSource ?? 'Automatic selection');
+      const selected = notebookPythonOverride ?? preferences.python ?? inherited;
       if (selected) {
-        const item = choice(selected, preferences.python ? 'Project selection' : configured ? 'Connection settings' : 'Host environment');
+        const item = choice(selected, notebookPythonOverride ? 'Notebook environment' : preferences.python ? 'Project selection' : configured ? 'Connection settings' : environments.selectionSource ?? 'Host environment');
         context.selected = item.id;
         if (!item.available) issue('python-missing', `The selected Python environment is missing: ${selected}. Choose an environment to restore imports.`, true);
         // Retain even a missing explicit choice; never silently substitute a different interpreter.
         profile.configuration = setPython(profile.configuration, selected);
       } else issue('python-unknown', 'Choose a Python environment so imports can use the project dependencies.', true);
       configuration = settings => {
-        const scoped = applyPythonProjectSettings(settings, project, server);
-        return selected && (preferences.python || section(scoped, 'python.pythonPath') === undefined) ? setPython(scoped, selected) : scoped;
+        const scoped = applyPythonProjectSettings(settings, project, server, explicitChecking, preferences['python-checking']);
+        return selected && (notebookPythonOverride || preferences.python || section(scoped, 'python.pythonPath') === undefined) ? setPython(scoped, selected) : scoped;
       };
-      if (!preferences.python && !configured && environments.candidates.some(c => c.source === 'Project'))
-        issue('python-project-environment', 'A project virtual environment is available. Select it to use its installed packages.', true);
+      if (!notebookPythonOverride && !preferences.python && !configured && environments.selectionNeeded)
+        issue('python-project-environment', 'Multiple project Python environments are available. Select the environment for this project.', true);
       for (const message of project.errors) issue('python-settings', message);
     } else if (definition.id === 'typescript-language-server') {
       context.kind = 'typescript'; context.label = 'TypeScript SDK';

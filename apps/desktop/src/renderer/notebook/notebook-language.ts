@@ -4,12 +4,24 @@ import type { LanguageApi, LanguageConnection, LanguageMethod } from '../../prot
 import type { NotebookEntry } from './notebook-store';
 import { completion, completionDefaults, fromRange, markdown, marker, toPosition } from '../language/language-conversion';
 import { requestLanguageResult, languageItemHandles } from '../../protocol/language-request';
+import { diagnosticsFor, type DiagnosticLease } from '../language/language-diagnostics-api';
 import { completionContext } from '../../protocol/language-completion';
 
 /** Cell documents retain their IPython semantics and local coordinates.
  * Providers still reject edits/commands that cannot be applied transactionally. */
 export class NotebookLanguage {
   private connection?: LanguageConnection;
+  message = '';
+  private failed = false;
+  get analysisContext() { return this.connection?.analysis?.context; }
+  get context() { return this.connection?.context ?? []; }
+  get observation(): string {
+    if (this.failed) return 'Analysis unavailable. Diagnostics are not current.';
+    const total = this.cells().length, observed = this.diagnostics.size;
+    return observed < total ? `Waiting for current diagnostics (${observed}/${total} code cells).`
+      : `Current diagnostics received for ${observed} code cells. This is not project-wide coverage.`;
+  }
+  async restart(): Promise<void> { await this.port.restart(this.path, 'notebook-python'); await this.reconnect(); }
   private sourceKey = "";
   private version = 1;
   private sent = 0;
@@ -25,28 +37,32 @@ export class NotebookLanguage {
   private readonly completionItems = new WeakMap<M.languages.CompletionItem, { cell: string; version: number; generation: string; item: L.CompletionItem; lease: { handles: Set<string>; disposed: boolean } }>();
   private requests = new Set<string>();
   private diagnostics = new Map<string, L.Diagnostic[]>();
+  private leases = new Map<string, DiagnosticLease>();
+  private resultsView?: M.IDisposable;
   constructor(private api: typeof M, private port: LanguageApi, private entry: NotebookEntry, private path: string,
-    private status: (state: string) => void, openFile: (uri: string, selection?: M.IRange | M.IPosition) => Promise<void>, reveal: (id: string, selection: M.IRange) => Promise<void>, private python?: string) {
+    private status: (state: string) => void, private openFile: (uri: string, selection?: M.IRange | M.IPosition) => Promise<void>, private reveal: (id: string, selection: M.IRange) => Promise<void>, private python?: string) {
     this.sourceKey = JSON.stringify(this.cells());
     const unsubscribe = entry.document.subscribe(event => {
       if (event === 'output') return;
       const key = JSON.stringify(this.cells()); if (key === this.sourceKey) return;
       this.sourceKey = key; this.version++;
       this.diagnostics.clear(); this.updateMarkers();
+      this.status(this.failed ? 'failed' : this.connection ? 'ready' : 'starting');
       clearTimeout(this.timer); this.timer = setTimeout(() => { void this.flush(); }, 150);
     });
     const events = port.onEvent(event => {
       if (event.type === 'discovery') { if (!this.connection && !this.connecting) void this.reconnect(); return; }
       if (event.type === 'configuration') {
+        if (event.roots && !event.roots.some(root => this.analysisContext?.root === root || this.path.replaceAll('\\', '/').startsWith(root.replaceAll('\\', '/').replace(/\/$/, '') + '/'))) return;
         if (event.documents && !event.documents.some(document => document.id === this.id && document.generation === this.generation)) return;
         if (!this.connection?.server || !event.servers || event.servers.includes(this.connection.server)) void this.reconnect();
         return;
       }
-      if (event.type === 'diagnostics' && event.id === this.id && event.generation === this.generation && event.version === this.version) {
+      if (!this.failed && event.type === 'diagnostics' && event.id === this.id && event.generation === this.generation && event.version === this.version) {
         const cell = this.entry.document.cells.find(cell => cell.id === event.cell);
-        if (cell && cell.version === event.cellVersion) { this.diagnostics.set(cell.id, event.diagnostics); this.updateMarkers(); }
+        if (cell && cell.version === event.cellVersion) { this.diagnostics.set(cell.id, event.diagnostics); this.updateMarkers(); this.status('ready'); }
       }
-      if (event.type === 'status' && event.documents.some(doc => doc.id === this.id && doc.generation === this.generation)) { if (event.state === 'failed') { this.diagnostics.clear(); this.updateMarkers(); } status(event.state); }
+      if (event.type === 'status' && event.documents.some(doc => doc.id === this.id && doc.generation === this.generation)) { if (event.state === 'failed') { this.failed = true; this.message = `${event.message ?? 'Python analysis failed.'}${event.recovery?.retrying ? ` Retrying (${event.recovery.attempt}/3)…` : ''}`; this.diagnostics.clear(); this.updateMarkers(); } status(event.state); }
     });
     this.disposables.push({ dispose: unsubscribe }, { dispose: events });
     this.installProviders = () => {
@@ -130,7 +146,7 @@ export class NotebookLanguage {
       } }), api.editor.registerEditorOpener({ openCodeEditor: async (source, uri, selection) => {
         const origin = source.getModel();
         if (uri.scheme === 'file' && origin && this.cell(origin)) { await openFile(uri.toString(), selection); return true; }
-        const cell = [...entry.models].find(([, model]) => model.uri.toString() === uri.toString())?.[0];
+        const cell = entry.document.cells.find(cell => uri.toString() === `setdown-cell://${entry.id}/${cell.id}`)?.id;
         if (!cell) return false;
         const range = selection && 'startLineNumber' in selection ? selection : { startLineNumber: selection?.lineNumber ?? 1,
           endLineNumber: selection?.lineNumber ?? 1, startColumn: selection?.column ?? 1, endColumn: selection?.column ?? 1 };
@@ -157,8 +173,9 @@ export class NotebookLanguage {
     for (const change of edit.documentChanges ?? []) {
       if (!('textDocument' in change)) throw Error('File operations cannot be applied as a notebook cell edit.');
       const id = Object.entries(this.connection?.cells ?? {}).find(([, value]) => value === change.textDocument.uri)?.[0];
-      const cell = this.entry.document.cells.find(cell => cell.id === id);
-      if (change.textDocument.version != null && change.textDocument.version !== cell?.version) throw Error('A cell changed. Request this action again.');
+      // The native protocol advances every cell to the notebook snapshot version,
+      // including dependencies whose own source revision has not changed.
+      if (!id || (change.textDocument.version != null && change.textDocument.version !== version)) throw Error('A cell changed. Request this action again.');
       if (change.edits.some(edit => !('newText' in edit))) throw Error('Unsupported snippet edit.');
       add(change.textDocument.uri, change.edits as L.TextEdit[]);
     }
@@ -195,9 +212,49 @@ export class NotebookLanguage {
     return valid(range.start) && valid(range.end) ? { id, range } : null;
   }
   updateMarkers(): void {
-    for (const [id, model] of this.entry.models) if (!model.isDisposed()) this.api.editor.setModelMarkers(model, 'notebook-language',
-      (this.diagnostics.get(id) ?? []).filter(diagnostic => this.range(id, diagnostic.range))
-        .map(diagnostic => marker(this.api, { ...diagnostic, relatedInformation: undefined })));
+    const store = diagnosticsFor(this.api);
+    for (const [id, lease] of this.leases) if (!this.entry.document.cells.some(cell => cell.id === id && cell.kind === 'code')) {
+      lease.dispose(); this.leases.delete(id);
+    }
+    for (const cell of this.entry.document.cells.filter(cell => cell.kind === 'code')) {
+      let lease = this.leases.get(cell.id);
+      if (!lease) {
+        lease = store.leaseResource(`setdown-cell://${this.entry.id}/${cell.id}`, 'notebook-python', this.generation, {
+          path: this.path, cellId: cell.id,
+          label: () => `${this.path} → cell ${this.entry.document.cells.findIndex(item => item.id === cell.id) + 1}`,
+          alive: () => !this.disposed && this.entry.document.cells.some(item => item.id === cell.id && item.kind === 'code'),
+          version: () => this.entry.document.cells.find(item => item.id === cell.id)!.version,
+          line: line => this.entry.document.cells.find(item => item.id === cell.id)?.source.split(/\r\n|\r|\n/)[line - 1] ?? '',
+          model: () => this.entry.models.get(cell.id),
+          open: async range => { await this.openFile(this.api.Uri.file(this.path).toString()); await this.reveal(cell.id, range); },
+        });
+        this.leases.set(cell.id, lease);
+      }
+      if (!this.diagnostics.has(cell.id)) { lease.clear(); lease.refresh(); continue; }
+      const raw = this.diagnostics.get(cell.id)!.filter(diagnostic => this.range(cell.id, diagnostic.range));
+      lease.publish('push', raw.map(diagnostic => {
+        const converted = marker(this.api, diagnostic);
+        // Native wire URIs are session-owned. Translate related cells into the
+        // stable editor URI without mounting their editors or losing metadata.
+        const related = (diagnostic.relatedInformation ?? []).flatMap(info => {
+          const id = Object.entries(this.connection?.cells ?? {}).find(([, uri]) => uri === info.location.uri)?.[0];
+          return id ? [{ resource: this.api.Uri.parse(`setdown-cell://${this.entry.id}/${id}`), ...fromRange(info.location.range), message: info.message }] : [];
+        });
+        return { ...converted, relatedInformation: [...converted.relatedInformation ?? [], ...related] };
+      }), cell.version, { diagnostics: raw, context: this.connection?.analysis?.context });
+    }
+  }
+  async showProblems(host: HTMLElement, restore: () => void): Promise<void> {
+    const { showLanguageResults } = await import('../language/language-diagnostics-api');
+    if (this.disposed) return;
+    this.resultsView?.dispose();
+    const store = diagnosticsFor(this.api);
+    this.resultsView = await showLanguageResults(host, { title: 'Problems · Open Files', searchable: false,
+      empty: () => `No reported problems. ${this.observation}`,
+      subscribe: listener => store.subscribe(listener),
+      load: async () => store.results((path, range) => this.openFile(this.api.Uri.file(path).toString(), range)),
+    }, restore);
+    if (this.disposed) this.resultsView.dispose();
   }
   private cell(model: M.editor.ITextModel): string | undefined {
     return this.entry.document.cells.find(cell => this.entry.models.get(cell.id) === model)?.id;
@@ -216,21 +273,23 @@ export class NotebookLanguage {
   }
   private async reconnect(): Promise<void> {
     if (this.disposed) return;
-    this.port.close(this.id); this.connection = undefined; this.installProviders(); this.sent = 0; this.diagnostics.clear(); this.updateMarkers();
+    this.failed = false; this.message = '';
+    for (const lease of this.leases.values()) lease.dispose(); this.leases.clear();
     const generation = this.generation = crypto.randomUUID(), version = this.version;
+    this.port.close(this.id); this.connection = undefined; this.installProviders(); this.sent = 0; this.diagnostics.clear(); this.updateMarkers();
     this.connecting = true; this.status('starting');
     try {
       const connection = await this.port.open({ id: this.id, generation, path: this.path, notebook: 'python', cells: this.cells(), python: this.python, text: '', version });
       if (this.disposed || generation !== this.generation) return;
       if ('unavailable' in connection) { this.status(connection.unavailable); return; }
       this.connection = connection; this.installProviders(); this.sent = version; this.status('ready'); await this.flush();
-    } catch (error) { if (!this.disposed && generation === this.generation) { this.status('failed'); console.warn('Notebook language support:', error); } }
+    } catch (error) { if (!this.disposed && generation === this.generation) { this.failed = true; this.message = String(error); this.status('failed'); console.warn('Notebook language support:', error); } }
     finally { if (generation === this.generation) this.connecting = false; }
   }
   private flush(): Promise<void> {
     clearTimeout(this.timer);
     this.queue = this.queue.then(async () => {
-      if (this.disposed || !this.connection || this.sent === this.version) return;
+      if (this.disposed || this.failed || !this.connection || this.sent === this.version) return;
       const version = this.version, generation = this.generation;
       const cells = await this.port.changeNotebook(this.id, version, this.cells());
       if (generation === this.generation && this.connection) this.connection.cells = cells;
@@ -240,7 +299,7 @@ export class NotebookLanguage {
   }
   private async request<T>(cell: string, method: LanguageMethod, params: object, token: M.CancellationToken): Promise<T | null> {
     const version = this.version, generation = this.generation;
-    await this.flush(); if (this.disposed || !this.connection || this.sent !== version || token.isCancellationRequested) return null;
+    await this.flush(); if (this.disposed || this.failed || !this.connection || this.sent !== version || token.isCancellationRequested) return null;
     const id = crypto.randomUUID(); this.requests.add(id);
     const cancel = token.onCancellationRequested(() => this.port.cancel(id));
     try { const result = await requestLanguageResult<T>(method, () => this.port.request(this.id, version, id, method, { ...params, cell }),
@@ -250,7 +309,7 @@ export class NotebookLanguage {
   }
   dispose(): void {
     this.disposed = true; clearTimeout(this.timer); for (const id of this.requests) this.port.cancel(id);
-    this.diagnostics.clear(); this.updateMarkers(); this.port.close(this.id); for (const disposable of this.disposables) disposable.dispose();
+    this.diagnostics.clear(); for (const lease of this.leases.values()) lease.dispose(); this.leases.clear(); this.resultsView?.dispose(); this.port.close(this.id); for (const disposable of this.disposables) disposable.dispose();
     for (const provider of this.providers) provider.dispose();
   }
 }

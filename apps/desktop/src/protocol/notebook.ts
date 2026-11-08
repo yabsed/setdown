@@ -11,7 +11,7 @@ export type NotebookKernelEvent = { id: string; generation: string } & (
 export type NotebookInspection = { variables?: { name: string; type: string; shape: string; preview: string }[];
   columns?: string[]; rows?: string[][]; total?: number };
 export type NotebookTool = 'export-html' | 'export-markdown' | 'export-script' | 'export-webpdf' | 'jupyterlab' | 'diff' | 'format' | 'fix-code' | 'install-tools';
-export type NotebookEnvironments = { selected?: string; candidates: { path: string; name: string; source: string }[] };
+export type NotebookEnvironments = { selected?: string; selectionSource?: string; selectionNeeded?: boolean; candidates: { path: string; name: string; source: string }[] };
 export type NotebookApi = {
   run(request: NotebookRun): Promise<void>;
   interrupt(id: string, generation: string): Promise<void>;

@@ -85,19 +85,41 @@ reset starts the next process from the new notebook location.
 
 Python analysis uses native notebook cell synchronization with the bundled
 basedpyright, preserving magic-cell Python statements, top-level await and cell
-syntax boundaries. Core syntax/name/import diagnostics remain enabled; broad type
-checking follows the lightweight policy documented in `notebooks.md`. Wire URI epochs,
-notebook dependency revisions and cell source revisions reject stale diagnostics.
-Notebook analysis and execution share a persisted explicit Python environment.
-Project-local candidates are only listed until selected. Search keeps Markdown in
+syntax boundaries. The shared Python `basic` policy reports incompatible Literal
+arguments and assignments while accepting unannotated functions. Explicit project
+checking policies remain authoritative. Wire URI epochs, notebook dependency
+revisions and cell source revisions reject stale diagnostics, including after a
+pooled process is reused. Versioned workspace edits use the synchronized notebook
+snapshot rather than an individual cell's source revision.
+
+Notebook analysis and execution use the nearest unique project `.venv`/`venv`
+unless an explicit notebook/project choice takes precedence. Ambiguous choices
+and missing selected paths remain actionable. Policy changes and automatic LSP
+recovery never restart a running kernel or replay cells.
+
+Diagnostics remain available to Problems while the notebook is inactive or its
+cell editor is unmounted. Opening a result activates the notebook owner and reveals
+the corresponding cell. Connection readiness does not imply received diagnostics:
+the notebook analysis details report current cell observations separately.
+A window/root/interpreter/settings context shares one analyzer across distinct
+notebook URIs; duplicate owners remain isolated. Last-document close retains at
+most four idle servers for at most 30 seconds; owner shutdown stops all leases.
+Failures retire the process and use a three-retry/60-second budget. Explicit
+restart resets it. Search keeps Markdown in
 reader mode, selects the first match on first Enter and leaves find input focus intact.
 
 Coverage lives in `notebook-document.test.ts`, `notebook-language.test.ts`,
-`notebook-execution.test.ts`, `kernel-manager.test.ts` and real Electron
+`notebook-execution.test.ts`, `kernel-manager.test.ts`, `language-session-pool.test.ts`,
+`language-manager.test.ts`, real `server-session.test.ts` and real Electron
 `notebook.spec.ts` (Markdown/Escape, LSP, Undo, drag, long-cell wheel/caret/shrink).
 The separate real-kernel integration test is
 `python3 apps/desktop/test/notebook/kernel-bridge.test.py`; it requires
 `ipykernel` and `jupyter_client` and loopback socket access.
+
+The 2026-11-08 checking-policy, URI-diagnostic and shared-process changes and their
+execution evidence are recorded in [Notebook LSP validation](../validation/2026-11-08-notebook-lsp.md).
+The **Commands…** menu also exposes analysis settings and Problems when the compact
+toolbar hides secondary buttons in a narrow editor group.
 
 ## Reading and interaction hierarchy — 2026-10-30
 

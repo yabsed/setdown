@@ -22,7 +22,7 @@ installed Python kernel.
   contents, but does not transfer the editor's Undo stacks.
 - Python cells use native notebook language-server documents in notebook order. Completion,
   hover, signature help, diagnostics and definitions use the bundled notebook
-  analyzer. Its status and restart are available in Language Support. Analysis follows document order, not prior execution
+  analyzer. The notebook’s **Python analysis** button shows its environment, checking policy, result freshness and restart action. **Problems** lists diagnostics across open files and notebooks and opens the affected cell. Analysis follows document order, not prior execution
   order. Normal Python files retain their full existing LSP features.
 
 Code cells and their outputs expand vertically; the notebook owns vertical scrolling.
@@ -57,8 +57,7 @@ python -m pip install ipykernel jupyter_client
 
 The **Python environment** selector lists the launch/shell PATH Python, project
 `.venv`/`venv` environments, current virtual/Conda environments, Conda’s registered environment list, and Python executables from installed Jupyter kernelspecs. Choose an
-entry or **Choose executable…**. Setdown starts from PATH; project executables are
-listed without being run or automatically selected. An explicit choice is saved
+entry or **Choose executable…**. The nearest unambiguous `.venv`/`venv` is selected automatically within the repository boundary. Multiple local environments require a choice; otherwise the host Python is used. Discovery reads metadata without executing candidates. An explicit choice is saved
 per notebook path and shared by execution and notebook language analysis. Switching
 environments resets the kernel and reconnects analysis. A missing saved environment
 is reported rather than silently replaced with a different Python.
@@ -100,15 +99,20 @@ Text output display is limited to 200,000 characters, HTML/Markdown rendering to
 The bundled **basedpyright 1.40.2** analyzer receives separate Python cell documents
 through LSP notebook synchronization. It supports notebook `await`, magic/shell
 syntax and notebook-order dependencies. `display` and `get_ipython` have notebook
-context. Python files and notebooks use VS Code-style lightweight diagnostics by
-default: syntax errors remain errors; undefined names, unresolved imports, missing
-module sources and invalid type forms remain warnings. Broad type-checking
-diagnostics (including argument, overload and attribute mismatches) are off;
-completion, hover and navigation still use type inference. There is no separate
-type-checking mode selector. basedpyright disables even those core warnings in its
-`off` preset, so Setdown explicitly restores the four Pyright/Pylance defaults
-through server settings. Runtime execution order does not rewrite static
-document-order analysis. Non-Python
+context. Python files and notebooks share a **basic** checking default: invalid
+`Literal` arguments and incompatible assignments are errors, while unannotated
+functions do not require strict-mode annotations. The notebook **Python analysis**
+control and ordinary file **Project environment** control offer Basic, Standard,
+Strict, Off, or the project/default policy. These choices affect the shared analysis
+root and do not execute cells or reset a running kernel.
+
+A saved Setdown project choice takes precedence over connection settings, then
+`.vscode/settings.json` (`basedpyright.analysis.typeCheckingMode` or
+`python.analysis.typeCheckingMode`), then the bundled default. Native
+`pyrightconfig.json`/`pyproject.toml` remains authoritative inside the server;
+the panel identifies the client policy and detected native configuration separately.
+Runtime success does not remove a static type error. Runtime execution order does
+not rewrite static document-order analysis. Non-Python
 notebooks can be edited and retain their metadata; notebook LSP mapping currently
 targets Python. F2 or Commands → Rename changes cell-local LSP edits across the notebook atomically. Safe LSP code actions with explicit workspace edits use the same transaction. Stale responses, external file edits, resource operations and arbitrary server commands are rejected. Ruff provides whole-notebook formatting and safe fixes; only its source changes are applied, preserving original metadata and outputs. Completion edits still remain within their originating cell.
 Mermaid and other active Markdown runtimes are not part of the fragment renderer.
@@ -133,8 +137,9 @@ The Markdown fragment endpoint accepts only an open notebook and a bounded cell,
 and reuses the serialized Crossnote worker. Sanitization is applied before fragments
 enter the shell. No native browser view is created per cell.
 
-`NotebookLanguageHost` validates the open notebook and owns each analysis process,
-its selected interpreter and wire cell URIs. The bundled analyzer recognizes
+`NotebookLanguageHost` validates the open notebook and leases an analysis process
+by window, root, interpreter and effective client settings. Different notebook URIs
+share that process; duplicate URI owners and different contexts remain isolated. The bundled analyzer recognizes
 `vscode-notebook-cell:` wire URIs; renderer models retain Setdown's own cell scheme.
 A hidden analysis-only cell imports `get_ipython` from the chosen environment's
 IPython package; it is never saved or executed. Cell diagnostics carry both the
@@ -142,8 +147,14 @@ notebook revision and cell source revision. Source changes advance dependency
 versions, while structural changes reopen cell documents on the same server with
 new URI epochs, rejecting late results for reordered or removed cells. No virtual
 Python file is written, and there is no regex-based magic stripping or joined-file
-syntax contamination. Analysis is active only for visible notebook tabs; failure
-and restart remain available in the Language Support panel.
+syntax contamination. Analysis remains active while a notebook tab is open, including
+inactive tabs and cells without mounted editors. URI-owned diagnostics feed both
+cell markers and Problems. Closing a notebook removes its diagnostics and releases
+its server lease; up to four idle processes are retained for at most 30 seconds.
+Owner shutdown drains them immediately. Failed processes are retired and retried
+at most three times per 60 seconds (1, 3 and 5 second delays); explicit restart resets
+the budget. Recovery resends the current source snapshot and never replays kernel
+execution or editing commands.
 
 `NotebookController` owns cell selection, collapse state and scroll position.
 Bulk copy/paste/move/delete use the same document transaction history; source Undo

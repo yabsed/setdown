@@ -172,13 +172,21 @@ checks. Re-enable its primary provider from the same chooser.
 
 - **Python:** project `.venv`/`venv`, host, Conda metadata and registered Python
   kernels are offered without executing the discovered candidates. A project
-  interpreter is selected explicitly and passed to Pyright as `python.pythonPath`.
+  interpreter is selected automatically when the nearest `.venv`/`venv` is unique,
+  or explicitly when ambiguous, and passed to the analyzer as `python.pythonPath`.
   The bundled language server and the project interpreter are separate choices.
   Ordinary files and notebooks share the project default; a saved notebook-specific
   choice wins. A stopped notebook refreshes its default when the project changes.
   An already running kernel retains its environment and variables and explains
   how to switch deliberately. Native Pyright configuration and
   `executionEnvironments` continue to be interpreted by the server.
+- **Python type checking:** files and notebooks use `basic` by default. The project
+  control offers Basic, Standard, Strict and Off without JSON editing. An explicit
+  project choice wins over connection settings and compatible `.vscode` workspace
+  settings; native Pyright project configuration remains server-owned and may
+  override client policy. The UI shows the source and this distinction. Changing
+  checking does not restart notebook kernels. Missing imports and type mismatches
+  retain the server's severity; no blanket suppression is applied.
 - **TypeScript:** the bundled SDK remains the default. A project SDK is discovered
   through bounded ancestor metadata lookup and offered for explicit selection.
   The selected `tsserver.js` is passed in initialization options. The server’s
@@ -228,7 +236,9 @@ Connection, environment readiness, work progress and received analysis results
 are distinct. **Results received for this open file** describes actual observations,
 not completion of project indexing. Edits alone do not imply reported work progress.
 Stale results, versionless results, pending checks and no active checks remain distinct. Diagnostics retain their original payload,
-provider, channel, epoch, version and environment context; quick fixes still receive
+provider, channel, epoch, version and environment context. File and notebook-cell
+URIs share the diagnostic store; cell diagnostics survive editor virtualization
+and inactive tabs. Problems opens their notebook and cell; quick fixes still receive
 that provider’s original diagnostics. Missing-import and other code diagnostics
 are not hidden to make the editor look successful.
 
@@ -348,7 +358,8 @@ bound catalog I/O. No discovered server is executed to check its version. Result
 are cached briefly; Rescan invalidates results and pending metadata work. Explicit
 candidate IDs are revalidated in main before they become a saved connection.
 
-Project-local environments and dependency installation are not inferred.
+Python can select a unique local `.venv`/`venv` from metadata. Other toolchain
+choices and dependency installation remain explicit.
 Executable presence does not validate shared libraries, a language-server package
 inside R/Julia, project SDKs or all runtime requirements. Windows npm resolution
 is implemented but the integration validation described below ran on Linux.

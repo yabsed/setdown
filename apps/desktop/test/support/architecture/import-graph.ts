@@ -77,7 +77,7 @@ export function boundaryViolations(dependencies: Dependency[]): string[] {
   // separate public entries so basic editing does not import the project client.
   // Syntax metadata/theme rules are lightweight public entries; the TextMate
   // engine stays private and lazy, independent of the project-provider client.
-  const languagePublic = new Set(['language-runtime.ts', 'syntax-runtime.ts', 'syntax-themes.ts', 'language-services.ts', 'DocumentLanguageStatus.svelte', 'language-client.ts', 'language-conversion.ts', 'language-feature-context.ts', 'LanguageSupport.svelte']);
+  const languagePublic = new Set(['language-runtime.ts', 'syntax-runtime.ts', 'syntax-themes.ts', 'language-services.ts', 'DocumentLanguageStatus.svelte', 'language-client.ts', 'language-conversion.ts', 'language-diagnostics-api.ts', 'language-feature-context.ts', 'LanguageSupport.svelte']);
   const notebookPublic = new Set(['document-content.ts', 'NotebookSurface.svelte']);
   return dependencies.flatMap(edge => {
     const { from, to, specifier } = edge;

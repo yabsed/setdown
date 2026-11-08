@@ -8,6 +8,7 @@
   import { textZoomFactor, onTextZoom } from '../editor/text-zoom';
   import { loadMonaco } from '../editor/monaco-runtime';
   import { NotebookLanguage } from './notebook-language';
+  import type { AnalysisContext } from '../../core/document/analysis-context';
   import type { NotebookEnvironments } from '../../protocol/notebook';
   import { NotebookExecution } from './notebook-execution';
   import { notebookHeadings, markdownText, offsetRange, type TraceTarget } from '../../core/notebook/notebook-tools';
@@ -35,6 +36,16 @@
   let theme = $state<PreviewThemeId>('github-light'), language = $state(''), factor = $state(1);
   let reveal = $state<{ id: string; range: M.IRange; sequence: number; edit?: boolean }>();
   let search = $state(''), searchOpen = $state(false), searchInput = $state<HTMLInputElement>(), matchIndex = $state(-1);
+  let surface = $state<HTMLDivElement>();
+  let analysisOpen = $state(false), analysisBusy = $state(false), analysisMessage = $state('');
+  let analysisContext = $state<AnalysisContext>();
+  let analysisObservation = $state('Waiting for current diagnostics.');
+  let analysisDetails = $state<string[]>([]);
+  async function setChecking(value: string) {
+    analysisBusy = true;
+    try { await desktop.language.selectEnvironment(path, 'python', { kind: 'python-checking', value, root: analysisContext?.root }); }
+    catch (error) { actionError = String(error); } finally { analysisBusy = false; }
+  }
   let controllerRevision = $state(0), scroll = $state<HTMLDivElement>();
   let environments = $state<NotebookEnvironments>({ candidates: [] }), environmentReady = $state(false), actionError = $state('');
   let dragTimer: ReturnType<typeof setInterval> | undefined, dragY = 0;
@@ -187,6 +198,7 @@
     } catch (error) { actionError = String(error); } finally { toolBusy = false; }
   }
   const commands = [
+    ['analysis', 'Python analysis settings'], ['problems', 'Show problems in open files'],
     ['undo', 'Undo cell operation'], ['redo', 'Redo cell operation'], ['outline', 'Toggle outline'], ['variables', 'Toggle variables'], ['reset', 'Reset kernel'],
     ['run-above', 'Run cells above'], ['run-below', 'Run from current cell to end'], ['restart-all', 'Restart kernel and run all'],
     ['clear-all', 'Clear all outputs'], ['collapse-inputs', 'Collapse all inputs'], ['expand-inputs', 'Expand all inputs'],
@@ -202,6 +214,8 @@
     commandOpen = false; actionError = ''; const index = cells.findIndex(cell => cell.id === controller.active);
     try {
       if (id === 'undo') entry.document.undo();
+      else if (id === 'analysis') analysisOpen = true;
+      else if (id === 'problems' && surface) await client?.showProblems(surface, () => { if (active) surface?.focus(); });
       else if (id === 'redo') entry.document.redo();
       else if (id === 'outline') outline = !outline;
       else if (id === 'wrap-code') { controller.wrapCode = !controller.wrapCode; controller.changed(); }
@@ -339,9 +353,9 @@
     return () => { stopAnchor(); window.removeEventListener('setdown:notebook-location', navigateCell); window.removeEventListener('setdown:notebook-find', findNotebook); disposed = true; cancelAnimationFrame(scrollFrame); dragEnd(); selectionChanges(); unsubscribe(); executionChanges(); environmentChanges(); themes(); zoom(); };
   });
   $effect(() => {
-    if (!active || !api || !environmentReady || entry.document.error || entry.document.language !== 'python') return;
+    if (!api || !environmentReady || entry.document.error || entry.document.language !== 'python') return;
     const file = documentPath, owner = entry, monaco = api, environment = selectedPython;
-    const current = untrack(() => new NotebookLanguage(monaco, desktop.language, owner, file, value => { language = value; }, (uri, selection) => openFile(api!.Uri.parse(uri).fsPath, selection), showCell, environment));
+    const current = untrack(() => new NotebookLanguage(monaco, desktop.language, owner, file, value => { language = value; analysisContext = client?.analysisContext; analysisDetails = client?.context ?? []; analysisMessage = client?.message ?? ''; analysisObservation = client?.observation ?? 'Waiting for current diagnostics.'; }, (uri, selection) => openFile(api!.Uri.parse(uri).fsPath, selection), showCell, environment));
     client = current;
     return () => { current.dispose(); if (client === current) client = undefined; };
   });
@@ -350,16 +364,18 @@
 
 <!-- Key capture is scoped to this notebook, including its embedded editors. -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="notebook-surface" data-notebook-language={language} onfocusin={() => onfocus()} onkeydowncapture={keydown} oncopy={clipboard} oncut={clipboard} onpaste={clipboard} style:font-size={`${14 * factor}px`} style:--notebook-code-font={api?.editor.EditorOptions.fontFamily.defaultValue}>
+<div class="notebook-surface" bind:this={surface} data-notebook-language={language} onfocusin={() => onfocus()} onkeydowncapture={keydown} oncopy={clipboard} oncut={clipboard} onpaste={clipboard} style:font-size={`${14 * factor}px`} style:--notebook-code-font={api?.editor.EditorOptions.fontFamily.defaultValue}>
   <div class="notebook-toolbar" role="toolbar" aria-label="Notebook">
     <button onclick={() => controller.insert('code')} disabled={!!entry.document.error} aria-label="+ Code"><NotebookIcon name="add" /> Code</button>
     <button onclick={() => controller.insert('markdown')} disabled={!!entry.document.error} aria-label="+ Markdown"><NotebookIcon name="add" /> Markdown</button>
     <button class="secondary-tool" title="Undo the last cell operation (text uses editor Undo)" aria-label="Undo cell operation" disabled={!canUndo} onclick={() => entry.document.undo()}>↶</button>
     <button class="secondary-tool" title="Redo cell operation" aria-label="Redo cell operation" disabled={!canRedo} onclick={() => entry.document.redo()}>↷</button>
     <button class="secondary-tool" onclick={() => outline = !outline} aria-pressed={outline}>Outline</button>
+    <button class="secondary-tool" onclick={() => { if (surface) void client?.showProblems(surface, () => { if (active) surface?.focus(); }); }}>Problems</button>
     <button class="secondary-tool" onclick={() => variables = !variables} aria-pressed={variables}>Variables</button>
     <button class="commands-button" onclick={() => commandOpen = !commandOpen} aria-expanded={commandOpen} aria-label="Commands…" title="Notebook commands"><NotebookIcon name="more" /></button>
     {#if toolBusy}<span role="status">Notebook tool running…</span><button onclick={() => desktop.notebook.cancelTools(path)}>Cancel tool</button>{/if}
+    {#if entry.document.language === 'python'}<button class="secondary-tool" aria-expanded={analysisOpen} onclick={() => analysisOpen = !analysisOpen}>Python analysis · {language || 'starting'}</button>{/if}
     <span class="summary">{cells.length} cells · {entry.document.language}</span>
     {#if entry.document.language === 'python' && !entry.document.error}
       <button aria-label="Run all cells" onclick={() => execution?.run()} title="Run all cells"><NotebookIcon name="runAll" /><span class="tool-label">Run All</span></button>
@@ -377,6 +393,22 @@
       <span class="kernel-state" role="status" aria-label={`Kernel ${kernelState}`} title={`Kernel ${kernelState}`}>{#if busy}<NotebookIcon name="sync" spinning />{:else if kernelState === 'idle'}<NotebookIcon name="check" />{/if}<span class="kernel-state-text">{kernelState}</span></span>
     {/if}
   </div>
+  {#if analysisOpen}<div class="notebook-search" role="region" aria-label="Notebook Python analysis">
+    <div>
+      {#if analysisContext?.checking}
+        <label>Python type checking <select aria-label="Python type checking" disabled={analysisBusy} value={analysisContext.checking.override ?? 'automatic'} onchange={event => void setChecking(event.currentTarget.value)}>
+          <option value="automatic">Project settings / default</option><option value="basic">Basic</option><option value="standard">Standard</option><option value="strict">Strict</option><option value="off">Off</option>
+        </select></label>
+        <p>Client policy: {analysisContext.checking.mode} · {analysisContext.checking.source}. Checks open files and notebooks.</p>
+        {#if analysisContext.checking.projectConfiguration}<p>Project configuration may override this policy: {analysisContext.checking.projectConfiguration}</p>{/if}
+      {/if}
+      {#if analysisMessage}<p role="status">{analysisMessage}</p>{/if}
+      <p>{analysisObservation}</p>
+      <details><summary>Analysis environment and settings</summary>{#each analysisDetails as item}<p>{item}</p>{/each}</details>
+      <button onclick={() => void client?.restart().catch(error => actionError = String(error))}>Restart analysis</button>
+      <button onclick={() => analysisOpen = false}>Close</button>
+    </div>
+  </div>{/if}
   {#if commandOpen}<div class="command-panel" role="region" aria-label="Notebook commands">
     <input aria-label="Filter notebook commands" placeholder="Filter commands…" bind:value={commandFilter} onkeydown={event => { if (event.key === 'Escape') commandOpen = false; }} />
     {#each commands.filter(([, label]) => label.toLowerCase().includes(commandFilter.toLowerCase())) as [id, label]}<button disabled={toolBusy} onclick={() => command(id)}>{label}</button>{/each}

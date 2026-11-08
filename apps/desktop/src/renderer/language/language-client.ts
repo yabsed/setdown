@@ -338,13 +338,8 @@ export class LanguageClient {
     this.resultsView?.dispose();
     this.resultsView = await showLanguageResults(host, { title: 'Problems · Open Files', searchable: false, empty: () => problemsEmpty(documentSupport.all().flatMap(item => item.providers)),
       subscribe: listener => { const diagnostics = diagnosticsFor(this.api).subscribe(listener), support = documentSupport.subscribe(listener); return () => { diagnostics(); support(); }; },
-      load: async () => diagnosticsFor(this.api).entries().map(({ model, batch, item }) => ({
-        label: item.message, detail: `${item.source ?? batch.provider} · ${diagnosticsFor(this.api).resource(model)}:${item.startLineNumber}`,
-        location: { path: diagnosticsFor(this.api).resource(model), line: item.startLineNumber, column: item.startColumn,
-          endLine: item.endLineNumber, endColumn: item.endColumn, context: model.getLineContent(item.startLineNumber), version: model.getVersionId() },
-        open: async () => { await this.options.open(diagnosticsFor(this.api).resource(model), item); },
-      })),
-    }, () => editor.focus());
+      load: async () => diagnosticsFor(this.api).results((path, range) => this.options.open(path, range)),
+    }, () => { if (editor.getDomNode()?.checkVisibility()) editor.focus(); });
   }
   private snapshot(): Map<M.editor.ITextModel, number> { return new Map([...this.bindings.keys()].map(model => [model, model.getVersionId()])); }
   private setServer(binding: Binding, server: string): void {

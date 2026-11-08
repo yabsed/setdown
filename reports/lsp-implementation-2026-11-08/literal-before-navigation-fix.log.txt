@@ -1,0 +1,72 @@
+
+Running 2 tests using 1 worker
+
+(node:66270) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[1/2] test/e2e/notebook/notebook.spec.ts:434:1 › native notebook analysis checks types with IPython and isolated cell ranges
+test/e2e/notebook/notebook.spec.ts:434:1 › native notebook analysis checks types with IPython and isolated cell ranges
+
+
+
+
+dbus-daemon[66241]: [session uid=1000 pid=66241] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=66383 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[66241]: [session uid=1000 pid=66241] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=66383 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[66241]: [session uid=1000 pid=66241] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[66241]: [session uid=1000 pid=66241] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.3' (uid=1000 pid=66492 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[66241]: [session uid=1000 pid=66241] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[66241]: [session uid=1000 pid=66241] Activating service name='org.freedesktop.portal.Documents' requested by ':1.3' (uid=1000 pid=66492 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[66241]: [session uid=1000 pid=66241] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[66241]: [session uid=1000 pid=66241] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.3' (uid=1000 pid=66492 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[66241]: [session uid=1000 pid=66241] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=66545 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[66241]: [session uid=1000 pid=66241] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[66241]: [session uid=1000 pid=66241] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[66241]: [session uid=1000 pid=66241] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.3' (uid=1000 pid=66492 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[66241]: [session uid=1000 pid=66241] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:66492): xdg-desktop-portal-WARNING **: 15:28:44.975: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[66241]: [session uid=1000 pid=66241] Activating service name='org.freedesktop.impl.portal.desktop.oo7' requested by ':1.3' (uid=1000 pid=66492 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[66241]: [session uid=1000 pid=66241] Activated service 'org.freedesktop.impl.portal.desktop.oo7' failed: Process org.freedesktop.impl.portal.desktop.oo7 exited with status 1
+dbus-daemon[66241]: [session uid=1000 pid=66241] Successfully activated service 'org.freedesktop.portal.Desktop'
+
+(/usr/libexec/xdg-desktop-portal:66492): xdg-desktop-portal-WARNING **: 15:28:44.995: Failed to create secret proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.oo7: Process org.freedesktop.impl.portal.desktop.oo7 exited with status 1
+[2/2] test/e2e/notebook/notebook.spec.ts:803:1 › default notebook Literal errors share Problems, survive tab switches, and stay independent from execution
+test/e2e/notebook/notebook.spec.ts:803:1 › default notebook Literal errors share Problems, survive tab switches, and stay independent from execution
+
+
+  1) test/e2e/notebook/notebook.spec.ts:803:1 › default notebook Literal errors share Problems, survive tab switches, and stay independent from execution 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator:  locator('.notebook-surface')
+    Expected: visible
+    Received: hidden
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toBeVisible" locator('.notebook-surface') with timeout 5000ms
+      - waiting for locator('.notebook-surface')
+        14 × locator resolved to <div data-notebook-language="ready" class="notebook-surface svelte-yxkx1d">…</div>
+           - unexpected value "hidden"
+
+
+      841 |     await expect(problems.locator('.result')).toContainText('literal.ipynb');
+      842 |     await problems.locator('.result .location').click();
+    > 843 |     await expect(page.locator('.notebook-surface')).toBeVisible();
+          |                                                     ^
+      844 |     await expect(error).toHaveCount(1);
+      845 |     await page.getByRole('button', { name: /Python analysis ·/ }).click();
+      846 |     const checking = page.getByRole('combobox', { name: 'Python type checking', exact: true });
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/notebook/notebook.spec.ts:843:53
+
+    Error Context: ../../../../../../../../../tmp/setdown-lsp-e2e-first/notebook-notebook-default--7e9bc--independent-from-execution/error-context.md
+
+
+  1 failed
+    test/e2e/notebook/notebook.spec.ts:803:1 › default notebook Literal errors share Problems, survive tab switches, and stay independent from execution 
+  1 passed (14.0s)

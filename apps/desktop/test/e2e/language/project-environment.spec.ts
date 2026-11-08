@@ -28,11 +28,16 @@ test('current-file Python environment repairs real imports, preserves unsaved te
   await writeFile(path.join(site, 'setdown_environment_fixture.py'), 'value: int = 42\n');
   await writeFile(path.join(project, 'pyproject.toml'), '[project]\nname = "environment-fixture"\nversion = "0.0.0"\n');
   const source = 'from setdown_environment_fixture import value\nresult = value\n'; await writeFile(file, source);
+  // An explicit host choice must remain authoritative over the newly automatic
+  // local environment. Selecting the project's venv repairs that real mismatch.
+  const hostPython = (await execute(process.env.SETDOWN_PYTHON_PATH || 'python3', ['-c', 'import sys; print(sys.executable)'])).stdout.trim();
+  await mkdir(path.join(config, 'Setdown'), { recursive: true });
+  await writeFile(path.join(config, 'Setdown/project-analysis.json'), JSON.stringify({ version: 1, projects: { [project]: { python: hostPython } } }));
   let application = await launch(file, config);
   try {
     let page = await application.firstWindow(); const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
     const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
-    await expect(page.locator('.squiggly-warning')).toHaveCount(1, { timeout: 20_000 });
+    await expect(page.locator('.squiggly-error')).toHaveCount(1, { timeout: 20_000 });
     await editor.press('Control+End'); await page.keyboard.insertText('unsaved_value = 73');
     // Compare the real editor's Undo boundary across reconnection; language input
     // may split a paste into more than one operation. Redo must survive as well.
@@ -45,7 +50,7 @@ test('current-file Python environment repairs real imports, preserves unsaved te
     const environment = panel.getByRole('combobox', { name: 'Python environment' });
     const choice = await environment.locator('option').filter({ hasText: '.venv · Project' }).getAttribute('value');
     expect(choice).toBeTruthy(); await environment.selectOption(choice!);
-    await expect(page.locator('.squiggly-warning')).toHaveCount(0, { timeout: 20_000 });
+    await expect(page.locator('.squiggly-error')).toHaveCount(0, { timeout: 20_000 });
     await expect(panel).toContainText('Results received for this open file');
     await expect(panel).not.toContainText(python);
     await panel.getByRole('button', { name: /^Python environment/ }).click();
@@ -65,7 +70,7 @@ test('current-file Python environment repairs real imports, preserves unsaved te
     await expect(reopened).toContainText('Results received for this open file', { timeout: 20_000 });
     await reopened.getByRole('button', { name: /^Python environment/ }).click();
     await expect(reopened).toContainText(python);
-    await expect(page.locator('.squiggly-warning')).toHaveCount(0);
+    await expect(page.locator('.squiggly-error')).toHaveCount(0);
     const otherFile = path.join(root, 'other.py'); await writeFile(otherFile, 'value = 1\n');
     // IPC cannot change environments for a document not owned by this window.
     expect(await page.evaluate(async file => { try { await window.marktex.language.environment(file, 'python'); return 'allowed'; } catch { return 'rejected'; } }, otherFile)).toBe('rejected');
