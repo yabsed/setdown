@@ -1,0 +1,328 @@
+{
+  "time": "2026-11-08T10:06:29Z",
+  "rootPids": [
+    847296
+  ],
+  "hostKiB": {
+    "MemTotal": 14032112,
+    "MemAvailable": 1828188,
+    "SwapTotal": 8388604,
+    "SwapFree": 84
+  },
+  "pressure": "some avg10=0.31 avg60=0.52 avg300=0.39 total=69451933\nfull avg10=0.31 avg60=0.52 avg300=0.37 total=62829116",
+  "totalPssKiB": 2618414,
+  "totalSwapPssKiB": 28788,
+  "processes": [
+    {
+      "pid": 847296,
+      "ppid": 3844,
+      "comm": "setdown",
+      "type": "main-or-child",
+      "subtype": null,
+      "pssKiB": 421323,
+      "rssKiB": 491100,
+      "privateKiB": 396840,
+      "swapPssKiB": 2760
+    },
+    {
+      "pid": 847301,
+      "ppid": 847296,
+      "comm": "setdown",
+      "type": "zygote",
+      "subtype": null,
+      "pssKiB": 5342,
+      "rssKiB": 16268,
+      "privateKiB": 692,
+      "swapPssKiB": 698
+    },
+    {
+      "pid": 847302,
+      "ppid": 847296,
+      "comm": "setdown",
+      "type": "zygote",
+      "subtype": null,
+      "pssKiB": 1058,
+      "rssKiB": 16464,
+      "privateKiB": 184,
+      "swapPssKiB": 106
+    },
+    {
+      "pid": 847304,
+      "ppid": 847302,
+      "comm": "setdown",
+      "type": "zygote",
+      "subtype": null,
+      "pssKiB": 1223,
+      "rssKiB": 12428,
+      "privateKiB": 292,
+      "swapPssKiB": 106
+    },
+    {
+      "pid": 847339,
+      "ppid": 847301,
+      "comm": "setdown",
+      "type": "gpu-process",
+      "subtype": null,
+      "pssKiB": 72884,
+      "rssKiB": 109852,
+      "privateKiB": 58752,
+      "swapPssKiB": 2286
+    },
+    {
+      "pid": 847341,
+      "ppid": 847296,
+      "comm": "setdown",
+      "type": "utility",
+      "subtype": "network.mojom.NetworkService",
+      "pssKiB": 29683,
+      "rssKiB": 51696,
+      "privateKiB": 26564,
+      "swapPssKiB": 1580
+    },
+    {
+      "pid": 847353,
+      "ppid": 847296,
+      "comm": "setdown",
+      "type": "utility",
+      "subtype": "node.mojom.NodeService",
+      "pssKiB": 108557,
+      "rssKiB": 126096,
+      "privateKiB": 107740,
+      "swapPssKiB": 7952
+    },
+    {
+      "pid": 847365,
+      "ppid": 847304,
+      "comm": "setdown",
+      "type": "renderer",
+      "subtype": null,
+      "pssKiB": 122944,
+      "rssKiB": 186960,
+      "privateKiB": 107060,
+      "swapPssKiB": 1370
+    },
+    {
+      "pid": 847440,
+      "ppid": 847296,
+      "comm": "python3",
+      "type": "main-or-child",
+      "subtype": null,
+      "pssKiB": 6113,
+      "rssKiB": 8564,
+      "privateKiB": 5924,
+      "swapPssKiB": 196
+    },
+    {
+      "pid": 847676,
+      "ppid": 847304,
+      "comm": "setdown",
+      "type": "renderer",
+      "subtype": null,
+      "pssKiB": 16778,
+      "rssKiB": 45792,
+      "privateKiB": 15064,
+      "swapPssKiB": 615
+    },
+    {
+      "pid": 847682,
+      "ppid": 847304,
+      "comm": "setdown",
+      "type": "renderer",
+      "subtype": null,
+      "pssKiB": 10407,
+      "rssKiB": 38220,
+      "privateKiB": 8792,
+      "swapPssKiB": 311
+    },
+    {
+      "pid": 847693,
+      "ppid": 847304,
+      "comm": "setdown",
+      "type": "renderer",
+      "subtype": null,
+      "pssKiB": 78480,
+      "rssKiB": 111976,
+      "privateKiB": 75848,
+      "swapPssKiB": 2071
+    },
+    {
+      "pid": 847723,
+      "ppid": 847304,
+      "comm": "setdown",
+      "type": "renderer",
+      "subtype": null,
+      "pssKiB": 21565,
+      "rssKiB": 49032,
+      "privateKiB": 19864,
+      "swapPssKiB": 826
+    },
+    {
+      "pid": 847774,
+      "ppid": 847304,
+      "comm": "setdown",
+      "type": "renderer",
+      "subtype": null,
+      "pssKiB": 17454,
+      "rssKiB": 50516,
+      "privateKiB": 14044,
+      "swapPssKiB": 599
+    },
+    {
+      "pid": 847926,
+      "ppid": 847304,
+      "comm": "setdown",
+      "type": "renderer",
+      "subtype": null,
+      "pssKiB": 32433,
+      "rssKiB": 75220,
+      "privateKiB": 27024,
+      "swapPssKiB": 227
+    },
+    {
+      "pid": 847934,
+      "ppid": 847304,
+      "comm": "setdown",
+      "type": "renderer",
+      "subtype": null,
+      "pssKiB": 12122,
+      "rssKiB": 39816,
+      "privateKiB": 10572,
+      "swapPssKiB": 771
+    },
+    {
+      "pid": 854498,
+      "ppid": 847304,
+      "comm": "setdown",
+      "type": "renderer",
+      "subtype": null,
+      "pssKiB": 597232,
+      "rssKiB": 660160,
+      "privateKiB": 581732,
+      "swapPssKiB": 3226
+    },
+    {
+      "pid": 854666,
+      "ppid": 847304,
+      "comm": "setdown",
+      "type": "renderer",
+      "subtype": null,
+      "pssKiB": 35795,
+      "rssKiB": 66888,
+      "privateKiB": 33808,
+      "swapPssKiB": 959
+    },
+    {
+      "pid": 858124,
+      "ppid": 847304,
+      "comm": "setdown",
+      "type": "renderer",
+      "subtype": null,
+      "pssKiB": 368606,
+      "rssKiB": 443032,
+      "privateKiB": 350524,
+      "swapPssKiB": 73
+    },
+    {
+      "pid": 858183,
+      "ppid": 847296,
+      "comm": "setdown",
+      "type": "utility",
+      "subtype": "audio.mojom.AudioService",
+      "pssKiB": 13020,
+      "rssKiB": 25780,
+      "privateKiB": 12092,
+      "swapPssKiB": 0
+    },
+    {
+      "pid": 859212,
+      "ppid": 847304,
+      "comm": "setdown",
+      "type": "renderer",
+      "subtype": null,
+      "pssKiB": 208193,
+      "rssKiB": 266784,
+      "privateKiB": 198908,
+      "swapPssKiB": 126
+    },
+    {
+      "pid": 859241,
+      "ppid": 847304,
+      "comm": "setdown",
+      "type": "renderer",
+      "subtype": null,
+      "pssKiB": 16080,
+      "rssKiB": 46816,
+      "privateKiB": 14144,
+      "swapPssKiB": 62
+    },
+    {
+      "pid": 859250,
+      "ppid": 847304,
+      "comm": "setdown",
+      "type": "renderer",
+      "subtype": null,
+      "pssKiB": 153000,
+      "rssKiB": 198852,
+      "privateKiB": 148040,
+      "swapPssKiB": 310
+    },
+    {
+      "pid": 859357,
+      "ppid": 847304,
+      "comm": "setdown",
+      "type": "renderer",
+      "subtype": null,
+      "pssKiB": 147834,
+      "rssKiB": 196124,
+      "privateKiB": 142000,
+      "swapPssKiB": 826
+    },
+    {
+      "pid": 859381,
+      "ppid": 847304,
+      "comm": "setdown",
+      "type": "renderer",
+      "subtype": null,
+      "pssKiB": 58978,
+      "rssKiB": 92804,
+      "privateKiB": 56708,
+      "swapPssKiB": 674
+    },
+    {
+      "pid": 861307,
+      "ppid": 847304,
+      "comm": "setdown",
+      "type": "renderer",
+      "subtype": null,
+      "pssKiB": 57187,
+      "rssKiB": 117520,
+      "privateKiB": 43276,
+      "swapPssKiB": 58
+    },
+    {
+      "pid": 861320,
+      "ppid": 847296,
+      "comm": "git",
+      "type": "main-or-child",
+      "subtype": null,
+      "pssKiB": 1890,
+      "rssKiB": 5352,
+      "privateKiB": 492,
+      "swapPssKiB": 0
+    },
+    {
+      "pid": 861325,
+      "ppid": 861320,
+      "comm": "git",
+      "type": "main-or-child",
+      "subtype": null,
+      "pssKiB": 2233,
+      "rssKiB": 5660,
+      "privateKiB": 848,
+      "swapPssKiB": 0
+    }
+  ],
+  "unavailablePids": [
+    847854
+  ]
+}
