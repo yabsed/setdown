@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Fault-injection tests deliberately crash isolated renderers. Do not let the
+# host's core-dump service retain their memory or delay render-process-gone.
+# Test logs, screenshots and Chromium execution remain unchanged.
+ulimit -c 0
+
 if [[ $# == 0 ]]; then
   echo 'usage: with-isolated-display.sh <command> [args...]' >&2
   exit 2

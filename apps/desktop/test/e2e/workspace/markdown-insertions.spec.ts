@@ -12,7 +12,8 @@ async function expectAnchored(page: Page, kind: 'table' | 'link') {
   await expect(popup).toBeVisible();
   await expect.poll(() => popup.evaluate((node, kind) => {
     const group = document.querySelector('.editor-group.focused')!.getBoundingClientRect();
-    const button = document.querySelector(`.editor-group.focused .insert-${kind}-button`)!.getBoundingClientRect();
+    const anchor = document.querySelector(`.editor-group.focused .insert-${kind}-button`)!;
+    const button = (anchor.getBoundingClientRect().width ? anchor : document.querySelector('.editor-group.focused .location-more')!).getBoundingClientRect();
     const bounds = node.getBoundingClientRect();
     const left = Math.max(0, group.left) + 8, right = Math.min(innerWidth, group.right) - 8;
     return Math.abs(bounds.top - button.bottom - 4) < 1
@@ -79,19 +80,40 @@ for (const placement of ['left', 'right', 'below'] as const) {
       await expectAnchored(page, 'link');
       await expect(page.locator('.link-destination')).toBeFocused();
       await page.locator('.link-destination').fill('https://example.com/split');
+      // Focus the adjacent real native website between the two clipboard pastes.
+      const webPoint = await app.evaluate(({ BrowserWindow }, origin) => {
+        const owner = BrowserWindow.getAllWindows()[0];
+        const native = owner.contentView.children.find(view => 'webContents' in view
+          && (view as Electron.WebContentsView).webContents.getURL().startsWith(origin))!;
+        const bounds = native.getBounds(), frame = owner.getContentBounds();
+        return { x: frame.x + bounds.x + 40, y: frame.y + bounds.y + 12 };
+      }, f.origin);
+      await nativeInput({ click: webPoint });
+      await expect(page.locator('.link-popover')).toBeVisible();
+      await expect(page.locator('.link-destination')).toHaveValue('https://example.com/split');
       await page.locator('.link-label').fill('Split link');
       await page.locator('.link-submit').click();
+      await expect(page.locator('.link-popover')).toBeHidden();
       await expect(editor).toBeFocused();
       await expect(page.locator('.editor-surface .view-lines')).toContainText('Split link');
-      await page.locator('.insert-link-button').click();
+      await editor.press('Control+k');
       await expectAnchored(page, 'link');
       await page.keyboard.press('Escape');
+      await expect(page.locator('.link-popover')).toBeVisible();
+      await page.locator('.link-popover').getByRole('button', { name: 'Close', exact: true }).click();
       await expect(page.locator('.link-popover')).toBeHidden();
       await expect(editor).toBeFocused();
       expect(await evaluatePage(app, f.origin, '({ identity: window.__insertionIdentity, draft: document.querySelector("#draft").value })'))
         .toEqual({ identity, draft: 'Unsaved browser draft' });
       expect(f.errors).toEqual([]);
-    } finally { await f.dispose(); }
+    } finally {
+      await writeFile(test.info().outputPath('insertion-state.json'), JSON.stringify(await page.evaluate(() => ({
+        active: document.activeElement?.outerHTML,
+        link: document.querySelector('.link-popover')?.outerHTML,
+        groups: [...document.querySelectorAll('.editor-group')].map(group => ({ id: group.getAttribute('data-group-id'), focused: group.classList.contains('focused') })),
+      })).catch(() => null)));
+      await f.dispose();
+    }
   });
 }
 
@@ -128,12 +150,28 @@ test('inserts a table and a URL from compact editor popovers', async () => {
     await window.locator('.table-size-cell[data-columns="2"][data-rows="2"]').click();
     await expect(tablePopover).toBeHidden();
 
-    await window.keyboard.press('Control+End');
+    await window.locator('.insert-table-button').click();
+    await expect(tablePopover).toBeVisible();
+    await window.locator('.tab-name').first().click();
+    await expect(tablePopover).toBeHidden();
+    await window.getByRole('textbox', { name: 'Editor content', exact: true }).press('Control+End');
     await window.locator('.insert-link-button').click();
     await expect(window.locator('.link-popover')).toBeVisible();
     await expect(window.locator('dialog.link-dialog')).toHaveCount(0);
     await window.locator('.link-destination').fill('www.example.com/docs');
-    await window.locator('.link-label').fill('Documentation');
+    await application.evaluate(({ clipboard }) => clipboard.writeText('www.example.com/docs'));
+    await window.locator('.link-destination').press('Control+a');
+    await window.locator('.link-destination').press('Control+v');
+    await window.locator('.tab-name').first().click();
+    await expect(window.locator('.link-popover')).toBeVisible();
+    await expect(window.locator('.link-destination')).toHaveValue('www.example.com/docs');
+    await application.evaluate(({ clipboard }) => clipboard.writeText('Documentation'));
+    await window.locator('.link-label').click();
+    await window.locator('.link-label').press('Control+a');
+    await window.locator('.link-label').press('Control+v');
+    await window.keyboard.press('Escape');
+    await expect(window.locator('.link-popover')).toBeVisible();
+    await expect(window.locator('.link-label')).toHaveValue('Documentation');
     await window.locator('.link-submit').click();
     await expect(window.locator('.view-lines')).toContainText('Column 1');
     await application.evaluate(({ Menu }) => Menu.getApplicationMenu()

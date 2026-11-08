@@ -4,18 +4,19 @@ import { WebContentsView } from 'electron';
 import type { WindowState } from '../windows/window-state';
 import { PreviewManager } from './preview-manager';
 
-vi.mock('electron', () => {
+vi.mock('electron', async () => {
+  const { EventEmitter } = await import('node:events');
   let id = 0;
   class View {
     visible = false;
     dead = false;
     bounds = { x: 0, y: 0, width: 0, height: 0 };
-    webContents = {
+    webContents = Object.assign(new EventEmitter(), {
       setZoomFactor() {}, setZoomMode() {}, id: ++id, isDestroyed: () => this.dead, isFocused: () => false,
-      on() {}, once() {}, send() {}, close: () => { this.dead = true; },
+      send() {}, close: () => { this.dead = true; },
       getURL: () => 'marktex-preview://document/review', enableDeviceEmulation() {},
       loadURL: async (_url: string) => {},
-    };
+    });
     setVisible(value: boolean) { this.visible = value; }
     getVisible() { return this.visible; }
     setBackgroundColor() {}
@@ -34,6 +35,30 @@ vi.mock('../windows/workspace-zoom', async (importOriginal) => ({
 }));
 
 const bounds = { x: 20, y: 40, width: 600, height: 450 };
+test('renderer loss removes native state and rejects installation; repeated loss stops automatic recovery', async () => {
+  const f = fixture(), messages: any[] = [];
+  f.owner.webContents.send = (...args: any[]) => { messages.push(args); };
+  f.manager.create(1, 'document');
+  const old = f.manager.views.get('document')!;
+  const waiting = f.manager.waitForUpdate('document', 7);
+  const rejected = assert.rejects(waiting, /closed during installation/);
+  old.view.webContents.emit('render-process-gone', {}, { reason: 'crashed' });
+  await rejected;
+  assert.equal(f.manager.views.has('document'), false);
+  assert.equal(messages.at(-1)[1].message.retry, true);
+  f.manager.create(1, 'document');
+  f.manager.views.get('document')!.view.webContents.emit('render-process-gone', {}, { reason: 'oom' });
+  assert.equal(messages.at(-1)[1].message.retry, false);
+  assert.equal(f.manager.views.has('document'), false);
+});
+test('an ordinary preview installation timeout is a failure', async () => {
+  vi.useFakeTimers();
+  try {
+    const f = fixture();
+    const rejected = assert.rejects(f.manager.waitForUpdate('document', 1), /did not acknowledge/);
+    await vi.advanceTimersByTimeAsync(5000); await rejected;
+  } finally { vi.useRealTimers(); }
+});
 test('a spare finishing navigation inherits a theme changed while its runtime was loading', async () => {
   const f = fixture();
   let theme: 'paper' | 'night' = 'paper';

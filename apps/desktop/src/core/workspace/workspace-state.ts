@@ -21,6 +21,8 @@ export type DocumentTab = {
   previewUrl: string | null;
   previewRevision: number | null;
   previewTheme: PreviewThemeId | null;
+  previewFailure?: string;
+  previewGeneration?: number;
   tocOpen: boolean;
   viewerScrollRatio: number | null;
   headings: PreviewHeading[];

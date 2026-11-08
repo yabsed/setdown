@@ -178,6 +178,9 @@ for (const zoomSteps of [0, 2]) test(`native split guide stays painted and follo
 for (const right of ['markdown', 'reader', 'web'] as const) test(`address suggestions preserve live video beside ${right}`, async () => {
   const f = await fixture();
   try {
+    // These scenarios exercise shell-owned address composition and native row
+    // selection. Keep both bars wide; compact native input has its own coverage.
+    await f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1840, 1000));
     await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
     const tab = f.page.getByRole('tab', { name: /Research page/ });
     await expect(tab).toBeVisible();

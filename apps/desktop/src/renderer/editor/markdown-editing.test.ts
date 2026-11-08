@@ -230,10 +230,19 @@ test('late file picker result cannot reopen or overwrite a newer dialog', async 
 test('closing a dialog after tab switch never focuses the hidden editor', () => {
   const f = fixture(); f.insertions.openLink(); f.current(null); f.insertions.closeLink(); assert.equal(f.focused, 0);
 });
-for (const first of ['dom', 'native'] as const) test(`dialog Escape consumes both routes (${first} first), not the next key`, () => {
-  const f = fixture(); f.insertions.openLink(); assert.equal(f.insertions.dismissOnEscape(first), true);
+for (const first of ['dom', 'native'] as const) test(`table Escape consumes both routes (${first} first), not the next key`, () => {
+  const f = fixture(); f.insertions.openTable(); assert.equal(f.insertions.dismissOnEscape(first), true);
   assert.equal(f.insertions.dismissOnEscape(first === 'dom' ? 'native' : 'dom'), true);
-  assert.equal(insertion.linkOpen, false); assert.equal(f.insertions.dismissOnEscape(first), false);
+  assert.equal(insertion.tableOpen, false); assert.equal(f.insertions.dismissOnEscape(first), false);
+});
+test('link drafts survive Escape and repeated toolbar commands until explicitly closed', () => {
+  const f = fixture(); f.insertions.openLink(); insertion.linkDestination = 'https://example.com';
+  insertion.linkLabel = 'copied separately';
+  assert.equal(f.insertions.dismissOnEscape('dom'), true);
+  f.insertions.openLink(); f.insertions.openTable();
+  assert.equal(insertion.linkOpen, true); assert.equal(insertion.tableOpen, false);
+  assert.equal(insertion.linkDestination, 'https://example.com'); assert.equal(insertion.linkLabel, 'copied separately');
+  f.insertions.closeLink(); assert.equal(insertion.linkOpen, false);
 });
 test('port lifecycle and Markdown eligibility', () => {
   const port = new MarkdownEditorPort(); const f = fixture();

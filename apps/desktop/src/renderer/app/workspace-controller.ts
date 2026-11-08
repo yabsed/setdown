@@ -86,6 +86,19 @@ export function startWorkspace(desktop: DesktopPort) {
         }
       },
     changeZoom: (steps, scope, tabId) => desktop.changeZoom(steps, scope, tabId),
+    focusLocationContent: groupId => {
+      const id = workspace.groups.groups.find(group => group.id === groupId)?.activeId;
+      const tab = id ? workspace.find(id) : null;
+      if (!tab || groupId !== workspace.groups.focusedId) return;
+      if (tab.kind === 'web' && browser.readers[tab.id]) {
+        document.querySelector<HTMLElement>(`[data-reader-tab="${tab.id}"]`)?.focus(); return;
+      }
+      if (tab.kind === 'web' && !browser.readers[tab.id]) { void desktop.browser.command(tab.id, 'focus'); return; }
+      if (isDocumentTab(tab) && tab.surface === 'editor') { editor.editor?.focus(); return; }
+      if (tab.kind === 'terminal') { window.dispatchEvent(new CustomEvent('setdown:focus-terminal', { detail: tab.id })); return; }
+      if (isDocumentTab(tab) && tab.surface === 'viewer' && hasMarkdownPreview(tab.document)) reader.send(tab.id, { command: 'marktex:focus-preview' });
+      else document.querySelector<HTMLElement>(`.editor-group[data-group-id="${groupId}"] .inputarea, .editor-group[data-group-id="${groupId}"] .xterm-helper-textarea`)?.focus();
+    },
     newTerminal: groupId => { projectOpenRequest++; projects.deactivateGitDiff(); void tabs.openTerminal('', groupId); },
     openTerminalSession: id => { projects.deactivateGitDiff(); void tabs.openTerminalSession(id).catch(error => { browser.error = String(error); }); },
     closeTerminalSession: id => { void tabs.closeTerminalSession(id); },
@@ -137,7 +150,7 @@ export function startWorkspace(desktop: DesktopPort) {
     loadMenu: (id) => desktop.getApplicationMenu(id),
     executeMenuItem: (id) => desktop.executeApplicationMenuItem(id),
     resolveClosePrompt: (decision) => closePrompt.resolve(decision),
-    activateTab: (id) => { projectOpenRequest++; projects.deactivateGitDiff(); void tabs.activate(id); },
+    activateTab: (id) => { projectOpenRequest++; projects.deactivateGitDiff(); return tabs.activate(id); },
     pinTab: (id) => tabs.pin(id),
     closeTab: (id) => void closeDocumentTab(id),
     startTabDrag: (id, event) => tabDrag.start(id, event),
@@ -214,6 +227,7 @@ export function startWorkspace(desktop: DesktopPort) {
       try { await tabs.reloadDocumentPaths([tab.document.path]); } finally { release(); }
     },
     showRenderError: () => void surfaces.enterEditor(),
+    retryPreview: () => void preview.retry(),
   };
   mount(App, { target: document.querySelector<HTMLDivElement>('#app')!, props: { actions, terminalApi: desktop.terminal, desktop,
     mediaPosition: (id: string, position: import('../../core/reading/reading-position').ReadingPosition) => { const tab = workspace.find(id); if (tab && isDocumentTab(tab) && workspace.groups.groups.some(group => group.activeId === id) && !(workspace.activeId === id && project.gitDiffActive)) positions.remember(tab, position); } } });
@@ -281,7 +295,8 @@ export function startWorkspace(desktop: DesktopPort) {
       autoSave.schedule(workspace.content(tab));
     }); },
     desktop, workspace, session, shell, editor, reader, preview, surfaces,
-    shouldFocusWeb: () => !document.activeElement?.matches('.location-bar input'),
+    shouldFocusWeb: () => !document.activeElement?.matches('.location-bar input')
+      && !document.querySelector('.location-bar[data-location-panel]'),
     capturePosition: (tab) => positions.capture(tab),
     reviewZoomId: () => null,
     shouldSchedulePreview: () => !project.gitDiffActive,
@@ -289,7 +304,7 @@ export function startWorkspace(desktop: DesktopPort) {
     activateReview: id => projects.activateGitDiff(id), closeReview: (id, confirmed) => projects.closeGitDiff(id, confirmed),
     confirmClose: (names) => closePrompt.request('tab', names), workspaceChanged: () => projectContextChanged(), groupsChanged: () => { groups?.sync(); projects?.syncReviews(); browsers?.sync(true); },
     autoSave: { schedule: (tab) => autoSave.schedule(workspace.documentStore.get(tab.documentId ?? tab.id) ?? tab), cancel: (tabId) => autoSave.cancel(tabId) } });
-  groups = createGroupRuntime({ workspace, desktop, editor, reader, activate: id => actions.activateTab(id) });
+  groups = createGroupRuntime({ workspace, desktop, editor, reader, changed: () => tabs.render(), activate: id => actions.activateTab(id) });
   browsers = createBrowserRuntime(workspace, desktop, tabs, actions.activateTab, actions.navigateHistory,
     id => actions.browserReaderEnter(id));
   /** Open shell menus/dialogs own Escape first (they close on it); reader
@@ -442,7 +457,11 @@ export function startWorkspace(desktop: DesktopPort) {
   window.addEventListener('beforeunload', () => stopMemory?.(), { once: true });
   installWorkspaceEvents(desktop, {
     previewMessage: (payload) => {
-      if (payload.message.type === 'marktex:discarded') { if (!projects.previewMessage(payload)) tabs.previewDiscarded(payload.tabId); return; }
+      if (payload.message.type === 'marktex:discarded') {
+        if (!projects.previewMessage(payload)) tabs.previewDiscarded(payload.tabId,
+          typeof payload.message.failure === 'string' ? payload.message.failure : undefined, payload.message.retry !== false);
+        return;
+      }
       if (payload.message.type === 'marktex:focus' && payload.tabId !== workspace.activeId
         && workspace.groups.groups.some(group => group.activeId === payload.tabId)) {
         actions.activateTab(payload.tabId); return;

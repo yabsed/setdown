@@ -902,3 +902,35 @@ the contract manifest. Comparative ordinary/review timing gates remain unchanged
 The design and scope contract are recorded in [Language support](language-support.md#current-file-support).
 Execution evidence, including the menu-path test correction and all 48 unchanged
 latency comparisons, is in [Document language support UI](validation/2026-11-01-document-language-support-ui.md).
+
+## Reader process failure recovery and compact chrome
+
+A `render-process-gone` event invalidates the reader's prepared URL, revision,
+theme and generation. Main rejects installation waiters and retires the failed
+native view (both buffers for a Git review). Visible content may regenerate once
+from the current memory model; inactive tabs prepare when needed. A second
+failure within 30 seconds stops automatic recovery and exposes source/retry
+controls. Source text, model history, Undo and reading anchors are retained.
+Ordinary installation ACK timeouts now reject, as Git preparation already did;
+a missing ACK is never a successful preparation. Obsolete generations cannot
+publish a ready preview or poison a replacement's preparation state. Healthy
+warm transitions gain no additional round trip or whole-document render.
+
+`preview/renderer-recovery.spec.ts` injects real Chromium renderer failures while
+visible, editing and inactive, checks latest text and Undo, and exercises repeated
+failure/retry and replacement of both Git buffers. The isolated display wrapper
+disables OS core dumps for its child processes: intentional renderer crashes must
+not wait for the host core-dump service or retain crashed process memory. Real
+Chromium failure injection, assertions, logs and screenshots remain enabled.
+Unit presentation tests cover rejection of pending installation
+and missing ACK. Background split failures show recovery controls instead of an
+unexplained empty group. Existing revision, anchor, IME, geometry and timing
+requirements remain in force.
+
+The shared compact location panel and Markdown URL draft behavior are specified
+in `contracts/workspace.md`. Compact input belongs to its native overlay; wide
+input still belongs to the shell. Neither mode hides or resizes the live web page
+to simulate an overlay. Theme tests also check actual foreground/background
+contrast on mixed solid surfaces and removal of corrections in original mode.
+The required full contract and matched baseline/candidate latency comparison,
+including all first/second/warm buckets and unchanged tolerances, still apply.

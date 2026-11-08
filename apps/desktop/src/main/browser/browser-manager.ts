@@ -13,6 +13,7 @@ import type { WindowState } from '../windows/window-state';
 import { nativeZoomBounds, type WorkspaceZoom } from '../windows/workspace-zoom';
 import type { WindowIpc } from '../ipc/window-ipc';
 import { BrowserExtensions } from './browser-extensions';
+import { parseBookmarks } from './bookmark-import';
 import { BrowserPlaces } from './browser-places';
 import { BrowserDownloads } from './browser-downloads';
 import { BrowserPdf } from './browser-pdf';
@@ -23,6 +24,7 @@ import { browserContextMenu } from './browser-context-menu';
 import { showReadingMenu } from '../menu/reading-menu';
 import { showContextMenu } from '../menu/menu-overlay';
 import type { ReaderSnapshot } from '../../protocol/browser';
+import { BrowserPasswords } from './browser-passwords';
 import { BrowserAuth } from './browser-auth';
 import { BrowserTabDrag } from './browser-tab-drag';
 import { BrowserThemes } from './browser-themes';
@@ -52,6 +54,7 @@ const blankPage = (id: string, url: string): BrowserPage => ({ id, url, title: u
 export class BrowserManager {
   readonly views = new Map<string, Entry>();
   private readonly places = new BrowserPlaces();
+  private readonly passwords = new BrowserPasswords((owner, id) => this.owned(owner, id));
   private readonly downloads = new BrowserDownloads(event => { this.extensions?.downloads?.publish(event); this.broadcast(event); });
   private profile?: Session;
   private extensions?: BrowserExtensions;
@@ -791,6 +794,7 @@ export class BrowserManager {
     ], { source: wc });
   }
   registerIpc(channels: WindowIpc) {
+    this.passwords.register(channels);
     ipcMain.handle('browser:theme-fetch', (event, request) => {
       const entry = this.forContents(event.sender), frame = event.senderFrame;
       if (!entry || !frame || frame.isDestroyed()) throw Error('Unknown web theme frame.');
@@ -935,6 +939,37 @@ export class BrowserManager {
       else { entry.find = undefined; wc.stopFindInPage('clearSelection'); this.send(entry.owner, { type: 'find', id, query: '', active: 0, matches: 0 }); }
     });
     channels.handle('browser:places', (_state, query: string, scope?: BrowserPlaceScope) => this.places.search(query, scope));
+    channels.handle('browser:bookmarks', (_state, parentId: string, query: string, offset: number) => this.places.bookmarks(parentId, query, offset));
+    let importing = false;
+    channels.handle('browser:bookmark-import', async state => {
+      if (importing) throw Error('Another bookmark import is in progress.');
+      importing = true;
+      try {
+        const picked = await dialog.showOpenDialog(state.window, { title: 'Import bookmarks', properties: ['openFile'], filters: [{ name: 'Bookmark HTML', extensions: ['html', 'htm'] }] });
+        if (picked.canceled || !picked.filePaths[0] || state.window.isDestroyed()) return null;
+        const handle = await fs.open(picked.filePaths[0], 'r');
+        let bytes: Buffer;
+        try {
+          if ((await handle.stat()).size > 10 * 1024 * 1024) throw Error('Bookmark files must be smaller than 10 MiB.');
+          const buffer = Buffer.alloc(10 * 1024 * 1024 + 1);
+          let length = 0;
+          while (length < buffer.length) { const read = await handle.read(buffer, length, buffer.length - length, null); if (!read.bytesRead) break; length += read.bytesRead; }
+          bytes = buffer.subarray(0, length);
+        } finally { await handle.close(); }
+        const parsed = parseBookmarks(bytes), count = parsed.nodes.filter(node => node.kind === 'bookmark').length;
+        if (!count) throw Error('No supported HTTP or HTTPS bookmarks were found.');
+        const answer = await dialog.showMessageBox(state.window, { type: 'question', message: `Import ${count} bookmarks?`,
+          detail: `Folders and order will be kept in a new imported folder. ${parsed.skipped} unsupported or repeated items were skipped. Existing bookmarks and browsing history will be kept.`,
+          buttons: ['Import', 'Cancel'], defaultId: 0, cancelId: 1 });
+        if (answer.response !== 0 || state.window.isDestroyed()) return null;
+        const batch = randomUUID(); await this.places.importBookmarks(parsed.nodes, batch); this.broadcast({ type: 'places' });
+        return { batch, added: count, skipped: parsed.skipped };
+      } finally { importing = false; }
+    });
+    channels.handle('browser:bookmark-undo', async (_state, batch: string) => {
+      if (typeof batch !== 'string' || !/^[\da-f-]{36}$/i.test(batch)) throw Error('Invalid bookmark import.');
+      await this.places.undoBookmarks(batch); this.broadcast({ type: 'places' });
+    });
     channels.handle('browser:bookmark', async (_state, url: string, title: string, bookmarked: boolean) => {
       if (!isWebURL(url)) throw Error('Only web pages can be bookmarked.');
       await this.places.update(url, String(title), { bookmarked: bookmarked === true });
@@ -1051,6 +1086,7 @@ export class BrowserManager {
     });
   }
   dispose() {
+    this.passwords.dispose();
     for (const owner of [...this.owners]) this.closeOwner(owner);
     this.places.dispose();
   }

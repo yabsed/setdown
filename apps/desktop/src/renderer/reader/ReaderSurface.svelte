@@ -44,6 +44,7 @@
   <div class="render-error" hidden={!view.renderError} data-variant={view.renderErrorVariant}>
     <strong>Could not render the document.</strong>
     <span>{view.renderError}</span>
+    <button type="button" onclick={actions.retryPreview}>Retry preview</button>
     <button type="button" onclick={actions.showRenderError}>View Source</button>
   </div>
 </section>

@@ -1,5 +1,6 @@
 export type TabView = {
   sessionId?: string;
+  previewFailure?: string;
   kind?: 'document' | 'web' | 'terminal' | 'diff';
   exited?: boolean;
   isUntitled?: boolean;

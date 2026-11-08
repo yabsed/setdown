@@ -141,3 +141,30 @@ test('moving a live themed tab to another window retains its resource bridge and
     expect(f.errors).toEqual([]);
   } finally { await f.dispose(); }
 });
+
+test('actual dark and light surfaces keep readable text across themes and dynamic changes', async () => {
+  const f = await fixture(false);
+  try {
+    await f.page.evaluate(() => window.marktex.browser.updateThemeSettings({ mode: 'original' }));
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/contrast`);
+    await expect.poll(() => f.app.context().pages().some(p => p.url() === `${f.origin}/contrast`)).toBe(true);
+    await evaluatePage(f.app, f.origin, `document.body.innerHTML = '<section id="light"><span>Light secondary text</span></section><section id="dark"><span>Dark secondary text</span></section>';
+      const style = document.createElement('style'); style.textContent = '#light{background:#fff;padding:30px;color:#666} #dark{background:#171717;padding:30px;color:#aaa}'; document.head.append(style); true;`);
+    const ratios = () => evaluatePage<number[]>(f.app, f.origin, `['light','dark'].map(id => {
+      const e = document.getElementById(id), text = e.firstChild;
+      const lum = color => {const v=color.match(/[\\d.]+/g).slice(0,3).map(Number).map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4); return v[0]*.2126+v[1]*.7152+v[2]*.0722;};
+      const a=lum(getComputedStyle(e).backgroundColor),b=lum(getComputedStyle(text).webkitTextFillColor);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+    })`);
+    for (const id of THEME_IDS) {
+      await f.app.evaluate(({ Menu }, id) => Menu.getApplicationMenu()!.getMenuItemById('preview-theme-'+id)!.click(), id);
+      await f.page.evaluate(() => window.marktex.browser.updateThemeSettings({ mode: 'app' }));
+      await expect.poll(async () => (await ratios()).every(value => value >= 4.5)).toBe(true);
+    }
+    await evaluatePage(f.app, f.origin, `document.querySelector('#dark').style.backgroundColor='#eee'; document.querySelector('#dark span').textContent='Dynamic text'; true`);
+    await expect.poll(async () => (await ratios()).every(value => value >= 4.5)).toBe(true);
+    await f.page.evaluate(() => window.marktex.browser.updateThemeSettings({ mode: 'original' }));
+    await expect.poll(() => evaluatePage(f.app, f.origin, 'document.querySelectorAll("[data-setdown-readable]").length')).toBe(0);
+    expect(await evaluatePage(f.app, f.origin, "getComputedStyle(document.querySelector('#dark span')).color")).toBe('rgb(170, 170, 170)');
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});

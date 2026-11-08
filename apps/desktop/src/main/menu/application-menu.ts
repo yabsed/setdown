@@ -69,7 +69,15 @@ export function installApplicationMenu(context: MenuContext) {
   const state = () => context.focusedState();
   const contents = () => state()?.window.webContents;
   const command = context.sendCommand;
+  const focusedNativeContents = () => {
+    const current = state(), focused = webContents.getFocusedWebContents();
+    return focused && focused !== current?.window.webContents
+      && current?.window.contentView.children.some(view => view.getVisible()
+        && 'webContents' in view && view.webContents === focused) ? focused : undefined;
+  };
   const history = (action: 'undo' | 'redo') => {
+    const native = focusedNativeContents();
+    if (native) { native[action](); return; }
     const kind = state()?.currentDocument?.kind;
     if (kind === 'image') { command(`${kind}:${action}`); return; }
     if (!state()?.explorerEditTarget) contents()?.[action]();
@@ -77,14 +85,11 @@ export function installApplicationMenu(context: MenuContext) {
   const edit = (name: 'cut' | 'copy' | 'paste' | 'select-all') => {
     const current = state();
     if (current?.explorerEditTarget && current.window.webContents.isFocused()) return command(`explorer:${name}`);
-    const target = contents();
+    const native = focusedNativeContents(), target = native ?? contents();
     if (name === 'select-all') {
-      // Native pages/find inputs own their selection. A shell-rendered Reader
-      // needs a scoped range instead of selecting every split in the window.
-      const focused = webContents.getFocusedWebContents();
-      const ownsNative = focused && focused !== target && current?.window.contentView.children.some(view =>
-        'webContents' in view && view.webContents === focused);
-      if (ownsNative) focused.selectAll();
+      // Native pages and overlay inputs own all edit commands. A shell Reader
+      // still needs a scoped range instead of selecting every split.
+      if (native) native.selectAll();
       else if (!current || !context.selectReaderContents(current)) target?.selectAll();
     }
     else target?.[name]();

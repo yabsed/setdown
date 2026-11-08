@@ -717,3 +717,65 @@ cells already default to no wrapping and retain their current behavior.
 directions without dropping the existing independent-file, split, diff,
 read-only-side, notebook, ownership and Undo scenarios. Markdown reader layout,
 preparation and source-position guarantees remain in force.
+
+## Browser reliability and compact locations
+
+URL insertion keeps its draft on outside clicks, application focus changes,
+Escape and repeated URL commands. Only its X button cancels it; successful Insert
+also closes it. The captured editor selection and document revision remain the
+insertion target. Returning from another split activates that target before
+inserting, and stale or closed documents cannot receive the insertion. Table
+insertion keeps outside-click and Escape dismissal. Popup positioning follows
+the originating group, with the overflow button as the compact-bar anchor.
+
+Every resource uses the shared location bar. When fixed controls leave less than
+180 CSS pixels for the address, the bar becomes Back/Reload, Search/address and
+More page actions; it returns to the inline input at 220 pixels of available
+address width. The native location overlay owns the compact input, current
+address/copy and suggestions. It appears above native web/readers without moving
+or replacing them. Wide-bar typing stays in the shell. Composition cannot submit
+or navigate; Escape dismisses and returns focus to the resource. Popup tokens
+isolate groups and late replies. Hidden overlays are retired after 60 seconds.
+An asynchronous web-tab activation cannot take focus from an open compact panel.
+Clipboard and Undo/Redo menu commands target the focused owned native input,
+including this panel, rather than editing the document behind it.
+
+The web contrast pass examines visible text against its actual solid ancestor
+background after Dark Reader runs. Corrections target 4.5:1, retain authored
+colors, and disappear in original-site mode. Transparent text, disabled controls,
+images/gradients, blend/filter and translucent-group backgrounds are excluded
+rather than assigned a guessed background. Work is event-driven, capped at 100
+nodes/8 ms per batch, 32 queued roots, 10,000 nodes per root and 1,024 retained
+corrections; hidden documents pause work. This is not a guarantee for text over
+images or an authenticated live ChatGPT screen that the test fixture cannot access.
+
+Bookmark HTML import parses data without loading the file as a page. A native
+confirmation describes the counts and skipped entries. HTTP(S) URLs, folder
+hierarchy, order and Unicode are kept under a new imported folder; duplicate URLs
+inside one imported folder and unsafe schemes are skipped. Existing URL visits
+are preserved. IndexedDB v2 migrates existing stars to bookmark nodes. A batch
+transaction publishes its cache after commit; Undo removes only that import and
+retains URLs referenced by other bookmarks. Folder and search lists paginate at
+100 nodes. Inputs are bounded at 10 MiB, 50,000 nodes and 32 nested folders. This
+version imports HTML; it does not read another browser's live profile database.
+
+The built-in password feature is deliberately explicit: Browser → Passwords
+allows use for ten minutes, and an HTTPS page's key/overflow action offers save,
+confirmed update or a selected account fill. It does not infer login success,
+automatically capture submissions, submit a form, or fill an iframe. This first
+version requires one visible same-origin main-frame login form with username and
+password; change-password/multistep forms, passkeys, OTP, cloud synchronization
+and extension compatibility are separate features.
+
+The main process alone owns the encrypted, versioned vault. OS protection must be
+available; Linux `basic_text`/unknown providers are refused. Electron 44's verified
+synchronous provider is used because its asynchronous provider has no equivalent
+fallback-security signal. Writes serialize and atomically replace a 0600 file;
+corrupt or undecryptable files are kept unchanged. Renderer lists contain only
+account metadata. Exact scheme/host/port, native frame, document generation,
+visibility and isolated-world form tokens are rechecked before filling. Screen
+lock/sleep, explicit lock and expiry disable use. This app lock is an interaction
+control, not OS reauthentication or protection against other code running as the
+same OS user. Tests inject an authenticated encryption provider to exercise the
+native workflow without touching the user's keyring; unavailable-store behavior
+is tested separately. Platform keyring prompts and upgrades require platform QA.

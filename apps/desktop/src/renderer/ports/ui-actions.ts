@@ -23,13 +23,14 @@ export type AppActions = BrowserActions & TerminalActions & {
   changeZoom(steps: number, scope: 'app' | 'text' | 'terminal', tabId?: string): void;
   newWebTab(input?: string, background?: boolean): void;
   navigateLocation(groupId: string, input: string): Promise<void>;
+  focusLocationContent(groupId: string): void;
   navigateHistory(id: string, direction: -1 | 1): void;
   focusGroup(id: string): void;
   resizeGroup(id: string, ratio: number): void;
   loadMenu(id: string): Promise<ApplicationMenuEntry[]>;
   executeMenuItem(id: string): void;
   resolveClosePrompt(decision: CloseDecision): void;
-  activateTab(id: string): void;
+  activateTab(id: string): void | Promise<void>;
   pinTab(id: string): void;
   closeTab(id: string): void;
   startTabDrag(id: string, event: DragEvent): void;
@@ -95,4 +96,5 @@ export type AppActions = BrowserActions & TerminalActions & {
   reloadLocalDocument(id: string, confirmed?: boolean): Promise<void>;
   reloadExternalChange(): void;
   showRenderError(): void;
+  retryPreview(): void;
 };

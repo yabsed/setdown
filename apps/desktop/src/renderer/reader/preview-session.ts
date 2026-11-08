@@ -54,7 +54,7 @@ export class PreviewSession {
     view.rendering = !!refreshing;
     view.renderVariant = this.options.reader.awaiting || this.readyRevision === null ? 'blocking' : 'refresh';
     const relevantError = tab?.surface === 'viewer' && this.error?.revision === tab.revision;
-    view.renderError = relevantError && this.error ? this.error.message : '';
+    view.renderError = tab?.surface === 'viewer' && tab.previewFailure ? tab.previewFailure : relevantError && this.error ? this.error.message : '';
     view.renderErrorVariant = this.readyRevision === null ? 'blocking' : 'refresh';
     this.options.reader.syncView();
   }
@@ -99,11 +99,21 @@ export class PreviewSession {
   }
   async ensure(revision: number) {
     if (!hasMarkdownPreview(this.options.active()?.document)) return false;
+    if (this.options.active()?.previewFailure) { this.updateUi(); return false; }
     const pending = this.coordinator.ensure(revision);
     this.updateUi();
     const ready = await pending;
     this.updateUi();
     return ready;
+  }
+  async retry() {
+    const tab = this.options.active();
+    if (!tab || !hasMarkdownPreview(tab.document)) return;
+    this.options.reader.destroy(tab.id);
+    tab.previewGeneration = (tab.previewGeneration ?? 0) + 1;
+    Object.assign(tab, { previewFailure: undefined, previewUrl: null, previewRevision: null, previewTheme: null });
+    this.reset();
+    if (await this.ensure(tab.revision) && this.options.active() === tab) await this.position(tab.anchor, tab.revision, tab.id);
   }
   position(target: ViewportAnchor, revision: number, tabId = this.options.activeId() ?? '',
     lineCount = this.options.lineCount(), settle = true, band: BandLine[] = []): Promise<boolean> {

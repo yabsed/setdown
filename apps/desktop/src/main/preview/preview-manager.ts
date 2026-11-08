@@ -56,6 +56,7 @@ export class PreviewManager {
   private readonly spares = new Map<number, { view: WebContentsView; ready: boolean }>();
   private readonly navigating = new Map<WebContentsView, symbol>();
   private readonly themes = new Map<number, PreviewThemeId>();
+  private readonly failures = new Map<string, number>();
   private readonly preparation = new PreviewPreparation();
   private readonly reviews = new ReviewPreparation({
     views: this.views,
@@ -95,7 +96,7 @@ export class PreviewManager {
             || now - (this.touched.get(peer) ?? now) < idle);
         })) continue;
       const owner = this.options.stateFor(preview.ownerWebContentsId);
-      this.destroy(preview.ownerWebContentsId, id);
+      this.destroy(preview.ownerWebContentsId, id, true);
       owner?.window.webContents.send('preview:message', { tabId: id, message: { type: 'marktex:discarded' } });
     }
     this.trimDocuments(pressure !== 'normal');
@@ -134,6 +135,7 @@ export class PreviewManager {
     view.setBackgroundColor(previewThemeBackground(this.options.theme()));
     view.setVisible(false);
     const contents = view.webContents;
+    contents.on('render-process-gone', (_event, details) => this.failed(view, details.reason));
     contents.on('context-menu', (_event, params) => {
       if (contents.isDestroyed() || !view.getVisible()) return;
       const found = [...this.views].find(([, entry]) => entry.view === view);
@@ -153,6 +155,25 @@ export class PreviewManager {
       });
     });
     return view;
+  }
+
+  private failed(view: WebContentsView, reason: string) {
+    const found = [...this.views].find(([, entry]) => entry.view === view);
+    if (!found) {
+      const spare = [...this.spares].find(([, entry]) => entry.view === view);
+      if (spare) this.discardSpare(spare[0], true);
+      return;
+    }
+    const [tabId, preview] = found, owner = this.options.stateFor(preview.ownerWebContentsId);
+    const parent = tabId.match(/^git-diff:(.*):[ab]$/)?.[1];
+    const key = parent ?? tabId, now = Date.now();
+    const retry = now - (this.failures.get(key) ?? 0) > 30_000;
+    this.failures.delete(key); this.failures.set(key, now);
+    while (this.failures.size > 128) this.failures.delete(this.failures.keys().next().value!);
+    for (const id of parent ? [`git-diff:${parent}:a`, `git-diff:${parent}:b`] : [tabId]) this.destroy(preview.ownerWebContentsId, id, true);
+    if (owner && !owner.window.isDestroyed()) owner.window.webContents.send('preview:message', {
+      tabId, message: { type: 'marktex:discarded', failure: `The preview process stopped (${reason}).`, retry },
+    });
   }
 
   private returnFocusFromHiddenView(view: WebContentsView) {
@@ -194,16 +215,17 @@ export class PreviewManager {
     });
   }
 
-  discardSpare(ownerId: number) {
+  discardSpare(ownerId: number, deferClose = false) {
     const spare = this.spares.get(ownerId);
     if (!spare) return;
     this.spares.delete(ownerId);
-    if (!spare.view.webContents.isDestroyed()) spare.view.webContents.close();
+    const close = () => { if (!spare.view.webContents.isDestroyed()) spare.view.webContents.close(); };
+    if (deferClose) setImmediate(close); else close();
   }
 
   private takeSpare(ownerId: number) {
     const spare = this.spares.get(ownerId);
-    if (!spare?.ready || spare.view.webContents.isDestroyed()) return null;
+    if (!spare?.ready || spare.view.webContents.isDestroyed() || spare.view.webContents.isCrashed?.()) return null;
     this.spares.delete(ownerId);
     return spare.view;
   }
@@ -356,6 +378,7 @@ export class PreviewManager {
     const owner = this.options.stateFor(ownerId)?.window;
     if (!owner || owner.isDestroyed()) return;
     const target = typeof tabId === 'string' ? this.views.get(tabId) : undefined;
+    if (target?.view.webContents.isCrashed?.()) { this.failed(target.view, 'crashed'); return; }
     const shown = target?.ownerWebContentsId === ownerId && !target.view.webContents.isDestroyed()
       ? target : undefined;
     const validBounds = readPreviewBounds(bounds);
@@ -380,6 +403,7 @@ export class PreviewManager {
     for (const entry of this.backgrounds.get(ownerId) ?? []) {
       this.touch(entry.tabId);
       const preview = this.views.get(entry.tabId);
+      if (preview?.view.webContents.isCrashed?.()) { this.failed(preview.view, 'crashed'); continue; }
       if (!preview || preview === ready || preview.ownerWebContentsId !== ownerId
         || preview.view.webContents.isDestroyed() || this.navigating.has(preview.view)) continue;
       this.applyCssBounds(preview, entry.bounds);
@@ -491,16 +515,19 @@ export class PreviewManager {
     } else preview.view.webContents.send('preview:command', message);
   }
 
-  destroy(ownerId: number, tabId: unknown) {
+  destroy(ownerId: number, tabId: unknown, deferClose = false) {
     if (typeof tabId !== 'string') return;
     const preview = this.views.get(tabId);
     if (!preview || preview.ownerWebContentsId !== ownerId) return;
     this.reviews.forget(tabId);
+    for (const [key, finish] of this.waiters) if (key.startsWith(`${tabId}:`)) finish('Preview closed during installation.');
     const owner = this.options.stateFor(ownerId)?.window;
     if (owner && !owner.isDestroyed() && owner.contentView.children.includes(preview.view)) owner.contentView.removeChildView(preview.view);
     this.navigating.delete(preview.view);
-    if (!preview.view.webContents.isDestroyed()) preview.view.webContents.close();
     this.views.delete(tabId);
+    // Leave the native render-process-gone stack before destroying its contents.
+    const close = () => { if (!preview.view.webContents.isDestroyed()) preview.view.webContents.close(); };
+    if (deferClose) setImmediate(close); else close();
     this.touched.delete(tabId);
     this.options.forgetTab(tabId);
   }
@@ -519,11 +546,11 @@ export class PreviewManager {
 
   waitForUpdate(tabId: string, revision: number, strict = false) {
     const key = `${tabId}:${revision}`;
+    this.waiters.get(key)?.('Preview installation was superseded.');
     return new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.waiters.delete(key);
-        if (strict) reject(new Error('Git preview installation did not acknowledge.'));
-        else resolve();
+        reject(new Error(`${strict ? 'Git preview' : 'Preview'} installation did not acknowledge.`));
       }, 5000);
       this.waiters.set(key, (error) => {
         clearTimeout(timeout);

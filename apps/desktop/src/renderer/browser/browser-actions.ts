@@ -8,6 +8,14 @@ export type BrowserActions = {
   browserUpdateThemeSettings: BrowserApi['updateThemeSettings'];
   browserCommand(id: string, command: import('../../protocol/browser').BrowserCommand): void;
   browserPlaces(query: string, scope?: import('../../protocol/browser').BrowserPlaceScope): Promise<import('../../protocol/browser').BrowserPlace[]>;
+  browserPasswordStatus: BrowserApi['passwordStatus'];
+  browserUnlockPasswords: BrowserApi['unlockPasswords'];
+  browserLockPasswords: BrowserApi['lockPasswords'];
+  browserDeletePassword: BrowserApi['deletePassword'];
+  browserPagePasswords(id: string): void;
+  browserBookmarks: BrowserApi['bookmarks'];
+  browserImportBookmarks: BrowserApi['importBookmarks'];
+  browserUndoBookmarkImport: BrowserApi['undoBookmarkImport'];
   browserBookmark(url: string, title: string, bookmarked: boolean): Promise<void>;
   browserDeleteHistory(url?: string): Promise<void>;
   browserDownloadCommand(id: string, command: import('../../protocol/browser').DownloadCommand): Promise<void>;
@@ -47,6 +55,14 @@ export function createBrowserActions(options: Options): BrowserActions {
     browserPlaces: (query, scope) => api.places(query, scope),
     browserDeleteHistory: (url) => api.deleteHistory(url),
     browserDownloadCommand: (id, command) => api.downloadCommand(id, command),
+    browserPasswordStatus: () => api.passwordStatus(),
+    browserUnlockPasswords: () => api.unlockPasswords(),
+    browserLockPasswords: () => api.lockPasswords(),
+    browserDeletePassword: id => api.deletePassword(id),
+    browserPagePasswords: id => { void api.pagePasswords(id).catch(error => { browser.error = String(error); }); },
+    browserBookmarks: (...args) => api.bookmarks(...args),
+    browserImportBookmarks: () => api.importBookmarks(),
+    browserUndoBookmarkImport: batch => api.undoBookmarkImport(batch),
     browserBookmark: async (url, title, bookmarked) => {
       try { await api.bookmark(url, title, bookmarked); browser.revision++; }
       catch (error) { browser.error = String(error); }

@@ -230,7 +230,9 @@ export type PreviewMessage = { tabId: string; message: Record<string, unknown> }
 export type LocationSuggestionsRequest = {
   token: string; bounds: import('./preview-preparation').PreviewBounds;
   rows: Pick<import('./browser').BrowserPlace, 'url' | 'title' | 'bookmarked'>[]; selected: number;
+  panel?: { mode: 'address' | 'actions'; location: string; draft: string; actions: Array<{ id: string; label: string; disabled: boolean }> };
 };
+export type LocationPanelAction = { token: string } & ({ type: 'edit' | 'submit'; value: string } | { type: 'action'; id: string } | { type: 'dismiss' | 'copy' });
 export type LocationSuggestionsContext = LocationSuggestionsRequest & { theme: PreviewThemeId };
 
 export type MenuOverlayContext = { menuId: string; x: number; y: number; theme: PreviewThemeId };
@@ -355,6 +357,8 @@ export type MarkTexApi = {
     blur(token: string): Promise<boolean>;
     context(): Promise<LocationSuggestionsContext>;
     choose(token: string, index: number): void;
+    panelAction(action: LocationPanelAction): void;
+    onPanelAction(listener: (action: LocationPanelAction) => void): () => void;
     onShow(listener: (context: LocationSuggestionsContext) => void): () => void;
     onChoice(listener: (choice: { token: string; url: string }) => void): () => void;
     onHidden(listener: (token: string) => void): () => void;

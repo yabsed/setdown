@@ -59,20 +59,29 @@ import type { AppActions } from '../../ports/ui-actions';
     if (url?.startsWith('http')) void actions.browserPlaces(url, 'bookmarks').then(rows => { if (web?.url === url) bookmarked = rows.some(p => p.url === url); }).catch(() => {});
   });
   let bar = $state<HTMLElement>();
+  let compact = $state(false), panelMode = $state<'address' | 'actions' | null>(null);
+  let controlWidth = 0;
+  let panelActions = $state<Array<{ id: string; label: string; disabled: boolean }>>([]);
+  let actionButtons: HTMLButtonElement[] = [];
   let placement = $state(0);
-  const popupToken = crypto.randomUUID();
+  let popupToken = $state(crypto.randomUUID());
   let popupRequested = false;
   $effect(() => {
-    if (!editing || !suggestions.length || !bar) {
+    if (!editing || (!suggestions.length && !panelMode) || !bar) {
       if (popupRequested) { popupRequested = false; actions.locationSuggestions.hide(popupToken); }
       return;
     }
     void placement;
     popupRequested = true;
     const rect = bar.getBoundingClientRect();
+    const width = panelMode ? Math.min(520, window.innerWidth - 24) : rect.width - 18;
+    const height = panelMode === 'actions' ? Math.min(480, 58 + 32 * panelActions.length) : (panelMode ? 170 : 12) + 46 * suggestions.length;
+    const x = panelMode ? Math.max(12, Math.min(rect.left + 9, innerWidth - width - 12)) : rect.left + 9;
+    const y = panelMode && innerHeight - rect.bottom < Math.min(height, 180) ? Math.max(8, rect.top - height) : rect.bottom - 1;
     void actions.locationSuggestions.show({ token: popupToken, selected,
       rows: suggestions.map(({ url, title, bookmarked }) => ({ url, title, bookmarked })),
-      bounds: { x: rect.left + 9, y: rect.bottom - 1, width: rect.width - 18, height: 12 + 46 * suggestions.length },
+      bounds: { x, y, width, height: Math.min(height, innerHeight - y - 8) },
+      ...(panelMode ? { panel: { mode: panelMode, location, draft, actions: panelActions.map(({ id, label, disabled }) => ({ id, label, disabled })) } } : {}),
     }).catch(reason => { error = String(reason); });
   });
   function search() {
@@ -85,11 +94,11 @@ import type { AppActions } from '../../ports/ui-actions';
   async function go(value = selected >= 0 ? suggestions[selected].url : draft) {
     // Submitting ends the address edit and lets navigation focus the content.
     input?.blur();
-    editing = false; suggestions = []; generation++; error = '';
+    blur(); error = '';
     try { await actions.navigateLocation(groupId, value); }
     catch (reason) { error = String(reason); }
   }
-  function blur() { editing = false; suggestions = []; generation++; clearTimeout(timer); }
+  function blur() { editing = false; panelMode = null; suggestions = []; generation++; clearTimeout(timer); void tick().then(measure); }
   function inputBlur() {
     if (!editing) return;
     if (!popupRequested) { blur(); return; }
@@ -101,30 +110,63 @@ import type { AppActions } from '../../ports/ui-actions';
       if (cancel && request === generation) blur();
     }).catch(() => { if (request === generation) blur(); });
   }
-  async function focus() { if (groupId !== view.focusedGroupId) return; await tick(); input?.focus(); input?.select(); }
+  async function focus() { if (groupId !== view.focusedGroupId) return; await tick(); if (compact) openPanel('address'); else { input?.focus(); input?.select(); } }
+  function openPanel(mode: 'address' | 'actions') {
+    if (popupRequested) actions.locationSuggestions.hide(popupToken);
+    popupToken = crypto.randomUUID(); panelMode = mode; editing = true; selected = -1;
+    draft = location === 'about:blank' ? '' : location;
+    actionButtons = Array.from(bar?.querySelectorAll<HTMLButtonElement>('button') ?? [])
+      .filter(button => !button.closest('[hidden],.location-error,[role=dialog]') && !button.matches('.location-search,.location-more'));
+    panelActions = actionButtons.map((button, index) => {
+      const label = button.getAttribute('aria-label') || button.title || button.textContent || '';
+      return { id: String(index), label: (button.matches('.zoom-percent') ? `${label} (${button.textContent?.trim()})` : label).slice(0, 299), disabled: button.disabled };
+    });
+    if (mode === 'address') search(); else suggestions = [];
+  }
+  function measure() {
+    placement++;
+    if (!bar || !input || editing) return;
+    if (!compact) {
+      controlWidth = Array.from(bar.children).filter(element => element !== input && element instanceof HTMLElement && !element.hidden && !element.classList.contains('location-error') && getComputedStyle(element).position !== 'absolute')
+        .reduce((sum, element) => sum + element.getBoundingClientRect().width + 3, 18);
+      if (bar.clientWidth - controlWidth < 180) compact = true;
+    } else if (bar.clientWidth - controlWidth >= 220) compact = false;
+  }
   onMount(() => {
-    const resize = new ResizeObserver(() => { placement++; });
+    const resize = new ResizeObserver(measure);
     if (bar) resize.observe(bar);
+    if (input) resize.observe(input);
     const offChoice = actions.locationSuggestions.onChoice(choice => {
       if (choice.token === popupToken && editing && suggestions.some(row => row.url === choice.url)) void go(choice.url);
     });
     const offHidden = actions.locationSuggestions.onHidden(token => { if (token === popupToken) { popupRequested = false; blur(); } });
-    const reposition = () => { placement++; };
+    const offPanel = actions.locationSuggestions.onPanelAction(action => {
+      if (action.token !== popupToken || !editing || !panelMode) return;
+      if (action.type === 'edit') { draft = action.value; search(); }
+      else if (action.type === 'submit') void go(action.value);
+      else if (action.type === 'action') { const button = actionButtons[Number(action.id)]; blur(); if (button?.isConnected && !button.disabled) button.click(); }
+      else if (action.type === 'dismiss') { blur(); actions.focusLocationContent(groupId); }
+    });
+    const outside = (event: PointerEvent) => { if (panelMode && !bar?.contains(event.target as Node)) { actions.locationSuggestions.hide(popupToken); blur(); } };
+    window.addEventListener('pointerdown', outside, true);
+    const reposition = measure;
     window.addEventListener('resize', reposition);
     window.addEventListener('setdown:focus-location', focus);
-    return () => { resize.disconnect(); offChoice(); offHidden(); actions.locationSuggestions.hide(popupToken); window.removeEventListener('resize', reposition); clearTimeout(timer); window.removeEventListener('setdown:focus-location', focus); };
+    return () => { resize.disconnect(); offChoice(); offHidden(); offPanel(); window.removeEventListener('pointerdown', outside, true); actions.locationSuggestions.hide(popupToken); window.removeEventListener('resize', reposition); clearTimeout(timer); window.removeEventListener('setdown:focus-location', focus); };
   });
 </script>
 
-<div bind:this={bar} class="location-bar" data-group-id={groupId} class:loading={web?.loading}>
-  <button aria-label="Back" title="Back (Alt+Left)" disabled={!tab?.canGoBack || !!review} onclick={() => actions.navigateHistory(tab!.id, -1)}>←</button>
+<div bind:this={bar} class="location-bar" data-group-id={groupId} data-location-panel={panelMode ?? undefined} class:compact class:loading={web?.loading}>
+  <button class="location-back" aria-label="Back" title="Back (Alt+Left)" disabled={!tab?.canGoBack || !!review} onclick={() => actions.navigateHistory(tab!.id, -1)}>←</button>
   <button aria-label="Forward" title="Forward (Alt+Right)" disabled={!tab?.canGoForward || !!review} onclick={() => actions.navigateHistory(tab!.id, 1)}>→</button>
   {#if web}
-    <button aria-label={web.loading ? 'Stop loading' : 'Reload page'} title={web.loading ? 'Stop loading' : 'Reload page'}
+    <button class="location-reload" aria-label={web.loading ? 'Stop loading' : 'Reload page'} title={web.loading ? 'Stop loading' : 'Reload page'}
       onclick={event => actions.browserCommand(tab!.id, web.loading ? 'stop' : event.shiftKey ? 'reload-no-cache' : 'reload')}>{web.loading ? '×' : '↻'}</button>
   {:else if tab && tab.kind !== 'terminal'}
-    <button aria-label="Reload file" title={tab.isUntitled ? 'Save this document before reloading' : 'Reload file (Ctrl/Cmd+R)'} disabled={tab.isUntitled} onclick={() => void actions.reloadLocalDocument(tab.id)}>↻</button>
+    <button class="location-reload" aria-label="Reload file" title={tab.isUntitled ? 'Save this document before reloading' : 'Reload file (Ctrl/Cmd+R)'} disabled={tab.isUntitled} onclick={() => void actions.reloadLocalDocument(tab.id)}>↻</button>
   {/if}
+  <button class="location-search" hidden={!compact} aria-label="Open address and search" title={location} onclick={() => openPanel('address')}>⌕ <span>Search / address</span></button>
+  <button class="location-more" hidden={!compact} aria-label="More page actions" title="More page actions" onclick={() => openPanel('actions')}>…{#if requests.length}<span class="request-dot">•</span>{/if}</button>
     <input bind:this={input} aria-label="Address or file path" placeholder="Search or enter an address" spellcheck="false" autocomplete="off"
       bind:value={draft} title={location} onfocus={() => { editing = true; input?.select(); search(); }} onblur={inputBlur}
       onpointerdown={() => { selectOnClick = document.activeElement !== input || !document.hasFocus(); if (!editing) { editing = true; search(); } }}
@@ -133,7 +175,7 @@ import type { AppActions } from '../../ports/ui-actions';
       onkeydown={event => {
         if (event.isComposing || composing) return;
         if (event.key === 'Enter') { event.preventDefault(); void go(); }
-        else if (event.key === 'Escape') { blur(); input?.blur(); if (web) actions.browserCommand(tab!.id, 'focus'); }
+        else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); blur(); input?.blur(); actions.focusLocationContent(groupId); }
         else if (event.key === 'ArrowDown' && suggestions.length) { event.preventDefault(); selected = (selected + 1) % suggestions.length; }
         else if (event.key === 'ArrowUp' && suggestions.length) { event.preventDefault(); selected = (selected + suggestions.length - 1) % suggestions.length; }
       }} />
@@ -147,6 +189,7 @@ import type { AppActions } from '../../ports/ui-actions';
         onclick={() => actions.browserCommand(tab!.id, 'site-info')}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 10h2v7h-2zm0-4h2v2h-2zm1-4a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 1.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17z"/></svg>
       </button>
+      <button aria-label="Passwords for this page" title="Save or fill a password" disabled={!web.url.startsWith('https:')} onclick={() => actions.browserPagePasswords(tab!.id)}>⚿</button>
       <button class="location-icon bookmark-toggle" class:bookmarked aria-pressed={bookmarked}
         aria-label={bookmarked ? 'Remove bookmark' : 'Bookmark page'} title={bookmarked ? 'Remove bookmark' : 'Bookmark page'}
         disabled={!web.url.startsWith('http')} onclick={() => void actions.browserBookmark(web.url, web.title, !bookmarked)}>
@@ -223,6 +266,11 @@ import type { AppActions } from '../../ports/ui-actions';
 
 <style>
   .location-bar { position: relative; z-index: 15; display: flex; align-items: center; gap: 3px; height: 34px; padding: 3px 9px; box-sizing: border-box; background: var(--app-chrome); border-bottom: 1px solid var(--app-border); color: var(--app-text); }
+  .location-search { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; text-align:left; font:12px var(--app-font-family); background:var(--app-canvas); }
+  .location-more { flex:0 0 28px; }
+  .location-search[hidden], .location-more[hidden] { display:none; }
+  .compact > :global(:not(.location-search):not(.location-more):not(.location-back):not(.location-reload):not(.location-error):not(.document-language-status)) { display:none; }
+  .request-dot { color:var(--app-accent); }
   button { border: 0; border-radius: 5px; background: transparent; color: inherit; min-width: 26px; height: 26px; cursor: pointer; font-size: 16px; }
   button:hover { background: var(--app-hover); } button:disabled { opacity: .35; cursor: default; }
   input { width: 0; flex: 1; height: 25px; padding: 0 9px; border: 1px solid transparent; border-radius: 5px; background: var(--app-canvas); color: inherit; font: 12px/1.4 var(--app-font-family); outline: none; text-overflow: ellipsis; }

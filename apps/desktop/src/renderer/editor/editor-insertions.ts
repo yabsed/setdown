@@ -51,6 +51,7 @@ export function createEditorInsertions(context: Context) {
     focus(target);
   }
   function openTable() {
+    if (insertion.linkOpen) return;
     if (insertion.tableOpen) return closeTable();
     const target = captureInsertion(context);
     if (!target) return;
@@ -87,7 +88,7 @@ export function createEditorInsertions(context: Context) {
     closeTable();
   }
   function openLink() {
-    if (insertion.linkOpen) return closeLink();
+    if (insertion.linkOpen) return;
     const target = captureInsertion(context);
     if (!target) return;
     insertion.tableOpen = false;
@@ -177,7 +178,7 @@ export function createEditorInsertions(context: Context) {
     }
     if (!insertion.linkOpen && !insertion.tableOpen) return false;
     if (insertion.tableOpen) closeTable();
-    if (insertion.linkOpen) closeLink();
+    // Consume Escape without discarding the link draft or switching surfaces.
     escapeEcho = { origin, at: now };
     return true;
   }

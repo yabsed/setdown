@@ -83,7 +83,10 @@ test(`overlapping windows accept repeated ${moving} body drops and clear a remot
       if (!canceled) {
         await expect(pages[destination].locator(`[data-tab-id="${id}"]`)).toBeVisible();
         await expect(tab).toHaveCount(0); owner = destination;
-        await expect(pages[owner].getByRole('button', { name: moving === 'web' ? 'Reset website zoom' : 'Reset terminal zoom', exact: true })).toHaveText('120%');
+        // A narrow destination keeps zoom controls in More. Check the retained
+        // tab value and the live native page factor across every body drop.
+        await expect(pages[owner].getByRole('button', { name: moving === 'web' ? 'Reset website zoom' : 'Reset terminal zoom', exact: true, includeHidden: true })).toHaveText('120%');
+        if (nativePage) expect(await f.app.evaluate(({ webContents }, id) => webContents.fromId(id)!.getZoomFactor(), nativePage)).toBeCloseTo(1.2);
       } else await expect(tab).toBeVisible();
       for (const page of pages) {
         await expect(page.locator('.group-drop-overlay')).toBeHidden();

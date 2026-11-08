@@ -8,7 +8,7 @@ import { project } from '../../project/project-state.svelte';
 /** Keeps native readers and Monaco instances in their group's live geometry. */
 export function createGroupRuntime(options: {
   workspace: WorkspaceState; desktop: DesktopPort; editor: MonacoEditor;
-  reader: ReaderController; activate(id: string): void;
+  reader: ReaderController; activate(id: string): void; changed(): void;
 }) {
   type BackgroundEntry = { tabId: string; bounds: { x: number; y: number; width: number; height: number } };
   let dragging = false, overlayDepth = 0, overlayToken = 0;
@@ -25,22 +25,25 @@ export function createGroupRuntime(options: {
       const host = area.querySelector<HTMLElement>(`.group-body[data-group-id="${group.id}"]`);
       if (!tab || tab.surface !== 'viewer' || !host) return [];
       const rect = host.getBoundingClientRect();
-      const preparationKey = JSON.stringify([tab.document.path, tab.revision, reader.themeId]);
-      if ((!tab.previewUrl || tab.previewRevision !== tab.revision) && !preparing.has(tab.id)
+      const preparationKey = JSON.stringify([tab.document.path, tab.revision, reader.themeId, tab.previewGeneration]);
+      if (!tab.previewFailure && (!tab.previewUrl || tab.previewRevision !== tab.revision) && !preparing.has(tab.id)
         && failedPreparations.get(tab.id) !== preparationKey) {
         const revision = tab.revision, theme = reader.themeId, path = tab.document.path;
+        const generation = tab.previewGeneration;
         preparing.add(tab.id);
         reader.send(tab.id, { command: 'marktex:prime-document', bounds: { x: rect.x, y: rect.y, width: rect.width, height: rect.height } });
         void desktop.preparePreview(tab.id, tab.text, revision, path, theme).then(result => {
-          if (!workspace.find(tab.id) || tab.revision !== revision || tab.document.path !== path
+          if (!workspace.find(tab.id) || tab.previewGeneration !== generation || tab.revision !== revision || tab.document.path !== path
             || result.revision !== revision || result.themeId !== reader.themeId) return;
           if (result.url) tab.previewUrl = result.url;
           tab.previewRevision = revision; tab.previewTheme = result.themeId;
           reader.send(tab.id, { command: 'marktex:position-preview', sourceLine: tab.anchor.sourceLine,
             topRatio: tab.anchor.yRatio, settle: false });
         }).catch(error => {
+          if (tab.previewGeneration !== generation) return;
           failedPreparations.set(tab.id, preparationKey);
-          console.error('Could not prepare editor group', error);
+          tab.previewFailure = error instanceof Error ? error.message : 'Could not prepare this preview.';
+          options.changed();
         }).finally(() => {
           preparing.delete(tab.id); reader.syncView();
         });

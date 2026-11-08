@@ -16,6 +16,22 @@ async function fullscreenFixture() {
 }
 type Fixture = Awaited<ReturnType<typeof fullscreenFixture>>;
 
+async function addressInput(f: Fixture, side: 'first' | 'last', open = true) {
+  const bar = f.page.locator('.location-bar')[side]();
+  if (!await bar.locator('.location-search').isVisible()) return bar.getByRole('textbox', { name: 'Address or file path', exact: true });
+  if (open) await bar.getByRole('button', { name: 'Open address and search' }).click();
+  await expect.poll(() => f.app.windows().some(page => page.url().includes('location-overlay=1'))).toBe(true);
+  const panel = f.app.windows().find(page => page.url().includes('location-overlay=1'))!;
+  return panel.getByRole('textbox', { name: 'Search or enter an address' });
+}
+async function pageAction(f: Fixture, name: string) {
+  const bar = f.page.locator('.location-bar').first(), button = bar.getByRole('button', { name, exact: true });
+  if (await button.isVisible()) { await button.click(); return; }
+  await bar.getByRole('button', { name: 'More page actions' }).click();
+  await expect.poll(() => f.app.windows().some(page => page.url().includes('location-overlay=1'))).toBe(true);
+  await f.app.windows().find(page => page.url().includes('location-overlay=1'))!.getByRole('menuitem', { name, exact: true }).click();
+}
+
 async function splitPlayer(f: Fixture, sibling: 'markdown' | 'web') {
   await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/fullscreen`);
   const tab = f.page.getByRole('tab', { name: /Fullscreen player/ });
@@ -28,7 +44,7 @@ async function splitPlayer(f: Fixture, sibling: 'markdown' | 'web') {
   await tab.dispatchEvent('dragend', { dataTransfer: data }); await data.dispose();
   await expect(f.page.locator('.editor-group')).toHaveCount(2);
   if (sibling === 'web') {
-    const address = f.page.getByRole('textbox', { name: 'Address or file path', exact: true }).last();
+    const address = await addressInput(f, 'last');
     await address.fill(`${f.origin}/second`); await address.press('Enter');
     await expect(f.page.getByRole('tab', { name: /Second page/ })).toBeVisible();
   }
@@ -99,7 +115,7 @@ for (const sibling of ['markdown', 'web'] as const) test(`video fullscreen cover
     });
     if (sibling === 'web') {
       await f.page.evaluate(() => window.marktex.changeZoom(1, 'app'));
-      await f.page.getByRole('button', { name: 'Zoom website in', exact: true }).first().click();
+      await pageAction(f, 'Zoom website in');
     }
     await evaluatePage(f.app, `${f.origin}/fullscreen`, 'document.querySelector("#draft").value="retained draft"; true');
     await expect.poll(async () => (await nativeState(f)).views.length).toBe(2);
@@ -181,16 +197,17 @@ test('fullscreen releases presentation on navigation, tab commands, closing and 
     }, { origin: f.origin, keyCode, modifiers });
     const enter = async () => { await clickPlayer(f); await expectFullscreen(f); };
     await enter(); await key('l', ['control']);
-    await expect(f.page.getByRole('textbox', { name: 'Address or file path', exact: true }).first()).toBeFocused();
+    const focusedAddress = await addressInput(f, 'first', false);
+    await expect(focusedAddress).toBeFocused();
     await expect.poll(() => evaluatePage(f.app, `${f.origin}/fullscreen`, '!!document.fullscreenElement')).toBe(false);
     await expect.poll(async () => (await nativeState(f)).fullscreen).toBe(false);
-    await f.page.keyboard.press('Escape');
+    await focusedAddress.press('Escape');
     await enter();
     await evaluatePage(f.app, `${f.origin}/fullscreen`, 'location.href="/first"; true');
     await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible();
     await expect.poll(async () => (await nativeState(f)).fullscreen).toBe(false);
     await expect.poll(async () => (await nativeState(f)).views.length).toBe(2);
-    const address = f.page.getByRole('textbox', { name: 'Address or file path', exact: true }).first();
+    const address = await addressInput(f, 'first');
     await address.fill(`${f.origin}/fullscreen`); await address.press('Enter');
     await expect(tab).toBeVisible(); await enter();
     const renderer = await f.app.evaluate(({ webContents }, origin) => webContents.getAllWebContents()

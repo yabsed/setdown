@@ -6,6 +6,7 @@ import { electron, disposeApplication, focusApplication } from '../../support/el
 import { previews } from '../../support/preview/preview-view';
 import { findOverlay, findOverlayVisible } from '../../support/browser/browser-fixture';
 import { dragTerminal } from '../../support/terminal/terminal-drag';
+import { clickLocationAction } from '../../support/browser/location-controls';
 
 test('Markdown find floats over the full scrolled viewport in a narrow zoomed split and preserves IME and focus', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-markdown-find-'));
@@ -72,7 +73,7 @@ test('Markdown find floats over the full scrolled viewport in a narrow zoomed sp
       }
     });
     const group = page.locator('.editor-group').filter({ has: page.getByRole('tab', { name: /reading.md/ }) });
-    await group.getByRole('button', { name: 'Switch to Editor', exact: true }).click();
+    await clickLocationAction(app, page, 'Switch to Editor', group);
     await expect.poll(() => findOverlayVisible(app)).toBe(false);
     await expect(page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' })).toBeFocused();
     expect(await app.evaluate(() => (globalThis as typeof globalThis & { __readerFocusEvents?: number }).__readerFocusEvents)).toBe(0);

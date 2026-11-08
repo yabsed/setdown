@@ -58,6 +58,7 @@ export class SourceControlController {
     if (tab) void this.preparePreview(tab);
   }, 32, 120);
   private readonly preparedPreviews = new Map<string, { diff: GitDiff; revision: number; themeId: PreviewThemeId }>();
+  private readonly previewGenerations = new WeakMap<GitDiffTabState, number>();
   private readonly presentation: ReviewPresentation;
   private primeFrame: number | null = null;
   private refreshRequested = false;
@@ -294,10 +295,17 @@ export class SourceControlController {
     if (!tab) return false;
     const message = payload.message;
     if (message.type === 'marktex:discarded') {
+      this.previewGenerations.set(tab, (this.previewGenerations.get(tab) ?? 0) + 1);
       for (const id of this.previewIds(tab)) this.preparedPreviews.delete(id);
       tab.previewId = null; tab.pendingPreviewId = null; tab.previewLoading = false; tab.previewDirty = true;
       this.checkpoints.cancel(tab.id);
-      if (this.activeTab()?.id === tab.id) { this.presentation.cancel(); this.copyPreviewState(tab); this.schedulePreview(tab, 0); }
+      if (this.activeTab()?.id === tab.id) {
+        this.presentation.cancel(); this.copyPreviewState(tab);
+        if (message.retry === false) {
+          this.showSource(this.readingState(tab).source);
+          this.state.error = `${String(message.failure)} View source or switch to rendered view to retry.`;
+        } else this.schedulePreview(tab, 0);
+      }
       return true;
     }
     if (this.presentation.receive(payload.tabId, message)) return true;
@@ -721,6 +729,8 @@ export class SourceControlController {
     if (!this.tabExists(tab) || tab.previewLoading || (!tab.previewDirty && this.latestPreview(tab))) return;
     const current = tab.diff;
     if (!current || !this.renderable(current)) return;
+    const generation = this.previewGenerations.get(tab);
+    const currentGeneration = () => this.tabExists(tab) && this.previewGenerations.get(tab) === generation;
     const text = tab.staged || tab.history ? current.modifiedText
       : this.options.workingTreeBuffer(tab.filePath) ?? current.modifiedText;
     const diff: GitDiff = { ...current, modifiedText: text, patch: '', hunks: [],
@@ -736,11 +746,11 @@ export class SourceControlController {
     let requestedTheme = this.themeId;
     try {
       if (!this.themeId) this.themeId = (await this.options.desktop.getTheme()).id;
-      if (!this.tabExists(tab)) return;
+      if (!currentGeneration()) return;
       requestedTheme = this.themeId;
       this.primePreview(tab, candidateId);
       const rendered = await this.options.desktop.prepareGitDiffPreview(candidateId, diff, requestedTheme);
-      if (!this.tabExists(tab)) return;
+      if (!currentGeneration()) return;
       tab.pendingPreviewId = null;
       tab.previewLoading = false;
       const latest = this.latestDiff(tab);
@@ -768,6 +778,7 @@ export class SourceControlController {
       if (this.activeTab()?.id === tab.id) this.copyPreviewState(tab);
       if (tab.previewDirty) this.schedulePreview(tab, 0);
     } catch (error) {
+      if (!currentGeneration()) return;
       this.options.desktop.destroyPreview(candidateId);
       this.preparedPreviews.delete(candidateId);
       if (this.tabExists(tab)) {

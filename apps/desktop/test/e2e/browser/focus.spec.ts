@@ -11,6 +11,9 @@ test('native address suggestions survive popup focus before pointer selection in
   const input = process.env.WAYLAND_DISPLAY ? await waylandInput() : { send: nativeInput, close: async () => {} };
   const f = await fixture().catch(async error => { await input.close(); throw error; });
   try {
+    // Keep this native pointer-order test on the wide inline-input path.
+    // compact-location.spec.ts exercises the separate narrow input owner.
+    await f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1840, 1000));
     if (process.env.SETDOWN_TEST_DISPLAY === 'wayland') {
       await f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].maximize());
       await expect.poll(() => f.page.evaluate(() => innerWidth)).toBe(1920);

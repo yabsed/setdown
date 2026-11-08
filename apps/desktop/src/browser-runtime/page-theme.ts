@@ -4,10 +4,12 @@ import { injectProxy } from '@setdown/darkreader-proxy';
 import { siteFix } from '@setdown/darkreader-fixes';
 import { themeProfile } from '../core/theme/theme-catalog';
 import type { BrowserThemePolicy } from '../protocol/browser-theme';
+import { installPageContrast } from './page-contrast';
 
 let policy: BrowserThemePolicy | undefined;
 let applied: string | null = null;
 let enabling = false;
+let stopContrast: (() => void) | undefined;
 let proxyWork = Promise.resolve();
 const runProxy = (script: string) => {
   proxyWork = proxyWork.then(() => webFrame.executeJavaScript(script)).then(() => {}).catch(() => {});
@@ -41,6 +43,7 @@ function apply() {
   if (signature === applied) return;
   // Updating enable() alone can retain previous palette caches. Both calls run
   // in the same task, preserving page identity, form state and scroll position.
+  stopContrast?.(); stopContrast = undefined;
   DarkReader.disable();
   runProxy('document.dispatchEvent(new CustomEvent("__darkreader__cleanUp"))');
   if (!policy.theme) { applied = signature; return; }
@@ -52,7 +55,9 @@ function apply() {
     lightSchemeBackgroundColor: palette.surface, lightSchemeTextColor: palette.text,
   }, siteFix(policy.url)); applied = signature; }
   finally { enabling = false; }
+  const rgb = [1, 3, 5].map(i => parseInt(palette.surface.slice(i, i + 2), 16));
+  stopContrast = installPageContrast(`rgb(${rgb.join(', ')})`);
 }
 ipcRenderer.on('browser:theme-policy', (_event, value: BrowserThemePolicy) => { policy = value; apply(); });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply, { once: true });
-window.addEventListener('pagehide', () => { policy = undefined; applied = null; DarkReader.disable(); });
+window.addEventListener('pagehide', () => { policy = undefined; applied = null; stopContrast?.(); stopContrast = undefined; DarkReader.disable(); });

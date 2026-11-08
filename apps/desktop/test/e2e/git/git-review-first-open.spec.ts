@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { disposeApplication, focusApplication } from '../../support/electron/electron-app';
 import { previews } from '../../support/preview/preview-view';
+import { clickLocationAction } from '../../support/browser/location-controls';
 
 const exec = promisify(execFile);
 
@@ -217,7 +218,7 @@ test('two Working Tree groups and an ordinary view share edits, Undo and indepen
     await expect(page.locator('.tab-dirty')).toHaveCount(3);
     await page.locator('.document-tab:not(.git-diff-tab)').click();
     await expect.poll(previews(app).hasVisible).toBe(true);
-    await page.getByRole('button', { name: 'Switch to Editor' }).click();
+    await clickLocationAction(app, page, 'Switch to Editor');
     const ordinary = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
     await expect(page.locator('.editor-surface .view-lines')).toContainText('Shared across all views');
     await ordinary.press('Control+z');
@@ -227,9 +228,9 @@ test('two Working Tree groups and an ordinary view share edits, Undo and indepen
     await expect(page.locator('.tab-dirty')).toHaveCount(0);
     // Both review views can be rendered at once, and closing one cannot hide the other.
     await page.locator('.git-diff-tab').nth(0).click();
-    await page.getByRole('button', { name: 'View Rendered Diff' }).click();
+    await clickLocationAction(app, page, 'View Rendered Diff');
     await page.locator('.git-diff-tab').nth(1).click();
-    await page.getByRole('button', { name: 'View Rendered Diff' }).click();
+    await clickLocationAction(app, page, 'View Rendered Diff');
     const readers = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children
       .filter(view => view.getVisible()).map(view => view.getBounds()));
     await expect.poll(async () => (await readers()).length).toBe(2);

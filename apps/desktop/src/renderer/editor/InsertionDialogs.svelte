@@ -16,6 +16,30 @@
   let linkPopover: HTMLElement;
   let draggingTable = $state(false);
   let tableActive = $state(false);
+  let anchoredKind = '', anchoredGroup = '', anchoredTab = '';
+  let linkActivation: Promise<void> | undefined;
+  function isLinkTargetActive() {
+    return view.focusedGroupId === anchoredGroup
+      && view.groups.find(group => group.id === anchoredGroup)?.activeId === anchoredTab;
+  }
+  async function returnToLinkTarget() {
+    if (linkActivation) return linkActivation;
+    if (anchoredTab && view.tabs.some(tab => tab.id === anchoredTab) && !isLinkTargetActive()) {
+      linkActivation = Promise.resolve(actions.activateTab(anchoredTab)).finally(() => { linkActivation = undefined; });
+      await linkActivation;
+    }
+  }
+  async function linkPointer(event: PointerEvent) {
+    if (isLinkTargetActive()) return;
+    const target = event.target;
+    // Buttons activate the target in their completed click/submit handler.
+    // Activating on pointerdown can move this anchored popup before mouseup,
+    // cancelling the button click when the original pane's toolbar changes.
+    if (!(target instanceof HTMLInputElement)) return;
+    event.preventDefault();
+    await returnToLinkTarget();
+    if (target instanceof HTMLInputElement && target.isConnected) target.focus();
+  }
 
   const tableColumns = () => insertion.table.headers.length;
   const tableRows = () => insertion.table.rows.length + 1;
@@ -67,9 +91,7 @@
     if (insertion.tableOpen
       && !tablePopover?.contains(target)
       && !target.closest('.insert-table-button')) actions.closeTable();
-    if (insertion.linkOpen
-      && !linkPopover?.contains(target)
-      && !target.closest('.insert-link-button')) actions.closeLink();
+    // Link drafts survive outside clicks so URL and label can be copied separately.
   }
 
   function shortcuts(event: KeyboardEvent) {
@@ -77,7 +99,6 @@
     event.preventDefault();
     event.stopPropagation();
     if (insertion.tableOpen) actions.closeTable();
-    if (insertion.linkOpen) actions.closeLink();
   }
 
   $effect(() => {
@@ -99,15 +120,22 @@
 
   $effect(() => {
     const popup = insertion.tableOpen ? tablePopover : insertion.linkOpen ? linkPopover : null;
-    if (!popup) return;
+    if (!popup) { anchoredKind = ''; return; }
+    const kind = insertion.tableOpen ? 'table' : 'link';
+    if (anchoredKind !== kind) {
+      anchoredKind = kind; anchoredGroup = view.focusedGroupId;
+      anchoredTab = view.groups.find(group => group.id === anchoredGroup)?.activeId ?? '';
+    }
     // Splitting or moving a group can change its origin without resizing it.
     void view.groupTree;
-    const group = document.querySelector<HTMLElement>(`.editor-group[data-group-id="${view.focusedGroupId}"]`);
-    const anchor = group?.querySelector<HTMLElement>(insertion.tableOpen ? '.insert-table-button' : '.insert-link-button');
-    const bar = anchor?.closest<HTMLElement>('.location-bar');
-    if (!group || !anchor || !bar) return;
+    const group = document.querySelector<HTMLElement>(`.editor-group[data-group-id="${anchoredGroup}"]`);
+    const bar = group?.querySelector<HTMLElement>('.location-bar');
+    if (!group || !bar) return;
     const position = () => {
-      const bounds = group.getBoundingClientRect(), button = anchor.getBoundingClientRect();
+      const anchor = bar.querySelector<HTMLElement>(insertion.tableOpen ? '.insert-table-button' : '.insert-link-button');
+      const more = bar.querySelector<HTMLElement>('.location-more');
+      const button = (anchor?.getBoundingClientRect().width ? anchor : more?.getBoundingClientRect().width ? more : bar).getBoundingClientRect();
+      const bounds = group.getBoundingClientRect();
       const left = Math.max(0, bounds.left) + 8;
       const right = Math.min(window.innerWidth, bounds.right) - 8;
       const top = button.bottom + 4;
@@ -160,17 +188,17 @@
 </div>
 
 <div bind:this={linkPopover} class="insertion-popover link-popover"
-  role="dialog" aria-labelledby="link-popover-title" tabindex="-1" hidden={!insertion.linkOpen}>
+  role="dialog" aria-labelledby="link-popover-title" tabindex="-1" onpointerdown={linkPointer} hidden={!insertion.linkOpen}>
   <header class="insertion-popover-header">
     <strong id="link-popover-title">URL</strong>
     <button type="button" aria-label="Close" onclick={actions.closeLink}>×</button>
   </header>
-  <form class="link-popover-form" onsubmit={(event) => { event.preventDefault(); actions.submitLink(); }}>
+  <form class="link-popover-form" onsubmit={async (event) => { event.preventDefault(); await returnToLinkTarget(); actions.submitLink(); }}>
     <div class="link-address-row">
       <input class="link-destination" bind:value={insertion.linkDestination} type="text" required
         spellcheck="false" aria-label="URL or file path" placeholder="URL or file path" />
       <button class="pick-link-file" type="button" title="Choose file"
-        aria-label="Choose file" onclick={actions.pickLinkFile}>
+        aria-label="Choose file" onclick={async () => { await returnToLinkTarget(); actions.pickLinkFile(); }}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.25A2.25 2.25 0 0 1 5.75 4h4.05l1.5 1.75h6.95A2.25 2.25 0 0 1 20.5 8v8.75A2.25 2.25 0 0 1 18.25 19H5.75a2.25 2.25 0 0 1-2.25-2.25V6.25Zm2.25-.75a.75.75 0 0 0-.75.75v10.5c0 .41.34.75.75.75h12.5a.75.75 0 0 0 .75-.75V8a.75.75 0 0 0-.75-.75H10.6L9.1 5.5H5.75Z"/></svg>
       </button>
     </div>

@@ -85,10 +85,12 @@ test('Working Tree shares table/link popovers, Ctrl+K, smart paste and native im
     await source.press(`${mod}+v`);
     await expect.poll(f.buffer).toContain('[Selected label](<https://example.com/selected>)');
 
-    // Escape in an insertion popup closes the popup, not the source diff.
+    // Link drafts persist until explicit dismissal; Escape cannot switch the diff.
     await source.press(`${mod}+k`);
     await expect(page.locator('.link-popover')).toBeVisible();
     await page.locator('.link-destination').press('Escape');
+    await expect(page.locator('.link-popover')).toBeVisible();
+    await page.locator('.link-popover').getByRole('button', { name: 'Close', exact: true }).click();
     await expect(page.locator('.link-popover')).toBeHidden();
     await expect(source).toBeVisible();
     await expect(source).toBeFocused();

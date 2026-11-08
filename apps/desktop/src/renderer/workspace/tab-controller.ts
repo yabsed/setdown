@@ -273,7 +273,7 @@ export class TabController {
       // Dirty documents never remain eligible for replacement, including shared models.
       if (dirty) workspace.groups.pin(tab.id);
       return { id: tab.id, name: tabTitle(tab), path: tabLocation(tab), kind: tab.kind,
-        ...(isDocumentTab(tab) ? { isUntitled: tab.document.isUntitled } : {}),
+        ...(isDocumentTab(tab) ? { isUntitled: tab.document.isUntitled, previewFailure: tab.surface === 'viewer' ? tab.previewFailure : undefined } : {}),
         canGoBack: this.canGoBack(tab.id), canGoForward: this.canGoForward(tab.id),
         ...(tab.kind === 'web' ? { page: { ...tab.page } } : {}),
         ...(tab.kind === 'terminal' ? { exited: tab.exited, sessionId: tab.sessionId ?? tab.id } : {}),
@@ -304,14 +304,17 @@ export class TabController {
   reclaimMedia = (pressure: import('../../core/memory/memory-policy').MemoryPressure): void => {
     this.media.setPressure(pressure !== 'normal'); this.render();
   };
-  previewDiscarded = (id: string): void => {
+  previewDiscarded = (id: string, failure?: string, retry = true): void => {
     const tab = this.options.workspace.documents.find(tab => tab.id === id);
     if (!tab) return;
     Object.assign(tab, { previewUrl: null, previewRevision: null, previewTheme: null });
+    tab.previewFailure = failure && !retry ? `${failure} Automatic recovery stopped. Retry or view the source.` : undefined;
+    tab.previewGeneration = (tab.previewGeneration ?? 0) + 1;
     if (id === this.options.workspace.activeId) {
       this.options.preview.reset();
       void this.activate(id);
     }
+    this.render();
   };
   pin = (tabId: string): void => { if (this.options.workspace.groups.pin(tabId)) this.render(); };
   updateChrome = (): void => {
@@ -367,6 +370,7 @@ export class TabController {
         this.render();
         if (activation === this.activation && workspace.activeId === next.id) {
           await tick(); this.options.groupsChanged?.();
+          if (activation !== this.activation || workspace.activeId !== next.id) return;
           // Activating an inactive split starts on pointerdown, before the
           // address input takes focus. Recheck after the async create/layout:
           // a newer address/find edit owns the keyboard, not the page below it.

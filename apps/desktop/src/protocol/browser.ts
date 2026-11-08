@@ -64,6 +64,14 @@ export type BrowserApi = {
   readerRestore(id: string, anchor: ReaderAnchor): Promise<boolean>;
   find(id: string, text: string, forward?: boolean, next?: boolean): void;
   places(query: string, scope?: BrowserPlaceScope): Promise<BrowserPlace[]>;
+  passwordStatus(): Promise<import('../core/browser/credentials').CredentialStatus>;
+  unlockPasswords(): Promise<import('../core/browser/credentials').CredentialStatus>;
+  lockPasswords(): Promise<void>;
+  deletePassword(id: string): Promise<void>;
+  pagePasswords(id: string): Promise<void>;
+  bookmarks(parentId: string, query: string, offset: number): Promise<import('../core/browser/bookmarks').BookmarkListing>;
+  importBookmarks(): Promise<import('../core/browser/bookmarks').BookmarkImportResult | null>;
+  undoBookmarkImport(batch: string): Promise<void>;
   bookmark(url: string, title: string, bookmarked: boolean): Promise<void>;
   deleteHistory(url?: string): Promise<void>;
   downloads(): Promise<BrowserDownload[]>;

@@ -118,23 +118,41 @@
       "src/core/memory/byte-cache.test.ts",
       "src/core/memory/memory-policy.test.ts",
       "src/main/memory/memory-monitor.test.ts",
-      "src/main/preview/preview-html-store.test.ts"
+      "src/main/preview/preview-html-store.test.ts",
+      "src/core/browser/text-contrast.test.ts",
+      "src/main/browser/bookmark-import.test.ts",
+      "src/main/browser/credential-vault.test.ts",
+      "src/renderer/editor/markdown-editing.test.ts"
     ]
   },
   "e2e": {
-    "browser/memory.spec.ts": { "previewContract": true },
-    "preview/pdf-export.spec.ts": { "previewContract": true },
-    "workspace/input-regressions.spec.ts": { "previewContract": true },
-    "browser/fullscreen.spec.ts": { "previewContract": true },
-    "workspace/word-wrap.spec.ts": { "previewContract": true },
-    "browser/themes.spec.ts": { "previewContract": true },
+    "browser/memory.spec.ts": {
+      "previewContract": true
+    },
+    "preview/pdf-export.spec.ts": {
+      "previewContract": true
+    },
+    "workspace/input-regressions.spec.ts": {
+      "previewContract": true
+    },
+    "browser/fullscreen.spec.ts": {
+      "previewContract": true
+    },
+    "workspace/word-wrap.spec.ts": {
+      "previewContract": true
+    },
+    "browser/themes.spec.ts": {
+      "previewContract": true
+    },
     "browser/browser-extensions.spec.ts": {
       "previewContract": true
     },
     "browser/downloads.spec.ts": {
       "previewContract": true
     },
-    "browser/reader-selection.spec.ts": { "previewContract": true },
+    "browser/reader-selection.spec.ts": {
+      "previewContract": true
+    },
     "browser/find.spec.ts": {
       "previewContract": true
     },
@@ -213,7 +231,9 @@
     "git/verified-review-position.spec.ts": {
       "previewContract": true
     },
-    "language/syntax-highlighting.spec.ts": { "previewContract": true },
+    "language/syntax-highlighting.spec.ts": {
+      "previewContract": true
+    },
     "language/clangd-support.spec.ts": {
       "previewContract": true
     },
@@ -256,12 +276,18 @@
     "preview/stretchy-math.spec.ts": {
       "previewContract": true
     },
-    "preview/find-overlay.spec.ts": { "previewContract": true },
-    "terminal/search.spec.ts": { "previewContract": true },
+    "preview/find-overlay.spec.ts": {
+      "previewContract": true
+    },
+    "terminal/search.spec.ts": {
+      "previewContract": true
+    },
     "preview/math-compat.spec.ts": {
       "previewContract": true
     },
-    "preview/korean-emphasis.spec.ts": { "previewContract": true },
+    "preview/korean-emphasis.spec.ts": {
+      "previewContract": true
+    },
     "preview/preview-local-links.spec.ts": {
       "previewContract": true
     },
@@ -351,13 +377,27 @@
     },
     "project/explorer-git-decorations.spec.ts": {
       "previewContract": true
+    },
+    "preview/renderer-recovery.spec.ts": {
+      "previewContract": true
+    },
+    "browser/compact-location.spec.ts": {
+      "previewContract": true
+    },
+    "browser/bookmark-import.spec.ts": {
+      "previewContract": true
+    },
+    "browser/passwords.spec.ts": {
+      "previewContract": true
     }
   },
   "external": {
     "wayland": {
       "command": "test:xwayland",
       "environment": "private headless Mutter/XWayland, Python gi, native virtual input; test:wayland additionally diagnoses native transport; no desktop connection",
-      "files": ["test/wayland/tab-drag.spec.ts"]
+      "files": [
+        "test/wayland/tab-drag.spec.ts"
+      ]
     },
     "language-servers": {
       "command": "test:language-servers",

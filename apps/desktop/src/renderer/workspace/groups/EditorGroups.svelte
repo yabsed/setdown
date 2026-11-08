@@ -39,7 +39,9 @@ import type { AppActions } from '../../ports/ui-actions';
     <TabChrome {actions} groupId={box.id} />
     <LocationBar {actions} groupId={box.id} />
     <div class="group-body" data-group-id={box.id} data-zoom-tab={tab?.id}>
-      {#if tab?.kind === 'web' && tab.page?.pdf && !tab.page.pdf.size}
+      {#if tab?.previewFailure && view.focusedGroupId !== box.id}
+        <div class="browser-empty" role="alert"><h2>Could not render the document.</h2><p>{tab.previewFailure}</p><button onclick={() => actions.activateTab(tab.id)}>Open recovery controls</button></div>
+      {:else if tab?.kind === 'web' && tab.page?.pdf && !tab.page.pdf.size}
         <div class="browser-empty" aria-live="polite">
           <h2>{tab.page.pdf.error ? 'Could not open this PDF' : 'Opening PDF…'}</h2>
           <p>{tab.page.pdf.error || 'Preparing this document for the Setdown reader.'}</p>

@@ -2,16 +2,18 @@
   import type { AppActions } from '../ports/ui-actions';
   import type { BrowserPlace } from '../../protocol/browser';
   import { browser } from './browser-state.svelte';
+  import BrowserPasswords from './BrowserPasswords.svelte';
+  import BrowserBookmarks from './BrowserBookmarks.svelte';
   import BrowserDownloads from './BrowserDownloads.svelte';
   import BrowserExtensions from './BrowserExtensions.svelte';
   import BrowserAppearance from './BrowserAppearance.svelte';
   let { actions }: { actions: AppActions } = $props();
-  let query = $state(''), section = $state<'bookmarks' | 'history' | 'downloads' | 'extensions' | 'appearance'>('bookmarks');
+  let query = $state(''), section = $state<'bookmarks' | 'history' | 'downloads' | 'extensions' | 'appearance' | 'passwords'>('bookmarks');
   let rows = $state<BrowserPlace[]>([]), error = $state(''), loading = $state(false), confirming = $state(false), deleting = $state(false);
   const activeDownloads = $derived(browser.downloads.filter(item => item.state === 'progressing').length);
   $effect(() => {
     const text = query, scope = section; void browser.revision;
-    if (scope === 'downloads' || scope === 'extensions' || scope === 'appearance') return;
+    if (scope === 'passwords' || scope === 'bookmarks' || scope === 'downloads' || scope === 'extensions' || scope === 'appearance') return;
     let current = true; loading = true;
     const timer = setTimeout(() => void actions.browserPlaces(text, scope).then(result => {
       if (current) { rows = result; error = ''; }
@@ -34,13 +36,15 @@
     <button class:selected={section === 'history'} aria-pressed={section === 'history'} onclick={() => select('history')}>History</button>
     <button class:selected={section === 'downloads'} aria-pressed={section === 'downloads'} onclick={() => select('downloads')}>Downloads{#if activeDownloads}<span class="count">{activeDownloads}</span>{/if}</button>
     <button class:selected={section === 'extensions'} aria-pressed={section === 'extensions'} onclick={() => select('extensions')}>Extensions</button>
+    <button class:selected={section === 'passwords'} aria-pressed={section === 'passwords'} onclick={() => select('passwords')}>Passwords</button>
     <button class:selected={section === 'appearance'} aria-pressed={section === 'appearance'} onclick={() => select('appearance')}>Appearance</button>
   </nav>
-  {#if section !== 'extensions' && section !== 'appearance'}<input aria-label={section === 'downloads' ? 'Search downloads' : 'Search bookmarks and history'} placeholder={`Search ${section}`} bind:value={query} />{/if}
-  {#if section === 'appearance'}<BrowserAppearance {actions}/>{:else if section === 'extensions'}
+  {#if section !== 'passwords' && section !== 'extensions' && section !== 'appearance'}<input aria-label={section === 'downloads' ? 'Search downloads' : 'Search bookmarks and history'} placeholder={`Search ${section}`} bind:value={query} />{/if}
+  {#if section === 'passwords'}<BrowserPasswords {actions}/>{:else if section === 'appearance'}<BrowserAppearance {actions}/>{:else if section === 'extensions'}
     <BrowserExtensions {actions} />
   {:else if section === 'downloads'}
     <BrowserDownloads {actions} {query} />
+  {:else if section === 'bookmarks'}<BrowserBookmarks {actions} {query} />
   {:else}
   {#if error}<p role="alert">{error}</p>{/if}
   {#if section === 'history'}
@@ -51,7 +55,7 @@
       </div>
     {:else}<button class="clear-history" disabled={deleting} onclick={() => { confirming = true; }}>Clear history…</button>{/if}
   {/if}
-  {#if !loading && !rows.length}<p class="empty">{section === 'bookmarks' ? 'Keep useful pages here with the star in the address bar.' : 'Your recently visited pages appear here.'}</p>{/if}
+  {#if !loading && !rows.length}<p class="empty">Your recently visited pages appear here.</p>{/if}
   <div class="places">
     {#each rows as place (place.url)}
       <div class="place">

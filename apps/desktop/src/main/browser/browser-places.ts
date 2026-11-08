@@ -1,5 +1,6 @@
 import { WebContentsView, MessageChannelMain, ipcMain, type WebContents, type MessagePortMain } from 'electron';
 import path from 'node:path';
+import type { BookmarkNode, BookmarkListing } from '../../core/browser/bookmarks';
 import type { BrowserPlace, BrowserPlaceScope } from '../../protocol/browser';
 
 /** Min's isolated Places service: IndexedDB and ranking never run in the shell. */
@@ -53,6 +54,11 @@ export class BrowserPlaces {
     if (!['all', 'bookmarks', 'history'].includes(scope)) throw Error('Invalid browser library scope.');
     return this.request('search', { query: String(query).slice(0, 500), scope });
   }
+  bookmarks(parentId: string, query: string, offset: number): Promise<BookmarkListing> {
+    return this.request('bookmark-list', { parentId: String(parentId).slice(0, 100), query: String(query).slice(0, 500), offset: Math.max(0, Math.min(50000, Math.trunc(offset) || 0)) });
+  }
+  importBookmarks(nodes: BookmarkNode[], batch: string): Promise<void> { return this.request('bookmark-import', { nodes, batch }); }
+  undoBookmarks(batch: string): Promise<void> { return this.request('bookmark-undo', { batch }); }
   deleteHistory(url?: string): Promise<void> { return this.request('delete-history', { url }); }
   update(url: string, title: string, options: { visit?: boolean; bookmarked?: boolean } = {}): Promise<void> {
     return this.request('update', { url, title: title.slice(0, 1000), ...options });

@@ -1,11 +1,17 @@
 import Dexie, { type Table } from 'dexie';
+import { BookmarkStore } from './bookmarks';
 import { searchMinPlaces, type PlaceRecord } from './min-places.js';
 import type { BrowserPlace } from '../protocol/browser';
 
 declare global { interface Window { placesHost: { connect(): void } } }
 const db = new Dexie('setdown-browser-places');
 db.version(1).stores({ places: '&url, visitCount, lastVisit' });
+db.version(2).stores({ places: '&url, visitCount, lastVisit', bookmarks: '&id, parentId, url, batch' }).upgrade(async transaction => {
+  const rows = await transaction.table('places').toArray() as PlaceRecord[];
+  await transaction.table('bookmarks').bulkAdd(rows.filter(p => p.isBookmarked).map((p, order) => ({ id: crypto.randomUUID(), parentId: '', kind: 'bookmark', url: p.url, title: p.title, order })));
+});
 const places = db.table('places') as Table<PlaceRecord, string>;
+const bookmarks = new BookmarkStore(db, places);
 let cache: PlaceRecord[];
 const loaded = places.toArray().then(rows => { cache = rows; });
 let mutations = Promise.resolve();
@@ -19,7 +25,17 @@ window.addEventListener('message', function connected(event) {
     const { id, action, input } = data;
     try {
       await loaded;
-      if (action === 'search') {
+      if (action === 'bookmark-list') {
+        await mutations;
+        port.postMessage({ id, result: await bookmarks.list(input.parentId, input.query, input.offset) });
+      } else if (action === 'bookmark-import' || action === 'bookmark-undo') {
+        mutations = mutations.catch(() => {}).then(async () => {
+          if (action === 'bookmark-import') await bookmarks.import(input.nodes, input.batch);
+          else await bookmarks.undo(input.batch);
+          cache = await places.toArray();
+        });
+        await mutations; port.postMessage({ id, result: null });
+      } else if (action === 'search') {
         await mutations;
         const candidates = input.scope === 'history' ? cache.filter(p => p.visitCount > 0) : cache;
         const result = searchMinPlaces(candidates, input.query, { searchBookmarks: input.scope === 'bookmarks', limit: input.scope === 'history' ? Math.max(100, candidates.length) : 100 });
@@ -34,9 +50,16 @@ window.addEventListener('message', function connected(event) {
             lastVisit: input.visit ? Date.now() : previous?.lastVisit ?? 0,
             visitCount: (previous?.visitCount ?? 0) + (input.visit ? 1 : 0) };
           if (!record.isBookmarked && !record.visitCount) {
-            await places.delete(record.url); if (index >= 0) cache.splice(index, 1); return;
+            await db.transaction('rw', places, db.table('bookmarks'), async () => {
+              if (input.bookmarked !== undefined) await bookmarks.star(record.url, record.title, record.isBookmarked);
+              await places.delete(record.url);
+            });
+            if (index >= 0) cache.splice(index, 1); return;
           }
-          await places.put(record);
+          await db.transaction('rw', places, db.table('bookmarks'), async () => {
+            if (input.bookmarked !== undefined) await bookmarks.star(record.url, record.title, record.isBookmarked);
+            await places.put(record);
+          });
           if (index === -1) cache.push(record); else cache[index] = record;
         });
         await mutations;
