@@ -146,6 +146,70 @@ for (const surface of ['text', 'notebook'] as const) test(`Monaco ${surface} hov
   } finally { await f.dispose(); }
 });
 
+test('context menus follow light and dark app themes, stay compact and return native editing focus', async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible();
+    for (const theme of ['github-dark', 'github-light']) {
+      await f.app.evaluate(({ Menu }, theme) => Menu.getApplicationMenu()!.getMenuItemById(`preview-theme-${theme}`)!.click(), theme);
+      await evaluatePage(f.app, f.origin, 'document.querySelector("#draft").focus(); document.querySelector("#draft").value="before"; true');
+      await pageContextMenu(f.app, f.origin, '#draft');
+      await expect.poll(() => f.app.windows().some(page => page.url().includes('menu-overlay=1'))).toBe(true);
+      const menu = f.app.windows().find(page => page.url().includes('menu-overlay=1'))!;
+      await expect(menu.locator('.context-menu')).toBeVisible();
+      const style = await menu.locator('.context-menu').evaluate(node => {
+        const button = node.querySelector('button')!;
+        return { background: getComputedStyle(node).backgroundColor, font: parseFloat(getComputedStyle(button).fontSize), row: button.getBoundingClientRect().height };
+      });
+      const channels = style.background.match(/\d+/g)!.slice(0, 3).map(Number);
+      if (theme.endsWith('dark')) expect(Math.max(...channels)).toBeLessThan(80);
+      else expect(Math.min(...channels)).toBeGreaterThan(180);
+      expect(style.font).toBe(13); expect(style.row).toBeLessThanOrEqual(30);
+      await menu.screenshot({ path: test.info().outputPath(`context-${theme}.png`) });
+      // OS Escape and typing must return to the original web input, without
+      // locator.focus(), shell activation or a corrective click.
+      await nativeInput({ keys: ['Escape'], text: 'after' });
+      await expect.poll(() => evaluatePage(f.app, f.origin, 'document.querySelector("#draft").value')).toBe('beforeafter');
+    }
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('themed context menus retain nested keyboard actions and disabled/checked items', async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible();
+    await f.app.evaluate(({ Menu }) => {
+      const build = Menu.buildFromTemplate.bind(Menu);
+      // Electron calls this factory recursively for submenus. Add the fixture
+      // only to the browser root; otherwise the fixture recursively adds itself.
+      Menu.buildFromTemplate = template => build(template.some(item => item.label === 'Reload') ? [...template, { label: 'Nested commands', submenu: [
+        { label: 'Unavailable', enabled: false }, { label: 'Second level', submenu: [
+          { label: 'Checked action', type: 'checkbox', checked: true,
+            click: () => { (globalThis as any).__nestedMenuAction = true; } },
+        ] },
+      ] }] : template);
+    });
+    await pageContextMenu(f.app, f.origin, '#draft');
+    await expect.poll(() => f.app.windows().some(page => page.url().includes('menu-overlay=1'))).toBe(true);
+    const menu = f.app.windows().find(page => page.url().includes('menu-overlay=1'))!;
+    await expect(menu.getByRole('menuitem', { name: 'Nested commands', exact: true })).toBeVisible();
+    await nativeInput({ keys: ['End', 'Right'] });
+    await expect(menu.getByRole('menuitem', { name: 'Unavailable', exact: true })).toBeDisabled();
+    await expect(menu.getByRole('menuitem', { name: 'Second level', exact: true })).toBeFocused();
+    await nativeInput({ keys: ['Right'] });
+    const action = menu.getByRole('menuitemcheckbox', { name: 'Checked action', exact: true });
+    await expect(action).toBeFocused(); await expect(action).toHaveAttribute('aria-checked', 'true');
+    await nativeInput({ keys: ['Left'] });
+    await expect(menu.getByRole('menuitem', { name: 'Second level', exact: true })).toBeFocused();
+    await nativeInput({ keys: ['Right', 'Return'] });
+    await expect.poll(() => f.app.evaluate(() => (globalThis as any).__nestedMenuAction)).toBe(true);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
 test('browser details: native image copying and link menus preserve pixels, URLs and source ownership', async () => {
   const f = await fixture();
   try {

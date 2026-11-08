@@ -53,6 +53,17 @@ a cell gutter handle, with insertion position, edge auto-scroll, selected-cell g
 and a single structural Undo. Cell selection and native text selection have separate
 clipboard scopes; copied metadata, attachments and output bundles retain exact JSON.
 
+Before first mounting, offscreen code reserves its full source line count at the
+current zoom. Stored stream output and PNG headers provide initial output height
+estimates without decoding image pixels or running cells. Measured geometry takes
+over when mounted. `notebook-scroll-anchor.ts` keeps a stable visible cell wrapper
+in place when earlier cells finish measuring; native browser anchoring is disabled
+for that scroll owner. Predominantly vertical touchpad input stays with the outer
+notebook even when it contains small horizontal noise. `notebook-layout.test.ts`
+and `workspace/input-regressions.spec.ts` cover estimates and a distant code/image
+jump while earlier output acquires height. Existing sticky-editor, IME, selection,
+first-frame and source-preservation guarantees still apply.
+
 Explicit Run starts one Python kernel per notebook; opening does not. Source/order
 snapshots, unique run IDs, kernel generations, owner window and stable cell IDs prevent results
 from attaching to a different cell. Closing the owner or resetting releases the

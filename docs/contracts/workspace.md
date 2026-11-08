@@ -601,6 +601,12 @@ latency retain the same 48-bucket comparison.
 
 ## Explorer selection and tab-strip drops
 
+Explorer file drags must release the shared workspace input shield on drag end,
+including cancellation and rejected/outside drops. These drags have no tab
+transfer token or tab-chrome completion callback. `workspace/input-regressions.spec.ts`
+uses native pointer input to cancel/reject them, then verifies tab selection and
+wheel scrolling without a corrective focus click.
+
 Explorer selection follows the [VS Code multi-selection model](https://code.visualstudio.com/docs/editing/getting-started/userinterface):
 Ctrl/Cmd toggles entries, Shift selects a visible range, Ctrl/Cmd+A selects visible
 entries, and modifier clicks do not replace the editor preview. Keyboard range

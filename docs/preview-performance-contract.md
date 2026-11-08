@@ -159,6 +159,25 @@ established by those automated tests. Dated results, including five consecutive
 short pinches and the full latency comparison, are in
 [Touchpad pinch validation](validation/2026-10-17-touchpad-pinch.md).
 
+On Linux X11/XWayland, `main/windows/x11-pinch.py` subscribes to XI 2.4 pinch
+events on each owned native window. The main-process adapter locks each gesture
+to the pointed-to surface and translates absolute scale into continuous wheel
+samples, accounting for native content zoom. It does not grab devices, read global
+input, synthesize Control key presses or change focus. Native Wayland and other
+platforms retain Chromium's gesture path. The helper requires system Python 3,
+libX11 and libXi; unsupported XI versions leave ordinary input working.
+`workspace/input-regressions.spec.ts` checks a live isolated X11 subscription and
+decoded gesture routing through real Chromium, including reverse zoom. This is
+additional bridge coverage, not a claim of physical touchpad reproduction.
+
+Korean strong emphasis permits punctuation immediately inside `**` adjacent to
+Hangul, including `**'정책'**이`, `**(정책)**은` and `**90%**가`. The render-worker
+extension in `main/preview/korean-emphasis.ts` uses Markdown-it delimiter pairing;
+it never rewrites document bytes or source offsets. Code, escapes, link targets,
+single/triple-star delimiters and ordinary CommonMark behavior remain unchanged.
+Unit cases and `preview/korean-emphasis.spec.ts` cover ordinary Markdown, Git
+review and notebook rendering with byte-for-byte source preservation.
+
 App typography uses the locally installed D2Coding family with a monospace
 fallback across shell controls, ordinary/Git editors, terminals, and Markdown
 body, heading, and code styles in every theme. Math and diagram renderers retain
@@ -497,6 +516,14 @@ and Monaco loading can proceed concurrently. `shared-document-history.test.ts`
 checks model ownership without an ordinary editor; the cold benchmark covers the
 observable first-display cost of this boundary.
 
+Initial source placement happens once per review model pair. A late review
+refresh must not reset a live caret to column one before its first blur/save of
+view state. Explicit reader-to-source targets still apply. The Markdown and
+TypeScript cases in `workspace/workspace-zoom.spec.ts` pause between typed
+characters to expose this race while retaining zoom, model and Undo assertions;
+`workspace/input-regressions.spec.ts` also covers a background Git refresh during
+typing with exact clipboard text and unchanged disk content.
+
 Git history reviews carry an immutable commit selection. Their source models
 are read-only and must never borrow a Working Tree model or receive its unsaved
 text. Source/rendered transitions use the same review preparation guarantees.
@@ -547,6 +574,13 @@ uses `apps/desktop/test/suites.json` as the single contract inventory: the Vites
 contract suite, build/benchmark tooling tests, the production build/typecheck, and
 `playwright.preview-contract.config.ts` with real Electron/Chromium. Retries are
 disabled. This is a focused gate, not a substitute for other applicable tests.
+
+Test cleanup destroys remaining windows only after removing automatic
+`window-all-closed` quit handlers from that isolated application. Playwright then
+owns the final quit and inspector disconnect. Otherwise quitting inside a window
+destruction evaluation can strand its response and hang worker teardown. This
+cleanup runs after user close/quit assertions and does not alter their behavior,
+timeouts, retries or measured transition paths.
 
 Useful shorter commands (after a current build for E2E):
 

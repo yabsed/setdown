@@ -20,19 +20,20 @@
   const menus = ['File', 'View', 'Edit', 'Window'] as const;
   let root: HTMLElement;
   let popup: HTMLElement;
-  let submenuPopup: HTMLElement;
+  let submenuPopups: HTMLElement[] = [];
   let openId = $state<string | null>(null);
   let entries = $state<ApplicationMenuEntry[]>([]);
   let request = 0;
   let nativeOpen = $state(false);
   let showGeneration = 0;
+  let contextMode = $state(false);
   let placement = $state({ x: 0, y: 0 });
-  let submenu = $state<{
+  let submenus = $state<{
     id: string;
     entries: ApplicationMenuEntry[];
     left: number;
     top: number;
-  } | null>(null);
+  }[]>([]);
 
   const announce = (open: boolean) => window.dispatchEvent(
     new CustomEvent('setdown:native-overlay-visibility', { detail: open }),
@@ -45,7 +46,7 @@
     nativeOpen = false;
     openId = null;
     entries = [];
-    submenu = null;
+    submenus = [];
   }
 
   async function open(button: HTMLButtonElement) {
@@ -59,7 +60,7 @@
     }
     if (openId === null && !nativeLayer) announce(true);
     openId = menuId;
-    submenu = null;
+    submenus = [];
     const ownRequest = ++request;
     const loaded = await load(menuId);
     if (ownRequest !== request || openId !== menuId) return;
@@ -70,18 +71,18 @@
     popup.style.top = `${Math.round(bounds.bottom + 2)}px`;
   }
 
-  async function showSubmenu(entry: ApplicationMenuEntry, button: HTMLButtonElement) {
-    if (!entry.submenu?.length) return;
-    submenu = { id: entry.id, entries: entry.submenu, left: 0, top: 0 };
+  async function showSubmenu(entry: ApplicationMenuEntry, button: HTMLButtonElement, depth = 0) {
+    if (!entry.enabled || !entry.submenu?.length) return;
+    submenus = [...submenus.slice(0, depth), { id: entry.id, entries: entry.submenu, left: 0, top: 0 }];
     await tick();
+    if (submenus[depth]?.id !== entry.id || !submenuPopups[depth]) return;
     const bounds = button.getBoundingClientRect();
-    const popupBounds = submenuPopup.getBoundingClientRect();
+    const popupBounds = submenuPopups[depth].getBoundingClientRect();
     const right = bounds.right + 2;
-    submenu = {
-      ...submenu,
+    submenus[depth] = {
+      ...submenus[depth],
       left: Math.round(Math.max(6, right + popupBounds.width <= innerWidth - 6
-        ? right
-        : bounds.left - popupBounds.width - 2)),
+        ? right : bounds.left - popupBounds.width - 2)),
       top: Math.round(Math.max(6, Math.min(bounds.top - 4, innerHeight - popupBounds.height - 6))),
     };
   }
@@ -93,25 +94,56 @@
 
   function outside(event: PointerEvent) {
     const target = event.target as Node;
-    if (!root.contains(target) && !popup.contains(target) && !submenuPopup.contains(target)) close();
+    if (!root.contains(target) && !popup.contains(target) && !submenuPopups.some(node => node?.contains(target))) close();
   }
 
   function keydown(event: KeyboardEvent) {
-    if (event.key !== 'Escape' || openId === null) return;
-    event.preventDefault();
-    event.stopPropagation();
-    close();
+    if (openId === null) return;
+    if (event.key === 'Escape' || event.key === 'Tab') { event.preventDefault(); event.stopPropagation(); close(); return; }
+    const current = document.activeElement as HTMLButtonElement | null;
+    const list = current?.closest('[role="menu"]') ?? popup.querySelector('[role="menu"]');
+    const buttons = [...(list?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [])];
+    if (!buttons.length) return;
+    let index = buttons.indexOf(current!);
+    if (event.key === 'ArrowDown') index = (index + 1) % buttons.length;
+    else if (event.key === 'ArrowUp') index = (index + buttons.length - 1) % buttons.length;
+    else if (event.key === 'Home') index = 0;
+    else if (event.key === 'End') index = buttons.length - 1;
+    else if (event.key === 'ArrowRight') {
+      const depth = submenuPopups.findIndex(node => node?.contains(current)) + 1;
+      const entry = (depth ? submenus[depth - 1].entries : entries).find(entry => entry.id === current?.dataset.menuItemId);
+      if (entry?.submenu && current) void showSubmenu(entry, current, depth).then(() => submenuPopups[depth]?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus());
+      else return;
+    } else if (event.key === 'ArrowLeft' && submenus.length) {
+      const depth = submenuPopups.findIndex(node => node?.contains(current));
+      if (depth < 0) return;
+      const id = submenus[depth].id; submenus = submenus.slice(0, depth);
+      (depth ? submenuPopups[depth - 1] : popup).querySelector<HTMLButtonElement>(`[data-menu-item-id="${id}"]`)?.focus();
+    } else return;
+    event.preventDefault(); event.stopPropagation();
+    if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) buttons[index]?.focus();
   }
   onMount(() => {
     if (!nativeLayer) return overlay.onClosed(() => {
       if (!nativeOpen) return;
-      nativeOpen = false; openId = null; entries = []; submenu = null; request++;
+      nativeOpen = false; openId = null; entries = []; submenus = []; request++;
     });
     const show = async (context: MenuOverlayContext) => {
       const generation = ++showGeneration;
       applyShellTheme(context.theme); placement = { x: context.x, y: context.y };
-      openId = null; submenu = null; await tick();
+      contextMode = context.menuId.startsWith('context-menu-');
+      openId = null; submenus = []; await tick();
       if (generation !== showGeneration) return;
+      if (contextMode) {
+        const loaded = await load(context.menuId);
+        if (generation !== showGeneration) return;
+        entries = loaded; openId = context.menuId; await tick();
+        const bounds = popup.getBoundingClientRect();
+        popup.style.left = `${Math.max(6, Math.min(context.x, innerWidth - bounds.width - 6))}px`;
+        popup.style.top = `${Math.max(6, Math.min(context.y, innerHeight - bounds.height - 6))}px`;
+        popup.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
+        return;
+      }
       const button = root.querySelector<HTMLButtonElement>(`[data-menu-id="${context.menuId}"]`);
       if (button) await open(button);
     };
@@ -124,6 +156,7 @@
 <svelte:window onpointerdown={outside} onkeydown={keydown} />
 
 <nav bind:this={root} class="application-menu" aria-label="Application menu"
+  style:display={contextMode ? 'none' : undefined}
   style:position={nativeLayer ? 'fixed' : undefined} style:left={nativeLayer ? `${placement.x}px` : undefined}
   style:top={nativeLayer ? `${placement.y}px` : undefined}>
   {#each menus as label}
@@ -144,30 +177,34 @@
 <div
   bind:this={popup}
   class="application-menu-popup"
+  class:context-menu={contextMode}
   hidden={openId === null || nativeOpen}
-  onscroll={() => submenu = null}
+  onscroll={() => submenus = []}
 >
   <MenuItems
     {entries}
-    openSubmenuId={submenu?.id}
+    openSubmenuId={submenus[0]?.id}
     onexecute={choose}
     onsubmenu={showSubmenu}
-    onleafhover={() => submenu = null}
+    onleafhover={() => submenus = []}
   />
 </div>
 
-<div
-  bind:this={submenuPopup}
-  class="application-submenu-popup"
-  hidden={!submenu}
-  style:left={`${submenu?.left ?? 0}px`}
-  style:top={`${submenu?.top ?? 0}px`}
->
-  <MenuItems
-    entries={submenu?.entries ?? []}
-    nested
-    onexecute={choose}
-    onsubmenu={() => undefined}
-    onleafhover={() => undefined}
-  />
-</div>
+{#each submenus as submenu, depth (submenu.id)}
+  <div
+    bind:this={submenuPopups[depth]}
+    class="application-submenu-popup"
+    class:context-menu={contextMode}
+    style:left={`${submenu.left}px`}
+    style:top={`${submenu.top}px`}
+  >
+    <MenuItems
+      entries={submenu.entries}
+      nested
+      openSubmenuId={submenus[depth + 1]?.id}
+      onexecute={choose}
+      onsubmenu={(entry, button) => showSubmenu(entry, button, depth + 1)}
+      onleafhover={() => submenus = submenus.slice(0, depth + 1)}
+    />
+  </div>
+{/each}

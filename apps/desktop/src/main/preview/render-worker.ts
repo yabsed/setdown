@@ -26,6 +26,7 @@ import {
 } from '../../core/preview/preview-preferences';
 import { lineCount } from '../../core/document/document-state';
 import { installSourceAnchors, type MarkdownItLike } from './source-anchors';
+import { installKoreanEmphasis } from './korean-emphasis';
 import { installMathCompatibility, previewMathDelimiters } from './math-compat';
 import { previewRelativeReference, resolvePreviewFileReference } from './preview-resources';
 import { resourceUrl } from './resource-url';
@@ -221,6 +222,7 @@ async function getNotebook(
     },
   });
   notebook.previewScriptsEnabled = false;
+  installKoreanEmphasis(notebook.md as unknown as Parameters<typeof installKoreanEmphasis>[0]);
   installMathCompatibility(notebook.md as unknown as Parameters<typeof installMathCompatibility>[0]);
   // 순서가 중요하다. 지연 삽입이 안쪽(원래 KaTeX renderer)을 감싸고,
   // source anchor가 그 바깥을 감싸야 자리표시자에 행·열이 붙는다.

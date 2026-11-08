@@ -9,13 +9,14 @@
   import { onTextZoom, textZoomOptions } from '../editor/text-zoom';
   import type { CellExecutionState } from './notebook-execution';
   import { notebookHtml } from './notebook-content';
+  import { notebookSourceHeight, notebookOutputHeight, notebookHorizontalWheel } from './notebook-layout';
   import type { TraceTarget } from '../../core/notebook/notebook-tools';
   import NotebookIcon from './NotebookIcon.svelte';
   import NotebookMenu from './NotebookMenu.svelte';
   import NotebookOutputs from './NotebookOutputs.svelte';
-  let { entry, cell, revision, api, active, path, desktop, theme, onfocus, onmodel, reveal, run, executionState, duration, selected, collapsedInput, collapsedOutput, onselect, onrunNext, ondragstart, ondragend, lineNumbers, wordWrap, outputWordWrap, ontrace, onready }: {
+  let { entry, cell, revision, api, active, path, desktop, theme, factor, onfocus, onmodel, reveal, run, executionState, duration, selected, collapsedInput, collapsedOutput, onselect, onrunNext, ondragstart, ondragend, lineNumbers, wordWrap, outputWordWrap, ontrace, onready }: {
     entry: NotebookEntry; cell: NotebookCell; revision: number; api: typeof M | null; active: boolean; path: string;
-    desktop: DesktopPort; theme: PreviewThemeId; onfocus(): void; onmodel(): void;
+    desktop: DesktopPort; theme: PreviewThemeId; factor: number; onfocus(): void; onmodel(): void;
     run(): unknown; executionState?: CellExecutionState; duration?: number; selected: boolean; collapsedInput: boolean; collapsedOutput: boolean;
     onselect(event?: MouseEvent): void; onrunNext(insert: boolean): void;
     onready(id: string, ready: boolean): void;
@@ -29,17 +30,23 @@
   let renderedSource = $state<string>();
   let editor = $state.raw<M.editor.IStandaloneCodeEditor>();
   let observed = $state(false);
-  let focused = $state(false), selectionHeld = $state(false), composing = $state(false), outputHeight = $state(0);
+  let focused = $state(false), selectionHeld = $state(false), composing = $state(false), outputWidth = $state(800);
+  let measuredOutput = $state<{ outputs: unknown[]; factor: number; width: number; height: number }>();
   const source = $derived.by(() => { void revision; return cell.source; });
   const kind = $derived.by(() => { void revision; return cell.kind; });
   const outputs = $derived.by(() => { void revision; return cell.outputs; });
+  const outputHeight = $derived(measuredOutput?.outputs === outputs && measuredOutput.factor === factor && measuredOutput.width === outputWidth
+    ? measuredOutput.height : notebookOutputHeight(outputs, outputWidth, factor));
   const count = $derived.by(() => { void revision; return cell.executionCount; });
   const executedSource = $derived.by(() => { void revision; return cell.executedSource ?? cell.originalSource; });
   const clear = $derived.by(() => { void revision; return cell.clearOutputs; });
   const sourceMode = $derived(kind !== 'markdown' || editing);
   const keepEditor = $derived(active && sourceMode && !collapsedInput && (nearby || focused || composing));
 
-  let height = $state(100);
+  const mac = /Mac/.test(navigator.platform);
+  let measured = $state<{ source: string; factor: number; wrap: boolean; height: number }>();
+  const height = $derived(measured?.source === source && measured.factor === factor && measured.wrap === wordWrap
+    ? measured.height : notebookSourceHeight(source, factor, mac));
   $effect(() => {
     if (!active) { nearby = false; observed = false; return; }
     const observer = new IntersectionObserver(entries => { nearby = entries[0].isIntersecting; observed = true; },
@@ -47,9 +54,10 @@
     observer.observe(container); return () => observer.disconnect();
   });
   onMount(() => {
+    const width = new ResizeObserver(() => outputWidth = Math.max(1, container.clientWidth - 36)); width.observe(container);
     const selection = () => { const range = window.getSelection(); selectionHeld = !!range && !range.isCollapsed && (container.contains(range.anchorNode) || container.contains(range.focusNode)); };
     document.addEventListener('selectionchange', selection);
-    return () => document.removeEventListener('selectionchange', selection);
+    return () => { width.disconnect(); document.removeEventListener('selectionchange', selection); };
   });
   // Release Chromium's native EditContext while its DOM is still attached.
   // A post-update cleanup can leave ordinary inputs receiving beforeinput but no text.
@@ -86,7 +94,7 @@
       };
       const updateHeight = () => {
         const next = Math.max(35, view.getContentHeight()), viewportHeight = Math.min(next, Math.max(35, scroll.clientHeight));
-        height = next;
+        measured = { source: cell.source, factor, wrap: wordWrap, height: next };
         frame.style.height = `${next}px`;
         if (element.style.height !== `${viewportHeight}px`) {
           element.style.height = `${viewportHeight}px`;
@@ -95,7 +103,7 @@
         syncScroll();
       };
       const horizontalWheel = (event: WheelEvent) => {
-        const delta = event.deltaX || (event.shiftKey ? event.deltaY : 0);
+        const delta = notebookHorizontalWheel(event);
         if (!delta || view.getScrollWidth() <= element.clientWidth) return;
         event.preventDefault(); event.stopPropagation();
         view.setScrollLeft(view.getScrollLeft() + delta * (event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 20 : 1));
@@ -184,7 +192,7 @@
     if (line > 0 && editor) editor.setPosition({ lineNumber: Math.min(line, editor.getModel()!.getLineCount()), column: 1 });
   }
   function measureOutput(node: HTMLElement) {
-    const observer = new ResizeObserver(() => { outputHeight = node.getBoundingClientRect().height; });
+    const observer = new ResizeObserver(() => { measuredOutput = { outputs, factor, width: outputWidth, height: node.getBoundingClientRect().height }; });
     observer.observe(node); return { destroy: () => observer.disconnect() };
   }
   function link(event: Event) {

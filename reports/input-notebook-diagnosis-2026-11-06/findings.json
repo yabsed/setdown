@@ -1,0 +1,70 @@
+{
+  "date": "2026-11-06",
+  "production_code_changed": false,
+  "pinch": {
+    "status": "leading_hypothesis_not_hardware_confirmed",
+    "host_session": "Wayland",
+    "app_default": "XWayland/X11 via displayBackend",
+    "test_gap": "CDP Input.synthesizePinchGesture bypasses physical device/compositor delivery",
+    "reference": "https://bugzilla.redhat.com/show_bug.cgi?id=2376914"
+  },
+  "intermittent_cross_tab_input": {
+    "status": "not_reproduced",
+    "candidates": [
+      "native window/child-view focus and input routing",
+      "retained native overlay or tab-drag input ownership"
+    ],
+    "no_cause_claimed": true
+  },
+  "notebook": {
+    "files_inspected": 11,
+    "maximum_bytes": 515806,
+    "cell_range": [
+      27,
+      66
+    ],
+    "copy_open_measurements": [
+      {
+        "name": "00-데이터-준비.ipynb",
+        "warmMonaco": false,
+        "readyMs": 1095
+      },
+      {
+        "name": "00-데이터-준비.ipynb",
+        "warmMonaco": true,
+        "readyMs": 653
+      },
+      {
+        "name": "02-파형과-측정.ipynb",
+        "warmMonaco": false,
+        "readyMs": 1169
+      },
+      {
+        "name": "02-파형과-측정.ipynb",
+        "warmMonaco": true,
+        "readyMs": 735
+      },
+      {
+        "name": "09-작은-CNN-대조.ipynb",
+        "warmMonaco": false,
+        "readyMs": 1179
+      },
+      {
+        "name": "09-작은-CNN-대조.ipynb",
+        "warmMonaco": true,
+        "readyMs": 762
+      }
+    ],
+    "geometry_observation": "After a one-shot jump to image cells, previously unmeasured code/output heights expand and move the target outside the viewport. In 02 training-plot the cell begins at CSS y=4480 while viewport ends at y=820. The offscreen output is consequently unmounted until further scrolling.",
+    "limitations": [
+      "Copies were outside the original project, so original project discovery/LSP workload is not measured.",
+      "Cold measurements include application startup; warm measurements start from an already displayed text editor.",
+      "Scroll-to-image durations include deliberate 100ms intervals between 300px wheel inputs, and are not image decode latency.",
+      "Earlier image probes incorrectly assumed that a one-shot cell jump left its image in the viewport; their timeouts are retained and are not counted as successful tests."
+    ],
+    "image_probe_status": "All requested images became visible and decoded after actual wheel input in the final diagnostic run."
+  },
+  "private_captures": "/tmp/setdown-notebook-diagnosis-2026-11-06",
+  "original_notebooks_modified": false,
+  "kernel_cells_executed": false
+}

@@ -1,0 +1,115 @@
+{
+  "measurement": "One run per file/state, not a latency gate. readyMs includes app launch for cold and open IPC for warm. afterJump is observed after 500ms; extra scroll samples include explicit 100ms waits. Original notebooks copied only; no execution.",
+  "results": [
+    {
+      "file": "00-데이터-준비.ipynb",
+      "warmMonaco": false,
+      "baselineReadyMs": 1103,
+      "candidateReadyMs": 1117,
+      "images": []
+    },
+    {
+      "file": "00-데이터-준비.ipynb",
+      "warmMonaco": true,
+      "baselineReadyMs": 670,
+      "candidateReadyMs": 661,
+      "images": []
+    },
+    {
+      "file": "02-파형과-측정.ipynb",
+      "warmMonaco": false,
+      "baselineReadyMs": 1199,
+      "candidateReadyMs": 1236,
+      "images": [
+        {
+          "cell": "quality-plot",
+          "baselineMountedAfterJump": false,
+          "candidateMountedAfterJump": true,
+          "baselineExtraScrollSteps": 4,
+          "candidateExtraScrollSteps": 0,
+          "candidateDecodedAfterJump": true
+        },
+        {
+          "cell": "training-plot",
+          "baselineMountedAfterJump": false,
+          "candidateMountedAfterJump": true,
+          "baselineExtraScrollSteps": 14,
+          "candidateExtraScrollSteps": 0,
+          "candidateDecodedAfterJump": true
+        }
+      ]
+    },
+    {
+      "file": "02-파형과-측정.ipynb",
+      "warmMonaco": true,
+      "baselineReadyMs": 759,
+      "candidateReadyMs": 730,
+      "images": [
+        {
+          "cell": "quality-plot",
+          "baselineMountedAfterJump": false,
+          "candidateMountedAfterJump": true,
+          "baselineExtraScrollSteps": 4,
+          "candidateExtraScrollSteps": 0,
+          "candidateDecodedAfterJump": true
+        },
+        {
+          "cell": "training-plot",
+          "baselineMountedAfterJump": false,
+          "candidateMountedAfterJump": true,
+          "baselineExtraScrollSteps": 14,
+          "candidateExtraScrollSteps": 0,
+          "candidateDecodedAfterJump": true
+        }
+      ]
+    },
+    {
+      "file": "09-작은-CNN-대조.ipynb",
+      "warmMonaco": false,
+      "baselineReadyMs": 1376,
+      "candidateReadyMs": 1239,
+      "images": [
+        {
+          "cell": "61f38a10",
+          "baselineMountedAfterJump": false,
+          "candidateMountedAfterJump": true,
+          "baselineExtraScrollSteps": 9,
+          "candidateExtraScrollSteps": 0,
+          "candidateDecodedAfterJump": true
+        },
+        {
+          "cell": "bd09840d",
+          "baselineMountedAfterJump": true,
+          "candidateMountedAfterJump": true,
+          "baselineExtraScrollSteps": 0,
+          "candidateExtraScrollSteps": 0,
+          "candidateDecodedAfterJump": true
+        }
+      ]
+    },
+    {
+      "file": "09-작은-CNN-대조.ipynb",
+      "warmMonaco": true,
+      "baselineReadyMs": 899,
+      "candidateReadyMs": 791,
+      "images": [
+        {
+          "cell": "61f38a10",
+          "baselineMountedAfterJump": false,
+          "candidateMountedAfterJump": true,
+          "baselineExtraScrollSteps": 9,
+          "candidateExtraScrollSteps": 0,
+          "candidateDecodedAfterJump": true
+        },
+        {
+          "cell": "bd09840d",
+          "baselineMountedAfterJump": true,
+          "candidateMountedAfterJump": true,
+          "baselineExtraScrollSteps": 0,
+          "candidateExtraScrollSteps": 0,
+          "candidateDecodedAfterJump": true
+        }
+      ]
+    }
+  ]
+}

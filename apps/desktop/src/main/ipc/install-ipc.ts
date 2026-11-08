@@ -65,7 +65,7 @@ export function installIpc(options: Options): void {
   previews.registerIpc(); transfers.registerIpc();
   previews.setReadingMenu((tabId, contents, params, state, valid) => {
     state.window.webContents.send('preview:message', { tabId, message: { type: 'marktex:focus' } });
-    void showReadingMenu(state.window, { selection: String(params.selectionText ?? ''), link: String(params.linkURL ?? ''), pdf: !tabId.startsWith('git-diff:') }, valid,
+    void showReadingMenu(state, { selection: String(params.selectionText ?? ''), link: String(params.linkURL ?? ''), pdf: !tabId.startsWith('git-diff:') }, valid,
       url => { void options.browsers.openLink(state.webContentsId, url); }, command => {
         if (command === 'select-all') contents.selectAll();
         else if (command === 'find') { state.window.webContents.focus(); state.window.webContents.send('preview:open-find', tabId); }
@@ -94,7 +94,7 @@ export function installIpc(options: Options): void {
   channels.handle('location-overlay:show', (state, request) => locationOverlay.show(state, request, themes.id));
   channels.on('location-overlay:hide', (state, token) => { if (typeof token === 'string') locationOverlay.hide(state.webContentsId, token, false); });
   channels.handle('location-overlay:blur', (state, token) => typeof token === 'string' ? locationOverlay.blur(state.webContentsId, token) : true);
-  const menuOverlay = new MenuOverlay(menuEntries);
+  const menuOverlay = new MenuOverlay(menuEntries, () => themes.id);
   channels.handle('menu-overlay:open', (state, menuId: string, position: { x: number; y: number }) => {
     if (![...options.browsers.views.values()].some(entry => entry.owner === state.webContentsId && entry.view.getVisible())) return false;
     return menuOverlay.open(state, { menuId, x: position?.x, y: position?.y, theme: themes.id });

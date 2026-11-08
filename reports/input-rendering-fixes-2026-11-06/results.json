@@ -1,0 +1,1577 @@
+{
+  "completedAt": "2026-11-06T12:33:55.702Z",
+  "baseline": "8f872241e2024a254ca12315d1c1f4ae784d64ae",
+  "checks": [
+    {
+      "name": "전체 단위 검사",
+      "file": "unit.log",
+      "count": 1239,
+      "passed": true
+    },
+    {
+      "name": "Preview 계약 단위 검사",
+      "file": "contract.log",
+      "count": 857,
+      "subsetOfUnit": true,
+      "passed": true
+    },
+    {
+      "name": "실제 Electron 계약 검사",
+      "file": "contract.log",
+      "count": 305,
+      "passed": true
+    },
+    {
+      "name": "도구·CI 검사",
+      "file": "tooling.log",
+      "count": 79,
+      "passed": true
+    },
+    {
+      "name": "격리된 XWayland 검사",
+      "file": "xwayland.log",
+      "count": 10,
+      "passed": true
+    },
+    {
+      "name": "패키지 기본 검사",
+      "file": "package-smoke.log",
+      "passed": true
+    }
+  ],
+  "build": {
+    "sourceMaps": false,
+    "baselineAndCandidateIdenticalSetting": true
+  },
+  "benchmark": {
+    "passed": true,
+    "launches": 80,
+    "repetitions": 5,
+    "comparisons": 48,
+    "thresholds": {
+      "relative": 0.25,
+      "absoluteMs": 50
+    },
+    "measurement": "Escape keydown to latest-content nonempty native capture; includes polling/IPC/readback, not monitor presentation",
+    "rows": [
+      {
+        "key": "document/idle=3000/edits=true/first/captureMs",
+        "baselineMs": 108,
+        "candidateMs": 108,
+        "deltaMs": 0,
+        "relativeChange": 0,
+        "regression": false,
+        "baselineSamples": [
+          103,
+          92,
+          112,
+          109,
+          108
+        ],
+        "candidateSamples": [
+          145,
+          105,
+          108,
+          105,
+          136
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 3000,
+        "edits": true,
+        "cycle": "first",
+        "metric": "captureMs",
+        "configuredPreparationMs": 3000,
+        "baselineIncludingConfiguredPreparationMs": 3108,
+        "candidateIncludingConfiguredPreparationMs": 3108
+      },
+      {
+        "key": "document/idle=3000/edits=true/second/captureMs",
+        "baselineMs": 93,
+        "candidateMs": 106,
+        "deltaMs": 13,
+        "relativeChange": 0.13978494623655913,
+        "regression": false,
+        "baselineSamples": [
+          93,
+          88,
+          94,
+          98,
+          92
+        ],
+        "candidateSamples": [
+          111,
+          112,
+          103,
+          92,
+          106
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 3000,
+        "edits": true,
+        "cycle": "second",
+        "metric": "captureMs",
+        "configuredPreparationMs": 0,
+        "baselineIncludingConfiguredPreparationMs": 93,
+        "candidateIncludingConfiguredPreparationMs": 106
+      },
+      {
+        "key": "document/idle=3000/edits=true/warm/captureMs",
+        "baselineMs": 95,
+        "candidateMs": 95,
+        "deltaMs": 0,
+        "relativeChange": 0,
+        "regression": false,
+        "baselineSamples": [
+          95,
+          97,
+          95,
+          96,
+          89
+        ],
+        "candidateSamples": [
+          98,
+          95,
+          95,
+          89,
+          95
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 3000,
+        "edits": true,
+        "cycle": "warm",
+        "metric": "captureMs",
+        "configuredPreparationMs": 0,
+        "baselineIncludingConfiguredPreparationMs": 95,
+        "candidateIncludingConfiguredPreparationMs": 95
+      },
+      {
+        "key": "document/idle=3000/edits=true/first/doubleClickToEditorMs",
+        "baselineMs": 17,
+        "candidateMs": 17,
+        "deltaMs": 0,
+        "relativeChange": 0,
+        "regression": false,
+        "baselineSamples": [
+          17,
+          17,
+          17,
+          17,
+          18
+        ],
+        "candidateSamples": [
+          16,
+          16,
+          20,
+          17,
+          17
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 3000,
+        "edits": true,
+        "cycle": "first",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "document/idle=3000/edits=true/second/doubleClickToEditorMs",
+        "baselineMs": 14,
+        "candidateMs": 13,
+        "deltaMs": -1,
+        "relativeChange": -0.07142857142857142,
+        "regression": false,
+        "baselineSamples": [
+          13,
+          19,
+          17,
+          13,
+          14
+        ],
+        "candidateSamples": [
+          12,
+          13,
+          13,
+          17,
+          14
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 3000,
+        "edits": true,
+        "cycle": "second",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "document/idle=3000/edits=true/warm/doubleClickToEditorMs",
+        "baselineMs": 15,
+        "candidateMs": 15,
+        "deltaMs": 0,
+        "relativeChange": 0,
+        "regression": false,
+        "baselineSamples": [
+          15,
+          14,
+          15,
+          14,
+          15
+        ],
+        "candidateSamples": [
+          15,
+          15,
+          17,
+          15,
+          15
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 3000,
+        "edits": true,
+        "cycle": "warm",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "document/idle=0/edits=true/first/captureMs",
+        "baselineMs": 360,
+        "candidateMs": 383,
+        "deltaMs": 23,
+        "relativeChange": 0.06388888888888888,
+        "regression": false,
+        "baselineSamples": [
+          333,
+          310,
+          367,
+          360,
+          371
+        ],
+        "candidateSamples": [
+          413,
+          385,
+          383,
+          368,
+          369
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 0,
+        "edits": true,
+        "cycle": "first",
+        "metric": "captureMs",
+        "configuredPreparationMs": 0,
+        "baselineIncludingConfiguredPreparationMs": 360,
+        "candidateIncludingConfiguredPreparationMs": 383
+      },
+      {
+        "key": "document/idle=0/edits=true/second/captureMs",
+        "baselineMs": 99,
+        "candidateMs": 108,
+        "deltaMs": 9,
+        "relativeChange": 0.09090909090909091,
+        "regression": false,
+        "baselineSamples": [
+          93,
+          102,
+          99,
+          93,
+          101
+        ],
+        "candidateSamples": [
+          103,
+          108,
+          112,
+          91,
+          111
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 0,
+        "edits": true,
+        "cycle": "second",
+        "metric": "captureMs",
+        "configuredPreparationMs": 0,
+        "baselineIncludingConfiguredPreparationMs": 99,
+        "candidateIncludingConfiguredPreparationMs": 108
+      },
+      {
+        "key": "document/idle=0/edits=true/warm/captureMs",
+        "baselineMs": 95,
+        "candidateMs": 102,
+        "deltaMs": 7,
+        "relativeChange": 0.07368421052631578,
+        "regression": false,
+        "baselineSamples": [
+          96,
+          95,
+          95,
+          90,
+          97
+        ],
+        "candidateSamples": [
+          93,
+          103,
+          103,
+          102,
+          97
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 0,
+        "edits": true,
+        "cycle": "warm",
+        "metric": "captureMs",
+        "configuredPreparationMs": 0,
+        "baselineIncludingConfiguredPreparationMs": 95,
+        "candidateIncludingConfiguredPreparationMs": 102
+      },
+      {
+        "key": "document/idle=0/edits=true/first/doubleClickToEditorMs",
+        "baselineMs": 17,
+        "candidateMs": 17,
+        "deltaMs": 0,
+        "relativeChange": 0,
+        "regression": false,
+        "baselineSamples": [
+          16,
+          17,
+          18,
+          16,
+          26
+        ],
+        "candidateSamples": [
+          17,
+          17,
+          17,
+          17,
+          17
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 0,
+        "edits": true,
+        "cycle": "first",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "document/idle=0/edits=true/second/doubleClickToEditorMs",
+        "baselineMs": 17,
+        "candidateMs": 16,
+        "deltaMs": -1,
+        "relativeChange": -0.058823529411764705,
+        "regression": false,
+        "baselineSamples": [
+          17,
+          16,
+          15,
+          24,
+          17
+        ],
+        "candidateSamples": [
+          14,
+          16,
+          16,
+          20,
+          13
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 0,
+        "edits": true,
+        "cycle": "second",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "document/idle=0/edits=true/warm/doubleClickToEditorMs",
+        "baselineMs": 15,
+        "candidateMs": 15,
+        "deltaMs": 0,
+        "relativeChange": 0,
+        "regression": false,
+        "baselineSamples": [
+          14,
+          16,
+          16,
+          14,
+          15
+        ],
+        "candidateSamples": [
+          15,
+          15,
+          15,
+          15,
+          16
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 0,
+        "edits": true,
+        "cycle": "warm",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "document/idle=0/edits=false/first/captureMs",
+        "baselineMs": 42,
+        "candidateMs": 41,
+        "deltaMs": -1,
+        "relativeChange": -0.023809523809523808,
+        "regression": false,
+        "baselineSamples": [
+          42,
+          33,
+          58,
+          101,
+          30
+        ],
+        "candidateSamples": [
+          51,
+          41,
+          26,
+          38,
+          42
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 0,
+        "edits": false,
+        "cycle": "first",
+        "metric": "captureMs",
+        "configuredPreparationMs": 0,
+        "baselineIncludingConfiguredPreparationMs": 42,
+        "candidateIncludingConfiguredPreparationMs": 41
+      },
+      {
+        "key": "document/idle=0/edits=false/second/captureMs",
+        "baselineMs": 29,
+        "candidateMs": 25,
+        "deltaMs": -4,
+        "relativeChange": -0.13793103448275862,
+        "regression": false,
+        "baselineSamples": [
+          40,
+          29,
+          37,
+          27,
+          24
+        ],
+        "candidateSamples": [
+          41,
+          25,
+          26,
+          19,
+          22
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 0,
+        "edits": false,
+        "cycle": "second",
+        "metric": "captureMs",
+        "configuredPreparationMs": 0,
+        "baselineIncludingConfiguredPreparationMs": 29,
+        "candidateIncludingConfiguredPreparationMs": 25
+      },
+      {
+        "key": "document/idle=0/edits=false/warm/captureMs",
+        "baselineMs": 26,
+        "candidateMs": 25,
+        "deltaMs": -1,
+        "relativeChange": -0.038461538461538464,
+        "regression": false,
+        "baselineSamples": [
+          29,
+          30,
+          24,
+          24,
+          26
+        ],
+        "candidateSamples": [
+          29,
+          25,
+          29,
+          24,
+          21
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 0,
+        "edits": false,
+        "cycle": "warm",
+        "metric": "captureMs",
+        "configuredPreparationMs": 0,
+        "baselineIncludingConfiguredPreparationMs": 26,
+        "candidateIncludingConfiguredPreparationMs": 25
+      },
+      {
+        "key": "document/idle=0/edits=false/first/doubleClickToEditorMs",
+        "baselineMs": 32,
+        "candidateMs": 17,
+        "deltaMs": -15,
+        "relativeChange": -0.46875,
+        "regression": false,
+        "baselineSamples": [
+          39,
+          22,
+          18,
+          32,
+          44
+        ],
+        "candidateSamples": [
+          16,
+          15,
+          19,
+          19,
+          17
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 0,
+        "edits": false,
+        "cycle": "first",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "document/idle=0/edits=false/second/doubleClickToEditorMs",
+        "baselineMs": 24,
+        "candidateMs": 15,
+        "deltaMs": -9,
+        "relativeChange": -0.375,
+        "regression": false,
+        "baselineSamples": [
+          24,
+          40,
+          16,
+          16,
+          55
+        ],
+        "candidateSamples": [
+          32,
+          15,
+          21,
+          15,
+          14
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 0,
+        "edits": false,
+        "cycle": "second",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "document/idle=0/edits=false/warm/doubleClickToEditorMs",
+        "baselineMs": 13,
+        "candidateMs": 15,
+        "deltaMs": 2,
+        "relativeChange": 0.15384615384615385,
+        "regression": false,
+        "baselineSamples": [
+          13,
+          13,
+          16,
+          14,
+          12
+        ],
+        "candidateSamples": [
+          16,
+          15,
+          15,
+          12,
+          15
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 0,
+        "edits": false,
+        "cycle": "warm",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "document/idle=3000/edits=false/first/captureMs",
+        "baselineMs": 31,
+        "candidateMs": 32,
+        "deltaMs": 1,
+        "relativeChange": 0.03225806451612903,
+        "regression": false,
+        "baselineSamples": [
+          32,
+          46,
+          30,
+          30,
+          31
+        ],
+        "candidateSamples": [
+          33,
+          20,
+          33,
+          24,
+          32
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 3000,
+        "edits": false,
+        "cycle": "first",
+        "metric": "captureMs",
+        "configuredPreparationMs": 3000,
+        "baselineIncludingConfiguredPreparationMs": 3031,
+        "candidateIncludingConfiguredPreparationMs": 3032
+      },
+      {
+        "key": "document/idle=3000/edits=false/second/captureMs",
+        "baselineMs": 25,
+        "candidateMs": 24,
+        "deltaMs": -1,
+        "relativeChange": -0.04,
+        "regression": false,
+        "baselineSamples": [
+          28,
+          25,
+          20,
+          25,
+          28
+        ],
+        "candidateSamples": [
+          24,
+          24,
+          26,
+          24,
+          27
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 3000,
+        "edits": false,
+        "cycle": "second",
+        "metric": "captureMs",
+        "configuredPreparationMs": 0,
+        "baselineIncludingConfiguredPreparationMs": 25,
+        "candidateIncludingConfiguredPreparationMs": 24
+      },
+      {
+        "key": "document/idle=3000/edits=false/warm/captureMs",
+        "baselineMs": 19,
+        "candidateMs": 26,
+        "deltaMs": 7,
+        "relativeChange": 0.3684210526315789,
+        "regression": false,
+        "baselineSamples": [
+          19,
+          25,
+          25,
+          18,
+          17
+        ],
+        "candidateSamples": [
+          26,
+          26,
+          26,
+          18,
+          26
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 3000,
+        "edits": false,
+        "cycle": "warm",
+        "metric": "captureMs",
+        "configuredPreparationMs": 0,
+        "baselineIncludingConfiguredPreparationMs": 19,
+        "candidateIncludingConfiguredPreparationMs": 26
+      },
+      {
+        "key": "document/idle=3000/edits=false/first/doubleClickToEditorMs",
+        "baselineMs": 18,
+        "candidateMs": 18,
+        "deltaMs": 0,
+        "relativeChange": 0,
+        "regression": false,
+        "baselineSamples": [
+          20,
+          17,
+          19,
+          17,
+          18
+        ],
+        "candidateSamples": [
+          19,
+          18,
+          18,
+          18,
+          18
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 3000,
+        "edits": false,
+        "cycle": "first",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "document/idle=3000/edits=false/second/doubleClickToEditorMs",
+        "baselineMs": 16,
+        "candidateMs": 16,
+        "deltaMs": 0,
+        "relativeChange": 0,
+        "regression": false,
+        "baselineSamples": [
+          14,
+          16,
+          22,
+          14,
+          21
+        ],
+        "candidateSamples": [
+          16,
+          15,
+          15,
+          16,
+          16
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 3000,
+        "edits": false,
+        "cycle": "second",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "document/idle=3000/edits=false/warm/doubleClickToEditorMs",
+        "baselineMs": 15,
+        "candidateMs": 14,
+        "deltaMs": -1,
+        "relativeChange": -0.06666666666666667,
+        "regression": false,
+        "baselineSamples": [
+          15,
+          16,
+          15,
+          14,
+          16
+        ],
+        "candidateSamples": [
+          14,
+          14,
+          14,
+          15,
+          14
+        ],
+        "surface": "document",
+        "idleBeforeFirstMs": 3000,
+        "edits": false,
+        "cycle": "warm",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "review/idle=3000/edits=true/first/captureMs",
+        "baselineMs": 233,
+        "candidateMs": 237,
+        "deltaMs": 4,
+        "relativeChange": 0.017167381974248927,
+        "regression": false,
+        "baselineSamples": [
+          240,
+          227,
+          228,
+          233,
+          235
+        ],
+        "candidateSamples": [
+          234,
+          248,
+          237,
+          246,
+          230
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 3000,
+        "edits": true,
+        "cycle": "first",
+        "metric": "captureMs",
+        "configuredPreparationMs": 3000,
+        "baselineIncludingConfiguredPreparationMs": 3233,
+        "candidateIncludingConfiguredPreparationMs": 3237
+      },
+      {
+        "key": "review/idle=3000/edits=true/second/captureMs",
+        "baselineMs": 194,
+        "candidateMs": 200,
+        "deltaMs": 6,
+        "relativeChange": 0.030927835051546393,
+        "regression": false,
+        "baselineSamples": [
+          176,
+          188,
+          223,
+          194,
+          202
+        ],
+        "candidateSamples": [
+          207,
+          195,
+          200,
+          204,
+          192
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 3000,
+        "edits": true,
+        "cycle": "second",
+        "metric": "captureMs",
+        "configuredPreparationMs": 0,
+        "baselineIncludingConfiguredPreparationMs": 194,
+        "candidateIncludingConfiguredPreparationMs": 200
+      },
+      {
+        "key": "review/idle=3000/edits=true/warm/captureMs",
+        "baselineMs": 180,
+        "candidateMs": 176,
+        "deltaMs": -4,
+        "relativeChange": -0.022222222222222223,
+        "regression": false,
+        "baselineSamples": [
+          174,
+          180,
+          181,
+          219,
+          174
+        ],
+        "candidateSamples": [
+          176,
+          170,
+          223,
+          175,
+          186
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 3000,
+        "edits": true,
+        "cycle": "warm",
+        "metric": "captureMs",
+        "configuredPreparationMs": 0,
+        "baselineIncludingConfiguredPreparationMs": 180,
+        "candidateIncludingConfiguredPreparationMs": 176
+      },
+      {
+        "key": "review/idle=3000/edits=true/first/doubleClickToEditorMs",
+        "baselineMs": 20,
+        "candidateMs": 20,
+        "deltaMs": 0,
+        "relativeChange": 0,
+        "regression": false,
+        "baselineSamples": [
+          20,
+          21,
+          21,
+          19,
+          18
+        ],
+        "candidateSamples": [
+          20,
+          20,
+          19,
+          19,
+          20
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 3000,
+        "edits": true,
+        "cycle": "first",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "review/idle=3000/edits=true/second/doubleClickToEditorMs",
+        "baselineMs": 16,
+        "candidateMs": 16,
+        "deltaMs": 0,
+        "relativeChange": 0,
+        "regression": false,
+        "baselineSamples": [
+          16,
+          17,
+          16,
+          16,
+          16
+        ],
+        "candidateSamples": [
+          16,
+          15,
+          16,
+          12,
+          16
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 3000,
+        "edits": true,
+        "cycle": "second",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "review/idle=3000/edits=true/warm/doubleClickToEditorMs",
+        "baselineMs": 15,
+        "candidateMs": 15,
+        "deltaMs": 0,
+        "relativeChange": 0,
+        "regression": false,
+        "baselineSamples": [
+          14,
+          15,
+          15,
+          15,
+          15
+        ],
+        "candidateSamples": [
+          15,
+          15,
+          15,
+          16,
+          13
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 3000,
+        "edits": true,
+        "cycle": "warm",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "review/idle=0/edits=false/first/captureMs",
+        "baselineMs": 1070,
+        "candidateMs": 1071,
+        "deltaMs": 1,
+        "relativeChange": 0.0009345794392523365,
+        "regression": false,
+        "baselineSamples": [
+          1047,
+          1088,
+          1021,
+          1133,
+          1070
+        ],
+        "candidateSamples": [
+          1071,
+          1121,
+          1099,
+          1025,
+          1034
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 0,
+        "edits": false,
+        "cycle": "first",
+        "metric": "captureMs",
+        "configuredPreparationMs": 0,
+        "baselineIncludingConfiguredPreparationMs": 1070,
+        "candidateIncludingConfiguredPreparationMs": 1071
+      },
+      {
+        "key": "review/idle=0/edits=false/second/captureMs",
+        "baselineMs": 30,
+        "candidateMs": 25,
+        "deltaMs": -5,
+        "relativeChange": -0.16666666666666666,
+        "regression": false,
+        "baselineSamples": [
+          30,
+          30,
+          19,
+          35,
+          17
+        ],
+        "candidateSamples": [
+          17,
+          34,
+          19,
+          25,
+          34
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 0,
+        "edits": false,
+        "cycle": "second",
+        "metric": "captureMs",
+        "configuredPreparationMs": 0,
+        "baselineIncludingConfiguredPreparationMs": 30,
+        "candidateIncludingConfiguredPreparationMs": 25
+      },
+      {
+        "key": "review/idle=0/edits=false/warm/captureMs",
+        "baselineMs": 19,
+        "candidateMs": 20,
+        "deltaMs": 1,
+        "relativeChange": 0.05263157894736842,
+        "regression": false,
+        "baselineSamples": [
+          24,
+          17,
+          19,
+          18,
+          20
+        ],
+        "candidateSamples": [
+          21,
+          17,
+          24,
+          20,
+          19
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 0,
+        "edits": false,
+        "cycle": "warm",
+        "metric": "captureMs",
+        "configuredPreparationMs": 0,
+        "baselineIncludingConfiguredPreparationMs": 19,
+        "candidateIncludingConfiguredPreparationMs": 20
+      },
+      {
+        "key": "review/idle=0/edits=false/first/doubleClickToEditorMs",
+        "baselineMs": 25,
+        "candidateMs": 23,
+        "deltaMs": -2,
+        "relativeChange": -0.08,
+        "regression": false,
+        "baselineSamples": [
+          47,
+          26,
+          23,
+          22,
+          25
+        ],
+        "candidateSamples": [
+          25,
+          23,
+          25,
+          20,
+          22
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 0,
+        "edits": false,
+        "cycle": "first",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "review/idle=0/edits=false/second/doubleClickToEditorMs",
+        "baselineMs": 12,
+        "candidateMs": 12,
+        "deltaMs": 0,
+        "relativeChange": 0,
+        "regression": false,
+        "baselineSamples": [
+          12,
+          14,
+          12,
+          12,
+          16
+        ],
+        "candidateSamples": [
+          15,
+          11,
+          12,
+          12,
+          12
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 0,
+        "edits": false,
+        "cycle": "second",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "review/idle=0/edits=false/warm/doubleClickToEditorMs",
+        "baselineMs": 14,
+        "candidateMs": 15,
+        "deltaMs": 1,
+        "relativeChange": 0.07142857142857142,
+        "regression": false,
+        "baselineSamples": [
+          14,
+          16,
+          12,
+          14,
+          12
+        ],
+        "candidateSamples": [
+          16,
+          15,
+          19,
+          11,
+          11
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 0,
+        "edits": false,
+        "cycle": "warm",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "review/idle=0/edits=true/first/captureMs",
+        "baselineMs": 1094,
+        "candidateMs": 1090,
+        "deltaMs": -4,
+        "relativeChange": -0.003656307129798903,
+        "regression": false,
+        "baselineSamples": [
+          1104,
+          1122,
+          1091,
+          1094,
+          1088
+        ],
+        "candidateSamples": [
+          1094,
+          1140,
+          1090,
+          1085,
+          1026
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 0,
+        "edits": true,
+        "cycle": "first",
+        "metric": "captureMs",
+        "configuredPreparationMs": 0,
+        "baselineIncludingConfiguredPreparationMs": 1094,
+        "candidateIncludingConfiguredPreparationMs": 1090
+      },
+      {
+        "key": "review/idle=0/edits=true/second/captureMs",
+        "baselineMs": 1560,
+        "candidateMs": 1552,
+        "deltaMs": -8,
+        "relativeChange": -0.005128205128205128,
+        "regression": false,
+        "baselineSamples": [
+          1607,
+          1551,
+          1560,
+          1561,
+          1555
+        ],
+        "candidateSamples": [
+          1554,
+          1597,
+          1552,
+          1552,
+          1550
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 0,
+        "edits": true,
+        "cycle": "second",
+        "metric": "captureMs",
+        "configuredPreparationMs": 0,
+        "baselineIncludingConfiguredPreparationMs": 1560,
+        "candidateIncludingConfiguredPreparationMs": 1552
+      },
+      {
+        "key": "review/idle=0/edits=true/warm/captureMs",
+        "baselineMs": 184,
+        "candidateMs": 187,
+        "deltaMs": 3,
+        "relativeChange": 0.016304347826086956,
+        "regression": false,
+        "baselineSamples": [
+          168,
+          173,
+          218,
+          184,
+          225
+        ],
+        "candidateSamples": [
+          191,
+          204,
+          181,
+          187,
+          185
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 0,
+        "edits": true,
+        "cycle": "warm",
+        "metric": "captureMs",
+        "configuredPreparationMs": 0,
+        "baselineIncludingConfiguredPreparationMs": 184,
+        "candidateIncludingConfiguredPreparationMs": 187
+      },
+      {
+        "key": "review/idle=0/edits=true/first/doubleClickToEditorMs",
+        "baselineMs": 21,
+        "candidateMs": 23,
+        "deltaMs": 2,
+        "relativeChange": 0.09523809523809523,
+        "regression": false,
+        "baselineSamples": [
+          20,
+          23,
+          19,
+          25,
+          21
+        ],
+        "candidateSamples": [
+          14,
+          23,
+          24,
+          21,
+          26
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 0,
+        "edits": true,
+        "cycle": "first",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "review/idle=0/edits=true/second/doubleClickToEditorMs",
+        "baselineMs": 17,
+        "candidateMs": 17,
+        "deltaMs": 0,
+        "relativeChange": 0,
+        "regression": false,
+        "baselineSamples": [
+          17,
+          16,
+          18,
+          17,
+          16
+        ],
+        "candidateSamples": [
+          17,
+          17,
+          15,
+          17,
+          17
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 0,
+        "edits": true,
+        "cycle": "second",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "review/idle=0/edits=true/warm/doubleClickToEditorMs",
+        "baselineMs": 16,
+        "candidateMs": 15,
+        "deltaMs": -1,
+        "relativeChange": -0.0625,
+        "regression": false,
+        "baselineSamples": [
+          16,
+          15,
+          16,
+          16,
+          15
+        ],
+        "candidateSamples": [
+          16,
+          14,
+          14,
+          15,
+          15
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 0,
+        "edits": true,
+        "cycle": "warm",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "review/idle=3000/edits=false/first/captureMs",
+        "baselineMs": 21,
+        "candidateMs": 33,
+        "deltaMs": 12,
+        "relativeChange": 0.5714285714285714,
+        "regression": false,
+        "baselineSamples": [
+          23,
+          20,
+          29,
+          19,
+          21
+        ],
+        "candidateSamples": [
+          38,
+          33,
+          23,
+          25,
+          33
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 3000,
+        "edits": false,
+        "cycle": "first",
+        "metric": "captureMs",
+        "configuredPreparationMs": 3000,
+        "baselineIncludingConfiguredPreparationMs": 3021,
+        "candidateIncludingConfiguredPreparationMs": 3033
+      },
+      {
+        "key": "review/idle=3000/edits=false/second/captureMs",
+        "baselineMs": 25,
+        "candidateMs": 26,
+        "deltaMs": 1,
+        "relativeChange": 0.04,
+        "regression": false,
+        "baselineSamples": [
+          27,
+          25,
+          26,
+          25,
+          22
+        ],
+        "candidateSamples": [
+          25,
+          26,
+          27,
+          27,
+          26
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 3000,
+        "edits": false,
+        "cycle": "second",
+        "metric": "captureMs",
+        "configuredPreparationMs": 0,
+        "baselineIncludingConfiguredPreparationMs": 25,
+        "candidateIncludingConfiguredPreparationMs": 26
+      },
+      {
+        "key": "review/idle=3000/edits=false/warm/captureMs",
+        "baselineMs": 20,
+        "candidateMs": 19,
+        "deltaMs": -1,
+        "relativeChange": -0.05,
+        "regression": false,
+        "baselineSamples": [
+          20,
+          20,
+          21,
+          20,
+          21
+        ],
+        "candidateSamples": [
+          20,
+          19,
+          19,
+          22,
+          19
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 3000,
+        "edits": false,
+        "cycle": "warm",
+        "metric": "captureMs",
+        "configuredPreparationMs": 0,
+        "baselineIncludingConfiguredPreparationMs": 20,
+        "candidateIncludingConfiguredPreparationMs": 19
+      },
+      {
+        "key": "review/idle=3000/edits=false/first/doubleClickToEditorMs",
+        "baselineMs": 20,
+        "candidateMs": 20,
+        "deltaMs": 0,
+        "relativeChange": 0,
+        "regression": false,
+        "baselineSamples": [
+          20,
+          20,
+          20,
+          22,
+          23
+        ],
+        "candidateSamples": [
+          21,
+          18,
+          27,
+          20,
+          19
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 3000,
+        "edits": false,
+        "cycle": "first",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "review/idle=3000/edits=false/second/doubleClickToEditorMs",
+        "baselineMs": 11,
+        "candidateMs": 11,
+        "deltaMs": 0,
+        "relativeChange": 0,
+        "regression": false,
+        "baselineSamples": [
+          11,
+          15,
+          11,
+          14,
+          11
+        ],
+        "candidateSamples": [
+          10,
+          14,
+          11,
+          11,
+          11
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 3000,
+        "edits": false,
+        "cycle": "second",
+        "metric": "doubleClickToEditorMs"
+      },
+      {
+        "key": "review/idle=3000/edits=false/warm/doubleClickToEditorMs",
+        "baselineMs": 15,
+        "candidateMs": 14,
+        "deltaMs": -1,
+        "relativeChange": -0.06666666666666667,
+        "regression": false,
+        "baselineSamples": [
+          15,
+          15,
+          15,
+          15,
+          15
+        ],
+        "candidateSamples": [
+          11,
+          14,
+          15,
+          14,
+          14
+        ],
+        "surface": "review",
+        "idleBeforeFirstMs": 3000,
+        "edits": false,
+        "cycle": "warm",
+        "metric": "doubleClickToEditorMs"
+      }
+    ]
+  },
+  "notebooks": {
+    "measurement": "One run per file/state, not a latency gate. readyMs includes app launch for cold and open IPC for warm. afterJump is observed after 500ms; extra scroll samples include explicit 100ms waits. Original notebooks copied only; no execution.",
+    "results": [
+      {
+        "file": "00-데이터-준비.ipynb",
+        "warmMonaco": false,
+        "baselineReadyMs": 1103,
+        "candidateReadyMs": 1117,
+        "images": []
+      },
+      {
+        "file": "00-데이터-준비.ipynb",
+        "warmMonaco": true,
+        "baselineReadyMs": 670,
+        "candidateReadyMs": 661,
+        "images": []
+      },
+      {
+        "file": "02-파형과-측정.ipynb",
+        "warmMonaco": false,
+        "baselineReadyMs": 1199,
+        "candidateReadyMs": 1236,
+        "images": [
+          {
+            "cell": "quality-plot",
+            "baselineMountedAfterJump": false,
+            "candidateMountedAfterJump": true,
+            "baselineExtraScrollSteps": 4,
+            "candidateExtraScrollSteps": 0,
+            "candidateDecodedAfterJump": true
+          },
+          {
+            "cell": "training-plot",
+            "baselineMountedAfterJump": false,
+            "candidateMountedAfterJump": true,
+            "baselineExtraScrollSteps": 14,
+            "candidateExtraScrollSteps": 0,
+            "candidateDecodedAfterJump": true
+          }
+        ]
+      },
+      {
+        "file": "02-파형과-측정.ipynb",
+        "warmMonaco": true,
+        "baselineReadyMs": 759,
+        "candidateReadyMs": 730,
+        "images": [
+          {
+            "cell": "quality-plot",
+            "baselineMountedAfterJump": false,
+            "candidateMountedAfterJump": true,
+            "baselineExtraScrollSteps": 4,
+            "candidateExtraScrollSteps": 0,
+            "candidateDecodedAfterJump": true
+          },
+          {
+            "cell": "training-plot",
+            "baselineMountedAfterJump": false,
+            "candidateMountedAfterJump": true,
+            "baselineExtraScrollSteps": 14,
+            "candidateExtraScrollSteps": 0,
+            "candidateDecodedAfterJump": true
+          }
+        ]
+      },
+      {
+        "file": "09-작은-CNN-대조.ipynb",
+        "warmMonaco": false,
+        "baselineReadyMs": 1376,
+        "candidateReadyMs": 1239,
+        "images": [
+          {
+            "cell": "61f38a10",
+            "baselineMountedAfterJump": false,
+            "candidateMountedAfterJump": true,
+            "baselineExtraScrollSteps": 9,
+            "candidateExtraScrollSteps": 0,
+            "candidateDecodedAfterJump": true
+          },
+          {
+            "cell": "bd09840d",
+            "baselineMountedAfterJump": true,
+            "candidateMountedAfterJump": true,
+            "baselineExtraScrollSteps": 0,
+            "candidateExtraScrollSteps": 0,
+            "candidateDecodedAfterJump": true
+          }
+        ]
+      },
+      {
+        "file": "09-작은-CNN-대조.ipynb",
+        "warmMonaco": true,
+        "baselineReadyMs": 899,
+        "candidateReadyMs": 791,
+        "images": [
+          {
+            "cell": "61f38a10",
+            "baselineMountedAfterJump": false,
+            "candidateMountedAfterJump": true,
+            "baselineExtraScrollSteps": 9,
+            "candidateExtraScrollSteps": 0,
+            "candidateDecodedAfterJump": true
+          },
+          {
+            "cell": "bd09840d",
+            "baselineMountedAfterJump": true,
+            "candidateMountedAfterJump": true,
+            "baselineExtraScrollSteps": 0,
+            "candidateExtraScrollSteps": 0,
+            "candidateDecodedAfterJump": true
+          }
+        ]
+      }
+    ]
+  },
+  "packaged": {
+    "passed": true,
+    "executable": "/home/yabsed/.local/share/setdown/setdown",
+    "checks": [
+      "packaged XI2 helper",
+      "shell/native forward/reverse decoded pinch",
+      "unchanged app zoom",
+      "Korean emphasis",
+      "themed native reader menu",
+      "source preservation"
+    ],
+    "limitation": "Decoded XI2 messages exercise the adapter, not a physical touchpad."
+  },
+  "installation": {
+    "verified": true,
+    "installedAt": "2026-11-06T12:32:45.982893+00:00",
+    "source": "/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/release/linux-unpacked",
+    "destination": "/home/yabsed/.local/share/setdown",
+    "backup": "/home/yabsed/.local/share/setdown-backup-20261106T213241",
+    "filesVerified": 11889,
+    "treeSha256": "eebc84be9b3b93aa56bafc98bdbf21b348d2b9a48dac06f0f54c82e70c536a42",
+    "appAsarSha256": "488a474e52d48615b8006271334e2f1eab73a9ff486e3c379eb27d87cde42995",
+    "executableSha256": "433b343850ed9087fdb6548c48e1bb30011a87210cc3609f7b03061a7ac36c4f",
+    "existingApplicationWasRunning": false,
+    "desktopWindowsOpened": false,
+    "userProfileAndFileAssociationsChanged": false
+  },
+  "originalDocumentsModified": false,
+  "notebookCellsExecuted": false,
+  "limitations": [
+    "Physical touchpad gestures were not generated. A real XI2 helper connected on the isolated X server; decoded gesture messages exercised shell/native Chromium routing and zoom reversal.",
+    "Notebook measurements use temporary copies outside the original project and one observation per file/state. They are layout correctness observations, not a project/LSP or image-decoding latency benchmark.",
+    "The configured 3000ms idle occurs only before the first Escape cycle. Adding it to captureMs is not an application-startup/end-to-end measurement.",
+    "The installed application was updated without opening windows on the user desktop."
+  ]
+}

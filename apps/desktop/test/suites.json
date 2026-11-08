@@ -50,6 +50,9 @@
       "src/main/preview/preview-presentation.test.ts",
       "src/main/preview/preview-renderer.test.ts",
       "src/main/preview/math-compat.test.ts",
+      "src/main/preview/korean-emphasis.test.ts",
+      "src/main/windows/x11-pinch.test.ts",
+      "src/renderer/notebook/notebook-layout.test.ts",
       "src/main/preview/source-anchors.test.ts",
       "src/main/preview/review-preparation.test.ts",
       "src/main/project/explorer-clipboard.test.ts",
@@ -113,6 +116,7 @@
     ]
   },
   "e2e": {
+    "workspace/input-regressions.spec.ts": { "previewContract": true },
     "browser/fullscreen.spec.ts": { "previewContract": true },
     "workspace/word-wrap.spec.ts": { "previewContract": true },
     "browser/themes.spec.ts": { "previewContract": true },
@@ -249,6 +253,7 @@
     "preview/math-compat.spec.ts": {
       "previewContract": true
     },
+    "preview/korean-emphasis.spec.ts": { "previewContract": true },
     "preview/preview-local-links.spec.ts": {
       "previewContract": true
     },

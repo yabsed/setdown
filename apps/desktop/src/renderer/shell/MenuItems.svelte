@@ -40,6 +40,8 @@
           disabled={!entry.enabled}
           role={entry.type === 'radio' ? 'menuitemradio' : entry.type === 'checkbox' ? 'menuitemcheckbox' : 'menuitem'}
           aria-checked={entry.type === 'radio' || entry.type === 'checkbox' ? !!entry.checked : undefined}
+          aria-haspopup={entry.submenu?.length ? 'menu' : undefined}
+          aria-expanded={entry.submenu?.length ? openSubmenuId === entry.id : undefined}
           onclick={(event) => entry.submenu?.length
             ? onsubmenu(entry, event.currentTarget)
             : onexecute(entry.id)}
@@ -50,7 +52,7 @@
           <span class="product-menu-marker" aria-hidden="true">{entry.type === 'radio' && entry.checked ? '•' : entry.type === 'checkbox' && entry.checked ? '✓' : ''}</span>
           <span class="product-menu-label">{entry.label}</span>
           <span class="product-menu-accelerator">{accelerator(entry.accelerator)}</span>
-          <span class="product-menu-arrow">{entry.submenu?.length ? '›' : ''}</span>
+          <span class="product-menu-arrow" aria-hidden="true">{entry.submenu?.length ? '›' : ''}</span>
         </button>
       </li>
     {/if}

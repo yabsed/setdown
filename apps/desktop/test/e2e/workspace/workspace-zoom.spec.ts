@@ -385,7 +385,11 @@ for (const extension of ['md', 'ts']) test(`Git review, ordinary editors and a s
     await page.locator('.scm-group').filter({ has: page.getByText('CHANGES', { exact: true }) }).locator('.git-change-open').click();
     const editor = page.getByRole('textbox', { name: 'Current document', exact: true });
     await expect(editor).toBeEditable();
-    await editor.press('Control+End'); await editor.pressSequentially('Zoom undo sentinel');
+    // A late review refresh used to reset column one between keystrokes.
+    // Yield during typing so that race remains observable before testing zoom.
+    await editor.press('Control+End'); await editor.pressSequentially('Zo');
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await editor.pressSequentially('om undo sentinel');
     await pinch(app, 1.3, page.locator('.git-diff-editor .monaco-editor').last());
     await expect.poll(() => activeTextZoom(page)).toBeGreaterThan(100);
     await page.getByRole('button', { name: 'Reset text zoom', exact: true }).click();

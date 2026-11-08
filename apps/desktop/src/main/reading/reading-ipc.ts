@@ -1,4 +1,5 @@
-import { clipboard, ipcMain, Menu } from 'electron';
+import { clipboard, ipcMain } from 'electron';
+import { showContextMenu } from '../menu/menu-overlay';
 import { isPdfDocument, isImageDocument, isVideoDocument } from '../../core/document/document-profile';
 import type { DiskVersion } from '../../core/document/document';
 import type { WindowIpc } from '../ipc/window-ipc';
@@ -35,10 +36,10 @@ export function installReadingIpc(channels: WindowIpc, positions: ReadingPositio
       || typeof text !== 'string' || !text.trim()) return;
     const selection = text.slice(0, 5_000_000);
     return new Promise<void>(resolve => {
-      Menu.buildFromTemplate([{ label: 'Copy', click: () => {
+      void showContextMenu(state, [{ label: 'Copy', click: () => {
         if (!state.window.isDestroyed() && owned(state, file)) clipboard.writeText(selection);
         resolve();
-      } }]).popup({ window: state.window, callback: resolve });
+      } }], { closed: resolve });
     });
   });
   channels.handle('image:read', (state, file: string, version: DiskVersion) => {

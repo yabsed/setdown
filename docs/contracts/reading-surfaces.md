@@ -83,6 +83,15 @@ links enable copying their address and opening a new tab. Select All and Find
 operate on the addressed reading surface. Ordinary Markdown retains PDF export;
 Git review does not export the current ordinary document by accident.
 
+Non-Monaco context menus use `main/menu/menu-overlay.ts`, a themed native overlay
+above live web/reader views. Compact rows follow the current app palette; nested
+menus, disabled/checked items and keyboard navigation retain their actions.
+Dismissal restores the originating WebContents, and Escape closes in main before
+subsequent typing can be delivered to the menu. Chromium hit-test coordinates and
+captured document/navigation guards still belong to the original surface.
+Monaco keeps its own menu. `browser/menus.spec.ts` checks light/dark appearance,
+immediate native typing after Escape and image/link command ownership.
+
 Find follows the **visible surface**, not merely the tab's resource type.
 Literal search uses Unicode case-insensitive matching with offsets in the original
 text; lowercasing must not shift matches after expanding characters such as `İ`.

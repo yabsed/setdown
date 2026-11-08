@@ -1,19 +1,33 @@
-import { ipcMain, WebContentsView, type WebContents } from 'electron';
+import { ipcMain, Menu, screen, webContents, WebContentsView, type WebContents, type MenuItem, type MenuItemConstructorOptions } from 'electron';
 import path from 'node:path';
 import type { WindowState } from '../windows/window-state';
 import type { ApplicationMenuEntry, MenuOverlayContext } from '../../protocol/desktop-api';
 import { executeApplicationMenu } from './application-menu';
+import type { PreviewThemeId } from '../../core/preview/preview-preferences';
+
+type ContextOptions = { source?: WebContents; point?: { x: number; y: number }; closed?: () => void };
+type ContextMenu = { items: ApplicationMenuEntry[]; actions: Map<string, MenuItem>; source?: WebContents; closed?: () => void };
+let presentContext: ((state: WindowState, template: Array<MenuItem | MenuItemConstructorOptions>, options: ContextOptions) => Promise<boolean>) | undefined;
+export async function showContextMenu(state: WindowState, template: Array<MenuItem | MenuItemConstructorOptions>, options: ContextOptions = {}): Promise<boolean> {
+  try {
+    if (presentContext && await presentContext(state, template, options)) return true;
+  } catch (error) { console.error('Could not display context menu:', error); }
+  options.closed?.();
+  return false;
+}
 
 /** A transparent native layer keeps menus above live web content without hiding
  * the page or replacing its video frames with a captured image. */
 export class MenuOverlay {
   private readonly owners = new Map<number, { state: WindowState; view: WebContentsView; contents: WebContents;
-    context: MenuOverlayContext; ready: Promise<void>; generation: number; explorerTarget: boolean }>();
-  constructor(entries: (state: WindowState, id: string) => ApplicationMenuEntry[]) {
+    context: MenuOverlayContext; ready: Promise<void>; generation: number; explorerTarget: boolean; contextMenu?: ContextMenu }>();
+  constructor(entries: (state: WindowState, id: string) => ApplicationMenuEntry[], private readonly theme: () => PreviewThemeId) {
+    presentContext = (state, template, options) => this.popup(state, template, options);
     const owned = (id: number) => [...this.owners.values()].find(entry => entry.contents.id === id);
     ipcMain.handle('menu-overlay:context', event => owned(event.sender.id)?.context);
     ipcMain.handle('menu-overlay:entries', (event, id: string) => {
       const entry = owned(event.sender.id);
+      if (entry?.contextMenu) return id === entry.context.menuId ? entry.contextMenu.items : [];
       if (entry && /^application-menu-(file|view|edit|window)$/.test(id)) entry.context.menuId = id;
       return entry ? entries(entry.state, id).map(item => entry.explorerTarget && ['menu-undo', 'menu-redo'].includes(item.id)
         ? { ...item, enabled: false } : item) : [];
@@ -25,6 +39,14 @@ export class MenuOverlay {
     ipcMain.on('menu-overlay:execute', (event, id: string) => {
       const entry = owned(event.sender.id);
       if (!entry || !entry.view.getVisible()) return;
+      if (entry.contextMenu) {
+        const menu = entry.contextMenu, item = menu.actions.get(id);
+        if (!item?.enabled || !item.visible || item.submenu || item.type === 'separator') return;
+        this.close(entry.state.webContentsId, true, false);
+        try { item.click(item, entry.state.window, { triggeredByAccelerator: false } as Electron.KeyboardEvent); }
+        finally { menu.closed?.(); }
+        return;
+      }
       if (entry.explorerTarget && ['menu-undo', 'menu-redo'].includes(id)) return;
       const find = (rows: ApplicationMenuEntry[]): ApplicationMenuEntry | undefined => {
         for (const row of rows) { if (row.id === id) return row; const nested = row.submenu && find(row.submenu); if (nested) return nested; }
@@ -38,10 +60,27 @@ export class MenuOverlay {
       executeApplicationMenu(id, entry.state.window);
     });
   }
-  async open(state: WindowState, context: MenuOverlayContext): Promise<boolean> {
-    if (!/^application-menu-(file|view|edit|window)$/.test(context.menuId)
+  private async popup(state: WindowState, template: Array<MenuItem | MenuItemConstructorOptions>, options: ContextOptions): Promise<boolean> {
+    const menu = Menu.buildFromTemplate(template), actions = new Map<string, MenuItem>();
+    const token = `context-menu-${crypto.randomUUID()}`;
+    const rows = (items: MenuItem[], prefix: string, parentEnabled = true): ApplicationMenuEntry[] => items.filter(item => item.visible).map((item, index) => {
+      const id = `${prefix}-${index}`, enabled = parentEnabled && item.enabled;
+      if (enabled) actions.set(id, item);
+      return { id, label: item.label, enabled, checked: item.checked,
+        type: item.submenu ? 'submenu' : item.type === 'checkbox' || item.type === 'radio' || item.type === 'separator' ? item.type : 'normal', accelerator: item.accelerator?.toString(),
+        ...(item.submenu ? { submenu: rows(item.submenu.items, id, enabled) } : {}) };
+    });
+    const cursor = screen.getCursorScreenPoint(), bounds = state.window.getContentBounds(), zoom = state.window.webContents.getZoomFactor();
+    const point = options.point ?? { x: cursor.x - bounds.x, y: cursor.y - bounds.y };
+    const source = options.source ?? webContents.getFocusedWebContents() ?? state.window.webContents;
+    return this.open(state, { menuId: token, x: point.x / zoom, y: point.y / zoom, theme: this.theme() },
+      { items: rows(menu.items, token), actions, source, closed: options.closed });
+  }
+  async open(state: WindowState, context: MenuOverlayContext, contextMenu?: ContextMenu): Promise<boolean> {
+    if ((!contextMenu && !/^application-menu-(file|view|edit|window)$/.test(context.menuId))
       || !Number.isFinite(context.x) || !Number.isFinite(context.y)) return false;
     const owner = state.webContentsId;
+    this.close(owner, false);
     let entry = this.owners.get(owner);
     if (!entry) {
       const view = new WebContentsView({ webPreferences: { preload: path.join(__dirname, 'preload.cjs'),
@@ -53,12 +92,24 @@ export class MenuOverlay {
       this.owners.set(owner, entry);
       contents.setWindowOpenHandler(() => ({ action: 'deny' }));
       contents.on('will-navigate', event => event.preventDefault());
+      // Close before sending Escape through renderer IPC. Otherwise the first
+      // character typed immediately afterwards can still hit this hidden layer.
+      contents.on('before-input-event', (event, input) => {
+        if (input.type === 'keyDown' && input.key === 'Escape' && !input.isComposing && view.getVisible()) {
+          event.preventDefault(); this.close(owner);
+        }
+      });
       state.window.on('resize', () => this.close(owner));
       state.window.on('blur', () => this.close(owner, false));
       state.window.webContents.on('did-start-navigation', (_event, _url, inPlace, mainFrame) => { if (mainFrame && !inPlace) this.close(owner, false); });
-      state.window.once('closed', () => { this.owners.delete(owner); if (!contents.isDestroyed()) contents.close(); });
+      state.window.once('closed', () => {
+        const menu = this.owners.get(owner)?.contextMenu;
+        this.owners.delete(owner); menu?.closed?.();
+        if (!contents.isDestroyed()) contents.close();
+      });
     }
     entry.context = context;
+    entry.contextMenu = contextMenu;
     entry.explorerTarget = state.explorerEditTarget === true;
     const generation = ++entry.generation;
     await entry.ready;
@@ -74,15 +125,21 @@ export class MenuOverlay {
     entry.view.setVisible(true); entry.contents.focus();
     return true;
   }
-  close(owner: number, focus = true): void {
+  close(owner: number, focus = true, settle = true): void {
     const entry = this.owners.get(owner);
     if (!entry) return;
+    const visible = entry.view.getVisible();
+    const menu = entry.contextMenu; entry.contextMenu = undefined;
     entry.generation++;
     if (!entry.contents.isDestroyed()) entry.view.setVisible(false);
     if (!entry.state.window.isDestroyed()) {
       entry.state.window.contentView.removeChildView(entry.view);
       entry.state.window.webContents.send('menu-overlay:closed');
-      if (focus && entry.state.window.isFocused()) entry.state.window.webContents.focus();
+      if (visible && focus && entry.state.window.isFocused()) {
+        const target = menu?.source;
+        if (target && !target.isDestroyed()) target.focus(); else entry.state.window.webContents.focus();
+      }
     }
+    if (settle) menu?.closed?.();
   }
 }

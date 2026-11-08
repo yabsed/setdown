@@ -33,6 +33,7 @@ import { installTerminalIpc } from './terminal/terminal-ipc';
 import { WindowRegistry } from './windows/window-registry';
 import { LanguageManager } from './language/language-manager';
 import { displayBackend, hasGlobalWindowPositions } from './windows/display-backend';
+import { installX11Pinch } from './windows/x11-pinch';
 
 // Electron populates its own default ozone switch before running main. Only an
 // actual launch argument is an explicit user choice.
@@ -178,6 +179,7 @@ else {
     state?.window.show(); state?.window.focus();
   });
   app.whenReady().then(async () => {
+    if (process.platform === 'linux' && process.env.DISPLAY && hasGlobalWindowPositions(process.platform, process.env, backend)) installX11Pinch();
     installProtocols(); themes.load(); autoSave.load();
     const languages = new LanguageManager(id => registry.stateForWebContents(id));
     languages.install();

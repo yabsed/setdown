@@ -18,6 +18,7 @@
   import NotebookVariables from './NotebookVariables.svelte';
   import NotebookIcon from './NotebookIcon.svelte';
   import NotebookCell from './NotebookCell.svelte';
+  import { anchorNotebookScroll } from './notebook-scroll-anchor';
   import './notebook-typography.css';
   let { entry, path, active, desktop, onfocus, openFile }: { entry: NotebookEntry; path: string; active: boolean; desktop: DesktopPort; openFile(path: string, selection?: M.IRange | M.IPosition): Promise<void>; onfocus(): void } = $props();
   let presented = $state(false);
@@ -305,6 +306,7 @@
   }
   onMount(() => {
     let disposed = false;
+    const stopAnchor = scroll ? anchorNotebookScroll(scroll) : () => {};
     const navigateCell = (event: Event) => {
       const target = (event as CustomEvent<{ id: string; cellId: string; range: M.IRange }>).detail;
       if (target?.id === entry.id && entry.document.cells.some(cell => cell.id === target.cellId)) void showCell(target.cellId, target.range);
@@ -334,7 +336,7 @@
         registerMonacoThemes(monaco);
         theme = snapshot.id; api = monaco; applyMonacoTheme(monaco, theme);
       }).catch(error => { if (!disposed) loadError = String(error); });
-    return () => { window.removeEventListener('setdown:notebook-location', navigateCell); window.removeEventListener('setdown:notebook-find', findNotebook); disposed = true; cancelAnimationFrame(scrollFrame); dragEnd(); selectionChanges(); unsubscribe(); executionChanges(); environmentChanges(); themes(); zoom(); };
+    return () => { stopAnchor(); window.removeEventListener('setdown:notebook-location', navigateCell); window.removeEventListener('setdown:notebook-find', findNotebook); disposed = true; cancelAnimationFrame(scrollFrame); dragEnd(); selectionChanges(); unsubscribe(); executionChanges(); environmentChanges(); themes(); zoom(); };
   });
   $effect(() => {
     if (!active || !api || !environmentReady || entry.document.error || entry.document.language !== 'python') return;
@@ -417,7 +419,7 @@
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div class="cell-drop" hidden={hiddenSections.has(cell.id)} oncontextmenu={event => { if (event.target instanceof Element && event.target.closest('.cell-toolbar, .cell-gutter')) { event.preventDefault(); controller.select(cell.id); commandOpen = true; } }} class:drop-before={dropTarget === cell.id && !dropAfter} class:drop-after={dropTarget === cell.id && dropAfter}
           ondragover={event => dragOver(event, cell.id)} ondrop={event => drop(event, cell.id)}>
-        <NotebookCell onready={cellReady} {entry} {cell} {revision} {api} {active} {path} {desktop} {theme} {onfocus} {reveal} ontrace={target => trace(target, cell.id)} lineNumbers={controllerRevision >= 0 && controller.visibleLineNumbers.has(cell.id)} wordWrap={controllerRevision >= 0 && controller.wrapCode} outputWordWrap={controllerRevision >= 0 && controller.wrapOutput} onmodel={() => client?.updateMarkers()}
+        <NotebookCell onready={cellReady} {entry} {cell} {revision} {api} {active} {path} {desktop} {theme} {factor} {onfocus} {reveal} ontrace={target => trace(target, cell.id)} lineNumbers={controllerRevision >= 0 && controller.visibleLineNumbers.has(cell.id)} wordWrap={controllerRevision >= 0 && controller.wrapCode} outputWordWrap={controllerRevision >= 0 && controller.wrapOutput} onmodel={() => client?.updateMarkers()}
           selected={selected.has(cell.id)} collapsedInput={controllerRevision >= 0 && controller.collapsedInputs.has(cell.id)} collapsedOutput={controllerRevision >= 0 && controller.collapsedOutputs.has(cell.id)}
           onselect={event => selectCell(cell.id, event)} onrunNext={insert => void runNext(cell.id, insert)} duration={executionRevision >= 0 ? execution?.durations.get(cell.id) : undefined}
           run={() => execution?.run([cell.id])} executionState={executionRevision >= 0 ? execution?.cells.get(cell.id) : undefined}
@@ -458,7 +460,7 @@
   .execution-note:focus-within { outline: 2px solid var(--app-focus-ring); border-radius: 3px; }
   .execution-note:hover { background: var(--app-hover); }
   .notebook-scroll.preparing { visibility: hidden; }
-  .notebook-scroll { overflow: auto; flex: 1; padding: 0 16px 0 8px; min-height: 0; scrollbar-gutter: stable; }
+  .notebook-scroll { overflow: auto; overflow-anchor: none; flex: 1; padding: 0 16px 0 8px; min-height: 0; scrollbar-gutter: stable; }
   /* Vertical scroll padding offsets sticky editors too. Keep document spacing
      in the scrolling flow so a long cell can meet the viewport's top edge. */
   .notebook-scroll::before, .notebook-scroll::after { content: ''; display: block; }

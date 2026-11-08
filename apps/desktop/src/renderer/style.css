@@ -94,6 +94,8 @@ input, select, textarea { font-family: inherit; }
   user-select: none;
 }
 .application-menu-popup { width: 286px; }
+:is(.application-menu-popup, .application-submenu-popup).context-menu { width: max-content; min-width: 210px; max-width: min(360px, calc(100vw - 12px)); border-radius: 5px; }
+.context-menu .product-menu-row > button { min-height: 26px; font-size: 13px; }
 .application-submenu-popup { z-index: 101; width: 226px; }
 .application-menu-popup[hidden],
 .application-submenu-popup[hidden] { display: none; }

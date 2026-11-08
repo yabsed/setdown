@@ -192,6 +192,12 @@ export function createTabDrag(options: Options) {
   window.addEventListener('dragstart', event => {
     if (supported(event)) { sourceDrag = true; setDragging(true); options.shell.classList.add('is-tab-dragging'); }
   });
+  // Explorer files use the workspace drop guides too, but have no tab-transfer
+  // token or TabChrome dragend callback. Cancellation/outside drops must release
+  // their input shield just as a completed in-window drop does.
+  window.addEventListener('dragend', () => {
+    if (sourceDrag && !transferId && !sharedDragId) reset();
+  });
   const acceptTarget = (event: DragEvent) => {
     if (!supported(event)) return;
     leftWindow = false;

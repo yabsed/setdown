@@ -1,0 +1,1058 @@
+[
+  {
+    "name": "00-데이터-준비.ipynb",
+    "warmMonaco": false,
+    "readyMs": 1103,
+    "initial": {
+      "cells": 44,
+      "editors": 2,
+      "images": 0,
+      "scrollHeight": 7355,
+      "viewport": 676
+    },
+    "imageSamples": [],
+    "markdownRequests": [
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962429580,
+        "durationMs": 474
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962429585,
+        "durationMs": 472
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962429585,
+        "durationMs": 474
+      }
+    ]
+  },
+  {
+    "name": "00-데이터-준비.ipynb",
+    "warmMonaco": true,
+    "readyMs": 670,
+    "initial": {
+      "cells": 44,
+      "editors": 2,
+      "images": 0,
+      "scrollHeight": 7355,
+      "viewport": 676
+    },
+    "imageSamples": [],
+    "markdownRequests": [
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962431647,
+        "durationMs": 449
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962431658,
+        "durationMs": 440
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962431701,
+        "durationMs": 407
+      }
+    ]
+  },
+  {
+    "name": "02-파형과-측정.ipynb",
+    "warmMonaco": false,
+    "readyMs": 1199,
+    "initial": {
+      "cells": 59,
+      "editors": 1,
+      "images": 0,
+      "scrollHeight": 8896,
+      "viewport": 676
+    },
+    "imageSamples": [
+      {
+        "id": "quality-plot",
+        "afterJump": {
+          "scrollTop": 6507,
+          "cellTop": 1733.609375,
+          "cellBottom": 1939.609375,
+          "viewportTop": 144,
+          "viewportBottom": 820,
+          "mounted": false,
+          "decoded": false,
+          "editor": false
+        },
+        "visible": true,
+        "scrollToImageMs": 483,
+        "samples": [
+          {
+            "scrollTop": 6507,
+            "cellTop": 1733.609375,
+            "cellBottom": 1939.609375,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 6807,
+            "cellTop": 1433.609375,
+            "cellBottom": 1639.609375,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 7107,
+            "cellTop": 1133.609375,
+            "cellBottom": 1339.609375,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 7407,
+            "cellTop": 833.609375,
+            "cellBottom": 1829.609375,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": true,
+            "decoded": true,
+            "imageTop": 1031.609375,
+            "imageBottom": 1821.609375,
+            "editor": true
+          },
+          {
+            "scrollTop": 7707,
+            "cellTop": 533.609375,
+            "cellBottom": 1529.609375,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": true,
+            "decoded": true,
+            "imageTop": 731.609375,
+            "imageBottom": 1521.609375,
+            "editor": true
+          }
+        ]
+      },
+      {
+        "id": "training-plot",
+        "afterJump": {
+          "scrollTop": 11405,
+          "cellTop": 4480.28125,
+          "cellBottom": 4838.28125,
+          "viewportTop": 144,
+          "viewportBottom": 820,
+          "mounted": false,
+          "decoded": false,
+          "editor": false
+        },
+        "visible": true,
+        "scrollToImageMs": 1649,
+        "samples": [
+          {
+            "scrollTop": 11405,
+            "cellTop": 4480.28125,
+            "cellBottom": 4838.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 11705,
+            "cellTop": 4180.28125,
+            "cellBottom": 4538.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 12005,
+            "cellTop": 3880.28125,
+            "cellBottom": 4238.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 12305,
+            "cellTop": 3580.28125,
+            "cellBottom": 3938.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 12605,
+            "cellTop": 3280.28125,
+            "cellBottom": 3638.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 12905,
+            "cellTop": 2980.28125,
+            "cellBottom": 3338.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 13205,
+            "cellTop": 2680.28125,
+            "cellBottom": 3038.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 13505,
+            "cellTop": 2380.28125,
+            "cellBottom": 2738.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 13805,
+            "cellTop": 2080.28125,
+            "cellBottom": 2438.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 14105,
+            "cellTop": 1780.28125,
+            "cellBottom": 2138.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 14405,
+            "cellTop": 1480.28125,
+            "cellBottom": 1838.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 14705,
+            "cellTop": 1180.28125,
+            "cellBottom": 1538.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 15005,
+            "cellTop": 880.28125,
+            "cellBottom": 2434.953125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": true,
+            "decoded": true,
+            "imageTop": 1230.28125,
+            "imageBottom": 2426.953125,
+            "editor": true
+          },
+          {
+            "scrollTop": 15305,
+            "cellTop": 580.28125,
+            "cellBottom": 2134.953125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": true,
+            "decoded": true,
+            "imageTop": 930.28125,
+            "imageBottom": 2126.953125,
+            "editor": true
+          },
+          {
+            "scrollTop": 15605,
+            "cellTop": 280.28125,
+            "cellBottom": 1834.953125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": true,
+            "decoded": true,
+            "imageTop": 630.28125,
+            "imageBottom": 1826.953125,
+            "editor": true
+          }
+        ]
+      }
+    ],
+    "markdownRequests": [
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962433463,
+        "durationMs": 474
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962433469,
+        "durationMs": 470
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962433470,
+        "durationMs": 471
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962433470,
+        "durationMs": 474
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962434131,
+        "durationMs": 4
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962434140,
+        "durationMs": 5
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962435127,
+        "durationMs": 4
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962435167,
+        "durationMs": 3
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962435183,
+        "durationMs": 3
+      }
+    ]
+  },
+  {
+    "name": "02-파형과-측정.ipynb",
+    "warmMonaco": true,
+    "readyMs": 759,
+    "initial": {
+      "cells": 59,
+      "editors": 1,
+      "images": 0,
+      "scrollHeight": 8896,
+      "viewport": 676
+    },
+    "imageSamples": [
+      {
+        "id": "quality-plot",
+        "afterJump": {
+          "scrollTop": 6507,
+          "cellTop": 1733.609375,
+          "cellBottom": 1939.609375,
+          "viewportTop": 144,
+          "viewportBottom": 820,
+          "mounted": false,
+          "decoded": false,
+          "editor": false
+        },
+        "visible": true,
+        "scrollToImageMs": 486,
+        "samples": [
+          {
+            "scrollTop": 6507,
+            "cellTop": 1733.609375,
+            "cellBottom": 1939.609375,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 6807,
+            "cellTop": 1433.609375,
+            "cellBottom": 1639.609375,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 7107,
+            "cellTop": 1133.609375,
+            "cellBottom": 1339.609375,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 7407,
+            "cellTop": 833.609375,
+            "cellBottom": 1829.609375,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": true,
+            "decoded": true,
+            "imageTop": 1031.609375,
+            "imageBottom": 1821.609375,
+            "editor": true
+          },
+          {
+            "scrollTop": 7707,
+            "cellTop": 533.609375,
+            "cellBottom": 1529.609375,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": true,
+            "decoded": true,
+            "imageTop": 731.609375,
+            "imageBottom": 1521.609375,
+            "editor": true
+          }
+        ]
+      },
+      {
+        "id": "training-plot",
+        "afterJump": {
+          "scrollTop": 11405,
+          "cellTop": 4480.28125,
+          "cellBottom": 4838.28125,
+          "viewportTop": 144,
+          "viewportBottom": 820,
+          "mounted": false,
+          "decoded": false,
+          "editor": false
+        },
+        "visible": true,
+        "scrollToImageMs": 1649,
+        "samples": [
+          {
+            "scrollTop": 11405,
+            "cellTop": 4480.28125,
+            "cellBottom": 4838.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 11705,
+            "cellTop": 4180.28125,
+            "cellBottom": 4538.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 12005,
+            "cellTop": 3880.28125,
+            "cellBottom": 4238.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 12305,
+            "cellTop": 3580.28125,
+            "cellBottom": 3938.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 12605,
+            "cellTop": 3280.28125,
+            "cellBottom": 3638.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 12905,
+            "cellTop": 2980.28125,
+            "cellBottom": 3338.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 13205,
+            "cellTop": 2680.28125,
+            "cellBottom": 3038.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 13505,
+            "cellTop": 2380.28125,
+            "cellBottom": 2738.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 13805,
+            "cellTop": 2080.28125,
+            "cellBottom": 2438.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 14105,
+            "cellTop": 1780.28125,
+            "cellBottom": 2138.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 14405,
+            "cellTop": 1480.28125,
+            "cellBottom": 1838.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 14705,
+            "cellTop": 1180.28125,
+            "cellBottom": 1538.28125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 15005,
+            "cellTop": 880.28125,
+            "cellBottom": 2434.953125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": true,
+            "decoded": true,
+            "imageTop": 1230.28125,
+            "imageBottom": 2426.953125,
+            "editor": true
+          },
+          {
+            "scrollTop": 15305,
+            "cellTop": 580.28125,
+            "cellBottom": 2134.953125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": true,
+            "decoded": true,
+            "imageTop": 930.28125,
+            "imageBottom": 2126.953125,
+            "editor": true
+          },
+          {
+            "scrollTop": 15605,
+            "cellTop": 280.28125,
+            "cellBottom": 1834.953125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": true,
+            "decoded": true,
+            "imageTop": 630.28125,
+            "imageBottom": 1826.953125,
+            "editor": true
+          }
+        ]
+      }
+    ],
+    "markdownRequests": [
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962438461,
+        "durationMs": 513
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962438466,
+        "durationMs": 514
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962438501,
+        "durationMs": 482
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962438514,
+        "durationMs": 479
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962439206,
+        "durationMs": 8
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962439206,
+        "durationMs": 11
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962440141,
+        "durationMs": 5
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962440168,
+        "durationMs": 3
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962440168,
+        "durationMs": 6
+      }
+    ]
+  },
+  {
+    "name": "09-작은-CNN-대조.ipynb",
+    "warmMonaco": false,
+    "readyMs": 1376,
+    "initial": {
+      "cells": 66,
+      "editors": 1,
+      "images": 0,
+      "scrollHeight": 10561,
+      "viewport": 676
+    },
+    "imageSamples": [
+      {
+        "id": "61f38a10",
+        "afterJump": {
+          "scrollTop": 9046,
+          "cellTop": 3217.328125,
+          "cellBottom": 3290.328125,
+          "viewportTop": 144,
+          "viewportBottom": 820,
+          "mounted": false,
+          "decoded": false,
+          "editor": false
+        },
+        "visible": true,
+        "scrollToImageMs": 1156,
+        "samples": [
+          {
+            "scrollTop": 9046,
+            "cellTop": 3217.328125,
+            "cellBottom": 3290.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 9346,
+            "cellTop": 2917.328125,
+            "cellBottom": 2990.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 9646,
+            "cellTop": 2617.328125,
+            "cellBottom": 2690.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 9946,
+            "cellTop": 2317.328125,
+            "cellBottom": 2390.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 10246,
+            "cellTop": 2017.328125,
+            "cellBottom": 2090.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 10546,
+            "cellTop": 1717.328125,
+            "cellBottom": 1790.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 10846,
+            "cellTop": 1417.328125,
+            "cellBottom": 1490.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 11146,
+            "cellTop": 1117.328125,
+            "cellBottom": 1190.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 11446,
+            "cellTop": 817.328125,
+            "cellBottom": 1180.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": true,
+            "decoded": true,
+            "imageTop": 882.328125,
+            "imageBottom": 1172.328125,
+            "editor": true
+          },
+          {
+            "scrollTop": 11746,
+            "cellTop": 517.328125,
+            "cellBottom": 880.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": true,
+            "decoded": true,
+            "imageTop": 582.328125,
+            "imageBottom": 872.328125,
+            "editor": true
+          }
+        ]
+      },
+      {
+        "id": "bd09840d",
+        "afterJump": {
+          "scrollTop": 12350,
+          "cellTop": 300.328125,
+          "cellBottom": 663.328125,
+          "viewportTop": 144,
+          "viewportBottom": 820,
+          "mounted": true,
+          "decoded": true,
+          "imageTop": 365.328125,
+          "imageBottom": 655.328125,
+          "editor": true
+        },
+        "visible": true,
+        "scrollToImageMs": 1,
+        "samples": [
+          {
+            "scrollTop": 12350,
+            "cellTop": 300.328125,
+            "cellBottom": 663.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": true,
+            "decoded": true,
+            "imageTop": 365.328125,
+            "imageBottom": 655.328125,
+            "editor": true
+          }
+        ]
+      }
+    ],
+    "markdownRequests": [
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962443430,
+        "durationMs": 509
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962443436,
+        "durationMs": 513
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962443436,
+        "durationMs": 516
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962444179,
+        "durationMs": 4
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962445558,
+        "durationMs": 4
+      }
+    ]
+  },
+  {
+    "name": "09-작은-CNN-대조.ipynb",
+    "warmMonaco": true,
+    "readyMs": 899,
+    "initial": {
+      "cells": 66,
+      "editors": 1,
+      "images": 0,
+      "scrollHeight": 10743,
+      "viewport": 676
+    },
+    "imageSamples": [
+      {
+        "id": "61f38a10",
+        "afterJump": {
+          "scrollTop": 9228,
+          "cellTop": 3217.328125,
+          "cellBottom": 3290.328125,
+          "viewportTop": 144,
+          "viewportBottom": 820,
+          "mounted": false,
+          "decoded": false,
+          "editor": false
+        },
+        "visible": true,
+        "scrollToImageMs": 1189,
+        "samples": [
+          {
+            "scrollTop": 9228,
+            "cellTop": 3217.328125,
+            "cellBottom": 3290.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 9528,
+            "cellTop": 2917.328125,
+            "cellBottom": 2990.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 9828,
+            "cellTop": 2617.328125,
+            "cellBottom": 2690.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 10128,
+            "cellTop": 2317.328125,
+            "cellBottom": 2390.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 10428,
+            "cellTop": 2017.328125,
+            "cellBottom": 2090.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 10728,
+            "cellTop": 1717.328125,
+            "cellBottom": 1790.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 11028,
+            "cellTop": 1417.328125,
+            "cellBottom": 1490.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 11328,
+            "cellTop": 1117.328125,
+            "cellBottom": 1190.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": false,
+            "decoded": false,
+            "editor": false
+          },
+          {
+            "scrollTop": 11628,
+            "cellTop": 817.328125,
+            "cellBottom": 1180.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": true,
+            "decoded": true,
+            "imageTop": 882.328125,
+            "imageBottom": 1172.328125,
+            "editor": true
+          },
+          {
+            "scrollTop": 11928,
+            "cellTop": 517.328125,
+            "cellBottom": 880.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": true,
+            "decoded": true,
+            "imageTop": 582.328125,
+            "imageBottom": 872.328125,
+            "editor": true
+          }
+        ]
+      },
+      {
+        "id": "bd09840d",
+        "afterJump": {
+          "scrollTop": 12532,
+          "cellTop": 300.328125,
+          "cellBottom": 663.328125,
+          "viewportTop": 144,
+          "viewportBottom": 820,
+          "mounted": true,
+          "decoded": true,
+          "imageTop": 365.328125,
+          "imageBottom": 655.328125,
+          "editor": true
+        },
+        "visible": true,
+        "scrollToImageMs": 1,
+        "samples": [
+          {
+            "scrollTop": 12532,
+            "cellTop": 300.328125,
+            "cellBottom": 663.328125,
+            "viewportTop": 144,
+            "viewportBottom": 820,
+            "mounted": true,
+            "decoded": true,
+            "imageTop": 365.328125,
+            "imageBottom": 655.328125,
+            "editor": true
+          }
+        ]
+      }
+    ],
+    "markdownRequests": [
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962447928,
+        "durationMs": 540
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962447940,
+        "durationMs": 532
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962447940,
+        "durationMs": 542
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962448702,
+        "durationMs": 3
+      },
+      {
+        "channel": "notebook:markdown",
+        "at": 1793962450108,
+        "durationMs": 4
+      }
+    ]
+  }
+]

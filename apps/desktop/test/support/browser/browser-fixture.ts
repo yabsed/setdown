@@ -6,9 +6,6 @@ import os from 'node:os';
 import path from 'node:path';
 import { disposeApplication, focusApplication, type TestApplication } from '../electron/electron-app';
 import { pdfFixture } from '../media/pdf-fixture';
-import { execFile as execFileCallback } from 'node:child_process';
-import { promisify } from 'node:util';
-const execFile = promisify(execFileCallback);
 
 export async function fixture(document = true) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-browser-'));
@@ -181,60 +178,29 @@ export async function evaluatePage<T>(app: TestApplication, origin: string, scri
   }, { origin, script });
 }
 
-// Native Electron menus are still constructed and displayed on Xvfb. Retain a
-// handle so the tests can choose an OS menu item using real isolated input.
+// Retain the constructed menu generation while exercising the themed overlay.
 export async function captureNativeMenus(app: TestApplication) {
   await app.evaluate(({ Menu }) => {
     const build = Menu.buildFromTemplate;
-    const templates = new WeakMap<Electron.Menu, Electron.MenuItemConstructorOptions[]>();
     Menu.buildFromTemplate = function(template) {
-      const menu = build.call(this, template); templates.set(menu, template as Electron.MenuItemConstructorOptions[]); return menu;
-    };
-    const original = Menu.prototype.popup;
-    Menu.prototype.popup = function(options) {
+      const menu = build.call(this, template);
       (globalThis as any).__browserTestMenuGeneration = ((globalThis as any).__browserTestMenuGeneration ?? 0) + 1;
-      (globalThis as any).__browserTestMenu = this;
-      (globalThis as any).__browserTestMenuTemplate = templates.get(this);
-      return original.call(this, options);
+      (globalThis as any).__browserTestMenu = menu;
+      return menu;
     };
   });
 }
 export async function chooseNativeMenu(app: TestApplication, labels: string[]) {
-  const keys = await app.evaluate(({ Menu }, labels) => {
-    const root: Electron.Menu = (globalThis as any).__browserTestMenu;
-    let items: Electron.MenuItemConstructorOptions[] = (globalThis as any).__browserTestMenuTemplate;
-    if (!root || !items) throw Error('No native menu was opened');
-    const keys: string[] = [];
-    for (const [index, label] of labels.entries()) {
-      const item = items.find(item => item.label === label);
-      if (!item) throw Error(`Missing native menu item: ${label}`);
-      const available = items.filter(item => item.type !== 'separator' && item.enabled !== false);
-      keys.push('Home', ...Array.from({ length: available.indexOf(item) }, () => 'Down'));
-      if (index < labels.length - 1) { keys.push('Right'); items = item.submenu as Electron.MenuItemConstructorOptions[]; }
-      else {
-        if (item.enabled === false || !item.click) throw Error(`Disabled native menu item: ${label}`);
-        keys.push('Return');
-      }
-    }
-    void Menu;
-    return keys;
-  }, labels);
-  if (process.env.SETDOWN_ISOLATED_DISPLAY !== '1' || !process.env.DISPLAY) throw Error('Native menu input requires the isolated Xvfb display.');
-  await execFile('python3', ['-c', `
-import ctypes, ctypes.util, json, sys, time
-x=ctypes.CDLL(ctypes.util.find_library('X11')); t=ctypes.CDLL(ctypes.util.find_library('Xtst'))
-x.XOpenDisplay.restype=ctypes.c_void_p
-x.XStringToKeysym.argtypes=[ctypes.c_char_p]; x.XStringToKeysym.restype=ctypes.c_ulong
-x.XKeysymToKeycode.argtypes=[ctypes.c_void_p,ctypes.c_ulong]; x.XKeysymToKeycode.restype=ctypes.c_uint
-x.XFlush.argtypes=[ctypes.c_void_p]; x.XCloseDisplay.argtypes=[ctypes.c_void_p]
-t.XTestFakeKeyEvent.argtypes=[ctypes.c_void_p,ctypes.c_uint,ctypes.c_int,ctypes.c_ulong]
-d=x.XOpenDisplay(None)
-if not d: raise RuntimeError('No isolated X display')
-for key in json.loads(sys.argv[1]):
- code=x.XKeysymToKeycode(d,x.XStringToKeysym(key.encode()))
- t.XTestFakeKeyEvent(d,code,1,0); t.XTestFakeKeyEvent(d,code,0,0); x.XFlush(d); time.sleep(.03)
-x.XCloseDisplay(d)
-`, JSON.stringify(keys)]);
+  // Product menus now paint in a real themed native overlay. Exercise their
+  // actual DOM controls rather than invoking captured callbacks directly.
+  await expect.poll(() => app.windows().some(page => page.url().includes('menu-overlay=1'))).toBe(true);
+  const overlay = app.windows().find(page => page.url().includes('menu-overlay=1'))!;
+  for (const label of labels) {
+    const item = overlay.getByRole('menuitem', { name: label, exact: true })
+      .or(overlay.getByRole('menuitemcheckbox', { name: label, exact: true }))
+      .or(overlay.getByRole('menuitemradio', { name: label, exact: true }));
+    await expect(item).toBeEnabled(); await item.click();
+  }
 }
 export async function pageContextMenu(app: TestApplication, origin: string, selector: string) {
   await app.evaluate(async ({ webContents }, { origin, selector }) => {

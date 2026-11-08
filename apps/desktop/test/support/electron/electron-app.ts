@@ -32,7 +32,12 @@ export async function focusApplication(application: TestApplication): Promise<vo
  */
 export async function disposeApplication(application: TestApplication): Promise<void> {
   try {
-    await application.evaluate(({ BrowserWindow }) => {
+    await application.evaluate(({ app, BrowserWindow }) => {
+      // Keep Electron alive until Playwright owns the final quit/inspector
+      // disconnect. Quitting inside this evaluation when the last window is
+      // destroyed can strand its response and deadlock worker teardown.
+      // User close/quit behavior is asserted before entering this cleanup.
+      app.removeAllListeners('window-all-closed');
       for (const window of BrowserWindow.getAllWindows()) window.destroy();
     });
   } catch {

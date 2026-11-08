@@ -29,6 +29,7 @@
     filePath: string;
     listener: Monaco.IDisposable;
     viewState: Monaco.editor.IDiffEditorViewState | null;
+    positioned: boolean;
   };
 
   let { actions, project, viewport: gitDiffViewport, focused, onfocus, updateLine }: {
@@ -206,7 +207,7 @@
     const cached: CachedModels = {
       original, modified, lease, originalText: diff.originalText, modifiedText: modified.getValue(),
       sourceSide: 'after', readOnly: Boolean(diff.readOnly || diff.staged || diff.history || /\.ipynb$/i.test(diff.filePath)), filePath: diff.filePath,
-      listener: { dispose() {} }, viewState: null,
+      listener: { dispose() {} }, viewState: null, positioned: false,
     };
     // Borrowed models have exactly one document-state listener, in the owner.
     // No edit mirroring, echo suppression or second full-string read is needed.
@@ -294,6 +295,7 @@
       lastRevealKey = revealKey;
       if (requested) {
         interruptReveal();
+        cached.positioned = true;
         cached.sourceSide = requested.sourceSide;
         const targetEditor = requested.sourceSide === 'before' ? editor.getOriginalEditor() : editor.getModifiedEditor();
         const targetModel = requested.sourceSide === 'before' ? cached.original : cached.modified;
@@ -303,7 +305,11 @@
         targetEditor.setScrollTop(targetEditor.getTopForPosition(position.lineNumber, position.column)
           - targetEditor.getLayoutInfo().height * requested.anchor.yRatio, monaco.editor.ScrollType.Immediate);
         if (focused) targetEditor.focus();
-      } else if (!cached.viewState) {
+      } else if (!cached.viewState && !cached.positioned) {
+        // A view state is first saved on blur. Until then a late review refresh
+        // can echo the current line while the user is typing. Initial placement
+        // must not reset that live caret to column one a second time.
+        cached.positioned = true;
         const target = Math.min(Math.max(1, line), cached.modified.getLineCount());
         const modifiedEditor = editor.getModifiedEditor();
         modifiedEditor.setPosition({ lineNumber: target, column: 1 });

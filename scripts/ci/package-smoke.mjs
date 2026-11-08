@@ -64,7 +64,10 @@ try {
 } finally {
   await writeFile(path.join(output, 'electron.log'), `${stderr}\n${pageErrors.join('\n')}`);
   if (app) {
-    await app.evaluate(({ BrowserWindow }) => { for (const window of BrowserWindow.getAllWindows()) window.destroy(); }).catch(() => undefined);
+    await app.evaluate(({ app, BrowserWindow }) => {
+      app.removeAllListeners('window-all-closed');
+      for (const window of BrowserWindow.getAllWindows()) window.destroy();
+    }).catch(() => undefined);
     await app.close();
   }
   await rm(profile, { recursive: true, force: true });

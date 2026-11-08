@@ -21,6 +21,7 @@ import { readReaderAnchor, type ReaderAnchor } from '../../core/browser/reader-a
 import { BrowserPermissions } from './browser-permissions';
 import { browserContextMenu } from './browser-context-menu';
 import { showReadingMenu } from '../menu/reading-menu';
+import { showContextMenu } from '../menu/menu-overlay';
 import type { ReaderSnapshot } from '../../protocol/browser';
 import { BrowserAuth } from './browser-auth';
 import { BrowserTabDrag } from './browser-tab-drag';
@@ -528,7 +529,8 @@ export class BrowserManager {
       if (extensionItems.length) items.push({ type: 'separator' }, ...extensionItems, { type: 'separator' });
       items.push({ label: 'Open in Default Browser', enabled: isWebURL(wc.getURL()), click: () => { if (valid()) void this.external(entry, wc.getURL(), true); } },
         { label: 'Site Controls…', enabled: isWebURL(wc.getURL()), click: () => { setImmediate(() => { if (valid()) this.siteMenu(entry); }); } });
-      Menu.buildFromTemplate(items).popup({ window: owner.window, frame: params.frame ?? undefined });
+      const bounds = entry.view.getBounds();
+      void showContextMenu(owner, items, { source: wc, point: { x: bounds.x + params.x, y: bounds.y + params.y } });
     });
     return entry;
   }
@@ -682,19 +684,19 @@ export class BrowserManager {
   private permissionMenu(entry: Entry) {
     const owner = entry.owner, generation = entry.document, state = this.options.stateFor(owner);
     if (!state) return;
-    Menu.buildFromTemplate(this.permissions.requests(entry.page.id).map(request => ({ label: `${request.label} · ${request.origin}`, submenu: [
+    void showContextMenu(state, this.permissions.requests(entry.page.id).map(request => ({ label: `${request.label} · ${request.origin}`, submenu: [
       { label: 'Allow for This Page', click: () => {
         if (entry.owner === owner && entry.document === generation && !entry.contents.isDestroyed()) this.permissions.respond(owner, entry.page.id, request.token, true);
       } },
       { label: 'Deny', click: () => this.permissions.respond(owner, entry.page.id, request.token, false) },
-    ] }))).popup({ window: state.window });
+    ] })), { source: entry.contents });
   }
   private siteMenu(entry: Entry) {
     const wc = entry.contents, owner = entry.owner, generation = entry.document, state = this.options.stateFor(owner);
     if (!state || !isWebURL(wc.getURL())) return;
     const origin = new URL(wc.getURL()).origin;
     const valid = () => !wc.isDestroyed() && entry.owner === owner && entry.document === generation;
-    Menu.buildFromTemplate([
+    void showContextMenu(state, [
       { label: origin, enabled: false },
       { label: 'Keep Original Colors for This Site', type: 'checkbox', checked: this.webThemes.snapshot().originalSites.includes(origin),
         click: item => { if (valid()) void this.webThemes.update({ site: { tabId: entry.page.id, original: item.checked } }, wc.getURL())
@@ -710,7 +712,7 @@ export class BrowserManager {
           dataTypes: ['cookies', 'localStorage', 'indexedDB', 'serviceWorkers', 'fileSystems', 'cache'] });
         if (valid()) { this.permissions.clear(owner, entry.page.id); wc.reload(); }
       })().catch(error => this.error(entry, error)); } },
-    ]).popup({ window: state.window });
+    ], { source: wc });
   }
   registerIpc(channels: WindowIpc) {
     ipcMain.handle('browser:theme-fetch', (event, request) => {
@@ -762,7 +764,7 @@ export class BrowserManager {
     channels.handle('browser:pdf-menu', async (state, id: string, token: string, selection: string) => {
       const entry = this.owned(state.webContentsId, id);
       if (!entry.pdf || entry.page.pdf?.token !== token || typeof selection !== 'string') return;
-      await showReadingMenu(state.window, { selection, link: '' },
+      await showReadingMenu(state, { selection, link: '' },
         () => this.live(entry) && entry.owner === state.webContentsId && entry.page.pdf?.token === token,
         url => { void this.openLink(entry.owner, url); });
     });
@@ -777,7 +779,7 @@ export class BrowserManager {
     channels.handle('browser:reader-menu', (state, id: string, context: { selection: string; link: string }) => {
       const entry = this.owned(state.webContentsId, id), document = entry.document;
       if (!this.readerReady(state.webContentsId, id) || !context || typeof context.selection !== 'string' || typeof context.link !== 'string') return null;
-      return showReadingMenu(state.window, { selection: context.selection, link: context.link, markdown: true, pdf: true },
+      return showReadingMenu(state, { selection: context.selection, link: context.link, markdown: true, pdf: true },
         () => this.live(entry) && entry.owner === state.webContentsId && entry.document === document && !state.window.isDestroyed(),
         url => { void this.openLink(entry.owner, url); });
     });
