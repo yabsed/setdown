@@ -1,0 +1,17 @@
+(node:29744) Warning: Failed to load the ES module: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/support/electron/electron-app.ts. Make sure to set "type": "module" in the nearest package.json file or use the .mjs extension.
+(Use `node --trace-warnings ...` to show where the warning was created)
+SyntaxError: Cannot use 'import.meta' outside a module
+
+   at notebook-probe.spec.ts:6
+
+  4 | import path from 'node:path';
+  5 | import os from 'node:os';
+> 6 | import { electron, disposeApplication, focusApplication } from '../../apps/desktop/test/support/electron/electron-app';
+    | ^
+  7 |
+  8 | const cells = [
+  9 |   { id: 'define', source: 'from typing import Literal\ndef choose(mode: Literal["fast", "safe"]) -> str:\n    return mode' },
+    at Object.<anonymous> (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/reports/lsp-vision-2026-11-08/notebook-probe.spec.ts:6:1)
+
+Error: No tests found
+

@@ -1,0 +1,114 @@
+{
+  "mode": "default",
+  "python": "/home/yabsed/miniconda3/bin/python3",
+  "notebook": {
+    "nbformat": 4,
+    "nbformat_minor": 5,
+    "metadata": {
+      "language_info": {
+        "name": "python"
+      },
+      "kernelspec": {
+        "name": "python3",
+        "language": "python",
+        "display_name": "Python 3"
+      }
+    },
+    "cells": [
+      {
+        "id": "define",
+        "source": "from typing import Literal\ndef choose(mode: Literal[\"fast\", \"safe\"]) -> str:\n    return mode",
+        "cell_type": "code",
+        "metadata": {},
+        "execution_count": null,
+        "outputs": []
+      },
+      {
+        "id": "invalid",
+        "source": "print(choose(\"turbo\"))",
+        "cell_type": "code",
+        "metadata": {},
+        "execution_count": null,
+        "outputs": []
+      },
+      {
+        "id": "valid",
+        "source": "print(choose(\"fast\"))",
+        "cell_type": "code",
+        "metadata": {},
+        "execution_count": null,
+        "outputs": []
+      }
+    ]
+  },
+  "diagnosticEvent": {
+    "type": "diagnostics",
+    "id": "ab138d1d-88ae-42b2-a614-0a5f135a13ba",
+    "generation": "017931a3-96eb-40f6-8807-1e58c4321f96",
+    "version": 1,
+    "cell": "invalid",
+    "cellVersion": 1,
+    "diagnostics": []
+  },
+  "invalidCallExecuted": "turbo",
+  "validCallExecuted": "fast",
+  "events": [
+    {
+      "type": "status",
+      "documents": [
+        {
+          "id": "604e98f1-7ca8-4664-9502-c3256d8467c3",
+          "generation": "0e831276-4fa2-423c-aa21-204996b826a3"
+        }
+      ],
+      "state": "starting"
+    },
+    {
+      "type": "status",
+      "documents": [
+        {
+          "id": "ab138d1d-88ae-42b2-a614-0a5f135a13ba",
+          "generation": "017931a3-96eb-40f6-8807-1e58c4321f96"
+        }
+      ],
+      "state": "starting"
+    },
+    {
+      "type": "status",
+      "documents": [
+        {
+          "id": "ab138d1d-88ae-42b2-a614-0a5f135a13ba",
+          "generation": "017931a3-96eb-40f6-8807-1e58c4321f96"
+        }
+      ],
+      "state": "ready"
+    },
+    {
+      "type": "diagnostics",
+      "id": "ab138d1d-88ae-42b2-a614-0a5f135a13ba",
+      "generation": "017931a3-96eb-40f6-8807-1e58c4321f96",
+      "version": 1,
+      "cell": "define",
+      "cellVersion": 1,
+      "diagnostics": []
+    },
+    {
+      "type": "diagnostics",
+      "id": "ab138d1d-88ae-42b2-a614-0a5f135a13ba",
+      "generation": "017931a3-96eb-40f6-8807-1e58c4321f96",
+      "version": 1,
+      "cell": "invalid",
+      "cellVersion": 1,
+      "diagnostics": []
+    },
+    {
+      "type": "diagnostics",
+      "id": "ab138d1d-88ae-42b2-a614-0a5f135a13ba",
+      "generation": "017931a3-96eb-40f6-8807-1e58c4321f96",
+      "version": 1,
+      "cell": "valid",
+      "cellVersion": 1,
+      "diagnostics": []
+    }
+  ]
+}

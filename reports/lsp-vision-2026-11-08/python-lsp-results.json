@@ -1,0 +1,2573 @@
+{
+  "completedAt": "2026-11-08T05:51:34.471Z",
+  "node": "v22.23.1",
+  "source": "from typing import Any, Literal\ndef choose(mode: Literal[\"fast\", \"safe\"]) -> str:\n    return mode\nvalid = choose(\"fast\")\ninvalid = choose(\"turbo\")\ncount: int = \"wrong\"\nopaque: Any = choose\nunchecked = opaque(\"turbo\")\nimport setdown_probe_missing_package\nprint(setdown_probe_missing_name)\n",
+  "scope": "Real installed language servers over stdio, including native notebookDocument synchronization. Not an Electron marker/UI test.",
+  "results": [
+    {
+      "server": "pyright",
+      "mode": "off",
+      "version": "1.1.414",
+      "configuration": {
+        "python": {
+          "analysis": {
+            "autoSearchPaths": true,
+            "useLibraryCodeForTypes": true,
+            "diagnosticMode": "openFilesOnly",
+            "typeCheckingMode": "off"
+          }
+        }
+      },
+      "initialize": {
+        "capabilities": {
+          "textDocumentSync": 2,
+          "definitionProvider": {
+            "workDoneProgress": true
+          },
+          "declarationProvider": {
+            "workDoneProgress": true
+          },
+          "typeDefinitionProvider": {
+            "workDoneProgress": true
+          },
+          "referencesProvider": {
+            "workDoneProgress": true
+          },
+          "documentSymbolProvider": {
+            "workDoneProgress": true
+          },
+          "workspaceSymbolProvider": {
+            "workDoneProgress": true
+          },
+          "hoverProvider": {
+            "workDoneProgress": true
+          },
+          "documentHighlightProvider": {
+            "workDoneProgress": true
+          },
+          "renameProvider": {
+            "prepareProvider": true,
+            "workDoneProgress": true
+          },
+          "completionProvider": {
+            "triggerCharacters": [
+              ".",
+              "[",
+              "\"",
+              "'"
+            ],
+            "resolveProvider": true,
+            "workDoneProgress": true,
+            "completionItem": {
+              "labelDetailsSupport": true
+            }
+          },
+          "signatureHelpProvider": {
+            "triggerCharacters": [
+              "(",
+              ",",
+              ")"
+            ],
+            "workDoneProgress": true
+          },
+          "codeActionProvider": {
+            "codeActionKinds": [
+              "quickfix",
+              "source.organizeImports"
+            ],
+            "workDoneProgress": true
+          },
+          "executeCommandProvider": {
+            "commands": [],
+            "workDoneProgress": true
+          },
+          "callHierarchyProvider": true,
+          "workspace": {
+            "workspaceFolders": {
+              "supported": true,
+              "changeNotifications": true
+            }
+          }
+        }
+      },
+      "initial": [
+        {
+          "code": "reportMissingImports",
+          "severity": 2,
+          "line": 9,
+          "range": {
+            "start": {
+              "line": 8,
+              "character": 7
+            },
+            "end": {
+              "line": 8,
+              "character": 36
+            }
+          },
+          "message": "Import \"setdown_probe_missing_package\" could not be resolved"
+        },
+        {
+          "code": "reportUndefinedVariable",
+          "severity": 2,
+          "line": 10,
+          "range": {
+            "start": {
+              "line": 9,
+              "character": 6
+            },
+            "end": {
+              "line": 9,
+              "character": 32
+            }
+          },
+          "message": "\"setdown_probe_missing_name\" is not defined"
+        }
+      ],
+      "afterFix": [],
+      "hover": {
+        "contents": {
+          "kind": "plaintext",
+          "value": "(function) def choose(mode: Literal['fast', 'safe']) -> str"
+        },
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 4
+          },
+          "end": {
+            "line": 1,
+            "character": 10
+          }
+        }
+      },
+      "configurationRequests": [
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-IilBLr",
+          "section": "python"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-IilBLr",
+          "section": "python"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-IilBLr",
+          "section": "pyright"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-IilBLr",
+          "section": "pyright"
+        }
+      ],
+      "messages": [
+        {
+          "type": 3,
+          "message": "Pyright language server 1.1.414 starting"
+        },
+        {
+          "type": 3,
+          "message": "Server root directory: file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/pyright/dist"
+        },
+        {
+          "type": 3,
+          "message": "Starting service instance \"probe\""
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /tmp/setdown-lsp-vision-IilBLr"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.13.11.final.0"
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /tmp/setdown-lsp-vision-IilBLr"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.13.11.final.0"
+        },
+        {
+          "type": 3,
+          "message": "Found 1 source file"
+        }
+      ],
+      "stderr": ""
+    },
+    {
+      "server": "pyright",
+      "mode": "basic",
+      "version": "1.1.414",
+      "configuration": {
+        "python": {
+          "analysis": {
+            "autoSearchPaths": true,
+            "useLibraryCodeForTypes": true,
+            "diagnosticMode": "openFilesOnly",
+            "typeCheckingMode": "basic"
+          }
+        }
+      },
+      "initialize": {
+        "capabilities": {
+          "textDocumentSync": 2,
+          "definitionProvider": {
+            "workDoneProgress": true
+          },
+          "declarationProvider": {
+            "workDoneProgress": true
+          },
+          "typeDefinitionProvider": {
+            "workDoneProgress": true
+          },
+          "referencesProvider": {
+            "workDoneProgress": true
+          },
+          "documentSymbolProvider": {
+            "workDoneProgress": true
+          },
+          "workspaceSymbolProvider": {
+            "workDoneProgress": true
+          },
+          "hoverProvider": {
+            "workDoneProgress": true
+          },
+          "documentHighlightProvider": {
+            "workDoneProgress": true
+          },
+          "renameProvider": {
+            "prepareProvider": true,
+            "workDoneProgress": true
+          },
+          "completionProvider": {
+            "triggerCharacters": [
+              ".",
+              "[",
+              "\"",
+              "'"
+            ],
+            "resolveProvider": true,
+            "workDoneProgress": true,
+            "completionItem": {
+              "labelDetailsSupport": true
+            }
+          },
+          "signatureHelpProvider": {
+            "triggerCharacters": [
+              "(",
+              ",",
+              ")"
+            ],
+            "workDoneProgress": true
+          },
+          "codeActionProvider": {
+            "codeActionKinds": [
+              "quickfix",
+              "source.organizeImports"
+            ],
+            "workDoneProgress": true
+          },
+          "executeCommandProvider": {
+            "commands": [],
+            "workDoneProgress": true
+          },
+          "callHierarchyProvider": true,
+          "workspace": {
+            "workspaceFolders": {
+              "supported": true,
+              "changeNotifications": true
+            }
+          }
+        }
+      },
+      "initial": [
+        {
+          "code": "reportMissingImports",
+          "severity": 1,
+          "line": 9,
+          "range": {
+            "start": {
+              "line": 8,
+              "character": 7
+            },
+            "end": {
+              "line": 8,
+              "character": 36
+            }
+          },
+          "message": "Import \"setdown_probe_missing_package\" could not be resolved"
+        },
+        {
+          "code": "reportArgumentType",
+          "severity": 1,
+          "line": 5,
+          "range": {
+            "start": {
+              "line": 4,
+              "character": 17
+            },
+            "end": {
+              "line": 4,
+              "character": 24
+            }
+          },
+          "message": "Argument of type \"Literal['turbo']\" cannot be assigned to parameter \"mode\" of type \"Literal['fast', 'safe']\" in function \"choose\"\n  Type \"Literal['turbo']\" is not assignable to type \"Literal['fast', 'safe']\"\n    \"Literal['turbo']\" is not assignable to type \"Literal['fast']\"\n    \"Literal['turbo']\" is not assignable to type \"Literal['safe']\""
+        },
+        {
+          "code": "reportAssignmentType",
+          "severity": 1,
+          "line": 6,
+          "range": {
+            "start": {
+              "line": 5,
+              "character": 13
+            },
+            "end": {
+              "line": 5,
+              "character": 20
+            }
+          },
+          "message": "Type \"Literal['wrong']\" is not assignable to declared type \"int\"\n  \"Literal['wrong']\" is not assignable to \"int\""
+        },
+        {
+          "code": "reportUndefinedVariable",
+          "severity": 1,
+          "line": 10,
+          "range": {
+            "start": {
+              "line": 9,
+              "character": 6
+            },
+            "end": {
+              "line": 9,
+              "character": 32
+            }
+          },
+          "message": "\"setdown_probe_missing_name\" is not defined"
+        }
+      ],
+      "afterFix": [],
+      "hover": {
+        "contents": {
+          "kind": "plaintext",
+          "value": "(function) def choose(mode: Literal['fast', 'safe']) -> str"
+        },
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 4
+          },
+          "end": {
+            "line": 1,
+            "character": 10
+          }
+        }
+      },
+      "configurationRequests": [
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-QvwSXV",
+          "section": "python"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-QvwSXV",
+          "section": "python"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-QvwSXV",
+          "section": "pyright"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-QvwSXV",
+          "section": "pyright"
+        }
+      ],
+      "messages": [
+        {
+          "type": 3,
+          "message": "Pyright language server 1.1.414 starting"
+        },
+        {
+          "type": 3,
+          "message": "Server root directory: file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/pyright/dist"
+        },
+        {
+          "type": 3,
+          "message": "Starting service instance \"probe\""
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /tmp/setdown-lsp-vision-QvwSXV"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.13.11.final.0"
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /tmp/setdown-lsp-vision-QvwSXV"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.13.11.final.0"
+        },
+        {
+          "type": 3,
+          "message": "Found 1 source file"
+        }
+      ],
+      "stderr": ""
+    },
+    {
+      "server": "pyright",
+      "mode": "standard",
+      "version": "1.1.414",
+      "configuration": {
+        "python": {
+          "analysis": {
+            "autoSearchPaths": true,
+            "useLibraryCodeForTypes": true,
+            "diagnosticMode": "openFilesOnly",
+            "typeCheckingMode": "standard"
+          }
+        }
+      },
+      "initialize": {
+        "capabilities": {
+          "textDocumentSync": 2,
+          "definitionProvider": {
+            "workDoneProgress": true
+          },
+          "declarationProvider": {
+            "workDoneProgress": true
+          },
+          "typeDefinitionProvider": {
+            "workDoneProgress": true
+          },
+          "referencesProvider": {
+            "workDoneProgress": true
+          },
+          "documentSymbolProvider": {
+            "workDoneProgress": true
+          },
+          "workspaceSymbolProvider": {
+            "workDoneProgress": true
+          },
+          "hoverProvider": {
+            "workDoneProgress": true
+          },
+          "documentHighlightProvider": {
+            "workDoneProgress": true
+          },
+          "renameProvider": {
+            "prepareProvider": true,
+            "workDoneProgress": true
+          },
+          "completionProvider": {
+            "triggerCharacters": [
+              ".",
+              "[",
+              "\"",
+              "'"
+            ],
+            "resolveProvider": true,
+            "workDoneProgress": true,
+            "completionItem": {
+              "labelDetailsSupport": true
+            }
+          },
+          "signatureHelpProvider": {
+            "triggerCharacters": [
+              "(",
+              ",",
+              ")"
+            ],
+            "workDoneProgress": true
+          },
+          "codeActionProvider": {
+            "codeActionKinds": [
+              "quickfix",
+              "source.organizeImports"
+            ],
+            "workDoneProgress": true
+          },
+          "executeCommandProvider": {
+            "commands": [],
+            "workDoneProgress": true
+          },
+          "callHierarchyProvider": true,
+          "workspace": {
+            "workspaceFolders": {
+              "supported": true,
+              "changeNotifications": true
+            }
+          }
+        }
+      },
+      "initial": [
+        {
+          "code": "reportMissingImports",
+          "severity": 1,
+          "line": 9,
+          "range": {
+            "start": {
+              "line": 8,
+              "character": 7
+            },
+            "end": {
+              "line": 8,
+              "character": 36
+            }
+          },
+          "message": "Import \"setdown_probe_missing_package\" could not be resolved"
+        },
+        {
+          "code": "reportArgumentType",
+          "severity": 1,
+          "line": 5,
+          "range": {
+            "start": {
+              "line": 4,
+              "character": 17
+            },
+            "end": {
+              "line": 4,
+              "character": 24
+            }
+          },
+          "message": "Argument of type \"Literal['turbo']\" cannot be assigned to parameter \"mode\" of type \"Literal['fast', 'safe']\" in function \"choose\"\n  Type \"Literal['turbo']\" is not assignable to type \"Literal['fast', 'safe']\"\n    \"Literal['turbo']\" is not assignable to type \"Literal['fast']\"\n    \"Literal['turbo']\" is not assignable to type \"Literal['safe']\""
+        },
+        {
+          "code": "reportAssignmentType",
+          "severity": 1,
+          "line": 6,
+          "range": {
+            "start": {
+              "line": 5,
+              "character": 13
+            },
+            "end": {
+              "line": 5,
+              "character": 20
+            }
+          },
+          "message": "Type \"Literal['wrong']\" is not assignable to declared type \"int\"\n  \"Literal['wrong']\" is not assignable to \"int\""
+        },
+        {
+          "code": "reportUndefinedVariable",
+          "severity": 1,
+          "line": 10,
+          "range": {
+            "start": {
+              "line": 9,
+              "character": 6
+            },
+            "end": {
+              "line": 9,
+              "character": 32
+            }
+          },
+          "message": "\"setdown_probe_missing_name\" is not defined"
+        }
+      ],
+      "afterFix": [],
+      "hover": {
+        "contents": {
+          "kind": "plaintext",
+          "value": "(function) def choose(mode: Literal['fast', 'safe']) -> str"
+        },
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 4
+          },
+          "end": {
+            "line": 1,
+            "character": 10
+          }
+        }
+      },
+      "configurationRequests": [
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-mJXUwv",
+          "section": "python"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-mJXUwv",
+          "section": "python"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-mJXUwv",
+          "section": "pyright"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-mJXUwv",
+          "section": "pyright"
+        }
+      ],
+      "messages": [
+        {
+          "type": 3,
+          "message": "Pyright language server 1.1.414 starting"
+        },
+        {
+          "type": 3,
+          "message": "Server root directory: file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/pyright/dist"
+        },
+        {
+          "type": 3,
+          "message": "Starting service instance \"probe\""
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /tmp/setdown-lsp-vision-mJXUwv"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.13.11.final.0"
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /tmp/setdown-lsp-vision-mJXUwv"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.13.11.final.0"
+        },
+        {
+          "type": 3,
+          "message": "Found 1 source file"
+        }
+      ],
+      "stderr": ""
+    },
+    {
+      "server": "pyright",
+      "mode": "strict",
+      "version": "1.1.414",
+      "configuration": {
+        "python": {
+          "analysis": {
+            "autoSearchPaths": true,
+            "useLibraryCodeForTypes": true,
+            "diagnosticMode": "openFilesOnly",
+            "typeCheckingMode": "strict"
+          }
+        }
+      },
+      "initialize": {
+        "capabilities": {
+          "textDocumentSync": 2,
+          "definitionProvider": {
+            "workDoneProgress": true
+          },
+          "declarationProvider": {
+            "workDoneProgress": true
+          },
+          "typeDefinitionProvider": {
+            "workDoneProgress": true
+          },
+          "referencesProvider": {
+            "workDoneProgress": true
+          },
+          "documentSymbolProvider": {
+            "workDoneProgress": true
+          },
+          "workspaceSymbolProvider": {
+            "workDoneProgress": true
+          },
+          "hoverProvider": {
+            "workDoneProgress": true
+          },
+          "documentHighlightProvider": {
+            "workDoneProgress": true
+          },
+          "renameProvider": {
+            "prepareProvider": true,
+            "workDoneProgress": true
+          },
+          "completionProvider": {
+            "triggerCharacters": [
+              ".",
+              "[",
+              "\"",
+              "'"
+            ],
+            "resolveProvider": true,
+            "workDoneProgress": true,
+            "completionItem": {
+              "labelDetailsSupport": true
+            }
+          },
+          "signatureHelpProvider": {
+            "triggerCharacters": [
+              "(",
+              ",",
+              ")"
+            ],
+            "workDoneProgress": true
+          },
+          "codeActionProvider": {
+            "codeActionKinds": [
+              "quickfix",
+              "source.organizeImports"
+            ],
+            "workDoneProgress": true
+          },
+          "executeCommandProvider": {
+            "commands": [],
+            "workDoneProgress": true
+          },
+          "callHierarchyProvider": true,
+          "workspace": {
+            "workspaceFolders": {
+              "supported": true,
+              "changeNotifications": true
+            }
+          }
+        }
+      },
+      "initial": [
+        {
+          "code": "reportMissingImports",
+          "severity": 1,
+          "line": 9,
+          "range": {
+            "start": {
+              "line": 8,
+              "character": 7
+            },
+            "end": {
+              "line": 8,
+              "character": 36
+            }
+          },
+          "message": "Import \"setdown_probe_missing_package\" could not be resolved"
+        },
+        {
+          "code": "reportArgumentType",
+          "severity": 1,
+          "line": 5,
+          "range": {
+            "start": {
+              "line": 4,
+              "character": 17
+            },
+            "end": {
+              "line": 4,
+              "character": 24
+            }
+          },
+          "message": "Argument of type \"Literal['turbo']\" cannot be assigned to parameter \"mode\" of type \"Literal['fast', 'safe']\" in function \"choose\"\n  Type \"Literal['turbo']\" is not assignable to type \"Literal['fast', 'safe']\"\n    \"Literal['turbo']\" is not assignable to type \"Literal['fast']\"\n    \"Literal['turbo']\" is not assignable to type \"Literal['safe']\""
+        },
+        {
+          "code": "reportAssignmentType",
+          "severity": 1,
+          "line": 6,
+          "range": {
+            "start": {
+              "line": 5,
+              "character": 13
+            },
+            "end": {
+              "line": 5,
+              "character": 20
+            }
+          },
+          "message": "Type \"Literal['wrong']\" is not assignable to declared type \"int\"\n  \"Literal['wrong']\" is not assignable to \"int\""
+        },
+        {
+          "code": "reportUndefinedVariable",
+          "severity": 1,
+          "line": 10,
+          "range": {
+            "start": {
+              "line": 9,
+              "character": 6
+            },
+            "end": {
+              "line": 9,
+              "character": 32
+            }
+          },
+          "message": "\"setdown_probe_missing_name\" is not defined"
+        },
+        {
+          "code": "reportUnknownArgumentType",
+          "severity": 1,
+          "line": 10,
+          "range": {
+            "start": {
+              "line": 9,
+              "character": 6
+            },
+            "end": {
+              "line": 9,
+              "character": 32
+            }
+          },
+          "message": "Argument type is unknown\n  Argument corresponds to parameter \"values\" in function \"print\""
+        },
+        {
+          "code": "reportUnusedImport",
+          "severity": 1,
+          "line": 9,
+          "range": {
+            "start": {
+              "line": 8,
+              "character": 7
+            },
+            "end": {
+              "line": 8,
+              "character": 36
+            }
+          },
+          "message": "Import \"setdown_probe_missing_package\" is not accessed"
+        }
+      ],
+      "afterFix": [],
+      "hover": {
+        "contents": {
+          "kind": "plaintext",
+          "value": "(function) def choose(mode: Literal['fast', 'safe']) -> str"
+        },
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 4
+          },
+          "end": {
+            "line": 1,
+            "character": 10
+          }
+        }
+      },
+      "configurationRequests": [
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-FfUHMc",
+          "section": "python"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-FfUHMc",
+          "section": "python"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-FfUHMc",
+          "section": "pyright"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-FfUHMc",
+          "section": "pyright"
+        }
+      ],
+      "messages": [
+        {
+          "type": 3,
+          "message": "Pyright language server 1.1.414 starting"
+        },
+        {
+          "type": 3,
+          "message": "Server root directory: file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/pyright/dist"
+        },
+        {
+          "type": 3,
+          "message": "Starting service instance \"probe\""
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /tmp/setdown-lsp-vision-FfUHMc"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.13.11.final.0"
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /tmp/setdown-lsp-vision-FfUHMc"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.13.11.final.0"
+        },
+        {
+          "type": 3,
+          "message": "Found 1 source file"
+        }
+      ],
+      "stderr": ""
+    },
+    {
+      "server": "pyright",
+      "mode": "off",
+      "projectMode": "basic",
+      "version": "1.1.414",
+      "configuration": {
+        "python": {
+          "analysis": {
+            "autoSearchPaths": true,
+            "useLibraryCodeForTypes": true,
+            "diagnosticMode": "openFilesOnly",
+            "typeCheckingMode": "off"
+          }
+        }
+      },
+      "initialize": {
+        "capabilities": {
+          "textDocumentSync": 2,
+          "definitionProvider": {
+            "workDoneProgress": true
+          },
+          "declarationProvider": {
+            "workDoneProgress": true
+          },
+          "typeDefinitionProvider": {
+            "workDoneProgress": true
+          },
+          "referencesProvider": {
+            "workDoneProgress": true
+          },
+          "documentSymbolProvider": {
+            "workDoneProgress": true
+          },
+          "workspaceSymbolProvider": {
+            "workDoneProgress": true
+          },
+          "hoverProvider": {
+            "workDoneProgress": true
+          },
+          "documentHighlightProvider": {
+            "workDoneProgress": true
+          },
+          "renameProvider": {
+            "prepareProvider": true,
+            "workDoneProgress": true
+          },
+          "completionProvider": {
+            "triggerCharacters": [
+              ".",
+              "[",
+              "\"",
+              "'"
+            ],
+            "resolveProvider": true,
+            "workDoneProgress": true,
+            "completionItem": {
+              "labelDetailsSupport": true
+            }
+          },
+          "signatureHelpProvider": {
+            "triggerCharacters": [
+              "(",
+              ",",
+              ")"
+            ],
+            "workDoneProgress": true
+          },
+          "codeActionProvider": {
+            "codeActionKinds": [
+              "quickfix",
+              "source.organizeImports"
+            ],
+            "workDoneProgress": true
+          },
+          "executeCommandProvider": {
+            "commands": [],
+            "workDoneProgress": true
+          },
+          "callHierarchyProvider": true,
+          "workspace": {
+            "workspaceFolders": {
+              "supported": true,
+              "changeNotifications": true
+            }
+          }
+        }
+      },
+      "initial": [
+        {
+          "code": "reportMissingImports",
+          "severity": 1,
+          "line": 9,
+          "range": {
+            "start": {
+              "line": 8,
+              "character": 7
+            },
+            "end": {
+              "line": 8,
+              "character": 36
+            }
+          },
+          "message": "Import \"setdown_probe_missing_package\" could not be resolved"
+        },
+        {
+          "code": "reportArgumentType",
+          "severity": 1,
+          "line": 5,
+          "range": {
+            "start": {
+              "line": 4,
+              "character": 17
+            },
+            "end": {
+              "line": 4,
+              "character": 24
+            }
+          },
+          "message": "Argument of type \"Literal['turbo']\" cannot be assigned to parameter \"mode\" of type \"Literal['fast', 'safe']\" in function \"choose\"\n  Type \"Literal['turbo']\" is not assignable to type \"Literal['fast', 'safe']\"\n    \"Literal['turbo']\" is not assignable to type \"Literal['fast']\"\n    \"Literal['turbo']\" is not assignable to type \"Literal['safe']\""
+        },
+        {
+          "code": "reportAssignmentType",
+          "severity": 1,
+          "line": 6,
+          "range": {
+            "start": {
+              "line": 5,
+              "character": 13
+            },
+            "end": {
+              "line": 5,
+              "character": 20
+            }
+          },
+          "message": "Type \"Literal['wrong']\" is not assignable to declared type \"int\"\n  \"Literal['wrong']\" is not assignable to \"int\""
+        },
+        {
+          "code": "reportUndefinedVariable",
+          "severity": 1,
+          "line": 10,
+          "range": {
+            "start": {
+              "line": 9,
+              "character": 6
+            },
+            "end": {
+              "line": 9,
+              "character": 32
+            }
+          },
+          "message": "\"setdown_probe_missing_name\" is not defined"
+        }
+      ],
+      "afterFix": [],
+      "hover": {
+        "contents": {
+          "kind": "plaintext",
+          "value": "(function) def choose(mode: Literal['fast', 'safe']) -> str"
+        },
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 4
+          },
+          "end": {
+            "line": 1,
+            "character": 10
+          }
+        }
+      },
+      "configurationRequests": [
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-XfRil0",
+          "section": "python"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-XfRil0",
+          "section": "python"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-XfRil0",
+          "section": "pyright"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-XfRil0",
+          "section": "pyright"
+        }
+      ],
+      "messages": [
+        {
+          "type": 3,
+          "message": "Pyright language server 1.1.414 starting"
+        },
+        {
+          "type": 3,
+          "message": "Server root directory: file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/pyright/dist"
+        },
+        {
+          "type": 3,
+          "message": "Starting service instance \"probe\""
+        },
+        {
+          "type": 3,
+          "message": "Loading configuration file at /tmp/setdown-lsp-vision-XfRil0/pyrightconfig.json"
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /tmp/setdown-lsp-vision-XfRil0"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.13.11.final.0"
+        },
+        {
+          "type": 3,
+          "message": "Loading configuration file at /tmp/setdown-lsp-vision-XfRil0/pyrightconfig.json"
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /tmp/setdown-lsp-vision-XfRil0"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.13.11.final.0"
+        },
+        {
+          "type": 3,
+          "message": "Found 1 source file"
+        }
+      ],
+      "stderr": ""
+    },
+    {
+      "server": "pyright",
+      "mode": "off",
+      "vscodeMode": "basic",
+      "version": "1.1.414",
+      "configuration": {
+        "python": {
+          "analysis": {
+            "autoSearchPaths": true,
+            "useLibraryCodeForTypes": true,
+            "diagnosticMode": "openFilesOnly",
+            "typeCheckingMode": "off"
+          }
+        }
+      },
+      "initialize": {
+        "capabilities": {
+          "textDocumentSync": 2,
+          "definitionProvider": {
+            "workDoneProgress": true
+          },
+          "declarationProvider": {
+            "workDoneProgress": true
+          },
+          "typeDefinitionProvider": {
+            "workDoneProgress": true
+          },
+          "referencesProvider": {
+            "workDoneProgress": true
+          },
+          "documentSymbolProvider": {
+            "workDoneProgress": true
+          },
+          "workspaceSymbolProvider": {
+            "workDoneProgress": true
+          },
+          "hoverProvider": {
+            "workDoneProgress": true
+          },
+          "documentHighlightProvider": {
+            "workDoneProgress": true
+          },
+          "renameProvider": {
+            "prepareProvider": true,
+            "workDoneProgress": true
+          },
+          "completionProvider": {
+            "triggerCharacters": [
+              ".",
+              "[",
+              "\"",
+              "'"
+            ],
+            "resolveProvider": true,
+            "workDoneProgress": true,
+            "completionItem": {
+              "labelDetailsSupport": true
+            }
+          },
+          "signatureHelpProvider": {
+            "triggerCharacters": [
+              "(",
+              ",",
+              ")"
+            ],
+            "workDoneProgress": true
+          },
+          "codeActionProvider": {
+            "codeActionKinds": [
+              "quickfix",
+              "source.organizeImports"
+            ],
+            "workDoneProgress": true
+          },
+          "executeCommandProvider": {
+            "commands": [],
+            "workDoneProgress": true
+          },
+          "callHierarchyProvider": true,
+          "workspace": {
+            "workspaceFolders": {
+              "supported": true,
+              "changeNotifications": true
+            }
+          }
+        }
+      },
+      "initial": [
+        {
+          "code": "reportMissingImports",
+          "severity": 2,
+          "line": 9,
+          "range": {
+            "start": {
+              "line": 8,
+              "character": 7
+            },
+            "end": {
+              "line": 8,
+              "character": 36
+            }
+          },
+          "message": "Import \"setdown_probe_missing_package\" could not be resolved"
+        },
+        {
+          "code": "reportUndefinedVariable",
+          "severity": 2,
+          "line": 10,
+          "range": {
+            "start": {
+              "line": 9,
+              "character": 6
+            },
+            "end": {
+              "line": 9,
+              "character": 32
+            }
+          },
+          "message": "\"setdown_probe_missing_name\" is not defined"
+        }
+      ],
+      "afterFix": [],
+      "hover": {
+        "contents": {
+          "kind": "plaintext",
+          "value": "(function) def choose(mode: Literal['fast', 'safe']) -> str"
+        },
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 4
+          },
+          "end": {
+            "line": 1,
+            "character": 10
+          }
+        }
+      },
+      "configurationRequests": [
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-RFWPAA",
+          "section": "python"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-RFWPAA",
+          "section": "python"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-RFWPAA",
+          "section": "pyright"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-RFWPAA",
+          "section": "pyright"
+        }
+      ],
+      "messages": [
+        {
+          "type": 3,
+          "message": "Pyright language server 1.1.414 starting"
+        },
+        {
+          "type": 3,
+          "message": "Server root directory: file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/pyright/dist"
+        },
+        {
+          "type": 3,
+          "message": "Starting service instance \"probe\""
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /tmp/setdown-lsp-vision-RFWPAA"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.13.11.final.0"
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /tmp/setdown-lsp-vision-RFWPAA"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.13.11.final.0"
+        },
+        {
+          "type": 3,
+          "message": "Found 1 source file"
+        }
+      ],
+      "stderr": ""
+    },
+    {
+      "server": "basedpyright",
+      "mode": "off",
+      "notebook": true,
+      "version": "1.40.2",
+      "configuration": {
+        "python": {
+          "analysis": {
+            "autoSearchPaths": true,
+            "useLibraryCodeForTypes": true,
+            "diagnosticMode": "openFilesOnly",
+            "typeCheckingMode": "off",
+            "diagnosticSeverityOverrides": {
+              "reportMissingImports": "warning",
+              "reportMissingModuleSource": "warning",
+              "reportInvalidTypeForm": "warning",
+              "reportUndefinedVariable": "warning"
+            }
+          }
+        },
+        "basedpyright": {
+          "analysis": {
+            "autoSearchPaths": true,
+            "useLibraryCodeForTypes": true,
+            "diagnosticMode": "openFilesOnly",
+            "typeCheckingMode": "off",
+            "diagnosticSeverityOverrides": {
+              "reportMissingImports": "warning",
+              "reportMissingModuleSource": "warning",
+              "reportInvalidTypeForm": "warning",
+              "reportUndefinedVariable": "warning"
+            }
+          }
+        }
+      },
+      "initialize": {
+        "capabilities": {
+          "textDocumentSync": {
+            "willSave": true,
+            "change": 2,
+            "openClose": true
+          },
+          "notebookDocumentSync": {
+            "notebookSelector": [
+              {
+                "notebook": {
+                  "scheme": "file",
+                  "notebookType": "jupyter-notebook"
+                },
+                "cells": [
+                  {
+                    "language": "python"
+                  }
+                ]
+              }
+            ],
+            "save": true
+          },
+          "definitionProvider": {
+            "workDoneProgress": true
+          },
+          "declarationProvider": {
+            "workDoneProgress": true
+          },
+          "typeDefinitionProvider": {
+            "workDoneProgress": true
+          },
+          "referencesProvider": {
+            "workDoneProgress": true
+          },
+          "implementationProvider": {
+            "workDoneProgress": true
+          },
+          "documentSymbolProvider": {
+            "workDoneProgress": true
+          },
+          "workspaceSymbolProvider": {
+            "workDoneProgress": true
+          },
+          "hoverProvider": {
+            "workDoneProgress": true
+          },
+          "documentHighlightProvider": {
+            "workDoneProgress": true
+          },
+          "renameProvider": {
+            "prepareProvider": true,
+            "workDoneProgress": true
+          },
+          "completionProvider": {
+            "triggerCharacters": [
+              ".",
+              "[",
+              "\"",
+              "'"
+            ],
+            "resolveProvider": true,
+            "workDoneProgress": true,
+            "completionItem": {
+              "labelDetailsSupport": true
+            }
+          },
+          "signatureHelpProvider": {
+            "triggerCharacters": [
+              "(",
+              ",",
+              ")"
+            ],
+            "workDoneProgress": true
+          },
+          "codeActionProvider": {
+            "codeActionKinds": [
+              "quickfix",
+              "source.organizeImports"
+            ],
+            "workDoneProgress": true
+          },
+          "executeCommandProvider": {
+            "commands": [
+              "basedpyright.createtypestub",
+              "basedpyright.restartserver",
+              "basedpyright.writeBaseline"
+            ],
+            "workDoneProgress": true
+          },
+          "callHierarchyProvider": true,
+          "inlayHintProvider": true,
+          "semanticTokensProvider": {
+            "legend": {
+              "tokenTypes": [
+                "namespace",
+                "type",
+                "class",
+                "enum",
+                "typeParameter",
+                "parameter",
+                "variable",
+                "property",
+                "enumMember",
+                "function",
+                "method",
+                "keyword",
+                "decorator",
+                "selfParameter",
+                "clsParameter"
+              ],
+              "tokenModifiers": [
+                "declaration",
+                "definition",
+                "readonly",
+                "static",
+                "async",
+                "defaultLibrary",
+                "builtin",
+                "classMember",
+                "parameter"
+              ]
+            },
+            "full": true
+          },
+          "workspace": {
+            "fileOperations": {
+              "willRename": {
+                "filters": [
+                  {
+                    "pattern": {
+                      "glob": "**/*"
+                    }
+                  }
+                ]
+              }
+            },
+            "workspaceFolders": {
+              "supported": true,
+              "changeNotifications": true
+            }
+          },
+          "documentOnTypeFormattingProvider": {
+            "firstTriggerCharacter": "{"
+          }
+        },
+        "serverInfo": {
+          "name": "basedpyright",
+          "version": "1.40.2"
+        }
+      },
+      "initial": [
+        {
+          "code": "reportMissingImports",
+          "severity": 2,
+          "line": 9,
+          "range": {
+            "start": {
+              "line": 8,
+              "character": 7
+            },
+            "end": {
+              "line": 8,
+              "character": 36
+            }
+          },
+          "message": "Import \"setdown_probe_missing_package\" could not be resolved"
+        },
+        {
+          "code": "reportUnusedImport",
+          "severity": 4,
+          "line": 9,
+          "range": {
+            "start": {
+              "line": 8,
+              "character": 7
+            },
+            "end": {
+              "line": 8,
+              "character": 36
+            }
+          },
+          "message": "Import \"setdown_probe_missing_package\" is not accessed"
+        },
+        {
+          "code": "reportUndefinedVariable",
+          "severity": 2,
+          "line": 10,
+          "range": {
+            "start": {
+              "line": 9,
+              "character": 6
+            },
+            "end": {
+              "line": 9,
+              "character": 32
+            }
+          },
+          "message": "\"setdown_probe_missing_name\" is not defined"
+        }
+      ],
+      "afterFix": [],
+      "hover": {
+        "contents": {
+          "kind": "plaintext",
+          "value": "(function) def choose(mode: Literal['fast', 'safe']) -> str"
+        },
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 4
+          },
+          "end": {
+            "line": 1,
+            "character": 10
+          }
+        }
+      },
+      "configurationRequests": [
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-wTZ85G",
+          "section": "python"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-wTZ85G",
+          "section": "python"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-wTZ85G",
+          "section": "basedpyright"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-wTZ85G",
+          "section": "basedpyright"
+        }
+      ],
+      "messages": [
+        {
+          "type": 3,
+          "message": "basedpyright language server 1.40.2 starting"
+        },
+        {
+          "type": 3,
+          "message": "Server root directory: file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/basedpyright/dist"
+        },
+        {
+          "type": 3,
+          "message": "Starting service instance \"probe\""
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /tmp/setdown-lsp-vision-wTZ85G"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.13.11.final.0"
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /tmp/setdown-lsp-vision-wTZ85G"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.13.11.final.0"
+        },
+        {
+          "type": 3,
+          "message": "No source files found."
+        }
+      ],
+      "stderr": ""
+    },
+    {
+      "server": "basedpyright",
+      "mode": "basic",
+      "notebook": true,
+      "version": "1.40.2",
+      "configuration": {
+        "python": {
+          "analysis": {
+            "autoSearchPaths": true,
+            "useLibraryCodeForTypes": true,
+            "diagnosticMode": "openFilesOnly",
+            "typeCheckingMode": "basic"
+          }
+        },
+        "basedpyright": {
+          "analysis": {
+            "autoSearchPaths": true,
+            "useLibraryCodeForTypes": true,
+            "diagnosticMode": "openFilesOnly",
+            "typeCheckingMode": "basic"
+          }
+        }
+      },
+      "initialize": {
+        "capabilities": {
+          "textDocumentSync": {
+            "willSave": true,
+            "change": 2,
+            "openClose": true
+          },
+          "notebookDocumentSync": {
+            "notebookSelector": [
+              {
+                "notebook": {
+                  "scheme": "file",
+                  "notebookType": "jupyter-notebook"
+                },
+                "cells": [
+                  {
+                    "language": "python"
+                  }
+                ]
+              }
+            ],
+            "save": true
+          },
+          "definitionProvider": {
+            "workDoneProgress": true
+          },
+          "declarationProvider": {
+            "workDoneProgress": true
+          },
+          "typeDefinitionProvider": {
+            "workDoneProgress": true
+          },
+          "referencesProvider": {
+            "workDoneProgress": true
+          },
+          "implementationProvider": {
+            "workDoneProgress": true
+          },
+          "documentSymbolProvider": {
+            "workDoneProgress": true
+          },
+          "workspaceSymbolProvider": {
+            "workDoneProgress": true
+          },
+          "hoverProvider": {
+            "workDoneProgress": true
+          },
+          "documentHighlightProvider": {
+            "workDoneProgress": true
+          },
+          "renameProvider": {
+            "prepareProvider": true,
+            "workDoneProgress": true
+          },
+          "completionProvider": {
+            "triggerCharacters": [
+              ".",
+              "[",
+              "\"",
+              "'"
+            ],
+            "resolveProvider": true,
+            "workDoneProgress": true,
+            "completionItem": {
+              "labelDetailsSupport": true
+            }
+          },
+          "signatureHelpProvider": {
+            "triggerCharacters": [
+              "(",
+              ",",
+              ")"
+            ],
+            "workDoneProgress": true
+          },
+          "codeActionProvider": {
+            "codeActionKinds": [
+              "quickfix",
+              "source.organizeImports"
+            ],
+            "workDoneProgress": true
+          },
+          "executeCommandProvider": {
+            "commands": [
+              "basedpyright.createtypestub",
+              "basedpyright.restartserver",
+              "basedpyright.writeBaseline"
+            ],
+            "workDoneProgress": true
+          },
+          "callHierarchyProvider": true,
+          "inlayHintProvider": true,
+          "semanticTokensProvider": {
+            "legend": {
+              "tokenTypes": [
+                "namespace",
+                "type",
+                "class",
+                "enum",
+                "typeParameter",
+                "parameter",
+                "variable",
+                "property",
+                "enumMember",
+                "function",
+                "method",
+                "keyword",
+                "decorator",
+                "selfParameter",
+                "clsParameter"
+              ],
+              "tokenModifiers": [
+                "declaration",
+                "definition",
+                "readonly",
+                "static",
+                "async",
+                "defaultLibrary",
+                "builtin",
+                "classMember",
+                "parameter"
+              ]
+            },
+            "full": true
+          },
+          "workspace": {
+            "fileOperations": {
+              "willRename": {
+                "filters": [
+                  {
+                    "pattern": {
+                      "glob": "**/*"
+                    }
+                  }
+                ]
+              }
+            },
+            "workspaceFolders": {
+              "supported": true,
+              "changeNotifications": true
+            }
+          },
+          "documentOnTypeFormattingProvider": {
+            "firstTriggerCharacter": "{"
+          }
+        },
+        "serverInfo": {
+          "name": "basedpyright",
+          "version": "1.40.2"
+        }
+      },
+      "initial": [
+        {
+          "code": "reportArgumentType",
+          "severity": 1,
+          "line": 5,
+          "range": {
+            "start": {
+              "line": 4,
+              "character": 17
+            },
+            "end": {
+              "line": 4,
+              "character": 24
+            }
+          },
+          "message": "Argument of type \"Literal['turbo']\" cannot be assigned to parameter \"mode\" of type \"Literal['fast', 'safe']\" in function \"choose\"\n  Type \"Literal['turbo']\" is not assignable to type \"Literal['fast', 'safe']\"\n    \"Literal['turbo']\" is not assignable to type \"Literal['fast']\"\n    \"Literal['turbo']\" is not assignable to type \"Literal['safe']\""
+        },
+        {
+          "code": "reportAssignmentType",
+          "severity": 1,
+          "line": 6,
+          "range": {
+            "start": {
+              "line": 5,
+              "character": 13
+            },
+            "end": {
+              "line": 5,
+              "character": 20
+            }
+          },
+          "message": "Type \"Literal['wrong']\" is not assignable to declared type \"int\"\n  \"Literal['wrong']\" is not assignable to \"int\""
+        },
+        {
+          "code": "reportMissingImports",
+          "severity": 1,
+          "line": 9,
+          "range": {
+            "start": {
+              "line": 8,
+              "character": 7
+            },
+            "end": {
+              "line": 8,
+              "character": 36
+            }
+          },
+          "message": "Import \"setdown_probe_missing_package\" could not be resolved"
+        },
+        {
+          "code": "reportUnusedImport",
+          "severity": 4,
+          "line": 9,
+          "range": {
+            "start": {
+              "line": 8,
+              "character": 7
+            },
+            "end": {
+              "line": 8,
+              "character": 36
+            }
+          },
+          "message": "Import \"setdown_probe_missing_package\" is not accessed"
+        },
+        {
+          "code": "reportUndefinedVariable",
+          "severity": 1,
+          "line": 10,
+          "range": {
+            "start": {
+              "line": 9,
+              "character": 6
+            },
+            "end": {
+              "line": 9,
+              "character": 32
+            }
+          },
+          "message": "\"setdown_probe_missing_name\" is not defined"
+        }
+      ],
+      "afterFix": [],
+      "hover": {
+        "contents": {
+          "kind": "plaintext",
+          "value": "(function) def choose(mode: Literal['fast', 'safe']) -> str"
+        },
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 4
+          },
+          "end": {
+            "line": 1,
+            "character": 10
+          }
+        }
+      },
+      "configurationRequests": [
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-pfOsJD",
+          "section": "python"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-pfOsJD",
+          "section": "python"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-pfOsJD",
+          "section": "basedpyright"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-pfOsJD",
+          "section": "basedpyright"
+        }
+      ],
+      "messages": [
+        {
+          "type": 3,
+          "message": "basedpyright language server 1.40.2 starting"
+        },
+        {
+          "type": 3,
+          "message": "Server root directory: file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/basedpyright/dist"
+        },
+        {
+          "type": 3,
+          "message": "Starting service instance \"probe\""
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /tmp/setdown-lsp-vision-pfOsJD"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.13.11.final.0"
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /tmp/setdown-lsp-vision-pfOsJD"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.13.11.final.0"
+        },
+        {
+          "type": 3,
+          "message": "No source files found."
+        }
+      ],
+      "stderr": ""
+    },
+    {
+      "server": "basedpyright",
+      "mode": "standard",
+      "notebook": true,
+      "version": "1.40.2",
+      "configuration": {
+        "python": {
+          "analysis": {
+            "autoSearchPaths": true,
+            "useLibraryCodeForTypes": true,
+            "diagnosticMode": "openFilesOnly",
+            "typeCheckingMode": "standard"
+          }
+        },
+        "basedpyright": {
+          "analysis": {
+            "autoSearchPaths": true,
+            "useLibraryCodeForTypes": true,
+            "diagnosticMode": "openFilesOnly",
+            "typeCheckingMode": "standard"
+          }
+        }
+      },
+      "initialize": {
+        "capabilities": {
+          "textDocumentSync": {
+            "willSave": true,
+            "change": 2,
+            "openClose": true
+          },
+          "notebookDocumentSync": {
+            "notebookSelector": [
+              {
+                "notebook": {
+                  "scheme": "file",
+                  "notebookType": "jupyter-notebook"
+                },
+                "cells": [
+                  {
+                    "language": "python"
+                  }
+                ]
+              }
+            ],
+            "save": true
+          },
+          "definitionProvider": {
+            "workDoneProgress": true
+          },
+          "declarationProvider": {
+            "workDoneProgress": true
+          },
+          "typeDefinitionProvider": {
+            "workDoneProgress": true
+          },
+          "referencesProvider": {
+            "workDoneProgress": true
+          },
+          "implementationProvider": {
+            "workDoneProgress": true
+          },
+          "documentSymbolProvider": {
+            "workDoneProgress": true
+          },
+          "workspaceSymbolProvider": {
+            "workDoneProgress": true
+          },
+          "hoverProvider": {
+            "workDoneProgress": true
+          },
+          "documentHighlightProvider": {
+            "workDoneProgress": true
+          },
+          "renameProvider": {
+            "prepareProvider": true,
+            "workDoneProgress": true
+          },
+          "completionProvider": {
+            "triggerCharacters": [
+              ".",
+              "[",
+              "\"",
+              "'"
+            ],
+            "resolveProvider": true,
+            "workDoneProgress": true,
+            "completionItem": {
+              "labelDetailsSupport": true
+            }
+          },
+          "signatureHelpProvider": {
+            "triggerCharacters": [
+              "(",
+              ",",
+              ")"
+            ],
+            "workDoneProgress": true
+          },
+          "codeActionProvider": {
+            "codeActionKinds": [
+              "quickfix",
+              "source.organizeImports"
+            ],
+            "workDoneProgress": true
+          },
+          "executeCommandProvider": {
+            "commands": [
+              "basedpyright.createtypestub",
+              "basedpyright.restartserver",
+              "basedpyright.writeBaseline"
+            ],
+            "workDoneProgress": true
+          },
+          "callHierarchyProvider": true,
+          "inlayHintProvider": true,
+          "semanticTokensProvider": {
+            "legend": {
+              "tokenTypes": [
+                "namespace",
+                "type",
+                "class",
+                "enum",
+                "typeParameter",
+                "parameter",
+                "variable",
+                "property",
+                "enumMember",
+                "function",
+                "method",
+                "keyword",
+                "decorator",
+                "selfParameter",
+                "clsParameter"
+              ],
+              "tokenModifiers": [
+                "declaration",
+                "definition",
+                "readonly",
+                "static",
+                "async",
+                "defaultLibrary",
+                "builtin",
+                "classMember",
+                "parameter"
+              ]
+            },
+            "full": true
+          },
+          "workspace": {
+            "fileOperations": {
+              "willRename": {
+                "filters": [
+                  {
+                    "pattern": {
+                      "glob": "**/*"
+                    }
+                  }
+                ]
+              }
+            },
+            "workspaceFolders": {
+              "supported": true,
+              "changeNotifications": true
+            }
+          },
+          "documentOnTypeFormattingProvider": {
+            "firstTriggerCharacter": "{"
+          }
+        },
+        "serverInfo": {
+          "name": "basedpyright",
+          "version": "1.40.2"
+        }
+      },
+      "initial": [
+        {
+          "code": "reportArgumentType",
+          "severity": 1,
+          "line": 5,
+          "range": {
+            "start": {
+              "line": 4,
+              "character": 17
+            },
+            "end": {
+              "line": 4,
+              "character": 24
+            }
+          },
+          "message": "Argument of type \"Literal['turbo']\" cannot be assigned to parameter \"mode\" of type \"Literal['fast', 'safe']\" in function \"choose\"\n  Type \"Literal['turbo']\" is not assignable to type \"Literal['fast', 'safe']\"\n    \"Literal['turbo']\" is not assignable to type \"Literal['fast']\"\n    \"Literal['turbo']\" is not assignable to type \"Literal['safe']\""
+        },
+        {
+          "code": "reportAssignmentType",
+          "severity": 1,
+          "line": 6,
+          "range": {
+            "start": {
+              "line": 5,
+              "character": 13
+            },
+            "end": {
+              "line": 5,
+              "character": 20
+            }
+          },
+          "message": "Type \"Literal['wrong']\" is not assignable to declared type \"int\"\n  \"Literal['wrong']\" is not assignable to \"int\""
+        },
+        {
+          "code": "reportMissingImports",
+          "severity": 1,
+          "line": 9,
+          "range": {
+            "start": {
+              "line": 8,
+              "character": 7
+            },
+            "end": {
+              "line": 8,
+              "character": 36
+            }
+          },
+          "message": "Import \"setdown_probe_missing_package\" could not be resolved"
+        },
+        {
+          "code": "reportUnusedImport",
+          "severity": 4,
+          "line": 9,
+          "range": {
+            "start": {
+              "line": 8,
+              "character": 7
+            },
+            "end": {
+              "line": 8,
+              "character": 36
+            }
+          },
+          "message": "Import \"setdown_probe_missing_package\" is not accessed"
+        },
+        {
+          "code": "reportUndefinedVariable",
+          "severity": 1,
+          "line": 10,
+          "range": {
+            "start": {
+              "line": 9,
+              "character": 6
+            },
+            "end": {
+              "line": 9,
+              "character": 32
+            }
+          },
+          "message": "\"setdown_probe_missing_name\" is not defined"
+        }
+      ],
+      "afterFix": [],
+      "hover": {
+        "contents": {
+          "kind": "plaintext",
+          "value": "(function) def choose(mode: Literal['fast', 'safe']) -> str"
+        },
+        "range": {
+          "start": {
+            "line": 1,
+            "character": 4
+          },
+          "end": {
+            "line": 1,
+            "character": 10
+          }
+        }
+      },
+      "configurationRequests": [
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-saFC6j",
+          "section": "python"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-saFC6j",
+          "section": "python"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-saFC6j",
+          "section": "basedpyright"
+        },
+        {
+          "scopeUri": "file:///tmp/setdown-lsp-vision-saFC6j",
+          "section": "basedpyright"
+        }
+      ],
+      "messages": [
+        {
+          "type": 3,
+          "message": "basedpyright language server 1.40.2 starting"
+        },
+        {
+          "type": 3,
+          "message": "Server root directory: file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/basedpyright/dist"
+        },
+        {
+          "type": 3,
+          "message": "Starting service instance \"probe\""
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /tmp/setdown-lsp-vision-saFC6j"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.13.11.final.0"
+        },
+        {
+          "type": 3,
+          "message": "No include entries specified; assuming /tmp/setdown-lsp-vision-saFC6j"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/node_modules"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__pycache__"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/.*"
+        },
+        {
+          "type": 3,
+          "message": "Auto-excluding **/__editable__.*"
+        },
+        {
+          "type": 3,
+          "message": "Assuming Python version 3.13.11.final.0"
+        },
+        {
+          "type": 3,
+          "message": "No source files found."
+        }
+      ],
+      "stderr": ""
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+Error occurred in handler for 'language:open': Error: initialization: Error: Language request cancelled.
+    at [90m/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:61291:13
+(node:33438) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(node:33438) UnhandledPromiseRejectionWarning: Error [ERR_STREAM_DESTROYED]: Cannot call write after a stream was destroyed
+    at _write (node:internal/streams/writable:493:11)
+    at Writable.write (node:internal/streams/writable:512:10)
+    at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/main.cjs:14648:25
+    at new Promise (<anonymous>)
+    at WritableStreamWrapper.write (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/main.cjs:14639:16)
+    at StreamMessageWriter2.doWrite (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/main.cjs:13013:31)
+    at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/dist-electron/main.cjs:13004:25
+(node:33438) UnhandledPromiseRejectionWarning: Unhandled promise rejection. This error originated either by throwing inside of an async function without a catch block, or by rejecting a promise which was not handled with .catch(). To terminate the node process on unhandled promise rejection, use the CLI flag `--unhandled-rejections=strict` (see https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode). (rejection id: 20)
+Error occurred in handler for 'language:request': Error: Language request cancelled.
+    at abort [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:61380:38[90m)[39m
+    at CallbackList.invoke [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:12272:35[90m)[39m
+    at _Emitter.fire [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:12336:34[90m)[39m
+    at MutableToken.cancel [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:12428:27[90m)[39m
+    at CancellationTokenSource4.cancel [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:12464:23[90m)[39m
+    at [90m/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:62294:63
+    at IpcMainImpl.<anonymous> [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:62289:9[90m)[39m
+[90m    at IpcMainImpl.emit (node:events:514:28)[39m
+[90m    at Session.<anonymous> (node:electron/js2c/browser_init:1:119322)[39m
+[90m    at Session.emit (node:events:514:28)[39m
+Error occurred in handler for 'language:request': Error: Language request cancelled.
+    at abort [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:61380:38[90m)[39m
+    at CallbackList.invoke [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:12272:35[90m)[39m
+    at _Emitter.fire [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:12336:34[90m)[39m
+    at MutableToken.cancel [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:12428:27[90m)[39m
+    at CancellationTokenSource4.cancel [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:12464:23[90m)[39m
+    at [90m/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:62294:63
+    at IpcMainImpl.<anonymous> [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:62289:9[90m)[39m
+[90m    at IpcMainImpl.emit (node:events:514:28)[39m
+[90m    at Session.<anonymous> (node:electron/js2c/browser_init:1:119322)[39m
+[90m    at Session.emit (node:events:514:28)[39m
+Error occurred in handler for 'language:request': Error: Language request cancelled.
+    at abort [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:61380:38[90m)[39m
+    at CallbackList.invoke [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:12272:35[90m)[39m
+    at _Emitter.fire [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:12336:34[90m)[39m
+    at MutableToken.cancel [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:12428:27[90m)[39m
+    at CancellationTokenSource4.cancel [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:12464:23[90m)[39m
+    at [90m/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:62294:63
+    at IpcMainImpl.<anonymous> [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:62289:9[90m)[39m
+[90m    at IpcMainImpl.emit (node:events:514:28)[39m
+[90m    at Session.<anonymous> (node:electron/js2c/browser_init:1:119322)[39m
+[90m    at Session.emit (node:events:514:28)[39m
+Error occurred in handler for 'language:request': Error: Language request cancelled.
+    at abort [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:61380:38[90m)[39m
+    at CallbackList.invoke [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:12272:35[90m)[39m
+    at _Emitter.fire [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:12336:34[90m)[39m
+    at MutableToken.cancel [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:12428:27[90m)[39m
+    at CancellationTokenSource4.cancel [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:12464:23[90m)[39m
+    at [90m/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:62294:63
+    at IpcMainImpl.<anonymous> [90m(/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/[39mdist-electron/main.cjs:62289:9[90m)[39m
+[90m    at IpcMainImpl.emit (node:events:514:28)[39m
+[90m    at Session.<anonymous> (node:electron/js2c/browser_init:1:119322)[39m
+[90m    at Session.emit (node:events:514:28)[39m

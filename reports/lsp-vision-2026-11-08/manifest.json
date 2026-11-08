@@ -1,0 +1,366 @@
+{
+  "date": "2026-11-08",
+  "scope": "Source analysis and targeted reproduction; no product implementation changes, no full product suite or performance benchmark.",
+  "revisions": [
+    {
+      "name": "setdown",
+      "path": ".",
+      "repository": null,
+      "commit": "7d0046876767fdc6adb54c6cfeeb919f4e1f8a28"
+    },
+    {
+      "name": "helix",
+      "path": "vendor/helix",
+      "repository": "https://github.com/helix-editor/helix",
+      "commit": "ba40e547426b0f9896c8bdc699a4ab11f2b37dbc"
+    },
+    {
+      "name": "vscode",
+      "path": "vendor/vscode",
+      "repository": "https://github.com/microsoft/vscode",
+      "commit": "d3d31f62268b169a2dfab62ffb2d7d38158a5b7c"
+    },
+    {
+      "name": "vscode-languageserver-node",
+      "path": "vendor/vscode-languageserver-node",
+      "repository": "https://github.com/microsoft/vscode-languageserver-node",
+      "commit": "b8c8db0b6a5c1a257d224cda3f0c21ce0a8a3203"
+    },
+    {
+      "name": "monaco-languageclient",
+      "path": "vendor/monaco-languageclient",
+      "repository": "https://github.com/TypeFox/monaco-languageclient",
+      "commit": "c52125a809e5993509d53f10f5b478c989b18f5d"
+    },
+    {
+      "name": "python-environment-tools",
+      "path": "/tmp/setdown-lsp-python-environment-tools-20261108",
+      "repository": "https://github.com/microsoft/python-environment-tools",
+      "commit": "02dd29e49e3c71d4ec06e1072d6331494a12e01d"
+    },
+    {
+      "name": "vscode-python-environments",
+      "path": "/tmp/setdown-lsp-vscode-python-environments-20261108",
+      "repository": "https://github.com/microsoft/vscode-python-environments",
+      "commit": "28ed7976ee4e4fc6c4df6d8a522f2fc2cffe1eed"
+    }
+  ],
+  "runtime": {
+    "probeNode": "v22.23.1",
+    "python": "/home/yabsed/miniconda3/bin/python3",
+    "pythonVersion": "3.13.11",
+    "ipykernel": "6.31.0",
+    "electron": "44.7.2",
+    "platform": "Linux-7.2.15-300.fc45.x86_64-x86_64-with-glibc2.44",
+    "servers": [
+      "basedpyright 1.40.2",
+      "pyright 1.1.414"
+    ]
+  },
+  "validation": {
+    "directServerVariants": 9,
+    "allVariantsClearedAfterFix": true,
+    "electronInitialPair": "2 passed; notebook-e2e.log",
+    "electronBasicFinal": "1 passed; notebook-problems-confirmation.log",
+    "electronDefaultFinal": "1 passed; notebook-default-final.log",
+    "playwrightRetries": 0,
+    "guiIsolation": "apps/desktop/scripts/with-isolated-display.sh (Xvfb, isolated runtime and D-Bus, Wayland isolation)",
+    "build": "typecheck and renderer succeeded in build.log; final Electron phase hit sandbox git EPERM; separate permitted Electron build succeeded in build-electron.log",
+    "notRun": [
+      "full product test suite",
+      "preview benchmark",
+      "VS Code/Pylance GUI",
+      "PET runtime integration",
+      "large-notebook performance benchmark"
+    ]
+  },
+  "report": {
+    "path": "reports/2026_11_08_lsp_vision_helix_vscode.md",
+    "sha256": "b3d58ec993d9fee4e2dc97bdfb8764a5ca0311aea7966e60e3298f7fb89c80ca"
+  },
+  "referencedLocalSourceHashes": [
+    {
+      "path": "apps/desktop/scripts/language-profiles/overrides.json",
+      "sha256": "2c9aa206bc9258e28c7e094a1b65b436078b88f5e150f2ef1cef63f9c45ee6b2"
+    },
+    {
+      "path": "apps/desktop/scripts/language-profiles/sources.json",
+      "sha256": "ef1c93693e5a78fee8d1fb225d2c86b5baaf7e8ef3247f9ffb272fb39a6f6500"
+    },
+    {
+      "path": "apps/desktop/scripts/update-language-profiles.py",
+      "sha256": "9f9bf4a253e1fdfd61f144bc6c9e7bd065f41dba3aafd0c2fc6d82edb31fddee"
+    },
+    {
+      "path": "apps/desktop/src/main/language/analysis-context.ts",
+      "sha256": "3774ddb132c144a788fe179a55c974091a978defaba27ba21ea57cbaa1cb67f4"
+    },
+    {
+      "path": "apps/desktop/src/main/language/catalog/profiles.json",
+      "sha256": "bc1e3aa8cdcc95261f25a9f308ef976d6e7e8dba835888a876788f744cda8840"
+    },
+    {
+      "path": "apps/desktop/src/main/language/language-manager.ts",
+      "sha256": "15714fbd6eeabe2cde036608a2a97b2e1b87e0ad17b283e79dc43783762958fb"
+    },
+    {
+      "path": "apps/desktop/src/main/language/language-root.ts",
+      "sha256": "eb3f4bf2890c7b1e16599d2d400808d5dba601d151e91148005736463adc2d5f"
+    },
+    {
+      "path": "apps/desktop/src/main/language/language-supervisor.ts",
+      "sha256": "aa56133e78fb740072b8a0413f7f10bf4c0b2f39017f09db69d7007680665c76"
+    },
+    {
+      "path": "apps/desktop/src/main/language/notebook-language-host.ts",
+      "sha256": "507fefbcb620a588ab92d11b0408a0b5ed03b11309628ca2d549e6734e935da1"
+    },
+    {
+      "path": "apps/desktop/src/main/language/python-analysis.ts",
+      "sha256": "95eb91a7b19047ce21a05ad1fe08e12d85e09a97e21fc582b0b018d6071a75be"
+    },
+    {
+      "path": "apps/desktop/src/main/language/python-project-settings.ts",
+      "sha256": "65088e726574413a1f98d6d7537792000614b8278f44b441342894f2b7732882"
+    },
+    {
+      "path": "apps/desktop/src/main/language/server-registry.ts",
+      "sha256": "fbd152da2de825a21a7512ec9ae56933a3f9987e12d4a7a3bc20e5dc2ab009b4"
+    },
+    {
+      "path": "apps/desktop/src/main/language/server-session.test.ts",
+      "sha256": "eae42437b43d42b3c8716db1a885dc2cb1b014ea059f6a9f152d471998d49128"
+    },
+    {
+      "path": "apps/desktop/src/main/language/server-session.ts",
+      "sha256": "11d762aca180e6f8c3783c79ccc82ac95a72bc0d66453855cf58b1bfe4635958"
+    },
+    {
+      "path": "apps/desktop/src/main/notebook/python-environments.ts",
+      "sha256": "723c1db71b5605e49dd6ae9bad9bbc1fb773791de20223e3aded6a62fe6c6952"
+    },
+    {
+      "path": "apps/desktop/src/renderer/language/diagnostic-store.ts",
+      "sha256": "661ab40926c80a5832442c91f6eb746a6d6c34a2a4f9976797325a0e3f041df3"
+    },
+    {
+      "path": "apps/desktop/src/renderer/language/language-client.ts",
+      "sha256": "2eb318c1c3ab13154db9168312afd89e338528aec5167354e47906979ed9fdba"
+    },
+    {
+      "path": "apps/desktop/src/renderer/language/language-feature-plan.ts",
+      "sha256": "49c2d0d4fd32251d17f9182ad67a00d826f4534110594270551cb8aabd0c0e7b"
+    },
+    {
+      "path": "apps/desktop/src/renderer/notebook/NotebookSurface.svelte",
+      "sha256": "e1b8108a3586a4fbe9da8b3f408aa3bc5d0332c1fe47901c49ac03547580e951"
+    },
+    {
+      "path": "apps/desktop/src/renderer/notebook/notebook-execution.ts",
+      "sha256": "9ad7cd8e25021245936dd23464d9b7af81b0d18c2896000365583b73ffcd13a1"
+    },
+    {
+      "path": "apps/desktop/src/renderer/notebook/notebook-language.ts",
+      "sha256": "98719ded5dc93afb2b4df46dfe8a9de1bb5ede00a3e5e929e379b0508bc04b7a"
+    },
+    {
+      "path": "docs/preview-performance-contract.md",
+      "sha256": "0e2574fbb94e4dd32d742c833d70ea1747262fe9fb0b6a54b9db3a5147432398"
+    },
+    {
+      "path": "vendor/helix/helix-lsp/src/client.rs",
+      "sha256": "3c0c60a7589cea0c5fb61689f6aea43a9eed899af39a131dc673dac2b553b26f"
+    },
+    {
+      "path": "vendor/helix/helix-lsp/src/lib.rs",
+      "sha256": "9e382751031801b4b2514c05d6ab326577b13e5bd09cc289c7f5de6e67a33b8e"
+    },
+    {
+      "path": "vendor/helix/helix-view/src/document.rs",
+      "sha256": "113d35633d4fba56d4d95d429a49cc3e6b945a6edc15efd1eb83ce15e4849bf4"
+    },
+    {
+      "path": "vendor/helix/helix-view/src/handlers/lsp.rs",
+      "sha256": "64a15662d1bfb5ba793daa7200d192bf0365f0fd715b19f50eb1e80a39d8878c"
+    },
+    {
+      "path": "vendor/monaco-languageclient/packages/client/package.json",
+      "sha256": "825087c36864d47a832fd9d58b23612b18c69a5592a0cc544229db8d958b783a"
+    },
+    {
+      "path": "vendor/monaco-languageclient/packages/client/src/index.ts",
+      "sha256": "48ca3d30299a2b84b4f59b4a6f191561245027ee106582e87c41fefdd2b09747"
+    },
+    {
+      "path": "vendor/vscode-languageserver-node/client/src/common/notebook.ts",
+      "sha256": "9eb157109924ad1a40f7fb56449c8b5b40d9da46e84ac42ffa18aa3d03c5d826"
+    },
+    {
+      "path": "vendor/vscode/extensions/python/package.json",
+      "sha256": "44ddf6c0910d421a2b93fb526bc04ecffd1d8c7ccb1f688f1a55c928ebe7c4b6"
+    },
+    {
+      "path": "vendor/vscode/src/vs/editor/common/services/markerDecorationsService.ts",
+      "sha256": "76b439607eeda848929b3908a39d000f6c574b0df16829728e42d4fd8624d557"
+    },
+    {
+      "path": "vendor/vscode/src/vs/workbench/api/browser/mainThreadDiagnostics.ts",
+      "sha256": "e8d2e80b4f735c5410118172d25a3669153267e3c08affb737d2578df473ecf1"
+    },
+    {
+      "path": "vendor/vscode/src/vs/workbench/api/common/extHostDiagnostics.ts",
+      "sha256": "dc5662f4232dd601ce3c4e1d605bceeededec80cf6764b2b3271e37be707bc64"
+    },
+    {
+      "path": "vendor/vscode/src/vs/workbench/contrib/notebook/browser/contrib/marker/markerProvider.ts",
+      "sha256": "c767aff346fe1f64b2e0fbfed63bf7bfb77aaa60de7671fabecd86576d021909"
+    }
+  ],
+  "evidenceFiles": [
+    {
+      "path": ".gitignore",
+      "bytes": 95,
+      "sha256": "228f02005962807d145bfdadb66bdefe17eaae2708e0028e496a2310e32ae59d"
+    },
+    {
+      "path": "README.md",
+      "bytes": 6449,
+      "sha256": "10906b1f2de9240b19d9d2e23cc0c2a0f0c6a9ea78252d95868f425329bb88fe"
+    },
+    {
+      "path": "build-electron.log",
+      "bytes": 76,
+      "sha256": "37b9170cd4a61bb43335f73b205ee1258739fce81535f7033fb52f7173e8e01e"
+    },
+    {
+      "path": "build.log",
+      "bytes": 40645,
+      "sha256": "1e42a1a31020643f1a0250888f43ef5af8fde2c5fbff25d1a2d236187445a821"
+    },
+    {
+      "path": "literal.ipynb",
+      "bytes": 856,
+      "sha256": "784093c7504df43b14c34e0dfca30ca4b2265e8284b008fd82e62bd1404e9ad2"
+    },
+    {
+      "path": "notebook-artifacts/.last-run.json",
+      "bytes": 45,
+      "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+    },
+    {
+      "path": "notebook-artifacts/notebook-probe-real-notebo-4f643--and-kernel-execution-basic/after-execution.png",
+      "bytes": 44106,
+      "sha256": "bd15abbb86e21c5cad918aa7122dca9c007c5784da330b85364803e280c2a8e8"
+    },
+    {
+      "path": "notebook-artifacts/notebook-probe-real-notebo-4f643--and-kernel-execution-basic/before-execution.png",
+      "bytes": 41699,
+      "sha256": "a7a6d5bcf71aa2ea3c13b1b556fe091fc9785f4ea568267532c67967e2d3454a"
+    },
+    {
+      "path": "notebook-artifacts/notebook-probe-real-notebo-4f643--and-kernel-execution-basic/electron.log",
+      "bytes": 7010,
+      "sha256": "15947f78e7bf732e283398da30d0e2f41f0049bb9b8bd7dd70603db65da4a416"
+    },
+    {
+      "path": "notebook-artifacts/notebook-probe-real-notebo-4f643--and-kernel-execution-basic/observations.json",
+      "bytes": 18199,
+      "sha256": "e500d9dd00f3a8fb8c1bc90facd10a0fe548424f4ec316d64fdf7b624d9513b1"
+    },
+    {
+      "path": "notebook-artifacts/notebook-probe-real-notebo-4f643--and-kernel-execution-basic/problems-omits-notebook.png",
+      "bytes": 29451,
+      "sha256": "2bcda420cdc54e478d0451f9139fcc54319c97f47fd8e7f2bf8a533129cdfc6c"
+    },
+    {
+      "path": "notebook-default-artifacts/.last-run.json",
+      "bytes": 45,
+      "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+    },
+    {
+      "path": "notebook-default-artifacts/notebook-probe-real-notebo-9fb4f-nd-kernel-execution-default/after-execution.png",
+      "bytes": 44232,
+      "sha256": "55e51659ac4622a85b83a07d231ed5455e3eeb5bac92c0c72988d4d70904012e"
+    },
+    {
+      "path": "notebook-default-artifacts/notebook-probe-real-notebo-9fb4f-nd-kernel-execution-default/before-execution.png",
+      "bytes": 41813,
+      "sha256": "a4c22a848bf34d8aec1e251ecc6e239f8fde58ba9f7ced8ee592ca33ff8e5895"
+    },
+    {
+      "path": "notebook-default-artifacts/notebook-probe-real-notebo-9fb4f-nd-kernel-execution-default/electron.log",
+      "bytes": 1566,
+      "sha256": "54eee8eb9e53e11bdbc0469a8c5a7975513c7f76f6501fc47b314e8db30ad1e2"
+    },
+    {
+      "path": "notebook-default-artifacts/notebook-probe-real-notebo-9fb4f-nd-kernel-execution-default/observations.json",
+      "bytes": 2785,
+      "sha256": "d97e5960adb5c0cc800bfb56a8d18e1d8f474e3f7a2402610a8158aa1a31527b"
+    },
+    {
+      "path": "notebook-default-final.log",
+      "bytes": 4122,
+      "sha256": "989c13bc5260ac13ae404b5899527c19615f9ad08159c485e45eb4851e7d3dba"
+    },
+    {
+      "path": "notebook-e2e.log",
+      "bytes": 4260,
+      "sha256": "24565f0ebf4e38a5fa60f31efc7c8a13cef39b7f2571835992cd95763f476b5b"
+    },
+    {
+      "path": "notebook-harness-module-failure.log",
+      "bytes": 963,
+      "sha256": "7ac6966c1d9d4df5dc270eda55ec0217f616ebb6552ae9fe6b250e5bf5ae0930"
+    },
+    {
+      "path": "notebook-probe.spec.ts",
+      "bytes": 5658,
+      "sha256": "773709c73e287978969cd10103aeda8d45a5ee6f98d16821e696f584a4351eb0"
+    },
+    {
+      "path": "notebook-problems-confirmation.log",
+      "bytes": 4120,
+      "sha256": "40b43f6aa2577768cb207fd087b2a43da6742e3ad25ebcbd704fb75bd3d3c560"
+    },
+    {
+      "path": "package.json",
+      "bytes": 38,
+      "sha256": "ad91c9ac9136396f5249a45e093bab863e9a23646620d911af827986f6180283"
+    },
+    {
+      "path": "playwright.config.ts",
+      "bytes": 230,
+      "sha256": "7de2d74fefb7c19a21ed25acddf3bb45685d8c26730613918c4350416db76c7e"
+    },
+    {
+      "path": "probe-harness-initial-failure.log",
+      "bytes": 433,
+      "sha256": "a7fcd5d3f81b70e164f6974b82d0a66d6506c2f0ed1e4866fd18e499c879711b"
+    },
+    {
+      "path": "probe-harness-notebook-shape-failure.log",
+      "bytes": 10956,
+      "sha256": "a14c6eeff1a4fa028aebb8fe71ce957894032e7d3b506cdccd2cac2775933b25"
+    },
+    {
+      "path": "probe-python-lsp.cjs",
+      "bytes": 8424,
+      "sha256": "58cc413dcf448a66333d01bd8ac6732ea8cbce020f512e0512fac5cd5ca7c9a2"
+    },
+    {
+      "path": "python-lsp-results.json",
+      "bytes": 70086,
+      "sha256": "5e2041e421711419c2fae8aa9b5e4de3e318a691be02d07ee8bb0ccb2f71e6d7"
+    },
+    {
+      "path": "python-probe-unrestricted.log",
+      "bytes": 2575,
+      "sha256": "9913ee281bd48b5561e72cc4ce8aeb141ebb1c518f2ded0ad5efa39fb2602e78"
+    },
+    {
+      "path": "python-probe.log",
+      "bytes": 443,
+      "sha256": "8e8dcca101613c754339e38f05eca68759972f6f849c15f55acbc9200abbe3d7"
+    }
+  ]
+}

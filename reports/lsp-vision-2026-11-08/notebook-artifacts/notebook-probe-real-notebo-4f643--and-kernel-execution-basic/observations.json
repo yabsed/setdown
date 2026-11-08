@@ -1,0 +1,645 @@
+{
+  "mode": "basic",
+  "python": "/home/yabsed/miniconda3/bin/python3",
+  "notebook": {
+    "nbformat": 4,
+    "nbformat_minor": 5,
+    "metadata": {
+      "language_info": {
+        "name": "python"
+      },
+      "kernelspec": {
+        "name": "python3",
+        "language": "python",
+        "display_name": "Python 3"
+      }
+    },
+    "cells": [
+      {
+        "id": "define",
+        "source": "from typing import Literal\ndef choose(mode: Literal[\"fast\", \"safe\"]) -> str:\n    return mode",
+        "cell_type": "code",
+        "metadata": {},
+        "execution_count": null,
+        "outputs": []
+      },
+      {
+        "id": "invalid",
+        "source": "print(choose(\"turbo\"))",
+        "cell_type": "code",
+        "metadata": {},
+        "execution_count": null,
+        "outputs": []
+      },
+      {
+        "id": "valid",
+        "source": "print(choose(\"fast\"))",
+        "cell_type": "code",
+        "metadata": {},
+        "execution_count": null,
+        "outputs": []
+      }
+    ]
+  },
+  "diagnosticEvent": {
+    "type": "diagnostics",
+    "id": "481ab3c3-ffdb-487f-853e-52f5a139a1dc",
+    "generation": "e91b7085-a60f-41ed-81d3-713fe48532bd",
+    "version": 1,
+    "cell": "invalid",
+    "cellVersion": 1,
+    "diagnostics": [
+      {
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 13
+          },
+          "end": {
+            "line": 0,
+            "character": 20
+          }
+        },
+        "message": "Argument of type \"Literal['turbo']\" cannot be assigned to parameter \"mode\" of type \"Literal['fast', 'safe']\" in function \"choose\"\n  Type \"Literal['turbo']\" is not assignable to type \"Literal['fast', 'safe']\"\n    \"Literal['turbo']\" is not assignable to type \"Literal['fast']\"\n    \"Literal['turbo']\" is not assignable to type \"Literal['safe']\"",
+        "severity": 1,
+        "code": "reportArgumentType",
+        "source": "basedpyright",
+        "codeDescription": {
+          "href": "https://docs.basedpyright.com/v1.40.2/configuration/config-files/#reportArgumentType"
+        }
+      }
+    ]
+  },
+  "invalidCallExecuted": "turbo",
+  "validCallExecuted": "fast",
+  "problemsText": "PROBLEMS · OPEN FILES\n×\n\nNo diagnostics reported by the active checks. This does not establish project-wide coverage.",
+  "events": [
+    {
+      "type": "status",
+      "documents": [
+        {
+          "id": "c0e7f196-0d9b-4088-8cca-f1899ab3f1fa",
+          "generation": "ecf93f7e-b8e9-47d7-b92d-717468c885b5"
+        }
+      ],
+      "state": "starting"
+    },
+    {
+      "type": "status",
+      "documents": [
+        {
+          "id": "481ab3c3-ffdb-487f-853e-52f5a139a1dc",
+          "generation": "e91b7085-a60f-41ed-81d3-713fe48532bd"
+        }
+      ],
+      "state": "starting"
+    },
+    {
+      "type": "status",
+      "documents": [
+        {
+          "id": "481ab3c3-ffdb-487f-853e-52f5a139a1dc",
+          "generation": "e91b7085-a60f-41ed-81d3-713fe48532bd"
+        }
+      ],
+      "state": "ready"
+    },
+    {
+      "type": "diagnostics",
+      "id": "481ab3c3-ffdb-487f-853e-52f5a139a1dc",
+      "generation": "e91b7085-a60f-41ed-81d3-713fe48532bd",
+      "version": 1,
+      "cell": "define",
+      "cellVersion": 1,
+      "diagnostics": []
+    },
+    {
+      "type": "diagnostics",
+      "id": "481ab3c3-ffdb-487f-853e-52f5a139a1dc",
+      "generation": "e91b7085-a60f-41ed-81d3-713fe48532bd",
+      "version": 1,
+      "cell": "invalid",
+      "cellVersion": 1,
+      "diagnostics": [
+        {
+          "range": {
+            "start": {
+              "line": 0,
+              "character": 13
+            },
+            "end": {
+              "line": 0,
+              "character": 20
+            }
+          },
+          "message": "Argument of type \"Literal['turbo']\" cannot be assigned to parameter \"mode\" of type \"Literal['fast', 'safe']\" in function \"choose\"\n  Type \"Literal['turbo']\" is not assignable to type \"Literal['fast', 'safe']\"\n    \"Literal['turbo']\" is not assignable to type \"Literal['fast']\"\n    \"Literal['turbo']\" is not assignable to type \"Literal['safe']\"",
+          "severity": 1,
+          "code": "reportArgumentType",
+          "source": "basedpyright",
+          "codeDescription": {
+            "href": "https://docs.basedpyright.com/v1.40.2/configuration/config-files/#reportArgumentType"
+          }
+        }
+      ]
+    },
+    {
+      "type": "diagnostics",
+      "id": "481ab3c3-ffdb-487f-853e-52f5a139a1dc",
+      "generation": "e91b7085-a60f-41ed-81d3-713fe48532bd",
+      "version": 1,
+      "cell": "valid",
+      "cellVersion": 1,
+      "diagnostics": []
+    },
+    {
+      "type": "status",
+      "state": "starting",
+      "server": {
+        "id": "pyright",
+        "name": "Pyright"
+      },
+      "documents": [
+        {
+          "id": "8137effb-a60c-4f62-946b-7cfa6562a74e",
+          "generation": "c5c79023-12af-4d3e-9960-e4a5579cae15"
+        }
+      ]
+    },
+    {
+      "type": "status",
+      "state": "ready",
+      "documents": [
+        {
+          "id": "8137effb-a60c-4f62-946b-7cfa6562a74e",
+          "generation": "c5c79023-12af-4d3e-9960-e4a5579cae15"
+        }
+      ]
+    },
+    {
+      "type": "capabilities",
+      "id": "8137effb-a60c-4f62-946b-7cfa6562a74e",
+      "generation": "c5c79023-12af-4d3e-9960-e4a5579cae15",
+      "capabilities": {
+        "textDocumentSync": 2,
+        "definitionProvider": {
+          "workDoneProgress": true
+        },
+        "declarationProvider": {
+          "workDoneProgress": true
+        },
+        "typeDefinitionProvider": {
+          "workDoneProgress": true
+        },
+        "referencesProvider": {
+          "workDoneProgress": true
+        },
+        "documentSymbolProvider": {
+          "workDoneProgress": true
+        },
+        "workspaceSymbolProvider": {
+          "workDoneProgress": true
+        },
+        "hoverProvider": {
+          "workDoneProgress": true
+        },
+        "documentHighlightProvider": {
+          "workDoneProgress": true
+        },
+        "renameProvider": {
+          "prepareProvider": true,
+          "workDoneProgress": true
+        },
+        "completionProvider": {
+          "triggerCharacters": [
+            ".",
+            "[",
+            "\"",
+            "'"
+          ],
+          "resolveProvider": true,
+          "workDoneProgress": true,
+          "completionItem": {
+            "labelDetailsSupport": true
+          }
+        },
+        "signatureHelpProvider": {
+          "triggerCharacters": [
+            "(",
+            ",",
+            ")"
+          ],
+          "workDoneProgress": true
+        },
+        "codeActionProvider": {
+          "codeActionKinds": [
+            "quickfix",
+            "source.organizeImports"
+          ],
+          "workDoneProgress": true
+        },
+        "executeCommandProvider": {
+          "commands": [],
+          "workDoneProgress": true
+        },
+        "callHierarchyProvider": true,
+        "workspace": {
+          "workspaceFolders": {
+            "supported": true,
+            "changeNotifications": true
+          }
+        }
+      }
+    },
+    {
+      "type": "capabilities",
+      "id": "8137effb-a60c-4f62-946b-7cfa6562a74e",
+      "generation": "c5c79023-12af-4d3e-9960-e4a5579cae15",
+      "capabilities": {
+        "textDocumentSync": 2,
+        "definitionProvider": {
+          "workDoneProgress": true
+        },
+        "declarationProvider": {
+          "workDoneProgress": true
+        },
+        "typeDefinitionProvider": {
+          "workDoneProgress": true
+        },
+        "referencesProvider": {
+          "workDoneProgress": true
+        },
+        "documentSymbolProvider": {
+          "workDoneProgress": true
+        },
+        "workspaceSymbolProvider": {
+          "workDoneProgress": true
+        },
+        "hoverProvider": {
+          "workDoneProgress": true
+        },
+        "documentHighlightProvider": {
+          "workDoneProgress": true
+        },
+        "renameProvider": {
+          "prepareProvider": true,
+          "workDoneProgress": true
+        },
+        "completionProvider": {
+          "triggerCharacters": [
+            ".",
+            "[",
+            "\"",
+            "'"
+          ],
+          "resolveProvider": true,
+          "workDoneProgress": true,
+          "completionItem": {
+            "labelDetailsSupport": true
+          }
+        },
+        "signatureHelpProvider": {
+          "triggerCharacters": [
+            "(",
+            ",",
+            ")"
+          ],
+          "workDoneProgress": true
+        },
+        "codeActionProvider": {
+          "codeActionKinds": [
+            "quickfix",
+            "source.organizeImports"
+          ],
+          "workDoneProgress": true
+        },
+        "executeCommandProvider": {
+          "commands": [],
+          "workDoneProgress": true
+        },
+        "callHierarchyProvider": true,
+        "workspace": {
+          "workspaceFolders": {
+            "supported": true,
+            "changeNotifications": true
+          }
+        }
+      }
+    },
+    {
+      "type": "capabilities",
+      "id": "8137effb-a60c-4f62-946b-7cfa6562a74e",
+      "generation": "c5c79023-12af-4d3e-9960-e4a5579cae15",
+      "capabilities": {
+        "textDocumentSync": 2,
+        "definitionProvider": {
+          "workDoneProgress": true
+        },
+        "declarationProvider": {
+          "workDoneProgress": true
+        },
+        "typeDefinitionProvider": {
+          "workDoneProgress": true
+        },
+        "referencesProvider": {
+          "workDoneProgress": true
+        },
+        "documentSymbolProvider": {
+          "workDoneProgress": true
+        },
+        "workspaceSymbolProvider": {
+          "workDoneProgress": true
+        },
+        "hoverProvider": {
+          "workDoneProgress": true
+        },
+        "documentHighlightProvider": {
+          "workDoneProgress": true
+        },
+        "renameProvider": {
+          "prepareProvider": true,
+          "workDoneProgress": true
+        },
+        "completionProvider": {
+          "triggerCharacters": [
+            ".",
+            "[",
+            "\"",
+            "'"
+          ],
+          "resolveProvider": true,
+          "workDoneProgress": true,
+          "completionItem": {
+            "labelDetailsSupport": true
+          }
+        },
+        "signatureHelpProvider": {
+          "triggerCharacters": [
+            "(",
+            ",",
+            ")"
+          ],
+          "workDoneProgress": true
+        },
+        "codeActionProvider": {
+          "codeActionKinds": [
+            "quickfix",
+            "source.organizeImports"
+          ],
+          "workDoneProgress": true
+        },
+        "executeCommandProvider": {
+          "commands": [],
+          "workDoneProgress": true
+        },
+        "callHierarchyProvider": true,
+        "workspace": {
+          "workspaceFolders": {
+            "supported": true,
+            "changeNotifications": true
+          }
+        }
+      }
+    },
+    {
+      "type": "capabilities",
+      "id": "8137effb-a60c-4f62-946b-7cfa6562a74e",
+      "generation": "c5c79023-12af-4d3e-9960-e4a5579cae15",
+      "capabilities": {
+        "textDocumentSync": 2,
+        "definitionProvider": {
+          "workDoneProgress": true
+        },
+        "declarationProvider": {
+          "workDoneProgress": true
+        },
+        "typeDefinitionProvider": {
+          "workDoneProgress": true
+        },
+        "referencesProvider": {
+          "workDoneProgress": true
+        },
+        "documentSymbolProvider": {
+          "workDoneProgress": true
+        },
+        "workspaceSymbolProvider": {
+          "workDoneProgress": true
+        },
+        "hoverProvider": {
+          "workDoneProgress": true
+        },
+        "documentHighlightProvider": {
+          "workDoneProgress": true
+        },
+        "renameProvider": {
+          "prepareProvider": true,
+          "workDoneProgress": true
+        },
+        "completionProvider": {
+          "triggerCharacters": [
+            ".",
+            "[",
+            "\"",
+            "'"
+          ],
+          "resolveProvider": true,
+          "workDoneProgress": true,
+          "completionItem": {
+            "labelDetailsSupport": true
+          }
+        },
+        "signatureHelpProvider": {
+          "triggerCharacters": [
+            "(",
+            ",",
+            ")"
+          ],
+          "workDoneProgress": true
+        },
+        "codeActionProvider": {
+          "codeActionKinds": [
+            "quickfix",
+            "source.organizeImports"
+          ],
+          "workDoneProgress": true
+        },
+        "executeCommandProvider": {
+          "commands": [],
+          "workDoneProgress": true
+        },
+        "callHierarchyProvider": true,
+        "workspace": {
+          "workspaceFolders": {
+            "supported": true,
+            "changeNotifications": true
+          }
+        }
+      }
+    },
+    {
+      "type": "capabilities",
+      "id": "8137effb-a60c-4f62-946b-7cfa6562a74e",
+      "generation": "c5c79023-12af-4d3e-9960-e4a5579cae15",
+      "capabilities": {
+        "textDocumentSync": 2,
+        "definitionProvider": {
+          "workDoneProgress": true
+        },
+        "declarationProvider": {
+          "workDoneProgress": true
+        },
+        "typeDefinitionProvider": {
+          "workDoneProgress": true
+        },
+        "referencesProvider": {
+          "workDoneProgress": true
+        },
+        "documentSymbolProvider": {
+          "workDoneProgress": true
+        },
+        "workspaceSymbolProvider": {
+          "workDoneProgress": true
+        },
+        "hoverProvider": {
+          "workDoneProgress": true
+        },
+        "documentHighlightProvider": {
+          "workDoneProgress": true
+        },
+        "renameProvider": {
+          "prepareProvider": true,
+          "workDoneProgress": true
+        },
+        "completionProvider": {
+          "triggerCharacters": [
+            ".",
+            "[",
+            "\"",
+            "'"
+          ],
+          "resolveProvider": true,
+          "workDoneProgress": true,
+          "completionItem": {
+            "labelDetailsSupport": true
+          }
+        },
+        "signatureHelpProvider": {
+          "triggerCharacters": [
+            "(",
+            ",",
+            ")"
+          ],
+          "workDoneProgress": true
+        },
+        "codeActionProvider": {
+          "codeActionKinds": [
+            "quickfix",
+            "source.organizeImports"
+          ],
+          "workDoneProgress": true
+        },
+        "executeCommandProvider": {
+          "commands": [],
+          "workDoneProgress": true
+        },
+        "callHierarchyProvider": true,
+        "workspace": {
+          "workspaceFolders": {
+            "supported": true,
+            "changeNotifications": true
+          }
+        }
+      }
+    },
+    {
+      "type": "activity"
+    },
+    {
+      "type": "context",
+      "id": "8137effb-a60c-4f62-946b-7cfa6562a74e",
+      "generation": "c5c79023-12af-4d3e-9960-e4a5579cae15",
+      "messages": [],
+      "analysis": {
+        "context": {
+          "id": "c111c08d468299aa84bcb88c",
+          "root": "/tmp/setdown-notebook-vision-okFoHu",
+          "rootReason": "Project marker: pyrightconfig.json",
+          "environment": "usable",
+          "choices": [
+            {
+              "id": "ed96263adaa9a03f0685e4d0",
+              "path": "/home/yabsed/miniconda3/bin/python",
+              "source": "Conda",
+              "name": "miniconda3",
+              "available": true
+            },
+            {
+              "id": "e56a57eb9c21ac6c79adc014",
+              "path": "/home/yabsed/miniconda3/bin/python3",
+              "source": "PATH",
+              "name": "Python · bin",
+              "available": true
+            },
+            {
+              "id": "d16d49db40596174e9845efc",
+              "path": "/usr/bin/python3",
+              "source": "PATH",
+              "name": "Python · bin",
+              "available": true
+            },
+            {
+              "id": "d64bdd2b7c404f05847fff82",
+              "path": "/home/yabsed/miniconda3/envs/fetalguard/bin/python",
+              "source": "Conda",
+              "name": "fetalguard",
+              "available": true
+            },
+            {
+              "id": "435cfb2728eb4f552819618e",
+              "path": "/home/yabsed/miniconda3/envs/vlmflash/bin/python",
+              "source": "Conda",
+              "name": "vlmflash",
+              "available": true
+            }
+          ],
+          "evidence": [
+            "Analysis paths: [] (client configuration; project configuration may override)",
+            "Analysis path source: Server defaults",
+            "Project analysis configuration: /tmp/setdown-notebook-vision-okFoHu/pyrightconfig.json (detected; interpreted by server, including executionEnvironments)"
+          ],
+          "issues": [],
+          "kind": "python",
+          "label": "Python environment",
+          "selectionSource": "automatic",
+          "inherited": {
+            "id": "e56a57eb9c21ac6c79adc014",
+            "path": "/home/yabsed/miniconda3/bin/python3",
+            "source": "Automatic selection",
+            "name": "python3",
+            "available": true
+          },
+          "selected": "e56a57eb9c21ac6c79adc014"
+        },
+        "analysis": "waiting",
+        "scope": "open-files",
+        "freshness": "none",
+        "progress": []
+      },
+      "context": [
+        "Project: /tmp/setdown-notebook-vision-okFoHu",
+        "Python interpreter: /home/yabsed/miniconda3/bin/python3 (configured)",
+        "Analysis paths: [] (client configuration; project configuration may override)",
+        "Analysis path source: Server defaults",
+        "Project analysis configuration: /tmp/setdown-notebook-vision-okFoHu/pyrightconfig.json (detected; interpreted by server, including executionEnvironments)"
+      ]
+    },
+    {
+      "type": "diagnostics",
+      "server": "pyright",
+      "id": "8137effb-a60c-4f62-946b-7cfa6562a74e",
+      "generation": "c5c79023-12af-4d3e-9960-e4a5579cae15",
+      "version": 1,
+      "unversioned": false,
+      "diagnostics": []
+    }
+  ]
+}

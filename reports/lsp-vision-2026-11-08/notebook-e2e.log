@@ -1,0 +1,34 @@
+
+Running 2 tests using 1 worker
+
+(node:31237) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[1/2] ../../reports/lsp-vision-2026-11-08/notebook-probe.spec.ts:13:51 › real notebook Literal diagnostics and kernel execution: default
+dbus-daemon[31219]: [session uid=1000 pid=31219] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=31265 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[31219]: [session uid=1000 pid=31219] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=31265 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[31219]: [session uid=1000 pid=31219] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[31219]: [session uid=1000 pid=31219] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.3' (uid=1000 pid=31321 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[31219]: [session uid=1000 pid=31219] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[31219]: [session uid=1000 pid=31219] Activating service name='org.freedesktop.portal.Documents' requested by ':1.3' (uid=1000 pid=31321 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[31219]: [session uid=1000 pid=31219] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[31219]: [session uid=1000 pid=31219] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.3' (uid=1000 pid=31321 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[31219]: [session uid=1000 pid=31219] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=31368 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[31219]: [session uid=1000 pid=31219] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[31219]: [session uid=1000 pid=31219] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[31219]: [session uid=1000 pid=31219] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.3' (uid=1000 pid=31321 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[31219]: [session uid=1000 pid=31219] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:31321): xdg-desktop-portal-WARNING **: 14:51:35.719: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[31219]: [session uid=1000 pid=31219] Activating service name='org.freedesktop.impl.portal.desktop.oo7' requested by ':1.3' (uid=1000 pid=31321 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[31219]: [session uid=1000 pid=31219] Activated service 'org.freedesktop.impl.portal.desktop.oo7' failed: Process org.freedesktop.impl.portal.desktop.oo7 exited with status 1
+dbus-daemon[31219]: [session uid=1000 pid=31219] Successfully activated service 'org.freedesktop.portal.Desktop'
+
+(/usr/libexec/xdg-desktop-portal:31321): xdg-desktop-portal-WARNING **: 14:51:35.739: Failed to create secret proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.oo7: Process org.freedesktop.impl.portal.desktop.oo7 exited with status 1
+[2/2] ../../reports/lsp-vision-2026-11-08/notebook-probe.spec.ts:13:51 › real notebook Literal diagnostics and kernel execution: basic
+  2 passed (7.1s)
