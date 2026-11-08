@@ -4,6 +4,8 @@ export type BrowserPage = {
   url: string;
   title: string;
   startPage: boolean;
+  sleeping?: boolean;
+  keepAwake?: boolean;
   loading: boolean;
   canGoBack: boolean;
   canGoForward: boolean;

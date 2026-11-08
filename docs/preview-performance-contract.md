@@ -39,6 +39,44 @@ IME and latency guarantees and tolerances remain unchanged.
 
 ## Guarantees and ownership
 
+Memory reclamation is app-wide (`main/memory/memory-monitor.ts` and
+`core/memory/memory-policy.ts`). Linux uses process-tree PSS, MemAvailable, memory
+pressure stalls and ancestor cgroup limits; other platforms use Electron working
+sets and OS free memory. The soft application budget is 18% of usable memory,
+bounded to 768 MiB–3 GiB. Visible groups and in-flight preparation remain protected;
+this is a reclamation trigger, not a hard cap on active documents or websites.
+
+Inactive native Markdown and Git readers can be discarded after 10 minutes,
+2 minutes under moderate pressure, or 30 seconds under critical pressure. Git's
+two buffers share protection. Renderer cache metadata is invalidated when a view
+is discarded; return recreates the reader from the current document revision,
+retaining source models, Undo and reading positions. Warm transitions within the
+grace period retain their identity and all existing focus/IME guarantees. Cold
+returns after eviction are allowed to take preparation time. Unacknowledged shell
+contexts are protected. `preview-presentation.test.ts` and `browser/memory.spec.ts`
+cover protection and cold recovery.
+
+The app retains at most two spare native readers in normal conditions and none
+under pressure. Main's HTML RAM cache is limited to 32 MiB, with private disk
+backing in the profile's `preview-cache` (not a potentially RAM-backed `/tmp`).
+Navigation and PDF export hold leases; live URLs remain readable after RAM
+eviction. Old unleased versions expire, exit removes the session directory, and
+startup removes interrupted-session residue. Worker block history is capped at
+64 MiB/32 entries, visible search indexes at 16 MiB/128 entries, and Crossnote
+retention at four folder/theme notebooks with four engines each. Cache misses
+must produce complete current HTML instead of patches against discarded bases.
+`byte-cache.test.ts`, `preview-html-store.test.ts` and the existing render-output
+tests cover eviction behavior.
+
+Idle render/review workers exit after five minutes (one minute under pressure);
+search workers exit after two minutes (15 seconds under pressure). Pending jobs
+prevent termination, and an old worker's exit cannot reject a new worker's jobs.
+Memory-pressure recovery needs 30 seconds of sustained headroom. Under pressure,
+hidden PDF/image surfaces unmount; every visible group's surface stays pinned.
+The media cache tests preserve latest-position restoration and visible identity.
+The ordinary/Git eight-scenario comparative latency gate and its tolerances are
+unchanged.
+
 Local Reload and external-change reconciliation must preserve these guarantees:
 only the current document revision can invalidate/install preview content, and
 neither action restarts the shell or steals focus from another tab. File-drop

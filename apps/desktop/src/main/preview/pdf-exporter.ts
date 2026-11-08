@@ -60,7 +60,7 @@ export async function exportPdf(
   });
   if (result.canceled || !result.filePath) return { canceled: true };
 
-  const url = await renderer.renderExport(state, text, revision, documentPath);
+  const { url, release } = await renderer.renderExport(state, text, revision, documentPath);
   const printWindow = new BrowserWindow({
     show: false,
     width: 794,
@@ -74,6 +74,6 @@ export async function exportPdf(
     await fs.writeFile(result.filePath, pdf);
     return { canceled: false, path: result.filePath };
   } finally {
-    printWindow.destroy();
+    printWindow.destroy(); release();
   }
 }

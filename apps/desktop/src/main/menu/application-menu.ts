@@ -5,6 +5,7 @@ import { PREVIEW_THEMES, type PreviewThemeId } from '../../core/preview/preview-
 import type { WindowState } from '../windows/window-state';
 
 type MenuContext = {
+  showMemory?: () => void;
   focusedState: () => WindowState | null;
   createWindow: () => unknown;
   openDocument: (state: WindowState) => unknown;
@@ -114,6 +115,7 @@ export function installApplicationMenu(context: MenuContext) {
     },
     {
       id: 'application-menu-view', label: 'View', submenu: [
+        { id: 'menu-memory', label: 'Memory Usage…', click: () => context.showMemory?.() },
         { id: 'menu-toggle-terminal', label: 'Toggle Terminal', accelerator: 'Ctrl+`', click: () => command('toggle-terminal') },
         { id: 'menu-toggle-folder-tools', label: 'Toggle Folder Tools', click: () => command('toggle-folder-tools') },
         { id: 'menu-toggle-surface', label: 'Toggle Viewer / Editor', accelerator: 'CmdOrCtrl+E', click: () => command('toggle-surface') },

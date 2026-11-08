@@ -13,7 +13,7 @@ type Builders = {
 type Output = { template?: string; html?: string; patch?: PreviewBlockPatch | null };
 
 /** Select output before doing expensive page/patch work; template builders are lazy. */
-export function buildRenderOutput(request: Request, installed: Map<string, InstalledPreview>, builders: Builders): Output {
+export function buildRenderOutput(request: Request, installed: { get(id: string): InstalledPreview | undefined; set(id: string, value: InstalledPreview): unknown; delete(id: string): unknown }, builders: Builders): Output {
   const { tabId, html } = request;
   if (request.htmlOnly) {
     // A fragment for comparison/search is not an installed browser document.

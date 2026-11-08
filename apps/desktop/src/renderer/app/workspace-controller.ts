@@ -44,7 +44,6 @@ import { AutoSaveController } from '../workspace/auto-save';
 import { TabController } from '../workspace/tab-controller';
 import { installWorkspaceTools } from './editor-tools-controller';
 import { openEditorCommands, editorToolsNow, runEditorCommand } from '../editor/tools/tools-runtime';
-import '../style.css';
 
 const EMPTY_ANCHOR: ViewportAnchor = {
   sourceLine: 1, yRatio: GOLDEN_TOP_RATIO, reason: 'empty-document', confidence: 'fallback',
@@ -439,8 +438,11 @@ export function startWorkspace(desktop: DesktopPort) {
 
   const renderedReview = () => !!project.gitDiff && isMarkdownDocument(project.gitDiff.filePath);
   installWorkspaceTools({ desktop, workspace, tabs, surfaces, editor, projects, save: saveDocument });
+  const stopMemory = desktop.onMemoryPressure?.(pressure => tabs.reclaimMedia(pressure));
+  window.addEventListener('beforeunload', () => stopMemory?.(), { once: true });
   installWorkspaceEvents(desktop, {
     previewMessage: (payload) => {
+      if (payload.message.type === 'marktex:discarded') { if (!projects.previewMessage(payload)) tabs.previewDiscarded(payload.tabId); return; }
       if (payload.message.type === 'marktex:focus' && payload.tabId !== workspace.activeId
         && workspace.groups.groups.some(group => group.activeId === payload.tabId)) {
         actions.activateTab(payload.tabId); return;

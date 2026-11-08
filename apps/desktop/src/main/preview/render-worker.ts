@@ -31,6 +31,7 @@ import { installMathCompatibility, previewMathDelimiters } from './math-compat';
 import { previewRelativeReference, resolvePreviewFileReference } from './preview-resources';
 import { resourceUrl } from './resource-url';
 import { canonicalPath, isInside } from '../documents/file-system';
+import { ByteCache } from '../../core/memory/byte-cache';
 import { buildRenderOutput, type InstalledPreview } from './render-output';
 import {
   diffPreviewBlocks,
@@ -77,6 +78,7 @@ export type RenderWorkerRequest =
     themeId: string;
     roots: string[];
   }
+  | { kind: 'trim-memory' }
   | { kind: 'forget-notebooks' }
   | { kind: 'forget-tab'; tabId: string };
 
@@ -106,15 +108,22 @@ export type RenderWorkerReply =
   | { kind: 'search'; id: number; ok: true; matches: VisibleSearchMatch[] }
   | { kind: 'search'; id: number; ok: false; message: string };
 
-const visibleIndexes = new Map<string, { text: string; index: VisibleTextIndex }>();
-const MAX_VISIBLE_INDEXES = 128;
+const visibleIndexes = new ByteCache<string, { text: string; index: VisibleTextIndex }>(16 * 1024 * 1024, 128);
 
 type CrossnoteModule = typeof import('crossnote');
 type NotebookInstance = Awaited<ReturnType<CrossnoteModule['Notebook']['init']>>;
 
 const notebookCaches = new Map<string, NotebookInstance>();
 /** 탭마다 설치된 블록과 browser runtime. 다음 갱신과 capability 전환의 기준이다. */
-const installedPreviews = new Map<string, InstalledPreview>();
+const installedBlocks = new ByteCache<string, InstalledPreview>(64 * 1024 * 1024, 32);
+const installedPreviews = {
+  get: (id: string) => installedBlocks.get(id),
+  delete: (id: string) => installedBlocks.delete(id),
+  set(id: string, value: InstalledPreview) {
+    installedBlocks.set(id, value, value.blocks.reduce((n, block) => n + 96 + 2 * (block.html.length + block.key.length), 0));
+    return this;
+  },
+};
 const crossnoteOut = path.resolve(path.dirname(require.resolve('crossnote')), '..');
 let allowedRoots: string[] = [];
 let activeRoot: string | null = null;
@@ -198,7 +207,7 @@ async function getNotebook(
   const cached = notebookCaches.get(cacheKey);
   // KaTeX 결과가 이 notebook 안에 캐시된다. 한 번 덥혀 두면 같은 수식을 다시
   // 렌더하지 않으므로, 이 캐시를 버리지 않는 것이 성능의 핵심이다.
-  if (cached) return cached;
+  if (cached) { notebookCaches.delete(cacheKey); notebookCaches.set(cacheKey, cached); return cached; }
 
   const defaults = getDefaultNotebookConfig();
   const notebook = await Notebook.init({
@@ -229,6 +238,7 @@ async function getNotebook(
   installDeferredMath(notebook.md as unknown as MarkdownItLike);
   installSourceAnchors(notebook.md as unknown as MarkdownItLike);
   notebookCaches.set(cacheKey, notebook);
+  while (notebookCaches.size > 4) notebookCaches.delete(notebookCaches.keys().next().value!);
   return notebook;
 }
 
@@ -467,6 +477,13 @@ async function render(request: Extract<RenderWorkerRequest, { kind: 'render' }>)
     scripts: bridgeScripts,
     styles: previewStyles(themeId, !request.tabId.startsWith('export:')),
   });
+  // Crossnote 0.9.35 exposes the live engine dictionary. Bound per-folder
+  // retention after rendering (including transclusions), preserving the current
+  // engine and its math caches for warm transitions.
+  const engines = notebook.getNoteMarkdownEngines();
+  const currentKey = Object.keys(engines).find(key => engines[key] === engine);
+  if (currentKey) { delete engines[currentKey]; engines[currentKey] = engine; }
+  for (const key of Object.keys(engines).slice(0, -4)) { engines[key].clearCaches(); delete engines[key]; }
   // crossnote가 다 지나간 뒤에 수식을 되돌려 넣는다.
   const html = restoreDeferredMath(previewFragmentFromTemplate(template));
   // Crossnote's placeholder template is still needed to obtain sanitized HTML.
@@ -509,12 +526,7 @@ async function search(request: Extract<RenderWorkerRequest, { kind: 'search' }>)
     };
   }
   visibleIndexes.delete(request.documentPath);
-  visibleIndexes.set(request.documentPath, cached);
-  while (visibleIndexes.size > MAX_VISIBLE_INDEXES) {
-    const oldest = visibleIndexes.keys().next().value;
-    if (typeof oldest !== 'string') break;
-    visibleIndexes.delete(oldest);
-  }
+  visibleIndexes.set(request.documentPath, cached, 2 * (cached.text.length + cached.index.text.length) + 64 * cached.index.nodes.length);
   return searchVisibleText(cached.index, request.query, request.limit);
 }
 
@@ -528,6 +540,10 @@ const port = process.parentPort;
 port.on('message', (event) => {
   const request = event.data as RenderWorkerRequest;
   if (!request) return;
+  if (request.kind === 'trim-memory') {
+    renderQueue = renderQueue.then(() => { notebookCaches.clear(); visibleIndexes.clear(); installedBlocks.clear(); });
+    return;
+  }
   if (request.kind === 'forget-notebooks') {
     notebookCaches.clear();
     visibleIndexes.clear();

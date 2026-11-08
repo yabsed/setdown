@@ -26,14 +26,19 @@ import type { ReaderSnapshot } from '../../protocol/browser';
 import { BrowserAuth } from './browser-auth';
 import { BrowserTabDrag } from './browser-tab-drag';
 import { BrowserThemes } from './browser-themes';
+import { browserIdleTime, browserMemoryProbe } from './browser-memory';
+import type { MemoryPressure } from '../../core/memory/memory-policy';
+import type { MemoryContext } from '../../protocol/memory';
 import { DEFAULT_PREVIEW_THEME } from '../../core/preview/preview-preferences';
 
-type Entry = { owner: number; view: WebContentsView; contents: WebContents; page: BrowserPage; navigation: number; bounds?: Rectangle;
+type SleepingPage = { history: WebHistory; scroll: { x: number; y: number }; page: BrowserPage };
+type Entry = { lastUsed: number; edited?: boolean; popup?: boolean; sleeping?: SleepingPage; sleepTask?: Promise<boolean>; owner: number; view: WebContentsView; contents: WebContents; page: BrowserPage; navigation: number; bounds?: Rectangle;
   document: number; pdf?: BrowserPdf; reader?: { snapshot: ReaderSnapshot; document: number }; menuGeneration: number; find?: { request: number; query: string };
   popups: number[]; externalRequests: number[]; externalPending?: boolean;
   historyUrls: string[]; historyIndex: number; canGoBack?: boolean; canGoForward?: boolean; closing?: (value: boolean) => void };
 type Options = { stateFor(id: number): WindowState | null; states(): Iterable<WindowState>; zoom: WorkspaceZoom;
   globalTabDragPointer?: boolean;
+  memoryProtected?(id: string): boolean;
   theme?(): import('../../core/preview/preview-preferences').PreviewThemeId;
   createWindow?(): BrowserWindow;
   fullscreenChanged?(owner: number, active: boolean): void;
@@ -56,6 +61,7 @@ export class BrowserManager {
   private readonly fullscreens = new Map<number, { entry: Entry; restoreWindow: boolean }>();
   private restored = false;
   private saved = new Map<string, BrowserPage>();
+  private readonly sleeping = new Map<string, SleepingPage>();
   private dormant = new Map<string, number>();
   private transferring = new Set<number>();
   private saveTimer?: ReturnType<typeof setTimeout>;
@@ -77,6 +83,44 @@ export class BrowserManager {
   constructor(private readonly options: Options) {
     this.tabDrag = new BrowserTabDrag(id => options.stateFor(id)?.window, () => options.theme?.() ?? DEFAULT_PREVIEW_THEME,
       options.globalTabDragPointer);
+  }
+  get memoryStats() { return { webPages: this.views.size, sleepingWebPages: this.sleeping.size }; }
+  async reclaim(pressure: MemoryPressure, contexts: Map<number, MemoryContext>): Promise<void> {
+    // Downloads are globally protected until their owning page can be attributed.
+    if (this.downloads.activeCount) return;
+    const idle = browserIdleTime(pressure);
+    const eligible = (entry: Entry) => {
+      const context = contexts.get(entry.owner), id = entry.page.id;
+      return !!context && !context.visible.includes(id) && !context.protected.includes(id)
+        && this.live(entry) && !entry.view.getVisible() && !entry.closing && !entry.sleepTask
+        && !this.options.memoryProtected?.(id) && !entry.page.keepAwake && !entry.edited && !entry.popup && !entry.popups.length && !entry.pdf && !entry.reader
+        && !entry.externalPending && !entry.page.loading && !entry.contents.isLoading() && !entry.contents.isCurrentlyAudible()
+        && !this.permissions.protects(id) && !this.auth.protects(id) && isWebURL(entry.page.url)
+        && Date.now() - entry.lastUsed >= idle;
+    };
+    for (const entry of [...this.views.values()].sort((a, b) => a.lastUsed - b.lastUsed).filter(eligible).slice(0, 2)) {
+      const generation = entry.document, owner = entry.owner;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const scroll = await Promise.race([
+        entry.contents.executeJavaScriptInIsolatedWorld(991, [{ code: browserMemoryProbe }]).catch(() => null),
+        new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), 1000); }),
+      ]).finally(() => clearTimeout(timer)) as { x: number; y: number } | null;
+      if (!scroll || !Number.isFinite(scroll.x) || !Number.isFinite(scroll.y) || entry.document !== generation || entry.owner !== owner || !eligible(entry)) continue;
+      const navigation = entry.contents.navigationHistory;
+      const history: WebHistory = { entries: navigation.getAllEntries(), index: navigation.getActiveIndex() };
+      // Chromium pageState preserves history/scroll, but is not an unbounded cache.
+      if (!history.entries.length || history.entries.length > 1000 || JSON.stringify(history).length > 262144
+        || history.entries.some(page => !isWebURL(page.url) && page.url !== 'about:blank')) continue;
+      entry.sleeping = { history, scroll, page: { ...entry.page, sleeping: true, loading: false, audible: false } };
+      const task = new Promise<boolean>(resolve => {
+        entry.closing = resolve;
+        // Respect beforeunload. Automatic eviction must never confirm data loss.
+        entry.contents.close({ waitForBeforeUnload: true });
+      });
+      entry.sleepTask = task;
+      void task.finally(() => { entry.sleepTask = undefined; });
+      // Unresponsive pages stay protected; monitoring must not wait indefinitely.
+    }
   }
   private pageZoom(entry: Entry): number { return this.options.zoom.tabFactor(entry.page.id); }
   private zoomPage(entry: Entry, steps: unknown, requireVisible = true): void {
@@ -189,7 +233,7 @@ export class BrowserManager {
     return exportReader(state.window, reader.snapshot.article, format, theme,
       () => this.live(entry) && entry.owner === owner && entry.reader === reader && reader.document === entry.document);
   }
-  owns(owner: number, id: string) { return this.views.get(id)?.owner === owner; }
+  owns(owner: number, id: string) { return this.views.get(id)?.owner === owner || this.dormant.get(id) === owner; }
   reloadFocused(owner: number, ignoreCache = false): boolean {
     const id = this.options.zoom.activeTab(owner), entry = id ? this.views.get(id) : undefined;
     if (!entry || entry.owner !== owner || entry.contents.isDestroyed()) return false;
@@ -320,7 +364,7 @@ export class BrowserManager {
       const resolve = entry.closing; entry.closing = undefined; resolve?.(true);
       if (!entry.contents.isDestroyed()) entry.contents.close();
     }
-    for (const [id, tabOwner] of this.dormant) if (tabOwner === owner) this.dormant.delete(id);
+    for (const [id, tabOwner] of this.dormant) if (tabOwner === owner) { this.dormant.delete(id); this.sleeping.delete(id); this.saved.delete(id); }
     this.owners.delete(owner);
     this.closedTabs.delete(owner);
     if (!this.owners.size) this.places.dispose();
@@ -338,11 +382,12 @@ export class BrowserManager {
     view.setVisible(false);
     // Hidden initial navigation stays detached, preserving document IME focus.
     const wc = view.webContents;
-    const entry: Entry = { owner, view, contents: wc, page: blankPage(id, url), navigation: 0, document: 0, menuGeneration: 0, popups: [], externalRequests: [],
+    const entry: Entry = { lastUsed: Date.now(), popup: !!existing, owner, view, contents: wc, page: blankPage(id, url), navigation: 0, document: 0, menuGeneration: 0, popups: [], externalRequests: [],
       historyUrls: [], historyIndex: -1 };
     this.views.set(id, entry);
     this.options.zoom.track(wc, () => this.publish(entry), () => this.pageZoom(entry));
     wc.on('ipc-message', (event, channel, steps) => {
+      if (channel === 'browser:memory-edited') entry.edited = true;
       if (channel === 'browser:wheel-zoom') this.zoomPage(entry, steps);
       const frame = event.senderFrame;
       if (channel === 'browser:escape' && frame && frame === wc.focusedFrame && view.getVisible() && !this.fullscreens.has(entry.owner)) {
@@ -448,6 +493,11 @@ export class BrowserManager {
         active: result.activeMatchOrdinal, matches: result.matches });
     });
     wc.on('will-prevent-unload', event => {
+      if (entry.sleeping) {
+        entry.sleeping = undefined; entry.page.keepAwake = true;
+        entry.closing?.(false); entry.closing = undefined;
+        this.publish(entry); return;
+      }
       const owner = this.options.stateFor(entry.owner);
       const choice = owner && dialog.showMessageBoxSync(owner.window, { type: 'question', message: 'Leave this page?',
         detail: 'The page may have unsaved changes.', buttons: ['Stay', 'Leave'], defaultId: 0, cancelId: 0 });
@@ -462,6 +512,12 @@ export class BrowserManager {
       this.permissions.clear(entry.owner, id);
       this.auth.clear(id);
       this.views.delete(id);
+      if (entry.sleeping && this.options.stateFor(entry.owner)) {
+        this.sleeping.set(id, entry.sleeping); this.dormant.set(id, entry.owner);
+        this.saved.set(id, entry.sleeping.page);
+        this.send(entry.owner, { type: 'page', page: entry.sleeping.page });
+        entry.sleeping = undefined; this.persist(); return;
+      }
       if (this.options.stateFor(entry.owner)) { this.saved.delete(id); this.persist(); }
       this.send(entry.owner, { type: 'close', id });
     });
@@ -536,8 +592,15 @@ export class BrowserManager {
   }
   async create(owner: number, id: string, input: string, history?: WebHistory): Promise<BrowserPage> {
     if (typeof id !== 'string' || !/^[\w-]{1,128}$/.test(id)) throw Error('Invalid web tab ID.');
-    if (this.views.has(id)) return this.owned(owner, id).page;
+    const live = this.views.get(id);
+    if (live) {
+      this.owned(owner, id);
+      if (live.sleepTask) { await live.sleepTask; return this.create(owner, id, input, history); }
+      live.lastUsed = Date.now(); return live.page;
+    }
     if (this.dormant.has(id) && this.dormant.get(id) !== owner) throw Error('This web tab does not belong to this window.');
+    const sleeping = this.sleeping.get(id);
+    if (sleeping) { input = sleeping.page.url; history = sleeping.history; }
     const url = browserURL(input);
     if (history && (!Array.isArray(history.entries) || !history.entries.length || history.entries.length > 1000
       || !Number.isInteger(history.index) || history.index < 0 || history.index >= history.entries.length
@@ -552,9 +615,17 @@ export class BrowserManager {
     this.ensureExtensions();
     this.dormant.delete(id);
     const entry = this.openEntry(owner, id, url);
+    if (sleeping) {
+      this.sleeping.delete(id);
+      entry.page = { ...sleeping.page, sleeping: false, loading: true };
+      entry.contents.setAudioMuted(sleeping.page.muted);
+    }
     if (history) { entry.historyUrls = history.entries.map(e => e.url); entry.historyIndex = history.index; }
     this.saved.set(id, entry.page); this.persist();
-    void this.load(entry, entry.page.url, history);
+    void this.load(entry, entry.page.url, history).then(() => {
+      if (!sleeping || !this.live(entry) || entry.navigation !== 1) return;
+      void entry.contents.executeJavaScriptInIsolatedWorld(991, [{ code: `scrollTo(${sleeping.scroll.x}, ${sleeping.scroll.y})` }]).catch(() => {});
+    });
     return entry.page;
   }
   private async load(entry: Entry, url: string, history?: WebHistory) {
@@ -589,7 +660,7 @@ export class BrowserManager {
       stack.push(metadata); if (stack.length > 10) stack.shift(); this.closedTabs.set(owner, stack);
     };
     if (this.dormant.get(id) === owner) {
-      this.dormant.delete(id); this.saved.delete(id); this.persist(); rememberClosed(); return true;
+      this.dormant.delete(id); this.sleeping.delete(id); this.saved.delete(id); this.persist(); rememberClosed(); return true;
     }
     const entry = this.owned(owner, id);
     if (entry.closing) return false;
@@ -602,6 +673,9 @@ export class BrowserManager {
     return closed;
   }
   adopt(source: number, destination: number, id: string): boolean {
+    if (this.dormant.get(id) === source && this.options.stateFor(destination)) {
+      this.dormant.set(id, destination); this.trackOwner(destination); return true;
+    }
     const entry = this.owned(source, id), target = this.options.stateFor(destination);
     if (!target) return false;
     this.leaveFullscreen(entry);
@@ -653,7 +727,7 @@ export class BrowserManager {
         entry.view.setBounds(bounds); entry.bounds = bounds;
       }
       if (!state.window.contentView.children.includes(entry.view)) state.window.contentView.addChildView(entry.view);
-      entry.view.setVisible(true); visible.add(item.id);
+      entry.lastUsed = Date.now(); entry.view.setVisible(true); visible.add(item.id);
     }
     for (const [id, entry] of this.views) if (entry.owner === owner && !visible.has(id)) {
       entry.view.setVisible(false);
@@ -698,6 +772,8 @@ export class BrowserManager {
     const valid = () => !wc.isDestroyed() && entry.owner === owner && entry.document === generation;
     void showContextMenu(state, [
       { label: origin, enabled: false },
+      { label: 'Keep This Tab Awake', type: 'checkbox', checked: !!entry.page.keepAwake,
+        click: item => { if (valid()) { entry.page.keepAwake = item.checked; this.publish(entry); } } },
       { label: 'Keep Original Colors for This Site', type: 'checkbox', checked: this.webThemes.snapshot().originalSites.includes(origin),
         click: item => { if (valid()) void this.webThemes.update({ site: { tabId: entry.page.id, original: item.checked } }, wc.getURL())
           .catch(error => this.error(entry, error)); } },
@@ -731,12 +807,14 @@ export class BrowserManager {
 
     channels.handle('browser:create', (state, id: string, url: string, history?: WebHistory) => this.create(state.webContentsId, id, url, history));
     channels.handle('browser:history', (state, id: string): WebHistory => {
+      if (this.dormant.get(id) === state.webContentsId) return this.sleeping.get(id)!.history;
       const entry = this.owned(state.webContentsId, id), history = entry.contents.navigationHistory;
       const entries = history.getAllEntries();
       return entries.length ? { entries, index: history.getActiveIndex() }
         : { entries: [{ url: entry.page.url, title: entry.page.title }], index: 0 };
     });
     channels.handle('browser:navigate', async (state, id: string, input: string) => {
+      if (this.dormant.get(id) === state.webContentsId) await this.create(state.webContentsId, id, this.saved.get(id)!.url);
       const entry = this.owned(state.webContentsId, id); await this.load(entry, browserURL(input));
     });
     channels.handle('browser:close', (state, id: string, remember?: boolean) => this.close(state.webContentsId, id, remember === true));
@@ -751,6 +829,7 @@ export class BrowserManager {
     });
     channels.on('browser:layout', (state, entries: Array<{ id: string; bounds: PreviewBounds }>) => this.layout(state.webContentsId, entries));
     channels.handle('browser:capture', async (state, id: string) => {
+      if (this.dormant.get(id) === state.webContentsId) return null;
       const entry = this.owned(state.webContentsId, id);
       return entry.view.getVisible() ? (await entry.contents.capturePage()).toDataURL() : null;
     });
@@ -788,6 +867,14 @@ export class BrowserManager {
       return valid ? restoreReaderAnchor(entry.contents, valid) : false;
     });
     channels.handle('browser:command', async (state, id: string, command: BrowserCommand) => {
+      if (this.dormant.get(id) === state.webContentsId) {
+        const sleeping = this.sleeping.get(id)!;
+        if (command === 'mute') {
+          sleeping.page.muted = !sleeping.page.muted;
+          this.saved.set(id, sleeping.page); this.send(state.webContentsId, { type: 'page', page: sleeping.page }); return;
+        }
+        await this.create(state.webContentsId, id, sleeping.page.url);
+      }
       const entry = this.owned(state.webContentsId, id), wc = entry.contents;
       if (command === 'back' || command === 'forward') {
         const offset = command === 'back' ? -1 : 1;

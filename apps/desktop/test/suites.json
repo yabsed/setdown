@@ -114,10 +114,15 @@
       "src/main/language/analysis-preparation.test.ts",
       "src/main/language/language-supervisor.test.ts",
       "src/core/project/git-file-decorations.test.ts",
-      "src/renderer/project/explorer/explorer-git-decorations.test.ts"
+      "src/renderer/project/explorer/explorer-git-decorations.test.ts",
+      "src/core/memory/byte-cache.test.ts",
+      "src/core/memory/memory-policy.test.ts",
+      "src/main/memory/memory-monitor.test.ts",
+      "src/main/preview/preview-html-store.test.ts"
     ]
   },
   "e2e": {
+    "browser/memory.spec.ts": { "previewContract": true },
     "preview/pdf-export.spec.ts": { "previewContract": true },
     "workspace/input-regressions.spec.ts": { "previewContract": true },
     "browser/fullscreen.spec.ts": { "previewContract": true },

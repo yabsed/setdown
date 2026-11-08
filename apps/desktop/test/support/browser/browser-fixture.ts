@@ -110,6 +110,14 @@ export async function fixture(document = true) {
         <script>window.homeClicks = 0</script>`);
       return;
     }
+    if (req.url?.startsWith('/memory-')) {
+      res.end(`<!doctype html><title>${req.url.slice(1)}</title><style>body{min-height:6000px}</style>
+        <input id="draft"><a href="/memory-next">Next</a><button id="guard">Protect</button>
+        <h1>Memory fixture</h1><script>
+          window.retained = new Uint8Array(16 * 1024 * 1024).fill(7);
+          document.querySelector('#guard').onclick = () => window.onbeforeunload = event => { event.preventDefault(); event.returnValue = ''; };
+        </script>`); return;
+    }
     if (req.url === '/frame') { res.end('<!doctype html><div class="frame-ad">Frame advertisement</div><div class="removable">Control</div>'); return; }
     if (req.url === '/article') {
       const paragraphs = Array.from({ length: 40 }, (_, i) => `<p data-marker="${i}">Paragraph ${i}: reading mode should feel`

@@ -13,6 +13,9 @@ import { WorkspaceZoom, nativeZoomBounds } from '../windows/workspace-zoom';
 import { ReviewPreparation } from './review-preparation';
 import { PreviewPreparation } from './preview-preparation';
 import { readPreviewBounds } from '../../protocol/preview-preparation';
+import { PreviewHtmlStore } from './preview-html-store';
+import type { MemoryPressure } from '../../core/memory/memory-policy';
+import type { MemoryContext } from '../../protocol/memory';
 
 export type PreviewViewState = {
   view: WebContentsView;
@@ -28,6 +31,7 @@ type ResponsiveOwnerLayout = {
 };
 type Options = {
   preload: string;
+  cacheDirectory?: string;
   stateFor: (id: number) => WindowState | null;
   theme: () => PreviewThemeId;
   themeAssets: (theme: unknown) => PreviewThemeAssets;
@@ -44,7 +48,10 @@ export class PreviewManager {
   private readonly responsiveLayouts = new Map<number, ResponsiveOwnerLayout>();
   readonly views = new Map<string, PreviewViewState>();
   readonly zoom = new WorkspaceZoom();
-  private readonly documents = new Map<string, string>();
+  private readonly documents: PreviewHtmlStore;
+  private allowSpares = true;
+  private readonly touched = new Map<string, number>();
+  private readonly busy = new Map<string, number>();
   private readonly waiters = new Map<string, (error?: string) => void>();
   private readonly spares = new Map<number, { view: WebContentsView; ready: boolean }>();
   private readonly navigating = new Map<WebContentsView, symbol>();
@@ -59,14 +66,50 @@ export class PreviewManager {
 
   private readingMenu?: (tabId: string, contents: WebContents, params: Electron.ContextMenuParams, state: WindowState, valid: () => boolean) => void;
   setReadingMenu(handler: NonNullable<PreviewManager['readingMenu']>) { this.readingMenu = handler; }
-  constructor(private readonly options: Options) {}
+  constructor(private readonly options: Options) { this.documents = new PreviewHtmlStore(undefined, options.cacheDirectory); }
 
-  html(token: string) { return this.documents.get(token) ?? null; }
+  leaseDocument(url: string) { return this.documents.lease(url.split('/').pop()!); }
+  html(token: string) { return this.documents.get(token); }
+  get memoryStats() { return { previews: this.views.size, previewSpares: this.spares.size, previewHtmlBytes: this.documents.bytes }; }
+  touch(tabId: string) { this.touched.set(tabId, Date.now()); }
+  hold(tabId: string) {
+    this.touch(tabId); this.busy.set(tabId, (this.busy.get(tabId) ?? 0) + 1);
+    return () => { const count = (this.busy.get(tabId) ?? 1) - 1; if (count) this.busy.set(tabId, count); else this.busy.delete(tabId); if (this.views.has(tabId)) this.touch(tabId); };
+  }
+  dispose() { this.documents.disposeOnExit(); }
+
+  reclaim(pressure: MemoryPressure, contexts: Map<number, MemoryContext>): void {
+    this.allowSpares = pressure === 'normal';
+    if (!this.allowSpares) for (const owner of this.spares.keys()) this.discardSpare(owner);
+    const now = Date.now(), idle = pressure === 'critical' ? 30_000 : pressure === 'moderate' ? 120_000 : 600_000;
+    for (const [id, preview] of this.views) {
+      const context = contexts.get(preview.ownerWebContentsId);
+      // Both Git buffers share one logical tab. Preserve the pair while either
+      // buffer is visible, warm, navigating or preparing.
+      const parent = id.match(/^git-diff:(.*):[ab]$/)?.[1] ?? id;
+      const peers = parent === id ? [id] : [`git-diff:${parent}:a`, `git-diff:${parent}:b`];
+      if (!context || context.visible.includes(parent) || context.protected.includes(parent)
+        || peers.some(peer => {
+          const item = this.views.get(peer);
+          return item && (this.busy.has(peer) || item.view.getVisible() || this.navigating.has(item.view)
+            || now - (this.touched.get(peer) ?? now) < idle);
+        })) continue;
+      const owner = this.options.stateFor(preview.ownerWebContentsId);
+      this.destroy(preview.ownerWebContentsId, id);
+      owner?.window.webContents.send('preview:message', { tabId: id, message: { type: 'marktex:discarded' } });
+    }
+    this.trimDocuments(pressure !== 'normal');
+  }
+  private trimDocuments(pressure = false) {
+    const tokens = new Set([...this.views.values()].map(p => p.view.webContents.getURL().split('/').pop()!));
+    for (const spare of this.spares.values()) if (!spare.view.webContents.isDestroyed()) tokens.add(spare.view.webContents.getURL().split('/').pop()!);
+    if (this.warmup) tokens.add(this.warmup.url.split('/').pop()!);
+    this.documents.trim(tokens, pressure);
+  }
 
   storeDocument(template: string, themeId?: PreviewThemeId) {
     const token = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    this.documents.set(token, template);
-    while (this.documents.size > 64) this.documents.delete(this.documents.keys().next().value!);
+    this.documents.put(token, template);
     if (themeId) this.rememberWarmup(template, themeId);
     return `marktex-preview://document/${token}`;
   }
@@ -76,7 +119,7 @@ export class PreviewManager {
       .replace(/(<body\b[^>]*\bdata-html=")[^"]*(")/i, '$1$2');
     if (blank === template) return;
     const token = `warmup-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    this.documents.set(token, blank);
+    this.documents.put(token, blank);
     this.warmup = { url: `marktex-preview://document/${token}`, themeId };
   }
 
@@ -129,10 +172,12 @@ export class PreviewManager {
   }
 
   ensureSpare(ownerId: number) {
+    if (!this.allowSpares) return;
     const warmup = this.warmup;
     if (!warmup || this.spares.has(ownerId)) return;
     const owner = this.options.stateFor(ownerId)?.window;
     if (!owner || owner.isDestroyed()) return;
+    while (this.spares.size >= 2) this.discardSpare(this.spares.keys().next().value!);
     const view = this.createView();
     const spare = { view, ready: false };
     this.spares.set(ownerId, spare);
@@ -167,6 +212,7 @@ export class PreviewManager {
     if (typeof tabId !== 'string' || this.views.has(tabId)) return;
     const owner = this.options.stateFor(ownerId);
     if (!owner) return;
+    this.touch(tabId);
     const view = this.takeSpare(ownerId) ?? this.createView();
     if (/^git-diff:.*:[ab]$/.test(tabId)) this.preparation.review(view);
     view.setBackgroundColor(previewThemeBackground(this.options.theme()));
@@ -214,6 +260,7 @@ export class PreviewManager {
     this.preparation.navigationStarted(view);
     const hidden = !view.getVisible();
     if (hidden && owner.contentView.children.includes(view)) owner.contentView.removeChildView(view);
+    const release = this.documents.lease(url.split('/').pop()!);
     try {
       await view.webContents.loadURL(url);
       const stillOwned = this.spares.get(ownerId)?.view === view
@@ -227,6 +274,7 @@ export class PreviewManager {
         this.preparation.synchronize(view, preview.appliedBounds, false);
       }
     } finally {
+      release(); this.trimDocuments();
       if (this.navigating.get(view) === token) this.navigating.delete(view);
     }
   }
@@ -318,6 +366,7 @@ export class PreviewManager {
       && /^git-diff:.*:[ab]$/.test(tabId) ? tabId.slice(0, -1) : null;
 
     if (ready && bounds) {
+      this.touch(String(tabId));
       this.applyCssBounds(ready, bounds);
       if (!ready.view.getVisible()) {
         ready.view.setBackgroundColor(previewThemeBackground(this.options.theme()));
@@ -329,6 +378,7 @@ export class PreviewManager {
 
     const retained = new Set<PreviewViewState>();
     for (const entry of this.backgrounds.get(ownerId) ?? []) {
+      this.touch(entry.tabId);
       const preview = this.views.get(entry.tabId);
       if (!preview || preview === ready || preview.ownerWebContentsId !== ownerId
         || preview.view.webContents.isDestroyed() || this.navigating.has(preview.view)) continue;
@@ -451,6 +501,7 @@ export class PreviewManager {
     this.navigating.delete(preview.view);
     if (!preview.view.webContents.isDestroyed()) preview.view.webContents.close();
     this.views.delete(tabId);
+    this.touched.delete(tabId);
     this.options.forgetTab(tabId);
   }
 
@@ -548,6 +599,7 @@ export class PreviewManager {
       this.reviews.forget(tabId);
       preview.view.webContents.close();
       this.views.delete(tabId);
+      this.touched.delete(tabId);
       this.options.forgetTab(tabId);
     }
   }

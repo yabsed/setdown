@@ -226,7 +226,20 @@ behavior in the focused gate.
 
 `main/browser/browser-manager.ts` retains one sandboxed WebContentsView per live
 web tab, with a separate persistent browser session. Switching tabs and splitting
-groups keep page identity, forms and history. Browser layout uses app zoom once;
+groups keep page identity, forms and history while resident. Inactive web tabs can
+sleep after 10 minutes, or after 2 minutes/30 seconds under moderate/critical
+memory pressure. A sleeping tab keeps its identity and Chromium navigation
+history and restores its URL, scroll, mute and tab zoom on activation; the website
+reloads. The tab strip marks sleeping pages with a moon. Edited forms, active
+media, page permission grants/prompts, authentication, popups, embedded apps,
+Reader/PDF views, visible groups and tabs explicitly kept awake are excluded.
+Active downloads defer web reclamation. A beforeunload veto silently keeps the
+page awake. The site menu exposes Keep This Tab Awake. The real
+`browser/memory.spec.ts` checks native contents destruction, restoration, history,
+scroll, draft protection and beforeunload; existing lifecycle tests continue to
+check warm live identity. View → Memory Usage shows the app-wide measurement,
+budget and resource counts and allows explicit inactive-resource reclamation.
+Browser layout uses app zoom once;
 remote pages receive neither Node nor the desktop bridge. Hidden initial loads
 stay detached. Library indexing/ranking runs in a separate, detached Places view.
 No periodic page captures or Markdown hydration are added to browser tabs.

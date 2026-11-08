@@ -44,3 +44,28 @@ it('pins every visible group even beyond cache capacity and evicts hidden reader
   expect(cache.sync(tabs, 'd', pinned).map(entry => entry.id)).toEqual(pinned);
   expect(cache.sync(tabs, 'e', ['a', 'b', 'e']).map(entry => entry.id)).toEqual(['a', 'b', 'e']);
 });
+
+
+it('releases hidden media under pressure and restores a cold PDF at its latest position', () => {
+  const tabs = ['a', 'b', 'c'].map(tab), cache = new MediaCache();
+  cache.sync(tabs, 'a'); cache.sync(tabs, 'b');
+  const visible = cache.sync(tabs, 'c', ['a', 'c']);
+  cache.setPressure(true);
+  expect(cache.sync(tabs, 'c', ['a', 'c'])).toEqual(visible.filter(entry => entry.id !== 'b'));
+  tabs[1].readingPosition = { kind: 'pdf', page: 7, left: 0, top: 9, zoom: 2, rotation: 0 };
+  expect(cache.sync(tabs, 'b')[0].position).toEqual(tabs[1].readingPosition);
+  expect(cache.sync(tabs, 'b')).toHaveLength(1);
+  cache.setPressure(false); expect(cache.sync(tabs, 'a')).toHaveLength(2);
+});
+
+
+it('pressure keeps a cached local video while releasing a hidden PDF', () => {
+  const video = tab('video'); video.document = { ...video.document, kind: 'video', path: '/clip.webm' };
+  const pdf = tab('pdf'), image = tab('image'), cache = new MediaCache();
+  image.document = { ...image.document, kind: 'image', path: '/image.png' };
+  const inputs = [video, pdf, image];
+  const retained = cache.sync(inputs, video.id)[0];
+  cache.sync(inputs, pdf.id); cache.sync(inputs, image.id);
+  cache.setPressure(true);
+  expect(cache.sync(inputs, image.id)).toEqual([retained, expect.objectContaining({ id: image.id })]);
+});

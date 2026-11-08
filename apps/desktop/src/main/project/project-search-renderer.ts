@@ -1,6 +1,7 @@
 import { utilityProcess } from 'electron';
 import type { PreviewThemeId } from '../../core/preview/preview-preferences';
 import type { VisibleSearchMatch } from './visible-search';
+import type { MemoryPressure } from '../../core/memory/memory-policy';
 
 type Reply = {
   kind?: string;
@@ -12,6 +13,12 @@ type Reply = {
 
 export class ProjectSearchRenderer {
   private worker: Electron.UtilityProcess | null = null;
+  private lastUsed = Date.now();
+  get running() { return !!this.worker; }
+  reclaim(pressure: MemoryPressure) {
+    if (this.waiters.size || Date.now() - this.lastUsed < (pressure === 'normal' ? 120_000 : 15_000)) return;
+    const worker = this.worker; this.worker = null; worker?.kill();
+  }
   private requestId = 0;
   private readonly waiters = new Map<number, {
     resolve(value: VisibleSearchMatch[]): void;
@@ -42,6 +49,7 @@ export class ProjectSearchRenderer {
   }
 
   private ensureWorker() {
+    this.lastUsed = Date.now();
     if (this.worker) return this.worker;
     const worker = utilityProcess.fork(this.workerPath);
     this.worker = worker;
@@ -49,12 +57,14 @@ export class ProjectSearchRenderer {
       if (reply?.kind !== 'search' || typeof reply.id !== 'number') return;
       const waiter = this.waiters.get(reply.id);
       if (!waiter) return;
+      this.lastUsed = Date.now();
       this.waiters.delete(reply.id);
       if (!reply.ok) waiter.reject(new Error(String(reply.message ?? 'Project search failed.')));
       else waiter.resolve(Array.isArray(reply.matches) ? reply.matches : []);
     });
     worker.on('exit', () => {
-      if (this.worker === worker) this.worker = null;
+      if (this.worker !== worker) return;
+      this.worker = null;
       for (const waiter of this.waiters.values()) {
         waiter.reject(new Error('The project search renderer stopped.'));
       }

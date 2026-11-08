@@ -6,7 +6,7 @@ const result = { totalLineCount: 2, baseHref: 'file:///project/', themeId: 'gith
 function fixture() {
   const events: string[] = [];
   const view = { webContents: { getURL: () => 'marktex-preview://document/live', send: vi.fn() }, setBackgroundColor: vi.fn() };
-  const previews = { views: new Map([['tab', { ownerWebContentsId: 1, view }]]), syncTheme: vi.fn() };
+  const previews = { hold: () => () => {}, views: new Map([['tab', { ownerWebContentsId: 1, view }]]), syncTheme: vi.fn() };
   const renderer = new PreviewRenderer({ previews, roots: () => ['/project'], theme: () => 'github-light', workerPath: '/tmp/unused-worker.cjs' } as unknown as ConstructorParameters<typeof PreviewRenderer>[0]);
   const internal = renderer as unknown as { render: (...args: unknown[]) => Promise<typeof result>; worker: { postMessage(message: unknown): void } };
   internal.worker = { postMessage: () => events.push('forget') };

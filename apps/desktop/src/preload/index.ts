@@ -174,6 +174,10 @@ const api: MarkTexApi = {
   droppedPathKind: (path) => ipcRenderer.invoke('document:dropped-path-kind', path),
   activateDocument: (document, text, revision) =>
     ipcRenderer.invoke('document:activate', { document, text, revision }),
+  updateMemoryContext: context => ipcRenderer.send('memory:context', context),
+  onMemoryPressure: listener => subscribe('memory:pressure', listener),
+  getMemorySnapshot: () => ipcRenderer.invoke('memory:snapshot'),
+  reclaimMemory: () => ipcRenderer.invoke('memory:reclaim'),
   updateTabState: (tabs: TabStateSummary[]) =>
     ipcRenderer.send('tabs:update-state', tabs),
   requestGitGraph: (request) => ipcRenderer.invoke('project:git-graph', request),

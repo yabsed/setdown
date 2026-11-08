@@ -31,6 +31,7 @@ export class TabTransferManager {
   private readonly transfers = new Map<string, Transfer>();
   private readonly watchedSources = new WeakSet<BrowserWindow>();
   constructor(private readonly options: Options) {}
+  memoryProtectedIds(): string[] { return [...this.transfers.values()].filter(transfer => transfer.expiresAt > Date.now()).map(transfer => transfer.tab.id); }
   private endDrag(transferId: string, transfer: Transfer, commitTarget: number | null = null, copy = false,
     commitPoint?: { x: number; y: number }): void {
     if (!transfer.dragActive) return;

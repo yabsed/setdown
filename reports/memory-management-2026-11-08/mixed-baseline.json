@@ -1,0 +1,5008 @@
+{
+  "complete": true,
+  "root": "/var/tmp/setdown-memory-baseline-4fc1637",
+  "commit": "4fc1637babbf1e22b9504b5d2941a3ebdd066e19",
+  "startedAt": "2026-11-08T12:06:37.923Z",
+  "electron": "44.7.2",
+  "harnessHash": "4e3cf8cdc5b2d822a556e9dea660efc214a1ab4c91483c4c78252fd3cca39fd5",
+  "fixture": {
+    "windows": 5,
+    "markdownTabs": 5,
+    "webTabs": 5,
+    "activeMarkdown": 2,
+    "activeWeb": 3,
+    "webArrayMiB": 8,
+    "webParagraphs": 500,
+    "idleSeconds": 75
+  },
+  "guards": {
+    "hostAvailableMiB": 2048,
+    "appPssMiB": 2600
+  },
+  "samples": [
+    {
+      "label": "one-empty-window-browser-runtime-ready",
+      "time": "2026-11-08T12:06:41Z",
+      "rootPids": [
+        407225
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 4829816,
+        "SwapTotal": 8388604,
+        "SwapFree": 1981460
+      },
+      "pressure": "some avg10=0.27 avg60=0.78 avg300=1.81 total=104555993\nfull avg10=0.27 avg60=0.75 avg300=1.63 total=96945223",
+      "totalPssKiB": 885344,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 407225,
+          "ppid": 407198,
+          "comm": "electron",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 156334,
+          "rssKiB": 280632,
+          "privateKiB": 117488,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407228,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 12158,
+          "rssKiB": 61056,
+          "privateKiB": 872,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407229,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 9228,
+          "rssKiB": 61040,
+          "privateKiB": 268,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407231,
+          "ppid": 407229,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 3455,
+          "rssKiB": 14880,
+          "privateKiB": 268,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407273,
+          "ppid": 407228,
+          "comm": "electron",
+          "type": "gpu-process",
+          "subtype": null,
+          "pssKiB": 66485,
+          "rssKiB": 152456,
+          "privateKiB": 39016,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407275,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "utility",
+          "subtype": "network.mojom.NetworkService",
+          "pssKiB": 26223,
+          "rssKiB": 88388,
+          "privateKiB": 15020,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407287,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "utility",
+          "subtype": "node.mojom.NodeService",
+          "pssKiB": 103226,
+          "rssKiB": 179868,
+          "privateKiB": 85048,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407305,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 55993,
+          "rssKiB": 131632,
+          "privateKiB": 28140,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407511,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 9469,
+          "rssKiB": 14404,
+          "privateKiB": 8752,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407527,
+          "ppid": 407225,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 135,
+          "rssKiB": 2556,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407528,
+          "ppid": 407527,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 136,
+          "rssKiB": 1524,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407531,
+          "ppid": 407528,
+          "comm": "glycin-svg",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 4273,
+          "rssKiB": 16356,
+          "privateKiB": 1888,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407764,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 438229,
+          "rssKiB": 514116,
+          "privateKiB": 411632,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": [],
+      "windows": 1,
+      "contents": [
+        {
+          "id": 3,
+          "pid": 407764,
+          "role": "backgroundPage"
+        },
+        {
+          "id": 1,
+          "pid": 407305,
+          "role": "window"
+        }
+      ],
+      "metrics": [
+        {
+          "pid": 407225,
+          "type": "Browser"
+        },
+        {
+          "pid": 407273,
+          "type": "GPU"
+        },
+        {
+          "pid": 407275,
+          "name": "Network Service",
+          "type": "Utility"
+        },
+        {
+          "pid": 407287,
+          "name": "Node Utility Process",
+          "type": "Utility"
+        },
+        {
+          "pid": 407305,
+          "type": "Tab"
+        },
+        {
+          "pid": 407764,
+          "type": "Tab"
+        }
+      ]
+    },
+    {
+      "label": "mixed-1-windows",
+      "time": "2026-11-08T12:06:45Z",
+      "rootPids": [
+        407225
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 4723488,
+        "SwapTotal": 8388604,
+        "SwapFree": 1988096
+      },
+      "pressure": "some avg10=0.18 avg60=0.73 avg300=1.79 total=104569666\nfull avg10=0.18 avg60=0.70 avg300=1.61 total=96958851",
+      "totalPssKiB": 1152401,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 407225,
+          "ppid": 407198,
+          "comm": "electron",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 171586,
+          "rssKiB": 307996,
+          "privateKiB": 135920,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407228,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 11296,
+          "rssKiB": 61056,
+          "privateKiB": 856,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407229,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 6908,
+          "rssKiB": 61040,
+          "privateKiB": 268,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407231,
+          "ppid": 407229,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 1892,
+          "rssKiB": 15008,
+          "privateKiB": 260,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407273,
+          "ppid": 407228,
+          "comm": "electron",
+          "type": "gpu-process",
+          "subtype": null,
+          "pssKiB": 70343,
+          "rssKiB": 164680,
+          "privateKiB": 40032,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407275,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "utility",
+          "subtype": "network.mojom.NetworkService",
+          "pssKiB": 25054,
+          "rssKiB": 90804,
+          "privateKiB": 15996,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407287,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "utility",
+          "subtype": "node.mojom.NodeService",
+          "pssKiB": 104374,
+          "rssKiB": 186704,
+          "privateKiB": 90332,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407305,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 99628,
+          "rssKiB": 200544,
+          "privateKiB": 78140,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407511,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 9468,
+          "rssKiB": 14404,
+          "privateKiB": 8752,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407527,
+          "ppid": 407225,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 135,
+          "rssKiB": 2556,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407528,
+          "ppid": 407527,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 136,
+          "rssKiB": 1524,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407531,
+          "ppid": 407528,
+          "comm": "glycin-svg",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 4273,
+          "rssKiB": 16356,
+          "privateKiB": 1888,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407764,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 455977,
+          "rssKiB": 549084,
+          "privateKiB": 440832,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407933,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 73069,
+          "rssKiB": 165624,
+          "privateKiB": 57816,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407939,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 22486,
+          "rssKiB": 102516,
+          "privateKiB": 12520,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407947,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 19435,
+          "rssKiB": 95900,
+          "privateKiB": 10784,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407957,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 47545,
+          "rssKiB": 133444,
+          "privateKiB": 35824,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407974,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 28796,
+          "rssKiB": 110580,
+          "privateKiB": 18920,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": [],
+      "windows": 1,
+      "contents": [
+        {
+          "id": 8,
+          "pid": 407974,
+          "role": "preview"
+        },
+        {
+          "id": 7,
+          "pid": 407947,
+          "role": "window"
+        },
+        {
+          "id": 5,
+          "pid": 407933,
+          "role": "web"
+        },
+        {
+          "id": 4,
+          "pid": 407957,
+          "role": "preview"
+        },
+        {
+          "id": 3,
+          "pid": 407764,
+          "role": "backgroundPage"
+        },
+        {
+          "id": 6,
+          "pid": 407939,
+          "role": "window"
+        },
+        {
+          "id": 1,
+          "pid": 407305,
+          "role": "window"
+        }
+      ],
+      "metrics": [
+        {
+          "pid": 407225,
+          "type": "Browser"
+        },
+        {
+          "pid": 407273,
+          "type": "GPU"
+        },
+        {
+          "pid": 407275,
+          "name": "Network Service",
+          "type": "Utility"
+        },
+        {
+          "pid": 407287,
+          "name": "Node Utility Process",
+          "type": "Utility"
+        },
+        {
+          "pid": 407305,
+          "type": "Tab"
+        },
+        {
+          "pid": 407764,
+          "type": "Tab"
+        },
+        {
+          "pid": 407957,
+          "type": "Tab"
+        },
+        {
+          "pid": 407933,
+          "type": "Tab"
+        },
+        {
+          "pid": 407939,
+          "type": "Tab"
+        },
+        {
+          "pid": 407947,
+          "type": "Tab"
+        },
+        {
+          "pid": 407974,
+          "type": "Tab"
+        }
+      ]
+    },
+    {
+      "label": "mixed-2-windows",
+      "time": "2026-11-08T12:06:49Z",
+      "rootPids": [
+        407225
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 4259684,
+        "SwapTotal": 8388604,
+        "SwapFree": 1889636
+      },
+      "pressure": "some avg10=0.81 avg60=0.81 avg300=1.79 total=104662635\nfull avg10=0.81 avg60=0.79 avg300=1.61 total=97051363",
+      "totalPssKiB": 1411002,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 407225,
+          "ppid": 407198,
+          "comm": "electron",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 182058,
+          "rssKiB": 323432,
+          "privateKiB": 148864,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407228,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 10904,
+          "rssKiB": 61056,
+          "privateKiB": 832,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407229,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 6120,
+          "rssKiB": 61040,
+          "privateKiB": 268,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407231,
+          "ppid": 407229,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 1413,
+          "rssKiB": 15008,
+          "privateKiB": 260,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407273,
+          "ppid": 407228,
+          "comm": "electron",
+          "type": "gpu-process",
+          "subtype": null,
+          "pssKiB": 75294,
+          "rssKiB": 175664,
+          "privateKiB": 41192,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407275,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "utility",
+          "subtype": "network.mojom.NetworkService",
+          "pssKiB": 24428,
+          "rssKiB": 91368,
+          "privateKiB": 16428,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407287,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "utility",
+          "subtype": "node.mojom.NodeService",
+          "pssKiB": 106443,
+          "rssKiB": 190580,
+          "privateKiB": 94128,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407305,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 87487,
+          "rssKiB": 190788,
+          "privateKiB": 74940,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407511,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 7767,
+          "rssKiB": 14404,
+          "privateKiB": 5728,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407527,
+          "ppid": 407225,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 134,
+          "rssKiB": 2556,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407528,
+          "ppid": 407527,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 135,
+          "rssKiB": 1524,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407531,
+          "ppid": 407528,
+          "comm": "glycin-svg",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 4294,
+          "rssKiB": 16432,
+          "privateKiB": 1900,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407764,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 467704,
+          "rssKiB": 565564,
+          "privateKiB": 456984,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407933,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 66936,
+          "rssKiB": 163604,
+          "privateKiB": 56852,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407939,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 19332,
+          "rssKiB": 102624,
+          "privateKiB": 12628,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407947,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 16437,
+          "rssKiB": 95900,
+          "privateKiB": 10784,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407957,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 42756,
+          "rssKiB": 133444,
+          "privateKiB": 34720,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407974,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 25309,
+          "rssKiB": 110580,
+          "privateKiB": 18932,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408027,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 99478,
+          "rssKiB": 207520,
+          "privateKiB": 82964,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408039,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 7769,
+          "rssKiB": 14340,
+          "privateKiB": 5728,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408091,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 25339,
+          "rssKiB": 110696,
+          "privateKiB": 18948,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408099,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 47570,
+          "rssKiB": 141104,
+          "privateKiB": 38304,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408107,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 69436,
+          "rssKiB": 166756,
+          "privateKiB": 58708,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408115,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 16459,
+          "rssKiB": 95940,
+          "privateKiB": 10796,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": [],
+      "windows": 2,
+      "contents": [
+        {
+          "id": 13,
+          "pid": 408115,
+          "role": "window"
+        },
+        {
+          "id": 11,
+          "pid": 408091,
+          "role": "preview"
+        },
+        {
+          "id": 10,
+          "pid": 408099,
+          "role": "preview"
+        },
+        {
+          "id": 9,
+          "pid": 408027,
+          "role": "window"
+        },
+        {
+          "id": 8,
+          "pid": 407974,
+          "role": "preview"
+        },
+        {
+          "id": 7,
+          "pid": 407947,
+          "role": "window"
+        },
+        {
+          "id": 5,
+          "pid": 407933,
+          "role": "web"
+        },
+        {
+          "id": 4,
+          "pid": 407957,
+          "role": "preview"
+        },
+        {
+          "id": 3,
+          "pid": 407764,
+          "role": "backgroundPage"
+        },
+        {
+          "id": 6,
+          "pid": 407939,
+          "role": "window"
+        },
+        {
+          "id": 12,
+          "pid": 408107,
+          "role": "web"
+        },
+        {
+          "id": 1,
+          "pid": 407305,
+          "role": "window"
+        }
+      ],
+      "metrics": [
+        {
+          "pid": 407225,
+          "type": "Browser"
+        },
+        {
+          "pid": 407273,
+          "type": "GPU"
+        },
+        {
+          "pid": 407275,
+          "name": "Network Service",
+          "type": "Utility"
+        },
+        {
+          "pid": 407287,
+          "name": "Node Utility Process",
+          "type": "Utility"
+        },
+        {
+          "pid": 407305,
+          "type": "Tab"
+        },
+        {
+          "pid": 407764,
+          "type": "Tab"
+        },
+        {
+          "pid": 407957,
+          "type": "Tab"
+        },
+        {
+          "pid": 407933,
+          "type": "Tab"
+        },
+        {
+          "pid": 407939,
+          "type": "Tab"
+        },
+        {
+          "pid": 407947,
+          "type": "Tab"
+        },
+        {
+          "pid": 407974,
+          "type": "Tab"
+        },
+        {
+          "pid": 408027,
+          "type": "Tab"
+        },
+        {
+          "pid": 408099,
+          "type": "Tab"
+        },
+        {
+          "pid": 408091,
+          "type": "Tab"
+        },
+        {
+          "pid": 408107,
+          "type": "Tab"
+        },
+        {
+          "pid": 408115,
+          "type": "Tab"
+        }
+      ]
+    },
+    {
+      "label": "mixed-3-windows",
+      "time": "2026-11-08T12:06:53Z",
+      "rootPids": [
+        407225
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 4067100,
+        "SwapTotal": 8388604,
+        "SwapFree": 2139924
+      },
+      "pressure": "some avg10=0.54 avg60=0.76 avg300=1.77 total=104681841\nfull avg10=0.54 avg60=0.73 avg300=1.59 total=97070562",
+      "totalPssKiB": 1540101,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 407225,
+          "ppid": 407198,
+          "comm": "electron",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 193792,
+          "rssKiB": 337732,
+          "privateKiB": 161664,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407228,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 10690,
+          "rssKiB": 61056,
+          "privateKiB": 832,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407229,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 5702,
+          "rssKiB": 61040,
+          "privateKiB": 260,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407231,
+          "ppid": 407229,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 1180,
+          "rssKiB": 15008,
+          "privateKiB": 260,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407273,
+          "ppid": 407228,
+          "comm": "electron",
+          "type": "gpu-process",
+          "subtype": null,
+          "pssKiB": 83445,
+          "rssKiB": 192136,
+          "privateKiB": 42208,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407275,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "utility",
+          "subtype": "network.mojom.NetworkService",
+          "pssKiB": 24794,
+          "rssKiB": 93068,
+          "privateKiB": 17196,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407287,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "utility",
+          "subtype": "node.mojom.NodeService",
+          "pssKiB": 105074,
+          "rssKiB": 190116,
+          "privateKiB": 93664,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407305,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 84471,
+          "rssKiB": 190876,
+          "privateKiB": 75028,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407511,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 7159,
+          "rssKiB": 14404,
+          "privateKiB": 5728,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407527,
+          "ppid": 407225,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 134,
+          "rssKiB": 2556,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407528,
+          "ppid": 407527,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 135,
+          "rssKiB": 1524,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407531,
+          "ppid": 407528,
+          "comm": "glycin-svg",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 4293,
+          "rssKiB": 16432,
+          "privateKiB": 1900,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407764,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 361931,
+          "rssKiB": 462108,
+          "privateKiB": 353336,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407933,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 64780,
+          "rssKiB": 163672,
+          "privateKiB": 56856,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407939,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 17908,
+          "rssKiB": 102748,
+          "privateKiB": 12752,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407947,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 15027,
+          "rssKiB": 95908,
+          "privateKiB": 10792,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407957,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 40660,
+          "rssKiB": 133452,
+          "privateKiB": 34728,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407974,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 23696,
+          "rssKiB": 110584,
+          "privateKiB": 18936,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408027,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 94891,
+          "rssKiB": 204724,
+          "privateKiB": 82924,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408039,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 7161,
+          "rssKiB": 14340,
+          "privateKiB": 5728,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408091,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 23713,
+          "rssKiB": 110696,
+          "privateKiB": 18948,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408099,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 45384,
+          "rssKiB": 141120,
+          "privateKiB": 38320,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408107,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 66110,
+          "rssKiB": 164984,
+          "privateKiB": 58192,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408115,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 15052,
+          "rssKiB": 95940,
+          "privateKiB": 10820,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408198,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 89202,
+          "rssKiB": 199484,
+          "privateKiB": 76248,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408210,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 7160,
+          "rssKiB": 14356,
+          "privateKiB": 5728,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408211,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 23779,
+          "rssKiB": 110772,
+          "privateKiB": 19004,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408219,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 40574,
+          "rssKiB": 133272,
+          "privateKiB": 34656,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408227,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 67142,
+          "rssKiB": 166644,
+          "privateKiB": 58596,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408235,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 15062,
+          "rssKiB": 95948,
+          "privateKiB": 10832,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": [],
+      "windows": 3,
+      "contents": [
+        {
+          "id": 18,
+          "pid": 408235,
+          "role": "window"
+        },
+        {
+          "id": 17,
+          "pid": 408227,
+          "role": "web"
+        },
+        {
+          "id": 16,
+          "pid": 408211,
+          "role": "preview"
+        },
+        {
+          "id": 15,
+          "pid": 408219,
+          "role": "preview"
+        },
+        {
+          "id": 14,
+          "pid": 408198,
+          "role": "window"
+        },
+        {
+          "id": 13,
+          "pid": 408115,
+          "role": "window"
+        },
+        {
+          "id": 11,
+          "pid": 408091,
+          "role": "preview"
+        },
+        {
+          "id": 10,
+          "pid": 408099,
+          "role": "preview"
+        },
+        {
+          "id": 9,
+          "pid": 408027,
+          "role": "window"
+        },
+        {
+          "id": 8,
+          "pid": 407974,
+          "role": "preview"
+        },
+        {
+          "id": 7,
+          "pid": 407947,
+          "role": "window"
+        },
+        {
+          "id": 5,
+          "pid": 407933,
+          "role": "web"
+        },
+        {
+          "id": 4,
+          "pid": 407957,
+          "role": "preview"
+        },
+        {
+          "id": 3,
+          "pid": 407764,
+          "role": "backgroundPage"
+        },
+        {
+          "id": 6,
+          "pid": 407939,
+          "role": "window"
+        },
+        {
+          "id": 12,
+          "pid": 408107,
+          "role": "web"
+        },
+        {
+          "id": 1,
+          "pid": 407305,
+          "role": "window"
+        }
+      ],
+      "metrics": [
+        {
+          "pid": 407225,
+          "type": "Browser"
+        },
+        {
+          "pid": 407273,
+          "type": "GPU"
+        },
+        {
+          "pid": 407275,
+          "name": "Network Service",
+          "type": "Utility"
+        },
+        {
+          "pid": 407287,
+          "name": "Node Utility Process",
+          "type": "Utility"
+        },
+        {
+          "pid": 407305,
+          "type": "Tab"
+        },
+        {
+          "pid": 407764,
+          "type": "Tab"
+        },
+        {
+          "pid": 407957,
+          "type": "Tab"
+        },
+        {
+          "pid": 407933,
+          "type": "Tab"
+        },
+        {
+          "pid": 407939,
+          "type": "Tab"
+        },
+        {
+          "pid": 407947,
+          "type": "Tab"
+        },
+        {
+          "pid": 407974,
+          "type": "Tab"
+        },
+        {
+          "pid": 408027,
+          "type": "Tab"
+        },
+        {
+          "pid": 408099,
+          "type": "Tab"
+        },
+        {
+          "pid": 408091,
+          "type": "Tab"
+        },
+        {
+          "pid": 408107,
+          "type": "Tab"
+        },
+        {
+          "pid": 408115,
+          "type": "Tab"
+        },
+        {
+          "pid": 408198,
+          "type": "Tab"
+        },
+        {
+          "pid": 408219,
+          "type": "Tab"
+        },
+        {
+          "pid": 408211,
+          "type": "Tab"
+        },
+        {
+          "pid": 408227,
+          "type": "Tab"
+        },
+        {
+          "pid": 408235,
+          "type": "Tab"
+        }
+      ]
+    },
+    {
+      "label": "mixed-4-windows",
+      "time": "2026-11-08T12:06:57Z",
+      "rootPids": [
+        407225
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 3876516,
+        "SwapTotal": 8388604,
+        "SwapFree": 2096760
+      },
+      "pressure": "some avg10=0.51 avg60=0.74 avg300=1.75 total=104724181\nfull avg10=0.51 avg60=0.72 avg300=1.58 total=97112825",
+      "totalPssKiB": 1800047,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 407225,
+          "ppid": 407198,
+          "comm": "electron",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 206072,
+          "rssKiB": 351860,
+          "privateKiB": 174472,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407228,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 10552,
+          "rssKiB": 61056,
+          "privateKiB": 832,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407229,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 5452,
+          "rssKiB": 61040,
+          "privateKiB": 260,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407231,
+          "ppid": 407229,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 1041,
+          "rssKiB": 15008,
+          "privateKiB": 260,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407273,
+          "ppid": 407228,
+          "comm": "electron",
+          "type": "gpu-process",
+          "subtype": null,
+          "pssKiB": 91683,
+          "rssKiB": 208256,
+          "privateKiB": 43292,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407275,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "utility",
+          "subtype": "network.mojom.NetworkService",
+          "pssKiB": 25138,
+          "rssKiB": 93900,
+          "privateKiB": 17864,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407287,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "utility",
+          "subtype": "node.mojom.NodeService",
+          "pssKiB": 106919,
+          "rssKiB": 192536,
+          "privateKiB": 96084,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407305,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 82699,
+          "rssKiB": 190904,
+          "privateKiB": 75056,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407511,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6840,
+          "rssKiB": 14404,
+          "privateKiB": 5728,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407527,
+          "ppid": 407225,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 134,
+          "rssKiB": 2556,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407528,
+          "ppid": 407527,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 135,
+          "rssKiB": 1524,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407531,
+          "ppid": 407528,
+          "comm": "glycin-svg",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 4291,
+          "rssKiB": 16432,
+          "privateKiB": 1900,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407764,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 376156,
+          "rssKiB": 477708,
+          "privateKiB": 368936,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407933,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 63476,
+          "rssKiB": 163672,
+          "privateKiB": 56856,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407939,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 17596,
+          "rssKiB": 103656,
+          "privateKiB": 13340,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407947,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 14196,
+          "rssKiB": 95908,
+          "privateKiB": 10792,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407957,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 39450,
+          "rssKiB": 133452,
+          "privateKiB": 34728,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407974,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 22753,
+          "rssKiB": 110584,
+          "privateKiB": 18936,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408027,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 92738,
+          "rssKiB": 204740,
+          "privateKiB": 82528,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408039,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6841,
+          "rssKiB": 14340,
+          "privateKiB": 5728,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408091,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 21506,
+          "rssKiB": 109496,
+          "privateKiB": 17684,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408099,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 44080,
+          "rssKiB": 141120,
+          "privateKiB": 38320,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408107,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 64827,
+          "rssKiB": 165048,
+          "privateKiB": 58192,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408115,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 14228,
+          "rssKiB": 95948,
+          "privateKiB": 10828,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408198,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 84117,
+          "rssKiB": 192872,
+          "privateKiB": 76352,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408210,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6842,
+          "rssKiB": 14356,
+          "privateKiB": 5728,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408211,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 22832,
+          "rssKiB": 110772,
+          "privateKiB": 19004,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408219,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 39366,
+          "rssKiB": 133272,
+          "privateKiB": 34656,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408227,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 64699,
+          "rssKiB": 164888,
+          "privateKiB": 58064,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408235,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 14242,
+          "rssKiB": 95948,
+          "privateKiB": 10856,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408298,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 95412,
+          "rssKiB": 209956,
+          "privateKiB": 82660,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408310,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6844,
+          "rssKiB": 14344,
+          "privateKiB": 5732,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408311,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 22855,
+          "rssKiB": 110748,
+          "privateKiB": 19024,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408319,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 43930,
+          "rssKiB": 140868,
+          "privateKiB": 38220,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408327,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 65989,
+          "rssKiB": 166716,
+          "privateKiB": 58816,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408335,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 14116,
+          "rssKiB": 95816,
+          "privateKiB": 10736,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": [],
+      "windows": 4,
+      "contents": [
+        {
+          "id": 23,
+          "pid": 408335,
+          "role": "window"
+        },
+        {
+          "id": 22,
+          "pid": 408327,
+          "role": "web"
+        },
+        {
+          "id": 21,
+          "pid": 408311,
+          "role": "preview"
+        },
+        {
+          "id": 20,
+          "pid": 408319,
+          "role": "preview"
+        },
+        {
+          "id": 19,
+          "pid": 408298,
+          "role": "window"
+        },
+        {
+          "id": 18,
+          "pid": 408235,
+          "role": "window"
+        },
+        {
+          "id": 17,
+          "pid": 408227,
+          "role": "web"
+        },
+        {
+          "id": 16,
+          "pid": 408211,
+          "role": "preview"
+        },
+        {
+          "id": 15,
+          "pid": 408219,
+          "role": "preview"
+        },
+        {
+          "id": 14,
+          "pid": 408198,
+          "role": "window"
+        },
+        {
+          "id": 13,
+          "pid": 408115,
+          "role": "window"
+        },
+        {
+          "id": 11,
+          "pid": 408091,
+          "role": "preview"
+        },
+        {
+          "id": 10,
+          "pid": 408099,
+          "role": "preview"
+        },
+        {
+          "id": 9,
+          "pid": 408027,
+          "role": "window"
+        },
+        {
+          "id": 8,
+          "pid": 407974,
+          "role": "preview"
+        },
+        {
+          "id": 7,
+          "pid": 407947,
+          "role": "window"
+        },
+        {
+          "id": 5,
+          "pid": 407933,
+          "role": "web"
+        },
+        {
+          "id": 4,
+          "pid": 407957,
+          "role": "preview"
+        },
+        {
+          "id": 3,
+          "pid": 407764,
+          "role": "backgroundPage"
+        },
+        {
+          "id": 6,
+          "pid": 407939,
+          "role": "window"
+        },
+        {
+          "id": 12,
+          "pid": 408107,
+          "role": "web"
+        },
+        {
+          "id": 1,
+          "pid": 407305,
+          "role": "window"
+        }
+      ],
+      "metrics": [
+        {
+          "pid": 407225,
+          "type": "Browser"
+        },
+        {
+          "pid": 407273,
+          "type": "GPU"
+        },
+        {
+          "pid": 407275,
+          "name": "Network Service",
+          "type": "Utility"
+        },
+        {
+          "pid": 407287,
+          "name": "Node Utility Process",
+          "type": "Utility"
+        },
+        {
+          "pid": 407305,
+          "type": "Tab"
+        },
+        {
+          "pid": 407764,
+          "type": "Tab"
+        },
+        {
+          "pid": 407957,
+          "type": "Tab"
+        },
+        {
+          "pid": 407933,
+          "type": "Tab"
+        },
+        {
+          "pid": 407939,
+          "type": "Tab"
+        },
+        {
+          "pid": 407947,
+          "type": "Tab"
+        },
+        {
+          "pid": 407974,
+          "type": "Tab"
+        },
+        {
+          "pid": 408027,
+          "type": "Tab"
+        },
+        {
+          "pid": 408099,
+          "type": "Tab"
+        },
+        {
+          "pid": 408091,
+          "type": "Tab"
+        },
+        {
+          "pid": 408107,
+          "type": "Tab"
+        },
+        {
+          "pid": 408115,
+          "type": "Tab"
+        },
+        {
+          "pid": 408198,
+          "type": "Tab"
+        },
+        {
+          "pid": 408219,
+          "type": "Tab"
+        },
+        {
+          "pid": 408211,
+          "type": "Tab"
+        },
+        {
+          "pid": 408227,
+          "type": "Tab"
+        },
+        {
+          "pid": 408235,
+          "type": "Tab"
+        },
+        {
+          "pid": 408298,
+          "type": "Tab"
+        },
+        {
+          "pid": 408319,
+          "type": "Tab"
+        },
+        {
+          "pid": 408311,
+          "type": "Tab"
+        },
+        {
+          "pid": 408327,
+          "type": "Tab"
+        },
+        {
+          "pid": 408335,
+          "type": "Tab"
+        }
+      ]
+    },
+    {
+      "label": "mixed-5-windows",
+      "time": "2026-11-08T12:07:01Z",
+      "rootPids": [
+        407225
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 3538556,
+        "SwapTotal": 8388604,
+        "SwapFree": 2114404
+      },
+      "pressure": "some avg10=0.49 avg60=0.72 avg300=1.73 total=104736654\nfull avg10=0.49 avg60=0.70 avg300=1.56 total=97125145",
+      "totalPssKiB": 2075766,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 407225,
+          "ppid": 407198,
+          "comm": "electron",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 206194,
+          "rssKiB": 353656,
+          "privateKiB": 174692,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407228,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 10456,
+          "rssKiB": 61056,
+          "privateKiB": 832,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407229,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 5281,
+          "rssKiB": 61040,
+          "privateKiB": 260,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407231,
+          "ppid": 407229,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 948,
+          "rssKiB": 15008,
+          "privateKiB": 260,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407273,
+          "ppid": 407228,
+          "comm": "electron",
+          "type": "gpu-process",
+          "subtype": null,
+          "pssKiB": 98577,
+          "rssKiB": 221516,
+          "privateKiB": 44340,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407275,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "utility",
+          "subtype": "network.mojom.NetworkService",
+          "pssKiB": 24974,
+          "rssKiB": 94048,
+          "privateKiB": 17944,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407287,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "utility",
+          "subtype": "node.mojom.NodeService",
+          "pssKiB": 106510,
+          "rssKiB": 192612,
+          "privateKiB": 96048,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407305,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 81561,
+          "rssKiB": 190916,
+          "privateKiB": 75068,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407511,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6643,
+          "rssKiB": 14404,
+          "privateKiB": 5728,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407527,
+          "ppid": 407225,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 134,
+          "rssKiB": 2556,
+          "privateKiB": 44,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407528,
+          "ppid": 407527,
+          "comm": "bwrap",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 135,
+          "rssKiB": 1524,
+          "privateKiB": 48,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407531,
+          "ppid": 407528,
+          "comm": "glycin-svg",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 4290,
+          "rssKiB": 16432,
+          "privateKiB": 1900,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407764,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 435546,
+          "rssKiB": 537976,
+          "privateKiB": 429204,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407933,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 62632,
+          "rssKiB": 163672,
+          "privateKiB": 56856,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407939,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 17242,
+          "rssKiB": 105380,
+          "privateKiB": 13528,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407947,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 13647,
+          "rssKiB": 95908,
+          "privateKiB": 10792,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407957,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 38665,
+          "rssKiB": 133452,
+          "privateKiB": 34728,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407974,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 22133,
+          "rssKiB": 110584,
+          "privateKiB": 18936,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408027,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 91563,
+          "rssKiB": 204744,
+          "privateKiB": 82532,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408039,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6644,
+          "rssKiB": 14340,
+          "privateKiB": 5728,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408091,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 20884,
+          "rssKiB": 109496,
+          "privateKiB": 17684,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408099,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 43261,
+          "rssKiB": 141120,
+          "privateKiB": 38320,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408107,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 63982,
+          "rssKiB": 165048,
+          "privateKiB": 58192,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408115,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 13680,
+          "rssKiB": 95948,
+          "privateKiB": 10828,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408198,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 82967,
+          "rssKiB": 192892,
+          "privateKiB": 76372,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408210,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6644,
+          "rssKiB": 14356,
+          "privateKiB": 5728,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408211,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 21002,
+          "rssKiB": 109624,
+          "privateKiB": 17792,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408219,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 38583,
+          "rssKiB": 133272,
+          "privateKiB": 34656,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408227,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 63874,
+          "rssKiB": 164956,
+          "privateKiB": 58068,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408235,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 13698,
+          "rssKiB": 95952,
+          "privateKiB": 10860,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408298,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 91686,
+          "rssKiB": 204840,
+          "privateKiB": 82680,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408310,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6647,
+          "rssKiB": 14344,
+          "privateKiB": 5732,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408311,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 22234,
+          "rssKiB": 110748,
+          "privateKiB": 19024,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408319,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 43127,
+          "rssKiB": 140884,
+          "privateKiB": 38236,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408327,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 63967,
+          "rssKiB": 164940,
+          "privateKiB": 58232,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408335,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 13580,
+          "rssKiB": 95816,
+          "privateKiB": 10760,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408427,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 85799,
+          "rssKiB": 198488,
+          "privateKiB": 76416,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408439,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6653,
+          "rssKiB": 14396,
+          "privateKiB": 5732,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408440,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 22266,
+          "rssKiB": 110752,
+          "privateKiB": 19084,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408448,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 38565,
+          "rssKiB": 133236,
+          "privateKiB": 34656,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408454,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 65355,
+          "rssKiB": 167092,
+          "privateKiB": 58856,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408464,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 13537,
+          "rssKiB": 95828,
+          "privateKiB": 10664,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": [],
+      "windows": 5,
+      "contents": [
+        {
+          "id": 28,
+          "pid": 408464,
+          "role": "window"
+        },
+        {
+          "id": 27,
+          "pid": 408454,
+          "role": "web"
+        },
+        {
+          "id": 26,
+          "pid": 408440,
+          "role": "preview"
+        },
+        {
+          "id": 25,
+          "pid": 408448,
+          "role": "preview"
+        },
+        {
+          "id": 23,
+          "pid": 408335,
+          "role": "window"
+        },
+        {
+          "id": 22,
+          "pid": 408327,
+          "role": "web"
+        },
+        {
+          "id": 21,
+          "pid": 408311,
+          "role": "preview"
+        },
+        {
+          "id": 20,
+          "pid": 408319,
+          "role": "preview"
+        },
+        {
+          "id": 19,
+          "pid": 408298,
+          "role": "window"
+        },
+        {
+          "id": 18,
+          "pid": 408235,
+          "role": "window"
+        },
+        {
+          "id": 17,
+          "pid": 408227,
+          "role": "web"
+        },
+        {
+          "id": 16,
+          "pid": 408211,
+          "role": "preview"
+        },
+        {
+          "id": 15,
+          "pid": 408219,
+          "role": "preview"
+        },
+        {
+          "id": 14,
+          "pid": 408198,
+          "role": "window"
+        },
+        {
+          "id": 13,
+          "pid": 408115,
+          "role": "window"
+        },
+        {
+          "id": 11,
+          "pid": 408091,
+          "role": "preview"
+        },
+        {
+          "id": 10,
+          "pid": 408099,
+          "role": "preview"
+        },
+        {
+          "id": 9,
+          "pid": 408027,
+          "role": "window"
+        },
+        {
+          "id": 8,
+          "pid": 407974,
+          "role": "preview"
+        },
+        {
+          "id": 7,
+          "pid": 407947,
+          "role": "window"
+        },
+        {
+          "id": 5,
+          "pid": 407933,
+          "role": "web"
+        },
+        {
+          "id": 4,
+          "pid": 407957,
+          "role": "preview"
+        },
+        {
+          "id": 3,
+          "pid": 407764,
+          "role": "backgroundPage"
+        },
+        {
+          "id": 6,
+          "pid": 407939,
+          "role": "window"
+        },
+        {
+          "id": 12,
+          "pid": 408107,
+          "role": "web"
+        },
+        {
+          "id": 24,
+          "pid": 408427,
+          "role": "window"
+        },
+        {
+          "id": 1,
+          "pid": 407305,
+          "role": "window"
+        }
+      ],
+      "metrics": [
+        {
+          "pid": 407225,
+          "type": "Browser"
+        },
+        {
+          "pid": 407273,
+          "type": "GPU"
+        },
+        {
+          "pid": 407275,
+          "name": "Network Service",
+          "type": "Utility"
+        },
+        {
+          "pid": 407287,
+          "name": "Node Utility Process",
+          "type": "Utility"
+        },
+        {
+          "pid": 407305,
+          "type": "Tab"
+        },
+        {
+          "pid": 407764,
+          "type": "Tab"
+        },
+        {
+          "pid": 407957,
+          "type": "Tab"
+        },
+        {
+          "pid": 407933,
+          "type": "Tab"
+        },
+        {
+          "pid": 407939,
+          "type": "Tab"
+        },
+        {
+          "pid": 407947,
+          "type": "Tab"
+        },
+        {
+          "pid": 407974,
+          "type": "Tab"
+        },
+        {
+          "pid": 408027,
+          "type": "Tab"
+        },
+        {
+          "pid": 408099,
+          "type": "Tab"
+        },
+        {
+          "pid": 408091,
+          "type": "Tab"
+        },
+        {
+          "pid": 408107,
+          "type": "Tab"
+        },
+        {
+          "pid": 408115,
+          "type": "Tab"
+        },
+        {
+          "pid": 408198,
+          "type": "Tab"
+        },
+        {
+          "pid": 408219,
+          "type": "Tab"
+        },
+        {
+          "pid": 408211,
+          "type": "Tab"
+        },
+        {
+          "pid": 408227,
+          "type": "Tab"
+        },
+        {
+          "pid": 408235,
+          "type": "Tab"
+        },
+        {
+          "pid": 408298,
+          "type": "Tab"
+        },
+        {
+          "pid": 408319,
+          "type": "Tab"
+        },
+        {
+          "pid": 408311,
+          "type": "Tab"
+        },
+        {
+          "pid": 408327,
+          "type": "Tab"
+        },
+        {
+          "pid": 408335,
+          "type": "Tab"
+        },
+        {
+          "pid": 408427,
+          "type": "Tab"
+        },
+        {
+          "pid": 408448,
+          "type": "Tab"
+        },
+        {
+          "pid": 408440,
+          "type": "Tab"
+        },
+        {
+          "pid": 408454,
+          "type": "Tab"
+        },
+        {
+          "pid": 408464,
+          "type": "Tab"
+        }
+      ]
+    },
+    {
+      "label": "five-windows-idle-35s",
+      "time": "2026-11-08T12:07:36Z",
+      "rootPids": [
+        407225
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 3951224,
+        "SwapTotal": 8388604,
+        "SwapFree": 2444076
+      },
+      "pressure": "some avg10=0.03 avg60=0.43 avg300=1.54 total=104814930\nfull avg10=0.03 avg60=0.42 avg300=1.39 total=97202454",
+      "totalPssKiB": 1491268,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 407225,
+          "ppid": 407198,
+          "comm": "electron",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 192744,
+          "rssKiB": 340560,
+          "privateKiB": 161368,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407228,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 10447,
+          "rssKiB": 61056,
+          "privateKiB": 832,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407229,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 5278,
+          "rssKiB": 61040,
+          "privateKiB": 260,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407231,
+          "ppid": 407229,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 949,
+          "rssKiB": 15008,
+          "privateKiB": 260,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407273,
+          "ppid": 407228,
+          "comm": "electron",
+          "type": "gpu-process",
+          "subtype": null,
+          "pssKiB": 94912,
+          "rssKiB": 214264,
+          "privateKiB": 44348,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407275,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "utility",
+          "subtype": "network.mojom.NetworkService",
+          "pssKiB": 24805,
+          "rssKiB": 94004,
+          "privateKiB": 17820,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407287,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "utility",
+          "subtype": "node.mojom.NodeService",
+          "pssKiB": 67760,
+          "rssKiB": 153952,
+          "privateKiB": 57388,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407305,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 64833,
+          "rssKiB": 175980,
+          "privateKiB": 58392,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407511,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6645,
+          "rssKiB": 14404,
+          "privateKiB": 5728,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407764,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 140550,
+          "rssKiB": 243888,
+          "privateKiB": 134480,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407933,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 45769,
+          "rssKiB": 149636,
+          "privateKiB": 39908,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407939,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 16413,
+          "rssKiB": 107940,
+          "privateKiB": 12536,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407947,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 13712,
+          "rssKiB": 99832,
+          "privateKiB": 10716,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407957,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 33590,
+          "rssKiB": 130632,
+          "privateKiB": 29636,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407974,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 19259,
+          "rssKiB": 110536,
+          "privateKiB": 15976,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408027,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 72313,
+          "rssKiB": 187132,
+          "privateKiB": 63372,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408039,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6658,
+          "rssKiB": 14352,
+          "privateKiB": 5740,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408091,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 17865,
+          "rssKiB": 109308,
+          "privateKiB": 14584,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408099,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 34927,
+          "rssKiB": 135116,
+          "privateKiB": 29968,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408107,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 47164,
+          "rssKiB": 151056,
+          "privateKiB": 41288,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408115,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 13765,
+          "rssKiB": 99892,
+          "privateKiB": 10772,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408198,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 65182,
+          "rssKiB": 176900,
+          "privateKiB": 58640,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408210,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6646,
+          "rssKiB": 14356,
+          "privateKiB": 5728,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408211,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 17823,
+          "rssKiB": 109276,
+          "privateKiB": 14532,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408219,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 33543,
+          "rssKiB": 130548,
+          "privateKiB": 29596,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408227,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 47132,
+          "rssKiB": 151040,
+          "privateKiB": 41240,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408235,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 13747,
+          "rssKiB": 99860,
+          "privateKiB": 10768,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408298,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 72336,
+          "rssKiB": 187128,
+          "privateKiB": 63420,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408310,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6648,
+          "rssKiB": 14344,
+          "privateKiB": 5732,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408311,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 17792,
+          "rssKiB": 109136,
+          "privateKiB": 14500,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408319,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 34917,
+          "rssKiB": 135004,
+          "privateKiB": 30008,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408327,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 47126,
+          "rssKiB": 150976,
+          "privateKiB": 41292,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408335,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 13678,
+          "rssKiB": 99712,
+          "privateKiB": 10720,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408427,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 65265,
+          "rssKiB": 176904,
+          "privateKiB": 58776,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408439,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6654,
+          "rssKiB": 14396,
+          "privateKiB": 5732,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408440,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 17900,
+          "rssKiB": 109216,
+          "privateKiB": 14636,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408448,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 33597,
+          "rssKiB": 130584,
+          "privateKiB": 29668,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408454,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 47302,
+          "rssKiB": 151176,
+          "privateKiB": 41444,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408464,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 13622,
+          "rssKiB": 99708,
+          "privateKiB": 10612,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": [],
+      "windows": 5,
+      "contents": [
+        {
+          "id": 28,
+          "pid": 408464,
+          "role": "window"
+        },
+        {
+          "id": 27,
+          "pid": 408454,
+          "role": "web"
+        },
+        {
+          "id": 26,
+          "pid": 408440,
+          "role": "preview"
+        },
+        {
+          "id": 25,
+          "pid": 408448,
+          "role": "preview"
+        },
+        {
+          "id": 23,
+          "pid": 408335,
+          "role": "window"
+        },
+        {
+          "id": 22,
+          "pid": 408327,
+          "role": "web"
+        },
+        {
+          "id": 21,
+          "pid": 408311,
+          "role": "preview"
+        },
+        {
+          "id": 20,
+          "pid": 408319,
+          "role": "preview"
+        },
+        {
+          "id": 19,
+          "pid": 408298,
+          "role": "window"
+        },
+        {
+          "id": 18,
+          "pid": 408235,
+          "role": "window"
+        },
+        {
+          "id": 17,
+          "pid": 408227,
+          "role": "web"
+        },
+        {
+          "id": 16,
+          "pid": 408211,
+          "role": "preview"
+        },
+        {
+          "id": 15,
+          "pid": 408219,
+          "role": "preview"
+        },
+        {
+          "id": 14,
+          "pid": 408198,
+          "role": "window"
+        },
+        {
+          "id": 13,
+          "pid": 408115,
+          "role": "window"
+        },
+        {
+          "id": 11,
+          "pid": 408091,
+          "role": "preview"
+        },
+        {
+          "id": 10,
+          "pid": 408099,
+          "role": "preview"
+        },
+        {
+          "id": 9,
+          "pid": 408027,
+          "role": "window"
+        },
+        {
+          "id": 8,
+          "pid": 407974,
+          "role": "preview"
+        },
+        {
+          "id": 7,
+          "pid": 407947,
+          "role": "window"
+        },
+        {
+          "id": 5,
+          "pid": 407933,
+          "role": "web"
+        },
+        {
+          "id": 4,
+          "pid": 407957,
+          "role": "preview"
+        },
+        {
+          "id": 3,
+          "pid": 407764,
+          "role": "backgroundPage"
+        },
+        {
+          "id": 6,
+          "pid": 407939,
+          "role": "window"
+        },
+        {
+          "id": 12,
+          "pid": 408107,
+          "role": "web"
+        },
+        {
+          "id": 24,
+          "pid": 408427,
+          "role": "window"
+        },
+        {
+          "id": 1,
+          "pid": 407305,
+          "role": "window"
+        }
+      ],
+      "metrics": [
+        {
+          "pid": 407225,
+          "type": "Browser"
+        },
+        {
+          "pid": 407273,
+          "type": "GPU"
+        },
+        {
+          "pid": 407275,
+          "name": "Network Service",
+          "type": "Utility"
+        },
+        {
+          "pid": 407287,
+          "name": "Node Utility Process",
+          "type": "Utility"
+        },
+        {
+          "pid": 407305,
+          "type": "Tab"
+        },
+        {
+          "pid": 407764,
+          "type": "Tab"
+        },
+        {
+          "pid": 407957,
+          "type": "Tab"
+        },
+        {
+          "pid": 407933,
+          "type": "Tab"
+        },
+        {
+          "pid": 407939,
+          "type": "Tab"
+        },
+        {
+          "pid": 407947,
+          "type": "Tab"
+        },
+        {
+          "pid": 407974,
+          "type": "Tab"
+        },
+        {
+          "pid": 408027,
+          "type": "Tab"
+        },
+        {
+          "pid": 408099,
+          "type": "Tab"
+        },
+        {
+          "pid": 408091,
+          "type": "Tab"
+        },
+        {
+          "pid": 408107,
+          "type": "Tab"
+        },
+        {
+          "pid": 408115,
+          "type": "Tab"
+        },
+        {
+          "pid": 408198,
+          "type": "Tab"
+        },
+        {
+          "pid": 408219,
+          "type": "Tab"
+        },
+        {
+          "pid": 408211,
+          "type": "Tab"
+        },
+        {
+          "pid": 408227,
+          "type": "Tab"
+        },
+        {
+          "pid": 408235,
+          "type": "Tab"
+        },
+        {
+          "pid": 408298,
+          "type": "Tab"
+        },
+        {
+          "pid": 408319,
+          "type": "Tab"
+        },
+        {
+          "pid": 408311,
+          "type": "Tab"
+        },
+        {
+          "pid": 408327,
+          "type": "Tab"
+        },
+        {
+          "pid": 408335,
+          "type": "Tab"
+        },
+        {
+          "pid": 408427,
+          "type": "Tab"
+        },
+        {
+          "pid": 408448,
+          "type": "Tab"
+        },
+        {
+          "pid": 408440,
+          "type": "Tab"
+        },
+        {
+          "pid": 408454,
+          "type": "Tab"
+        },
+        {
+          "pid": 408464,
+          "type": "Tab"
+        }
+      ]
+    },
+    {
+      "label": "five-windows-idle-75s",
+      "time": "2026-11-08T12:08:16Z",
+      "rootPids": [
+        407225
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 4141560,
+        "SwapTotal": 8388604,
+        "SwapFree": 2491832
+      },
+      "pressure": "some avg10=0.03 avg60=0.24 avg300=1.34 total=104850556\nfull avg10=0.03 avg60=0.24 avg300=1.21 total=97238037",
+      "totalPssKiB": 1467489,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 407225,
+          "ppid": 407198,
+          "comm": "electron",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 187268,
+          "rssKiB": 334992,
+          "privateKiB": 155816,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407228,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 10476,
+          "rssKiB": 61056,
+          "privateKiB": 840,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407229,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 5301,
+          "rssKiB": 61040,
+          "privateKiB": 260,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407231,
+          "ppid": 407229,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 949,
+          "rssKiB": 15008,
+          "privateKiB": 260,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407273,
+          "ppid": 407228,
+          "comm": "electron",
+          "type": "gpu-process",
+          "subtype": null,
+          "pssKiB": 97303,
+          "rssKiB": 214072,
+          "privateKiB": 44164,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407275,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "utility",
+          "subtype": "network.mojom.NetworkService",
+          "pssKiB": 24515,
+          "rssKiB": 93692,
+          "privateKiB": 17508,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407287,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "utility",
+          "subtype": "node.mojom.NodeService",
+          "pssKiB": 66350,
+          "rssKiB": 152636,
+          "privateKiB": 55960,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407305,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 61645,
+          "rssKiB": 172792,
+          "privateKiB": 55204,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407511,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6646,
+          "rssKiB": 14404,
+          "privateKiB": 5728,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407764,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 132258,
+          "rssKiB": 235596,
+          "privateKiB": 126188,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407933,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 45110,
+          "rssKiB": 148976,
+          "privateKiB": 39248,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407939,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 15733,
+          "rssKiB": 107260,
+          "privateKiB": 11856,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407947,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 13317,
+          "rssKiB": 99436,
+          "privateKiB": 10320,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407957,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 32822,
+          "rssKiB": 129864,
+          "privateKiB": 28868,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407974,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 18631,
+          "rssKiB": 109908,
+          "privateKiB": 15348,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408027,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 71537,
+          "rssKiB": 186356,
+          "privateKiB": 62596,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408039,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6660,
+          "rssKiB": 14352,
+          "privateKiB": 5740,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408091,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 17870,
+          "rssKiB": 109312,
+          "privateKiB": 14588,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408099,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 34311,
+          "rssKiB": 134500,
+          "privateKiB": 29352,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408107,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 47036,
+          "rssKiB": 150928,
+          "privateKiB": 41160,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408115,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 13685,
+          "rssKiB": 99812,
+          "privateKiB": 10692,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408198,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 64858,
+          "rssKiB": 176576,
+          "privateKiB": 58316,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408210,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6649,
+          "rssKiB": 14356,
+          "privateKiB": 5728,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408211,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 17828,
+          "rssKiB": 109280,
+          "privateKiB": 14536,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408219,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 33331,
+          "rssKiB": 130336,
+          "privateKiB": 29384,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408227,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 47064,
+          "rssKiB": 150972,
+          "privateKiB": 41172,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408235,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 13635,
+          "rssKiB": 99748,
+          "privateKiB": 10656,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408298,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 72036,
+          "rssKiB": 186828,
+          "privateKiB": 63120,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408310,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6650,
+          "rssKiB": 14344,
+          "privateKiB": 5732,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408311,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 17796,
+          "rssKiB": 109140,
+          "privateKiB": 14504,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408319,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 34265,
+          "rssKiB": 134352,
+          "privateKiB": 29356,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408327,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 47042,
+          "rssKiB": 150892,
+          "privateKiB": 41208,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408335,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 13598,
+          "rssKiB": 99632,
+          "privateKiB": 10640,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408427,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 64861,
+          "rssKiB": 176500,
+          "privateKiB": 58372,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408439,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6660,
+          "rssKiB": 14396,
+          "privateKiB": 5732,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408440,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 17884,
+          "rssKiB": 109200,
+          "privateKiB": 14620,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408448,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 33417,
+          "rssKiB": 130404,
+          "privateKiB": 29488,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408454,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 46918,
+          "rssKiB": 150792,
+          "privateKiB": 41060,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408464,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 13574,
+          "rssKiB": 99660,
+          "privateKiB": 10564,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": [],
+      "windows": 5,
+      "contents": [
+        {
+          "id": 28,
+          "pid": 408464,
+          "role": "window"
+        },
+        {
+          "id": 27,
+          "pid": 408454,
+          "role": "web"
+        },
+        {
+          "id": 26,
+          "pid": 408440,
+          "role": "preview"
+        },
+        {
+          "id": 25,
+          "pid": 408448,
+          "role": "preview"
+        },
+        {
+          "id": 23,
+          "pid": 408335,
+          "role": "window"
+        },
+        {
+          "id": 22,
+          "pid": 408327,
+          "role": "web"
+        },
+        {
+          "id": 21,
+          "pid": 408311,
+          "role": "preview"
+        },
+        {
+          "id": 20,
+          "pid": 408319,
+          "role": "preview"
+        },
+        {
+          "id": 19,
+          "pid": 408298,
+          "role": "window"
+        },
+        {
+          "id": 18,
+          "pid": 408235,
+          "role": "window"
+        },
+        {
+          "id": 17,
+          "pid": 408227,
+          "role": "web"
+        },
+        {
+          "id": 16,
+          "pid": 408211,
+          "role": "preview"
+        },
+        {
+          "id": 15,
+          "pid": 408219,
+          "role": "preview"
+        },
+        {
+          "id": 14,
+          "pid": 408198,
+          "role": "window"
+        },
+        {
+          "id": 13,
+          "pid": 408115,
+          "role": "window"
+        },
+        {
+          "id": 11,
+          "pid": 408091,
+          "role": "preview"
+        },
+        {
+          "id": 10,
+          "pid": 408099,
+          "role": "preview"
+        },
+        {
+          "id": 9,
+          "pid": 408027,
+          "role": "window"
+        },
+        {
+          "id": 8,
+          "pid": 407974,
+          "role": "preview"
+        },
+        {
+          "id": 7,
+          "pid": 407947,
+          "role": "window"
+        },
+        {
+          "id": 5,
+          "pid": 407933,
+          "role": "web"
+        },
+        {
+          "id": 4,
+          "pid": 407957,
+          "role": "preview"
+        },
+        {
+          "id": 3,
+          "pid": 407764,
+          "role": "backgroundPage"
+        },
+        {
+          "id": 6,
+          "pid": 407939,
+          "role": "window"
+        },
+        {
+          "id": 12,
+          "pid": 408107,
+          "role": "web"
+        },
+        {
+          "id": 24,
+          "pid": 408427,
+          "role": "window"
+        },
+        {
+          "id": 1,
+          "pid": 407305,
+          "role": "window"
+        }
+      ],
+      "metrics": [
+        {
+          "pid": 407225,
+          "type": "Browser"
+        },
+        {
+          "pid": 407273,
+          "type": "GPU"
+        },
+        {
+          "pid": 407275,
+          "name": "Network Service",
+          "type": "Utility"
+        },
+        {
+          "pid": 407287,
+          "name": "Node Utility Process",
+          "type": "Utility"
+        },
+        {
+          "pid": 407305,
+          "type": "Tab"
+        },
+        {
+          "pid": 407764,
+          "type": "Tab"
+        },
+        {
+          "pid": 407957,
+          "type": "Tab"
+        },
+        {
+          "pid": 407933,
+          "type": "Tab"
+        },
+        {
+          "pid": 407939,
+          "type": "Tab"
+        },
+        {
+          "pid": 407947,
+          "type": "Tab"
+        },
+        {
+          "pid": 407974,
+          "type": "Tab"
+        },
+        {
+          "pid": 408027,
+          "type": "Tab"
+        },
+        {
+          "pid": 408099,
+          "type": "Tab"
+        },
+        {
+          "pid": 408091,
+          "type": "Tab"
+        },
+        {
+          "pid": 408107,
+          "type": "Tab"
+        },
+        {
+          "pid": 408115,
+          "type": "Tab"
+        },
+        {
+          "pid": 408198,
+          "type": "Tab"
+        },
+        {
+          "pid": 408219,
+          "type": "Tab"
+        },
+        {
+          "pid": 408211,
+          "type": "Tab"
+        },
+        {
+          "pid": 408227,
+          "type": "Tab"
+        },
+        {
+          "pid": 408235,
+          "type": "Tab"
+        },
+        {
+          "pid": 408298,
+          "type": "Tab"
+        },
+        {
+          "pid": 408319,
+          "type": "Tab"
+        },
+        {
+          "pid": 408311,
+          "type": "Tab"
+        },
+        {
+          "pid": 408327,
+          "type": "Tab"
+        },
+        {
+          "pid": 408335,
+          "type": "Tab"
+        },
+        {
+          "pid": 408427,
+          "type": "Tab"
+        },
+        {
+          "pid": 408448,
+          "type": "Tab"
+        },
+        {
+          "pid": 408440,
+          "type": "Tab"
+        },
+        {
+          "pid": 408454,
+          "type": "Tab"
+        },
+        {
+          "pid": 408464,
+          "type": "Tab"
+        }
+      ]
+    },
+    {
+      "label": "all-ten-tabs-reopened",
+      "time": "2026-11-08T12:08:17Z",
+      "rootPids": [
+        407225
+      ],
+      "hostKiB": {
+        "MemTotal": 14032132,
+        "MemAvailable": 4086008,
+        "SwapTotal": 8388604,
+        "SwapFree": 2492676
+      },
+      "pressure": "some avg10=0.03 avg60=0.24 avg300=1.34 total=104850570\nfull avg10=0.03 avg60=0.24 avg300=1.21 total=97238051",
+      "totalPssKiB": 1512358,
+      "totalSwapPssKiB": 0,
+      "processes": [
+        {
+          "pid": 407225,
+          "ppid": 407198,
+          "comm": "electron",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 187061,
+          "rssKiB": 335092,
+          "privateKiB": 155520,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407228,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 10475,
+          "rssKiB": 61056,
+          "privateKiB": 840,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407229,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 5300,
+          "rssKiB": 61040,
+          "privateKiB": 260,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407231,
+          "ppid": 407229,
+          "comm": "electron",
+          "type": "zygote",
+          "subtype": null,
+          "pssKiB": 948,
+          "rssKiB": 15008,
+          "privateKiB": 260,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407273,
+          "ppid": 407228,
+          "comm": "electron",
+          "type": "gpu-process",
+          "subtype": null,
+          "pssKiB": 111347,
+          "rssKiB": 241844,
+          "privateKiB": 44520,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407275,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "utility",
+          "subtype": "network.mojom.NetworkService",
+          "pssKiB": 24507,
+          "rssKiB": 93692,
+          "privateKiB": 17508,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407287,
+          "ppid": 407225,
+          "comm": "electron",
+          "type": "utility",
+          "subtype": "node.mojom.NodeService",
+          "pssKiB": 80925,
+          "rssKiB": 167240,
+          "privateKiB": 70564,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407305,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 69552,
+          "rssKiB": 185772,
+          "privateKiB": 59376,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407511,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6646,
+          "rssKiB": 14404,
+          "privateKiB": 5728,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407764,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 132352,
+          "rssKiB": 235772,
+          "privateKiB": 126364,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407933,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 43505,
+          "rssKiB": 147408,
+          "privateKiB": 37680,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407939,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 15706,
+          "rssKiB": 107368,
+          "privateKiB": 11836,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407947,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 13316,
+          "rssKiB": 99436,
+          "privateKiB": 10320,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407957,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 35788,
+          "rssKiB": 136164,
+          "privateKiB": 30888,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 407974,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 18629,
+          "rssKiB": 109908,
+          "privateKiB": 15348,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408027,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 68414,
+          "rssKiB": 183896,
+          "privateKiB": 59396,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408039,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6660,
+          "rssKiB": 14352,
+          "privateKiB": 5740,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408091,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 17675,
+          "rssKiB": 109120,
+          "privateKiB": 14396,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408099,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 33048,
+          "rssKiB": 133520,
+          "privateKiB": 28124,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408107,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 45204,
+          "rssKiB": 149132,
+          "privateKiB": 39364,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408115,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 13472,
+          "rssKiB": 99600,
+          "privateKiB": 10480,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408198,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 71456,
+          "rssKiB": 188100,
+          "privateKiB": 61224,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408210,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6649,
+          "rssKiB": 14356,
+          "privateKiB": 5728,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408211,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 17825,
+          "rssKiB": 109280,
+          "privateKiB": 14536,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408219,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 36631,
+          "rssKiB": 136972,
+          "privateKiB": 31736,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408227,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 45140,
+          "rssKiB": 149084,
+          "privateKiB": 39284,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408235,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 13634,
+          "rssKiB": 99748,
+          "privateKiB": 10656,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408298,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 70889,
+          "rssKiB": 186384,
+          "privateKiB": 61856,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408310,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6650,
+          "rssKiB": 14344,
+          "privateKiB": 5732,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408311,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 17794,
+          "rssKiB": 109140,
+          "privateKiB": 14504,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408319,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 34418,
+          "rssKiB": 134848,
+          "privateKiB": 29540,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408327,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 45070,
+          "rssKiB": 148956,
+          "privateKiB": 39272,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408335,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 13597,
+          "rssKiB": 99632,
+          "privateKiB": 10640,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408427,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 72045,
+          "rssKiB": 188660,
+          "privateKiB": 61852,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408439,
+          "ppid": 407225,
+          "comm": "python3",
+          "type": "main-or-child",
+          "subtype": null,
+          "pssKiB": 6660,
+          "rssKiB": 14396,
+          "privateKiB": 5732,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408440,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 17882,
+          "rssKiB": 109200,
+          "privateKiB": 14620,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408448,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 36747,
+          "rssKiB": 137084,
+          "privateKiB": 31856,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408454,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 45164,
+          "rssKiB": 149088,
+          "privateKiB": 39328,
+          "swapPssKiB": 0
+        },
+        {
+          "pid": 408464,
+          "ppid": 407231,
+          "comm": "electron",
+          "type": "renderer",
+          "subtype": null,
+          "pssKiB": 13577,
+          "rssKiB": 99664,
+          "privateKiB": 10568,
+          "swapPssKiB": 0
+        }
+      ],
+      "unavailablePids": [],
+      "windows": 5,
+      "contents": [
+        {
+          "id": 28,
+          "pid": 408464,
+          "role": "window"
+        },
+        {
+          "id": 27,
+          "pid": 408454,
+          "role": "web"
+        },
+        {
+          "id": 26,
+          "pid": 408440,
+          "role": "preview"
+        },
+        {
+          "id": 25,
+          "pid": 408448,
+          "role": "preview"
+        },
+        {
+          "id": 23,
+          "pid": 408335,
+          "role": "window"
+        },
+        {
+          "id": 22,
+          "pid": 408327,
+          "role": "web"
+        },
+        {
+          "id": 21,
+          "pid": 408311,
+          "role": "preview"
+        },
+        {
+          "id": 20,
+          "pid": 408319,
+          "role": "preview"
+        },
+        {
+          "id": 19,
+          "pid": 408298,
+          "role": "window"
+        },
+        {
+          "id": 18,
+          "pid": 408235,
+          "role": "window"
+        },
+        {
+          "id": 17,
+          "pid": 408227,
+          "role": "web"
+        },
+        {
+          "id": 16,
+          "pid": 408211,
+          "role": "preview"
+        },
+        {
+          "id": 15,
+          "pid": 408219,
+          "role": "preview"
+        },
+        {
+          "id": 14,
+          "pid": 408198,
+          "role": "window"
+        },
+        {
+          "id": 13,
+          "pid": 408115,
+          "role": "window"
+        },
+        {
+          "id": 11,
+          "pid": 408091,
+          "role": "preview"
+        },
+        {
+          "id": 10,
+          "pid": 408099,
+          "role": "preview"
+        },
+        {
+          "id": 9,
+          "pid": 408027,
+          "role": "window"
+        },
+        {
+          "id": 8,
+          "pid": 407974,
+          "role": "preview"
+        },
+        {
+          "id": 7,
+          "pid": 407947,
+          "role": "window"
+        },
+        {
+          "id": 5,
+          "pid": 407933,
+          "role": "web"
+        },
+        {
+          "id": 4,
+          "pid": 407957,
+          "role": "preview"
+        },
+        {
+          "id": 3,
+          "pid": 407764,
+          "role": "backgroundPage"
+        },
+        {
+          "id": 6,
+          "pid": 407939,
+          "role": "window"
+        },
+        {
+          "id": 12,
+          "pid": 408107,
+          "role": "web"
+        },
+        {
+          "id": 24,
+          "pid": 408427,
+          "role": "window"
+        },
+        {
+          "id": 1,
+          "pid": 407305,
+          "role": "window"
+        }
+      ],
+      "metrics": [
+        {
+          "pid": 407225,
+          "type": "Browser"
+        },
+        {
+          "pid": 407273,
+          "type": "GPU"
+        },
+        {
+          "pid": 407275,
+          "name": "Network Service",
+          "type": "Utility"
+        },
+        {
+          "pid": 407287,
+          "name": "Node Utility Process",
+          "type": "Utility"
+        },
+        {
+          "pid": 407305,
+          "type": "Tab"
+        },
+        {
+          "pid": 407764,
+          "type": "Tab"
+        },
+        {
+          "pid": 407957,
+          "type": "Tab"
+        },
+        {
+          "pid": 407933,
+          "type": "Tab"
+        },
+        {
+          "pid": 407939,
+          "type": "Tab"
+        },
+        {
+          "pid": 407947,
+          "type": "Tab"
+        },
+        {
+          "pid": 407974,
+          "type": "Tab"
+        },
+        {
+          "pid": 408027,
+          "type": "Tab"
+        },
+        {
+          "pid": 408099,
+          "type": "Tab"
+        },
+        {
+          "pid": 408091,
+          "type": "Tab"
+        },
+        {
+          "pid": 408107,
+          "type": "Tab"
+        },
+        {
+          "pid": 408115,
+          "type": "Tab"
+        },
+        {
+          "pid": 408198,
+          "type": "Tab"
+        },
+        {
+          "pid": 408219,
+          "type": "Tab"
+        },
+        {
+          "pid": 408211,
+          "type": "Tab"
+        },
+        {
+          "pid": 408227,
+          "type": "Tab"
+        },
+        {
+          "pid": 408235,
+          "type": "Tab"
+        },
+        {
+          "pid": 408298,
+          "type": "Tab"
+        },
+        {
+          "pid": 408319,
+          "type": "Tab"
+        },
+        {
+          "pid": 408311,
+          "type": "Tab"
+        },
+        {
+          "pid": 408327,
+          "type": "Tab"
+        },
+        {
+          "pid": 408335,
+          "type": "Tab"
+        },
+        {
+          "pid": 408427,
+          "type": "Tab"
+        },
+        {
+          "pid": 408448,
+          "type": "Tab"
+        },
+        {
+          "pid": 408440,
+          "type": "Tab"
+        },
+        {
+          "pid": 408454,
+          "type": "Tab"
+        },
+        {
+          "pid": 408464,
+          "type": "Tab"
+        }
+      ]
+    }
+  ],
+  "crashes": [],
+  "cgroupBefore": {
+    "memory.max": "3221225472",
+    "memory.current": "1238315008",
+    "memory.peak": "2944065536",
+    "memory.events": "low 0\nhigh 215283\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 2027"
+  },
+  "managedSnapshot": null,
+  "cgroupAfter": {
+    "memory.max": "3221225472",
+    "memory.current": "812064768",
+    "memory.peak": "2944065536",
+    "memory.events": "low 0\nhigh 216575\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 2035"
+  }
+}

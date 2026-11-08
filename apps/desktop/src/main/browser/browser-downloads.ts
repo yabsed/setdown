@@ -33,6 +33,7 @@ export class BrowserDownloads {
       this.loaded = true;
     });
   }
+  get activeCount(): number { return this.live.size; }
   async list(): Promise<BrowserDownload[]> { await this.load(); return this.snapshot(); }
   private snapshot() {
     return [...this.records.values()].sort((a, b) => b.startedAt - a.startedAt).map(record => ({ ...record }));

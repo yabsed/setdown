@@ -74,7 +74,7 @@ function fixture() {
       addChildView(view: WebContentsView) { if (!children.includes(view)) children.push(view); },
       removeChildView(view: WebContentsView) { const i = children.indexOf(view); if (i >= 0) children.splice(i, 1); },
     },
-    webContents: { isDestroyed: () => false, getZoomFactor: () => 1, focus() { focusCount += 1; } },
+    webContents: { send() {}, isDestroyed: () => false, getZoomFactor: () => 1, focus() { focusCount += 1; } },
     isDestroyed: () => false, isFocused: () => true, isVisible: () => true,
     getContentSize: () => contentSize,
   };
@@ -370,4 +370,28 @@ test('owner resize preserves group ratios, fixed chrome and terminal inset', () 
   f.manager.resizeOwner(1, 1100, 800);
   assert.deepEqual(f.manager.views.get('left')!.view.getBounds(), { x: 100, y: 40, width: 500, height: 560 });
   assert.deepEqual(f.manager.views.get('right')!.view.getBounds(), { x: 600, y: 40, width: 500, height: 560 });
+});
+
+
+test('memory reclamation preserves all active groups, busy preparation and Git buffer pairs', () => {
+  vi.useFakeTimers();
+  try {
+    const f = fixture(), context = new Map([[1, { visible: ['document', 'doc'], protected: [] as string[] }]]);
+    f.manager.create(1, 'document'); f.manager.create(1, 'cold'); f.manager.create(1, 'busy');
+    const release = f.manager.hold('busy');
+    vi.setSystemTime(Date.now() + 31_000);
+    f.manager.reclaim('critical', context);
+    assert.ok(!f.manager.views.has('cold'));
+    assert.ok(f.manager.views.has('document')); assert.ok(f.manager.views.has('busy'));
+    assert.ok(f.manager.views.has('git-diff:doc:b'));
+    release(); f.manager.show(1, null, null);
+    context.get(1)!.visible = [];
+    f.manager.reclaim('critical', context);
+    assert.ok(!f.manager.views.has('git-diff:doc:a')); assert.ok(!f.manager.views.has('git-diff:doc:b'));
+    assert.ok(f.manager.views.has('busy'), 'recently completed work stays warm');
+    vi.setSystemTime(Date.now() + 31_000); f.manager.reclaim('critical', new Map());
+    assert.ok(f.manager.views.has('busy'), 'missing renderer context fails closed');
+    f.manager.reclaim('critical', context); assert.ok(!f.manager.views.has('busy'));
+    f.manager.dispose();
+  } finally { vi.useRealTimers(); }
 });

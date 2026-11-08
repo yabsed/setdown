@@ -15,6 +15,7 @@ export class BrowserPermissions {
   constructor(private readonly lookup: (contents: WebContents | null) => Page | undefined,
     private readonly changed: (owner: number, id: string, requests: BrowserPermissionRequest[]) => void) {}
 
+  protects(id: string): boolean { const page = this.pages.get(id); return !!page && !!(page.pending.size || page.allowed.size); }
   install(profile: Session) {
     profile.setPermissionCheckHandler((contents, permission, origin, details) => {
       const page = this.lookup(contents);

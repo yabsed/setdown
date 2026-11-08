@@ -104,7 +104,7 @@ function fixture(globalWindowPositions?: boolean) {
   const end = (withinSource = false, dropEffect?: string) => electron.listeners.get('tabs:detach-to-window')!(event(1), { transferId: 'move', x: 700, y: 400, withinSource, dropEffect });
   const detach = () => { hover(1, false, false); end(); };
   const claim = () => electron.handlers.get('tabs:claim-transfer')!(event(2), 'move') as Promise<unknown>;
-  return { source, existing, prepared, createWindow, register, hover, end, detach, claim };
+  return { source, existing, prepared, createWindow, register, hover, end, detach, claim, manager };
 }
 
 beforeEach(() => vi.useFakeTimers());
@@ -412,4 +412,13 @@ for (const wayland of [false, true]) test(`a screen point supersedes stale sourc
   expect(f.source.messages.some(message => (message.payload as { commitGuide?: boolean }).commitGuide)).toBe(commitsLocal);
   await vi.advanceTimersByTimeAsync(1000);
   expect(f.prepared.window.showInactive).toHaveBeenCalledTimes(commitsLocal ? 0 : 1);
+});
+
+
+test('pending transfers protect their tab from reclamation until expiry', () => {
+  const f = fixture();
+  expect(f.manager.memoryProtectedIds()).toEqual([]);
+  f.register(); expect(f.manager.memoryProtectedIds()).toEqual([tab.id]);
+  vi.setSystemTime(Date.now() + 60_001);
+  expect(f.manager.memoryProtectedIds()).toEqual([]);
 });

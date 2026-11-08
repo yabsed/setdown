@@ -1,4 +1,4 @@
-import { startWorkspace } from './app/workspace-controller';
+import './style.css';
 import { electronDesktop } from './adapters/electron-desktop';
 import { installTextZoom } from './editor/text-zoom';
 import { zoomState } from './zoom-state.svelte';
@@ -13,5 +13,5 @@ if (new URL(location.href).searchParams.has('browser-find-overlay')) {
   void import('./shell/menu-overlay-runtime').then(module => module.startMenuOverlay(electronDesktop));
 } else {
   installTextZoom(electronDesktop, snapshot => Object.assign(zoomState, snapshot));
-  startWorkspace(electronDesktop);
+  void import('./app/workspace-controller').then(module => module.startWorkspace(electronDesktop));
 }

@@ -293,6 +293,13 @@ export class SourceControlController {
     const tab = this.state.gitDiffTabs.find((candidate) => this.previewIds(candidate).includes(payload.tabId));
     if (!tab) return false;
     const message = payload.message;
+    if (message.type === 'marktex:discarded') {
+      for (const id of this.previewIds(tab)) this.preparedPreviews.delete(id);
+      tab.previewId = null; tab.pendingPreviewId = null; tab.previewLoading = false; tab.previewDirty = true;
+      this.checkpoints.cancel(tab.id);
+      if (this.activeTab()?.id === tab.id) { this.presentation.cancel(); this.copyPreviewState(tab); this.schedulePreview(tab, 0); }
+      return true;
+    }
     if (this.presentation.receive(payload.tabId, message)) return true;
     const reading = this.readingState(tab);
     // An out-of-process ACK is not proof that a page is STILL at that point.

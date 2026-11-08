@@ -271,6 +271,10 @@ export type AppCommand = 'reload-document' | 'image:undo' | 'image:redo'
   | 'toggle-surface';
 
 export type MarkTexApi = {
+  updateMemoryContext?(context: import('./memory').MemoryContext): void;
+  onMemoryPressure?(listener: (pressure: import('../core/memory/memory-policy').MemoryPressure) => void): () => void;
+  getMemorySnapshot?(): Promise<import('./memory').MemorySnapshot>;
+  reclaimMemory?(): Promise<import('./memory').MemorySnapshot>;
   editorTools: import('./editor-tools').EditorToolsApi;
   notebook: NotebookApi;
   renderNotebookMarkdown(path: string, source: string): Promise<{ html: string; baseHref: string }>;

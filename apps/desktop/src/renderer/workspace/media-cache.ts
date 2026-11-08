@@ -18,7 +18,9 @@ export const mediaKey = (tab: Pick<MediaInput, 'id' | 'document' | 'remote'>): s
 /** Keep only visited, current-version surfaces. Eviction unmounts their resources. */
 export class MediaCache {
   private entries: MediaTab[] = [];
+  private pressure = false;
   constructor(private readonly capacity = 3) {}
+  setPressure(pressure: boolean): void { this.pressure = pressure; }
   sync(tabs: readonly MediaInput[], activeId: string | null, visibleIds: string[] = []): MediaTab[] {
     const previous = this.entries;
     const current = new Map(tabs.filter((tab) => tab.document.kind).map((tab) => [tab.id, tab]));
@@ -33,9 +35,14 @@ export class MediaCache {
         ?? { id: active.id, key: mediaKey(active), document: active.document, position: active.readingPosition, remote: active.remote };
       this.entries = [...this.entries.filter((entry) => entry.id !== active.id), entry];
     }
-    const protectedIds = new Set(visibleIds.filter(id => current.has(id)));
+    const protectedIds = new Set([...visibleIds, ...(activeId ? [activeId] : [])].filter(id => current.has(id)));
     const hidden = this.entries.filter(entry => !protectedIds.has(entry.id));
     const keep = new Set(hidden.slice(-Math.max(0, this.capacity - protectedIds.size)).map(entry => entry.id));
+    if (this.pressure) {
+      // Video shares this cache, but may still be playing while hidden. Keep
+      // its existing LRU allowance; reclaim only hidden PDF/image surfaces.
+      for (const entry of hidden) if (entry.document.kind !== 'video') keep.delete(entry.id);
+    }
     if (protectedIds.size >= this.capacity) keep.clear();
     this.entries = this.entries.filter(entry => protectedIds.has(entry.id) || keep.has(entry.id));
     if (previous.length === this.entries.length && previous.every((entry, index) => entry === this.entries[index]))

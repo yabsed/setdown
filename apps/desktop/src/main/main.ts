@@ -33,6 +33,7 @@ import { installTerminalIpc } from './terminal/terminal-ipc';
 import { WindowRegistry } from './windows/window-registry';
 import { LanguageManager } from './language/language-manager';
 import { displayBackend, hasGlobalWindowPositions } from './windows/display-backend';
+import { MemoryMonitor } from './memory/memory-monitor';
 import { installX11Pinch } from './windows/x11-pinch';
 
 // Electron populates its own default ozone switch before running main. Only an
@@ -72,7 +73,8 @@ let previews: PreviewManager;
 let renderer: PreviewRenderer;
 const themes = new ThemeManager({ crossnoteRoot, windows: () => registry.values,
   updatePreviews: (theme) => { previews.setTheme(theme); browsers.webThemes.refresh(); } });
-previews = new PreviewManager({ preload: path.join(__dirname, 'preview-preload.cjs'),
+const previewCacheDirectory = path.join(app.getPath('userData'), 'preview-cache');
+previews = new PreviewManager({ cacheDirectory: previewCacheDirectory, preload: path.join(__dirname, 'preview-preload.cjs'),
   stateFor: (id) => registry.stateForWebContents(id), theme: () => themes.id,
   themeAssets: (theme) => themes.assets(theme), forgetTab: (tabId) => renderer.forgetTab(tabId) });
 renderer = new PreviewRenderer({ previews,
@@ -87,13 +89,36 @@ const projects = new ProjectService((documentPath, text, query, limit, root) =>
   projectSearchRenderer.search(documentPath, text, query, limit, root), undefined, () => registry.values,
   new RecentFolders(path.join(app.getPath('userData'), 'recent-folders.json')));
 const windows = new WindowManager({ registry, previews, themes });
-const browsers = new BrowserManager({ createWindow: () => windows.create(null, null, false), stateFor: id => registry.stateForWebContents(id), states: () => registry.values, zoom: previews.zoom,
+const browsers: BrowserManager = new BrowserManager({ createWindow: () => windows.create(null, null, false), stateFor: id => registry.stateForWebContents(id), states: () => registry.values, zoom: previews.zoom,
+  memoryProtected: id => transfers.memoryProtectedIds().includes(id),
   fullscreenChanged: (owner, active) => previews.suspendPresentation(owner, active),
   globalTabDragPointer: process.platform === 'linux' && ['', 'auto', 'x11'].includes(backend)
     && hasGlobalWindowPositions(process.platform, process.env, backend),
   openFile: (state, file) => documents.open(state, file), theme: () => themes.id });
+let lastPressure = 'normal';
+const memory = new MemoryMonitor(async (pressure, contexts) => {
+  const moving = transfers.memoryProtectedIds();
+  const protectedContexts = new Map([...contexts].map(([owner, context]) => [owner, { ...context, protected: [...context.protected, ...moving] }]));
+  previews.reclaim(pressure, protectedContexts); renderer.reclaim(pressure); projectSearchRenderer.reclaim(pressure);
+  await browsers.reclaim(pressure, contexts);
+  if (pressure !== lastPressure) {
+    lastPressure = pressure;
+    for (const state of registry.values) if (!state.window.isDestroyed()) state.window.webContents.send('memory:pressure', pressure);
+  }
+}, () => ({ ...previews.memoryStats, ...renderer.memoryStats, ...browsers.memoryStats, searchWorkers: Number(projectSearchRenderer.running) }));
+const memoryCrashes: Array<{ at: number; reason: string; exitCode: number; type: string; memory: typeof memory.snapshot }> = [];
+let crashWrite = Promise.resolve();
+app.on('web-contents-created', (_event, contents) => {
+  contents.on('render-process-gone', (_event, details) => {
+    if (details.reason === 'clean-exit') return;
+    memoryCrashes.push({ at: Date.now(), reason: details.reason, exitCode: details.exitCode, type: contents.getType(), memory: memory.snapshot });
+    if (memoryCrashes.length > 16) memoryCrashes.shift();
+    const data = JSON.stringify(memoryCrashes, null, 2);
+    crashWrite = crashWrite.then(() => fs.writeFile(path.join(app.getPath('userData'), 'memory-crashes.json'), data, { mode: 0o600 })).catch(console.error);
+  });
+});
 const terminals = new TerminalManager();
-const transfers = new TabTransferManager({ previews, browsers, terminals, stateFor: (id) => registry.stateForWebContents(id),
+const transfers: TabTransferManager = new TabTransferManager({ previews, browsers, terminals, stateFor: (id) => registry.stateForWebContents(id),
   globalWindowPositions: hasGlobalWindowPositions(process.platform, process.env, backend),
   windows: () => registry.values, theme: () => themes.id, createWindow: windows.create });
 const channels = windowIpc((id) => registry.stateForWebContents(id));
@@ -137,9 +162,9 @@ async function videoResponse(request: Request, filePath: string): Promise<Respon
       'content-range': `bytes ${start}-${end}/${size}` } });
 }
 function installProtocols(): void {
-  protocol.handle('marktex-preview', (request) => {
+  protocol.handle('marktex-preview', async (request) => {
     const token = new URL(request.url).pathname.slice(1);
-    const html = previews.html(token);
+    const html = await previews.html(token);
     return html ? new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8' } })
       : new Response('Preview expired', { status: 404 });
   });
@@ -180,6 +205,9 @@ else {
   });
   app.whenReady().then(async () => {
     if (process.platform === 'linux' && process.env.DISPLAY && hasGlobalWindowPositions(process.platform, process.env, backend)) installX11Pinch();
+    // Owned regenerable disk cache, including residue after a previous crash.
+    // Do not use /tmp: on Linux it commonly consumes tmpfs RAM.
+    await fs.rm(previewCacheDirectory, { recursive: true, force: true });
     installProtocols(); themes.load(); autoSave.load();
     const languages = new LanguageManager(id => registry.stateForWebContents(id));
     languages.install();
@@ -194,12 +222,35 @@ else {
     app.on('will-quit', flushZoom);
     installIpc({ channels, documents, previews, projects, renderer, themes, transfers, autoSave, browsers });
     browsers.registerIpc(channels);
+    channels.on('memory:context', (state, context: unknown) => {
+      const first = !memory.contexts.has(state.webContentsId);
+      memory.context(state.webContentsId, context);
+      if (first) {
+        state.window.webContents.send('memory:pressure', memory.snapshot.pressure);
+        const owner = state.webContentsId;
+        state.window.once('closed', () => memory.contexts.delete(owner));
+      }
+    });
+    channels.handle('memory:snapshot', () => memory.sample());
+    channels.handle('memory:reclaim', () => memory.trim());
+    memory.start();
+    app.on('will-quit', () => { memory.stop(); previews.dispose(); });
     installReadingIpc(channels, positions, (id) => registry.stateForWebContents(id));
     app.on('will-quit', () => positions.flush());
     powerMonitor.on('resume', () => { for (const state of registry.values) state.checkDocumentVersions?.(); });
     installTerminalIpc(channels, terminals);
     app.on('will-quit', () => terminals.dispose());
-    installApplicationMenu({ focusedState: () => registry.focused(), createWindow: windows.create,
+    installApplicationMenu({ showMemory: () => { void (async () => {
+      const state = registry.focused(); if (!state) return;
+      const snapshot = await memory.sample();
+      const mb = (bytes: number) => `${Math.round(bytes / 1048576)} MiB`;
+      const answer = await dialog.showMessageBox(state.window, { title: 'Memory Usage', message: `Setdown: ${mb(snapshot.appBytes)} (${snapshot.metric})`,
+        detail: `Available: ${mb(snapshot.available)}\nApp budget: ${mb(snapshot.budget)}\nPressure: ${snapshot.pressure}\n`
+          + Object.entries(snapshot.resources).map(([key, value]) => `${key}: ${key.endsWith('Bytes') ? mb(value) : value}`).join('\n')
+          + '\n\nInactive tabs can sleep automatically. Edited forms, media and visible tabs remain awake.',
+        buttons: ['Close', 'Reclaim Inactive Resources'], defaultId: 0, cancelId: 0 });
+      if (answer.response === 1) await memory.trim();
+    })().catch(console.error); }, focusedState: () => registry.focused(), createWindow: windows.create,
       openDocument: (state) => documents.chooseAndOpen(state).catch(openError),
       reloadWindow: (state, ignoreCache) => {
         if (browsers.reloadFocused(state.webContentsId, ignoreCache)) return;

@@ -22,5 +22,6 @@ export class BrowserAuth {
     this.pending.delete(id); clearTimeout(challenge.timer); this.changed(owner, id, null);
     challenge.callback(credentials?.username, credentials?.password);
   }
+  protects(id: string): boolean { return this.pending.has(id); }
   clear(id: string) { const challenge = this.pending.get(id); if (challenge) this.respond(challenge.owner, id, challenge.request.token, null); }
 }

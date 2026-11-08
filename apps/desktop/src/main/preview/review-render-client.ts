@@ -1,5 +1,6 @@
 import { utilityProcess } from 'electron';
 import type { ReviewRowsPatch } from '../../core/preview/review-row-patch';
+import type { MemoryPressure } from '../../core/memory/memory-policy';
 
 export type ReviewAssembly = {
   originalHtml: string;
@@ -15,6 +16,12 @@ export type ReviewAssemblyResult = { supported: boolean; html?: string; template
 /** Main owns IPC bookkeeping; HTML parsing/alignment never executes here. */
 export class ReviewRenderClient {
   private worker: Electron.UtilityProcess | null = null;
+  private lastUsed = Date.now();
+  get running() { return !!this.worker; }
+  reclaim(pressure: MemoryPressure) {
+    if (this.pending.size || Date.now() - this.lastUsed < (pressure === 'normal' ? 300_000 : 60_000)) return;
+    const worker = this.worker; this.worker = null; worker?.kill();
+  }
   private nextId = 0;
   private readonly pending = new Map<number, {
     resolve(value: ReviewAssemblyResult): void;
@@ -33,12 +40,14 @@ export class ReviewRenderClient {
   }
 
   assemble(input: ReviewAssembly): Promise<ReviewAssemblyResult> {
+    this.lastUsed = Date.now();
     if (!this.worker) {
       const worker = utilityProcess.fork(this.workerPath);
       this.worker = worker;
       worker.on('message', (reply: { id: number; ok: boolean; error?: string } & ReviewAssemblyResult) => {
         const request = this.pending.get(reply.id);
         if (!request) return;
+        this.lastUsed = Date.now();
         this.pending.delete(reply.id);
         if (reply.ok) request.resolve(reply);
         else request.reject(new Error(reply.error ?? 'Rendered comparison failed.'));

@@ -10,6 +10,14 @@ const excludeWindowDrag = (frame = webFrame) => {
   frame.insertCSS('*, *::before, *::after { -webkit-app-region: no-drag !important; }', { cssOrigin: 'user' });
 };
 excludeWindowDrag();
+// Sticky protection for this document, including inputs inside shadow roots.
+// Website scripts cannot clear the main-process flag or access this IPC bridge.
+let memoryEdited = false;
+const protectMemory = (event: Event) => {
+  if (!event.isTrusted || memoryEdited) return;
+  memoryEdited = true; ipcRenderer.send('browser:memory-edited');
+};
+for (const type of ['beforeinput', 'input', 'change', 'submit']) window.addEventListener(type, protectMemory, true);
 // The live ancestor can address a committed same-process child even when that
 // child's provisional document discarded its early preload stylesheet/listener.
 // This remains a USER-origin sheet; no privileged API enters website JS.

@@ -27,11 +27,11 @@ import type { AppActions } from '../../ports/ui-actions';
       <button class="document-tab" class:is-dragging={view.draggedTabId === tab.id} class:git-diff-tab={tab.kind === 'diff'}
         type="button" role="tab" aria-selected={tab.id === selected}
         title={tab.preview ? `${tab.path}\nDouble-click to keep open` : tab.path}
-        draggable="true" data-tab-id={tab.id} data-preview={tab.preview}
+        draggable="true" data-sleeping={tab.page?.sleeping || undefined} data-tab-id={tab.id} data-preview={tab.preview}
         onclick={() => actions.activateTab(tab.id)}
         ondblclick={() => actions.pinTab(tab.id)}
         ondragstart={(event) => actions.startTabDrag(tab.id, event)} ondragend={actions.endTabDrag}>
-        <span class="tab-name">{tab.page?.loading ? '◌ ' : ''}{tab.name}</span>
+        <span class="tab-name">{tab.page?.sleeping ? '☾ ' : tab.page?.loading ? '◌ ' : ''}{tab.name}</span>
         {#if tab.kind === 'web' && (tab.page?.audible || tab.page?.muted)}
           <span class="tab-audio" role="button" tabindex="0" aria-label={tab.page.muted ? 'Unmute tab' : 'Mute tab'}
             title={tab.page.muted ? 'Unmute tab' : 'Mute tab'} aria-pressed={tab.page.muted}

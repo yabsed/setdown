@@ -8,6 +8,7 @@ import type { WindowState } from '../windows/window-state';
 import type { PreviewManager } from './preview-manager';
 import { ReviewRenderClient, type ReviewAssemblyResult } from './review-render-client';
 import { ReviewBaselineCache } from './review-baseline-cache';
+import type { MemoryPressure } from '../../core/memory/memory-policy';
 
 type WorkerResult = {
   totalLineCount: number;
@@ -26,6 +27,17 @@ type Options = {
 
 export class PreviewRenderer {
   private worker: Electron.UtilityProcess | null = null;
+  private lastUsed = Date.now();
+  get memoryStats() { return { previewWorkers: this.worker ? 1 : 0, reviewWorkers: this.reviews.running ? 1 : 0 }; }
+  reclaim(pressure: MemoryPressure) {
+    this.reviews.reclaim(pressure);
+    if (this.waiters.size || this.documentTasks.size) return;
+    const idle = Date.now() - this.lastUsed;
+    if (pressure !== 'normal' && idle > 30_000) { this.worker?.postMessage({ kind: 'trim-memory' }); this.baselines.clear(); }
+    if (idle < (pressure === 'normal' ? 300_000 : 60_000)) return;
+    const worker = this.worker; this.worker = null; worker?.kill();
+    this.baselines.clear(); this.baselineEpoch++;
+  }
   private requestId = 0;
   private readonly documentRequests = new Map<string, symbol>();
   private readonly documentTasks = new Map<string, Promise<RenderResult>>();
@@ -47,6 +59,7 @@ export class PreviewRenderer {
   warmup() { this.ensureWorker(); }
 
   private ensureWorker() {
+    this.lastUsed = Date.now();
     if (this.worker) return this.worker;
     const worker = utilityProcess.fork(this.options.workerPath);
     this.worker = worker;
@@ -56,6 +69,7 @@ export class PreviewRenderer {
       if (reply?.kind !== 'render' || typeof reply.id !== 'number') return;
       const waiter = this.waiters.get(reply.id);
       if (!waiter) return;
+      this.lastUsed = Date.now();
       this.waiters.delete(reply.id);
       if (!reply.ok) {
         waiter.reject(new Error(String(reply.message ?? 'The preview renderer failed.')));
@@ -68,7 +82,8 @@ export class PreviewRenderer {
       });
     });
     worker.on('exit', () => {
-      if (this.worker === worker) this.worker = null;
+      if (this.worker !== worker) return;
+      this.worker = null;
       for (const waiter of this.waiters.values()) waiter.reject(new Error('The preview renderer stopped.'));
       this.waiters.clear();
       this.baselines.clear();
@@ -114,10 +129,17 @@ export class PreviewRenderer {
     const rendered = await this.render(tabId, text, revision, documentPath, this.options.theme(), false, false);
     this.forgetTab(tabId);
     if (typeof rendered.template !== 'string') throw new Error('The preview renderer did not return a page.');
-    return this.options.previews.storeDocument(rendered.template);
+    const url = this.options.previews.storeDocument(rendered.template);
+    return { url, release: this.options.previews.leaseDocument(url) };
   }
 
   async prepareDiff(state: WindowState, tabId: string, diff: GitDiff,
+    requestedTheme: PreviewThemeId, senderId: number): Promise<GitDiffPreviewResult> {
+    const release = this.options.previews.hold(tabId);
+    try { return await this.prepareDiffHeld(state, tabId, diff, requestedTheme, senderId); }
+    finally { release(); }
+  }
+  private async prepareDiffHeld(state: WindowState, tabId: string, diff: GitDiff,
     requestedTheme: PreviewThemeId, senderId: number): Promise<GitDiffPreviewResult> {
     const previews = this.options.previews;
     const preview = previews.views.get(tabId);
@@ -272,21 +294,24 @@ export class PreviewRenderer {
 
   async prepare(state: WindowState, tabId: string, text: string, revision: number,
     documentPath: string, requestedTheme: PreviewThemeId, senderId: number): Promise<RenderResult> {
-    const preview = this.options.previews.views.get(tabId);
-    if (!preview || preview.ownerWebContentsId !== senderId) throw new Error('The preview is not owned by this window.');
     if (state.currentDocument?.path !== documentPath && !state.rendererTabs.some(tab => tab.path === documentPath)) {
       throw new Error('The preview request belongs to a document that is no longer open.');
     }
+    // Cold eviction retains the logical document, so re-create only its view.
+    if (!this.options.previews.views.has(tabId)) this.options.previews.create(senderId, tabId);
+    const preview = this.options.previews.views.get(tabId);
+    if (!preview || preview.ownerWebContentsId !== senderId) throw new Error('The preview is not owned by this window.');
     const request = Symbol();
     this.documentRequests.set(tabId, request);
     // Worker block history and installed native content advance together. A
     // canceled initial render must not become the next request's patch base.
+    const release = this.options.previews.hold(tabId);
     const previous = this.documentTasks.get(tabId) ?? Promise.resolve();
     const task = previous.catch(() => undefined).then(() =>
       this.prepareDocument(state, tabId, text, revision, documentPath, requestedTheme, senderId, request));
     this.documentTasks.set(tabId, task);
     try { return await task; }
-    finally { if (this.documentTasks.get(tabId) === task) this.documentTasks.delete(tabId); }
+    finally { release(); if (this.documentTasks.get(tabId) === task) this.documentTasks.delete(tabId); }
   }
   private async prepareDocument(state: WindowState, tabId: string, text: string, revision: number,
     documentPath: string, requestedTheme: PreviewThemeId, senderId: number, request: symbol): Promise<RenderResult> {

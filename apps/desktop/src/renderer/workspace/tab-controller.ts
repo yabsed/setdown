@@ -291,6 +291,8 @@ export class TabController {
       Object.fromEntries(workspace.documents.filter(tab => !tab.document.isUntitled).map(tab => [tab.id, tab.document.path])));
     void tick().then(() => this.options.groupsChanged?.());
     view.mediaTabs = this.media.sync([...workspace.documents, ...workspace.tabs.flatMap(tab => webPdfMedia(tab, webPdfPositions))], workspace.activeId, workspace.groups.groups.flatMap(g => g.activeId ? [g.activeId] : []));
+    desktop.updateMemoryContext?.({ visible: workspace.groups.groups.flatMap(group => group.activeId ? [group.activeId] : []),
+      protected: workspace.documents.filter(tab => tab.document.kind === 'image' && this.dirty(tab)).map(tab => tab.id) });
     view.activeMediaId = workspace.activeDocument?.document.kind ? workspace.activeId : null;
     shell.dataset.tabs = summaries.length > 0 ? 'true' : 'false';
     shell.dataset.dirtyTabs = String(summaries.filter((tab) => tab.dirty).length);
@@ -298,6 +300,18 @@ export class TabController {
       dirty: this.dirty(tab), isUntitled: tab.document.isUntitled })));
     this.options.workspaceChanged();
     for (const listener of this.changes) listener();
+  };
+  reclaimMedia = (pressure: import('../../core/memory/memory-policy').MemoryPressure): void => {
+    this.media.setPressure(pressure !== 'normal'); this.render();
+  };
+  previewDiscarded = (id: string): void => {
+    const tab = this.options.workspace.documents.find(tab => tab.id === id);
+    if (!tab) return;
+    Object.assign(tab, { previewUrl: null, previewRevision: null, previewTheme: null });
+    if (id === this.options.workspace.activeId) {
+      this.options.preview.reset();
+      void this.activate(id);
+    }
   };
   pin = (tabId: string): void => { if (this.options.workspace.groups.pin(tabId)) this.render(); };
   updateChrome = (): void => {
