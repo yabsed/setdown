@@ -68,11 +68,16 @@ They join the existing `media/image-reader.spec.ts` and full preview contract ga
 
 ### Document and web readers
 
-Web Reader uses a 22px body at 100% tab zoom, with proportional headings and
-inline text. It retains the app font, theme colors and 900px maximum reading
-column. The existing tab zoom factor scales this base and survives entering or
-leaving Reader. `browser/reader.spec.ts` checks the base and scaled font sizes
-alongside Esc entry, reading-anchor restoration and live-page state preservation.
+Web Reader shares Markdown's 14px screen body, app font, 2em page padding
+and full available document width. It loads the same installed Crossnote preview
+and code stylesheets and the same imported-theme color overrides, scoped to the
+article so the shell and other groups retain their styling. Headings, paragraphs,
+lists, quotations, inline code and tables follow the selected Markdown theme.
+The existing tab zoom scales the document and its padding and survives entering
+or leaving Reader. Theme changes retain the current reading anchor and never
+refocus an already mounted Reader. `browser/reader.spec.ts` compares actual web
+and native Markdown typography across themes and checks scaled font sizes,
+Esc entry, reading-anchor restoration and live-page state preservation.
 
 Rendered Markdown/Git and web Reader snapshots share the small capability-based
 menu in `core/reading/reading-menu.ts`. Main owns native menu presentation,

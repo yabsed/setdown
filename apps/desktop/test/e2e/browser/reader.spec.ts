@@ -3,6 +3,8 @@ import { readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { fixture, evaluatePage, captureNativeMenus, chooseNativeMenu, findOverlay } from '../../support/browser/browser-fixture';
+import { THEME_IDS } from '../../../src/core/theme/theme-catalog';
+import { previews } from '../../support/preview/preview-view';
 import { nativeInput } from '../../support/electron/native-input';
 
 test('reading surfaces offer native copy/search menus and local Markdown PDF export', async () => {
@@ -193,7 +195,7 @@ test('Esc opens reader mode at the same block and double-click returns to the li
       return { font: style.fontFamily, size: style.fontSize };
     });
     expect(look.font).toContain('D2Coding');
-    expect(look.size).toBe('22px');
+    expect(look.size).toBe('14px');
     await expect.poll(() => reader.evaluate(el => {
       const rect = el.getBoundingClientRect();
       const golden = rect.top + el.clientHeight * 0.372;
@@ -220,7 +222,7 @@ test('Esc opens reader mode at the same block and double-click returns to the li
     await toggle.click();
     await expect(reader).toBeVisible();
     await expect(f.page.getByRole('button', { name: 'Exit reader mode' })).toHaveAttribute('aria-pressed', 'true');
-    expect(await reader.locator('.web-reader-column').evaluate(el => el.getBoundingClientRect().width)).toBeLessThanOrEqual(900);
+    expect(await reader.evaluate(el => el.querySelector('.web-reader-column')!.getBoundingClientRect().width - (el.clientWidth - 56))).toBeCloseTo(0, 0);
     await reader.locator('[data-setdown-block]', { hasText: 'Paragraph 12:' }).first().scrollIntoViewIfNeeded();
     await f.page.waitForTimeout(150);
     const readerMarker = await reader.evaluate(el => {
@@ -288,7 +290,7 @@ test('reader toolbar and wheel share the live website tab zoom while other Markd
     await expect(textReset).toHaveText('120%');
     await f.page.getByRole('button', { name: 'Zoom text in', exact: true }).click();
     await expect(textReset).toHaveText('130%');
-    await expect.poll(() => reader.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeCloseTo(28.6, 2);
+    await expect.poll(() => reader.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeCloseTo(18.2, 2);
     await reader.hover();
     await f.page.keyboard.down('Control'); await f.page.mouse.wheel(0, -80); await f.page.keyboard.up('Control');
     await expect(textReset).toHaveText('140%');
@@ -402,6 +404,88 @@ test('web Reader keeps location controls stationary and the compact extension st
       await nativeInput({ keys: ['Escape'] });
       await expect.poll(() => f.app.windows().some(page => page.url().endsWith('/extension-panel.html'))).toBe(false);
     }
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+
+test('web articles share native Markdown typography and theme styles without affecting the shell', async () => {
+  test.setTimeout(180_000);
+  const body = `<h2>Section heading</h2><h3>Subheading</h3><h4>Fourth heading</h4><h5>Fifth heading</h5><h6>Sixth heading</h6>
+    <p>Typography paragraph with <strong>strong emphasis</strong>, <em>italics</em>, <a href="https://example.com/">a link</a> and <code>inline code</code>.</p>
+    <ul><li>First item<ul><li>Nested item</li></ul></li><li><p>Item paragraph</p></li></ul>
+    <ol><li>Numbered item</li></ol><blockquote><p>Quoted paragraph.</p></blockquote>
+    <pre><code>const message = "shared typography";</code></pre>
+    <table><thead><tr><th>Column</th><th>Value</th></tr></thead><tbody><tr><td>Row</td><td>Preserved</td></tr></tbody></table><hr>`;
+  const paragraphs = Array.from({ length: 40 }, (_, i) => `<p>Passage ${i}: A long article keeps its readable text, original page state, and reading position while its typography follows the same selected theme as the local Markdown document.</p>`).join('');
+  const f = await fixture(true, `# Long article\n\n${body}${paragraphs}`);
+  try {
+    const native = previews(f.app);
+    await expect.poll(() => native.evaluate('!!document.querySelector(".markdown-preview table")')).toBe(true);
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/article`);
+    const web = f.page.getByRole('tab', { name: /Long article/ }); await expect(web).toBeVisible();
+    await evaluatePage(f.app, f.origin, `document.querySelector('article').innerHTML = ${JSON.stringify('<h1>Long article</h1>' + body + paragraphs)}; true`);
+    await f.page.getByRole('button', { name: 'Enter reader mode' }).click();
+    const reader = f.page.getByRole('region', { name: 'Reader mode', exact: true });
+    const measure = (root: Element) => {
+      const properties = ['font-family', 'font-size', 'font-weight', 'font-style', 'font-synthesis', 'text-rendering', 'letter-spacing', 'line-height', 'color', 'background-color',
+        'margin-top', 'margin-bottom', 'padding-left', 'padding-right', 'padding-top', 'padding-bottom',
+        'border-left-width', 'border-left-color', 'list-style-type', 'border-collapse'];
+      // CSSOM serialization rounds decimal em values; normalize below 0.001px.
+      const result = Object.fromEntries(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p:not(.meta)', 'strong', 'em', 'a', 'code',
+        'ul', 'ul ul', 'li > p', 'ol', 'blockquote', 'blockquote p', 'pre', 'table', 'th', 'td', 'hr']
+        .map(selector => {
+          const element = root.querySelector(selector);
+          if (!element) throw Error(`Missing typography probe: ${selector}`);
+          const style = getComputedStyle(element);
+          return [selector, Object.fromEntries(properties.map(property => [property, style.getPropertyValue(property)
+            .replace(/(-?\d*\.?\d+)px/g, (_, value) => `${Math.round(Number(value) * 1000) / 1000}px`)]))];
+        }));
+      const walker = document.createTreeWalker(root.querySelector('pre')!, NodeFilter.SHOW_TEXT);
+      let text = walker.nextNode();
+      while (text && !text.textContent?.trim()) text = walker.nextNode();
+      if (!text?.parentElement) throw Error('Missing code block text');
+      const style = getComputedStyle(text.parentElement);
+      result['code block text'] = Object.fromEntries(['font-family', 'font-size', 'line-height', 'color']
+        .map(property => [property, style.getPropertyValue(property)
+          .replace(/(-?\d*\.?\d+)px/g, (_, value) => `${Math.round(Number(value) * 1000) / 1000}px`)]));
+      return result;
+    };
+    const shell = () => f.page.locator('.location-bar').evaluate(el => ({
+      size: getComputedStyle(el).fontSize, padding: getComputedStyle(el).padding,
+    }));
+    const shellBefore = await shell();
+    const differences: { theme: string; selector: string; property: string; expected: string; actual: string }[] = [];
+    for (const theme of THEME_IDS) {
+      await f.page.getByRole('tab', { name: /notes.md/ }).click();
+      await f.page.evaluate(theme => window.marktex.executeApplicationMenuItem(`preview-theme-${theme}`), theme);
+      await expect.poll(() => native.evaluate('document.body.dataset.setdownPreviewTheme')).toBe(theme);
+      await native.evaluate(`Promise.all(document.querySelector('.markdown-preview').getAnimations({subtree:true}).map(animation => animation.finished)).then(() => true)`);
+      const markdown = await native.evaluate<Record<string, Record<string, string>>>(`(() => { const __name = fn => fn; try { return (${measure.toString()})(document.querySelector('.markdown-preview')); } catch (error) { return { error: String(error) }; } })()`);
+      expect(markdown).not.toBeNull();
+      expect(markdown).not.toHaveProperty('error');
+      await web.click();
+      await expect(reader).toHaveAttribute('data-reader-theme', theme);
+      await reader.evaluate(async el => { await Promise.all(el.getAnimations({ subtree: true }).map(animation => animation.finished)); });
+      const article = await reader.locator('.web-reader-content').evaluate(measure);
+      for (const [selector, style] of Object.entries(markdown!)) for (const [property, expected] of Object.entries(style)) {
+        const actual = article[selector]?.[property];
+        if (actual !== expected) differences.push({ theme, selector, property, expected, actual });
+      }
+      expect(await shell()).toEqual(shellBefore);
+    }
+    expect(differences).toEqual([]);
+    // Change the theme on a scrolled, already mounted article while the
+    // address owns focus. Theme loading must preserve both owners.
+    await reader.locator('p').filter({ hasText: 'Passage 20:' }).scrollIntoViewIfNeeded();
+    await expect.poll(() => reader.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+    const anchor = await reader.locator('p').filter({ hasText: 'Passage 20:' }).boundingBox();
+    const address = f.page.getByRole('textbox', { name: 'Address or file path' }); await address.focus();
+    await f.page.evaluate(() => window.marktex.executeApplicationMenuItem('preview-theme-solarized-light'));
+    await expect(reader).toHaveAttribute('data-reader-theme', 'solarized-light');
+    await expect(address).toBeFocused();
+    expect(Math.abs((await reader.locator('p').filter({ hasText: 'Passage 20:' }).boundingBox())!.y - anchor!.y)).toBeLessThan(2);
+    await f.page.screenshot({ path: test.info().outputPath('web-reader-markdown-typography.png') });
     expect(f.errors).toEqual([]);
   } finally { await f.dispose(); }
 });

@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import type { MarkTexApi } from '../protocol/desktop-api';
 
 declare global {

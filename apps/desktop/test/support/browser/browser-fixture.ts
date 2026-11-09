@@ -7,7 +7,7 @@ import path from 'node:path';
 import { disposeApplication, focusApplication, type TestApplication } from '../electron/electron-app';
 import { pdfFixture } from '../media/pdf-fixture';
 
-export async function fixture(document = true) {
+export async function fixture(document = true, markdown = '# Notes\n\nKeep the reader intact.\n') {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-browser-'));
   const requests: string[] = [];
   const slowDownloads = new Set<ServerResponse>();
@@ -138,7 +138,7 @@ export async function fixture(document = true) {
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   const address = server.address() as { port: number };
   const origin = `http://127.0.0.1:${address.port}`;
-  const file = path.join(root, 'notes.md'); await writeFile(file, '# Notes\n\nKeep the reader intact.\n');
+  const file = path.join(root, 'notes.md'); await writeFile(file, markdown);
   const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
   const headless = process.env.SETDOWN_E2E_HEADLESS ? ['--ozone-platform=headless', '--disable-gpu']
     : process.env.SETDOWN_TEST_DISPLAY === 'wayland' ? ['--ozone-platform=wayland']

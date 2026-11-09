@@ -26,6 +26,7 @@ function pdfAssets() {
 
 export default defineConfig({
   base: './',
+  resolve: { alias: { '@crossnote-styles': path.resolve(path.dirname(createRequire(import.meta.url).resolve('crossnote')), '../styles') } },
   plugins: [svelte(), pdfAssets()],
   // 기본 HTML 탐색은 참고용 vendor 저장소의 fixture/workbench 페이지까지 훑는다.
   // 앱의 유일한 진입점만 지정해 VS Code 소스를 dependency로 오인하지 않게 한다.

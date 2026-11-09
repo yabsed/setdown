@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { onMount } from 'svelte';
   import DOMPurify from 'dompurify';
   import type { AppActions } from '../ports/ui-actions';
   import type { ReaderAnchor, ReaderSnapshot } from '../../protocol/browser';
@@ -7,6 +7,7 @@
   import { browser } from './browser-state.svelte';
   import { createRenderedFind } from './rendered-find';
   import { zoomState } from '../zoom-state.svelte';
+  import { DOCUMENT_FONT_SIZE } from '../../core/theme/typography';
 
   let { actions, groupId, tabId, snapshot }: {
     actions: AppActions; groupId: string; tabId: string; snapshot: ReaderSnapshot;
@@ -16,6 +17,7 @@
   let content: HTMLElement;
   let finder = $state<ReturnType<typeof createRenderedFind>>();
   let exporting = $state(false);
+  let readyTheme = $state('');
   $effect(() => {
     const request = browser.readerFind[tabId];
     if (finder && request) finder.search(request.query, request.forward, request.next);
@@ -85,13 +87,36 @@
     finder = createRenderedFind(container, content, tabId, (active, matches) => {
       if (browser.findId === tabId) { browser.active = active; browser.matches = matches; }
     });
-    void (async () => { await tick(); if (!current()) return; positionAt(browser.readerPositions[tabId] ?? snapshot.anchor); element.focus({ preventScroll: true }); })();
+    const style = document.createElement('style');
+    document.head.append(style);
+    let generation = 0;
+    const applyTheme = async () => {
+      const theme = document.documentElement.dataset.theme ?? 'github-light';
+      const request = ++generation;
+      const { readerThemeCss } = await import('./reader-theme');
+      const css = await readerThemeCss(theme);
+      if (!current() || request !== generation) return;
+      style.textContent = `@scope ([data-reader-tab="${CSS.escape(tabId)}"] .web-reader-column) { ${css} }`;
+      const first = !readyTheme;
+      readyTheme = theme;
+      positionAt(browser.readerPositions[tabId] ?? snapshot.anchor);
+      if (first) element.focus({ preventScroll: true });
+    };
+    const theme = new MutationObserver(() => { void applyTheme(); });
+    theme.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    // Native Markdown code blocks use Prism's plain-text presentation even
+    // when there is no language to highlight. Page-authored classes stay stripped.
+    for (const pre of content.querySelectorAll('pre')) {
+      pre.classList.add('language-text');
+      pre.querySelector('code')?.classList.add('language-text');
+    }
+    void applyTheme();
     // Late image loads reflow the article; settle once more unless the user
     // has already taken over the scroll position.
     const settle = () => { if (current() && !userScrolled) positionAt(browser.readerPositions[tabId] ?? snapshot.anchor); };
     element.addEventListener('load', settle, true);
     const timer = setTimeout(settle, 350);
-    return () => { disposed = true; window.removeEventListener('setdown:reader-focus', focus); window.removeEventListener('setdown:reader-select-all', select); finder?.dispose(); element.removeEventListener('load', settle, true); clearTimeout(timer); clearTimeout(linkTimer); cancelAnimationFrame(publishFrame); };
+    return () => { disposed = true; theme.disconnect(); style.remove(); window.removeEventListener('setdown:reader-focus', focus); window.removeEventListener('setdown:reader-select-all', select); finder?.dispose(); element.removeEventListener('load', settle, true); clearTimeout(timer); clearTimeout(linkTimer); cancelAnimationFrame(publishFrame); };
   });
 
   function anchorFor(el: HTMLElement | undefined): ReaderAnchor {
@@ -188,78 +213,41 @@
      viewer's native surface; Enter is its keyboard return path. -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <section class="web-reader" aria-label="Reader mode" data-reader-tab={tabId} tabindex="-1"
-  data-zoom-tab={tabId} style:font-size={`${22 * (zoomState.tabs?.[tabId] ?? 100) / 100}px`} bind:this={container}
+  data-reader-theme={readyTheme} data-zoom-tab={tabId} style:font-size={`${DOCUMENT_FONT_SIZE * (zoomState.tabs?.[tabId] ?? 100) / 100}px`} bind:this={container}
+  style:--reader-scale={(zoomState.tabs?.[tabId] ?? 100) / 100}
+  style:--reader-font-size={`${DOCUMENT_FONT_SIZE * (zoomState.tabs?.[tabId] ?? 100) / 100}px`}
   onscroll={onScroll}
   oncontextmenu={contextMenu}
   onclick={clicked} ondblclick={dblclick} onkeydown={keydown}>
-  <div class="web-reader-column">
-    <div bind:this={content}>
-      <header>
-        <h1>{article.title}</h1>
-        {#if meta}<p class="meta">{meta}</p>{/if}
-      </header>
+  <div class="web-reader-column" class:pending={!readyTheme}>
+    <div class="web-reader-content" bind:this={content}>
+      <h1>{article.title}</h1>
+      {#if meta}<p class="meta">{meta}</p>{/if}
       {@html html}
     </div>
   </div>
 </section>
 
 <style>
-  /* Use the Markdown reader's preview background and app font, with a 22px
-     web reading base scaled by the tab factor (the shell already carries
-     app zoom), a bounded reading column with 2em page padding and the
-     Crossnote github-family element metrics. Colors come from the same theme
-     profile that drives the preview, exposed as shell variables. */
   .web-reader {
     position: absolute; inset: 0; overflow: auto; overflow-x: hidden;
-    padding: 2em; padding-bottom: 5rem; box-sizing: border-box;
+    padding: 2em; padding-bottom: 5em; box-sizing: border-box;
     background: var(--preview-background); color: var(--app-text);
     font-family: var(--app-font-family); line-height: 1.6; word-wrap: break-word;
-    cursor: text; outline: none;
+    cursor: text; outline: none; font-synthesis: initial; text-rendering: auto;
   }
-  /* Cap the reading measure so wide windows do not stretch lines and
-     images edge to edge; below the cap it behaves exactly as before. */
-  .web-reader-column { max-width: 900px; margin-inline: auto; }
-  .web-reader > :global(:first-child) { margin-top: 0; }
-  .web-reader .meta { color: var(--app-muted-text); font-size: .85em; margin: 0 0 16px; }
-  .web-reader :global(h1), .web-reader :global(h2), .web-reader :global(h3),
-  .web-reader :global(h4), .web-reader :global(h5), .web-reader :global(h6) {
-    line-height: 1.2; margin-top: 1em; margin-bottom: 16px; font-weight: 600;
-  }
-  .web-reader :global(h1) { font-size: 2.25em; font-weight: 300; padding-bottom: .3em; }
-  .web-reader h1 { font-size: 2.25em; font-weight: 300; padding-bottom: .3em; line-height: 1.2; margin: 0 0 16px; }
-  .web-reader :global(h2) { font-size: 1.75em; font-weight: 400; padding-bottom: .3em; }
-  .web-reader :global(h3) { font-size: 1.5em; font-weight: 500; }
-  .web-reader :global(h4) { font-size: 1.25em; }
-  .web-reader :global(h5) { font-size: 1.1em; }
-  .web-reader :global(h6) { font-size: 1em; color: var(--app-muted-text); }
-  .web-reader :global(p) { margin: 0 0 16px; }
+  .web-reader .web-reader-column { width: 100%; padding: 0; margin: 0; }
+  .pending { visibility: hidden; }
+  /* Native Markdown uses the selected Crossnote theme, with these document
+     font and responsive-content overrides. Keep the same screen/tab scale. */
+  .web-reader .web-reader-content { font-size: var(--reader-font-size) !important; }
+  .web-reader .web-reader-content,
+  .web-reader :global(:is(h1,h2,h3,h4,h5,h6,p,blockquote,ul,ol,li,dl,dt,dd,
+    table,th,td,pre,code,kbd,samp,tt,summary)) { font-family: var(--app-font-family) !important; }
+  .web-reader .meta { color: var(--app-muted-text); font-size: .85em; margin: 0 0 calc(16px * var(--reader-scale)); }
   .web-reader :global(p), .web-reader :global(li), .web-reader :global(blockquote) { overflow-wrap: break-word; }
-  .web-reader :global(a) { color: var(--app-accent); text-decoration: none; }
-  .web-reader :global(a:hover) { text-decoration: underline; }
-  .web-reader :global(strong) { font-weight: 700; }
-  .web-reader :global(ul) { list-style: disc; }
-  .web-reader :global(ol) { list-style: decimal; }
-  .web-reader :global(blockquote) {
-    margin: 16px 0; padding: 0 15px; color: var(--app-muted-text);
-    background: color-mix(in srgb, var(--app-text) 6%, transparent);
-    border-left: 4px solid var(--app-border);
-  }
-  .web-reader :global(code), .web-reader :global(kbd), .web-reader :global(samp), .web-reader :global(tt) {
-    font-size: .85em; background: color-mix(in srgb, var(--app-text) 8%, transparent);
-    border-radius: 3px; padding: .2em 0;
-  }
-  .web-reader :global(pre) {
-    max-width: 100%; overflow-x: auto; overflow-y: hidden; padding: 16px; line-height: 1.45;
-    background: color-mix(in srgb, var(--app-text) 6%, transparent); border-radius: 6px;
-  }
-  .web-reader :global(pre code) { background: transparent; padding: 0; }
-  .web-reader :global(hr) { height: 4px; margin: 32px 0; background: var(--app-border); border: 0 none; }
-  .web-reader :global(img), .web-reader :global(svg) { display: block; max-width: 100%; height: auto; }
-  .web-reader :global(figure) { margin: 16px 0; }
-  .web-reader :global(figcaption) { color: var(--app-muted-text); font-size: .85em; margin-top: 8px; }
-  .web-reader :global(table) {
-    display: block; max-width: 100%; overflow-x: auto; margin: 10px 0 15px;
-    border-collapse: collapse; border-spacing: 0; word-break: keep-all;
-  }
-  .web-reader :global(th), .web-reader :global(td) { border: 1px solid var(--app-border); padding: 6px 13px; }
+  .web-reader :global(pre > code) { font-size: inherit; color: inherit; }
+  .web-reader :global(pre) { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+  .web-reader :global(table) { display: block; max-width: 100%; overflow-x: auto; }
+  .web-reader :global(img), .web-reader :global(svg) { max-width: 100%; height: auto; }
 </style>
