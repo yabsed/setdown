@@ -798,8 +798,21 @@ including this panel, rather than editing the document behind it.
 
 The web contrast pass examines visible text against its actual solid ancestor
 background after Dark Reader runs. Corrections target 4.5:1, retain authored
-colors, and disappear in original-site mode. Transparent text, disabled controls,
-images/gradients, blend/filter and translucent-group backgrounds are excluded
+colors, and disappear in original-site mode. Chromium resolves modern computed
+solid colors (`color(srgb ...)`, Lab/LCH/OKLab/OKLCH), including the relative
+`rgb(from ...)` and `color-mix()` used by ChatGPT's sidebar. A lazy 1px sRGB
+canvas resolves color values only, never page pixels; its cache is capped at
+256 entries per active contrast pass. Attribute-selector state changes also
+invalidate contrast. Link/button corrections include inherited currentColor
+icons, and dynamically inserted labels are rechecked. `browser/themes.spec.ts`
+uses the public sidebar's relative/mixed background expressions across all app
+themes and checks text/icon contrast, retained input and original-color cleanup.
+In Solarized Light, ChatGPT's sidebar explicitly uses white text and currentColor
+icons for both pinned and recent conversations, including dynamically added rows.
+This site/theme rule takes precedence over automatic foreground selection and
+is removed with the contrast stylesheet when the theme or original-site mode changes.
+Transparent text, disabled controls, images/gradients, blend/filter and
+translucent-group backgrounds are excluded
 rather than assigned a guessed background. Work is event-driven, capped at 100
 nodes/8 ms per batch, 32 queued roots, 10,000 nodes per root and 1,024 retained
 corrections; hidden documents pause work. This is not a guarantee for text over

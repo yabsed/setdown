@@ -1,0 +1,56 @@
+
+Running 1 test using 1 worker
+
+(node:532421) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[1/1] test/e2e/browser/themes.spec.ts:172:1 › relative and mixed sidebar colors retain text contrast when the panel opens and changes theme
+dbus-daemon[532408]: [session uid=1000 pid=532408] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=532452 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[532408]: [session uid=1000 pid=532408] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[532408]: [session uid=1000 pid=532408] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=532452 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[532408]: [session uid=1000 pid=532408] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.4' (uid=1000 pid=532533 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[532408]: [session uid=1000 pid=532408] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[532408]: [session uid=1000 pid=532408] Activating service name='org.freedesktop.portal.Documents' requested by ':1.4' (uid=1000 pid=532533 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[532408]: [session uid=1000 pid=532408] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[532408]: [session uid=1000 pid=532408] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.4' (uid=1000 pid=532533 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[532408]: [session uid=1000 pid=532408] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=532585 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[532408]: [session uid=1000 pid=532408] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[532408]: [session uid=1000 pid=532408] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[532408]: [session uid=1000 pid=532408] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.4' (uid=1000 pid=532533 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[532408]: [session uid=1000 pid=532408] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:532533): xdg-desktop-portal-WARNING **: 15:14:06.888: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[532408]: [session uid=1000 pid=532408] Activating service name='org.freedesktop.impl.portal.desktop.oo7' requested by ':1.4' (uid=1000 pid=532533 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[532408]: [session uid=1000 pid=532408] Activated service 'org.freedesktop.impl.portal.desktop.oo7' failed: Process org.freedesktop.impl.portal.desktop.oo7 exited with status 1
+dbus-daemon[532408]: [session uid=1000 pid=532408] Successfully activated service 'org.freedesktop.portal.Desktop'
+
+(/usr/libexec/xdg-desktop-portal:532533): xdg-desktop-portal-WARNING **: 15:14:06.902: Failed to create secret proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.oo7: Process org.freedesktop.impl.portal.desktop.oo7 exited with status 1
+  1) test/e2e/browser/themes.spec.ts:172:1 › relative and mixed sidebar colors retain text contrast when the panel opens and changes theme 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      217 |     await web.screenshot({ path: test.info().outputPath('relative-sidebar-solarized.png') });
+      218 |     await evaluatePage(f.app, f.origin, `document.querySelector('aside').dataset.slateSidebarPeeking = 'false'; true`);
+    > 219 |     await expect.poll(async () => (await samples()).every(value => value.ratio >= 4.5)).toBe(true);
+          |                                                                                         ^
+      220 |     for (const id of THEME_IDS) {
+      221 |       await f.app.evaluate(({ Menu }, id) => Menu.getApplicationMenu()!.getMenuItemById('preview-theme-'+id)!.click(), id);
+      222 |       await expect.poll(async () => (await samples()).every(value => value.ratio >= 4.5)).toBe(true);
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/browser/themes.spec.ts:219:89
+
+    Error Context: ../../../../../../../../../tmp/setdown-sidebar-before/browser-themes-relative-an-a4db0-nel-opens-and-changes-theme/error-context.md
+
+
+  1 failed
+    test/e2e/browser/themes.spec.ts:172:1 › relative and mixed sidebar colors retain text contrast when the panel opens and changes theme 

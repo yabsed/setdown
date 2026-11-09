@@ -1,0 +1,97 @@
+{
+  "date": "2026-11-09",
+  "issue": "ChatGPT recent conversation labels lose contrast on the Solarized Light sidebar; pinned labels remain readable.",
+  "baselineCommit": "5f65d6237f61be4c7428bd69fafaf6ecfeb600d6",
+  "cause": [
+    "Light-theme transformation treats bright source text and secondary gray text differently.",
+    "The final contrast pass previously rejected solid computed color(srgb ...) and oklab(...) backgrounds, so unreadable foregrounds were not corrected.",
+    "Attribute-only sidebar state changes and currentColor controls without direct text were not fully covered."
+  ],
+  "publicCss": {
+    "url": "https://chatgpt.com/cdn/assets/7a4b47cacc9d.css",
+    "retrieved": "2026-11-09",
+    "expressions": [
+      "rgb(from var(--color-surface-elevated-secondary) r g b / 1)",
+      "color-mix(in oklab, var(--color-surface) 65%, transparent)"
+    ]
+  },
+  "changes": [
+    "Resolve modern solid computed colors through a lazy 1px sRGB canvas with a 256-entry cache.",
+    "Recheck attribute-selector state changes and control foregrounds inherited by icons.",
+    "Retain the existing 4.5:1 target, bounded batches, excluded spatial effects and original-mode restoration.",
+    "For chatgpt.com + Solarized Light, apply an explicit white user-origin foreground to the slate sidebar and navigation descendants, taking precedence over automatic contrast selection; remove it on original mode or theme change."
+  ],
+  "reproduction": {
+    "baseline": "failed the new contrast assertion as expected",
+    "candidate": "passed",
+    "log": "baseline-reproduction.log.txt",
+    "candidateLog": "focused-test.log.txt"
+  },
+  "coverage": [
+    "Solarized Light initial sidebar",
+    "relative RGB peeking background",
+    "translucent OKLab docked background",
+    "dynamic conversation label replacement",
+    "all 13 app themes including Paper and GitHub Light",
+    "currentColor control icon",
+    "retained input node and Korean draft",
+    "original-mode color and attribute cleanup"
+  ],
+  "limitations": [
+    "Authenticated ChatGPT sidebar DOM was not verified. The isolated inspection retained only the public signed-out page; no conversation content was collected.",
+    "Automated reproduction uses the public CSS expressions in a local fixture, not the live account.",
+    "The final site/theme-specific white-foreground rule was bundled after the full suite; the user requested no additional tests."
+  ],
+  "environment": {
+    "display": "isolated Xvfb; Wayland unset; private runtime and D-Bus",
+    "electron": "44.7.2",
+    "rendererSourceMaps": false,
+    "testRetries": 0
+  },
+  "previewContract": {
+    "status": "passed before the final white-foreground override",
+    "log": "preview-contract.log.txt",
+    "initialEnvironmentFailure": "A repository-nested TMPDIR broke the standalone-language-root assertion. Retained the failure log and reran with an external /var/tmp directory; assertions unchanged.",
+    "unitTests": 984,
+    "toolingTests": 14,
+    "electronTests": 336,
+    "elapsedElectron": "19.6 minutes"
+  },
+  "benchmark": {
+    "status": "not run",
+    "requiredScenarios": 8,
+    "cycles": [
+      "first",
+      "second",
+      "warm (median of cycles 3–5)"
+    ],
+    "preparationMs": [
+      0,
+      3000
+    ],
+    "edited": [
+      false,
+      true
+    ],
+    "surfaces": [
+      "document",
+      "review"
+    ],
+    "thresholds": {
+      "relative": 0.25,
+      "absoluteMs": 50
+    },
+    "reason": "User directed immediate white-text fix and installation instead of more testing."
+  },
+  "installation": {
+    "status": "installed",
+    "path": "/home/yabsed/.local/share/setdown",
+    "packagedPreloadMatchesBuild": true,
+    "installedPreloadMatchesBuild": true,
+    "preloadSha256": "83c283eb0ccec1072e706a0ebacaca3f526b818adf3e9fad3b8685876b0f08e7",
+    "runningAppRestarted": false,
+    "restartRequired": true,
+    "packageLog": "package.log.txt"
+  },
+  "requestedFinalBehavior": "User explicitly requested white conversation titles on the ChatGPT Solarized Light sidebar, including recent/general conversations, and immediate installation instead of further testing."
+}

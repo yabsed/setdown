@@ -168,3 +168,74 @@ test('actual dark and light surfaces keep readable text across themes and dynami
     expect(f.errors).toEqual([]);
   } finally { await f.dispose(); }
 });
+
+test('relative and mixed sidebar colors retain text contrast when the panel opens and changes theme', async () => {
+  const f = await fixture(false);
+  try {
+    await f.page.evaluate(() => window.marktex.browser.updateThemeSettings({ mode: 'original' }));
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/sidebar-colors`);
+    await expect.poll(() => f.app.context().pages().some(p => p.url() === `${f.origin}/sidebar-colors`)).toBe(true);
+    // ChatGPT's public CSS (2026-11-09, /cdn/assets/7a4b47cacc9d.css)
+    // paints its peeking sidebar with rgb(from ...), and its docked navigation
+    // with color-mix(in oklab, ... 65%, transparent). No account content here.
+    await evaluatePage(f.app, f.origin, `
+      document.body.innerHTML = '<input id="draft"><main id="light">Article text</main><aside data-slate-sidebar-peeking="true"><nav class="sidebar-navigation"><h2>프로젝트</h2><a id="history" href="#conversation"><span>최근 대화</span></a><button id="action"><svg width="24" height="24"><path fill="currentColor" d="M2 2h20v20H2z"/></svg><span>새 대화</span></button></nav></aside>';
+      const style = document.createElement('style'); style.textContent = \`
+        body { margin: 20px; background: white; color: black; }
+        #light { background: white; color: #666; padding: 24px; }
+        aside { --color-surface: #171717; --color-surface-elevated-secondary: #171717;
+          --app-shell-sidebar-popover-background: rgb(from var(--color-surface-elevated-secondary) r g b / 1);
+          background: #171717; width: 320px; }
+        .sidebar-navigation { padding: 24px; background-color: color-mix(in oklab, var(--color-surface) 65%, transparent); }
+        [data-slate-sidebar-peeking=true] .sidebar-navigation { background-color: var(--app-shell-sidebar-popover-background); }
+        h2 { color: white; }
+        a, button { display: block; padding: 16px; color: #aaa; background: transparent; }
+        #history span { color: color-mix(in oklab, #aaa 100%, transparent); }
+      \`; document.head.append(style);
+      window.keptDraft = document.querySelector('#draft'); keptDraft.value = '작성 중인 입력'; true;
+    `);
+    // Chromium paints the actual composed background into a fresh sRGB pixel;
+    // this oracle accepts modern computed colors independently of our parser.
+    const samples = () => evaluatePage<Array<{ color: string; background: string; ratio: number }>>(f.app, f.origin, `
+      ['#light', '#history span', '#action span', '#action svg'].map(selector => {
+        const element = document.querySelector(selector), chain = [];
+        for (let e = element; e; e = e.parentElement) chain.push(e);
+        const canvas = new OffscreenCanvas(1, 1), ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.fillStyle = 'white'; ctx.fillRect(0, 0, 1, 1);
+        for (const e of chain.reverse()) { ctx.fillStyle = getComputedStyle(e).backgroundColor; ctx.fillRect(0, 0, 1, 1); }
+        const background = [...ctx.getImageData(0, 0, 1, 1).data];
+        const color = element instanceof SVGElement ? getComputedStyle(element).color : getComputedStyle(element).webkitTextFillColor;
+        ctx.fillStyle = color; ctx.fillRect(0, 0, 1, 1);
+        const foreground = [...ctx.getImageData(0, 0, 1, 1).data];
+        const lum = c => c.slice(0,3).map(v => v/255).map(v => v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((sum,v,i) => sum+v*[.2126,.7152,.0722][i],0);
+        const a = lum(foreground), b = lum(background);
+        return { color, background: getComputedStyle(document.querySelector('.sidebar-navigation')).backgroundColor, ratio: (Math.max(a,b)+.05)/(Math.min(a,b)+.05) };
+      })`);
+    await f.app.evaluate(({ Menu }) => Menu.getApplicationMenu()!.getMenuItemById('preview-theme-solarized-light')!.click());
+    await f.page.evaluate(() => window.marktex.browser.updateThemeSettings({ mode: 'app' }));
+    await expect.poll(() => evaluatePage(f.app, f.origin, 'getComputedStyle(document.querySelector("#light")).backgroundColor'))
+      .toBe(rgb(themeProfile('solarized-light').palette.surface));
+    await expect.poll(async () => (await samples()).every(value => value.ratio >= 4.5)).toBe(true);
+    const web = f.app.context().pages().find(p => p.url() === `${f.origin}/sidebar-colors`)!;
+    await web.screenshot({ path: test.info().outputPath('relative-sidebar-solarized.png') });
+    await evaluatePage(f.app, f.origin, `document.querySelector('aside').dataset.slateSidebarPeeking = 'false'; true`);
+    await expect.poll(async () => (await samples()).every(value => value.ratio >= 4.5)).toBe(true);
+    await test.info().attach('solarized-sidebar-colors', { body: JSON.stringify(await samples(), null, 2), contentType: 'application/json' });
+    await evaluatePage(f.app, f.origin, `
+      const label = document.createElement('span'); label.textContent = '동적으로 열린 대화';
+      document.querySelector('#history').replaceChildren(label); true;
+    `);
+    await expect.poll(async () => (await samples()).every(value => value.ratio >= 4.5)).toBe(true);
+    for (const id of THEME_IDS) {
+      await f.app.evaluate(({ Menu }, id) => Menu.getApplicationMenu()!.getMenuItemById('preview-theme-'+id)!.click(), id);
+      await expect.poll(() => evaluatePage(f.app, f.origin, 'getComputedStyle(document.querySelector("#light")).backgroundColor'))
+        .toBe(rgb(themeProfile(id).palette.surface));
+      await expect.poll(async () => (await samples()).every(value => value.ratio >= 4.5)).toBe(true);
+    }
+    expect(await evaluatePage(f.app, f.origin, 'keptDraft === document.querySelector("#draft") && keptDraft.value === "작성 중인 입력"')).toBe(true);
+    await f.page.evaluate(() => window.marktex.browser.updateThemeSettings({ mode: 'original' }));
+    await expect.poll(() => evaluatePage(f.app, f.origin, 'document.querySelectorAll("[data-setdown-readable]").length')).toBe(0);
+    expect(await evaluatePage(f.app, f.origin, 'getComputedStyle(document.querySelector("#action span")).color')).toBe('rgb(170, 170, 170)');
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});

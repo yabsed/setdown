@@ -56,7 +56,11 @@ function apply() {
   }, siteFix(policy.url)); applied = signature; }
   finally { enabling = false; }
   const rgb = [1, 3, 5].map(i => parseInt(palette.surface.slice(i, i + 2), 16));
-  stopContrast = installPageContrast(`rgb(${rgb.join(', ')})`);
+  // ChatGPT's Solarized sidebar keeps a slate background. Its recent links
+  // must use the same white foreground as pinned threads, including new rows.
+  const whiteSidebar = policy.theme === 'solarized-light' && new URL(policy.url).hostname === 'chatgpt.com';
+  stopContrast = installPageContrast(`rgb(${rgb.join(', ')})`, whiteSidebar
+    ? '[data-slate-sidebar-content], .sidebar-navigation' : undefined);
 }
 ipcRenderer.on('browser:theme-policy', (_event, value: BrowserThemePolicy) => { policy = value; apply(); });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply, { once: true });

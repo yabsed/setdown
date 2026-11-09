@@ -1,12 +1,17 @@
 import { webFrame } from 'electron';
 import { cssColor, over, readableText, type Color } from '../core/browser/text-contrast';
+import { computedColorReader } from './computed-color';
 
-/** Bounded, event-driven correction of text on known solid surfaces. No captures,
+/** Bounded, event-driven correction of text on known solid surfaces. No page captures,
  * navigation, global polling, retained detached DOM, or authored color changes. */
-export function installPageContrast(canvas: string): () => void {
+export function installPageContrast(canvas: string, whiteTextScope?: string): () => void {
   const base = cssColor(canvas) ?? [255, 255, 255, 1] as Color;
+  const colorOf = computedColorReader();
   const attribute = 'data-setdown-readable', property = '--setdown-readable-text';
-  const sheet = webFrame.insertCSS(`[${attribute}] { color:var(${property}) !important; -webkit-text-fill-color:var(${property}) !important; }`, { cssOrigin: 'user' });
+  const sheet = webFrame.insertCSS(`
+    [${attribute}] { color:var(${property}) !important; -webkit-text-fill-color:var(${property}) !important; }
+    ${whiteTextScope ? `:is(${whiteTextScope}), :is(${whiteTextScope}) * { color:#fff !important; -webkit-text-fill-color:#fff !important; }` : ''}
+  `, { cssOrigin: 'user' });
   const corrected = new Map<HTMLElement, { value: string; priority: string; applied: string }>();
   const roots = new Set<Element>();
   let walker: TreeWalker | undefined, timer: ReturnType<typeof setTimeout> | undefined, stopped = false, visited = 0;
@@ -22,12 +27,16 @@ export function installPageContrast(canvas: string): () => void {
   };
   function inspect(element: HTMLElement) {
     if (!element.isConnected) { restore(element); return; }
-    if (!element.matches('input,textarea') && !Array.from(element.childNodes).some(n => n.nodeType === Node.TEXT_NODE && n.textContent?.trim())) { restore(element); return; }
+    // A site-specific foreground takes precedence over automatic pole selection.
+    if (whiteTextScope && element.closest(whiteTextScope)) { restore(element); return; }
+    // Correct the control too: its currentColor icons and nested labels must
+    // inherit the same readable foreground, even without a direct text node.
+    if (!element.matches('input,textarea,button,a,[role="button"],[role="link"]') && !Array.from(element.childNodes).some(n => n.nodeType === Node.TEXT_NODE && n.textContent?.trim())) { restore(element); return; }
     const rect = element.getBoundingClientRect();
     if (!rect.width || !rect.height || rect.bottom < 0 || rect.top > innerHeight || rect.right < 0 || rect.left > innerWidth) return;
     element.removeAttribute(attribute);
     if (element.closest('[aria-disabled="true"],:disabled')) { restore(element); return; }
-    const style = getComputedStyle(element), foreground = cssColor(style.webkitTextFillColor || style.color);
+    const style = getComputedStyle(element), foreground = colorOf(style.webkitTextFillColor || style.color);
     if (!foreground || foreground[3] === 0 || style.visibility !== 'visible') { restore(element); return; }
     let background: Color = [0, 0, 0, 0], parent: Element | null = element, depth = 0;
     while (parent && depth++ < 32) {
@@ -35,7 +44,7 @@ export function installPageContrast(canvas: string): () => void {
       // Images/gradients, blend modes and group opacity need spatial compositing.
       // Do not guess a solid background or erase deliberately transparent text.
       if (layer.backgroundImage !== 'none' || Number(layer.opacity) < 1 || layer.mixBlendMode !== 'normal' || layer.filter !== 'none') { restore(element); return; }
-      const color = cssColor(layer.backgroundColor);
+      const color = colorOf(layer.backgroundColor);
       if (!color) { restore(element); return; }
       background = over(background, color);
       if (background[3] >= .999) break;
@@ -50,7 +59,9 @@ export function installPageContrast(canvas: string): () => void {
     if (element.style.getPropertyValue(property) !== value) element.style.setProperty(property, value);
     element.setAttribute(attribute, '');
   }
-  const observe = () => observer.observe(document.documentElement, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'disabled', 'aria-disabled'] });
+  // Attribute selectors also change paint (e.g. data-theme and a peeking
+  // sidebar's data-* state). Restricting this to class/style misses those paths.
+  const observe = () => observer.observe(document.documentElement, { subtree: true, childList: true, characterData: true, attributes: true });
   function schedule() {
     if (!stopped && !timer && !document.hidden) timer = setTimeout(run, 120);
   }
@@ -83,6 +94,7 @@ export function installPageContrast(canvas: string): () => void {
   }
   const observer = new MutationObserver(records => {
     for (const record of records) {
+      if (record.type === 'attributes' && (record.attributeName === attribute || record.attributeName?.startsWith('data-darkreader'))) continue;
       if (record.type === 'childList') {
         if (record.removedNodes.length) schedule();
         for (const node of record.addedNodes) enqueue(node instanceof Element ? node : node.parentElement);
