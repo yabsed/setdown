@@ -60,6 +60,22 @@ test('opening app settings performs no executable discovery or automatic prepara
   expect(mocks.servers).toHaveLength(0); discovery.dispose();
 });
 
+test('Zed resolves a supported server before global executable candidates and receives the project environment', async () => {
+  const root = path.join(mocks.directory, 'zed-project'); await mkdir(root); await mkdir(path.join(root, '.git'));
+  const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '/global/broken-shims', SETDOWN_LSP_INHERIT_ENV: '1' }));
+  const find = vi.spyOn(discovery, 'find');
+  const prepare = vi.fn(async () => ({ executable: '/zed/managed/fortls', args: ['--stdio'], settings: {}, initializationOptions: {} }));
+  const projectEnvironment = vi.fn(async () => ({ PATH: '/project/toolchain' }));
+  const f = fixture(discovery, root, { ...noPackages, usesZed: async () => true, projectEnvironment, prepare });
+  await f.invoke('open', f.first, f.document('fortran', 'hello.f90'));
+  expect(find).not.toHaveBeenCalled();
+  expect(projectEnvironment).toHaveBeenCalledWith(root, expect.objectContaining({ PATH: '/global/broken-shims' }));
+  expect(prepare).toHaveBeenCalledWith(expect.objectContaining({ id: 'fortls' }), 'fortran', root,
+    { PATH: '/project/toolchain' }, expect.objectContaining({ automaticInstall: true }), expect.any(Function));
+  expect(mocks.servers[0]).toMatchObject({ launch: { executable: '/zed/managed/fortls', env: { PATH: '/project/toolchain' } } });
+  discovery.dispose();
+});
+
 test('an old managed installation cannot hide a missing explicitly selected executable', async () => {
   const executable = path.join(mocks.directory, 'missing-gopls');
   await writeFile(path.join(mocks.directory, 'language-servers.json'), JSON.stringify({ version: 1, servers: { gopls: { executable } }, custom: [], preferred: {} }));

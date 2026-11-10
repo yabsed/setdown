@@ -49,7 +49,10 @@ struct Request {
     #[serde(default)] extension: String,
     #[serde(default)] config: String,
     #[serde(default)] text: String,
+    #[serde(default = "enabled")] allow_binary_download: bool,
+    #[serde(default)] inherit_environment: bool,
 }
+fn enabled() -> bool { true }
 #[derive(Deserialize)]
 struct InstalledExtension { id: String, version: String }
 struct Delegate {
@@ -145,7 +148,7 @@ async fn prepare(request: &Request, registry: &Arc<LanguageRegistry>, delegate: 
     let name = LanguageServerName::from(request.server.as_str());
     let adapter = registry.adapter_for_name(&name).or_else(|| registry.load_available_lsp_adapter(&name))
         .with_context(|| format!("No Zed adapter registered for {}", request.server))?;
-    let options = LanguageServerBinaryOptions { allow_path_lookup: true, allow_binary_download: true, pre_release: false };
+    let options = LanguageServerBinaryOptions { allow_path_lookup: true, allow_binary_download: request.allow_binary_download, pre_release: false };
     let (cached, download) = adapter.clone().get_language_server_command(delegate.clone(), None, options, cx).await.await;
     // A cached version works offline; update checks never delay opening a file.
     let binary = match cached { Ok(binary) => binary, Err(error) => match download { Some(task) => task.await?, None => return Err(error) } };
@@ -179,6 +182,9 @@ async fn prepare_npm(request: &Request, data: &Path, node: &NodeRuntime) -> Resu
     Ok(json!({"executable":node.binary_path().await?,"args":[script],"settings":{},"initializationOptions":{}}))
 }
 fn main() -> Result<()> {
+    // Zed's shell environment capture invokes the current executable with this
+    // flag. Keep its quoting, shell handling and noisy-output parsing upstream.
+    if std::env::args().nth(1).as_deref() == Some("--printenv") { util::shell_env::print_env(); return Ok(()); }
     let data = PathBuf::from(std::env::args().nth(1).context("Usage: setdown-language-host DATA_DIRECTORY")?);
     ensure!(data.is_absolute(), "Data directory must be absolute");
     std::fs::create_dir_all(&data)?;
@@ -202,9 +208,10 @@ fn main() -> Result<()> {
         extension::init(cx);
         language::language_settings::AllLanguageSettings::register(cx);
         project::project_settings::ProjectSettings::register(cx);
-        let http: Arc<dyn HttpClient> = Arc::new(HostHttp(reqwest_client::ReqwestClient::proxy_and_user_agent(http_client::read_proxy_from_env(), "Setdown-language-host/0.1").expect("HTTP client")));
+        let offline = std::env::var_os("SETDOWN_LANGUAGE_HOST_OFFLINE").is_some();
+        let http: Arc<dyn HttpClient> = if offline { Arc::new(http_client::BlockedHttpClient) } else { Arc::new(HostHttp(reqwest_client::ReqwestClient::proxy_and_user_agent(http_client::read_proxy_from_env(), "Setdown-language-host/0.1").expect("HTTP client"))) };
         let fs = fs::RealFs::new(None, cx.background_executor().clone());
-        let node = NodeRuntime::new(http.clone(), None, watch::channel(Some(NodeBinaryOptions { allow_path_lookup: true, allow_binary_download: true, use_paths: None })).1);
+        let node = NodeRuntime::new(http.clone(), None, watch::channel(Some(NodeBinaryOptions { allow_path_lookup: true, allow_binary_download: !offline, use_paths: None })).1);
         let mut registry = LanguageRegistry::new(cx.background_executor().clone());
         registry.set_language_server_download_dir(data.join("servers"));
         let registry = Arc::new(registry);
@@ -219,6 +226,15 @@ fn main() -> Result<()> {
                 let request = match serde_json::from_str::<Request>(&line) { Ok(r) => r, Err(e) => { emit(json!({"error":e.to_string()})); continue; } };
                 let result: Result<Value> = async {
                     match request.op.as_str() {
+                        "environment" => {
+                            ensure!(request.root.is_absolute(), "Workspace root must be absolute");
+                            let mut env = if request.inherit_environment || cfg!(windows) { request.env.clone() } else {
+                                let shell = request.env.get("SHELL").cloned().unwrap_or_else(util::shell::get_system_shell);
+                                util::shell_env::capture(shell, &[], &request.root).await?
+                            };
+                            for key in ["ELECTRON_RUN_AS_NODE", "NODE_OPTIONS", "NODE_PATH", "SETDOWN_LANGUAGE_HOST_OFFLINE"] { env.remove(key); }
+                            Ok(serde_json::to_value(env)?)
+                        },
                         "inventory" => Ok(json!({"servers":registry.all_lsp_adapters().iter().map(|a|a.name().0.to_string()).collect::<Vec<_>>(),"languages":registry.language_names()})),
                         "extensions" => {
                             let versions = request.extensions.iter().map(|e| ExtensionVersion { id:e.id.clone(),version:e.version.clone(),dev:false,content_fingerprint:None }).collect();
@@ -229,6 +245,7 @@ fn main() -> Result<()> {
                         "npm" => prepare_npm(&request, &data, &node).await,
                         "highlight" => highlight(&request,&data,&mut grammars),
                         "prepare" => {
+                            ensure!(!offline || !request.allow_binary_download, "Downloads are disabled for this host");
                             ensure!(request.root.is_absolute(), "Workspace root must be absolute");
                             cx.update(|cx| SettingsStore::update_global(cx, |store,cx| { let _ = store.set_user_settings(&json!({"lsp":request.settings}).to_string(),cx); }));
                             let delegate = Arc::new(Delegate { request_id:request.id,root:request.root.clone(),env:request.env.clone(),http:http.clone(),executor:cx.background_executor().clone(),registry:registry.clone(),entity:source.entity_id() });

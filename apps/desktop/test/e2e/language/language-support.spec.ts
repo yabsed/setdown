@@ -191,13 +191,13 @@ test('server crash preserves unsaved edits; restart recovers and window close re
     const management = page.getByRole('region', { name: 'Language Support', exact: true });
     await management.getByRole('searchbox').fill('pyright');
     await management.locator('[data-server-id="pyright"]').click();
-    await expect(management.locator('.state')).toHaveText('Installed');
+    await expect(management.locator('.state')).toHaveText('Included');
     await page.getByRole('button', { name: /Language status:/ }).click();
     await inspection.getByRole('button', { name: 'Details…', exact: true }).click();
     await inspection.getByRole('button', { name: /^Pyright/ }).click();
     await inspection.getByRole('button', { name: 'Restart Pyright', exact: true }).click();
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 25_000 });
-    await expect(management.locator('.state')).toHaveText('Installed');
+    await expect(management.locator('.state')).toHaveText('Included');
     await inspection.getByRole('button', { name: 'Close language status', exact: true }).click();
     await management.getByRole('button', { name: 'Close language support' }).click();
     await expect(page.locator('.squiggly-error').first()).toBeVisible();

@@ -67,7 +67,7 @@ test('the language sidebar searches all discoverable servers, shows language log
     }, executable);
     await panel.getByRole('button', { name: 'Choose executable and connect…' }).click();
     // Finding an executable is not evidence that initialization succeeded.
-    await expect(panel.locator('.state')).toHaveText('Installed');
+    await expect(panel.locator('.state')).toHaveText('Executable found');
     await panel.getByRole('button', { name: 'Back to language servers' }).click();
     await panel.getByRole('searchbox').fill('');
     await expect(panel.locator('.server-group').filter({ hasText: 'Custom connections' })).toContainText('Manual Fixture');
@@ -76,9 +76,9 @@ test('the language sidebar searches all discoverable servers, shows language log
     await editor.press('Control+s');
     await expect.poll(() => readFile(file, 'utf8')).toContain('No modal focus trap.');
     await rm(executable);
-    await panel.getByRole('button', { name: 'Rescan installed servers' }).click();
+    await panel.getByRole('button', { name: 'Refresh external executable candidates' }).click();
     const missing = panel.locator('.server-group').filter({ hasText: 'Needs attention' });
-    await expect(missing).toContainText('Manual Fixture'); await expect(missing).toContainText('Not installed');
+    await expect(missing).toContainText('Manual Fixture'); await expect(missing).toContainText('Not found in searched locations');
     await page.screenshot({ path: testInfo.outputPath('language-sidebar.png') });
     await application.evaluate(({ Menu }) => Menu.getApplicationMenu()?.getMenuItemById('preview-theme-night')?.click());
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'night');
@@ -106,15 +106,15 @@ test('the language sidebar searches all discoverable servers, shows language log
 
 test('installing a server while editing and rescanning connects the current model without replacing healthy sessions', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-auto-language-'));
-  const file = path.join(root, 'hello.f90'), log = path.join(root, 'server.jsonl');
-  const executable = path.join(root, '.local/bin/fortls');
+  const file = path.join(root, 'hello.go'), log = path.join(root, 'server.jsonl');
+  const executable = path.join(root, '.local/bin/gopls');
   const settings=path.join(root,'config','Setdown');await mkdir(settings,{recursive:true});
-  await writeFile(path.join(settings,'language-servers.json'),JSON.stringify({version:1,servers:{fortls:{automaticInstall:false}},custom:[],preferred:{}}));
-  await writeFile(file, 'program example\nend program example\n');
+  await writeFile(path.join(settings,'language-servers.json'),JSON.stringify({version:1,servers:{gopls:{automaticInstall:false}},custom:[],preferred:{}}));
+  await writeFile(file, 'package main\nfunc main() {}\n');
   const messages = async () => (await readFile(log, 'utf8').catch(() => '')).split('\n').filter(Boolean).map(line => JSON.parse(line));
   const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
   const application = await electron.launch({ args: ['.', file], env: { ...env,
-    HOME: root, XDG_CONFIG_HOME: path.join(root, 'config'), PATH: '/usr/bin:/bin',
+    HOME: root, XDG_CONFIG_HOME: path.join(root, 'config'), PATH: path.join(root, '.local/bin') + ':/usr/bin:/bin',
     CONDA_PREFIX: '', VIRTUAL_ENV: '', CARGO_HOME: path.join(root, '.cargo'), GOPATH: path.join(root, 'go'),
     GOBIN: '', PIPX_BIN_DIR: '', UV_TOOL_BIN_DIR: '', XDG_BIN_HOME: '', SETDOWN_LSP_INHERIT_ENV: '1' } });
   try {
@@ -122,7 +122,7 @@ test('installing a server while editing and rescanning connects the current mode
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'unavailable');
     await expect(page.locator('.editor-host [role="status"]')).toHaveCount(0);
     const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
-    await editor.press('Control+End'); await editor.pressSequentially('! edited before connection');
+    await editor.press('Control+End'); await editor.pressSequentially('// edited before connection');
     await mkdir(path.dirname(executable), { recursive: true });
     await writeFile(executable, `#!${process.execPath}\n
       const fs = require('node:fs');
@@ -132,7 +132,7 @@ test('installing a server while editing and rescanning connects the current mode
       c.onRequest('initialize', params => {log('initialize',params); return {capabilities:{textDocumentSync:{openClose:true,change:1},hoverProvider:true}}});
       c.onNotification('textDocument/didOpen', params => log('open',params));
       c.onNotification('textDocument/didChange', params => log('change',params));
-      c.onRequest('textDocument/hover', () => ({contents:{kind:'plaintext',value:'automatic Fortran server'}}));
+      c.onRequest('textDocument/hover', () => ({contents:{kind:'plaintext',value:'automatic Go server'}}));
       c.onRequest('shutdown', () => {log('shutdown',null); return null});
       c.onNotification('exit', () => process.exit(0)); c.listen();
     `); await chmod(executable, 0o755);
@@ -140,30 +140,74 @@ test('installing a server while editing and rescanning connects the current mode
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Installation management/ }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });
-    await management.getByRole('searchbox').fill('fortls');
-    await expect(management.locator('[data-server-id="fortls"]')).toContainText('Downloads disabled');
-    await expect(management.getByRole('img', { name: 'Fortran logo' })).toBeVisible();
-    await management.getByRole('button', { name: 'Rescan installed servers' }).click();
+    await management.getByRole('searchbox').fill('gopls');
+    await expect(management.locator('[data-server-id="gopls"]')).toContainText('Executable found');
+    await expect(management.getByRole('img', { name: 'Go logo' })).toBeVisible();
+    await management.getByRole('button', { name: 'Refresh external executable candidates' }).click();
     await management.locator('.server-list button').click();
-    await expect(management.locator('.state')).toHaveText('Installed');
+    await expect(management.locator('.state')).toHaveText('Executable found');
     await expect(management.locator('.details code').first()).toHaveText(executable);
     await expect.poll(async () => (await messages()).filter(m => m.method === 'open').length).toBe(1);
-    expect((await messages()).find(m => m.method === 'open').params.textDocument.text).toContain('! edited before connection');
+    expect((await messages()).find(m => m.method === 'open').params.textDocument.text).toContain('// edited before connection');
     const originalPid = (await messages())[0].pid;
-    await management.getByRole('button', { name: 'Rescan installed servers' }).click();
-    await expect(management.getByRole('button', { name: 'Rescan installed servers' })).toBeEnabled();
+    await management.getByRole('button', { name: 'Refresh external executable candidates' }).click();
+    await expect(management.getByRole('button', { name: 'Refresh external executable candidates' })).toBeEnabled();
     await management.getByRole('button', { name: 'Back to language servers' }).click();
     await management.getByRole('searchbox').fill('pyright'); await management.locator('[data-server-id="pyright"]').click();
     await management.getByRole('button', { name: 'Disable by default', exact: true }).click();
-    await expect(management.locator('.state')).toHaveText('Installed');
+    await expect(management.locator('.state')).toHaveText('Included');
     await management.getByRole('button', { name: 'Close language support' }).click();
-    await editor.press('Control+End'); await editor.pressSequentially('! still connected');
+    await editor.press('Control+End'); await editor.pressSequentially('// still connected');
     await expect.poll(async () => (await messages()).filter(m => m.method === 'change').length).toBeGreaterThan(0);
     expect(new Set((await messages()).map(m => m.pid))).toEqual(new Set([originalPid]));
     expect((await messages()).filter(m => m.method === 'initialize')).toHaveLength(1);
     expect((await messages()).filter(m => m.method === 'shutdown')).toHaveLength(0);
     await editor.press('Control+z'); await editor.press('Control+s');
-    await expect.poll(() => readFile(file, 'utf8')).toContain('! edited before connection');
+    await expect.poll(() => readFile(file, 'utf8')).toContain('// edited before connection');
+  } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
+});
+
+test('Zed rejects a broken Rust shim and connects its cached server without the global executable scan', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-zed-rust-'));
+  const file = path.join(root, 'main.rs'), log = path.join(root, 'server.jsonl'), probe = path.join(root, 'probe');
+  const bin = path.join(root, 'bin'), config = path.join(root, 'config');
+  const cache = path.join(config, 'Setdown/language-packages/servers/rust-analyzer');
+  await mkdir(path.join(root, '.git')); await mkdir(bin); await mkdir(cache, { recursive: true });
+  await writeFile(file, 'fn main() {}\n');
+  await writeFile(path.join(config, 'Setdown/language-packages/catalog.json'), JSON.stringify({ version: 1, checked: Date.now(), packages: [] }));
+  const broken = path.join(bin, 'rust-analyzer'), cached = path.join(cache, 'rust-analyzer-test');
+  await writeFile(broken, `#!${process.execPath}\nrequire('node:fs').appendFileSync(${JSON.stringify(probe)}, process.argv.slice(2).join(' ')+'\\n'); process.exit(1);\n`);
+  await chmod(broken, 0o755);
+  await writeFile(cached, `#!${process.execPath}\n
+    const fs = require('node:fs');
+    const {createMessageConnection, StreamMessageReader, StreamMessageWriter} = require(${JSON.stringify(require.resolve('vscode-jsonrpc/node'))});
+    const c = createMessageConnection(new StreamMessageReader(process.stdin), new StreamMessageWriter(process.stdout));
+    const log = (method, params) => fs.appendFileSync(${JSON.stringify(log)}, JSON.stringify({method,params})+'\\n');
+    c.onRequest('initialize', params => {log('initialize',params); return {capabilities:{textDocumentSync:{openClose:true,change:1}}}});
+    c.onNotification('textDocument/didOpen', params => log('open',params));
+    c.onNotification('textDocument/didChange', params => log('change',params));
+    c.onRequest('shutdown', () => null); c.onNotification('exit', () => process.exit(0)); c.listen();
+  `);
+  await chmod(cached, 0o755);
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+  const application = await electron.launch({ args: ['.', file], env: { ...env, HOME: root, XDG_CONFIG_HOME: config,
+    PATH: bin + ':/usr/bin:/bin', CONDA_PREFIX: '', VIRTUAL_ENV: '', SETDOWN_LSP_INHERIT_ENV: '1', SETDOWN_RUST_ANALYZER_PATH: '' } });
+  try {
+    const page = await application.firstWindow(); await focusApplication(application);
+    await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready');
+    expect(await readFile(probe, 'utf8')).toContain('--help');
+    const messages = async () => (await readFile(log, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+    await expect.poll(async () => (await messages()).filter(m => m.method === 'open').length).toBe(1);
+    const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
+    await editor.press('Control+End'); await page.keyboard.insertText('// unsaved');
+    await expect.poll(async () => (await messages()).some(m => m.method === 'change' && m.params.contentChanges[0].text.includes('// unsaved'))).toBe(true);
+    expect(await readFile(file, 'utf8')).toBe('fn main() {}\n');
+    await editor.press('Control+z'); await editor.press('Control+s');
+    // Monaco starts another typing undo group at the space in "// unsaved".
+    await expect.poll(() => readFile(file, 'utf8')).toBe('fn main() {}\n//');
+    await editor.press('Control+z'); await editor.press('Control+s');
+    await expect.poll(() => readFile(file, 'utf8')).toBe('fn main() {}\n');
+    expect((await messages()).filter(m => m.method === 'initialize')).toHaveLength(1);
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
 });
 
@@ -221,7 +265,7 @@ test('Edit menu imports a new server, negotiates Full sync, and reconnects the s
     await management.getByRole('button', { name: 'Import JSON…', exact: true }).click();
     await management.getByRole('searchbox').fill('fixture-custom');
     await management.locator('.server-list button').click();
-    await expect(management.locator('.state')).toHaveText('Installed');
+    await expect(management.locator('.state')).toHaveText('Executable found');
     await management.getByRole('button', { name: 'Enable by default', exact: true }).click();
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready');
     await expect.poll(async () => (await messages()).filter(m => m.method === 'open').length).toBe(1);
@@ -297,10 +341,10 @@ test('an imported npm profile starts automatically and supplies completion witho
     await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Installation management/ }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });
     await management.getByRole('searchbox').fill('json-lsp'); await management.locator('.server-list button').click();
-    await expect(management.locator('.state')).toHaveText('Installed');
+    await expect(management.locator('.state')).toHaveText('Executable found');
     await expect(management.locator('.details code').first()).toHaveText(path.join(folder, 'cli.cjs'));
-    await management.getByRole('button', { name: 'Rescan installed servers' }).click();
-    await expect(management.getByRole('button', { name: 'Rescan installed servers' })).toBeEnabled();
+    await management.getByRole('button', { name: 'Refresh external executable candidates' }).click();
+    await expect(management.getByRole('button', { name: 'Refresh external executable candidates' })).toBeEnabled();
     expect(new Set((await messages()).map(m => m.pid))).toEqual(new Set([original.pid]));
     await management.getByRole('button', { name: 'Close language support' }).click();
     await editor.press('Control+z'); await editor.press('Control+s');

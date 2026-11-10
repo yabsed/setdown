@@ -111,7 +111,7 @@
 <section class="language-support" aria-label="Language Support" aria-busy={busy}>
   <header class="side-view-title">
     <span>LANGUAGE SUPPORT</span>
-    {#if mode === 'list' || mode === 'details'}<button type="button" disabled={busy} aria-label="Rescan installed servers" title="Check external installations again" onclick={() => perform(() => api.rescan())}>
+    {#if mode === 'list' || mode === 'details'}<button type="button" disabled={busy} aria-label="Refresh external executable candidates" title="Refresh external executable candidates" onclick={() => perform(() => api.rescan())}>
       <svg class:scanning={busy} viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.46-3.54L13 6M13 2v4H9"/></svg>
     </button>{/if}
     <button type="button" aria-label="Close language support" title="Hide Language Support" onclick={onclose}>
@@ -169,18 +169,19 @@
     <div class="search">
       <input bind:this={searchInput} type="search" aria-label="Search language servers" placeholder="Search language servers" bind:value={query} />
     </div>
-    {#if busy}<p class="progress" role="status">Checking installed servers…</p>{/if}
+    {#if busy}<p class="progress" role="status">Looking for external executables…</p>{/if}
     <div class="server-list">
       {#each groups as group (group.id)}
         <details class="server-group" data-group={group.id} open={!!query.trim() || group.id !== 'available'}>
           <summary>{group.title}<span class="count">{group.entries.length}</span></summary>
           {#if group.id === 'available'}<p class="group-help">Supported tools can be prepared when a matching file needs them.</p>{/if}
+          {#if group.id === 'external'}<p class="group-help">Files found in the app environment. Availability is checked in the project when a file needs analysis.</p>{/if}
           {#each group.entries as entry (entry.id)}
             {@const state = serverStatus(entry)}
             <button class="server" data-server-id={entry.id} onclick={() => choose(entry)} title={entry.description}>
               <LanguageLogo languages={entry.languages} />
               <span class="server-info"><strong>{entry.name}</strong><small>{entry.languages.join(', ')}</small>
-                <span class="metadata"><span class="status" data-tone={state.tone}>{state.label}</span><small>{connectionSource(entry)}</small></span>
+                <span class="metadata"><span class="status" data-tone={state.tone}>{state.label}</span>{#if connectionSource(entry) !== state.label}<small>{connectionSource(entry)}</small>{/if}</span>
               </span>
             </button>
           {/each}
@@ -217,7 +218,8 @@
       {:else if selected}
         <div class="server-heading"><LanguageLogo languages={selected.languages} /><h3>{selected.name}</h3></div>
         <p>{selected.description}</p>
-        <div class="detail-status"><span class="state status" data-tone={serverStatus(selected).tone}>{status(selected)}</span><span class="source">{connectionSource(selected)}</span></div>
+        <div class="detail-status"><span class="state status" data-tone={serverStatus(selected).tone}>{status(selected)}</span>{#if connectionSource(selected) !== status(selected)}<span class="source">{connectionSource(selected)}</span>{/if}</div>
+        {#if status(selected) === 'Executable found'}<p>Finding a file does not verify that it can run. Check connection results in the current file's Code support.</p>{/if}
         {#if selected.setupNote}<p>{selected.setupNote}</p>{/if}
         {#if selected.notebook}
           <p>Choose Python in the notebook toolbar. Analysis and execution share that environment.</p>
@@ -227,7 +229,7 @@
           {#if selected.discoveryMessage}<p>{selected.discoveryMessage}</p>{/if}
           {#if selected.candidates && selected.candidates.length > 1}
             <details open={selected.selectionNeeded}>
-              <summary>Installed executables</summary>
+              <summary>Executable candidates</summary>
               {#each selected.candidates as candidate (candidate.id)}
                 <p><code>{candidate.path}</code> · {candidate.source}<br />
                   <button disabled={busy} onclick={() => perform(() => api.selectCandidate(selected!.id, candidate.id))}>Use this executable</button></p>

@@ -36,7 +36,7 @@ import { catalogLanguage, languageDefinitions } from '../../core/document/langua
 type Binding = { languageId: string; id: string; generation: string; uri: string; version: number; server: ServerSession; capabilities: LanguageCapabilities };
 type Owner = { state: WindowState; documents: Map<string, Binding>; servers: Map<string, ServerSession>;
   requests: Map<string, CancellationTokenSource> };
-export type AutomaticLanguagePackages = Pick<LanguageProvisioner, 'rank' | 'canPrepare' | 'prepare' | 'highlight' | 'dispose'> & Partial<Pick<LanguageProvisioner, 'installation'>>;
+export type AutomaticLanguagePackages = Pick<LanguageProvisioner, 'rank' | 'canPrepare' | 'prepare' | 'highlight' | 'dispose'> & Partial<Pick<LanguageProvisioner, 'installation' | 'usesZed' | 'projectEnvironment' | 'resetEnvironment'>>;
 
 /** A separate server for each (window, server kind, project root). Unsaved buffers never cross windows. */
 export class LanguageManager {
@@ -136,6 +136,7 @@ export class LanguageManager {
     return this.scanning = (async () => {
       await this.updating;
       this.discovery.reset();
+      this.provisionerValue?.resetEnvironment?.();
       await this.discovery.environment.resolve();
       // Eight metadata workers share directory/package caches; no candidate is executed.
       const entries = [...languageCatalog.map(item => item.id), ...this.registry.definitions().map(d => d.id)];
@@ -352,7 +353,7 @@ export class LanguageManager {
       if (definition.launch.kind !== 'native' || typeof candidateId !== 'string') throw Error('Invalid executable selection.');
       const found = await this.discover(id);
       const candidate = found?.candidates.find(c => c.id === candidateId);
-      if (!candidate || owner.window.isDestroyed()) throw Error('Executable candidate is no longer available. Rescan installed servers.');
+      if (!candidate || owner.window.isDestroyed()) throw Error('Executable candidate is no longer available. Refresh external executable candidates.');
       await this.changed(() => this.registry.chooseExecutable(id, candidate.path, !!candidate.runtime));
     });
     ipcMain.handle('language:set-enabled', (event, id: string, enabled: boolean) => {
@@ -381,7 +382,7 @@ export class LanguageManager {
       if (draft.candidateId !== undefined) {
         if (typeof draft.candidateId !== 'string') throw Error('Invalid executable selection.');
         const candidate = (await this.discover(definition.id))?.candidates.find(c => c.id === draft.candidateId);
-        if (!candidate || owner.window.isDestroyed()) throw Error('Installation changed. Rescan installed servers.');
+        if (!candidate || owner.window.isDestroyed()) throw Error('Installation changed. Refresh external executable candidates.');
         definition.launch = { kind: 'native', command: candidate.runtime ?? candidate.path,
           args: [...(candidate.runtime ? [candidate.path] : []), ...draft.args] };
         await this.changed(() => { this.registry.add(definition); this.registry.setEnabled(definition.id, true); });
@@ -492,6 +493,31 @@ export class LanguageManager {
       if (!server) for (;;) {
         const revision = this.discovery.generation;
         try {
+          // A supported Zed adapter owns external lookup, validation and managed
+          // preparation. The global metadata scan must never short-circuit it.
+          const zed = (await mapLimited(candidates, async candidate => {
+            const d = this.registry.definition(candidate.server);
+            return d.launch.kind !== 'bundledNode' && !this.registry.isCustom(d.id)
+              && !path.isAbsolute(this.registry.executable(d.id, this.discovery.environment.peek().env))
+              && await this.provisioner.usesZed?.(d) ? candidate : undefined;
+          })).filter((candidate): candidate is typeof support => !!candidate);
+          if (revision !== this.discovery.generation) continue;
+          if (!current()) throw Error('Language document closed or configuration changed during adapter selection.');
+          if (zed.length && candidates.length > 1 && !this.registry.defaultServer(support.languageId, file)) return { unavailable: 'selection-needed' as const };
+          if (zed.length) {
+            support = zed[0]; definition = this.registry.definition(support.server); root = rootFor(definition);
+            const inherited = this.discovery.environment.peek().env;
+            const environment = await this.provisioner.projectEnvironment?.(root, inherited) ?? inherited;
+            prepared = await this.provisioner.prepare(definition, support.languageId, root, environment,
+              { ...this.registry.options(support.server, file), automaticInstall: this.registry.automaticInstall(support.server, file) }, message => {
+                if (current()) this.emit(owner, { type: 'status', state: 'starting', message, server: { id: support.server, name: definition.name }, documents: [{ id: document.id, generation: document.generation }] });
+              });
+            if (revision !== this.discovery.generation) continue;
+            if (!current()) throw Error('Language document closed or configuration changed during Zed preparation.');
+            const { NODE_OPTIONS: _node, NODE_PATH: _path, ELECTRON_RUN_AS_NODE: _electron, ...env } = environment;
+            launch = { executable: prepared.executable, args: prepared.args, env: { ...env, ...prepared.env } };
+            break;
+          }
           const bundled = candidates.find(c => this.registry.definition(c.server).launch.kind === 'bundledNode');
           const available: { support: typeof support; found?: Discovery }[] = bundled ? [{ support: bundled }]
             : await mapLimited(candidates, async candidate => ({ support: candidate, found: await this.discover(candidate.server, true) }));
@@ -521,7 +547,7 @@ export class LanguageManager {
           if (installed.length !== 1 || ambiguous) {
             if (candidates.length === 1 && (!this.registry.automatic(support.server)
               || path.isAbsolute(this.registry.executable(support.server, this.discovery.environment.peek().env))) && !ambiguous && !installed.length)
-              throw Error(`${definition.name}: Executable not found. Rescan installed servers or choose an executable in Language Support.`);
+              throw Error(`${definition.name}: Executable not found. Refresh external executable candidates or choose an executable in Language Support.`);
             return { unavailable: installed.length > 1 || ambiguous ? 'selection-needed' as const : 'missing' as const };
           }
           support = installed[0].support;

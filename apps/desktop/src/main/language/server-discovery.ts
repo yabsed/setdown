@@ -58,12 +58,12 @@ export class ServerDiscovery {
   async find(command: string, options: FindOptions = {}): Promise<Discovery> {
     const signal = this.controller.signal;
     const snapshot = options.resolveEnvironment ? await this.environment.resolve() : this.environment.peek();
-    if (signal.aborted) throw new Error('Server discovery cancelled. Rescan installed servers.');
+    if (signal.aborted) throw new Error('Server discovery cancelled. Refresh external executable candidates.');
     const key = JSON.stringify([command, snapshot.env, !!options.python, options.npmPackage, !!options.resolveEnvironment]);
     const cached = this.cache.get(key);
     if (cached && cached.expires > Date.now()) return cached.value;
     const value = this.collect(command, snapshot, options, signal).then(result => {
-      if (signal.aborted) throw new Error('Server discovery cancelled. Rescan installed servers.');
+      if (signal.aborted) throw new Error('Server discovery cancelled. Refresh external executable candidates.');
       if (options.resolveEnvironment)
         this.cache.delete(JSON.stringify([command, snapshot.env, !!options.python, options.npmPackage, false]));
       return result;

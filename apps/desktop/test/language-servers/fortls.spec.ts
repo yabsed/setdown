@@ -25,10 +25,10 @@ test('installed fortls connects without registration and supplies hover and comp
     await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Installation management/ }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });
     await management.getByRole('searchbox').fill('fortls'); await management.locator('.server-list button').click();
-    await expect(management.locator('.state')).toHaveText('Installed');
-    await management.getByRole('button', { name: 'Rescan installed servers' }).click();
-    await expect(management.getByRole('button', { name: 'Rescan installed servers' })).toBeEnabled();
-    await expect(management.locator('.state')).toHaveText('Installed');
+    await expect(management.locator('.state')).toHaveText('Executable found');
+    await management.getByRole('button', { name: 'Refresh external executable candidates' }).click();
+    await expect(management.getByRole('button', { name: 'Refresh external executable candidates' })).toBeEnabled();
+    await expect(management.locator('.state')).toHaveText('Executable found');
     const data = await application.evaluate(({ app }) => app.getPath('userData'));
     expect(await readFile(path.join(data, 'language-servers.json'), 'utf8').catch(() => null)).toBeNull();
     await management.getByRole('button', { name: 'Close language support' }).click();

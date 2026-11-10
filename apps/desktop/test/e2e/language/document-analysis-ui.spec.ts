@@ -32,7 +32,7 @@ test('global language defaults preserve project choices, unsaved text and Make e
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     const sidebar = page.getByRole('region', { name: 'Language Support', exact: true });
     await expect(sidebar.getByRole('heading', { name: 'Language settings' })).toBeVisible();
-    await expect(sidebar.getByRole('button', { name: 'Rescan installed servers' })).toHaveCount(0);
+    await expect(sidebar.getByRole('button', { name: 'Refresh external executable candidates' })).toHaveCount(0);
     await expect(sidebar.locator('[data-server-id]')).toHaveCount(0);
     await sidebar.getByRole('checkbox', { name: 'Download analysis tools automatically' }).uncheck();
     await page.screenshot({ path: testInfo.outputPath('global-language-settings.png') });

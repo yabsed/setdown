@@ -26,11 +26,12 @@ per-server preferences, explicit disabled states, executable paths and custom ID
 remain in the existing settings file. Restoring inheritance does not delete
 arguments or options shared by another language.
 
-Installation management is an advanced screen with **Installed tools**, **Needs
-attention**, **Custom connections** and **Other tools**. The last group starts
-collapsed; search includes all four groups. It separates installation capability
-and origin from a document's runtime state. Managed receipts and active sessions
-count as installation evidence even when the tool is absent from PATH. Missing
+Installation management is an advanced screen with **Provided and managed tools**,
+**Needs attention**, **Custom connections**, **External executable candidates** and
+**Other tools**. The last group starts collapsed; search includes every group.
+Bundled tools and validated managed receipts are separated from files merely found
+in the app environment. A live external session does not turn its executable into
+an app-managed installation. Missing
 saved executables remain repairable; a found executable without a connection
 profile appears with **Setup needed**. Language logos use named SVG
 exports from the already installed Simple Icons package, pinned to 9.21.0 as a
@@ -43,7 +44,8 @@ paths are under **Additional actions**. Runtime state, restart, project settings
 and output belong to the document's inspection. Escape clears a search, moves
 back one step, then closes the sidebar and restores its activity button.
 
-The advanced screen's refresh icon rescans external installations. **Add server manually…**
+The advanced screen's **Refresh external executable candidates** action refreshes
+metadata, not a universal inventory or runtime health check. **Add server manually…**
 opens the manual flow: choose a known profile and locate its executable, or enter
 a custom connection. **Import JSON…** remains available. Browsing a manual-only profile
 in this flow does not add it to the default list until it is detected or saved.
@@ -61,7 +63,11 @@ why detection moved out of the ordinary workflow after the Zed integration.
 
 The automatic-download switch is a default; explicit tool/project download
 settings override it. Bundled and external executables and validated managed
-launch receipts remain usable with downloads off. A receipt is specific to its
+launch receipts remain usable with downloads off. Native Zed adapters can still
+check an external tool in an isolated host with HTTP and Node downloads disabled.
+WASI extensions own their installers and may invoke package managers; without
+download permission they require a validated prepared command or an explicit
+executable. A receipt is specific to its
 project inputs and launch settings: a new project or changed manifest may require
 preparation even if the same tool was prepared elsewhere. Setdown reports that
 condition without starting an installer or silently downloading. This switch
@@ -286,10 +292,15 @@ dialects; grammar availability does not depend on whether a server is installed.
 A profile is an association/launch recipe, not a claim that every server feature
 has been integration-tested.
 
-Open a matching saved file. Setdown uses an existing installation when available;
-otherwise it prepares eligible native Zed adapters, Zed WASM extensions or pinned
-npm packages in its own data directory. The actual Zed host supplies its managed
-Node runtime when needed. Preparation runs asynchronously and connects the latest
+Open a matching saved file. For a server supported by Zed, its actual adapter owns
+external executable selection, language-specific validation and managed preparation.
+Setdown's global metadata scan cannot bypass that adapter. A project-local external
+tool is considered again before reusing a managed command. Bundled services and
+explicit custom executables keep their existing launch contracts. Profiles without
+a Zed adapter retain a compatibility path for external executables and pinned npm
+packages. The actual Zed host supplies its managed
+Node runtime when needed. Its script path and transport arguments are preserved;
+explicit user arguments are appended to the adapter command. Preparation runs asynchronously and connects the latest
 unsaved text when ready. **Connection settings → Server installation → Use
 installed servers only** disables automatic preparation for that connection.
 Explicitly disabled providers stay disabled.
@@ -338,8 +349,9 @@ interpreter. npm package `bin` metadata can also resolve an installed Node runti
 and script directly, including on Windows without running `.cmd`/`.bat` wrappers.
 Custom connections can still select Node and put the server script in `args`.
 
-Installation management distinguishes **Installed**, **Not installed**, **Prepares
-when needed**, **Downloads disabled** and **Choose installation**. Found entries
+Installation management distinguishes **Included**, managed **Installed**,
+**Executable found**, **Not found in searched locations**, **Prepares when needed**,
+**Downloads disabled** and **Choose executable**. Found entries
 lacking a profile show **Setup needed**. Installation details expose the
 executable; document tool details expose the analysis root, negotiated features
 and startup/crash errors (including available stderr). Finding an executable does
@@ -384,7 +396,7 @@ declare other custom tags such as `!Ref` and `!GetAtt`.
 ## Finding an installation
 
 If you install a server while Setdown is running, open **Edit → Language Support…**
-and click **Rescan installed servers**. Open documents with unavailable or failed
+and click **Refresh external executable candidates**. Open documents with unavailable or failed
 connections retry using their latest unsaved text. Healthy connections keep their
 processes, and explicitly disabled servers stay disabled. Additional documents in
 the same live workspace reuse its session; a newly detected path takes effect on
@@ -397,7 +409,7 @@ switch versions. **Use automatic detection** clears that path choice without
 changing enablement or server options. The existing native **Choose executable…**
 button remains available.
 
-Automatic detection uses the selected environment's absolute PATH directories in
+The global candidate list and compatibility fallback use the selected environment's absolute PATH directories in
 order, then known user locations such as `~/.local/bin`, Cargo's bin directory,
 GOBIN/GOPATH and configured pipx/uv bin directories. For profiles/catalog packages distributed through Python, it can query the
 selected interpreter's scripts and user-scripts directories. npm packages use
@@ -408,7 +420,15 @@ The same runtime lookup is shared across the entire catalog. Multiple PATH
 matches follow PATH order; multiple fallback matches require choosing a candidate
 in Language Support. No home-directory crawl or server `--version` sweep occurs.
 
-On supported Unix shells, the first native LSP connection or an explicit Rescan
+For Zed-supported automatic connections, project shell capture uses the vendored
+Zed `util::shell_env::capture`, including its quoting, shell hooks and `--printenv`
+callback. The returned environment is scoped to the analysis root and passed to
+both the adapter and the server. Explicit inherited environments (activated venv,
+Conda or `SETDOWN_LSP_INHERIT_ENV=1`) remain authoritative. Refresh invalidates the
+project environment cache. A project shell failure is surfaced rather than silently
+selecting a different project's environment.
+
+For the compatibility path and global candidate list, a native connection or explicit refresh
 can read the user's shell environment asynchronously. Shell queries have a
 five-second timeout; Python/npm metadata queries have a three-second timeout, with a
 1 MiB combined output limit and process cleanup on cancellation. Activated venv
@@ -429,7 +449,9 @@ normal editing and saving stay usable. Explicit connection failures show their c
 Finding an executable cannot repair a missing shared library or toolchain.
 
 Directory listings and Python/npm metadata are shared across scans; eight workers
-bound catalog I/O. No discovered server is executed to check its version. Results
+bound catalog I/O. The global scan does not execute discovered servers. Zed adapters
+may probe a selected tool when a document needs it (for example, Rust's `--help`
+check rejects broken rustup shims). Results
 are cached briefly; Rescan invalidates results and pending metadata work. Explicit
 candidate IDs are revalidated in main before they become a saved connection.
 

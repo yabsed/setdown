@@ -53,6 +53,17 @@ these guarantees; `language/language-support.spec.ts` retains real crash recover
 and restart through the document controls. Existing preview timing, native capture
 and focus/IME guarantees remain unchanged.
 
+Automatic connections supported by a Zed adapter resolve through that adapter
+before any global executable metadata lookup. Project environment capture uses
+Zed's shell implementation; managed command reuse must not hide a newly available
+project toolchain. Download policy remains effective for native and WASI installers.
+The global list distinguishes managed installations from unverified executable
+candidates. `tooling/language-host/test/resolution.mjs` exercises the real pinned
+Rust adapter with broken shims, project toolchain overrides and downloads disabled,
+and the actual shell-capture callback. This Linux integration gate complements
+the manager/provisioner unit checks and real language GUI scenarios. Document
+ownership, unsaved content, Undo, notebook sessions and preview timing remain unchanged.
+
 Memory reclamation is app-wide (`main/memory/memory-monitor.ts` and
 `core/memory/memory-policy.ts`). Linux uses process-tree PSS, MemAvailable, memory
 pressure stalls and ancestor cgroup limits; other platforms use Electron working

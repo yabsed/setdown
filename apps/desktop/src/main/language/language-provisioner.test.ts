@@ -1,7 +1,8 @@
 import { afterEach, expect, test, vi } from 'vitest';
-import { mkdtemp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { AutomaticDownloadsDisabled, LanguageProvisioner } from './language-provisioner';
 import { builtinLanguageServers } from './catalog/profiles';
 
@@ -11,35 +12,60 @@ vi.mock('./zed-language-host', async importOriginal => ({
   ZedLanguageHost: class { request = host.request; prepare = host.prepare; dispose() {} },
 }));
 const roots: string[] = [];
-afterEach(async () => { vi.clearAllMocks(); await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))); });
-
-test('a validated managed launch survives disabled downloads and process restart without consulting the host or network', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-managed-policy-')); roots.push(root);
+afterEach(async () => { vi.resetAllMocks(); await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))); });
+const definition = builtinLanguageServers.find(server => server.id === 'gopls')!;
+const binary = (executable: string) => ({ executable, args: [], env: {}, settings: {}, initializationOptions: {} });
+async function fixture() {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-zed-resolution-')); roots.push(root);
   const directory = path.join(root, 'packages'), project = path.join(root, 'project'), executable = path.join(directory, 'server');
   await mkdir(directory); await mkdir(project); await writeFile(executable, 'managed executable');
-  const definition = builtinLanguageServers.find(server => server.id === 'gopls')!;
   host.request.mockResolvedValue({ servers: ['gopls'], languages: ['Go'] });
-  host.prepare.mockResolvedValue({ executable, args: [], env: {}, settings: {}, initializationOptions: {} });
   const download = vi.fn<typeof fetch>();
-  const installer = new LanguageProvisioner(directory, '/unused-host', download);
-  await installer.prepare(definition, 'go', project, {}, { automaticInstall: true });
-  expect(host.prepare).toHaveBeenCalledOnce(); installer.dispose(); vi.clearAllMocks();
-  const reopened = new LanguageProvisioner(directory, '/unused-host', download);
-  expect(await reopened.prepare(definition, 'go', project, {}, { automaticInstall: false })).toMatchObject({ executable });
-  expect(await reopened.installation('gopls')).toEqual({ state: 'ready', source: 'managed', executable });
-  expect(host.request).not.toHaveBeenCalled(); expect(host.prepare).not.toHaveBeenCalled(); expect(download).not.toHaveBeenCalled();
-  const receipt = JSON.parse(await readFile(path.join(directory, 'launches', (await readdir(path.join(directory, 'launches')))[0]), 'utf8'));
-  expect(receipt.files).toHaveLength(1);
-  // Changed bytes cannot be silently trusted or repaired over the network while downloads are off.
-  await writeFile(executable, 'replacement executable with different bytes');
-  expect(await reopened.installation('gopls')).toBeUndefined();
-  await expect(reopened.prepare(definition, 'go', project, {}, { automaticInstall: false })).rejects.toBeInstanceOf(AutomaticDownloadsDisabled);
-  expect(host.request).not.toHaveBeenCalled(); expect(download).not.toHaveBeenCalled(); reopened.dispose();
+  return { root, directory, project, executable, download, installer: new LanguageProvisioner(directory, '/unused-host', download) };
+}
+
+test('Zed checks the project before a managed receipt and a newly available external tool wins', async () => {
+  const f = await fixture(); host.prepare.mockResolvedValue(binary(f.executable));
+  await f.installer.prepare(definition, 'go', f.project, {}, { automaticInstall: true });
+  host.prepare.mockResolvedValue(binary('/project/bin/gopls'));
+  expect(await f.installer.prepare(definition, 'go', f.project, {}, { automaticInstall: true })).toMatchObject({ executable: '/project/bin/gopls' });
+  expect(host.prepare).toHaveBeenCalledTimes(2); expect(f.download).not.toHaveBeenCalled(); f.installer.dispose();
 });
 
-test('disabled downloads with no receipt neither starts the host nor fetches a package', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-download-policy-')); roots.push(root);
-  const download = vi.fn<typeof fetch>(), installer = new LanguageProvisioner(root, '/unused-host', download);
-  await expect(installer.prepare(builtinLanguageServers.find(server => server.id === 'gopls')!, 'go', root, {}, { automaticInstall: false })).rejects.toThrow('Automatic downloads are disabled');
-  expect(host.request).not.toHaveBeenCalled(); expect(host.prepare).not.toHaveBeenCalled(); expect(download).not.toHaveBeenCalled(); installer.dispose();
+test('a validated managed command survives restart and disabled downloads after Zed checks external tools', async () => {
+  const f = await fixture(); host.prepare.mockResolvedValue(binary(f.executable));
+  await f.installer.prepare(definition, 'go', f.project, { PATH: '/tools', HOME: f.root }, { automaticInstall: true }); f.installer.dispose();
+  host.prepare.mockRejectedValue(Error('downloading language servers disabled'));
+  const reopened = new LanguageProvisioner(f.directory, '/unused-host', f.download);
+  expect(await reopened.prepare(definition, 'go', f.project, { HOME: f.root, PATH: '/tools' }, { automaticInstall: false })).toMatchObject({ executable: f.executable });
+  expect(host.prepare).toHaveBeenLastCalledWith(expect.objectContaining({ root: f.project, allowBinaryDownload: false }), undefined);
+  expect(await reopened.installation('gopls')).toEqual({ state: 'ready', source: 'managed', executable: f.executable });
+  expect(f.download).not.toHaveBeenCalled();
+  await writeFile(f.executable, 'replacement executable with different bytes');
+  expect(await reopened.installation('gopls')).toBeUndefined();
+  await expect(reopened.prepare(definition, 'go', f.project, { HOME: f.root, PATH: '/tools' }, { automaticInstall: false })).rejects.toBeInstanceOf(AutomaticDownloadsDisabled);
+  expect(f.download).not.toHaveBeenCalled(); reopened.dispose();
+});
+
+test('disabled downloads permit a usable Zed external command but never install an unprepared WASI extension', async () => {
+  const f = await fixture(); host.prepare.mockResolvedValue(binary('/project/bin/gopls'));
+  expect(await f.installer.prepare(definition, 'go', f.project, {}, { automaticInstall: false })).toMatchObject({ executable: '/project/bin/gopls' });
+  host.prepare.mockClear();
+  await expect(f.installer.prepare(builtinLanguageServers.find(server => server.id === 'fortls')!, 'fortran', f.project, {}, { automaticInstall: false })).rejects.toThrow('Automatic downloads are disabled');
+  expect(host.prepare).not.toHaveBeenCalled(); expect(f.download).not.toHaveBeenCalled(); f.installer.dispose();
+});
+
+test('explicit arguments survive Zed resolution and project environment caches are scoped and refreshable', async () => {
+  const f = await fixture(), script = path.join(f.project, 'server.cjs');
+  await writeFile(script, 'process.stdout.write(JSON.stringify(process.argv.slice(2)))');
+  host.prepare.mockResolvedValue({ ...binary(process.execPath), args: [script, '--stdio'] });
+  const prepared = await f.installer.prepare(definition, 'go', f.project, {}, { args: ['--log-level', 'debug'] });
+  expect(JSON.parse(execFileSync(prepared.executable, prepared.args, { encoding: 'utf8' }))).toEqual(['--stdio', '--log-level', 'debug']);
+  host.request.mockImplementation(async (_op, values) => ({ PATH: values.root }));
+  expect(await f.installer.projectEnvironment(f.project, {})).toEqual({ PATH: f.project });
+  expect(await f.installer.projectEnvironment(f.root, {})).toEqual({ PATH: f.root });
+  const calls = host.request.mock.calls.length;
+  await f.installer.projectEnvironment(f.project, {}); expect(host.request).toHaveBeenCalledTimes(calls);
+  f.installer.resetEnvironment(); await f.installer.projectEnvironment(f.project, {});
+  expect(host.request).toHaveBeenCalledTimes(calls + 1); f.installer.dispose();
 });
